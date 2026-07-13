@@ -1,0 +1,1 @@
+- [Supabase env vars in Vite](supabase-env-vite.md) — write .env.local from the dev script; envPrefix/define in vite.config.ts don't reliably expose non-VITE_ secrets.

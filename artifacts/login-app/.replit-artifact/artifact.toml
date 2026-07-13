@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Login Page"
+version = "1.0.0"
+id = "artifacts/login-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26006
+
+[services.development]
+run = "pnpm --filter @workspace/login-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/login-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/login-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26006"
+BASE_PATH = "/"

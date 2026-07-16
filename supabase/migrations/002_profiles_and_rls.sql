@@ -1,30 +1,46 @@
 -- ============================================================
--- Vault OS – Multi-tenant profile layer and hardened RLS
+-- Vault OS – Profiles + Auth
 -- ============================================================
 
--- 1) Profiles table: one row per auth user, linked to auth.users
 create table if not exists public.profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  email text not null,
+  id uuid primary key references auth.users(id) on delete cascade,
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  company_id uuid,
+  email text,
   full_name text,
   avatar_url text,
-  role text not null default 'member'
-    check (role in ('member', 'admin', 'owner')),
+  role text,
+  is_super_admin boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-alter table public.profiles enable row level security;
+create unique index if not exists idx_profiles_user_id on public.profiles(user_id);
+create index if not exists idx_profiles_company_id on public.profiles(company_id);
+create index if not exists idx_profiles_email on public.profiles(email);
+create index if not exists idx_profiles_is_active on public.profiles(is_active);
+create index if not exists idx_profiles_is_super_admin on public.profiles(is_super_admin);
 
-create index if not exists idx_profiles_email on public.profiles (email);
 create index if not exists idx_customers_user_id on public.customers(user_id);
 create index if not exists idx_bookings_user_id on public.bookings(user_id);
 create index if not exists idx_bookings_customer_id on public.bookings(customer_id);
 create index if not exists idx_invoices_user_id on public.invoices(user_id);
 create index if not exists idx_invoices_customer_id on public.invoices(customer_id);
 
--- 2) Automatic profile creation for every new auth user
+-- ── Helper functions ────────────────────────────────────────
+
+create or replace function public.sync_profile_ids()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.id := coalesce(new.id, new.user_id);
+  new.user_id := coalesce(new.user_id, new.id);
+  return new;
+end;
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -32,147 +48,187 @@ security definer
 set search_path = public, auth
 as $$
 begin
-  insert into public.profiles (user_id, email, full_name)
+  insert into public.profiles (id, user_id, email, full_name, role)
   values (
+    new.id,
     new.id,
     new.email,
     coalesce(
       new.raw_user_meta_data->>'full_name',
       nullif(split_part(new.email, '@', 1), '')
-    )
+    ),
+    coalesce(new.raw_user_meta_data->>'role', null)
   )
-  on conflict (user_id) do nothing;
+  on conflict (id) do update
+  set
+    user_id = excluded.user_id,
+    email = coalesce(excluded.email, public.profiles.email),
+    full_name = coalesce(public.profiles.full_name, excluded.full_name),
+    updated_at = now();
+
   return new;
 end;
 $$;
+
+create or replace function public.current_company_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.company_id
+  from public.profiles p
+  where p.id = auth.uid() or p.user_id = auth.uid()
+  order by case when p.id = auth.uid() then 0 else 1 end
+  limit 1;
+$$;
+
+create or replace function public.is_super_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where (p.id = auth.uid() or p.user_id = auth.uid())
+      and p.is_super_admin = true
+  );
+$$;
+
+-- ── Triggers ────────────────────────────────────────────────
+
+drop trigger if exists trg_sync_profile_ids on public.profiles;
+create trigger trg_sync_profile_ids
+  before insert or update on public.profiles
+  for each row execute procedure public.sync_profile_ids();
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
-
--- Backfill any existing users who do not yet have a profile row
-insert into public.profiles (user_id, email)
-select id, email
-from auth.users
-where email is not null
-on conflict (user_id) do nothing;
-
--- 3) Updated-at trigger for profiles
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 drop trigger if exists profiles_updated_at on public.profiles;
 create trigger profiles_updated_at
-before update on public.profiles
-for each row execute procedure public.set_updated_at();
+  before update on public.profiles
+  for each row execute procedure public.set_updated_at();
 
--- 4) Hardened RLS policies for profiles and existing tenant-owned tables
--- Profiles policies: users can only access their own profile
+-- Backfill profiles for existing auth users
+insert into public.profiles (id, user_id, email)
+select u.id, u.id, u.email
+from auth.users u
+where not exists (
+  select 1 from public.profiles p where p.id = u.id
+)
+on conflict (id) do nothing;
+
+-- ── Profiles RLS ────────────────────────────────────────────
+
+alter table public.profiles enable row level security;
 
 drop policy if exists profiles_owner_select on public.profiles;
 create policy profiles_owner_select
-  on public.profiles
-  for select
-  using (auth.role() = 'authenticated' and user_id = auth.uid());
+  on public.profiles for select
+  using (
+    auth.role() = 'authenticated'
+    and (id = auth.uid() or user_id = auth.uid())
+  );
 
 drop policy if exists profiles_owner_insert on public.profiles;
 create policy profiles_owner_insert
-  on public.profiles
-  for insert
-  with check (auth.role() = 'authenticated' and user_id = auth.uid());
+  on public.profiles for insert
+  with check (
+    auth.role() = 'authenticated'
+    and (id = auth.uid() or user_id = auth.uid())
+  );
 
 drop policy if exists profiles_owner_update on public.profiles;
 create policy profiles_owner_update
-  on public.profiles
-  for update
-  using (auth.role() = 'authenticated' and user_id = auth.uid())
-  with check (auth.role() = 'authenticated' and user_id = auth.uid());
+  on public.profiles for update
+  using (
+    auth.role() = 'authenticated'
+    and (id = auth.uid() or user_id = auth.uid())
+  )
+  with check (
+    auth.role() = 'authenticated'
+    and (id = auth.uid() or user_id = auth.uid())
+  );
 
 drop policy if exists profiles_owner_delete on public.profiles;
 create policy profiles_owner_delete
-  on public.profiles
-  for delete
-  using (auth.role() = 'authenticated' and user_id = auth.uid());
+  on public.profiles for delete
+  using (
+    auth.role() = 'authenticated'
+    and (id = auth.uid() or user_id = auth.uid())
+  );
 
--- Customers policies: maintain same app behavior while tightening access
+-- ── Core table RLS (split from 001 monolithic policies) ─────
 
 drop policy if exists customers_own on public.customers;
 drop policy if exists customers_owner_select on public.customers;
 create policy customers_owner_select
-  on public.customers
-  for select
+  on public.customers for select
   using (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists customers_owner_insert on public.customers;
 create policy customers_owner_insert
-  on public.customers
-  for insert
+  on public.customers for insert
   with check (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists customers_owner_update on public.customers;
 create policy customers_owner_update
-  on public.customers
-  for update
+  on public.customers for update
   using (auth.role() = 'authenticated' and user_id = auth.uid())
   with check (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists customers_owner_delete on public.customers;
 create policy customers_owner_delete
-  on public.customers
-  for delete
+  on public.customers for delete
   using (auth.role() = 'authenticated' and user_id = auth.uid());
-
--- Bookings policies
 
 drop policy if exists bookings_own on public.bookings;
 drop policy if exists bookings_owner_select on public.bookings;
 create policy bookings_owner_select
-  on public.bookings
-  for select
+  on public.bookings for select
   using (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists bookings_owner_insert on public.bookings;
 create policy bookings_owner_insert
-  on public.bookings
-  for insert
+  on public.bookings for insert
   with check (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists bookings_owner_update on public.bookings;
 create policy bookings_owner_update
-  on public.bookings
-  for update
+  on public.bookings for update
   using (auth.role() = 'authenticated' and user_id = auth.uid())
   with check (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists bookings_owner_delete on public.bookings;
 create policy bookings_owner_delete
-  on public.bookings
-  for delete
+  on public.bookings for delete
   using (auth.role() = 'authenticated' and user_id = auth.uid());
-
--- Invoices policies
 
 drop policy if exists invoices_own on public.invoices;
 drop policy if exists invoices_owner_select on public.invoices;
 create policy invoices_owner_select
-  on public.invoices
-  for select
+  on public.invoices for select
   using (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists invoices_owner_insert on public.invoices;
 create policy invoices_owner_insert
-  on public.invoices
-  for insert
+  on public.invoices for insert
   with check (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists invoices_owner_update on public.invoices;
 create policy invoices_owner_update
-  on public.invoices
-  for update
+  on public.invoices for update
   using (auth.role() = 'authenticated' and user_id = auth.uid())
   with check (auth.role() = 'authenticated' and user_id = auth.uid());
 
+drop policy if exists invoices_owner_delete on public.invoices;
 create policy invoices_owner_delete
-  on public.invoices
-  for delete
+  on public.invoices for delete
   using (auth.role() = 'authenticated' and user_id = auth.uid());

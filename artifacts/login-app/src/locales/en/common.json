@@ -8,6 +8,9 @@
     "bookings": "Bookings",
     "invoices": "Invoices",
     "profiles": "Profiles",
+    "companies": "Companies",
+    "subscriptions": "Subscriptions",
+    "auditLogs": "Audit Logs",
     "users": "Users",
     "roles": "Roles",
     "permissions": "User Permissions",
@@ -19,6 +22,45 @@
   "languages": {
     "english": "English",
     "arabic": "العربية"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "none": "No active alerts.",
+    "subscriptionExpiringTitle": "Subscription expires in 5 days",
+    "subscriptionExpiringDetail": "{{count}} company subscription(s) are expiring soon.",
+    "newBookingTitle": "New booking",
+    "newBookingDetail": "{{count}} booking(s) created in the last 24 hours.",
+    "invoiceOverdueTitle": "Invoice overdue",
+    "invoiceOverdueDetail": "{{count}} invoice(s) marked overdue.",
+    "whatsappFailedTitle": "WhatsApp failed",
+    "whatsappFailedDetail": "{{count}} WhatsApp flow(s) are not active."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "loading": "Loading notifications...",
+    "empty": "No notifications yet.",
+    "noCompany": "No company assigned. Notifications are unavailable.",
+    "unread": "{{count}} unread",
+    "markRead": "Mark as read",
+    "markAllRead": "Mark all as read",
+    "delete": "Delete",
+    "category": {
+      "booking": "Booking",
+      "invoice": "Invoice",
+      "subscription": "Subscription",
+      "whatsapp": "WhatsApp",
+      "system": "System"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} total)"
+    },
+    "errors": {
+      "readFailed": "Could not mark notification as read",
+      "markAllFailed": "Could not mark all notifications as read",
+      "deleteFailed": "Could not delete notification"
+    }
   },
   "auth": {
     "login": {
@@ -86,6 +128,7 @@
   },
   "buttons": {
     "addCustomer": "Add Customer",
+    "addCompany": "Add Company",
     "newBooking": "New Booking",
     "newInvoice": "New Invoice",
     "newFlow": "New Flow",
@@ -152,6 +195,18 @@
       "create": "Create role",
       "namePlaceholder": "Sales Lead",
       "descriptionPlaceholder": "Can manage customers and bookings"
+    },
+    "company": {
+      "editTitle": "Edit Company",
+      "newTitle": "New Company",
+      "name": "Company Name *",
+      "nameRequired": "Company name is required",
+      "namePlaceholder": "Acme Inc.",
+      "status": "Status",
+      "plan": "Subscription Plan *",
+      "planRequired": "Subscription plan is required",
+      "planPlaceholder": "Pro",
+      "expiresAt": "Expiration Date"
     }
   },
   "dashboard": {
@@ -280,15 +335,161 @@
         "description": "Choose your application language",
         "label": "Current language"
       }
+    },
+    "suspended": {
+      "title": "Company Access Suspended",
+      "description": "Your company account is currently suspended and cannot access the dashboard.",
+      "contact": "Please contact your platform administrator to reactivate your subscription."
+    }
+  },
+  "subscriptions": {
+    "title": "Subscriptions",
+    "subtitle": "Manage plan assignment, billing cycle, status, and expiration for each company.",
+    "noPermission": "Only Super Admin can manage subscriptions.",
+    "searchPlaceholder": "Search by company or plan…",
+    "empty": "No subscriptions found for the selected filters.",
+    "neverExpires": "No expiration",
+    "stats": {
+      "total": "Total Companies",
+      "active": "Active",
+      "trialing": "Trialing",
+      "pastDue": "Past Due"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "allCycles": "All billing cycles"
+    },
+    "plan": {
+      "unassigned": "Unassigned plan"
+    },
+    "billingCycle": {
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "status": {
+      "active": "Active",
+      "trialing": "Trialing",
+      "past_due": "Past due",
+      "canceled": "Canceled",
+      "expired": "Expired"
+    },
+    "actions": {
+      "save": "Save"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
+    }
+  },
+  "auditLogs": {
+    "title": "Audit Logs",
+    "subtitle": "Track create, update, and delete activity across the system.",
+    "noPermission": "You do not have permission to view audit logs.",
+    "searchPlaceholder": "Search by entity, user, company, or IP…",
+    "empty": "No audit logs found for the selected filters.",
+    "stats": {
+      "total": "Total Events",
+      "create": "Creates",
+      "update": "Updates",
+      "delete": "Deletes"
+    },
+    "filters": {
+      "allActions": "All actions",
+      "allEntities": "All entities"
+    },
+    "columns": {
+      "user": "User",
+      "company": "Company",
+      "ip": "IP"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
     }
   },
   "users": {
     "title": "Users",
-    "subtitle": "Manage account visibility, role assignment, and direct access.",
+    "subtitle": "Manage users, company assignment, account status, and password resets.",
     "noPermission": "You do not have permission to manage users.",
-    "availableRoles": "Available Roles",
-    "availablePermissions": "Available Permissions",
-    "placeholder": "Full users management UI to be implemented with user list, role assignment, and permission controls."
+    "addUser": "Add User",
+    "createTitle": "Create User",
+    "superAdmin": "Super Admin",
+    "companyAdmin": "Company Admin",
+    "searchPlaceholder": "Search users…",
+    "empty": "No users found for the selected filters.",
+    "unnamed": "Unnamed user",
+    "noCompany": "No company",
+    "stats": {
+      "total": "Total Users",
+      "active": "Active",
+      "inactive": "Inactive",
+      "adminMode": "Access Mode"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "allCompanies": "All companies"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "actions": {
+      "create": "Create User",
+      "resetPassword": "Reset Password",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "saveCompany": "Save Company"
+    },
+    "form": {
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Jane Doe",
+      "nameRequired": "Full name is required",
+      "email": "Email",
+      "emailPlaceholder": "user@company.com",
+      "emailRequired": "Email is required",
+      "company": "Company",
+      "noCompany": "No company",
+      "activeOnCreate": "Activate user immediately",
+      "inviteNote": "A secure sign-in link will be sent to the user's email."
+    },
+    "confirm": {
+      "activateTitle": "Activate {{user}}?",
+      "activateDescription": "This user will be able to access the application.",
+      "deactivateTitle": "Deactivate {{user}}?",
+      "deactivateDescription": "This user will lose access until reactivated."
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
+    }
+  },
+  "companies": {
+    "title": "Companies",
+    "subtitle": "Manage tenant companies, plans, and lifecycle status.",
+    "item": "company",
+    "noPermission": "Only Super Admin can manage companies.",
+    "searchPlaceholder": "Search companies…",
+    "emptyAll": "No companies yet. Add your first company.",
+    "emptySearch": "No companies match your filters.",
+    "neverExpires": "No expiration",
+    "stats": {
+      "total": "Total Companies",
+      "active": "Active",
+      "trial": "Trial",
+      "suspended": "Suspended"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "allPlans": "All plans"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
+    }
   },
   "roles": {
     "title": "Roles",
@@ -316,7 +517,9 @@
     "paid": "Paid",
     "overdue": "Overdue",
     "active": "Active",
-    "paused": "Paused"
+    "paused": "Paused",
+    "suspended": "Suspended",
+    "trial": "Trial"
   },
   "dialogs": {
     "delete": {

@@ -9,10 +9,10 @@ import {
   FileText, MessageSquare, Bot, BarChart3, Settings,
   Bell, Plus, TrendingUp, CheckCircle2, Clock,
   DollarSign, Phone, Send, Sparkles, Download,
-  Filter, MoreHorizontal, ChevronRight, Star,
+  Filter, MoreHorizontal, ChevronRight, Star, CreditCard,
   AlertCircle, PieChart, Mail, User, Hash,
   ArrowUpRight, ArrowDownRight, Zap, Wifi, WifiOff,
-  Pencil, Trash2, Search,
+  Pencil, Trash2, Search, Building2,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useCustomers, useDeleteCustomer, CUSTOMERS_KEY } from "@/hooks/use-customers";
@@ -21,9 +21,13 @@ import { useInvoices, useDeleteInvoice, INVOICES_KEY } from "@/hooks/use-invoice
 import { CustomerModal } from "@/components/dashboard/customer-modal";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
+import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import { ProfilesSection } from "@/pages/profiles";
 import { UsersPage } from "@/pages/users";
+import { CompaniesPage } from "@/pages/companies";
+import { SubscriptionsPage } from "@/pages/subscriptions";
+import { AuditLogsPage } from "@/pages/audit-logs";
 import { RolesPage } from "@/pages/roles";
 import { UserPermissionsPage } from "@/pages/user-permissions";
 import { PermissionGuard, Can } from "@/components/rbac/permission-guard";
@@ -31,13 +35,16 @@ import { useHasPermission, useAuthUser } from "@/hooks/use-rbac";
 import type { Customer, Booking, Invoice } from "@/lib/types";
 import { useTranslation } from "react-i18next";
 
-type Section = "customers" | "bookings" | "invoices" | "profiles" | "users" | "roles" | "permissions" | "whatsapp" | "ai-chat" | "reports" | "settings";
+type Section = "customers" | "bookings" | "invoices" | "profiles" | "companies" | "subscriptions" | "audit-logs" | "users" | "roles" | "permissions" | "whatsapp" | "ai-chat" | "reports" | "settings";
 
 const NAV_ITEMS: { id: Section; labelKey: string; icon: ElementType }[] = [
   { id: "customers",  labelKey: "navigation.customers",   icon: Users },
   { id: "bookings",   labelKey: "navigation.bookings",    icon: CalendarDays },
   { id: "invoices",   labelKey: "navigation.invoices",    icon: FileText },
   { id: "profiles",   labelKey: "navigation.profiles",    icon: User },
+  { id: "companies",  labelKey: "navigation.companies",   icon: Building2 },
+  { id: "subscriptions", labelKey: "navigation.subscriptions", icon: CreditCard },
+  { id: "audit-logs", labelKey: "navigation.auditLogs", icon: ShieldCheck },
   { id: "users",      labelKey: "navigation.users",       icon: Users },
   { id: "roles",      labelKey: "navigation.roles",       icon: ShieldCheck },
   { id: "permissions",labelKey: "navigation.permissions", icon: ShieldCheck },
@@ -883,10 +890,13 @@ export default function Dashboard() {
   const { t, i18n } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { user, displayName, signOut, profile, company } = useAuth();
-const { hasPermission, roles, permissions, isLoading } = useAuthUser();
+  const {
+    hasPermission,
+    isSuperAdmin,
+  } = useAuthUser();
   const isRtl = i18n.dir() === "rtl";
 
-const isSuperAdmin = true;  const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<Section>("customers");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -895,12 +905,16 @@ const isSuperAdmin = true;  const queryClient = useQueryClient();
   const { data: bookings  = [] } = useBookings();
   const { data: invoices  = [] } = useInvoices();
 
-  console.log("[Dashboard] render - isSuperAdmin:", isSuperAdmin, "roles:", roles.map(r => r.name), "permissions:", permissions.map(p => p.code), "isLoading:", isLoading);
-
   const permittedNavItems = NAV_ITEMS.filter((item) => {
     if (isSuperAdmin) {
-      console.log("[Dashboard.filter]", item.id, "ALLOWED (isSuperAdmin)");
       return true;
+    }
+    if (item.id === "companies") {
+      return false;
+    }
+    if (item.id === "subscriptions") {
+      const allowed = hasPermission("subscriptions.view");
+      return allowed;
     }
     const permissionMap: Partial<Record<Section, string>> = {
       customers: "customers.view",
@@ -908,6 +922,8 @@ const isSuperAdmin = true;  const queryClient = useQueryClient();
       invoices: "invoices.view",
       profiles: "users.view",
       users: "users.view",
+      subscriptions: "subscriptions.view",
+      "audit-logs": "audit_logs.view",
       roles: "roles.view",
       permissions: "permissions.view",
       reports: "reports.view",
@@ -917,11 +933,8 @@ const isSuperAdmin = true;  const queryClient = useQueryClient();
     };
     const required = permissionMap[item.id];
     const allowed = !required || hasPermission(required);
-    console.log("[Dashboard.filter]", item.id, "required:", required, "allowed:", allowed);
     return allowed;
   });
-
-  console.log("[Dashboard] permittedNavItems count:", permittedNavItems.length, "NAV_ITEMS count:", NAV_ITEMS.length);
 
   const badgeCounts: Partial<Record<Section, number>> = {
     customers: customers.length,
@@ -936,26 +949,29 @@ const isSuperAdmin = true;  const queryClient = useQueryClient();
   };
 
   const activeNav = NAV_ITEMS.find(n => n.id === activeSection)!;
+  const isSuspendedCompany = !isSuperAdmin && company?.status === "Suspended";
 
-  // Expose debug data for testing
-  const debugData = {
-    profile: profile ? { id: profile.id, company_id: profile.company_id, full_name: profile.full_name, is_super_admin: profile.is_super_admin } : null,
-    company,
-    isSuperAdmin,
-    permittedNavItemsCount: permittedNavItems.length,
-    rolesCount: roles.length,
-    rolesNames: roles.map(r => r.name),
-    permissionsCount: permissions.length,
-    permissionsCodes: permissions.map(p => p.code),
-    isLoading,
-    user: { id: user?.id, email: user?.email }
-  };
+  if (isSuspendedCompany) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center p-6" dir={isRtl ? "rtl" : "ltr"}>
+        <div className="w-full max-w-lg rounded-2xl border border-rose-500/20 bg-rose-500/5 p-8 text-center space-y-4">
+          <AlertCircle className="w-10 h-10 mx-auto text-rose-400" />
+          <h1 className="text-2xl font-bold">{t("dashboard.suspended.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("dashboard.suspended.description")}</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.suspended.contact")}</p>
+          <Button variant="outline" className="border-white/10" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 me-2" />
+            {t("buttons.signOut")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className="min-h-screen w-full bg-background text-foreground flex overflow-hidden"
       dir={isRtl ? "rtl" : "ltr"}
-      data-debug={JSON.stringify(debugData)}
     >
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -1046,10 +1062,7 @@ const isSuperAdmin = true;  const queryClient = useQueryClient();
             <span className="font-medium text-foreground">{t(activeNav.labelKey)}</span>
           </div>
           <div className="ms-auto flex items-center gap-3">
-            <button className="relative p-2 rounded-lg hover:bg-white/5 transition-colors">
-              <Bell className="w-4 h-4 text-muted-foreground" />
-              <span className="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
-            </button>
+            <NotificationsBell companyId={company?.id ?? null} />
             <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold">
               {displayName.charAt(0).toUpperCase()}
             </div>
@@ -1078,6 +1091,9 @@ const isSuperAdmin = true;  const queryClient = useQueryClient();
               {activeSection === "bookings"  && <BookingsSection />}
               {activeSection === "invoices"  && <InvoicesSection />}
               {activeSection === "profiles"  && <ProfilesSection />}
+              {activeSection === "companies" && <CompaniesPage />}
+              {activeSection === "subscriptions" && <SubscriptionsPage />}
+              {activeSection === "audit-logs" && <AuditLogsPage />}
               {activeSection === "users"     && <UsersPage />}
               {activeSection === "roles"     && <RolesPage />}
               {activeSection === "permissions" && <UserPermissionsPage />}

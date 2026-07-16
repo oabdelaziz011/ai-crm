@@ -14,6 +14,9 @@ interface CompanyRecord {
   name: string | null;
   logo_url: string | null;
   status: string | null;
+  subscription_status: string | null;
+  billing_cycle: string | null;
+  subscription_expires_at: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -71,6 +74,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissions([]);
   };
 
+  const loadProfile = async (userId: string): Promise<ProfileRecord | null> => {
+    const profileColumns = "id, company_id, full_name, is_super_admin";
+
+    const byId = await supabase
+      .from("profiles")
+      .select(profileColumns)
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!byId.error) {
+      return (byId.data as ProfileRecord | null) ?? null;
+    }
+
+    const byUserId = await supabase
+      .from("profiles")
+      .select(profileColumns)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!byUserId.error) {
+      return (byUserId.data as ProfileRecord | null) ?? null;
+    }
+
+    throw byUserId.error;
+  };
+
   const loadAuthContext = async (userId: string | undefined) => {
     clearAuthContext();
 
@@ -80,71 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log("[AuthContext] loadAuthContext starting for userId:", userId);
-      
-      // DEBUG: Check session and auth state
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("JWT USER ID =", sessionData.session?.user.id);
-      console.log("QUERY USER ID =", userId);
-      console.log("[AuthContext] Current session:", {
-        user_id: sessionData?.session?.user?.id,
-        email: sessionData?.session?.user?.email,
-        access_token_prefix: sessionData?.session?.access_token?.substring(0, 20),
-        token_type: sessionData?.session?.token_type,
-      });
-
-      // DEBUG: Check getUser() result
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      console.log(
-         "[JWT METADATA]",
-           userData.user?.app_metadata
-          );
-
-           console.log(
-           "[JWT USER_METADATA]",
-           userData.user?.user_metadata
-        );
-      console.log("[AuthContext] getUser() result:", {
-        user_id: userData?.user?.id,
-        email: userData?.user?.email,
-        error: userError?.message,
-      });
-
-      // DEBUG: Inspect full profile query with request/response
-      console.log("[AuthContext] About to query profiles table with id =", userId);
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, company_id, full_name, is_super_admin")
-        .eq("id", userId)
-        .maybeSingle();
-
-      console.log("PROFILE DATA =", profileData);
-      console.log("PROFILE ERROR =", profileError);
-
-      // DEBUG: Try wildcard to discover actual column names
-      console.log("[AuthContext] Attempting wildcard SELECT * to discover actual columns...");
-      const { data: wildData, error: wildError } = await supabase
-        .from("profiles")
-        .select("*")
-        .limit(1);
-      
-      if (wildData && wildData.length > 0) {
-        console.log("[AuthContext] ACTUAL columns in profiles table:", Object.keys(wildData[0]));
-      }
-      if (wildError) {
-        console.log("[AuthContext] Wildcard SELECT failed:", wildError.message);
-      }
-      
-      if (profileError) {
-        console.warn("Unable to load profile", profileError.message);
-      }
-
-      const nextProfile = (profileData as ProfileRecord | null) ?? null;
-      console.log("[AuthContext] Profile loaded:", nextProfile);
-       console.log(
-       "PROFILE SUPER ADMIN =",
-        nextProfile?.is_super_admin
-         );
+      const nextProfile = await loadProfile(userId);
       setProfile(nextProfile);
 
       // Load company if company_id exists
@@ -152,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (nextProfile?.company_id) {
         const { data: companyData, error: companyError } = await supabase
           .from("companies")
-          .select("id, name, logo_url, status")
+          .select("id, name, logo_url, status, subscription_status, billing_cycle, subscription_expires_at")
           .eq("id", nextProfile.company_id)
           .maybeSingle();
         
@@ -171,11 +136,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userRoleError) {
         console.warn("Unable to load user roles", userRoleError.message);
       } else {
-        console.log("[AuthContext] user_roles query returned:", userRoleRows);
         const roleIds = (userRoleRows ?? [])
           .map((row) => row.role_id)
           .filter(Boolean) as string[];
-        console.log("[AuthContext] roleIds extracted:", roleIds);
 
         if (roleIds.length > 0) {
           const { data: roleRows, error: roleError } = await supabase
@@ -186,7 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (roleError) {
             console.warn("Unable to load roles", roleError.message);
           } else {
-            console.log("[AuthContext] Roles loaded:", roleRows);
             nextRoles = (roleRows ?? []) as RoleRecord[];
           }
         }
@@ -230,7 +192,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let nextPermissions: PermissionRecord[] = [];
       const permissionIdList = Array.from(permissionIds);
-      console.log("[AuthContext] permissionIdList:", permissionIdList);
       if (permissionIdList.length > 0) {
         const { data: permissionRows, error: permissionError } = await supabase
           .from("permissions")
@@ -240,7 +201,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (permissionError) {
           console.warn("Unable to load permissions", permissionError.message);
         } else {
-          console.log("[AuthContext] Permissions loaded:", permissionRows);
           nextPermissions = (permissionRows ?? []) as PermissionRecord[];
         }
       }
@@ -256,21 +216,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeSession = async () => {
-      console.log("[AuthContext.useEffect] Initializing session...");
-      const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-      console.log("[AuthContext.useEffect] getSession() returned:", {
-        has_session: !!initialSession,
-        user_id: initialSession?.user?.id,
-        email: initialSession?.user?.email,
-        error: sessionError?.message,
-      });
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
       
       setSession(initialSession);
       if (initialSession?.user) {
-        console.log("[AuthContext.useEffect] Session found, loading auth context for user:", initialSession.user.id);
         await loadAuthContext(initialSession.user.id);
       } else {
-        console.log("[AuthContext.useEffect] No session found, clearing context");
         clearAuthContext();
         setIsLoading(false);
       }
@@ -279,7 +230,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void initializeSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      console.log("[AuthContext.onAuthStateChange] Event:", _event, "Has session:", !!nextSession, "User ID:", nextSession?.user?.id);
       setSession(nextSession);
       if (nextSession?.user) {
         setIsLoading(true);
@@ -298,8 +248,6 @@ const signIn = async (email: string, password: string) => {
     email,
     password,
   });
-
-  console.log("SIGN IN RESULT =", result);
 
   return {
     error: result.error?.message ?? null,

@@ -1,0 +1,233 @@
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import type { Company, CompanyStatus } from "@/lib/types";
+import { useCreateCompany, useUpdateCompany } from "@/hooks/use-companies";
+import { useTranslation } from "react-i18next";
+
+type FormValues = {
+  name: string;
+  status: CompanyStatus;
+  subscription_plan: string;
+  subscription_expires_at?: string;
+};
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  company?: Company | null;
+}
+
+const STATUS_VALUES: CompanyStatus[] = ["Active", "Suspended", "Trial"];
+
+export function CompanyModal({ open, onClose, company }: Props) {
+  const { t } = useTranslation("common");
+  const isEdit = !!company;
+  const create = useCreateCompany();
+  const update = useUpdateCompany();
+  const isPending = create.isPending || update.isPending;
+
+  const schema = z.object({
+    name: z.string().min(1, t("forms.company.nameRequired")),
+    status: z.enum(["Active", "Suspended", "Trial"]),
+    subscription_plan: z.string().min(1, t("forms.company.planRequired")),
+    subscription_expires_at: z.string().optional(),
+  });
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: "",
+      status: "Trial",
+      subscription_plan: "",
+      subscription_expires_at: "",
+    },
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset({
+      name: company?.name ?? "",
+      status: company?.status ?? "Trial",
+      subscription_plan: company?.subscription_plan ?? "",
+      subscription_expires_at: company?.subscription_expires_at
+        ? company.subscription_expires_at.slice(0, 10)
+        : "",
+    });
+  }, [open, company, form]);
+
+  const onSubmit = (values: FormValues) => {
+    const payload = {
+      name: values.name,
+      status: values.status,
+      subscription_plan: values.subscription_plan,
+      subscription_expires_at: values.subscription_expires_at || null,
+    };
+
+    if (isEdit && company) {
+      update.mutate(
+        { id: company.id, values: payload },
+        {
+          onSuccess: () => {
+            onClose();
+            form.reset();
+          },
+          onError: (error) => form.setError("root", { message: error.message }),
+        },
+      );
+      return;
+    }
+
+    create.mutate(payload, {
+      onSuccess: () => {
+        onClose();
+        form.reset();
+      },
+      onError: (error) => form.setError("root", { message: error.message }),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="bg-card border-white/10 text-foreground max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {isEdit ? t("forms.company.editTitle") : t("forms.company.newTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {form.formState.errors.root && (
+              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                {form.formState.errors.root.message}
+              </p>
+            )}
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.company.name")}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t("forms.company.namePlaceholder")}
+                      className="bg-background/50 border-white/10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.company.status")}</FormLabel>
+                  <FormControl>
+                    <select
+                      className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors"
+                      value={field.value}
+                      onChange={(event) =>
+                        field.onChange(event.target.value as CompanyStatus)
+                      }
+                    >
+                      {STATUS_VALUES.map((status) => (
+                        <option key={status} value={status}>
+                          {t(`status.${status.toLowerCase()}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="subscription_plan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.company.plan")}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t("forms.company.planPlaceholder")}
+                      className="bg-background/50 border-white/10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="subscription_expires_at"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.company.expiresAt")}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      className="bg-background/50 border-white/10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="border-white/10"
+              >
+                {t("buttons.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30"
+              >
+                {isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isEdit ? (
+                  t("buttons.saveChanges")
+                ) : (
+                  t("buttons.addCompany")
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

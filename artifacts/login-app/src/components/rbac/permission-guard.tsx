@@ -9,7 +9,6 @@ interface PermissionGuardProps {
 
 export function PermissionGuard({ permission, children, fallback = null }: PermissionGuardProps) {
   const allowed = useHasPermission(permission);
-  console.log("[PermissionGuard]", permission, "allowed:", allowed);
   if (!allowed) return <>{fallback}</>;
   return <>{children}</>;
 }

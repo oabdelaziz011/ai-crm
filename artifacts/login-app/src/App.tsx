@@ -1,3 +1,4 @@
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +21,36 @@ const queryClient = new QueryClient({
   },
 });
 
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+    // Keep UI stable in production and avoid leaking sensitive details.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 text-center">
+            <h1 className="text-xl font-semibold">Something went wrong</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Please refresh the page and try again.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 /** Redirects unauthenticated users to /login */
 function ProtectedRoute({
   component: Component,
@@ -29,11 +60,8 @@ function ProtectedRoute({
   requiredPermission?: string;
 }) {
   const { user, isLoading } = useAuth();
-  console.log("🔥🔥🔥 PROTECTED ROUTE IS RUNNING 🔥🔥🔥");
   const { hasPermission, isLoading: permissionsLoading } = usePermissions();
-  console.log("🔥 usePermissions hook created");
-  const canAccess = hasPermission(requiredPermission ?? "customers.view");  
-  console.log("🔥 canAccess =", canAccess); 
+  const canAccess = hasPermission(requiredPermission ?? "customers.view");
 
  if (isLoading || permissionsLoading) {
   return (
@@ -74,16 +102,18 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 }
 

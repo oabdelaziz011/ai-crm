@@ -41,6 +41,13 @@ export const DEFAULT_RBAC_PERMISSIONS: PermissionRecord[] = [
   { id: "invoices.create", code: "invoices.create", category: "Invoices", module: "Invoices", action: "Create", description: "Create invoices" },
   { id: "invoices.edit", code: "invoices.edit", category: "Invoices", module: "Invoices", action: "Edit", description: "Edit invoices" },
   { id: "invoices.delete", code: "invoices.delete", category: "Invoices", module: "Invoices", action: "Delete", description: "Delete invoices" },
+  { id: "companies.view", code: "companies.view", category: "Administration", module: "Companies", action: "View", description: "View companies" },
+  { id: "companies.create", code: "companies.create", category: "Administration", module: "Companies", action: "Create", description: "Create companies" },
+  { id: "companies.edit", code: "companies.edit", category: "Administration", module: "Companies", action: "Edit", description: "Edit companies" },
+  { id: "companies.delete", code: "companies.delete", category: "Administration", module: "Companies", action: "Delete", description: "Delete companies" },
+  { id: "subscriptions.view", code: "subscriptions.view", category: "Administration", module: "Subscriptions", action: "View", description: "View subscriptions" },
+  { id: "subscriptions.edit", code: "subscriptions.edit", category: "Administration", module: "Subscriptions", action: "Edit", description: "Edit subscriptions" },
+  { id: "audit_logs.view", code: "audit_logs.view", category: "Administration", module: "Audit Logs", action: "View", description: "View audit logs" },
   { id: "reports.view", code: "reports.view", category: "Reports", module: "Reports", action: "View", description: "View reports" },
   { id: "settings.view", code: "settings.view", category: "Settings", module: "Settings", action: "View", description: "View settings" },
   { id: "settings.edit", code: "settings.edit", category: "Settings", module: "Settings", action: "Edit", description: "Edit settings" },
@@ -120,7 +127,10 @@ export function useRoles() {
   return useQuery({
     queryKey: ["rbac", "roles"],
     queryFn: async (): Promise<RoleRecord[]> => {
-      const { data, error } = await supabase.from("roles").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("roles")
+        .select("id, name, description, created_at, updated_at")
+        .order("created_at", { ascending: false });
       if (error) {
         console.warn("Roles table unavailable, using empty state", error.message);
         return [];
@@ -135,7 +145,10 @@ export function usePermissionCatalog() {
   return useQuery({
     queryKey: ["rbac", "permissions-catalog"],
     queryFn: async (): Promise<PermissionRecord[]> => {
-      const { data, error } = await supabase.from("permissions").select("*").order("module", { ascending: true });
+      const { data, error } = await supabase
+        .from("permissions")
+        .select("id, code, category, module, action, description")
+        .order("module", { ascending: true });
       if (error) {
         console.warn("Permissions table unavailable, using defaults", error.message);
         return DEFAULT_RBAC_PERMISSIONS;

@@ -1,0 +1,331 @@
+{
+  "app": {
+    "name": "VaultOS",
+    "dashboard": "لوحة التحكم"
+  },
+  "navigation": {
+    "customers": "العملاء",
+    "bookings": "الحجوزات",
+    "invoices": "الفواتير",
+    "profiles": "الملفات الشخصية",
+    "users": "المستخدمون",
+    "roles": "الأدوار",
+    "permissions": "صلاحيات المستخدم",
+    "whatsapp": "أتمتة واتساب",
+    "aiChat": "الدردشة الذكية",
+    "reports": "التقارير",
+    "settings": "الإعدادات"
+  },
+  "languages": {
+    "english": "English",
+    "arabic": "العربية"
+  },
+  "auth": {
+    "login": {
+      "title": "بوابة آمنة",
+      "subtitle": "أدخل بياناتك للوصول إلى النظام.",
+      "identity": "البريد الإلكتروني",
+      "passkey": "كلمة المرور",
+      "submit": "تسجيل الدخول",
+      "noAccess": "ليس لديك حساب؟",
+      "requestEntry": "أنشئ حساباً",
+      "successTitle": "تم تسجيل الدخول",
+      "successDescription": "مرحباً بك في Vault."
+    },
+    "register": {
+      "title": "إنشاء هوية",
+      "subtitle": "أنشئ بيانات اعتمادك للدخول إلى النظام.",
+      "identity": "البريد الإلكتروني",
+      "passkey": "كلمة مرور آمنة",
+      "submit": "إنشاء الحساب",
+      "already": "لديك حساب بالفعل؟",
+      "authenticateHere": "سجل الدخول هنا",
+      "successTitle": "تم إنشاء الحساب",
+      "successDescription": "تم حفظ بياناتك بنجاح. يمكنك تسجيل الدخول الآن."
+    },
+    "placeholders": {
+      "email": "you@example.com",
+      "password": "••••••••"
+    },
+    "validation": {
+      "email": "أدخل بريدًا إلكترونيًا صالحًا",
+      "passwordMin": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل"
+    }
+  },
+  "pages": {
+    "accessDenied": {
+      "title": "تم رفض الوصول",
+      "description": "ليس لديك الصلاحية المطلوبة لعرض هذه الصفحة.",
+      "requiredPermission": "الصلاحية المطلوبة: {{permission}}",
+      "back": "العودة إلى لوحة التحكم"
+    },
+    "notFound": {
+      "title": "404 الصفحة غير موجودة",
+      "description": "هل نسيت إضافة الصفحة إلى الموجه؟"
+    }
+  },
+  "common": {
+    "email": "البريد الإلكتروني",
+    "userId": "معرّف المستخدم",
+    "joined": "تاريخ الانضمام",
+    "search": "بحث",
+    "all": "الكل",
+    "profile": "الملف الشخصي",
+    "security": "الأمان",
+    "notifications": "الإشعارات",
+    "account": "الحساب",
+    "status": "الحالة",
+    "name": "الاسم",
+    "description": "الوصف",
+    "customer": "العميل",
+    "service": "الخدمة",
+    "amount": "المبلغ",
+    "date": "التاريخ",
+    "actions": "الإجراءات",
+    "none": "—"
+  },
+  "buttons": {
+    "addCustomer": "إضافة عميل",
+    "newBooking": "حجز جديد",
+    "newInvoice": "فاتورة جديدة",
+    "newFlow": "تدفق جديد",
+    "export": "تصدير",
+    "exportReport": "تصدير التقرير",
+    "filter": "تصفية",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "saveChanges": "حفظ التغييرات",
+    "addBooking": "إضافة حجز",
+    "createInvoice": "إنشاء فاتورة",
+    "saveRole": "حفظ الدور",
+    "reset": "إعادة تعيين",
+    "clearSelection": "مسح التحديد",
+    "assignSelected": "تعيين المحدد للمستخدم",
+    "signOut": "تسجيل الخروج"
+  },
+  "forms": {
+    "customer": {
+      "editTitle": "تعديل العميل",
+      "newTitle": "عميل جديد",
+      "name": "الاسم *",
+      "nameRequired": "الاسم مطلوب",
+      "fullName": "الاسم الكامل",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "email@example.com",
+      "invalidEmail": "البريد الإلكتروني غير صالح",
+      "phone": "الهاتف",
+      "phonePlaceholder": "+1 555 000 0000",
+      "notes": "ملاحظات",
+      "optionalNotes": "ملاحظات اختيارية…",
+      "add": "إضافة عميل"
+    },
+    "booking": {
+      "editTitle": "تعديل الحجز",
+      "newTitle": "حجز جديد",
+      "customer": "العميل",
+      "noCustomer": "— بدون عميل —",
+      "service": "الخدمة *",
+      "serviceRequired": "الخدمة مطلوبة",
+      "servicePlaceholder": "مثال: استشارة",
+      "dateTime": "التاريخ والوقت *",
+      "dateRequired": "التاريخ مطلوب",
+      "status": "الحالة",
+      "add": "إضافة حجز"
+    },
+    "invoice": {
+      "editTitle": "تعديل الفاتورة",
+      "newTitle": "فاتورة جديدة",
+      "customer": "العميل",
+      "noCustomer": "— بدون عميل —",
+      "amount": "المبلغ ($) *",
+      "amountPlaceholder": "0.00",
+      "amountMin": "يجب أن يكون المبلغ أكبر من أو يساوي 0",
+      "status": "الحالة",
+      "invoiceDate": "تاريخ الفاتورة *",
+      "dateRequired": "التاريخ مطلوب",
+      "create": "إنشاء فاتورة"
+    },
+    "roles": {
+      "existing": "الأدوار الحالية",
+      "none": "لا توجد أدوار حتى الآن.",
+      "edit": "تعديل الدور",
+      "create": "إنشاء دور",
+      "namePlaceholder": "قائد المبيعات",
+      "descriptionPlaceholder": "يمكنه إدارة العملاء والحجوزات"
+    }
+  },
+  "dashboard": {
+    "breadcrumbs": {
+      "root": "لوحة التحكم"
+    },
+    "customers": {
+      "title": "العملاء",
+      "subtitle": "إدارة وتتبع قاعدة العملاء",
+      "stats": {
+        "total": "إجمالي العملاء",
+        "newMonth": "الجدد هذا الشهر",
+        "withEmail": "لديهم بريد إلكتروني",
+        "withPhone": "لديهم هاتف"
+      },
+      "searchPlaceholder": "ابحث عن عميل…",
+      "emptyAll": "لا يوجد عملاء حتى الآن. أضف أول عميل!",
+      "emptySearch": "لا توجد نتائج مطابقة للبحث."
+    },
+    "bookings": {
+      "title": "الحجوزات",
+      "subtitle": "المواعيد والجلسات القادمة",
+      "all": "كل الحجوزات",
+      "stats": {
+        "total": "الإجمالي",
+        "today": "اليوم",
+        "pending": "قيد الانتظار",
+        "confirmed": "مؤكد"
+      },
+      "empty": "لا توجد حجوزات بعد. أنشئ أول حجز!"
+    },
+    "invoices": {
+      "title": "الفواتير",
+      "subtitle": "متابعة المدفوعات والفوترة",
+      "all": "كل الفواتير",
+      "stats": {
+        "totalBilled": "إجمالي الفوترة",
+        "paid": "مدفوع",
+        "outstanding": "مستحق",
+        "overdue": "متأخر"
+      },
+      "empty": "لا توجد فواتير بعد. أنشئ أول فاتورة!"
+    },
+    "whatsapp": {
+      "title": "أتمتة واتساب",
+      "subtitle": "إدارة تدفقات الرسائل والحملات",
+      "stats": {
+        "sent": "الرسائل المرسلة",
+        "openRate": "معدل الفتح",
+        "activeFlows": "التدفقات النشطة",
+        "optOuts": "إلغاء الاشتراك"
+      },
+      "flowsTitle": "تدفقات الأتمتة",
+      "activeBadge": "4 نشطة",
+      "trigger": "المشغّل",
+      "sent": "مرسل",
+      "opened": "مفتوح",
+      "flows": {
+        "welcome": {
+          "name": "رسالة ترحيب",
+          "trigger": "تسجيل عميل جديد"
+        },
+        "reminder": {
+          "name": "تذكير بالحجز",
+          "trigger": "قبل الحجز بـ 24 ساعة"
+        },
+        "invoice": {
+          "name": "إشعار فاتورة",
+          "trigger": "عند إنشاء فاتورة"
+        },
+        "followUp": {
+          "name": "تسلسل متابعة",
+          "trigger": "بعد الخدمة بـ 3 أيام"
+        },
+        "reengagement": {
+          "name": "إعادة تفاعل",
+          "trigger": "غير نشط منذ 90 يوماً"
+        }
+      }
+    },
+    "ai": {
+      "title": "الدردشة الذكية",
+      "subtitle": "مساعد أعمالك الذكي",
+      "online": "متصل",
+      "placeholder": "اسأل أي شيء عن عملك…",
+      "name": "Vault AI",
+      "welcome": "مرحباً! أنا مساعدك الذكي في Vault. اسألني عن العملاء أو الحجوزات أو الفواتير أو مؤشرات الأعمال.",
+      "sampleQuestion": "كم عدد الحجوزات لدي هذا الأسبوع؟",
+      "sampleAnswer": "لديك 18 حجزاً هذا الأسبوع — 4 اليوم، و6 غداً، و8 خلال بقية الأسبوع. 7 منها ما زالت بانتظار التأكيد. هل تريد إرسال تذكيرات؟",
+      "demoResponse": "أنا نموذج تجريبي — ستظهر الردود الحقيقية بعد ربط خدمة الذكاء الاصطناعي. كان سؤالك: “{{question}}”"
+    },
+    "reports": {
+      "title": "التقارير",
+      "subtitle": "أداء العمل في لمحة",
+      "stats": {
+        "revenue": "إجمالي الإيرادات",
+        "customers": "إجمالي العملاء",
+        "bookings": "إجمالي الحجوزات",
+        "invoices": "إجمالي الفواتير"
+      },
+      "bookingsPerMonth": "الحجوزات لكل شهر",
+      "lastMonths": "آخر 7 أشهر",
+      "invoiceBreakdown": "تفصيل الفواتير",
+      "noInvoices": "لا توجد فواتير بعد"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "subtitle": "إدارة حسابك وتفضيلاتك",
+      "security": {
+        "changePassword": "تغيير كلمة المرور",
+        "changePasswordDesc": "تحديث بيانات تسجيل الدخول",
+        "twoFactor": "المصادقة الثنائية",
+        "twoFactorDesc": "إضافة طبقة أمان إضافية",
+        "activeSessions": "الجلسات النشطة",
+        "activeSessionsDesc": "عرض الجلسات وإلغاؤها"
+      },
+      "notifications": {
+        "newBookings": "حجوزات جديدة",
+        "invoicePaid": "تم دفع فاتورة",
+        "whatsappAlerts": "تنبيهات واتساب",
+        "weeklyReport": "التقرير الأسبوعي",
+        "aiInsights": "رؤى الذكاء الاصطناعي"
+      },
+      "language": {
+        "title": "اللغة",
+        "description": "اختر لغة التطبيق",
+        "label": "اللغة الحالية"
+      }
+    }
+  },
+  "users": {
+    "title": "المستخدمون",
+    "subtitle": "إدارة ظهور الحسابات وتعيين الأدوار والصلاحيات المباشرة.",
+    "noPermission": "ليس لديك صلاحية لإدارة المستخدمين.",
+    "availableRoles": "الأدوار المتاحة",
+    "availablePermissions": "الصلاحيات المتاحة",
+    "placeholder": "سيتم إضافة واجهة إدارة المستخدمين الكاملة مع قائمة المستخدمين وتعيين الأدوار والصلاحيات."
+  },
+  "roles": {
+    "title": "الأدوار",
+    "subtitle": "إنشاء الأدوار وتعيين الصلاحيات عبر شبكة مرنة.",
+    "noDescription": "بدون وصف",
+    "edit": "تعديل",
+    "delete": "حذف"
+  },
+  "permissions": {
+    "title": "صلاحيات المستخدم",
+    "subtitle": "تعيين أدوار متعددة وصلاحيات مباشرة لكل مستخدم.",
+    "noPermission": "ليس لديك صلاحية لإدارة صلاحيات المستخدمين.",
+    "general": "عام"
+  },
+  "profiles": {
+    "title": "الملفات الشخصية",
+    "subtitle": "إدارة تفاصيل الملف الشخصي وظهور الحساب.",
+    "current": "الملف المعروض حالياً: {{id}}"
+  },
+  "status": {
+    "pending": "قيد الانتظار",
+    "confirmed": "مؤكد",
+    "cancelled": "ملغي",
+    "unpaid": "غير مدفوع",
+    "paid": "مدفوع",
+    "overdue": "متأخر",
+    "active": "نشط",
+    "paused": "متوقف"
+  },
+  "dialogs": {
+    "delete": {
+      "title": "حذف {{item}}؟",
+      "defaultItem": "العنصر",
+      "description": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف السجل نهائياً."
+    }
+  },
+  "errors": {
+    "notAuthenticated": "غير مصادق عليه"
+  }
+}

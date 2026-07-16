@@ -1,0 +1,331 @@
+{
+  "app": {
+    "name": "VaultOS",
+    "dashboard": "Dashboard"
+  },
+  "navigation": {
+    "customers": "Customers",
+    "bookings": "Bookings",
+    "invoices": "Invoices",
+    "profiles": "Profiles",
+    "users": "Users",
+    "roles": "Roles",
+    "permissions": "User Permissions",
+    "whatsapp": "WhatsApp Automation",
+    "aiChat": "AI Chat",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "languages": {
+    "english": "English",
+    "arabic": "العربية"
+  },
+  "auth": {
+    "login": {
+      "title": "Secure Gateway",
+      "subtitle": "Enter your credentials to access the vault.",
+      "identity": "Identity",
+      "passkey": "Passkey",
+      "submit": "Authenticate",
+      "noAccess": "No access yet?",
+      "requestEntry": "Request entry",
+      "successTitle": "Access granted",
+      "successDescription": "Welcome to Vault."
+    },
+    "register": {
+      "title": "Initialize Identity",
+      "subtitle": "Establish your credentials to enter the vault.",
+      "identity": "Desired Identity",
+      "passkey": "Secure Passkey",
+      "submit": "Initialize Access",
+      "already": "Already established?",
+      "authenticateHere": "Authenticate here",
+      "successTitle": "Identity created",
+      "successDescription": "Your credentials have been securely stored. You can now log in."
+    },
+    "placeholders": {
+      "email": "you@example.com",
+      "password": "••••••••"
+    },
+    "validation": {
+      "email": "Enter a valid email address",
+      "passwordMin": "Password must be at least 6 characters"
+    }
+  },
+  "pages": {
+    "accessDenied": {
+      "title": "Access denied",
+      "description": "You do not have the required permission to view this area.",
+      "requiredPermission": "Required permission: {{permission}}",
+      "back": "Return to dashboard"
+    },
+    "notFound": {
+      "title": "404 Page Not Found",
+      "description": "Did you forget to add the page to the router?"
+    }
+  },
+  "common": {
+    "email": "Email",
+    "userId": "User ID",
+    "joined": "Joined",
+    "search": "Search",
+    "all": "All",
+    "profile": "Profile",
+    "security": "Security",
+    "notifications": "Notifications",
+    "account": "Account",
+    "status": "Status",
+    "name": "Name",
+    "description": "Description",
+    "customer": "Customer",
+    "service": "Service",
+    "amount": "Amount",
+    "date": "Date",
+    "actions": "Actions",
+    "none": "—"
+  },
+  "buttons": {
+    "addCustomer": "Add Customer",
+    "newBooking": "New Booking",
+    "newInvoice": "New Invoice",
+    "newFlow": "New Flow",
+    "export": "Export",
+    "exportReport": "Export Report",
+    "filter": "Filter",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "saveChanges": "Save Changes",
+    "addBooking": "Add Booking",
+    "createInvoice": "Create Invoice",
+    "saveRole": "Save role",
+    "reset": "Reset",
+    "clearSelection": "Clear Selection",
+    "assignSelected": "Assign Selected to User",
+    "signOut": "Sign Out"
+  },
+  "forms": {
+    "customer": {
+      "editTitle": "Edit Customer",
+      "newTitle": "New Customer",
+      "name": "Name *",
+      "nameRequired": "Name is required",
+      "fullName": "Full name",
+      "email": "Email",
+      "emailPlaceholder": "email@example.com",
+      "invalidEmail": "Invalid email",
+      "phone": "Phone",
+      "phonePlaceholder": "+1 555 000 0000",
+      "notes": "Notes",
+      "optionalNotes": "Optional notes…",
+      "add": "Add Customer"
+    },
+    "booking": {
+      "editTitle": "Edit Booking",
+      "newTitle": "New Booking",
+      "customer": "Customer",
+      "noCustomer": "— No customer —",
+      "service": "Service *",
+      "serviceRequired": "Service is required",
+      "servicePlaceholder": "e.g. Consultation",
+      "dateTime": "Date & Time *",
+      "dateRequired": "Date is required",
+      "status": "Status",
+      "add": "Add Booking"
+    },
+    "invoice": {
+      "editTitle": "Edit Invoice",
+      "newTitle": "New Invoice",
+      "customer": "Customer",
+      "noCustomer": "— No customer —",
+      "amount": "Amount ($) *",
+      "amountPlaceholder": "0.00",
+      "amountMin": "Amount must be ≥ 0",
+      "status": "Status",
+      "invoiceDate": "Invoice Date *",
+      "dateRequired": "Date is required",
+      "create": "Create Invoice"
+    },
+    "roles": {
+      "existing": "Existing roles",
+      "none": "No roles created yet.",
+      "edit": "Edit role",
+      "create": "Create role",
+      "namePlaceholder": "Sales Lead",
+      "descriptionPlaceholder": "Can manage customers and bookings"
+    }
+  },
+  "dashboard": {
+    "breadcrumbs": {
+      "root": "Dashboard"
+    },
+    "customers": {
+      "title": "Customers",
+      "subtitle": "Manage and track your customer base",
+      "stats": {
+        "total": "Total Customers",
+        "newMonth": "New This Month",
+        "withEmail": "With Email",
+        "withPhone": "With Phone"
+      },
+      "searchPlaceholder": "Search customers…",
+      "emptyAll": "No customers yet. Add your first one!",
+      "emptySearch": "No customers match your search."
+    },
+    "bookings": {
+      "title": "Bookings",
+      "subtitle": "Upcoming appointments and sessions",
+      "all": "All Bookings",
+      "stats": {
+        "total": "Total",
+        "today": "Today",
+        "pending": "Pending",
+        "confirmed": "Confirmed"
+      },
+      "empty": "No bookings yet. Create your first one!"
+    },
+    "invoices": {
+      "title": "Invoices",
+      "subtitle": "Track payments and billing",
+      "all": "All Invoices",
+      "stats": {
+        "totalBilled": "Total Billed",
+        "paid": "Paid",
+        "outstanding": "Outstanding",
+        "overdue": "Overdue"
+      },
+      "empty": "No invoices yet. Create your first one!"
+    },
+    "whatsapp": {
+      "title": "WhatsApp Automation",
+      "subtitle": "Manage message flows and campaigns",
+      "stats": {
+        "sent": "Messages Sent",
+        "openRate": "Open Rate",
+        "activeFlows": "Active Flows",
+        "optOuts": "Opt-outs"
+      },
+      "flowsTitle": "Automation Flows",
+      "activeBadge": "4 ACTIVE",
+      "trigger": "Trigger",
+      "sent": "Sent",
+      "opened": "Opened",
+      "flows": {
+        "welcome": {
+          "name": "Welcome Message",
+          "trigger": "New customer signup"
+        },
+        "reminder": {
+          "name": "Booking Reminder",
+          "trigger": "24h before booking"
+        },
+        "invoice": {
+          "name": "Invoice Notification",
+          "trigger": "Invoice created"
+        },
+        "followUp": {
+          "name": "Follow-up Sequence",
+          "trigger": "3 days post-service"
+        },
+        "reengagement": {
+          "name": "Re-engagement",
+          "trigger": "90-day inactive"
+        }
+      }
+    },
+    "ai": {
+      "title": "AI Chat",
+      "subtitle": "Your intelligent business assistant",
+      "online": "Online",
+      "placeholder": "Ask anything about your business…",
+      "name": "Vault AI",
+      "welcome": "Hi! I'm your Vault AI assistant. Ask me anything about your customers, bookings, invoices, or business insights.",
+      "sampleQuestion": "How many bookings do I have this week?",
+      "sampleAnswer": "You have 18 bookings this week — 4 today, 6 tomorrow, and 8 spread across the rest of the week. 7 are still pending confirmation. Want me to send reminders?",
+      "demoResponse": "I'm a demo AI — real responses will appear once the AI backend is connected. Your question was: “{{question}}”"
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "Business performance at a glance",
+      "stats": {
+        "revenue": "Total Revenue",
+        "customers": "Total Customers",
+        "bookings": "Total Bookings",
+        "invoices": "Total Invoices"
+      },
+      "bookingsPerMonth": "Bookings per Month",
+      "lastMonths": "Last 7 months",
+      "invoiceBreakdown": "Invoice Breakdown",
+      "noInvoices": "No invoices yet"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Manage your account and preferences",
+      "security": {
+        "changePassword": "Change Password",
+        "changePasswordDesc": "Update your login credentials",
+        "twoFactor": "Two-Factor Auth",
+        "twoFactorDesc": "Add an extra layer of security",
+        "activeSessions": "Active Sessions",
+        "activeSessionsDesc": "View and revoke sessions"
+      },
+      "notifications": {
+        "newBookings": "New Bookings",
+        "invoicePaid": "Invoice Paid",
+        "whatsappAlerts": "WhatsApp Alerts",
+        "weeklyReport": "Weekly Report",
+        "aiInsights": "AI Insights"
+      },
+      "language": {
+        "title": "Language",
+        "description": "Choose your application language",
+        "label": "Current language"
+      }
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage account visibility, role assignment, and direct access.",
+    "noPermission": "You do not have permission to manage users.",
+    "availableRoles": "Available Roles",
+    "availablePermissions": "Available Permissions",
+    "placeholder": "Full users management UI to be implemented with user list, role assignment, and permission controls."
+  },
+  "roles": {
+    "title": "Roles",
+    "subtitle": "Create roles and assign permissions in a modular grid.",
+    "noDescription": "No description",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "permissions": {
+    "title": "User Permissions",
+    "subtitle": "Assign multiple roles and direct permissions to each user.",
+    "noPermission": "You do not have permission to manage user permissions.",
+    "general": "General"
+  },
+  "profiles": {
+    "title": "Profiles",
+    "subtitle": "Manage profile details and account visibility.",
+    "current": "Currently viewing profile: {{id}}"
+  },
+  "status": {
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "unpaid": "Unpaid",
+    "paid": "Paid",
+    "overdue": "Overdue",
+    "active": "Active",
+    "paused": "Paused"
+  },
+  "dialogs": {
+    "delete": {
+      "title": "Delete {{item}}?",
+      "defaultItem": "item",
+      "description": "This action cannot be undone. The record will be permanently removed."
+    }
+  },
+  "errors": {
+    "notAuthenticated": "Not authenticated"
+  }
+}

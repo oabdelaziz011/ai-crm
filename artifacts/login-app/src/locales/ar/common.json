@@ -8,6 +8,9 @@
     "bookings": "الحجوزات",
     "invoices": "الفواتير",
     "profiles": "الملفات الشخصية",
+    "companies": "الشركات",
+    "subscriptions": "الاشتراكات",
+    "auditLogs": "سجلات التدقيق",
     "users": "المستخدمون",
     "roles": "الأدوار",
     "permissions": "صلاحيات المستخدم",
@@ -19,6 +22,45 @@
   "languages": {
     "english": "English",
     "arabic": "العربية"
+  },
+  "alerts": {
+    "title": "التنبيهات",
+    "none": "لا توجد تنبيهات حالياً.",
+    "subscriptionExpiringTitle": "الاشتراك ينتهي خلال 5 أيام",
+    "subscriptionExpiringDetail": "هناك {{count}} اشتراك شركة ينتهي قريباً.",
+    "newBookingTitle": "حجز جديد",
+    "newBookingDetail": "تم إنشاء {{count}} حجز خلال آخر 24 ساعة.",
+    "invoiceOverdueTitle": "فاتورة متأخرة",
+    "invoiceOverdueDetail": "هناك {{count}} فاتورة بحالة متأخر.",
+    "whatsappFailedTitle": "فشل واتساب",
+    "whatsappFailedDetail": "هناك {{count}} تدفق واتساب غير نشط."
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "loading": "جار تحميل الإشعارات...",
+    "empty": "لا توجد إشعارات حتى الآن.",
+    "noCompany": "لا توجد شركة مرتبطة. الإشعارات غير متاحة.",
+    "unread": "{{count}} غير مقروء",
+    "markRead": "تحديد كمقروء",
+    "markAllRead": "تحديد الكل كمقروء",
+    "delete": "حذف",
+    "category": {
+      "booking": "حجز",
+      "invoice": "فاتورة",
+      "subscription": "اشتراك",
+      "whatsapp": "واتساب",
+      "system": "نظام"
+    },
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} إجمالي)"
+    },
+    "errors": {
+      "readFailed": "تعذر تحديد الإشعار كمقروء",
+      "markAllFailed": "تعذر تحديد كل الإشعارات كمقروءة",
+      "deleteFailed": "تعذر حذف الإشعار"
+    }
   },
   "auth": {
     "login": {
@@ -86,6 +128,7 @@
   },
   "buttons": {
     "addCustomer": "إضافة عميل",
+    "addCompany": "إضافة شركة",
     "newBooking": "حجز جديد",
     "newInvoice": "فاتورة جديدة",
     "newFlow": "تدفق جديد",
@@ -152,6 +195,18 @@
       "create": "إنشاء دور",
       "namePlaceholder": "قائد المبيعات",
       "descriptionPlaceholder": "يمكنه إدارة العملاء والحجوزات"
+    },
+    "company": {
+      "editTitle": "تعديل الشركة",
+      "newTitle": "شركة جديدة",
+      "name": "اسم الشركة *",
+      "nameRequired": "اسم الشركة مطلوب",
+      "namePlaceholder": "شركة أكمي",
+      "status": "الحالة",
+      "plan": "خطة الاشتراك *",
+      "planRequired": "خطة الاشتراك مطلوبة",
+      "planPlaceholder": "Pro",
+      "expiresAt": "تاريخ الانتهاء"
     }
   },
   "dashboard": {
@@ -280,15 +335,161 @@
         "description": "اختر لغة التطبيق",
         "label": "اللغة الحالية"
       }
+    },
+    "suspended": {
+      "title": "تم تعليق وصول الشركة",
+      "description": "حساب شركتك معلق حالياً ولا يمكنه الوصول إلى لوحة التحكم.",
+      "contact": "يرجى التواصل مع مسؤول المنصة لإعادة تفعيل الاشتراك."
+    }
+  },
+  "subscriptions": {
+    "title": "الاشتراكات",
+    "subtitle": "إدارة تعيين الخطط ودورة الفوترة وحالة الاشتراك وتاريخ الانتهاء لكل شركة.",
+    "noPermission": "فقط المشرف العام يمكنه إدارة الاشتراكات.",
+    "searchPlaceholder": "ابحث باسم الشركة أو الخطة…",
+    "empty": "لا توجد اشتراكات تطابق الفلاتر المحددة.",
+    "neverExpires": "بدون انتهاء",
+    "stats": {
+      "total": "إجمالي الشركات",
+      "active": "نشط",
+      "trialing": "تجريبي",
+      "pastDue": "متأخر السداد"
+    },
+    "filters": {
+      "allStatuses": "كل الحالات",
+      "allCycles": "كل دورات الفوترة"
+    },
+    "plan": {
+      "unassigned": "خطة غير معينة"
+    },
+    "billingCycle": {
+      "monthly": "شهري",
+      "yearly": "سنوي"
+    },
+    "status": {
+      "active": "نشط",
+      "trialing": "تجريبي",
+      "past_due": "متأخر",
+      "canceled": "ملغي",
+      "expired": "منتهي"
+    },
+    "actions": {
+      "save": "حفظ"
+    },
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
+    }
+  },
+  "auditLogs": {
+    "title": "سجلات التدقيق",
+    "subtitle": "تتبع عمليات الإنشاء والتحديث والحذف عبر النظام.",
+    "noPermission": "ليس لديك صلاحية عرض سجلات التدقيق.",
+    "searchPlaceholder": "ابحث بالكيان أو المستخدم أو الشركة أو IP…",
+    "empty": "لا توجد سجلات تدقيق تطابق الفلاتر المحددة.",
+    "stats": {
+      "total": "إجمالي الأحداث",
+      "create": "إنشاء",
+      "update": "تحديث",
+      "delete": "حذف"
+    },
+    "filters": {
+      "allActions": "كل الإجراءات",
+      "allEntities": "كل الكيانات"
+    },
+    "columns": {
+      "user": "المستخدم",
+      "company": "الشركة",
+      "ip": "IP"
+    },
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
     }
   },
   "users": {
     "title": "المستخدمون",
-    "subtitle": "إدارة ظهور الحسابات وتعيين الأدوار والصلاحيات المباشرة.",
+    "subtitle": "إدارة المستخدمين وتعيين الشركات وحالة الحساب وإعادة تعيين كلمات المرور.",
     "noPermission": "ليس لديك صلاحية لإدارة المستخدمين.",
-    "availableRoles": "الأدوار المتاحة",
-    "availablePermissions": "الصلاحيات المتاحة",
-    "placeholder": "سيتم إضافة واجهة إدارة المستخدمين الكاملة مع قائمة المستخدمين وتعيين الأدوار والصلاحيات."
+    "addUser": "إضافة مستخدم",
+    "createTitle": "إنشاء مستخدم",
+    "superAdmin": "مشرف عام",
+    "companyAdmin": "مشرف شركة",
+    "searchPlaceholder": "ابحث عن مستخدم…",
+    "empty": "لا يوجد مستخدمون يطابقون الفلاتر المحددة.",
+    "unnamed": "مستخدم بدون اسم",
+    "noCompany": "بدون شركة",
+    "stats": {
+      "total": "إجمالي المستخدمين",
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "adminMode": "نمط الصلاحية"
+    },
+    "filters": {
+      "allStatuses": "كل الحالات",
+      "allCompanies": "كل الشركات"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "actions": {
+      "create": "إنشاء مستخدم",
+      "resetPassword": "إعادة تعيين كلمة المرور",
+      "activate": "تفعيل",
+      "deactivate": "تعطيل",
+      "saveCompany": "حفظ الشركة"
+    },
+    "form": {
+      "fullName": "الاسم الكامل",
+      "fullNamePlaceholder": "محمد أحمد",
+      "nameRequired": "الاسم الكامل مطلوب",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "user@company.com",
+      "emailRequired": "البريد الإلكتروني مطلوب",
+      "company": "الشركة",
+      "noCompany": "بدون شركة",
+      "activeOnCreate": "تفعيل المستخدم مباشرة",
+      "inviteNote": "سيتم إرسال رابط تسجيل دخول آمن إلى بريد المستخدم الإلكتروني."
+    },
+    "confirm": {
+      "activateTitle": "تفعيل {{user}}؟",
+      "activateDescription": "سيتمكن هذا المستخدم من الوصول إلى التطبيق.",
+      "deactivateTitle": "تعطيل {{user}}؟",
+      "deactivateDescription": "سيفقد هذا المستخدم الوصول حتى تتم إعادة تفعيله."
+    },
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
+    }
+  },
+  "companies": {
+    "title": "الشركات",
+    "subtitle": "إدارة الشركات المستأجرة وخطط الاشتراك وحالة دورة الحياة.",
+    "item": "الشركة",
+    "noPermission": "فقط المشرف العام يمكنه إدارة الشركات.",
+    "searchPlaceholder": "ابحث عن شركة…",
+    "emptyAll": "لا توجد شركات حتى الآن. أضف أول شركة.",
+    "emptySearch": "لا توجد شركات مطابقة للفلاتر.",
+    "neverExpires": "بدون انتهاء",
+    "stats": {
+      "total": "إجمالي الشركات",
+      "active": "نشط",
+      "trial": "تجريبي",
+      "suspended": "معلق"
+    },
+    "filters": {
+      "allStatuses": "كل الحالات",
+      "allPlans": "كل الخطط"
+    },
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
+    }
   },
   "roles": {
     "title": "الأدوار",
@@ -316,7 +517,9 @@
     "paid": "مدفوع",
     "overdue": "متأخر",
     "active": "نشط",
-    "paused": "متوقف"
+    "paused": "متوقف",
+    "suspended": "معلق",
+    "trial": "تجريبي"
   },
   "dialogs": {
     "delete": {

@@ -10,17 +10,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useTranslation } from "react-i18next";
 
-const registerSchema = z.object({
-  email:    z.string().email("Enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterFormValues = {
+  email: string;
+  password: string;
+};
 
 export default function Register() {
+  const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading, signUp } = useAuth();
+
+  const registerSchema = z.object({
+    email: z.string().email(t("auth.validation.email")),
+    password: z.string().min(6, t("auth.validation.passwordMin")),
+  });
 
   useEffect(() => {
     if (user) setLocation("/dashboard");
@@ -37,8 +43,8 @@ export default function Register() {
       form.setError("root", { message: error });
     } else {
       toast({
-        title: "Identity created",
-        description: "Your credentials have been securely stored. You can now log in.",
+        title: t("auth.register.successTitle"),
+        description: t("auth.register.successDescription"),
       });
       setLocation("/dashboard");
     }
@@ -54,8 +60,8 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Initialize Identity"
-      subtitle="Establish your credentials to enter the vault."
+      title={t("auth.register.title")}
+      subtitle={t("auth.register.subtitle")}
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -66,11 +72,11 @@ export default function Register() {
           )}
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-muted-foreground">Desired Identity</FormLabel>
+              <FormLabel className="text-muted-foreground">{t("auth.register.identity")}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("auth.placeholders.email")}
                   className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
                   {...field}
                 />
@@ -80,11 +86,11 @@ export default function Register() {
           )} />
           <FormField control={form.control} name="password" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-muted-foreground">Secure Passkey</FormLabel>
+              <FormLabel className="text-muted-foreground">{t("auth.register.passkey")}</FormLabel>
               <FormControl>
                 <Input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t("auth.placeholders.password")}
                   className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12 font-mono tracking-widest"
                   {...field}
                 />
@@ -101,8 +107,8 @@ export default function Register() {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                Initialize Access
-                <UserPlus className="w-4 h-4 ml-2" />
+                {t("auth.register.submit")}
+                <UserPlus className="w-4 h-4 ms-2" />
               </>
             )}
           </Button>
@@ -110,9 +116,9 @@ export default function Register() {
       </Form>
 
       <div className="mt-8 text-center text-sm text-muted-foreground">
-        Already established?{" "}
+        {t("auth.register.already")}{" "}
         <Link href="/login" className="text-primary hover:text-primary/80 transition-colors font-medium">
-          Authenticate here
+          {t("auth.register.authenticateHere")}
         </Link>
       </div>
     </AuthLayout>

@@ -9,6 +9,13 @@ export type Customer = {
   updated_at: string;
 };
 
+export type Profile = {
+  id: string;
+  company_id: string | null;
+  full_name: string | null;
+  is_super_admin: boolean;
+};
+
 export type BookingStatus = "Pending" | "Confirmed" | "Cancelled";
 export type Booking = {
   id: string;
@@ -37,6 +44,9 @@ export type Invoice = {
 
 export type CustomerInsert = Omit<Customer, "id" | "user_id" | "created_at" | "updated_at">;
 export type CustomerUpdate = Partial<CustomerInsert>;
+
+export type ProfileInsert = Omit<Profile, "id">;
+export type ProfileUpdate = Partial<ProfileInsert>;
 
 export type BookingInsert = Omit<Booking, "id" | "user_id" | "created_at" | "updated_at" | "customers">;
 export type BookingUpdate = Partial<BookingInsert>;

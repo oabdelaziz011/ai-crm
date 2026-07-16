@@ -10,17 +10,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useTranslation } from "react-i18next";
 
-const loginSchema = z.object({
-  email:    z.string().email("Enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = {
+  email: string;
+  password: string;
+};
 
 export default function Login() {
+  const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading, signIn } = useAuth();
+
+  const loginSchema = z.object({
+    email: z.string().email(t("auth.validation.email")),
+    password: z.string().min(6, t("auth.validation.passwordMin")),
+  });
 
   useEffect(() => {
     if (user) setLocation("/dashboard");
@@ -36,7 +42,10 @@ export default function Login() {
     if (error) {
       form.setError("root", { message: error });
     } else {
-      toast({ title: "Access granted", description: "Welcome to Vault." });
+      toast({
+        title: t("auth.login.successTitle"),
+        description: t("auth.login.successDescription"),
+      });
       setLocation("/dashboard");
     }
   };
@@ -51,8 +60,8 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Secure Gateway"
-      subtitle="Enter your credentials to access the vault."
+      title={t("auth.login.title")}
+      subtitle={t("auth.login.subtitle")}
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -63,11 +72,11 @@ export default function Login() {
           )}
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-muted-foreground">Identity</FormLabel>
+              <FormLabel className="text-muted-foreground">{t("auth.login.identity")}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("auth.placeholders.email")}
                   className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
                   {...field}
                 />
@@ -77,11 +86,11 @@ export default function Login() {
           )} />
           <FormField control={form.control} name="password" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-muted-foreground">Passkey</FormLabel>
+              <FormLabel className="text-muted-foreground">{t("auth.login.passkey")}</FormLabel>
               <FormControl>
                 <Input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t("auth.placeholders.password")}
                   className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12 font-mono tracking-widest"
                   {...field}
                 />
@@ -98,8 +107,8 @@ export default function Login() {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                Authenticate
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                {t("auth.login.submit")}
+                <ArrowRight className="w-4 h-4 ms-2 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
               </>
             )}
           </Button>
@@ -107,9 +116,9 @@ export default function Login() {
       </Form>
 
       <div className="mt-8 text-center text-sm text-muted-foreground">
-        No access yet?{" "}
+        {t("auth.login.noAccess")}{" "}
         <Link href="/register" className="text-primary hover:text-primary/80 transition-colors font-medium">
-          Request entry
+          {t("auth.login.requestEntry")}
         </Link>
       </div>
     </AuthLayout>

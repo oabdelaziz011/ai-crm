@@ -7,4 +7,12 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("Supabase environment variables are missing.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    // Callback route performs explicit code/hash exchange to avoid races with AuthProvider init.
+    detectSessionInUrl: false,
+    flowType: "pkce",
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});

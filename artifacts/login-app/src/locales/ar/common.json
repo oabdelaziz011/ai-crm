@@ -4,20 +4,56 @@
     "dashboard": "لوحة التحكم"
   },
   "navigation": {
+    "home": "الرئيسية",
     "customers": "العملاء",
     "bookings": "الحجوزات",
     "invoices": "الفواتير",
     "profiles": "الملفات الشخصية",
     "companies": "الشركات",
     "subscriptions": "الاشتراكات",
+    "billing": "الفوترة والاشتراكات",
+    "workspace": "مساحة العمل",
     "auditLogs": "سجلات التدقيق",
+    "userManagement": "إدارة المستخدمين",
     "users": "المستخدمون",
     "roles": "الأدوار",
     "permissions": "صلاحيات المستخدم",
     "whatsapp": "أتمتة واتساب",
+    "aiPlatform": "منصة الذكاء الاصطناعي",
+    "teamInbox": "صندوق الفريق",
+    "channels": "القنوات",
+    "aiUsage": "استخدام وتكلفة الذكاء الاصطناعي",
+    "aiAnalytics": "تحليلات الذكاء الاصطناعي",
+    "aiAssistant": "المساعد الذكي",
     "aiChat": "الدردشة الذكية",
+    "knowledge": "المعرفة",
     "reports": "التقارير",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "demoScenarios": "سيناريوهات العرض"
+  },
+  "demo": {
+    "scenarios": {
+      "title": "مبدّل سيناريوهات العرض",
+      "subtitle": "إعادة تعيين أو تبديل بيئة العرض المؤسسية. كل سيناريو يعيد زرع بيانات العرض تلقائياً دون SQL يدوي.",
+      "resetAll": "إعادة تعيين بيئة العرض",
+      "activeScenario": "السيناريو النشط",
+      "suggestedLogin": "تسجيل الدخول المقترح",
+      "lastSeed": "آخر زرع",
+      "passwordHint": "كلمة مرور العرض لجميع الأ personas: DemoVault2026!",
+      "loginAs": "جرّب كـ",
+      "apply": "تطبيق السيناريو",
+      "current": "نشط",
+      "active": "نشط",
+      "noPermission": "يتطلب صلاحيات مالك المنصة.",
+      "switchSuccess": "تم تطبيق السيناريو",
+      "switchSuccessDetail": "أُعيد زرع بيانات العرض وطبّق السيناريو.",
+      "switchError": "تعذّر تطبيق السيناريو",
+      "switchErrorDetail": "فشل تبديل السيناريو.",
+      "resetSuccess": "تمت إعادة تعيين بيئة العرض",
+      "resetSuccessDetail": "أُعيد زرع العرض الكامل مع السيناريو A — شركة سليمة.",
+      "resetError": "فشلت إعادة التعيين",
+      "resetErrorDetail": "تعذّر إعادة تعيين بيئة العرض."
+    }
   },
   "languages": {
     "english": "English",
@@ -60,6 +96,98 @@
       "readFailed": "تعذر تحديد الإشعار كمقروء",
       "markAllFailed": "تعذر تحديد كل الإشعارات كمقروءة",
       "deleteFailed": "تعذر حذف الإشعار"
+    },
+    "defaults": {
+      "unknown": "غير معروف",
+      "service": "خدمة",
+      "company": "شركة",
+      "role": "دور"
+    },
+    "events": {
+      "newCustomer": {
+        "title": "عميل جديد",
+        "message": "تم إنشاء العميل {{name}}."
+      },
+      "newBooking": {
+        "title": "حجز جديد",
+        "message": "تم إنشاء حجز جديد لـ {{service}}."
+      },
+      "bookingCancelled": {
+        "title": "تم إلغاء الحجز",
+        "message": "تم إلغاء حجز {{service}}."
+      },
+      "invoicePaid": {
+        "title": "تم دفع الفاتورة",
+        "message": "تم تحديد الفاتورة {{invoiceId}} كمدفوعة."
+      },
+      "invoiceOverdue": {
+        "title": "فاتورة متأخرة",
+        "message": "الفاتورة {{invoiceId}} متأخرة."
+      },
+      "subscriptionExpiresSoon": {
+        "title": "ينتهي الاشتراك خلال 5 أيام",
+        "message": "ينتهي اشتراك {{companyName}} في {{expiresOn}}."
+      },
+      "subscriptionExpired": {
+        "title": "انتهى الاشتراك",
+        "message": "انتهى اشتراك {{companyName}}."
+      },
+      "userCreated": {
+        "title": "تم إنشاء مستخدم",
+        "message": "تم إنشاء حساب مستخدم جديد."
+      },
+      "userDeleted": {
+        "title": "تم حذف مستخدم",
+        "message": "تم حذف حساب مستخدم."
+      },
+      "roleUpdated": {
+        "title": "تم تحديث الدور",
+        "message": "تم تحديث الدور {{roleName}}."
+      },
+      "roleCreated": {
+        "title": "تم إنشاء دور",
+        "message": "تم إنشاء الدور {{roleName}}."
+      },
+      "whatsappFailed": {
+        "title": "فشل واتساب",
+        "message": "{{detail}}",
+        "fallback": "فشلت مهمة إرسال واتساب."
+      },
+      "aiTaskCompleted": {
+        "title": "اكتملت مهمة الذكاء الاصطناعي",
+        "message": "{{detail}}",
+        "fallback": "اكتملت مهمة الذكاء الاصطناعي بنجاح."
+      },
+      "billing": {
+        "generic": {
+          "title": "{{eventLabel}}",
+          "message": "{{detail}}"
+        },
+        "paymentSucceeded": {
+          "title": "نجاح الدفع",
+          "message": "تم تسجيل دفعة بقيمة {{amount}} {{currency}} بنجاح."
+        },
+        "invoiceGenerated": {
+          "title": "تم إنشاء الفاتورة",
+          "message": "تم إنشاء الفاتورة {{invoiceNumber}}."
+        },
+        "subscriptionRenewed": {
+          "title": "تم تجديد الاشتراك",
+          "message": "تم تجديد اشتراكك {{cycle}}."
+        },
+        "planChanged": {
+          "title": "تم تغيير الخطة",
+          "message": "تم تحديث خطة الاشتراك إلى {{planName}}."
+        },
+        "trialExpiring": {
+          "title": "انتهاء التجربة قريباً",
+          "message": "تنتهي فترة التجربة خلال {{daysRemaining}} أيام."
+        },
+        "gracePeriodStarted": {
+          "title": "بدء فترة السماح",
+          "message": "فشل التجديد. تنتهي فترة السماح خلال {{daysRemaining}} أيام."
+        }
+      }
     }
   },
   "auth": {
@@ -72,7 +200,8 @@
       "noAccess": "ليس لديك حساب؟",
       "requestEntry": "أنشئ حساباً",
       "successTitle": "تم تسجيل الدخول",
-      "successDescription": "مرحباً بك في Vault."
+      "successDescription": "مرحباً بك في Vault.",
+      "forgotPassword": "نسيت كلمة المرور؟"
     },
     "register": {
       "title": "إنشاء هوية",
@@ -83,7 +212,37 @@
       "already": "لديك حساب بالفعل؟",
       "authenticateHere": "سجل الدخول هنا",
       "successTitle": "تم إنشاء الحساب",
-      "successDescription": "تم حفظ بياناتك بنجاح. يمكنك تسجيل الدخول الآن."
+      "successDescription": "تم حفظ بياناتك بنجاح. يمكنك تسجيل الدخول الآن.",
+      "confirmEmailTitle": "أكد بريدك الإلكتروني",
+      "confirmEmailDescription": "أرسلنا رابط تفعيل إلى بريدك. افتحه على هذا الجهاز لإكمال التسجيل."
+    },
+    "forgotPassword": {
+      "title": "إعادة تعيين كلمة المرور",
+      "subtitle": "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين آمن.",
+      "submit": "إرسال رابط إعادة التعيين",
+      "successTitle": "تم إرسال رابط إعادة التعيين",
+      "successDescription": "تحقق من بريدك وافتح الرابط على هذا الجهاز.",
+      "backToLogin": "العودة إلى تسجيل الدخول"
+    },
+    "resetPassword": {
+      "title": "اختر كلمة مرور جديدة",
+      "subtitle": "أدخل كلمة مرور جديدة لحسابك.",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "submit": "تحديث كلمة المرور",
+      "successTitle": "تم تحديث كلمة المرور",
+      "successDescription": "يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.",
+      "invalidLink": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",
+      "errorTitle": "تعذر إعادة تعيين كلمة المرور",
+      "errorSubtitle": "تعذر إنشاء جلسة الاسترداد.",
+      "requestNewLink": "طلب رابط إعادة تعيين جديد"
+    },
+    "callback": {
+      "invalidSession": "رابط المصادقة غير صالح أو منتهي الصلاحية.",
+      "errorTitle": "فشلت المصادقة",
+      "errorSubtitle": "تعذر إكمال تسجيل الدخول من هذا الرابط.",
+      "backToLogin": "العودة إلى تسجيل الدخول"
     },
     "placeholders": {
       "email": "you@example.com",
@@ -92,6 +251,18 @@
     "validation": {
       "email": "أدخل بريدًا إلكترونيًا صالحًا",
       "passwordMin": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل"
+    },
+    "errors": {
+      "invalidEmail": "أدخل بريداً إلكترونياً صالحاً.",
+      "emailAlreadyExists": "يوجد حساب مسجل بهذا البريد الإلكتروني بالفعل.",
+      "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+      "weakPassword": "كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.",
+      "emailNotConfirmed": "يرجى تأكيد بريدك الإلكتروني قبل تسجيل الدخول.",
+      "expiredLink": "انتهت صلاحية هذا الرابط. اطلب رابطاً جديداً ثم حاول مرة أخرى.",
+      "invalidResetLink": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",
+      "networkError": "خطأ في الشبكة. تحقق من اتصالك ثم حاول مرة أخرى.",
+      "rateLimitExceeded": "تم إرسال عدد كبير من رسائل البريد الإلكتروني. يرجى الانتظار بضع دقائق ثم المحاولة مرة أخرى.",
+      "unknownServerError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
     }
   },
   "pages": {
@@ -213,6 +384,36 @@
     "breadcrumbs": {
       "root": "لوحة التحكم"
     },
+    "home": {
+      "title": "الصفحة الرئيسية",
+      "greeting": "مرحباً بعودتك، {{name}}.",
+      "quickLinks": "روابط سريعة",
+      "quickLinksSubtitle": "انتقل إلى الأقسام التي يمكنك الوصول إليها.",
+      "openSection": "فتح هذا القسم",
+      "noSections": "لا يوجد لديك وصول إلى أي أقسام في لوحة التحكم بعد. تواصل مع المسؤول إذا كنت بحاجة إلى صلاحيات.",
+      "sections": {
+        "customers": "إدارة وتتبع قاعدة العملاء.",
+        "bookings": "عرض المواعيد والجلسات القادمة.",
+        "invoices": "تتبع المدفوعات والفواتير.",
+        "companies": "إدارة شركات المستأجرين.",
+        "subscriptions": "مراجعة خطط الاشتراك والفوترة.",
+        "audit-logs": "مراجعة نشاط النظام وسجلات التدقيق.",
+        "users": "إدارة أعضاء الفريق والوصول.",
+        "roles": "تهيئة الأدوار والصلاحيات.",
+        "whatsapp": "إدارة تدفقات أتمتة واتساب.",
+        "team-inbox": "مراقبة والرد على محادثات العملاء عبر القنوات.",
+        "channels": "ربط وإدارة واتساب وقنوات التواصل الأخرى.",
+        "ai-usage": "تتبع استخدام الرموز وتكاليف الذكاء الاصطناعي.",
+        "ai-analytics": "مراجعة أداء تنفيذ الذكاء الاصطناعي والتتبعات.",
+        "workspace": "عرض مساحة عمل الشركة وسياق الاشتراك.",
+        "demo-scenarios": "تبديل سيناريوهات العرض المؤسسية.",
+        "ai-assistant": "تهيئة المساعد الذكي.",
+        "ai-chat": "الدردشة مع المساعد الذكي.",
+        "knowledge": "إدارة مصادر المعرفة والمستندات والاستيراد.",
+        "reports": "عرض تقارير أداء الأعمال.",
+        "settings": "إدارة ملفك الشخصي وحسابك وتفضيلاتك."
+      }
+    },
     "customers": {
       "title": "العملاء",
       "subtitle": "إدارة وتتبع قاعدة العملاء",
@@ -249,6 +450,82 @@
         "overdue": "متأخر"
       },
       "empty": "لا توجد فواتير بعد. أنشئ أول فاتورة!"
+    },
+    "inbox": {
+      "title": "صندوق الفريق",
+      "subtitle": "صندوق موحد لمحادثات الذكاء الاصطناعي والموظفين",
+      "conversations": "المحادثات",
+      "conversationsHint": "اختر محادثة لعرض الرسائل والرد",
+      "selectConversation": "اختر محادثة لعرض المحادثة",
+      "empty": "لا توجد محادثات تطابق عوامل التصفية",
+      "noPreview": "لا توجد معاينة للرسالة",
+      "unread": "{{count}} غير مقروء",
+      "searchPlaceholder": "البحث في المحادثات…",
+      "replyPlaceholder": "اكتب رداً لإرساله عبر القناة…",
+      "takeover": "تولّي المحادثة",
+      "release": "إعادة للذكاء الاصطناعي",
+      "close": "إغلاق",
+      "filters": {
+        "all": "الكل",
+        "unread": "غير مقروء",
+        "mine": "المُسندة إلي"
+      },
+      "stats": {
+        "open": "المحادثات المفتوحة",
+        "unread": "غير مقروء (الفريق)",
+        "human": "بإشراف بشري",
+        "channels": "القنوات النشطة"
+      }
+    },
+    "channels": {
+      "title": "إدارة القنوات",
+      "subtitle": "ربط قنوات الشركة عبر منصة القنوات المؤسسية",
+      "addChannel": "إضافة قناة",
+      "empty": "لا توجد قنوات مهيأة بعد. أضف أول قناة لبدء استقبال الرسائل.",
+      "default": "افتراضي",
+      "makeDefault": "تعيين كافتراضي",
+      "channelType": "نوع القناة",
+      "selectType": "اختر نوع القناة",
+      "displayName": "اسم العرض",
+      "provider": "المزود",
+      "configure": "تهيئة",
+      "saveConfig": "حفظ الإعدادات",
+      "whatsappConfig": "بيانات WhatsApp Cloud API",
+      "phoneNumberId": "معرف رقم الهاتف",
+      "accessToken": "رمز الوصول",
+      "verifyToken": "رمز التحقق من webhook",
+      "apiVersion": "إصدار API",
+      "stats": {
+        "total": "إجمالي القنوات",
+        "enabled": "مفعّلة",
+        "connected": "متصلة",
+        "types": "أنواع القنوات"
+      }
+    },
+    "aiUsage": {
+      "title": "استخدام وتكلفة الذكاء الاصطناعي",
+      "subtitle": "استهلاك الرموز والتكاليف التقديرية من طبقة المراقبة",
+      "byProvider": "التكلفة حسب المزود",
+      "recentRecords": "سجلات التكلفة الأخيرة",
+      "noRecords": "لا توجد سجلات تكلفة بعد. يظهر الاستخدام بعد تنفيذات المنصة.",
+      "stats": {
+        "tokens": "إجمالي الرموز",
+        "cost": "التكلفة التقديرية",
+        "records": "سجلات التكلفة",
+        "providers": "المزودون"
+      }
+    },
+    "aiAnalytics": {
+      "title": "تحليلات الذكاء الاصطناعي",
+      "subtitle": "مقاييس التنفيذ والتتبعات الموزعة من منصة المراقبة",
+      "recentExecutions": "التنفيذات الأخيرة",
+      "recentTraces": "التتبعات الأخيرة",
+      "stats": {
+        "executions": "التنفيذات",
+        "latency": "متوسط التأخير",
+        "timeouts": "انتهاء المهلة",
+        "tokens": "إجمالي الرموز"
+      }
     },
     "whatsapp": {
       "title": "أتمتة واتساب",
@@ -290,13 +567,24 @@
     "ai": {
       "title": "الدردشة الذكية",
       "subtitle": "مساعد أعمالك الذكي",
+      "subtitleRuntime": "مدعوم من منصة الذكاء الاصطناعي المؤسسية",
       "online": "متصل",
+      "streaming": "جارٍ الرد…",
+      "loading": "جارٍ تحميل المحادثة…",
+      "newConversation": "محادثة جديدة",
       "placeholder": "اسأل أي شيء عن عملك…",
       "name": "Vault AI",
       "welcome": "مرحباً! أنا مساعدك الذكي في Vault. اسألني عن العملاء أو الحجوزات أو الفواتير أو مؤشرات الأعمال.",
       "sampleQuestion": "كم عدد الحجوزات لدي هذا الأسبوع؟",
       "sampleAnswer": "لديك 18 حجزاً هذا الأسبوع — 4 اليوم، و6 غداً، و8 خلال بقية الأسبوع. 7 منها ما زالت بانتظار التأكيد. هل تريد إرسال تذكيرات؟",
-      "demoResponse": "أنا نموذج تجريبي — ستظهر الردود الحقيقية بعد ربط خدمة الذكاء الاصطناعي. كان سؤالك: “{{question}}”"
+      "demoResponse": "أنا نموذج تجريبي — ستظهر الردود الحقيقية بعد ربط خدمة الذكاء الاصطناعي. كان سؤالك: “{{question}}”",
+      "errors": {
+        "runtimeNotConfigured": "لم يتم إعداد منصة الذكاء الاصطناعي بالكامل. اربط موفر OpenAI من الإعدادات قبل بدء الدردشة.",
+        "runtimeNotConfiguredDetail": "الدردشة الذكية تحتاج اتصال موفر مفعّل في سجل موفري الذكاء الاصطناعي. تفضيلات المساعد وحدها لا تكفي — اربط موفر LLM أدناه.",
+        "runtimeFailed": "تعذر على المساعد إكمال طلبك. {{detail}}",
+        "missingRuntimePermission": "تحتاج إلى صلاحية تنفيذ المنصة لإرسال الرسائل."
+      },
+      "openProviderSetup": "ربط الموفر في المساعد الذكي"
     },
     "reports": {
       "title": "التقارير",
@@ -307,6 +595,10 @@
         "bookings": "إجمالي الحجوزات",
         "invoices": "إجمالي الفواتير"
       },
+      "aiInsightsTitle": "رؤى منصة الذكاء الاصطناعي",
+      "aiInsightsSubtitle": "مقاييس تشغيلية من منصة التشغيل وطبقة المراقبة",
+      "viewAiAnalytics": "عرض تحليلات الذكاء الاصطناعي",
+      "viewAiUsage": "عرض الاستخدام والتكلفة",
       "bookingsPerMonth": "الحجوزات لكل شهر",
       "lastMonths": "آخر 7 أشهر",
       "invoiceBreakdown": "تفصيل الفواتير",
@@ -315,6 +607,13 @@
     "settings": {
       "title": "الإعدادات",
       "subtitle": "إدارة حسابك وتفضيلاتك",
+      "nav": {
+        "personalProfile": "الملف الشخصي",
+        "accountInformation": "معلومات الحساب",
+        "companySettings": "إعدادات الشركة",
+        "security": "الأمان",
+        "notifications": "الإشعارات"
+      },
       "security": {
         "changePassword": "تغيير كلمة المرور",
         "changePasswordDesc": "تحديث بيانات تسجيل الدخول",
@@ -340,6 +639,62 @@
       "title": "تم تعليق وصول الشركة",
       "description": "حساب شركتك معلق حالياً ولا يمكنه الوصول إلى لوحة التحكم.",
       "contact": "يرجى التواصل مع مسؤول المنصة لإعادة تفعيل الاشتراك."
+    }
+  },
+  "knowledge": {
+    "title": "المعرفة",
+    "subtitle": "إدارة مصادر المعرفة والمستندات المستوردة وحالة الاستيراد.",
+    "nav": {
+      "sources": "المصادر",
+      "documents": "المستندات",
+      "importStatus": "حالة الاستيراد"
+    },
+    "sources": {
+      "createTitle": "إنشاء مصدر",
+      "listTitle": "مصادر المعرفة",
+      "displayName": "اسم العرض",
+      "key": "مفتاح المصدر",
+      "type": "نوع المصدر",
+      "typeManual": "يدوي",
+      "typePolicy": "سياسة",
+      "createAction": "إنشاء مصدر",
+      "createSuccess": "تم إنشاء مصدر المعرفة.",
+      "createFailed": "تعذر إنشاء مصدر المعرفة.",
+      "defaultDescription": "مصدر معرفة للشركة",
+      "empty": "لا توجد مصادر معرفة بعد.",
+      "enabled": "مفعّل",
+      "disabled": "معطّل"
+    },
+    "documents": {
+      "listTitle": "المستندات",
+      "empty": "لا توجد مستندات معرفة مستوردة بعد.",
+      "columns": {
+        "title": "العنوان",
+        "source": "المصدر",
+        "status": "الحالة",
+        "mimeType": "نوع MIME",
+        "updated": "آخر تحديث"
+      }
+    },
+    "import": {
+      "uploadTitle": "استيراد مستند",
+      "source": "مصدر المعرفة",
+      "selectSource": "اختر مصدرًا",
+      "documentTitle": "عنوان المستند",
+      "documentTitlePlaceholder": "اختياري — يستخدم اسم الملف افتراضيًا",
+      "pdfFile": "ملف PDF أو نص",
+      "plainText": "نص عادي بديل",
+      "plainTextPlaceholder": "الصق محتوى نصيًا عند عدم رفع ملف",
+      "submit": "استيراد المستند",
+      "success": "تم استيراد المستند بنجاح.",
+      "failed": "فشل استيراد المستند.",
+      "noSources": "أنشئ مصدر معرفة مفعّلًا قبل استيراد المستندات.",
+      "statusTitle": "حالة الاستيراد",
+      "statusEmpty": "لا توجد مستندات مستوردة بعد.",
+      "defaultTextTitle": "مستند نصي مستورد",
+      "validation": {
+        "noContent": "يرجى توفير ملف PDF/نص أو محتوى نصي."
+      }
     }
   },
   "subscriptions": {
@@ -382,26 +737,878 @@
       "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
     }
   },
+  "billing": {
+    "title": "الفوترة والاشتراكات",
+    "subtitle": "نظرة عامة على الفوترة المؤسسية مع صحة الاشتراك والخطط ودورة الحياة.",
+    "noPermission": "ليس لديك صلاحية عرض الفوترة.",
+    "health": {
+      "title": "إعداد منصة الفوترة مطلوب",
+      "subtitle": "لا يمكن تشغيل فوترة VaultOS حتى يتم حل متطلبات المنصة التالية.",
+      "mutationsBlocked": "جميع عمليات تعديل الفوترة موقوفة حتى تصحيح الإعداد.",
+      "issues": {
+        "migration_104_missing": {
+          "title": "ترحيل 104 غير مطبّق",
+          "description": "دالة get_billing_payment_options_v1 مطلوبة وغير موجودة. طبّق ترحيل الفوترة 104."
+        },
+        "migration_105_missing": {
+          "title": "ترحيل 105 غير مطبّق",
+          "description": "دالة التدقيق مع p_company_id مطلوبة وغير موجودة. طبّق ترحيل الفوترة 105."
+        },
+        "default_currency_missing": {
+          "title": "العملة الافتراضية غير مهيأة",
+          "description": "عيّن default_currency في إعدادات الفوترة على مستوى المنصة."
+        },
+        "payment_methods_missing": {
+          "title": "طرق الدفع غير مهيأة",
+          "description": "هيّئ supported_payment_method_codes في إعدادات الفوترة."
+        },
+        "active_plan_missing_pricing": {
+          "title": "تسعير الخطط النشطة غير مكتمل",
+          "description": "يجب أن تحتوي كل خطة نشطة على أسعار شهرية وسنوية صالحة."
+        }
+      }
+    },
+    "provisioning": {
+      "title": "تجهيز فوترة الشركة غير مكتمل",
+      "subtitle": "لا يمكن لهذه الشركة الوصول إلى تفاصيل الاشتراك حتى اكتمال سلسلة الفوترة.",
+      "fallbackError": "تعذّر تحميل تفاصيل الاشتراك لهذه الشركة.",
+      "defaultCompany": "هذه الشركة",
+      "issues": {
+        "company_not_found": {
+          "title": "الشركة غير موجودة",
+          "description": "لا يوجد سجل شركة لهذا المعرّف."
+        },
+        "subscription_missing": {
+          "title": "الاشتراك مفقود",
+          "description": "أنشئ اشتراكاً للشركة قبل فتح تفاصيل الاشتراك."
+        },
+        "plan_missing": {
+          "title": "الخطة غير معيّنة",
+          "description": "عيّن خطة نشطة لهذا الاشتراك."
+        },
+        "billing_contact_missing": {
+          "title": "جهة الفوترة مفقودة",
+          "description": "أضف جهة فوترة نشطة لتسليم الفواتير والإيصالات."
+        },
+        "pricing_missing": {
+          "title": "تسعير الخطة مفقود",
+          "description": "الخطة المعيّنة لا تحتوي على سعر لدورة الفوترة الحالية."
+        }
+      }
+    },
+    "searchPlaceholder": "ابحث حسب الشركة أو الخطة…",
+    "empty": "لا توجد اشتراكات مطابقة للفلاتر.",
+    "emptyHint": "جرّب تعديل البحث أو فلاتر الحالة.",
+    "phasePlaceholderTitle": "متاح في المرحلة 2",
+    "phasePlaceholder": "سيتم تفعيل هذا القسم في مرحلة التنفيذ التالية.",
+    "stats": {
+      "total": "إجمالي الاشتراكات",
+      "active": "نشط",
+      "trialing": "تجريبي",
+      "atRisk": "معرض للخطر"
+    },
+    "filters": {
+      "allStatuses": "كل الحالات",
+      "allEventTypes": "كل أنواع الأحداث",
+      "allCycles": "كل الدورات",
+      "monthly": "شهري",
+      "yearly": "سنوي"
+    },
+    "plan": {
+      "unassigned": "خطة غير معينة"
+    },
+    "status": {
+      "active": "نشط",
+      "trialing": "تجريبي",
+      "past_due": "متأخر",
+      "grace_period": "فترة سماح",
+      "canceled": "ملغى",
+      "expired": "منتهي"
+    },
+    "invoiceStatus": {
+      "draft": "مسودة",
+      "issued": "صادرة",
+      "paid": "مدفوعة",
+      "void": "ملغاة",
+      "overdue": "متأخرة"
+    },
+    "paymentStatus": {
+      "pending": "قيد الانتظار",
+      "processing": "قيد المعالجة",
+      "succeeded": "ناجحة",
+      "failed": "فاشلة",
+      "canceled": "ملغاة",
+      "refunded": "مستردة"
+    },
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
+    },
+    "nav": {
+      "overview": "نظرة عامة",
+      "companies": "الشركات",
+      "plans": "الخطط",
+      "subscriptions": "الاشتراكات",
+      "payments": "المدفوعات",
+      "subscriptionInvoices": "فواتير الاشتراك",
+      "receipts": "الإيصالات",
+      "failures": "فشل المدفوعات",
+      "renewals": "التجديدات",
+      "expirations": "انتهاء الصلاحية",
+      "revenue": "الإيرادات",
+      "analytics": "التحليلات",
+      "providerHealth": "صحة مزود الدفع",
+      "invoices": "فواتير الفوترة",
+      "reports": "التقارير",
+      "settings": "إعدادات الفوترة",
+      "audit": "سجل تدقيق الفوترة"
+    },
+    "actions": {
+      "export": "تصدير CSV",
+      "exporting": "جاري التصدير…",
+      "download": "تنزيل",
+      "viewDetail": "عرض الاشتراك",
+      "backToOverview": "العودة للنظرة العامة"
+    },
+    "toast": {
+      "successTitle": "تم بنجاح",
+      "errorTitle": "حدث خطأ"
+    },
+    "edit": {
+      "editContact": "تعديل جهة الفوترة",
+      "addContact": "إضافة جهة فوترة",
+      "contactName": "اسم جهة الاتصال",
+      "contactEmail": "البريد الإلكتروني",
+      "contactPhone": "الهاتف",
+      "contactNameRequired": "اسم جهة الفوترة مطلوب.",
+      "contactEmailInvalid": "أدخل بريداً إلكترونياً صالحاً.",
+      "contactSaveFailed": "تعذر حفظ جهة الفوترة.",
+      "contactSaved": "تم تحديث جهة الفوترة.",
+      "assignPlan": "تغيير الخطة",
+      "assignPlanConfirm": "تطبيق الخطة",
+      "selectPlan": "اختر خطة",
+      "planRequired": "اختر خطة قبل الحفظ.",
+      "planSaveFailed": "تعذر تعيين خطة الاشتراك.",
+      "planSaved": "تم تحديث خطة الاشتراك.",
+      "planPricePreview": "معاينة السعر: {{price}} / {{cycle}}",
+      "suspendSubscription": "تعليق الوصول",
+      "restoreSubscription": "استعادة الوصول",
+      "suspendTitle": "تعليق وصول الاشتراك",
+      "restoreTitle": "استعادة وصول الاشتراك",
+      "suspendDescription": "سيتم تعيين حالة وصول الشركة إلى موقوف. تبقى بيانات الاشتراك محفوظة.",
+      "restoreDescription": "سيتم استعادة وصول الشركة بناءً على حالة الاشتراك الحالية.",
+      "suspendConfirm": "تعليق",
+      "restoreConfirm": "استعادة",
+      "suspendFailed": "تعذر تعليق الاشتراك.",
+      "restoreFailed": "تعذر استعادة الاشتراك.",
+      "suspendSuccess": "تم تعليق وصول الاشتراك.",
+      "restoreSuccess": "تم استعادة وصول الاشتراك.",
+      "reasonOptional": "السبب (اختياري)",
+      "companyAccess": "وصول الشركة"
+    },
+    "payment": {
+      "confirmTitle": "تسجيل دفعة يدوية؟",
+      "confirmDescription": "سيتم تسجيل دفعة يدوية بقيمة {{amount}} وتجديد الاشتراك للفترة التالية.",
+      "confirmAction": "تسجيل الدفعة",
+      "success": "تم تسجيل الدفعة وتجديد الاشتراك.",
+      "methodLabel": "طريقة الدفع",
+      "noMethods": "لا توجد طرق دفع متاحة",
+      "noMethodsConfigured": "لم يتم تكوين طرق دفع مدعومة. حدّث إعدادات الفوترة قبل تسجيل المدفوعات.",
+      "runtimeNotConfigured": "بيئة الدفع غير مهيأة. طبّق ترحيل الفوترة 104 (get_billing_payment_options_v1) لتفعيل طرق الدفع.",
+      "loadFailed": "تعذّر تحميل خيارات الدفع.",
+      "providerMode": "وضع المزود",
+      "providerCode": "المزود",
+      "autoRenewal": "التجديد التلقائي"
+    },
+    "tables": {
+      "company": "الشركة",
+      "plan": "الخطة",
+      "cycle": "الدورة",
+      "status": "الحالة",
+      "renewal": "التجديد",
+      "actions": "الإجراءات",
+      "invoiceNumber": "رقم الفاتورة",
+      "receiptNumber": "رقم الإيصال",
+      "amount": "المبلغ",
+      "issuedAt": "تاريخ الإصدار",
+      "paidAt": "تاريخ الدفع",
+      "period": "الفترة",
+      "method": "طريقة الدفع",
+      "provider": "المزود"
+    },
+    "common": {
+      "yes": "نعم",
+      "no": "لا",
+      "enabled": "مفعّل",
+      "disabled": "معطّل",
+      "loading": "جاري التحميل…",
+      "notAvailable": "غير متاح",
+      "units": {
+        "gb": "{{value}} جيجابايت",
+        "mb": "{{value}} ميجابايت",
+        "ms": "{{value}} مللي ثانية",
+        "percent": "{{value}}%"
+      }
+    },
+    "companyStatus": {
+      "Active": "نشط",
+      "Suspended": "موقوف",
+      "Trial": "تجريبي"
+    },
+    "providerStatus": {
+      "healthy": "سليم",
+      "degraded": "متدهور",
+      "down": "متوقف"
+    },
+    "workspaceHealth": {
+      "healthy": "سليم",
+      "at_risk": "معرض للخطر",
+      "critical": "حرج"
+    },
+    "statusContext": {
+      "endsToday": "ينتهي اليوم",
+      "endsTomorrow": "ينتهي غداً",
+      "daysRemaining": "{{count}} أيام متبقية",
+      "renewsToday": "يتجدد اليوم",
+      "renewsTomorrow": "يتجدد غداً",
+      "renewsInDays": "يتجدد خلال {{count}} أيام",
+      "paymentOverdue": "الدفع متأخر — يلزم اتخاذ إجراء",
+      "paymentRequired": "الدفع مطلوب",
+      "accessUntil": "الوصول حتى {{date}}"
+    },
+    "detail": {
+      "notFound": "الاشتراك غير موجود.",
+      "subscription": "الاشتراك",
+      "cycle": "دورة الفوترة",
+      "autoRenewal": "التجديد التلقائي",
+      "periodEnd": "نهاية الفترة الحالية",
+      "nextRenewal": "التجديد القادم",
+      "recordPayment": "تسجيل دفعة يدوية",
+      "recording": "جاري التسجيل…",
+      "currencyMissing": "عملة الفوترة غير مهيأة. عيّن default_currency في إعدادات الفوترة قبل تسجيل المدفوعات.",
+      "planExperience": "تجربة الخطة",
+      "currentPlan": "الخطة الحالية",
+      "upgradePlan": "ترقية الخطة",
+      "maxUsers": "الحد الأقصى للمستخدمين",
+      "maxCustomers": "الحد الأقصى للعملاء",
+      "storage": "حد التخزين",
+      "aiTokens": "رموز الذكاء / شهر",
+      "usageSummary": "ملخص الاستخدام",
+      "aiTokensUsed": "رموز الذكاء المستخدمة",
+      "storageUsed": "التخزين المستخدم",
+      "features": "ميزات الخطة",
+      "featuresHint": "صلاحيات محلولة مع أولوية المصدر (تجاوز → خطة → افتراضي).",
+      "featureName": "الميزة",
+      "featureSource": "المصدر",
+      "featureSources": {
+        "plan": "الخطة",
+        "override": "تجاوز",
+        "default": "افتراضي"
+      },
+      "noFeatures": "لا توجد ميزات للخطة.",
+      "usageSummaryHint": "استخدام الفترة الحالية مقارنة بحدود الخطة.",
+      "noUsage": "لا توجد لقطة استخدام متاحة بعد.",
+      "upgradeHint": "خطط أعلى متاحة لهذا الاشتراك. تغييرات الخطة تتم عبر مسؤولي الفوترة.",
+      "noUpgradeOptions": "لا توجد خطط أعلى متاحة حالياً.",
+      "selectPlan": "اختر الخطة",
+      "companyTypeDefault": "شركة",
+      "tierRank": "المستوى {{rank}}",
+      "timeline": "الجدول الزمني للاشتراك",
+      "activity": "نشاط الاشتراك",
+      "noEvents": "لا توجد أحداث بعد.",
+      "billingContact": "جهة الفوترة",
+      "noBillingContact": "لا توجد جهة فوترة مسجلة",
+      "noBillingContactHint": "أضف جهة فوترة لتحسين تسليم الفواتير والإيصالات.",
+      "noInvoices": "لا توجد فواتير بعد",
+      "noPayments": "لا توجد مدفوعات بعد",
+      "noReceipts": "لا توجد إيصالات بعد",
+      "invoiceSearch": "ابحث في الفواتير…",
+      "paymentSearch": "ابحث في المدفوعات…",
+      "receiptSearch": "ابحث في الإيصالات…",
+      "tabs": {
+        "overview": "نظرة عامة",
+        "timeline": "الجدول الزمني",
+        "activity": "النشاط",
+        "invoices": "الفواتير",
+        "payments": "المدفوعات",
+        "receipts": "الإيصالات",
+        "entitlements": "الصلاحيات",
+        "audit": "التدقيق",
+        "notifications": "الإشعارات"
+      },
+      "audit": "تدقيق الفوترة",
+      "auditHint": "التغييرات الإدارية في الفوترة لهذه الشركة.",
+      "noAudit": "لا توجد سجلات تدقيق لهذه الشركة.",
+      "notifications": "سجل الإشعارات",
+      "notificationsHint": "إشعارات الفوترة ومساحة العمل المرسلة لهذه الشركة.",
+      "noNotifications": "لا توجد إشعارات لهذه الشركة.",
+      "emptyStates": {
+        "usageNoneRecorded": "لم يُسجَّل أي استخدام بعد.",
+        "usageNoneRecordedHint": "ستظهر مقاييس الاستخدام بعد أن يسجل نظام القياس نشاط هذه الشركة.",
+        "timelineCompanyCreated": "تم إنشاء الشركة",
+        "timelineSubscriptionCreated": "تم إنشاء الاشتراك",
+        "timelineOnboardingHint": "ستظهر أحداث دورة الحياة هنا عند حدوث نشاط فوترة.",
+        "notificationsWelcome": "مرحباً بك في إشعارات الفوترة",
+        "notificationsWelcomeHint": "ستظهر إشعارات الفوترة لـ {{company}} عند حدوث مدفوعات وفواتير وأحداث اشتراك.",
+        "notificationsWelcomeCreated": "تم إنشاء الاشتراك",
+        "notificationsWelcomeCreatedHint": "ستتلقى إشعارات عند حدوث أحداث دورة حياة الاشتراك.",
+        "notificationsWelcomeBilling": "نشاط الفوترة",
+        "notificationsWelcomeBillingHint": "يتم إرسال إشعارات الدفع والفواتير والتجديد تلقائياً."
+      }
+    },
+    "settings": {
+      "title": "إعدادات الفوترة",
+      "subtitle": "إعدادات مركزية لسلوك الفوترة على مستوى المنصة.",
+      "noPermission": "ليس لديك صلاحية عرض إعدادات الفوترة.",
+      "empty": "لا توجد إعدادات في هذه الفئة.",
+      "emptyHint": "ستظهر إعدادات هذه الفئة هنا عند تكوينها في فهرس المنصة.",
+      "platformScope": "نطاق المنصة",
+      "templateRefPlaceholder": "template_code",
+      "save": "حفظ الإعدادات",
+      "saving": "جاري الحفظ…",
+      "saveSuccess": "تم حفظ إعدادات الفوترة.",
+      "saveFailed": "تعذر حفظ إعدادات الفوترة.",
+      "validation": {
+        "fixErrors": "يرجى تصحيح أخطاء التحقق قبل الحفظ.",
+        "invalidJson": "قيمة JSON غير صالحة."
+      },
+      "tabs": {
+        "general": "عام",
+        "subscription": "الاشتراكات",
+        "documents": "المستندات",
+        "branding": "الهوية",
+        "payments": "المدفوعات",
+        "communications": "قوالب البريد",
+        "webhooks": "Webhooks",
+        "usage": "الاستخدام",
+        "health": "الصحة",
+        "entitlements": "الصلاحيات"
+      }
+    },
+    "platform": {
+      "payments": {
+        "title": "المدفوعات",
+        "subtitle": "سجلات مدفوعات الاشتراك على مستوى المنصة.",
+        "search": "ابحث حسب الشركة أو مرجع الدفع…",
+        "empty": "لا توجد مدفوعات."
+      },
+      "subscriptionInvoices": {
+        "title": "فواتير الاشتراك",
+        "subtitle": "فواتير اشتراك SaaS لجميع الشركات.",
+        "search": "ابحث حسب الشركة أو رقم الفاتورة…",
+        "empty": "لا توجد فواتير اشتراك."
+      },
+      "receipts": {
+        "title": "الإيصالات",
+        "subtitle": "إيصالات الدفع لفوترة الاشتراك.",
+        "search": "ابحث حسب الشركة أو رقم الإيصال…",
+        "empty": "لا توجد إيصالات."
+      },
+      "failures": {
+        "title": "فشل المدفوعات",
+        "subtitle": "مدفوعات الاشتراك الفاشلة التي تتطلب اهتماماً.",
+        "search": "ابحث حسب الشركة…",
+        "empty": "لا توجد مدفوعات فاشلة.",
+        "reason": "سبب الفشل"
+      },
+      "renewals": {
+        "title": "التجديدات القادمة",
+        "subtitle": "اشتراكات تتجدد خلال 30 يوماً.",
+        "empty": "لا توجد تجديدات قادمة."
+      },
+      "expirations": {
+        "title": "انتهاء الصلاحية والمعرض للخطر",
+        "subtitle": "اشتراكات منتهية أو متأخرة أو تنتهي تجربتها.",
+        "empty": "لا توجد اشتراكات منتهية."
+      },
+      "revenue": {
+        "title": "الإيرادات",
+        "subtitle": "نظرة عامة على الإيرادات الشهرية والسنوية المتكررة."
+      },
+      "analytics": {
+        "title": "تحليلات الفوترة",
+        "subtitle": "مقاييس SaaS ومؤشرات الأداء الأساسية.",
+        "mrr": "MRR",
+        "arr": "ARR",
+        "arpu": "ARPU",
+        "ltv": "LTV (تقديري)",
+        "churn": "معدل التسرب",
+        "renewalRate": "معدل التجديد",
+        "collectionRate": "معدل التحصيل",
+        "failedRate": "معدل فشل الدفع",
+        "failed30d": "مدفوعات فاشلة (30 يوم)",
+        "hint": "تُعبأ مقاييس الأفواج المتقدمة (LTV، التسرب، التحصيل) مع تراكم لقطات التحليلات.",
+        "notAvailable": "غير متاح بعد"
+      },
+      "providerHealth": {
+        "title": "صحة مزود الدفع",
+        "subtitle": "توفر وأداء مزودي الدفع.",
+        "total": "مزودون مراقَبون",
+        "degraded": "متدهور / متوقف",
+        "latency": "زمن الاستجابة",
+        "successRate": "معدل النجاح",
+        "checkedAt": "آخر فحص",
+        "empty": "لا يوجد مزودو دفع مهيأون."
+      }
+    },
+    "audit": {
+      "title": "سجل تدقيق الفوترة",
+      "subtitle": "مسار امتثال للعمليات الإدارية في الفوترة.",
+      "noPermission": "ليس لديك صلاحية عرض سجل تدقيق الفوترة.",
+      "searchPlaceholder": "ابحث حسب نوع الحدث أو الشركة أو المصدر…",
+      "empty": "لا توجد سجلات تدقيق للفوترة.",
+      "emptyHint": "ستظهر التغييرات الإدارية هنا مع القيم قبل وبعد.",
+      "platformScope": "المنصة",
+      "before": "قبل",
+      "after": "بعد",
+      "rawBefore": "القيمة الخام قبل",
+      "rawAfter": "القيمة الخام بعد",
+      "noDiff": "لم يتم اكتشاف تغييرات على مستوى الحقول.",
+      "ipAddress": "عنوان IP",
+      "exportFailed": "تعذر تصدير سجل تدقيق الفوترة.",
+      "diff": {
+        "added": "مضاف",
+        "removed": "محذوف",
+        "changed": "متغير"
+      },
+      "stats": {
+        "total": "إجمالي السجلات",
+        "manual": "يدوي",
+        "system": "نظام",
+        "api": "API"
+      },
+      "source": {
+        "manual": "يدوي",
+        "system": "نظام",
+        "api": "واجهة برمجية"
+      },
+      "columns": {
+        "event": "الحدث",
+        "company": "الشركة",
+        "source": "المصدر",
+        "time": "الوقت"
+      }
+    }
+  },
+  "workspace": {
+    "title": "مساحة العمل",
+    "subtitle": "مركز إدارة الشركة لمؤسستك.",
+    "noPermission": "ليس لديك صلاحية الوصول إلى مساحة العمل.",
+    "nav": {
+      "overview": "نظرة عامة",
+      "usage": "الاستخدام",
+      "billing": "الفوترة"
+    },
+    "overview": {
+      "company": "شركتك",
+      "hint": "إدارة الاشتراك والاستخدام والفوترة لمساحة عملك."
+    },
+    "usage": {
+      "title": "استخدام مساحة العمل",
+      "subtitle": "الاستخدام الحالي مقابل حدود خطتك."
+    },
+    "billing": {
+      "title": "الفوترة",
+      "subtitle": "تفاصيل اشتراك شركتك وخطتها.",
+      "currentSubscription": "الاشتراك الحالي",
+      "health": "صحة مساحة العمل",
+      "nextInvoice": "مبلغ الفاتورة التالية",
+      "noSubscription": "لا يوجد اشتراك نشط لشركتك."
+    }
+  },
   "auditLogs": {
     "title": "سجلات التدقيق",
-    "subtitle": "تتبع عمليات الإنشاء والتحديث والحذف عبر النظام.",
+    "subtitle": "راجع نشاط الأمان والإدارة عبر مؤسستك.",
     "noPermission": "ليس لديك صلاحية عرض سجلات التدقيق.",
-    "searchPlaceholder": "ابحث بالكيان أو المستخدم أو الشركة أو IP…",
+    "searchPlaceholder": "ابحث بالمستخدم أو الشركة أو العملية أو الكيان أو IP أو البريد الإلكتروني…",
     "empty": "لا توجد سجلات تدقيق تطابق الفلاتر المحددة.",
     "stats": {
       "total": "إجمالي الأحداث",
       "create": "إنشاء",
-      "update": "تحديث",
+      "update": "تعديل",
       "delete": "حذف"
     },
-    "filters": {
-      "allActions": "كل الإجراءات",
-      "allEntities": "كل الكيانات"
-    },
     "columns": {
+      "operation": "العملية",
+      "status": "الحالة",
+      "details": "التفاصيل",
       "user": "المستخدم",
+      "role": "دور المستخدم",
       "company": "الشركة",
-      "ip": "IP"
+      "ip": "IP",
+      "time": "الوقت",
+      "view": "عرض"
+    },
+    "operations": {
+      "CREATE": "إنشاء",
+      "UPDATE": "تعديل",
+      "DELETE": "حذف",
+      "LOGIN": "تسجيل دخول",
+      "LOGOUT": "تسجيل خروج",
+      "PASSWORD_RESET": "إعادة تعيين كلمة المرور",
+      "INVITE_USER": "دعوة مستخدم"
+    },
+    "statuses": {
+      "success": "نجاح",
+      "failed": "فشل",
+      "warning": "تحذير"
+    },
+    "entities": {
+      "users": "المستخدمون",
+      "companies": "الشركات",
+      "userRoles": "أدوار المستخدمين",
+      "rolePermissions": "صلاحيات الأدوار",
+      "userPermissions": "صلاحيات المستخدمين",
+      "notifications": "الإشعارات",
+      "subscriptionPlans": "خطط الاشتراك",
+      "customers": "العملاء",
+      "bookings": "الحجوزات",
+      "invoices": "الفواتير",
+      "roles": "الأدوار",
+      "permissions": "الصلاحيات",
+      "authentication": "المصادقة",
+      "aiAssistantSettings": "إعدادات المساعد الذكي",
+      "conversations": "المحادثات",
+      "conversationParticipants": "مشاركو المحادثة",
+      "conversationMessages": "رسائل المحادثة",
+      "communicationChannels": "قنوات الاتصال",
+      "companyChannels": "قنوات الشركة",
+      "record": "سجل"
+    },
+    "roles": {
+      "administrator": "مدير النظام",
+      "companyAdmin": "مشرف الشركة",
+      "manager": "مدير",
+      "employee": "موظف",
+      "viewer": "مشاهد"
+    },
+    "fields": {
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "fullName": "الاسم الكامل",
+      "status": "الحالة",
+      "service": "الخدمة",
+      "amount": "المبلغ",
+      "code": "الرمز",
+      "description": "الوصف",
+      "company": "الشركة",
+      "role": "الدور",
+      "user": "المستخدم",
+      "permission": "الصلاحية",
+      "active": "نشط",
+      "assistantName": "اسم المساعد",
+      "language": "اللغة",
+      "tone": "النبرة",
+      "channelType": "القناة",
+      "state": "الحالة",
+      "messageType": "نوع الرسالة",
+      "participantType": "نوع المشارك",
+      "priority": "الأولوية",
+      "conversationNumber": "رقم المحادثة",
+      "healthStatus": "حالة الصحة",
+      "provider": "المزود"
+    },
+    "values": {
+      "yes": "نعم",
+      "no": "لا"
+    },
+    "activity": {
+      "login": "سجّل {{actor}} الدخول إلى النظام.",
+      "logout": "سجّل {{actor}} الخروج من النظام.",
+      "passwordReset": "طلب {{actor}} إعادة تعيين كلمة المرور.",
+      "inviteUser": "أرسل {{actor}} دعوة للمستخدم {{target}}.",
+      "userCreated": "أنشأ {{actor}} المستخدم {{target}}.",
+      "userUpdated": "عدّل {{actor}} بيانات المستخدم {{target}}.",
+      "userDeleted": "حذف {{actor}} المستخدم {{target}}.",
+      "userRoleChanged": "غيّر {{actor}} دور {{target}} من {{from}} إلى {{to}}.",
+      "userRoleAssigned": "عيّن {{actor}} دور {{role}} للمستخدم {{target}}.",
+      "userRoleRemoved": "أزال {{actor}} دور {{role}} من المستخدم {{target}}.",
+      "companyCreated": "أنشأ {{actor}} شركة {{target}}.",
+      "companyUpdated": "عدّل {{actor}} بيانات شركة {{target}}.",
+      "companyDeleted": "حذف {{actor}} شركة {{target}}.",
+      "customerCreated": "أنشأ {{actor}} العميل {{target}}.",
+      "customerUpdated": "عدّل {{actor}} بيانات العميل {{target}}.",
+      "customerDeleted": "حذف {{actor}} العميل {{target}}.",
+      "roleCreated": "أنشأ {{actor}} دور {{target}}.",
+      "roleUpdated": "عدّل {{actor}} دور {{target}}.",
+      "roleDeleted": "حذف {{actor}} دور {{target}}.",
+      "invoiceCreated": "أنشأ {{actor}} فاتورة {{target}}.",
+      "invoiceUpdated": "عدّل {{actor}} فاتورة {{target}}.",
+      "invoiceDeleted": "حذف {{actor}} فاتورة {{target}}.",
+      "invoiceStatusChanged": "غيّر {{actor}} حالة الفاتورة {{target}} إلى {{status}}.",
+      "bookingCreated": "أنشأ {{actor}} حجزًا جديدًا للعميل {{target}}.",
+      "bookingUpdated": "عدّل {{actor}} حجز العميل {{target}}.",
+      "bookingCancelled": "ألغى {{actor}} الحجز الخاص بالعميل {{target}}.",
+      "bookingStatusChanged": "غيّر {{actor}} حالة حجز {{target}} إلى {{status}}.",
+      "permissionsUpdated": "غيّر {{actor}} صلاحيات {{target}}.",
+      "aiAssistantCreated": "أنشأ {{actor}} إعدادات المساعد الذكي لـ {{target}}.",
+      "aiAssistantUpdated": "حدّث {{actor}} إعدادات المساعد الذكي لـ {{target}}.",
+      "aiAssistantUpdatedDetailed": "حدّث {{actor}} إعدادات المساعد الذكي لـ {{target}}: {{changes}}.",
+      "conversationCreated": "أنشأ {{actor}} محادثة على {{channel}}.",
+      "conversationStarted": "بدأ {{actor}} المحادثة {{target}}.",
+      "greetingCompleted": "أكمل {{actor}} الترحيب للمحادثة {{target}}.",
+      "waitingForCustomer": "وضع {{actor}} {{target}} في انتظار العميل.",
+      "waitingForTool": "وضع {{actor}} {{target}} في انتظار تنفيذ أداة.",
+      "conversationCompleted": "أكمل {{actor}} المحادثة {{target}}.",
+      "conversationCancelled": "ألغى {{actor}} المحادثة {{target}}.",
+      "conversationTransferredToHuman": "حوّل {{actor}} {{target}} إلى موظف.",
+      "conversationReturnedToAi": "أعاد {{actor}} {{target}} إلى الذكاء الاصطناعي.",
+      "conversationClosed": "أغلق {{actor}} المحادثة {{target}}.",
+      "participantAdded": "أضاف {{actor}} مشاركًا إلى {{target}}.",
+      "participantRemoved": "أزال {{actor}} مشاركًا من {{target}}.",
+      "messageAdded": "أضاف {{actor}} رسالة إلى {{target}}.",
+      "conversationAssignmentChanged": "غيّر {{actor}} تعيين {{target}}.",
+      "conversationStateChanged": "غيّر {{actor}} حالة المحادثة {{target}} إلى {{state}}.",
+      "conversationPriorityChanged": "غيّر {{actor}} أولوية {{target}}.",
+      "conversationLocked": "قفل {{actor}} المحادثة {{target}}.",
+      "conversationUnreadReset": "أعاد {{actor}} تعيين عدادات غير المقروء لـ {{target}}.",
+      "conversationMetadataUpdated": "حدّث {{actor}} بيانات {{target}} الوصفية.",
+      "channelConnected": "ربط {{actor}} القناة {{target}}.",
+      "channelEnabled": "فعّل {{actor}} القناة {{target}}.",
+      "channelDisabled": "عطّل {{actor}} القناة {{target}}.",
+      "channelConfigurationUpdated": "حدّث {{actor}} إعدادات {{target}}.",
+      "channelHealthStatusChanged": "حدّث {{actor}} حالة الصحة لـ {{target}}.",
+      "defaultChannelChanged": "عيّن {{actor}} {{target}} كقناة افتراضية.",
+      "toolExecuted": "نفّذ {{actor}} الأداة {{target}}.",
+      "toolFailed": "فشل {{actor}} في تنفيذ الأداة {{target}}.",
+      "toolTimeout": "انتهت مهلة {{actor}} أثناء تنفيذ الأداة {{target}}.",
+      "toolEnabled": "فعّل {{actor}} الأداة {{target}}.",
+      "toolDisabled": "عطّل {{actor}} الأداة {{target}}.",
+      "intentMatched": "طابق {{actor}} النية {{target}} باستخدام المصنّف {{classifier}}.",
+      "intentRejected": "رفض {{actor}} توجيه النية {{target}}.",
+      "intentFallback": "وجّه {{actor}} {{target}} إلى معالجة النية الاحتياطية.",
+      "intentEscalated": "صعّد {{actor}} النية {{target}} للمعالجة البشرية.",
+      "classifierSelected": "اختار {{actor}} المصنّف {{target}} لمطابقة النية.",
+      "intentEnabled": "فعّل {{actor}} النية {{target}}.",
+      "intentDisabled": "عطّل {{actor}} النية {{target}}.",
+      "providerConnected": "ربط {{actor}} مزود الذكاء الاصطناعي {{provider}} كـ {{target}}.",
+      "providerEnabled": "فعّل {{actor}} اتصال مزود الذكاء الاصطناعي {{target}}.",
+      "providerDisabled": "عطّل {{actor}} اتصال مزود الذكاء الاصطناعي {{target}}.",
+      "providerUpdated": "حدّث {{actor}} اتصال مزود الذكاء الاصطناعي {{target}}.",
+      "providerHealthChanged": "غيّر {{actor}} حالة صحة اتصال مزود الذكاء الاصطناعي {{target}}.",
+      "promptBuilt": "أنشأ {{actor}} مطالبة {{target}}.",
+      "templateUpdated": "حدّث {{actor}} قالب المطالبة {{target}}.",
+      "templateActivated": "فعّل {{actor}} قالب المطالبة {{target}}.",
+      "templateDisabled": "عطّل {{actor}} قالب المطالبة {{target}}.",
+      "aiExecutionStarted": "بدأ {{actor}} تنفيذ الذكاء الاصطناعي للمزود {{target}} (النموذج {{model}}).",
+      "aiExecutionCompleted": "أكمل {{actor}} تنفيذ الذكاء الاصطناعي للمزود {{target}} (النموذج {{model}}).",
+      "aiExecutionFailed": "فشل {{actor}} في تنفيذ الذكاء الاصطناعي للمزود {{target}} (النموذج {{model}}).",
+      "providerTimeout": "انتهت مهلة {{actor}} لمزود الذكاء الاصطناعي {{target}} (النموذج {{model}}).",
+      "providerRetry": "أعاد {{actor}} محاولة مزود الذكاء الاصطناعي {{target}} (النموذج {{model}}).",
+      "fallbackProviderUsed": "استخدم {{actor}} مزود الذكاء الاصطناعي الاحتياطي {{target}} (النموذج {{model}}).",
+      "traceStarted": "بدأ {{actor}} تتبع الذكاء الاصطناعي {{target}}.",
+      "traceCompleted": "أكمل {{actor}} تتبع الذكاء الاصطناعي {{target}}.",
+      "traceFailed": "فشل {{actor}} في تتبع الذكاء الاصطناعي {{target}}.",
+      "costRecorded": "سجّل {{actor}} تكلفة الذكاء الاصطناعي للمزود {{target}} في فترة الفوترة {{period}}.",
+      "policyViolated": "أثار {{actor}} انتهاك سياسة على تتبع الذكاء الاصطناعي {{target}}.",
+      "knowledgeSourceCreated": "أنشأ {{actor}} مصدر معرفة {{target}}.",
+      "documentImported": "استورد {{actor}} مستند معرفة {{target}}.",
+      "documentUpdated": "حدّث {{actor}} مستند المعرفة {{target}}.",
+      "documentArchived": "أرشف {{actor}} مستند المعرفة {{target}}.",
+      "chunkGenerated": "أنشأ {{actor}} جزء معرفة {{target}}.",
+      "documentPublished": "نشر {{actor}} إصدار مستند المعرفة {{target}}.",
+      "embeddingRequested": "طلب {{actor}} إنشاء تضمين لـ {{target}}.",
+      "embeddingGenerated": "أنشأ {{actor}} تضمينًا لـ {{target}}.",
+      "embeddingFailed": "فشل {{actor}} في إنشاء تضمين لـ {{target}}.",
+      "embeddingRegenerated": "أعاد {{actor}} إنشاء تضمين لـ {{target}}.",
+      "embeddingActivated": "فعّل {{actor}} التضمين {{target}}.",
+      "providerConnected": "ربط {{actor}} موفر مخزن المتجهات {{target}}.",
+      "providerDisconnected": "فصل {{actor}} موفر مخزن المتجهات {{target}}.",
+      "vectorCollectionCreated": "أنشأ {{actor}} مجموعة متجهات {{target}}.",
+      "vectorCollectionDeleted": "حذف {{actor}} مجموعة متجهات {{target}}.",
+      "vectorIndexed": "فهرس {{actor}} المتجه {{target}}.",
+      "vectorRemoved": "أزال {{actor}} المتجه المفهرس {{target}}.",
+      "searchPolicyUpdated": "حدّث {{actor}} سياسة البحث المتجه {{target}}.",
+      "vectorQueryStarted": "بدأ {{actor}} استعلام المتجهات على {{target}}.",
+      "vectorQueryCompleted": "أكمل {{actor}} استعلام المتجهات على {{target}}.",
+      "vectorQueryFailed": "فشل {{actor}} في استعلام المتجهات على {{target}}.",
+      "vectorResultsRanked": "رتّب {{actor}} نتائج استعلام المتجهات لـ {{target}}.",
+      "retrievalStarted": "بدأ {{actor}} الاسترجاع لـ {{target}}.",
+      "retrievalCompleted": "أكمل {{actor}} الاسترجاع لـ {{target}}.",
+      "retrievalFailed": "فشل {{actor}} في الاسترجاع لـ {{target}}.",
+      "retrievalContextCreated": "أنشأ {{actor}} سياق الاسترجاع {{target}}.",
+      "retrievalPolicyUpdated": "حدّث {{actor}} سياسة الاسترجاع {{target}}.",
+      "runtimeStarted": "بدأ {{actor}} تنفيذ وقت التشغيل لـ {{target}}.",
+      "runtimeCompleted": "أكمل {{actor}} تنفيذ وقت التشغيل لـ {{target}}.",
+      "runtimeFailed": "فشل {{actor}} في تنفيذ وقت التشغيل لـ {{target}}.",
+      "runtimeStepCompleted": "أكمل {{actor}} خطوة وقت التشغيل {{target}}.",
+      "runtimePolicyUpdated": "حدّث {{actor}} سياسة وقت التشغيل {{target}}.",
+      "versionCreated": "أنشأ {{actor}} إصدار مستند المعرفة {{target}}.",
+      "aiAssistantChanges": {
+        "created": "تم إنشاء إعدادات المساعد الذكي",
+        "softDeleted": "تم الحذف الناعم لإعدادات المساعد الذكي",
+        "assistant_name": "تم تغيير اسم المساعد",
+        "assistant_avatar": "تم تغيير صورة المساعد",
+        "language": "تم تغيير اللغة",
+        "personality": "تم تغيير الشخصية",
+        "tone": "تم تغيير النبرة",
+        "welcome_message": "تم تغيير رسالة الترحيب",
+        "fallback_message": "تم تغيير الرسالة الاحتياطية",
+        "working_hours_enabled": {
+          "enabled": "تم تفعيل ساعات العمل فقط",
+          "disabled": "تم تعطيل ساعات العمل فقط"
+        },
+        "allow_auto_booking": {
+          "enabled": "تم تفعيل الحجز التلقائي",
+          "disabled": "تم تعطيل الحجز التلقائي"
+        },
+        "allow_reschedule": {
+          "enabled": "تم تفعيل إعادة الجدولة",
+          "disabled": "تم تعطيل إعادة الجدولة"
+        },
+        "allow_cancellation": {
+          "enabled": "تم تفعيل الإلغاء",
+          "disabled": "تم تعطيل الإلغاء"
+        },
+        "handoff_to_human": {
+          "enabled": "تم تفعيل التحويل إلى موظف",
+          "disabled": "تم تعطيل التحويل إلى موظف"
+        },
+        "knowledge_enabled": {
+          "enabled": "تم تفعيل معرفة الذكاء الاصطناعي",
+          "disabled": "تم تعطيل معرفة الذكاء الاصطناعي"
+        },
+        "remember_conversation": {
+          "enabled": "تم تفعيل تذكر المحادثة",
+          "disabled": "تم تعطيل تذكر المحادثة"
+        },
+        "conversation_timeout_minutes": "تم تغيير مهلة المحادثة",
+        "max_conversation_age": "تم تغيير الحد الأقصى لمدة المحادثة",
+        "is_enabled": {
+          "enabled": "تم تفعيل الذكاء الاصطناعي",
+          "disabled": "تم تعطيل الذكاء الاصطناعي"
+        },
+        "provider": "تم تغيير المزود",
+        "model": "تم تغيير النموذج",
+        "temperature": "تم تغيير درجة الحرارة",
+        "max_tokens": "تم تغيير الحد الأقصى للرموز",
+        "response_language": "تم تغيير لغة الرد"
+      },
+      "recordCreated": "أنشأ {{actor}} {{target}}.",
+      "recordUpdated": "عدّل {{actor}} {{target}}.",
+      "recordDeleted": "حذف {{actor}} {{target}}.",
+      "hints": {
+        "email": "(تم تغيير البريد الإلكتروني)",
+        "role": "(تم تغيير الدور)",
+        "status": "(تم تغيير الحالة)",
+        "name": "(تم تغيير الاسم)",
+        "company": "(تم تغيير الشركة)",
+        "amount": "(تم تغيير المبلغ)",
+        "service": "(تم تغيير الخدمة)",
+        "roleAndStatus": "(تم تغيير الدور والحالة)",
+        "emailAndRole": "(تم تغيير البريد الإلكتروني والدور)",
+        "emailAndStatus": "(تم تغيير البريد الإلكتروني والحالة)",
+        "nameAndStatus": "(تم تغيير الاسم والحالة)",
+        "companyAndRole": "(تم تغيير الشركة والدور)",
+        "multiple": "(تم تغيير {{first}} و{{second}})"
+      },
+      "hintLabels": {
+        "email": "البريد الإلكتروني",
+        "role": "الدور",
+        "status": "الحالة",
+        "name": "الاسم",
+        "company": "الشركة",
+        "amount": "المبلغ",
+        "service": "الخدمة"
+      }
+    },
+    "descriptions": {
+      "login": "تم تسجيل الدخول",
+      "logout": "تم تسجيل الخروج",
+      "passwordReset": "تم طلب إعادة تعيين كلمة المرور لـ {{user}}",
+      "inviteUser": "تمت دعوة المستخدم {{name}}",
+      "userCreated": "تم إنشاء المستخدم {{name}}",
+      "userUpdated": "تم تعديل بيانات المستخدم {{name}}",
+      "userDeleted": "تم حذف المستخدم {{name}}",
+      "companyCreated": "تم إنشاء شركة {{name}}",
+      "companyUpdated": "تم تعديل بيانات شركة {{name}}",
+      "companyDeleted": "تم حذف شركة {{name}}",
+      "roleCreated": "تم إنشاء دور {{name}}",
+      "roleUpdated": "تم تعديل دور {{name}}",
+      "roleDeleted": "تم حذف دور {{name}}",
+      "permissionsUpdated": "تم تغيير صلاحيات {{name}}",
+      "userRoleAssigned": "تم تعيين دور {{role}} للمستخدم {{user}}",
+      "userRoleRemoved": "تم إزالة دور {{role}} من المستخدم {{user}}",
+      "customerCreated": "تم إنشاء العميل {{name}}",
+      "customerUpdated": "تم تعديل بيانات العميل {{name}}",
+      "customerDeleted": "تم حذف العميل {{name}}",
+      "bookingCreated": "تم إنشاء الحجز {{name}}",
+      "bookingUpdated": "تم تعديل الحجز {{name}}",
+      "bookingDeleted": "تم حذف الحجز {{name}}",
+      "invoiceCreated": "تم إنشاء الفاتورة {{name}}",
+      "invoiceUpdated": "تم تعديل الفاتورة {{name}}",
+      "invoiceDeleted": "تم حذف الفاتورة {{name}}",
+      "generic": "{{operation}} {{entity}} {{name}}"
+    },
+    "filters": {
+      "title": "الفلاتر",
+      "allOperations": "كل العمليات",
+      "allStatuses": "كل الحالات",
+      "allCompanies": "كل الشركات",
+      "allRoles": "كل الأدوار",
+      "allUsers": "كل المستخدمين",
+      "allActions": "كل الإجراءات",
+      "allEntities": "كل الكيانات",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ"
+    },
+    "details": {
+      "title": "تفاصيل العملية",
+      "noChanges": "لم يتم تعديل أي قيم.",
+      "unresolvedEntity": "يشير هذا السجل إلى كائن لم يعد موجوداً.",
+      "sections": {
+        "general": "عام",
+        "entity": "الكيان",
+        "technical": "تقني"
+      },
+      "labels": {
+        "action": "الإجراء",
+        "operation": "العملية",
+        "status": "الحالة",
+        "time": "الوقت",
+        "performedBy": "تم بواسطة",
+        "role": "الدور",
+        "company": "الشركة",
+        "ipAddress": "عنوان IP",
+        "entity": "الكيان",
+        "entityName": "اسم الكيان",
+        "description": "الوصف",
+        "oldValues": "القيم السابقة",
+        "newValues": "القيم الجديدة",
+        "changes": "التغييرات",
+        "details": "التفاصيل",
+        "browser": "المتصفح",
+        "operatingSystem": "نظام التشغيل",
+        "userAgent": "وكيل المستخدم",
+        "auditId": "معرّف التدقيق",
+        "requestId": "معرّف الطلب"
+      },
+      "summaries": {
+        "roleChanged": "تم تغيير دور المستخدم من {{from}} إلى {{to}}.",
+        "companyChanged": "تم تغيير شركة المستخدم من {{from}} إلى {{to}}.",
+        "statusChanged": "تم تغيير الحالة من {{from}} إلى {{to}}.",
+        "nameChanged": "تم تغيير الاسم من {{from}} إلى {{to}}.",
+        "fieldChanged": "تم تغيير {{field}} من {{from}} إلى {{to}}."
+      },
+      "advanced": {
+        "title": "تفاصيل متقدمة",
+        "recordedAt": "سُجل في",
+        "auditId": "معرّف التدقيق",
+        "metadata": "البيانات الوصفية",
+        "technicalInfo": "معلومات تقنية"
+      }
+    },
+    "fallbacks": {
+      "deletedUser": "مستخدم محذوف",
+      "systemUser": "النظام",
+      "unknownCompany": "شركة غير معروفة",
+      "noRole": "بدون دور",
+      "unavailable": "—",
+      "none": "لا يوجد"
+    },
+    "ip": {
+      "local": "127.0.0.1 (محلي)"
     },
     "pagination": {
       "previous": "السابق",
@@ -411,12 +1618,15 @@
   },
   "users": {
     "title": "المستخدمون",
-    "subtitle": "إدارة المستخدمين وتعيين الشركات وحالة الحساب وإعادة تعيين كلمات المرور.",
+    "subtitle": "إدارة المستخدمين وتعيين الشركات والأدوار وحالة الحساب وإعادة تعيين كلمات المرور.",
     "noPermission": "ليس لديك صلاحية لإدارة المستخدمين.",
+    "viewNoPermission": "ليس لديك صلاحية عرض المستخدمين.",
     "addUser": "إضافة مستخدم",
     "createTitle": "إنشاء مستخدم",
+    "editTitle": "تعديل مستخدم",
     "superAdmin": "مشرف عام",
     "companyAdmin": "مشرف شركة",
+    "noRole": "بدون دور",
     "searchPlaceholder": "ابحث عن مستخدم…",
     "empty": "لا يوجد مستخدمون يطابقون الفلاتر المحددة.",
     "unnamed": "مستخدم بدون اسم",
@@ -437,6 +1647,8 @@
     },
     "actions": {
       "create": "إنشاء مستخدم",
+      "edit": "تعديل",
+      "save": "حفظ التغييرات",
       "resetPassword": "إعادة تعيين كلمة المرور",
       "activate": "تفعيل",
       "deactivate": "تعطيل",
@@ -450,9 +1662,28 @@
       "emailPlaceholder": "user@company.com",
       "emailRequired": "البريد الإلكتروني مطلوب",
       "company": "الشركة",
+      "companyRequired": "الشركة مطلوبة",
+      "selectCompany": "اختر شركة",
       "noCompany": "بدون شركة",
+      "role": "الدور",
+      "roleRequired": "الدور مطلوب",
+      "rolePlaceholder": "اختر دوراً",
+      "roleSearchPlaceholder": "ابحث عن دور…",
+      "noRolesAvailable": "لا توجد أدوار متاحة.",
       "activeOnCreate": "تفعيل المستخدم مباشرة",
-      "inviteNote": "سيتم إرسال رابط تسجيل دخول آمن إلى بريد المستخدم الإلكتروني."
+      "inviteNote": "سيتم إرسال بريد دعوة للمستخدم لتعيين كلمة المرور."
+    },
+    "errors": {
+      "provisionServiceUnavailable": "خدمة إنشاء المستخدمين غير متاحة. يرجى نشر Edge Function باسم provision-user في Supabase ثم المحاولة مرة أخرى.",
+      "provisionFailed": "تعذر إنشاء المستخدم. يرجى المحاولة مرة أخرى.",
+      "role_tenant_mismatch": "الدور المحدد لا ينتمي إلى الشركة المستهدفة.",
+      "role_not_found": "الدور المحدد غير موجود.",
+      "target_company_required": "يجب اختيار شركة مستهدفة قبل تعيين دور.",
+      "company_has_no_roles": "لا توجد أدوار مهيأة لهذه الشركة."
+    },
+    "success": {
+      "inviteSentTitle": "تم إرسال الدعوة",
+      "inviteSentDescription": "سيتلقى المستخدم بريداً إلكترونياً لتعيين كلمة المرور وتسجيل الدخول."
     },
     "confirm": {
       "activateTitle": "تفعيل {{user}}؟",
@@ -489,6 +1720,13 @@
       "previous": "السابق",
       "next": "التالي",
       "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
+    },
+    "provisioning": {
+      "pending": "في انتظار التجهيز",
+      "provisioning": "جاري التجهيز…",
+      "completed": "تم التجهيز",
+      "failed": "فشل التجهيز",
+      "retry": "إعادة محاولة تجهيز المستأجر"
     }
   },
   "roles": {
@@ -496,18 +1734,148 @@
     "subtitle": "إنشاء الأدوار وتعيين الصلاحيات عبر شبكة مرنة.",
     "noDescription": "بدون وصف",
     "edit": "تعديل",
-    "delete": "حذف"
+    "delete": "حذف",
+    "createRole": "إنشاء دور",
+    "confirm": {
+      "deleteTitle": "حذف الدور \"{{role}}\"؟",
+      "deleteDescription": "سيؤدي هذا إلى إزالة الدور وتعيينات صلاحياته نهائياً. وسيفقد المستخدمون المعيّنون لهذا الدور تلك الصلاحيات."
+    },
+    "permissions": {
+      "title": "إدارة الصلاحيات",
+      "selectAll": "تحديد جميع الصلاحيات",
+      "clearAll": "إلغاء تحديد الكل",
+      "expandAll": "توسيع الكل",
+      "collapseAll": "طي الكل",
+      "searchPlaceholder": "ابحث عن صلاحية...",
+      "selectedCounter": "المحدد: {{selected}} / {{total}} صلاحية",
+      "groupCounter": "{{selected}} / {{total}}",
+      "groupSelectAll": "تحديد جميع صلاحيات {{group}}",
+      "noResults": "لا توجد صلاحيات مطابقة لبحثك.",
+      "partialSelectionHint": "تم تحديد بعض الصلاحيات."
+    },
+    "permissionGroups": {
+      "Customers": "إدارة علاقات العملاء",
+      "Bookings": "إدارة علاقات العملاء",
+      "Invoices": "إدارة علاقات العملاء",
+      "Users": "المستخدمون",
+      "Roles": "الأدوار",
+      "Companies": "الشركات",
+      "Settings": "الإعدادات",
+      "Audit Logs": "سجلات التدقيق",
+      "Reports": "التحليلات",
+      "Billing & Subscriptions": "الفوترة",
+      "Billing Settings": "الفوترة",
+      "Billing Audit Log": "الفوترة",
+      "Workspace": "مساحة العمل",
+      "AI Chat": "منصة الذكاء الاصطناعي",
+      "AI Assistant": "منصة الذكاء الاصطناعي",
+      "Conversations": "منصة الذكاء الاصطناعي",
+      "Analytics": "منصة الذكاء الاصطناعي",
+      "Costs": "منصة الذكاء الاصطناعي",
+      "Knowledge": "منصة الذكاء الاصطناعي",
+      "Channels": "منصة الذكاء الاصطناعي",
+      "Embeddings": "منصة الذكاء الاصطناعي",
+      "General": "عام"
+    },
+    "toast": {
+      "createSuccessTitle": "تم إنشاء الدور",
+      "createSuccessDescription": "تم إنشاء \"{{name}}\" بنجاح.",
+      "createFailedTitle": "تعذر إنشاء الدور",
+      "updateSuccessTitle": "تم تحديث الدور",
+      "updateSuccessDescription": "تم حفظ \"{{name}}\" بنجاح.",
+      "updateFailedTitle": "تعذر تحديث الدور",
+      "deleteSuccessTitle": "تم حذف الدور",
+      "deleteSuccessDescription": "تمت إزالة \"{{name}}\"."
+    }
   },
   "permissions": {
     "title": "صلاحيات المستخدم",
     "subtitle": "تعيين أدوار متعددة وصلاحيات مباشرة لكل مستخدم.",
     "noPermission": "ليس لديك صلاحية لإدارة صلاحيات المستخدمين.",
-    "general": "عام"
+    "general": "عام",
+    "selectUser": "المستخدم",
+    "selectUserPlaceholder": "اختر مستخدماً",
+    "selectUserHint": "اختر مستخدماً لعرض الصلاحيات المباشرة وتعيينها.",
+    "selectUserRequired": "اختر مستخدماً قبل تعيين الصلاحيات.",
+    "loading": "جار تحميل الصلاحيات...",
+    "assignSuccessTitle": "تم تحديث الصلاحيات",
+    "assignSuccessDescription": "تم حفظ الصلاحيات المباشرة للمستخدم المحدد.",
+    "assignFailed": "تعذر حفظ الصلاحيات"
   },
   "profiles": {
-    "title": "الملفات الشخصية",
-    "subtitle": "إدارة تفاصيل الملف الشخصي وظهور الحساب.",
-    "current": "الملف المعروض حالياً: {{id}}"
+    "title": "ملفي الشخصي",
+    "subtitle": "عرض وإدارة تفاصيل حسابك الشخصي.",
+    "loadFailed": "تعذر تحميل ملفك الشخصي.",
+    "lastLoginUnavailable": "غير متاح",
+    "saveSuccessTitle": "تم تحديث الملف الشخصي",
+    "saveSuccessDescription": "تم حفظ تغييرات ملفك الشخصي بنجاح.",
+    "saveFailedTitle": "تعذر حفظ الملف الشخصي",
+    "saveFailedDescription": "يرجى المحاولة مرة أخرى.",
+    "sections": {
+      "personal": "المعلومات الشخصية",
+      "account": "تفاصيل الحساب"
+    },
+    "fields": {
+      "fullName": "الاسم الكامل",
+      "jobTitle": "المسمى الوظيفي",
+      "company": "الشركة",
+      "role": "الدور",
+      "accountStatus": "حالة الحساب",
+      "language": "اللغة",
+      "timezone": "المنطقة الزمنية",
+      "createdDate": "تاريخ الإنشاء",
+      "lastLogin": "آخر تسجيل دخول"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "avatar": {
+      "label": "صورة الملف الشخصي",
+      "description": "ارفع صورة أو أدخل رابطاً. يدعم الصور حتى 512 كيلوبايت.",
+      "upload": "رفع صورة",
+      "remove": "إزالة الصورة",
+      "urlLabel": "رابط الصورة",
+      "urlPlaceholder": "https://example.com/avatar.jpg",
+      "invalidTypeTitle": "نوع ملف غير صالح",
+      "invalidTypeDescription": "يرجى اختيار ملف صورة.",
+      "tooLargeTitle": "الصورة كبيرة جداً",
+      "tooLargeDescription": "يجب ألا تتجاوز صورة الملف الشخصي 512 كيلوبايت.",
+      "invalidUrl": "أدخل رابط HTTPS صالحاً، أو ارفع صورة، أو مسار تخزين صالح."
+    },
+    "validation": {
+      "fullNameRequired": "الاسم الكامل مطلوب."
+    },
+    "changePassword": {
+      "action": "تغيير كلمة المرور",
+      "actionDescription": "حدّث كلمة مرور تسجيل الدخول بأمان.",
+      "title": "تغيير كلمة المرور",
+      "description": "أدخل كلمة المرور الحالية، ثم اختر كلمة مرور جديدة.",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور الجديدة",
+      "submit": "تحديث كلمة المرور",
+      "currentRequired": "كلمة المرور الحالية مطلوبة.",
+      "mustDiffer": "يجب أن تختلف كلمة المرور الجديدة عن الحالية.",
+      "successTitle": "تم تحديث كلمة المرور",
+      "successDescription": "تم تغيير كلمة المرور بنجاح."
+    },
+    "timezones": {
+      "utc": "UTC",
+      "americaNewYork": "التوقيت الشرقي (نيويورك)",
+      "americaChicago": "التوقيت المركزي (شيكاغو)",
+      "americaDenver": "التوقيت الجبلي (دنفر)",
+      "americaLosAngeles": "التوقيت الهادئ (لوس أنجلوس)",
+      "europeLondon": "لندن",
+      "europeParis": "باريس",
+      "europeBerlin": "Berlin",
+      "asiaDubai": "دبي",
+      "asiaRiyadh": "الرياض",
+      "asiaKolkata": "India (Kolkata)",
+      "asiaSingapore": "سنغافورة",
+      "asiaTokyo": "Tokyo",
+      "australiaSydney": "Sydney"
+    }
   },
   "status": {
     "pending": "قيد الانتظار",
@@ -530,5 +1898,158 @@
   },
   "errors": {
     "notAuthenticated": "غير مصادق عليه"
+  },
+  "aiAssistant": {
+    "title": "المساعد الذكي",
+    "subtitle": "اضبط مساعد الذكاء الاصطناعي لشركتك استعداداً لميزات الاستقبال والأتمتة المستقبلية.",
+    "noPermission": "ليس لديك صلاحية عرض إعدادات المساعد الذكي.",
+    "noCompany": "لا توجد شركة مرتبطة. إعدادات المساعد الذكي غير متاحة.",
+    "notConfigured": "لم يتم إعداد المساعد الذكي لهذه الشركة بعد.",
+    "readOnly": "وصول للقراءة فقط",
+    "sections": {
+      "general": "عام",
+      "generalShort": "عام",
+      "conversation": "المحادثة",
+      "conversationShort": "محادثة",
+      "businessRules": "قواعد العمل",
+      "businessRulesShort": "قواعد",
+      "businessShort": "قواعد",
+      "knowledge": "المعرفة",
+      "knowledgeShort": "معرفة",
+      "integrations": "تكاملات مستقبلية",
+      "integrationsShort": "تكاملات"
+    },
+    "general": {
+      "enableAi": "تفعيل الذكاء الاصطناعي",
+      "enableAiDesc": "تشغيل أو إيقاف المساعد الذكي لهذه الشركة.",
+      "assistantName": "اسم المساعد",
+      "assistantNamePlaceholder": "أدخل اسم المساعد المعروض",
+      "assistantAvatar": "صورة المساعد",
+      "assistantAvatarPlaceholder": "رابط الصورة أو مرجع الصورة الرمزية",
+      "defaultLanguage": "اللغة الافتراضية",
+      "replyTone": "نبرة الرد",
+      "provider": "المزود",
+      "model": "النموذج",
+      "modelPlaceholder": "مثال: gpt-5.5",
+      "temperature": "درجة الحرارة",
+      "maxTokens": "الحد الأقصى للرموز",
+      "responseLanguage": "لغة الرد",
+      "welcomeMessage": "رسالة الترحيب",
+      "welcomeMessagePlaceholder": "الرسالة المعروضة عند بدء المحادثة",
+      "fallbackMessage": "رسالة احتياطية",
+      "fallbackMessagePlaceholder": "الرسالة المعروضة عندما لا يفهم المساعد الطلب",
+      "comingSoon": "قريباً",
+      "providers": {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "google": "Google",
+        "azure": "Azure"
+      },
+      "responseLanguages": {
+        "system": "اتباع لغة النظام"
+      },
+      "tones": {
+        "friendly": "ودود",
+        "professional": "احترافي",
+        "formal": "رسمي"
+      }
+    },
+    "providerSetup": {
+      "title": "اتصال الموفر (مطلوب للدردشة الذكية)",
+      "readyDescription": "اتصال موفر افتراضي نشط. يمكن للدردشة الذكية والمنصة استخدام هذا السجل.",
+      "missingDescription": "تم حفظ تفضيلات المساعد، لكن التنفيذ يتطلب اتصال موفر في سجل موفري الذكاء الاصطناعي.",
+      "stepPreferences": "اختر موفر ونموذج أدناه (بيانات المساعد).",
+      "stepConnection": "أنشئ أو اختر اتصال موفر مع بيانات الاعتماد.",
+      "stepDefault": "عيّن الاتصال المطابق كافتراضي للشركة.",
+      "providerMismatch": "لديك اتصال افتراضي لنوع موفر مختلف. اختر أو أنشئ اتصالاً يطابق موفر المساعد.",
+      "loading": "جاري تحميل اتصالات الموفر…",
+      "selectConnection": "استخدم هذا الاتصال",
+      "defaultBadge": "افتراضي",
+      "setDefault": "تعيين كاتصال افتراضي",
+      "createFirst": "أنشئ أول اتصال موفر",
+      "createAnother": "إضافة اتصال آخر",
+      "targetProvider": "موفر السجل: {{provider}}",
+      "apiKey": "مفتاح API",
+      "apiKeyPlaceholder": "sk-… (اختياري إذا كان مهيأ على الخادم)",
+      "apiKeyHint": "يُخزَّن في ai_provider_connections.configuration — وليس في إعدادات المساعد.",
+      "connectProvider": "إنشاء وربط الموفر",
+      "readOnlyHint": "اطلب من مسؤول لديه ai.providers.manage ربط الموفر.",
+      "defaultConnectionName": "{{assistant}} · {{provider}}"
+    },
+    "conversation": {
+      "rememberConversation": "تذكر المحادثة",
+      "rememberConversationDesc": "الاحتفاظ بسياق المحادثة للزوار العائدين.",
+      "timeout": "مهلة المحادثة",
+      "timeoutDesc": "إنهاء الجلسة بعد هذه الدقائق من عدم النشاط.",
+      "maxDuration": "الحد الأقصى لمدة المحادثة",
+      "maxDurationDesc": "حد أقصى لمدة المحادثة الواحدة.",
+      "minutes": "دقيقة",
+      "note": "تطبق إعدادات المحادثة على كل شركة وستُستخدم في قنوات الذكاء الاصطناعي المستقبلية."
+    },
+    "businessRules": {
+      "allowAutoBooking": "السماح بالحجز التلقائي",
+      "allowAutoBookingDesc": "السماح للمساعد بإنشاء حجوزات دون موافقة يدوية.",
+      "allowCancellation": "السماح بالإلغاء",
+      "allowCancellationDesc": "السماح للمساعد بإلغاء الحجوزات الحالية عند الطلب.",
+      "allowRescheduling": "السماح بإعادة الجدولة",
+      "allowReschedulingDesc": "السماح للمساعد بنقل الحجوزات إلى تاريخ أو وقت جديد.",
+      "handoffToHuman": "التحويل إلى موظف",
+      "handoffToHumanDesc": "السماح للمساعد بتصعيد المحادثات إلى موظف بشري.",
+      "workingHoursOnly": "ساعات العمل فقط",
+      "workingHoursOnlyDesc": "تقييد الإجراءات الآلية بساعات العمل المحددة."
+    },
+    "knowledge": {
+      "enable": "تفعيل معرفة الذكاء الاصطناعي",
+      "enableDesc": "السماح للمساعد باستخدام معرفة الشركة في الإصدارات المستقبلية.",
+      "futureNote": "سيتضمن هذا القسم لاحقاً الأسئلة الشائعة والخدمات والأسعار والأطباء ومعلومات العيادة."
+    },
+    "integrations": {
+      "comingSoon": "قريباً",
+      "openLink": "فتح",
+      "configure": "تهيئة",
+      "whatsapp": {
+        "title": "WhatsApp Cloud",
+        "description": "إدارة بيانات واتساب وتوجيه webhook عبر إدارة القنوات."
+      },
+      "teamInbox": {
+        "title": "صندوق الفريق",
+        "description": "مراقبة المحادثات والتولّي من الذكاء الاصطناعي وإرسال ردود بشرية."
+      },
+      "openai": {
+        "title": "OpenAI / مزود LLM",
+        "description": "أنشئ اتصال موفر التشغيل في تبويب General (لوحة اتصال الموفر)."
+      },
+      "knowledge": {
+        "title": "قاعدة المعرفة",
+        "description": "إدارة المستندات ومصادر الاسترجاع المستخدمة في المنصة."
+      },
+      "automation": {
+        "title": "تحليلات الذكاء الاصطناعي",
+        "description": "مراجعة زمن التنفيذ والتتبعات وصحة المنصة."
+      },
+      "receptionist": {
+        "title": "موظف الاستقبال الذكي",
+        "description": "تجارب استقبال صوتية ونصية مدعومة بهذه الإعدادات."
+      }
+    },
+    "defaults": {
+      "assistantName": "مساعد Vault",
+      "personality": "helpful",
+      "welcomeMessage": "مرحباً! أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟",
+      "fallbackMessage": "عذراً، لم أفهم ذلك. هل يمكنك إعادة صياغة سؤالك؟"
+    },
+    "save": {
+      "button": "حفظ الإعدادات",
+      "successTitle": "تم حفظ الإعدادات",
+      "successDescription": "تم تحديث إعدادات المساعد الذكي بنجاح.",
+      "errorTitle": "تعذر حفظ الإعدادات"
+    },
+    "errors": {
+      "loadFailed": "تعذر تهيئة إعدادات المساعد الذكي"
+    },
+    "audit": {
+      "created": "تم إنشاء إعدادات المساعد الذكي",
+      "updated": "تم تحديث إعدادات المساعد الذكي"
+    }
   }
 }

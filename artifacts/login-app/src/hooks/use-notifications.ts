@@ -31,7 +31,10 @@ export function useNotifications(companyId: string | null, page: number) {
       if (error) throw new Error(error.message);
 
       return {
-        items: (data ?? []) as NotificationItem[],
+        items: (data ?? []).map(({ title, ...row }) => ({
+          ...row,
+          title_key: title,
+        })) as NotificationItem[],
         total: count ?? 0,
         pageSize: PAGE_SIZE,
       };
@@ -106,6 +109,31 @@ export function useDeleteNotification(companyId: string | null) {
         .delete()
         .eq("id", id)
         .eq("company_id", companyId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["notifications", "list", companyId] });
+      void qc.invalidateQueries({ queryKey: notificationsUnreadKey(companyId) });
+    },
+  });
+}
+
+export function useMarkNotificationsRead(companyId: string | null) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!companyId || ids.length === 0) {
+        return;
+      }
+
+      const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("company_id", companyId)
+        .in("id", ids)
+        .eq("is_read", false);
 
       if (error) throw new Error(error.message);
     },

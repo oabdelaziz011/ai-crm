@@ -7,6 +7,8 @@ export interface RoleRecord {
   id: string;
   name: string | null;
   description: string | null;
+  role_type?: "PLATFORM" | "DEFAULT" | "CUSTOM" | null;
+  template_key?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -129,7 +131,7 @@ export function useRoles() {
     queryFn: async (): Promise<RoleRecord[]> => {
       const { data, error } = await supabase
         .from("roles")
-        .select("id, name, description, created_at, updated_at")
+        .select("id, name, description, role_type, template_key, created_at, updated_at")
         .order("created_at", { ascending: false });
       if (error) {
         console.warn("Roles table unavailable, using empty state", error.message);
@@ -157,6 +159,35 @@ export function usePermissionCatalog() {
     },
     retry: false,
   });
+}
+
+export async function fetchRolePermissionCodes(roleId: string): Promise<string[]> {
+  const { data: rolePermissionRows, error: rolePermissionError } = await supabase
+    .from("role_permissions")
+    .select("permission_id")
+    .eq("role_id", roleId);
+  if (rolePermissionError) {
+    throw new Error(rolePermissionError.message);
+  }
+
+  const permissionIds = (rolePermissionRows ?? [])
+    .map((row) => row.permission_id)
+    .filter((id): id is string => Boolean(id));
+  if (permissionIds.length === 0) {
+    return [];
+  }
+
+  const { data: permissionRows, error: permissionError } = await supabase
+    .from("permissions")
+    .select("code")
+    .in("id", permissionIds);
+  if (permissionError) {
+    throw new Error(permissionError.message);
+  }
+
+  return (permissionRows ?? [])
+    .map((row) => row.code)
+    .filter((code): code is string => Boolean(code));
 }
 
 export function useCreateRole() {

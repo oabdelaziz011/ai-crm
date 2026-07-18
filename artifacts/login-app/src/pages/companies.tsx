@@ -8,22 +8,48 @@ import {
   Filter,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   XCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@/context/auth-context";
+import { useAuthUser } from "@/hooks/use-rbac";
+import {
+  canCreateCompanies,
+  canDeleteCompanies,
+  canEditCompanies,
+  canViewCompanies,
+} from "@/lib/companies/company-permissions";
 import { Button } from "@/components/ui/button";
 import { CompanyModal } from "@/components/dashboard/company-modal";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import {
   useCompanies,
   useDeleteCompany,
+  useRetryTenantProvisioning,
 } from "@/hooks/use-companies";
-import type { Company, CompanyStatus } from "@/lib/types";
+import type { Company, CompanyStatus, TenantProvisioningStatus } from "@/lib/types";
 
 const PAGE_SIZE = 8;
+
+function ProvisioningBadge({ status }: { status?: TenantProvisioningStatus }) {
+  const { t } = useTranslation("common");
+  if (!status || status === "completed") return null;
+
+  const classes =
+    status === "failed"
+      ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
+      : status === "provisioning"
+        ? "border-sky-500/30 bg-sky-500/10 text-sky-400"
+        : "border-amber-500/30 bg-amber-500/10 text-amber-400";
+
+  return (
+    <span className={`text-xs font-mono px-2.5 py-1 rounded-full border ${classes}`}>
+      {t(`companies.provisioning.${status}`)}
+    </span>
+  );
+}
 
 function StatusBadge({ status }: { status: CompanyStatus }) {
   const { t } = useTranslation("common");
@@ -43,9 +69,14 @@ function StatusBadge({ status }: { status: CompanyStatus }) {
 
 export function CompaniesPage() {
   const { t } = useTranslation("common");
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, hasPermission } = useAuthUser();
+  const canView = canViewCompanies(hasPermission, isSuperAdmin);
+  const canCreate = canCreateCompanies(hasPermission, isSuperAdmin);
+  const canEdit = canEditCompanies(hasPermission, isSuperAdmin);
+  const canDelete = canDeleteCompanies(hasPermission, isSuperAdmin);
   const { data: companies = [], isLoading, error } = useCompanies();
   const deleteCompany = useDeleteCompany();
+  const retryProvisioning = useRetryTenantProvisioning();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | CompanyStatus>("all");
@@ -83,7 +114,7 @@ export function CompaniesPage() {
   const trialCount = companies.filter((company) => company.status === "Trial").length;
   const suspendedCount = companies.filter((company) => company.status === "Suspended").length;
 
-  if (!isSuperAdmin) {
+  if (!canView) {
     return (
       <div className="space-y-6">
         <div>
@@ -101,12 +132,14 @@ export function CompaniesPage() {
           <h1 className="text-2xl font-bold">{t("companies.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("companies.subtitle")}</p>
         </div>
-        <Button
-          onClick={() => setModal({ open: true, company: null })}
-          className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary gap-2"
-        >
-          <Plus className="w-4 h-4" /> {t("buttons.addCompany")}
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={() => setModal({ open: true, company: null })}
+            className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary gap-2"
+          >
+            <Plus className="w-4 h-4" /> {t("buttons.addCompany")}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -242,24 +275,51 @@ export function CompaniesPage() {
                     )}
                   </div>
                   <StatusBadge status={company.status} />
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-8 h-8"
-                      onClick={() => setModal({ open: true, company })}
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-8 h-8"
-                      onClick={() => setPendingDelete(company)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-                    </Button>
-                  </div>
+                  <ProvisioningBadge status={company.tenant_provisioning_status} />
+                  {(canEdit || canDelete) && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {canEdit && company.tenant_provisioning_status === "failed" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8"
+                          disabled={retryProvisioning.isPending}
+                          title={t("companies.provisioning.retry")}
+                          onClick={() =>
+                            retryProvisioning.mutate(company.id, {
+                              onError: (retryError) => {
+                                console.error(retryError.message);
+                              },
+                            })
+                          }
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 text-amber-400 ${retryProvisioning.isPending ? "animate-spin" : ""}`}
+                          />
+                        </Button>
+                      )}
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8"
+                          onClick={() => setModal({ open: true, company })}
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8"
+                          onClick={() => setPendingDelete(company)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

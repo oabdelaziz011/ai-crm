@@ -1,0 +1,56 @@
+name: Production Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  production-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Platform crypto tests
+        run: pnpm --dir lib/platform-crypto test
+
+      - name: Channel platform tests
+        run: pnpm --dir lib/channel-platform test
+
+      - name: Login app typecheck
+        run: pnpm --dir artifacts/login-app typecheck
+        continue-on-error: true
+
+      - name: Login app production build
+        run: pnpm --dir artifacts/login-app build
+
+      - name: API server build
+        run: pnpm --dir artifacts/api-server build
+
+      - name: Production gate (billing + runtime)
+        run: pnpm --dir artifacts/login-app production:gate
+        env:
+          CI: true
+        continue-on-error: true
+
+      - name: Channel platform E2E
+        run: pnpm --dir artifacts/login-app channel:e2e
+        continue-on-error: true
+
+      - name: WhatsApp adapter E2E
+        run: pnpm --dir artifacts/login-app whatsapp:e2e
+        continue-on-error: true

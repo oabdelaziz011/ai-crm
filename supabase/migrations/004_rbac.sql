@@ -45,6 +45,41 @@ create table if not exists public.user_permissions (
   primary key (user_id, permission_id)
 );
 
+alter table public.roles
+  add column if not exists company_id uuid,
+  add column if not exists name text,
+  add column if not exists description text,
+  add column if not exists is_system boolean default false,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+alter table public.permissions
+  add column if not exists code text,
+  add column if not exists category text,
+  add column if not exists module text,
+  add column if not exists action text,
+  add column if not exists description text,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+alter table public.user_roles
+  add column if not exists created_at timestamptz default now();
+
+alter table public.role_permissions
+  add column if not exists created_at timestamptz default now();
+
+alter table public.user_permissions
+  add column if not exists created_at timestamptz default now();
+
+update public.roles set is_system = false where is_system is null;
+update public.roles set created_at = now() where created_at is null;
+update public.roles set updated_at = now() where updated_at is null;
+update public.permissions set created_at = now() where created_at is null;
+update public.permissions set updated_at = now() where updated_at is null;
+update public.user_roles set created_at = now() where created_at is null;
+update public.role_permissions set created_at = now() where created_at is null;
+update public.user_permissions set created_at = now() where created_at is null;
+
 create index if not exists idx_roles_company_id on public.roles(company_id);
 create index if not exists idx_roles_name on public.roles(name);
 create index if not exists idx_permissions_code on public.permissions(code);

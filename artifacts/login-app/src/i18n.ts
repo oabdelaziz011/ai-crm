@@ -3,17 +3,15 @@ import { initReactI18next } from "react-i18next";
 
 import enCommon from "@/locales/en/common.json";
 import arCommon from "@/locales/ar/common.json";
+import enBillingSettingsFields from "@/locales/en/billing-settings-fields.json";
+import arBillingSettingsFields from "@/locales/ar/billing-settings-fields.json";
+import {
+  cacheAppLanguage,
+  isAppLanguage,
+  resolveBootstrapAppLanguage,
+} from "@/lib/i18n/resolve-app-language";
 
-const LANGUAGE_STORAGE_KEY = "app.language";
 const RTL_LANGUAGES = new Set(["ar"]);
-
-function getInitialLanguage() {
-  if (typeof window === "undefined") {
-    return "en";
-  }
-  const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  return savedLanguage === "ar" || savedLanguage === "en" ? savedLanguage : "en";
-}
 
 function applyDocumentLanguage(language: string) {
   if (typeof document === "undefined") {
@@ -28,10 +26,78 @@ function applyDocumentLanguage(language: string) {
 
 void i18n.use(initReactI18next).init({
   resources: {
-    en: { common: enCommon },
-    ar: { common: arCommon },
+    en: {
+      common: {
+        ...enCommon,
+        billing: {
+          ...enCommon.billing,
+          settings: {
+            ...enCommon.billing.settings,
+            ...enBillingSettingsFields,
+            validation: {
+              ...enCommon.billing.settings.validation,
+              ...enBillingSettingsFields.validation,
+            },
+          },
+          payment: {
+            ...enCommon.billing.payment,
+            methodLabel: "Payment method",
+            noMethods: "No payment methods are enabled in billing settings.",
+            providerMode: "Provider mode",
+            providerCode: "Provider",
+            autoRenewal: "Auto-renewal",
+          },
+          platform: {
+            ...enCommon.billing.platform,
+            providerHealth: {
+              ...enCommon.billing.platform.providerHealth,
+              activeMode: "Active payment mode",
+              activeProvider: "Active provider",
+              activeRoute: "Active route",
+            },
+          },
+        },
+      },
+    },
+    ar: {
+      common: {
+        ...arCommon,
+        billing: {
+          ...arCommon.billing,
+          settings: {
+            ...arCommon.billing.settings,
+            ...arBillingSettingsFields,
+            validation: {
+              ...arCommon.billing.settings.validation,
+              ...arBillingSettingsFields.validation,
+            },
+            tabs: {
+              ...arCommon.billing.settings.tabs,
+              webhooks: "الويبhook",
+            },
+          },
+          payment: {
+            ...arCommon.billing.payment,
+            methodLabel: "طريقة الدفع",
+            noMethods: "لا توجد طرق دفع مفعّلة في إعدادات الفوترة.",
+            providerMode: "وضع المزود",
+            providerCode: "المزود",
+            autoRenewal: "التجديد التلقائي",
+          },
+          platform: {
+            ...arCommon.billing.platform,
+            providerHealth: {
+              ...arCommon.billing.platform.providerHealth,
+              activeMode: "وضع الدفع النشط",
+              activeProvider: "المزود النشط",
+              activeRoute: "المسار النشط",
+            },
+          },
+        },
+      },
+    },
   },
-  lng: getInitialLanguage(),
+  lng: resolveBootstrapAppLanguage(),
   fallbackLng: "en",
   supportedLngs: ["en", "ar"],
   defaultNS: "common",
@@ -44,8 +110,8 @@ void i18n.use(initReactI18next).init({
 applyDocumentLanguage(i18n.resolvedLanguage ?? i18n.language ?? "en");
 
 i18n.on("languageChanged", (language) => {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  if (isAppLanguage(language)) {
+    cacheAppLanguage(language);
   }
   applyDocumentLanguage(language);
 });

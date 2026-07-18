@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/platform-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --import tsx/esm src/embedding-worker.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "@workspace/embedding-platform": "file:../../lib/embedding-platform",
+    "@workspace/platform-observability": "file:../../lib/platform-observability"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsx": "^4.21.0"
+  }
+}

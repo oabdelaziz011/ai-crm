@@ -1,0 +1,22 @@
+{
+  "name": "@workspace/knowledge-platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx/esm --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "pdfjs-dist": "^6.1.200"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "pdf-lib": "^1.17.1",
+    "tsx": "^4.21.0"
+  }
+}

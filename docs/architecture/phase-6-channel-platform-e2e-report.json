@@ -1,0 +1,139 @@
+{
+  "passed": 9,
+  "failed": 0,
+  "total": 9,
+  "results": [
+    {
+      "scenario": "1. Incoming channel event routed",
+      "pass": true,
+      "detail": "inboundEventId=d01f3f25-de7a-40f2-817d-e4fd310461ff",
+      "evidence": {
+        "routeResponse": {
+          "inboundEventId": "d01f3f25-de7a-40f2-817d-e4fd310461ff",
+          "conversationId": "51cc38f5-2d37-47d6-8a95-17c06021ee60",
+          "channelSessionId": "08fced76-0633-454c-9f6c-62de16e0e22c",
+          "incomingMessageId": "",
+          "runtimeExecutionId": "540bd2dc-f5e1-4c06-8fa7-e0215a3d1133",
+          "outboundDeliveryId": "bd5039a7-2ed1-4e78-a858-fb3e5c82a752",
+          "responseContent": "Enterprise MFA policy requires multi-factor authentication for all users accessing sensitive systems."
+        }
+      }
+    },
+    {
+      "scenario": "2. Conversation session resolved",
+      "pass": true,
+      "detail": "conversationId=51cc38f5-2d37-47d6-8a95-17c06021ee60, sessionId=08fced76-0633-454c-9f6c-62de16e0e22c"
+    },
+    {
+      "scenario": "3. Runtime execution triggered",
+      "pass": true,
+      "detail": "executionId=540bd2dc-f5e1-4c06-8fa7-e0215a3d1133",
+      "evidence": {
+        "responsePreview": "Enterprise MFA policy requires multi-factor authentication for all users accessing sensitive systems."
+      }
+    },
+    {
+      "scenario": "4. Outbound channel response dispatched",
+      "pass": true,
+      "detail": "deliveryId=bd5039a7-2ed1-4e78-a858-fb3e5c82a752"
+    },
+    {
+      "scenario": "5. Inbound event processed",
+      "pass": true,
+      "detail": "status=processed",
+      "evidence": {
+        "inboundEvent": {
+          "id": "d01f3f25-de7a-40f2-817d-e4fd310461ff",
+          "company_id": "d0000010-0001-4001-8001-000000000002",
+          "company_channel_id": "0d0871e3-7d7f-4599-b698-b3d307b9ae54",
+          "channel_key": "web_chat",
+          "idempotency_key": "633f0de0-a450-4811-99ff-4caf7f8b7ccd",
+          "external_thread_id": "51cc38f5-2d37-47d6-8a95-17c06021ee60",
+          "external_message_id": null,
+          "sender_external_id": null,
+          "processing_status": "processed",
+          "conversation_id": "51cc38f5-2d37-47d6-8a95-17c06021ee60",
+          "channel_session_id": "08fced76-0633-454c-9f6c-62de16e0e22c",
+          "incoming_message_id": null,
+          "runtime_execution_id": "540bd2dc-f5e1-4c06-8fa7-e0215a3d1133",
+          "payload": {
+            "text": "What is the enterprise MFA policy?",
+            "externalThreadId": "51cc38f5-2d37-47d6-8a95-17c06021ee60"
+          },
+          "error_message": null,
+          "received_at": "2026-07-18T04:55:39.80599+00:00",
+          "processed_at": "2026-07-18T04:55:48.787+00:00",
+          "created_at": "2026-07-18T04:55:39.80599+00:00",
+          "updated_at": "2026-07-18T04:55:49.222669+00:00"
+        }
+      }
+    },
+    {
+      "scenario": "6. Delivery status tracked",
+      "pass": true,
+      "detail": "status=sent, externalMessageId=a6350a42-16ec-4f17-bd5c-b277430818e6",
+      "evidence": {
+        "deliveryEvent": {
+          "id": "bd5039a7-2ed1-4e78-a858-fb3e5c82a752",
+          "company_id": "d0000010-0001-4001-8001-000000000002",
+          "company_channel_id": "0d0871e3-7d7f-4599-b698-b3d307b9ae54",
+          "channel_key": "web_chat",
+          "conversation_id": "51cc38f5-2d37-47d6-8a95-17c06021ee60",
+          "channel_session_id": "08fced76-0633-454c-9f6c-62de16e0e22c",
+          "outbound_message_id": null,
+          "external_thread_id": "51cc38f5-2d37-47d6-8a95-17c06021ee60",
+          "external_message_id": "a6350a42-16ec-4f17-bd5c-b277430818e6",
+          "delivery_status": "sent",
+          "attempt_count": 1,
+          "payload": {
+            "text": "Enterprise MFA policy requires multi-factor authentication for all users accessing sensitive systems.",
+            "metadata": {
+              "correlationId": "d01f3f25-de7a-40f2-817d-e4fd310461ff",
+              "runtimeExecutionId": "540bd2dc-f5e1-4c06-8fa7-e0215a3d1133"
+            },
+            "attachments": []
+          },
+          "provider_response": {
+            "payload": {
+              "text": "Enterprise MFA policy requires multi-factor authentication for all users accessing sensitive systems.",
+              "metadata": {
+                "correlationId": "d01f3f25-de7a-40f2-817d-e4fd310461ff",
+                "runtimeExecutionId": "540bd2dc-f5e1-4c06-8fa7-e0215a3d1133"
+              },
+              "channelKey": "web_chat",
+              "attachments": [],
+              "externalThreadId": "51cc38f5-2d37-47d6-8a95-17c06021ee60"
+            },
+            "delivered": true,
+            "channelKey": "web_chat"
+          },
+          "error_message": null,
+          "sent_at": "2026-07-18T04:55:48.507+00:00",
+          "delivered_at": null,
+          "read_at": null,
+          "failed_at": null,
+          "created_at": "2026-07-18T04:55:48.823084+00:00",
+          "updated_at": "2026-07-18T04:55:48.956866+00:00"
+        }
+      }
+    },
+    {
+      "scenario": "7. Channel session updated",
+      "pass": true,
+      "detail": "lastInbound=2026-07-18T04:55:39.914+00:00, lastOutbound=2026-07-18T04:55:48.641+00:00"
+    },
+    {
+      "scenario": "8. Conversation messages persisted via runtime",
+      "pass": true,
+      "detail": "incoming=true, outgoing=true, count=2"
+    },
+    {
+      "scenario": "9. Streaming through channel route",
+      "pass": true,
+      "detail": "chunks=1",
+      "evidence": {
+        "streamedPreview": "Enterprise MFA policy requires multi-factor authentication for all users accessing sensitive systems."
+      }
+    }
+  ]
+}

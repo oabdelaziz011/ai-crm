@@ -14,6 +14,60 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
+alter table public.notifications
+  add column if not exists company_id uuid,
+  add column if not exists user_id uuid,
+  add column if not exists title text,
+  add column if not exists message text,
+  add column if not exists type text,
+  add column if not exists category text,
+  add column if not exists is_read boolean default false,
+  add column if not exists created_at timestamptz default now();
+
+update public.notifications
+set is_read = false
+where is_read is null;
+
+update public.notifications
+set created_at = now()
+where created_at is null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'notifications_company_id_fkey'
+      and conrelid = 'public.notifications'::regclass
+  ) then
+    alter table public.notifications
+      add constraint notifications_company_id_fkey
+      foreign key (company_id)
+      references public.companies(id)
+      on delete cascade;
+  end if;
+exception
+  when others then null;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'notifications_user_id_fkey'
+      and conrelid = 'public.notifications'::regclass
+  ) then
+    alter table public.notifications
+      add constraint notifications_user_id_fkey
+      foreign key (user_id)
+      references auth.users(id)
+      on delete set null;
+  end if;
+exception
+  when others then null;
+end $$;
+
 create index if not exists idx_notifications_company_created_at
   on public.notifications(company_id, created_at desc);
 

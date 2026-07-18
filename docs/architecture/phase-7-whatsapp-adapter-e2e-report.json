@@ -1,0 +1,57 @@
+{
+  "passed": 9,
+  "failed": 0,
+  "total": 9,
+  "routeMs": 10275.3749,
+  "totalMs": 14853.2011,
+  "results": [
+    {
+      "scenario": "1. Webhook verification",
+      "pass": true,
+      "detail": "challenge=e2e-challenge-token"
+    },
+    {
+      "scenario": "2. Incoming WhatsApp message routed",
+      "pass": true,
+      "detail": "inboundEventId=050ccdd1-db84-4cb0-90d3-69309ee1ab20"
+    },
+    {
+      "scenario": "3. Conversation session resolved",
+      "pass": true,
+      "detail": "conversationId=ffd78c45-a383-465c-b16d-0f9f47761927"
+    },
+    {
+      "scenario": "4. Runtime execution triggered",
+      "pass": true,
+      "detail": "executionId=b4b916ff-9fb6-4c77-bda0-80833cc8da3e",
+      "evidence": {
+        "responsePreview": "Thanks for your WhatsApp message. Enterprise MFA policy requires multi-factor authentication."
+      }
+    },
+    {
+      "scenario": "5. Outbound WhatsApp delivery",
+      "pass": true,
+      "detail": "deliveryId=2281c538-2178-420c-9f47-aba6c3f43a59, graphCalls=1"
+    },
+    {
+      "scenario": "6. Delivery status update",
+      "pass": true,
+      "detail": "status=delivered"
+    },
+    {
+      "scenario": "7. Read receipt tracked",
+      "pass": true,
+      "detail": "status=read"
+    },
+    {
+      "scenario": "8. Media inbound handling",
+      "pass": true,
+      "detail": "inboundEventId=a4ae751d-8a57-4ed2-a7cc-72db3c2d7ce7"
+    },
+    {
+      "scenario": "9. Error handling for empty webhook",
+      "pass": true,
+      "detail": "WhatsApp webhook payload did not contain routable events."
+    }
+  ]
+}

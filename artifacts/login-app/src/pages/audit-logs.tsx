@@ -1,61 +1,95 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
-import { Clock3, Filter, Search, ShieldCheck } from "lucide-react";
+import { Eye, Filter, Search, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAuthUser } from "@/hooks/use-rbac";
-import { useAuditLogs } from "@/hooks/use-audit-logs";
+import { AuditLogDetailsDialog } from "@/components/audit-logs/audit-log-details-dialog";
+import { AuditOperationBadge } from "@/components/audit-logs/audit-operation-badge";
+import { AuditStatusBadge } from "@/components/audit-logs/audit-status-badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import type { AuditAction } from "@/lib/types";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useAuditLogs } from "@/hooks/use-audit-logs";
+import { useAuthUser } from "@/hooks/use-rbac";
+import { AUDIT_OPERATIONS } from "@/lib/audit-log/constants";
+import {
+  buildAuditRowViews,
+  buildFilterOptions,
+  filterAuditRowViews,
+  type AuditLogFilters,
+} from "@/lib/audit-log/normalize";
+import { formatAuditTimestamp, formatIpDisplay, translateRoleName } from "@/lib/audit-log/presenter";
 
 const PAGE_SIZE = 12;
 
-function ActionBadge({ action }: { action: AuditAction }) {
-  const classes =
-    action === "CREATE"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-      : action === "UPDATE"
-        ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-        : "border-rose-500/30 bg-rose-500/10 text-rose-400";
-
-  return <span className={`text-xs font-mono px-2.5 py-1 rounded-full border ${classes}`}>{action}</span>;
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: number;
+  icon: typeof ShieldCheck;
+  accent?: string;
+}) {
+  return (
+    <div className="bg-card/40 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <Icon className={`w-4 h-4 ${accent ?? "text-primary"}`} />
+      </div>
+      <p className="text-2xl font-bold tracking-tight mt-3">{value}</p>
+    </div>
+  );
 }
 
 export function AuditLogsPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { isSuperAdmin, hasPermission } = useAuthUser();
   const canViewAuditLogs = isSuperAdmin || hasPermission("audit_logs.view");
-
   const { data: logs = [], isLoading, error } = useAuditLogs(canViewAuditLogs);
 
   const [search, setSearch] = useState("");
-  const [actionFilter, setActionFilter] = useState<"all" | AuditAction>("all");
-  const [entityFilter, setEntityFilter] = useState("all");
+  const [operationFilter, setOperationFilter] = useState<AuditLogFilters["operation"]>("all");
+  const [statusFilter, setStatusFilter] = useState<AuditLogFilters["status"]>("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [userFilter, setUserFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
-  const entityOptions = useMemo(
-    () => Array.from(new Set(logs.map((entry) => entry.entity).filter(Boolean))).sort(),
-    [logs],
+  const rowViews = useMemo(() => buildAuditRowViews(logs, t), [logs, t]);
+
+  const filterOptions = useMemo(() => buildFilterOptions(rowViews), [rowViews]);
+
+  const filters = useMemo<AuditLogFilters>(
+    () => ({
+      search,
+      operation: operationFilter,
+      status: statusFilter,
+      companyId: companyFilter,
+      userId: userFilter,
+      roleKey: roleFilter,
+      dateFrom,
+      dateTo,
+    }),
+    [search, operationFilter, statusFilter, companyFilter, userFilter, roleFilter, dateFrom, dateTo],
   );
 
-  const filtered = useMemo(() => {
-    return logs.filter((entry) => {
-      const haystack = [
-        entry.entity,
-        entry.entity_id ?? "",
-        entry.profile?.full_name ?? "",
-        entry.user_id ?? "",
-        entry.company?.name ?? "",
-        entry.ip_address ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
+  const filtered = useMemo(() => filterAuditRowViews(rowViews, filters), [rowViews, filters]);
 
-      const matchesSearch = haystack.includes(search.toLowerCase());
-      const matchesAction = actionFilter === "all" || entry.action === actionFilter;
-      const matchesEntity = entityFilter === "all" || entry.entity === entityFilter;
-      return matchesSearch && matchesAction && matchesEntity;
-    });
-  }, [logs, search, actionFilter, entityFilter]);
+  const selectedLog = useMemo(
+    () => rowViews.find((row) => row.log.id === selectedLogId)?.log ?? null,
+    [rowViews, selectedLogId],
+  );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -80,34 +114,25 @@ export function AuditLogsPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card/40 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t("auditLogs.stats.total")}</span>
-            <ShieldCheck className="w-4 h-4 text-primary" />
-          </div>
-          <p className="text-2xl font-bold tracking-tight mt-3">{logs.length}</p>
-        </div>
-        <div className="bg-card/40 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t("auditLogs.stats.create")}</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-2xl font-bold tracking-tight mt-3">{logs.filter((entry) => entry.action === "CREATE").length}</p>
-        </div>
-        <div className="bg-card/40 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t("auditLogs.stats.update")}</span>
-            <ShieldCheck className="w-4 h-4 text-amber-400" />
-          </div>
-          <p className="text-2xl font-bold tracking-tight mt-3">{logs.filter((entry) => entry.action === "UPDATE").length}</p>
-        </div>
-        <div className="bg-card/40 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t("auditLogs.stats.delete")}</span>
-            <ShieldCheck className="w-4 h-4 text-rose-400" />
-          </div>
-          <p className="text-2xl font-bold tracking-tight mt-3">{logs.filter((entry) => entry.action === "DELETE").length}</p>
-        </div>
+        <StatCard label={t("auditLogs.stats.total")} value={logs.length} icon={ShieldCheck} />
+        <StatCard
+          label={t("auditLogs.stats.create")}
+          value={rowViews.filter((row) => row.operation === "CREATE").length}
+          icon={ShieldCheck}
+          accent="text-emerald-400"
+        />
+        <StatCard
+          label={t("auditLogs.stats.update")}
+          value={rowViews.filter((row) => row.operation === "UPDATE").length}
+          icon={ShieldCheck}
+          accent="text-amber-400"
+        />
+        <StatCard
+          label={t("auditLogs.stats.delete")}
+          value={rowViews.filter((row) => row.operation === "DELETE").length}
+          icon={ShieldCheck}
+          accent="text-rose-400"
+        />
       </div>
 
       {error && (
@@ -117,53 +142,127 @@ export function AuditLogsPage() {
       )}
 
       <div className="bg-card/40 border border-white/5 rounded-2xl backdrop-blur-sm overflow-hidden">
-        <div className="p-5 border-b border-white/5 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[220px] flex items-center gap-2 bg-black/30 border border-white/5 rounded-xl px-4 py-2.5">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => {
-                setPage(1);
-                setSearch(event.target.value);
-              }}
-              placeholder={t("auditLogs.searchPlaceholder")}
-              className="bg-transparent text-sm outline-none flex-1 placeholder:text-muted-foreground"
-            />
+        <div className="p-5 border-b border-white/5 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[240px] flex items-center gap-2 bg-black/30 border border-white/5 rounded-xl px-4 py-2.5">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setPage(1);
+                  setSearch(event.target.value);
+                }}
+                placeholder={t("auditLogs.searchPlaceholder")}
+                className="bg-transparent text-sm outline-none flex-1 placeholder:text-muted-foreground"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 min-w-[150px]">
-            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-            <select
-              value={actionFilter}
-              onChange={(event) => {
-                setPage(1);
-                setActionFilter(event.target.value as "all" | AuditAction);
-              }}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2 text-xs outline-none focus:border-primary/40 transition-colors"
-            >
-              <option value="all">{t("auditLogs.filters.allActions")}</option>
-              <option value="CREATE">CREATE</option>
-              <option value="UPDATE">UPDATE</option>
-              <option value="DELETE">DELETE</option>
-            </select>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Filter className="w-3.5 h-3.5" />
+            <span>{t("auditLogs.filters.title")}</span>
           </div>
 
-          <div className="min-w-[180px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <select
-              value={entityFilter}
+              value={operationFilter}
               onChange={(event) => {
                 setPage(1);
-                setEntityFilter(event.target.value);
+                setOperationFilter(event.target.value as AuditLogFilters["operation"]);
               }}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2 text-xs outline-none focus:border-primary/40 transition-colors"
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
             >
-              <option value="all">{t("auditLogs.filters.allEntities")}</option>
-              {entityOptions.map((entity) => (
-                <option key={entity} value={entity}>
-                  {entity}
+              <option value="all">{t("auditLogs.filters.allOperations")}</option>
+              {AUDIT_OPERATIONS.map((operation) => (
+                <option key={operation} value={operation}>
+                  {t(`auditLogs.operations.${operation}`)}
                 </option>
               ))}
             </select>
+
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                setPage(1);
+                setStatusFilter(event.target.value as AuditLogFilters["status"]);
+              }}
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
+            >
+              <option value="all">{t("auditLogs.filters.allStatuses")}</option>
+              <option value="success">{t("auditLogs.statuses.success")}</option>
+              <option value="failed">{t("auditLogs.statuses.failed")}</option>
+              <option value="warning">{t("auditLogs.statuses.warning")}</option>
+            </select>
+
+            <select
+              value={companyFilter}
+              onChange={(event) => {
+                setPage(1);
+                setCompanyFilter(event.target.value);
+              }}
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
+            >
+              <option value="all">{t("auditLogs.filters.allCompanies")}</option>
+              {filterOptions.companies.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={roleFilter}
+              onChange={(event) => {
+                setPage(1);
+                setRoleFilter(event.target.value);
+              }}
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
+            >
+              <option value="all">{t("auditLogs.filters.allRoles")}</option>
+              {filterOptions.roles.map(([roleKey, roleName]) => (
+                <option key={roleKey} value={roleKey}>
+                  {translateRoleName(roleName, t)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={userFilter}
+              onChange={(event) => {
+                setPage(1);
+                setUserFilter(event.target.value);
+              }}
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
+            >
+              <option value="all">{t("auditLogs.filters.allUsers")}</option>
+              {filterOptions.users.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => {
+                setPage(1);
+                setDateFrom(event.target.value);
+              }}
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
+              aria-label={t("auditLogs.filters.dateFrom")}
+            />
+
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => {
+                setPage(1);
+                setDateTo(event.target.value);
+              }}
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-xs outline-none focus:border-primary/40 transition-colors"
+              aria-label={t("auditLogs.filters.dateTo")}
+            />
           </div>
         </div>
 
@@ -184,39 +283,93 @@ export function AuditLogsPage() {
           <div className="py-16 text-center text-muted-foreground text-sm">{t("auditLogs.empty")}</div>
         ) : (
           <>
-            <div className="divide-y divide-white/5">
-              {paginated.map((entry) => (
-                <div key={entry.id} className="grid grid-cols-1 lg:grid-cols-12 px-6 py-4 hover:bg-white/[0.02] transition-colors gap-3 lg:items-center">
-                  <div className="lg:col-span-2 min-w-0">
-                    <p className="text-sm font-medium truncate">{entry.entity}</p>
-                    <p className="text-xs text-muted-foreground truncate">{entry.entity_id ?? "-"}</p>
-                  </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/5 hover:bg-transparent">
+                    <TableHead>{t("auditLogs.columns.operation")}</TableHead>
+                    <TableHead>{t("auditLogs.columns.status")}</TableHead>
+                    <TableHead className="min-w-[220px]">{t("auditLogs.columns.details")}</TableHead>
+                    <TableHead className="min-w-[180px]">{t("auditLogs.columns.user")}</TableHead>
+                    <TableHead>{t("auditLogs.columns.role")}</TableHead>
+                    <TableHead>{t("auditLogs.columns.company")}</TableHead>
+                    <TableHead>{t("auditLogs.columns.ip")}</TableHead>
+                    <TableHead className="min-w-[140px]">{t("auditLogs.columns.time")}</TableHead>
+                    <TableHead className="text-end">{t("auditLogs.columns.view")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginated.map((row) => {
+                    const timestamp = formatAuditTimestamp(row.log.created_at, i18n.language, t);
 
-                  <div className="lg:col-span-2">
-                    <ActionBadge action={entry.action} />
-                  </div>
-
-                  <div className="lg:col-span-2 min-w-0">
-                    <p className="text-xs text-muted-foreground">{t("auditLogs.columns.user")}</p>
-                    <p className="text-sm truncate">{entry.profile?.full_name ?? entry.user_id ?? "-"}</p>
-                  </div>
-
-                  <div className="lg:col-span-2 min-w-0">
-                    <p className="text-xs text-muted-foreground">{t("auditLogs.columns.company")}</p>
-                    <p className="text-sm truncate">{entry.company?.name ?? "-"}</p>
-                  </div>
-
-                  <div className="lg:col-span-2 min-w-0">
-                    <p className="text-xs text-muted-foreground">{t("auditLogs.columns.ip")}</p>
-                    <p className="text-sm font-mono truncate">{entry.ip_address ?? "-"}</p>
-                  </div>
-
-                  <div className="lg:col-span-2 min-w-0 text-xs text-muted-foreground flex items-center gap-2">
-                    <Clock3 className="w-3.5 h-3.5" />
-                    <span dir="ltr">{format(new Date(entry.created_at), "MMM dd, yyyy HH:mm")}</span>
-                  </div>
-                </div>
-              ))}
+                    return (
+                      <TableRow key={row.log.id} className="border-white/5 hover:bg-white/[0.02]">
+                        <TableCell>
+                          <AuditOperationBadge operation={row.operation} />
+                        </TableCell>
+                        <TableCell>
+                          <AuditStatusBadge status={row.status} />
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm leading-relaxed">{row.description}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar className="w-9 h-9 border border-white/10">
+                              <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+                                {row.userName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{row.userName}</p>
+                              {row.userEmail && (
+                                <p className="text-xs text-muted-foreground truncate">{row.userEmail}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex text-xs px-2.5 py-1 rounded-full border border-white/10 bg-white/5">
+                            {translateRoleName(row.log.actorRoleName, t)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">
+                            {row.companyName ?? t("auditLogs.fallbacks.unavailable")}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-mono" dir="ltr">
+                            {formatIpDisplay(row.log.ip_address, t)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            <p className="text-sm">{timestamp.relative}</p>
+                            <p className="text-xs text-muted-foreground" dir="ltr">
+                              {timestamp.absolute}
+                            </p>
+                            <p className="text-xs text-muted-foreground" dir="ltr">
+                              {timestamp.time}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-white/10 gap-2"
+                            onClick={() => setSelectedLogId(row.log.id)}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            {t("auditLogs.columns.view")}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
 
             <div className="p-4 border-t border-white/5 flex items-center justify-between gap-3">
@@ -251,6 +404,15 @@ export function AuditLogsPage() {
           </>
         )}
       </div>
+
+      <AuditLogDetailsDialog
+        log={selectedLog}
+        open={selectedLog !== null}
+        showAdvanced={isSuperAdmin}
+        onOpenChange={(open) => {
+          if (!open) setSelectedLogId(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,0 +1,109 @@
+import { SECTION_SEPARATOR } from "../constants.js";
+import type { PromptSectionKey } from "../constants.js";
+import type { ResponseContractBuilder } from "../builders/prompt-builders.js";
+import type {
+  BuiltPromptSection,
+  BuilderSectionMap,
+  OutputContract,
+  PromptSectionConfig,
+  PromptTemplateVersionRecord,
+} from "../types.js";
+
+export function applyTemplateSectionOverrides(
+  builtSections: BuilderSectionMap,
+  version: PromptTemplateVersionRecord,
+): BuilderSectionMap {
+  const merged: BuilderSectionMap = { ...builtSections };
+
+  for (const [key, config] of Object.entries(version.sections) as Array<[PromptSectionKey, PromptSectionConfig]>) {
+    if (config?.enabled === false) {
+      delete merged[key];
+      continue;
+    }
+
+    const existing = merged[key];
+    const prefix = config.content?.trim() ?? "";
+    if (!existing && !prefix) continue;
+
+    merged[key] = {
+      key,
+      title: config.title ?? existing?.title ?? key,
+      content: joinSectionContent(prefix, existing?.content ?? ""),
+    };
+  }
+
+  return merged;
+}
+
+function joinSectionContent(prefix: string, dynamicContent: string): string {
+  if (prefix && dynamicContent) return `${prefix}\n\n${dynamicContent}`;
+  return prefix || dynamicContent;
+}
+
+export function orderPromptSections(
+  sectionOrder: PromptSectionKey[],
+  sections: BuilderSectionMap,
+  responseContractBuilder: ResponseContractBuilder,
+  version: PromptTemplateVersionRecord,
+  formattingRules?: string[],
+): BuiltPromptSection[] {
+  const ordered: BuiltPromptSection[] = [];
+
+  for (const key of sectionOrder) {
+    const section = sections[key];
+    if (section) {
+      ordered.push(section);
+    }
+  }
+
+  if (!ordered.some((section) => section.key === "formatting_rules") && formattingRules?.length) {
+    ordered.push(responseContractBuilder.buildFormattingSection(formattingRules));
+  }
+
+  if (!ordered.some((section) => section.key === "output_contract")) {
+    const contractConfig = version.sections.output_contract;
+    if (contractConfig?.enabled !== false) {
+      ordered.push(
+        responseContractBuilder.buildOutputContractSection(
+          version.output_contract.instructions,
+          version.output_contract.schema,
+        ),
+      );
+    }
+  }
+
+  return ordered;
+}
+
+export function composeFinalPrompt(sections: BuiltPromptSection[]): string {
+  return sections
+    .map((section) => `## ${section.title}\n${section.content}`.trim())
+    .join(SECTION_SEPARATOR);
+}
+
+export function normalizeOutputContract(value: unknown): OutputContract {
+  if (typeof value === "object" && value !== null) {
+    const contract = value as Record<string, unknown>;
+    return {
+      format: contract.format === "text" ? "text" : "json",
+      instructions:
+        typeof contract.instructions === "string"
+          ? contract.instructions
+          : "Return output that conforms to the structured response contract.",
+      schema:
+        typeof contract.schema === "object" && contract.schema !== null
+          ? (contract.schema as Record<string, unknown>)
+          : undefined,
+    };
+  }
+
+  return {
+    format: "json",
+    instructions: "Return output that conforms to the structured response contract.",
+  };
+}
+
+export function parseSectionOrder(value: unknown): PromptSectionKey[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is PromptSectionKey => typeof item === "string");
+}

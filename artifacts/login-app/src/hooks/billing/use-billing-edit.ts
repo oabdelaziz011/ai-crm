@@ -1,0 +1,79 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { COMPANY_SUBSCRIPTIONS_KEY } from "@/hooks/billing/use-company-subscriptions";
+
+function invalidateBillingCompany(qc: ReturnType<typeof useQueryClient>, companyId: string) {
+  qc.invalidateQueries({ queryKey: COMPANY_SUBSCRIPTIONS_KEY });
+  qc.invalidateQueries({ queryKey: [...COMPANY_SUBSCRIPTIONS_KEY, companyId] });
+  qc.invalidateQueries({ queryKey: ["billing", "billing-contact", companyId] });
+  qc.invalidateQueries({ queryKey: ["billing", "subscription-events"] });
+  qc.invalidateQueries({ queryKey: ["billing", "audit-log"] });
+  qc.invalidateQueries({ queryKey: ["billing", "entitlements", companyId] });
+  qc.invalidateQueries({ queryKey: ["billing", "invoices", companyId] });
+  qc.invalidateQueries({ queryKey: ["billing", "payments", companyId] });
+  qc.invalidateQueries({ queryKey: ["billing", "receipts", companyId] });
+  qc.invalidateQueries({ queryKey: ["notifications", "list", companyId] });
+}
+
+export function useUpsertBillingContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { companyId: string; name: string; email: string; phone?: string | null }) => {
+      const { data, error } = await supabase.rpc("upsert_billing_contact", {
+        p_company_id: input.companyId,
+        p_name: input.name,
+        p_email: input.email,
+        p_phone: input.phone ?? null,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}
+
+export function useAssignSubscriptionPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { companyId: string; planId: string; billingCycle?: "monthly" | "yearly" | null }) => {
+      const { data, error } = await supabase.rpc("assign_subscription_plan", {
+        p_company_id: input.companyId,
+        p_plan_id: input.planId,
+        p_billing_cycle: input.billingCycle ?? null,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}
+
+export function useSuspendBillingSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { companyId: string; reason?: string | null }) => {
+      const { data, error } = await supabase.rpc("suspend_billing_subscription", {
+        p_company_id: input.companyId,
+        p_reason: input.reason ?? null,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}
+
+export function useRestoreBillingSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { companyId: string; reason?: string | null }) => {
+      const { data, error } = await supabase.rpc("restore_billing_subscription", {
+        p_company_id: input.companyId,
+        p_reason: input.reason ?? null,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}

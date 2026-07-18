@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
+import { hasPendingPasswordSetupIntent, RESET_PASSWORD_PATH } from "@/lib/auth-redirect";
 import { useTranslation } from "react-i18next";
 
 type LoginFormValues = {
@@ -22,6 +24,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading, signIn } = useAuth();
+  const authErrorMessage = useAuthErrorMessage();
 
   const loginSchema = z.object({
     email: z.string().email(t("auth.validation.email")),
@@ -29,7 +32,12 @@ export default function Login() {
   });
 
   useEffect(() => {
-    if (user) setLocation("/dashboard");
+    if (!user) return;
+    if (hasPendingPasswordSetupIntent()) {
+      setLocation(RESET_PASSWORD_PATH);
+      return;
+    }
+    setLocation("/dashboard");
   }, [user, setLocation]);
 
   const form = useForm<LoginFormValues>({
@@ -40,7 +48,7 @@ export default function Login() {
   const onSubmit = async (values: LoginFormValues) => {
     const { error } = await signIn(values.email, values.password);
     if (error) {
-      form.setError("root", { message: error });
+      form.setError("root", { message: authErrorMessage(error) });
     } else {
       toast({
         title: t("auth.login.successTitle"),
@@ -116,6 +124,12 @@ export default function Login() {
       </Form>
 
       <div className="mt-8 text-center text-sm text-muted-foreground">
+        <Link href="/forgot-password" className="text-primary hover:text-primary/80 transition-colors font-medium">
+          {t("auth.login.forgotPassword")}
+        </Link>
+      </div>
+
+      <div className="mt-4 text-center text-sm text-muted-foreground">
         {t("auth.login.noAccess")}{" "}
         <Link href="/register" className="text-primary hover:text-primary/80 transition-colors font-medium">
           {t("auth.login.requestEntry")}

@@ -14,6 +14,42 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
+alter table public.audit_logs
+  add column if not exists user_id uuid,
+  add column if not exists company_id uuid,
+  add column if not exists action text,
+  add column if not exists entity text,
+  add column if not exists entity_id text,
+  add column if not exists ip_address text,
+  add column if not exists metadata jsonb default '{}'::jsonb,
+  add column if not exists created_at timestamptz default now();
+
+update public.audit_logs
+set metadata = coalesce(metadata, '{}'::jsonb)
+where metadata is null;
+
+update public.audit_logs
+set created_at = now()
+where created_at is null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'audit_logs_company_id_fkey'
+      and conrelid = 'public.audit_logs'::regclass
+  ) then
+    alter table public.audit_logs
+      add constraint audit_logs_company_id_fkey
+      foreign key (company_id)
+      references public.companies(id)
+      on delete set null;
+  end if;
+exception
+  when others then null;
+end $$;
+
 create index if not exists idx_audit_logs_created_at on public.audit_logs(created_at desc);
 create index if not exists idx_audit_logs_company_id on public.audit_logs(company_id);
 create index if not exists idx_audit_logs_user_id on public.audit_logs(user_id);
@@ -78,88 +114,105 @@ begin
 
   v_entity_id := coalesce(new.id, old.id)::text;
 
-  v_company_id := case TG_TABLE_NAME
-    when 'profiles' then coalesce(new.company_id, old.company_id)
-    when 'companies' then coalesce(new.id, old.id)
-    when 'roles' then coalesce(new.company_id, old.company_id)
-    else public.current_company_id()
-  end;
+  if TG_TABLE_NAME = 'profiles' then
+    v_company_id := coalesce(new.company_id, old.company_id);
+  elsif TG_TABLE_NAME = 'companies' then
+    v_company_id := coalesce(new.id, old.id);
+  elsif TG_TABLE_NAME = 'roles' then
+    v_company_id := coalesce(new.company_id, old.company_id);
+  else
+    v_company_id := public.current_company_id();
+  end if;
 
-  v_metadata := case TG_TABLE_NAME
-    when 'customers' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('name', new.name, 'email', new.email)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('name', old.name, 'email', old.email),
-          'new', jsonb_build_object('name', new.name, 'email', new.email)
-        )
-        when 'DELETE' then jsonb_build_object('name', old.name, 'email', old.email)
-      end
-    when 'bookings' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('service', new.service, 'status', new.status)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('service', old.service, 'status', old.status),
-          'new', jsonb_build_object('service', new.service, 'status', new.status)
-        )
-        when 'DELETE' then jsonb_build_object('service', old.service, 'status', old.status)
-      end
-    when 'invoices' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('amount', new.amount, 'status', new.status)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('amount', old.amount, 'status', old.status),
-          'new', jsonb_build_object('amount', new.amount, 'status', new.status)
-        )
-        when 'DELETE' then jsonb_build_object('amount', old.amount, 'status', old.status)
-      end
-    when 'companies' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('name', new.name, 'status', new.status)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('name', old.name, 'status', old.status),
-          'new', jsonb_build_object('name', new.name, 'status', new.status)
-        )
-        when 'DELETE' then jsonb_build_object('name', old.name, 'status', old.status)
-      end
-    when 'profiles' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('email', new.email, 'company_id', new.company_id)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('email', old.email, 'company_id', old.company_id),
-          'new', jsonb_build_object('email', new.email, 'company_id', new.company_id)
-        )
-        when 'DELETE' then jsonb_build_object('email', old.email, 'company_id', old.company_id)
-      end
-    when 'roles' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('name', new.name, 'company_id', new.company_id)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('name', old.name, 'description', old.description),
-          'new', jsonb_build_object('name', new.name, 'description', new.description)
-        )
-        when 'DELETE' then jsonb_build_object('name', old.name, 'company_id', old.company_id)
-      end
-    when 'permissions' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('code', new.code)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('code', old.code),
-          'new', jsonb_build_object('code', new.code)
-        )
-        when 'DELETE' then jsonb_build_object('code', old.code)
-      end
-    when 'plans' then
-      case TG_OP
-        when 'INSERT' then jsonb_build_object('name', new.name, 'code', new.code)
-        when 'UPDATE' then jsonb_build_object(
-          'old', jsonb_build_object('name', old.name, 'code', old.code),
-          'new', jsonb_build_object('name', new.name, 'code', new.code)
-        )
-        when 'DELETE' then jsonb_build_object('name', old.name, 'code', old.code)
-      end
-    else '{}'::jsonb
-  end;
+  if TG_TABLE_NAME = 'customers' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('name', new.name, 'email', new.email);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('name', old.name, 'email', old.email),
+        'new', jsonb_build_object('name', new.name, 'email', new.email)
+      );
+    else
+      v_metadata := jsonb_build_object('name', old.name, 'email', old.email);
+    end if;
+  elsif TG_TABLE_NAME = 'bookings' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('service', new.service, 'status', new.status);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('service', old.service, 'status', old.status),
+        'new', jsonb_build_object('service', new.service, 'status', new.status)
+      );
+    else
+      v_metadata := jsonb_build_object('service', old.service, 'status', old.status);
+    end if;
+  elsif TG_TABLE_NAME = 'invoices' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('amount', new.amount, 'status', new.status);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('amount', old.amount, 'status', old.status),
+        'new', jsonb_build_object('amount', new.amount, 'status', new.status)
+      );
+    else
+      v_metadata := jsonb_build_object('amount', old.amount, 'status', old.status);
+    end if;
+  elsif TG_TABLE_NAME = 'companies' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('name', new.name, 'status', new.status);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('name', old.name, 'status', old.status),
+        'new', jsonb_build_object('name', new.name, 'status', new.status)
+      );
+    else
+      v_metadata := jsonb_build_object('name', old.name, 'status', old.status);
+    end if;
+  elsif TG_TABLE_NAME = 'profiles' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('email', new.email, 'company_id', new.company_id);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('email', old.email, 'company_id', old.company_id),
+        'new', jsonb_build_object('email', new.email, 'company_id', new.company_id)
+      );
+    else
+      v_metadata := jsonb_build_object('email', old.email, 'company_id', old.company_id);
+    end if;
+  elsif TG_TABLE_NAME = 'roles' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('name', new.name, 'company_id', new.company_id);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('name', old.name, 'description', old.description),
+        'new', jsonb_build_object('name', new.name, 'description', new.description)
+      );
+    else
+      v_metadata := jsonb_build_object('name', old.name, 'company_id', old.company_id);
+    end if;
+  elsif TG_TABLE_NAME = 'permissions' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('code', new.code);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('code', old.code),
+        'new', jsonb_build_object('code', new.code)
+      );
+    else
+      v_metadata := jsonb_build_object('code', old.code);
+    end if;
+  elsif TG_TABLE_NAME = 'plans' then
+    if TG_OP = 'INSERT' then
+      v_metadata := jsonb_build_object('name', new.name, 'code', new.code);
+    elsif TG_OP = 'UPDATE' then
+      v_metadata := jsonb_build_object(
+        'old', jsonb_build_object('name', old.name, 'code', old.code),
+        'new', jsonb_build_object('name', new.name, 'code', new.code)
+      );
+    else
+      v_metadata := jsonb_build_object('name', old.name, 'code', old.code);
+    end if;
+  end if;
 
   insert into public.audit_logs (
     user_id,

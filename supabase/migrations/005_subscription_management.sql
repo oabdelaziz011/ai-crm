@@ -12,6 +12,19 @@ create table if not exists public.plans (
   updated_at timestamptz not null default now()
 );
 
+alter table public.plans
+  add column if not exists name text,
+  add column if not exists code text,
+  add column if not exists price_monthly numeric(10, 2) default 0,
+  add column if not exists price_yearly numeric(10, 2) default 0,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+update public.plans set price_monthly = coalesce(price_monthly, 0) where price_monthly is null;
+update public.plans set price_yearly = coalesce(price_yearly, 0) where price_yearly is null;
+update public.plans set created_at = now() where created_at is null;
+update public.plans set updated_at = now() where updated_at is null;
+
 insert into public.plans (name, code, price_monthly, price_yearly)
 values
   ('Basic', 'basic', 29, 290),
@@ -53,7 +66,24 @@ create policy plans_super_admin_delete
   using (auth.role() = 'authenticated' and public.is_super_admin());
 
 alter table public.companies
-  add column if not exists plan_id uuid references public.plans(id);
+  add column if not exists plan_id uuid;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'companies_plan_id_fkey'
+      and conrelid = 'public.companies'::regclass
+  ) then
+    alter table public.companies
+      add constraint companies_plan_id_fkey
+      foreign key (plan_id)
+      references public.plans(id);
+  end if;
+exception
+  when others then null;
+end $$;
 
 create index if not exists idx_companies_plan_id on public.companies(plan_id);
 
@@ -67,4 +97,4 @@ update public.companies c
 set subscription_plan = p.name
 from public.plans p
 where c.plan_id = p.id
-  and c.subscription_plan is distinct from p.name;
+  and (c.subscription_plan is null or trim(c.subscription_plan) = '');

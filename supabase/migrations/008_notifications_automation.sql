@@ -78,6 +78,20 @@ begin
 end;
 $$;
 
+create or replace function public.notification_payload(
+  p_message_key text,
+  p_params jsonb default '{}'::jsonb
+)
+returns text
+language sql
+immutable
+as $$
+  select json_build_object(
+    'messageKey', p_message_key,
+    'params', coalesce(p_params, '{}'::jsonb)
+  )::text;
+$$;
+
 create or replace function public.notify_customer_created()
 returns trigger
 language plpgsql
@@ -88,8 +102,11 @@ begin
   perform public.insert_notification(
     public.company_id_for_user(new.user_id),
     new.user_id,
-    'New Customer',
-    'Customer ' || coalesce(new.name, 'Unknown') || ' was created.',
+    'notifications.events.newCustomer.title',
+    public.notification_payload(
+      'notifications.events.newCustomer.message',
+      json_build_object('name', coalesce(new.name, ''))
+    ),
     'success',
     'system'
   );
@@ -114,8 +131,11 @@ begin
     perform public.insert_notification(
       v_company_id,
       v_user_id,
-      'New Booking',
-      'A new booking for ' || coalesce(new.service, 'service') || ' was created.',
+      'notifications.events.newBooking.title',
+      public.notification_payload(
+        'notifications.events.newBooking.message',
+        json_build_object('service', coalesce(new.service, ''))
+      ),
       'info',
       'booking'
     );
@@ -126,8 +146,11 @@ begin
     perform public.insert_notification(
       v_company_id,
       v_user_id,
-      'Booking Cancelled',
-      'A booking for ' || coalesce(new.service, 'service') || ' was cancelled.',
+      'notifications.events.bookingCancelled.title',
+      public.notification_payload(
+        'notifications.events.bookingCancelled.message',
+        json_build_object('service', coalesce(new.service, ''))
+      ),
       'warning',
       'booking'
     );
@@ -159,8 +182,11 @@ begin
       perform public.insert_notification(
         v_company_id,
         v_user_id,
-        'Invoice Paid',
-        'Invoice ' || coalesce(new.id::text, '') || ' was marked as paid.',
+        'notifications.events.invoicePaid.title',
+        public.notification_payload(
+          'notifications.events.invoicePaid.message',
+          json_build_object('invoiceId', coalesce(new.id::text, ''))
+        ),
         'success',
         'invoice'
       );
@@ -168,8 +194,11 @@ begin
       perform public.insert_notification(
         v_company_id,
         v_user_id,
-        'Invoice Overdue',
-        'Invoice ' || coalesce(new.id::text, '') || ' is overdue.',
+        'notifications.events.invoiceOverdue.title',
+        public.notification_payload(
+          'notifications.events.invoiceOverdue.message',
+          json_build_object('invoiceId', coalesce(new.id::text, ''))
+        ),
         'error',
         'invoice'
       );
@@ -208,8 +237,14 @@ begin
       perform public.insert_notification(
         new.id,
         null,
-        'Subscription expires in 5 days',
-        'Subscription for ' || coalesce(new.name, 'company') || ' expires on ' || v_expires::text || '.',
+        'notifications.events.subscriptionExpiresSoon.title',
+        public.notification_payload(
+          'notifications.events.subscriptionExpiresSoon.message',
+          json_build_object(
+            'companyName', coalesce(new.name, ''),
+            'expiresOn', v_expires::text
+          )
+        ),
         'warning',
         'subscription'
       );
@@ -219,8 +254,11 @@ begin
       perform public.insert_notification(
         new.id,
         null,
-        'Subscription expired',
-        'Subscription for ' || coalesce(new.name, 'company') || ' has expired.',
+        'notifications.events.subscriptionExpired.title',
+        public.notification_payload(
+          'notifications.events.subscriptionExpired.message',
+          json_build_object('companyName', coalesce(new.name, ''))
+        ),
         'error',
         'subscription'
       );
@@ -247,8 +285,8 @@ begin
     perform public.insert_notification(
       v_company_id,
       v_user_id,
-      'User created',
-      'A new user account was created.',
+      'notifications.events.userCreated.title',
+      public.notification_payload('notifications.events.userCreated.message'),
       'success',
       'system'
     );
@@ -259,8 +297,8 @@ begin
     perform public.insert_notification(
       v_company_id,
       v_user_id,
-      'User deleted',
-      'A user account was deleted.',
+      'notifications.events.userDeleted.title',
+      public.notification_payload('notifications.events.userDeleted.message'),
       'warning',
       'system'
     );
@@ -271,22 +309,37 @@ begin
 end;
 $$;
 
-create or replace function public.notify_role_updated()
+create or replace function public.notify_role_events()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
-  if tg_op = 'UPDATE' and (
+  if tg_op = 'INSERT' then
+    perform public.insert_notification(
+      coalesce(new.company_id, public.current_company_id()),
+      null,
+      'notifications.events.roleCreated.title',
+      public.notification_payload(
+        'notifications.events.roleCreated.message',
+        json_build_object('roleName', coalesce(new.name, ''))
+      ),
+      'success',
+      'system'
+    );
+  elsif tg_op = 'UPDATE' and (
     coalesce(old.name, '') <> coalesce(new.name, '')
     or coalesce(old.description, '') <> coalesce(new.description, '')
   ) then
     perform public.insert_notification(
       coalesce(new.company_id, public.current_company_id()),
       null,
-      'Role updated',
-      'Role ' || coalesce(new.name, 'role') || ' was updated.',
+      'notifications.events.roleUpdated.title',
+      public.notification_payload(
+        'notifications.events.roleUpdated.message',
+        json_build_object('roleName', coalesce(new.name, ''))
+      ),
       'info',
       'system'
     );
@@ -317,8 +370,13 @@ begin
     perform public.insert_notification(
       new.company_id,
       new.user_id,
-      'WhatsApp failed',
-      coalesce(new.metadata->>'message', new.metadata->>'error', 'A WhatsApp delivery task failed.'),
+      'notifications.events.whatsappFailed.title',
+      public.notification_payload(
+        'notifications.events.whatsappFailed.message',
+        json_build_object(
+          'detail', coalesce(new.metadata->>'message', new.metadata->>'error', '')
+        )
+      ),
       'error',
       'whatsapp'
     );
@@ -328,8 +386,13 @@ begin
     perform public.insert_notification(
       new.company_id,
       new.user_id,
-      'AI task completed',
-      coalesce(new.metadata->>'message', 'An AI task completed successfully.'),
+      'notifications.events.aiTaskCompleted.title',
+      public.notification_payload(
+        'notifications.events.aiTaskCompleted.message',
+        json_build_object(
+          'detail', coalesce(new.metadata->>'message', '')
+        )
+      ),
       'success',
       'system'
     );
@@ -357,13 +420,19 @@ declare
   v_category text;
 begin
   if p_event = 'whatsapp_failed' then
-    v_title := 'WhatsApp failed';
-    v_message := coalesce(p_message, 'A WhatsApp delivery task failed.');
+    v_title := 'notifications.events.whatsappFailed.title';
+    v_message := public.notification_payload(
+      'notifications.events.whatsappFailed.message',
+      json_build_object('detail', coalesce(p_message, ''))
+    );
     v_type := 'error';
     v_category := 'whatsapp';
   elsif p_event = 'ai_task_completed' then
-    v_title := 'AI task completed';
-    v_message := coalesce(p_message, 'An AI task completed successfully.');
+    v_title := 'notifications.events.aiTaskCompleted.title';
+    v_message := public.notification_payload(
+      'notifications.events.aiTaskCompleted.message',
+      json_build_object('detail', coalesce(p_message, ''))
+    );
     v_type := 'success';
     v_category := 'system';
   else
@@ -407,9 +476,10 @@ create trigger trg_notify_profile_events
   for each row execute procedure public.notify_profile_events();
 
 drop trigger if exists trg_notify_role_updated on public.roles;
-create trigger trg_notify_role_updated
-  after update on public.roles
-  for each row execute procedure public.notify_role_updated();
+drop trigger if exists trg_notify_role_events on public.roles;
+create trigger trg_notify_role_events
+  after insert or update on public.roles
+  for each row execute procedure public.notify_role_events();
 
 drop trigger if exists trg_notify_audit_events on public.audit_logs;
 create trigger trg_notify_audit_events

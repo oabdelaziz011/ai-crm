@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
 import { useTranslation } from "react-i18next";
 
 type RegisterFormValues = {
@@ -22,6 +23,7 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isLoading, signUp } = useAuth();
+  const authErrorMessage = useAuthErrorMessage();
 
   const registerSchema = z.object({
     email: z.string().email(t("auth.validation.email")),
@@ -38,9 +40,15 @@ export default function Register() {
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
-    const { error } = await signUp(values.email, values.password);
+    const { error, needsEmailConfirmation } = await signUp(values.email, values.password);
     if (error) {
-      form.setError("root", { message: error });
+      form.setError("root", { message: authErrorMessage(error) });
+    } else if (needsEmailConfirmation) {
+      toast({
+        title: t("auth.register.confirmEmailTitle"),
+        description: t("auth.register.confirmEmailDescription"),
+      });
+      setLocation("/login");
     } else {
       toast({
         title: t("auth.register.successTitle"),

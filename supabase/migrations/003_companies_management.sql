@@ -18,10 +18,54 @@ create table if not exists public.companies (
   updated_at timestamptz not null default now()
 );
 
+alter table public.companies
+  add column if not exists logo_url text,
+  add column if not exists status text default 'Trial',
+  add column if not exists subscription_plan text default 'Basic',
+  add column if not exists subscription_status text default 'trialing',
+  add column if not exists billing_cycle text default 'monthly',
+  add column if not exists subscription_expires_at timestamptz,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+update public.companies
+set status = coalesce(status, 'Trial')
+where status is null;
+
+update public.companies
+set subscription_plan = coalesce(subscription_plan, 'Basic')
+where subscription_plan is null;
+
+update public.companies
+set subscription_status = coalesce(subscription_status, 'trialing')
+where subscription_status is null;
+
+update public.companies
+set billing_cycle = coalesce(billing_cycle, 'monthly')
+where billing_cycle is null;
+
+update public.companies
+set created_at = now()
+where created_at is null;
+
+update public.companies
+set updated_at = now()
+where updated_at is null;
+
 create index if not exists idx_companies_status on public.companies(status);
 create index if not exists idx_companies_subscription_status on public.companies(subscription_status);
 create index if not exists idx_companies_billing_cycle on public.companies(billing_cycle);
 create index if not exists idx_companies_subscription_expires_at on public.companies(subscription_expires_at);
+
+-- Null orphaned company references before adding FK (preserves profile rows)
+update public.profiles p
+set company_id = null
+where p.company_id is not null
+  and not exists (
+    select 1
+    from public.companies c
+    where c.id = p.company_id
+  );
 
 do $$
 begin

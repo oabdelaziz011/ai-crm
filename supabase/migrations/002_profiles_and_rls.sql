@@ -16,7 +16,88 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+-- Legacy-safe column alignment (existing profiles tables may predate this schema)
+alter table public.profiles
+  add column if not exists id uuid,
+  add column if not exists user_id uuid,
+  add column if not exists company_id uuid,
+  add column if not exists email text,
+  add column if not exists full_name text,
+  add column if not exists avatar_url text,
+  add column if not exists role text,
+  add column if not exists is_super_admin boolean default false,
+  add column if not exists is_active boolean default true,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+update public.profiles
+set id = user_id
+where id is null and user_id is not null;
+
+update public.profiles
+set user_id = id
+where user_id is null and id is not null;
+
+update public.profiles
+set is_super_admin = false
+where is_super_admin is null;
+
+update public.profiles
+set is_active = true
+where is_active is null;
+
+update public.profiles
+set created_at = now()
+where created_at is null;
+
+update public.profiles
+set updated_at = now()
+where updated_at is null;
+
+update public.profiles p
+set email = u.email
+from auth.users u
+where (p.id = u.id or p.user_id = u.id)
+  and (p.email is null or p.email = '');
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_id_fkey'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_id_fkey
+      foreign key (id)
+      references auth.users(id)
+      on delete cascade;
+  end if;
+exception
+  when others then null;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_user_id_fkey'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_user_id_fkey
+      foreign key (user_id)
+      references auth.users(id)
+      on delete cascade;
+  end if;
+exception
+  when others then null;
+end $$;
+
 create unique index if not exists idx_profiles_user_id on public.profiles(user_id);
+create unique index if not exists idx_profiles_id on public.profiles(id);
 create index if not exists idx_profiles_company_id on public.profiles(company_id);
 create index if not exists idx_profiles_email on public.profiles(email);
 create index if not exists idx_profiles_is_active on public.profiles(is_active);
@@ -62,9 +143,21 @@ begin
   on conflict (id) do update
   set
     user_id = excluded.user_id,
-    email = coalesce(excluded.email, public.profiles.email),
+    email = coalesce(public.profiles.email, excluded.email),
     full_name = coalesce(public.profiles.full_name, excluded.full_name),
     updated_at = now();
+
+  update public.profiles
+  set
+    id = new.id,
+    email = coalesce(email, new.email),
+    full_name = coalesce(full_name, coalesce(
+      new.raw_user_meta_data->>'full_name',
+      nullif(split_part(new.email, '@', 1), '')
+    )),
+    updated_at = now()
+  where user_id = new.id
+    and id is distinct from new.id;
 
   return new;
 end;
@@ -116,18 +209,25 @@ create trigger profiles_updated_at
   before update on public.profiles
   for each row execute procedure public.set_updated_at();
 
--- Backfill profiles for existing auth users
+-- Backfill profiles for existing auth users (never overwrite existing rows)
 insert into public.profiles (id, user_id, email)
 select u.id, u.id, u.email
 from auth.users u
 where not exists (
-  select 1 from public.profiles p where p.id = u.id
+  select 1
+  from public.profiles p
+  where p.id = u.id or p.user_id = u.id
 )
 on conflict (id) do nothing;
 
 -- ── Profiles RLS ────────────────────────────────────────────
 
 alter table public.profiles enable row level security;
+
+drop policy if exists profiles_select on public.profiles;
+drop policy if exists profiles_insert on public.profiles;
+drop policy if exists profiles_update on public.profiles;
+drop policy if exists profiles_delete on public.profiles;
 
 drop policy if exists profiles_owner_select on public.profiles;
 create policy profiles_owner_select

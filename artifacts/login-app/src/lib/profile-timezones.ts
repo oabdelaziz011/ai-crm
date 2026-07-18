@@ -1,0 +1,16 @@
+export const PROFILE_TIMEZONE_OPTIONS = [
+  { value: "UTC", labelKey: "profiles.timezones.utc" },
+  { value: "America/New_York", labelKey: "profiles.timezones.americaNewYork" },
+  { value: "America/Chicago", labelKey: "profiles.timezones.americaChicago" },
+  { value: "America/Denver", labelKey: "profiles.timezones.americaDenver" },
+  { value: "America/Los_Angeles", labelKey: "profiles.timezones.americaLosAngeles" },
+  { value: "Europe/London", labelKey: "profiles.timezones.europeLondon" },
+  { value: "Europe/Paris", labelKey: "profiles.timezones.europeParis" },
+  { value: "Europe/Berlin", labelKey: "profiles.timezones.europeBerlin" },
+  { value: "Asia/Dubai", labelKey: "profiles.timezones.asiaDubai" },
+  { value: "Asia/Riyadh", labelKey: "profiles.timezones.asiaRiyadh" },
+  { value: "Asia/Kolkata", labelKey: "profiles.timezones.asiaKolkata" },
+  { value: "Asia/Singapore", labelKey: "profiles.timezones.asiaSingapore" },
+  { value: "Asia/Tokyo", labelKey: "profiles.timezones.asiaTokyo" },
+  { value: "Australia/Sydney", labelKey: "profiles.timezones.australiaSydney" },
+] as const;

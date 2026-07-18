@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-07-18T16:29:57.137Z",
+  "total": 1,
+  "passed": 0,
+  "failed": 1,
+  "steps": [
+    {
+      "step": "Sign in super admin",
+      "ok": false,
+      "detail": "Invalid login credentials"
+    }
+  ]
+}

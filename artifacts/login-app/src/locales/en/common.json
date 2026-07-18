@@ -4,20 +4,56 @@
     "dashboard": "Dashboard"
   },
   "navigation": {
+    "home": "Home",
     "customers": "Customers",
     "bookings": "Bookings",
     "invoices": "Invoices",
     "profiles": "Profiles",
     "companies": "Companies",
     "subscriptions": "Subscriptions",
+    "billing": "Billing & Subscriptions",
+    "workspace": "Workspace",
     "auditLogs": "Audit Logs",
+    "userManagement": "User Management",
     "users": "Users",
     "roles": "Roles",
     "permissions": "User Permissions",
     "whatsapp": "WhatsApp Automation",
+    "aiPlatform": "AI Platform",
+    "teamInbox": "Team Inbox",
+    "channels": "Channels",
+    "aiUsage": "AI Usage & Cost",
+    "aiAnalytics": "AI Analytics",
+    "aiAssistant": "AI Assistant",
     "aiChat": "AI Chat",
+    "knowledge": "Knowledge",
     "reports": "Reports",
-    "settings": "Settings"
+    "settings": "Settings",
+    "demoScenarios": "Demo Scenarios"
+  },
+  "demo": {
+    "scenarios": {
+      "title": "Demo Scenario Switcher",
+      "subtitle": "Reset or switch the enterprise demo environment. Each scenario re-seeds idempotent demo data automatically — no manual SQL required.",
+      "resetAll": "Reset demo environment",
+      "activeScenario": "Active scenario",
+      "suggestedLogin": "Suggested login",
+      "lastSeed": "Last seeded",
+      "passwordHint": "Demo password for all personas: DemoVault2026!",
+      "loginAs": "Try as",
+      "apply": "Apply scenario",
+      "current": "Active",
+      "active": "Active",
+      "noPermission": "Platform Owner access is required.",
+      "switchSuccess": "Scenario applied",
+      "switchSuccessDetail": "Demo data was re-seeded and the scenario overlay was applied.",
+      "switchError": "Could not apply scenario",
+      "switchErrorDetail": "The scenario switch failed. Check platform logs for details.",
+      "resetSuccess": "Demo environment reset",
+      "resetSuccessDetail": "Full demo seed restored with Scenario A — Healthy Company.",
+      "resetError": "Reset failed",
+      "resetErrorDetail": "Could not reset the demo environment."
+    }
   },
   "languages": {
     "english": "English",
@@ -60,6 +96,98 @@
       "readFailed": "Could not mark notification as read",
       "markAllFailed": "Could not mark all notifications as read",
       "deleteFailed": "Could not delete notification"
+    },
+    "defaults": {
+      "unknown": "Unknown",
+      "service": "service",
+      "company": "company",
+      "role": "role"
+    },
+    "events": {
+      "newCustomer": {
+        "title": "New Customer",
+        "message": "Customer {{name}} was created."
+      },
+      "newBooking": {
+        "title": "New Booking",
+        "message": "A new booking for {{service}} was created."
+      },
+      "bookingCancelled": {
+        "title": "Booking Cancelled",
+        "message": "A booking for {{service}} was cancelled."
+      },
+      "invoicePaid": {
+        "title": "Invoice Paid",
+        "message": "Invoice {{invoiceId}} was marked as paid."
+      },
+      "invoiceOverdue": {
+        "title": "Invoice Overdue",
+        "message": "Invoice {{invoiceId}} is overdue."
+      },
+      "subscriptionExpiresSoon": {
+        "title": "Subscription expires in 5 days",
+        "message": "Subscription for {{companyName}} expires on {{expiresOn}}."
+      },
+      "subscriptionExpired": {
+        "title": "Subscription expired",
+        "message": "Subscription for {{companyName}} has expired."
+      },
+      "userCreated": {
+        "title": "User created",
+        "message": "A new user account was created."
+      },
+      "userDeleted": {
+        "title": "User deleted",
+        "message": "A user account was deleted."
+      },
+      "roleUpdated": {
+        "title": "Role updated",
+        "message": "Role {{roleName}} was updated."
+      },
+      "roleCreated": {
+        "title": "Role created",
+        "message": "Role {{roleName}} was created."
+      },
+      "whatsappFailed": {
+        "title": "WhatsApp failed",
+        "message": "{{detail}}",
+        "fallback": "A WhatsApp delivery task failed."
+      },
+      "aiTaskCompleted": {
+        "title": "AI task completed",
+        "message": "{{detail}}",
+        "fallback": "An AI task completed successfully."
+      },
+      "billing": {
+        "generic": {
+          "title": "{{eventLabel}}",
+          "message": "{{detail}}"
+        },
+        "paymentSucceeded": {
+          "title": "Payment Success",
+          "message": "Payment of {{amount}} {{currency}} was recorded successfully."
+        },
+        "invoiceGenerated": {
+          "title": "Invoice Generated",
+          "message": "Invoice {{invoiceNumber}} was generated."
+        },
+        "subscriptionRenewed": {
+          "title": "Subscription Renewed",
+          "message": "Your {{cycle}} subscription was renewed."
+        },
+        "planChanged": {
+          "title": "Plan Changed",
+          "message": "Subscription plan was updated to {{planName}}."
+        },
+        "trialExpiring": {
+          "title": "Trial Expiring",
+          "message": "Your trial expires in {{daysRemaining}} days."
+        },
+        "gracePeriodStarted": {
+          "title": "Grace Period Started",
+          "message": "Renewal failed. Grace period ends in {{daysRemaining}} days."
+        }
+      }
     }
   },
   "auth": {
@@ -72,7 +200,8 @@
       "noAccess": "No access yet?",
       "requestEntry": "Request entry",
       "successTitle": "Access granted",
-      "successDescription": "Welcome to Vault."
+      "successDescription": "Welcome to Vault.",
+      "forgotPassword": "Forgot password?"
     },
     "register": {
       "title": "Initialize Identity",
@@ -83,7 +212,37 @@
       "already": "Already established?",
       "authenticateHere": "Authenticate here",
       "successTitle": "Identity created",
-      "successDescription": "Your credentials have been securely stored. You can now log in."
+      "successDescription": "Your credentials have been securely stored. You can now log in.",
+      "confirmEmailTitle": "Confirm your email",
+      "confirmEmailDescription": "We sent an activation link to your email. Open it on this device to complete registration."
+    },
+    "forgotPassword": {
+      "title": "Reset password",
+      "subtitle": "Enter your email and we will send you a secure reset link.",
+      "submit": "Send reset link",
+      "successTitle": "Reset link sent",
+      "successDescription": "Check your email and open the link on this device.",
+      "backToLogin": "Back to login"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "subtitle": "Enter a new password for your account.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "passwordMismatch": "Passwords do not match",
+      "submit": "Update password",
+      "successTitle": "Password updated",
+      "successDescription": "You can now sign in with your new password.",
+      "invalidLink": "This reset link is invalid or has expired.",
+      "errorTitle": "Unable to reset password",
+      "errorSubtitle": "The recovery session could not be established.",
+      "requestNewLink": "Request a new reset link"
+    },
+    "callback": {
+      "invalidSession": "The authentication link is invalid or has expired.",
+      "errorTitle": "Authentication failed",
+      "errorSubtitle": "We could not complete sign-in from this link.",
+      "backToLogin": "Back to login"
     },
     "placeholders": {
       "email": "you@example.com",
@@ -92,6 +251,18 @@
     "validation": {
       "email": "Enter a valid email address",
       "passwordMin": "Password must be at least 6 characters"
+    },
+    "errors": {
+      "invalidEmail": "Enter a valid email address.",
+      "emailAlreadyExists": "An account with this email already exists.",
+      "invalidCredentials": "Invalid email or password.",
+      "weakPassword": "Password is too weak. Use at least 6 characters.",
+      "emailNotConfirmed": "Please confirm your email before signing in.",
+      "expiredLink": "This link has expired. Request a new one and try again.",
+      "invalidResetLink": "This reset link is invalid or has expired.",
+      "networkError": "Network error. Check your connection and try again.",
+      "rateLimitExceeded": "Too many email requests. Please wait a few minutes before trying again.",
+      "unknownServerError": "Something went wrong. Please try again."
     }
   },
   "pages": {
@@ -213,6 +384,36 @@
     "breadcrumbs": {
       "root": "Dashboard"
     },
+    "home": {
+      "title": "Dashboard Home",
+      "greeting": "Welcome back, {{name}}.",
+      "quickLinks": "Quick links",
+      "quickLinksSubtitle": "Jump to the sections you can access.",
+      "openSection": "Open this section",
+      "noSections": "You do not have access to any dashboard sections yet. Contact your administrator if you need access.",
+      "sections": {
+        "customers": "Manage and track your customer base.",
+        "bookings": "View upcoming appointments and sessions.",
+        "invoices": "Track payments and billing.",
+        "companies": "Manage tenant companies.",
+        "subscriptions": "Review subscription plans and billing.",
+        "audit-logs": "Review system activity and audit events.",
+        "users": "Manage team members and access.",
+        "roles": "Configure roles and permissions.",
+        "whatsapp": "Manage WhatsApp automation flows.",
+        "team-inbox": "Monitor and reply to customer conversations across channels.",
+        "channels": "Connect and manage WhatsApp and other communication channels.",
+        "ai-usage": "Track AI token usage and estimated costs.",
+        "ai-analytics": "Review AI execution performance and traces.",
+        "workspace": "View your company workspace and subscription context.",
+        "demo-scenarios": "Switch enterprise demo scenarios.",
+        "ai-assistant": "Configure the AI assistant.",
+        "ai-chat": "Chat with the AI assistant.",
+        "knowledge": "Manage knowledge sources, documents, and imports.",
+        "reports": "View business performance reports.",
+        "settings": "Manage your profile, account, and preferences."
+      }
+    },
     "customers": {
       "title": "Customers",
       "subtitle": "Manage and track your customer base",
@@ -249,6 +450,82 @@
         "overdue": "Overdue"
       },
       "empty": "No invoices yet. Create your first one!"
+    },
+    "inbox": {
+      "title": "Team Inbox",
+      "subtitle": "Unified inbox for AI and human-handled conversations",
+      "conversations": "Conversations",
+      "conversationsHint": "Select a thread to view messages and respond",
+      "selectConversation": "Select a conversation to view the thread",
+      "empty": "No conversations match your filters",
+      "noPreview": "No message preview",
+      "unread": "{{count}} unread",
+      "searchPlaceholder": "Search conversations…",
+      "replyPlaceholder": "Type a reply to send via the channel…",
+      "takeover": "Take over",
+      "release": "Release to AI",
+      "close": "Close",
+      "filters": {
+        "all": "All",
+        "unread": "Unread",
+        "mine": "Assigned to me"
+      },
+      "stats": {
+        "open": "Open threads",
+        "unread": "Unread (team)",
+        "human": "Human active",
+        "channels": "Active channels"
+      }
+    },
+    "channels": {
+      "title": "Channel Administration",
+      "subtitle": "Connect company channels through the Enterprise Channel Platform",
+      "addChannel": "Add channel",
+      "empty": "No channels configured yet. Add your first channel to start receiving messages.",
+      "default": "Default",
+      "makeDefault": "Set default",
+      "channelType": "Channel type",
+      "selectType": "Select a channel type",
+      "displayName": "Display name",
+      "provider": "Provider",
+      "configure": "Configure",
+      "saveConfig": "Save configuration",
+      "whatsappConfig": "WhatsApp Cloud API credentials",
+      "phoneNumberId": "Phone number ID",
+      "accessToken": "Access token",
+      "verifyToken": "Webhook verify token",
+      "apiVersion": "API version",
+      "stats": {
+        "total": "Total channels",
+        "enabled": "Enabled",
+        "connected": "Connected",
+        "types": "Channel types"
+      }
+    },
+    "aiUsage": {
+      "title": "AI Usage & Cost",
+      "subtitle": "Token consumption and estimated provider costs from the observability layer",
+      "byProvider": "Cost by provider",
+      "recentRecords": "Recent cost records",
+      "noRecords": "No cost records yet. Usage appears after AI runtime executions.",
+      "stats": {
+        "tokens": "Total tokens",
+        "cost": "Estimated cost",
+        "records": "Cost records",
+        "providers": "Providers"
+      }
+    },
+    "aiAnalytics": {
+      "title": "AI Analytics",
+      "subtitle": "Execution metrics and distributed traces from the AI observability platform",
+      "recentExecutions": "Recent executions",
+      "recentTraces": "Recent traces",
+      "stats": {
+        "executions": "Executions",
+        "latency": "Avg latency",
+        "timeouts": "Timeouts",
+        "tokens": "Total tokens"
+      }
     },
     "whatsapp": {
       "title": "WhatsApp Automation",
@@ -290,13 +567,24 @@
     "ai": {
       "title": "AI Chat",
       "subtitle": "Your intelligent business assistant",
+      "subtitleRuntime": "Powered by the Enterprise AI Runtime",
       "online": "Online",
+      "streaming": "Responding…",
+      "loading": "Loading conversation…",
+      "newConversation": "New conversation",
       "placeholder": "Ask anything about your business…",
       "name": "Vault AI",
       "welcome": "Hi! I'm your Vault AI assistant. Ask me anything about your customers, bookings, invoices, or business insights.",
       "sampleQuestion": "How many bookings do I have this week?",
       "sampleAnswer": "You have 18 bookings this week — 4 today, 6 tomorrow, and 8 spread across the rest of the week. 7 are still pending confirmation. Want me to send reminders?",
-      "demoResponse": "I'm a demo AI — real responses will appear once the AI backend is connected. Your question was: “{{question}}”"
+      "demoResponse": "I'm a demo AI — real responses will appear once the AI backend is connected. Your question was: “{{question}}”",
+      "errors": {
+        "runtimeNotConfigured": "AI runtime is not fully configured. Connect an OpenAI provider in settings before chatting.",
+        "runtimeNotConfiguredDetail": "AI Chat needs an enabled provider connection in the AI Provider registry. Assistant preferences alone are not enough — connect your LLM provider below.",
+        "runtimeFailed": "The assistant could not complete your request. {{detail}}",
+        "missingRuntimePermission": "You need runtime execution permission to send messages."
+      },
+      "openProviderSetup": "Connect provider in AI Assistant"
     },
     "reports": {
       "title": "Reports",
@@ -307,6 +595,10 @@
         "bookings": "Total Bookings",
         "invoices": "Total Invoices"
       },
+      "aiInsightsTitle": "AI platform insights",
+      "aiInsightsSubtitle": "Operational metrics from the AI runtime and observability layer",
+      "viewAiAnalytics": "View AI analytics",
+      "viewAiUsage": "View usage & cost",
       "bookingsPerMonth": "Bookings per Month",
       "lastMonths": "Last 7 months",
       "invoiceBreakdown": "Invoice Breakdown",
@@ -315,6 +607,13 @@
     "settings": {
       "title": "Settings",
       "subtitle": "Manage your account and preferences",
+      "nav": {
+        "personalProfile": "Personal Profile",
+        "accountInformation": "Account Information",
+        "companySettings": "Company Settings",
+        "security": "Security",
+        "notifications": "Notifications"
+      },
       "security": {
         "changePassword": "Change Password",
         "changePasswordDesc": "Update your login credentials",
@@ -340,6 +639,62 @@
       "title": "Company Access Suspended",
       "description": "Your company account is currently suspended and cannot access the dashboard.",
       "contact": "Please contact your platform administrator to reactivate your subscription."
+    }
+  },
+  "knowledge": {
+    "title": "Knowledge",
+    "subtitle": "Manage company knowledge sources, imported documents, and import status.",
+    "nav": {
+      "sources": "Sources",
+      "documents": "Documents",
+      "importStatus": "Import Status"
+    },
+    "sources": {
+      "createTitle": "Create Source",
+      "listTitle": "Knowledge Sources",
+      "displayName": "Display name",
+      "key": "Source key",
+      "type": "Source type",
+      "typeManual": "Manual",
+      "typePolicy": "Policy",
+      "createAction": "Create source",
+      "createSuccess": "Knowledge source created.",
+      "createFailed": "Could not create knowledge source.",
+      "defaultDescription": "Company knowledge source",
+      "empty": "No knowledge sources yet.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "documents": {
+      "listTitle": "Documents",
+      "empty": "No knowledge documents imported yet.",
+      "columns": {
+        "title": "Title",
+        "source": "Source",
+        "status": "Status",
+        "mimeType": "MIME type",
+        "updated": "Updated"
+      }
+    },
+    "import": {
+      "uploadTitle": "Import Document",
+      "source": "Knowledge source",
+      "selectSource": "Select a source",
+      "documentTitle": "Document title",
+      "documentTitlePlaceholder": "Optional — defaults to file name",
+      "pdfFile": "PDF or text file",
+      "plainText": "Plain text fallback",
+      "plainTextPlaceholder": "Paste text content when not uploading a file",
+      "submit": "Import document",
+      "success": "Document imported successfully.",
+      "failed": "Document import failed.",
+      "noSources": "Create an enabled knowledge source before importing documents.",
+      "statusTitle": "Import Status",
+      "statusEmpty": "No imported documents yet.",
+      "defaultTextTitle": "Imported Text Document",
+      "validation": {
+        "noContent": "Provide a PDF/text file or plain text content."
+      }
     }
   },
   "subscriptions": {
@@ -382,11 +737,491 @@
       "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
     }
   },
+  "billing": {
+    "title": "Billing & Subscriptions",
+    "subtitle": "Enterprise billing overview with subscription health, plans, and lifecycle visibility.",
+    "noPermission": "You do not have permission to view billing.",
+    "health": {
+      "title": "Billing platform configuration required",
+      "subtitle": "VaultOS billing cannot operate until the following platform requirements are resolved.",
+      "mutationsBlocked": "All billing mutations are blocked until configuration is corrected.",
+      "issues": {
+        "migration_104_missing": {
+          "title": "Migration 104 not applied",
+          "description": "Required RPC get_billing_payment_options_v1 is missing. Apply billing migration 104."
+        },
+        "migration_105_missing": {
+          "title": "Migration 105 not applied",
+          "description": "Required audit RPC with p_company_id is missing. Apply billing migration 105."
+        },
+        "default_currency_missing": {
+          "title": "Default currency not configured",
+          "description": "Set default_currency in platform billing settings."
+        },
+        "payment_methods_missing": {
+          "title": "Payment methods not configured",
+          "description": "Configure supported_payment_method_codes in platform billing settings."
+        },
+        "active_plan_missing_pricing": {
+          "title": "Active plan pricing incomplete",
+          "description": "Every active plan must have valid monthly and yearly prices."
+        }
+      }
+    },
+    "provisioning": {
+      "title": "Company billing provisioning incomplete",
+      "subtitle": "This company cannot access Subscription Detail until the billing chain is fully provisioned.",
+      "fallbackError": "Unable to load subscription detail for this company.",
+      "defaultCompany": "this company",
+      "issues": {
+        "company_not_found": {
+          "title": "Company not found",
+          "description": "No company record exists for this identifier."
+        },
+        "subscription_missing": {
+          "title": "Subscription missing",
+          "description": "Create a company subscription before opening Subscription Detail."
+        },
+        "plan_missing": {
+          "title": "Plan not assigned",
+          "description": "Assign an active plan to this subscription."
+        },
+        "billing_contact_missing": {
+          "title": "Billing contact missing",
+          "description": "Add an active billing contact for invoice and receipt delivery."
+        },
+        "pricing_missing": {
+          "title": "Plan pricing missing",
+          "description": "The assigned plan has no price for the current billing cycle."
+        }
+      }
+    },
+    "searchPlaceholder": "Search by company or plan…",
+    "empty": "No subscriptions found for the selected filters.",
+    "emptyHint": "Try adjusting your search or status filters.",
+    "phasePlaceholderTitle": "Coming in Phase 2",
+    "phasePlaceholder": "This billing section will be available in the next implementation phase.",
+    "stats": {
+      "total": "Total Subscriptions",
+      "active": "Active",
+      "trialing": "Trialing",
+      "atRisk": "At Risk"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "allEventTypes": "All event types",
+      "allCycles": "All cycles",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "plan": {
+      "unassigned": "Unassigned plan"
+    },
+    "status": {
+      "active": "Active",
+      "trialing": "Trialing",
+      "past_due": "Past due",
+      "grace_period": "Grace period",
+      "canceled": "Canceled",
+      "expired": "Expired"
+    },
+    "invoiceStatus": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "paid": "Paid",
+      "void": "Void",
+      "overdue": "Overdue"
+    },
+    "paymentStatus": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "canceled": "Canceled",
+      "refunded": "Refunded"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
+    },
+    "nav": {
+      "overview": "Overview",
+      "companies": "Companies",
+      "plans": "Plans",
+      "subscriptions": "Subscriptions",
+      "payments": "Payments",
+      "subscriptionInvoices": "Subscription Invoices",
+      "receipts": "Receipts",
+      "failures": "Payment Failures",
+      "renewals": "Renewals",
+      "expirations": "Expirations",
+      "revenue": "Revenue",
+      "analytics": "Analytics",
+      "providerHealth": "Provider Health",
+      "invoices": "Billing Invoices",
+      "reports": "Reports",
+      "settings": "Billing Settings",
+      "audit": "Billing Audit Log"
+    },
+    "actions": {
+      "export": "Export CSV",
+      "exporting": "Exporting…",
+      "download": "Download",
+      "viewDetail": "View subscription",
+      "backToOverview": "Back to overview"
+    },
+    "toast": {
+      "successTitle": "Success",
+      "errorTitle": "Something went wrong"
+    },
+    "edit": {
+      "editContact": "Edit billing contact",
+      "addContact": "Add billing contact",
+      "contactName": "Contact name",
+      "contactEmail": "Contact email",
+      "contactPhone": "Contact phone",
+      "contactNameRequired": "Billing contact name is required.",
+      "contactEmailInvalid": "Enter a valid billing contact email.",
+      "contactSaveFailed": "Could not save billing contact.",
+      "contactSaved": "Billing contact updated.",
+      "assignPlan": "Change plan",
+      "assignPlanConfirm": "Apply plan",
+      "selectPlan": "Select a plan",
+      "planRequired": "Select a plan before saving.",
+      "planSaveFailed": "Could not assign subscription plan.",
+      "planSaved": "Subscription plan updated.",
+      "planPricePreview": "Price preview: {{price}} / {{cycle}}",
+      "suspendSubscription": "Suspend access",
+      "restoreSubscription": "Restore access",
+      "suspendTitle": "Suspend subscription access",
+      "restoreTitle": "Restore subscription access",
+      "suspendDescription": "This sets the company access status to Suspended. Subscription data is preserved.",
+      "restoreDescription": "This restores company access based on the current subscription state.",
+      "suspendConfirm": "Suspend",
+      "restoreConfirm": "Restore",
+      "suspendFailed": "Could not suspend subscription.",
+      "restoreFailed": "Could not restore subscription.",
+      "suspendSuccess": "Subscription access suspended.",
+      "restoreSuccess": "Subscription access restored.",
+      "reasonOptional": "Reason (optional)",
+      "companyAccess": "Company access"
+    },
+    "payment": {
+      "confirmTitle": "Record manual payment?",
+      "confirmDescription": "This will record a manual payment of {{amount}} and renew the subscription for the next billing period.",
+      "confirmAction": "Record payment",
+      "success": "Payment recorded and subscription renewed.",
+      "methodLabel": "Payment method",
+      "noMethods": "No payment methods available",
+      "noMethodsConfigured": "No supported payment methods are configured. Update billing settings before recording payments.",
+      "runtimeNotConfigured": "Payment runtime is not configured. Apply billing migration 104 (get_billing_payment_options_v1) to enable payment methods.",
+      "loadFailed": "Could not load payment options.",
+      "providerMode": "Provider mode",
+      "providerCode": "Provider",
+      "autoRenewal": "Auto renewal"
+    },
+    "tables": {
+      "company": "Company",
+      "plan": "Plan",
+      "cycle": "Cycle",
+      "status": "Status",
+      "renewal": "Renewal",
+      "actions": "Actions",
+      "invoiceNumber": "Invoice #",
+      "receiptNumber": "Receipt #",
+      "amount": "Amount",
+      "issuedAt": "Issued",
+      "paidAt": "Paid",
+      "period": "Period",
+      "method": "Method",
+      "provider": "Provider"
+    },
+    "common": {
+      "yes": "Yes",
+      "no": "No",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "loading": "Loading…",
+      "notAvailable": "Not available",
+      "units": {
+        "gb": "{{value}} GB",
+        "mb": "{{value}} MB",
+        "ms": "{{value}} ms",
+        "percent": "{{value}}%"
+      }
+    },
+    "companyStatus": {
+      "Active": "Active",
+      "Suspended": "Suspended",
+      "Trial": "Trial"
+    },
+    "providerStatus": {
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "down": "Down"
+    },
+    "workspaceHealth": {
+      "healthy": "Healthy",
+      "at_risk": "At risk",
+      "critical": "Critical"
+    },
+    "statusContext": {
+      "endsToday": "Ends today",
+      "endsTomorrow": "Ends tomorrow",
+      "daysRemaining": "{{count}} days remaining",
+      "renewsToday": "Renews today",
+      "renewsTomorrow": "Renews tomorrow",
+      "renewsInDays": "Renews in {{count}} days",
+      "paymentOverdue": "Payment overdue — action required",
+      "paymentRequired": "Payment required",
+      "accessUntil": "Access until {{date}}"
+    },
+    "detail": {
+      "notFound": "Subscription not found.",
+      "subscription": "Subscription",
+      "cycle": "Billing cycle",
+      "autoRenewal": "Auto renewal",
+      "periodEnd": "Current period end",
+      "nextRenewal": "Next renewal",
+      "recordPayment": "Record manual payment",
+      "recording": "Recording…",
+      "currencyMissing": "Billing currency is not configured. Set default_currency in billing settings before recording payments.",
+      "planExperience": "Plan Experience",
+      "currentPlan": "Current Plan",
+      "upgradePlan": "Upgrade Plan",
+      "maxUsers": "Max users",
+      "maxCustomers": "Max customers",
+      "storage": "Storage limit",
+      "aiTokens": "AI tokens / month",
+      "usageSummary": "Usage Summary",
+      "aiTokensUsed": "AI tokens used",
+      "storageUsed": "Storage used",
+      "features": "Plan Features",
+      "featuresHint": "Resolved entitlements with source precedence (override → plan → default).",
+      "featureName": "Feature",
+      "featureSource": "Source",
+      "featureSources": {
+        "plan": "Plan",
+        "override": "Override",
+        "default": "Default"
+      },
+      "noFeatures": "No plan features configured.",
+      "usageSummaryHint": "Current period usage compared to plan limits.",
+      "noUsage": "No usage snapshot available yet.",
+      "upgradeHint": "Higher-tier plans available for this subscription. Plan changes are managed by billing administrators.",
+      "noUpgradeOptions": "No higher-tier plans are currently available.",
+      "selectPlan": "Select plan",
+      "companyTypeDefault": "Company",
+      "tierRank": "Tier {{rank}}",
+      "timeline": "Subscription Timeline",
+      "activity": "Subscription Activity",
+      "noEvents": "No events yet.",
+      "billingContact": "Billing Contact",
+      "noBillingContact": "No billing contact on file",
+      "noBillingContactHint": "Add a billing contact to improve invoice and receipt delivery.",
+      "noInvoices": "No invoices yet",
+      "noPayments": "No payments yet",
+      "noReceipts": "No receipts yet",
+      "invoiceSearch": "Search invoices…",
+      "paymentSearch": "Search payments…",
+      "receiptSearch": "Search receipts…",
+      "tabs": {
+        "overview": "Overview",
+        "timeline": "Timeline",
+        "activity": "Activity",
+        "invoices": "Invoices",
+        "payments": "Payments",
+        "receipts": "Receipts",
+        "entitlements": "Entitlements",
+        "audit": "Audit",
+        "notifications": "Notifications"
+      },
+      "audit": "Billing Audit",
+      "auditHint": "Administrative billing changes for this company.",
+      "noAudit": "No audit entries for this company.",
+      "notifications": "Notification History",
+      "notificationsHint": "Billing and workspace notifications delivered to this company.",
+      "noNotifications": "No notifications for this company.",
+      "emptyStates": {
+        "usageNoneRecorded": "No usage has been recorded yet.",
+        "usageNoneRecordedHint": "Usage metrics appear after metering records activity for this company.",
+        "timelineCompanyCreated": "Company created",
+        "timelineSubscriptionCreated": "Subscription created",
+        "timelineOnboardingHint": "Lifecycle events will appear here as billing activity occurs.",
+        "notificationsWelcome": "Welcome to billing notifications",
+        "notificationsWelcomeHint": "Billing notifications for {{company}} will appear here as payments, invoices, and subscription events occur.",
+        "notificationsWelcomeCreated": "Subscription created",
+        "notificationsWelcomeCreatedHint": "You will receive notifications when subscription lifecycle events occur.",
+        "notificationsWelcomeBilling": "Billing activity",
+        "notificationsWelcomeBillingHint": "Payment, invoice, and renewal notifications are delivered automatically."
+      }
+    },
+    "settings": {
+      "title": "Billing Settings",
+      "subtitle": "Centralized platform configuration for billing behavior.",
+      "noPermission": "You do not have permission to view billing settings.",
+      "empty": "No settings in this category.",
+      "emptyHint": "Settings for this category will appear here once configured in the platform catalog.",
+      "platformScope": "Platform scope",
+      "templateRefPlaceholder": "template_code",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "saveSuccess": "Billing settings saved.",
+      "saveFailed": "Could not save billing settings.",
+      "validation": {
+        "fixErrors": "Fix validation errors before saving.",
+        "invalidJson": "Invalid JSON value."
+      },
+      "tabs": {
+        "general": "General",
+        "subscription": "Subscriptions",
+        "documents": "Documents",
+        "branding": "Branding",
+        "payments": "Payments",
+        "communications": "Email Templates",
+        "webhooks": "Webhooks",
+        "usage": "Usage",
+        "health": "Health",
+        "entitlements": "Entitlements"
+      }
+    },
+    "platform": {
+      "payments": {
+        "title": "Payments",
+        "subtitle": "Platform-wide subscription payment records.",
+        "search": "Search by company or payment reference…",
+        "empty": "No payments found."
+      },
+      "subscriptionInvoices": {
+        "title": "Subscription Invoices",
+        "subtitle": "Platform SaaS subscription invoices across all companies.",
+        "search": "Search by company or invoice number…",
+        "empty": "No subscription invoices found."
+      },
+      "receipts": {
+        "title": "Receipts",
+        "subtitle": "Payment receipts for subscription billing.",
+        "search": "Search by company or receipt number…",
+        "empty": "No receipts found."
+      },
+      "failures": {
+        "title": "Payment Failures",
+        "subtitle": "Failed subscription payments requiring attention.",
+        "search": "Search by company…",
+        "empty": "No failed payments found.",
+        "reason": "Failure reason"
+      },
+      "renewals": {
+        "title": "Upcoming Renewals",
+        "subtitle": "Subscriptions renewing in the next 30 days.",
+        "empty": "No upcoming renewals."
+      },
+      "expirations": {
+        "title": "Expirations & At Risk",
+        "subtitle": "Expired, past due, and trial-ending subscriptions.",
+        "empty": "No expiring subscriptions."
+      },
+      "revenue": {
+        "title": "Revenue",
+        "subtitle": "Monthly and annual recurring revenue overview."
+      },
+      "analytics": {
+        "title": "Billing Analytics",
+        "subtitle": "SaaS business metrics and KPI foundation.",
+        "mrr": "MRR",
+        "arr": "ARR",
+        "arpu": "ARPU",
+        "ltv": "LTV (est.)",
+        "churn": "Churn rate",
+        "renewalRate": "Renewal rate",
+        "collectionRate": "Collection rate",
+        "failedRate": "Failed payment rate",
+        "failed30d": "Failed payments (30d)",
+        "hint": "Advanced cohort metrics (LTV, churn, collection) populate as analytics snapshots accumulate.",
+        "notAvailable": "Not available yet"
+      },
+      "providerHealth": {
+        "title": "Provider Health",
+        "subtitle": "Payment provider availability and performance.",
+        "total": "Providers monitored",
+        "degraded": "Degraded / down",
+        "latency": "Latency",
+        "successRate": "Success rate",
+        "checkedAt": "Last checked",
+        "empty": "No payment providers configured."
+      }
+    },
+    "audit": {
+      "title": "Billing Audit Log",
+      "subtitle": "Compliance trail for administrative billing operations.",
+      "noPermission": "You do not have permission to view the billing audit log.",
+      "searchPlaceholder": "Search by event type, company, or source…",
+      "empty": "No billing audit entries found.",
+      "emptyHint": "Administrative billing changes will appear here with before/after values.",
+      "platformScope": "Platform",
+      "before": "Before",
+      "after": "After",
+      "rawBefore": "Raw before",
+      "rawAfter": "Raw after",
+      "noDiff": "No field-level changes detected.",
+      "ipAddress": "IP address",
+      "exportFailed": "Could not export billing audit log.",
+      "diff": {
+        "added": "Added",
+        "removed": "Removed",
+        "changed": "Changed"
+      },
+      "stats": {
+        "total": "Total entries",
+        "manual": "Manual",
+        "system": "System",
+        "api": "API"
+      },
+      "source": {
+        "manual": "Manual",
+        "system": "System",
+        "api": "API"
+      },
+      "columns": {
+        "event": "Event",
+        "company": "Company",
+        "source": "Source",
+        "time": "Time"
+      }
+    }
+  },
+  "workspace": {
+    "title": "Workspace",
+    "subtitle": "Company administration center for your organization.",
+    "noPermission": "You do not have permission to access the workspace.",
+    "nav": {
+      "overview": "Overview",
+      "usage": "Usage",
+      "billing": "Billing"
+    },
+    "overview": {
+      "company": "Your company",
+      "hint": "Manage subscription, usage, and billing for your workspace."
+    },
+    "usage": {
+      "title": "Workspace Usage",
+      "subtitle": "Current usage against your plan limits."
+    },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "Your company subscription and plan details.",
+      "currentSubscription": "Current Subscription",
+      "health": "Workspace health",
+      "nextInvoice": "Next invoice amount",
+      "noSubscription": "No active subscription found for your company."
+    }
+  },
   "auditLogs": {
     "title": "Audit Logs",
-    "subtitle": "Track create, update, and delete activity across the system.",
+    "subtitle": "Review security and administrative activity across your organization.",
     "noPermission": "You do not have permission to view audit logs.",
-    "searchPlaceholder": "Search by entity, user, company, or IP…",
+    "searchPlaceholder": "Search by user, company, operation, entity, IP, or email…",
     "empty": "No audit logs found for the selected filters.",
     "stats": {
       "total": "Total Events",
@@ -394,14 +1229,386 @@
       "update": "Updates",
       "delete": "Deletes"
     },
-    "filters": {
-      "allActions": "All actions",
-      "allEntities": "All entities"
-    },
     "columns": {
+      "operation": "Operation",
+      "status": "Status",
+      "details": "Details",
       "user": "User",
+      "role": "Role",
       "company": "Company",
-      "ip": "IP"
+      "ip": "IP",
+      "time": "Time",
+      "view": "View"
+    },
+    "operations": {
+      "CREATE": "Create",
+      "UPDATE": "Update",
+      "DELETE": "Delete",
+      "LOGIN": "Login",
+      "LOGOUT": "Logout",
+      "PASSWORD_RESET": "Password Reset",
+      "INVITE_USER": "Invite User"
+    },
+    "statuses": {
+      "success": "Success",
+      "failed": "Failed",
+      "warning": "Warning"
+    },
+    "entities": {
+      "users": "Users",
+      "companies": "Companies",
+      "userRoles": "User Roles",
+      "rolePermissions": "Role Permissions",
+      "userPermissions": "User Permissions",
+      "notifications": "Notifications",
+      "subscriptionPlans": "Subscription Plans",
+      "customers": "Customers",
+      "bookings": "Bookings",
+      "invoices": "Invoices",
+      "roles": "Roles",
+      "permissions": "Permissions",
+      "authentication": "Authentication",
+      "aiAssistantSettings": "AI Assistant Settings",
+      "conversations": "Conversations",
+      "conversationParticipants": "Conversation Participants",
+      "conversationMessages": "Conversation Messages",
+      "communicationChannels": "Communication Channels",
+      "companyChannels": "Company Channels",
+      "record": "Record"
+    },
+    "roles": {
+      "administrator": "Administrator",
+      "companyAdmin": "Company Admin",
+      "manager": "Manager",
+      "employee": "Employee",
+      "viewer": "Viewer"
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "fullName": "Full Name",
+      "status": "Status",
+      "service": "Service",
+      "amount": "Amount",
+      "code": "Code",
+      "description": "Description",
+      "company": "Company",
+      "role": "Role",
+      "user": "User",
+      "permission": "Permission",
+      "active": "Active",
+      "assistantName": "Assistant Name",
+      "language": "Language",
+      "tone": "Tone",
+      "channelType": "Channel",
+      "state": "State",
+      "messageType": "Message Type",
+      "participantType": "Participant Type",
+      "priority": "Priority",
+      "conversationNumber": "Conversation Number",
+      "healthStatus": "Health Status",
+      "provider": "Provider"
+    },
+    "values": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "activity": {
+      "login": "{{actor}} signed in.",
+      "logout": "{{actor}} signed out.",
+      "passwordReset": "{{actor}} requested a password reset.",
+      "inviteUser": "{{actor}} sent an invitation to {{target}}.",
+      "userCreated": "{{actor}} created user {{target}}.",
+      "userUpdated": "{{actor}} updated {{target}}'s details.",
+      "userDeleted": "{{actor}} deleted user {{target}}.",
+      "userRoleChanged": "{{actor}} changed {{target}}'s role from {{from}} to {{to}}.",
+      "userRoleAssigned": "{{actor}} assigned the {{role}} role to {{target}}.",
+      "userRoleRemoved": "{{actor}} removed the {{role}} role from {{target}}.",
+      "companyCreated": "{{actor}} created company {{target}}.",
+      "companyUpdated": "{{actor}} updated {{target}}'s details.",
+      "companyDeleted": "{{actor}} deleted company {{target}}.",
+      "customerCreated": "{{actor}} created customer {{target}}.",
+      "customerUpdated": "{{actor}} updated customer {{target}}'s details.",
+      "customerDeleted": "{{actor}} deleted customer {{target}}.",
+      "roleCreated": "{{actor}} created the {{target}} role.",
+      "roleUpdated": "{{actor}} updated the {{target}} role.",
+      "roleDeleted": "{{actor}} deleted the {{target}} role.",
+      "invoiceCreated": "{{actor}} created invoice {{target}}.",
+      "invoiceUpdated": "{{actor}} updated invoice {{target}}.",
+      "invoiceDeleted": "{{actor}} deleted invoice {{target}}.",
+      "invoiceStatusChanged": "{{actor}} changed invoice {{target}} status to {{status}}.",
+      "bookingCreated": "{{actor}} created a new booking for {{target}}.",
+      "bookingUpdated": "{{actor}} updated a booking for {{target}}.",
+      "bookingCancelled": "{{actor}} cancelled the booking for {{target}}.",
+      "bookingStatusChanged": "{{actor}} changed the booking for {{target}} to {{status}}.",
+      "permissionsUpdated": "{{actor}} updated permissions for {{target}}.",
+      "aiAssistantCreated": "{{actor}} created AI Assistant settings for {{target}}.",
+      "aiAssistantUpdated": "{{actor}} updated AI Assistant settings for {{target}}.",
+      "aiAssistantUpdatedDetailed": "{{actor}} updated AI Assistant settings for {{target}}: {{changes}}.",
+      "conversationCreated": "{{actor}} created a conversation on {{channel}}.",
+      "conversationStarted": "{{actor}} started conversation {{target}}.",
+      "greetingCompleted": "{{actor}} completed greeting for {{target}}.",
+      "waitingForCustomer": "{{actor}} marked {{target}} as waiting for customer.",
+      "waitingForTool": "{{actor}} marked {{target}} as waiting for tool execution.",
+      "conversationCompleted": "{{actor}} completed conversation {{target}}.",
+      "conversationCancelled": "{{actor}} cancelled conversation {{target}}.",
+      "conversationTransferredToHuman": "{{actor}} transferred {{target}} to a human agent.",
+      "conversationReturnedToAi": "{{actor}} returned {{target}} to AI.",
+      "conversationClosed": "{{actor}} closed conversation {{target}}.",
+      "participantAdded": "{{actor}} added a participant to {{target}}.",
+      "participantRemoved": "{{actor}} removed a participant from {{target}}.",
+      "messageAdded": "{{actor}} added a message to {{target}}.",
+      "conversationAssignmentChanged": "{{actor}} changed assignment for {{target}}.",
+      "conversationStateChanged": "{{actor}} changed conversation {{target}} state to {{state}}.",
+      "conversationPriorityChanged": "{{actor}} changed priority for {{target}}.",
+      "conversationLocked": "{{actor}} locked conversation {{target}}.",
+      "conversationUnreadReset": "{{actor}} reset unread counters for {{target}}.",
+      "conversationMetadataUpdated": "{{actor}} updated metadata for {{target}}.",
+      "channelConnected": "{{actor}} connected channel {{target}}.",
+      "channelEnabled": "{{actor}} enabled channel {{target}}.",
+      "channelDisabled": "{{actor}} disabled channel {{target}}.",
+      "channelConfigurationUpdated": "{{actor}} updated configuration for {{target}}.",
+      "channelHealthStatusChanged": "{{actor}} updated health status for {{target}}.",
+      "defaultChannelChanged": "{{actor}} set {{target}} as the default channel.",
+      "toolExecuted": "{{actor}} executed tool {{target}}.",
+      "toolFailed": "{{actor}} failed to execute tool {{target}}.",
+      "toolTimeout": "{{actor}} timed out executing tool {{target}}.",
+      "toolEnabled": "{{actor}} enabled tool {{target}}.",
+      "toolDisabled": "{{actor}} disabled tool {{target}}.",
+      "intentMatched": "{{actor}} matched intent {{target}} using classifier {{classifier}}.",
+      "intentRejected": "{{actor}} rejected intent routing for {{target}}.",
+      "intentFallback": "{{actor}} routed {{target}} to fallback intent handling.",
+      "intentEscalated": "{{actor}} escalated intent {{target}} for human handling.",
+      "classifierSelected": "{{actor}} selected classifier {{target}} for intent matching.",
+      "intentEnabled": "{{actor}} enabled intent {{target}}.",
+      "intentDisabled": "{{actor}} disabled intent {{target}}.",
+      "providerConnected": "{{actor}} connected AI provider {{provider}} as {{target}}.",
+      "providerEnabled": "{{actor}} enabled AI provider connection {{target}}.",
+      "providerDisabled": "{{actor}} disabled AI provider connection {{target}}.",
+      "providerUpdated": "{{actor}} updated AI provider connection {{target}}.",
+      "providerHealthChanged": "{{actor}} changed health status for AI provider connection {{target}}.",
+      "promptBuilt": "{{actor}} built prompt {{target}}.",
+      "templateUpdated": "{{actor}} updated prompt template {{target}}.",
+      "templateActivated": "{{actor}} activated prompt template {{target}}.",
+      "templateDisabled": "{{actor}} disabled prompt template {{target}}.",
+      "aiExecutionStarted": "{{actor}} started AI execution for provider {{target}} (model {{model}}).",
+      "aiExecutionCompleted": "{{actor}} completed AI execution for provider {{target}} (model {{model}}).",
+      "aiExecutionFailed": "{{actor}} failed AI execution for provider {{target}} (model {{model}}).",
+      "providerTimeout": "{{actor}} timed out AI provider {{target}} (model {{model}}).",
+      "providerRetry": "{{actor}} retried AI provider {{target}} (model {{model}}).",
+      "fallbackProviderUsed": "{{actor}} used fallback AI provider {{target}} (model {{model}}).",
+      "traceStarted": "{{actor}} started AI trace {{target}}.",
+      "traceCompleted": "{{actor}} completed AI trace {{target}}.",
+      "traceFailed": "{{actor}} failed AI trace {{target}}.",
+      "costRecorded": "{{actor}} recorded AI cost for provider {{target}} in billing period {{period}}.",
+      "policyViolated": "{{actor}} triggered a policy violation on AI trace {{target}}.",
+      "knowledgeSourceCreated": "{{actor}} created knowledge source {{target}}.",
+      "documentImported": "{{actor}} imported knowledge document {{target}}.",
+      "documentUpdated": "{{actor}} updated knowledge document {{target}}.",
+      "documentArchived": "{{actor}} archived knowledge document {{target}}.",
+      "chunkGenerated": "{{actor}} generated knowledge chunk {{target}}.",
+      "documentPublished": "{{actor}} published knowledge document version {{target}}.",
+      "embeddingRequested": "{{actor}} requested embedding generation for {{target}}.",
+      "embeddingGenerated": "{{actor}} generated embedding for {{target}}.",
+      "embeddingFailed": "{{actor}} failed to generate embedding for {{target}}.",
+      "embeddingRegenerated": "{{actor}} regenerated embedding for {{target}}.",
+      "embeddingActivated": "{{actor}} activated embedding {{target}}.",
+      "providerConnected": "{{actor}} connected vector store provider {{target}}.",
+      "providerDisconnected": "{{actor}} disconnected vector store provider {{target}}.",
+      "vectorCollectionCreated": "{{actor}} created vector collection {{target}}.",
+      "vectorCollectionDeleted": "{{actor}} deleted vector collection {{target}}.",
+      "vectorIndexed": "{{actor}} indexed vector {{target}}.",
+      "vectorRemoved": "{{actor}} removed indexed vector {{target}}.",
+      "searchPolicyUpdated": "{{actor}} updated vector search policy {{target}}.",
+      "vectorQueryStarted": "{{actor}} started vector query against {{target}}.",
+      "vectorQueryCompleted": "{{actor}} completed vector query on {{target}}.",
+      "vectorQueryFailed": "{{actor}} failed vector query on {{target}}.",
+      "vectorResultsRanked": "{{actor}} ranked vector query results for {{target}}.",
+      "retrievalStarted": "{{actor}} started retrieval for {{target}}.",
+      "retrievalCompleted": "{{actor}} completed retrieval for {{target}}.",
+      "retrievalFailed": "{{actor}} failed retrieval for {{target}}.",
+      "retrievalContextCreated": "{{actor}} created retrieval context {{target}}.",
+      "retrievalPolicyUpdated": "{{actor}} updated retrieval policy {{target}}.",
+      "runtimeStarted": "{{actor}} started runtime execution for {{target}}.",
+      "runtimeCompleted": "{{actor}} completed runtime execution for {{target}}.",
+      "runtimeFailed": "{{actor}} failed runtime execution for {{target}}.",
+      "runtimeStepCompleted": "{{actor}} completed runtime step {{target}}.",
+      "runtimePolicyUpdated": "{{actor}} updated runtime policy {{target}}.",
+      "versionCreated": "{{actor}} created knowledge document version {{target}}.",
+      "aiAssistantChanges": {
+        "created": "Created AI Assistant settings",
+        "softDeleted": "Soft deleted AI Assistant settings",
+        "assistant_name": "Changed assistant name",
+        "assistant_avatar": "Changed assistant avatar",
+        "language": "Changed language",
+        "personality": "Changed personality",
+        "tone": "Changed tone",
+        "welcome_message": "Changed welcome message",
+        "fallback_message": "Changed fallback message",
+        "working_hours_enabled": {
+          "enabled": "Enabled working hours only",
+          "disabled": "Disabled working hours only"
+        },
+        "allow_auto_booking": {
+          "enabled": "Enabled automatic booking",
+          "disabled": "Disabled automatic booking"
+        },
+        "allow_reschedule": {
+          "enabled": "Enabled rescheduling",
+          "disabled": "Disabled rescheduling"
+        },
+        "allow_cancellation": {
+          "enabled": "Enabled cancellation",
+          "disabled": "Disabled cancellation"
+        },
+        "handoff_to_human": {
+          "enabled": "Enabled transfer to employee",
+          "disabled": "Disabled transfer to employee"
+        },
+        "knowledge_enabled": {
+          "enabled": "Enabled AI knowledge",
+          "disabled": "Disabled AI knowledge"
+        },
+        "remember_conversation": {
+          "enabled": "Enabled conversation memory",
+          "disabled": "Disabled conversation memory"
+        },
+        "conversation_timeout_minutes": "Changed conversation timeout",
+        "max_conversation_age": "Changed maximum conversation duration",
+        "is_enabled": {
+          "enabled": "Enabled AI",
+          "disabled": "Disabled AI"
+        },
+        "provider": "Changed provider",
+        "model": "Changed model",
+        "temperature": "Changed temperature",
+        "max_tokens": "Changed max tokens",
+        "response_language": "Changed response language"
+      },
+      "recordCreated": "{{actor}} created {{target}}.",
+      "recordUpdated": "{{actor}} updated {{target}}.",
+      "recordDeleted": "{{actor}} deleted {{target}}.",
+      "hints": {
+        "email": "(Email changed)",
+        "role": "(Role changed)",
+        "status": "(Status changed)",
+        "name": "(Name changed)",
+        "company": "(Company changed)",
+        "amount": "(Amount changed)",
+        "service": "(Service changed)",
+        "roleAndStatus": "(Role and status changed)",
+        "emailAndRole": "(Email and role changed)",
+        "emailAndStatus": "(Email and status changed)",
+        "nameAndStatus": "(Name and status changed)",
+        "companyAndRole": "(Company and role changed)",
+        "multiple": "({{first}} and {{second}} changed)"
+      },
+      "hintLabels": {
+        "email": "email",
+        "role": "role",
+        "status": "status",
+        "name": "name",
+        "company": "company",
+        "amount": "amount",
+        "service": "service"
+      }
+    },
+    "descriptions": {
+      "login": "User logged in",
+      "logout": "User logged out",
+      "passwordReset": "Password reset requested for {{user}}",
+      "inviteUser": "Invited user {{name}}",
+      "userCreated": "Created user {{name}}",
+      "userUpdated": "Updated user {{name}}",
+      "userDeleted": "Deleted user {{name}}",
+      "companyCreated": "Created company {{name}}",
+      "companyUpdated": "Updated company {{name}}",
+      "companyDeleted": "Deleted company {{name}}",
+      "roleCreated": "Created role {{name}}",
+      "roleUpdated": "Updated role {{name}}",
+      "roleDeleted": "Deleted role {{name}}",
+      "permissionsUpdated": "Updated permissions for {{name}}",
+      "userRoleAssigned": "Assigned role {{role}} to {{user}}",
+      "userRoleRemoved": "Removed role {{role}} from {{user}}",
+      "customerCreated": "Created customer {{name}}",
+      "customerUpdated": "Updated customer {{name}}",
+      "customerDeleted": "Deleted customer {{name}}",
+      "bookingCreated": "Created booking {{name}}",
+      "bookingUpdated": "Updated booking {{name}}",
+      "bookingDeleted": "Deleted booking {{name}}",
+      "invoiceCreated": "Created invoice {{name}}",
+      "invoiceUpdated": "Updated invoice {{name}}",
+      "invoiceDeleted": "Deleted invoice {{name}}",
+      "generic": "{{operation}} {{entity}} {{name}}"
+    },
+    "filters": {
+      "title": "Filters",
+      "allOperations": "All operations",
+      "allStatuses": "All statuses",
+      "allCompanies": "All companies",
+      "allRoles": "All roles",
+      "allUsers": "All users",
+      "allActions": "All actions",
+      "allEntities": "All entities",
+      "dateFrom": "From date",
+      "dateTo": "To date"
+    },
+    "details": {
+      "title": "Audit Details",
+      "noChanges": "No field values were modified.",
+      "unresolvedEntity": "This record references an object that no longer exists.",
+      "sections": {
+        "general": "General",
+        "entity": "Entity",
+        "technical": "Technical"
+      },
+      "labels": {
+        "action": "Action",
+        "operation": "Operation",
+        "status": "Status",
+        "time": "Time",
+        "performedBy": "Performed By",
+        "role": "Role",
+        "company": "Company",
+        "ipAddress": "IP Address",
+        "entity": "Entity",
+        "entityName": "Entity Name",
+        "description": "Description",
+        "oldValues": "Old Values",
+        "newValues": "New Values",
+        "changes": "Changes",
+        "details": "Details",
+        "browser": "Browser",
+        "operatingSystem": "Operating System",
+        "userAgent": "User Agent",
+        "auditId": "Audit ID",
+        "requestId": "Request ID"
+      },
+      "summaries": {
+        "roleChanged": "The user's role was changed from {{from}} to {{to}}.",
+        "companyChanged": "The user's company was changed from {{from}} to {{to}}.",
+        "statusChanged": "The status was changed from {{from}} to {{to}}.",
+        "nameChanged": "The name was changed from {{from}} to {{to}}.",
+        "fieldChanged": "{{field}} was changed from {{from}} to {{to}}."
+      },
+      "advanced": {
+        "title": "Advanced Details",
+        "recordedAt": "Recorded at",
+        "auditId": "Audit ID",
+        "metadata": "Metadata",
+        "technicalInfo": "Technical Information"
+      }
+    },
+    "fallbacks": {
+      "deletedUser": "Deleted User",
+      "systemUser": "System",
+      "unknownCompany": "Unknown company",
+      "noRole": "No role",
+      "unavailable": "—",
+      "none": "None"
+    },
+    "ip": {
+      "local": "127.0.0.1 (Local)"
     },
     "pagination": {
       "previous": "Previous",
@@ -411,12 +1618,15 @@
   },
   "users": {
     "title": "Users",
-    "subtitle": "Manage users, company assignment, account status, and password resets.",
+    "subtitle": "Manage users, company assignment, roles, account status, and password resets.",
     "noPermission": "You do not have permission to manage users.",
+    "viewNoPermission": "You do not have permission to view users.",
     "addUser": "Add User",
     "createTitle": "Create User",
+    "editTitle": "Edit User",
     "superAdmin": "Super Admin",
     "companyAdmin": "Company Admin",
+    "noRole": "No role",
     "searchPlaceholder": "Search users…",
     "empty": "No users found for the selected filters.",
     "unnamed": "Unnamed user",
@@ -437,6 +1647,8 @@
     },
     "actions": {
       "create": "Create User",
+      "edit": "Edit",
+      "save": "Save Changes",
       "resetPassword": "Reset Password",
       "activate": "Activate",
       "deactivate": "Deactivate",
@@ -450,9 +1662,28 @@
       "emailPlaceholder": "user@company.com",
       "emailRequired": "Email is required",
       "company": "Company",
+      "companyRequired": "Company is required",
+      "selectCompany": "Select a company",
       "noCompany": "No company",
+      "role": "Role",
+      "roleRequired": "Role is required",
+      "rolePlaceholder": "Select a role",
+      "roleSearchPlaceholder": "Search roles…",
+      "noRolesAvailable": "No roles are available.",
       "activeOnCreate": "Activate user immediately",
-      "inviteNote": "A secure sign-in link will be sent to the user's email."
+      "inviteNote": "An invitation email will be sent so the user can set their password."
+    },
+    "errors": {
+      "provisionServiceUnavailable": "User provisioning is unavailable. Deploy the provision-user Edge Function in Supabase, then try again.",
+      "provisionFailed": "Unable to create the user. Please try again.",
+      "role_tenant_mismatch": "The selected role does not belong to the target company.",
+      "role_not_found": "The selected role was not found.",
+      "target_company_required": "Select a company before assigning a role.",
+      "company_has_no_roles": "This company has no roles configured."
+    },
+    "success": {
+      "inviteSentTitle": "Invitation sent",
+      "inviteSentDescription": "The user will receive an email to set their password and sign in."
     },
     "confirm": {
       "activateTitle": "Activate {{user}}?",
@@ -489,6 +1720,13 @@
       "previous": "Previous",
       "next": "Next",
       "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
+    },
+    "provisioning": {
+      "pending": "Provisioning pending",
+      "provisioning": "Provisioning…",
+      "completed": "Provisioned",
+      "failed": "Provisioning failed",
+      "retry": "Retry tenant provisioning"
     }
   },
   "roles": {
@@ -496,18 +1734,148 @@
     "subtitle": "Create roles and assign permissions in a modular grid.",
     "noDescription": "No description",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "createRole": "Create Role",
+    "confirm": {
+      "deleteTitle": "Delete role \"{{role}}\"?",
+      "deleteDescription": "This will permanently remove the role and its permission assignments. Users assigned to this role will lose those permissions."
+    },
+    "permissions": {
+      "title": "Permission Management",
+      "selectAll": "Select All Permissions",
+      "clearAll": "Clear All",
+      "expandAll": "Expand All",
+      "collapseAll": "Collapse All",
+      "searchPlaceholder": "Search permissions...",
+      "selectedCounter": "Selected: {{selected}} / {{total}} permissions",
+      "groupCounter": "{{selected}} / {{total}}",
+      "groupSelectAll": "Select all permissions in {{group}}",
+      "noResults": "No permissions match your search.",
+      "partialSelectionHint": "Some permissions are selected."
+    },
+    "permissionGroups": {
+      "Customers": "CRM",
+      "Bookings": "CRM",
+      "Invoices": "CRM",
+      "Users": "Users",
+      "Roles": "Roles",
+      "Companies": "Companies",
+      "Settings": "Settings",
+      "Audit Logs": "Audit Logs",
+      "Reports": "Analytics",
+      "Billing & Subscriptions": "Billing",
+      "Billing Settings": "Billing",
+      "Billing Audit Log": "Billing",
+      "Workspace": "Workspace",
+      "AI Chat": "AI Platform",
+      "AI Assistant": "AI Platform",
+      "Conversations": "AI Platform",
+      "Analytics": "AI Platform",
+      "Costs": "AI Platform",
+      "Knowledge": "AI Platform",
+      "Channels": "AI Platform",
+      "Embeddings": "AI Platform",
+      "General": "General"
+    },
+    "toast": {
+      "createSuccessTitle": "Role created",
+      "createSuccessDescription": "\"{{name}}\" was created successfully.",
+      "createFailedTitle": "Could not create role",
+      "updateSuccessTitle": "Role updated",
+      "updateSuccessDescription": "\"{{name}}\" was saved successfully.",
+      "updateFailedTitle": "Could not update role",
+      "deleteSuccessTitle": "Role deleted",
+      "deleteSuccessDescription": "\"{{name}}\" was removed."
+    }
   },
   "permissions": {
     "title": "User Permissions",
     "subtitle": "Assign multiple roles and direct permissions to each user.",
     "noPermission": "You do not have permission to manage user permissions.",
-    "general": "General"
+    "general": "General",
+    "selectUser": "User",
+    "selectUserPlaceholder": "Select a user",
+    "selectUserHint": "Select a user to view and assign direct permissions.",
+    "selectUserRequired": "Select a user before assigning permissions.",
+    "loading": "Loading permissions...",
+    "assignSuccessTitle": "Permissions updated",
+    "assignSuccessDescription": "Direct permissions were saved for the selected user.",
+    "assignFailed": "Could not save permissions"
   },
   "profiles": {
-    "title": "Profiles",
-    "subtitle": "Manage profile details and account visibility.",
-    "current": "Currently viewing profile: {{id}}"
+    "title": "My Profile",
+    "subtitle": "View and manage your personal account details.",
+    "loadFailed": "Unable to load your profile.",
+    "lastLoginUnavailable": "Not available",
+    "saveSuccessTitle": "Profile updated",
+    "saveSuccessDescription": "Your profile changes were saved successfully.",
+    "saveFailedTitle": "Could not save profile",
+    "saveFailedDescription": "Please try again.",
+    "sections": {
+      "personal": "Personal Information",
+      "account": "Account Details"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "jobTitle": "Job Title",
+      "company": "Company",
+      "role": "Role",
+      "accountStatus": "Account Status",
+      "language": "Language",
+      "timezone": "Time Zone",
+      "createdDate": "Created Date",
+      "lastLogin": "Last Login"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "avatar": {
+      "label": "Profile Photo",
+      "description": "Upload an image or provide a URL. Images up to 512 KB are supported.",
+      "upload": "Upload Photo",
+      "remove": "Remove Photo",
+      "urlLabel": "Avatar URL",
+      "urlPlaceholder": "https://example.com/avatar.jpg",
+      "invalidTypeTitle": "Invalid file type",
+      "invalidTypeDescription": "Please choose an image file.",
+      "tooLargeTitle": "Image too large",
+      "tooLargeDescription": "Profile photos must be 512 KB or smaller.",
+      "invalidUrl": "Enter a valid HTTPS URL, image upload, or storage path."
+    },
+    "validation": {
+      "fullNameRequired": "Full name is required."
+    },
+    "changePassword": {
+      "action": "Change Password",
+      "actionDescription": "Update your login password securely.",
+      "title": "Change Password",
+      "description": "Enter your current password, then choose a new one.",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "submit": "Update Password",
+      "currentRequired": "Current password is required.",
+      "mustDiffer": "New password must be different from your current password.",
+      "successTitle": "Password updated",
+      "successDescription": "Your password was changed successfully."
+    },
+    "timezones": {
+      "utc": "UTC",
+      "americaNewYork": "Eastern Time (New York)",
+      "americaChicago": "Central Time (Chicago)",
+      "americaDenver": "Mountain Time (Denver)",
+      "americaLosAngeles": "Pacific Time (Los Angeles)",
+      "europeLondon": "London",
+      "europeParis": "Paris",
+      "europeBerlin": "Berlin",
+      "asiaDubai": "Dubai",
+      "asiaRiyadh": "Riyadh",
+      "asiaKolkata": "India (Kolkata)",
+      "asiaSingapore": "Singapore",
+      "asiaTokyo": "Tokyo",
+      "australiaSydney": "Sydney"
+    }
   },
   "status": {
     "pending": "Pending",
@@ -530,5 +1898,158 @@
   },
   "errors": {
     "notAuthenticated": "Not authenticated"
+  },
+  "aiAssistant": {
+    "title": "AI Assistant",
+    "subtitle": "Configure your company AI assistant for future receptionist and automation features.",
+    "noPermission": "You do not have permission to view AI Assistant settings.",
+    "noCompany": "No company assigned. AI Assistant settings are unavailable.",
+    "notConfigured": "AI Assistant settings have not been configured for this company yet.",
+    "readOnly": "Read-only access",
+    "sections": {
+      "general": "General",
+      "generalShort": "General",
+      "conversation": "Conversation",
+      "conversationShort": "Chat",
+      "businessRules": "Business Rules",
+      "businessRulesShort": "Rules",
+      "businessShort": "Rules",
+      "knowledge": "Knowledge",
+      "knowledgeShort": "Knowledge",
+      "integrations": "Future Integrations",
+      "integrationsShort": "Integrations"
+    },
+    "general": {
+      "enableAi": "Enable AI",
+      "enableAiDesc": "Turn the AI Assistant on or off for this company.",
+      "assistantName": "Assistant Name",
+      "assistantNamePlaceholder": "Enter assistant display name",
+      "assistantAvatar": "Assistant Avatar",
+      "assistantAvatarPlaceholder": "Image URL or avatar reference",
+      "defaultLanguage": "Default Language",
+      "replyTone": "Reply Tone",
+      "provider": "Provider",
+      "model": "Model",
+      "modelPlaceholder": "e.g. gpt-5.5",
+      "temperature": "Temperature",
+      "maxTokens": "Max Tokens",
+      "responseLanguage": "Response Language",
+      "welcomeMessage": "Welcome Message",
+      "welcomeMessagePlaceholder": "Message shown when a conversation starts",
+      "fallbackMessage": "Fallback Message",
+      "fallbackMessagePlaceholder": "Message shown when the assistant cannot understand a request",
+      "comingSoon": "Coming soon",
+      "providers": {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "google": "Google",
+        "azure": "Azure"
+      },
+      "responseLanguages": {
+        "system": "Follow system language"
+      },
+      "tones": {
+        "friendly": "Friendly",
+        "professional": "Professional",
+        "formal": "Formal"
+      }
+    },
+    "providerSetup": {
+      "title": "Provider connection (required for AI Chat)",
+      "readyDescription": "A default provider connection is active. AI Chat and runtime execution can use this registry entry.",
+      "missingDescription": "Assistant preferences are saved, but runtime execution requires a company provider connection in the AI Provider registry.",
+      "stepPreferences": "Choose provider and model preferences below (assistant metadata).",
+      "stepConnection": "Create or select a provider connection with credentials.",
+      "stepDefault": "Mark the matching connection as default for this company.",
+      "providerMismatch": "You have a default provider connection for a different provider type. Select or create one that matches your assistant provider.",
+      "loading": "Loading provider connections…",
+      "selectConnection": "Use this connection",
+      "defaultBadge": "default",
+      "setDefault": "Set as default connection",
+      "createFirst": "Create your first provider connection",
+      "createAnother": "Add another connection",
+      "targetProvider": "Registry provider: {{provider}}",
+      "apiKey": "API key",
+      "apiKeyPlaceholder": "sk-… (optional if configured server-side)",
+      "apiKeyHint": "Stored in ai_provider_connections.configuration — not in assistant settings.",
+      "connectProvider": "Create & connect provider",
+      "readOnlyHint": "Ask an administrator with ai.providers.manage to connect a provider.",
+      "defaultConnectionName": "{{assistant}} · {{provider}}"
+    },
+    "conversation": {
+      "rememberConversation": "Remember conversation",
+      "rememberConversationDesc": "Keep conversation context available for returning visitors.",
+      "timeout": "Conversation timeout",
+      "timeoutDesc": "End the session after this many minutes of inactivity.",
+      "maxDuration": "Maximum conversation duration",
+      "maxDurationDesc": "Hard limit on how long a single conversation may last.",
+      "minutes": "min",
+      "note": "Conversation settings apply per company and will be used by future AI channels."
+    },
+    "businessRules": {
+      "allowAutoBooking": "Allow automatic booking",
+      "allowAutoBookingDesc": "Let the assistant create bookings without manual approval.",
+      "allowCancellation": "Allow cancellation",
+      "allowCancellationDesc": "Let the assistant cancel existing bookings on request.",
+      "allowRescheduling": "Allow rescheduling",
+      "allowReschedulingDesc": "Let the assistant move bookings to a new date or time.",
+      "handoffToHuman": "Transfer to employee",
+      "handoffToHumanDesc": "Allow the assistant to escalate conversations to a human agent.",
+      "workingHoursOnly": "Working hours only",
+      "workingHoursOnlyDesc": "Restrict automated actions to configured business hours."
+    },
+    "knowledge": {
+      "enable": "Enable AI Knowledge",
+      "enableDesc": "Allow the assistant to use company knowledge in future releases.",
+      "futureNote": "This section will later include FAQs, services, pricing, doctors, and clinic information."
+    },
+    "integrations": {
+      "comingSoon": "Coming soon",
+      "openLink": "Open",
+      "configure": "Configure",
+      "whatsapp": {
+        "title": "WhatsApp Cloud",
+        "description": "Manage WhatsApp credentials and webhook routing via Channel Administration."
+      },
+      "teamInbox": {
+        "title": "Team Inbox",
+        "description": "Monitor conversations, take over from AI, and send human replies."
+      },
+      "openai": {
+        "title": "OpenAI / LLM Provider",
+        "description": "Create the runtime provider connection on the General tab (Provider connection panel)."
+      },
+      "knowledge": {
+        "title": "Knowledge Base",
+        "description": "Manage documents and retrieval sources used by the AI runtime."
+      },
+      "automation": {
+        "title": "AI Analytics",
+        "description": "Review execution latency, traces, and runtime health."
+      },
+      "receptionist": {
+        "title": "AI Receptionist",
+        "description": "Voice and chat receptionist experiences powered by these settings."
+      }
+    },
+    "defaults": {
+      "assistantName": "Vault Assistant",
+      "personality": "helpful",
+      "welcomeMessage": "Hello! I'm your AI assistant. How can I help you today?",
+      "fallbackMessage": "I'm sorry, I didn't understand that. Could you please rephrase your question?"
+    },
+    "save": {
+      "button": "Save settings",
+      "successTitle": "Settings saved",
+      "successDescription": "AI Assistant settings were updated successfully.",
+      "errorTitle": "Could not save settings"
+    },
+    "errors": {
+      "loadFailed": "Could not initialize AI Assistant settings"
+    },
+    "audit": {
+      "created": "Created AI Assistant settings",
+      "updated": "Updated AI Assistant settings"
+    }
   }
 }

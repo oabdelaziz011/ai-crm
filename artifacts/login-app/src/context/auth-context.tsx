@@ -1,6 +1,9 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
+import { getAuthRedirectUrl } from "@/lib/auth-redirect";
+import type { AuthErrorLike } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
+import { shouldSkipAuthContextReload } from "@/lib/auth-password-verify";
 
 interface ProfileRecord {
   id: string;
@@ -51,9 +54,10 @@ interface AuthContextType {
   permissions: PermissionRecord[];
   isSuperAdmin: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthErrorLike | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: AuthErrorLike | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  refreshAuthContext: () => Promise<void>;
   displayName: string;
 }
 
@@ -66,6 +70,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const loadedUserIdRef = useRef<string | null>(null);
+
+  /**
+   * Sequence guard for concurrent `loadAuthContext` calls.
+   *
+   * Each load captures a monotonic generation at start. After every `await`,
+   * the load compares its generation to `loadGenerationRef.current`. If they
+   * differ, a newer load has started (or auth was cleared) and this load exits
+   * without calling setState.
+   *
+   * This is intentionally not a mutex: overlapping requests still run in
+   * parallel; only the newest completion may commit profile, company, roles,
+   * permissions, loading, or loadedUserIdRef.
+   */
+  const loadGenerationRef = useRef(0);
+
+  const invalidateInFlightAuthLoads = () => {
+    loadGenerationRef.current += 1;
+  };
 
   const clearAuthContext = () => {
     setProfile(null);
@@ -100,19 +123,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw byUserId.error;
   };
 
-  const loadAuthContext = async (userId: string | undefined) => {
-    clearAuthContext();
-
+  const loadAuthContext = async (userId: string | undefined, showLoading = true) => {
     if (!userId) {
+      invalidateInFlightAuthLoads();
+      clearAuthContext();
+      loadedUserIdRef.current = null;
       setIsLoading(false);
       return;
     }
 
+    const generation = ++loadGenerationRef.current;
+    const isStale = () => generation !== loadGenerationRef.current;
+
+    if (showLoading && !isStale()) {
+      setIsLoading(true);
+    }
+
     try {
       const nextProfile = await loadProfile(userId);
+      if (isStale()) {
+        return;
+      }
       setProfile(nextProfile);
 
-      // Load company if company_id exists
       let nextCompany: CompanyRecord | null = null;
       if (nextProfile?.company_id) {
         const { data: companyData, error: companyError } = await supabase
@@ -120,49 +153,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select("id, name, logo_url, status, subscription_status, billing_cycle, subscription_expires_at")
           .eq("id", nextProfile.company_id)
           .maybeSingle();
-        
+
         if (!companyError && companyData) {
           nextCompany = companyData as CompanyRecord;
         }
       }
+      if (isStale()) {
+        return;
+      }
       setCompany(nextCompany);
 
-      let nextRoles: RoleRecord[] = [];
       const { data: userRoleRows, error: userRoleError } = await supabase
         .from("user_roles")
         .select("role_id")
         .eq("user_id", userId);
 
       if (userRoleError) {
-        console.warn("Unable to load user roles", userRoleError.message);
-      } else {
-        const roleIds = (userRoleRows ?? [])
-          .map((row) => row.role_id)
-          .filter(Boolean) as string[];
+        console.warn("Unable to load user role assignments", userRoleError.message);
+      }
 
-        if (roleIds.length > 0) {
-          const { data: roleRows, error: roleError } = await supabase
-            .from("roles")
-            .select("id, company_id, name, description, is_system")
-            .in("id", roleIds);
+      const assignedRoleIds = (userRoleRows ?? [])
+        .map((row) => row.role_id)
+        .filter(Boolean) as string[];
 
-          if (roleError) {
-            console.warn("Unable to load roles", roleError.message);
-          } else {
-            nextRoles = (roleRows ?? []) as RoleRecord[];
-          }
+      let nextRoles: RoleRecord[] = [];
+      if (assignedRoleIds.length > 0) {
+        const { data: roleRows, error: roleError } = await supabase
+          .from("roles")
+          .select("id, company_id, name, description, is_system")
+          .in("id", assignedRoleIds);
+
+        if (roleError) {
+          console.warn("Unable to load role metadata", roleError.message);
+        } else {
+          nextRoles = (roleRows ?? []) as RoleRecord[];
         }
+      }
+      if (isStale()) {
+        return;
       }
       setRoles(nextRoles);
 
-      const roleIds = nextRoles.map((role) => role.id);
       const permissionIds = new Set<string>();
 
-      if (roleIds.length > 0) {
+      if (assignedRoleIds.length > 0) {
         const { data: rolePermissionRows, error: rolePermissionError } = await supabase
           .from("role_permissions")
           .select("permission_id")
-          .in("role_id", roleIds);
+          .in("role_id", assignedRoleIds);
 
         if (rolePermissionError) {
           console.warn("Unable to load role permissions", rolePermissionError.message);
@@ -205,64 +243,119 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      if (isStale()) {
+        return;
+      }
       setPermissions(nextPermissions);
+      loadedUserIdRef.current = userId;
     } catch (error) {
+      if (isStale()) {
+        return;
+      }
       console.warn("Unable to load RBAC context", error);
       clearAuthContext();
+      loadedUserIdRef.current = null;
     } finally {
-      setIsLoading(false);
+      if (!isStale()) {
+        setIsLoading(false);
+      }
     }
   };
 
+  const handleAuthStateChange = async (event: AuthChangeEvent, nextSession: Session | null) => {
+    setSession(nextSession);
+
+    if (event === "SIGNED_OUT" || !nextSession?.user) {
+      invalidateInFlightAuthLoads();
+      clearAuthContext();
+      loadedUserIdRef.current = null;
+      setIsLoading(false);
+      return;
+    }
+
+    const nextUserId = nextSession.user.id;
+
+    if (event === "SIGNED_IN" && shouldSkipAuthContextReload() && loadedUserIdRef.current === nextUserId) {
+      loadedUserIdRef.current = nextUserId;
+      return;
+    }
+
+    const userChanged = loadedUserIdRef.current !== null && loadedUserIdRef.current !== nextUserId;
+    const shouldReload =
+      event === "INITIAL_SESSION" ||
+      event === "TOKEN_REFRESHED" ||
+      event === "SIGNED_IN" ||
+      event === "USER_UPDATED" ||
+      event === "PASSWORD_RECOVERY" ||
+      userChanged ||
+      loadedUserIdRef.current === null;
+
+    if (!shouldReload) {
+      return;
+    }
+
+    if (event === "SIGNED_IN" || userChanged) {
+      invalidateInFlightAuthLoads();
+      clearAuthContext();
+    }
+
+    const showLoading =
+      event === "INITIAL_SESSION" || event === "SIGNED_IN" || userChanged || loadedUserIdRef.current === null;
+
+    await loadAuthContext(nextUserId, showLoading);
+  };
+
   useEffect(() => {
-    const initializeSession = async () => {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      
-      setSession(initialSession);
-      if (initialSession?.user) {
-        await loadAuthContext(initialSession.user.id);
-      } else {
-        clearAuthContext();
-        setIsLoading(false);
-      }
-    };
-
-    void initializeSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession);
-      if (nextSession?.user) {
-        setIsLoading(true);
-        await loadAuthContext(nextSession.user.id);
-      } else {
-        clearAuthContext();
-        setIsLoading(false);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      void handleAuthStateChange(event, nextSession);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-const signIn = async (email: string, password: string) => {
-  const result = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const signIn = async (email: string, password: string) => {
+    const result = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  return {
-    error: result.error?.message ?? null,
+    return {
+      error: result.error
+        ? { message: result.error.message, code: result.error.code, status: result.error.status }
+        : null,
+    };
   };
-};
+
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error?.message ?? null };
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
+      },
+    });
+
+    return {
+      error: error ? { message: error.message, code: error.code, status: error.status } : null,
+      needsEmailConfirmation: Boolean(data.user && !data.session),
+    };
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    invalidateInFlightAuthLoads();
     clearAuthContext();
+    loadedUserIdRef.current = null;
     setSession(null);
     setIsLoading(false);
+  };
+
+  const refreshAuthContext = async () => {
+    const userId = session?.user?.id;
+    if (!userId) {
+      return;
+    }
+    await loadAuthContext(userId, false);
   };
 
   const displayName = profile?.full_name || session?.user?.email?.split("@")[0] || "User";
@@ -281,6 +374,7 @@ const signIn = async (email: string, password: string) => {
         signIn,
         signUp,
         signOut,
+        refreshAuthContext,
         displayName,
       }}
     >

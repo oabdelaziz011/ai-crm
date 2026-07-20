@@ -22,7 +22,9 @@ import {
   applyTemplateSectionOverrides,
   composeFinalPrompt,
   orderPromptSections,
+  renderSectionsWithVariables,
 } from "../utils/compose-prompt.js";
+import type { PromptRenderer } from "../rendering/prompt-renderer.js";
 import type { PromptContextService } from "./prompt-context-service.js";
 import type { BuildPromptInput, BuiltPrompt, ServiceContext } from "../types.js";
 
@@ -55,6 +57,7 @@ export class PromptOrchestratorService {
     private readonly versionRepository: PromptTemplateVersionRepository,
     private readonly buildRepository: PromptBuildRepository,
     private readonly contextService: PromptContextService,
+    private readonly renderer?: PromptRenderer,
   ) {}
 
   async build(ctx: ServiceContext, input: BuildPromptInput): Promise<BuiltPrompt> {
@@ -78,16 +81,19 @@ export class PromptOrchestratorService {
 
     const dynamicSections = mergeBuilderSections(this.builders, normalizedContext);
     const mergedSections = applyTemplateSectionOverrides(dynamicSections, version);
+    const renderedSections = this.renderer
+      ? renderSectionsWithVariables(this.renderer, mergedSections, normalizedContext)
+      : mergedSections;
 
     if (normalizedContext.formattingRules?.length) {
-      mergedSections.formatting_rules = this.responseContractBuilder.buildFormattingSection(
+      renderedSections.formatting_rules = this.responseContractBuilder.buildFormattingSection(
         normalizedContext.formattingRules,
       );
     }
 
     const orderedSections = orderPromptSections(
       template.section_order,
-      mergedSections,
+      renderedSections,
       this.responseContractBuilder,
       version,
       normalizedContext.formattingRules,

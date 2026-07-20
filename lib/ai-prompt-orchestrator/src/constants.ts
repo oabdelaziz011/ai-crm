@@ -23,6 +23,7 @@ export const PROMPT_SECTION_KEYS = [
   "tone",
   "formatting_rules",
   "safety_instructions",
+  "knowledge_context",
   "output_contract",
 ] as const;
 
@@ -31,7 +32,40 @@ export type PromptSectionKey = (typeof PROMPT_SECTION_KEYS)[number];
 export const PROMPT_PERMISSIONS = {
   view: "prompts.view",
   manage: "prompts.manage",
+  publish: "prompts.publish",
+  preview: "prompts.preview",
+  rollback: "prompts.rollback",
 } as const;
+
+export const PROMPT_LIFECYCLE_STATUSES = ["draft", "published", "archived"] as const;
+export type PromptLifecycleStatus = (typeof PROMPT_LIFECYCLE_STATUSES)[number];
+
+export const ENTERPRISE_PROMPT_KINDS = [
+  "system",
+  "user",
+  "context",
+  "safety",
+  "instruction",
+  "examples",
+  "custom",
+] as const;
+
+export type EnterprisePromptKind = (typeof ENTERPRISE_PROMPT_KINDS)[number];
+
+export const PROMPT_LIBRARY_TEMPLATE_KEYS = [
+  "customer_support",
+  "booking_assistant",
+  "faq_assistant",
+  "sales_assistant",
+  "lead_qualification",
+  "appointment_booking",
+  "crm_assistant",
+  "workflow_decision",
+  "workflow_summarize",
+  "workflow_extract",
+] as const;
+
+export type PromptLibraryTemplateKey = (typeof PROMPT_LIBRARY_TEMPLATE_KEYS)[number];
 
 export const PROMPT_AUDIT_EVENTS = [
   "prompt_built",

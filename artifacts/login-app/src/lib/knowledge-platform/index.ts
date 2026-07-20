@@ -1,5 +1,6 @@
 import type { ServiceContext } from "@workspace/knowledge-platform";
 import { createKnowledgePlatformServices } from "@workspace/knowledge-platform";
+import { createEmbeddingPlatformServices } from "@workspace/embedding-platform";
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -13,7 +14,10 @@ export function useKnowledgePlatformServices() {
   const { user, profile, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
 
-  const services = useMemo(() => createKnowledgePlatformServices(supabase), []);
+  const services = useMemo(() => {
+    const embedding = createEmbeddingPlatformServices(supabase);
+    return createKnowledgePlatformServices(supabase, { embeddingQueue: embedding.queue });
+  }, []);
 
   const context = useMemo<ServiceContext>(
     () => ({

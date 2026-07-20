@@ -107,6 +107,9 @@ export class VectorIndexService {
       input.knowledgeEmbeddingId,
       input.collectionId,
     );
+    if (existing && existing.status === "indexed") {
+      return existing;
+    }
     if (existing && existing.status !== "removed") {
       throw new ValidationError("Knowledge embedding is already indexed in this collection.");
     }

@@ -29,6 +29,7 @@ function mapTemplate(row: Record<string, unknown>): PromptTemplateRecord {
     section_order: parseSectionOrder(row.section_order),
     is_enabled: Boolean(row.is_enabled),
     active_version_id: (row.active_version_id as string | null) ?? null,
+    has_unpublished_draft: Boolean(row.has_unpublished_draft),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -44,6 +45,8 @@ function mapVersion(row: Record<string, unknown>): PromptTemplateVersionRecord {
     output_contract: normalizeOutputContract(row.output_contract),
     change_notes: row.change_notes as string,
     is_active: Boolean(row.is_active),
+    lifecycle_status: (row.lifecycle_status as PromptTemplateVersionRecord["lifecycle_status"]) ?? "published",
+    policies: (row.policies as PromptTemplateVersionRecord["policies"]) ?? undefined,
     created_at: row.created_at as string,
     created_by: (row.created_by as string | null) ?? null,
   };
@@ -184,6 +187,24 @@ export function createSupabasePromptTemplateRepository(client: SupabaseClient): 
       if (error) throw error;
       return mapTemplate(data as Record<string, unknown>);
     },
+
+    async setLifecycleState(
+      templateId: string,
+      patch: { hasUnpublishedDraft?: boolean },
+    ): Promise<PromptTemplateRecord> {
+      const update: Record<string, unknown> = {};
+      if (patch.hasUnpublishedDraft !== undefined) {
+        update.has_unpublished_draft = patch.hasUnpublishedDraft;
+      }
+      const { data, error } = await client
+        .from(TEMPLATES_TABLE)
+        .update(update)
+        .eq("id", templateId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return mapTemplate(data as Record<string, unknown>);
+    },
   };
 }
 
@@ -245,6 +266,8 @@ export function createSupabasePromptTemplateVersionRepository(
           output_contract: input.outputContract,
           change_notes: input.changeNotes ?? "",
           is_active: input.activate ?? false,
+          lifecycle_status: input.lifecycleStatus ?? (input.activate ? "published" : "draft"),
+          policies: input.policies ?? {},
           created_by: input.createdBy ?? null,
         })
         .select("*")
@@ -265,7 +288,7 @@ export function createSupabasePromptTemplateVersionRepository(
       await client.from(VERSIONS_TABLE).update({ is_active: false }).eq("template_id", templateId);
       const { data, error } = await client
         .from(VERSIONS_TABLE)
-        .update({ is_active: true })
+        .update({ is_active: true, lifecycle_status: "published" })
         .eq("id", versionId)
         .eq("template_id", templateId)
         .select("*")

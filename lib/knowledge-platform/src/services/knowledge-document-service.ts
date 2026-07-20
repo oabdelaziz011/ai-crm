@@ -1,5 +1,6 @@
 import { KNOWLEDGE_PERMISSIONS } from "../constants.js";
 import {
+  DocumentLockedError,
   KnowledgeDocumentNotFoundError,
   KnowledgeSourceNotFoundError,
   PermissionDeniedError,
@@ -61,6 +62,9 @@ export class KnowledgeDocumentService {
     const document = await this.documentRepository.findById(input.documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(input.documentId);
     assertCompanyAccess(ctx, document.company_id);
+    if (document.status !== "draft") {
+      throw new DocumentLockedError(document.status);
+    }
     return this.documentRepository.update(input);
   }
 

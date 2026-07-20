@@ -175,7 +175,7 @@ async function fetchMyProfile(): Promise<MyProfile> {
 
   const fullResult = await fetchProfileRow(user.id, PROFILE_COLUMNS_FULL);
   if (!fullResult.error && fullResult.data) {
-    return normalizeMyProfile(fullResult.data as Record<string, unknown>, {
+    return normalizeMyProfile(fullResult.data as unknown as Record<string, unknown>, {
       hasPreferenceColumns: true,
     });
   }
@@ -193,7 +193,7 @@ async function fetchMyProfile(): Promise<MyProfile> {
     throw new Error("Profile not found");
   }
 
-  return normalizeMyProfile(legacyResult.data as Record<string, unknown>, {
+  return normalizeMyProfile(legacyResult.data as unknown as Record<string, unknown>, {
     hasPreferenceColumns: false,
   });
 }

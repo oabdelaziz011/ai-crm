@@ -59,11 +59,26 @@ export const AzureOpenAIAdapter = createStubAdapterClass({
   },
 });
 
+export const OllamaAdapter = createStubAdapterClass({
+  key: "ollama",
+  displayName: "Ollama",
+  defaultModel: "llama3.2",
+  configurationSchema: {
+    type: "object",
+    properties: {
+      model: { type: "string" },
+      baseUrl: { type: "string" },
+    },
+    required: ["model"],
+  },
+});
+
 export function createStubAdapters() {
   return {
     openai: (configuration: Record<string, unknown>) => new OpenAIAdapter(configuration),
     claude: (configuration: Record<string, unknown>) => new ClaudeAdapter(configuration),
     gemini: (configuration: Record<string, unknown>) => new GeminiAdapter(configuration),
     azure_openai: (configuration: Record<string, unknown>) => new AzureOpenAIAdapter(configuration),
+    ollama: (configuration: Record<string, unknown>) => new OllamaAdapter(configuration),
   };
 }

@@ -16,6 +16,10 @@ export interface PromptTemplateRepository {
   create(input: CreatePromptTemplateInput): Promise<PromptTemplateRecord>;
   updateEnabled(templateId: string, isEnabled: boolean): Promise<PromptTemplateRecord>;
   setActiveVersion(templateId: string, versionId: string): Promise<PromptTemplateRecord>;
+  setLifecycleState(
+    templateId: string,
+    patch: { hasUnpublishedDraft?: boolean },
+  ): Promise<PromptTemplateRecord>;
 }
 
 export interface PromptTemplateVersionRepository {

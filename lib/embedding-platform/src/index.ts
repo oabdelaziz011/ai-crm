@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { VectorStoreServices } from "@workspace/vector-store";
 import { createDefaultEmbeddingProviderFactory } from "./factory/embedding-provider-factory.js";
 import type { EmbeddingTelemetryPort } from "./ports/embedding-telemetry-port.js";
 import { NoopEmbeddingTelemetryPort } from "./ports/embedding-telemetry-port.js";
@@ -9,7 +10,12 @@ import {
   createSupabaseKnowledgeChunkReader,
   createSupabaseKnowledgeEmbeddingRepository,
 } from "./repositories/supabase-embedding-repositories.js";
+import { createSupabaseKnowledgeDocumentRepository } from "@workspace/knowledge-platform";
+import { EmbeddingDocumentCompletionService } from "./services/embedding-document-completion-service.js";
 import { EmbeddingGenerationService, EmbeddingJobService } from "./services/embedding-generation-service.js";
+import { EmbeddingIndexingService } from "./services/embedding-indexing-service.js";
+import { createEmbeddingQueueService, EmbeddingQueueService } from "./services/embedding-queue-service.js";
+import { createEmbeddingWorkerService, EmbeddingWorkerService } from "./services/embedding-worker-service.js";
 import { EmbeddingProviderRegistryService } from "./services/embedding-provider-registry-service.js";
 import { EmbeddingVersionService } from "./services/embedding-version-service.js";
 
@@ -19,17 +25,20 @@ export type EmbeddingPlatformServices = {
   generation: EmbeddingGenerationService;
   jobs: EmbeddingJobService;
   versions: EmbeddingVersionService;
+  queue: EmbeddingQueueService;
+  worker?: EmbeddingWorkerService;
 };
 
 export function createEmbeddingPlatformServices(
   client: SupabaseClient,
-  options?: { telemetry?: EmbeddingTelemetryPort },
+  options?: { telemetry?: EmbeddingTelemetryPort; vectorStore?: VectorStoreServices },
 ): EmbeddingPlatformServices {
   const definitionRepository = createSupabaseEmbeddingProviderDefinitionRepository(client);
   const connectionRepository = createSupabaseEmbeddingProviderConnectionRepository(client);
   const embeddingRepository = createSupabaseKnowledgeEmbeddingRepository(client);
   const jobRepository = createSupabaseEmbeddingJobRepository(client);
   const chunkReader = createSupabaseKnowledgeChunkReader(client);
+  const documentRepository = createSupabaseKnowledgeDocumentRepository(client);
   const factory = createDefaultEmbeddingProviderFactory(definitionRepository);
   const telemetry = options?.telemetry ?? new NoopEmbeddingTelemetryPort();
 
@@ -43,6 +52,25 @@ export function createEmbeddingPlatformServices(
     telemetry,
   );
   const jobs = new EmbeddingJobService(jobRepository, connectionRepository, chunkReader, generation, versions);
+  const queue = createEmbeddingQueueService(client, {
+    documentRepository,
+    jobRepository,
+    connectionRepository,
+    chunkReader,
+    versionService: versions,
+  });
+
+  let worker: EmbeddingWorkerService | undefined;
+  if (options?.vectorStore) {
+    worker = createEmbeddingWorkerService({
+      client,
+      jobs,
+      jobRepository,
+      indexing: new EmbeddingIndexingService(options.vectorStore),
+      completion: new EmbeddingDocumentCompletionService(documentRepository, jobRepository),
+      telemetry,
+    });
+  }
 
   return {
     registry: new EmbeddingProviderRegistryService(definitionRepository, connectionRepository, factory),
@@ -50,6 +78,8 @@ export function createEmbeddingPlatformServices(
     generation,
     jobs,
     versions,
+    queue,
+    worker,
   };
 }
 
@@ -77,4 +107,8 @@ export * from "./repositories/embedding-repositories.js";
 export * from "./repositories/supabase-embedding-repositories.js";
 export * from "./services/embedding-provider-registry-service.js";
 export * from "./services/embedding-generation-service.js";
+export * from "./services/embedding-queue-service.js";
+export * from "./services/embedding-indexing-service.js";
+export * from "./services/embedding-document-completion-service.js";
+export * from "./services/embedding-worker-service.js";
 export * from "./services/embedding-version-service.js";

@@ -10,7 +10,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { PermissionBadge, PermissionLabel } from "@/components/rbac/permission-badge";
+import {
+  permissionSearchHaystack,
+  resolvePermissionDisplayName,
+  resolvePermissionGroupId,
+  resolvePermissionGroupMeta,
+  usePermissionCatalogLanguageVersion,
+} from "@/lib/rbac/permission-display-i18n";
 import type { PermissionRecord } from "@/hooks/use-rbac";
+import { useRbacDeveloperMode } from "@/hooks/use-rbac-developer-mode";
 import { cn } from "@/lib/utils";
 
 type TriState = boolean | "indeterminate";
@@ -19,24 +28,6 @@ function triState(selectedCount: number, totalCount: number): TriState {
   if (totalCount === 0 || selectedCount === 0) return false;
   if (selectedCount >= totalCount) return true;
   return "indeterminate";
-}
-
-function permissionMatchesSearch(permission: PermissionRecord, query: string): boolean {
-  const haystack = [
-    permission.code,
-    permission.action,
-    permission.module,
-    permission.description,
-    permission.category,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(query);
-}
-
-function moduleGroupKey(module: string): string {
-  return module.trim() || "General";
 }
 
 type Props = {
@@ -48,6 +39,7 @@ type Props = {
 
 export function RolePermissionSelector({ permissions, selected, onChange, disabled }: Props) {
   const { t } = useTranslation("common");
+  usePermissionCatalogLanguageVersion();
   const containerRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
@@ -66,17 +58,25 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
   const grouped = useMemo(() => {
     const groups = new Map<string, PermissionRecord[]>();
     permissions.forEach((permission) => {
-      const key = moduleGroupKey(permission.module ?? "General");
-      const list = groups.get(key) ?? [];
+      const code = permission.code ?? permission.id;
+      const groupId = resolvePermissionGroupId(code, permission);
+      const list = groups.get(groupId) ?? [];
       list.push(permission);
-      groups.set(key, list);
+      groups.set(groupId, list);
     });
     return Array.from(groups.entries())
-      .map(([module, items]) => ({
-        module,
-        permissions: items.sort((a, b) => (a.action ?? "").localeCompare(b.action ?? "")),
+      .map(([groupId, items]) => ({
+        groupId,
+        meta: resolvePermissionGroupMeta(groupId),
+        permissions: items.sort((a, b) => {
+          const aCode = a.code ?? a.id;
+          const bCode = b.code ?? b.id;
+          return resolvePermissionDisplayName(aCode, a).localeCompare(
+            resolvePermissionDisplayName(bCode, b),
+          );
+        }),
       }))
-      .sort((a, b) => a.module.localeCompare(b.module));
+      .sort((a, b) => a.meta.order - b.meta.order || a.meta.label.localeCompare(b.meta.label));
   }, [permissions]);
 
   const filteredGroups = useMemo(() => {
@@ -84,7 +84,10 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
     return grouped
       .map((group) => ({
         ...group,
-        permissions: group.permissions.filter((p) => permissionMatchesSearch(p, normalizedQuery)),
+        permissions: group.permissions.filter((p) => {
+          const code = p.code ?? p.id;
+          return permissionSearchHaystack(code, p).includes(normalizedQuery);
+        }),
       }))
       .filter((group) => group.permissions.length > 0);
   }, [grouped, normalizedQuery]);
@@ -106,7 +109,7 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
 
   useEffect(() => {
     if (hasInitializedExpand.current || filteredGroups.length === 0) return;
-    setExpandedGroups(filteredGroups.map((g) => g.module));
+    setExpandedGroups(filteredGroups.map((g) => g.groupId));
     hasInitializedExpand.current = true;
   }, [filteredGroups]);
 
@@ -160,7 +163,7 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
     }
   };
 
-  const expandAll = () => setExpandedGroups(filteredGroups.map((g) => g.module));
+  const expandAll = () => setExpandedGroups(filteredGroups.map((g) => g.groupId));
   const collapseAll = () => setExpandedGroups([]);
 
   const handlePermissionAreaKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -168,21 +171,6 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
       event.preventDefault();
       selectCodes(visibleCodes.length > 0 ? visibleCodes : allCodes);
     }
-  };
-
-  const groupLabel = (module: string) => {
-    const key = moduleGroupKey(module);
-    const translated = t(`roles.permissionGroups.${key}`, { defaultValue: "" });
-    if (translated) return translated;
-    return key;
-  };
-
-  const permissionLabel = (permission: PermissionRecord) => {
-    if (permission.description) return permission.description;
-    if (permission.action && permission.module) {
-      return `${permission.action} — ${permission.module}`;
-    }
-    return permission.code ?? permission.action ?? "";
   };
 
   return (
@@ -275,8 +263,8 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
 
               return (
                 <AccordionItem
-                  key={group.module}
-                  value={group.module}
+                  key={group.groupId}
+                  value={group.groupId}
                   className="overflow-hidden rounded-xl border border-white/10 bg-background/20 px-3"
                 >
                   <div className="flex items-center gap-2 py-1">
@@ -284,12 +272,17 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
                       checked={groupState}
                       onCheckedChange={() => handleGroupSelectAll(codes)}
                       disabled={disabled}
-                      aria-label={t("roles.permissions.groupSelectAll", { group: groupLabel(group.module) })}
+                      aria-label={t("roles.permissions.groupSelectAll", { group: group.meta.label })}
                       onClick={(event) => event.stopPropagation()}
                     />
                     <AccordionTrigger className="flex-1 py-3 hover:no-underline">
                       <div className="flex w-full items-center justify-between gap-3 pe-2 text-start">
-                        <span className="font-semibold">{groupLabel(group.module)}</span>
+                        <span className="font-semibold">
+                          <span className="me-2" aria-hidden>
+                            {group.meta.icon}
+                          </span>
+                          {group.meta.label}
+                        </span>
                         <span className="text-xs font-normal text-muted-foreground tabular-nums">
                           {t("roles.permissions.groupCounter", {
                             selected: selectedInGroup,
@@ -318,14 +311,7 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
                               disabled={disabled}
                               className="mt-0.5"
                             />
-                            <span className="min-w-0 flex-1">
-                              <span className="block font-medium text-foreground">
-                                {permissionLabel(permission)}
-                              </span>
-                              <span className="block truncate text-xs text-muted-foreground" dir="ltr">
-                                {permission.code}
-                              </span>
-                            </span>
+                            <PermissionLabel code={code} permission={permission} showDescription={false} />
                           </label>
                         );
                       })}
@@ -371,6 +357,16 @@ export function RoleFormFields({
   permissionsLoading,
 }: RoleFormFieldsProps) {
   const { t } = useTranslation("common");
+  const { developerMode } = useRbacDeveloperMode();
+  usePermissionCatalogLanguageVersion();
+
+  const permissionByCode = useMemo(() => {
+    const map = new Map<string, PermissionRecord>();
+    permissions.forEach((p) => {
+      if (p.code) map.set(p.code, p);
+    });
+    return map;
+  }, [permissions]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -397,6 +393,25 @@ export function RoleFormFields({
 
       <div className="min-h-0 flex-1">
         <p className="mb-2 text-sm font-semibold">{t("roles.permissions.title")}</p>
+
+        {values.permissions.length > 0 ? (
+          <div className="mb-3 rounded-xl border border-white/10 bg-background/20 p-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
+              {t("roles.permissions.assignedSummary", { count: values.permissions.length })}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {values.permissions.map((code) => (
+                <PermissionBadge
+                  key={code}
+                  code={code}
+                  permission={permissionByCode.get(code) ?? null}
+                  title
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {permissionsLoading ? (
           <div className="rounded-xl border border-white/10 px-4 py-10 text-center text-sm text-muted-foreground">
             {t("permissions.loading")}
@@ -409,6 +424,10 @@ export function RoleFormFields({
             disabled={disabled}
           />
         )}
+
+        {developerMode ? (
+          <p className="mt-2 text-xs text-amber-400/90">{t("roles.permissions.developerModeHint")}</p>
+        ) : null}
       </div>
     </div>
   );

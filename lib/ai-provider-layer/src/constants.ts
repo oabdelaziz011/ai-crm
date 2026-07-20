@@ -10,7 +10,7 @@ export const AI_PROVIDER_KEYS = [
 
 export type AIProviderKey = (typeof AI_PROVIDER_KEYS)[number];
 
-export const ADAPTER_PROVIDER_KEYS = ["openai", "claude", "gemini", "azure_openai"] as const;
+export const ADAPTER_PROVIDER_KEYS = ["mock", "openai", "claude", "gemini", "azure_openai", "ollama"] as const;
 
 export type AdapterProviderKey = (typeof ADAPTER_PROVIDER_KEYS)[number];
 

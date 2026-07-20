@@ -40,7 +40,7 @@ export function DashboardOutlet() {
                 <Redirect to="/settings/profile" />
               </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>

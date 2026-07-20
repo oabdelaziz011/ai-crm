@@ -22,6 +22,7 @@ import {
   createChannelRuntimePort,
 } from "./channel-platform-ports.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
+import { createEnterpriseRuntimeIntegrations } from "./runtime-adapters.js";
 
 export type SystemServiceContext = {
   userId: null;
@@ -76,8 +77,15 @@ export function getWebhookPlatform(): WebhookPlatform {
   const vectorQuery = createVectorQueryServices(client);
   const retrieval = createRetrievalServices(client);
   const prompt = createPromptOrchestratorServices(client);
-  const execution = createAIExecutionServices(client);
   const provider = createAIProviderServices(client);
+  const execution = createAIExecutionServices(
+    client,
+    createEnterpriseRuntimeIntegrations({
+      promptRuntime: prompt.runtime,
+      gateway: provider.gateway,
+      knowledge: retrieval.knowledge,
+    }),
+  );
 
   const runtimePorts = createRuntimeEnginePortsWithContext(
     { conversation, intent, vectorQuery, retrieval, prompt, execution, provider },

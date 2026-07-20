@@ -9,3 +9,7 @@ export function canManageKnowledge(hasPermission: (code: string) => boolean, isS
 export function canImportKnowledge(hasPermission: (code: string) => boolean, isSuperAdmin: boolean): boolean {
   return isSuperAdmin || hasPermission("knowledge.import");
 }
+
+export function canPublishKnowledge(hasPermission: (code: string) => boolean, isSuperAdmin: boolean): boolean {
+  return isSuperAdmin || hasPermission("knowledge.publish");
+}

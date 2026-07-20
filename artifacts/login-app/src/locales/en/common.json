@@ -24,9 +24,12 @@
     "channels": "Channels",
     "aiUsage": "AI Usage & Cost",
     "aiAnalytics": "AI Analytics",
+    "aiRuntime": "AI Runtime",
     "aiAssistant": "AI Assistant",
     "aiChat": "AI Chat",
     "knowledge": "Knowledge",
+    "prompts": "Prompts",
+    "automation": "Workflows",
     "reports": "Reports",
     "settings": "Settings",
     "demoScenarios": "Demo Scenarios"
@@ -270,6 +273,8 @@
       "title": "Access denied",
       "description": "You do not have the required permission to view this area.",
       "requiredPermission": "Required permission: {{permission}}",
+      "requiredPermissionLabel": "Required permission: {{permission}}",
+      "superAdminRequired": "Platform super administrator access is required.",
       "back": "Return to dashboard"
     },
     "notFound": {
@@ -644,10 +649,12 @@
   "knowledge": {
     "title": "Knowledge",
     "subtitle": "Manage company knowledge sources, imported documents, and import status.",
+    "noPermission": "You do not have permission to view knowledge.",
     "nav": {
       "sources": "Sources",
       "documents": "Documents",
-      "importStatus": "Import Status"
+      "importStatus": "Import Status",
+      "retrievalTester": "Retrieval Tester"
     },
     "sources": {
       "createTitle": "Create Source",
@@ -668,12 +675,47 @@
     "documents": {
       "listTitle": "Documents",
       "empty": "No knowledge documents imported yet.",
+      "noPermission": "You do not have permission to view knowledge documents.",
       "columns": {
         "title": "Title",
         "source": "Source",
         "status": "Status",
         "mimeType": "MIME type",
-        "updated": "Updated"
+        "updated": "Updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "draft": "Draft",
+        "published": "Published",
+        "indexing": "Indexing",
+        "indexed": "Indexed",
+        "archived": "Archived"
+      },
+      "embedding": {
+        "pending": "Pending",
+        "queued": "Queued",
+        "processing": "Processing",
+        "completed": "Completed",
+        "failed": "Failed",
+        "queuedChunks": "{{count}} chunks queued"
+      },
+      "actions": {
+        "publish": "Publish",
+        "archive": "Archive",
+        "restore": "Restore",
+        "delete": "Delete",
+        "reindex": "Re-index",
+        "reindexDisabled": "Re-indexing will be available in Sprint A1-05"
+      },
+      "messages": {
+        "publishSuccess": "Document published successfully.",
+        "publishFailed": "Could not publish document.",
+        "archiveSuccess": "Document archived.",
+        "archiveFailed": "Could not archive document.",
+        "restoreSuccess": "Document restored.",
+        "restoreFailed": "Could not restore document.",
+        "deleteSuccess": "Document deleted.",
+        "deleteFailed": "Could not delete document."
       }
     },
     "import": {
@@ -695,6 +737,704 @@
       "validation": {
         "noContent": "Provide a PDF/text file or plain text content."
       }
+    },
+    "retrieval": {
+      "title": "Retrieval Tester",
+      "subtitle": "Preview ranked knowledge chunks returned by the enterprise Knowledge Provider.",
+      "run": "Run retrieval test",
+      "running": "Retrieving…",
+      "failed": "Knowledge retrieval failed.",
+      "missingConnections": "Configure default embedding and vector store connections before testing retrieval.",
+      "noResults": "No matching knowledge chunks were returned."
+    }
+  },
+  "aiRuntime": {
+    "title": "AI Runtime Monitor",
+    "subtitle": "Read-only operational view of enterprise AI execution sessions and observability.",
+    "metrics": {
+      "events": "Structured events",
+      "cacheHitRatio": "Cache hit ratio",
+      "sessions": "Tracked sessions"
+    },
+    "sessions": {
+      "title": "Recent execution sessions",
+      "empty": "No runtime sessions recorded in this process yet."
+    }
+  },
+  "prompts": {
+    "title": "Prompt Platform",
+    "subtitle": "Author, preview, validate, version, and compose enterprise prompt templates.",
+    "noPermission": "You do not have permission to view prompts.",
+    "nav": {
+      "library": "Prompt Library",
+      "editor": "Template Editor"
+    },
+    "status": {
+      "disabled": "Disabled",
+      "system": "System"
+    },
+    "library": {
+      "title": "Prompt Library",
+      "subtitle": "Reusable prompt templates for workflows and AI runtime execution.",
+      "empty": "No prompt templates found for this company.",
+      "openEditor": "Open editor"
+    },
+    "templates": {
+      "title": "Template Presets",
+      "subtitle": "Enterprise starter templates for support, booking, sales, and workflow decisions."
+    },
+    "editor": {
+      "enabled": "Enabled",
+      "sectionPlaceholder": "Write prompt content with variables like {{customer.name}}",
+      "notFound": "Prompt template not found."
+    },
+    "variables": {
+      "title": "Variable Browser",
+      "subtitle": "Supported dynamic variables resolved by context providers."
+    },
+    "preview": {
+      "title": "Prompt Preview",
+      "meta": "{{tokens}} estimated tokens · {{variables}} variables",
+      "empty": "Preview will appear after you add prompt content."
+    },
+    "validation": {
+      "title": "Validation",
+      "ready": "Ready",
+      "blocked": "Blocked",
+      "noIssues": "No validation issues detected."
+    },
+    "versions": {
+      "title": "Version History",
+      "empty": "No versions yet.",
+      "active": "Active"
+    }
+  },
+  "workflowBuilder": {
+    "list": {
+      "title": "Workflows",
+      "subtitle": "Design customer journeys with a simple drag-and-drop builder.",
+      "newName": "Workflow name",
+      "newNamePlaceholder": "Welcome journey",
+      "create": "Create workflow",
+      "createFailed": "Could not create workflow",
+      "emptyDescription": "Open this workflow to continue designing your customer journey."
+    },
+    "builder": {
+      "title": "Workflow Builder"
+    },
+    "palette": {
+      "title": "Steps",
+      "subtitle": "Drag a step onto the canvas to build your journey.",
+      "conversation": "Conversation",
+      "logic": "Logic & Decisions",
+      "crm": "CRM",
+      "ai": "AI"
+    },
+    "properties": {
+      "title": "Step settings",
+      "empty": "Select a step on the canvas to edit its settings."
+    },
+    "publish": {
+      "error": "This workflow is not ready to publish yet."
+    },
+    "actions": {
+      "back": "Back",
+      "save": "Save now",
+      "saveDraft": "Save draft",
+      "publish": "Publish",
+      "align": "Align",
+      "autoLayout": "Auto layout",
+      "undo": "Undo",
+      "redo": "Redo",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "done": "Done",
+      "compareSelected": "Compare selected",
+      "rollback": "Rollback"
+    },
+    "lifecycle": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived",
+      "publishedUnpublishedChanges": "Published • Unpublished changes"
+    },
+    "executionStatus": {
+      "ready": "Ready",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Needs attention"
+    },
+    "categories": {
+      "conversation": "Conversation",
+      "crm": "CRM",
+      "logic": "Logic",
+      "timing": "Timing",
+      "ai": "AI",
+      "terminal": "End"
+    },
+    "branch": {
+      "default": "Default",
+      "case": "Case",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "connection": {
+      "fromPrevious": "Connect from previous step",
+      "toNext": "Connect to next step",
+      "stepAria": "{{name}} step"
+    },
+    "nodeEmpty": {
+      "start": "Every workflow begins here automatically.",
+      "end": "This step closes the conversation."
+    },
+    "nodes": {
+      "start": {
+        "displayName": "Start",
+        "description": "Begins when someone sends a message."
+      },
+      "send_message": {
+        "displayName": "Send Message",
+        "description": "Send a friendly message to your customer."
+      },
+      "ask_question": {
+        "displayName": "Ask Question",
+        "description": "Ask a question and wait for a reply."
+      },
+      "wait_for_reply": {
+        "displayName": "Wait For Reply",
+        "description": "Pause until the customer sends their next message."
+      },
+      "buttons": {
+        "displayName": "Buttons",
+        "description": "Offer quick reply buttons."
+      },
+      "list": {
+        "displayName": "List",
+        "description": "Show a menu of options."
+      },
+      "if_else": {
+        "displayName": "If / Else",
+        "description": "Route customers based on visual rules."
+      },
+      "switch": {
+        "displayName": "Switch",
+        "description": "Route customers by matching a field to cases."
+      },
+      "merge": {
+        "displayName": "Merge",
+        "description": "Bring multiple paths back together."
+      },
+      "delay": {
+        "displayName": "Delay",
+        "description": "Wait before the next step."
+      },
+      "end": {
+        "displayName": "End",
+        "description": "Finish the conversation."
+      },
+      "create_customer": {
+        "displayName": "Create Customer",
+        "description": "Save a new customer record."
+      },
+      "update_customer": {
+        "displayName": "Update Customer",
+        "description": "Update an existing customer record."
+      },
+      "create_booking": {
+        "displayName": "Create Booking",
+        "description": "Create an appointment booking."
+      }
+    },
+    "validation": {
+      "title": "Before you publish",
+      "fieldLabels": {
+        "message": "a message",
+        "question": "a question",
+        "saveAs": "where to save the answer",
+        "replySaveAs": "where to save the reply",
+        "title": "a menu title",
+        "body": "a menu message",
+        "nameField": "which answer to use for the customer name",
+        "field": "which field to update",
+        "value": "the new value",
+        "serviceName": "a service name",
+        "dateField": "which answer to use for the date",
+        "buttonLabel": "at least one button label"
+      }
+    },
+    "validationIssues": {
+      "requiredField": "Add {{field}} before publishing.",
+      "missing-start": "Add a Start step so your workflow knows when to begin.",
+      "missing-end": "Add an End step so your workflow knows when to finish.",
+      "missing-name": "Give your workflow a clear name before publishing.",
+      "cycle-detected": "Your workflow loops back on itself. Remove the loop before publishing.",
+      "isolated": "This step is not connected to the rest of your workflow.",
+      "duplicate-start": "Only one Start step is allowed in a workflow.",
+      "missing-yes": "Connect the YES branch so customers who match your rules know what happens next.",
+      "missing-no": "Connect the NO branch so customers who do not match still have a clear next step.",
+      "missing-rules": "Add at least one rule before publishing this If / Else step.",
+      "missing-field": "Choose a field for your Switch step.",
+      "missing-cases": "Add at least one case before publishing your Switch step.",
+      "duplicate-case": "Each Switch case must use a unique value.",
+      "connectCaseBranch": "Connect the \"{{label}}\" branch.",
+      "missing-default": "Connect the Default branch for values that do not match any case.",
+      "merge-paths": "Merge steps should receive at least two incoming paths.",
+      "tooManyOutgoing": "{{node}} has more outgoing branches than allowed.",
+      "missing-buttons": "Add at least one button label before publishing.",
+      "missing-list-rows": "Add at least one list option before publishing.",
+      "invalid-delay": "Enter a wait time greater than zero."
+    },
+    "publishDialog": {
+      "title": "Publish workflow",
+      "description": "Production customers will run the active published version. Draft edits stay separate until you publish again.",
+      "readyTitle": "Ready to publish",
+      "readyDescription": "Your workflow passed all blocking checks.",
+      "fixTitle": "Fix these items before publishing",
+      "workflowLabel": "Workflow:",
+      "stepsLabel": "Steps:",
+      "connectionsLabel": "Connections:",
+      "nextVersionLabel": "Next version:",
+      "releaseNotesLabel": "Release notes",
+      "releaseNotesPlaceholder": "Describe what changed for your team...",
+      "successTitle": "Published successfully",
+      "successDescription": "Production traffic now runs this version.",
+      "addReleaseNotes": "Add release notes",
+      "failed": "Publish failed."
+    },
+    "unsavedChanges": {
+      "title": "Unsaved draft changes",
+      "description": "You have unpublished edits. Save your draft, discard the changes, or keep editing.",
+      "continueEditing": "Continue editing",
+      "discard": "Discard changes",
+      "saveDraft": "Save draft"
+    },
+    "versionHistory": {
+      "title": "Version history",
+      "version": "Version {{number}}",
+      "active": "Active",
+      "noReleaseNotes": "No release notes",
+      "notPublished": "Not published",
+      "compareTitle": "Compare versions",
+      "whatChanged": "What changed",
+      "addedSteps": "Added steps",
+      "removedSteps": "Removed steps",
+      "changedSettings": "Changed settings"
+    },
+    "errors": {
+      "saveFailed": "We couldn't save your workflow. Please try again."
+    },
+    "logic": {
+      "field": "Field",
+      "chooseField": "Choose a field",
+      "cases": "Cases",
+      "addCase": "Add case",
+      "caseNumber": "Case {{number}}",
+      "branchLabel": "Branch label",
+      "matchValue": "Match value",
+      "defaultBranch": "Default branch",
+      "defaultBranchHint": "Route customers when no case matches.",
+      "mergeStrategy": "Merge strategy",
+      "waitAll": "Wait All",
+      "waitAny": "Wait Any",
+      "mergeHint": "Paths converge here before continuing. Future runtime versions can honor the selected strategy across parallel executions.",
+      "optionalPrompt": "Optional prompt",
+      "waitSilently": "Leave blank to wait silently",
+      "saveReplyAs": "Save reply as",
+      "waitTime": "Wait time",
+      "unit": "Unit",
+      "minutes": "Minutes",
+      "hours": "Hours",
+      "days": "Days",
+      "businessHoursOnly": "Business hours only",
+      "businessHoursHint": "Scheduling metadata for future calendars.",
+      "rule": "Rule",
+      "operator": "Operator",
+      "chooseOperator": "Choose operator",
+      "value": "Value",
+      "secondValue": "Second value",
+      "match": "Match",
+      "group": "Group",
+      "allAnd": "All (AND)",
+      "anyOr": "Any (OR)",
+      "nestedGroup": "Nested group",
+      "removeGroup": "Remove group",
+      "and": "AND",
+      "or": "OR",
+      "listOptions": "List options",
+      "shortDescription": "Short description (optional)",
+      "waitMinutes": "Wait time (minutes)",
+      "nameField": "Name field",
+      "emailField": "Email field (optional)",
+      "phoneField": "Phone field (optional)",
+      "fieldToUpdate": "Field to update",
+      "newValue": "New value",
+      "serviceName": "Service name",
+      "dateField": "Date answer field",
+      "menuTitle": "Title",
+      "menuMessage": "Message",
+      "menuButtonLabel": "Menu button label"
+    },
+    "variables": {
+      "insert": "Insert Variable",
+      "search": "Search variables",
+      "empty": "No variables found",
+      "providers": "providers available",
+      "categories": {
+        "customer": "Customer",
+        "conversation": "Conversation",
+        "booking": "Booking",
+        "company": "Company",
+        "workflow": "Workflow",
+        "system": "System",
+        "ai": "Future AI"
+      },
+      "fields": {
+        "customer": {
+          "name": "Name",
+          "email": "Email",
+          "phone": "Phone",
+          "type": "Customer type",
+          "country": "Country",
+          "orders": "Total orders"
+        },
+        "conversation": {
+          "last_message": "Last message",
+          "channel": "Channel"
+        },
+        "booking": {
+          "date": "Date",
+          "time": "Time",
+          "service": "Service"
+        },
+        "company": {
+          "name": "Name",
+          "phone": "Phone"
+        },
+        "workflow": {
+          "name": "Workflow name",
+          "step": "Current step",
+          "run_id": "Run ID"
+        },
+        "system": {
+          "date": "Today's date",
+          "time": "Current time",
+          "agent_name": "Agent name"
+        },
+        "ai": {
+          "intent": "Detected intent",
+          "confidence": "Confidence score"
+        }
+      }
+    },
+    "preview": {
+      "title": "Live preview",
+      "empty": "Your preview will appear here."
+    },
+    "fields": {
+      "message": "Message",
+      "messagePlaceholder": "Write a friendly message your customer will understand…",
+      "characterCount": "{{count}} characters",
+      "emojiPlaceholder": "Add emoji",
+      "buttons": "Buttons",
+      "addButton": "Add button",
+      "addListOption": "Add option",
+      "deleteButton": "Delete button",
+      "moveUp": "Move button",
+      "moveOptionUp": "Move option up",
+      "moveOptionDown": "Move option down",
+      "buttonLabel": "Button {{number}}",
+      "question": "Question",
+      "questionPlaceholder": "What would you like to ask?",
+      "saveAnswerAs": "Save answer as",
+      "placeholder": "Placeholder",
+      "placeholderExample": "Type your answer here",
+      "validationMessage": "Validation message",
+      "validationExample": "Please answer this question to continue.",
+      "required": "Required",
+      "requiredHint": "Customer must answer before continuing.",
+      "workflowName": "Workflow name"
+    },
+    "search": {
+      "placeholder": "Search steps…",
+      "empty": "No matching steps"
+    },
+    "quickAdd": {
+      "label": "Add next step",
+      "title": "Choose the next step"
+    },
+    "empty": {
+      "title": "Start building your workflow",
+      "subtitle": "Drag a step from the left, click + on a connection, or start with a Start step.",
+      "cta": "Add Start step"
+    },
+    "align": {
+      "left": "Align left",
+      "right": "Align right",
+      "top": "Align top",
+      "bottom": "Align bottom",
+      "centerHorizontal": "Center horizontally",
+      "centerVertical": "Center vertically",
+      "distributeHorizontal": "Distribute horizontally",
+      "distributeVertical": "Distribute vertically"
+    },
+    "actions": {
+      "back": "Back",
+      "save": "Save now",
+      "saveDraft": "Save draft",
+      "publish": "Publish",
+      "align": "Align",
+      "autoLayout": "Auto layout",
+      "undo": "Undo",
+      "redo": "Redo",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "done": "Done",
+      "compareSelected": "Compare selected",
+      "rollback": "Rollback"
+    },
+    "ai": {
+      "promptTemplate": "Prompt template",
+      "providerConnection": "Provider connection",
+      "modelOverride": "Model override",
+      "temperature": "Temperature",
+      "knowledgeRetrieval": "Knowledge retrieval",
+      "knowledgeRetrievalHint": "Inject enterprise knowledge into this node at runtime.",
+      "outputMode": "Output mode",
+      "executionPolicy": "Execution policy",
+      "executionPolicyHint": "Runtime limits applied by the AI workflow adapter.",
+      "outputVariable": "Output variable",
+      "maxTokens": "Max tokens",
+      "timeoutMs": "Timeout (ms)",
+      "streaming": "Streaming",
+      "streamingHint": "Stream tokens when supported by the provider.",
+      "selectOutputMode": "Select output mode",
+      "useProviderDefault": "Use provider default",
+      "loadingTemplates": "Loading templates…",
+      "selectPromptTemplate": "Select prompt template",
+      "searchPrompts": "Search prompts",
+      "noPromptTemplates": "No prompt templates found",
+      "loadingProviders": "Loading providers…",
+      "selectProviderConnection": "Select provider connection",
+      "searchProviders": "Search providers",
+      "noProviderConnections": "No provider connections found",
+      "yes": "Yes",
+      "no": "No",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "none": "None",
+      "notSelected": "Not selected",
+      "default": "Default",
+      "required": "Required",
+      "label": "Label",
+      "description": "Description",
+      "type": "Type",
+      "inputSource": "Input source",
+      "variableName": "Variable name",
+      "staticText": "Static text",
+      "textVariable": "Text variable",
+      "deleteField": "Delete field",
+      "addField": "Add field",
+      "addOutcome": "Add outcome",
+      "inputSources": {
+        "variable": "Workflow variable",
+        "static": "Static text",
+        "conversation_message": "Conversation message",
+        "decision_output": "Decision output",
+        "extract_output": "Extract output",
+        "summarizer_output": "Summarizer output",
+        "custom_query": "Custom query"
+      },
+      "outputModes": {
+        "text": "Text",
+        "json": "JSON",
+        "boolean": "Boolean",
+        "classification": "Classification",
+        "structured": "Structured object",
+        "array": "Array"
+      },
+      "decisionModes": {
+        "intent_classification": "Intent Classification",
+        "category_classification": "Category Classification",
+        "priority_classification": "Priority Classification",
+        "sentiment": "Sentiment",
+        "approval_decision": "Approval Decision",
+        "binary_decision": "Binary Decision",
+        "multi_class_decision": "Multi-class Decision",
+        "confidence_scoring": "Confidence Scoring",
+        "custom_decision": "Custom Decision"
+      },
+      "summaryPresets": {
+        "short": "Short",
+        "medium": "Medium",
+        "detailed": "Detailed",
+        "bullet_points": "Bullet Points",
+        "executive": "Executive Summary",
+        "custom": "Custom"
+      },
+      "coercionPolicies": {
+        "strict": "Strict",
+        "coerce": "Coerce",
+        "lenient": "Lenient"
+      },
+      "fieldTypes": {
+        "string": "String",
+        "number": "Number",
+        "boolean": "Boolean",
+        "date": "Date",
+        "time": "Time",
+        "email": "Email",
+        "phone": "Phone",
+        "currency": "Currency",
+        "array": "Array",
+        "object": "Object",
+        "enum": "Enum"
+      },
+      "nodes": {
+        "ai_summarizer": {
+          "displayName": "AI Summarizer",
+          "description": "Summarize long text using enterprise AI runtime."
+        },
+        "ai_extract": {
+          "displayName": "AI Extract",
+          "description": "Extract structured business data from text."
+        },
+        "ai_decision": {
+          "displayName": "AI Decision",
+          "description": "Classify, categorize, score, or make structured business decisions."
+        },
+        "ai_knowledge_search": {
+          "displayName": "AI Knowledge Search",
+          "description": "Search enterprise knowledge and return relevant context."
+        }
+      },
+      "validation": {
+        "configLooksGood": "Configuration looks good",
+        "readyForPreview": "This AI node is ready for preview and publishing."
+      },
+      "validationIssues": {
+        "missing-prompt": "Select a prompt template for this AI node.",
+        "missing-provider": "Select a provider connection or default provider key.",
+        "missing-knowledge-collection": "Knowledge is enabled but no knowledge base is selected.",
+        "missing-knowledge-connections": "Knowledge retrieval requires embedding and vector store connections.",
+        "output-mode-policy-conflict": "Structured output modes should use JSON response format.",
+        "missing-static-input": "Enter source text or switch to another input source.",
+        "missing-input-variable": "Select a workflow variable for the input.",
+        "missing-output-variable": "Define an output variable to store the result.",
+        "missing-outcomes": "Add at least one decision outcome.",
+        "invalid-fallback-outcome": "Fallback outcome must match one of the configured decision outcomes.",
+        "invalid-policy-fallback": "Confidence policy fallback must match one of the configured decision outcomes.",
+        "invalid-confidence-threshold": "Confidence threshold must be between 0 and 1.",
+        "missing-schema": "Add at least one extraction field to the schema.",
+        "schema-nesting-too-deep": "Schema nesting is too deep. Limit nested objects to 5 levels.",
+        "missing-custom-query": "Enter a custom search query or configure a query template.",
+        "missing-static-query": "Enter static search text or choose another query source.",
+        "missing-collection": "Select a knowledge collection to search.",
+        "missing-connections": "Knowledge search requires embedding and vector store connections.",
+        "invalid-top-k": "Top K must be between 1 and 100.",
+        "invalid-minimum-score": "Minimum score must be between 0 and 1.",
+        "invalid-max-chunks": "Maximum chunks must be between 1 and 100."
+      },
+      "preview": {
+        "buildingPreview": "Building preview…",
+        "configureToPreview": "Configure the node to preview runtime behavior.",
+        "runtimePreview": "Runtime preview",
+        "runtimePreviewHint": "What the AI workflow adapter will send at execution time.",
+        "prompt": "Prompt",
+        "output": "Output",
+        "knowledge": "Knowledge",
+        "provider": "Provider",
+        "model": "Model",
+        "streaming": "Streaming",
+        "expectedOutput": "Expected output",
+        "estimatedTokens": "Estimated tokens",
+        "inputPreview": "Input preview",
+        "outputSchema": "Output schema",
+        "fields": "Fields",
+        "expectedJsonSchema": "Expected JSON schema",
+        "mode": "Mode",
+        "outcomes": "Outcomes",
+        "collection": "Collection",
+        "estimatedResults": "Estimated results",
+        "sampleOutputStructure": "Sample output structure"
+      },
+      "sections": {
+        "summaryOptions": "Summary options",
+        "summaryOptionsHint": "Presets map to prompt variables consumed by the summarizer template.",
+        "summaryPreset": "Summary preset",
+        "selectPreset": "Select preset",
+        "summaryStyle": "Summary style",
+        "maximumLength": "Maximum length",
+        "language": "Language",
+        "tone": "Tone",
+        "bulletMode": "Bullet mode",
+        "bulletModeHint": "Format the summary as bullet points.",
+        "summarizerPreview": "Summarizer preview",
+        "summarizerPreviewHint": "Expected runtime behavior for this node configuration.",
+        "extractionInput": "Extraction input",
+        "extractionInputHint": "Choose where the unstructured source text comes from.",
+        "businessRules": "Business rules",
+        "outputInstructions": "Output instructions",
+        "validationPolicy": "Validation policy",
+        "extractionSchema": "Extraction schema",
+        "extractionSchemaHint": "Define the structured fields this node should extract.",
+        "fieldName": "Field name",
+        "exampleValue": "Example value",
+        "enumValues": "Enum values (comma separated)",
+        "extractPreview": "Extract preview",
+        "extractPreviewHint": "Schema-driven extraction preview for workflow publishing.",
+        "decisionConfiguration": "Decision configuration",
+        "decisionConfigurationHint": "Choose how the node classifies input and applies confidence policies.",
+        "decisionMode": "Decision mode",
+        "confidenceThreshold": "Confidence threshold",
+        "fallbackOutcome": "Fallback outcome",
+        "confidencePolicy": "Confidence policy",
+        "emitWarningBelowThreshold": "Emit warning below threshold",
+        "requireHumanReview": "Require human review",
+        "continueWorkflowOnLowConfidence": "Continue workflow on low confidence",
+        "decisionOutcomes": "Decision outcomes",
+        "decisionOutcomesHint": "Define labels downstream If/Switch nodes can route on.",
+        "examplesOnePerLine": "Examples (one per line)",
+        "confidenceScoringMode": "Confidence scoring mode returns a numeric score instead of discrete outcome labels.",
+        "decisionPreview": "Decision preview",
+        "decisionPreviewHint": "Expected classification output for workflow routing.",
+        "knowledgeSearch": "Knowledge search",
+        "knowledgeSearchHint": "Retrieve ranked enterprise knowledge through the shared retrieval engine.",
+        "querySource": "Query source",
+        "searchQuery": "Search query",
+        "upstreamVariable": "Upstream variable",
+        "collectionId": "Collection ID",
+        "embeddingConnectionId": "Embedding connection ID",
+        "vectorStoreConnectionId": "Vector store connection ID",
+        "topK": "Top K",
+        "minimumScore": "Minimum score",
+        "maxChunks": "Max chunks",
+        "tagsFilter": "Tags filter (comma separated)",
+        "categoriesFilter": "Categories filter",
+        "knowledgeSearchPreview": "Knowledge search preview",
+        "knowledgeSearchPreviewHint": "Expected retrieval output for downstream AI nodes."
+      },
+      "placeholders": {
+        "input": "input",
+        "pasteContentToSummarize": "Paste the content to summarize",
+        "customerEmail": "customer_email",
+        "whatToExtract": "What should be extracted?",
+        "exampleForModel": "Example for the model",
+        "enumValues": "open, closed, pending",
+        "decisionResult": "decision_result",
+        "extractResult": "extract_result",
+        "summaryResult": "summary_result"
+      }
+    },
+    "status": {
+      "ready": "Ready",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "unsaved": "Unsaved changes",
+      "unpublishedChanges": "Unpublished changes",
+      "error": "Save failed",
+      "publishing": "Publishing...",
+      "published": "Published",
+      "validationCount": "{{count}} items to fix"
     }
   },
   "subscriptions": {
@@ -1679,7 +2419,9 @@
       "role_tenant_mismatch": "The selected role does not belong to the target company.",
       "role_not_found": "The selected role was not found.",
       "target_company_required": "Select a company before assigning a role.",
-      "company_has_no_roles": "This company has no roles configured."
+      "company_has_no_roles": "This company has no roles configured.",
+      "last_company_admin": "This change would remove the last active Company Administrator for the tenant.",
+      "forbidden": "You do not have permission to change this user's role."
     },
     "success": {
       "inviteSentTitle": "Invitation sent",
@@ -1751,7 +2493,16 @@
       "groupCounter": "{{selected}} / {{total}}",
       "groupSelectAll": "Select all permissions in {{group}}",
       "noResults": "No permissions match your search.",
-      "partialSelectionHint": "Some permissions are selected."
+      "partialSelectionHint": "Some permissions are selected.",
+      "assignedSummary": "Assigned permissions ({{count}})",
+      "developerMode": "Developer mode",
+      "developerModeDescription": "Show permission codes and descriptions for debugging. Hidden from normal users.",
+      "developerModeHint": "Developer mode is on — permission codes and descriptions are visible."
+    },
+    "roleDetails": {
+      "showPermissions": "Show permissions",
+      "hidePermissions": "Hide permissions",
+      "noPermissions": "No permissions assigned to this role."
     },
     "permissionGroups": {
       "Customers": "CRM",

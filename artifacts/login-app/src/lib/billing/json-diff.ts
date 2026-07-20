@@ -29,7 +29,7 @@ export function buildJsonDiff(before: unknown, after: unknown): JsonDiffRow[] {
 
   return [...paths]
     .sort((a, b) => a.localeCompare(b))
-    .map((path) => {
+    .map((path): JsonDiffRow => {
       const hasBefore = beforeMap.has(path);
       const hasAfter = afterMap.has(path);
       const beforeValue = beforeMap.get(path);

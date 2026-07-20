@@ -84,7 +84,7 @@ function mapDocument(row: Record<string, unknown>): KnowledgeDocumentRecord {
 
 function normalizeDocumentStatus(status: string): DocumentStatus {
   if (status === "active") return "published";
-  if (status === "published" || status === "archived" || status === "draft") return status;
+  if (status === "published" || status === "archived" || status === "draft" || status === "indexing" || status === "indexed") return status;
   return "draft";
 }
 

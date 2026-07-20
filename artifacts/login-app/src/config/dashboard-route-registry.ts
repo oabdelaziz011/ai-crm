@@ -17,9 +17,12 @@ import {
   Radio,
   Coins,
   Activity,
+  Gauge,
   UserCog,
   Users,
   FlaskConical,
+  Workflow,
+  ScrollText,
 } from "lucide-react";
 
 export const DASHBOARD_BASE_PATH = "/dashboard";
@@ -29,6 +32,7 @@ export type DashboardSectionId =
   | "channels"
   | "ai-usage"
   | "ai-analytics"
+  | "ai-runtime"
   | "customers"
   | "bookings"
   | "invoices"
@@ -42,6 +46,8 @@ export type DashboardSectionId =
   | "ai-assistant"
   | "ai-chat"
   | "knowledge"
+  | "prompts"
+  | "automation"
   | "reports"
   | "settings"
   | "demo-scenarios";
@@ -74,7 +80,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
     id: "ai-platform",
     titleKey: "navigation.aiPlatform",
     icon: Sparkles,
-    childIds: ["team-inbox", "channels", "ai-assistant", "ai-chat", "knowledge", "ai-usage", "ai-analytics"],
+    childIds: ["team-inbox", "channels", "ai-assistant", "ai-chat", "knowledge", "prompts", "automation", "ai-usage", "ai-analytics", "ai-runtime"],
   },
   {
     id: "user-management",
@@ -136,6 +142,16 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     permission: "ai.analytics.view",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/ai/ai-analytics-page")),
+  },
+  {
+    id: "ai-runtime",
+    path: "/dashboard/ai-runtime",
+    nestedPath: "/ai-runtime",
+    titleKey: "navigation.aiRuntime",
+    icon: Gauge,
+    permission: "ai.execution.view",
+    sidebarGroup: "ai-platform",
+    Page: lazyPage(() => import("@/pages/dashboard/ai-runtime-monitor-page")),
   },
   {
     id: "customers",
@@ -267,6 +283,26 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     permission: "knowledge.view",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/knowledge"), "KnowledgePage"),
+  },
+  {
+    id: "prompts",
+    path: "/dashboard/prompts",
+    nestedPath: "/prompts",
+    titleKey: "navigation.prompts",
+    icon: ScrollText,
+    permission: "prompts.view",
+    sidebarGroup: "ai-platform",
+    Page: lazyNamed(() => import("@/pages/prompts"), "PromptPage"),
+  },
+  {
+    id: "automation",
+    path: "/dashboard/automation",
+    nestedPath: "/automation",
+    titleKey: "navigation.automation",
+    icon: Workflow,
+    permission: "automation.view",
+    sidebarGroup: "ai-platform",
+    Page: lazyPage(() => import("@/pages/dashboard/automation-page")),
   },
   {
     id: "reports",

@@ -16,6 +16,12 @@ import {
   type VectorQueryExecutionPort,
 } from "./ports/vector-query-execution-port.js";
 import {
+  createDefaultKnowledgePolicyRegistry,
+  createDefaultKnowledgeRankingRegistry,
+  KnowledgeProvider,
+} from "./providers/knowledge-provider.js";
+import { KnowledgeObservability } from "./observability/knowledge-observability.js";
+import {
   createSupabaseKnowledgeHydrationReadRepository,
   createSupabaseRetrievalContextRepository,
   createSupabaseRetrievalExecutionRepository,
@@ -38,6 +44,9 @@ export type RetrievalServices = {
   metrics: RetrievalMetricsEngine;
   retrieval: RetrievalEngine;
   orchestration: RetrievalOrchestrationEngine;
+  knowledge: KnowledgeProvider;
+  knowledgePolicies: ReturnType<typeof createDefaultKnowledgePolicyRegistry>;
+  knowledgeObservability: KnowledgeObservability;
 };
 
 export function createRetrievalServices(
@@ -73,6 +82,14 @@ export function createRetrievalServices(
   const queryEmbeddingPort = options?.queryEmbeddingPort ?? new NoopQueryEmbeddingPort();
   const vectorQueryPort = options?.vectorQueryPort ?? new NoopVectorQueryExecutionPort();
   const orchestration = new RetrievalOrchestrationEngine(queryEmbeddingPort, vectorQueryPort, retrieval);
+  const knowledgePolicies = createDefaultKnowledgePolicyRegistry();
+  const knowledgeRanking = createDefaultKnowledgeRankingRegistry();
+  const knowledgeObservability = new KnowledgeObservability();
+  const knowledge = new KnowledgeProvider({
+    orchestration,
+    policies: knowledgePolicies,
+    ranking: knowledgeRanking,
+  });
 
   return {
     policy,
@@ -82,6 +99,9 @@ export function createRetrievalServices(
     metrics,
     retrieval,
     orchestration,
+    knowledge,
+    knowledgePolicies,
+    knowledgeObservability,
   };
 }
 
@@ -103,3 +123,5 @@ export * from "./engines/context-assembly-engine.js";
 export * from "./engines/retrieval-metrics-engine.js";
 export * from "./engines/retrieval-engine.js";
 export * from "./engines/retrieval-orchestration-engine.js";
+export * from "./providers/knowledge-provider.js";
+export * from "./observability/knowledge-observability.js";

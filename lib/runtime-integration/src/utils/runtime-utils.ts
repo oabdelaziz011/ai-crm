@@ -17,3 +17,26 @@ export function formatRetrievalInstructions(
     return `[${title}] ${chunk.content}`;
   });
 }
+
+export function mapRetrievalSnapshotToKnowledgeContext(
+  retrieval: {
+    executionId: string;
+    chunkCount: number;
+    totalTokens: number;
+    chunks: Array<{ content: string; metadata: Record<string, unknown> }>;
+  } | null,
+) {
+  if (!retrieval || retrieval.chunks.length === 0) return undefined;
+  const chunks = retrieval.chunks.map((chunk, index) => ({
+    id: String(chunk.metadata.knowledgeChunkId ?? chunk.metadata.chunkId ?? index),
+    content: chunk.content,
+    score: typeof chunk.metadata.score === "number" ? chunk.metadata.score : null,
+  }));
+  return {
+    contextText: formatRetrievalInstructions(retrieval.chunks).join("\n\n"),
+    chunkCount: retrieval.chunkCount,
+    totalTokens: retrieval.totalTokens,
+    executionId: retrieval.executionId,
+    chunks,
+  };
+}

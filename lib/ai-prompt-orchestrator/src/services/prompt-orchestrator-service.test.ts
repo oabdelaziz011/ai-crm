@@ -136,6 +136,11 @@ function createEnvironment(options?: { template?: PromptTemplateRecord; version?
       id: templateId,
       active_version_id: versionId,
     }),
+    setLifecycleState: async (templateId, patch) => ({
+      ...template,
+      id: templateId,
+      has_unpublished_draft: patch.hasUnpublishedDraft ?? template.has_unpublished_draft,
+    }),
   };
 
   const versionRepository: PromptTemplateVersionRepository = {

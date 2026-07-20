@@ -260,10 +260,8 @@ export function useAssignUserRoles() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId, roleIds }: { userId: string; roleIds: string[] }) => {
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-      if (roleIds.length > 0) {
-        await supabase.from("user_roles").insert(roleIds.map((roleId) => ({ user_id: userId, role_id: roleId })));
-      }
+      const { replaceUserRoles } = await import("@/lib/users/replace-user-role");
+      await replaceUserRoles(userId, roleIds);
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });

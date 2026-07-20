@@ -205,6 +205,7 @@ describe("AIProviderFactory", () => {
       "azure_openai",
       "claude",
       "gemini",
+      "ollama",
       "openai",
     ]);
   });

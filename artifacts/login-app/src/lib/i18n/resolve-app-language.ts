@@ -4,7 +4,7 @@ export const SUPPORTED_APP_LANGUAGES = ["en", "ar"] as const;
 
 export type AppLanguage = (typeof SUPPORTED_APP_LANGUAGES)[number];
 
-export const DEFAULT_APP_LANGUAGE: AppLanguage = "en";
+export const DEFAULT_APP_LANGUAGE: AppLanguage = "ar";
 
 export function isAppLanguage(value: string | null | undefined): value is AppLanguage {
   return value === "en" || value === "ar";

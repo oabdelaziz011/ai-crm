@@ -2,6 +2,8 @@ export const ROLE_ASSIGNMENT_REJECTION = {
   ROLE_NOT_FOUND: "role_not_found",
   TARGET_COMPANY_REQUIRED: "target_company_required",
   ROLE_TENANT_MISMATCH: "role_tenant_mismatch",
+  LAST_COMPANY_ADMIN: "last_company_admin",
+  FORBIDDEN: "forbidden",
 } as const;
 
 export type RoleAssignmentRejectionCode =
@@ -23,6 +25,7 @@ export type AssignableRoleRecord = {
   is_system?: boolean | null;
   role_type?: "PLATFORM" | "DEFAULT" | "CUSTOM" | null;
   name?: string | null;
+  description?: string | null;
 };
 
 /**

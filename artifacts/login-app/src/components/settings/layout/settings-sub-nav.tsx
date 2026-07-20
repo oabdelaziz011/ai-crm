@@ -13,7 +13,7 @@ export function SettingsSubNav() {
   const { t, i18n } = useTranslation("common");
   const { hasPermission, isSuperAdmin } = useAuthUser();
 
-  const items = safeArray(settingsNavItems()).filter((item) =>
+  const items = safeArray([...settingsNavItems()]).filter((item) =>
     isSettingsRoutePermitted(item.permission, hasPermission, isSuperAdmin),
   );
 

@@ -1,0 +1,23 @@
+{
+  "name": "@workspace/tenant-ai-bootstrap",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx/esm --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "@workspace/ai-provider-layer": "file:../ai-provider-layer",
+    "@workspace/embedding-platform": "file:../embedding-platform",
+    "@workspace/vector-store": "file:../vector-store"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsx": "^4.21.0"
+  }
+}

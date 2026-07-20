@@ -281,6 +281,8 @@ function createEnvironment() {
         started_at: null,
         completed_at: null,
         cancelled_at: null,
+        locked_by: null,
+        locked_at: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         created_by: input.createdBy ?? null,
@@ -288,8 +290,35 @@ function createEnvironment() {
       jobs.push(record);
       return record;
     },
+    createMany: async (inputs) => {
+      const created: EmbeddingJobRecord[] = [];
+      for (const input of inputs) {
+        created.push(await jobRepository.create(input));
+      }
+      return created;
+    },
     findById: async (id) => jobs.find((item) => item.id === id) ?? null,
-    list: async (filter) => jobs.filter((item) => item.company_id === filter.companyId),
+    list: async (filter) =>
+      jobs.filter(
+        (item) =>
+          item.company_id === filter.companyId &&
+          (!filter.status || item.status === filter.status) &&
+          (!filter.knowledgeChunkId || item.knowledge_chunk_id === filter.knowledgeChunkId),
+      ),
+    listByChunkIds: async (filter) =>
+      jobs.filter(
+        (item) =>
+          item.company_id === filter.companyId &&
+          filter.chunkIds.includes(item.knowledge_chunk_id) &&
+          (!filter.statuses?.length || filter.statuses.includes(item.status)),
+      ),
+    listByDocumentVersion: async (filter) =>
+      jobs.filter(
+        (item) =>
+          item.company_id === filter.companyId &&
+          item.metadata.documentId === filter.documentId &&
+          item.metadata.versionId === filter.versionId,
+      ),
     update: async (input) => {
       const record = jobs.find((item) => item.id === input.jobId)!;
       Object.assign(record, {
@@ -303,22 +332,23 @@ function createEnvironment() {
       });
       return record;
     },
-    claimNextQueued: async (companyId) => {
-      const queued = jobs.filter((item) => item.company_id === companyId && item.status === "queued").slice(0, 1);
-      for (const job of queued) {
-        job.status = "running";
-        job.started_at = new Date().toISOString();
-      }
-      return queued[0] ?? null;
+    claimNextQueued: async (companyId, workerId) => {
+      const batch = await jobRepository.claimNextQueuedBatch(companyId, 1, workerId);
+      return batch[0] ?? null;
     },
-    claimNextQueuedBatch: async (companyId, limit) => {
-      const queued = jobs.filter((item) => item.company_id === companyId && item.status === "queued").slice(0, limit);
+    claimNextQueuedBatch: async (companyId, limit, workerId) => {
+      const queued = jobs
+        .filter((item) => item.company_id === companyId && item.status === "queued")
+        .slice(0, limit);
       for (const job of queued) {
         job.status = "running";
         job.started_at = new Date().toISOString();
+        job.locked_by = workerId ?? null;
+        job.locked_at = new Date().toISOString();
       }
       return queued;
     },
+    recoverStaleLocks: async () => 0,
   };
 
   const chunkReader: KnowledgeChunkReader = {

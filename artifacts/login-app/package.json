@@ -21,6 +21,7 @@
     "test:billing-settings-core": "tsx scripts/billing-settings-core.test.mts",
     "test:billing-settings-i18n": "tsx scripts/billing-settings-i18n-verify.mts",
     "test:subscription-detail": "tsx scripts/subscription-detail-regression.test.mts",
+    "test:workflow-builder-core": "tsx scripts/workflow-builder-core.test.mts",
     "billing-health-probe": "tsx scripts/billing-health-probe.mts",
     "production:gate": "tsx scripts/production-gate.mts",
     "knowledge:e2e": "tsx ../../scripts/knowledge-foundation-e2e-verify.mts",
@@ -109,6 +110,7 @@
     "@workspace/ai-prompt-orchestrator": "workspace:*",
     "@workspace/ai-provider-layer": "workspace:*",
     "@workspace/ai-tool-router": "workspace:*",
+    "@workspace/ai-workflow-platform": "workspace:*",
     "@workspace/channel-platform": "workspace:*",
     "@workspace/channel-registry": "workspace:*",
     "@workspace/embedding-platform": "workspace:*",
@@ -118,6 +120,8 @@
     "@workspace/vector-query": "workspace:*",
     "@workspace/vector-store": "workspace:*",
     "i18next": "^26.3.6",
-    "react-i18next": "^17.0.9"
+    "react-i18next": "^17.0.9",
+    "@xyflow/react": "^12.8.2",
+    "@workspace/automation-platform": "workspace:*"
   }
 }

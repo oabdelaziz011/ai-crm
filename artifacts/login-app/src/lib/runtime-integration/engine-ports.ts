@@ -1,13 +1,13 @@
 import type { ConversationServices, ServiceContext as ConversationServiceContext } from "@workspace/ai-conversation";
 import type { IntentEngineServices } from "@workspace/ai-intent-engine";
-import type { AIExecutionServices } from "@workspace/ai-execution-engine";
+import type { AIExecutionServices, EnterpriseAIRuntimeService } from "@workspace/ai-execution-engine";
 import type { AIProviderServices } from "@workspace/ai-provider-layer";
 import type { PromptOrchestratorServices } from "@workspace/ai-prompt-orchestrator";
 import type { RetrievalServices } from "@workspace/retrieval-engine";
 import type { VectorQueryServices } from "@workspace/vector-query";
 import {
-  extractResponseContent,
   formatRetrievalInstructions,
+  mapRetrievalSnapshotToKnowledgeContext,
   type RuntimeEnginePorts,
   type ServiceContext,
 } from "@workspace/runtime-integration";
@@ -21,6 +21,15 @@ export type RuntimeEngineDependencies = {
   execution: AIExecutionServices;
   provider: AIProviderServices;
 };
+
+function requireEnterpriseRuntime(
+  execution: AIExecutionServices,
+): EnterpriseAIRuntimeService {
+  if (!execution.enterpriseRuntime) {
+    throw new Error("Enterprise AI Runtime is not configured. Wire prompt + gateway integrations.");
+  }
+  return execution.enterpriseRuntime;
+}
 
 function asConversationContext(ctx: ServiceContext): ConversationServiceContext {
   return ctx as ConversationServiceContext;
@@ -161,13 +170,16 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
     },
     prompt: {
       async buildPrompt(ctx, input) {
-        const built = await deps.prompt.orchestrator.build(asConversationContext(ctx), {
+        const runtime = requireEnterpriseRuntime(deps.execution);
+        const built = await runtime.buildPrompt(asConversationContext(ctx), {
           companyId: input.companyId,
           conversationId: input.conversationId,
-          context: {
+          templateType: "conversation",
+          promptContext: {
             companyId: input.companyId,
             conversationId: input.conversationId,
-            conversationState: input.conversationState as never,
+            conversationState: input.conversationState,
+            conversationSummary: null,
             recentMessages: input.recentMessages.map((message) => ({
               role: message.role,
               content: message.content,
@@ -178,47 +190,57 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
               matched_tool: input.intent.matchedTool,
               reason: input.intent.reason,
             },
+            knowledge: mapRetrievalSnapshotToKnowledgeContext(input.retrieval),
             systemInstructions: input.retrieval
               ? formatRetrievalInstructions(input.retrieval.chunks)
               : undefined,
           },
+          recentMessages: input.recentMessages.map((message) => ({
+            role: message.role,
+            content: message.content,
+            createdAt: message.createdAt,
+          })),
+          conversationWindow: { maxMessages: 20, tokenBudget: 4096 },
         });
 
-        if (!built.build_id) {
+        if (!built.buildId) {
           throw new Error("Prompt build did not persist a build identifier.");
         }
 
         return {
-          buildId: built.build_id,
-          templateKey: built.template_key,
-          finalPrompt: built.final_prompt,
+          buildId: built.buildId,
+          templateKey: built.templateKey,
+          finalPrompt: built.finalPrompt,
         };
       },
     },
     execution: {
       async execute(ctx, input) {
-        const result = await deps.execution.execution.execute(asConversationContext(ctx), {
+        const runtime = requireEnterpriseRuntime(deps.execution);
+        const result = await runtime.execute(asConversationContext(ctx), {
           companyId: input.companyId,
           conversationId: input.conversationId,
           promptBuildId: input.promptBuildId,
           providerConnectionId: input.providerConnectionId,
           policy: input.policy,
+          stream: input.policy?.streaming,
           onStreamChunk: input.onStreamChunk,
           abortSignal: input.abortSignal,
+          promptContext: {},
         });
 
         return {
-          executionId: result.execution_id,
-          providerKey: result.provider_key,
+          executionId: result.executionId,
+          providerKey: result.providerKey,
           model: result.model,
           status: result.status,
-          latencyMs: result.latency_ms,
+          latencyMs: result.latencyMs,
           tokenUsage: {
-            promptTokens: result.token_usage.prompt_tokens,
-            completionTokens: result.token_usage.completion_tokens,
-            totalTokens: result.token_usage.total_tokens,
+            promptTokens: result.tokenUsage.prompt_tokens,
+            completionTokens: result.tokenUsage.completion_tokens,
+            totalTokens: result.tokenUsage.total_tokens,
           },
-          responseContent: extractResponseContent(result.normalized_response?.content ?? ""),
+          responseContent: result.responseText,
         };
       },
     },

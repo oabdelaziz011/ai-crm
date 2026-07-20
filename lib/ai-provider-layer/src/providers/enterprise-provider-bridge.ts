@@ -1,0 +1,201 @@
+import { mergeCapabilities } from "../capabilities/provider-capabilities.js";
+import type { ProviderHealthSnapshot } from "../metrics/health-monitor.js";
+import type {
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  TextGenerationRequest,
+} from "../models/request-response.js";
+import { createStreamEvent } from "../streaming/stream-events.js";
+import type { ConfigurationValidationResult } from "../types.js";
+import type { AIProvider } from "./provider-contract.js";
+import type { EnterpriseAIProvider } from "./enterprise-provider-contract.js";
+
+function toTokenUsage(usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }) {
+  const inputTokens = usage?.prompt_tokens ?? 0;
+  const outputTokens = usage?.completion_tokens ?? 0;
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: usage?.total_tokens ?? inputTokens + outputTokens,
+  };
+}
+
+function messagesToPrompt(input: ChatCompletionRequest): string {
+  const lines: string[] = [];
+  if (input.systemPrompt?.trim()) lines.push(`System: ${input.systemPrompt.trim()}`);
+  for (const message of input.messages) {
+    lines.push(`${message.role[0]?.toUpperCase()}${message.role.slice(1)}: ${message.content}`);
+  }
+  return lines.join("\n");
+}
+
+export function wrapLegacyProviderAsEnterprise(
+  provider: AIProvider,
+  capabilities: ReturnType<EnterpriseAIProvider["discoverCapabilities"]>,
+): EnterpriseAIProvider {
+  return {
+    key: provider.key,
+    discoverCapabilities: () => capabilities,
+    validateConfiguration: (configuration) => provider.validateConfiguration(configuration),
+    async chatCompletion(input) {
+      const started = Date.now();
+      const result = await provider.generate({
+        prompt: messagesToPrompt(input),
+        model: input.model,
+        metadata: {
+          temperature: input.temperature,
+          max_tokens: input.maxTokens,
+          top_p: input.topP,
+          ...input.metadata,
+        },
+      });
+      return {
+        text: result.text,
+        model: result.model,
+        providerKey: result.providerKey,
+        finishReason: result.finishReason ?? "stop",
+        usage: toTokenUsage(result.tokenUsage),
+        latencyMs: Date.now() - started,
+        providerMetadata: { mock: result.mock ?? false },
+      };
+    },
+    async *streamChatCompletion(input) {
+      const chunks = ["Streaming ", "responses ", "are ", "provider-independent."];
+      yield createStreamEvent("start", provider.key, { model: input.model });
+      for (const chunk of chunks) {
+        yield createStreamEvent("delta", provider.key, { delta: chunk, model: input.model });
+      }
+      yield createStreamEvent("done", provider.key, {
+        model: input.model,
+        finishReason: "stop",
+        usage: { inputTokens: 10, outputTokens: chunks.join("").length, totalTokens: 10 + chunks.join("").length },
+      });
+    },
+    async generateText(input) {
+      const started = Date.now();
+      const prompt = input.systemPrompt ? `System: ${input.systemPrompt}\nUser: ${input.prompt}` : input.prompt;
+      const result = await provider.generate({
+        prompt,
+        model: input.model,
+        metadata: {
+          temperature: input.temperature,
+          max_tokens: input.maxTokens,
+          top_p: input.topP,
+          ...input.metadata,
+        },
+      });
+      return {
+        text: result.text,
+        model: result.model,
+        providerKey: result.providerKey,
+        finishReason: result.finishReason ?? "stop",
+        usage: toTokenUsage(result.tokenUsage),
+        latencyMs: Date.now() - started,
+        providerMetadata: { mock: result.mock ?? false },
+      };
+    },
+    async createEmbeddings(input) {
+      const started = Date.now();
+      const values = Array.isArray(input.input) ? input.input : [input.input];
+      const vectors = await Promise.all(
+        values.map(async (text) => {
+          const result = await provider.embed({ text, model: input.model, metadata: input.metadata });
+          return result.vector;
+        }),
+      );
+      return {
+        vectors,
+        model: input.model ?? "embedding-model",
+        providerKey: provider.key,
+        dimensions: vectors[0]?.length ?? 0,
+        usage: { inputTokens: values.join("").length, outputTokens: 0, totalTokens: values.join("").length },
+        latencyMs: Date.now() - started,
+      };
+    },
+    async healthCheck(): Promise<ProviderHealthSnapshot> {
+      const started = Date.now();
+      const health = await provider.health();
+      return {
+        providerKey: provider.key,
+        available: health.status === "connected",
+        latencyMs: Date.now() - started,
+        lastError: health.status === "connected" ? null : health.message,
+        successRate: health.status === "connected" ? 1 : 0,
+        checkedAt: health.checkedAt,
+      };
+    },
+  };
+}
+
+export function defaultCapabilitiesForProvider(key: string) {
+  if (key === "mock") {
+    return mergeCapabilities(
+      {
+        supportsChat: true,
+        supportsStreaming: true,
+        supportsEmbeddings: true,
+        supportsVision: false,
+        supportsFunctionCalling: false,
+        supportsJsonOutput: true,
+        supportsTextGeneration: true,
+      },
+      {},
+    );
+  }
+  if (key === "openai" || key === "azure_openai") {
+    return mergeCapabilities(
+      {
+        supportsChat: true,
+        supportsStreaming: true,
+        supportsEmbeddings: true,
+        supportsVision: false,
+        supportsFunctionCalling: false,
+        supportsJsonOutput: true,
+        supportsTextGeneration: true,
+      },
+      {},
+    );
+  }
+  if (key === "claude" || key === "gemini") {
+    return mergeCapabilities(
+      {
+        supportsChat: true,
+        supportsStreaming: true,
+        supportsEmbeddings: key === "gemini",
+        supportsVision: false,
+        supportsFunctionCalling: false,
+        supportsJsonOutput: true,
+        supportsTextGeneration: true,
+      },
+      {},
+    );
+  }
+  if (key === "ollama") {
+    return mergeCapabilities(
+      {
+        supportsChat: true,
+        supportsStreaming: true,
+        supportsEmbeddings: true,
+        supportsVision: false,
+        supportsFunctionCalling: false,
+        supportsJsonOutput: false,
+        supportsTextGeneration: true,
+      },
+      {},
+    );
+  }
+  return mergeCapabilities(
+    {
+      supportsChat: true,
+      supportsStreaming: false,
+      supportsEmbeddings: true,
+      supportsVision: false,
+      supportsFunctionCalling: false,
+      supportsJsonOutput: false,
+      supportsTextGeneration: true,
+    },
+    {},
+  );
+}

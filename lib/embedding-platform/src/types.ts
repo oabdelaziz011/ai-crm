@@ -86,6 +86,8 @@ export type EmbeddingJobRecord = {
   started_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
+  locked_by: string | null;
+  locked_at: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -178,12 +180,26 @@ export type UpdateEmbeddingJobInput = {
   startedAt?: string | null;
   completedAt?: string | null;
   cancelledAt?: string | null;
+  lockedBy?: string | null;
+  lockedAt?: string | null;
 };
 
 export type ListEmbeddingJobsFilter = {
   companyId: string;
   status?: EmbeddingJobStatus;
   knowledgeChunkId?: string;
+};
+
+export type ListEmbeddingJobsByChunkIdsFilter = {
+  companyId: string;
+  chunkIds: string[];
+  statuses?: EmbeddingJobStatus[];
+};
+
+export type ListEmbeddingJobsByDocumentFilter = {
+  companyId: string;
+  documentId: string;
+  versionId: string;
 };
 
 export type ResolveEmbeddingProviderInput = {
@@ -260,6 +276,7 @@ export type EnqueueEmbeddingsForVersionInput = {
 export type ProcessEmbeddingBatchOptions = {
   limit?: number;
   batchSize?: number;
+  workerId?: string | null;
 };
 
 export type ConfigurationValidationResult = {

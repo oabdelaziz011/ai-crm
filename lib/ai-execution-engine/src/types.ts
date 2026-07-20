@@ -180,3 +180,76 @@ export type CreateAIExecutionMetricsInput = {
   retryCount: number;
   usedFallbackProvider: boolean;
 };
+
+export type EnterpriseRuntimeMessage = {
+  role: "customer" | "assistant" | "system";
+  content: string;
+  createdAt?: string;
+};
+
+export type EnterpriseRuntimeContextPolicyOverrides = {
+  includeCustomer?: boolean;
+  includeBooking?: boolean;
+  includeConversation?: boolean;
+  includeWorkflowVariables?: boolean;
+  includeCompany?: boolean;
+  includeKnowledge?: boolean;
+  includeMetadata?: boolean;
+};
+
+export type EnterpriseRuntimeConversationWindowConfig = {
+  maxMessages?: number;
+  tokenBudget?: number;
+};
+
+export type EnterpriseRuntimeTokenBudgetConfig = {
+  maxTokens?: number;
+  reservedOutputTokens?: number;
+};
+
+export type EnterpriseRuntimeExecuteInput = {
+  companyId: string;
+  conversationId?: string | null;
+  workflowId?: string | null;
+  executionId?: string | null;
+  sessionId?: string | null;
+  correlationId?: string | null;
+  promptBuildId?: string | null;
+  templateKey?: string;
+  templateType?: string;
+  providerConnectionId?: string | null;
+  providerKey?: string;
+  model?: string | null;
+  policy?: ExecutionPolicyOverrides;
+  contextPolicyKey?: string;
+  contextPolicyOverrides?: EnterpriseRuntimeContextPolicyOverrides;
+  conversationWindow?: EnterpriseRuntimeConversationWindowConfig;
+  tokenBudget?: EnterpriseRuntimeTokenBudgetConfig;
+  promptContext: Record<string, unknown>;
+  knowledgeQuery?: import("./ports/knowledge-port.js").RuntimeKnowledgeQueryInput;
+  recentMessages?: EnterpriseRuntimeMessage[];
+  stream?: boolean;
+  cacheEnabled?: boolean;
+  abortSignal?: AbortSignal | null;
+  onStreamChunk?: (chunk: string) => void;
+};
+
+export type EnterpriseRuntimeExecuteResult = {
+  executionId: string;
+  sessionId: string;
+  promptBuildId: string | null;
+  promptVersionId: string;
+  templateKey: string;
+  providerKey: string;
+  model: string;
+  status: AIExecutionStatus;
+  latencyMs: number;
+  contextSizeBytes: number;
+  promptSizeBytes: number;
+  gatewayLatencyMs: number;
+  tokenUsage: TokenUsage;
+  estimatedCostUsd: number | null;
+  responseText: string;
+  cacheHit: boolean;
+  trimmedMessageCount: number;
+};

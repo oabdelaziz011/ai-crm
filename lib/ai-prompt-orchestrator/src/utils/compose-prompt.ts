@@ -107,3 +107,17 @@ export function parseSectionOrder(value: unknown): PromptSectionKey[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is PromptSectionKey => typeof item === "string");
 }
+
+export function renderSectionsWithVariables(
+  renderer: import("../rendering/prompt-renderer.js").PromptRenderer,
+  sections: BuilderSectionMap,
+  context: Record<string, unknown>,
+): BuilderSectionMap {
+  const rendered: BuilderSectionMap = { ...sections };
+  for (const [key, section] of Object.entries(rendered) as Array<[PromptSectionKey, BuiltPromptSection]>) {
+    if (!section?.content) continue;
+    const result = renderer.renderTemplate(section.content, context);
+    rendered[key] = { ...section, content: result.text };
+  }
+  return rendered;
+}

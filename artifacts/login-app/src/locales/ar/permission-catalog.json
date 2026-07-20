@@ -1,0 +1,621 @@
+{
+  "groups": {
+    "customers": {
+      "icon": "👥",
+      "order": 10,
+      "label": "العملاء"
+    },
+    "bookings": {
+      "icon": "📅",
+      "order": 20,
+      "label": "الحجوزات"
+    },
+    "invoices": {
+      "icon": "💳",
+      "order": 30,
+      "label": "الفواتير"
+    },
+    "reports": {
+      "icon": "📊",
+      "order": 40,
+      "label": "التقارير"
+    },
+    "workspace": {
+      "icon": "🏢",
+      "order": 50,
+      "label": "بيئة العمل"
+    },
+    "billing": {
+      "icon": "💰",
+      "order": 60,
+      "label": "الفوترة والاشتراكات"
+    },
+    "users": {
+      "icon": "👤",
+      "order": 70,
+      "label": "المستخدمون"
+    },
+    "roles": {
+      "icon": "🛡️",
+      "order": 80,
+      "label": "الأدوار والصلاحيات"
+    },
+    "companies": {
+      "icon": "🏛️",
+      "order": 90,
+      "label": "الشركات"
+    },
+    "settings": {
+      "icon": "⚙️",
+      "order": 100,
+      "label": "الإعدادات"
+    },
+    "audit": {
+      "icon": "📋",
+      "order": 110,
+      "label": "سجلات التدقيق"
+    },
+    "aiAssistant": {
+      "icon": "🤖",
+      "order": 120,
+      "label": "المساعد الذكي"
+    },
+    "aiChat": {
+      "icon": "💬",
+      "order": 130,
+      "label": "الدردشة الذكية"
+    },
+    "conversations": {
+      "icon": "📥",
+      "order": 140,
+      "label": "المحادثات"
+    },
+    "channels": {
+      "icon": "📡",
+      "order": 150,
+      "label": "القنوات"
+    },
+    "knowledge": {
+      "icon": "📚",
+      "order": 160,
+      "label": "المعرفة"
+    },
+    "whatsapp": {
+      "icon": "📱",
+      "order": 170,
+      "label": "واتساب"
+    },
+    "aiAnalytics": {
+      "icon": "📈",
+      "order": 180,
+      "label": "تحليلات وتكاليف الذكاء الاصطناعي"
+    },
+    "aiPlatform": {
+      "icon": "🔧",
+      "order": 190,
+      "label": "خدمات منصة الذكاء الاصطناعي"
+    }
+  },
+  "codes": {
+    "customers.view": {
+      "name": "عرض العملاء",
+      "description": "يسمح للمستخدم بعرض قائمة العملاء وبياناتهم.",
+      "group": "customers"
+    },
+    "customers.create": {
+      "name": "إنشاء العملاء",
+      "description": "يسمح بإضافة عملاء جدد.",
+      "group": "customers"
+    },
+    "customers.edit": {
+      "name": "تعديل العملاء",
+      "description": "يسمح بتعديل بيانات العملاء.",
+      "group": "customers"
+    },
+    "customers.delete": {
+      "name": "حذف العملاء",
+      "description": "يسمح بحذف سجلات العملاء.",
+      "group": "customers"
+    },
+    "bookings.view": {
+      "name": "عرض الحجوزات",
+      "description": "يسمح بعرض الحجوزات والمواعيد.",
+      "group": "bookings"
+    },
+    "bookings.create": {
+      "name": "إنشاء الحجوزات",
+      "description": "يسمح بإنشاء حجوزات جديدة.",
+      "group": "bookings"
+    },
+    "bookings.edit": {
+      "name": "تعديل الحجوزات",
+      "description": "يسمح بتعديل الحجوزات الحالية.",
+      "group": "bookings"
+    },
+    "bookings.delete": {
+      "name": "حذف الحجوزات",
+      "description": "يسمح بإلغاء أو حذف الحجوزات.",
+      "group": "bookings"
+    },
+    "invoices.view": {
+      "name": "عرض الفواتير",
+      "description": "يسمح بعرض الفواتير ومستندات الفوترة.",
+      "group": "invoices"
+    },
+    "invoices.create": {
+      "name": "إنشاء الفواتير",
+      "description": "يسمح بإصدار فواتير جديدة.",
+      "group": "invoices"
+    },
+    "invoices.edit": {
+      "name": "تعديل الفواتير",
+      "description": "يسمح بتعديل تفاصيل الفواتير.",
+      "group": "invoices"
+    },
+    "invoices.delete": {
+      "name": "حذف الفواتير",
+      "description": "يسمح بحذف سجلات الفواتير.",
+      "group": "invoices"
+    },
+    "reports.view": {
+      "name": "عرض التقارير",
+      "description": "يسمح بالوصول إلى التقارير والتحليلات.",
+      "group": "reports"
+    },
+    "workspace.view": {
+      "name": "الوصول إلى بيئة العمل",
+      "description": "يسمح بالدخول إلى بيئة عمل الشركة.",
+      "group": "workspace"
+    },
+    "billing.view": {
+      "name": "عرض الفوترة (المنصة)",
+      "description": "يسمح بعرض نظرة عامة على الفوترة والاشتراكات والمدفوعات على مستوى المنصة.",
+      "group": "billing"
+    },
+    "billing.view_own": {
+      "name": "عرض الفوترة الخاصة",
+      "description": "يسمح بعرض اشتراك شركتك وخدمات الفوترة الذاتية.",
+      "group": "billing"
+    },
+    "billing.view_reports": {
+      "name": "عرض تقارير الفوترة",
+      "description": "يسمح بعرض تحليلات الفوترة وتقارير الإيرادات.",
+      "group": "billing"
+    },
+    "billing.edit": {
+      "name": "إدارة الفوترة (المنصة)",
+      "description": "يسمح بتعديل الاشتراكات وجهات الفوترة وإجراءات الإيقاف أو الاستعادة.",
+      "group": "billing"
+    },
+    "billing.manage_own": {
+      "name": "إدارة الاشتراك الخاص",
+      "description": "يسمح بتجديد وإدارة اشتراك شركتك.",
+      "group": "billing"
+    },
+    "billing.manage_plans": {
+      "name": "إدارة خطط الاشتراك",
+      "description": "يسمح بإدارة كتalog خطط الاشتراك.",
+      "group": "billing"
+    },
+    "billing.record_payment": {
+      "name": "تسجيل المدفوعات",
+      "description": "يسمح بتسجيل المدفوعات والفواتير يدوياً.",
+      "group": "billing"
+    },
+    "billing.contact.edit_own": {
+      "name": "تعديل جهة الفوترة",
+      "description": "يسمح بتعديل بيانات جهة الاتصال للفوترة.",
+      "group": "billing"
+    },
+    "billing.payment_method.manage_own": {
+      "name": "إدارة طرق الدفع",
+      "description": "يسمح بإدارة طرق الدفع الخاصة بالشركة.",
+      "group": "billing"
+    },
+    "billing.documents.download_own": {
+      "name": "تنزيل مستندات الفوترة",
+      "description": "يسمح بتنزيل فواتير الاشتراك والإيصالات.",
+      "group": "billing"
+    },
+    "billing.settings.view": {
+      "name": "عرض إعدادات الفوترة",
+      "description": "يسمح بعرض إعدادات الفوترة.",
+      "group": "billing"
+    },
+    "billing.settings.edit": {
+      "name": "تعديل إعدادات الفوترة",
+      "description": "يسمح بتعديل إعدادات الفوترة.",
+      "group": "billing"
+    },
+    "billing.audit.view": {
+      "name": "عرض سجل تدقيق الفوترة",
+      "description": "يسمح بعرض سجل تدقيق الفوترة.",
+      "group": "billing"
+    },
+    "billing.audit.export": {
+      "name": "تصدير سجل تدقيق الفوترة",
+      "description": "يسمح بتصدير سجلات تدقيق الفوترة.",
+      "group": "billing"
+    },
+    "billing.features.view": {
+      "name": "عرض صلاحيات الميزات",
+      "description": "يسمح بعرض كatalog الميزات وتخصيصات الشركات.",
+      "group": "billing"
+    },
+    "billing.features.edit": {
+      "name": "تعديل صلاحيات الميزات",
+      "description": "يسمح بإدارة تخصيصات ميزات الشركات.",
+      "group": "billing"
+    },
+    "billing.features.manage_catalog": {
+      "name": "إدارة كatalog الميزات",
+      "description": "يسمح بإدارة تعريفات الميزات في الكatalog.",
+      "group": "billing"
+    },
+    "billing.health.view": {
+      "name": "عرض صحة الفوترة",
+      "description": "يسمح بعرض لوحة صحة الفوترة والتنبيهات.",
+      "group": "billing"
+    },
+    "billing.health.manage": {
+      "name": "إدارة صحة الفوترة",
+      "description": "يسمح بإدارة مهام صحة الفوترة وإعادة المحاولات.",
+      "group": "billing"
+    },
+    "billing.webhooks.view": {
+      "name": "عرض webhooks الفوترة",
+      "description": "يسمح بعرض نقاط webhook الصادرة للفوترة.",
+      "group": "billing"
+    },
+    "billing.webhooks.manage": {
+      "name": "إدارة webhooks الفوترة",
+      "description": "يسمح بإدارة webhooks الفوترة الصادرة.",
+      "group": "billing"
+    },
+    "users.view": {
+      "name": "عرض المستخدمين",
+      "description": "يسمح بعرض مستخدمي الشركة وملفاتهم.",
+      "group": "users"
+    },
+    "users.edit": {
+      "name": "إدارة المستخدمين",
+      "description": "يسمح بإنشاء المستخدمين وتعديلهم وتعيين الأدوار.",
+      "group": "users"
+    },
+    "users.create": {
+      "name": "إنشاء المستخدمين",
+      "description": "يسمح بإنشاء حسابات مستخدمين جديدة.",
+      "group": "users"
+    },
+    "users.delete": {
+      "name": "حذف المستخدمين",
+      "description": "يسمح بإلغاء تفعيل أو حذف حسابات المستخدمين.",
+      "group": "users"
+    },
+    "roles.view": {
+      "name": "عرض الأدوار",
+      "description": "يسمح بعرض الأدوار وصلاحياتها.",
+      "group": "roles"
+    },
+    "roles.create": {
+      "name": "إنشاء الأدوار",
+      "description": "يسمح بإنشاء أدوار مخصصة.",
+      "group": "roles"
+    },
+    "roles.edit": {
+      "name": "تعديل الأدوار",
+      "description": "يسمح بتعديل الأدوار وصلاحياتها.",
+      "group": "roles"
+    },
+    "roles.delete": {
+      "name": "حذف الأدوار",
+      "description": "يسمح بحذف الأدوار المخصصة.",
+      "group": "roles"
+    },
+    "permissions.view": {
+      "name": "عرض صلاحيات المستخدم (قديم)",
+      "description": "صلاحية قديمة تُعادل عرض الأدوار.",
+      "group": "roles"
+    },
+    "permissions.edit": {
+      "name": "تعديل صلاحيات المستخدم (قديم)",
+      "description": "صلاحية قديمة تُعادل تعديل الأدوار.",
+      "group": "roles"
+    },
+    "companies.view": {
+      "name": "عرض الشركات",
+      "description": "يسمح بعرض شركات المستأجرين على المنصة.",
+      "group": "companies"
+    },
+    "companies.create": {
+      "name": "إنشاء الشركات",
+      "description": "يسمح بإنشاء شركات مستأجرين جديدة.",
+      "group": "companies"
+    },
+    "companies.edit": {
+      "name": "تعديل الشركات",
+      "description": "يسمح بتعديل سجلات الشركات وإعداداتها.",
+      "group": "companies"
+    },
+    "companies.delete": {
+      "name": "حذف الشركات",
+      "description": "يسمح بحذف شركات المستأجرين.",
+      "group": "companies"
+    },
+    "subscriptions.view": {
+      "name": "عرض الاشتراكات (قديم)",
+      "description": "صلاحية قديمة؛ يُفضّل استخدام عرض الفوترة.",
+      "group": "billing"
+    },
+    "subscriptions.edit": {
+      "name": "تعديل الاشتراكات (قديم)",
+      "description": "صلاحية قديمة؛ يُفضّل استخدام إدارة الفوترة.",
+      "group": "billing"
+    },
+    "settings.view": {
+      "name": "عرض الإعدادات",
+      "description": "يسمح بعرض إعدادات الشركة والتطبيق.",
+      "group": "settings"
+    },
+    "settings.edit": {
+      "name": "تعديل الإعدادات",
+      "description": "يسمح بتعديل إعدادات الشركة والتطبيق.",
+      "group": "settings"
+    },
+    "audit_logs.view": {
+      "name": "عرض سجلات التدقيق",
+      "description": "يسمح بعرض سجلات تدقيق النظام.",
+      "group": "audit"
+    },
+    "ai_assistant.view": {
+      "name": "عرض المساعد الذكي",
+      "description": "يسمح بعرض إعدادات المساعد الذكي.",
+      "group": "aiAssistant"
+    },
+    "ai_assistant.edit": {
+      "name": "تعديل المساعد الذكي",
+      "description": "يسمح بتعديل إعدادات المساعد الذكي.",
+      "group": "aiAssistant"
+    },
+    "ai_chat.view": {
+      "name": "عرض الدردشة الذكية",
+      "description": "يسمح بالوصول إلى واجهة الدردشة الذكية.",
+      "group": "aiChat"
+    },
+    "ai_chat.use": {
+      "name": "استخدام الدردشة الذكية",
+      "description": "يسمح بإرسال رسائل عبر الدردشة الذكية.",
+      "group": "aiChat"
+    },
+    "ai.conversations.view": {
+      "name": "عرض المحادثات",
+      "description": "يسمح بعرض صندوق الوارد والمحادثات.",
+      "group": "conversations"
+    },
+    "ai.conversations.reply": {
+      "name": "الرد على المحادثات",
+      "description": "يسمح بالرد على محادثات العملاء.",
+      "group": "conversations"
+    },
+    "ai.conversations.takeover": {
+      "name": "استلام المحادثات",
+      "description": "يسمح باستلام المحادثات التي يديرها الذكاء الاصطناعي.",
+      "group": "conversations"
+    },
+    "ai.conversations.release": {
+      "name": "إسناد المحادثات للذكاء الاصطناعي",
+      "description": "يسمح بإسناد المحادثات مجدداً للذكاء الاصطناعي.",
+      "group": "conversations"
+    },
+    "ai.analytics.view": {
+      "name": "عرض تحليلات الذكاء الاصطناعي",
+      "description": "يسمح بعرض تحليلات أداء الذكاء الاصطناعي.",
+      "group": "aiAnalytics"
+    },
+    "ai.analytics.manage": {
+      "name": "إدارة تحليلات الذكاء الاصطناعي",
+      "description": "يسمح بإدارة إعدادات مراقبة الذكاء الاصطناعي.",
+      "group": "aiAnalytics"
+    },
+    "ai.costs.view": {
+      "name": "عرض تكاليف الذكاء الاصطناعي",
+      "description": "يسمح بعرض استهلاك الرموز وتكلفة الذكاء الاصطناعي.",
+      "group": "aiAnalytics"
+    },
+    "channels.view": {
+      "name": "عرض القنوات",
+      "description": "يسمح بعرض قنوات اتصال الشركة.",
+      "group": "channels"
+    },
+    "channels.manage": {
+      "name": "إدارة القنوات",
+      "description": "يسمح بإعداد قنوات اتصال الشركة.",
+      "group": "channels"
+    },
+    "knowledge.view": {
+      "name": "عرض قاعدة المعرفة",
+      "description": "يسمح بعرض مصادر المعرفة والمستندات.",
+      "group": "knowledge"
+    },
+    "knowledge.manage": {
+      "name": "إدارة قاعدة المعرفة",
+      "description": "يسمح بإدارة مصادر المعرفة والمستندات.",
+      "group": "knowledge"
+    },
+    "knowledge.import": {
+      "name": "استيراد المعرفة",
+      "description": "يسمح باستيراد المستندات وإنشاء مقاطع المعرفة.",
+      "group": "knowledge"
+    },
+    "knowledge.publish": {
+      "name": "نشر المعرفة",
+      "description": "يسمح بنشر إصدارات مستندات المعرفة.",
+      "group": "knowledge"
+    },
+    "whatsapp.view": {
+      "name": "عرض أتمتة واتساب",
+      "description": "يسمح بعرض إعدادات أتمتة واتساب.",
+      "group": "whatsapp"
+    },
+    "whatsapp.run": {
+      "name": "تشغيل أتمتة واتساب (قديم)",
+      "description": "صلاحية قديمة تُعادل عرض أتمتة واتساب.",
+      "group": "whatsapp"
+    },
+    "ai.knowledge.manage": {
+      "name": "إدارة معرفة الذكاء الاصطناعي (قديم)",
+      "description": "صلاحية قديمة تُعادل إدارة قاعدة المعرفة.",
+      "group": "knowledge"
+    },
+    "ai.whatsapp.manage": {
+      "name": "إدارة تكامل واتساب (قديم)",
+      "description": "صلاحية قديمة تُعادل إدارة القنوات.",
+      "group": "channels"
+    },
+    "channel.platform.view": {
+      "name": "عرض منصة القنوات",
+      "description": "يسمح بعرض أحداث منصة القنوات وحالة التسليم.",
+      "group": "aiPlatform"
+    },
+    "channel.platform.route": {
+      "name": "توجيه أحداث القنوات",
+      "description": "يسمح بتوجيه الأحداث الواردة عبر القنوات.",
+      "group": "aiPlatform"
+    },
+    "channel.platform.dispatch": {
+      "name": "إرسال رسائل القنوات",
+      "description": "يسمح بإرسال الرسائل الصادرة عبر القنوات.",
+      "group": "aiPlatform"
+    },
+    "runtime.view": {
+      "name": "عرض محرك التشغيل",
+      "description": "يسمح بعرض جلسات التشغيل وخطوات المعالجة.",
+      "group": "aiPlatform"
+    },
+    "runtime.execute": {
+      "name": "تشغيل محرك الذكاء الاصطناعي",
+      "description": "يسمح بتشغيل خط معالجة الذكاء الاصطناعي.",
+      "group": "aiPlatform"
+    },
+    "runtime.manage": {
+      "name": "إدارة محرك التشغيل",
+      "description": "يسمح بإدارة سياسات وإعدادات التشغيل.",
+      "group": "aiPlatform"
+    },
+    "ai.execution.view": {
+      "name": "عرض تنفيذات الذكاء الاصطناعي",
+      "description": "يسمح بعرض سجل التنفيذ ومؤشرات الأداء.",
+      "group": "aiPlatform"
+    },
+    "ai.execution.manage": {
+      "name": "إدارة تنفيذات الذكاء الاصطناعي",
+      "description": "يسمح بإدارة سياسات التنفيذ وتشغيل المهام.",
+      "group": "aiPlatform"
+    },
+    "ai.providers.view": {
+      "name": "عرض مزودي الذكاء الاصطناعي",
+      "description": "يسمح بعرض تعريفات مزودي الذكاء الاصطناعي واتصالاتهم.",
+      "group": "aiPlatform"
+    },
+    "ai.providers.manage": {
+      "name": "إدارة مزودي الذكاء الاصطناعي",
+      "description": "يسمح بإدارة اتصالات وإعدادات مزودي الذكاء الاصطناعي.",
+      "group": "aiPlatform"
+    },
+    "intents.view": {
+      "name": "عرض النوايا",
+      "description": "يسمح بعرض تعريفات النوايا وسجل المطابقة.",
+      "group": "aiPlatform"
+    },
+    "intents.manage": {
+      "name": "إدارة النوايا",
+      "description": "يسمح بإدارة تعريفات النوايا وتفعيلها.",
+      "group": "aiPlatform"
+    },
+    "prompts.view": {
+      "name": "عرض قوالب المطالبات",
+      "description": "يسمح بعرض قوالب المطالبات وسجل البناء.",
+      "group": "aiPlatform"
+    },
+    "prompts.manage": {
+      "name": "إدارة قوالب المطالبات",
+      "description": "يسمح بإدارة قوالب المطالبات وإصداراتها.",
+      "group": "aiPlatform"
+    },
+    "tools.view": {
+      "name": "عرض الأدوات",
+      "description": "يسمح بعرض تعريفات الأدوات وسجل التنفيذ.",
+      "group": "aiPlatform"
+    },
+    "tools.manage": {
+      "name": "إدارة الأدوات",
+      "description": "يسمح بإدارة تعريفات الأدوات وتفعيلها.",
+      "group": "aiPlatform"
+    },
+    "tools.execute": {
+      "name": "تنفيذ الأدوات",
+      "description": "يسمح بتنفيذ الأدوات عبر موجه الأدوات.",
+      "group": "aiPlatform"
+    },
+    "embeddings.view": {
+      "name": "عرض التضمينات",
+      "description": "يسمح بعرض مزودي التضمين والمهام والمتجهات.",
+      "group": "aiPlatform"
+    },
+    "embeddings.manage": {
+      "name": "إدارة التضمينات",
+      "description": "يسمح بإدارة اتصالات مزودي التضمين.",
+      "group": "aiPlatform"
+    },
+    "embeddings.generate": {
+      "name": "إنشاء التضمينات",
+      "description": "يسمح بجدولة ومعالجة مهام التضمين.",
+      "group": "aiPlatform"
+    },
+    "vectorstores.view": {
+      "name": "عرض مخازن المتجهات",
+      "description": "يسمح بعرض مزودي مخازن المتجهات والمجموعات.",
+      "group": "aiPlatform"
+    },
+    "vectorstores.manage": {
+      "name": "إدارة مخازن المتجهات",
+      "description": "يسمح بإدارة اتصالات مخازن المتجهات.",
+      "group": "aiPlatform"
+    },
+    "collections.manage": {
+      "name": "إدارة المجموعات",
+      "description": "يسمح بإدارة مجموعات المتجهات والفهرسة.",
+      "group": "aiPlatform"
+    },
+    "vectorquery.view": {
+      "name": "عرض استعلامات المتجهات",
+      "description": "يسمح بعرض سياسات البحث بالمتجهات والنتائج.",
+      "group": "aiPlatform"
+    },
+    "vectorquery.manage": {
+      "name": "إدارة استعلامات المتجهات",
+      "description": "يسمح بإدارة سياسات البحث بالمتجهات.",
+      "group": "aiPlatform"
+    },
+    "vectorquery.execute": {
+      "name": "تنفيذ استعلامات المتجهات",
+      "description": "يسمح بتنفيذ عمليات البحث بالتشابه.",
+      "group": "aiPlatform"
+    },
+    "retrieval.view": {
+      "name": "عرض الاسترجاع",
+      "description": "يسمح بعرض سياسات الاسترجاع والسياقات.",
+      "group": "aiPlatform"
+    },
+    "retrieval.manage": {
+      "name": "إدارة الاسترجاع",
+      "description": "يسمح بإدارة سياسات وإعدادات الاسترجاع.",
+      "group": "aiPlatform"
+    },
+    "retrieval.execute": {
+      "name": "تنفيذ الاسترجاع",
+      "description": "يسمح بتنفيذ تجميع سياق الاسترجاع.",
+      "group": "aiPlatform"
+    }
+  }
+}

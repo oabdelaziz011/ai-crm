@@ -3,7 +3,7 @@ import { lazy } from "react";
 
 export const KNOWLEDGE_BASE_NESTED_PATH = "/knowledge";
 
-export type KnowledgeRouteId = "sources" | "documents" | "import";
+export type KnowledgeRouteId = "sources" | "documents" | "import" | "retrieval";
 
 export type KnowledgeRouteDefinition = {
   id: KnowledgeRouteId;
@@ -42,6 +42,16 @@ export const KNOWLEDGE_ROUTE_REGISTRY: readonly KnowledgeRouteDefinition[] = [
     titleKey: "knowledge.nav.importStatus",
     permission: "knowledge.import",
     Page: lazyNamed(() => import("@/pages/dashboard/knowledge/knowledge-import-page"), "KnowledgeImportPage"),
+  },
+  {
+    id: "retrieval",
+    nestedPath: "/retrieval",
+    titleKey: "knowledge.nav.retrievalTester",
+    permission: "knowledge.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/knowledge/knowledge-retrieval-tester-page"),
+      "KnowledgeRetrievalTesterPage",
+    ),
   },
 ] as const;
 

@@ -228,8 +228,6 @@ export function useAiChatWorkspace() {
                     embeddingConnectionId: runtimeConfig.knowledgeRetrieval.embeddingConnectionId,
                     vectorStoreConnectionId: runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId,
                     collectionId: runtimeConfig.knowledgeRetrieval.collectionId,
-                    topK: runtimeConfig.knowledgeRetrieval.topK,
-                    minScore: runtimeConfig.knowledgeRetrieval.minScore,
                   }
                 : undefined,
             executionPolicy: { streaming: true },

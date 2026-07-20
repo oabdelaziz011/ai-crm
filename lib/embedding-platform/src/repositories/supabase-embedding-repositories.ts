@@ -17,6 +17,8 @@ import type {
   KnowledgeChunkSnapshot,
   KnowledgeEmbeddingRecord,
   ListEmbeddingJobsFilter,
+  ListEmbeddingJobsByChunkIdsFilter,
+  ListEmbeddingJobsByDocumentFilter,
   ListEmbeddingProviderConnectionsFilter,
   ListKnowledgeEmbeddingsFilter,
   UpdateEmbeddingJobInput,
@@ -115,6 +117,8 @@ function mapJob(row: Record<string, unknown>): EmbeddingJobRecord {
     started_at: (row.started_at as string | null) ?? null,
     completed_at: (row.completed_at as string | null) ?? null,
     cancelled_at: (row.cancelled_at as string | null) ?? null,
+    locked_by: (row.locked_by as string | null) ?? null,
+    locked_at: (row.locked_at as string | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     created_by: (row.created_by as string | null) ?? null,
@@ -398,6 +402,26 @@ export function createSupabaseEmbeddingJobRepository(client: SupabaseClient): Em
       return mapJob(data as Record<string, unknown>);
     },
 
+    async createMany(inputs: CreateEmbeddingJobInput[]) {
+      if (inputs.length === 0) return [];
+
+      const rows = inputs.map((input) => ({
+        company_id: input.companyId,
+        knowledge_chunk_id: input.knowledgeChunkId,
+        connection_id: input.connectionId,
+        provider: input.provider,
+        model: input.model,
+        embedding_version: input.embeddingVersion,
+        max_retries: input.maxRetries ?? 3,
+        metadata: input.metadata ?? {},
+        created_by: input.createdBy ?? null,
+      }));
+
+      const { data, error } = await client.from(JOBS_TABLE).insert(rows).select("*");
+      if (error) throw error;
+      return (data ?? []).map((row) => mapJob(row as Record<string, unknown>));
+    },
+
     async findById(id: string) {
       const { data, error } = await client.from(JOBS_TABLE).select("*").eq("id", id).maybeSingle();
       if (error) throw error;
@@ -414,6 +438,38 @@ export function createSupabaseEmbeddingJobRepository(client: SupabaseClient): Em
       return (data ?? []).map((row) => mapJob(row as Record<string, unknown>));
     },
 
+    async listByChunkIds(filter: ListEmbeddingJobsByChunkIdsFilter) {
+      if (filter.chunkIds.length === 0) return [];
+
+      let query = client
+        .from(JOBS_TABLE)
+        .select("*")
+        .eq("company_id", filter.companyId)
+        .in("knowledge_chunk_id", filter.chunkIds)
+        .order("queued_at", { ascending: true });
+
+      if (filter.statuses?.length) {
+        query = query.in("status", filter.statuses);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []).map((row) => mapJob(row as Record<string, unknown>));
+    },
+
+    async listByDocumentVersion(filter: ListEmbeddingJobsByDocumentFilter) {
+      const { data, error } = await client
+        .from(JOBS_TABLE)
+        .select("*")
+        .eq("company_id", filter.companyId)
+        .eq("metadata->>documentId", filter.documentId)
+        .eq("metadata->>versionId", filter.versionId)
+        .order("queued_at", { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []).map((row) => mapJob(row as Record<string, unknown>));
+    },
+
     async update(input: UpdateEmbeddingJobInput) {
       const patch: Record<string, unknown> = {};
       if (input.status !== undefined) patch.status = input.status;
@@ -423,6 +479,8 @@ export function createSupabaseEmbeddingJobRepository(client: SupabaseClient): Em
       if (input.startedAt !== undefined) patch.started_at = input.startedAt;
       if (input.completedAt !== undefined) patch.completed_at = input.completedAt;
       if (input.cancelledAt !== undefined) patch.cancelled_at = input.cancelledAt;
+      if (input.lockedBy !== undefined) patch.locked_by = input.lockedBy;
+      if (input.lockedAt !== undefined) patch.locked_at = input.lockedAt;
 
       const { data, error } = await client.from(JOBS_TABLE).update(patch).eq("id", input.jobId).select("*").single();
       if (error) throw error;
@@ -430,34 +488,28 @@ export function createSupabaseEmbeddingJobRepository(client: SupabaseClient): Em
       return mapJob(data as Record<string, unknown>);
     },
 
-    async claimNextQueued(companyId: string) {
-      const batch = await this.claimNextQueuedBatch(companyId, 1);
+    async claimNextQueued(companyId: string, workerId?: string | null) {
+      const batch = await this.claimNextQueuedBatch(companyId, 1, workerId);
       return batch[0] ?? null;
     },
 
-    async claimNextQueuedBatch(companyId: string, limit: number) {
-      const { data, error } = await client
-        .from(JOBS_TABLE)
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("status", "queued")
-        .order("queued_at", { ascending: true })
-        .limit(limit);
+    async claimNextQueuedBatch(companyId: string, limit: number, workerId?: string | null) {
+      const { data, error } = await client.rpc("claim_embedding_jobs", {
+        p_company_id: companyId,
+        p_limit: limit,
+        p_worker_id: workerId ?? null,
+      });
 
       if (error) throw error;
-      if (!data?.length) return [];
+      return (data ?? []).map((row: Record<string, unknown>) => mapJob(row));
+    },
 
-      const claimed: EmbeddingJobRecord[] = [];
-      for (const row of data) {
-        const job = mapJob(row as Record<string, unknown>);
-        const updated = await this.update({
-          jobId: job.id,
-          status: "running",
-          startedAt: new Date().toISOString(),
-        });
-        claimed.push(updated);
-      }
-      return claimed;
+    async recoverStaleLocks(staleSeconds = 900) {
+      const { data, error } = await client.rpc("recover_stale_embedding_jobs", {
+        p_stale_seconds: staleSeconds,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
     },
   };
 }

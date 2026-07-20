@@ -16,7 +16,7 @@ export const KNOWLEDGE_SOURCE_TYPES = [
 
 export type KnowledgeSourceType = (typeof KNOWLEDGE_SOURCE_TYPES)[number];
 
-export const DOCUMENT_STATUSES = ["draft", "published", "archived"] as const;
+export const DOCUMENT_STATUSES = ["draft", "published", "indexing", "indexed", "archived"] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
 export const VERSION_STATUSES = ["draft", "published", "archived"] as const;
@@ -36,6 +36,20 @@ export const KNOWLEDGE_AUDIT_EVENTS = [
   "document_updated",
   "document_published",
   "document_archived",
+  "document_restored",
+  "document_indexing",
+  "document_indexed",
+  "embedding_queue_started",
+  "embedding_jobs_created",
+  "embedding_jobs_skipped",
+  "embedding_queue_duplicate_prevented",
+  "embedding_queue_completed",
+  "embedding_worker_started",
+  "embedding_indexing_completed",
+  "embedding_indexing_failed",
+  "embedding_job_claimed",
+  "embedding_job_completed",
+  "embedding_job_retry",
   "version_created",
   "chunk_generated",
   "knowledge_source_created",

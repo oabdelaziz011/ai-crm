@@ -68,6 +68,12 @@ export class DuplicateKnowledgeSourceError extends KnowledgeError {
   }
 }
 
+export class DocumentLockedError extends KnowledgeError {
+  constructor(status: string) {
+    super("DOCUMENT_LOCKED", `Knowledge document in status ${status} cannot be edited.`);
+  }
+}
+
 export class KnowledgeParseError extends KnowledgeError {
   constructor(message: string) {
     super("KNOWLEDGE_PARSE_ERROR", message);

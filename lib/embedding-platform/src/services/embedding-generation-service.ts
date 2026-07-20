@@ -382,6 +382,8 @@ export class EmbeddingJobService {
       startedAt: null,
       completedAt: null,
       cancelledAt: null,
+      lockedBy: null,
+      lockedAt: null,
     });
   }
 
@@ -394,6 +396,8 @@ export class EmbeddingJobService {
         errorMessage: message,
         startedAt: null,
         completedAt: null,
+        lockedBy: null,
+        lockedAt: null,
       });
     }
 
@@ -402,6 +406,8 @@ export class EmbeddingJobService {
       status: "failed",
       errorMessage: message,
       completedAt: new Date().toISOString(),
+      lockedBy: null,
+      lockedAt: null,
     });
   }
 
@@ -420,6 +426,8 @@ export class EmbeddingJobService {
         resultEmbeddingId: embedding.id,
         completedAt: new Date().toISOString(),
         errorMessage: null,
+        lockedBy: null,
+        lockedAt: null,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Embedding generation failed.";
@@ -433,7 +441,7 @@ export class EmbeddingJobService {
 
     const limit = options?.limit ?? DEFAULT_BATCH_PROCESS_LIMIT;
     const batchSize = options?.batchSize ?? DEFAULT_EMBEDDING_BATCH_SIZE;
-    const claimed = await this.jobRepository.claimNextQueuedBatch(companyId, limit);
+    const claimed = await this.jobRepository.claimNextQueuedBatch(companyId, limit, options?.workerId);
     if (claimed.length === 0) return [];
 
     const completed: EmbeddingJobRecord[] = [];
@@ -450,6 +458,8 @@ export class EmbeddingJobService {
               resultEmbeddingId: embedding?.id ?? null,
               completedAt: new Date().toISOString(),
               errorMessage: null,
+              lockedBy: null,
+              lockedAt: null,
             }),
           );
         }

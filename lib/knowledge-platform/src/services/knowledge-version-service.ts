@@ -61,6 +61,9 @@ export class KnowledgeVersionService {
     const version = await this.versionRepository.findById(versionId);
     if (!version) throw new KnowledgeVersionNotFoundError(versionId);
     assertCompanyAccess(ctx, version.company_id);
+    if (version.is_immutable && version.status === "published") {
+      return version;
+    }
     if (version.is_immutable) throw new ImmutableVersionError(versionId);
 
     const published = await this.versionRepository.publish(versionId, ctx.userId);

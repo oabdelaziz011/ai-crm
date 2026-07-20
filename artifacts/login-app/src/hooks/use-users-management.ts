@@ -12,6 +12,7 @@ import {
   validateRoleBelongsToCompany,
   validateUserRoleAssignment,
 } from "@/lib/users/role-company-validation";
+import { replaceUserRole } from "@/lib/users/replace-user-role";
 import { supabase } from "@/lib/supabase";
 import i18n from "@/i18n";
 
@@ -57,32 +58,7 @@ async function assignUserRole(
   targetCompanyId?: string | null,
 ) {
   await validateUserRoleAssignment(userId, roleId, targetCompanyId);
-  const { data: existingRoles, error: existingError } = await supabase
-    .from("user_roles")
-    .select("role_id")
-    .eq("user_id", userId);
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
-
-  const alreadyAssigned = (existingRoles ?? []).some((row) => row.role_id === roleId);
-  if (alreadyAssigned && (existingRoles ?? []).length === 1) {
-    return;
-  }
-
-  const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", userId);
-  if (deleteError) {
-    throw new Error(deleteError.message);
-  }
-
-  const { error: insertError } = await supabase
-    .from("user_roles")
-    .insert({ user_id: userId, role_id: roleId });
-
-  if (insertError) {
-    throw new Error(insertError.message);
-  }
+  await replaceUserRole(userId, roleId);
 }
 
 export function useManagedUsers() {

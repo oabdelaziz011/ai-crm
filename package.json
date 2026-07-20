@@ -6,7 +6,7 @@
     "preinstall": "node -e \"const fs=require('fs'); ['package-lock.json','yarn.lock'].forEach(p=>{try{fs.rmSync(p,{force:true})}catch{}});\"",
     "dev": "pnpm --dir artifacts/login-app dev",
     "build": "pnpm --dir artifacts/login-app build",
-    "typecheck": "pnpm --dir lib/ai-conversation typecheck && pnpm --dir lib/channel-registry typecheck && pnpm --dir lib/channel-platform typecheck && pnpm --dir lib/ai-tool-router typecheck && pnpm --dir lib/ai-intent-engine typecheck && pnpm --dir lib/ai-provider-layer typecheck && pnpm --dir lib/ai-prompt-orchestrator typecheck && pnpm --dir lib/ai-execution-engine typecheck && pnpm --dir lib/ai-observability typecheck && pnpm --dir lib/knowledge-platform typecheck && pnpm --dir lib/embedding-platform typecheck && pnpm --dir lib/vector-store typecheck && pnpm --dir lib/vector-query typecheck && pnpm --dir lib/retrieval-engine typecheck && pnpm --dir lib/runtime-integration typecheck && pnpm --dir artifacts/login-app typecheck",
+    "typecheck": "pnpm --dir lib/ai-conversation typecheck && pnpm --dir lib/channel-registry typecheck && pnpm --dir lib/channel-platform typecheck && pnpm --dir lib/ai-tool-router typecheck && pnpm --dir lib/ai-intent-engine typecheck && pnpm --dir lib/ai-provider-layer typecheck && pnpm --dir lib/ai-prompt-orchestrator typecheck && pnpm --dir lib/ai-execution-engine typecheck && pnpm --dir lib/ai-workflow-platform typecheck && pnpm --dir lib/automation-platform typecheck && pnpm --dir lib/ai-observability typecheck && pnpm --dir lib/knowledge-platform typecheck && pnpm --dir lib/embedding-platform typecheck && pnpm --dir lib/vector-store typecheck && pnpm --dir lib/vector-query typecheck && pnpm --dir lib/retrieval-engine typecheck && pnpm --dir lib/runtime-integration typecheck && pnpm --dir artifacts/login-app typecheck",
     "test:ai-conversation": "pnpm --dir lib/ai-conversation test",
     "test:ai-tool-router": "pnpm --dir lib/ai-tool-router test",
     "test:ai-intent-engine": "pnpm --dir lib/ai-intent-engine test",
@@ -20,6 +20,8 @@
     "test:vector-query": "pnpm --dir lib/vector-query test",
     "test:retrieval-engine": "pnpm --dir lib/retrieval-engine test",
     "test:runtime-integration": "pnpm --dir lib/runtime-integration test",
+    "test:ai-workflow-platform": "pnpm --dir lib/ai-workflow-platform test",
+    "test:automation-platform": "pnpm --dir lib/automation-platform test",
     "test:channel-platform": "pnpm --dir lib/channel-platform test"
   },
   "private": true,

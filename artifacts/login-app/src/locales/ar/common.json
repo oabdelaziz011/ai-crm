@@ -29,7 +29,8 @@
     "knowledge": "المعرفة",
     "reports": "التقارير",
     "settings": "الإعدادات",
-    "demoScenarios": "سيناريوهات العرض"
+    "demoScenarios": "سيناريوهات العرض",
+    "automation": "سير العمل"
   },
   "demo": {
     "scenarios": {
@@ -270,6 +271,8 @@
       "title": "تم رفض الوصول",
       "description": "ليس لديك الصلاحية المطلوبة لعرض هذه الصفحة.",
       "requiredPermission": "الصلاحية المطلوبة: {{permission}}",
+      "requiredPermissionLabel": "الصلاحية المطلوبة: {{permission}}",
+      "superAdminRequired": "يتطلب صلاحيات المشرف العام للمنصة.",
       "back": "العودة إلى لوحة التحكم"
     },
     "notFound": {
@@ -644,6 +647,7 @@
   "knowledge": {
     "title": "المعرفة",
     "subtitle": "إدارة مصادر المعرفة والمستندات المستوردة وحالة الاستيراد.",
+    "noPermission": "ليس لديك صلاحية عرض المعرفة.",
     "nav": {
       "sources": "المصادر",
       "documents": "المستندات",
@@ -668,12 +672,47 @@
     "documents": {
       "listTitle": "المستندات",
       "empty": "لا توجد مستندات معرفة مستوردة بعد.",
+      "noPermission": "ليس لديك صلاحية عرض مستندات المعرفة.",
       "columns": {
         "title": "العنوان",
         "source": "المصدر",
         "status": "الحالة",
         "mimeType": "نوع MIME",
-        "updated": "آخر تحديث"
+        "updated": "آخر تحديث",
+        "actions": "الإجراءات"
+      },
+      "status": {
+        "draft": "مسودة",
+        "published": "منشور",
+        "indexing": "قيد الفهرسة",
+        "indexed": "مفهرس",
+        "archived": "مؤرشف"
+      },
+      "embedding": {
+        "pending": "قيد الانتظار",
+        "queued": "في قائمة الانتظار",
+        "processing": "قيد المعالجة",
+        "completed": "مكتمل",
+        "failed": "فشل",
+        "queuedChunks": "{{count}} جزء في قائمة الانتظار"
+      },
+      "actions": {
+        "publish": "نشر",
+        "archive": "أرشفة",
+        "restore": "استعادة",
+        "delete": "حذف",
+        "reindex": "إعادة فهرسة",
+        "reindexDisabled": "ستتوفر إعادة الفهرسة في Sprint A1-05"
+      },
+      "messages": {
+        "publishSuccess": "تم نشر المستند بنجاح.",
+        "publishFailed": "تعذر نشر المستند.",
+        "archiveSuccess": "تمت أرشفة المستند.",
+        "archiveFailed": "تعذر أرشفة المستند.",
+        "restoreSuccess": "تمت استعادة المستند.",
+        "restoreFailed": "تعذر استعادة المستند.",
+        "deleteSuccess": "تم حذف المستند.",
+        "deleteFailed": "تعذر حذف المستند."
       }
     },
     "import": {
@@ -694,6 +733,619 @@
       "defaultTextTitle": "مستند نصي مستورد",
       "validation": {
         "noContent": "يرجى توفير ملف PDF/نص أو محتوى نصي."
+      }
+    }
+  },
+  "workflowBuilder": {
+    "list": {
+      "title": "سير العمل",
+      "subtitle": "صمّم رحلات العملاء باستخدام منشئ السحب والإفلات.",
+      "newName": "اسم سير العمل",
+      "newNamePlaceholder": "رحلة الترحيب",
+      "create": "إنشاء سير عمل",
+      "createFailed": "تعذر إنشاء سير العمل",
+      "emptyDescription": "افتح سير العمل هذا لمتابعة تصميم رحلة العميل."
+    },
+    "palette": {
+      "title": "الخطوات",
+      "subtitle": "اسحب خطوة إلى اللوحة لبناء رحلتك.",
+      "conversation": "المحادثة",
+      "logic": "المنطق والقرارات",
+      "crm": "إدارة العملاء",
+      "ai": "الذكاء الاصطناعي"
+    },
+    "builder": {
+      "title": "منشئ سير العمل"
+    },
+    "properties": {
+      "title": "إعدادات الخطوة",
+      "empty": "اختر خطوة على اللوحة لتعديل إعداداتها."
+    },
+    "publish": {
+      "error": "سير العمل هذا غير جاهز للنشر بعد."
+    },
+    "actions": {
+      "back": "رجوع",
+      "save": "حفظ الآن",
+      "saveDraft": "حفظ المسودة",
+      "publish": "نشر",
+      "align": "محاذاة",
+      "autoLayout": "تخطيط تلقائي",
+      "undo": "تراجع",
+      "redo": "إعادة",
+      "cancel": "إلغاء",
+      "continue": "متابعة",
+      "done": "تم",
+      "compareSelected": "مقارنة المحدد",
+      "rollback": "استرجاع"
+    },
+    "lifecycle": {
+      "draft": "مسودة",
+      "published": "منشور",
+      "archived": "مؤرشف",
+      "publishedUnpublishedChanges": "منشور • تغييرات غير منشورة"
+    },
+    "executionStatus": {
+      "ready": "جاهز",
+      "running": "قيد التشغيل",
+      "completed": "مكتمل",
+      "failed": "يتطلب انتباهاً"
+    },
+    "categories": {
+      "conversation": "المحادثة",
+      "crm": "إدارة العملاء",
+      "logic": "المنطق",
+      "timing": "التوقيت",
+      "ai": "الذكاء الاصطناعي",
+      "terminal": "النهاية"
+    },
+    "branch": {
+      "default": "افتراضي",
+      "case": "حالة",
+      "yes": "نعم",
+      "no": "لا"
+    },
+    "connection": {
+      "fromPrevious": "الاتصال من الخطوة السابقة",
+      "toNext": "الاتصال بالخطوة التالية",
+      "stepAria": "خطوة {{name}}"
+    },
+    "nodeEmpty": {
+      "start": "يبدأ كل سير عمل هنا تلقائياً.",
+      "end": "هذه الخطوة تُنهي المحادثة."
+    },
+    "nodes": {
+      "start": {
+        "displayName": "البداية",
+        "description": "يبدأ عندما يرسل أحدهم رسالة."
+      },
+      "send_message": {
+        "displayName": "إرسال رسالة",
+        "description": "أرسل رسالة ودية لعميلك."
+      },
+      "ask_question": {
+        "displayName": "طرح سؤال",
+        "description": "اطرح سؤالاً وانتظر الرد."
+      },
+      "wait_for_reply": {
+        "displayName": "انتظار الرد",
+        "description": "توقّف حتى يرسل العميل رسالته التالية."
+      },
+      "buttons": {
+        "displayName": "أزرار",
+        "description": "قدّم أزرار رد سريع."
+      },
+      "list": {
+        "displayName": "قائمة",
+        "description": "اعرض قائمة خيارات."
+      },
+      "if_else": {
+        "displayName": "إذا / وإلا",
+        "description": "وجّه العملاء بناءً على قواعد مرئية."
+      },
+      "switch": {
+        "displayName": "تبديل",
+        "description": "وجّه العملاء بمطابقة حقل مع حالات."
+      },
+      "merge": {
+        "displayName": "دمج",
+        "description": "أعد مسارات متعددة معاً."
+      },
+      "delay": {
+        "displayName": "تأخير",
+        "description": "انتظر قبل الخطوة التالية."
+      },
+      "end": {
+        "displayName": "النهاية",
+        "description": "أنهِ المحادثة."
+      },
+      "create_customer": {
+        "displayName": "إنشاء عميل",
+        "description": "احفظ سجل عميل جديد."
+      },
+      "update_customer": {
+        "displayName": "تحديث عميل",
+        "description": "حدّث سجل عميل موجود."
+      },
+      "create_booking": {
+        "displayName": "إنشاء حجز",
+        "description": "أنشئ حجز موعد."
+      }
+    },
+    "validation": {
+      "title": "قبل النشر",
+      "fieldLabels": {
+        "message": "رسالة",
+        "question": "سؤالاً",
+        "saveAs": "مكان حفظ الإجابة",
+        "replySaveAs": "مكان حفظ الرد",
+        "title": "عنوان قائمة",
+        "body": "رسالة القائمة",
+        "nameField": "الإجابة المستخدمة لاسم العميل",
+        "field": "الحقل المراد تحديثه",
+        "value": "القيمة الجديدة",
+        "serviceName": "اسم الخدمة",
+        "dateField": "الإجابة المستخدمة للتاريخ",
+        "buttonLabel": "تسمية زر واحدة على الأقل"
+      }
+    },
+    "validationIssues": {
+      "requiredField": "أضف {{field}} قبل النشر.",
+      "missing-start": "أضف خطوة بداية ليعرف سير العمل متى يبدأ.",
+      "missing-end": "أضف خطوة نهاية ليعرف سير العمل متى ينتهي.",
+      "missing-name": "أعطِ سير العمل اسماً واضحاً قبل النشر.",
+      "cycle-detected": "سير العمل يعود إلى نفسه. أزل الحلقة قبل النشر.",
+      "isolated": "هذه الخطوة غير متصلة ببقية سير العمل.",
+      "duplicate-start": "يُسمح بخطوة بداية واحدة فقط في سير العمل.",
+      "missing-yes": "وصّل فرع نعم ليعرف العملاء المطابقون ما يحدث بعد ذلك.",
+      "missing-no": "وصّل فرع لا ليتمكن العملاء غير المطابقين من المتابعة.",
+      "missing-rules": "أضف قاعدة واحدة على الأقل قبل نشر خطوة إذا / وإلا.",
+      "missing-field": "اختر حقلاً لخطوة التبديل.",
+      "missing-cases": "أضف حالة واحدة على الأقل قبل نشر خطوة التبديل.",
+      "duplicate-case": "يجب أن تستخدم كل حالة في التبديل قيمة فريدة.",
+      "connectCaseBranch": "وصّل فرع \"{{label}}\".",
+      "missing-default": "وصّل الفرع الافتراضي للقيم التي لا تطابق أي حالة.",
+      "merge-paths": "يجب أن تستقبل خطوات الدمج مسارين واردين على الأقل.",
+      "tooManyOutgoing": "{{node}} لديه فروع صادرة أكثر من المسموح.",
+      "missing-buttons": "أضف تسمية زر واحدة على الأقل قبل النشر.",
+      "missing-list-rows": "أضف خيار قائمة واحداً على الأقل قبل النشر.",
+      "invalid-delay": "أدخل مدة انتظار أكبر من صفر."
+    },
+    "publishDialog": {
+      "title": "نشر سير العمل",
+      "description": "سيعمل العملاء في الإنتاج على النسخة المنشورة النشطة. تبقى تعديلات المسودة منفصلة حتى تنشر مجدداً.",
+      "readyTitle": "جاهز للنشر",
+      "readyDescription": "اجتاز سير العمل جميع الفحوصات الحاجزة.",
+      "fixTitle": "أصلح هذه العناصر قبل النشر",
+      "workflowLabel": "سير العمل:",
+      "stepsLabel": "الخطوات:",
+      "connectionsLabel": "الاتصالات:",
+      "nextVersionLabel": "الإصدار التالي:",
+      "releaseNotesLabel": "ملاحظات الإصدار",
+      "releaseNotesPlaceholder": "صف ما تغيّر لفريقك...",
+      "successTitle": "تم النشر بنجاح",
+      "successDescription": "حركة الإنتاج تعمل الآن على هذا الإصدار.",
+      "addReleaseNotes": "إضافة ملاحظات الإصدار",
+      "failed": "فشل النشر."
+    },
+    "unsavedChanges": {
+      "title": "تغييرات مسودة غير محفوظة",
+      "description": "لديك تعديلات غير منشورة. احفظ مسودتك، أو تجاهل التغييرات، أو واصل التحرير.",
+      "continueEditing": "متابعة التحرير",
+      "discard": "تجاهل التغييرات",
+      "saveDraft": "حفظ المسودة"
+    },
+    "versionHistory": {
+      "title": "سجل الإصدارات",
+      "version": "الإصدار {{number}}",
+      "active": "نشط",
+      "noReleaseNotes": "لا توجد ملاحظات إصدار",
+      "notPublished": "غير منشور",
+      "compareTitle": "مقارنة الإصدارات",
+      "whatChanged": "ما الذي تغيّر",
+      "addedSteps": "خطوات مُضافة",
+      "removedSteps": "خطوات مُزالة",
+      "changedSettings": "إعدادات مُغيّرة"
+    },
+    "errors": {
+      "saveFailed": "تعذّر حفظ سير العمل. يرجى المحاولة مرة أخرى."
+    },
+    "logic": {
+      "field": "الحقل",
+      "chooseField": "اختر حقلاً",
+      "cases": "الحالات",
+      "addCase": "إضافة حالة",
+      "caseNumber": "الحالة {{number}}",
+      "branchLabel": "تسمية الفرع",
+      "matchValue": "قيمة المطابقة",
+      "defaultBranch": "الفرع الافتراضي",
+      "defaultBranchHint": "وجّه العملاء عندما لا تطابق أي حالة.",
+      "mergeStrategy": "استراتيجية الدمج",
+      "waitAll": "انتظار الكل",
+      "waitAny": "انتظار أي",
+      "mergeHint": "تتقارب المسارات هنا قبل المتابعة. يمكن للإصدارات المستقبلية احترام الاستراتيجية المختارة عبر التنفيذ المتوازي.",
+      "optionalPrompt": "مطالبة اختيارية",
+      "waitSilently": "اتركه فارغاً للانتظار بصمت",
+      "saveReplyAs": "حفظ الرد كـ",
+      "waitTime": "مدة الانتظار",
+      "unit": "الوحدة",
+      "minutes": "دقائق",
+      "hours": "ساعات",
+      "days": "أيام",
+      "businessHoursOnly": "ساعات العمل فقط",
+      "businessHoursHint": "بيانات جدولة للتقويمات المستقبلية.",
+      "rule": "قاعدة",
+      "operator": "المُعامل",
+      "chooseOperator": "اختر مُعاملاً",
+      "value": "القيمة",
+      "secondValue": "القيمة الثانية",
+      "match": "مطابقة",
+      "group": "مجموعة",
+      "allAnd": "الكل (AND)",
+      "anyOr": "أي (OR)",
+      "nestedGroup": "مجموعة متداخلة",
+      "removeGroup": "إزالة المجموعة",
+      "and": "AND",
+      "or": "OR",
+      "listOptions": "خيارات القائمة",
+      "shortDescription": "وصف قصير (اختياري)",
+      "waitMinutes": "مدة الانتظار (دقائق)",
+      "nameField": "حقل الاسم",
+      "emailField": "حقل البريد (اختياري)",
+      "phoneField": "حقل الهاتف (اختياري)",
+      "fieldToUpdate": "الحقل المراد تحديثه",
+      "newValue": "القيمة الجديدة",
+      "serviceName": "اسم الخدمة",
+      "dateField": "حقل إجابة التاريخ",
+      "menuTitle": "العنوان",
+      "menuMessage": "الرسالة",
+      "menuButtonLabel": "تسمية زر القائمة"
+    },
+    "variables": {
+      "insert": "إدراج متغير",
+      "search": "البحث في المتغيرات",
+      "empty": "لم يتم العثور على متغيرات",
+      "providers": "مزود متاح",
+      "categories": {
+        "customer": "العميل",
+        "conversation": "المحادثة",
+        "booking": "الحجز",
+        "company": "الشركة",
+        "workflow": "سير العمل",
+        "system": "النظام",
+        "ai": "الذكاء الاصطناعي (مستقبلي)"
+      },
+      "fields": {
+        "customer": {
+          "name": "الاسم",
+          "email": "البريد الإلكتروني",
+          "phone": "الهاتف",
+          "type": "نوع العميل",
+          "country": "البلد",
+          "orders": "إجمالي الطلبات"
+        },
+        "conversation": {
+          "last_message": "آخر رسالة",
+          "channel": "القناة"
+        },
+        "booking": {
+          "date": "التاريخ",
+          "time": "الوقت",
+          "service": "الخدمة"
+        },
+        "company": {
+          "name": "الاسم",
+          "phone": "الهاتف"
+        },
+        "workflow": {
+          "name": "اسم سير العمل",
+          "step": "الخطوة الحالية",
+          "run_id": "معرّف التشغيل"
+        },
+        "system": {
+          "date": "تاريخ اليوم",
+          "time": "الوقت الحالي",
+          "agent_name": "اسم الوكيل"
+        },
+        "ai": {
+          "intent": "النية المكتشفة",
+          "confidence": "درجة الثقة"
+        }
+      }
+    },
+    "preview": {
+      "title": "معاينة مباشرة",
+      "empty": "ستظهر المعاينة هنا."
+    },
+    "fields": {
+      "message": "الرسالة",
+      "messagePlaceholder": "اكتب رسالة ودية يفهمها عميلك…",
+      "characterCount": "{{count}} حرف",
+      "emojiPlaceholder": "إضافة رمز تعبيري",
+      "buttons": "الأزرار",
+      "addButton": "إضافة زر",
+      "addListOption": "إضافة خيار",
+      "deleteButton": "حذف الزر",
+      "moveUp": "نقل الزر",
+      "moveOptionUp": "نقل الخيار لأعلى",
+      "moveOptionDown": "نقل الخيار لأسفل",
+      "buttonLabel": "الزر {{number}}",
+      "question": "السؤال",
+      "questionPlaceholder": "ماذا تريد أن تسأل؟",
+      "saveAnswerAs": "حفظ الإجابة كـ",
+      "placeholder": "النص التوضيحي",
+      "placeholderExample": "اكتب إجابتك هنا",
+      "validationMessage": "رسالة التحقق",
+      "validationExample": "يرجى الإجابة على هذا السؤال للمتابعة.",
+      "required": "مطلوب",
+      "requiredHint": "يجب على العميل الإجابة قبل المتابعة.",
+      "workflowName": "اسم سير العمل"
+    },
+    "search": {
+      "placeholder": "البحث في الخطوات…",
+      "empty": "لا توجد خطوات مطابقة"
+    },
+    "quickAdd": {
+      "label": "إضافة الخطوة التالية",
+      "title": "اختر الخطوة التالية"
+    },
+    "empty": {
+      "title": "ابدأ بناء سير العمل",
+      "subtitle": "اسحب خطوة من اليسار، أو انقر + على اتصال، أو ابدأ بخطوة البداية.",
+      "cta": "إضافة خطوة البداية"
+    },
+    "align": {
+      "left": "محاذاة لليسار",
+      "right": "محاذاة لليمين",
+      "top": "محاذاة للأعلى",
+      "bottom": "محاذاة للأسفل",
+      "centerHorizontal": "توسيط أفقي",
+      "centerVertical": "توسيط عمودي",
+      "distributeHorizontal": "توزيع أفقي",
+      "distributeVertical": "توزيع عمودي"
+    },
+    "status": {
+      "ready": "جاهز",
+      "saving": "جارٍ الحفظ...",
+      "saved": "تم الحفظ",
+      "unsaved": "تغييرات غير محفوظة",
+      "unpublishedChanges": "تغييرات غير منشورة",
+      "error": "فشل الحفظ",
+      "publishing": "جارٍ النشر...",
+      "published": "منشور",
+      "validationCount": "{{count}} عناصر للإصلاح"
+    },
+    "ai": {
+      "promptTemplate": "قالب المطالبة",
+      "providerConnection": "اتصال المزود",
+      "modelOverride": "تجاوز النموذج",
+      "temperature": "درجة الحرارة",
+      "knowledgeRetrieval": "استرجاع المعرفة",
+      "knowledgeRetrievalHint": "حقن معرفة المؤسسة في هذه الخطوة أثناء التشغيل.",
+      "outputMode": "وضع الإخراج",
+      "executionPolicy": "سياسة التنفيذ",
+      "executionPolicyHint": "حدود التشغيل التي يطبقها محول سير عمل الذكاء الاصطناعي.",
+      "outputVariable": "متغير الإخراج",
+      "maxTokens": "الحد الأقصى للرموز",
+      "timeoutMs": "المهلة (مللي ثانية)",
+      "streaming": "البث",
+      "streamingHint": "بث الرموز عندما يدعمها المزود.",
+      "selectOutputMode": "اختر وضع الإخراج",
+      "useProviderDefault": "استخدم الافتراضي للمزود",
+      "loadingTemplates": "جارٍ تحميل القوالب…",
+      "selectPromptTemplate": "اختر قالب المطالبة",
+      "searchPrompts": "ابحث في المطالبات",
+      "noPromptTemplates": "لم يتم العثور على قوالب مطالبات",
+      "loadingProviders": "جارٍ تحميل المزودين…",
+      "selectProviderConnection": "اختر اتصال المزود",
+      "searchProviders": "ابحث في المزودين",
+      "noProviderConnections": "لم يتم العثور على اتصالات مزود",
+      "yes": "نعم",
+      "no": "لا",
+      "enabled": "مفعّل",
+      "disabled": "معطّل",
+      "none": "لا شيء",
+      "notSelected": "غير محدد",
+      "default": "افتراضي",
+      "required": "مطلوب",
+      "label": "التسمية",
+      "description": "الوصف",
+      "type": "النوع",
+      "inputSource": "مصدر الإدخال",
+      "variableName": "اسم المتغير",
+      "staticText": "نص ثابت",
+      "textVariable": "متغير النص",
+      "deleteField": "حذف الحقل",
+      "addField": "إضافة حقل",
+      "addOutcome": "إضافة نتيجة",
+      "inputSources": {
+        "variable": "متغير سير العمل",
+        "static": "نص ثابت",
+        "conversation_message": "رسالة المحادثة",
+        "decision_output": "مخرجات القرار",
+        "extract_output": "مخرجات الاستخراج",
+        "summarizer_output": "مخرجات الملخص",
+        "custom_query": "استعلام مخصص"
+      },
+      "outputModes": {
+        "text": "نص",
+        "json": "JSON",
+        "boolean": "منطقي",
+        "classification": "تصنيف",
+        "structured": "كائن منظم",
+        "array": "مصفوفة"
+      },
+      "decisionModes": {
+        "intent_classification": "تصنيف النية",
+        "category_classification": "تصنيف الفئة",
+        "priority_classification": "تصنيف الأولوية",
+        "sentiment": "المشاعر",
+        "approval_decision": "قرار الموافقة",
+        "binary_decision": "قرار ثنائي",
+        "multi_class_decision": "قرار متعدد الفئات",
+        "confidence_scoring": "تقييم الثقة",
+        "custom_decision": "قرار مخصص"
+      },
+      "summaryPresets": {
+        "short": "قصير",
+        "medium": "متوسط",
+        "detailed": "مفصّل",
+        "bullet_points": "نقاط",
+        "executive": "ملخص تنفيذي",
+        "custom": "مخصص"
+      },
+      "coercionPolicies": {
+        "strict": "صارم",
+        "coerce": "تحويل",
+        "lenient": "متساهل"
+      },
+      "fieldTypes": {
+        "string": "نص",
+        "number": "رقم",
+        "boolean": "منطقي",
+        "date": "تاريخ",
+        "time": "وقت",
+        "email": "بريد إلكتروني",
+        "phone": "هاتف",
+        "currency": "عملة",
+        "array": "مصفوفة",
+        "object": "كائن",
+        "enum": "تعداد"
+      },
+      "nodes": {
+        "ai_summarizer": {
+          "displayName": "ملخّص الذكاء الاصطناعي",
+          "description": "تلخيص النصوص الطويلة باستخدام تشغيل الذكاء الاصطناعي المؤسسي."
+        },
+        "ai_extract": {
+          "displayName": "استخراج الذكاء الاصطناعي",
+          "description": "استخراج بيانات الأعمال المنظمة من النص."
+        },
+        "ai_decision": {
+          "displayName": "قرار الذكاء الاصطناعي",
+          "description": "تصنيف أو تقييم أو اتخاذ قرارات أعمال منظمة."
+        },
+        "ai_knowledge_search": {
+          "displayName": "بحث المعرفة بالذكاء الاصطناعي",
+          "description": "البحث في معرفة المؤسسة وإرجاع السياق ذي الصلة."
+        }
+      },
+      "validation": {
+        "configLooksGood": "يبدو أن الإعدادات صحيحة",
+        "readyForPreview": "هذه الخطوة جاهزة للمعاينة والنشر."
+      },
+      "validationIssues": {
+        "missing-prompt": "اختر قالب مطالبة لهذه الخطوة.",
+        "missing-provider": "اختر اتصال مزود أو مفتاح مزود افتراضي.",
+        "missing-knowledge-collection": "المعرفة مفعّلة لكن لم يتم اختيار قاعدة معرفة.",
+        "missing-knowledge-connections": "استرجاع المعرفة يتطلب اتصالات التضمين ومخزن المتجهات.",
+        "output-mode-policy-conflict": "يجب أن تستخدم أوضاع الإخراج المنظمة تنسيق استجابة JSON.",
+        "missing-static-input": "أدخل نص المصدر أو انتقل إلى مصدر إدخال آخر.",
+        "missing-input-variable": "اختر متغير سير عمل للإدخال.",
+        "missing-output-variable": "حدّد متغير إخراج لتخزين النتيجة.",
+        "missing-outcomes": "أضف نتيجة قرار واحدة على الأقل.",
+        "invalid-fallback-outcome": "يجب أن تطابق النتيجة الاحتياطية إحدى نتائج القرار المُعدّة.",
+        "invalid-policy-fallback": "يجب أن تطابق النتيجة الاحتياطية لسياسة الثقة إحدى نتائج القرار.",
+        "invalid-confidence-threshold": "يجب أن تكون عتبة الثقة بين 0 و 1.",
+        "missing-schema": "أضف حقل استخراج واحد على الأقل إلى المخطط.",
+        "schema-nesting-too-deep": "التداخل في المخطط عميق جداً. حدّد الكائنات المتداخلة إلى 5 مستويات.",
+        "missing-custom-query": "أدخل استعلام بحث مخصص أو اضبط قالب استعلام.",
+        "missing-static-query": "أدخل نص بحث ثابت أو اختر مصدر استعلام آخر.",
+        "missing-collection": "اختر مجموعة معرفة للبحث.",
+        "missing-connections": "بحث المعرفة يتطلب اتصالات التضمين ومخزن المتجهات.",
+        "invalid-top-k": "يجب أن يكون Top K بين 1 و 100.",
+        "invalid-minimum-score": "يجب أن تكون الحد الأدنى للدرجة بين 0 و 1.",
+        "invalid-max-chunks": "يجب أن يكون الحد الأقصى للمقاطع بين 1 و 100."
+      },
+      "preview": {
+        "buildingPreview": "جارٍ بناء المعاينة…",
+        "configureToPreview": "اضبط الخطوة لمعاينة سلوك التشغيل.",
+        "runtimePreview": "معاينة التشغيل",
+        "runtimePreviewHint": "ما سيرسله محول سير عمل الذكاء الاصطناعي وقت التنفيذ.",
+        "prompt": "المطالبة",
+        "output": "الإخراج",
+        "knowledge": "المعرفة",
+        "provider": "المزود",
+        "model": "النموذج",
+        "streaming": "البث",
+        "expectedOutput": "الإخراج المتوقع",
+        "estimatedTokens": "الرموز المقدرة",
+        "inputPreview": "معاينة الإدخال",
+        "outputSchema": "مخطط الإخراج",
+        "fields": "الحقول",
+        "expectedJsonSchema": "مخطط JSON المتوقع",
+        "mode": "الوضع",
+        "outcomes": "النتائج",
+        "collection": "المجموعة",
+        "estimatedResults": "النتائج المقدرة",
+        "sampleOutputStructure": "هيكل الإخراج النموذجي"
+      },
+      "sections": {
+        "summaryOptions": "خيارات الملخص",
+        "summaryOptionsHint": "تُربط القوالب بمتغيرات المطالبة التي يستهلكها قالب الملخص.",
+        "summaryPreset": "قالب الملخص",
+        "selectPreset": "اختر القالب",
+        "summaryStyle": "أسلوب الملخص",
+        "maximumLength": "الحد الأقصى للطول",
+        "language": "اللغة",
+        "tone": "النبرة",
+        "bulletMode": "وضع النقاط",
+        "bulletModeHint": "تنسيق الملخص كنقاط.",
+        "summarizerPreview": "معاينة الملخص",
+        "summarizerPreviewHint": "سلوك التشغيل المتوقع لإعدادات هذه الخطوة.",
+        "extractionInput": "إدخال الاستخراج",
+        "extractionInputHint": "اختر مصدر النص غير المنظم.",
+        "businessRules": "قواعد العمل",
+        "outputInstructions": "تعليمات الإخراج",
+        "validationPolicy": "سياسة التحقق",
+        "extractionSchema": "مخطط الاستخراج",
+        "extractionSchemaHint": "حدّد الحقول المنظمة التي يجب أن تستخرجها هذه الخطوة.",
+        "fieldName": "اسم الحقل",
+        "exampleValue": "قيمة مثال",
+        "enumValues": "قيم التعداد (مفصولة بفاصلة)",
+        "extractPreview": "معاينة الاستخراج",
+        "extractPreviewHint": "معاينة الاستخراج المبنية على المخطط لنشر سير العمل.",
+        "decisionConfiguration": "إعداد القرار",
+        "decisionConfigurationHint": "اختر كيف تصنّف الخطوة الإدخال وتطبّق سياسات الثقة.",
+        "decisionMode": "وضع القرار",
+        "confidenceThreshold": "عتبة الثقة",
+        "fallbackOutcome": "النتيجة الاحتياطية",
+        "confidencePolicy": "سياسة الثقة",
+        "emitWarningBelowThreshold": "إظهار تحذير تحت العتبة",
+        "requireHumanReview": "يتطلب مراجعة بشرية",
+        "continueWorkflowOnLowConfidence": "متابعة سير العمل عند انخفاض الثقة",
+        "decisionOutcomes": "نتائج القرار",
+        "decisionOutcomesHint": "حدّد التسميات التي يمكن لخطوات If/Switch اللاحقة التوجيه بناءً عليها.",
+        "examplesOnePerLine": "أمثلة (واحدة في كل سطر)",
+        "confidenceScoringMode": "وضع تقييم الثقة يُرجع درجة رقمية بدلاً من تسميات نتائج منفصلة.",
+        "decisionPreview": "معاينة القرار",
+        "decisionPreviewHint": "مخرجات التصنيف المتوقعة لتوجيه سير العمل.",
+        "knowledgeSearch": "بحث المعرفة",
+        "knowledgeSearchHint": "استرجاع معرفة المؤسسة المُصنّفة عبر محرك الاسترجاع المشترك.",
+        "querySource": "مصدر الاستعلام",
+        "searchQuery": "استعلام البحث",
+        "upstreamVariable": "المتغير السابق",
+        "collectionId": "معرّف المجموعة",
+        "embeddingConnectionId": "معرّف اتصال التضمين",
+        "vectorStoreConnectionId": "معرّف اتصال مخزن المتجهات",
+        "topK": "Top K",
+        "minimumScore": "الحد الأدنى للدرجة",
+        "maxChunks": "الحد الأقصى للمقاطع",
+        "tagsFilter": "تصفية الوسوم (مفصولة بفاصلة)",
+        "categoriesFilter": "تصفية الفئات",
+        "knowledgeSearchPreview": "معاينة بحث المعرفة",
+        "knowledgeSearchPreviewHint": "مخرجات الاسترجاع المتوقعة لخطوات الذكاء الاصطناعي اللاحقة."
+      },
+      "placeholders": {
+        "input": "input",
+        "pasteContentToSummarize": "الصق المحتوى المراد تلخيصه",
+        "customerEmail": "customer_email",
+        "whatToExtract": "ما الذي يجب استخراجه؟",
+        "exampleForModel": "مثال للنموذج",
+        "enumValues": "open, closed, pending",
+        "decisionResult": "decision_result",
+        "extractResult": "extract_result",
+        "summaryResult": "summary_result"
       }
     }
   },
@@ -1679,7 +2331,9 @@
       "role_tenant_mismatch": "الدور المحدد لا ينتمي إلى الشركة المستهدفة.",
       "role_not_found": "الدور المحدد غير موجود.",
       "target_company_required": "يجب اختيار شركة مستهدفة قبل تعيين دور.",
-      "company_has_no_roles": "لا توجد أدوار مهيأة لهذه الشركة."
+      "company_has_no_roles": "لا توجد أدوار مهيأة لهذه الشركة.",
+      "last_company_admin": "سيؤدي هذا التغيير إلى إزالة آخر مدير شركة نشط في المستأجر.",
+      "forbidden": "ليس لديك صلاحية لتغيير دور هذا المستخدم."
     },
     "success": {
       "inviteSentTitle": "تم إرسال الدعوة",
@@ -1751,7 +2405,16 @@
       "groupCounter": "{{selected}} / {{total}}",
       "groupSelectAll": "تحديد جميع صلاحيات {{group}}",
       "noResults": "لا توجد صلاحيات مطابقة لبحثك.",
-      "partialSelectionHint": "تم تحديد بعض الصلاحيات."
+      "partialSelectionHint": "تم تحديد بعض الصلاحيات.",
+      "assignedSummary": "الصلاحيات المعيّنة ({{count}})",
+      "developerMode": "وضع المطور",
+      "developerModeDescription": "إظهار رموز الصلاحيات والأوصاف للتصحيح. مخفي عن المستخدمين العاديين.",
+      "developerModeHint": "وضع المطور مفعّل — رموز الصلاحيات والأوصاف ظاهرة."
+    },
+    "roleDetails": {
+      "showPermissions": "عرض الصلاحيات",
+      "hidePermissions": "إخفاء الصلاحيات",
+      "noPermissions": "لا توجد صلاحيات معيّنة لهذا الدور."
     },
     "permissionGroups": {
       "Customers": "إدارة علاقات العملاء",

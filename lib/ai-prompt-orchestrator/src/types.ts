@@ -1,5 +1,6 @@
 import type { ConversationState } from "@workspace/ai-conversation";
-import type { PromptSectionKey, PromptTemplateType } from "./constants.js";
+import type { PromptSectionKey, PromptTemplateType, PromptLifecycleStatus } from "./constants.js";
+import type { PromptPolicy } from "./policies/prompt-policy.js";
 
 export type PromptSectionConfig = {
   enabled?: boolean;
@@ -23,6 +24,7 @@ export type PromptTemplateRecord = {
   section_order: PromptSectionKey[];
   is_enabled: boolean;
   active_version_id: string | null;
+  has_unpublished_draft?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -36,6 +38,8 @@ export type PromptTemplateVersionRecord = {
   output_contract: OutputContract;
   change_notes: string;
   is_active: boolean;
+  lifecycle_status?: PromptLifecycleStatus;
+  policies?: PromptPolicy;
   created_at: string;
   created_by: string | null;
 };
@@ -51,6 +55,7 @@ export type PromptBuildRecord = {
   sections: BuiltPromptSection[];
   final_prompt: string;
   output_contract: OutputContract;
+  metadata?: Record<string, unknown>;
   created_at: string;
   created_by: string | null;
 };
@@ -69,6 +74,12 @@ export type BuiltPrompt = {
   sections: BuiltPromptSection[];
   final_prompt: string;
   output_contract: OutputContract;
+  metadata?: {
+    renderedSize: number;
+    variableCount: number;
+    estimatedTokens: number;
+    executionTimeMs: number;
+  };
 };
 
 export type PromptMessage = {
@@ -136,6 +147,8 @@ export type CreatePromptTemplateVersionInput = {
   outputContract: OutputContract;
   changeNotes?: string;
   activate?: boolean;
+  lifecycleStatus?: PromptLifecycleStatus;
+  policies?: PromptPolicy;
   createdBy?: string | null;
 };
 

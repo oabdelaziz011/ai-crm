@@ -145,17 +145,13 @@ async function assignUserRole(
   userId: string,
   roleId: string,
 ) {
-  const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-  if (deleteError) {
-    throw deleteError;
-  }
+  const { error } = await supabaseAdmin.rpc("replace_user_role", {
+    p_user_id: userId,
+    p_role_id: roleId,
+  });
 
-  const { error: insertError } = await supabaseAdmin
-    .from("user_roles")
-    .insert({ user_id: userId, role_id: roleId });
-
-  if (insertError) {
-    throw insertError;
+  if (error) {
+    throw error;
   }
 }
 

@@ -1,0 +1,22 @@
+{
+  "name": "@workspace/automation-platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx/esm --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "@workspace/platform-crypto": "file:../platform-crypto"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@workspace/ai-workflow-platform": "file:../ai-workflow-platform",
+    "tsx": "^4.21.0"
+  }
+}

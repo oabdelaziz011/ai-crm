@@ -1,6 +1,6 @@
 /**
- * VaultOS Production Release Gate — Subscription Detail readiness pipeline.
- * Run: npm run production:gate
+ * VaultOS Production Release Gate — Enterprise AI Runtime Integration (D5.4.1)
+ * Run: pnpm --dir artifacts/login-app production:gate
  */
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
@@ -65,25 +65,28 @@ function runCommand(
   return true;
 }
 
-console.log("\nVaultOS Production Release Gate\n");
-console.log("Pipeline: build → billing health → runtime probe → regression tests → blocker summary\n");
-
-runCommand(
-  "0. Production build (browser bundle)",
-  "pnpm",
-  ["build"],
-  loginAppRoot,
+console.log("\nVaultOS Production Release Gate — D5.4.1 Enterprise AI Runtime Integration\n");
+console.log(
+  "Pipeline: typecheck → platform tests → browser build → workflow builder → billing/runtime probes → blocker summary\n",
 );
 
-runCommand(
-  "1. Verify billing health",
-  "npm",
-  ["run", "billing-health-probe"],
-  loginAppRoot,
-);
+runCommand("0. Root typecheck", "pnpm", ["typecheck"], projectRoot);
+
+runCommand("1. AI workflow platform tests", "pnpm", ["test:ai-workflow-platform"], projectRoot);
+
+runCommand("2. Automation platform tests (AI integration)", "pnpm", ["test:automation-platform"], projectRoot);
+
+runCommand("3. Production build (browser bundle)", "pnpm", ["build"], loginAppRoot);
+
+runCommand("4. Workflow builder core tests", "npm", ["run", "test:workflow-builder-core"], loginAppRoot, {
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:54321",
+  VITE_SUPABASE_PUBLISHABLE_KEY: process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "test-publishable-key",
+});
+
+runCommand("5. Verify billing health", "npm", ["run", "billing-health-probe"], loginAppRoot);
 
 runCommand(
-  "2. Run runtime probe",
+  "6. Run runtime probe",
   "node",
   [resolve(projectRoot, "scripts/subscription-detail-runtime-probe.mjs")],
   projectRoot,
@@ -91,13 +94,13 @@ runCommand(
 );
 
 runCommand(
-  "3. Run Subscription Detail regression tests",
+  "7. Subscription Detail regression tests",
   "npm",
   ["run", "test:subscription-detail"],
   loginAppRoot,
 );
 
-console.log("\n▶ 4. Verify no production blockers remain\n");
+console.log("\n▶ 8. Verify no production blockers remain\n");
 
 if (failures.length > 0) {
   console.log("FAIL\n");
@@ -110,5 +113,5 @@ if (failures.length > 0) {
 }
 
 console.log("PASS\n");
-console.log("VaultOS Subscription Detail is Production Ready.\n");
+console.log("Enterprise AI Runtime Integration is Production Ready.\n");
 process.exit(0);

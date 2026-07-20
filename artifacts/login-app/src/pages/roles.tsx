@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Code2, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { RoleFormDialog } from "@/components/roles/role-form-dialog";
 import type { RoleFormValues } from "@/components/roles/role-form-fields";
+import { PermissionBadge } from "@/components/rbac/permission-badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useRbacDeveloperMode } from "@/hooks/use-rbac-developer-mode";
 import {
   fetchRolePermissionCodes,
   useAuthUser,
@@ -26,6 +29,7 @@ import {
   useUpdateRole,
   type RoleRecord,
 } from "@/hooks/use-rbac";
+import { usePermissionCatalogLanguageVersion } from "@/lib/rbac/permission-display-i18n";
 
 const EMPTY_FORM: RoleFormValues = {
   name: "",
@@ -41,10 +45,83 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
+function RolePermissionDetails({
+  roleId,
+  expanded,
+  permissionCatalog,
+}: {
+  roleId: string;
+  expanded: boolean;
+  permissionCatalog: ReturnType<typeof usePermissionCatalog>["data"];
+}) {
+  const { t } = useTranslation("common");
+  const [codes, setCodes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  usePermissionCatalogLanguageVersion();
+
+  const permissionByCode = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof permissionCatalog>[number]>();
+    (permissionCatalog ?? []).forEach((p) => {
+      if (p.code) map.set(p.code, p);
+    });
+    return map;
+  }, [permissionCatalog]);
+
+  useEffect(() => {
+    if (!expanded || loaded) return;
+    let cancelled = false;
+    setLoading(true);
+    void fetchRolePermissionCodes(roleId)
+      .then((result) => {
+        if (!cancelled) {
+          setCodes(result);
+          setLoaded(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, loaded, roleId]);
+
+  if (!expanded) return null;
+
+  if (loading) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">{t("permissions.loading")}</p>
+    );
+  }
+
+  if (codes.length === 0) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">{t("roles.roleDetails.noPermissions")}</p>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
+      {codes.map((code) => (
+        <PermissionBadge
+          key={code}
+          code={code}
+          permission={permissionByCode.get(code) ?? null}
+          title
+        />
+      ))}
+    </div>
+  );
+}
+
+
 export function RolesPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const { isSuperAdmin } = useAuthUser();
+  const { developerMode, setDeveloperMode } = useRbacDeveloperMode();
   const { data: roles = [], isLoading } = useRoles();
   const { data: permissions = [] } = usePermissionCatalog();
   const createRole = useCreateRole();
@@ -54,6 +131,7 @@ export function RolesPage() {
   const canEditRoles = useHasPermission("roles.edit");
   const canDeleteRoles = useHasPermission("roles.delete");
 
+  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<RoleFormValues>(EMPTY_FORM);
 
@@ -191,6 +269,19 @@ export function RolesPage() {
         )}
       </div>
 
+      <Card>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Code2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">{t("roles.permissions.developerMode")}</p>
+              <p className="text-xs text-muted-foreground">{t("roles.permissions.developerModeDescription")}</p>
+            </div>
+          </div>
+          <Switch checked={developerMode} onCheckedChange={setDeveloperMode} aria-label={t("roles.permissions.developerMode")} />
+        </div>
+      </Card>
+
       <Card className="overflow-hidden p-0">
         <div className="border-b border-white/5 px-5 py-4 text-sm font-semibold">{t("forms.roles.existing")}</div>
         {isLoading ? (
@@ -208,40 +299,67 @@ export function RolesPage() {
                 role.role_type === "DEFAULT" || role.role_type === "PLATFORM";
               const canEditThisRole = canEditRoles && (!isProtectedRole || isSuperAdmin);
               const canDeleteThisRole = canDeleteRoles && role.role_type === "CUSTOM";
+              const isExpanded = expandedRoleId === role.id;
 
               return (
-              <div key={role.id} className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium">{role.name}</p>
-                  <p className="text-xs text-muted-foreground">{role.description || t("roles.noDescription")}</p>
-                </div>
-                <div className="flex gap-2">
-                  {canEditThisRole && (
+              <div key={role.id} className="px-6 py-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{role.name}</p>
+                    <p className="text-xs text-muted-foreground">{role.description || t("roles.noDescription")}</p>
                     <Button
-                      variant="outline"
+                      type="button"
+                      variant="ghost"
                       size="sm"
-                      className="border-white/10"
-                      onClick={() => void openEditDialog(role)}
+                      className="mt-2 h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setExpandedRoleId(isExpanded ? null : role.id)}
                     >
-                      {t("roles.edit")}
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp className="me-1 h-3.5 w-3.5" />
+                          {t("roles.roleDetails.hidePermissions")}
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="me-1 h-3.5 w-3.5" />
+                          {t("roles.roleDetails.showPermissions")}
+                        </>
+                      )}
                     </Button>
-                  )}
-                  {canDeleteThisRole && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-white/10"
-                      onClick={() =>
-                        setDeleteDialog({
-                          open: true,
-                          roleId: role.id,
-                          roleName: role.name ?? t("roles.noDescription"),
-                        })
-                      }
-                    >
-                      {t("roles.delete")}
-                    </Button>
-                  )}
+                    <RolePermissionDetails
+                      roleId={role.id}
+                      expanded={isExpanded}
+                      permissionCatalog={permissions}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    {canEditThisRole && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10"
+                        onClick={() => void openEditDialog(role)}
+                      >
+                        {t("roles.edit")}
+                      </Button>
+                    )}
+                    {canDeleteThisRole && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10"
+                        onClick={() =>
+                          setDeleteDialog({
+                            open: true,
+                            roleId: role.id,
+                            roleName: role.name ?? t("roles.noDescription"),
+                          })
+                        }
+                      >
+                        {t("roles.delete")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               );

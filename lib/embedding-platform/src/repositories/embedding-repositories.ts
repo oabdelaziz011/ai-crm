@@ -7,6 +7,8 @@ import type {
   EmbeddingProviderDefinitionRecord,
   KnowledgeEmbeddingRecord,
   ListEmbeddingJobsFilter,
+  ListEmbeddingJobsByChunkIdsFilter,
+  ListEmbeddingJobsByDocumentFilter,
   ListEmbeddingProviderConnectionsFilter,
   ListKnowledgeEmbeddingsFilter,
   UpdateEmbeddingJobInput,
@@ -46,11 +48,15 @@ export interface KnowledgeEmbeddingRepository {
 
 export interface EmbeddingJobRepository {
   create(input: CreateEmbeddingJobInput): Promise<EmbeddingJobRecord>;
+  createMany(inputs: CreateEmbeddingJobInput[]): Promise<EmbeddingJobRecord[]>;
   findById(id: string): Promise<EmbeddingJobRecord | null>;
   list(filter: ListEmbeddingJobsFilter): Promise<EmbeddingJobRecord[]>;
+  listByChunkIds(filter: ListEmbeddingJobsByChunkIdsFilter): Promise<EmbeddingJobRecord[]>;
+  listByDocumentVersion(filter: ListEmbeddingJobsByDocumentFilter): Promise<EmbeddingJobRecord[]>;
   update(input: UpdateEmbeddingJobInput): Promise<EmbeddingJobRecord>;
-  claimNextQueued(companyId: string): Promise<EmbeddingJobRecord | null>;
-  claimNextQueuedBatch(companyId: string, limit: number): Promise<EmbeddingJobRecord[]>;
+  claimNextQueued(companyId: string, workerId?: string | null): Promise<EmbeddingJobRecord | null>;
+  claimNextQueuedBatch(companyId: string, limit: number, workerId?: string | null): Promise<EmbeddingJobRecord[]>;
+  recoverStaleLocks(staleSeconds?: number): Promise<number>;
 }
 
 export interface KnowledgeChunkReader {

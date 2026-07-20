@@ -4,8 +4,8 @@ import { ParagraphChunkingStrategy } from "../ingestion/chunking-strategy.js";
 import { PassthroughDocumentImporter } from "../ingestion/ingestion-contracts.js";
 import { ParserRegistry } from "../ingestion/parser-registry.js";
 import {
+  DocumentLockedError,
   DuplicateKnowledgeSourceError,
-  ImmutableVersionError,
   PermissionDeniedError,
 } from "../errors.js";
 import type {
@@ -19,6 +19,7 @@ import type {
 import { KnowledgeChunkService } from "./knowledge-chunk-service.js";
 import { KnowledgeDocumentService } from "./knowledge-document-service.js";
 import { KnowledgeImportService, KnowledgeParserService } from "./knowledge-import-service.js";
+import { KnowledgePublishingService } from "./knowledge-publishing-service.js";
 import { KnowledgeSectionService } from "./knowledge-section-service.js";
 import { KnowledgeSourceService } from "./knowledge-source-service.js";
 import { KnowledgeVersionService } from "./knowledge-version-service.js";
@@ -129,6 +130,7 @@ function createEnvironment() {
         checksum: input.checksum ?? record.checksum,
         published_version_id: input.publishedVersionId ?? record.published_version_id,
         current_version_number: input.currentVersionNumber ?? record.current_version_number,
+        metadata: input.metadata ?? record.metadata,
         version: input.currentVersionNumber ?? record.version,
       });
       return record;
@@ -290,6 +292,12 @@ function createEnvironment() {
   const sourceService = new KnowledgeSourceService(sourceRepository);
   const documentService = new KnowledgeDocumentService(documentRepository, sourceRepository, versionRepository);
   const versionService = new KnowledgeVersionService(versionRepository, documentRepository);
+  const publishingService = new KnowledgePublishingService(
+    documentRepository,
+    versionRepository,
+    chunkRepository,
+    versionService,
+  );
   const sectionService = new KnowledgeSectionService(sectionRepository, versionRepository);
   const chunksService = new KnowledgeChunkService(
     chunkRepository,
@@ -314,6 +322,7 @@ function createEnvironment() {
     sources: sourceService,
     documents: documentService,
     versionService,
+    publishingService,
     sectionService,
     chunksService,
     importService,
@@ -382,10 +391,8 @@ describe("KnowledgeVersionService", () => {
     assert.equal(published.status, "published");
     assert.equal(published.is_immutable, true);
 
-    await assert.rejects(
-      () => env.versionService.publishVersion(createContext(), published.id),
-      ImmutableVersionError,
-    );
+    const republished = await env.versionService.publishVersion(createContext(), published.id);
+    assert.equal(republished.id, published.id);
 
     const rolledBack = await env.versionService.rollbackToVersion(createContext(), document.id, 1);
     assert.equal(rolledBack.version_number, 2);
@@ -549,9 +556,8 @@ describe("KnowledgeImportService", () => {
   });
 });
 
-describe("Publishing and archive", () => {
-  it("archives documents with soft delete semantics", async () => {
-    const env = createEnvironment();
+describe("KnowledgePublishingService", () => {
+  async function createDraftWithChunks(env: ReturnType<typeof createEnvironment>) {
     const source = await env.sources.createSource(createContext(), {
       companyId: "company-1",
       key: "manual",
@@ -561,12 +567,94 @@ describe("Publishing and archive", () => {
     const document = await env.documents.createDocument(createContext(), {
       companyId: "company-1",
       sourceId: source.id,
-      title: "Old Policy",
-      checksum: computeChecksum("old"),
+      title: "Policy Handbook",
+      checksum: computeChecksum("policy-content"),
     });
+    const version = (await env.versionRepository.findByDocumentAndNumber(document.id, 1))!;
+    await env.sectionService.createSection(createContext(), {
+      companyId: "company-1",
+      documentId: document.id,
+      versionId: version.id,
+      title: "Policy",
+      content: "Employees must use MFA for sensitive systems.",
+      sectionOrder: 0,
+    });
+    await env.chunksService.generateChunksForVersion(createContext(), document.id, version.id);
+    return { document, version };
+  }
 
-    await env.documents.archiveDocument(createContext(), document.id);
-    const listed = await env.documents.listDocuments(createContext(), { companyId: "company-1" });
-    assert.equal(listed.length, 0);
+  it("publishes draft documents and prepares embedding pipeline metadata", async () => {
+    const env = createEnvironment();
+    const { document } = await createDraftWithChunks(env);
+
+    const result = await env.publishingService.publishDocument(createContext(), document.id);
+    assert.equal(result.idempotent, false);
+    assert.equal(result.document.status, "published");
+    assert.equal(result.version.status, "published");
+    assert.equal((result.document.metadata.publishing as { embedding_status?: string }).embedding_status, "pending");
+  });
+
+  it("is idempotent when publishing an already published document", async () => {
+    const env = createEnvironment();
+    const { document } = await createDraftWithChunks(env);
+
+    await env.publishingService.publishDocument(createContext(), document.id);
+    const second = await env.publishingService.publishDocument(createContext(), document.id);
+    assert.equal(second.idempotent, true);
+    const versions = await env.versionRepository.list({ companyId: "company-1", documentId: document.id });
+    assert.equal(versions.filter((item) => item.status === "published").length, 1);
+  });
+
+  it("archives published documents and excludes them from retrieval", async () => {
+    const env = createEnvironment();
+    const { document } = await createDraftWithChunks(env);
+    const published = await env.publishingService.publishDocument(createContext(), document.id);
+
+    const archived = await env.publishingService.archiveDocument(createContext(), document.id);
+    assert.equal(archived.document.status, "archived");
+    assert.equal(archived.previousStatus, "published");
+    assert.equal(env.publishingService.isDocumentRetrievalAvailable(archived.document), false);
+    assert.equal(
+      (archived.document.metadata.lifecycle as { archived_from_status?: string }).archived_from_status,
+      "published",
+    );
+  });
+
+  it("restores archived documents to their previous publish state", async () => {
+    const env = createEnvironment();
+    const { document } = await createDraftWithChunks(env);
+    await env.publishingService.publishDocument(createContext(), document.id);
+    await env.publishingService.archiveDocument(createContext(), document.id);
+
+    const restored = await env.publishingService.restoreDocument(createContext(), document.id);
+    assert.equal(restored.restoredStatus, "published");
+    assert.equal(restored.document.status, "published");
+    assert.equal(env.publishingService.isDocumentRetrievalAvailable(restored.document), true);
+  });
+
+  it("blocks editing published documents", async () => {
+    const env = createEnvironment();
+    const { document } = await createDraftWithChunks(env);
+    await env.publishingService.publishDocument(createContext(), document.id);
+
+    await assert.rejects(
+      () =>
+        env.documents.updateDocument(createContext(), {
+          documentId: document.id,
+          title: "Changed title",
+        }),
+      DocumentLockedError,
+    );
+  });
+
+  it("enforces RBAC on publish operations", async () => {
+    const env = createEnvironment();
+    const { document } = await createDraftWithChunks(env);
+
+    await assert.rejects(
+      () =>
+        env.publishingService.publishDocument(createContext({ hasPermission: (code) => code === "knowledge.view" }), document.id),
+      PermissionDeniedError,
+    );
   });
 });

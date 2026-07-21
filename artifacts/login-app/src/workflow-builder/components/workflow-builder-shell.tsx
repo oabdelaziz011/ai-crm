@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { usePermissions } from "@/hooks/use-rbac";
-import { useAppSidebar } from "@/context/app-sidebar-context";
 import { registerBuiltInWorkflowNodes } from "../core/register-built-in-nodes";
 import { registerBuiltInVariableProviders } from "../core/variables/built-in-variable-providers";
 import { registerDefaultNodeRenderers } from "../core/registry/node-renderer-registry";
@@ -24,7 +23,6 @@ export function WorkflowBuilderShell({
 }) {
   const { repository, context } = useWorkflowBuilderServices();
   const { hasPermission } = usePermissions();
-  const { offsetStartPx } = useAppSidebar();
   const controller = useWorkflowBuilder(document);
   useWorkflowBuilderKeyboard(controller);
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -54,10 +52,7 @@ export function WorkflowBuilderShell({
   };
 
   return (
-    <div
-      className="fixed bottom-0 top-16 z-20 flex flex-col gap-4 bg-background p-4 transition-[inset-inline-start] duration-[250ms] ease-in-out"
-      style={{ insetInlineStart: offsetStartPx, insetInlineEnd: 0 }}
-    >
+    <div className="fixed inset-x-0 bottom-0 top-16 z-20 flex flex-col gap-4 bg-background p-4 lg:start-64">
       <ReactFlowProvider>
         <BuilderToolbar controller={controller} onBack={handleBack} />
         <div className="flex min-h-0 flex-1 gap-4 overflow-visible">

@@ -12,16 +12,23 @@ type WorkflowBuilderServices = {
 
 const WorkflowBuilderServicesContext = createContext<WorkflowBuilderServices | null>(null);
 
-export function WorkflowBuilderServicesProvider({ children }: { children: ReactNode }) {
+export function WorkflowBuilderServicesProvider({
+  children,
+  value: valueOverride,
+}: {
+  children: ReactNode;
+  value?: WorkflowBuilderServices;
+}) {
   const { services: automation, context: automationContext } = useAutomationPlatformServices();
 
   const value = useMemo<WorkflowBuilderServices>(
-    () => ({
-      repository: createSupabaseWorkflowRepository(supabase),
-      context: automationContext,
-      automation,
-    }),
-    [automation, automationContext],
+    () =>
+      valueOverride ?? {
+        repository: createSupabaseWorkflowRepository(supabase),
+        context: automationContext,
+        automation,
+      },
+    [automation, automationContext, valueOverride],
   );
 
   return <WorkflowBuilderServicesContext.Provider value={value}>{children}</WorkflowBuilderServicesContext.Provider>;

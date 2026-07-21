@@ -21,7 +21,9 @@ export function historyReducer(history: HistoryState, action: BuilderAction): Hi
   const nextPresent = builderReducer(history.present, action);
   if (nextPresent === history.present) return history;
 
-  const trackHistory = !["SET_SAVE_STATUS", "SET_VALIDATION", "SELECT_NODES", "SELECT_EDGES"].includes(action.type);
+  const trackHistory =
+    !["SET_SAVE_STATUS", "SET_VALIDATION", "SELECT_NODES", "SELECT_EDGES"].includes(action.type) &&
+    !(action.type === "UPDATE_NODE_POSITIONS" && action.transient);
   if (!trackHistory) {
     return { ...history, present: nextPresent };
   }

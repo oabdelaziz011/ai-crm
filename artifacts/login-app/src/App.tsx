@@ -10,6 +10,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import AuthCallback from "@/pages/auth-callback";
 import ResetPassword from "@/pages/reset-password";
 import DashboardApp from "@/pages/dashboard";
+import WorkflowBuilderDebugPage from "@/pages/debug/workflow-builder-debug-page";
 import AccessDeniedPage from "@/pages/access-denied";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import {
@@ -123,6 +124,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/debug/workflow-builder" component={WorkflowBuilderDebugPage} />
         <Route path="/dashboard/permissions" component={() => <Redirect to="/dashboard/roles" />} />
         <Route
           path="/dashboard"

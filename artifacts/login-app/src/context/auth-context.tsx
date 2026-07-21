@@ -1,9 +1,18 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { getAuthRedirectUrl } from "@/lib/auth-redirect";
 import type { AuthErrorLike } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
 import { shouldSkipAuthContextReload } from "@/lib/auth-password-verify";
+import {
+  arraysEqualById,
+  createAuthIdentitySnapshot,
+  isAuthUserVisibleEqual,
+  permissionsEqual,
+  shouldSkipTokenRefreshReload,
+  type AuthIdentitySnapshot,
+} from "@/context/auth-identity";
+import { wbDebug } from "@/workflow-builder/debug/wb-runtime-debug";
 
 interface ProfileRecord {
   id: string;
@@ -71,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const loadedUserIdRef = useRef<string | null>(null);
+  const loadedIdentityRef = useRef<AuthIdentitySnapshot | null>(null);
+  /** Latest Supabase session (includes refreshed tokens even when context session reference is preserved). */
+  const latestSessionRef = useRef<Session | null>(null);
 
   /**
    * Sequence guard for concurrent `loadAuthContext` calls.
@@ -95,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCompany(null);
     setRoles([]);
     setPermissions([]);
+    loadedIdentityRef.current = null;
   };
 
   const loadProfile = async (userId: string): Promise<ProfileRecord | null> => {
@@ -144,7 +157,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isStale()) {
         return;
       }
-      setProfile(nextProfile);
+      setProfile((current) => {
+        if (
+          current?.id === nextProfile?.id &&
+          current?.company_id === nextProfile?.company_id &&
+          current?.full_name === nextProfile?.full_name &&
+          current?.is_super_admin === nextProfile?.is_super_admin
+        ) {
+          return current;
+        }
+        return nextProfile;
+      });
 
       let nextCompany: CompanyRecord | null = null;
       if (nextProfile?.company_id) {
@@ -161,7 +184,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isStale()) {
         return;
       }
-      setCompany(nextCompany);
+      setCompany((current) => {
+        if (
+          current?.id === nextCompany?.id &&
+          current?.name === nextCompany?.name &&
+          current?.status === nextCompany?.status &&
+          current?.subscription_status === nextCompany?.subscription_status
+        ) {
+          return current;
+        }
+        return nextCompany;
+      });
 
       const { data: userRoleRows, error: userRoleError } = await supabase
         .from("user_roles")
@@ -192,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isStale()) {
         return;
       }
-      setRoles(nextRoles);
+      setRoles((current) => (arraysEqualById(current, nextRoles) ? current : nextRoles));
 
       const permissionIds = new Set<string>();
 
@@ -246,8 +279,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isStale()) {
         return;
       }
-      setPermissions(nextPermissions);
+      setPermissions((current) => (permissionsEqual(current, nextPermissions) ? current : nextPermissions));
       loadedUserIdRef.current = userId;
+      loadedIdentityRef.current = createAuthIdentitySnapshot(userId, nextProfile?.company_id ?? null, nextRoles);
     } catch (error) {
       if (isStale()) {
         return;
@@ -262,8 +296,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const commitSession = (event: AuthChangeEvent, nextSession: Session | null) => {
+    latestSessionRef.current = nextSession;
+
+    setSession((current) => {
+      if (event === "TOKEN_REFRESHED" && isAuthUserVisibleEqual(current, nextSession)) {
+        wbDebug("auth session preserved", { event, reason: "token-only refresh" });
+        return current;
+      }
+      return nextSession;
+    });
+  };
+
   const handleAuthStateChange = async (event: AuthChangeEvent, nextSession: Session | null) => {
-    setSession(nextSession);
+    if (event === "TOKEN_REFRESHED") {
+      wbDebug("TOKEN_REFRESHED", { userId: nextSession?.user?.id ?? null });
+    }
+    wbDebug("auth state change", { event, userId: nextSession?.user?.id ?? null });
+    commitSession(event, nextSession);
 
     if (event === "SIGNED_OUT" || !nextSession?.user) {
       invalidateInFlightAuthLoads();
@@ -275,6 +325,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const nextUserId = nextSession.user.id;
 
+    if (
+      event === "TOKEN_REFRESHED" &&
+      shouldSkipTokenRefreshReload({
+        loadedUserId: loadedUserIdRef.current,
+        nextUserId,
+        hasProfile: profile !== null,
+        loadedIdentity: loadedIdentityRef.current,
+        profileCompanyId: profile?.company_id ?? null,
+        roles,
+      })
+    ) {
+      wbDebug("auth state change SKIP reload", { event, reason: "token refresh identity unchanged" });
+      return;
+    }
+
+    if (event === "TOKEN_REFRESHED") {
+      wbDebug("auth state change RELOAD", { event, showLoading: false, reason: "token refresh identity changed" });
+      await loadAuthContext(nextUserId, false);
+      return;
+    }
+
     if (event === "SIGNED_IN" && shouldSkipAuthContextReload() && loadedUserIdRef.current === nextUserId) {
       loadedUserIdRef.current = nextUserId;
       return;
@@ -283,7 +354,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userChanged = loadedUserIdRef.current !== null && loadedUserIdRef.current !== nextUserId;
     const shouldReload =
       event === "INITIAL_SESSION" ||
-      event === "TOKEN_REFRESHED" ||
       event === "SIGNED_IN" ||
       event === "USER_UPDATED" ||
       event === "PASSWORD_RECOVERY" ||
@@ -291,8 +361,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loadedUserIdRef.current === null;
 
     if (!shouldReload) {
+      wbDebug("auth state change SKIP reload", { event });
       return;
     }
+
+    wbDebug("auth state change RELOAD", { event, showLoading: event === "INITIAL_SESSION" || event === "SIGNED_IN" || userChanged || loadedUserIdRef.current === null });
 
     if (event === "SIGNED_IN" || userChanged) {
       invalidateInFlightAuthLoads();
@@ -313,7 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const result = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -324,9 +397,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? { message: result.error.message, code: result.error.code, status: result.error.status }
         : null,
     };
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -339,45 +412,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error: error ? { message: error.message, code: error.code, status: error.status } : null,
       needsEmailConfirmation: Boolean(data.user && !data.session),
     };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     invalidateInFlightAuthLoads();
     clearAuthContext();
     loadedUserIdRef.current = null;
+    latestSessionRef.current = null;
     setSession(null);
     setIsLoading(false);
-  };
+  }, []);
 
-  const refreshAuthContext = async () => {
-    const userId = session?.user?.id;
+  const refreshAuthContext = useCallback(async () => {
+    const userId = latestSessionRef.current?.user?.id ?? session?.user?.id;
     if (!userId) {
       return;
     }
     await loadAuthContext(userId, false);
-  };
+  }, [session?.user?.id]);
 
   const displayName = profile?.full_name || session?.user?.email?.split("@")[0] || "User";
 
+  const contextValue = useMemo<AuthContextType>(
+    () => ({
+      session,
+      user: session?.user ?? null,
+      profile,
+      company,
+      roles,
+      permissions,
+      isSuperAdmin: profile?.is_super_admin === true,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+      refreshAuthContext,
+      displayName,
+    }),
+    [session, profile, company, roles, permissions, isLoading, signIn, signUp, signOut, refreshAuthContext, displayName],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user: session?.user ?? null,
-        profile,
-        company,
-        roles,
-        permissions,
-        isSuperAdmin: profile?.is_super_admin === true,
-        isLoading,
-        signIn,
-        signUp,
-        signOut,
-        refreshAuthContext,
-        displayName,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

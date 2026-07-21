@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { alignmentPositionUpdates, type AlignmentMode } from "../core/layout/alignment";
 import { autoLayoutWorkflow } from "../core/layout/auto-layout";
-import { createEdgeFromNodes, createInitialBuilderState } from "../core/state/builder-reducer";
+import {
+  lastKnownCanvasSelectionRef,
+  readDomSelectedNodeIds,
+  rememberCanvasSelection,
+  resolveAlignmentSelection,
+  selectionKey,
+} from "../core/canvas/canvas-selection-guard";
+import { getLiveSelectedNodeIdsRef } from "../core/canvas/canvas-selection-bridge";
+import { createInitialBuilderState } from "../core/state/builder-reducer";
 import {
   canRedo,
   canUndo,
@@ -11,13 +19,61 @@ import {
   undoHistory,
   type HistoryState,
 } from "../core/state/history";
-import type { BuilderAction, BuilderNodeType, WorkflowDocument } from "../core/types";
+import type { BuilderAction, BuilderNodeType, BuilderState, WorkflowDocument } from "../core/types";
 import { createBuilderNode } from "../core/persistence/workflow-mapper";
 import { validateWorkflow } from "../core/validation/workflow-validator";
 import i18n from "i18next";
 import { useWorkflowBuilderServices } from "../context/workflow-builder-services";
 
 const AUTOSAVE_MS = 1500;
+const UI_STATE_STORAGE_PREFIX = "workflow-builder-ui:";
+
+/** Survives builder remounts within the same browser tab session. */
+const builderSessionCache = new Map<string, HistoryState>();
+
+type PersistedUiState = {
+  viewport: WorkflowDocument["viewport"];
+  selectedNodeIds: string[];
+};
+
+function readPersistedUiState(flowId: string): PersistedUiState | null {
+  if (typeof window === "undefined" || !flowId) return null;
+  try {
+    const raw = window.sessionStorage.getItem(`${UI_STATE_STORAGE_PREFIX}${flowId}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedUiState;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedUiState(flowId: string, state: BuilderState) {
+  if (typeof window === "undefined" || !flowId) return;
+  const payload: PersistedUiState = {
+    viewport: state.document.viewport,
+    selectedNodeIds: state.selectedNodeIds,
+  };
+  window.sessionStorage.setItem(`${UI_STATE_STORAGE_PREFIX}${flowId}`, JSON.stringify(payload));
+}
+
+function hydrateInitialState(document: WorkflowDocument): BuilderState {
+  const initial = createInitialBuilderState(document);
+  const persisted = readPersistedUiState(document.flowId);
+  if (!persisted) return initial;
+
+  const selectedNodeIds = persisted.selectedNodeIds.filter((id) =>
+    document.nodes.some((node) => node.id === id),
+  );
+
+  return {
+    ...initial,
+    document: {
+      ...initial.document,
+      viewport: persisted.viewport ?? initial.document.viewport,
+    },
+    selectedNodeIds,
+  };
+}
 
 function remapSelectionAfterSave(
   previousNodes: WorkflowDocument["nodes"],
@@ -36,27 +92,68 @@ function remapSelectionAfterSave(
     .filter((id) => savedNodes.some((node) => node.id === id));
 }
 
+function mergePersistedState(current: HistoryState, saved: WorkflowDocument, keptSelection: string[]): HistoryState {
+  const next = createInitialBuilderState(saved);
+  return {
+    past: current.past,
+    present: {
+      ...next,
+      document: {
+        ...next.document,
+        viewport: current.present.document.viewport,
+      },
+      selectedNodeIds: keptSelection,
+      selectedEdgeIds: current.present.selectedEdgeIds,
+      saveStatus: "saved",
+    },
+    future: [],
+  };
+}
+
 export function useWorkflowBuilder(document: WorkflowDocument | null) {
   const { repository, context } = useWorkflowBuilderServices();
-  const [history, setHistory] = useState<HistoryState>(() =>
-    createHistoryState(createInitialBuilderState(document ?? emptyDocument())),
-  );
+  const flowId = document?.flowId ?? "";
+
+  const [history, setHistory] = useState<HistoryState>(() => {
+    if (!document?.flowId) return createHistoryState(createInitialBuilderState(emptyDocument()));
+    const cached = builderSessionCache.get(document.flowId);
+    if (cached) return cached;
+    return createHistoryState(hydrateInitialState(document));
+  });
   const autosaveTimer = useRef<number | null>(null);
   const savingRef = useRef(false);
-  const loadedFlowIdRef = useRef<string | null>(null);
+  const loadedFlowIdRef = useRef<string | null>(flowId || null);
   const documentRef = useRef(history.present.document);
   documentRef.current = history.present.document;
-  const selectedNodeIdsRef = useRef<string[]>(history.present.selectedNodeIds);
-  if (history.present.selectedNodeIds.length > 0) {
-    selectedNodeIdsRef.current = history.present.selectedNodeIds;
-  }
+  const selectedNodeIdsRef = useRef(history.present.selectedNodeIds);
+  selectedNodeIdsRef.current = history.present.selectedNodeIds;
 
   useEffect(() => {
     if (!document?.flowId) return;
+
+    const cached = builderSessionCache.get(document.flowId);
+    if (cached) {
+      loadedFlowIdRef.current = document.flowId;
+      setHistory((current) => (current === cached ? current : cached));
+      return;
+    }
+
     if (loadedFlowIdRef.current === document.flowId) return;
     loadedFlowIdRef.current = document.flowId;
-    setHistory(createHistoryState(createInitialBuilderState(document)));
+    setHistory(createHistoryState(hydrateInitialState(document)));
   }, [document?.flowId]);
+
+  useEffect(() => {
+    if (history.present.selectedNodeIds.length > 0) {
+      rememberCanvasSelection(history.present.selectedNodeIds);
+    }
+  }, [history.present.selectedNodeIds]);
+
+  useEffect(() => {
+    if (!document?.flowId) return;
+    builderSessionCache.set(document.flowId, history);
+    writePersistedUiState(document.flowId, history.present);
+  }, [document?.flowId, history]);
 
   const state = history.present;
   const dispatch = useCallback((action: BuilderAction) => {
@@ -76,21 +173,12 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     try {
       const saved = await repository.save(context, documentRef.current);
       setHistory((current) => {
-        const next = createInitialBuilderState(saved);
         const keptSelection = remapSelectionAfterSave(
           current.present.document.nodes,
           current.present.selectedNodeIds,
           saved.nodes,
         );
-        return createHistoryState({
-          ...next,
-          document: {
-            ...next.document,
-            viewport: current.present.document.viewport,
-          },
-          selectedNodeIds: keptSelection,
-          saveStatus: "saved",
-        });
+        return mergePersistedState(current, saved, keptSelection);
       });
       return saved;
     } catch {
@@ -120,7 +208,18 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     dispatch({ type: "SET_SAVE_STATUS", status: "publishing" });
     try {
       const saved = await repository.publish(context, documentRef.current, releaseNotes);
-      setHistory(createHistoryState({ ...createInitialBuilderState(saved), saveStatus: "published" }));
+      setHistory((current) => {
+        const keptSelection = remapSelectionAfterSave(
+          current.present.document.nodes,
+          current.present.selectedNodeIds,
+          saved.nodes,
+        );
+        const merged = mergePersistedState(current, saved, keptSelection);
+        return {
+          ...merged,
+          present: { ...merged.present, saveStatus: "published" },
+        };
+      });
       return saved;
     } catch (error) {
       dispatch({ type: "SET_SAVE_STATUS", status: "error" });
@@ -131,7 +230,9 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   const rollback = useCallback(
     async (targetVersionNumber: number) => {
       const saved = await repository.rollback(context, state.document.flowId, targetVersionNumber);
-      setHistory(createHistoryState(createInitialBuilderState(saved)));
+      const next = createHistoryState(createInitialBuilderState(saved));
+      setHistory(next);
+      builderSessionCache.set(saved.flowId, next);
       return saved;
     },
     [context, repository, state.document.flowId],
@@ -159,22 +260,29 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   }, [dispatch, state.selectedNodeIds]);
 
   const alignSelected = useCallback(
-    (mode: AlignmentMode) => {
-      const selectedIds =
-        state.selectedNodeIds.length > 0 ? state.selectedNodeIds : selectedNodeIdsRef.current;
-      if (selectedIds.length < 2 && !mode.startsWith("distribute")) return;
-      if (selectedIds.length < 3 && mode.startsWith("distribute")) return;
+    (mode: AlignmentMode, nodeIdsOverride?: string[]) => {
+      const minRequired = mode.startsWith("distribute") ? 3 : 2;
+      const documentNodeIds = new Set(documentRef.current.nodes.map((node) => node.id));
+      const selectedIds = resolveAlignmentSelection(documentNodeIds, minRequired, {
+        override: nodeIdsOverride,
+        builderSelected: selectedNodeIdsRef.current,
+        lastKnown: lastKnownCanvasSelectionRef.current,
+        domSelected: readDomSelectedNodeIds(),
+        liveSelected: getLiveSelectedNodeIdsRef.current(),
+      });
+      if (selectedIds.length < minRequired) return;
+
+      rememberCanvasSelection(selectedIds);
 
       const positions = alignmentPositionUpdates(documentRef.current.nodes, selectedIds, mode);
       if (positions.length === 0) return;
 
-      dispatch({ type: "UPDATE_NODE_POSITIONS", positions });
-
-      if (state.selectedNodeIds.length === 0 && selectedIds.length > 0) {
+      if (selectionKey(selectedNodeIdsRef.current) !== selectionKey(selectedIds)) {
         dispatch({ type: "SELECT_NODES", nodeIds: selectedIds });
       }
+      dispatch({ type: "UPDATE_NODE_POSITIONS", positions });
     },
-    [dispatch, state.selectedNodeIds],
+    [dispatch],
   );
 
   const applyAutoLayout = useCallback(() => {

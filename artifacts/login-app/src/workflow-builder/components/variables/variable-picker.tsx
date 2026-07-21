@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Braces, ChevronRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { BuilderPopover } from "../ui/builder-popover";
 import {
   listAllWorkflowVariables,
   listVariableProviders,
@@ -45,14 +45,18 @@ export function VariablePicker({ onSelect }: VariablePickerProps) {
   }, [filtered]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <BuilderPopover
+      open={open}
+      onOpenChange={setOpen}
+      align="start"
+      contentClassName="w-80 rounded-2xl p-0"
+      trigger={
         <Button type="button" variant="outline" size="sm" className="rounded-xl" aria-label={t("workflowBuilder.variables.insert")}>
           <Braces className="me-2 h-4 w-4" />
           {t("workflowBuilder.variables.insert")}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 rounded-2xl p-0">
+      }
+    >
         <div className="border-b border-border/60 p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -94,7 +98,6 @@ export function VariablePicker({ onSelect }: VariablePickerProps) {
         <div className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
           {listVariableProviders().length} {t("workflowBuilder.variables.providers")}
         </div>
-      </PopoverContent>
-    </Popover>
+    </BuilderPopover>
   );
 }

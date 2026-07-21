@@ -1,117 +1,83 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlow,
-  ReactFlowProvider,
   SelectionMode,
   applyEdgeChanges,
+  useNodesState,
   useReactFlow,
   type Connection,
-  type Edge,
-  type Node,
+  type NodeChange,
   type OnConnect,
   type OnSelectionChangeParams,
   type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { canConnect } from "../../core/connection-rules";
-import { resolveBranchEdgeStyle } from "../../core/logic/branch-utils";
+import { rememberCanvasSelection, selectionKey } from "../../core/canvas/canvas-selection-guard";
+import { getLiveSelectedNodeIdsRef } from "../../core/canvas/canvas-selection-bridge";
+import {
+  documentNodeSignature,
+  documentToFlowEdges,
+  documentToFlowNodes,
+} from "../../core/canvas/flow-document-bridge";
 import { listNodeRenderers, registerDefaultNodeRenderers } from "../../core/registry/node-renderer-registry";
 import { createEdgeFromNodes } from "../../core/state/builder-reducer";
-import { getWorkflowNodeDefinition } from "../../core/node-registry";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import type { BuilderNodeType } from "../../core/types";
 import { CanvasEmptyState } from "./canvas-empty-state";
+import { mergeFlowNodesIntoCurrent } from "./canvas-node-sync";
 import { quickAddPosition, type WorkflowNodeData } from "../nodes/workflow-node-card";
 import { useWorkflowBuilderI18n } from "@/workflow-builder/hooks/use-workflow-builder-i18n";
+import { useCanvasContainerSize } from "../../hooks/use-canvas-container-size";
 
 registerDefaultNodeRenderers();
 
-/** Survives ReactFlowProvider remounts within the same browser tab session. */
-const viewportInitializedFlowIds = new Set<string>();
+/** Tracks which flows already received the one-time fitView for empty viewport. */
+const fitViewAppliedFlowIds = new Set<string>();
 
 type WorkflowCanvasProps = {
   controller: WorkflowBuilderController;
 };
 
-function toFlowNodes(
-  controller: WorkflowBuilderController,
-  onQuickAdd: WorkflowNodeData["onQuickAdd"],
-  nodeText: (nodeId: string, field: "displayName" | "description", fallback: string) => string,
-  selectedNodeIds: string[],
-): Node<WorkflowNodeData>[] {
-  const selectedIds = new Set(selectedNodeIds);
-  return controller.state.document.nodes.map((node) => {
-    const definition = getWorkflowNodeDefinition(node.type);
-    const label = nodeText(definition.id, "displayName", definition.displayName);
-    const subtitle =
-      typeof node.config.message === "string"
-        ? node.config.message
-        : typeof node.config.question === "string"
-          ? node.config.question
-          : typeof node.config.label === "string"
-            ? node.config.label
-            : nodeText(definition.id, "description", definition.description);
-    return {
-      id: node.id,
-      type: "workflowNode",
-      position: node.position,
-      selected: selectedIds.has(node.id),
-      data: {
-        label,
-        nodeType: node.type,
-        subtitle,
-        executionStatus: "ready",
-        onQuickAdd,
-      },
-    };
-  });
-}
-
-function toFlowEdges(
-  controller: WorkflowBuilderController,
-  localizeBranchLabel: (label: string) => string,
-): Edge[] {
-  const nodesById = new Map(controller.state.document.nodes.map((node) => [node.id, node]));
-  return controller.state.document.edges.map((edge) => {
-    const sourceNode = nodesById.get(edge.source);
-    const branchStyle = resolveBranchEdgeStyle(sourceNode, edge);
-    return {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      animated: true,
-      label: localizeBranchLabel(branchStyle.label ?? ""),
-      labelStyle: { fill: branchStyle.stroke, fontWeight: 600 },
-      style: { strokeWidth: 2.5, stroke: branchStyle.stroke },
-    };
-  });
-}
-
 function localizeDefaultBranchLabel(label: string, branchLabel: (key: string, fallback?: string) => string): string {
   if (label === "Default") return branchLabel("default", label);
   if (label === "Case") return branchLabel("case", label);
-  if (label === "Yes") return branchLabel("yes", label);
   if (label === "No") return branchLabel("no", label);
+  if (label === "Yes") return branchLabel("yes", label);
   return label;
 }
 
-function WorkflowCanvasInner({ controller }: WorkflowCanvasProps) {
-  const { fitView, setViewport, getNode } = useReactFlow();
+type WorkflowCanvasInnerProps = WorkflowCanvasProps & {
+  width: number;
+  height: number;
+};
+
+export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanvasInnerProps) {
+  const { fitView, getNodes, getViewport } = useReactFlow();
   const { nodeText, branchLabel } = useWorkflowBuilderI18n();
+  const dispatchRef = useRef(controller.dispatch);
+  dispatchRef.current = controller.dispatch;
+
+  useEffect(() => {
+    getLiveSelectedNodeIdsRef.current = () =>
+      getNodes()
+        .filter((node) => node.selected)
+        .map((node) => node.id);
+  }, [getNodes]);
 
   const handleQuickAdd = useCallback(
     (sourceNodeId: string, nodeType: BuilderNodeType) => {
       const position = quickAddPosition(sourceNodeId, (id) => {
-        const node = getNode(id);
+        const node = controller.state.document.nodes.find((entry) => entry.id === id);
         return node ? node.position : undefined;
       });
       controller.insertNodeAfter(sourceNodeId, nodeType, position);
     },
-    [controller, getNode],
+    [controller],
   );
 
   const handleQuickAddRef = useRef(handleQuickAdd);
@@ -124,81 +90,167 @@ function WorkflowCanvasInner({ controller }: WorkflowCanvasProps) {
     [],
   );
 
-  const nodes = useMemo(
-    () => toFlowNodes(controller, onQuickAddStable, nodeText, controller.state.selectedNodeIds),
-    [controller.state.document.nodes, controller.state.selectedNodeIds, nodeText, onQuickAddStable],
+  const { document, selectedNodeIds } = controller.state;
+  const builderSelectedRef = useRef(selectedNodeIds);
+  builderSelectedRef.current = selectedNodeIds;
+
+  const documentNodesRef = useRef(document.nodes);
+  documentNodesRef.current = document.nodes;
+  const documentEdgesRef = useRef(document.edges);
+  documentEdgesRef.current = document.edges;
+
+  const nodeSignature = useMemo(() => documentNodeSignature(document.nodes), [document.nodes]);
+
+  const viewportReadyRef = useRef(false);
+  const userDraggingRef = useRef(false);
+
+  const flowNodes = useMemo(
+    () => documentToFlowNodes(document.nodes, selectedNodeIds, nodeText, onQuickAddStable),
+    [document.nodes, selectedNodeIds, nodeText, onQuickAddStable, nodeSignature],
   );
-  const edges = useMemo(
-    () => toFlowEdges(controller, (label) => localizeDefaultBranchLabel(label, branchLabel)),
-    [controller.state.document.edges, branchLabel],
-  );
-  const isEmpty = controller.state.document.nodes.length === 0;
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+  const nodeTypes = useMemo(() => listNodeRenderers(), []);
 
   useEffect(() => {
-    const flowId = controller.state.document.flowId;
-    if (!flowId || viewportInitializedFlowIds.has(flowId)) return;
-    viewportInitializedFlowIds.add(flowId);
+    if (userDraggingRef.current) return;
+    setNodes((current) => mergeFlowNodesIntoCurrent(current, flowNodes));
+  }, [flowNodes, setNodes]);
 
-    const viewport = controller.state.document.viewport;
+  const edges = useMemo(
+    () => documentToFlowEdges(document.nodes, document.edges, (label) => localizeDefaultBranchLabel(label, branchLabel)),
+    [document.nodes, document.edges, branchLabel],
+  );
+  const isEmpty = document.nodes.length === 0;
+
+  const viewport = document.viewport;
+  const viewportRef = useRef(viewport);
+  viewportRef.current = viewport;
+
+  useLayoutEffect(() => {
+    viewportReadyRef.current = false;
+
     const hasStoredViewport = viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1;
-    setViewport(viewport, { duration: 0 });
-    if (!isEmpty && !hasStoredViewport) {
+    if (!isEmpty && !hasStoredViewport && !fitViewAppliedFlowIds.has(document.flowId)) {
       fitView({ padding: 0.18, duration: 0 });
+      fitViewAppliedFlowIds.add(document.flowId);
+      requestAnimationFrame(() => {
+        dispatchRef.current({ type: "SET_VIEWPORT", viewport: getViewport() });
+        viewportReadyRef.current = true;
+      });
+      return;
     }
-  }, [controller.state.document.flowId, controller.state.document.viewport, fitView, isEmpty, setViewport]);
 
-  const onNodesChange = useCallback(
-    (changes: Parameters<typeof import("@xyflow/react").applyNodeChanges>[0]) => {
-      const positions = changes.flatMap((change) => {
-        if (change.type !== "position" || !change.position || change.dragging) return [];
+    const frame = requestAnimationFrame(() => {
+      viewportReadyRef.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [document.flowId, fitView, getViewport, isEmpty]);
+
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const removedNodeIds = changes
+        .filter((change) => change.type === "remove")
+        .map((change) => change.id);
+      if (removedNodeIds.length > 0) {
+        dispatchRef.current({ type: "DELETE_NODES", nodeIds: removedNodeIds });
+        return;
+      }
+
+      onNodesChange(changes);
+
+      const positionChanges = changes.filter((change) => change.type === "position");
+      if (positionChanges.length === 0) return;
+
+      const dragging = positionChanges.some((change) => change.dragging);
+      if (dragging) {
+        userDraggingRef.current = true;
+        return;
+      }
+
+      if (!userDraggingRef.current) return;
+
+      userDraggingRef.current = false;
+
+      const positions = positionChanges.flatMap((change) => {
+        if (change.type !== "position" || !change.position) return [];
         return [{ id: change.id, x: change.position.x, y: change.position.y }];
       });
-      if (positions.length > 0) controller.dispatch({ type: "UPDATE_NODE_POSITIONS", positions });
-      // Node deletes are handled by builder keyboard actions. React Flow emits spurious
-      // `remove` changes when controlled node data updates, which must not delete graph nodes.
+      if (positions.length === 0) return;
+
+      dispatchRef.current({ type: "UPDATE_NODE_POSITIONS", positions });
     },
-    [controller],
+    [onNodesChange],
   );
 
   const onSelectionChange = useCallback(
     ({ nodes }: OnSelectionChangeParams) => {
-      const nodeIds = nodes.map((node) => node.id);
-      if (nodeIds.length === 0) return;
-      if (
-        nodeIds.length === controller.state.selectedNodeIds.length &&
-        nodeIds.every((id, index) => id === controller.state.selectedNodeIds[index])
-      ) {
+      const rfSelectedIds = nodes.map((node) => node.id);
+      const builderSelectedIds = builderSelectedRef.current;
+
+      if (rfSelectedIds.length > 0) {
+        rememberCanvasSelection(rfSelectedIds);
+      } else if (builderSelectedIds.length === 0) {
+        rememberCanvasSelection([]);
+      } else {
+        rememberCanvasSelection(builderSelectedIds);
+      }
+
+      if (rfSelectedIds.length === 0 && builderSelectedIds.length > 0) {
         return;
       }
-      controller.dispatch({ type: "SELECT_NODES", nodeIds });
+
+      if (selectionKey(rfSelectedIds) === selectionKey(builderSelectedIds)) {
+        return;
+      }
+
+      dispatchRef.current({ type: "SELECT_NODES", nodeIds: rfSelectedIds });
     },
-    [controller],
+    [],
   );
 
-  const onEdgesChange = useCallback(
-    (changes: Parameters<typeof applyEdgeChanges>[0]) => {
-      const removed = changes.filter((change) => change.type === "remove").map((change) => change.id);
-      if (removed.length > 0) controller.dispatch({ type: "DELETE_EDGES", edgeIds: removed });
-    },
-    [controller],
-  );
+  const onViewportChange = useCallback((nextViewport: Viewport) => {
+    if (!viewportReadyRef.current) return;
+
+    const current = viewportRef.current;
+    const epsilon = 0.001;
+    if (
+      Math.abs(current.x - nextViewport.x) < epsilon &&
+      Math.abs(current.y - nextViewport.y) < epsilon &&
+      Math.abs(current.zoom - nextViewport.zoom) < epsilon
+    ) {
+      return;
+    }
+
+    dispatchRef.current({ type: "SET_VIEWPORT", viewport: nextViewport });
+  }, []);
+
+  const onEdgesChange = useCallback((changes: Parameters<typeof applyEdgeChanges>[0]) => {
+    const removed = changes.filter((change) => change.type === "remove").map((change) => change.id);
+    if (removed.length > 0) dispatchRef.current({ type: "DELETE_EDGES", edgeIds: removed });
+  }, []);
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
+      if (connection.sourceHandle != null && connection.sourceHandle !== "source") return;
+      if (connection.targetHandle != null && connection.targetHandle !== "target") return;
+
+      const nodes = documentNodesRef.current;
+      const edges = documentEdgesRef.current;
       const allowed = canConnect({
         sourceId: connection.source,
         targetId: connection.target,
-        nodes: controller.state.document.nodes,
-        edges: controller.state.document.edges,
+        nodes,
+        edges,
       });
       if (!allowed.allowed) return;
-      controller.dispatch({
+      dispatchRef.current({
         type: "ADD_EDGE",
-        edge: createEdgeFromNodes(connection.source, connection.target, controller.state.document.nodes, controller.state.document.edges),
+        edge: createEdgeFromNodes(connection.source, connection.target, nodes, edges),
       });
     },
-    [controller],
+    [],
   );
 
   const onDrop = useCallback(
@@ -215,37 +267,34 @@ function WorkflowCanvasInner({ controller }: WorkflowCanvasProps) {
     [controller],
   );
 
-  const onMoveEnd = useCallback(
-    (_event: unknown, viewport: Viewport) => {
-      controller.dispatch({ type: "SET_VIEWPORT", viewport });
-    },
-    [controller],
-  );
-
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full" style={{ width, height }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={listNodeRenderers()}
-        onNodesChange={onNodesChange}
+        nodeTypes={nodeTypes}
+        viewport={viewport}
+        style={{ width, height }}
+        onViewportChange={onViewportChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
-        onPaneClick={() => controller.dispatch({ type: "SELECT_NODES", nodeIds: [] })}
+        onPaneClick={() => dispatchRef.current({ type: "SELECT_NODES", nodeIds: [] })}
         onDrop={onDrop}
         onDragOver={(event) => {
           event.preventDefault();
           event.dataTransfer.dropEffect = "move";
         }}
-        onMoveEnd={onMoveEnd}
+        nodesFocusable={false}
+        autoPanOnNodeFocus={false}
         snapToGrid
         snapGrid={[20, 20]}
         selectionOnDrag
         panOnDrag={[1, 2]}
         selectionMode={SelectionMode.Partial}
         multiSelectionKeyCode={["Meta", "Control"]}
-        deleteKeyCode={null}
+        deleteKeyCode={["Delete", "Backspace"]}
         proOptions={{ hideAttribution: true }}
         className="bg-muted/20"
       >
@@ -263,11 +312,14 @@ function WorkflowCanvasInner({ controller }: WorkflowCanvasProps) {
 }
 
 export function WorkflowCanvas(props: WorkflowCanvasProps) {
+  const { containerRef, size, isReady } = useCanvasContainerSize();
+
   return (
-    <div className="h-full w-full overflow-hidden rounded-2xl border border-border/60 bg-card/40 shadow-inner">
-      <ReactFlowProvider>
-        <WorkflowCanvasInner {...props} />
-      </ReactFlowProvider>
+    <div
+      ref={containerRef}
+      className="h-full min-h-0 w-full overflow-hidden rounded-2xl border border-border/60 bg-card/40 shadow-inner"
+    >
+      {isReady ? <WorkflowCanvasInner {...props} width={size.width} height={size.height} /> : null}
     </div>
   );
 }

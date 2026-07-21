@@ -22,6 +22,7 @@
     "test:billing-settings-i18n": "tsx scripts/billing-settings-i18n-verify.mts",
     "test:subscription-detail": "tsx scripts/subscription-detail-regression.test.mts",
     "test:workflow-builder-core": "tsx scripts/workflow-builder-core.test.mts",
+    "test:workflow-builder-stability": "tsx scripts/workflow-builder-stability.test.mts",
     "billing-health-probe": "tsx scripts/billing-health-probe.mts",
     "production:gate": "tsx scripts/production-gate.mts",
     "knowledge:e2e": "tsx ../../scripts/knowledge-foundation-e2e-verify.mts",

@@ -223,6 +223,30 @@ assert.equal(
 );
 console.log("  ✓ config edits preserve selected node ids");
 
+const inserted = builderReducer(createInitialBuilderState(baseDocument), {
+  type: "INSERT_NODE_AFTER",
+  sourceNodeId: "msg-1",
+  node: createBuilderNode("delay", { x: 0, y: 180 }, "delay-1"),
+});
+assert.equal(inserted.document.nodes.length, 4);
+assert.equal(inserted.document.edges.length, 3);
+assert.ok(
+  inserted.document.edges.some((edge) => edge.source === "msg-1" && edge.target === "delay-1"),
+);
+assert.ok(
+  inserted.document.edges.some((edge) => edge.source === "delay-1" && edge.target === "end-1"),
+);
+assert.ok(inserted.document.edges.every((edge) => edge.source && edge.target));
+console.log("  ✓ insert-after creates connected nodes without orphan edges");
+
+const deletedWithEdges = builderReducer(createInitialBuilderState(baseDocument), {
+  type: "DELETE_NODES",
+  nodeIds: ["msg-1"],
+});
+assert.equal(deletedWithEdges.document.nodes.length, 2);
+assert.equal(deletedWithEdges.document.edges.length, 0);
+console.log("  ✓ delete nodes removes connected edges");
+
 function remapSelectionAfterSave(
   previousNodes: typeof baseDocument.nodes,
   previousSelection: string[],

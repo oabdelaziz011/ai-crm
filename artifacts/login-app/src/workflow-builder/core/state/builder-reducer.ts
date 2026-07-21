@@ -16,7 +16,12 @@ function sameStringArray(left: string[], right: string[]): boolean {
 }
 
 function sameViewport(left: BuilderViewport, right: BuilderViewport): boolean {
-  return left.x === right.x && left.y === right.y && left.zoom === right.zoom;
+  const epsilon = 0.001;
+  return (
+    Math.abs(left.x - right.x) < epsilon &&
+    Math.abs(left.y - right.y) < epsilon &&
+    Math.abs(left.zoom - right.zoom) < epsilon
+  );
 }
 
 function deleteNodes(state: BuilderState, nodeIds: string[]): BuilderState {
@@ -90,6 +95,8 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
             return next ? { ...node, position: { x: next.x, y: next.y } } : node;
           }),
         },
+        selectedNodeIds: state.selectedNodeIds,
+        selectedEdgeIds: state.selectedEdgeIds,
         saveStatus: "dirty",
       };
     case "DELETE_NODES":
@@ -213,25 +220,39 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
       };
     }
     case "INSERT_NODE_AFTER": {
+      const nodesWithNew = [...state.document.nodes, action.node];
       const outgoing = state.document.edges.filter((edge) => edge.source === action.sourceNodeId);
       let edges = [...state.document.edges];
+
+      const appendEdge = (source: string, target: string, currentEdges: BuilderEdge[]) => {
+        const attempt = canConnect({
+          sourceId: source,
+          targetId: target,
+          nodes: nodesWithNew,
+          edges: currentEdges,
+        });
+        if (!attempt.allowed) return;
+        edges.push(createEdgeFromNodes(source, target, nodesWithNew, currentEdges));
+      };
+
       if (outgoing.length === 1) {
         const targetId = outgoing[0]!.target;
         edges = edges.filter((edge) => edge.id !== outgoing[0]!.id);
-        edges.push(createEdgeFromNodes(action.sourceNodeId, action.node.id, state.document.nodes, edges));
-        edges.push(createEdgeFromNodes(action.node.id, targetId, [...state.document.nodes, action.node], edges));
+        appendEdge(action.sourceNodeId, action.node.id, edges);
+        appendEdge(action.node.id, targetId, edges);
       } else {
-        edges.push(createEdgeFromNodes(action.sourceNodeId, action.node.id, state.document.nodes, edges));
+        appendEdge(action.sourceNodeId, action.node.id, edges);
       }
 
       return {
         ...state,
         document: {
           ...state.document,
-          nodes: [...state.document.nodes, action.node],
+          nodes: nodesWithNew,
           edges,
         },
         selectedNodeIds: [action.node.id],
+        selectedEdgeIds: [],
         saveStatus: "dirty",
       };
     }

@@ -43,14 +43,9 @@ export function useWorkflowBuilderKeyboard(controller: WorkflowBuilderController
         return;
       }
       if (event.key === "Delete" || event.key === "Backspace") {
-        if (controller.state.selectedNodeIds.length === 0 && controller.state.selectedEdgeIds.length === 0) return;
+        if (controller.state.selectedEdgeIds.length === 0) return;
         event.preventDefault();
-        if (controller.state.selectedNodeIds.length > 0) {
-          controller.dispatch({ type: "DELETE_NODES", nodeIds: controller.state.selectedNodeIds });
-        }
-        if (controller.state.selectedEdgeIds.length > 0) {
-          controller.dispatch({ type: "DELETE_EDGES", edgeIds: controller.state.selectedEdgeIds });
-        }
+        controller.dispatch({ type: "DELETE_EDGES", edgeIds: controller.state.selectedEdgeIds });
       }
     };
 

@@ -16,6 +16,7 @@ import { documentToSnapshot } from "../lifecycle/snapshot-mapper";
 import { createDefaultDocument, mapDocumentToPersistence, mapFlowToDocument } from "./workflow-mapper";
 import type { WorkflowDocument, WorkflowSummary, WorkflowVersionSummary } from "../types";
 import { validateWorkflow, hasBlockingValidationIssues } from "../validation/workflow-validator";
+import { wbDebug } from "../../debug/wb-runtime-debug";
 
 export type CreateWorkflowInput = {
   companyId: string;
@@ -101,10 +102,16 @@ export function createSupabaseWorkflowRepository(client: SupabaseClient): Workfl
     },
 
     async load(flowId) {
+      wbDebug("Supabase fetch load START", { flowId });
       const flow = await flows.findById(flowId);
-      if (!flow) return null;
+      if (!flow) {
+        wbDebug("Supabase fetch load END null", { flowId });
+        return null;
+      }
       const [nodeRecords, edgeRecords] = await Promise.all([nodes.listByFlowId(flowId), edges.listByFlowId(flowId)]);
-      return attachLifecycle(mapFlowToDocument(flow, nodeRecords, edgeRecords), flow);
+      const doc = attachLifecycle(mapFlowToDocument(flow, nodeRecords, edgeRecords), flow);
+      wbDebug("Supabase fetch load END", { flowId, nodeCount: doc.nodes.length });
+      return doc;
     },
 
     async loadVersion(versionId) {

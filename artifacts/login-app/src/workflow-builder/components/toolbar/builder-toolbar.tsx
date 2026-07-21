@@ -41,7 +41,22 @@ export function BuilderToolbar({
   const { hasPermission } = usePermissions();
   const [publishOpen, setPublishOpen] = useState(false);
 
-  const align = (mode: AlignmentMode) => controller.alignSelected(mode);
+  const align = (mode: AlignmentMode) => {
+    const minRequired = mode.startsWith("distribute") ? 3 : 2;
+    const builderSelection = controller.state.selectedNodeIds;
+    controller.alignSelected(
+      mode,
+      builderSelection.length >= minRequired ? builderSelection : undefined,
+    );
+  };
+
+  const focusWorkflowCanvas = () => {
+    const pane = document.querySelector<HTMLElement>(".react-flow__pane");
+    if (!pane) return;
+    pane.tabIndex = -1;
+    pane.focus({ preventScroll: true });
+  };
+
   const canPublish = hasPermission("automation.publish");
 
   return (
@@ -69,14 +84,21 @@ export function BuilderToolbar({
           hasUnpublishedDraft={controller.state.document.hasUnpublishedDraft}
         />
         <div className="ms-auto flex flex-wrap items-center gap-2">
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="sm" className="rounded-xl">
                 <AlignCenterHorizontal className="me-2 h-4 w-4" />
                 {t("workflowBuilder.actions.align")}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-xl" onCloseAutoFocus={(event) => event.preventDefault()}>
+            <DropdownMenuContent
+              align="end"
+              className="rounded-xl"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                focusWorkflowCanvas();
+              }}
+            >
               <DropdownMenuItem onSelect={() => align("left")}><AlignLeft className="me-2 h-4 w-4" />{t("workflowBuilder.align.left")}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => align("right")}><AlignRight className="me-2 h-4 w-4" />{t("workflowBuilder.align.right")}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => align("top")}><ArrowUp className="me-2 h-4 w-4" />{t("workflowBuilder.align.top")}</DropdownMenuItem>

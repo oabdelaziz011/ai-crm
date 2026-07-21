@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
@@ -19,6 +19,8 @@ export function WorkflowBuilderPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { repository } = useWorkflowBuilderServices();
+  const lastDocumentRef = useRef<WorkflowDocument | null>(null);
+
   const routeFlowId = params?.flowId ?? "";
   if (routeFlowId) {
     persistedBuilderFlowId = routeFlowId;
@@ -28,8 +30,14 @@ export function WorkflowBuilderPage() {
   const workflowQuery = useQuery({
     queryKey: workflowQueryKey(flowId),
     enabled: Boolean(flowId),
-    queryFn: () => repository.load(flowId),
+    queryFn: async () => repository.load(flowId),
     staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    placeholderData: () =>
+      flowId ? queryClient.getQueryData<WorkflowDocument>(workflowQueryKey(flowId)) : undefined,
   });
 
   useEffect(() => {
@@ -39,10 +47,13 @@ export function WorkflowBuilderPage() {
   const cachedDocument = flowId
     ? queryClient.getQueryData<WorkflowDocument>(workflowQueryKey(flowId))
     : undefined;
-  const document = workflowQuery.data ?? cachedDocument;
+  const document = workflowQuery.data ?? cachedDocument ?? lastDocumentRef.current ?? undefined;
 
-  // Keep the builder mounted during background sync; only block on the first load.
-  if (!document && (!flowId || workflowQuery.isPending)) {
+  if (document) {
+    lastDocumentRef.current = document;
+  }
+
+  if (!document && (!flowId || workflowQuery.isLoading)) {
     return <DashboardPageFallback />;
   }
 
@@ -50,5 +61,11 @@ export function WorkflowBuilderPage() {
     return <DashboardPageFallback />;
   }
 
-  return <WorkflowBuilderShell document={document} onBack={() => setLocation(NEST_INDEX)} />;
+  return (
+    <WorkflowBuilderShell
+      key={document.flowId}
+      document={document}
+      onBack={() => setLocation(NEST_INDEX)}
+    />
+  );
 }

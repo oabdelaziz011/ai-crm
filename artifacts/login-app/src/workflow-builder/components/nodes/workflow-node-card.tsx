@@ -75,6 +75,7 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
     >
       {definition.allowIncoming && (
         <Handle
+          id="target"
           type="target"
           position={Position.Top}
           className={`!h-3.5 !w-3.5 !border-2 !border-background ${tokens.handle}`}
@@ -104,6 +105,7 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
       {definition.allowOutgoing && (
         <>
           <Handle
+            id="source"
             type="source"
             position={Position.Bottom}
             className={`!h-3.5 !w-3.5 !border-2 !border-background ${tokens.handle}`}

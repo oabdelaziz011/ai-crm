@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { BuilderPopover } from "../ui/builder-popover";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { NodeSearchPicker } from "../search/node-search-picker";
@@ -11,10 +12,15 @@ type QuickAddButtonProps = {
 
 export function QuickAddButton({ onSelect }: QuickAddButtonProps) {
   const { t } = useTranslation("common");
+  const [open, setOpen] = useState(false);
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <BuilderPopover
+      open={open}
+      onOpenChange={setOpen}
+      align="center"
+      contentClassName="w-80 rounded-2xl p-4"
+      trigger={
         <Button
           type="button"
           size="icon"
@@ -23,11 +29,16 @@ export function QuickAddButton({ onSelect }: QuickAddButtonProps) {
         >
           <Plus className="h-4 w-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="center" className="w-80 rounded-2xl p-4">
-        <p className="mb-3 text-sm font-semibold">{t("workflowBuilder.quickAdd.title")}</p>
-        <NodeSearchPicker autoFocus onSelect={onSelect} />
-      </PopoverContent>
-    </Popover>
+      }
+    >
+      <p className="mb-3 text-sm font-semibold">{t("workflowBuilder.quickAdd.title")}</p>
+      <NodeSearchPicker
+        autoFocus
+        onSelect={(nodeType) => {
+          onSelect(nodeType);
+          setOpen(false);
+        }}
+      />
+    </BuilderPopover>
   );
 }

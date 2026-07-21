@@ -110,7 +110,7 @@ export type BuilderAction =
   | { type: "SET_METADATA"; patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType">> }
   | { type: "ADD_NODE"; node: BuilderNode }
   | { type: "UPDATE_NODE_CONFIG"; nodeId: string; patch: Record<string, unknown> }
-  | { type: "UPDATE_NODE_POSITIONS"; positions: Array<{ id: string; x: number; y: number }> }
+  | { type: "UPDATE_NODE_POSITIONS"; positions: Array<{ id: string; x: number; y: number }>; transient?: boolean }
   | { type: "DELETE_NODES"; nodeIds: string[] }
   | { type: "ADD_EDGE"; edge: BuilderEdge }
   | { type: "DELETE_EDGES"; edgeIds: string[] }

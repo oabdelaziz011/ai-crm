@@ -27,6 +27,7 @@ import { listWorkflowNodeDefinitions, listWorkflowNodesByCategory } from "../../
 import { searchWorkflowNodes } from "../../core/search/node-search";
 import { useWorkflowBuilderI18n } from "@/workflow-builder/hooks/use-workflow-builder-i18n";
 import type { BuilderNodeCategory, BuilderNodeType } from "../../core/types";
+import { cn } from "@/lib/utils";
 
 const ICONS = {
   Play,
@@ -108,7 +109,13 @@ function CategorySection({
   );
 }
 
-export function NodePalette({ onDragStart }: { onDragStart?: (type: BuilderNodeType) => void }) {
+export function NodePalette({
+  onDragStart,
+  className,
+}: {
+  onDragStart?: (type: BuilderNodeType) => void;
+  className?: string;
+}) {
   const { t } = useTranslation("common");
   const [query, setQuery] = useState("");
   const handleDragStart = onDragStart ?? (() => undefined);
@@ -118,9 +125,13 @@ export function NodePalette({ onDragStart }: { onDragStart?: (type: BuilderNodeT
 
   return (
     <motion.aside
+      id="workflow-builder-node-palette"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, x: 0 }}
-      className="flex h-full w-[280px] shrink-0 flex-col gap-4 overflow-y-auto rounded-2xl border border-border/60 bg-card/80 p-4 shadow-lg backdrop-blur"
+      className={cn(
+        "flex w-full shrink-0 flex-col gap-4 overflow-y-auto rounded-2xl border border-border/60 bg-card/80 p-4 shadow-lg backdrop-blur",
+        className,
+      )}
     >
       <div>
         <p className="text-sm font-semibold">{t("workflowBuilder.palette.title")}</p>

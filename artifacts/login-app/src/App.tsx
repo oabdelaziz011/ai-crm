@@ -82,7 +82,7 @@ function ProtectedRoute({
   }
 
   if (!user) {
-    return <Redirect to="/login" />;
+    return <Redirect to="~/login" />;
   }
 
   if (superAdminOnly && !isSuperAdmin) {

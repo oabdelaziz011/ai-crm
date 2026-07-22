@@ -2,9 +2,16 @@ import type { ComponentType } from "react";
 import type { AutomationNodeType } from "@workspace/automation-platform";
 import type { BuilderNodeCategory, BuilderNodeType, ValidationIssue } from "./types";
 
+export type NodePropertyEditorContext = {
+  nodeId: string;
+  document: import("./types").WorkflowDocument;
+  applyConfigPatches: (patches: Array<{ nodeId: string; patch: Record<string, unknown> }>) => void;
+};
+
 export type NodePropertyEditorProps = {
   config: Record<string, unknown>;
   onChange: (patch: Record<string, unknown>) => void;
+  context?: NodePropertyEditorContext;
 };
 
 export type WorkflowNodeDefinition = {

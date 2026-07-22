@@ -155,6 +155,34 @@ export class ConversationOrchestrator {
     inbound: { companyId: string; channel: AutomationChannel; externalUserId: string },
   ): NormalizedOutboundMessage[] {
     if (execution.lifecycle !== "waiting_input") return [];
+
+    const outbound = execution.variables.__outbound;
+    if (outbound && typeof outbound === "object" && !Array.isArray(outbound)) {
+      const record = outbound as Record<string, unknown>;
+      const kind = typeof record.kind === "string" ? record.kind : null;
+      if (kind === "buttons" || kind === "list") {
+        const text =
+          kind === "buttons"
+            ? typeof record.text === "string"
+              ? record.text
+              : ""
+            : typeof record.body === "string"
+              ? record.body
+              : "";
+        return [
+          {
+            channel: inbound.channel,
+            companyId: inbound.companyId,
+            sessionId: execution.session.id,
+            externalUserId: inbound.externalUserId,
+            messageType: "payload",
+            text,
+            payload: record,
+          },
+        ];
+      }
+    }
+
     const prompt = execution.variables.__prompt;
     if (typeof prompt !== "string" || !prompt.trim()) return [];
     return [

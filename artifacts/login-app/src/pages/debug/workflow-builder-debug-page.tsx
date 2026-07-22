@@ -83,7 +83,7 @@ export default function WorkflowBuilderDebugPage() {
           automation: {} as never,
         }}
       >
-        <WorkflowBuilderShell document={document} onBack={() => undefined} />
+        <WorkflowBuilderShell document={document} onBack={() => undefined} enableCanvasSyncTrace />
       </WorkflowBuilderServicesProvider>
     </QueryClientProvider>
   );

@@ -6,6 +6,7 @@ import type {
   CreateAutomationNodeInput,
 } from "@workspace/automation-platform";
 import { getWorkflowNodeDefinition, resolveBuilderNodeType } from "../node-registry";
+import { createBuilderClientKey, ensureBuilderNodeClientKey } from "./builder-node-identity";
 import type { BuilderEdge, BuilderNode, BuilderNodeType, BuilderViewport, WorkflowDocument } from "../types";
 
 const VIEWPORT_METADATA_KEY = "builderViewport";
@@ -49,12 +50,12 @@ function mapRecordToBuilderNode(record: AutomationNodeRecord): BuilderNode | nul
   if (!builderType) return null;
 
   const definition = getWorkflowNodeDefinition(builderType);
-  return {
+  return ensureBuilderNodeClientKey({
     id: record.id,
     type: builderType,
     position: { x: record.position_x, y: record.position_y },
     config: definition.fromEngineConfig(record.type, record.config) ?? definition.defaultConfig,
-  };
+  });
 }
 
 function mapRecordToBuilderEdge(record: AutomationEdgeRecord): BuilderEdge {
@@ -140,6 +141,7 @@ export function createBuilderNode(type: BuilderNodeType, position: { x: number; 
   const definition = getWorkflowNodeDefinition(type);
   return {
     id: id ?? crypto.randomUUID(),
+    clientKey: createBuilderClientKey(),
     type,
     position,
     config: structuredClone(definition.defaultConfig),

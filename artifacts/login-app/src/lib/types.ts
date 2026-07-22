@@ -158,7 +158,11 @@ export type Booking = {
   user_id: string;
   customer_id: string | null;
   service: string;
+  doctor_id: string | null;
+  location_id: string | null;
   booking_date: string;
+  duration_minutes: number | null;
+  notes: string | null;
   status: BookingStatus;
   created_at: string;
   updated_at: string;
@@ -196,7 +200,15 @@ export type CompanyInsert = {
 };
 export type CompanyUpdate = Partial<CompanyInsert>;
 
-export type BookingInsert = Omit<Booking, "id" | "user_id" | "created_at" | "updated_at" | "customers">;
+export type BookingInsert = Omit<
+  Booking,
+  "id" | "user_id" | "created_at" | "updated_at" | "customers" | "doctor_id" | "location_id" | "duration_minutes" | "notes"
+> & {
+  doctor_id?: string | null;
+  location_id?: string | null;
+  duration_minutes?: number | null;
+  notes?: string | null;
+};
 export type BookingUpdate = Partial<BookingInsert>;
 
 export type InvoiceInsert = Omit<Invoice, "id" | "user_id" | "created_at" | "updated_at" | "customers">;

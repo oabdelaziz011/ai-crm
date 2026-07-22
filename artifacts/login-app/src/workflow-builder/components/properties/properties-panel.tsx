@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { getWorkflowNodeDefinition } from "../../core/node-registry";
 import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
+import { resolveBuilderNodeEditorKey } from "../../core/persistence/builder-node-identity";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import { PropertyEditorErrorBoundary } from "./property-editor-error-boundary";
 
@@ -17,6 +18,27 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
       controller.dispatch({ type: "UPDATE_NODE_CONFIG", nodeId, patch });
     },
     [controller],
+  );
+
+  const applyConfigPatches = useCallback(
+    (patches: Array<{ nodeId: string; patch: Record<string, unknown> }>) => {
+      for (const entry of patches) {
+        controller.dispatch({ type: "UPDATE_NODE_CONFIG", nodeId: entry.nodeId, patch: entry.patch });
+      }
+    },
+    [controller],
+  );
+
+  const editorContext = useMemo(
+    () =>
+      selected
+        ? {
+            nodeId: selected.id,
+            document: controller.state.document,
+            applyConfigPatches,
+          }
+        : undefined,
+    [applyConfigPatches, controller.state.document, selected],
   );
 
   if (!selected) {
@@ -49,9 +71,10 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
       </div>
       <PropertyEditorErrorBoundary nodeType={selected.type}>
         <PropertyEditor
-          key={selected.id}
+          key={resolveBuilderNodeEditorKey(selected)}
           config={selected.config}
           onChange={(patch) => handleConfigChange(selected.id, patch)}
+          context={editorContext}
         />
       </PropertyEditorErrorBoundary>
     </motion.aside>

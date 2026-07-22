@@ -1,4 +1,12 @@
--- Sprint B2-04: workflow versioning, lifecycle governance, rollback permissions
+-- ============================================================
+-- Vault OS – Sprint B2-04: workflow versioning, lifecycle governance, rollback permissions
+--
+-- RBAC aligned with canonical schema:
+--   permissions(code, category, module, action, description) — 004_rbac.sql
+--   platform_role_template_permissions(template_key, permission_code) — 119_company_role_provisioning.sql
+--   platform_role_templates.template_key in ('admin', 'manager', 'employee')
+--   RLS via public.company_has_permission(company_id, code) — 113_rbac_rls_completion.sql / 131
+-- ============================================================
 
 alter table public.automation_flows
   add column if not exists active_version_id uuid,
@@ -35,47 +43,92 @@ create index if not exists idx_automation_flow_versions_active
   where is_active = true;
 
 alter table public.automation_flows
+  drop constraint if exists automation_flows_active_version_fk;
+
+alter table public.automation_flows
   add constraint automation_flows_active_version_fk
   foreign key (active_version_id) references public.automation_flow_versions(id)
   on delete set null;
 
-insert into public.permissions (code, name, description, module)
-values
-  ('automation.rollback', 'Rollback Workflows', 'Activate a previous published workflow version', 'automation'),
-  ('automation.archive', 'Archive Workflows', 'Archive workflows and stop production execution', 'automation')
-on conflict (code) do nothing;
+-- ── RBAC permissions (canonical shape) ────────────────────────
 
-insert into public.platform_role_template_permissions (role_template_id, permission_id)
-select prt.id, p.id
-from public.platform_role_templates prt
-cross join public.permissions p
-where prt.code = 'tenant_admin'
-  and p.code in ('automation.rollback', 'automation.archive')
-on conflict do nothing;
+insert into public.permissions (code, category, module, action, description)
+values
+  (
+    'automation.rollback',
+    'Automation',
+    'Automation',
+    'Rollback',
+    'Activate a previous published workflow version'
+  ),
+  (
+    'automation.archive',
+    'Automation',
+    'Automation',
+    'Archive',
+    'Archive workflows and stop production execution'
+  )
+on conflict (code) do update
+set
+  category = excluded.category,
+  module = excluded.module,
+  action = excluded.action,
+  description = excluded.description,
+  updated_at = now();
+
+insert into public.platform_role_template_permissions (template_key, permission_code)
+select seed.template_key, seed.permission_code
+from (
+  values
+    ('admin', 'automation.rollback'),
+    ('admin', 'automation.archive')
+) as seed(template_key, permission_code)
+where not exists (
+  select 1
+  from public.platform_role_template_permissions existing
+  where existing.template_key = seed.template_key
+    and existing.permission_code = seed.permission_code
+);
+
+insert into public.role_permissions (role_id, permission_id)
+select r.id, p.id
+from public.roles r
+join public.permissions p
+  on p.code in ('automation.rollback', 'automation.archive')
+where r.role_type = 'DEFAULT'
+  and r.template_key = 'admin'
+  and not exists (
+    select 1
+    from public.role_permissions rp
+    where rp.role_id = r.id
+      and rp.permission_id = p.id
+  );
+
+-- ── RLS for automation_flow_versions ──────────────────────────
 
 alter table public.automation_flow_versions enable row level security;
 
+drop policy if exists automation_flow_versions_select on public.automation_flow_versions;
 create policy automation_flow_versions_select on public.automation_flow_versions
   for select using (
-    company_id = public.current_company_id()
-    and public.has_permission('automation.view')
+    public.company_has_permission(company_id, 'automation.view')
   );
 
+drop policy if exists automation_flow_versions_insert on public.automation_flow_versions;
 create policy automation_flow_versions_insert on public.automation_flow_versions
   for insert with check (
-    company_id = public.current_company_id()
-    and public.has_permission('automation.publish')
+    public.company_has_permission(company_id, 'automation.publish')
   );
 
+drop policy if exists automation_flow_versions_update on public.automation_flow_versions;
 create policy automation_flow_versions_update on public.automation_flow_versions
   for update using (
-    company_id = public.current_company_id()
-    and (
-      public.has_permission('automation.publish')
-      or public.has_permission('automation.rollback')
-      or public.has_permission('automation.archive')
-    )
+    public.company_has_permission(company_id, 'automation.publish')
+    or public.company_has_permission(company_id, 'automation.rollback')
+    or public.company_has_permission(company_id, 'automation.archive')
   );
+
+-- ── Audit helper (extended lifecycle events) ──────────────────
 
 create or replace function public.automation_flow_audit_events(
   p_old public.automation_flows,

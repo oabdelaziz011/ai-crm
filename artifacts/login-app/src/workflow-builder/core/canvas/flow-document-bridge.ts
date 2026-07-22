@@ -1,6 +1,13 @@
-import { applyNodeChanges, type Node, type NodeChange } from "@xyflow/react";
+/**
+ * Document → React Flow display bridge.
+ *
+ * Ownership (Sprint 5.6):
+ * - Maps **persistent document nodes** to React Flow node props (id, type, position, data, selected).
+ * - Does not read or write RF runtime fields (`measured`, `dimensions`, `handleBounds`, dragging).
+ * - Controlled nodes are seeded from this output via `seedControlledNodesFromDocument`.
+ */
+import type { Node } from "@xyflow/react";
 import type { WorkflowNodeData } from "../../components/nodes/workflow-node-card";
-import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import type { BuilderEdge, BuilderNode } from "../types";
 import { resolveBranchEdgeStyle } from "../logic/branch-utils";
 import { getWorkflowNodeDefinition } from "../node-registry";
@@ -75,40 +82,4 @@ export function documentToFlowEdges(
       },
     ];
   });
-}
-
-/** Apply RF node changes and return document position updates (drag-only). */
-export function positionUpdatesFromNodeChanges(
-  changes: NodeChange<Node<WorkflowNodeData>>[],
-  currentNodes: Node<WorkflowNodeData>[],
-  documentNodes: BuilderNode[],
-): { positions: Array<{ id: string; x: number; y: number }>; dragging: boolean } {
-  const dragging = changes.some((change) => change.type === "position" && change.dragging);
-  const nextNodes = applyNodeChanges(changes, currentNodes) as Node<WorkflowNodeData>[];
-  const documentById = new Map(documentNodes.map((node) => [node.id, node.position]));
-
-  const positions = nextNodes.flatMap((node) => {
-    const previous = currentNodes.find((entry) => entry.id === node.id);
-    if (!previous) return [];
-    if (previous.position.x === node.position.x && previous.position.y === node.position.y) return [];
-
-    const authoritative = documentById.get(node.id);
-    if (authoritative && authoritative.x === node.position.x && authoritative.y === node.position.y) {
-      return [];
-    }
-
-    return [{ id: node.id, x: node.position.x, y: node.position.y }];
-  });
-
-  return { positions, dragging };
-}
-
-export function builderDocumentSnapshot(controller: WorkflowBuilderController) {
-  return {
-    nodes: controller.state.document.nodes,
-    edges: controller.state.document.edges,
-    selectedNodeIds: controller.state.selectedNodeIds,
-    viewport: controller.state.document.viewport,
-    nodeSignature: documentNodeSignature(controller.state.document.nodes),
-  };
 }

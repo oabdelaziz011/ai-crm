@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { NodePropertyEditorProps } from "../../core/node-registry";
+import { buildInteractiveOptionIdRefactorPatches } from "../../core/logic/interactive-config-refactor";
+import { slugifyInteractionOptionId } from "../../core/variables/interaction-variables";
 
 type ListRow = {
   id: string;
@@ -105,11 +107,17 @@ export function ButtonListEditor({ config, onChange }: NodePropertyEditorProps) 
   );
 }
 
-export function ListRowsEditor({ config, onChange }: NodePropertyEditorProps) {
+export function ListRowsEditor({ config, onChange, context }: NodePropertyEditorProps) {
   const { t } = useTranslation("common");
   const rows = readListRows(config);
 
   const updateRows = (next: ListRow[]) => onChange({ rows: next });
+
+  const applyIdRefactor = (oldId: string, newId: string) => {
+    if (!context || oldId === newId) return;
+    const patches = buildInteractiveOptionIdRefactorPatches(context.document, context.nodeId, oldId, newId);
+    if (patches.length > 0) context.applyConfigPatches(patches);
+  };
 
   const moveRow = (index: number, direction: -1 | 1) => {
     const target = index + direction;
@@ -191,6 +199,17 @@ export function ListRowsEditor({ config, onChange }: NodePropertyEditorProps) {
               updateRows(next);
             }}
             className="rounded-xl bg-background/80"
+          />
+          <Input
+            value={row.id}
+            placeholder={t("workflowBuilder.fields.buttonId")}
+            onChange={(event) => {
+              const newId = slugifyInteractionOptionId(event.target.value, row.id);
+              const next = rows.map((entry) => (entry.id === row.id ? { ...entry, id: newId } : entry));
+              updateRows(next);
+              applyIdRefactor(row.id, newId);
+            }}
+            className="rounded-xl bg-background/80 font-mono text-xs"
           />
           <Input
             value={readString(row.description)}

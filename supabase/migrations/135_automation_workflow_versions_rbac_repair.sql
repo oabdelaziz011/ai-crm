@@ -1,26 +1,17 @@
 -- ============================================================
--- Vault OS – Repair migration 133 RBAC drift (forward-only)
+-- Vault OS – Repair migration 133 RBAC drift (forward-only, idempotent)
 --
--- Root cause: 133_automation_workflow_versions.sql inserts into
--- public.permissions using a non-existent "name" column, seeds
--- platform_role_template_permissions with columns/tables from an
--- abandoned RBAC shape (role_template_id, permission_id, prt.code),
--- and references public.has_permission() which does not exist.
--- Use public.company_has_permission(company_id, code) per 113/131.
+-- Historical context: original 133 used abandoned RBAC shapes (permissions.name,
+-- platform_role_template_permissions.role_template_id, has_permission()).
+-- 133_automation_workflow_versions.sql is now canonical; this migration remains
+-- as an idempotent safety net for environments that marked 133 applied before
+-- the rewrite, and for fresh bootstrap (no-op when 133 already applied fully).
 --
--- Canonical permissions schema (004_rbac.sql):
---   code, category, module, action, description
--- Canonical template grants (119_company_role_provisioning.sql):
+-- Canonical RBAC (004 / 113 / 119 / 123 / 131):
+--   permissions(code, category, module, action, description)
 --   platform_role_template_permissions(template_key, permission_code)
---   platform_role_templates.template_key in ('admin', 'manager', 'employee')
---
--- Deployment (133 cannot succeed as written):
---   1. supabase db push            -- applies 131–132; 133 fails and rolls back
---   2. supabase migration repair 133 --status applied
---   3. supabase db push            -- applies this migration
---
--- Idempotent. Preserves existing RBAC rows (ON CONFLICT / NOT EXISTS only).
--- Does not modify prior migration files.
+--   RLS via public.company_has_permission(company_id, code)
+--   role_permissions backfill for DEFAULT roles with template_key = 'admin'
 -- ============================================================
 
 -- ── Sprint B2-04 DDL (133 intent, idempotent) ───────────────

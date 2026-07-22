@@ -83,10 +83,15 @@ runCommand("4. Workflow builder core tests", "npm", ["run", "test:workflow-build
   VITE_SUPABASE_PUBLISHABLE_KEY: process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "test-publishable-key",
 });
 
-runCommand("5. Verify billing health", "npm", ["run", "billing-health-probe"], loginAppRoot);
+runCommand("5. Workflow builder stability tests (canvas sync regressions)", "npm", ["run", "test:workflow-builder-stability"], loginAppRoot, {
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:54321",
+  VITE_SUPABASE_PUBLISHABLE_KEY: process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "test-publishable-key",
+});
+
+runCommand("6. Verify billing health", "npm", ["run", "billing-health-probe"], loginAppRoot);
 
 runCommand(
-  "6. Run runtime probe",
+  "7. Run runtime probe",
   "node",
   [resolve(projectRoot, "scripts/subscription-detail-runtime-probe.mjs")],
   projectRoot,
@@ -94,13 +99,13 @@ runCommand(
 );
 
 runCommand(
-  "7. Subscription Detail regression tests",
+  "8. Subscription Detail regression tests",
   "npm",
   ["run", "test:subscription-detail"],
   loginAppRoot,
 );
 
-console.log("\n▶ 8. Verify no production blockers remain\n");
+console.log("\n▶ 9. Verify no production blockers remain\n");
 
 if (failures.length > 0) {
   console.log("FAIL\n");

@@ -5,6 +5,11 @@ import { createDefaultChannelAdapterRegistry } from "./orchestrator/channel-adap
 import { ConversationOrchestrator } from "./orchestrator/conversation-orchestrator.js";
 import { InMemoryCustomerResolver } from "./ports/customer-resolver-port.js";
 import {
+  beginVariableResolverRegistration,
+  freezeVariableResolverRegistry,
+} from "./logic/variable-resolver-registry.js";
+import { registerLookupVariableResolver } from "./crm/lookup/register-lookup-variable-resolver.js";
+import {
   createSupabaseAutomationEdgeRepository,
   createSupabaseAutomationFlowRepository,
   createSupabaseAutomationNodeRepository,
@@ -18,6 +23,10 @@ import { WorkflowLifecycleService } from "./lifecycle/lifecycle-service.js";
 import { WorkflowPublishService } from "./lifecycle/publish-service.js";
 import { WorkflowRollbackService } from "./lifecycle/rollback-service.js";
 import { AutomationFlowService } from "./services/automation-flow-service.js";
+
+beginVariableResolverRegistration();
+registerLookupVariableResolver();
+freezeVariableResolverRegistry();
 
 export type AutomationPlatformServices = {
   flows: AutomationFlowService;
@@ -103,3 +112,23 @@ export * from "./transport/whatsapp/whatsapp-provider.js";
 export * from "./transport/whatsapp/whatsapp-webhook-controller.js";
 export * from "./logic/index.js";
 export * from "./lifecycle/index.js";
+export * from "./runtime/conversation-variables.js";
+export * from "./field-binding/types.js";
+export * from "./field-binding/normalize.js";
+export * from "./field-binding/validate.js";
+export * from "./field-binding/resolver.js";
+export * from "./crm/create-booking-config.js";
+export * from "./crm/types/create-booking-input.js";
+export * from "./crm/booking-repository-port.js";
+export * from "./crm/booking-service.js";
+export * from "./ports/booking-service-port.js";
+export * from "./crm/find-customer-config.js";
+export * from "./crm/types/find-customer-input.js";
+export * from "./crm/customer/customer-repository-port.js";
+export * from "./crm/customer/customer-service.js";
+export * from "./crm/lookup/types.js";
+export * from "./crm/lookup/build-lookup-state.js";
+export * from "./crm/lookup/output-variables.js";
+export * from "./crm/lookup/lookup-variable-resolver.js";
+export * from "./crm/lookup/register-lookup-variable-resolver.js";
+export * from "./ports/customer-service-port.js";

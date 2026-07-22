@@ -12,6 +12,7 @@ export const BUILDER_NODE_TYPES = [
   "end",
   "create_customer",
   "update_customer",
+  "find_customer",
   "create_booking",
   "ai_summarizer",
   "ai_extract",
@@ -28,6 +29,8 @@ export type BuilderBranchKey = "yes" | "no" | "default" | string;
 
 export type BuilderNode = {
   id: string;
+  /** Stable builder-side identity for editor mounting; preserved across save id remaps. */
+  clientKey?: string;
   type: BuilderNodeType;
   position: { x: number; y: number };
   config: Record<string, unknown>;

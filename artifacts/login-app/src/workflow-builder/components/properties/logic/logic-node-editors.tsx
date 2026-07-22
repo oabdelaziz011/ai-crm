@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { NodePropertyEditorProps } from "../../../core/node-registry";
 import { normalizeVariableField } from "../../../core/logic/branch-utils";
+import { resolveInteractionFieldLabel } from "../../../core/variables/interaction-variables";
+import { useWorkflowBuilderI18n } from "../../../hooks/use-workflow-builder-i18n";
 import { VariablePicker } from "../../variables/variable-picker";
+import { InteractionValueField } from "./interaction-value-field";
+import { InteractiveClauseWarning, useInteractiveClauseWarnings } from "./interactive-clause-warning";
+import type { RuleClause } from "@workspace/automation-platform";
 
 type SwitchCase = {
   id: string;
@@ -14,11 +20,17 @@ type SwitchCase = {
   value: string;
 };
 
-export function SwitchEditor({ config, onChange }: NodePropertyEditorProps) {
+export function SwitchEditor({ config, onChange, context }: NodePropertyEditorProps) {
   const { t } = useTranslation("common");
+  const { variableFieldLabel } = useWorkflowBuilderI18n();
   const field = typeof config.field === "string" ? config.field : "";
   const cases = Array.isArray(config.cases) ? (config.cases as SwitchCase[]) : [];
   const includeDefault = config.includeDefault !== false;
+  const fieldLabel = useMemo(() => {
+    const normalized = field.replace(/^\{\{|\}\}$/g, "").trim();
+    const category = normalized.split(".")[0] ?? "conversation";
+    return resolveInteractionFieldLabel(field, (path) => variableFieldLabel(category, path, field));
+  }, [field, variableFieldLabel]);
 
   const updateCases = (next: SwitchCase[]) => onChange({ cases: next });
 
@@ -27,9 +39,10 @@ export function SwitchEditor({ config, onChange }: NodePropertyEditorProps) {
       <div className="space-y-2">
         <Label className="text-sm font-medium">{t("workflowBuilder.logic.field")}</Label>
         <div className="flex items-center gap-2">
-          <Input value={field} readOnly className="rounded-xl bg-background/80" placeholder={t("workflowBuilder.logic.chooseField")} />
+          <Input value={fieldLabel} readOnly className="rounded-xl bg-background/80" placeholder={t("workflowBuilder.logic.chooseField")} />
           <VariablePicker onSelect={(variable) => onChange({ field: normalizeVariableField(variable.token) })} />
         </div>
+        <p className="text-[11px] text-muted-foreground">{field}</p>
       </div>
 
       <div className="space-y-3">
@@ -52,38 +65,16 @@ export function SwitchEditor({ config, onChange }: NodePropertyEditorProps) {
           </Button>
         </div>
         {cases.map((item, index) => (
-          <div key={item.id} className="space-y-2 rounded-2xl border border-border/60 bg-background/50 p-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t("workflowBuilder.logic.caseNumber", { number: index + 1 })}
-              </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg"
-                onClick={() => updateCases(cases.filter((entry) => entry.id !== item.id))}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <Input
-              value={item.label}
-              placeholder={t("workflowBuilder.logic.branchLabel")}
-              className="rounded-xl bg-background/80"
-              onChange={(event) =>
-                updateCases(cases.map((entry) => (entry.id === item.id ? { ...entry, label: event.target.value } : entry)))
-              }
-            />
-            <Input
-              value={item.value}
-              placeholder={t("workflowBuilder.logic.matchValue")}
-              className="rounded-xl bg-background/80"
-              onChange={(event) =>
-                updateCases(cases.map((entry) => (entry.id === item.id ? { ...entry, value: event.target.value } : entry)))
-              }
-            />
-          </div>
+          <SwitchCaseEditor
+            key={item.id}
+            item={item}
+            index={index}
+            field={field}
+            nodeId={context?.nodeId}
+            document={context?.document}
+            onChange={(next) => updateCases(cases.map((entry) => (entry.id === item.id ? next : entry)))}
+            onRemove={() => updateCases(cases.filter((entry) => entry.id !== item.id))}
+          />
         ))}
       </div>
 
@@ -94,6 +85,58 @@ export function SwitchEditor({ config, onChange }: NodePropertyEditorProps) {
         </div>
         <Switch checked={includeDefault} onCheckedChange={(checked) => onChange({ includeDefault: checked })} />
       </div>
+    </div>
+  );
+}
+
+function SwitchCaseEditor({
+  item,
+  index,
+  field,
+  nodeId,
+  document,
+  onChange,
+  onRemove,
+}: {
+  item: SwitchCase;
+  index: number;
+  field: string;
+  nodeId?: string;
+  document?: import("../../../core/types").WorkflowDocument;
+  onChange: (next: SwitchCase) => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation("common");
+  const pseudoClause = useMemo<RuleClause>(
+    () => ({ id: item.id, field, operator: "equals", value: item.value }),
+    [field, item.id, item.value],
+  );
+  const warnings = useInteractiveClauseWarnings(document, pseudoClause);
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-border/60 bg-background/50 p-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+          {t("workflowBuilder.logic.caseNumber", { number: index + 1 })}
+        </Label>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onRemove}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      <Input
+        value={item.label}
+        placeholder={t("workflowBuilder.logic.branchLabel")}
+        className="rounded-xl bg-background/80"
+        onChange={(event) => onChange({ ...item, label: event.target.value })}
+      />
+      <InteractionValueField
+        field={field}
+        value={item.value}
+        nodeId={nodeId}
+        document={document}
+        onChange={(value) => onChange({ ...item, value })}
+      />
+      <InteractiveClauseWarning messages={warnings} />
     </div>
   );
 }

@@ -43,6 +43,18 @@ function parseList(value: unknown): unknown[] {
   return [];
 }
 
+function fieldExists(actual: unknown): boolean {
+  return actual !== null && actual !== undefined;
+}
+
+function isEmptyValue(actual: unknown): boolean {
+  if (actual == null) return true;
+  if (typeof actual === "string") return actual.trim() === "";
+  if (Array.isArray(actual)) return actual.length === 0;
+  if (typeof actual === "object") return Object.keys(actual as Record<string, unknown>).length === 0;
+  return false;
+}
+
 export function registerBuiltInOperators(): void {
   if (registry.size > 0) return;
 
@@ -83,16 +95,28 @@ export function registerBuiltInOperators(): void {
     evaluate: (actual, value) => asString(actual).toLowerCase().endsWith(asString(value).toLowerCase()),
   });
   registerOperator({
+    id: "exists",
+    label: "Exists",
+    requiresValue: false,
+    evaluate: (actual) => fieldExists(actual),
+  });
+  registerOperator({
+    id: "does_not_exist",
+    label: "Does Not Exist",
+    requiresValue: false,
+    evaluate: (actual) => !fieldExists(actual),
+  });
+  registerOperator({
     id: "is_empty",
     label: "Is Empty",
     requiresValue: false,
-    evaluate: (actual) => actual == null || asString(actual).trim() === "",
+    evaluate: (actual) => isEmptyValue(actual),
   });
   registerOperator({
     id: "is_not_empty",
     label: "Is Not Empty",
     requiresValue: false,
-    evaluate: (actual) => !(actual == null || asString(actual).trim() === ""),
+    evaluate: (actual) => !isEmptyValue(actual),
   });
   registerOperator({
     id: "greater_than",

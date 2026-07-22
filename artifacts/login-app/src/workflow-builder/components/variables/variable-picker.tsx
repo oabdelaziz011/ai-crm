@@ -4,6 +4,8 @@ import { Braces, ChevronRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BuilderPopover } from "../ui/builder-popover";
+import type { WorkflowDocument } from "../../core/types";
+import { listDocumentWorkflowVariables } from "../../core/variables/document-workflow-variable-provider";
 import {
   listAllWorkflowVariables,
   listVariableProviders,
@@ -14,32 +16,42 @@ import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
 
 type VariablePickerProps = {
   onSelect: (variable: WorkflowVariable) => void;
+  document?: WorkflowDocument;
+  nodeId?: string;
 };
 
-export function VariablePicker({ onSelect }: VariablePickerProps) {
+export function VariablePicker({ onSelect, document, nodeId }: VariablePickerProps) {
   const { t } = useTranslation("common");
   const { variableCategoryLabel, variableFieldLabel } = useWorkflowBuilderI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
+  const allVariables = useMemo(() => {
+    const variables = listAllWorkflowVariables();
+    if (!document || !nodeId) return variables;
+    const dynamic = listDocumentWorkflowVariables(document, nodeId);
+    const seen = new Set(variables.map((entry) => entry.token));
+    return [...variables, ...dynamic.filter((entry) => !seen.has(entry.token))];
+  }, [document, nodeId]);
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const variables = listAllWorkflowVariables();
-    if (!normalized) return variables;
-    return variables.filter(
+    if (!normalized) return allVariables;
+    return allVariables.filter(
       (variable) =>
         variable.label.toLowerCase().includes(normalized) ||
         variable.token.toLowerCase().includes(normalized) ||
         variable.category.includes(normalized),
     );
-  }, [query]);
+  }, [allVariables, query]);
 
   const grouped = useMemo(() => {
-    const groups = new Map<VariableCategory, WorkflowVariable[]>();
+    const groups = new Map<string, WorkflowVariable[]>();
     for (const variable of filtered) {
-      const list = groups.get(variable.category) ?? [];
+      const key = variable.subgroup ? `${variable.category}:${variable.subgroup}` : variable.category;
+      const list = groups.get(key) ?? [];
       list.push(variable);
-      groups.set(variable.category, list);
+      groups.set(key, list);
     }
     return groups;
   }, [filtered]);
@@ -69,11 +81,22 @@ export function VariablePicker({ onSelect }: VariablePickerProps) {
           </div>
         </div>
         <div className="max-h-72 overflow-y-auto p-2">
-          {[...grouped.entries()].map(([category, variables]) => (
-            <div key={category} className="mb-2">
+          {[...grouped.entries()].map(([groupKey, variables]) => {
+            const [category, subgroup] = groupKey.includes(":")
+              ? (groupKey.split(":") as [VariableCategory, string])
+              : ([groupKey as VariableCategory, undefined] as const);
+            return (
+            <div key={groupKey} className="mb-2">
               <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {variableCategoryLabel(category)}
               </p>
+              {subgroup ? (
+                <p className="px-2 pb-1 ps-4 text-[11px] font-medium text-muted-foreground">
+                  {t(`workflowBuilder.variables.subgroups.${subgroup}`, {
+                    defaultValue: subgroup.replace(/_/g, " "),
+                  })}
+                </p>
+              ) : null}
               {variables.map((variable) => (
                 <button
                   key={variable.id}
@@ -90,7 +113,8 @@ export function VariablePicker({ onSelect }: VariablePickerProps) {
                 </button>
               ))}
             </div>
-          ))}
+            );
+          })}
           {filtered.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("workflowBuilder.variables.empty")}</p>
           ) : null}

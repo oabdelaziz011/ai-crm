@@ -12,6 +12,7 @@ import {
   Timer,
   UserPen,
   UserPlus,
+  UserSearch,
 } from "lucide-react";
 import { getWorkflowNodeDefinition } from "../../core/node-registry";
 import { getCategoryTokens, resolveVisualCategory } from "../../core/visual/category-tokens";
@@ -30,6 +31,7 @@ const ICONS = {
   Flag,
   UserPlus,
   UserPen,
+  UserSearch,
   CalendarPlus,
 } as const;
 

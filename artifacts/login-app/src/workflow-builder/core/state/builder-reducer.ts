@@ -1,15 +1,7 @@
 import { canConnect } from "../connection-rules";
 import { assignBranchForNewEdge } from "../logic/branch-utils";
-import {
-  createEdgeId,
-  createNodeId,
-  type BuilderAction,
-  type BuilderEdge,
-  type BuilderNode,
-  type BuilderState,
-  type BuilderViewport,
-  type WorkflowDocument,
-} from "../types";
+import { createEdgeId, createNodeId, type BuilderAction, type BuilderEdge, type BuilderNode, type BuilderState, type BuilderViewport, type WorkflowDocument } from "../types";
+import { createBuilderClientKey } from "../persistence/builder-node-identity";
 
 function sameStringArray(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
@@ -169,6 +161,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
       const pasted = state.clipboard.map((node) => ({
         ...structuredClone(node),
         id: createNodeId(),
+        clientKey: createBuilderClientKey(),
         position: {
           x: node.position.x + offset.x,
           y: node.position.y + offset.y,
@@ -196,6 +189,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         return {
           ...structuredClone(node),
           id: nextId,
+          clientKey: createBuilderClientKey(),
           position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
         };
       });

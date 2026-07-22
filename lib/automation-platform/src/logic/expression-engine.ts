@@ -1,5 +1,6 @@
 import { getOperator } from "./operator-registry.js";
 import { registerBuiltInOperators } from "./operator-registry.js";
+import { resolveViaRegistry } from "./variable-resolver-registry.js";
 import type { CompiledRuleSet, EvaluationContext, RuleClause, RuleGroup } from "./types.js";
 
 export function compileRuleSet(ruleSet: CompiledRuleSet): CompiledRuleSet {
@@ -11,13 +12,7 @@ export function resolveFieldValue(field: string, variables: Record<string, unkno
   if (!normalized) return undefined;
   if (Object.prototype.hasOwnProperty.call(variables, normalized)) return variables[normalized];
 
-  const segments = normalized.split(".");
-  let current: unknown = variables;
-  for (const segment of segments) {
-    if (!current || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[segment];
-  }
-  return current;
+  return resolveViaRegistry(normalized.split("."), variables);
 }
 
 function isRuleGroup(entry: RuleClause | RuleGroup): entry is RuleGroup {

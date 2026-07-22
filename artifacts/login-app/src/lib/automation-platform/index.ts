@@ -5,6 +5,8 @@ import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { createAutomationRegistryWithAIWorkflow } from "@/lib/ai-workflow-platform/automation-registry";
 import { useAIWorkflowPlatformServices } from "@/lib/ai-workflow-platform";
+import { createSupabaseBookingServicePort } from "@/lib/crm/supabase-booking-service-adapter";
+import { createSupabaseCustomerServicePort } from "@/lib/crm/supabase-customer-service-adapter";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -24,8 +26,10 @@ export function useAutomationPlatformServices() {
         isSuperAdmin,
         hasPermission,
       }));
+      const bookingService = createSupabaseBookingServicePort(supabase, () => user?.id ?? null);
+      const customerService = createSupabaseCustomerServicePort(supabase, () => user?.id ?? null);
       return createAutomationPlatformServices(supabase, {
-        registry: createAutomationRegistryWithAIWorkflow(bridge),
+        registry: createAutomationRegistryWithAIWorkflow(bridge, { bookingService, customerService }),
       });
     },
     [aiWorkflowServices, user?.id, profile?.company_id, isSuperAdmin, hasPermission],

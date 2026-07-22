@@ -12,7 +12,7 @@ import { listOperators } from "./operator-registry.js";
 
 describe("expression engine", () => {
   it("registers all business operators", () => {
-    assert.equal(listOperators().length, 17);
+    assert.equal(listOperators().length, 19);
   });
 
   it("evaluates nested AND/OR rule groups", () => {
@@ -88,11 +88,138 @@ describe("expression engine", () => {
     assert.equal(switchCase, "support");
   });
 
+  it("evaluates conversation button runtime variables", () => {
+    const ruleSet: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "conversation.last_button_id", operator: "equals", value: "booking" }],
+      },
+    };
+
+    assert.equal(
+      evaluateIfElseCondition(ruleSet, {
+        variables: {
+          conversation: {
+            last_button_id: "booking",
+            last_button_title: "Book now",
+            last_message: "Book now",
+          },
+        },
+      }),
+      "yes",
+    );
+    assert.equal(
+      evaluateIfElseCondition(ruleSet, {
+        variables: {
+          conversation: {
+            last_button_id: "support",
+            last_button_title: "Support",
+          },
+        },
+      }),
+      "no",
+    );
+  });
+
   it("validates incomplete rules", () => {
     const issues = validateRuleSet({
       root: { id: "root", combinator: "and", rules: [{ id: "r1", field: "", operator: "equals", value: "" }] },
     });
     assert.ok(issues.length >= 2);
+  });
+
+  it("evaluates existence operators without comparison values", () => {
+    const existsRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.id", operator: "exists" }],
+      },
+    };
+    const missingRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.id", operator: "does_not_exist" }],
+      },
+    };
+    const emptyEmailRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.email", operator: "is_empty" }],
+      },
+    };
+    const nonEmptyEmailRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.email", operator: "is_not_empty" }],
+      },
+    };
+
+    assert.equal(evaluateRuleSet(existsRule, { variables: { customer: { id: "cust-1" } } }), true);
+    assert.equal(evaluateRuleSet(existsRule, { variables: { customer: { id: null } } }), false);
+    assert.equal(evaluateRuleSet(existsRule, { variables: {} }), false);
+
+    assert.equal(evaluateRuleSet(missingRule, { variables: {} }), true);
+    assert.equal(evaluateRuleSet(missingRule, { variables: { customer: { id: null } } }), true);
+    assert.equal(evaluateRuleSet(missingRule, { variables: { customer: { id: "cust-1" } } }), false);
+
+    assert.equal(evaluateRuleSet(emptyEmailRule, { variables: { customer: { email: "" } } }), true);
+    assert.equal(evaluateRuleSet(emptyEmailRule, { variables: { customer: { email: "   " } } }), true);
+    assert.equal(evaluateRuleSet(emptyEmailRule, { variables: { customer: {} } }), true);
+    assert.equal(evaluateRuleSet(emptyEmailRule, { variables: { customer: { email: "omar@example.com" } } }), false);
+
+    const emptyCollectionRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.tags", operator: "is_empty" }],
+      },
+    };
+    assert.equal(evaluateRuleSet(emptyCollectionRule, { variables: { customer: { tags: [] } } }), true);
+    assert.equal(evaluateRuleSet(emptyCollectionRule, { variables: { customer: { tags: ["vip"] } } }), false);
+
+    const emptyObjectRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.meta", operator: "is_empty" }],
+      },
+    };
+    assert.equal(evaluateRuleSet(emptyObjectRule, { variables: { customer: { meta: {} } } }), true);
+    assert.equal(evaluateRuleSet(emptyObjectRule, { variables: { customer: { meta: { tier: "vip" } } } }), false);
+
+    assert.equal(
+      evaluateRuleSet(nonEmptyEmailRule, { variables: { customer: { email: "omar@example.com" } } }),
+      true,
+    );
+    assert.equal(evaluateRuleSet(nonEmptyEmailRule, { variables: { customer: { email: "" } } }), false);
+
+    const nonEmptyCollectionRule: CompiledRuleSet = {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [{ id: "r1", field: "customer.tags", operator: "is_not_empty" }],
+      },
+    };
+    assert.equal(evaluateRuleSet(nonEmptyCollectionRule, { variables: { customer: { tags: ["vip"] } } }), true);
+  });
+
+  it("does not require values for existence operators during validation", () => {
+    const issues = validateRuleSet({
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [
+          { id: "r1", field: "customer.id", operator: "exists" },
+          { id: "r2", field: "customer.email", operator: "is_empty" },
+        ],
+      },
+    });
+    assert.equal(issues.length, 0);
   });
 });
 

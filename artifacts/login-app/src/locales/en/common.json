@@ -943,6 +943,10 @@
       "create_booking": {
         "displayName": "Create Booking",
         "description": "Create an appointment booking."
+      },
+      "find_customer": {
+        "displayName": "Find Customer",
+        "description": "Look up a customer by phone, email, or customer ID."
       }
     },
     "validation": {
@@ -959,7 +963,20 @@
         "value": "the new value",
         "serviceName": "a service name",
         "dateField": "which answer to use for the date",
-        "buttonLabel": "at least one button label"
+        "buttonLabel": "at least one button label",
+        "createBooking": {
+          "service": "service",
+          "doctor": "doctor",
+          "location": "location",
+          "appointmentDate": "appointment date",
+          "appointmentTime": "appointment time",
+          "duration": "duration",
+          "customer": "customer",
+          "notes": "notes"
+        },
+        "findCustomer": {
+          "value": "lookup value"
+        }
       }
     },
     "validationIssues": {
@@ -982,7 +999,8 @@
       "tooManyOutgoing": "{{node}} has more outgoing branches than allowed.",
       "missing-buttons": "Add at least one button label before publishing.",
       "missing-list-rows": "Add at least one list option before publishing.",
-      "invalid-delay": "Enter a wait time greater than zero."
+      "invalid-delay": "Enter a wait time greater than zero.",
+      "unknownInteractiveSelection": "Selection id \"{{value}}\" is not defined on any Buttons or List step."
     },
     "publishDialog": {
       "title": "Publish workflow",
@@ -1072,16 +1090,57 @@
       "dateField": "Date answer field",
       "menuTitle": "Title",
       "menuMessage": "Message",
-      "menuButtonLabel": "Menu button label"
+      "menuButtonLabel": "Menu button label",
+      "chooseSelectionValue": "Choose a selection value",
+      "chooseSelectionLabel": "Choose a selection label",
+      "chooseInteractionType": "Choose an interaction type",
+      "enterValueManually": "Enter value manually",
+      "useSuggestedValues": "Use suggested values",
+      "interactionTypes": {
+        "button": "Button",
+        "list": "List",
+        "flow": "Flow",
+        "quick_reply": "Quick reply"
+      }
+    },
+    "fieldBinding": {
+      "static": "Static value",
+      "variable": "Variable",
+      "optional": "Optional",
+      "selectVariable": "Select a variable"
+    },
+    "crm": {
+      "createBooking": {
+        "service": "Service",
+        "doctor": "Doctor",
+        "location": "Location",
+        "appointmentDate": "Appointment date",
+        "appointmentTime": "Appointment time",
+        "duration": "Duration (minutes)",
+        "customer": "Customer",
+        "notes": "Notes"
+      },
+      "findCustomer": {
+        "lookupBy": "Lookup By",
+        "value": "Value",
+        "phone": "Phone Number",
+        "email": "Email",
+        "customerId": "Customer ID"
+      }
     },
     "variables": {
       "insert": "Insert Variable",
       "search": "Search variables",
       "empty": "No variables found",
       "providers": "providers available",
+      "subgroups": {
+        "last_interaction": "Last Interaction",
+        "saved_variables": "Saved variables"
+      },
       "categories": {
         "customer": "Customer",
         "conversation": "Conversation",
+        "lookup": "Lookup",
         "booking": "Booking",
         "company": "Company",
         "workflow": "Workflow",
@@ -1090,16 +1149,27 @@
       },
       "fields": {
         "customer": {
+          "exists": "Customer exists",
+          "id": "Customer ID",
           "name": "Name",
           "email": "Email",
           "phone": "Phone",
+          "notes": "Notes",
           "type": "Customer type",
           "country": "Country",
           "orders": "Total orders"
         },
+        "lookup": {
+          "status": "Lookup status",
+          "count": "Lookup match count",
+          "found": "Lookup unique match"
+        },
         "conversation": {
-          "last_message": "Last message",
-          "channel": "Channel"
+          "last_message": "Last User Message",
+          "last_button_id": "Last Selection ID",
+          "last_button_title": "Last Selection Label",
+          "last_selection_type": "Last Selection Type",
+          "channel": "Last Channel"
         },
         "booking": {
           "date": "Date",
@@ -1143,6 +1213,8 @@
       "moveOptionUp": "Move option up",
       "moveOptionDown": "Move option down",
       "buttonLabel": "Button {{number}}",
+      "buttonId": "Selection ID",
+      "buttonIdHint": "Used in routing rules. Renaming updates downstream conditions automatically.",
       "question": "Question",
       "questionPlaceholder": "What would you like to ask?",
       "saveAnswerAs": "Save answer as",

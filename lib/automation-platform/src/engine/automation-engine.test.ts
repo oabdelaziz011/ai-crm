@@ -370,4 +370,113 @@ describe("AutomationEngine", () => {
       AutomationExecutionError,
     );
   });
+
+  it("stores conversation button variables when resuming a buttons node", async () => {
+    const env = createMemoryEnvironment();
+    const trigger = await env.nodeRepository.create({ flowId: "flow-1", type: "trigger", config: {} });
+    const buttons = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: {
+        action: "send_buttons",
+        message: "Choose an option",
+        buttons: [{ id: "booking", label: "Book now" }],
+      },
+    });
+    const end = await env.nodeRepository.create({ flowId: "flow-1", type: "end", config: {} });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: trigger.id, targetNodeId: buttons.id });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: buttons.id, targetNodeId: end.id });
+
+    const waiting = await env.engine.start(createContext(), {
+      companyId: "company-1",
+      flowId: "flow-1",
+      channel: "web_chat",
+    });
+
+    assert.equal(waiting.lifecycle, "waiting_input");
+    assert.equal(waiting.variables.__waitingFor, "interactive_selection");
+    assert.equal((waiting.variables.__outbound as { kind?: string }).kind, "buttons");
+
+    const resumed = await env.engine.resume(createContext(), {
+      runId: waiting.run.id,
+      input: {
+        interactive_selection: "Book now",
+        replyId: "booking",
+        title: "Book now",
+        kind: "interactive_reply",
+      },
+    });
+
+    assert.equal(resumed.lifecycle, "completed");
+    const conversation = resumed.variables.conversation as Record<string, unknown>;
+    assert.equal(conversation.last_button_id, "booking");
+    assert.equal(conversation.last_button_title, "Book now");
+    assert.equal(conversation.last_message, "Book now");
+    assert.equal(conversation.last_selection_type, "button");
+  });
+
+  it("routes through condition nodes using conversation.last_button_id", async () => {
+    const env = createMemoryEnvironment();
+    const trigger = await env.nodeRepository.create({ flowId: "flow-1", type: "trigger", config: {} });
+    const buttons = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: {
+        action: "send_buttons",
+        message: "Choose",
+        buttons: [{ id: "booking", label: "Book now" }],
+      },
+    });
+    const condition = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "condition",
+      config: {
+        ruleSet: {
+          root: {
+            id: "root",
+            combinator: "and",
+            rules: [
+              {
+                id: "r1",
+                field: "conversation.last_button_id",
+                operator: "equals",
+                value: "booking",
+              },
+            ],
+          },
+        },
+      },
+    });
+    const endYes = await env.nodeRepository.create({ flowId: "flow-1", type: "end", config: { label: "yes" } });
+    const endNo = await env.nodeRepository.create({ flowId: "flow-1", type: "end", config: { label: "no" } });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: trigger.id, targetNodeId: buttons.id });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: buttons.id, targetNodeId: condition.id });
+    await env.edgeRepository.create({
+      flowId: "flow-1",
+      sourceNodeId: condition.id,
+      targetNodeId: endYes.id,
+      condition: { branchKey: "yes" },
+    });
+    await env.edgeRepository.create({
+      flowId: "flow-1",
+      sourceNodeId: condition.id,
+      targetNodeId: endNo.id,
+      condition: { branchKey: "no" },
+    });
+
+    const waiting = await env.engine.start(createContext(), {
+      companyId: "company-1",
+      flowId: "flow-1",
+      channel: "web_chat",
+    });
+
+    const resumed = await env.engine.resume(createContext(), {
+      runId: waiting.run.id,
+      input: { replyId: "booking", title: "Book now", kind: "interactive_reply" },
+    });
+
+    assert.equal(resumed.lifecycle, "completed");
+    assert.equal(resumed.variables.__branch, "yes");
+    assert.equal(resumed.currentNodeId, endYes.id);
+  });
 });

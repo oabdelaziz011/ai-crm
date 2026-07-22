@@ -16,6 +16,11 @@ import { validateWorkflow } from "../src/workflow-builder/core/validation/workfl
 import { validateBranching } from "../src/workflow-builder/core/validation/branch-validation";
 import { resolveBranchEdgeStyle } from "../src/workflow-builder/core/logic/branch-utils";
 import { registerBuiltInVariableProviders } from "../src/workflow-builder/core/variables/built-in-variable-providers";
+import { listAllWorkflowVariables } from "../src/workflow-builder/core/variables/variable-provider-registry";
+import { INTERACTION_VARIABLE_SUBGROUP } from "../src/workflow-builder/core/variables/interaction-variables";
+import { collectContextInteractiveOptions, collectContextInteractionTypes } from "../src/workflow-builder/core/graph/upstream-interactive-nodes";
+import { buildInteractiveOptionIdRefactorPatches } from "../src/workflow-builder/core/logic/interactive-config-refactor";
+import { validateInteractiveLogicReferences } from "../src/workflow-builder/core/validation/interactive-logic-validation";
 import { renderVariablePreview } from "../src/workflow-builder/core/variables/variable-preview";
 import { resolveVisualCategory } from "../src/workflow-builder/core/visual/category-tokens";
 
@@ -273,5 +278,113 @@ assert.deepEqual(
   ["msg-1-saved"],
 );
 console.log("  ✓ autosave remaps selection to persisted node ids");
+
+const conversationVariables = listAllWorkflowVariables().filter((entry) => entry.category === "conversation");
+assert.ok(conversationVariables.some((entry) => entry.token === "{{conversation.last_button_id}}"));
+assert.ok(conversationVariables.some((entry) => entry.token === "{{conversation.last_button_title}}"));
+assert.ok(
+  conversationVariables.every((entry) => entry.subgroup === INTERACTION_VARIABLE_SUBGROUP),
+  "conversation interaction variables are grouped under Last Interaction",
+);
+console.log("  ✓ conversation button runtime variables are selectable in condition picker");
+
+const interactiveRoutingDocument = {
+  ...baseDocument,
+  nodes: [
+    createBuilderNode("start", { x: 0, y: 0 }, "start-1"),
+    createBuilderNode("buttons", { x: 200, y: 0 }, "buttons-1"),
+    createBuilderNode("if_else", { x: 420, y: 0 }, "if-1"),
+  ],
+  edges: [
+    createEdgeFromNodes("start-1", "buttons-1"),
+    createEdgeFromNodes("buttons-1", "if-1"),
+  ],
+};
+interactiveRoutingDocument.nodes[1]!.config = {
+  message: "Choose",
+  buttons: [
+    { id: "booking", label: "Book now" },
+    { id: "prices", label: "Pricing" },
+    { id: "agent", label: "Talk to agent" },
+  ],
+};
+interactiveRoutingDocument.nodes[2]!.config = {
+  ruleSet: {
+    root: {
+      id: "root",
+      combinator: "and",
+      rules: [
+        {
+          id: "rule-1",
+          field: "conversation.last_button_id",
+          operator: "equals",
+          value: "booking",
+        },
+      ],
+    },
+  },
+};
+
+const upstreamOptions = collectContextInteractiveOptions(interactiveRoutingDocument, "if-1");
+assert.deepEqual(
+  upstreamOptions.map((option) => option.id),
+  ["booking", "prices", "agent"],
+);
+assert.deepEqual(
+  upstreamOptions.map((option) => option.label),
+  ["Book now", "Pricing", "Talk to agent"],
+);
+console.log("  ✓ condition nodes read selection values from immediate upstream interactive step");
+
+const upstreamInteractionTypes = collectContextInteractionTypes(interactiveRoutingDocument, "if-1");
+assert.deepEqual(upstreamInteractionTypes, ["button"]);
+console.log("  ✓ condition nodes read interaction types from immediate upstream interactive step");
+
+const detachedConditionDocument = {
+  ...interactiveRoutingDocument,
+  edges: interactiveRoutingDocument.edges.filter((edge) => edge.target !== "if-1"),
+};
+const fallbackInteractionTypes = collectContextInteractionTypes(detachedConditionDocument, "if-1");
+assert.deepEqual(fallbackInteractionTypes, ["button", "list", "flow", "quick_reply"]);
+console.log("  ✓ interaction type suggestions fall back to supported catalog without upstream context");
+
+const refactorPatches = buildInteractiveOptionIdRefactorPatches(
+  interactiveRoutingDocument,
+  "buttons-1",
+  "booking",
+  "book_service",
+);
+assert.equal(refactorPatches.length, 1);
+assert.equal(refactorPatches[0]?.nodeId, "if-1");
+assert.equal(
+  (refactorPatches[0]?.patch.ruleSet as { root: { rules: Array<{ value: string }> } }).root.rules[0]?.value,
+  "book_service",
+);
+console.log("  ✓ renaming interactive option ids refactors downstream condition values");
+
+const staleReferenceIssues = validateInteractiveLogicReferences(
+  interactiveRoutingDocument,
+  "if-1",
+  "if_else",
+  {
+    ruleSet: {
+      root: {
+        id: "root",
+        combinator: "and",
+        rules: [
+          {
+            id: "rule-1",
+            field: "conversation.last_button_id",
+            operator: "equals",
+            value: "missing_option",
+          },
+        ],
+      },
+    },
+  },
+);
+assert.equal(staleReferenceIssues.length, 1);
+assert.equal(staleReferenceIssues[0]?.severity, "warning");
+console.log("  ✓ stale interactive selection references produce inline validation warnings");
 
 console.log("\nAll workflow builder core tests passed.\n");

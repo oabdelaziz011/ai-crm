@@ -2,14 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { alignmentPositionUpdates, type AlignmentMode } from "../core/layout/alignment";
 import { autoLayoutWorkflow } from "../core/layout/auto-layout";
 import {
+  getLiveSelectedNodeIdsRef,
   lastKnownCanvasSelectionRef,
   readDomSelectedNodeIds,
   rememberCanvasSelection,
   resolveAlignmentSelection,
   selectionKey,
 } from "../core/canvas/canvas-selection-guard";
-import { getLiveSelectedNodeIdsRef } from "../core/canvas/canvas-selection-bridge";
 import { createInitialBuilderState } from "../core/state/builder-reducer";
+import {
+  applyPersistedSaveResult,
+} from "../core/state/persist-merge";
 import {
   canRedo,
   canUndo,
@@ -75,41 +78,6 @@ function hydrateInitialState(document: WorkflowDocument): BuilderState {
   };
 }
 
-function remapSelectionAfterSave(
-  previousNodes: WorkflowDocument["nodes"],
-  previousSelection: string[],
-  savedNodes: WorkflowDocument["nodes"],
-): string[] {
-  const idMap = new Map<string, string>();
-  previousNodes.forEach((node, index) => {
-    const savedNode = savedNodes[index];
-    if (savedNode) {
-      idMap.set(node.id, savedNode.id);
-    }
-  });
-  return previousSelection
-    .map((id) => idMap.get(id) ?? id)
-    .filter((id) => savedNodes.some((node) => node.id === id));
-}
-
-function mergePersistedState(current: HistoryState, saved: WorkflowDocument, keptSelection: string[]): HistoryState {
-  const next = createInitialBuilderState(saved);
-  return {
-    past: current.past,
-    present: {
-      ...next,
-      document: {
-        ...next.document,
-        viewport: current.present.document.viewport,
-      },
-      selectedNodeIds: keptSelection,
-      selectedEdgeIds: current.present.selectedEdgeIds,
-      saveStatus: "saved",
-    },
-    future: [],
-  };
-}
-
 export function useWorkflowBuilder(document: WorkflowDocument | null) {
   const { repository, context } = useWorkflowBuilderServices();
   const flowId = document?.flowId ?? "";
@@ -172,14 +140,7 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     dispatch({ type: "SET_SAVE_STATUS", status: "saving" });
     try {
       const saved = await repository.save(context, documentRef.current);
-      setHistory((current) => {
-        const keptSelection = remapSelectionAfterSave(
-          current.present.document.nodes,
-          current.present.selectedNodeIds,
-          saved.nodes,
-        );
-        return mergePersistedState(current, saved, keptSelection);
-      });
+      setHistory((current) => applyPersistedSaveResult(current, saved));
       return saved;
     } catch {
       dispatch({ type: "SET_SAVE_STATUS", status: "error" });
@@ -209,12 +170,10 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     try {
       const saved = await repository.publish(context, documentRef.current, releaseNotes);
       setHistory((current) => {
-        const keptSelection = remapSelectionAfterSave(
-          current.present.document.nodes,
-          current.present.selectedNodeIds,
-          saved.nodes,
-        );
-        const merged = mergePersistedState(current, saved, keptSelection);
+        const merged = applyPersistedSaveResult(current, saved);
+        if (merged.present.saveStatus === "dirty") {
+          return merged;
+        }
         return {
           ...merged,
           present: { ...merged.present, saveStatus: "published" },

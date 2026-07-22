@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { usePermissions } from "@/hooks/use-rbac";
 import { registerBuiltInWorkflowNodes } from "../core/register-built-in-nodes";
@@ -17,21 +17,44 @@ import { BuilderToolbar } from "./toolbar/builder-toolbar";
 export function WorkflowBuilderShell({
   document,
   onBack,
+  enableCanvasSyncTrace = false,
 }: {
   document: WorkflowDocument;
   onBack: () => void;
+  enableCanvasSyncTrace?: boolean;
 }) {
   const { repository, context } = useWorkflowBuilderServices();
   const { hasPermission } = usePermissions();
   const controller = useWorkflowBuilder(document);
   useWorkflowBuilderKeyboard(controller);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [TraceBoundary, setTraceBoundary] = useState<(({ children }: { children: ReactNode }) => ReactNode) | null>(
+    null,
+  );
 
   useEffect(() => {
     registerBuiltInWorkflowNodes();
     registerBuiltInVariableProviders();
     registerDefaultNodeRenderers();
   }, []);
+
+  useEffect(() => {
+    if (!enableCanvasSyncTrace) {
+      setTraceBoundary(null);
+      return;
+    }
+
+    let active = true;
+    void import("../debug/workflow-builder-canvas-sync-trace-boundary").then((module) => {
+      if (active) {
+        setTraceBoundary(() => module.WorkflowBuilderCanvasSyncTraceBoundary);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [enableCanvasSyncTrace]);
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -51,26 +74,32 @@ export function WorkflowBuilderShell({
     onBack();
   };
 
+  const builderSurface = (
+    <>
+      <BuilderToolbar controller={controller} onBack={handleBack} />
+      <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
+        <CollapsiblePropertiesPanel
+          controller={controller}
+          document={document}
+          repository={repository}
+          context={context}
+          canRollback={hasPermission("automation.rollback")}
+          onRollback={async (versionNumber) => {
+            await controller.rollback(versionNumber);
+          }}
+        />
+        <div className="min-h-0 min-w-0 flex-1">
+          <WorkflowCanvas controller={controller} />
+        </div>
+        <CollapsibleNodePalette />
+      </div>
+    </>
+  );
+
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 z-20 flex flex-col gap-4 bg-background p-4 lg:start-64">
       <ReactFlowProvider>
-        <BuilderToolbar controller={controller} onBack={handleBack} />
-        <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
-          <CollapsiblePropertiesPanel
-            controller={controller}
-            document={document}
-            repository={repository}
-            context={context}
-            canRollback={hasPermission("automation.rollback")}
-            onRollback={async (versionNumber) => {
-              await controller.rollback(versionNumber);
-            }}
-          />
-          <div className="min-h-0 min-w-0 flex-1">
-            <WorkflowCanvas controller={controller} />
-          </div>
-          <CollapsibleNodePalette />
-        </div>
+        {TraceBoundary ? <TraceBoundary>{builderSurface}</TraceBoundary> : builderSurface}
       </ReactFlowProvider>
       <UnsavedChangesDialog
         open={leaveOpen}

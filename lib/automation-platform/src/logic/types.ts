@@ -5,6 +5,8 @@ export const LOGIC_OPERATORS = [
   "not_contains",
   "starts_with",
   "ends_with",
+  "exists",
+  "does_not_exist",
   "is_empty",
   "is_not_empty",
   "greater_than",

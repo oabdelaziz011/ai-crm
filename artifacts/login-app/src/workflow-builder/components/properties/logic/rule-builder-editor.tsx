@@ -13,11 +13,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { normalizeVariableField } from "../../../core/logic/branch-utils";
+import { resolveInteractionFieldLabel } from "../../../core/variables/interaction-variables";
+import type { WorkflowDocument } from "../../../core/types";
 import { VariablePicker } from "../../variables/variable-picker";
+import { useWorkflowBuilderI18n } from "../../../hooks/use-workflow-builder-i18n";
+import { InteractionValueField } from "./interaction-value-field";
+import { InteractiveClauseWarning, useInteractiveClauseWarnings } from "./interactive-clause-warning";
 
 type RuleBuilderEditorProps = {
   ruleSet: { root: RuleGroup };
   onChange: (ruleSet: { root: RuleGroup }) => void;
+  nodeId?: string;
+  document?: WorkflowDocument;
 };
 
 function createClause(): RuleClause {
@@ -45,14 +52,28 @@ function RuleClauseEditor({
   clause,
   onChange,
   onRemove,
+  nodeId,
+  document,
 }: {
   clause: RuleClause;
   onChange: (next: RuleClause) => void;
   onRemove: () => void;
+  nodeId?: string;
+  document?: WorkflowDocument;
 }) {
   const { t } = useTranslation("common");
+  const { variableFieldLabel } = useWorkflowBuilderI18n();
   const operators = useMemo(() => listOperators(), []);
   const operator = operators.find((item) => item.id === clause.operator) ?? operators[0];
+  const warnings = useInteractiveClauseWarnings(document, clause);
+
+  const fieldLabel = useMemo(() => {
+    const normalized = clause.field.replace(/^\{\{|\}\}$/g, "").trim();
+    const category = normalized.split(".")[0] ?? "conversation";
+    return resolveInteractionFieldLabel(clause.field, (path) =>
+      variableFieldLabel(category, path, clause.field),
+    );
+  }, [clause.field, variableFieldLabel]);
 
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4 shadow-sm">
@@ -68,7 +89,7 @@ function RuleClauseEditor({
         <Label className="text-sm">{t("workflowBuilder.logic.field")}</Label>
         <div className="flex items-center gap-2">
           <Input
-            value={clause.field}
+            value={fieldLabel}
             readOnly
             className="rounded-xl bg-background/80"
             placeholder={t("workflowBuilder.logic.chooseField")}
@@ -77,6 +98,7 @@ function RuleClauseEditor({
             onSelect={(variable) => onChange({ ...clause, field: normalizeVariableField(variable.token) })}
           />
         </div>
+        <p className="text-[11px] text-muted-foreground">{clause.field}</p>
       </div>
       <div className="space-y-2">
         <Label className="text-sm">{t("workflowBuilder.logic.operator")}</Label>
@@ -96,10 +118,12 @@ function RuleClauseEditor({
       {operator?.requiresValue ? (
         <div className="space-y-2">
           <Label className="text-sm">{t("workflowBuilder.logic.value")}</Label>
-          <Input
+          <InteractionValueField
+            field={clause.field}
             value={String(clause.value ?? "")}
-            onChange={(event) => onChange({ ...clause, value: event.target.value })}
-            className="rounded-xl bg-background/80"
+            nodeId={nodeId}
+            document={document}
+            onChange={(value) => onChange({ ...clause, value })}
           />
         </div>
       ) : null}
@@ -113,6 +137,7 @@ function RuleClauseEditor({
           />
         </div>
       ) : null}
+      <InteractiveClauseWarning messages={warnings} />
     </div>
   );
 }
@@ -121,10 +146,14 @@ function RuleGroupEditor({
   group,
   onChange,
   depth = 0,
+  nodeId,
+  document,
 }: {
   group: RuleGroup;
   onChange: (next: RuleGroup) => void;
   depth?: number;
+  nodeId?: string;
+  document?: WorkflowDocument;
 }) {
   const { t } = useTranslation("common");
   const updateRule = (index: number, next: RuleClause | RuleGroup) => {
@@ -180,14 +209,26 @@ function RuleGroupEditor({
                   {t("workflowBuilder.logic.nestedGroup")}
                 </summary>
                 <div className="pt-2">
-                  <RuleGroupEditor group={entry} onChange={(next) => updateRule(index, next)} depth={depth + 1} />
+                  <RuleGroupEditor
+                    group={entry}
+                    onChange={(next) => updateRule(index, next)}
+                    depth={depth + 1}
+                    nodeId={nodeId}
+                    document={document}
+                  />
                   <Button type="button" variant="ghost" size="sm" className="mt-2 rounded-xl" onClick={() => removeRule(index)}>
                     {t("workflowBuilder.logic.removeGroup")}
                   </Button>
                 </div>
               </details>
             ) : (
-              <RuleClauseEditor clause={entry} onChange={(next) => updateRule(index, next)} onRemove={() => removeRule(index)} />
+              <RuleClauseEditor
+                clause={entry}
+                onChange={(next) => updateRule(index, next)}
+                onRemove={() => removeRule(index)}
+                nodeId={nodeId}
+                document={document}
+              />
             )}
           </div>
         ))}
@@ -196,11 +237,13 @@ function RuleGroupEditor({
   );
 }
 
-export function RuleBuilderEditor({ ruleSet, onChange }: RuleBuilderEditorProps) {
+export function RuleBuilderEditor({ ruleSet, onChange, nodeId, document }: RuleBuilderEditorProps) {
   return (
     <RuleGroupEditor
       group={ruleSet.root}
       onChange={(root) => onChange({ root })}
+      nodeId={nodeId}
+      document={document}
     />
   );
 }

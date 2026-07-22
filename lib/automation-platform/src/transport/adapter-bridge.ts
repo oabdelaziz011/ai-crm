@@ -51,6 +51,46 @@ export class TransportChannelAdapterBridge {
   }
 
   toOutboundMessage(message: NormalizedOutboundMessage): OutboundMessage {
+    const payload = message.payload ?? {};
+    const kind = typeof payload.kind === "string" ? payload.kind : "text";
+
+    if (kind === "buttons" && typeof payload.text === "string" && Array.isArray(payload.buttons)) {
+      return {
+        kind: "buttons",
+        companyId: message.companyId,
+        channel: message.channel,
+        externalUserId: message.externalUserId,
+        sessionId: message.sessionId,
+        text: payload.text,
+        buttons: payload.buttons as Array<{ id: string; label: string }>,
+        metadata: payload,
+      };
+    }
+
+    if (
+      kind === "list" &&
+      typeof payload.title === "string" &&
+      typeof payload.body === "string" &&
+      typeof payload.buttonLabel === "string" &&
+      Array.isArray(payload.sections)
+    ) {
+      return {
+        kind: "list",
+        companyId: message.companyId,
+        channel: message.channel,
+        externalUserId: message.externalUserId,
+        sessionId: message.sessionId,
+        title: payload.title,
+        body: payload.body,
+        buttonLabel: payload.buttonLabel,
+        sections: payload.sections as Array<{
+          title: string;
+          rows: Array<{ id: string; title: string; description?: string }>;
+        }>,
+        metadata: payload,
+      };
+    }
+
     return {
       kind: "text",
       companyId: message.companyId,
@@ -58,7 +98,7 @@ export class TransportChannelAdapterBridge {
       externalUserId: message.externalUserId,
       sessionId: message.sessionId,
       text: message.text,
-      metadata: message.payload,
+      metadata: payload,
     };
   }
 }

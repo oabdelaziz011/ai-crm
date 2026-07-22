@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type SetStateAction } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -7,9 +7,11 @@ import {
   ReactFlow,
   SelectionMode,
   applyEdgeChanges,
+  applyNodeChanges,
   useNodesState,
   useReactFlow,
   type Connection,
+  type Node,
   type NodeChange,
   type OnConnect,
   type OnSelectionChangeParams,
@@ -17,19 +19,27 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { canConnect } from "../../core/connection-rules";
-import { rememberCanvasSelection, selectionKey } from "../../core/canvas/canvas-selection-guard";
-import { getLiveSelectedNodeIdsRef } from "../../core/canvas/canvas-selection-bridge";
 import {
-  documentNodeSignature,
-  documentToFlowEdges,
-  documentToFlowNodes,
-} from "../../core/canvas/flow-document-bridge";
+  getLiveSelectedNodeIdsRef,
+  rememberCanvasSelection,
+  selectionKey,
+} from "../../core/canvas/canvas-selection-guard";
+import { documentToFlowEdges, documentToFlowNodes } from "../../core/canvas/flow-document-bridge";
 import { listNodeRenderers, registerDefaultNodeRenderers } from "../../core/registry/node-renderer-registry";
 import { createEdgeFromNodes } from "../../core/state/builder-reducer";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import type { BuilderNodeType } from "../../core/types";
 import { CanvasEmptyState } from "./canvas-empty-state";
-import { mergeFlowNodesIntoCurrent } from "./canvas-node-sync";
+import {
+  documentProjectionSignature,
+  extractDragCommitPositions,
+  filterControlledMirrorNodeChanges,
+  filterRuntimeApplyNodeChanges,
+  PALETTE_DROP_NODE_ANCHOR,
+  seedControlledNodesFromDocument,
+  type DragPositionChange,
+} from "./canvas-node-sync";
+import { useCanvasSyncTrace } from "../../debug/canvas-sync-trace-context";
 import { quickAddPosition, type WorkflowNodeData } from "../nodes/workflow-node-card";
 import { useWorkflowBuilderI18n } from "@/workflow-builder/hooks/use-workflow-builder-i18n";
 import { useCanvasContainerSize } from "../../hooks/use-canvas-container-size";
@@ -57,7 +67,8 @@ type WorkflowCanvasInnerProps = WorkflowCanvasProps & {
 };
 
 export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanvasInnerProps) {
-  const { fitView, getNodes, getViewport } = useReactFlow();
+  const { fitView, getNodes, getViewport, screenToFlowPosition } = useReactFlow();
+  const syncTrace = useCanvasSyncTrace();
   const { nodeText, branchLabel } = useWorkflowBuilderI18n();
   const dispatchRef = useRef(controller.dispatch);
   dispatchRef.current = controller.dispatch;
@@ -99,23 +110,97 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
   const documentEdgesRef = useRef(document.edges);
   documentEdgesRef.current = document.edges;
 
-  const nodeSignature = useMemo(() => documentNodeSignature(document.nodes), [document.nodes]);
-
   const viewportReadyRef = useRef(false);
-  const userDraggingRef = useRef(false);
 
   const flowNodes = useMemo(
     () => documentToFlowNodes(document.nodes, selectedNodeIds, nodeText, onQuickAddStable),
-    [document.nodes, selectedNodeIds, nodeText, onQuickAddStable, nodeSignature],
+    [document.nodes, selectedNodeIds, nodeText, onQuickAddStable],
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+  const projectionSignature = useMemo(() => documentProjectionSignature(flowNodes), [flowNodes]);
+
+  // Mount bootstrap uses seed — not a direct documentToFlowNodes → setNodes bypass.
+  const [nodes, setNodesInternal] = useNodesState<Node<WorkflowNodeData>[]>(() =>
+    seedControlledNodesFromDocument([], flowNodes),
+  );
   const nodeTypes = useMemo(() => listNodeRenderers(), []);
 
+  const setNodesMetaRef = useRef<{ caller: string; reason: string } | null>(null);
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  const prevNodesPropRef = useRef(nodes);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+
+  const setNodes = useCallback(
+    (updater: SetStateAction<Node<WorkflowNodeData>[]>) => {
+      setNodesInternal((current) => {
+        const meta = setNodesMetaRef.current ?? { caller: "setNodes.unlabeled", reason: "no caller metadata" };
+        setNodesMetaRef.current = null;
+        const after =
+          typeof updater === "function"
+            ? (updater as (current: Node<WorkflowNodeData>[]) => Node<WorkflowNodeData>[])(current)
+            : updater;
+        syncTrace?.setNodes(meta.caller, meta.reason, current, after);
+        return after;
+      });
+    },
+    [setNodesInternal, syncTrace],
+  );
+
+  const callSetNodes = useCallback(
+    (caller: string, reason: string, updater: SetStateAction<Node<WorkflowNodeData>[]>) => {
+      setNodesMetaRef.current = { caller, reason };
+      setNodes(updater);
+    },
+    [setNodes],
+  );
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      syncTrace?.onNodesChange(
+        "workflow-canvas.tsx:onNodesChange",
+        "applyNodeChanges",
+        changes,
+        nodesRef.current.length,
+      );
+      callSetNodes("onNodesChange→applyNodeChanges", `batchSize=${changes.length}`, (current) =>
+        applyNodeChanges(changes, current),
+      );
+    },
+    [callSetNodes, syncTrace],
+  );
+
+  const flowNodesRef = useRef(flowNodes);
+  flowNodesRef.current = flowNodes;
+
+  useLayoutEffect(() => {
+    if (!syncTrace) return;
+    syncTrace.nodesPropRender(renderCountRef.current, prevNodesPropRef.current, nodes);
+    if (prevNodesPropRef.current !== nodes) {
+      syncTrace.storeUpdaterProp(prevNodesPropRef.current, nodes, { render: renderCountRef.current });
+    }
+    prevNodesPropRef.current = nodes;
+  });
+
+  // Commit 6 — sole document → controlled reconciliation path (bounded by projectionSignature).
   useEffect(() => {
-    if (userDraggingRef.current) return;
-    setNodes((current) => mergeFlowNodesIntoCurrent(current, flowNodes));
-  }, [flowNodes, setNodes]);
+    syncTrace?.syncEffect("documentProjectionSignature changed", nodesRef.current.length, false, {
+      projectionSignature,
+    });
+    callSetNodes("syncEffect→seedControlledNodesFromDocument", "documentProjectionSignature changed", (current) => {
+      const seeded = seedControlledNodesFromDocument(current, flowNodesRef.current);
+      return syncTrace
+        ? syncTrace.seedControlledNodesFromDocument(
+            "syncEffect",
+            "seedControlledNodesFromDocument",
+            current,
+            flowNodesRef.current,
+            seeded,
+          )
+        : seeded;
+    });
+  }, [projectionSignature, callSetNodes, syncTrace]);
 
   const edges = useMemo(
     () => documentToFlowEdges(document.nodes, document.edges, (label) => localizeDefaultBranchLabel(label, branchLabel)),
@@ -149,6 +234,8 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      syncTrace?.handleNodesChange("ReactFlow→handleNodesChange entry", changes, nodesRef.current.length);
+
       const removedNodeIds = changes
         .filter((change) => change.type === "remove")
         .map((change) => change.id);
@@ -157,34 +244,44 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
         return;
       }
 
-      onNodesChange(changes);
-
       const positionChanges = changes.filter((change) => change.type === "position");
-      if (positionChanges.length === 0) return;
+      const mirrorChanges = filterControlledMirrorNodeChanges(changes);
+      if (mirrorChanges.length > 0) {
+        syncTrace?.handleNodesChange("mirrorChanges→onNodesChange", mirrorChanges, nodesRef.current.length, {
+          allowList: "select|dimensions|position",
+        });
+        onNodesChange(mirrorChanges);
 
-      const dragging = positionChanges.some((change) => change.dragging);
-      if (dragging) {
-        userDraggingRef.current = true;
-        return;
+        const selectChanges = filterRuntimeApplyNodeChanges(mirrorChanges);
+        if (selectChanges.length > 0) {
+          const runtimeSelectedIds = applyNodeChanges(selectChanges, nodesRef.current)
+            .filter((node) => node.selected)
+            .map((node) => node.id);
+          const builderSelectedIds = builderSelectedRef.current;
+          if (selectionKey(runtimeSelectedIds) !== selectionKey(builderSelectedIds)) {
+            dispatchRef.current({ type: "SELECT_NODES", nodeIds: runtimeSelectedIds });
+          }
+        }
       }
 
-      if (!userDraggingRef.current) return;
-
-      userDraggingRef.current = false;
-
-      const positions = positionChanges.flatMap((change) => {
-        if (change.type !== "position" || !change.position) return [];
-        return [{ id: change.id, x: change.position.x, y: change.position.y }];
-      });
-      if (positions.length === 0) return;
-
-      dispatchRef.current({ type: "UPDATE_NODE_POSITIONS", positions });
+      const commitPositions = extractDragCommitPositions(positionChanges as DragPositionChange[]);
+      if (commitPositions.length > 0) {
+        dispatchRef.current({ type: "UPDATE_NODE_POSITIONS", positions: commitPositions });
+      }
     },
-    [onNodesChange],
+    [onNodesChange, syncTrace],
   );
+
+  useEffect(() => {
+    syncTrace?.registerCanvasHandles({
+      handleNodesChange,
+      getStoreNodes: () => getNodes() as Node<WorkflowNodeData>[],
+    });
+  }, [getNodes, handleNodesChange, syncTrace]);
 
   const onSelectionChange = useCallback(
     ({ nodes }: OnSelectionChangeParams) => {
+      // Semantic commit only — runtime `nodes[].selected` is synced via applyNodeChanges(select).
       const rfSelectedIds = nodes.map((node) => node.id);
       const builderSelectedIds = builderSelectedRef.current;
 
@@ -258,13 +355,13 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
       event.preventDefault();
       const type = event.dataTransfer.getData("application/workflow-node") as BuilderNodeType;
       if (!type) return;
-      const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      const flowPoint = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       controller.addNode(type, {
-        x: event.clientX - bounds.left - 120,
-        y: event.clientY - bounds.top - 48,
+        x: flowPoint.x - PALETTE_DROP_NODE_ANCHOR.x,
+        y: flowPoint.y - PALETTE_DROP_NODE_ANCHOR.y,
       });
     },
-    [controller],
+    [controller, screenToFlowPosition],
   );
 
   return (

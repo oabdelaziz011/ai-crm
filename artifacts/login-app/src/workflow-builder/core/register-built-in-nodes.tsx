@@ -21,6 +21,26 @@ import { registerAIWorkflowNodes } from "./register-ai-workflow-nodes";
 import { registerAIExtractWorkflowNode } from "./register-ai-extract-node";
 import { registerAIDecisionWorkflowNode } from "./register-ai-decision-node";
 import { registerAIKnowledgeSearchWorkflowNode } from "./register-ai-knowledge-search-node";
+import { CreateBookingPropertyEditor } from "../components/properties/crm/create-booking-property-editor";
+import { FindCustomerPropertyEditor } from "../components/properties/crm/find-customer-property-editor";
+import {
+  createDefaultCreateBookingConfig,
+  normalizeCreateBookingNodeConfig,
+  validateCreateBookingConfig,
+} from "./crm/create-booking-config";
+import {
+  createDefaultFindCustomerNodeConfig,
+  normalizeFindCustomerNodeConfig,
+  validateFindCustomerConfig,
+} from "./crm/find-customer-config";
+import {
+  createDefaultAskQuestionConfig,
+  normalizeAskQuestionNodeConfig,
+} from "./conversation/ask-question-config";
+import {
+  createDefaultWaitForReplyConfig,
+  normalizeWaitForReplyNodeConfig,
+} from "./conversation/wait-for-reply-config";
 
 function withBuilderType(builderType: string, config: Record<string, unknown>) {
   return { builderType, ...config };
@@ -86,13 +106,7 @@ export function registerBuiltInWorkflowNodes(): void {
     icon: "HelpCircle",
     accentClass: "from-violet-500/20 to-violet-500/5 border-violet-500/30",
     searchKeywords: ["question", "ask", "customer", "name", "input"],
-    defaultConfig: {
-      question: "What is your name?",
-      saveAs: "customer_name",
-      required: true,
-      placeholder: "Type your name",
-      validationMessage: "Please enter your name to continue.",
-    },
+    defaultConfig: createDefaultAskQuestionConfig(),
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => <QuestionFieldEditor {...props} />,
@@ -100,13 +114,16 @@ export function registerBuiltInWorkflowNodes(): void {
       ...requiredTextIssue("question", "question", nodeId, config),
       ...requiredTextIssue("saveAs", "saveAs", nodeId, config),
     ],
-    toEngineConfig: (config) =>
-      withBuilderType("ask_question", {
+    toEngineConfig: (config) => {
+      const normalized = normalizeAskQuestionNodeConfig(config);
+      return withBuilderType("ask_question", {
         action: "wait_for_input",
-        prompt: config.question,
-        inputKey: config.saveAs,
-      }),
-    fromEngineConfig: matchBuilderType("ask_question"),
+        prompt: normalized.question,
+        inputKey: normalized.saveAs,
+      });
+    },
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "ask_question" ? normalizeAskQuestionNodeConfig({ ...config }) : null,
   });
 
   registerWorkflowNode({
@@ -118,18 +135,21 @@ export function registerBuiltInWorkflowNodes(): void {
     icon: "MessageCircle",
     accentClass: "from-indigo-500/20 to-indigo-500/5 border-indigo-500/30",
     searchKeywords: ["wait", "reply", "pause", "conversation"],
-    defaultConfig: { saveAs: "last_reply", prompt: "" },
+    defaultConfig: createDefaultWaitForReplyConfig(),
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => <WaitForReplyEditor {...props} />,
     validate: (config, nodeId) => requiredTextIssue("saveAs", "replySaveAs", nodeId, config),
-    toEngineConfig: (config) =>
-      withBuilderType("wait_for_reply", {
+    toEngineConfig: (config) => {
+      const normalized = normalizeWaitForReplyNodeConfig(config);
+      return withBuilderType("wait_for_reply", {
         action: "wait_for_reply",
-        prompt: config.prompt,
-        inputKey: config.saveAs,
-      }),
-    fromEngineConfig: matchBuilderType("wait_for_reply"),
+        prompt: normalized.prompt,
+        inputKey: normalized.saveAs,
+      });
+    },
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "wait_for_reply" ? normalizeWaitForReplyNodeConfig({ ...config }) : null,
   });
 
   registerWorkflowNode({
@@ -241,6 +261,8 @@ export function registerBuiltInWorkflowNodes(): void {
       <RuleBuilderEditor
         ruleSet={(props.config.ruleSet as { root: ReturnType<typeof createDefaultIfElseRuleGroup> }) ?? { root: createDefaultIfElseRuleGroup() }}
         onChange={(ruleSet) => props.onChange({ ruleSet })}
+        nodeId={props.context?.nodeId}
+        document={props.context?.document}
       />
     ),
     validate: () => [],
@@ -394,6 +416,28 @@ export function registerBuiltInWorkflowNodes(): void {
   });
 
   registerWorkflowNode({
+    id: "find_customer",
+    displayName: "Find Customer",
+    description: "Look up a customer by phone, email, or customer ID.",
+    category: "crm",
+    engineType: "action",
+    icon: "UserSearch",
+    accentClass: "from-violet-500/20 to-violet-500/5 border-violet-500/30",
+    searchKeywords: ["find customer", "lookup customer", "customer", "crm", "search"],
+    defaultConfig: createDefaultFindCustomerNodeConfig(),
+    allowIncoming: true,
+    allowOutgoing: true,
+    PropertyEditor: FindCustomerPropertyEditor,
+    validate: validateFindCustomerConfig,
+    toEngineConfig: (config) =>
+      withBuilderType("find_customer", { action: "find_customer", ...normalizeFindCustomerNodeConfig(config) }),
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "find_customer"
+        ? normalizeFindCustomerNodeConfig({ ...config })
+        : null,
+  });
+
+  registerWorkflowNode({
     id: "create_booking",
     displayName: "Create Booking",
     description: "Create an appointment booking.",
@@ -401,21 +445,17 @@ export function registerBuiltInWorkflowNodes(): void {
     engineType: "action",
     icon: "CalendarPlus",
     accentClass: "from-indigo-500/20 to-indigo-500/5 border-indigo-500/30",
-    defaultConfig: { serviceName: "Consultation", dateField: "booking_date" },
+    defaultConfig: createDefaultCreateBookingConfig(),
     allowIncoming: true,
     allowOutgoing: true,
-    PropertyEditor: (props) => (
-      <div className="space-y-4">
-        <TextFieldEditor {...props} labelKey="serviceName" field="serviceName" />
-        <TextFieldEditor {...props} labelKey="dateField" field="dateField" placeholder="booking_date" />
-      </div>
-    ),
-    validate: (config, nodeId) => [
-      ...requiredTextIssue("serviceName", "serviceName", nodeId, config),
-      ...requiredTextIssue("dateField", "dateField", nodeId, config),
-    ],
-    toEngineConfig: (config) => withBuilderType("create_booking", { action: "create_booking", ...config }),
-    fromEngineConfig: matchBuilderType("create_booking"),
+    PropertyEditor: CreateBookingPropertyEditor,
+    validate: validateCreateBookingConfig,
+    toEngineConfig: (config) =>
+      withBuilderType("create_booking", { action: "create_booking", ...normalizeCreateBookingNodeConfig(config) }),
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "create_booking"
+        ? normalizeCreateBookingNodeConfig({ ...config })
+        : null,
   });
 
   registerAIWorkflowNodes();

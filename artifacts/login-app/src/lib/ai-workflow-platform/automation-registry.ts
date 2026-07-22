@@ -1,9 +1,10 @@
 import {
   AutomationNodeRegistry,
-  actionNodeHandler,
   createBuiltInAutomationNodeHandlers,
+  type AutomationActionDeps,
   type AutomationNodeHandler,
 } from "@workspace/automation-platform";
+import { actionNodeHandler } from "@workspace/automation-platform";
 import {
   createAIWorkflowRuntimeBridge,
   wrapAutomationActionHandlerWithAIWorkflow,
@@ -14,8 +15,9 @@ type AIWorkflowRuntimeBridge = ReturnType<typeof createAIWorkflowRuntimeBridge>;
 
 export function createAutomationRegistryWithAIWorkflow(
   bridge: AIWorkflowRuntimeBridge,
+  deps?: AutomationActionDeps,
 ): AutomationNodeRegistry {
-  const handlers = createBuiltInAutomationNodeHandlers().map((handler) => {
+  const handlers = createBuiltInAutomationNodeHandlers(deps).map((handler) => {
     if (handler.type !== "action") return handler;
     return wrapAutomationActionHandlerWithAIWorkflow(
       handler as Extract<AutomationNodeHandler, { type: "action" }>,

@@ -1,4 +1,4 @@
-export type VariableCategory = "customer" | "conversation" | "booking" | "company" | "workflow" | "system" | "ai";
+export type VariableCategory = "customer" | "conversation" | "lookup" | "booking" | "company" | "workflow" | "system" | "ai";
 
 export type WorkflowVariable = {
   id: string;
@@ -7,6 +7,8 @@ export type WorkflowVariable = {
   token: string;
   description?: string;
   previewValue?: string;
+  /** Nested picker group, e.g. "last_interaction" under Conversation. */
+  subgroup?: string;
 };
 
 export type VariableProvider = {
@@ -38,4 +40,13 @@ export function listAllWorkflowVariables(): WorkflowVariable[] {
 
 export function findWorkflowVariable(token: string): WorkflowVariable | undefined {
   return listAllWorkflowVariables().find((variable) => variable.token === token);
+}
+
+export function findWorkflowVariableByField(field: string): WorkflowVariable | undefined {
+  const normalized = field.replace(/^\{\{|\}\}$/g, "").trim();
+  return listAllWorkflowVariables().find((variable) => normalizeVariableField(variable.token) === normalized);
+}
+
+function normalizeVariableField(token: string): string {
+  return token.replace(/^\{\{|\}\}$/g, "").trim();
 }

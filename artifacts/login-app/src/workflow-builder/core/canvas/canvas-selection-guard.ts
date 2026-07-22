@@ -1,9 +1,22 @@
+/**
+ * Selection guard utilities for the workflow canvas.
+ *
+ * Alignment and toolbar actions read selection from multiple sources because toolbar
+ * focus can clear React Flow's transient selection before align runs. After Sprint 5.6,
+ * `builderSelected` and `liveSelected` (controlled runtime mirror) are authoritative;
+ * `lastKnown` and `domSelected` remain as focus-loss fallbacks only.
+ */
 export function selectionKey(ids: readonly string[]): string {
   return [...ids].sort().join("|");
 }
 
 /** Last non-empty canvas selection; survives toolbar focus loss. */
 export const lastKnownCanvasSelectionRef: { current: string[] } = { current: [] };
+
+/** Live controlled-node selection mirror; set by WorkflowCanvasInner from getNodes(). */
+export const getLiveSelectedNodeIdsRef: { current: () => string[] } = {
+  current: () => [],
+};
 
 export function readDomSelectedNodeIds(): string[] {
   if (typeof window === "undefined") return [];

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx/esm --test src/state-machine/transitions.test.ts"
+    "test": "node --import tsx/esm --test src/state-machine/transitions.test.ts src/display/parse-conversation-message-view.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2"

@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import type { ConversationMessageRecord, ConversationRecord } from "@workspace/ai-conversation";
-import { Loader2, Send, UserCheck, UserMinus, XCircle } from "lucide-react";
+import { Loader2, Send, User, UserCheck, UserMinus, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/rbac/permission-guard";
 import { DashboardCard, DashboardErrorBanner } from "@/components/dashboard/ui";
 import { useAuth } from "@/context/auth-context";
+import { ConversationMessageBubble } from "@/components/conversations/messages/conversation-message-bubble";
+import { InboxChannelBadge } from "@/components/conversations/inbox-channel-badge";
+import type { Customer } from "@/lib/types";
 
 type ConversationThreadPanelProps = {
   conversation: ConversationRecord | null;
+  customer?: Pick<Customer, "name" | "phone"> | null;
   messages: ConversationMessageRecord[];
   isLoading: boolean;
   isSending: boolean;
@@ -18,6 +22,7 @@ type ConversationThreadPanelProps = {
   onAssign: () => void;
   onRelease: () => void;
   onClose: () => void;
+  onViewCustomer?: () => void;
   actionsPending: boolean;
 };
 
@@ -29,6 +34,7 @@ function messageRole(messageType: string): "customer" | "agent" | "system" {
 
 export function ConversationThreadPanel({
   conversation,
+  customer,
   messages,
   isLoading,
   isSending,
@@ -37,6 +43,7 @@ export function ConversationThreadPanel({
   onAssign,
   onRelease,
   onClose,
+  onViewCustomer,
   actionsPending,
 }: ConversationThreadPanelProps) {
   const { t } = useTranslation("common");
@@ -58,17 +65,38 @@ export function ConversationThreadPanel({
   };
 
   const assignedToMe = conversation.assigned_user_id === user?.id;
+  const threadTitle = customer?.name?.trim() || t("dashboard.inbox.unknownContact");
+  const threadSubtitleParts = [
+    customer?.phone?.trim() || null,
+    conversation.state.replace(/_/g, " "),
+  ].filter(Boolean);
 
   return (
     <DashboardCard className="h-full flex flex-col overflow-hidden">
       <div className="p-4 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-semibold">{conversation.conversation_number}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-semibold">{threadTitle}</h2>
+            <InboxChannelBadge channelType={conversation.channel_type} />
+          </div>
           <p className="text-xs text-muted-foreground capitalize mt-0.5">
-            {conversation.channel_type.replace(/_/g, " ")} · {conversation.state.replace(/_/g, " ")}
+            {threadSubtitleParts.join(" · ")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {conversation.customer_id && onViewCustomer && (
+            <Can permission="customers.view">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/10 gap-1.5"
+                onClick={onViewCustomer}
+              >
+                <User className="w-3.5 h-3.5" />
+                {t("dashboard.inbox.viewCustomer")}
+              </Button>
+            </Can>
+          )}
           <Can permission="ai.conversations.takeover">
             <Button
               size="sm"
@@ -126,7 +154,7 @@ export function ConversationThreadPanel({
             return (
               <div key={message.id} className={`flex flex-col ${align}`}>
                 <div className={`max-w-[85%] rounded-xl border px-3 py-2 text-sm ${bubble}`}>
-                  {message.content}
+                  <ConversationMessageBubble message={message} />
                 </div>
                 <span className="text-[10px] text-muted-foreground mt-1 px-1">
                   {format(new Date(message.created_at), "PPp")}

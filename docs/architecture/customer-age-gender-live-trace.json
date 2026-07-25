@@ -1,0 +1,1499 @@
+{
+  "generatedAt": "2026-07-25T03:22:54.799Z",
+  "flowId": "aef7c4ab-513a-4b64-a700-2be6cf51dafc",
+  "steps": {
+    "latestInboundMessages": [
+      {
+        "id": "357b7183-64ee-43a7-b86b-d5010a7114a0",
+        "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "created_at": "2026-07-25T03:19:08.463287+00:00",
+        "contentPreview": "\"55\""
+      },
+      {
+        "id": "8834ef81-aac9-449b-bd59-7cd0ff923fb2",
+        "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "created_at": "2026-07-25T03:19:03.504534+00:00",
+        "contentPreview": "\"55\""
+      },
+      {
+        "id": "3130dbc5-eaaf-4104-a616-1e06c75ee300",
+        "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "created_at": "2026-07-25T03:18:52.411353+00:00",
+        "contentPreview": "\"أنثي\""
+      },
+      {
+        "id": "b0930790-f7af-4482-9b54-e36bc07491a1",
+        "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "created_at": "2026-07-25T03:18:40.434368+00:00",
+        "contentPreview": "\"Mona Elattar\""
+      },
+      {
+        "id": "d1d5fb2f-ae0b-4691-aef6-bfcf51774999",
+        "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "created_at": "2026-07-25T03:18:24.638382+00:00",
+        "contentPreview": "\"01023252501\""
+      }
+    ],
+    "latestWhatsAppConversations": [
+      {
+        "id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "conversation_number": "CNV-000010",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T03:19:08.463287+00:00",
+        "created_at": "2026-07-24T17:57:06.163466+00:00"
+      },
+      {
+        "id": "9b1b2e8f-f6ae-4f4d-9897-cc2a910509ac",
+        "conversation_number": "CNV-000007",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T03:15:23.024731+00:00",
+        "created_at": "2026-07-23T20:01:43.146456+00:00"
+      },
+      {
+        "id": "1338f124-6db1-45e7-be35-ec768fb2f47f",
+        "conversation_number": "CNV-000027",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:50:11.372451+00:00",
+        "created_at": "2026-07-25T00:49:42.789006+00:00"
+      },
+      {
+        "id": "cc108e3f-3651-4796-893f-8c184b9348db",
+        "conversation_number": "CNV-000026",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:23:00.474107+00:00",
+        "created_at": "2026-07-25T00:22:41.376027+00:00"
+      },
+      {
+        "id": "2c18db4b-3d13-4087-a3cf-db545f04cbfc",
+        "conversation_number": "CNV-000025",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:22:38.710779+00:00",
+        "created_at": "2026-07-25T00:22:04.963366+00:00"
+      },
+      {
+        "id": "236f3fb9-2814-4723-975a-a5ac506786b7",
+        "conversation_number": "CNV-000024",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:20:17.661179+00:00",
+        "created_at": "2026-07-25T00:19:50.202485+00:00"
+      },
+      {
+        "id": "35a6c1cf-5e39-4906-a6d5-d520dd89c0ae",
+        "conversation_number": "CNV-000023",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:19:48.062627+00:00",
+        "created_at": "2026-07-25T00:19:28.399909+00:00"
+      },
+      {
+        "id": "1c99ce72-d1c9-45db-840b-e215a4e8c9ba",
+        "conversation_number": "CNV-000022",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:08:12.515482+00:00",
+        "created_at": "2026-07-25T00:07:58.152601+00:00"
+      },
+      {
+        "id": "cab98a18-5d43-443b-8568-108e63c7493c",
+        "conversation_number": "CNV-000021",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:07:53.577993+00:00",
+        "created_at": "2026-07-25T00:07:42.400082+00:00"
+      },
+      {
+        "id": "cef3c301-9b48-4a20-b7fd-1caf0bbaba35",
+        "conversation_number": "CNV-000020",
+        "channel_type": "whatsapp",
+        "customer_id": null,
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "external_thread_id": null,
+        "last_message_at": "2026-07-25T00:06:44.153209+00:00",
+        "created_at": "2026-07-25T00:06:26.042915+00:00"
+      }
+    ],
+    "selectedConversation": {
+      "id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "conversation_number": "CNV-000010",
+      "channel_type": "whatsapp",
+      "customer_id": null,
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "external_thread_id": null,
+      "last_message_at": "2026-07-25T03:19:08.463287+00:00",
+      "created_at": "2026-07-24T17:57:06.163466+00:00"
+    },
+    "latestFlowRuns": [
+      {
+        "id": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+        "status": "running",
+        "flow_version_id": "d61a617c-1be8-4046-b798-3c02b5e5fb7a",
+        "current_node_id": "647073cb-8019-4358-9ad3-29376150dbf1",
+        "started_at": "2026-07-25T03:17:57.816514+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer.age",
+          "customer_name",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_name": "Mona Elattar",
+        "customer_phone": "01023252501",
+        "customer": {
+          "id": "29bef3fe-4025-4d19-b1c2-c2a80907cb0c",
+          "name": "Mona Elattar",
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": "01023252501",
+          "exists": true,
+          "created_at": "2026-07-25T03:19:05.134765+00:00",
+          "updated_at": "2026-07-25T03:19:05.134765+00:00"
+        },
+        "conversation": {
+          "last_message": "أنثي",
+          "last_button_id": "afdb3575-46ed-4dab-b310-bcf06142419e",
+          "last_button_title": "أنثي",
+          "last_selection_type": "list"
+        }
+      },
+      {
+        "id": "a7d911c4-01ca-4193-b5be-116fba75e3df",
+        "status": "running",
+        "flow_version_id": "d61a617c-1be8-4046-b798-3c02b5e5fb7a",
+        "current_node_id": "647073cb-8019-4358-9ad3-29376150dbf1",
+        "started_at": "2026-07-25T03:14:43.605205+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01011404109",
+        "customer": {
+          "id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+          "name": "عمر",
+          "tags": null,
+          "type": null,
+          "email": "oabdelaziz011@gmail.com",
+          "notes": "no",
+          "phone": "01011404109",
+          "exists": true,
+          "created_at": "2026-07-15T01:44:47.754496+00:00",
+          "updated_at": "2026-07-15T01:44:47.754496+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+        "status": "running",
+        "flow_version_id": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+        "current_node_id": "1a83fb22-8523-4fb4-aafd-bdf6195a9416",
+        "started_at": "2026-07-25T02:16:21.301955+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer.email",
+          "customer_name",
+          "customer_phone",
+          "customer_type",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_name": "Nessma Hossam",
+        "customer_phone": "01023169075",
+        "customer": {
+          "id": "4961636b-d47a-471a-b206-c386067d7f74",
+          "name": "Nessma Hossam",
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": "01023169075",
+          "exists": true,
+          "created_at": "2026-07-25T02:23:12.109369+00:00",
+          "updated_at": "2026-07-25T02:23:12.109369+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "b7ff6f51-cea1-4bbc-a908-d32ca653073c",
+        "status": "waiting_input",
+        "flow_version_id": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+        "current_node_id": "0fcf6dac-c64d-4784-9625-3918e0aec33e",
+        "started_at": "2026-07-25T02:02:57.044428+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversationId",
+          "inboundEventId",
+          "lastMessage",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ]
+      },
+      {
+        "id": "9d4f7169-8f4c-490f-a84c-57146762f82f",
+        "status": "running",
+        "flow_version_id": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+        "current_node_id": "1a83fb22-8523-4fb4-aafd-bdf6195a9416",
+        "started_at": "2026-07-25T01:52:07.635286+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactionType",
+          "interactive_selection",
+          "kind",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "replyId",
+          "senderName",
+          "title",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01011404109",
+        "customer": {
+          "id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+          "name": "عمر",
+          "tags": null,
+          "type": null,
+          "email": "oabdelaziz011@gmail.com",
+          "notes": "no",
+          "phone": "01011404109",
+          "exists": true,
+          "created_at": "2026-07-15T01:44:47.754496+00:00",
+          "updated_at": "2026-07-15T01:44:47.754496+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "eebf72c7-af68-43a4-b241-00c625bff671",
+        "status": "waiting_input",
+        "flow_version_id": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+        "current_node_id": "3a2dcaeb-e5bf-4e4b-97e1-d3abfba1729b",
+        "started_at": "2026-07-25T00:49:44.638668+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01023169075",
+        "customer": {
+          "id": null,
+          "name": null,
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": null,
+          "exists": false,
+          "created_at": null,
+          "updated_at": null
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "e015ea13-930f-4bb3-ab30-a444383ba2a2",
+        "status": "cancelled",
+        "flow_version_id": "3367ea77-1207-4de9-a176-481b0c6283de",
+        "current_node_id": null,
+        "started_at": "2026-07-25T00:30:18.088212+00:00",
+        "finished_at": "2026-07-25T02:15:15.038+00:00",
+        "error_message": "production_recovery: zombie run terminated for clean manual WhatsApp retest",
+        "variableKeys": [
+          "__abandonedAt",
+          "__abandonedReason",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01023169075",
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "778ca375-13ae-4a61-87b2-6cc0792d181a",
+        "status": "waiting_input",
+        "flow_version_id": "3367ea77-1207-4de9-a176-481b0c6283de",
+        "current_node_id": "0fcf6dac-c64d-4784-9625-3918e0aec33e",
+        "started_at": "2026-07-25T00:30:17.696189+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "conversation": {
+          "last_message": "dr3",
+          "last_button_id": "ba2cb127-8c3d-44f6-8350-3f33fc1766d9",
+          "last_button_title": "dr3",
+          "last_selection_type": "list"
+        }
+      },
+      {
+        "id": "dfa21208-0c8e-42cd-83ae-6d63793c161e",
+        "status": "waiting_input",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "9c4239a4-3671-437b-8bdf-ac1ede3b3c44",
+        "started_at": "2026-07-25T00:22:42.678937+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "booking_date",
+          "booking_id",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01011404109",
+        "customer": {
+          "id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+          "name": "عمر",
+          "tags": null,
+          "type": null,
+          "email": "oabdelaziz011@gmail.com",
+          "notes": "no",
+          "phone": "01011404109",
+          "exists": true,
+          "created_at": "2026-07-15T01:44:47.754496+00:00",
+          "updated_at": "2026-07-15T01:44:47.754496+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "3539487f-47e4-4cca-aab2-01b2401bc8a4",
+        "status": "waiting_input",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "9c4239a4-3671-437b-8bdf-ac1ede3b3c44",
+        "started_at": "2026-07-25T00:22:06.788402+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "booking_date",
+          "booking_id",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer.email",
+          "customer_name",
+          "customer_phone",
+          "customer_type",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_name": "Test User",
+        "customer_phone": "+201998923546",
+        "customer": {
+          "id": "277272c3-0934-448d-a3ec-c73f950240d6",
+          "name": "Test User",
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": "+201998923546",
+          "exists": true,
+          "created_at": "2026-07-25T00:22:34.42951+00:00",
+          "updated_at": "2026-07-25T00:22:34.42951+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "5cdbcb04-8cbe-42df-bd37-558c4cbba9d3",
+        "status": "running",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "5b29cd6b-1375-44fb-bc64-94fa789200ae",
+        "started_at": "2026-07-25T00:19:51.466418+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer.email",
+          "customer_name",
+          "customer_phone",
+          "customer_type",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_name": "Test User",
+        "customer_phone": "+201998789680",
+        "customer": {
+          "id": "80a24140-fb56-4b6c-8f56-c3eb8475b02e",
+          "name": "Test User",
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": "+201998789680",
+          "exists": true,
+          "created_at": "2026-07-25T00:20:19.815126+00:00",
+          "updated_at": "2026-07-25T00:20:19.815126+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "2d1adf81-299b-4c9a-8675-3c60a63abaa5",
+        "status": "waiting_input",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "9c4239a4-3671-437b-8bdf-ac1ede3b3c44",
+        "started_at": "2026-07-25T00:19:30.145074+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "booking_date",
+          "booking_id",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01011404109",
+        "customer": {
+          "id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+          "name": "عمر",
+          "tags": null,
+          "type": null,
+          "email": "oabdelaziz011@gmail.com",
+          "notes": "no",
+          "phone": "01011404109",
+          "exists": true,
+          "created_at": "2026-07-15T01:44:47.754496+00:00",
+          "updated_at": "2026-07-15T01:44:47.754496+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "0c6c2f85-1d70-45b9-a833-2f0f9360b8cc",
+        "status": "waiting_input",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "1527249e-614c-4f15-954b-388e8970c8a6",
+        "started_at": "2026-07-25T00:07:59.776312+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "+201998077399",
+        "customer": {
+          "id": null,
+          "name": null,
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": null,
+          "exists": false,
+          "created_at": null,
+          "updated_at": null
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "4548ba71-b728-45fe-9b95-120a89452970",
+        "status": "running",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "5b29cd6b-1375-44fb-bc64-94fa789200ae",
+        "started_at": "2026-07-25T00:07:43.880637+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "01011404109",
+        "customer": {
+          "id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+          "name": "عمر",
+          "tags": null,
+          "type": null,
+          "email": "oabdelaziz011@gmail.com",
+          "notes": "no",
+          "phone": "01011404109",
+          "exists": true,
+          "created_at": "2026-07-15T01:44:47.754496+00:00",
+          "updated_at": "2026-07-15T01:44:47.754496+00:00"
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      },
+      {
+        "id": "b65446ad-32bd-4e28-8685-37a7a0ecc66a",
+        "status": "waiting_input",
+        "flow_version_id": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+        "current_node_id": "1527249e-614c-4f15-954b-388e8970c8a6",
+        "started_at": "2026-07-25T00:06:27.966233+00:00",
+        "finished_at": null,
+        "error_message": null,
+        "variableKeys": [
+          "__branch",
+          "__outbound",
+          "__outboundQueue",
+          "__prompt",
+          "__switchCase",
+          "__waitingFor",
+          "channelSessionId",
+          "companyChannelId",
+          "conversation",
+          "conversationId",
+          "customer",
+          "customer_phone",
+          "inboundEventId",
+          "interactive_selection",
+          "lastMessage",
+          "lookup",
+          "phoneNumberId",
+          "senderName",
+          "whatsappMessageType"
+        ],
+        "customer_phone": "+201997985085",
+        "customer": {
+          "id": null,
+          "name": null,
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": null,
+          "exists": false,
+          "created_at": null,
+          "updated_at": null
+        },
+        "conversation": {
+          "last_message": "Book Appointment",
+          "last_button_id": "book",
+          "last_button_title": "Book Appointment",
+          "last_selection_type": "button"
+        }
+      }
+    ],
+    "selectedRun": {
+      "id": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+      "status": "running",
+      "flow_version_id": "d61a617c-1be8-4046-b798-3c02b5e5fb7a",
+      "started_at": "2026-07-25T03:17:57.816514+00:00",
+      "finished_at": null
+    },
+    "runVariablesFull": {
+      "lookup": {
+        "count": 0,
+        "status": "not_found"
+      },
+      "__branch": "no",
+      "__prompt": "What is your age?",
+      "customer": {
+        "id": "29bef3fe-4025-4d19-b1c2-c2a80907cb0c",
+        "name": "Mona Elattar",
+        "tags": null,
+        "type": null,
+        "email": null,
+        "notes": null,
+        "phone": "01023252501",
+        "exists": true,
+        "created_at": "2026-07-25T03:19:05.134765+00:00",
+        "updated_at": "2026-07-25T03:19:05.134765+00:00"
+      },
+      "__outbound": null,
+      "senderName": "Nessma Hossam",
+      "lastMessage": "Hello",
+      "__switchCase": "book",
+      "__waitingFor": null,
+      "conversation": {
+        "last_message": "أنثي",
+        "last_button_id": "afdb3575-46ed-4dab-b310-bcf06142419e",
+        "last_button_title": "أنثي",
+        "last_selection_type": "list"
+      },
+      "customer.age": "55",
+      "customer_name": "Mona Elattar",
+      "phoneNumberId": "1214681355059951",
+      "conversationId": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "customer_phone": "01023252501",
+      "inboundEventId": "624709a9-db8d-4fa2-9be6-9a54236ae2d7",
+      "__outboundQueue": [],
+      "channelSessionId": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+      "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+      "whatsappMessageType": "text",
+      "interactive_selection": "afdb3575-46ed-4dab-b310-bcf06142419e"
+    },
+    "runVariablesBeforeCreateCustomer": {
+      "customer_gender": null,
+      "customer_age": null,
+      "customer_name": "Mona Elattar",
+      "customer_phone": "01023252501",
+      "allTopLevelKeys": [
+        "channelSessionId",
+        "companyChannelId",
+        "conversation",
+        "conversationId",
+        "customer",
+        "customer.age",
+        "customer_name",
+        "customer_phone",
+        "inboundEventId",
+        "interactive_selection",
+        "lastMessage",
+        "lookup",
+        "phoneNumberId",
+        "senderName",
+        "whatsappMessageType"
+      ]
+    },
+    "session": {
+      "id": "2ebed859-e547-4bcb-96e5-7c2355d711b6",
+      "status": "running",
+      "variables": {
+        "lookup": {
+          "count": 0,
+          "status": "not_found"
+        },
+        "__branch": "no",
+        "__prompt": "What is your age?",
+        "customer": {
+          "id": "29bef3fe-4025-4d19-b1c2-c2a80907cb0c",
+          "name": "Mona Elattar",
+          "tags": null,
+          "type": null,
+          "email": null,
+          "notes": null,
+          "phone": "01023252501",
+          "exists": true,
+          "created_at": "2026-07-25T03:19:05.134765+00:00",
+          "updated_at": "2026-07-25T03:19:05.134765+00:00"
+        },
+        "__outbound": null,
+        "senderName": "Nessma Hossam",
+        "lastMessage": "Hello",
+        "__switchCase": "book",
+        "__waitingFor": null,
+        "conversation": {
+          "last_message": "أنثي",
+          "last_button_id": "afdb3575-46ed-4dab-b310-bcf06142419e",
+          "last_button_title": "أنثي",
+          "last_selection_type": "list"
+        },
+        "customer.age": "55",
+        "customer_name": "Mona Elattar",
+        "phoneNumberId": "1214681355059951",
+        "conversationId": "a35d7fff-cac7-47f3-9604-df683e726b71",
+        "customer_phone": "01023252501",
+        "inboundEventId": "624709a9-db8d-4fa2-9be6-9a54236ae2d7",
+        "__outboundQueue": [],
+        "channelSessionId": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "whatsappMessageType": "text",
+        "interactive_selection": "afdb3575-46ed-4dab-b310-bcf06142419e"
+      }
+    },
+    "listNodes": [],
+    "createCustomerNodes": [],
+    "customerRow": {
+      "id": "29bef3fe-4025-4d19-b1c2-c2a80907cb0c",
+      "user_id": "a9b150d0-cf93-4937-a6f2-1b75213eada8",
+      "name": "Mona Elattar",
+      "email": null,
+      "phone": "01023252501",
+      "notes": null,
+      "created_at": "2026-07-25T03:19:05.134765+00:00",
+      "updated_at": "2026-07-25T03:19:05.134765+00:00"
+    },
+    "customerAuditLogs": [
+      {
+        "id": "d183676f-a669-4c23-9981-281ea4513f74",
+        "user_id": null,
+        "company_id": null,
+        "action": "CREATE",
+        "entity": "customers",
+        "entity_id": "29bef3fe-4025-4d19-b1c2-c2a80907cb0c",
+        "ip_address": "197.37.167.157",
+        "metadata": {
+          "name": "Mona Elattar",
+          "email": null
+        },
+        "created_at": "2026-07-25T03:19:05.134765+00:00"
+      }
+    ],
+    "recentCustomers": null,
+    "ageGenderColumnsExist": false,
+    "ageGenderColumnError": "column customers.age does not exist",
+    "runThatCreatedCustomer": {
+      "runId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+      "started_at": "2026-07-25T03:17:57.816514+00:00",
+      "createCustomerNodeIds": []
+    },
+    "latestConversationMessages": [
+      {
+        "id": "357b7183-64ee-43a7-b86b-d5010a7114a0",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:19:08.463287+00:00",
+        "content": "55",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0ExMDlBRTNBRjNBREIzRjQ3MjEA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "8834ef81-aac9-449b-bd59-7cd0ff923fb2",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:19:03.504534+00:00",
+        "content": "55",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0ExMDlBRTNBRjNBREIzRjQ3MjEA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "07c7c0c4-d4bd-4a78-a26f-41035238283a",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T03:18:54.35417+00:00",
+        "content": "What is your age?",
+        "metadata": {
+          "correlationId": "43441bbc-b634-48c0-bc17-205f18428ee2",
+          "automationRunId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "3130dbc5-eaaf-4104-a616-1e06c75ee300",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:18:52.411353+00:00",
+        "content": "أنثي",
+        "metadata": {
+          "kind": "interactive_reply",
+          "title": "أنثي",
+          "source": "webhook",
+          "replyId": "afdb3575-46ed-4dab-b310-bcf06142419e",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FENTBDQ0RGRTIzQzQxMjZDN0UA",
+          "whatsappMessageType": "interactive"
+        }
+      },
+      {
+        "id": "12d1d239-8a7f-4042-9028-3e129361dfa8",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T03:18:42.562149+00:00",
+        "content": "What Is Your Gender?",
+        "metadata": {
+          "correlationId": "3bd85e70-4db7-45fa-8822-7ac69a5b5b13",
+          "automationRunId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+          "outboundPayload": {
+            "body": "What Is Your Gender?",
+            "kind": "list",
+            "title": "Choose an option",
+            "sections": [
+              {
+                "rows": [
+                  {
+                    "id": "1",
+                    "title": "ذكر"
+                  },
+                  {
+                    "id": "afdb3575-46ed-4dab-b310-bcf06142419e",
+                    "title": "أنثي"
+                  }
+                ],
+                "title": "Options"
+              }
+            ],
+            "buttonLabel": "View options"
+          }
+        }
+      },
+      {
+        "id": "b0930790-f7af-4482-9b54-e36bc07491a1",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:18:40.434368+00:00",
+        "content": "Mona Elattar",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EzMDFCRjhFRTQ5NUFDNEUzQkMA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "4fb775a3-e2c4-492d-9c99-debc31640340",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T03:18:28.065305+00:00",
+        "content": "What is your name?",
+        "metadata": {
+          "correlationId": "1f71665c-139c-4344-a5e4-7c1e68a5753e",
+          "automationRunId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "d1d5fb2f-ae0b-4691-aef6-bfcf51774999",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:18:24.638382+00:00",
+        "content": "01023252501",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwQUQzRTk5NTRGQzhDQ0Y0MjcA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "189d0ed1-ee02-4c6b-8324-081d9ce2147b",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T03:18:11.970594+00:00",
+        "content": "what is your phone number?",
+        "metadata": {
+          "correlationId": "07cca725-a303-49de-a478-7373b2934e6c",
+          "automationRunId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "265a892b-ae7a-4126-afdf-b3c112f103c6",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:18:09.346029+00:00",
+        "content": "Book Appointment",
+        "metadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwMzYwNjcyQkY2MzUzMjIxNkMA",
+          "whatsappMessageType": "interactive"
+        }
+      },
+      {
+        "id": "19cf0d06-0f6e-49ef-92d1-8143ff6efb7b",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T03:18:02.322017+00:00",
+        "content": "please press on what you want",
+        "metadata": {
+          "correlationId": "624709a9-db8d-4fa2-9be6-9a54236ae2d7",
+          "automationRunId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+          "outboundPayload": {
+            "kind": "buttons",
+            "text": "please press on what you want",
+            "buttons": [
+              {
+                "id": "book",
+                "label": "Book Appointment"
+              },
+              {
+                "id": "pricing",
+                "label": "Pricing"
+              },
+              {
+                "id": "support",
+                "label": "Talk to Support"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "b473db3e-ae44-4548-9dc7-be5b37c9fe01",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T03:17:59.91377+00:00",
+        "content": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+        "metadata": {
+          "correlationId": "624709a9-db8d-4fa2-9be6-9a54236ae2d7",
+          "automationRunId": "4044afb2-c945-42bc-9bea-9202b3e7f688",
+          "outboundPayload": {
+            "kind": "text",
+            "text": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟"
+          }
+        }
+      },
+      {
+        "id": "d9fec24a-556e-43f5-af12-fb40b4f65fef",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T03:17:56.552452+00:00",
+        "content": "Hello",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwQkRCQjBEQjgyRkY3MjZGNzQA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "ba10749c-4bcf-4b9b-ae24-d082e7eaab9f",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:23:16.634463+00:00",
+        "content": "27",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0ExMDY1RDRFRURCMUQ4QUJDNTEA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "527cfdcc-0a71-4b26-9dea-e6b60ed1cacb",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:23:09.585764+00:00",
+        "content": "27",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0ExMDY1RDRFRURCMUQ4QUJDNTEA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "a6f3f05d-2cf7-475c-a004-1166ca115d3d",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T02:22:58.473898+00:00",
+        "content": "What is your age?",
+        "metadata": {
+          "correlationId": "7452687b-758b-46e1-bee3-56b51e0744da",
+          "automationRunId": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "eeb0f11c-d6e0-40ca-87e1-91a6206fdbdb",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:22:56.154287+00:00",
+        "content": "Female",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FDNTJCRThDQUFDQjRGQ0EyN0QA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "dc3c0e78-5ca4-4a17-b7b6-3523d437e547",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T02:22:41.503627+00:00",
+        "content": "What is your sex?",
+        "metadata": {
+          "correlationId": "bf78bc0a-dc1e-4a30-a1db-a201870d4c08",
+          "automationRunId": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "7cadae06-ba20-46bd-bcfa-26a59751257c",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:22:39.17297+00:00",
+        "content": "Nessma Hossam",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FDOUI1RURDNTc2RjU2MDQ5MjYA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "a23eef91-0aa6-410d-84d2-434ca5a6c3a1",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T02:22:20.730041+00:00",
+        "content": "What is your name?",
+        "metadata": {
+          "correlationId": "fba05501-dc18-45ba-80cd-6a55dec4ec32",
+          "automationRunId": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "fc328b50-4611-414b-8ac7-3b56caedd9fa",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:22:17.361463+00:00",
+        "content": "01023169075",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FFMUNCRUQ3MDk3RTU2RDI5ODcA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "8e5da213-fb71-4784-99bb-b46064fd82db",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T02:21:59.696688+00:00",
+        "content": "what is your phone number?",
+        "metadata": {
+          "correlationId": "94dd5f33-c362-486a-abd1-bfd9754aac14",
+          "automationRunId": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      },
+      {
+        "id": "fde1c423-f5eb-4911-8839-cd3e1ca0c49b",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:21:57.351219+00:00",
+        "content": "Book Appointment",
+        "metadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwOTA5MjAwNUVGQTlBMzcwMDcA",
+          "whatsappMessageType": "interactive"
+        }
+      },
+      {
+        "id": "24854858-5a46-4663-8801-15db54e12f64",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T02:21:49.49861+00:00",
+        "content": "please press on what you want",
+        "metadata": {
+          "correlationId": "1ffabe65-5975-41f9-ac91-bb8ff556e34c",
+          "automationRunId": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+          "outboundPayload": {
+            "kind": "buttons",
+            "text": "please press on what you want",
+            "buttons": [
+              {
+                "id": "book",
+                "label": "Book Appointment"
+              },
+              {
+                "id": "pricing",
+                "label": "Pricing"
+              },
+              {
+                "id": "support",
+                "label": "Talk to Support"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "fc9e0477-e488-4804-a426-89ec625204a2",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:21:47.625542+00:00",
+        "content": "Hello",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FDMjY3RjY3OUZDOTdBM0Y1RTIA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "01dbd2de-fe09-4041-b426-4959a0ab4420",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T02:16:23.468994+00:00",
+        "content": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+        "metadata": {
+          "correlationId": "332128e2-ee2c-4eb9-b937-1f6f5a618c87",
+          "automationRunId": "7f952a50-fbc1-4073-b182-2fa5d56863c5",
+          "outboundPayload": {
+            "kind": "text",
+            "text": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟"
+          }
+        }
+      },
+      {
+        "id": "2493160e-bae9-4702-90b5-ab62094be61a",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T02:16:20.312383+00:00",
+        "content": "Hello",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FFMjkyNEE4RDJCM0ZFMzY5QjYA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "97cbb79c-7d81-4212-a77a-6eccab29c0fa",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T00:31:04.305868+00:00",
+        "content": "01023169075",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "ac271757-40e0-4e21-81d9-b266d749ba60",
+        "message_type": "incoming",
+        "created_at": "2026-07-25T00:30:59.165704+00:00",
+        "content": "01023169075",
+        "metadata": {
+          "source": "webhook",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+          "whatsappMessageType": "text"
+        }
+      },
+      {
+        "id": "34fb78ab-7bf1-48bd-82b5-62acf8d0bf51",
+        "message_type": "outgoing",
+        "created_at": "2026-07-25T00:30:38.74762+00:00",
+        "content": "what is your phone number?",
+        "metadata": {
+          "correlationId": "ce746901-8cd1-43ea-9451-74296b2978f3",
+          "automationRunId": "e015ea13-930f-4bb3-ab30-a444383ba2a2",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        }
+      }
+    ]
+  }
+}

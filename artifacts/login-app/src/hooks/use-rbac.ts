@@ -53,6 +53,8 @@ export const DEFAULT_RBAC_PERMISSIONS: PermissionRecord[] = [
   { id: "reports.view", code: "reports.view", category: "Reports", module: "Reports", action: "View", description: "View reports" },
   { id: "settings.view", code: "settings.view", category: "Settings", module: "Settings", action: "View", description: "View settings" },
   { id: "settings.edit", code: "settings.edit", category: "Settings", module: "Settings", action: "Edit", description: "Edit settings" },
+  { id: "scheduling.view", code: "scheduling.view", category: "Scheduling", module: "Scheduling", action: "View", description: "View scheduling settings" },
+  { id: "scheduling.edit", code: "scheduling.edit", category: "Scheduling", module: "Scheduling", action: "Edit", description: "Manage scheduling resources and configuration" },
   { id: "ai_chat.view", code: "ai_chat.view", category: "AI Chat", module: "AI Chat", action: "View", description: "View AI chat" },
   { id: "ai_chat.use", code: "ai_chat.use", category: "AI Chat", module: "AI Chat", action: "Use", description: "Use AI chat" },
   { id: "whatsapp.view", code: "whatsapp.view", category: "WhatsApp Automation", module: "WhatsApp Automation", action: "View", description: "View WhatsApp automation" },

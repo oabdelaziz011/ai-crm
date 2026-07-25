@@ -1,0 +1,179 @@
+{
+  "testedAt": "2026-07-25T00:23:02.412Z",
+  "activeVersionId": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+  "results": [
+    {
+      "scenario": "new",
+      "pass": true,
+      "phone": "+201998923546",
+      "lookupStatus": "not_found",
+      "bookingId": "b91574f3-acd3-481a-be61-c641ee524ddb",
+      "bookingDate": "2027-05-02T09:00:00+00:00",
+      "customerExists": true,
+      "createCustomerCalled": true,
+      "createBookingCalled": true,
+      "currentNodeId": "9c4239a4-3671-437b-8bdf-ac1ede3b3c44",
+      "runStatus": "waiting_input",
+      "sqlTrace": [
+        {
+          "scenario": "new",
+          "op": "findCustomer",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "lookupBy": "phone",
+            "lookupValue": "+201998923546"
+          }
+        },
+        {
+          "scenario": "new",
+          "op": "createCustomer",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "name": "Test User",
+            "email": null,
+            "phone": "+201998923546"
+          }
+        },
+        {
+          "scenario": "new",
+          "op": "createBooking",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "service": "Consultation",
+            "doctorId": "dr1",
+            "locationId": "giza",
+            "appointmentDate": "2027-05-02",
+            "appointmentTime": "12:00",
+            "customerId": "277272c3-0934-448d-a3ec-c73f950240d6",
+            "durationMinutes": 13,
+            "notes": null
+          }
+        }
+      ],
+      "steps": [
+        "hi",
+        "book",
+        "phone:+201998923546",
+        "name:Test User",
+        "sex:Male",
+        "email:test@example.com"
+      ]
+    },
+    {
+      "scenario": "existing",
+      "pass": true,
+      "phone": "01011404109",
+      "lookupStatus": "found",
+      "bookingId": "fc063e25-62ee-44e2-8e22-ddff30d3e0d0",
+      "bookingDate": "2027-05-02T09:00:00+00:00",
+      "customerExists": true,
+      "createCustomerCalled": false,
+      "createBookingCalled": true,
+      "currentNodeId": "9c4239a4-3671-437b-8bdf-ac1ede3b3c44",
+      "runStatus": "waiting_input",
+      "sqlTrace": [
+        {
+          "scenario": "existing",
+          "op": "findCustomer",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "lookupBy": "phone",
+            "lookupValue": "01011404109"
+          }
+        },
+        {
+          "scenario": "existing",
+          "op": "createBooking",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "service": "Consultation",
+            "doctorId": "dr1",
+            "locationId": "giza",
+            "appointmentDate": "2027-05-02",
+            "appointmentTime": "12:00",
+            "customerId": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+            "durationMinutes": 13,
+            "notes": "no"
+          }
+        }
+      ],
+      "steps": [
+        "hi",
+        "book",
+        "phone:01011404109"
+      ]
+    }
+  ],
+  "sqlTrace": [
+    {
+      "scenario": "new",
+      "op": "findCustomer",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "lookupBy": "phone",
+        "lookupValue": "+201998923546"
+      }
+    },
+    {
+      "scenario": "new",
+      "op": "createCustomer",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "name": "Test User",
+        "email": null,
+        "phone": "+201998923546"
+      }
+    },
+    {
+      "scenario": "new",
+      "op": "createBooking",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "service": "Consultation",
+        "doctorId": "dr1",
+        "locationId": "giza",
+        "appointmentDate": "2027-05-02",
+        "appointmentTime": "12:00",
+        "customerId": "277272c3-0934-448d-a3ec-c73f950240d6",
+        "durationMinutes": 13,
+        "notes": null
+      }
+    },
+    {
+      "scenario": "existing",
+      "op": "findCustomer",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "lookupBy": "phone",
+        "lookupValue": "01011404109"
+      }
+    },
+    {
+      "scenario": "existing",
+      "op": "createBooking",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "service": "Consultation",
+        "doctorId": "dr1",
+        "locationId": "giza",
+        "appointmentDate": "2027-05-02",
+        "appointmentTime": "12:00",
+        "customerId": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+        "durationMinutes": 13,
+        "notes": "no"
+      }
+    }
+  ],
+  "passed": 2,
+  "total": 2
+}

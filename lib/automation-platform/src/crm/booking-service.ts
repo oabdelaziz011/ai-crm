@@ -1,11 +1,22 @@
 import { ValidationError } from "../errors.js";
+import { BOOKING_LOOKUP_FIELDS, type BookingLookupField } from "./lookup/booking-types.js";
 import type { BookingRepositoryPort } from "./booking-repository-port.js";
 import type { CreateBookingInput, CreateBookingResult } from "./types/create-booking-input.js";
+import type { FindBookingInput, FindBookingResult } from "./types/find-booking-input.js";
+import type { CancelBookingInput, CancelBookingResult, UpdateBookingInput, UpdateBookingResult } from "./types/booking-mutation-input.js";
 
 function readRequiredString(value: unknown, label: string): string {
   const normalized = typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
-  if (!normalized) throw new ValidationError(`Create booking requires ${label}.`);
+  if (!normalized) throw new ValidationError(`Booking action requires ${label}.`);
   return normalized;
+}
+
+function readLookupBy(value: unknown): BookingLookupField {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!BOOKING_LOOKUP_FIELDS.includes(normalized as BookingLookupField)) {
+    throw new ValidationError("Find booking lookup field is invalid.");
+  }
+  return normalized as BookingLookupField;
 }
 
 function parseDurationMinutes(value: unknown): number | null {
@@ -30,6 +41,23 @@ function mergeAppointmentDateTime(datePart: string, timePart: string): string {
 
 export class BookingService {
   constructor(private readonly repository: BookingRepositoryPort) {}
+
+  async findBooking(input: FindBookingInput): Promise<FindBookingResult> {
+    readRequiredString(input.companyId, "company");
+    readRequiredString(input.userId, "owner");
+    const lookupBy = readLookupBy(input.lookupBy);
+    const lookupValue = readRequiredString(input.lookupValue, "lookup value");
+
+    const { count, record } = await this.repository.findBookingsByField({
+      userId: input.userId,
+      lookupBy,
+      lookupValue,
+    });
+
+    if (count === 0) return { status: "not_found", count: 0 };
+    if (count === 1 && record) return { status: "found", count: 1, booking: record };
+    return { status: "duplicate", count };
+  }
 
   async createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
     const service = readRequiredString(input.service, "service");
@@ -64,5 +92,35 @@ export class BookingService {
       durationMinutes,
       notes,
     });
+  }
+
+  async updateBooking(input: UpdateBookingInput): Promise<UpdateBookingResult> {
+    readRequiredString(input.companyId, "company");
+    readRequiredString(input.userId, "owner");
+    readRequiredString(input.bookingId, "booking id");
+    readRequiredString(input.field, "field");
+    readRequiredString(input.value, "value");
+
+    const booking = await this.repository.updateBooking({
+      userId: input.userId,
+      bookingId: input.bookingId,
+      field: input.field,
+      value: input.value,
+    });
+
+    return { booking };
+  }
+
+  async cancelBooking(input: CancelBookingInput): Promise<CancelBookingResult> {
+    readRequiredString(input.companyId, "company");
+    readRequiredString(input.userId, "owner");
+    readRequiredString(input.bookingId, "booking id");
+
+    const booking = await this.repository.cancelBooking({
+      userId: input.userId,
+      bookingId: input.bookingId,
+    });
+
+    return { booking };
   }
 }

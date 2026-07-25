@@ -1,5 +1,6 @@
 import { canConnect } from "../connection-rules";
 import { assignBranchForNewEdge } from "../logic/branch-utils";
+import { generateInteractiveRouting } from "../logic/interactive-routing-generator";
 import { createEdgeId, createNodeId, type BuilderAction, type BuilderEdge, type BuilderNode, type BuilderState, type BuilderViewport, type WorkflowDocument } from "../types";
 import { createBuilderClientKey } from "../persistence/builder-node-identity";
 
@@ -44,6 +45,8 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         selectedEdgeIds: [],
         saveStatus: "saved",
         validationIssues: [],
+        activeValidationIssueId: null,
+        validationPanelFocusNonce: 0,
         clipboard: [],
       };
     case "REPLACE_STATE":
@@ -250,10 +253,30 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         saveStatus: "dirty",
       };
     }
+    case "GENERATE_INTERACTIVE_ROUTING": {
+      const result = generateInteractiveRouting(state.document, action.interactiveNodeId);
+      return {
+        ...state,
+        document: result.document,
+        selectedNodeIds: [result.switchNodeId],
+        selectedEdgeIds: [],
+        saveStatus: "dirty",
+      };
+    }
     case "SET_SAVE_STATUS":
       return { ...state, saveStatus: action.status };
-    case "SET_VALIDATION":
-      return { ...state, validationIssues: action.issues };
+    case "SET_VALIDATION": {
+      const activeStillExists = action.issues.some((issue) => issue.id === state.activeValidationIssueId);
+      return {
+        ...state,
+        validationIssues: action.issues,
+        activeValidationIssueId: activeStillExists ? state.activeValidationIssueId : null,
+      };
+    }
+    case "SET_ACTIVE_VALIDATION_ISSUE":
+      return { ...state, activeValidationIssueId: action.issueId };
+    case "REQUEST_VALIDATION_PANEL_FOCUS":
+      return { ...state, validationPanelFocusNonce: state.validationPanelFocusNonce + 1 };
     default:
       return state;
   }
@@ -266,6 +289,8 @@ export function createInitialBuilderState(document: WorkflowDocument): BuilderSt
     selectedEdgeIds: [],
     saveStatus: "saved",
     validationIssues: [],
+    activeValidationIssueId: null,
+    validationPanelFocusNonce: 0,
     clipboard: [],
   };
 }

@@ -21,11 +21,17 @@ import { ConversationResolver } from "./conversation-resolver.js";
 import {
   buildResumeInput,
   canResumeWaitingRun,
+  isStaleWaitingRun,
   DEFAULT_SESSION_POLICY,
   shouldStartNewConversation,
   type SessionPolicyConfig,
 } from "./session-policy.js";
 import { TriggerDispatcher } from "./trigger-dispatcher.js";
+import {
+  outboundEntryDisplayText,
+  readLatestOutbound,
+  readOutboundQueue,
+} from "../runtime/outbound-queue.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -76,7 +82,7 @@ export class ConversationOrchestrator {
   }
 
   async processInbound(ctx: ServiceContext, inbound: ReturnType<ChannelAdapter["normalize"]>): Promise<OrchestratorHandleResult> {
-    const resolution = await this.resolver.resolve(ctx, inbound);
+    let resolution = await this.resolver.resolve(ctx, inbound);
     const outboundMessages: NormalizedOutboundMessage[] = [];
     let execution: AutomationExecutionResult | null = null;
 
@@ -93,8 +99,23 @@ export class ConversationOrchestrator {
         runId: resolution.run.id,
         input: buildResumeInput(resolution.run, inbound.text, inbound.payload),
       });
-      outboundMessages.push(...this.buildPromptOutbounds(execution, inbound));
+      outboundMessages.push(...this.buildOutboundMessages(execution, inbound));
       return { inbound, resolution, execution, outboundMessages };
+    }
+
+    if (
+      resolution.session &&
+      resolution.run &&
+      isStaleWaitingRun(resolution.session, resolution.run, this.deps.policy ?? DEFAULT_SESSION_POLICY)
+    ) {
+      await this.deps.engine.abandonStaleWaitingRun(ctx, { runId: resolution.run.id });
+      resolution = {
+        ...resolution,
+        session: null,
+        run: null,
+        created: false,
+        expired: true,
+      };
     }
 
     if (!shouldStartNewConversation(resolution.session, resolution.run, resolution.expired)) {
@@ -123,7 +144,7 @@ export class ConversationOrchestrator {
     });
 
     await this.resolver.recordInboundMessage(execution.session.id, inbound);
-    outboundMessages.push(...this.buildPromptOutbounds(execution, inbound));
+    outboundMessages.push(...this.buildOutboundMessages(execution, inbound));
 
     return { inbound, resolution, execution, outboundMessages };
   }
@@ -150,25 +171,43 @@ export class ConversationOrchestrator {
     });
   }
 
-  private buildPromptOutbounds(
+  private buildOutboundMessages(
+    execution: AutomationExecutionResult,
+    inbound: { companyId: string; channel: AutomationChannel; externalUserId: string },
+  ): NormalizedOutboundMessage[] {
+    const queue = readOutboundQueue(execution.variables);
+    if (queue.length > 0) {
+      return queue.map((entry) => {
+        const kind = entry.kind;
+        const text = outboundEntryDisplayText(entry);
+        const isInteractive = kind === "buttons" || kind === "list";
+        return {
+          channel: inbound.channel,
+          companyId: inbound.companyId,
+          sessionId: execution.session.id,
+          externalUserId: inbound.externalUserId,
+          messageType: isInteractive ? "payload" : "text",
+          text,
+          payload: entry as Record<string, unknown>,
+        };
+      });
+    }
+
+    return this.buildLegacyPromptOutbounds(execution, inbound);
+  }
+
+  /** @deprecated fallback for runs persisted before the outbound queue existed */
+  private buildLegacyPromptOutbounds(
     execution: AutomationExecutionResult,
     inbound: { companyId: string; channel: AutomationChannel; externalUserId: string },
   ): NormalizedOutboundMessage[] {
     if (execution.lifecycle !== "waiting_input") return [];
 
-    const outbound = execution.variables.__outbound;
-    if (outbound && typeof outbound === "object" && !Array.isArray(outbound)) {
-      const record = outbound as Record<string, unknown>;
-      const kind = typeof record.kind === "string" ? record.kind : null;
+    const outbound = readLatestOutbound(execution.variables);
+    if (outbound) {
+      const kind = outbound.kind;
       if (kind === "buttons" || kind === "list") {
-        const text =
-          kind === "buttons"
-            ? typeof record.text === "string"
-              ? record.text
-              : ""
-            : typeof record.body === "string"
-              ? record.body
-              : "";
+        const text = outboundEntryDisplayText(outbound);
         return [
           {
             channel: inbound.channel,
@@ -177,7 +216,7 @@ export class ConversationOrchestrator {
             externalUserId: inbound.externalUserId,
             messageType: "payload",
             text,
-            payload: record,
+            payload: outbound as Record<string, unknown>,
           },
         ];
       }

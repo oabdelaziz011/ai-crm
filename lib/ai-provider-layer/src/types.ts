@@ -94,6 +94,7 @@ export type GenerateMetadata = {
   presence_penalty?: number;
   frequency_penalty?: number;
   max_tokens?: number;
+  max_completion_tokens?: number;
   response_format?: string;
   streaming?: boolean;
   onChunk?: (chunk: string) => void;

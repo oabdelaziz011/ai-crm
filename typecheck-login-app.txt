@@ -1,0 +1,126 @@
+﻿node.exe : $ tsc -p tsconfig.json --noEmit
+At C:\Users\oabde\AppData\Roaming\npm\pnpm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.mjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ($ tsc -p tsconfig.json --noEmit:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+src/hooks/use-customer-profile-quick-actions.ts(12,8): error TS2305: Module '"@/lib/customer-profile/services"' has no exported member 'BookingModalPrefill'.
+src/hooks/use-customer-profile-quick-actions.ts(13,8): error TS2305: Module '"@/lib/customer-profile/services"' has no exported member 'InvoiceModalPrefill'.
+src/lib/booking/booking-view-adapter.ts(73,3): error TS2322: Type '(AppBooking | { isSchedulingBooking: false; id: string; user_id: string; customer_id: string | null; service: string; doctor_id: string | null; location_id: string | null; ... 10 more ...; source?: string | undefined; })[]' is not assignable to type 'AppBooking[]'.
+  Type 'AppBooking | { isSchedulingBooking: false; id: string; user_id: string; customer_id: string | null; service: string; doctor_id: string | null; location_id: string | null; ... 10 more ...; source?: string | undefined; }' is not assignable to type 'AppBooking'.
+    Type '{ isSchedulingBooking: false; id: string; user_id: string; customer_id: string | null; service: string; doctor_id: string | null; location_id: string | null; booking_date: string; ... 9 more ...; source?: string; }' is not assignable to type 'AppBooking'.
+      Type '{ isSchedulingBooking: false; id: string; user_id: string; customer_id: string | null; service: string; doctor_id: string | null; location_id: string | null; booking_date: string; ... 9 more ...; source?: string; }' is not assignable to type '{ isSchedulingBooking: boolean; service_id?: string | null | undefined; resource_id?: string | null | undefined; scheduling_status?: "completed" | "pending" | "cancelled" | "confirmed" | "no_show" | "rescheduled" | undefined; source?: "whatsapp" | ... 5 more ... | undefined; }'.
+        Types of property 'scheduling_status' are incompatible.
+          Type 'string | undefined' is not assignable to type '"completed" | "pending" | "cancelled" | "confirmed" | "no_show" | "rescheduled" | undefined'.
+            Type 'string' is not assignable to type '"completed" | "pending" | "cancelled" | "confirmed" | "no_show" | "rescheduled" | undefined'.
+src/lib/channel-platform/platform-ports.ts(42,3): error TS2739: Type '{ getCompanyChannel(companyChannelId: string): Promise<ResolvedCompanyChannel | null>; findCompanyChannelByPhoneNumberId(phoneNumberId: string): Promise<...>; findCompanyChannelsByWhatsAppVerifyToken(verifyToken: string): Promise<...>; }' is missing the following properties from type 'ChannelRegistryPort': listEnabledWhatsAppChannels, syncWhatsAppPhoneNumberId
+src/lib/customer-timeline/aggregators/automation-executions-timeline-aggregator.ts(23,75): error TS2339: Property 'customerId' does not exist on type '{}'.
+src/lib/customer-timeline/providers/bookings-timeline-provider.ts(44,47): error TS2352: Conversion of type '{ id: any; start_at: any; end_at: any; status: any; source: any; notes: any; created_at: any; updated_at: any; scheduling_services: { name: any; }[]; }[]' to type 'SchedulingBookingRow[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: any; start_at: any; end_at: any; status: any; source: any; notes: any; created_at: any; updated_at: any; scheduling_services: { name: any; }[]; }' is not comparable to type 'SchedulingBookingRow'.
+    Types of property 'scheduling_services' are incompatible.
+      Property 'name' is missing in type '{ name: any; }[]' but required in type '{ name: string; }'.
+src/lib/customer-timeline/types/timeline-types.ts(230,13): error TS2300: Duplicate identifier 'EnrichedTimelineGroup'.
+src/lib/customer-timeline/types/timeline-types.ts(237,13): error TS2300: Duplicate identifier 'EnrichedTimelineGroup'.
+src/lib/scheduling/repositories/resource-service-mapping-repository.ts(22,21): error TS2352: Conversion of type '{ id: any; name: any; duration_minutes: any; status: any; }[]' to type 'ResourceCapabilityRef' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: any; name: any; duration_minutes: any; status: any; }[]' is missing the following properties from type 'ResourceCapabilityRef': status, name, id, duration_minutes
+src/lib/scheduling/repositories/resource-service-mapping-repository.ts(45,21): error TS2352: Conversion of type '{ id: any; name: any; resource_type: any; status: any; timezone: any; branch_id: any; }[]' to type 'EligibleResourceRef' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: any; name: any; resource_type: any; status: any; timezone: any; branch_id: any; }[]' is missing the following properties from type 'EligibleResourceRef': status, name, timezone, id, and 2 more.
+src/lib/scheduling/services/availability-service.ts(39,7): error TS2345: Argument of type '{ day_of_week: number; is_closed: boolean; breaks: { starts_at: string; ends_at: string; id?: string | undefined; label?: string | null | undefined; }[]; opens_at?: string | null | undefined; closes_at?: string | ... 1 more ... | undefined; }[]' is not assignable to parameter of type 'WeeklyHoursUpsert[]'.
+  Type '{ day_of_week: number; is_closed: boolean; breaks: { starts_at: string; ends_at: string; id?: string | undefined; label?: string | null | undefined; }[]; opens_at?: string | null | undefined; closes_at?: string | ... 1 more ... | undefined; }' is not assignable to type 'WeeklyHoursUpsert'.
+    Types of property 'day_of_week' are incompatible.
+      Type 'number' is not assignable to type '0 | 6 | 3 | 5 | 1 | 2 | 4'.
+src/lib/scheduling/services/booking-rules-service.ts(48,11): error TS2322: Type '{ created_by: string; updated_by: string; timezone: string; min_booking_notice_minutes: number; max_booking_window_days: number; buffer_before_minutes: number; buffer_after_minutes: number; ... 5 more ...; company_id: string; }' is not assignable to type 'BookingRulesUpsert'.
+  Types of property 'week_start_day' are incompatible.
+    Type 'number' is not assignable to type '0 | 6 | 3 | 5 | 1 | 2 | 4'.
+src/pages/dashboard/channels/channels-page.tsx(124,42): error TS2339: Property 'verifyToken' does not exist on type '{}'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(124,5): error TS2322: Type 'WeeklyHoursUpsert[]' is not assignable to type '{ day_of_week: number; is_closed: boolean; breaks: { starts_at: string; ends_at: string; label?: string | null | undefined; id?: string | undefined; }[]; opens_at?: string | null | undefined; closes_at?: string | ... 1 more ... | undefined; }[]'.
+  Type 'WeeklyHoursUpsert' is not assignable to type '{ day_of_week: number; is_closed: boolean; breaks: { starts_at: string; ends_at: string; label?: string | null | undefined; id?: string | undefined; }[]; opens_at?: string | null | undefined; closes_at?: string | ... 1 more ... | undefined; }'.
+    Types of property 'breaks' are incompatible.
+      Type '{ id?: string | undefined; starts_at: string; ends_at: string; label?: string | null | undefined; }[] | undefined' is not assignable to type '{ starts_at: string; ends_at: string; label?: string | null | undefined; id?: string | undefined; }[]'.
+        Type 'undefined' is not assignable to type '{ starts_at: string; ends_at: string; label?: string | null | undefined; id?: string | undefined; }[]'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(298,73): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(305,35): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(317,37): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(327,37): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(347,51): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(366,39): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(381,39): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-availability-page.tsx(391,56): error TS2345: Argument of type 'number' is not assignable to parameter of type '0 | 6 | 3 | 1 | 2 | 4 | 5'.
+src/pages/dashboard/settings/scheduling/scheduling-holidays-page.tsx(248,9): error TS2322: Type '{ open: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; pending: boolean; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Props'.
+src/pages/dashboard/settings/scheduling/scheduling-resources-page.tsx(199,9): error TS2322: Type '{ open: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; pending: boolean; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Props'.
+src/pages/dashboard/settings/scheduling/scheduling-services-page.tsx(178,9): error TS2322: Type '{ open: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; pending: boolean; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Props'.
+src/workflow-builder/components/canvas/canvas-node-sync.ts(213,14): error TS2339: Property 'validationSeverity' does not exist on type 'FlowNodeData'.
+src/workflow-builder/components/canvas/canvas-node-sync.ts(214,14): error TS2339: Property 'validationActive' does not exist on type 'FlowNodeData'.
+src/workflow-builder/components/canvas/canvas-node-sync.ts(226,14): error TS2339: Property 'validationSeverity' does not exist on type 'FlowNodeData'.
+src/workflow-builder/components/canvas/canvas-node-sync.ts(226,42): error TS2339: Property 'validationSeverity' does not exist on type 'FlowNodeData'.
+src/workflow-builder/components/canvas/canvas-node-sync.ts(227,14): error TS2339: Property 'validationActive' does not exist on type 'FlowNodeData'.
+src/workflow-builder/components/canvas/canvas-node-sync.ts(227,40): error TS2339: Property 'validationActive' does not exist on type 'FlowNodeData'.
+src/workflow-builder/components/canvas/workflow-canvas.tsx(160,51): error TS2344: Type 'Node<WorkflowNodeData>[]' does not satisfy the constraint 'Node'.
+  Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: Record<string, unknown>; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/components/canvas/workflow-canvas.tsx(174,24): error TS2345: Argument of type '(current: Node<WorkflowNodeData>[][]) => Node<WorkflowNodeData>[]' is not assignable to parameter of type 'SetStateAction<Node<WorkflowNodeData>[][]>'.
+  Type '(current: Node<WorkflowNodeData>[][]) => Node<WorkflowNodeData>[]' is not assignable to type '(prevState: Node<WorkflowNodeData>[][]) => Node<WorkflowNodeData>[][]'.
+    Type 'Node<WorkflowNodeData>[]' is not assignable to type 'Node<WorkflowNodeData>[][]'.
+      Type 'Node<WorkflowNodeData>' is missing the following properties from type 'Node<WorkflowNodeData>[]': length, pop, push, concat, and 35 more.
+src/workflow-builder/components/canvas/workflow-canvas.tsx(179,92): error TS2345: Argument of type 'Node<WorkflowNodeData>[][]' is not assignable to parameter of type 'Node<WorkflowNodeData>[]'.
+  Type 'Node<WorkflowNodeData>[]' is not assignable to type 'Node<WorkflowNodeData>'.
+    Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/components/canvas/workflow-canvas.tsx(181,55): error TS2345: Argument of type 'Node<WorkflowNodeData>[][]' is not assignable to parameter of type 'CanvasSyncTraceNode[]'.
+  Type 'Node<WorkflowNodeData>[]' is not assignable to type 'CanvasSyncTraceNode'.
+    Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/components/canvas/workflow-canvas.tsx(204,85): error TS2345: Argument of type '(current: Node<WorkflowNodeData>[]) => NodeBase[]' is not assignable to parameter of type 'SetStateAction<Node<WorkflowNodeData>[]>'.
+  Type '(current: Node<WorkflowNodeData>[]) => NodeBase[]' is not assignable to type '(prevState: Node<WorkflowNodeData>[]) => Node<WorkflowNodeData>[]'.
+    Type 'NodeBase[]' is not assignable to type 'Node<WorkflowNodeData>[]'.
+      Type 'NodeBase' is not assignable to type 'Node<WorkflowNodeData>'.
+        Type 'NodeBase' is not assignable to type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+          Types of property 'data' are incompatible.
+            Type 'Record<string, unknown>' is missing the following properties from type 'WorkflowNodeData': label, nodeType
+src/workflow-builder/components/canvas/workflow-canvas.tsx(216,55): error TS2345: Argument of type 'Node<WorkflowNodeData>[][]' is not assignable to parameter of type 'CanvasSyncTraceNode[]'.
+  Type 'Node<WorkflowNodeData>[]' is not assignable to type 'CanvasSyncTraceNode'.
+    Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/components/canvas/workflow-canvas.tsx(218,34): error TS2345: Argument of type 'Node<WorkflowNodeData>[][]' is not assignable to parameter of type 'CanvasSyncTraceNode[]'.
+  Type 'Node<WorkflowNodeData>[]' is not assignable to type 'CanvasSyncTraceNode'.
+    Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/components/canvas/workflow-canvas.tsx(228,103): error TS2345: Argument of type '(current: Node<WorkflowNodeData>[]) => FlowNode[]' is not assignable to parameter of type 'SetStateAction<Node<WorkflowNodeData>[]>'.
+  Type '(current: Node<WorkflowNodeData>[]) => FlowNode[]' is not assignable to type '(prevState: Node<WorkflowNodeData>[]) => Node<WorkflowNodeData>[]'.
+    Type 'FlowNode[]' is not assignable to type 'Node<WorkflowNodeData>[]'.
+      Type 'FlowNode' is not assignable to type 'Node<WorkflowNodeData>'.
+        Type 'FlowNode' is not assignable to type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+          The types of 'data.executionStatus' are incompatible between these types.
+            Type 'string | undefined' is not assignable to type '"completed" | "running" | "failed" | "ready" | undefined'.
+              Type 'string' is not assignable to type '"completed" | "running" | "failed" | "ready" | undefined'.
+src/workflow-builder/components/canvas/workflow-canvas.tsx(236,13): error TS2345: Argument of type 'FlowNode[]' is not assignable to parameter of type 'CanvasSyncTraceNode[]'.
+  Type 'FlowNode' is not assignable to type 'CanvasSyncTraceNode'.
+    Type 'FlowNode' is not assignable to type '{ id: string; position: XYPosition; data: WorkflowNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+      The types of 'data.executionStatus' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type '"completed" | "running" | "failed" | "ready" | undefined'.
+          Type 'string' is not assignable to type '"completed" | "running" | "failed" | "ready" | undefined'.
+src/workflow-builder/components/canvas/workflow-canvas.tsx(300,70): error TS2345: Argument of type 'Node<WorkflowNodeData>[][]' is not assignable to parameter of type 'NodeBase[]'.
+  Type 'Node<WorkflowNodeData>[]' is not assignable to type 'NodeBase'.
+    Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: Record<string, unknown>; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/components/canvas/workflow-canvas.tsx(413,9): error TS2322: Type 'Node<WorkflowNodeData>[][]' is not assignable to type 'Node[]'.
+  Type 'Node<WorkflowNodeData>[]' is not assignable to type 'Node'.
+    Type 'Node<WorkflowNodeData>[]' is missing the following properties from type '{ id: string; position: XYPosition; data: Record<string, unknown>; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/workflow-builder/core/register-built-in-nodes.tsx(411,44): error TS2322: Type '"return_to_main_menu"' is not assignable to type '"end" | "start"'.
+src/workflow-builder/debug/canvas-node-sync-trace.ts(155,19): error TS2339: Property 'type' does not exist on type 'never'.
+src/workflow-builder/debug/wb-runtime-debug.ts(100,39): error TS2345: Argument of type '(this: undefined, exp: NodePositionRow) => { id: string; reason: string; expected: NodePositionRow; actual: null; }[] | { id: string; reason: string; expected: NodePositionRow; actual: NodePositionRow; }[]' is not assignable to parameter of type '(this: undefined, value: NodePositionRow, index: number, array: NodePositionRow[]) => { id: string; reason: string; expected: NodePositionRow; actual: null; } | readonly { ...; }[]'.
+  Type '{ id: string; reason: string; expected: NodePositionRow; actual: null; }[] | { id: string; reason: string; expected: NodePositionRow; actual: NodePositionRow; }[]' is not assignable to type '{ id: string; reason: string; expected: NodePositionRow; actual: null; } | readonly { id: string; reason: string; expected: NodePositionRow; actual: null; }[]'.
+    Type '{ id: string; reason: string; expected: NodePositionRow; actual: NodePositionRow; }[]' is not assignable to type '{ id: string; reason: string; expected: NodePositionRow; actual: null; } | readonly { id: string; reason: string; expected: NodePositionRow; actual: null; }[]'.
+      Type '{ id: string; reason: string; expected: NodePositionRow; actual: NodePositionRow; }[]' is not assignable to type 'readonly { id: string; reason: string; expected: NodePositionRow; actual: null; }[]'.
+        Type '{ id: string; reason: string; expected: NodePositionRow; actual: NodePositionRow; }' is not assignable to type '{ id: string; reason: string; expected: NodePositionRow; actual: null; }'.
+          Types of property 'actual' are incompatible.
+            Type 'NodePositionRow' is not assignable to type 'null'.
+../../lib/automation-platform/src/crm/supabase/create-supabase-conversation-customer-link-port.ts(2,51): error TS2307: Cannot find module '../ports/conversation-customer-link-port.js' or its corresponding type declarations.
+../../lib/automation-platform/src/crm/supabase/create-supabase-conversation-customer-link-port.ts(8,38): error TS7006: Parameter 'input' implicitly has an 'any' type.
+../../lib/automation-platform/src/index.ts(112,1): error TS2308: Module "./debug/interactive-if-trace-debug.js" has already exported a member named 'traceIfNodeEvaluation'. Consider explicitly re-exporting to resolve the ambiguity.
+../../lib/automation-platform/src/index.ts(132,1): error TS2308: Module "./transport/models.js" has already exported a member named 'OutboundMessageKind'. Consider explicitly re-exporting to resolve the ambiguity.
+../../lib/automation-platform/src/orchestrator/session-policy.ts(127,5): error TS2367: This comparison appears to be unintentional because the types '"pending" | "queued"' and '"completed"' have no overlap.
+../../lib/automation-platform/src/orchestrator/session-policy.ts(128,5): error TS2367: This comparison appears to be unintentional because the types '"pending" | "queued"' and '"failed"' have no overlap.
+../../lib/automation-platform/src/orchestrator/session-policy.ts(129,5): error TS2367: This comparison appears to be unintentional because the types '"pending" | "queued"' and '"cancelled"' have no overlap.
+../../lib/automation-platform/src/runtime/conversation-variables.ts(66,7): error TS2322: Type 'string' is not assignable to type '"button" | "list" | "flow" | "quick_reply" | undefined'.
+../../lib/channel-platform/src/adapters/whatsapp/whatsapp-cloud-adapter.ts(129,9): error TS2322: Type '"interactive"' is not assignable to type '"audio" | "template" | "video" | "image" | "text" | "document"'.
+../../lib/channel-platform/src/adapters/whatsapp/whatsapp-cloud-adapter.ts(155,9): error TS2322: Type '"interactive"' is not assignable to type '"audio" | "template" | "video" | "image" | "text" | "document"'.
+[ELIFECYCLE] Command failed with exit code 1.

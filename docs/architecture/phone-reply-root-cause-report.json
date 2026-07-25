@@ -1,0 +1,101 @@
+{
+  "investigatedAt": "2026-07-24T23:46:00Z",
+  "flowId": "aef7c4ab-513a-4b64-a700-2be6cf51dafc",
+  "activeVersionId": "1d8b9b25-040c-412f-a17a-422797f4eb71",
+  "sampleRunId": "7d0d2754-81cf-4b44-946f-8c0a75c53914",
+  "nodes": {
+    "askQuestion": {
+      "id": "d2da8df9-7330-4b6b-93e8-592638e7e41a",
+      "action": "wait_for_input",
+      "inputKey": "customer_phone",
+      "prompt": "what is your phone number?"
+    },
+    "findCustomer": {
+      "id": "c078acba-0cd1-4e3c-a803-8ce11407b6e3",
+      "action": "find_customer",
+      "lookupBy": "phone",
+      "valueBinding": "{{customer.phone}}"
+    },
+    "ifCustomerExists": {
+      "id": "e55beed5-4c11-475a-99aa-a723f239313f",
+      "type": "condition",
+      "rule": "lookup.status equals found"
+    }
+  },
+  "answers": {
+    "1_askQuestionStored": true,
+    "2_variableWritten": "customer_phone (top-level). Not phone, not conversation.phone, not customer.phone.",
+    "3_findCustomerExecuted": "Node reached; handler threw before completion.",
+    "4_findCustomerInput": "Resolved lookup value from {{customer.phone}} = empty string. customer_phone (+201234567890) not used.",
+    "5_sqlQuery": "None — findCustomer() never invoked.",
+    "6_findCustomerResult": "No lookup result; ValidationError thrown.",
+    "7_findCustomerContinue": false,
+    "8_nextNodeResolved": false,
+    "9_stopReason": "See rootCauses"
+  },
+  "executionTrace": [
+    {
+      "step": "book_button_resume",
+      "executionMode": "resume",
+      "currentNodeId": "d2da8df9-7330-4b6b-93e8-592638e7e41a",
+      "waitingFor": "customer_phone",
+      "prompt": "what is your phone number?"
+    },
+    {
+      "step": "phone_text_resume",
+      "executionMode": "resume",
+      "inboundText": "+201234567890",
+      "buildResumeInput": { "customer_phone": "+201234567890", "whatsappMessageType": "text" },
+      "waitNodeOutcome": "continue",
+      "variablesAfterAsk": { "customer_phone": "+201234567890", "__waitingFor": null }
+    },
+    {
+      "step": "find_customer_entered",
+      "currentNodeId": "c078acba-0cd1-4e3c-a803-8ce11407b6e3",
+      "bindingResolution": {
+        "binding": "{{customer.phone}}",
+        "customer_phone_in_scope": "+201234567890",
+        "customer_phone_in_customer_entity": null,
+        "resolvedLookupValue": ""
+      }
+    },
+    {
+      "step": "production_webhook_failure",
+      "error": "AutomationError: Find customer action requires a customer service.",
+      "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+      "lines": "228-230"
+    },
+    {
+      "step": "crm_enabled_failure",
+      "error": "AutomationError: Create booking requires lookup value.",
+      "file": "lib/automation-platform/src/field-binding/resolver.ts",
+      "lines": "53-56",
+      "calledFrom": "lib/automation-platform/src/engine/crm/find-customer-action.ts:39"
+    }
+  ],
+  "rootCauses": [
+    {
+      "priority": 1,
+      "id": "missing_customer_service_in_webhook_engine",
+      "summary": "WhatsApp webhook AutomationEngine is created without CustomerServicePort.",
+      "location": "artifacts/api-server/src/platform/create-webhook-platform.ts:115",
+      "throwSite": "lib/automation-platform/src/engine/built-in-nodes.ts:228-230",
+      "effect": "Inbound pipeline throws on phone reply; no outbound; run stuck in running at find_customer."
+    },
+    {
+      "priority": 2,
+      "id": "variable_namespace_mismatch",
+      "summary": "Ask Question writes customer_phone but Find Customer reads customer.phone.",
+      "askInputKey": "customer_phone",
+      "findBinding": "{{customer.phone}}",
+      "throwSite": "lib/automation-platform/src/field-binding/resolver.ts:53-56",
+      "effect": "Even with CRM service wired, lookup value resolves empty and Find Customer throws before DB query."
+    }
+  ],
+  "expectedAfterFix": {
+    "nextNode": "e55beed5-4c11-475a-99aa-a723f239313f",
+    "branchField": "lookup.status",
+    "yesWhen": "found",
+    "noWhen": "not_found"
+  }
+}

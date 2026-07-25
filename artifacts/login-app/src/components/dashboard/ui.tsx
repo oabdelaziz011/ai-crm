@@ -1,6 +1,8 @@
 import type { CSSProperties, ElementType, ReactNode } from "react";
 import { AlertCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
 
+export { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+
 export function DashboardCard({
   children,
   className = "",

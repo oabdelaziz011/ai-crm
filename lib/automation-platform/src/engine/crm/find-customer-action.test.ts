@@ -81,6 +81,8 @@ describe("executeFindCustomerAction", () => {
       name: "Omar",
       email: "omar@example.com",
       phone: "+15550001",
+      age: 32,
+      gender: "Male",
       notes: "VIP",
       createdAt: "2026-07-01T00:00:00.000Z",
       updatedAt: "2026-07-01T00:00:00.000Z",
@@ -109,6 +111,8 @@ describe("executeFindCustomerAction", () => {
     assert.notEqual(Object.prototype.hasOwnProperty.call(result.variables?.lookup, "found"), true);
     assert.equal((result.variables?.customer as { exists: boolean }).exists, true);
     assert.equal((result.variables?.customer as { id: string }).id, "cust-1");
+    assert.equal((result.variables?.customer as { age: number }).age, 32);
+    assert.equal((result.variables?.customer as { gender: string }).gender, "Male");
   });
 
   it("returns not_found business outcome with cleared customer variables", async () => {

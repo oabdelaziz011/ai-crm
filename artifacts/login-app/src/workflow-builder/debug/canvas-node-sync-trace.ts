@@ -152,7 +152,7 @@ export function summarizeNodeChanges(changes: NodeChange[]): string[] {
     if (change.type === "remove") return `remove:${change.id}`;
     if (change.type === "add") return `add:${"id" in change ? change.id : "?"}`;
     if (change.type === "replace") return `replace:${change.id}`;
-    return change.type;
+    return `unknown:${(change as NodeChange).type}`;
   });
 }
 

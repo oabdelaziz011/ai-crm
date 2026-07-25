@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
   Users, TrendingUp, Mail, Phone, Plus, Filter, Search, Pencil, Trash2,
 } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import { useCustomerProfile } from "@/context/customer-profile-context";
 import { useCustomers, useDeleteCustomer } from "@/hooks/use-customers";
 import { CustomerModal } from "@/components/dashboard/customer-modal";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
@@ -20,6 +22,9 @@ import {
 
 export default function CustomersPage() {
   const { t } = useTranslation("common");
+  const { profile } = useAuth();
+  const { openCustomerProfile } = useCustomerProfile();
+  const companyId = profile?.company_id ?? null;
   const { data: customers = [], isLoading, error } = useCustomers();
   const deleteCustomer = useDeleteCustomer();
   const canCreateCustomers = useHasPermission("customers.create");
@@ -28,6 +33,10 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; customer?: Customer | null }>({ open: false });
   const [del, setDel] = useState<Customer | null>(null);
+
+  const openProfile = (customerId: string) => {
+    openCustomerProfile({ customerId, context: { companyId } });
+  };
 
   const filtered = customers.filter((customer: Customer) =>
     customer.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -87,13 +96,21 @@ export default function CustomersPage() {
           <div className="divide-y divide-white/5">
             {filtered.map((customer: Customer) => (
               <div key={customer.id} className="flex items-center px-6 py-4 hover:bg-white/[0.02] transition-colors gap-4">
-                <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                <button
+                  type="button"
+                  className="w-9 h-9 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0"
+                  onClick={() => openProfile(customer.id)}
+                >
                   {customer.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 text-left"
+                  onClick={() => openProfile(customer.id)}
+                >
                   <p className="text-sm font-medium truncate">{customer.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{customer.email ?? customer.phone ?? "—"}</p>
-                </div>
+                </button>
                 <p className="text-xs text-muted-foreground font-mono hidden md:block">
                   <span dir="ltr">{format(new Date(customer.created_at), "MMM dd, yyyy")}</span>
                 </p>

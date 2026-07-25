@@ -18,6 +18,9 @@ import { validateWorkflowSnapshot } from "./publish-validation.js";
 import { WorkflowPublishService } from "./publish-service.js";
 import { WorkflowRollbackService } from "./rollback-service.js";
 import type { AutomationFlowVersionRepository } from "./version-repository.js";
+import type { AutomationFlowVersionGraphRepository } from "./version-graph-repository.js";
+import { createInMemoryAutomationFlowVersionGraphRepository } from "./test-version-graph-repository.js";
+import { createInMemoryWorkflowPublishTransactionRepository } from "./test-publish-transaction-repository.js";
 import type { WorkflowGraphSnapshot } from "./types.js";
 
 function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
@@ -181,8 +184,15 @@ function createLifecycleEnvironment() {
     deleteByFlowId: async () => undefined,
   };
 
+  const versionGraph: AutomationFlowVersionGraphRepository = createInMemoryAutomationFlowVersionGraphRepository();
+  const publishTransaction = createInMemoryWorkflowPublishTransactionRepository({
+    flows: flowRepository,
+    versions: versionRepository,
+    versionGraph,
+  });
+
   const audit = new WorkflowAuditService();
-  const publish = new WorkflowPublishService(flowRepository, versionRepository, audit);
+  const publish = new WorkflowPublishService(flowRepository, publishTransaction, audit);
   const rollback = new WorkflowRollbackService(flowRepository, versionRepository, nodeRepository, edgeRepository, audit);
   const lifecycle = new WorkflowLifecycleService(flowRepository, versionRepository, audit);
 

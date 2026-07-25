@@ -3,20 +3,21 @@ import type { ConversationRecord } from "@workspace/ai-conversation";
 import { MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DashboardCard } from "@/components/dashboard/ui";
+import { InboxChannelBadge } from "@/components/conversations/inbox-channel-badge";
+import { buildConversationListDisplay } from "@/lib/conversations/conversation-list-display";
+import type { Customer } from "@/lib/types";
 
 type ConversationListPanelProps = {
   conversations: ConversationRecord[];
+  customersById?: ReadonlyMap<string, Pick<Customer, "name" | "phone">>;
   selectedId: string | null;
   isLoading: boolean;
   onSelect: (conversationId: string) => void;
 };
 
-function channelLabel(channelType: string) {
-  return channelType.replace(/_/g, " ");
-}
-
 export function ConversationListPanel({
   conversations,
+  customersById,
   selectedId,
   isLoading,
   onSelect,
@@ -39,6 +40,13 @@ export function ConversationListPanel({
         {conversations.map((conversation) => {
           const active = conversation.id === selectedId;
           const unread = conversation.unread_count_employee > 0;
+          const customer = conversation.customer_id
+            ? customersById?.get(conversation.customer_id)
+            : undefined;
+          const display = buildConversationListDisplay(conversation, customer);
+          const title = display.customerName ?? t("dashboard.inbox.unknownContact");
+          const phone = display.customerPhone ?? t("forms.customer.notSet");
+
           return (
             <button
               key={conversation.id}
@@ -49,32 +57,32 @@ export function ConversationListPanel({
               }`}
             >
               <div className="flex items-start gap-3">
-                <MessageSquare className={`w-4 h-4 mt-0.5 shrink-0 ${unread ? "text-primary" : "text-muted-foreground"}`} />
+                <MessageSquare
+                  className={`w-4 h-4 mt-1 shrink-0 ${unread ? "text-primary" : "text-muted-foreground"}`}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-mono text-muted-foreground truncate">
-                      {conversation.conversation_number}
-                    </span>
-                    {conversation.last_message_at && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
-                      </span>
-                    )}
+                    <p className="text-sm font-semibold truncate min-w-0">{title}</p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <InboxChannelBadge channelType={conversation.channel_type} />
+                      {conversation.last_message_at && (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm font-medium mt-0.5 capitalize">{channelLabel(conversation.channel_type)}</p>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {conversation.last_message_preview || t("dashboard.inbox.noPreview")}
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{phone}</p>
+                  <p className="text-xs text-muted-foreground/90 mt-1 line-clamp-2">
+                    {display.preview ?? t("dashboard.inbox.noPreview")}
                   </p>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
-                      {conversation.state.replace(/_/g, " ")}
-                    </span>
-                    {unread && (
+                  {unread && (
+                    <div className="mt-2">
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20">
                         {t("dashboard.inbox.unread", { count: conversation.unread_count_employee })}
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </button>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Customer, CustomerInsert, CustomerUpdate } from "@/lib/types";
+import { customerKey } from "./use-customer";
 
 export const CUSTOMERS_KEY = ["customers"] as const;
 
@@ -32,7 +33,10 @@ export function useCreateCustomer() {
       if (error) throw new Error(error.message);
       return data as Customer;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: CUSTOMERS_KEY }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
+      qc.invalidateQueries({ queryKey: customerKey(data.id) });
+    },
   });
 }
 
@@ -49,7 +53,10 @@ export function useUpdateCustomer() {
       if (error) throw new Error(error.message);
       return data as Customer;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: CUSTOMERS_KEY }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
+      qc.invalidateQueries({ queryKey: customerKey(data.id) });
+    },
   });
 }
 

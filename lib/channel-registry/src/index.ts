@@ -28,3 +28,4 @@ export * from "./repositories/channel-registry-repository.js";
 export * from "./repositories/company-channel-repository.js";
 export * from "./repositories/supabase-channel-registry-repository.js";
 export * from "./repositories/supabase-company-channel-repository.js";
+export * from "./utils/whatsapp-channel-utils.js";

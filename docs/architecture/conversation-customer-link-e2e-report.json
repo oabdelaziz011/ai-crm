@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-07-25T04:52:18.923Z",
+  "verification": "post-api-server-redeploy",
+  "pipeline": {
+    "whatsappIngress": "POST https://webhook.valueor.org/api/webhooks/whatsapp",
+    "conversationCreated": true,
+    "customerCreated": true,
+    "conversationCustomerLinked": true,
+    "noManualBackfill": true,
+    "noManualSql": true
+  },
+  "conversation": {
+    "id": "ee97b9bc-8185-4176-b4f4-2547f4ce19d6",
+    "customer_id": "1c4fbd75-3ba9-4689-b5fd-70bde106c448",
+    "conversation_number": "CNV-000031",
+    "created_at": "2026-07-25T04:45:46.493246+00:00",
+    "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172"
+  },
+  "customer": {
+    "id": "1c4fbd75-3ba9-4689-b5fd-70bde106c448",
+    "name": "Link Verify 742227",
+    "phone": "01154742227",
+    "age": 55,
+    "gender": "female",
+    "created_at": "2026-07-25T04:46:36.276764+00:00"
+  },
+  "customerDetailsExpected": {
+    "name": "Link Verify 742227",
+    "phone": "01154742227",
+    "age": 55,
+    "gender": "female"
+  },
+  "sql": "SELECT id, customer_id FROM conversations WHERE id = 'ee97b9bc-8185-4176-b4f4-2547f4ce19d6';",
+  "sqlResult": {
+    "id": "ee97b9bc-8185-4176-b4f4-2547f4ce19d6",
+    "customer_id": "1c4fbd75-3ba9-4689-b5fd-70bde106c448"
+  },
+  "sqlPass": true,
+  "messageCount": 0,
+  "notes": [
+    "E2E script exited 500 on Create Booking (slot unavailable) after Create Customer succeeded.",
+    "conversation.customer_id was set automatically by create-customer-action link port."
+  ]
+}

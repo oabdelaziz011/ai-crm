@@ -10,6 +10,7 @@ import { DeliveryStatusPipeline } from "./pipelines/delivery-status-pipeline.js"
 import { InboundMessagePipeline } from "./pipelines/inbound-message-pipeline.js";
 import { OutboundMessagePipeline } from "./pipelines/outbound-message-pipeline.js";
 import type { ChannelPlatformPorts } from "./ports/channel-platform-ports.js";
+import type { ChannelWorkflowResolver } from "./services/channel-workflow-resolver.js";
 import { NoopChannelTelemetryPort, type ChannelTelemetryPort } from "./ports/telemetry-port.js";
 import { ChannelRouter } from "./router/channel-router.js";
 import {
@@ -23,6 +24,7 @@ export type ChannelPlatformServicesOptions = {
   adapters?: ChannelAdapterPort[];
   telemetry?: ChannelTelemetryPort;
   whatsAppFetchFn?: typeof fetch;
+  workflowResolver?: ChannelWorkflowResolver;
 };
 
 export type ChannelPlatformServices = {
@@ -68,6 +70,7 @@ export function createChannelPlatformServices(
     dispatcher,
     inboundRepository,
     sessionRepository,
+    options.workflowResolver,
   );
 
   const router = new ChannelRouter(
@@ -103,4 +106,14 @@ export * from "./pipelines/outbound-message-pipeline.js";
 export * from "./router/channel-router.js";
 export * from "./dispatcher/channel-dispatcher.js";
 export * from "./repositories/channel-platform-repositories.js";
+export * from "./repositories/channel-workflow-binding-repository.js";
+export * from "./repositories/supabase-channel-workflow-binding-repository.js";
+export * from "./services/channel-workflow-resolver.js";
+export * from "./services/extract-automation-outbound.js";
+export * from "./services/dispatch-automation-outbound.js";
+export * from "./services/extract-automation-response.js";
 export * from "./webhooks/whatsapp-webhook-handler.js";
+export * from "./webhooks/whatsapp-webhook-routing.js";
+export * from "./webhooks/whatsapp-phone-number-probe.js";
+export * from "./webhooks/webhook-processing-trace.js";
+export * from "./webhooks/webhook-diagnostics.js";

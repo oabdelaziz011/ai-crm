@@ -25,7 +25,11 @@ export class OutboundMessagePipeline {
 
     const adapter = this.adapterRegistry.require(request.channelKey);
     const text = request.text.trim();
-    if (!text) throw new ValidationError("Outbound message text is required.");
+    const hasAttachments = (request.attachments?.length ?? 0) > 0;
+    const hasStructuredPayload = Boolean(request.outboundPayload && typeof request.outboundPayload === "object");
+    if (!text && !hasAttachments && !hasStructuredPayload) {
+      throw new ValidationError("Outbound message text is required.");
+    }
 
     const persistConversationMessage = request.persistConversationMessage ?? true;
     let outboundMessageId = request.outboundMessageId;
@@ -50,6 +54,7 @@ export class OutboundMessagePipeline {
       payload: {
         text,
         attachments: request.attachments ?? [],
+        outboundPayload: request.outboundPayload ?? null,
         metadata: request.metadata ?? {},
       },
     });
@@ -63,7 +68,10 @@ export class OutboundMessagePipeline {
         externalThreadId: request.externalThreadId,
         text,
         attachments: request.attachments,
-        metadata: request.metadata,
+        metadata: {
+          ...(request.metadata ?? {}),
+          outboundPayload: request.outboundPayload,
+        },
       },
     );
 

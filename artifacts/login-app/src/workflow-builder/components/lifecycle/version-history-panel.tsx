@@ -41,7 +41,7 @@ export function VersionHistoryPanel({ flowId, repository, context, canRollback, 
   };
 
   return (
-    <aside className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto rounded-2xl border border-border/60 bg-card/80 p-4 shadow-lg">
+    <aside className="flex shrink-0 flex-col gap-4 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-lg">
       <div className="flex items-center gap-2">
         <History className="h-4 w-4 text-primary" />
         <p className="text-sm font-semibold">{wb("versionHistory.title")}</p>

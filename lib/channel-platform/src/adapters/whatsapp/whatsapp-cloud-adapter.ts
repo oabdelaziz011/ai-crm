@@ -14,6 +14,7 @@ import { ValidationError } from "../../errors.js";
 import { WhatsAppApiClient, parseWhatsAppWebhookEvents } from "./whatsapp-api-client.js";
 import { parseWhatsAppConfiguration } from "./whatsapp-config.js";
 import type { WhatsAppSendMessagePayload, WhatsAppWebhookMessage } from "./whatsapp-types.js";
+import { traceWhatsAppRawWebhookPayload } from "../../debug/interactive-if-trace-debug.js";
 
 export type WhatsAppCloudAdapterOptions = {
   fetchFn?: typeof fetch;
@@ -72,28 +73,109 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
   }
 
   normalizeInbound(_ctx: ChannelAdapterContext, payload: Record<string, unknown>): NormalizedInboundMessageDto {
+    traceWhatsAppRawWebhookPayload(payload);
+
     const message = payload.message as WhatsAppWebhookMessage | undefined;
     if (!message) {
       throw new ValidationError("WhatsApp inbound payload missing message object.");
     }
 
     const { text, attachments } = this.extractMessageContent(message);
+    const metadata: Record<string, unknown> = {
+      whatsappMessageType: message.type,
+      senderName: typeof payload.senderName === "string" ? payload.senderName : undefined,
+      phoneNumberId: typeof payload.phoneNumberId === "string" ? payload.phoneNumberId : undefined,
+    };
+
+    if (message.type === "interactive") {
+      const buttonReply = message.interactive?.button_reply;
+      const listReply = message.interactive?.list_reply;
+      if (buttonReply?.id) metadata.replyId = buttonReply.id;
+      if (buttonReply?.title) metadata.title = buttonReply.title;
+      if (listReply?.id) metadata.replyId = listReply.id;
+      if (listReply?.title) metadata.title = listReply.title;
+      if (listReply?.description) metadata.description = listReply.description;
+      metadata.kind = "interactive_reply";
+      if (listReply) metadata.interactionType = "list_reply";
+      if (buttonReply) metadata.interactionType = "button_reply";
+    }
+
+    const resolvedText =
+      text.trim() ||
+      (typeof metadata.title === "string" ? metadata.title.trim() : "") ||
+      (typeof metadata.replyId === "string" ? metadata.replyId.trim() : "");
 
     return {
       externalThreadId: message.from,
       externalMessageId: message.id,
       senderExternalId: message.from,
-      text,
+      text: resolvedText,
       attachments,
-      metadata: {
-        whatsappMessageType: message.type,
-        senderName: typeof payload.senderName === "string" ? payload.senderName : undefined,
-        phoneNumberId: typeof payload.phoneNumberId === "string" ? payload.phoneNumberId : undefined,
-      },
+      metadata,
     };
   }
 
   formatOutbound(_ctx: ChannelAdapterContext, message: OutboundChannelMessageDto): Record<string, unknown> {
+    const structured =
+      (message.metadata?.outboundPayload as Record<string, unknown> | undefined) ??
+      undefined;
+    const kind = typeof structured?.kind === "string" ? structured.kind : null;
+
+    if (kind === "buttons" && typeof structured?.text === "string" && Array.isArray(structured.buttons)) {
+      const payload: WhatsAppSendMessagePayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: message.externalThreadId,
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: structured.text },
+          action: {
+            buttons: (structured.buttons as Array<{ id: string; label: string }>).slice(0, 3).map((button) => ({
+              type: "reply",
+              reply: { id: button.id, title: button.label.slice(0, 20) },
+            })),
+          },
+        },
+      };
+      return { payload, recipient: message.externalThreadId };
+    }
+
+    if (
+      kind === "list" &&
+      typeof structured?.title === "string" &&
+      typeof structured?.body === "string" &&
+      typeof structured?.buttonLabel === "string" &&
+      Array.isArray(structured.sections)
+    ) {
+      const payload: WhatsAppSendMessagePayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: message.externalThreadId,
+        type: "interactive",
+        interactive: {
+          type: "list",
+          header: structured.title ? { type: "text", text: structured.title } : undefined,
+          body: { text: structured.body },
+          action: {
+            button: structured.buttonLabel.slice(0, 20),
+            sections: (structured.sections as Array<{
+              title: string;
+              rows: Array<{ id: string; title: string; description?: string }>;
+            }>).map((section) => ({
+              title: section.title,
+              rows: section.rows.map((row) => ({
+                id: row.id,
+                title: row.title,
+                description: row.description,
+              })),
+            })),
+          },
+        },
+      };
+      return { payload, recipient: message.externalThreadId };
+    }
+
     const template = message.metadata?.whatsappTemplate as
       | { name: string; languageCode: string; components?: Array<Record<string, unknown>> }
       | undefined;
@@ -164,11 +246,14 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
           text: message.button?.text ?? message.button?.payload ?? "",
           attachments: [],
         };
-      case "interactive":
+      case "interactive": {
+        const buttonReply = message.interactive?.button_reply;
+        const listReply = message.interactive?.list_reply;
         return {
-          text: message.interactive?.button_reply?.title ?? "",
+          text: buttonReply?.title ?? listReply?.title ?? listReply?.id ?? buttonReply?.id ?? "",
           attachments: [],
         };
+      }
       case "image":
         return this.mediaMessage(message.type, message.image);
       case "audio":

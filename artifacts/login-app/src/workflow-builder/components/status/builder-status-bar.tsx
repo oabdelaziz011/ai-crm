@@ -4,12 +4,11 @@ import type { SaveStatus } from "../../core/types";
 
 type BuilderStatusBarProps = {
   saveStatus: SaveStatus;
-  validationCount: number;
   documentStatus: "draft" | "active" | "disabled" | "archived";
   hasUnpublishedDraft?: boolean;
 };
 
-export function BuilderStatusBar({ saveStatus, validationCount, documentStatus, hasUnpublishedDraft }: BuilderStatusBarProps) {
+export function BuilderStatusBar({ saveStatus, documentStatus, hasUnpublishedDraft }: BuilderStatusBarProps) {
   const { t } = useTranslation("common");
 
   const label =
@@ -32,7 +31,7 @@ export function BuilderStatusBar({ saveStatus, validationCount, documentStatus, 
   const Icon =
     saveStatus === "publishing"
       ? Loader2
-      : saveStatus === "error" || validationCount > 0
+      : saveStatus === "error"
         ? AlertCircle
         : saveStatus === "saving"
           ? Loader2
@@ -41,7 +40,7 @@ export function BuilderStatusBar({ saveStatus, validationCount, documentStatus, 
             : CheckCircle2;
 
   const tone =
-    saveStatus === "error" || validationCount > 0
+    saveStatus === "error"
       ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
       : documentStatus === "active"
         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
@@ -51,7 +50,6 @@ export function BuilderStatusBar({ saveStatus, validationCount, documentStatus, 
     <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${tone}`} role="status" aria-live="polite">
       <Icon className={`h-4 w-4 ${saveStatus === "saving" || saveStatus === "publishing" ? "animate-spin" : ""}`} />
       <span>{label}</span>
-      {validationCount > 0 ? <span>• {t("workflowBuilder.status.validationCount", { count: validationCount })}</span> : null}
     </div>
   );
 }

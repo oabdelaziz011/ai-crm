@@ -6,10 +6,34 @@ import type {
   ChannelPlatformPorts,
   ChannelRegistryPort,
   ChannelRuntimePort,
+  ResolvedCompanyChannel,
 } from "@workspace/channel-platform";
 import type { ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
 import type { RuntimeIntegrationServices } from "@workspace/runtime-integration";
 import { extractResponseContent } from "@workspace/runtime-integration";
+
+function mapCompanyChannelRecord(record: {
+  id: string;
+  company_id: string;
+  display_name: string;
+  is_enabled: boolean;
+  provider: string;
+  configuration: Record<string, unknown>;
+  communication_channel?: { key?: string } | null;
+}): ResolvedCompanyChannel | null {
+  const channelKey = record.communication_channel?.key;
+  if (!channelKey) return null;
+
+  return {
+    id: record.id,
+    companyId: record.company_id,
+    channelKey,
+    displayName: record.display_name,
+    isEnabled: record.is_enabled,
+    provider: record.provider,
+    configuration: record.configuration ?? {},
+  };
+}
 
 export function createChannelRegistryPort(
   services: ChannelRegistryServices,
@@ -18,18 +42,38 @@ export function createChannelRegistryPort(
   return {
     async getCompanyChannel(companyChannelId) {
       const record = await services.companyChannels.getCompanyChannel(ctx, companyChannelId);
-      const channelKey = record.communication_channel?.key;
-      if (!channelKey) return null;
+      return mapCompanyChannelRecord(record);
+    },
 
-      return {
-        id: record.id,
-        companyId: record.company_id,
-        channelKey,
-        displayName: record.display_name,
-        isEnabled: record.is_enabled,
-        provider: record.provider,
-        configuration: record.configuration ?? {},
-      };
+    async findCompanyChannelByPhoneNumberId(phoneNumberId) {
+      const records = await services.companyChannels.findCompanyChannelByPhoneNumberId(
+        ctx,
+        phoneNumberId,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async findCompanyChannelsByWhatsAppVerifyToken(verifyToken) {
+      const records = await services.companyChannels.findCompanyChannelByWhatsAppVerifyToken(
+        ctx,
+        verifyToken,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledWhatsAppChannels() {
+      const records = await services.companyChannels.listEnabledWhatsAppChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncWhatsAppPhoneNumberId(companyChannelId, phoneNumberId) {
+      await services.companyChannels.syncWhatsAppPhoneNumberId(ctx, companyChannelId, phoneNumberId);
     },
   };
 }

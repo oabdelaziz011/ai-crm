@@ -8,7 +8,10 @@ export type SettingsRouteId =
   | "account-information"
   | "company-settings"
   | "security"
-  | "notifications";
+  | "notifications"
+  | "email"
+  | "whatsapp"
+  | "scheduling";
 
 export type SettingsRouteDefinition = {
   id: SettingsRouteId;
@@ -78,6 +81,36 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/notifications-page"),
       "SettingsNotificationsPage",
+    ),
+  },
+  {
+    id: "email",
+    nestedPath: "/email",
+    titleKey: "dashboard.settings.nav.email",
+    permission: "settings.edit",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/email-settings-page"),
+      "SettingsEmailPage",
+    ),
+  },
+  {
+    id: "whatsapp",
+    nestedPath: "/whatsapp",
+    titleKey: "dashboard.settings.nav.whatsapp",
+    permission: "settings.edit",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/whatsapp-settings-page"),
+      "SettingsWhatsAppPage",
+    ),
+  },
+  {
+    id: "scheduling",
+    nestedPath: "/scheduling",
+    titleKey: "dashboard.settings.nav.scheduling",
+    permission: "scheduling.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/scheduling-page"),
+      "SettingsSchedulingPage",
     ),
   },
 ] as const;

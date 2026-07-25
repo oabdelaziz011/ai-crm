@@ -90,7 +90,7 @@
  * | Alignment selection     | `resolveAlignmentSelection`                 | canvas-selection-guard |
  */
 import type { Node, NodeChange } from "@xyflow/react";
-import type { BuilderNodeType } from "../../core/types";
+import type { WorkflowNodeData } from "../nodes/workflow-node-card";
 
 export {
   documentNodeSignature,
@@ -184,12 +184,7 @@ export function extractDragCommitPositions(changes: DragPositionChange[]): Array
   });
 }
 
-type FlowNodeData = {
-  label: string;
-  nodeType: BuilderNodeType;
-  subtitle?: string;
-  executionStatus?: string;
-};
+type FlowNodeData = WorkflowNodeData;
 
 type FlowNode = Node<FlowNodeData>;
 
@@ -210,6 +205,8 @@ export function documentProjectionSignature(flowNodes: ProjectionNode[]): string
         data.nodeType,
         data.label,
         data.subtitle ?? "",
+        data.validationSeverity ?? "",
+        data.validationActive ? "1" : "0",
       ].join(":");
     })
     .join("|");
@@ -220,7 +217,9 @@ function flowNodeDataEqual(existing: FlowNodeData, next: FlowNodeData): boolean 
     existing.label === next.label &&
     existing.nodeType === next.nodeType &&
     existing.subtitle === next.subtitle &&
-    existing.executionStatus === next.executionStatus
+    existing.executionStatus === next.executionStatus &&
+    existing.validationSeverity === next.validationSeverity &&
+    existing.validationActive === next.validationActive
   );
 }
 

@@ -1,6 +1,5 @@
 import { ValidationError } from "../errors.js";
 import {
-  evaluateIfElseCondition,
   evaluateSwitchCase,
   validateRuleSet,
   type CompiledRuleSet,
@@ -11,16 +10,42 @@ import {
   INTERACTIVE_SELECTION_INPUT_KEY,
   mergeConversationVariables,
 } from "../runtime/conversation-variables.js";
+import {
+  readInteractiveListInputKey,
+  resolveInteractiveListStoredValue,
+} from "../runtime/interactive-list-variable.js";
+import {
+  buildInteractiveMenuOutbound,
+  findPrimaryMenuNode,
+} from "../runtime/main-menu.js";
+import {
+  appendOutboundQueueEntry,
+  clearLatestOutboundSlot,
+  type OutboundQueueEntry,
+} from "../runtime/outbound-queue.js";
 import type { BookingServicePort } from "../ports/booking-service-port.js";
 import type { CustomerServicePort } from "../ports/customer-service-port.js";
+import type { ConversationCustomerLinkPort } from "../ports/conversation-customer-link-port.js";
 import { executeCreateBookingAction } from "./crm/create-booking-action.js";
+import { executeFindBookingAction } from "./crm/find-booking-action.js";
+import { executeCancelBookingAction, executeUpdateBookingAction } from "./crm/update-booking-action.js";
+import { executeCreateCustomerAction, executeUpdateCustomerAction } from "./crm/create-customer-action.js";
 import { executeFindCustomerAction } from "./crm/find-customer-action.js";
 import type { AutomationNodeHandler, ExecutionContext, NodeExecutionResult } from "./execution-context.js";
 import { mergeVariables } from "./execution-context.js";
+import { traceIfNodeEntered, traceLegacyIfNodeEvaluation, executeIfRuleSetWithTrace } from "../debug/if-node-trace-debug.js";
+import { traceListSelectionApplied } from "../debug/interactive-if-trace-debug.js";
+import {
+  logAfterSendListMessage,
+  logBeforeExecuteListNode,
+  registerActiveListVisit,
+} from "../debug/list-node-lifecycle-debug.js";
+import { readOutboundQueue } from "../runtime/outbound-queue.js";
 
 export type AutomationActionDeps = {
   bookingService?: BookingServicePort;
   customerService?: CustomerServicePort;
+  conversationCustomerLink?: ConversationCustomerLinkPort;
 };
 
 function readString(value: unknown): string | null {
@@ -48,93 +73,80 @@ function readSwitchConfig(config: Record<string, unknown>): SwitchNodeConfig | n
   };
 }
 
-type InteractiveButtonOption = { id: string; label: string };
-
-function readInteractiveButtons(config: Record<string, unknown>): InteractiveButtonOption[] {
-  if (!Array.isArray(config.buttons)) return [];
-  return config.buttons.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return [];
-    const id = readString((entry as { id?: unknown }).id);
-    const label = readString((entry as { label?: unknown }).label);
-    if (!id || !label) return [];
-    return [{ id, label }];
-  });
-}
-
-function readListSections(config: Record<string, unknown>): Array<{
-  title: string;
-  rows: Array<{ id: string; title: string; description?: string }>;
-}> {
-  if (!Array.isArray(config.sections)) return [];
-  return config.sections.flatMap((section) => {
-    if (!section || typeof section !== "object") return [];
-    const title = readString((section as { title?: unknown }).title) ?? "Options";
-    const rows = Array.isArray((section as { rows?: unknown }).rows)
-      ? (section as { rows: unknown[] }).rows.flatMap((row) => {
-          if (!row || typeof row !== "object") return [];
-          const id = readString((row as { id?: unknown }).id);
-          const rowTitle = readString((row as { title?: unknown }).title);
-          if (!id || !rowTitle) return [];
-          const description = readString((row as { description?: unknown }).description) ?? undefined;
-          return [{ id, title: rowTitle, ...(description ? { description } : {}) }];
-        })
-      : [];
-    if (rows.length === 0) return [];
-    return [{ title, rows }];
-  });
-}
-
 function executeInteractiveMessageAction(context: ExecutionContext, action: "send_buttons" | "send_list"): NodeExecutionResult {
   const selection = context.input
     ? extractInteractiveSelection(context.input, { fallbackHint: action })
     : null;
   if (selection) {
+    const selectionVariablePatch: Record<string, unknown> = {};
+    if (action === "send_list") {
+      const inputKey = readInteractiveListInputKey(context.currentNode.config);
+      const replyId = selection.last_button_id ?? "";
+      if (inputKey && replyId) {
+        const storedValue = resolveInteractiveListStoredValue(context.currentNode.config, replyId);
+        if (storedValue !== null) {
+          selectionVariablePatch[inputKey] = storedValue;
+        }
+      }
+    }
+
+    const nextVariables = mergeVariables(context.variables, {
+      ...mergeConversationVariables(context.variables, selection),
+      ...selectionVariablePatch,
+      [INTERACTIVE_SELECTION_INPUT_KEY]: selection.last_button_id ?? selection.last_button_title ?? null,
+      __waitingFor: null,
+      __prompt: null,
+      ...clearLatestOutboundSlot(),
+    });
+    traceListSelectionApplied({
+      runId: context.run.id,
+      sessionId: context.session.id,
+      nodeId: context.currentNode.id,
+      selection,
+      variables: nextVariables,
+    });
     return {
       outcome: "continue",
-      variables: mergeVariables(context.variables, {
-        ...mergeConversationVariables(context.variables, selection),
-        [INTERACTIVE_SELECTION_INPUT_KEY]: selection.last_button_title ?? selection.last_button_id ?? null,
-        __waitingFor: null,
-        __prompt: null,
-        __outbound: null,
-      }),
+      variables: nextVariables,
     };
   }
 
-  let outbound: Record<string, unknown>;
+  let outbound: OutboundQueueEntry;
   let prompt: string | null;
 
-  if (action === "send_buttons") {
-    const message = readString(context.currentNode.config.message);
-    if (!message) throw new ValidationError("send_buttons action requires config.message.");
-    const buttons = readInteractiveButtons(context.currentNode.config);
-    if (buttons.length === 0) {
-      throw new ValidationError("send_buttons action requires at least one button.");
-    }
-    outbound = { kind: "buttons", text: message, buttons };
-    prompt = message;
-  } else {
-    const title = readString(context.currentNode.config.title);
-    const body = readString(context.currentNode.config.body);
-    const buttonLabel = readString(context.currentNode.config.buttonLabel) ?? "View options";
-    const sections = readListSections(context.currentNode.config);
-    if (!title || !body) {
-      throw new ValidationError("send_list action requires config.title and config.body.");
-    }
-    if (sections.length === 0) {
-      throw new ValidationError("send_list action requires at least one list row.");
-    }
-    outbound = { kind: "list", title, body, buttonLabel, sections };
-    prompt = body;
+  const listVisitIndex =
+    action === "send_list"
+      ? logBeforeExecuteListNode({
+          runId: context.run.id,
+          sessionId: context.session.id,
+          node: context.currentNode,
+        })
+      : undefined;
+
+  ({ outbound, prompt } = buildInteractiveMenuOutbound(context.currentNode));
+
+  const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
+  const nextVariables = mergeVariables(context.variables, {
+    ...queuePatch,
+    __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+    __prompt: prompt,
+  });
+
+  if (action === "send_list" && listVisitIndex !== undefined) {
+    registerActiveListVisit(context.run.id, context.currentNode.id, listVisitIndex);
+    logAfterSendListMessage({
+      runId: context.run.id,
+      sessionId: context.session.id,
+      node: context.currentNode,
+      listVisitIndex,
+      outboundKind: outbound.kind,
+      outboundQueueLength: readOutboundQueue(nextVariables).length,
+    });
   }
 
   return {
     outcome: "waiting_input",
-    variables: mergeVariables(context.variables, {
-      __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
-      __prompt: prompt,
-      __outbound: outbound,
-    }),
+    variables: nextVariables,
     output: { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound },
   };
 }
@@ -204,17 +216,84 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
       if (action === "send_buttons" || action === "send_list") {
         return executeInteractiveMessageAction(context, action);
       }
+      if (action === "send_message") {
+        const message =
+          readString(context.currentNode.config.message) ?? readString(context.currentNode.config.text);
+        if (!message) throw new ValidationError("send_message action requires config.message.");
+        const imageUrl = readString(context.currentNode.config.url) ?? readString(context.currentNode.config.imageUrl);
+        const outbound: OutboundQueueEntry = imageUrl
+          ? {
+              kind: "image",
+              url: imageUrl,
+              caption: message,
+              text: message,
+              mediaType: readString(context.currentNode.config.mediaType) ?? "image",
+              mimeType: readString(context.currentNode.config.mimeType) ?? undefined,
+            }
+          : { kind: "text", text: message };
+        return {
+          outcome: "continue",
+          variables: mergeVariables(context.variables, {
+            ...appendOutboundQueueEntry(context.variables, outbound),
+            __prompt: message,
+          }),
+          output: { sent: true, message },
+        };
+      }
       if (action === "create_booking") {
         if (!deps?.bookingService) {
           throw new ValidationError("Create booking action requires a booking service.");
         }
         return executeCreateBookingAction(context, context.currentNode.config, deps.bookingService);
       }
+      if (action === "find_booking") {
+        if (!deps?.bookingService) {
+          throw new ValidationError("Find booking action requires a booking service.");
+        }
+        return executeFindBookingAction(context, context.currentNode.config, deps.bookingService);
+      }
+      if (action === "update_booking") {
+        if (!deps?.bookingService) {
+          throw new ValidationError("Update booking action requires a booking service.");
+        }
+        return executeUpdateBookingAction(context, context.currentNode.config, deps.bookingService);
+      }
+      if (action === "cancel_booking") {
+        if (!deps?.bookingService) {
+          throw new ValidationError("Cancel booking action requires a booking service.");
+        }
+        return executeCancelBookingAction(context, context.currentNode.config, deps.bookingService);
+      }
       if (action === "find_customer") {
         if (!deps?.customerService) {
           throw new ValidationError("Find customer action requires a customer service.");
         }
         return executeFindCustomerAction(context, context.currentNode.config, deps.customerService);
+      }
+      if (action === "create_customer") {
+        if (!deps?.customerService) {
+          throw new ValidationError("Create customer action requires a customer service.");
+        }
+        return executeCreateCustomerAction(
+          context,
+          context.currentNode.config,
+          deps.customerService,
+          deps.conversationCustomerLink,
+        );
+      }
+      if (action === "update_customer") {
+        if (!deps?.customerService) {
+          throw new ValidationError("Update customer action requires a customer service.");
+        }
+        return executeUpdateCustomerAction(context, context.currentNode.config, deps.customerService);
+      }
+      if (action === "return_to_main_menu") {
+        findPrimaryMenuNode(context.nodes);
+        return {
+          outcome: "continue",
+          variables: mergeVariables(context.variables, { interactive_selection: null }),
+          output: { redirectToPrimaryMenu: true },
+        };
       }
       if (action === "fail") {
         return {
@@ -263,11 +342,11 @@ export const conditionNodeHandler: AutomationNodeHandler = {
 
     const ruleSet = readRuleSet(context.currentNode.config);
     if (ruleSet) {
-      const branch = evaluateIfElseCondition(ruleSet, { variables: context.variables });
+      const { branch, evaluation } = executeIfRuleSetWithTrace(context, ruleSet);
       return {
         outcome: "continue",
         variables: mergeVariables(context.variables, { __branch: branch }),
-        output: { branch },
+        output: { branch, matchedRuleIndex: evaluation.matchedRuleIndex },
       };
     }
 
@@ -275,10 +354,12 @@ export const conditionNodeHandler: AutomationNodeHandler = {
     const expected = context.currentNode.config.equals;
     const actual = context.variables[variable];
     const branch = actual === expected ? "yes" : "no";
+    traceIfNodeEntered(context);
+    traceLegacyIfNodeEvaluation({ context, variable, expected, actual, branch });
     return {
       outcome: "continue",
       variables: mergeVariables(context.variables, { __branch: branch }),
-      output: { branch },
+      output: { branch, matchedRuleIndex: branch === "yes" ? 0 : 0 },
     };
   },
 };

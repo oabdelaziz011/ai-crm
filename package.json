@@ -5,6 +5,11 @@
   "scripts": {
     "preinstall": "node -e \"const fs=require('fs'); ['package-lock.json','yarn.lock'].forEach(p=>{try{fs.rmSync(p,{force:true})}catch{}});\"",
     "dev": "pnpm --dir artifacts/login-app dev",
+    "dev:api": "pnpm --dir artifacts/api-server run build && pnpm --dir artifacts/api-server start",
+    "dev:webhook": "node scripts/cloudflare/start-webhook-stack.mjs",
+    "tunnel:setup": "node scripts/cloudflare/setup-tunnel.mjs",
+    "tunnel:run": "node scripts/cloudflare/run-tunnel.mjs",
+    "tunnel:url": "node scripts/cloudflare/print-webhook-url.mjs",
     "build": "pnpm --dir artifacts/login-app build",
     "typecheck": "pnpm --dir lib/ai-conversation typecheck && pnpm --dir lib/channel-registry typecheck && pnpm --dir lib/channel-platform typecheck && pnpm --dir lib/ai-tool-router typecheck && pnpm --dir lib/ai-intent-engine typecheck && pnpm --dir lib/ai-provider-layer typecheck && pnpm --dir lib/ai-prompt-orchestrator typecheck && pnpm --dir lib/ai-execution-engine typecheck && pnpm --dir lib/ai-workflow-platform typecheck && pnpm --dir lib/automation-platform typecheck && pnpm --dir lib/ai-observability typecheck && pnpm --dir lib/knowledge-platform typecheck && pnpm --dir lib/embedding-platform typecheck && pnpm --dir lib/vector-store typecheck && pnpm --dir lib/vector-query typecheck && pnpm --dir lib/retrieval-engine typecheck && pnpm --dir lib/runtime-integration typecheck && pnpm --dir artifacts/login-app typecheck",
     "test:ai-conversation": "pnpm --dir lib/ai-conversation test",

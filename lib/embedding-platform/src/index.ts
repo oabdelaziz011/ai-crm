@@ -10,7 +10,7 @@ import {
   createSupabaseKnowledgeChunkReader,
   createSupabaseKnowledgeEmbeddingRepository,
 } from "./repositories/supabase-embedding-repositories.js";
-import { createSupabaseKnowledgeDocumentRepository } from "@workspace/knowledge-platform";
+import { createSupabaseKnowledgeDocumentRepository } from "@workspace/knowledge-platform/repositories";
 import { EmbeddingDocumentCompletionService } from "./services/embedding-document-completion-service.js";
 import { EmbeddingGenerationService, EmbeddingJobService } from "./services/embedding-generation-service.js";
 import { EmbeddingIndexingService } from "./services/embedding-indexing-service.js";

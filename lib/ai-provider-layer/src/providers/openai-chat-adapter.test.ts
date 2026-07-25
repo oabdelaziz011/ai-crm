@@ -91,7 +91,29 @@ describe("OpenAIChatAdapter", () => {
     assert.equal(result.tokenUsage?.total_tokens, 60);
   });
 
-  it("parses system and user sections from orchestrator prompt format", async () => {
+  it("uses max_completion_tokens and omits unsupported temperature for GPT-5 models", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    const fetchFn = async (_url: string, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return createMockChatFetch()(_url, init);
+    };
+
+    const adapter = createOpenAIChatAdapter(
+      { model: "gpt-5.5", apiKey: "test-key" },
+      { fetchFn },
+    );
+
+    await adapter.generate({
+      prompt: "Reply with exactly: OK",
+      metadata: { max_tokens: 128, temperature: 0.7 },
+    });
+
+    assert.equal(capturedBody?.max_completion_tokens, 128);
+    assert.equal("max_tokens" in (capturedBody ?? {}), false);
+    assert.equal(capturedBody?.temperature, undefined);
+  });
+
+  it("keeps max_tokens for legacy GPT-4 models", async () => {
     let capturedBody: Record<string, unknown> | null = null;
     const fetchFn = async (_url: string, init?: RequestInit) => {
       capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
@@ -106,6 +128,10 @@ describe("OpenAIChatAdapter", () => {
     await adapter.generate({
       prompt: "System: Use retrieved context.\nUser: What is the security policy?",
     });
+
+    assert.equal(capturedBody?.max_tokens, 1024);
+    assert.equal("max_completion_tokens" in (capturedBody ?? {}), false);
+    assert.equal(capturedBody?.temperature, 0.7);
 
     const messages = capturedBody?.messages as Array<{ role: string; content: string }>;
     assert.equal(messages[0]?.role, "system");

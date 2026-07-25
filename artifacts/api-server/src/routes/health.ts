@@ -1,9 +1,19 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
+import { WEBHOOK_RUNTIME_FEATURES } from "../platform/create-webhook-automation-services.js";
 import { logger } from "../lib/logger.js";
+import { execSync } from "node:child_process";
 
 const router: IRouter = Router();
+
+function readGitCommit(): string | null {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return process.env.WEBHOOK_BUILD_COMMIT ?? null;
+  }
+}
 
 router.get("/healthz", (_req, res) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
@@ -30,6 +40,11 @@ router.get("/readyz", async (_req, res) => {
   res.status(healthy ? 200 : 503).json({
     status: healthy ? "ready" : "not_ready",
     checks,
+    build: {
+      commit: readGitCommit(),
+      nodeEnv: process.env.NODE_ENV ?? "development",
+    },
+    webhookRuntime: WEBHOOK_RUNTIME_FEATURES,
     timestamp: new Date().toISOString(),
   });
 });

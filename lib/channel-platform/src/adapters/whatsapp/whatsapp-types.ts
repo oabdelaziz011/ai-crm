@@ -10,7 +10,11 @@ export type WhatsAppWebhookMessage = {
   document?: WhatsAppMediaPayload & { filename?: string };
   sticker?: WhatsAppMediaPayload;
   button?: { text: string; payload: string };
-  interactive?: { type: string; button_reply?: { id: string; title: string } };
+  interactive?: {
+    type: string;
+    button_reply?: { id: string; title: string };
+    list_reply?: { id: string; title: string; description?: string };
+  };
 };
 
 export type WhatsAppMediaPayload = {
@@ -75,6 +79,18 @@ export type WhatsAppSendMessagePayload =
       audio?: { link?: string; id?: string };
       video?: { link?: string; id?: string; caption?: string };
       document?: { link?: string; id?: string; caption?: string; filename?: string };
+    }
+  | {
+      messaging_product: "whatsapp";
+      recipient_type: "individual";
+      to: string;
+      type: "interactive";
+      interactive: {
+        type: "button" | "list";
+        body: { text: string };
+        header?: { type: "text"; text: string };
+        action: Record<string, unknown>;
+      };
     };
 
 export type WhatsAppSendMessageResponse = {

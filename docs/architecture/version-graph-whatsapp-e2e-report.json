@@ -1,0 +1,48 @@
+{
+  "passed": 7,
+  "failed": 0,
+  "total": 7,
+  "routeMs": 5124.183800000001,
+  "totalMs": 7894.4463000000005,
+  "flowId": "aef7c4ab-513a-4b64-a700-2be6cf51dafc",
+  "activeVersionId": "9462b47c-eb94-4ea2-9a39-04fdd78efa6d",
+  "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+  "automationRunId": "cdd0c7b2-ccf7-4119-be27-bdc143d97ecb",
+  "results": [
+    {
+      "scenario": "1. Published version graph materialized",
+      "pass": true,
+      "detail": "flowVersionId=9462b47c-eb94-4ea2-9a39-04fdd78efa6d, nodes=26"
+    },
+    {
+      "scenario": "2. Meta webhook routed to channel platform",
+      "pass": true,
+      "detail": "inboundEventId=7c414158-0e61-4556-8717-7b59d4fec898"
+    },
+    {
+      "scenario": "3. Workflow automation executed (not AI runtime)",
+      "pass": true,
+      "detail": "automationRunId=cdd0c7b2-ccf7-4119-be27-bdc143d97ecb"
+    },
+    {
+      "scenario": "4. Run pinned to flow_version_id",
+      "pass": true,
+      "detail": "flowVersionId=9462b47c-eb94-4ea2-9a39-04fdd78efa6d"
+    },
+    {
+      "scenario": "5. Run uses version graph node (not draft automation_nodes)",
+      "pass": true,
+      "detail": "currentNodeId=fb7ac8f1-16d8-42d9-9896-b748bf313f66 resolved via version graph"
+    },
+    {
+      "scenario": "6. Conversation session pinned to same version",
+      "pass": true,
+      "detail": "sessionId=45b6c129-9716-4818-aaa8-c080047d51ac, flowVersionId=9462b47c-eb94-4ea2-9a39-04fdd78efa6d"
+    },
+    {
+      "scenario": "7. Outbound WhatsApp reply dispatched",
+      "pass": true,
+      "detail": "deliveryId=f0a8c788-c8de-44b1-ad71-0a7197463d69, graphCalls=1"
+    }
+  ]
+}

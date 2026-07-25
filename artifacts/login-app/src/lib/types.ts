@@ -4,6 +4,8 @@ export type Customer = {
   name: string;
   email: string | null;
   phone: string | null;
+  age: number | null;
+  gender: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -112,7 +114,7 @@ export type EnrichedAuditLog = AuditLog & {
 };
 
 export type NotificationType = "success" | "warning" | "error" | "info";
-export type NotificationCategory = "booking" | "invoice" | "subscription" | "whatsapp" | "system";
+export type NotificationCategory = "booking" | "invoice" | "subscription" | "whatsapp" | "system" | "customer" | "payment";
 export type NotificationItem = {
   id: string;
   company_id: string;
@@ -167,6 +169,12 @@ export type Booking = {
   created_at: string;
   updated_at: string;
   customers?: Pick<Customer, "id" | "name"> | null;
+  /** True when sourced from scheduling_bookings (S4.6). */
+  isSchedulingBooking?: boolean;
+  service_id?: string | null;
+  resource_id?: string | null;
+  scheduling_status?: string;
+  source?: string;
 };
 
 export type InvoiceStatus = "Unpaid" | "Paid" | "Overdue";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { KnowledgeDocumentRecord, KnowledgeDocumentRepository } from "@workspace/knowledge-platform";
+import type { KnowledgeDocumentRecord, KnowledgeDocumentRepository } from "@workspace/knowledge-platform/repositories";
 import type { EmbeddingJobRepository } from "../repositories/embedding-repositories.js";
 import type { EmbeddingJobRecord } from "../types.js";
 import { EmbeddingDocumentCompletionService } from "./embedding-document-completion-service.js";

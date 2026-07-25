@@ -1,8 +1,19 @@
-import { getDocument, type PDFPageProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { KnowledgeParseError } from "../errors.js";
 import type { ParsedDocument, ParsedPage, ParserInput } from "../types.js";
 import { decodeParserContent, normalizeWhitespace } from "../utils/knowledge-utils.js";
 import type { Parser } from "./ingestion-contracts.js";
+
+type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+type PDFPageProxy = Awaited<ReturnType<Awaited<ReturnType<PdfJsModule["getDocument"]>["promise"]>["getPage"]>>;
+
+let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
+
+async function loadPdfJs(): Promise<PdfJsModule> {
+  if (!pdfJsModulePromise) {
+    pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
+  }
+  return pdfJsModulePromise;
+}
 
 function extractPdfMetadata(info: Record<string, unknown> | null | undefined): Record<string, unknown> {
   if (!info) return {};
@@ -57,6 +68,7 @@ export class PdfParser implements Parser {
     }
 
     try {
+      const { getDocument } = await loadPdfJs();
       const pdf = await getDocument({
         data: bytes,
         useSystemFonts: true,

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CNV-000010 Switch Live Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #0f172a; color: #e2e8f0; }
+    h1 { margin-bottom: 4px; }
+    .meta { color: #94a3b8; margin-bottom: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+    .pass { color: #4ade80; font-weight: 700; }
+    .label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .value { font-size: 18px; margin: 8px 0 12px; }
+    .trace { background: #020617; border-radius: 8px; padding: 12px; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    th, td { border: 1px solid #334155; padding: 10px; text-align: left; }
+    th { background: #1e293b; }
+    .ok { color: #4ade80; }
+  </style>
+</head>
+<body>
+  <h1>Switch Live Test — CNV-000010</h1>
+  <div class="meta">Published v8 · flow <code>aef7c4ab-513a-4b64-a700-2be6cf51dafc</code> · version <code>51022517-74a8-4179-af4f-83d220e1bbd1</code></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Book Appointment</div>
+      <div class="value pass">PASS</div>
+      <div class="trace">Button: book
+Switch → wait_for_input
+Outbound: "what is your phone number?"
+Node: 04f805f8-085a-4d1e-bcc7-8f9228ee1ff8</div>
+    </div>
+    <div class="card">
+      <div class="label">Pricing</div>
+      <div class="value pass">PASS</div>
+      <div class="trace">Button: pricing
+Switch → send_list
+Outbound: "Pick the option that fits you best."
+Title: "Choose a doctor"
+Node: dab15807-9a9a-41e1-b8c5-15c6e40a7a80</div>
+    </div>
+    <div class="card">
+      <div class="label">Talk to Support</div>
+      <div class="value pass">PASS</div>
+      <div class="trace">Button: support
+Switch → send_message
+Outbound: "For supporting please call :19666"
+Node: c3d26feb-d999-421e-a676-6ec895126c72</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Scenario</th><th>Session resumed</th><th>Run pinned v8</th><th>Expected response</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Book Appointment</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">what is your phone number?</td></tr>
+      <tr><td>Pricing</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">Pricing list flow</td></tr>
+      <tr><td>Talk to Support</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">For supporting please call :19666</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Switch wiring (published graph)</h2>
+  <div class="trace">Buttons 991d1d70 → Switch 175766de (conversation.last_button_id)
+  book    → 04f805f8 wait_for_input  "what is your phone number?"
+  pricing → dab15807 send_list      "Choose a doctor"
+  support → c3d26feb send_message   "For supporting please call :19666"</div>
+
+  <h2>Result</h2>
+  <div class="trace">16/16 checks passed · tested 2026-07-24T23:24:09Z</div>
+</body>
+</html>

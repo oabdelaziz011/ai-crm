@@ -5,6 +5,8 @@ export type CustomerRecord = {
   name: string;
   email: string | null;
   phone: string | null;
+  age: number | null;
+  gender: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;

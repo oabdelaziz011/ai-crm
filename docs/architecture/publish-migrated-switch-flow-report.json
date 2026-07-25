@@ -1,0 +1,55 @@
+{
+  "publishedAt": "2026-07-24T23:20:13.501Z",
+  "flowId": "aef7c4ab-513a-4b64-a700-2be6cf51dafc",
+  "versionId": "51022517-74a8-4179-af4f-83d220e1bbd1",
+  "versionNumber": 8,
+  "activeVersionId": "51022517-74a8-4179-af4f-83d220e1bbd1",
+  "switchNodeId": "175766de-17f0-47c0-97e8-9f45b8fee90c",
+  "switchCases": [
+    "book",
+    "pricing",
+    "support"
+  ],
+  "validationIssues": [
+    {
+      "id": "unreachable-014b0bf2-0a67-4a4a-9bd2-d55144dc6f29",
+      "nodeId": "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29",
+      "message": "Node 'if_else' is unreachable.",
+      "severity": "warning",
+      "kind": "unreachable",
+      "pathNodeIds": [
+        "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29"
+      ],
+      "pathEdgeIds": [],
+      "focusNodeId": "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29",
+      "affectedNodeIds": [
+        "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29"
+      ],
+      "affectedEdgeIds": [],
+      "suggestedFixKeys": [
+        "connectToWorkflow",
+        "removeIfUnused"
+      ]
+    },
+    {
+      "id": "unreachable-d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+      "nodeId": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+      "message": "Node 'if_else' is unreachable.",
+      "severity": "warning",
+      "kind": "unreachable",
+      "pathNodeIds": [
+        "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf"
+      ],
+      "pathEdgeIds": [],
+      "focusNodeId": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+      "affectedNodeIds": [
+        "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf"
+      ],
+      "affectedEdgeIds": [],
+      "suggestedFixKeys": [
+        "connectToWorkflow",
+        "removeIfUnused"
+      ]
+    }
+  ]
+}

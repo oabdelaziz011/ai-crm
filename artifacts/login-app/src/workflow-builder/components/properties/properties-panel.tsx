@@ -29,6 +29,11 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
     [controller],
   );
 
+  const generateInteractiveRouting = useCallback(() => {
+    if (!selected) return;
+    controller.dispatch({ type: "GENERATE_INTERACTIVE_ROUTING", interactiveNodeId: selected.id });
+  }, [controller, selected]);
+
   const editorContext = useMemo(
     () =>
       selected
@@ -36,9 +41,11 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
             nodeId: selected.id,
             document: controller.state.document,
             applyConfigPatches,
+            generateInteractiveRouting:
+              selected.type === "buttons" || selected.type === "list" ? generateInteractiveRouting : undefined,
           }
         : undefined,
-    [applyConfigPatches, controller.state.document, selected],
+    [applyConfigPatches, controller.state.document, generateInteractiveRouting, selected],
   );
 
   if (!selected) {
@@ -47,7 +54,7 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
         id="workflow-builder-properties-panel"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex h-full flex-col rounded-2xl border border-border/60 bg-card/80 p-5 shadow-lg backdrop-blur"
+        className="flex shrink-0 flex-col rounded-2xl border border-border/60 bg-card/80 p-5 shadow-lg backdrop-blur"
       >
         <p className="text-sm font-semibold">{wb("properties.title")}</p>
         <p className="mt-2 text-start text-sm leading-relaxed text-muted-foreground">{wb("properties.empty")}</p>
@@ -63,7 +70,7 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
   return (
     <motion.aside
       id="workflow-builder-properties-panel"
-      className="flex h-full flex-col gap-4 overflow-y-auto rounded-2xl border border-border/60 bg-card/80 p-5 shadow-lg backdrop-blur"
+      className="flex shrink-0 flex-col gap-4 rounded-2xl border border-border/60 bg-card/80 p-5 shadow-lg backdrop-blur"
     >
       <div className="text-start">
         <p className="text-base font-semibold">{displayName}</p>

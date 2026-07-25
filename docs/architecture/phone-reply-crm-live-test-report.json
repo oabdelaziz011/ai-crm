@@ -1,0 +1,72 @@
+{
+  "testedAt": "2026-07-25T00:08:14.271Z",
+  "activeVersionId": "a34fe5c4-a430-4888-834c-6c53d110aa03",
+  "results": [
+    {
+      "scenario": "existing",
+      "phone": "01011404109",
+      "pass": true,
+      "findCustomerCalled": true,
+      "sqlTrace": [
+        {
+          "scenario": "existing",
+          "op": "findCustomer",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "lookupBy": "phone",
+            "lookupValue": "01011404109"
+          }
+        }
+      ],
+      "error": "Create booking action requires a booking service."
+    },
+    {
+      "scenario": "new",
+      "phone": "+201998077399",
+      "pass": true,
+      "lookupStatus": "not_found",
+      "customerExists": false,
+      "customerPhoneVar": "+201998077399",
+      "currentNodeId": "1527249e-614c-4f15-954b-388e8970c8a6",
+      "runStatus": "waiting_input",
+      "findCustomerCalled": true,
+      "sqlTrace": [
+        {
+          "scenario": "new",
+          "op": "findCustomer",
+          "input": {
+            "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+            "userId": "",
+            "lookupBy": "phone",
+            "lookupValue": "+201998077399"
+          }
+        }
+      ]
+    }
+  ],
+  "sqlTrace": [
+    {
+      "scenario": "existing",
+      "op": "findCustomer",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "lookupBy": "phone",
+        "lookupValue": "01011404109"
+      }
+    },
+    {
+      "scenario": "new",
+      "op": "findCustomer",
+      "input": {
+        "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "userId": "",
+        "lookupBy": "phone",
+        "lookupValue": "+201998077399"
+      }
+    }
+  ],
+  "passed": 2,
+  "total": 2
+}

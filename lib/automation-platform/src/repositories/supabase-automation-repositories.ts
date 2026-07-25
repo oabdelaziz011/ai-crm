@@ -92,6 +92,7 @@ function mapRun(row: Record<string, unknown>): AutomationRunRecord {
     finished_at: (row.finished_at as string | null) ?? null,
     error_message: (row.error_message as string | null) ?? null,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
+    flow_version_id: (row.flow_version_id as string | null) ?? null,
     current_node_id: (row.current_node_id as string | null) ?? null,
     session_id: (row.session_id as string | null) ?? null,
     variables: (row.variables as Record<string, unknown>) ?? {},
@@ -106,6 +107,7 @@ function mapSession(row: Record<string, unknown>): ConversationSessionRecord {
     external_user_id: (row.external_user_id as string | null) ?? null,
     customer_id: (row.customer_id as string | null) ?? null,
     flow_id: (row.flow_id as string | null) ?? null,
+    flow_version_id: (row.flow_version_id as string | null) ?? null,
     run_id: (row.run_id as string | null) ?? null,
     current_node_id: (row.current_node_id as string | null) ?? null,
     status: row.status as ConversationSessionRecord["status"],
@@ -295,6 +297,7 @@ export function createSupabaseAutomationRunRepository(client: SupabaseClient): A
           status: input.status ?? "pending",
           metadata: input.metadata ?? {},
           variables: input.variables ?? {},
+          flow_version_id: input.flowVersionId ?? null,
           current_node_id: input.currentNodeId ?? null,
           session_id: input.sessionId ?? null,
         })
@@ -334,6 +337,7 @@ export function createSupabaseAutomationRunRepository(client: SupabaseClient): A
     async updateState(input) {
       const patch: Record<string, unknown> = {};
       if (input.status !== undefined) patch.status = input.status;
+      if (input.flowVersionId !== undefined) patch.flow_version_id = input.flowVersionId;
       if (input.currentNodeId !== undefined) patch.current_node_id = input.currentNodeId;
       if (input.sessionId !== undefined) patch.session_id = input.sessionId;
       if (input.variables !== undefined) patch.variables = input.variables;
@@ -359,6 +363,7 @@ export function createSupabaseConversationSessionRepository(client: SupabaseClie
           customer_id: input.customerId ?? null,
           flow_id: input.flowId ?? null,
           run_id: input.runId ?? null,
+          flow_version_id: input.flowVersionId ?? null,
           current_node_id: input.currentNodeId ?? null,
           status: input.status ?? "active",
           metadata: input.metadata ?? {},
@@ -408,6 +413,7 @@ export function createSupabaseConversationSessionRepository(client: SupabaseClie
         last_activity_at: input.lastActivityAt ?? new Date().toISOString(),
       };
       if (input.status !== undefined) patch.status = input.status;
+      if (input.flowVersionId !== undefined) patch.flow_version_id = input.flowVersionId;
       if (input.currentNodeId !== undefined) patch.current_node_id = input.currentNodeId;
       if (input.runId !== undefined) patch.run_id = input.runId;
       if (input.variables !== undefined) patch.variables = input.variables;

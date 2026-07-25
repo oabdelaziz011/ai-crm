@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { buildInteractiveOptionIdRefactorPatches } from "../../../core/logic/interactive-config-refactor";
 import { slugifyInteractionOptionId } from "../../../core/variables/interaction-variables";
 import type { NodePropertyEditorProps } from "../../../core/node-registry";
+import { PrimaryMenuToggle } from "../conversation/primary-menu-toggle";
+import { GenerateRoutingAction } from "../conversation/generate-routing-action";
 import { MessageFieldEditor } from "./message-field-editor";
 
 type ButtonRow = { id: string; label: string };
@@ -45,6 +47,7 @@ export function RichButtonListEditor({ config, onChange, context }: NodeProperty
 
   return (
     <div className="space-y-4">
+      <PrimaryMenuToggle config={config} onChange={onChange} context={context} />
       <MessageFieldEditor config={config} onChange={onChange} field="message" />
       <div className="space-y-3 rounded-2xl border border-border/50 bg-background/50 p-4">
         <div className="flex items-center justify-between">
@@ -110,6 +113,7 @@ export function RichButtonListEditor({ config, onChange, context }: NodeProperty
           </div>
         ))}
       </div>
+      <GenerateRoutingAction context={context} />
     </div>
   );
 }

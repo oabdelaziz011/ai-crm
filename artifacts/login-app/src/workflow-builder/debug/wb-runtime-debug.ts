@@ -86,6 +86,13 @@ export function readDomNodeTransforms(): Array<{
   });
 }
 
+type PositionMismatch = {
+  id: string;
+  reason: string;
+  expected: NodePositionRow;
+  actual: NodePositionRow | null;
+};
+
 export function wbDebugPositionPipeline(
   stage: string,
   data: {
@@ -97,14 +104,17 @@ export function wbDebugPositionPipeline(
 ) {
   const expected = data.expected ?? [];
   const positions = data.positions ?? [];
-  const mismatches = expected.flatMap((exp) => {
+  const mismatches: PositionMismatch[] = [];
+  for (const exp of expected) {
     const actual = positions.find((row) => row.id === exp.id);
-    if (!actual) return [{ id: exp.id, reason: "missing", expected: exp, actual: null }];
-    if (actual.x !== exp.x || actual.y !== exp.y) {
-      return [{ id: exp.id, reason: "position", expected: exp, actual }];
+    if (!actual) {
+      mismatches.push({ id: exp.id, reason: "missing", expected: exp, actual: null });
+      continue;
     }
-    return [];
-  });
+    if (actual.x !== exp.x || actual.y !== exp.y) {
+      mismatches.push({ id: exp.id, reason: "position", expected: exp, actual });
+    }
+  }
 
   wbDebug(`PIPELINE ${stage}`, {
     traceId: data.traceId,

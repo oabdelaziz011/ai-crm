@@ -42,3 +42,4 @@ export * from "./repositories/supabase-conversation-repository.js";
 export * from "./repositories/supabase-participant-repository.js";
 export * from "./repositories/supabase-message-repository.js";
 export * from "./message-cache.js";
+export * from "./display/parse-conversation-message-view.js";

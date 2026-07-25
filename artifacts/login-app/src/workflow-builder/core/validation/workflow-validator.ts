@@ -1,12 +1,44 @@
-import { detectCycle, findIsolatedNodeIds } from "../connection-rules";
+import { findIsolatedNodeIds } from "../connection-rules";
 import { getWorkflowNodeDefinition } from "../node-registry";
 import { validateBranching } from "./branch-validation";
+import { validateInteractiveRouting } from "./interactive-routing-validation";
+import { validateExecutionPathsForDocument } from "./path-validation";
+import { workflowHasTerminalNode } from "./terminal-nodes";
+import { enrichValidationIssues } from "./validation-fix-actions";
 import type { ValidationIssue, WorkflowDocument } from "../types";
+
+function validatePrimaryMenu(document: WorkflowDocument): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const primaryMenus = document.nodes.filter(
+    (node) => (node.type === "buttons" || node.type === "list") && node.config.primaryMenu === true,
+  );
+
+  if (primaryMenus.length > 1) {
+    for (const node of primaryMenus.slice(1)) {
+      issues.push({
+        id: `duplicate-primary-menu-${node.id}`,
+        nodeId: node.id,
+        message: "Only one Buttons or List step can be marked as the Primary Menu.",
+        severity: "error",
+      });
+    }
+  }
+
+  const hasReturnToMainMenu = document.nodes.some((node) => node.type === "return_to_main_menu");
+  if (hasReturnToMainMenu && primaryMenus.length === 0) {
+    issues.push({
+      id: "missing-primary-menu",
+      message: "Mark one Buttons or List step as the Primary Menu before using Return to Main Menu.",
+      severity: "error",
+    });
+  }
+
+  return issues;
+}
 
 export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const startNodes = document.nodes.filter((node) => node.type === "start");
-  const endNodes = document.nodes.filter((node) => node.type === "end");
 
   if (startNodes.length === 0) {
     issues.push({
@@ -27,10 +59,10 @@ export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] 
     }
   }
 
-  if (endNodes.length === 0) {
+  if (!workflowHasTerminalNode(document.nodes)) {
     issues.push({
       id: "missing-end",
-      message: "Add an End step so your workflow knows when to finish.",
+      message: "Add an End step or Return to Main Menu step so your workflow knows when to finish.",
       severity: "error",
     });
   }
@@ -44,13 +76,7 @@ export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] 
     });
   }
 
-  if (detectCycle(document.nodes, document.edges)) {
-    issues.push({
-      id: "cycle-detected",
-      message: "Your workflow loops back on itself. Remove the loop before publishing.",
-      severity: "error",
-    });
-  }
+  issues.push(...validateExecutionPathsForDocument(document));
 
   for (const node of document.nodes) {
     const definition = getWorkflowNodeDefinition(node.type);
@@ -58,6 +84,8 @@ export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] 
   }
 
   issues.push(...validateBranching(document));
+  issues.push(...validateInteractiveRouting(document));
+  issues.push(...validatePrimaryMenu(document));
 
   if (!document.name.trim()) {
     issues.push({
@@ -67,7 +95,7 @@ export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] 
     });
   }
 
-  return issues;
+  return enrichValidationIssues(issues, document);
 }
 
 export function hasBlockingValidationIssues(issues: ValidationIssue[]): boolean {

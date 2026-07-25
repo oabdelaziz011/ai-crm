@@ -362,6 +362,16 @@
       "description": "Allows modifying company and application settings.",
       "group": "settings"
     },
+    "scheduling.view": {
+      "name": "View Scheduling",
+      "description": "Allows viewing scheduling resources, availability, rules, and holidays.",
+      "group": "scheduling"
+    },
+    "scheduling.edit": {
+      "name": "Manage Scheduling",
+      "description": "Allows creating and editing scheduling configuration.",
+      "group": "scheduling"
+    },
     "audit_logs.view": {
       "name": "View Audit Logs",
       "description": "Allows viewing system audit logs.",

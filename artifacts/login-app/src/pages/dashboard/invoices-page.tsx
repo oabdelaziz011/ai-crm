@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
   DollarSign, CheckCircle2, Clock, AlertCircle, Plus, Download, FileText, Pencil, Trash2,
 } from "lucide-react";
+import { useCustomerProfile } from "@/context/customer-profile-context";
+import { useAuth } from "@/context/auth-context";
 import { useInvoices, useDeleteInvoice } from "@/hooks/use-invoices";
 import { useCustomers } from "@/hooks/use-customers";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
@@ -21,6 +23,9 @@ import {
 
 export default function InvoicesPage() {
   const { t } = useTranslation("common");
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+  const { openCustomerProfile } = useCustomerProfile();
   const { data: invoices = [], isLoading, error } = useInvoices();
   const { data: customers = [] } = useCustomers();
   const deleteInvoice = useDeleteInvoice();
@@ -80,7 +85,20 @@ export default function InvoicesPage() {
                   <FileText className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{invoice.customers?.name ?? "—"}</p>
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-left hover:text-primary transition-colors truncate block w-full"
+                    disabled={!invoice.customer_id}
+                    onClick={() => {
+                      if (!invoice.customer_id) return;
+                      openCustomerProfile({
+                        customerId: invoice.customer_id,
+                        context: { companyId },
+                      });
+                    }}
+                  >
+                    {invoice.customers?.name ?? "—"}
+                  </button>
                   <p className="text-xs text-muted-foreground font-mono">
                     <span dir="ltr">{format(new Date(invoice.invoice_date), "MMM dd, yyyy")}</span>
                   </p>

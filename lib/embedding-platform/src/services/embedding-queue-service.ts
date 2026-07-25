@@ -3,12 +3,12 @@ import type {
   KnowledgeDocumentRepository,
   KnowledgeEmbeddingQueuePort,
   BuildEmbeddingQueuePortResult,
-} from "@workspace/knowledge-platform";
+} from "@workspace/knowledge-platform/repositories";
 import {
   getPublishingMetadata,
   isRetrievalAvailable,
   withPublishingMetadata,
-} from "@workspace/knowledge-platform";
+} from "@workspace/knowledge-platform/repositories";
 import { DEFAULT_MAX_RETRIES, EMBEDDING_PERMISSIONS } from "../constants.js";
 import {
   EmbeddingProviderConnectionNotFoundError,

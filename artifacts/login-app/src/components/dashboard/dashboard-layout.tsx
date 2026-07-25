@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { ChevronRight, Hash } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { NotificationsBell } from "@/components/dashboard/notifications-bell";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import {
   getDashboardRouteById,
@@ -72,7 +72,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <span className="font-medium text-foreground">{t(activeTitleKey)}</span>
           </div>
           <div className="ms-auto flex items-center gap-3">
-            <NotificationsBell companyId={company?.id ?? null} />
+            <NotificationBell companyId={company?.id ?? null} />
             <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold">
               {displayName.charAt(0).toUpperCase()}
             </div>

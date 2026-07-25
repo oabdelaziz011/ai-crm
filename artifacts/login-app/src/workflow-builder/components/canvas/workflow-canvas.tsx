@@ -25,6 +25,8 @@ import {
   selectionKey,
 } from "../../core/canvas/canvas-selection-guard";
 import { documentToFlowEdges, documentToFlowNodes } from "../../core/canvas/flow-document-bridge";
+import { buildValidationHighlightIndex } from "../../core/validation/path-validation";
+import type { ValidationIssue } from "../../core/types";
 import { listNodeRenderers, registerDefaultNodeRenderers } from "../../core/registry/node-renderer-registry";
 import { createEdgeFromNodes } from "../../core/state/builder-reducer";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
@@ -67,7 +69,7 @@ type WorkflowCanvasInnerProps = WorkflowCanvasProps & {
 };
 
 export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanvasInnerProps) {
-  const { fitView, getNodes, getViewport, screenToFlowPosition } = useReactFlow();
+  const { fitView, getNodes, getViewport, screenToFlowPosition, setCenter } = useReactFlow();
   const syncTrace = useCanvasSyncTrace();
   const { nodeText, branchLabel } = useWorkflowBuilderI18n();
   const dispatchRef = useRef(controller.dispatch);
@@ -101,9 +103,44 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
     [],
   );
 
-  const { document, selectedNodeIds } = controller.state;
+  const { document, selectedNodeIds, validationIssues, activeValidationIssueId } = controller.state;
   const builderSelectedRef = useRef(selectedNodeIds);
   builderSelectedRef.current = selectedNodeIds;
+
+  const validationHighlight = useMemo(
+    () => buildValidationHighlightIndex(validationIssues, activeValidationIssueId),
+    [validationIssues, activeValidationIssueId],
+  );
+
+  const focusValidationIssue = useCallback(
+    (issue: ValidationIssue) => {
+      const nodeIds = issue.affectedNodeIds ?? (issue.focusNodeId ? [issue.focusNodeId] : issue.nodeId ? [issue.nodeId] : []);
+      if (nodeIds.length === 0) return;
+
+      dispatchRef.current({ type: "SELECT_NODES", nodeIds });
+      const rfNodes = getNodes().filter((node) => nodeIds.includes(node.id));
+      if (rfNodes.length > 0) {
+        fitView({
+          nodes: rfNodes.map((node) => ({ id: node.id })),
+          padding: 0.35,
+          duration: 280,
+          maxZoom: 1.15,
+        });
+        return;
+      }
+
+      const focusNodeId = issue.focusNodeId ?? nodeIds[0];
+      const documentNode = document.nodes.find((node) => node.id === focusNodeId);
+      if (documentNode) {
+        setCenter(documentNode.position.x + 124, documentNode.position.y + 56, { zoom: 1.05, duration: 280 });
+      }
+    },
+    [document.nodes, fitView, getNodes, setCenter],
+  );
+
+  useEffect(() => {
+    controller.registerCanvasFocusHandler(focusValidationIssue);
+  }, [controller, focusValidationIssue]);
 
   const documentNodesRef = useRef(document.nodes);
   documentNodesRef.current = document.nodes;
@@ -113,14 +150,14 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
   const viewportReadyRef = useRef(false);
 
   const flowNodes = useMemo(
-    () => documentToFlowNodes(document.nodes, selectedNodeIds, nodeText, onQuickAddStable),
-    [document.nodes, selectedNodeIds, nodeText, onQuickAddStable],
+    () => documentToFlowNodes(document.nodes, selectedNodeIds, nodeText, onQuickAddStable, validationHighlight),
+    [document.nodes, selectedNodeIds, nodeText, onQuickAddStable, validationHighlight],
   );
 
   const projectionSignature = useMemo(() => documentProjectionSignature(flowNodes), [flowNodes]);
 
   // Mount bootstrap uses seed — not a direct documentToFlowNodes → setNodes bypass.
-  const [nodes, setNodesInternal] = useNodesState<Node<WorkflowNodeData>[]>(() =>
+  const [nodes, setNodesInternal] = useNodesState<Node<WorkflowNodeData>>(
     seedControlledNodesFromDocument([], flowNodes),
   );
   const nodeTypes = useMemo(() => listNodeRenderers(), []);
@@ -165,7 +202,7 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
         nodesRef.current.length,
       );
       callSetNodes("onNodesChange→applyNodeChanges", `batchSize=${changes.length}`, (current) =>
-        applyNodeChanges(changes, current),
+        applyNodeChanges(changes, current) as Node<WorkflowNodeData>[],
       );
     },
     [callSetNodes, syncTrace],
@@ -203,8 +240,14 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
   }, [projectionSignature, callSetNodes, syncTrace]);
 
   const edges = useMemo(
-    () => documentToFlowEdges(document.nodes, document.edges, (label) => localizeDefaultBranchLabel(label, branchLabel)),
-    [document.nodes, document.edges, branchLabel],
+    () =>
+      documentToFlowEdges(
+        document.nodes,
+        document.edges,
+        (label) => localizeDefaultBranchLabel(label, branchLabel),
+        validationHighlight,
+      ),
+    [document.nodes, document.edges, branchLabel, validationHighlight],
   );
   const isEmpty = document.nodes.length === 0;
 

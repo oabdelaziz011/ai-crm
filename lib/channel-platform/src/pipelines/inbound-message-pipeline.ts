@@ -14,6 +14,18 @@ import {
 import type { ResolvedCompanyChannel, ServiceContext } from "../types.js";
 import { ChannelSessionEngine } from "../engines/channel-session-engine.js";
 import type { InboundRouteRequestDto, InboundRouteResponseDto } from "../dto/channel-dto.js";
+import type { ChannelWorkflowResolver } from "../services/channel-workflow-resolver.js";
+import { dispatchAutomationOutboundMessages } from "../services/dispatch-automation-outbound.js";
+import { traceParsedInboundMessage } from "../debug/interactive-if-trace-debug.js";
+import {
+  hasValidInboundContent,
+  resolveInboundMessageText,
+} from "./inbound-message-content.js";
+import {
+  buildPipelineValidationBeforePayload,
+  logPipelineValidation,
+  PIPELINE_VALIDATION_IMPL,
+} from "./pipeline-validation-log.js";
 
 export class InboundMessagePipeline {
   constructor(
@@ -23,6 +35,7 @@ export class InboundMessagePipeline {
     private readonly dispatcher: ChannelDispatcherPort,
     private readonly inboundRepository: ChannelInboundEventRepository,
     private readonly sessionRepository: ChannelSessionRepository,
+    private readonly workflowResolver?: ChannelWorkflowResolver,
   ) {}
 
   async process(ctx: ServiceContext, request: InboundRouteRequestDto): Promise<InboundRouteResponseDto> {
@@ -60,6 +73,11 @@ export class InboundMessagePipeline {
           payload: request.payload,
         });
 
+    request.trace?.step("webhook.inbound_event_created", {
+      inboundEventId: inboundEvent.id,
+      duplicate: Boolean(duplicate),
+    });
+
     await this.inboundRepository.updateEvent({
       inboundEventId: inboundEvent.id,
       processingStatus: "processing",
@@ -67,8 +85,73 @@ export class InboundMessagePipeline {
 
     try {
       const normalized = adapter.normalizeInbound({ companyChannel }, request.payload);
-      if (!normalized.text.trim()) {
-        throw new ValidationError("Inbound message text is required.");
+
+      const validationBefore = buildPipelineValidationBeforePayload({
+        channelKey: request.channelKey,
+        normalized,
+      });
+      logPipelineValidation("pipeline.validation.before", validationBefore);
+      request.trace?.step("webhook.diag", {
+        pipelineValidationImpl: PIPELINE_VALIDATION_IMPL,
+        pipelineValidationEvent: "pipeline.validation.before",
+        ...validationBefore,
+      });
+
+      if (!hasValidInboundContent(normalized)) {
+        logPipelineValidation("pipeline.validation.failed", {
+          channelKey: request.channelKey,
+          normalized: validationBefore.normalized,
+          throws: "ValidationError",
+          message: "Inbound message must include text, media, or an interactive reply.",
+          sourceLocation: "inbound-message-pipeline.ts:hasValidInboundContent-check",
+        });
+        throw new ValidationError("Inbound message must include text, media, or an interactive reply.");
+      }
+
+      logPipelineValidation("pipeline.validation.after", {
+        channelKey: request.channelKey,
+        externalMessageId: normalized.externalMessageId,
+      });
+      request.trace?.step("webhook.diag", {
+        pipelineValidationImpl: PIPELINE_VALIDATION_IMPL,
+        pipelineValidationEvent: "pipeline.validation.after",
+        channelKey: request.channelKey,
+        externalMessageId: normalized.externalMessageId,
+      });
+
+      const inboundText = resolveInboundMessageText(normalized);
+
+      request.trace?.step("webhook.message_normalized", {
+        externalThreadId: normalized.externalThreadId,
+        externalMessageId: normalized.externalMessageId,
+        senderExternalId: normalized.senderExternalId,
+        textLength: inboundText.length,
+        interactiveReply: Boolean(normalized.metadata?.kind === "interactive_reply"),
+      });
+
+      traceParsedInboundMessage({
+        channelKey: request.channelKey,
+        externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
+        text: inboundText,
+        metadata: normalized.metadata ?? {},
+      });
+
+      const resolvedWorkflow = this.workflowResolver
+        ? await this.workflowResolver.resolve(request.companyChannelId)
+        : null;
+      const useWorkflow = Boolean(resolvedWorkflow && this.ports.automation);
+
+      request.trace?.step(
+        useWorkflow ? "webhook.workflow_resolved" : "webhook.workflow_missing",
+        useWorkflow && resolvedWorkflow
+          ? {
+              automationFlowId: resolvedWorkflow.automationFlowId,
+            }
+          : { companyChannelId: request.companyChannelId },
+      );
+
+      if (request.executeAi && !useWorkflow && !request.aiAssistantId) {
+        throw new ValidationError("aiAssistantId is required when executeAi is true.");
       }
 
       const session = await this.sessionEngine.resolveSession(ctx, {
@@ -79,17 +162,23 @@ export class InboundMessagePipeline {
         senderExternalId: normalized.senderExternalId,
         conversationId: request.conversationId,
         aiAssistantId: request.aiAssistantId,
+        requireAiAssistant: !useWorkflow,
         metadata: normalized.metadata,
       });
 
       await this.sessionRepository.touchInbound(session.id);
+      request.trace?.step("webhook.session_resolved", {
+        channelSessionId: session.id,
+        conversationId: session.conversation_id,
+        requireAiAssistant: !useWorkflow,
+      });
 
       let incomingMessageId: string | undefined;
 
-      if (!request.executeAi) {
+      if (!request.executeAi || useWorkflow) {
         const incomingMessage = await this.ports.conversation.addIncomingMessage({
           conversationId: session.conversation_id,
-          content: normalized.text,
+          content: inboundText,
           externalMessageId: normalized.externalMessageId,
           metadata: {
             channelKey: request.channelKey,
@@ -102,18 +191,142 @@ export class InboundMessagePipeline {
       }
 
       let runtimeExecutionId: string | undefined;
+      let automationRunId: string | undefined;
       let outboundDeliveryId: string | undefined;
+      let outboundDeliveryIds: string[] | undefined;
       let responseContent: string | undefined;
 
-      if (request.executeAi) {
+      if (useWorkflow && resolvedWorkflow && this.ports.automation) {
+        const automation = this.ports.automation;
+        request.trace?.step("webhook.automation_started", {
+          flowId: resolvedWorkflow.automationFlowId,
+        });
+
+        const automationResult = await automation.startWorkflow({
+          companyId: request.companyId,
+          flowId: resolvedWorkflow.automationFlowId,
+          channelKey: request.channelKey,
+          externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
+          messageText: inboundText,
+          externalMessageId: normalized.externalMessageId,
+          initialVariables: {
+            lastMessage: inboundText,
+            companyChannelId: request.companyChannelId,
+            conversationId: session.conversation_id,
+            channelSessionId: session.id,
+          },
+          metadata: {
+            inboundEventId: inboundEvent.id,
+            companyChannelId: request.companyChannelId,
+            ...(normalized.metadata ?? {}),
+          },
+        });
+
+        automationRunId = automationResult.runId;
+        responseContent = automationResult.responseContent;
+        const outboundMessages = automationResult.outboundMessages ?? [];
+
+        request.trace?.step("webhook.automation_completed", {
+          automationRunId,
+          outboundMessageCount: outboundMessages.length,
+          hasResponseContent: Boolean(responseContent?.trim()),
+        });
+
+        if (outboundMessages.length > 0) {
+          try {
+            const dispatched = await dispatchAutomationOutboundMessages(
+              ctx,
+              this.dispatcher,
+              this.ports.conversation,
+              {
+                companyId: request.companyId,
+                companyChannelId: request.companyChannelId,
+                channelKey: request.channelKey,
+                conversationId: session.conversation_id,
+                channelSessionId: session.id,
+                externalThreadId: normalized.externalThreadId,
+                automationRunId,
+                correlationId: inboundEvent.id,
+                messages: outboundMessages,
+              },
+            );
+            outboundDeliveryIds = dispatched.deliveryEventIds;
+            outboundDeliveryId = dispatched.lastDeliveryEventId;
+            responseContent = dispatched.responseContent ?? responseContent;
+            request.trace?.step("webhook.outbound_dispatched", {
+              outboundDeliveryId,
+              outboundDeliveryIds,
+              outboundMessageCount: outboundMessages.length,
+            });
+          } catch (error) {
+            request.trace?.step("webhook.outbound_failed", {
+              automationRunId,
+              error: error instanceof Error ? error.message : "outbound_dispatch_failed",
+            });
+          }
+        } else if (responseContent?.trim()) {
+          try {
+            const dispatched = await dispatchAutomationOutboundMessages(
+              ctx,
+              this.dispatcher,
+              this.ports.conversation,
+              {
+                companyId: request.companyId,
+                companyChannelId: request.companyChannelId,
+                channelKey: request.channelKey,
+                conversationId: session.conversation_id,
+                channelSessionId: session.id,
+                externalThreadId: normalized.externalThreadId,
+                automationRunId,
+                correlationId: inboundEvent.id,
+                messages: [{ text: responseContent, payload: { kind: "automation_response" } }],
+              },
+            );
+            outboundDeliveryId = dispatched.lastDeliveryEventId;
+            outboundDeliveryIds = dispatched.deliveryEventIds;
+            request.trace?.step("webhook.outbound_dispatched", { outboundDeliveryId });
+          } catch (error) {
+            request.trace?.step("webhook.outbound_failed", {
+              automationRunId,
+              error: error instanceof Error ? error.message : "outbound_dispatch_failed",
+            });
+          }
+        }
+
+        await this.inboundRepository.updateEvent({
+          inboundEventId: inboundEvent.id,
+          processingStatus: "processed",
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId,
+          processedAt: new Date().toISOString(),
+        });
+
+        return {
+          inboundEventId: inboundEvent.id,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: incomingMessageId ?? "",
+          automationRunId,
+          outboundDeliveryId,
+          outboundDeliveryIds,
+          responseContent,
+        };
+      }
+
+      if (!useWorkflow && request.executeAi) {
         if (!request.runtimeConfig?.providerConnectionId) {
           throw new ValidationError("runtimeConfig.providerConnectionId is required when executeAi is true.");
         }
 
+        request.trace?.step("webhook.ai_runtime_started", {
+          conversationId: session.conversation_id,
+        });
+
         const runtimeResult = await this.ports.runtime.execute({
           companyId: request.companyId,
           conversationId: session.conversation_id,
-          messageText: normalized.text,
+          messageText: inboundText,
           runtimeConfig: request.runtimeConfig,
           correlationId: inboundEvent.id,
           onStreamChunk: request.onStreamChunk,
@@ -161,6 +374,11 @@ export class InboundMessagePipeline {
         responseContent,
       };
     } catch (error) {
+      request.trace?.step("webhook.processing_failed", {
+        inboundEventId: inboundEvent.id,
+        error: error instanceof Error ? error.message : "Inbound pipeline failed",
+      });
+
       await this.inboundRepository.updateEvent({
         inboundEventId: inboundEvent.id,
         processingStatus: "failed",

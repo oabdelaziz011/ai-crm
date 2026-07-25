@@ -1,0 +1,17 @@
+{
+  "runId": "befbd3d4-1b20-4a9e-a445-1c87ab192cdb",
+  "started_at": "2026-07-25T04:22:56.67253+00:00",
+  "conversationId": "a35d7fff-cac7-47f3-9604-df683e726b71",
+  "customerId": "a6596ebb-ad5c-476a-8c83-321ae48bd179",
+  "before": {
+    "id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+    "customer_id": null,
+    "conversation_number": "CNV-000010"
+  },
+  "after": {
+    "id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+    "customer_id": "a6596ebb-ad5c-476a-8c83-321ae48bd179",
+    "conversation_number": "CNV-000010"
+  },
+  "linked": true
+}

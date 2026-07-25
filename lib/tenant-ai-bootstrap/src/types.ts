@@ -27,6 +27,8 @@ export type TenantAiBootstrapResult = {
 export type TenantAiBootstrapOptions = {
   openAiApiKey?: string | null;
   userId?: string | null;
+  /** When true, bootstrap runs for platform companies (skipped by default RPC). */
+  includePlatformCompanies?: boolean;
 };
 
 export type ServiceContext = {

@@ -1,0 +1,174 @@
+{
+  "testedAt": "2026-07-25T00:50:19.582Z",
+  "webhookUrl": "https://webhook.valueor.org/api/webhooks/whatsapp",
+  "readyz": {
+    "status": 200,
+    "body": {
+      "status": "ready",
+      "checks": {
+        "process": "ok",
+        "supabase": "ok",
+        "platform": "ok"
+      },
+      "build": {
+        "commit": "36f2167",
+        "nodeEnv": "development"
+      },
+      "webhookRuntime": {
+        "customerService": true,
+        "bookingService": true,
+        "factory": "createWebhookAutomationPlatformServices"
+      },
+      "timestamp": "2026-07-25T00:49:39.669Z"
+    }
+  },
+  "activeVersionId": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+  "findCustomerBinding": {
+    "mode": "variable",
+    "variable": "{{customer_phone}}"
+  },
+  "waUser": "201040580339",
+  "steps": [
+    {
+      "step": "hi",
+      "result": {
+        "status": 200,
+        "body": "{\"ok\":true,\"response\":{\"kind\":\"inbound\",\"result\":{\"inboundEventId\":\"d4f293fd-e213-4c02-b3d9-c2fe56252ccc\",\"conversationId\":\"1338f124-6db1-45e7-be35-ec768fb2f47f\",\"channelSessionId\":\"107386a1-a607-4b5f-85ce-eac3cd4fadfe\",\"incomingMessageId\":\"f49bd11d-270b-48db-b3ca-c5ea1811a9de\",\"automationRunId\":\"eebf72c7-af68-43a4-b241-00c625bff671\",\"outboundDeliveryId\":\"b6eda0dd-b2a1-4b95-ab4d-e1d1aa9eb29e\",\"outboundDeliveryIds\":[\"b9e2d3c7-ce8b-4f0c-a3cf-9d79f0aacc3a\",\"b6eda0dd-b2a1-4b95-ab4d-e1d1aa9eb29e\"],\"responseContent\":\"please press on what you want\"}}}"
+      }
+    },
+    {
+      "step": "book",
+      "result": {
+        "status": 200,
+        "body": "{\"ok\":true,\"response\":{\"kind\":\"inbound\",\"result\":{\"inboundEventId\":\"2af7c072-2bf8-4f6f-8401-e4a618e1ab17\",\"conversationId\":\"1338f124-6db1-45e7-be35-ec768fb2f47f\",\"channelSessionId\":\"107386a1-a607-4b5f-85ce-eac3cd4fadfe\",\"incomingMessageId\":\"b7cb5d30-1ac6-4290-a6d2-f5a547191790\",\"automationRunId\":\"eebf72c7-af68-43a4-b241-00c625bff671\",\"outboundDeliveryId\":\"6e8be485-76ed-46e6-bb41-a38ca87ffe3a\",\"outboundDeliveryIds\":[\"6e8be485-76ed-46e6-bb41-a38ca87ffe3a\"],\"responseContent\":\"what is your phone number?\"}}}"
+      }
+    },
+    {
+      "step": "phone",
+      "result": {
+        "status": 200,
+        "body": "{\"ok\":true,\"response\":{\"kind\":\"inbound\",\"result\":{\"inboundEventId\":\"ffcfb219-31b9-49b6-9616-dac055149f20\",\"conversationId\":\"1338f124-6db1-45e7-be35-ec768fb2f47f\",\"channelSessionId\":\"107386a1-a607-4b5f-85ce-eac3cd4fadfe\",\"incomingMessageId\":\"e711acdb-2fbb-4ceb-8242-2ffea5ac042a\",\"automationRunId\":\"eebf72c7-af68-43a4-b241-00c625bff671\",\"outboundDeliveryId\":\"188fa748-e917-43f0-b77e-7c19f75ce515\",\"outboundDeliveryIds\":[\"188fa748-e917-43f0-b77e-7c19f75ce515\"],\"responseContent\":\"What is your name?\"}}}"
+      }
+    }
+  ],
+  "targetRun": {
+    "id": "eebf72c7-af68-43a4-b241-00c625bff671",
+    "status": "waiting_input",
+    "current_node_id": "3a2dcaeb-e5bf-4e4b-97e1-d3abfba1729b",
+    "error_message": null,
+    "customer_phone": "01023169075",
+    "lookup": {
+      "count": 0,
+      "status": "not_found"
+    },
+    "customer": {
+      "id": null,
+      "name": null,
+      "tags": null,
+      "type": null,
+      "email": null,
+      "notes": null,
+      "phone": null,
+      "exists": false,
+      "created_at": null,
+      "updated_at": null
+    },
+    "variables": {
+      "lookup": {
+        "count": 0,
+        "status": "not_found"
+      },
+      "__branch": "no",
+      "__prompt": "What is your name?",
+      "customer": {
+        "id": null,
+        "name": null,
+        "tags": null,
+        "type": null,
+        "email": null,
+        "notes": null,
+        "phone": null,
+        "exists": false,
+        "created_at": null,
+        "updated_at": null
+      },
+      "__outbound": null,
+      "senderName": "Live Verify",
+      "lastMessage": "Hello",
+      "__switchCase": "book",
+      "__waitingFor": "customer_name",
+      "conversation": {
+        "last_message": "Book Appointment",
+        "last_button_id": "book",
+        "last_button_title": "Book Appointment",
+        "last_selection_type": "button"
+      },
+      "phoneNumberId": "1214681355059951",
+      "conversationId": "1338f124-6db1-45e7-be35-ec768fb2f47f",
+      "customer_phone": "01023169075",
+      "inboundEventId": "d4f293fd-e213-4c02-b3d9-c2fe56252ccc",
+      "__outboundQueue": [],
+      "channelSessionId": "107386a1-a607-4b5f-85ce-eac3cd4fadfe",
+      "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+      "whatsappMessageType": "text",
+      "interactive_selection": "book"
+    }
+  },
+  "phoneInboundError": null,
+  "outboundCount": 4,
+  "outboundAfterPhone": [
+    {
+      "id": "188fa748-e917-43f0-b77e-7c19f75ce515",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+      "channel_key": "whatsapp",
+      "conversation_id": "1338f124-6db1-45e7-be35-ec768fb2f47f",
+      "channel_session_id": "107386a1-a607-4b5f-85ce-eac3cd4fadfe",
+      "outbound_message_id": "65a38d46-95fc-4483-be3a-e83368cc4fa8",
+      "external_thread_id": "201040580339",
+      "external_message_id": "wamid.HBgMMjAxMDQwNTgwMzM5FQIAERgSOTNGMTUzOTM0NTc1ODg1OTREAA==",
+      "delivery_status": "failed",
+      "attempt_count": 1,
+      "payload": {
+        "text": "What is your name?",
+        "metadata": {
+          "correlationId": "ffcfb219-31b9-49b6-9616-dac055149f20",
+          "automationRunId": "eebf72c7-af68-43a4-b241-00c625bff671",
+          "outboundPayload": {
+            "kind": "automation_prompt"
+          }
+        },
+        "attachments": [],
+        "outboundPayload": {
+          "kind": "automation_prompt"
+        }
+      },
+      "provider_response": {
+        "status": {
+          "id": "wamid.HBgMMjAxMDQwNTgwMzM5FQIAERgSOTNGMTUzOTM0NTc1ODg1OTREAA==",
+          "errors": [
+            {
+              "code": 131026,
+              "title": "Message undeliverable",
+              "message": "Message undeliverable",
+              "error_data": {
+                "details": "Message Undeliverable."
+              }
+            }
+          ],
+          "status": "failed",
+          "timestamp": "1784940612",
+          "recipient_id": "201040580339"
+        }
+      },
+      "error_message": "Message undeliverable",
+      "sent_at": "2026-07-25T00:50:13.473+00:00",
+      "delivered_at": null,
+      "read_at": null,
+      "failed_at": "2026-07-25T00:50:15.129+00:00",
+      "created_at": "2026-07-25T00:50:11.827785+00:00",
+      "updated_at": "2026-07-25T00:50:14.543931+00:00"
+    }
+  ],
+  "pass": true
+}

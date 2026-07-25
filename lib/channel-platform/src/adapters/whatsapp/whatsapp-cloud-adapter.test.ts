@@ -123,6 +123,27 @@ describe("WhatsAppCloudAdapter", () => {
     assert.equal(normalized.externalThreadId, "15551234567");
   });
 
+  it("normalizes inbound interactive button replies with resume metadata", () => {
+    const adapter = createWhatsAppCloudAdapter();
+    const normalized = adapter.normalizeInbound(ctx, {
+      message: {
+        from: "15551234567",
+        id: "wamid.interactive-1",
+        timestamp: "1710000000",
+        type: "interactive",
+        interactive: {
+          type: "button_reply",
+          button_reply: { id: "booking", title: "Book now" },
+        },
+      },
+    });
+
+    assert.equal(normalized.text, "Book now");
+    assert.equal(normalized.metadata?.replyId, "booking");
+    assert.equal(normalized.metadata?.title, "Book now");
+    assert.equal(normalized.metadata?.kind, "interactive_reply");
+  });
+
   it("formats and sends outbound text messages via Graph API", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
     const adapter = createWhatsAppCloudAdapter({

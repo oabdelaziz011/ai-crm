@@ -10,6 +10,7 @@ export const BUILDER_NODE_TYPES = [
   "switch",
   "merge",
   "end",
+  "return_to_main_menu",
   "create_customer",
   "update_customer",
   "find_customer",
@@ -89,6 +90,30 @@ export type WorkflowSummary = {
   hasUnpublishedDraft?: boolean;
 };
 
+export type ValidationFixActionType =
+  | "insert_node"
+  | "connect_node"
+  | "set_property"
+  | "delete_node"
+  | "custom";
+
+export type ValidationFixAction = {
+  id: string;
+  label: string;
+  labelKey?: string;
+  description?: string;
+  descriptionKey?: string;
+  actionType: ValidationFixActionType;
+  payload?: unknown;
+};
+
+export type ValidationIssueKind =
+  | "dead-end"
+  | "branch-dead-end"
+  | "path-no-terminal"
+  | "non-terminating-cycle"
+  | "unreachable";
+
 export type ValidationIssue = {
   id: string;
   message: string;
@@ -97,6 +122,14 @@ export type ValidationIssue = {
   fieldLabelKey?: string;
   branchLabel?: string;
   nodeType?: BuilderNodeType;
+  kind?: ValidationIssueKind;
+  affectedNodeIds?: string[];
+  affectedEdgeIds?: string[];
+  pathNodeIds?: string[];
+  pathEdgeIds?: string[];
+  suggestedFixKeys?: string[];
+  focusNodeId?: string;
+  fixActions?: ValidationFixAction[];
 };
 
 export type BuilderState = {
@@ -105,6 +138,8 @@ export type BuilderState = {
   selectedEdgeIds: string[];
   saveStatus: SaveStatus;
   validationIssues: ValidationIssue[];
+  activeValidationIssueId: string | null;
+  validationPanelFocusNonce: number;
   clipboard: BuilderNode[];
 };
 
@@ -124,8 +159,11 @@ export type BuilderAction =
   | { type: "PASTE_NODES"; offset?: { x: number; y: number } }
   | { type: "DUPLICATE_NODES"; nodeIds: string[]; offset?: { x: number; y: number } }
   | { type: "INSERT_NODE_AFTER"; sourceNodeId: string; node: BuilderNode }
+  | { type: "GENERATE_INTERACTIVE_ROUTING"; interactiveNodeId: string }
   | { type: "SET_SAVE_STATUS"; status: SaveStatus }
   | { type: "SET_VALIDATION"; issues: ValidationIssue[] }
+  | { type: "SET_ACTIVE_VALIDATION_ISSUE"; issueId: string | null }
+  | { type: "REQUEST_VALIDATION_PANEL_FOCUS" }
   | { type: "REPLACE_STATE"; state: BuilderState };
 
 export function createNodeId(): string {

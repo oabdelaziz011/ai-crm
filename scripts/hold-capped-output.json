@@ -1,0 +1,905 @@
+{
+  "holdCount": 12,
+  "holds": [
+    {
+      "inboundEventId": "4d29da06-c93e-4998-a2cb-57a7be95d433",
+      "created_at": "2026-07-23T23:54:50.393385+00:00",
+      "preview": "Book Appointment",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-23T23:54:50.393Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "1bb08a8e-d000-4805-aeb6-9fdaa97f8675",
+      "runId": "414099b9-2779-4a8c-ad0a-2a21c0137513",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "f83105a1-4032-47ab-8784-0bf0118342b7",
+      "created_at": "2026-07-23T23:55:32.905173+00:00",
+      "preview": "Pricing",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-23T23:55:32.905Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "1bb08a8e-d000-4805-aeb6-9fdaa97f8675",
+      "runId": "414099b9-2779-4a8c-ad0a-2a21c0137513",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "93230bf7-414a-4b82-b4ef-cdf16cf795af",
+      "created_at": "2026-07-23T23:55:41.627031+00:00",
+      "preview": "Talk to Support",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-23T23:55:41.627Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "1bb08a8e-d000-4805-aeb6-9fdaa97f8675",
+      "runId": "414099b9-2779-4a8c-ad0a-2a21c0137513",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "e9121201-d028-43c2-8762-c09eb68129b9",
+      "created_at": "2026-07-23T23:56:53.930067+00:00",
+      "preview": "Book Appointment",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-23T23:56:53.930Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+      "runId": "8f82c50f-eeec-463a-8030-f6c5e50f192d",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "6fc8649e-9933-464d-aa40-b271aeaae4ce",
+      "created_at": "2026-07-24T00:00:09.343355+00:00",
+      "preview": "01011404109",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T00:00:09.343Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+      "runId": "8f82c50f-eeec-463a-8030-f6c5e50f192d",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "3c08200a-10d2-4d17-91ca-4e9c3ad92f7d",
+      "created_at": "2026-07-24T00:01:17.588491+00:00",
+      "preview": "Hello",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T00:01:03.870Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+      "runId": "8f82c50f-eeec-463a-8030-f6c5e50f192d",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 13718
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 13718,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 13718ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "83543371-7d73-469f-a299-252d3c0df1b5",
+      "created_at": "2026-07-24T02:50:40.562559+00:00",
+      "preview": "dr2",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T02:50:25.945Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+      "runId": "8f82c50f-eeec-463a-8030-f6c5e50f192d",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 14617
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 14617,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 14617ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "7f7d1802-f824-4c94-87b2-35fb66af2c8e",
+      "created_at": "2026-07-24T03:34:38.558882+00:00",
+      "preview": "dr3",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T03:34:26.090Z",
+      "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+      "runId": "8f82c50f-eeec-463a-8030-f6c5e50f192d",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 12468
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 12468,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 12468ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "0655cf6e-e0c3-4fee-a542-e0128295cbbe",
+      "created_at": "2026-07-24T04:01:17.009482+00:00",
+      "preview": "Pricing",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T04:01:17.009Z",
+      "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+      "runId": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "bf4d8be7-8a3b-43bc-8b28-3b378bb1c0a2",
+      "created_at": "2026-07-24T04:01:31.327831+00:00",
+      "preview": "dr3",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T04:01:31.327Z",
+      "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+      "runId": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "7211423d-0d45-4c09-9b36-0075a39609bf",
+      "created_at": "2026-07-24T04:04:21.790082+00:00",
+      "preview": "Yes",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T04:04:21.790Z",
+      "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+      "runId": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    },
+    {
+      "inboundEventId": "1abdd887-7cc2-4806-b605-770fe88bccad",
+      "created_at": "2026-07-24T04:04:47.717003+00:00",
+      "preview": "01011404109",
+      "sessionStatus": "running",
+      "runStatus": "running",
+      "last_activity_at": "2026-07-24T04:04:47.717Z",
+      "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+      "currentNodeType": null,
+      "__waitingFor": null,
+      "sessionId": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+      "runId": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mm": false,
+            "msSinceActivity": 0
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {}
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 0,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "Condition 7 passed: isActivelyExecutingRun — 0ms since last_activity (window 15000ms)",
+      "classification": "race condition (inbound arrived while prior execution still within 15s window; session never reached waiting_input)"
+    }
+  ]
+}

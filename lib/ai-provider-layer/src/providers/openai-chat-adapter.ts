@@ -139,20 +139,7 @@ export class OpenAIChatAdapter implements AIProvider {
     const messages = parsePromptToMessages(input.prompt);
     const streaming = Boolean(metadata.streaming);
 
-    const body: Record<string, unknown> = {
-      model: config.model,
-      messages,
-      temperature: metadata.temperature ?? 0.7,
-      top_p: metadata.top_p ?? 1,
-      presence_penalty: metadata.presence_penalty ?? 0,
-      frequency_penalty: metadata.frequency_penalty ?? 0,
-      max_tokens: metadata.max_tokens ?? 1024,
-      stream: streaming,
-    };
-
-    if (metadata.response_format === "json") {
-      body.response_format = { type: "json_object" };
-    }
+    const body = buildChatCompletionBody(config.model, messages, metadata, streaming);
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${config.apiKey}`,
@@ -343,6 +330,50 @@ export class OpenAIChatAdapter implements AIProvider {
       mock: false,
     };
   }
+}
+
+function isGpt5FamilyModel(model: string): boolean {
+  return model.trim().toLowerCase().startsWith("gpt-5");
+}
+
+function buildChatCompletionBody(
+  model: string,
+  messages: OpenAIChatMessage[],
+  metadata: GenerateMetadata,
+  streaming: boolean,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    stream: streaming,
+  };
+
+  const completionLimit =
+    typeof metadata.max_completion_tokens === "number"
+      ? metadata.max_completion_tokens
+      : metadata.max_tokens ?? 1024;
+
+  if (isGpt5FamilyModel(model)) {
+    body.max_completion_tokens = completionLimit;
+    if (metadata.temperature === 1) {
+      body.temperature = 1;
+    }
+    if (metadata.top_p !== undefined) body.top_p = metadata.top_p;
+    if (metadata.presence_penalty !== undefined) body.presence_penalty = metadata.presence_penalty;
+    if (metadata.frequency_penalty !== undefined) body.frequency_penalty = metadata.frequency_penalty;
+  } else {
+    body.temperature = metadata.temperature ?? 0.7;
+    body.top_p = metadata.top_p ?? 1;
+    body.presence_penalty = metadata.presence_penalty ?? 0;
+    body.frequency_penalty = metadata.frequency_penalty ?? 0;
+    body.max_tokens = completionLimit;
+  }
+
+  if (metadata.response_format === "json") {
+    body.response_format = { type: "json_object" };
+  }
+
+  return body;
 }
 
 function parsePromptToMessages(prompt: string): OpenAIChatMessage[] {

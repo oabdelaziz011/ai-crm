@@ -1,11 +1,26 @@
 import type { CustomerLookupField } from "../lookup/types.js";
 import type { CustomerRecord } from "../types/find-customer-input.js";
+import type { CreateCustomerInput, UpdateCustomerInput } from "../types/customer-mutation-input.js";
+
+function parseAgeValue(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed) || parsed < 0 || parsed > 150) {
+    throw new Error("Age must be a whole number between 0 and 150.");
+  }
+  return parsed;
+}
 
 export interface CustomerRepositoryPort {
   findCustomersByField(input: {
     lookupBy: CustomerLookupField;
     lookupValue: string;
   }): Promise<{ count: number; record: CustomerRecord | null }>;
+
+  createCustomer(input: CreateCustomerInput): Promise<CustomerRecord>;
+
+  updateCustomer(input: UpdateCustomerInput): Promise<CustomerRecord>;
 }
 
 export class InMemoryCustomerRepository implements CustomerRepositoryPort {
@@ -42,5 +57,37 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
       return { count: 1, record: matches[0]! };
     }
     return { count, record: null };
+  }
+
+  async createCustomer(input: CreateCustomerInput): Promise<CustomerRecord> {
+    const now = new Date().toISOString();
+    const record: CustomerRecord = {
+      id: `cust-${this.customers.length + 1}`,
+      name: input.name.trim(),
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      age: input.age ?? null,
+      gender: input.gender ?? null,
+      notes: input.notes ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.customers.push(record);
+    return record;
+  }
+
+  async updateCustomer(input: UpdateCustomerInput): Promise<CustomerRecord> {
+    const customer = this.customers.find((entry) => entry.id === input.customerId);
+    if (!customer) throw new Error(`Customer ${input.customerId} not found.`);
+    const field = input.field.trim();
+    if (field === "name") customer.name = input.value;
+    else if (field === "email") customer.email = input.value;
+    else if (field === "phone") customer.phone = input.value;
+    else if (field === "age") customer.age = parseAgeValue(input.value);
+    else if (field === "gender") customer.gender = input.value.trim() || null;
+    else if (field === "notes") customer.notes = input.value;
+    else throw new Error(`Unsupported customer field: ${field}`);
+    customer.updatedAt = new Date().toISOString();
+    return customer;
   }
 }

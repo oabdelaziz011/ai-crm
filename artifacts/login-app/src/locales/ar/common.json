@@ -7,6 +7,7 @@
     "home": "الرئيسية",
     "customers": "العملاء",
     "bookings": "الحجوزات",
+    "calendar": "التقويم",
     "invoices": "الفواتير",
     "profiles": "الملفات الشخصية",
     "companies": "الشركات",
@@ -96,7 +97,182 @@
     "errors": {
       "readFailed": "تعذر تحديد الإشعار كمقروء",
       "markAllFailed": "تعذر تحديد كل الإشعارات كمقروءة",
-      "deleteFailed": "تعذر حذف الإشعار"
+      "deleteFailed": "تعذر حذف الإشعار",
+      "archiveFailed": "تعذر أرشفة الإشعار"
+    },
+    "platform": {
+      "archive": "أرشفة",
+      "markUnread": "تحديد كغير مقروء",
+      "filters": {
+        "unread": "غير المقروء فقط",
+        "priority": "الأولوية",
+        "type": "النوع",
+        "newest": "الأحدث",
+        "oldest": "الأقدم",
+        "allPriorities": "كل الأولويات",
+        "allTypes": "كل الأنواع"
+      },
+      "priority": {
+        "low": "منخفض",
+        "normal": "عادي",
+        "high": "مرتفع",
+        "urgent": "عاجل"
+      },
+      "events": {
+        "appointment_created": "تم إنشاء موعد",
+        "appointment_updated": "تم تحديث موعد",
+        "appointment_cancelled": "تم إلغاء موعد",
+        "customer_created": "تم إنشاء عميل",
+        "invoice_created": "تم إنشاء فاتورة",
+        "payment_received": "تم استلام دفعة",
+        "generic_system": "نظام"
+      },
+      "templates": {
+        "appointmentCreated": {
+          "title": "تم إنشاء موعد",
+          "message": "تم جدولة موعد جديد."
+        },
+        "appointmentUpdated": {
+          "title": "تم تحديث موعد",
+          "message": "تم تحديث موعد."
+        },
+        "appointmentCancelled": {
+          "title": "تم إلغاء موعد",
+          "message": "تم إلغاء موعد."
+        },
+        "customerCreated": {
+          "title": "عميل جديد",
+          "message": "تم إنشاء العميل {{name}}."
+        },
+        "invoiceCreated": {
+          "title": "تم إنشاء فاتورة",
+          "message": "تم إنشاء الفاتورة {{invoiceId}}."
+        },
+        "paymentReceived": {
+          "title": "تم استلام دفعة",
+          "message": "تم استلام دفعة بقيمة {{amount}}."
+        },
+        "genericSystem": {
+          "title": "إشعار النظام",
+          "message": "{{detail}}"
+        }
+      }
+    },
+    "email": {
+      "templates": {
+        "appointmentConfirmation": {
+          "subject": "تأكيد الموعد",
+          "html": "<p>تم تأكيد موعدك.</p>",
+          "text": "تم تأكيد موعدك."
+        },
+        "appointmentUpdated": {
+          "subject": "تحديث الموعد",
+          "html": "<p>تم تحديث موعدك.</p>",
+          "text": "تم تحديث موعدك."
+        },
+        "appointmentCancelled": {
+          "subject": "إلغاء الموعد",
+          "html": "<p>تم إلغاء موعدك.</p>",
+          "text": "تم إلغاء موعدك."
+        },
+        "customerWelcome": {
+          "subject": "مرحباً",
+          "html": "<p>مرحباً {{name}}.</p>",
+          "text": "مرحباً {{name}}."
+        },
+        "invoiceCreated": {
+          "subject": "فاتورة {{invoiceId}}",
+          "html": "<p>تم إنشاء الفاتورة {{invoiceId}}.</p>",
+          "text": "تم إنشاء الفاتورة {{invoiceId}}."
+        },
+        "paymentReceived": {
+          "subject": "تم استلام الدفعة",
+          "html": "<p>استلمنا دفعتك بقيمة {{amount}}.</p>",
+          "text": "استلمنا دفعتك بقيمة {{amount}}."
+        },
+        "genericSystem": {
+          "subject": "إشعار",
+          "html": "<p>{{detail}}</p>",
+          "text": "{{detail}}"
+        }
+      },
+      "settings": {
+        "title": "إعدادات البريد",
+        "enabled": "تفعيل إرسال البريد",
+        "smtpHost": "مضيف SMTP",
+        "smtpPort": "منفذ SMTP",
+        "username": "اسم المستخدم",
+        "password": "كلمة المرور",
+        "encryption": "التشفير",
+        "encryptionStartTls": "STARTTLS",
+        "encryptionSsl": "SSL/TLS",
+        "encryptionNone": "بدون",
+        "fromEmail": "البريد المرسل",
+        "fromName": "اسم المرسل",
+        "saved": "تم حفظ إعدادات البريد",
+        "saveFailed": "تعذر حفظ إعدادات البريد",
+        "healthTitle": "صحة المزود",
+        "healthOk": "اتصال SMTP سليم ({{ms}} مللي ثانية)",
+        "healthFailed": "فشل فحص SMTP: {{error}}",
+        "testConnection": "إرسال بريد تجريبي",
+        "testRecipient": "المستلم التجريبي",
+        "testSuccess": "تم إرسال البريد التجريبي",
+        "testFailed": "فشل إرسال البريد التجريبي",
+        "apiMissing": "عيّن VITE_API_SERVER_URL لتشغيل فحوصات SMTP.",
+        "processQueue": "معالجة قائمة البريد",
+        "queueProcessed": "تمت معالجة {{completed}} رسالة"
+      }
+    },
+    "whatsapp": {
+      "templates": {
+        "appointmentConfirmation": {
+          "body": "مرحباً {{customerName}}، تم تأكيد موعد {{service}} في {{date}} الساعة {{time}}."
+        },
+        "appointmentReminder": {
+          "body": "تذكير: {{customerName}}، موعد {{service}} في {{date}} الساعة {{time}}."
+        },
+        "appointmentUpdated": {
+          "body": "مرحباً {{customerName}}، تم تحديث موعد {{service}} إلى {{date}} الساعة {{time}}."
+        },
+        "appointmentCancelled": {
+          "body": "مرحباً {{customerName}}، تم إلغاء موعد {{service}} في {{date}}."
+        },
+        "invoiceCreated": {
+          "body": "مرحباً {{customerName}}، تم إنشاء الفاتورة {{invoiceId}} بقيمة {{amount}}."
+        },
+        "paymentReceived": {
+          "body": "مرحباً {{customerName}}، استلمنا دفعتك بقيمة {{amount}}. شكراً لك!"
+        },
+        "genericSystem": {
+          "body": "{{detail}}"
+        }
+      },
+      "settings": {
+        "title": "إعدادات واتساب",
+        "enabled": "تفعيل إرسال واتساب",
+        "provider": "المزود",
+        "providerMetaCloud": "Meta WhatsApp Cloud API",
+        "providerTwilio": "Twilio WhatsApp (قريباً)",
+        "provider360Dialog": "360dialog (قريباً)",
+        "accessToken": "رمز الوصول",
+        "phoneNumberId": "معرّف رقم الهاتف",
+        "businessAccountId": "معرّف حساب الأعمال",
+        "webhookVerifyToken": "رمز التحقق من Webhook",
+        "webhookFutureHint": "محجوز للتحقق من Webhook مستقبلاً.",
+        "defaultLanguage": "اللغة الافتراضية للقوالب",
+        "saved": "تم حفظ إعدادات واتساب",
+        "saveFailed": "تعذر حفظ إعدادات واتساب",
+        "healthTitle": "صحة المزود",
+        "healthOk": "اتصال واتساب سليم ({{ms}} مللي ثانية)",
+        "healthFailed": "فشل فحص واتساب: {{error}}",
+        "testMessage": "إرسال رسالة تجريبية",
+        "testRecipient": "رقم الهاتف التجريبي (E.164)",
+        "testSuccess": "تم إرسال الرسالة التجريبية",
+        "testFailed": "فشل إرسال الرسالة التجريبية",
+        "apiMissing": "عيّن VITE_API_SERVER_URL لتشغيل فحوصات واتساب.",
+        "processQueue": "معالجة قائمة واتساب",
+        "queueProcessed": "تمت معالجة {{completed}} رسالة واتساب"
+      }
     },
     "defaults": {
       "unknown": "غير معروف",
@@ -312,6 +488,7 @@
     "cancel": "إلغاء",
     "delete": "حذف",
     "saveChanges": "حفظ التغييرات",
+    "save": "حفظ",
     "addBooking": "إضافة حجز",
     "createInvoice": "إنشاء فاتورة",
     "saveRole": "حفظ الدور",
@@ -332,6 +509,18 @@
       "invalidEmail": "البريد الإلكتروني غير صالح",
       "phone": "الهاتف",
       "phonePlaceholder": "+1 555 000 0000",
+      "age": "العمر",
+      "agePlaceholder": "مثال: 32",
+      "invalidAge": "يجب أن يكون العمر رقمًا صحيحًا بين 0 و 150",
+      "gender": "الجنس",
+      "genderPlaceholder": "اختر الجنس",
+      "genderOptions": {
+        "male": "ذكر",
+        "female": "أنثى",
+        "other": "آخر",
+        "preferNotToSay": "أفضل عدم الإفصاح"
+      },
+      "notSet": "غير محدد",
       "notes": "ملاحظات",
       "optionalNotes": "ملاحظات اختيارية…",
       "add": "إضافة عميل"
@@ -339,14 +528,46 @@
     "booking": {
       "editTitle": "تعديل الحجز",
       "newTitle": "حجز جديد",
+      "rescheduleTitle": "إعادة جدولة الحجز",
       "customer": "العميل",
+      "customerRequired": "العميل مطلوب",
       "noCustomer": "— بدون عميل —",
       "service": "الخدمة *",
       "serviceRequired": "الخدمة مطلوبة",
       "servicePlaceholder": "مثال: استشارة",
+      "resource": "المورد *",
+      "resourceRequired": "المورد مطلوب",
+      "selectService": "اختر خدمة",
+      "selectResource": "اختر موردًا",
+      "date": "التاريخ *",
       "dateTime": "التاريخ والوقت *",
       "dateRequired": "التاريخ مطلوب",
+      "slot": "الموعد المتاح *",
+      "slotRequired": "اختر موعدًا متاحًا",
+      "selectSlot": "اختر موعدًا",
+      "loadingSlots": "جاري تحميل المواعيد…",
+      "loadingResources": "جاري تحميل الموارد…",
+      "noSlots": "لا توجد مواعيد متاحة لهذا التاريخ",
+      "resourcesLoadError": "تعذّر تحميل الموارد. يرجى المحاولة مرة أخرى.",
+      "slotsLoadError": "تعذّر تحميل المواعيد المتاحة. يرجى المحاولة مرة أخرى.",
+      "noEligibleResources": "لا توجد موارد مؤهلة معيّنة لهذه الخدمة.",
+      "noEligibleResourcesHint": "افتح الإعدادات ← الجدولة ← الخدمات، واختر هذه الخدمة، ثم عيّن الموارد التي يمكنها تنفيذها.",
+      "slotReasons": {
+        "holiday": "هذا التاريخ عطلة على مستوى الشركة — لا يمكن حجز مواعيد.",
+        "exceptionBlocked": "هذا المورد غير متاح في التاريخ المحدد بسبب استثناء في الجدول.",
+        "noWorkingHours": "لم تُضبط ساعات عمل لهذا المورد في اليوم المحدد.",
+        "outsideBookingWindow": "هذا التاريخ خارج نافذة الحجز المسموحة لعيادتك.",
+        "insideMinimumNotice": "التاريخ المحدد قريب جداً — يلزم إشعار مسبق أطول للحجز.",
+        "resourceUnavailable": "تركيبة المورد والخدمة هذه غير متاحة للحجز.",
+        "allSlotsBooked": "جميع المواعيد في هذا التاريخ محجوزة بالفعل.",
+        "noSlotsRemaining": "لا تبقى أوقات مواعيد في هذا التاريخ للمورد المحدد.",
+        "noSlotsGeneric": "لا توجد مواعيد متاحة لهذا التاريخ."
+      },
+      "notes": "ملاحظات",
+      "notesPlaceholder": "ملاحظات اختيارية",
       "status": "الحالة",
+      "reschedule": "إعادة الجدولة",
+      "companyRequired": "سياق الشركة مطلوب للحجوزات",
       "add": "إضافة حجز"
     },
     "invoice": {
@@ -430,6 +651,158 @@
       "emptyAll": "لا يوجد عملاء حتى الآن. أضف أول عميل!",
       "emptySearch": "لا توجد نتائج مطابقة للبحث."
     },
+    "customerDetails": {
+      "title": "تفاصيل العميل",
+      "subtitle": "ملف العميل لفريق الدعم",
+      "loadError": "تعذر تحميل تفاصيل العميل.",
+      "notLinked": "لا يوجد عميل مرتبط بهذه المحادثة.",
+      "editHint": "انقر على قيمة للتعديل",
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم الحفظ",
+      "viewCustomer": "عرض العميل",
+      "quickEdit": "تعديل سريع",
+      "doneEditing": "تم",
+      "unavailable": "غير متاح",
+      "sections": {
+        "basicInformation": "المعلومات الأساسية",
+        "additionalInformation": "معلومات إضافية",
+        "activitySummary": "ملخص النشاط",
+        "systemInformation": "معلومات النظام"
+      },
+      "fields": {
+        "createdAt": "تاريخ الإنشاء",
+        "updatedAt": "تاريخ التحديث",
+        "status": "الحالة",
+        "totalBookings": "إجمالي الحجوزات",
+        "totalInvoices": "إجمالي الفواتير",
+        "lastInteraction": "آخر تفاعل",
+        "conversationId": "معرف المحادثة",
+        "customerId": "معرف العميل",
+        "companyId": "معرف الشركة"
+      },
+      "metrics": {
+        "bookings": "الحجوزات",
+        "invoices": "الفواتير",
+        "lastInteraction": "آخر تفاعل"
+      }
+    },
+    "customerProfile": {
+      "title": "ملف العميل",
+      "subtitle": "مركز موحد لملف العميل",
+      "sections": {
+        "contactDetails": "بيانات الاتصال"
+      },
+      "tabs": {
+        "overview": "نظرة عامة",
+        "timeline": "الجدول الزمني",
+        "bookings": "الحجوزات",
+        "invoices": "الفواتير",
+        "notes": "الملاحظات",
+        "files": "الملفات",
+        "ai-insights": "رؤى الذكاء الاصطناعي",
+        "system": "النظام"
+      },
+      "quickActions": {
+        "title": "إجراءات سريعة",
+        "call": "اتصال",
+        "whatsapp": "واتساب",
+        "newBooking": "حجز جديد",
+        "newInvoice": "فاتورة جديدة",
+        "addNote": "إضافة ملاحظة",
+        "errors": {
+          "title": "فشل الإجراء",
+          "generic": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+          "phoneMissing": "لا يوجد رقم هاتف مسجل لهذا العميل.",
+          "whatsappNotFound": "لم يتم العثور على محادثة واتساب لهذا العميل."
+        },
+        "success": {
+          "bookingCreated": "تم إنشاء الحجز بنجاح.",
+          "invoiceCreated": "تم إنشاء الفاتورة بنجاح."
+        }
+      },
+      "notes": {
+        "hint": "ملاحظات داخلية مرئية لفريقك."
+      },
+      "metrics": {
+        "title": "ملخص النشاط",
+        "bookings": "الحجوزات",
+        "invoices": "الفواتير",
+        "lastInteraction": "آخر تفاعل"
+      },
+      "placeholders": {
+        "bookings": "ستظهر حجوزات العميل هنا في إصدار لاحق.",
+        "invoices": "ستظهر فواتير العميل هنا في إصدار لاحق.",
+        "files": "ستظهر الملفات والمرفقات هنا.",
+        "aiInsights": "ستظهر الرؤى والملخصات المولدة بالذكاء الاصطناعي هنا."
+      },
+      "timeline": {
+        "title": "الجدول الزمني للنشاط",
+        "subtitle": "تدفق زمني موحد عبر الحجوزات والرسائل والفوترة والأتمتة.",
+        "loading": "جارٍ تحميل الجدول الزمني…",
+        "loadError": "تعذر تحميل الجدول الزمني.",
+        "empty": "لا يوجد نشاط مسجل بعد.",
+        "emptySearch": "لا توجد أحداث مطابقة للبحث.",
+        "loadMore": "تحميل المزيد",
+        "searchPlaceholder": "البحث في الجدول الزمني…",
+        "byActor": "بواسطة {{actor}}",
+        "fallbackTitle": "{{type}}",
+        "filters": {
+          "all": "الكل",
+          "messages": "الرسائل",
+          "bookings": "الحجوزات",
+          "invoices": "الفواتير",
+          "notes": "الملاحظات",
+          "calls": "المكالمات",
+          "notifications": "الإشعارات",
+          "automation": "الأتمتة",
+          "email": "البريد",
+          "ai": "الذكاء الاصطناعي"
+        },
+        "groupModes": {
+          "day": "يوم",
+          "week": "أسبوع",
+          "month": "شهر",
+          "conversation": "محادثة",
+          "workflow": "سير عمل",
+          "booking": "حجز"
+        },
+        "events": {
+          "customer_created": {
+            "title": "تم إنشاء العميل",
+            "description": "تمت إضافة الملف إلى CRM"
+          },
+          "whatsapp_message_received": { "title": "رسالة واتساب واردة" },
+          "whatsapp_message_sent": { "title": "رسالة واتساب صادرة" },
+          "template_sent": { "title": "قالب واتساب مُرسل" },
+          "interactive_reply": { "title": "رد تفاعلي" },
+          "facebook_message": { "title": "رسالة فيسبوك" },
+          "instagram_message": { "title": "رسالة إنستغرام" },
+          "booking_created": { "title": "تم إنشاء حجز" },
+          "booking_confirmed": { "title": "تم تأكيد الحجز" },
+          "booking_rescheduled": { "title": "تم إعادة جدولة الحجز" },
+          "booking_completed": { "title": "اكتمل الحجز" },
+          "booking_cancelled": { "title": "تم إلغاء الحجز" },
+          "invoice_created": { "title": "تم إنشاء فاتورة" },
+          "invoice_paid": { "title": "تم دفع الفاتورة" },
+          "invoice_overdue": { "title": "فاتورة متأخرة" },
+          "payment_received": { "title": "تم استلام الدفع" },
+          "note_added": { "title": "تمت إضافة ملاحظة" },
+          "customer_updated": { "title": "تم تحديث العميل" },
+          "conversation_closed": { "title": "تم إغلاق المحادثة" },
+          "conversation_reopened": { "title": "تم إعادة فتح المحادثة" },
+          "call_started": { "title": "بدء مكالمة" },
+          "call_finished": { "title": "انتهاء مكالمة" },
+          "email_received": { "title": "بريد وارد" },
+          "email_sent": { "title": "بريد صادر" },
+          "notification_delivered": { "title": "تم تسليم إشعار" },
+          "calendar_event": { "title": "حدث تقويم" },
+          "manual_activity": { "title": "نشاط يدوي" },
+          "automation_started": { "title": "بدء الأتمتة" },
+          "automation_finished": { "title": "انتهاء الأتمتة" },
+          "ai_summary_updated": { "title": "تحديث ملخص الذكاء الاصطناعي" }
+        }
+      }
+    },
     "bookings": {
       "title": "الحجوزات",
       "subtitle": "المواعيد والجلسات القادمة",
@@ -461,6 +834,7 @@
       "conversationsHint": "اختر محادثة لعرض الرسائل والرد",
       "selectConversation": "اختر محادثة لعرض المحادثة",
       "empty": "لا توجد محادثات تطابق عوامل التصفية",
+      "unknownContact": "جهة اتصال غير معروفة",
       "noPreview": "لا توجد معاينة للرسالة",
       "unread": "{{count}} غير مقروء",
       "searchPlaceholder": "البحث في المحادثات…",
@@ -478,7 +852,8 @@
         "unread": "غير مقروء (الفريق)",
         "human": "بإشراف بشري",
         "channels": "القنوات النشطة"
-      }
+      },
+      "viewCustomer": "تفاصيل العميل"
     },
     "channels": {
       "title": "إدارة القنوات",
@@ -497,7 +872,27 @@
       "phoneNumberId": "معرف رقم الهاتف",
       "accessToken": "رمز الوصول",
       "verifyToken": "رمز التحقق من webhook",
+      "regenerateVerifyToken": "إعادة التوليد",
+      "webhookUrl": "رابط callback لـ Meta webhook",
+      "webhookUrlHelp": "سجّل هذا الرابط في Meta Developer Console. يتم توجيه الرسائل حسب معرف رقم الهاتف في payload.",
+      "webhookUrlMissingBase": "عيّن VITE_API_SERVER_URL في بيئة البوابة لعرض رابط callback الكامل.",
       "apiVersion": "إصدار API",
+      "automationWorkflow": {
+        "title": "سير عمل الأتمتة",
+        "helper": "يُستخدم محرك الذكاء الاصطناعي عندما لا يكون هناك سير عمل مُعيَّن.",
+        "enableToggle": "تفعيل سير العمل",
+        "workflowLabel": "سير العمل",
+        "selectWorkflow": "اختر سير عمل",
+        "noWorkflow": "بدون سير عمل",
+        "noActiveFlows": "لا توجد سير عمل نشطة. انشر سير عمل من صفحة الأتمتة أولاً.",
+        "saveSuccess": "تم حفظ إعدادات القناة.",
+        "bindingCreated": "تم إنشاء ربط سير العمل.",
+        "bindingUpdated": "تم تحديث ربط سير العمل.",
+        "bindingDisabled": "تم تعطيل ربط سير العمل.",
+        "bindingRemoved": "تم إزالة ربط سير العمل.",
+        "saveError": "تعذر حفظ ربط سير العمل.",
+        "missingWorkflow": "اختر سير عمل قبل تفعيل الأتمتة."
+      },
       "stats": {
         "total": "إجمالي القنوات",
         "enabled": "مفعّلة",
@@ -615,7 +1010,10 @@
         "accountInformation": "معلومات الحساب",
         "companySettings": "إعدادات الشركة",
         "security": "الأمان",
-        "notifications": "الإشعارات"
+        "notifications": "الإشعارات",
+        "email": "البريد الإلكتروني",
+        "whatsapp": "واتساب",
+        "scheduling": "الجدولة"
       },
       "security": {
         "changePassword": "تغيير كلمة المرور",
@@ -736,6 +1134,79 @@
       }
     }
   },
+  "automation": {
+    "triggers": {
+      "appointment_created": "إنشاء موعد",
+      "appointment_updated": "تحديث موعد",
+      "appointment_cancelled": "إلغاء موعد",
+      "appointment_completed": "إكمال موعد",
+      "customer_created": "إنشاء عميل",
+      "invoice_created": "إنشاء فاتورة",
+      "invoice_paid": "دفع فاتورة",
+      "system_event": "حدث نظام",
+      "custom_event": "حدث مخصص"
+    },
+    "delays": {
+      "immediate": "فوراً",
+      "after_minutes": "بعد دقائق",
+      "after_hours": "بعد ساعات",
+      "after_days": "بعد أيام",
+      "before_appointment": "قبل الموعد",
+      "at_specific_time": "في وقت محدد"
+    },
+    "actions": {
+      "create_notification": "إنشاء إشعار",
+      "send_email": "إرسال بريد",
+      "send_whatsapp": "إرسال واتساب",
+      "internal_notification": "إشعار داخلي",
+      "sms": "SMS (قريباً)",
+      "push": "Push (قريباً)",
+      "webhook": "Webhook (قريباً)",
+      "ai_action": "إجراء AI (قريباً)"
+    },
+    "center": {
+      "title": "مركز الأتمتة",
+      "subtitle": "تنسيق سير العمل عبر منصة الإشعارات.",
+      "nav": {
+        "workflows": "سير العمل",
+        "editor": "المحرر",
+        "history": "سجل التنفيذ",
+        "templates": "معرض القوالب"
+      },
+      "loading": "جاري تحميل الأتمتة…",
+      "newWorkflow": "سير عمل جديد",
+      "newWorkflowPlaceholder": "تذكير بالدفع",
+      "create": "إنشاء سير عمل",
+      "createFailed": "تعذر إنشاء سير العمل",
+      "saved": "تم حفظ سير العمل",
+      "saveFailed": "تعذر حفظ سير العمل",
+      "manualRun": "تشغيل الآن",
+      "manualRunSuccess": "تم تنفيذ سير العمل",
+      "manualRunFailed": "فشل تنفيذ سير العمل",
+      "processSchedules": "معالجة الجداول المستحقة",
+      "installTemplate": "تثبيت القالب",
+      "templateInstalled": "تم تثبيت القالب",
+      "templateInstallFailed": "تعذر تثبيت القالب",
+      "editor": {
+        "title": "محرر سير العمل",
+        "name": "الاسم",
+        "description": "الوصف",
+        "trigger": "المُشغّل",
+        "delay": "التأخير",
+        "action": "الإجراء الأساسي",
+        "graph": "معاينة المسار (للقراءة فقط)"
+      },
+      "history": {
+        "title": "سجل التنفيذ",
+        "event": "الحدث",
+        "status": "الحالة",
+        "started": "بدء",
+        "actions": "إجراءات",
+        "viewSteps": "عرض الخطوات",
+        "steps": "خطوات التنفيذ"
+      }
+    }
+  },
   "workflowBuilder": {
     "list": {
       "title": "سير العمل",
@@ -812,7 +1283,8 @@
     },
     "nodeEmpty": {
       "start": "يبدأ كل سير عمل هنا تلقائياً.",
-      "end": "هذه الخطوة تُنهي المحادثة."
+      "end": "هذه الخطوة تُنهي المحادثة.",
+      "return_to_main_menu": "تعيد عرض قائمة المحادثة الرئيسية وتُبقي المحادثة مفتوحة."
     },
     "nodes": {
       "start": {
@@ -859,6 +1331,10 @@
         "displayName": "النهاية",
         "description": "أنهِ المحادثة."
       },
+      "return_to_main_menu": {
+        "displayName": "العودة إلى القائمة الرئيسية",
+        "description": "أعد عرض القائمة الرئيسية دون إعادة بدء المحادثة."
+      },
       "create_customer": {
         "displayName": "إنشاء عميل",
         "description": "احفظ سجل عميل جديد."
@@ -888,6 +1364,40 @@
         "dateField": "الإجابة المستخدمة للتاريخ",
         "buttonLabel": "تسمية زر واحدة على الأقل"
       }
+    },
+    "validationPanel": {
+      "title": "التحقق من سير العمل",
+      "allClear": "لا توجد مشكلات تحقق",
+      "allClearHint": "مسارات سير العمل تبدو سليمة. يمكنك النشر عندما تكون جاهزاً.",
+      "errorCount": "المشكلة {{current}} من {{total}}",
+      "suggestedFix": "الإصلاحات المقترحة",
+      "fixes": {
+        "connectNextStep": "وصّل هذه الخطوة بخطوة أخرى",
+        "addEnd": "أضف خطوة نهاية",
+        "addReturnToMainMenu": "أضف خطوة العودة إلى القائمة الرئيسية",
+        "addLoopExit": "أضف مساراً يخرج من الحلقة",
+        "connectToTerminal": "وصّل الحلقة بخطوة نهائية",
+        "connectToWorkflow": "وصّل هذه الخطوة بسير العمل",
+        "removeIfUnused": "احذفها إذا لم تعد مطلوبة"
+      },
+      "fixActions": {
+        "addEnd": "إضافة خطوة نهاية",
+        "addReturnToMainMenu": "إضافة العودة إلى القائمة الرئيسية",
+        "connectNextStep": "الوصل بخطوة أخرى",
+        "connectCycleToTerminal": "وصّل الحلقة بخطوة نهائية",
+        "removeCycleConnection": "إزالة أحد وصلات الحلقة",
+        "connectToWorkflow": "الوصل بسير العمل",
+        "deleteNode": "حذف الخطوة",
+        "markPrimaryMenu": "تعيين هذه الخطوة كقائمة رئيسية",
+        "comingSoon": "قريباً"
+      }
+    },
+    "validationSummary": {
+      "valid": "سير العمل صالح",
+      "errors": "{{count}} أخطاء",
+      "warnings": "{{count}} تحذيرات",
+      "errorsAndWarnings": "{{errors}} أخطاء • {{warnings}} تحذيرات",
+      "openPanel": "فتح لوحة التحقق"
     },
     "validationIssues": {
       "requiredField": "أضف {{field}} قبل النشر.",
@@ -934,6 +1444,15 @@
       "continueEditing": "متابعة التحرير",
       "discard": "تجاهل التغييرات",
       "saveDraft": "حفظ المسودة"
+    },
+    "primaryMenu": {
+      "label": "القائمة الرئيسية",
+      "help": "حدّد هذه الخطوة كنقطة دخول المحادثة. خطوات العودة إلى القائمة الرئيسية تستخدمها تلقائياً."
+    },
+    "returnToMainMenu": {
+      "targetLabel": "خطوة القائمة الرئيسية",
+      "targetPlaceholder": "اختر خطوة أزرار أو قائمة",
+      "targetHelp": "تُعرض القائمة المحددة مرة أخرى دون إعادة رسالة الترحيب."
     },
     "versionHistory": {
       "title": "سجل الإصدارات",
@@ -993,6 +1512,8 @@
       "nameField": "حقل الاسم",
       "emailField": "حقل البريد (اختياري)",
       "phoneField": "حقل الهاتف (اختياري)",
+      "ageField": "حقل العمر (اختياري)",
+      "genderField": "حقل الجنس (اختياري)",
       "fieldToUpdate": "الحقل المراد تحديثه",
       "newValue": "القيمة الجديدة",
       "serviceName": "اسم الخدمة",
@@ -1020,6 +1541,8 @@
           "name": "الاسم",
           "email": "البريد الإلكتروني",
           "phone": "الهاتف",
+          "age": "العمر",
+          "gender": "الجنس",
           "type": "نوع العميل",
           "country": "البلد",
           "orders": "إجمالي الطلبات"
@@ -1073,6 +1596,12 @@
       "question": "السؤال",
       "questionPlaceholder": "ماذا تريد أن تسأل؟",
       "saveAnswerAs": "حفظ الإجابة كـ",
+      "saveSelectedValueAs": "حفظ القيمة المختارة في",
+      "saveSelectedValueAsPlaceholder": "customer_gender",
+      "variableBindingSection": "ربط المتغير",
+      "variableBindingHint": "اختياري. يخزّن قيمة الخيار المحدد للخطوات اللاحقة مثل إنشاء عميل.",
+      "listDisplayLabel": "التسمية المعروضة",
+      "listStoredValue": "القيمة المخزنة (اختياري — افتراضيًا معرف الاختيار)",
       "placeholder": "النص التوضيحي",
       "placeholderExample": "اكتب إجابتك هنا",
       "validationMessage": "رسالة التحقق",
@@ -1387,6 +1916,274 @@
       "previous": "السابق",
       "next": "التالي",
       "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
+    }
+  },
+  "scheduling": {
+    "title": "الجدولة",
+    "subtitle": "إعداد الموارد والتوفر وقواعد الحجز والعطلات للأعمال المعتمدة على المواعيد.",
+    "noPermission": "ليس لديك صلاحية عرض إعدادات الجدولة.",
+    "nav": {
+      "resources": "الموارد",
+      "services": "الخدمات",
+      "availability": "التوفر",
+      "bookingRules": "قواعد الحجز",
+      "holidays": "العطلات"
+    },
+    "errors": {
+      "title": "خطأ في الجدولة"
+    },
+    "bookingDomain": {
+      "errors": {
+        "generic": "فشلت عملية الحجز.",
+        "resourceNotFound": "لم يتم العثور على المورد المحدد.",
+        "resourceInactive": "المورد المحدد غير نشط.",
+        "serviceNotFound": "لم يتم العثور على الخدمة المحددة.",
+        "serviceInactive": "الخدمة المحددة غير نشطة.",
+        "customerNotFound": "لم يتم العثور على العميل المحدد.",
+        "capabilityMissing": "لا يمكن لهذا المورد تنفيذ الخدمة المحددة.",
+        "slotUnavailable": "فترة الوقت المحددة لم تعد متاحة.",
+        "bookingConflict": "يوجد حجز آخر في هذا الوقت.",
+        "outsideBookingWindow": "هذا التاريخ خارج نافذة الحجز المسموحة.",
+        "insideMinimumNotice": "لا يوجد إشعار مسبق كافٍ لهذا الحجز.",
+        "companyMismatch": "الحجز لا ينتمي إلى هذه الشركة.",
+        "invalidDate": "أدخل تاريخاً صالحاً.",
+        "invalidSlotTime": "أدخل فترة وقت صالحة.",
+        "bookingNotFound": "لم يتم العثور على الحجز.",
+        "invalidStatusTransition": "تغيير حالة الحجز هذا غير مسموح.",
+        "cancellationWindowExpired": "انتهت مهلة الإلغاء.",
+        "rescheduleWindowExpired": "لم يعد مسموحاً بإعادة الجدولة."
+      }
+    },
+    "validation": {
+      "generic": "يرجى مراجعة النموذج والمحاولة مرة أخرى.",
+      "resourceNameRequired": "اسم المورد مطلوب.",
+      "timezoneRequired": "المنطقة الزمنية مطلوبة.",
+      "invalidTimezone": "اختر منطقة زمنية صالحة للعمل.",
+      "invalidSlotInterval": "يجب أن تكون فترة الفتحات بين 5 و 480 دقيقة.",
+      "invalidNoticeMinutes": "أدخل قيمة بين 0 و 43,200 دقيقة (30 يوماً).",
+      "invalidBookingWindow": "يجب أن تكون نافذة الحجز بين 1 و 365 يوماً.",
+      "invalidBufferMinutes": "يجب أن تكون الفترة الفاصلة بين 0 و 480 دقيقة.",
+      "invalidTime": "أدخل وقتاً صالحاً (HH:MM).",
+      "breakEndAfterStart": "يجب أن يكون نهاية الاستراحة بعد البداية.",
+      "invalidWeekday": "يوم غير صالح.",
+      "hoursRequiredWhenOpen": "أوقات الفتح والإغلاق مطلوبة عندما لا يكون مغلقاً.",
+      "closeAfterOpen": "يجب أن يكون وقت الإغلاق بعد وقت الفتح.",
+      "exceptionTitleRequired": "عنوان الاستثناء مطلوب.",
+      "exceptionEndAfterStart": "يجب أن تكون النهاية بعد البداية.",
+      "holidayTitleRequired": "عنوان العطلة مطلوب.",
+      "invalidDate": "أدخل تاريخاً صالحاً.",
+      "serviceNameRequired": "اسم الخدمة مطلوب."
+    },
+    "resources": {
+      "title": "الموارد",
+      "subtitle": "الأشخاص والغرف والمعدات التي يمكنها استقبال الحجوزات.",
+      "add": "إضافة مورد",
+      "empty": "لا توجد موارد بعد. أضف أول مورد قابل للحجز للبدء.",
+      "createTitle": "مورد جديد",
+      "editTitle": "تعديل المورد",
+      "noBranch": "بدون فرع (على مستوى الشركة)",
+      "created": "تم إنشاء المورد.",
+      "updated": "تم تحديث المورد.",
+      "deleted": "تم إزالة المورد.",
+      "deleteTitle": "إزالة المورد؟",
+      "deleteDescription": "إزالة {{name}}؟ لن تتأثر الحجوزات الحالية.",
+      "fields": {
+        "name": "الاسم",
+        "type": "النوع",
+        "branch": "الفرع",
+        "status": "الحالة",
+        "timezone": "المنطقة الزمنية",
+        "description": "الوصف"
+      },
+      "types": {
+        "doctor": "طبيب",
+        "employee": "موظف",
+        "therapist": "معالج",
+        "room": "غرفة",
+        "chair": "كرسي",
+        "equipment": "معدات",
+        "other": "أخرى"
+      },
+      "statuses": {
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "archived": "مؤرشف"
+      },
+      "notFound": "المورد غير موجود.",
+      "backToList": "العودة إلى الموارد",
+      "editDetails": "تعديل التفاصيل",
+      "tabs": {
+        "overview": "نظرة عامة",
+        "services": "الخدمات"
+      }
+    },
+    "services": {
+      "title": "الخدمات",
+      "subtitle": "الخدمات القابلة للحجز التي تقدمها شركتك.",
+      "add": "إضافة خدمة",
+      "empty": "لا توجد خدمات بعد. أنشئ الخدمات قبل ربطها بالموارد.",
+      "createTitle": "خدمة جديدة",
+      "editTitle": "تعديل الخدمة",
+      "created": "تم إنشاء الخدمة.",
+      "updated": "تم تحديث الخدمة.",
+      "deleted": "تم إزالة الخدمة.",
+      "deleteTitle": "إزالة الخدمة؟",
+      "deleteDescription": "إزالة {{name}}؟ سيتم إزالة تعيينات القدرة.",
+      "notFound": "الخدمة غير موجودة.",
+      "backToList": "العودة إلى الخدمات",
+      "editDetails": "تعديل التفاصيل",
+      "durationLabel": "{{minutes}} د",
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف",
+        "duration": "المدة (دقائق)",
+        "status": "الحالة"
+      },
+      "statuses": {
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "archived": "مؤرشف"
+      }
+    },
+    "capabilities": {
+      "resourceServicesTitle": "الخدمات المعينة",
+      "resourceServicesSubtitle": "اختر الخدمات التي يمكن لهذا المورد تقديمها.",
+      "serviceResourcesTitle": "الموارد المؤهلة",
+      "serviceResourcesSubtitle": "اختر الموارد التي يمكنها تقديم هذه الخدمة.",
+      "resourceSaved": "تم حفظ تعيينات الخدمات.",
+      "serviceSaved": "تم حفظ تعيينات الموارد.",
+      "noServicesAvailable": "أنشئ الخدمات في قائمة الخدمات أولاً.",
+      "noResourcesAvailable": "أنشئ الموارد قبل تعيين القدرات.",
+      "serviceMeta": "{{minutes}} د · {{status}}",
+      "resourceMeta": "{{type}} · {{status}}"
+    },
+    "availability": {
+      "selectResource": "المورد",
+      "resourceTimezone": "المنطقة الزمنية: {{timezone}}",
+      "noResources": "أنشئ مورداً قبل إعداد التوفر.",
+      "weeklyTitle": "الجدول الأسبوعي",
+      "weeklySubtitle": "ساعات واستراحات متكررة لكل يوم. توليد الفترات سيُفعّل في sprint لاحق.",
+      "closed": "مغلق",
+      "breaks": "استراحات",
+      "addBreak": "إضافة استراحة",
+      "saved": "تم حفظ الجدول الأسبوعي.",
+      "exceptionsTitle": "استثناءات خاصة",
+      "exceptionsSubtitle": "إجازات وتدريبات ومؤتمرات وفترات غير متاحة.",
+      "addException": "إضافة استثناء",
+      "noExceptions": "لا توجد استثناءات.",
+      "exceptionCreated": "تمت إضافة الاستثناء.",
+      "exceptionDeleted": "تمت إزالة الاستثناء.",
+      "fields": {
+        "type": "النوع",
+        "title": "العنوان",
+        "startsAt": "يبدأ",
+        "endsAt": "ينتهي"
+      },
+      "exceptionTypes": {
+        "vacation": "إجازة",
+        "training": "تدريب",
+        "conference": "مؤتمر",
+        "unavailable": "غير متاح",
+        "custom": "مخصص"
+      },
+      "weekdays": {
+        "0": "الأحد",
+        "1": "الاثنين",
+        "2": "الثلاثاء",
+        "3": "الأربعاء",
+        "4": "الخميس",
+        "5": "الجمعة",
+        "6": "السبت"
+      }
+    },
+    "bookingRules": {
+      "title": "قواعد الحجز",
+      "subtitle": "سياسات على مستوى الشركة تتحكم في مواعيد الحجز والإلغاء وإعادة الجدولة.",
+      "saved": "تم حفظ قواعد الحجز.",
+      "sections": {
+        "bookingWindow": {
+          "title": "نافذة الحجز",
+          "subtitle": "مدى التقدم الذي يمكن للعملاء الحجز خلاله والإشعار المطلوب مسبقاً."
+        },
+        "slotGeneration": {
+          "title": "فترات المواعيد",
+          "subtitle": "كيف يقسم النظام الوقت المتاح إلى فترات قابلة للحجز."
+        },
+        "buffers": {
+          "title": "وقت التحضير",
+          "subtitle": "وقت إضافي محجوز قبل أو بعد كل موعد للتحضير أو التنظيف."
+        },
+        "policies": {
+          "title": "الإلغاء وإعادة الجدولة",
+          "subtitle": "القواعد التي يجب على العملاء اتباعها عند تغيير أو إلغاء موعد."
+        },
+        "calendar": {
+          "title": "التقويم والمنطقة الزمنية",
+          "subtitle": "كيف تُعرض التواريخ والأوقات لعيادتك."
+        }
+      },
+      "fields": {
+        "minNotice": "الحد الأدنى للإشعار قبل الحجز",
+        "minNoticeHelp": "عدد الدقائق قبل بدء الموعد التي يجب أن يتم فيها الحجز. مثال: 60 تعني أن الحجز يجب أن يكون قبل ساعة على الأقل.",
+        "minNoticeTooltip": "يستخدمها محرك الجدولة لرفض الحجوزات في اللحظة الأخيرة. اضبط 0 للسماح بالحجز حتى آخر فترة متاحة.",
+        "maxWindow": "أقصى نافذة حجز",
+        "maxWindowHelp": "عدد الأيام في المستقبل التي يمكن للعملاء رؤية المواعيد والحجز خلالها.",
+        "maxWindowTooltip": "يمنع الحجز بعيداً جداً في المستقبل. مثال: 90 يوماً يحدّ التقويم إلى نحو ثلاثة أشهر.",
+        "slotInterval": "فترة الفتحات (دقائق)",
+        "slotIntervalHelp": "المسافة بين أوقات بدء المواعيد المتاحة. فترات أقصر تعني خيارات أكثر؛ فترات أطول تبسّط الجدول.",
+        "slotIntervalTooltip": "يستخدم محرك الفتحات هذه القيمة عند بناء الأوقات المتاحة من ساعات العمل. يجب أن تكون بين 5 و 480 دقيقة.",
+        "bufferBefore": "فاصل قبل الموعد",
+        "bufferBeforeHelp": "دقائق محجوزة قبل كل موعد ليتمكن الموظفون من تحضير الغرفة أو مراجعة الملف.",
+        "bufferBeforeTooltip": "يقلّل الفتحات الظاهرة التي تبدأ قريباً جداً من حجز سابق عند الحاجة لوقت تحضير.",
+        "bufferAfter": "فاصل بعد الموعد",
+        "bufferAfterHelp": "دقائق محجوزة بعد كل موعد للتنظيف أو الملاحظات أو تسليم الغرفة.",
+        "bufferAfterTooltip": "يمدّ الفترة المحجوزة بعد مدة الخدمة حتى لا تتتابع الحجوزات دون وقت للطاقم.",
+        "minCancellationNotice": "الحد الأدنى لإشعار الإلغاء",
+        "minCancellationNoticeHelp": "عدد الدقائق قبل الموعد التي يجوز فيها للعميل الإلغاء. مثال: 240 يعني أن الإلغاء مسموح فقط إذا كان الموعد بعد أكثر من 4 ساعات.",
+        "minCancellationNoticeTooltip": "ستطبّق قنوات الحجز المستقبلية (الحجز العام، واتساب، الذكاء الاصطناعي) هذه القاعدة. اضبط 0 للسماح بالإلغاء في أي وقت قبل الموعد.",
+        "minRescheduleNotice": "الحد الأدنى لإشعار إعادة الجدولة",
+        "minRescheduleNoticeHelp": "عدد الدقائق قبل الموعد التي يجوز فيها للعميل نقل الموعد. مثال: 720 يعني أن إعادة الجدولة مسموحة فقط قبل أكثر من 12 ساعة من البدء.",
+        "minRescheduleNoticeTooltip": "سيستخدم نطاق الحجز هذه القيمة عند التحقق من طلبات إعادة الجدولة. اضبط 0 للسماح بإعادة الجدولة في أي وقت قبل الموعد.",
+        "allowOverbooking": "السماح بالحجز الزائد",
+        "allowOverbookingHelp": "عند التفعيل، قد يشغل أكثر من حجز نفس الفترة إذا سمحت قواعد التوفر بذلك.",
+        "allowOverbookingTooltip": "استخدم فقط إذا كان عيادتك تحجز الموارد مرتين عمداً. معظم العيادات يجب أن تتركه معطلاً.",
+        "allowOverbookingOn": "الحجز الزائد مسموح",
+        "allowOverbookingOff": "الحجز الزائد غير مسموح",
+        "timezone": "المنطقة الزمنية للعمل",
+        "timezoneHelp": "المنطقة الزمنية التي يعمل فيها عيادتك. تُعرض أوقات المواعيد للطاقم والعملاء وفق هذه المنطقة.",
+        "timezoneTooltip": "تُخزَّن الطوابع الزمنية بتوقيت UTC في قاعدة البيانات. هذا الإعداد يتحكم في حساب وعرض ساعات العمل المحلية وتسميات الفتحات.",
+        "weekStart": "بداية الأسبوع",
+        "weekStartHelp": "أول يوم يظهر في التقويمات الأسبوعية وعروض التوفر.",
+        "weekStartTooltip": "الاختيارات الشائعة هي الاثنين لأسابيع العمل أو الأحد للتقويمات الإقليمية."
+      },
+      "examples": {
+        "slotInterval": "15 دقيقة ← 09:00، 09:15، 09:30، 09:45",
+        "cancellationNotice": "240 دقيقة = يجوز للعميل الإلغاء فقط إذا كان الموعد بعد أكثر من 4 ساعات.",
+        "rescheduleNotice": "720 دقيقة = إعادة الجدولة مسموحة فقط قبل أكثر من 12 ساعة من الموعد."
+      },
+      "docs": {
+        "overview": "تُطبَّق هذه القواعد على مستوى الشركة. لا تحل محل جداول الموظفين الفردية — تُضبط من الموارد والتوفر.",
+        "timezoneRecommendation": "التوصية: اختر المنطقة الزمنية المحلية لعيادتك (مثل Africa/Cairo). تُخزَّن الأوقات بتوقيت UTC؛ هذا الإعداد يؤثر فقط على عرض وحساب الساعات والفتحات لعملك."
+      }
+    },
+    "holidays": {
+      "title": "العطلات",
+      "subtitle": "أيام غير عمل على مستوى الشركة أو الفرع.",
+      "add": "إضافة عطلة",
+      "empty": "لا توجد عطلات.",
+      "companyWide": "جميع الفروع",
+      "createTitle": "عطلة جديدة",
+      "editTitle": "تعديل العطلة",
+      "created": "تمت إضافة العطلة.",
+      "updated": "تم تحديث العطلة.",
+      "deleted": "تمت إزالة العطلة.",
+      "deleteTitle": "إزالة العطلة؟",
+      "deleteDescription": "إزالة {{title}}؟",
+      "fields": {
+        "title": "العنوان",
+        "date": "التاريخ",
+        "branch": "الفرع"
+      }
     }
   },
   "billing": {
@@ -2538,6 +3335,86 @@
       "asiaSingapore": "سنغافورة",
       "asiaTokyo": "Tokyo",
       "australiaSydney": "Sydney"
+    }
+  },
+  "calendar": {
+    "title": "التقويم",
+    "subtitle": "عرض وإدارة المواعيد عبر جدولك.",
+    "loading": "جاري تحميل التقويم…",
+    "navigation": {
+      "today": "اليوم"
+    },
+    "views": {
+      "day": "يوم",
+      "week": "أسبوع",
+      "month": "شهر",
+      "agenda": "جدول",
+      "timeline": "خط زمني"
+    },
+    "filters": {
+      "label": "الفلاتر",
+      "branch": "الفرع",
+      "resource": "المورد",
+      "allBranches": "كل الفروع",
+      "allResources": "كل الموارد",
+      "clear": "مسح الفلاتر"
+    },
+    "status": {
+      "pending": "قيد الانتظار",
+      "confirmed": "مؤكد",
+      "completed": "مكتمل",
+      "cancelled": "ملغي",
+      "no_show": "لم يحضر",
+      "rescheduled": "أعيدت جدولته"
+    },
+    "empty": {
+      "title": "لا توجد مواعيد في هذا النطاق",
+      "subtitle": "أنشئ حجزاً أو عدّل الفلاتر لعرض المزيد من الأحداث."
+    },
+    "placeholders": {
+      "comingSoon": "سيتوفر هذا العرض في إصدار لاحق."
+    },
+    "errors": {
+      "retry": "إعادة المحاولة"
+    },
+    "timeline": {
+      "mobileUnavailable": {
+        "title": "الخط الزمني غير متاح على الجوال",
+        "subtitle": "يتطلب خط الموارد الزمني شاشة أكبر. استخدم عرض اليوم أو الأسبوع هنا، أو انتقل إلى الجدول."
+      }
+    },
+    "interaction": {
+      "openBooking": "فتح الحجز",
+      "openCustomer": "فتح العميل",
+      "reschedule": "إعادة الجدولة",
+      "complete": "إكمال الحجز",
+      "cancel": "إلغاء الحجز",
+      "completeSuccess": "تم تحديد الحجز كمكتمل",
+      "cancelSuccess": "تم إلغاء الحجز",
+      "zoomHint": "تبديل مستوى التكبير",
+      "zoom": {
+        "compact": "مضغوط",
+        "comfortable": "مريح",
+        "expanded": "موسّع"
+      }
+    },
+    "month": {
+      "gridLabel": "تقويم {{month}}",
+      "dayLabel": "{{date}}، {{count}} موعد",
+      "moreEvents": "+{{count}} المزيد",
+      "weekdays": {
+        "sun": "أحد",
+        "mon": "إثن",
+        "tue": "ثلا",
+        "wed": "أرب",
+        "thu": "خم",
+        "fri": "جم",
+        "sat": "سب"
+      }
+    },
+    "agenda": {
+      "emptyDay": "لا توجد مواعيد",
+      "loadMore": "تحميل المزيد من الأيام"
     }
   },
   "status": {

@@ -66,6 +66,7 @@ export type AutomationRunRecord = {
   finished_at: string | null;
   error_message: string | null;
   metadata: Record<string, unknown>;
+  flow_version_id: string | null;
   current_node_id: string | null;
   session_id: string | null;
   variables: Record<string, unknown>;
@@ -78,6 +79,7 @@ export type ConversationSessionRecord = {
   external_user_id: string | null;
   customer_id: string | null;
   flow_id: string | null;
+  flow_version_id: string | null;
   run_id: string | null;
   current_node_id: string | null;
   status: AutomationSessionStatus;
@@ -153,6 +155,7 @@ export type CreateAutomationRunInput = {
   status?: AutomationRunStatus;
   metadata?: Record<string, unknown>;
   variables?: Record<string, unknown>;
+  flowVersionId?: string | null;
   currentNodeId?: string | null;
   sessionId?: string | null;
 };
@@ -163,6 +166,7 @@ export type CreateConversationSessionInput = {
   externalUserId?: string | null;
   customerId?: string | null;
   flowId?: string | null;
+  flowVersionId?: string | null;
   runId?: string | null;
   currentNodeId?: string | null;
   status?: AutomationSessionStatus;
@@ -199,6 +203,7 @@ export type ListConversationMessagesFilter = {
 export type UpdateAutomationRunStateInput = {
   runId: string;
   status?: AutomationRunStatus;
+  flowVersionId?: string | null;
   currentNodeId?: string | null;
   sessionId?: string | null;
   variables?: Record<string, unknown>;
@@ -210,6 +215,7 @@ export type UpdateAutomationRunStateInput = {
 export type UpdateConversationSessionStateInput = {
   sessionId: string;
   status?: AutomationSessionStatus;
+  flowVersionId?: string | null;
   currentNodeId?: string | null;
   runId?: string | null;
   variables?: Record<string, unknown>;

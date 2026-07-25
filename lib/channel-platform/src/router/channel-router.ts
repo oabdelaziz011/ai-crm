@@ -11,6 +11,10 @@ import {
   DeliveryStatusPipeline,
   type DeliveryStatusProcessResponse,
 } from "../pipelines/delivery-status-pipeline.js";
+import {
+  buildWhatsAppAdapterClassificationLog,
+  logWhatsAppAdapterClassification,
+} from "../debug/whatsapp-webhook-ingress-debug.js";
 
 export type WebhookRouteResponse =
   | { kind: "inbound"; result: InboundRouteResponseDto }
@@ -52,21 +56,59 @@ export class ChannelRouter {
       executeAi?: boolean;
       runtimeConfig?: InboundRouteRequestDto["runtimeConfig"];
       aiAssistantId?: string;
+      trace?: InboundRouteRequestDto["trace"];
+      requestId?: string | null;
     },
   ): Promise<WebhookRouteResponse> {
     const companyChannel = await this.ports.registry.getCompanyChannel(request.companyChannelId);
     if (!companyChannel) {
+      request.trace?.step("webhook.diag", {
+        stage: "router.channel_not_found",
+        companyChannelId: request.companyChannelId,
+      });
       throw new ValidationError("Company channel not found for webhook routing.");
     }
 
     const adapter = this.adapterRegistry.require(request.channelKey);
     if (!adapter.parseWebhook) {
+      request.trace?.step("webhook.diag", {
+        stage: "router.adapter_no_webhook_support",
+        channelKey: request.channelKey,
+      });
       throw new ValidationError(`Channel adapter ${request.channelKey} does not support webhooks.`);
     }
 
-    const envelope = adapter.parseWebhook({ companyChannel }, request.rawPayload);
+    let envelope;
+    try {
+      envelope = adapter.parseWebhook({ companyChannel }, request.rawPayload);
+    } catch (error) {
+      request.trace?.step("webhook.diag", {
+        stage: "router.adapter_parse_failed",
+        error: error instanceof Error ? error.message : "adapter_parse_failed",
+      });
+      throw error;
+    }
+
+    request.trace?.step("webhook.adapter_parsed", {
+      eventType: envelope.eventType,
+      externalThreadId: envelope.externalThreadId,
+      externalMessageId: envelope.externalMessageId ?? null,
+    });
+
+    const adapterClassification = buildWhatsAppAdapterClassificationLog({
+      requestId: request.requestId ?? null,
+      rawPayload: request.rawPayload,
+      envelope,
+    });
+    logWhatsAppAdapterClassification(adapterClassification);
+    request.trace?.step("webhook.diag", adapterClassification);
 
     if (envelope.eventType === "message.status" || envelope.eventType === "message.read") {
+      request.trace?.step("webhook.diag", {
+        stage: "router.delivery_status_only",
+        eventType: envelope.eventType,
+        note: "No inbound message processing — status/read webhook only",
+      });
       const status = envelope.eventType === "message.read" ? "read" : (envelope.payload.deliveryStatus as "sent" | "delivered" | "read" | "failed");
       const result = await this.deliveryStatusPipeline.process(ctx, {
         companyId: request.companyId,
@@ -106,6 +148,7 @@ export class ChannelRouter {
       executeAi: request.executeAi,
       runtimeConfig: request.runtimeConfig,
       aiAssistantId: request.aiAssistantId,
+      trace: request.trace,
     });
 
     return { kind: "inbound", result };

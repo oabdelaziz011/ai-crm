@@ -1,0 +1,254 @@
+{
+  "runId": "e015ea13-930f-4bb3-ab30-a444383ba2a2",
+  "phoneInboundEvent": {
+    "id": "f7d98e20-87a6-4928-afa8-1678d0b86a02",
+    "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+    "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+    "channel_key": "whatsapp",
+    "idempotency_key": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+    "external_thread_id": "201023169075",
+    "external_message_id": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+    "sender_external_id": "201023169075",
+    "processing_status": "processed",
+    "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+    "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+    "incoming_message_id": "97cbb79c-7d81-4212-a77a-6eccab29c0fa",
+    "runtime_execution_id": null,
+    "payload": {
+      "raw": {
+        "entry": [
+          {
+            "id": "1584022663181525",
+            "changes": [
+              {
+                "field": "messages",
+                "value": {
+                  "contacts": [
+                    {
+                      "wa_id": "201023169075",
+                      "profile": {
+                        "name": "Nessma Hossam"
+                      },
+                      "user_id": "EG.2064988180802126"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "id": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+                      "from": "201023169075",
+                      "text": {
+                        "body": "01023169075"
+                      },
+                      "type": "text",
+                      "timestamp": "1784939455",
+                      "from_user_id": "EG.2064988180802126"
+                    }
+                  ],
+                  "metadata": {
+                    "phone_number_id": "1214681355059951",
+                    "display_phone_number": "201012345989"
+                  },
+                  "messaging_product": "whatsapp"
+                }
+              }
+            ]
+          }
+        ],
+        "object": "whatsapp_business_account"
+      },
+      "message": {
+        "id": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+        "from": "201023169075",
+        "text": {
+          "body": "01023169075"
+        },
+        "type": "text",
+        "timestamp": "1784939455",
+        "from_user_id": "EG.2064988180802126"
+      },
+      "senderName": "Nessma Hossam",
+      "phoneNumberId": "1214681355059951",
+      "senderExternalId": "201023169075"
+    },
+    "error_message": "Find customer action requires a customer service.",
+    "received_at": "2026-07-25T00:30:58.186875+00:00",
+    "processed_at": "2026-07-25T00:31:05.508+00:00",
+    "created_at": "2026-07-25T00:30:58.186875+00:00",
+    "updated_at": "2026-07-25T00:31:04.900496+00:00"
+  },
+  "allInboundEventsAroundPhoneReply": [
+    {
+      "id": "f7d98e20-87a6-4928-afa8-1678d0b86a02",
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+      "channel_key": "whatsapp",
+      "idempotency_key": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+      "external_thread_id": "201023169075",
+      "external_message_id": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+      "sender_external_id": "201023169075",
+      "processing_status": "processed",
+      "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+      "incoming_message_id": "97cbb79c-7d81-4212-a77a-6eccab29c0fa",
+      "runtime_execution_id": null,
+      "payload": {
+        "raw": {
+          "entry": [
+            {
+              "id": "1584022663181525",
+              "changes": [
+                {
+                  "field": "messages",
+                  "value": {
+                    "contacts": [
+                      {
+                        "wa_id": "201023169075",
+                        "profile": {
+                          "name": "Nessma Hossam"
+                        },
+                        "user_id": "EG.2064988180802126"
+                      }
+                    ],
+                    "messages": [
+                      {
+                        "id": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+                        "from": "201023169075",
+                        "text": {
+                          "body": "01023169075"
+                        },
+                        "type": "text",
+                        "timestamp": "1784939455",
+                        "from_user_id": "EG.2064988180802126"
+                      }
+                    ],
+                    "metadata": {
+                      "phone_number_id": "1214681355059951",
+                      "display_phone_number": "201012345989"
+                    },
+                    "messaging_product": "whatsapp"
+                  }
+                }
+              ]
+            }
+          ],
+          "object": "whatsapp_business_account"
+        },
+        "message": {
+          "id": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+          "from": "201023169075",
+          "text": {
+            "body": "01023169075"
+          },
+          "type": "text",
+          "timestamp": "1784939455",
+          "from_user_id": "EG.2064988180802126"
+        },
+        "senderName": "Nessma Hossam",
+        "phoneNumberId": "1214681355059951",
+        "senderExternalId": "201023169075"
+      },
+      "error_message": "Find customer action requires a customer service.",
+      "received_at": "2026-07-25T00:30:58.186875+00:00",
+      "processed_at": "2026-07-25T00:31:05.508+00:00",
+      "created_at": "2026-07-25T00:30:58.186875+00:00",
+      "updated_at": "2026-07-25T00:31:04.900496+00:00"
+    }
+  ],
+  "run": {
+    "id": "e015ea13-930f-4bb3-ab30-a444383ba2a2",
+    "status": "running",
+    "current_node_id": "2da94711-d616-4846-8383-c1b1084f0bb3",
+    "error_message": null,
+    "flow_version_id": "3367ea77-1207-4de9-a176-481b0c6283de",
+    "variables": {
+      "__prompt": "what is your phone number?",
+      "__outbound": null,
+      "senderName": "Nessma Hossam",
+      "lastMessage": "Hello",
+      "__switchCase": "book",
+      "__waitingFor": null,
+      "conversation": {
+        "last_message": "Book Appointment",
+        "last_button_id": "book",
+        "last_button_title": "Book Appointment",
+        "last_selection_type": "button"
+      },
+      "phoneNumberId": "1214681355059951",
+      "conversationId": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "customer_phone": "01023169075",
+      "inboundEventId": "e16f8bf9-5d36-476d-a436-141b09cb698d",
+      "__outboundQueue": [],
+      "channelSessionId": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+      "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+      "whatsappMessageType": "text",
+      "interactive_selection": "book"
+    },
+    "started_at": "2026-07-25T00:30:18.088212+00:00",
+    "finished_at": null
+  },
+  "session": {
+    "id": "a9e0ec04-88bd-40b4-9af3-190d93372f7f",
+    "status": "running",
+    "current_node_id": "2da94711-d616-4846-8383-c1b1084f0bb3",
+    "flow_version_id": "3367ea77-1207-4de9-a176-481b0c6283de"
+  },
+  "deliveriesAfterPhoneReply": [],
+  "messagesAfterPhoneReply": [
+    {
+      "id": "ac271757-40e0-4e21-81d9-b266d749ba60",
+      "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "participant_id": null,
+      "message_type": "incoming",
+      "content_type": "text",
+      "content": "01023169075",
+      "metadata": {
+        "source": "webhook",
+        "channelKey": "whatsapp",
+        "senderName": "Nessma Hossam",
+        "attachments": [],
+        "phoneNumberId": "1214681355059951",
+        "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+        "whatsappMessageType": "text"
+      },
+      "status": "pending",
+      "external_message_id": null,
+      "created_at": "2026-07-25T00:30:59.165704+00:00",
+      "created_by": null,
+      "sequence_number": 62,
+      "attachment_type": null,
+      "attachment_url": null,
+      "mime_type": null,
+      "file_size": null,
+      "search_text": "01023169075"
+    },
+    {
+      "id": "97cbb79c-7d81-4212-a77a-6eccab29c0fa",
+      "conversation_id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "participant_id": null,
+      "message_type": "incoming",
+      "content_type": "text",
+      "content": "01023169075",
+      "metadata": {
+        "source": "webhook",
+        "channelKey": "whatsapp",
+        "senderName": "Nessma Hossam",
+        "attachments": [],
+        "phoneNumberId": "1214681355059951",
+        "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCN0I0RUE3QzlDNERCQjIxNjMA",
+        "whatsappMessageType": "text"
+      },
+      "status": "pending",
+      "external_message_id": null,
+      "created_at": "2026-07-25T00:31:04.305868+00:00",
+      "created_by": null,
+      "sequence_number": 63,
+      "attachment_type": null,
+      "attachment_url": null,
+      "mime_type": null,
+      "file_size": null,
+      "search_text": "01023169075"
+    }
+  ],
+  "exceptionFromInboundEvent": "Find customer action requires a customer service.",
+  "note": "No stack trace is persisted in channel_inbound_events; only error_message string."
+}

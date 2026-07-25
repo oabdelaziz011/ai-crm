@@ -26,5 +26,8 @@ export function isSettingsRoutePermitted(
   if (isSuperAdmin) {
     return true;
   }
+  if (permission === "scheduling.view") {
+    return hasPermission("scheduling.view") || hasPermission("settings.view");
+  }
   return hasPermission(permission);
 }

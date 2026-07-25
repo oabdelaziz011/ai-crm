@@ -1,0 +1,66 @@
+{
+  "capturedAt": "2026-07-25T05:20:14.815Z",
+  "viteEnv": {
+    "VITE_SUPABASE_URL": "[REDACTED]",
+    "VITE_SUPABASE_PUBLISHABLE_KEY_PREFIX": "[REDACTED]",
+    "keyLength": 46
+  },
+  "authRequests": [
+    {
+      "phase": "requestfailed",
+      "url": "http://localhost:54321/auth/v1/token?grant_type=password",
+      "method": "POST",
+      "failure": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "http://localhost:54321/auth/v1/token?grant_type=password",
+      "method": "POST",
+      "failure": "net::ERR_CONNECTION_REFUSED"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: Failed to fetch\n    at http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:11837:23\n    at _handleRequest2 (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:12162:20)\n    at _request (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:12152:22)\n    at SupabaseAuthClient.signInWithPassword (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:15061:21)\n    at http://localhost:5173/src/context/auth-context.tsx:226:40\n    at onSubmit (http://localhost:5173/src/pages/login.tsx:43:29)\n    at http://localhost:5173/node_modules/.vite/deps/chunk-A47XHNH7.js?v=8da67be3:1963:15"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: Failed to fetch\n    at http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:11837:23\n    at _handleRequest2 (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:12162:20)\n    at _request (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:12152:22)\n    at SupabaseAuthClient.signInWithPassword (http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=8da67be3:15061:21)\n    at eval (eval at evaluate (:313:29), <anonymous>:4:53)\n    at async <anonymous>:339:30"
+    }
+  ],
+  "pageErrors": [],
+  "loginResult": {
+    "url": "http://localhost:5173/login",
+    "rootError": "Network error. Check your connection and try again."
+  },
+  "injectedEnv": {
+    "url": "[REDACTED]",
+    "keyPrefix": "[REDACTED]",
+    "keyLength": 46
+  },
+  "bundledClientProbe": {
+    "ok": false,
+    "error": {
+      "message": "Failed to fetch",
+      "code": null,
+      "status": 0,
+      "name": "AuthRetryableFetchError"
+    },
+    "userId": null
+  },
+  "rawFetchProbe": {
+    "ok": true,
+    "status": 200,
+    "statusText": "",
+    "body": "{\"access_token\":\"[REDACTED]\",\"token_type\":\"bearer\",\"expires_in\":3600}"
+  }
+}

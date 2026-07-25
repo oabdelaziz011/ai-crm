@@ -62,8 +62,22 @@ export function mergeConversationVariables(
   const next: ConversationRuntimeVariables = { ...current };
 
   for (const [key, value] of Object.entries(patch)) {
-    if (value !== undefined) {
-      next[key as keyof ConversationRuntimeVariables] = value;
+    if (value === undefined) continue;
+    const typedKey = key as keyof ConversationRuntimeVariables;
+    if (typedKey === "last_selection_type") {
+      const normalized = normalizeInteractionType(value);
+      if (normalized) next.last_selection_type = normalized;
+      continue;
+    }
+    if (
+      typedKey === "last_message" ||
+      typedKey === "last_button_id" ||
+      typedKey === "last_button_title" ||
+      typedKey === "channel"
+    ) {
+      if (typeof value === "string") {
+        next[typedKey] = value;
+      }
     }
   }
 

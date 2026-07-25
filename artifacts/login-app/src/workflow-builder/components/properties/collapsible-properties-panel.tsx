@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleSidebar } from "../layout/collapsible-sidebar";
 import { VersionHistoryPanel } from "../lifecycle/version-history-panel";
@@ -6,7 +7,7 @@ import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder
 import type { WorkflowDocument } from "../../core/types";
 import type { WorkflowRepository } from "../../core/persistence/workflow-repository";
 import type { ServiceContext } from "@workspace/automation-platform";
-import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
+import { WorkflowValidationPanel } from "../validation/workflow-validation-panel";
 import { PropertiesPanel } from "./properties-panel";
 
 type CollapsiblePropertiesPanelProps = {
@@ -27,8 +28,12 @@ export function CollapsiblePropertiesPanel({
   onRollback,
 }: CollapsiblePropertiesPanelProps) {
   const { t } = useTranslation("common");
-  const { validationMessage } = useWorkflowBuilderI18n();
-  const { collapsed, toggle } = usePropertiesCollapsed();
+  const { collapsed, setCollapsed, toggle } = usePropertiesCollapsed();
+
+  useEffect(() => {
+    if (controller.state.validationPanelFocusNonce === 0) return;
+    if (collapsed) setCollapsed(false);
+  }, [collapsed, controller.state.validationPanelFocusNonce, setCollapsed]);
 
   return (
     <CollapsibleSidebar
@@ -41,19 +46,10 @@ export function CollapsiblePropertiesPanel({
       expandLabel={t("workflowBuilder.properties.expand")}
     >
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
-        <PropertiesPanel controller={controller} />
-        {controller.state.validationIssues.length > 0 ? (
-          <div className="shrink-0 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-              {t("workflowBuilder.validation.title")}
-            </p>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {controller.state.validationIssues.slice(0, 4).map((issue) => (
-                <li key={issue.id}>• {validationMessage(issue)}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <div className="shrink-0">
+          <PropertiesPanel controller={controller} />
+        </div>
+        <WorkflowValidationPanel controller={controller} />
         <div className="hidden min-h-0 shrink-0 2xl:block">
           <VersionHistoryPanel
             flowId={document.flowId}

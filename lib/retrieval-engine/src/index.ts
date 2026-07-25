@@ -125,3 +125,4 @@ export * from "./engines/retrieval-engine.js";
 export * from "./engines/retrieval-orchestration-engine.js";
 export * from "./providers/knowledge-provider.js";
 export * from "./observability/knowledge-observability.js";
+export * from "./platform-adapters.js";

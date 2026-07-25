@@ -1,23 +1,43 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Inbox, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import { ConversationListPanel } from "@/components/conversations/conversation-list-panel";
 import { ConversationThreadPanel } from "@/components/conversations/conversation-thread-panel";
 import { DashboardErrorBanner, DashboardStatCard } from "@/components/dashboard/ui";
+import { useCustomerProfile } from "@/context/customer-profile-context";
 import { useConversationList } from "@/hooks/conversations/use-conversation-list";
 import { useConversationMessages } from "@/hooks/conversations/use-conversation-messages";
 import { useConversationActions } from "@/hooks/conversations/use-conversation-actions";
 import { useTeamInboxReply } from "@/hooks/conversations/use-team-inbox-reply";
+import { useCustomers } from "@/hooks/use-customers";
+import {
+  consumeQueuedTeamInboxConversationFocus,
+  subscribeTeamInboxConversationFocus,
+} from "@/lib/customer-profile/services";
 
 export default function TeamInboxPage() {
   const { t } = useTranslation("common");
   const { profile, user } = useAuth();
+  const { openCustomerProfile } = useCustomerProfile();
   const companyId = profile?.company_id ?? null;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unread" | "mine">("all");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    return subscribeTeamInboxConversationFocus((conversationId) => {
+      setSelectedId(conversationId);
+    });
+  }, []);
+
+  useEffect(() => {
+    const queuedId = consumeQueuedTeamInboxConversationFocus();
+    if (queuedId) {
+      setSelectedId(queuedId);
+    }
+  }, []);
 
   const listFilters = useMemo(() => {
     const base: Parameters<typeof useConversationList>[0] = {
@@ -29,8 +49,16 @@ export default function TeamInboxPage() {
   }, [filter, search, user?.id]);
 
   const { data: conversations = [], isLoading, error } = useConversationList(listFilters);
-  const selected = conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null;
-  const activeId = selected?.id ?? null;
+  const { data: customers = [] } = useCustomers();
+  const customersById = useMemo(
+    () => new Map(customers.map((customer) => [customer.id, customer])),
+    [customers],
+  );
+  const selected =
+    (selectedId ? conversations.find((c) => c.id === selectedId) : null) ??
+    (!selectedId ? conversations[0] : null) ??
+    null;
+  const activeId = selected?.id ?? selectedId;
 
   const { data: messages = [], isLoading: messagesLoading } = useConversationMessages(activeId);
   const { assign, release, close } = useConversationActions(companyId);
@@ -94,12 +122,16 @@ export default function TeamInboxPage() {
       <div className="grid lg:grid-cols-[340px_1fr] gap-4 flex-1 min-h-0">
         <ConversationListPanel
           conversations={conversations}
+          customersById={customersById}
           selectedId={activeId}
           isLoading={isLoading}
           onSelect={setSelectedId}
         />
         <ConversationThreadPanel
           conversation={selected}
+          customer={
+            selected?.customer_id ? customersById.get(selected.customer_id) : undefined
+          }
           messages={messages}
           isLoading={messagesLoading}
           isSending={isSending}
@@ -127,6 +159,17 @@ export default function TeamInboxPage() {
           onClose={() => {
             if (!selected) return;
             void close.mutateAsync({ conversationId: selected.id });
+          }}
+          onViewCustomer={() => {
+            if (!selected?.customer_id) return;
+            openCustomerProfile({
+              customerId: selected.customer_id,
+              context: {
+                conversationId: selected.id,
+                conversationNumber: selected.conversation_number,
+                companyId: selected.company_id ?? companyId,
+              },
+            });
           }}
           actionsPending={assign.isPending || release.isPending || close.isPending}
         />

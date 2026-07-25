@@ -7,6 +7,7 @@
     "home": "Home",
     "customers": "Customers",
     "bookings": "Bookings",
+    "calendar": "Calendar",
     "invoices": "Invoices",
     "profiles": "Profiles",
     "companies": "Companies",
@@ -98,7 +99,182 @@
     "errors": {
       "readFailed": "Could not mark notification as read",
       "markAllFailed": "Could not mark all notifications as read",
-      "deleteFailed": "Could not delete notification"
+      "deleteFailed": "Could not delete notification",
+      "archiveFailed": "Could not archive notification"
+    },
+    "platform": {
+      "archive": "Archive",
+      "markUnread": "Mark unread",
+      "filters": {
+        "unread": "Unread only",
+        "priority": "Priority",
+        "type": "Type",
+        "newest": "Newest",
+        "oldest": "Oldest",
+        "allPriorities": "All priorities",
+        "allTypes": "All types"
+      },
+      "priority": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "events": {
+        "appointment_created": "Appointment created",
+        "appointment_updated": "Appointment updated",
+        "appointment_cancelled": "Appointment cancelled",
+        "customer_created": "Customer created",
+        "invoice_created": "Invoice created",
+        "payment_received": "Payment received",
+        "generic_system": "System"
+      },
+      "templates": {
+        "appointmentCreated": {
+          "title": "Appointment created",
+          "message": "A new appointment was scheduled."
+        },
+        "appointmentUpdated": {
+          "title": "Appointment updated",
+          "message": "An appointment was updated."
+        },
+        "appointmentCancelled": {
+          "title": "Appointment cancelled",
+          "message": "An appointment was cancelled."
+        },
+        "customerCreated": {
+          "title": "New customer",
+          "message": "Customer {{name}} was created."
+        },
+        "invoiceCreated": {
+          "title": "Invoice created",
+          "message": "Invoice {{invoiceId}} was created."
+        },
+        "paymentReceived": {
+          "title": "Payment received",
+          "message": "Payment of {{amount}} was received."
+        },
+        "genericSystem": {
+          "title": "System notification",
+          "message": "{{detail}}"
+        }
+      }
+    },
+    "email": {
+      "templates": {
+        "appointmentConfirmation": {
+          "subject": "Appointment confirmed",
+          "html": "<p>Your appointment is confirmed.</p>",
+          "text": "Your appointment is confirmed."
+        },
+        "appointmentUpdated": {
+          "subject": "Appointment updated",
+          "html": "<p>Your appointment was updated.</p>",
+          "text": "Your appointment was updated."
+        },
+        "appointmentCancelled": {
+          "subject": "Appointment cancelled",
+          "html": "<p>Your appointment was cancelled.</p>",
+          "text": "Your appointment was cancelled."
+        },
+        "customerWelcome": {
+          "subject": "Welcome",
+          "html": "<p>Welcome, {{name}}.</p>",
+          "text": "Welcome, {{name}}."
+        },
+        "invoiceCreated": {
+          "subject": "Invoice {{invoiceId}}",
+          "html": "<p>Invoice {{invoiceId}} was created.</p>",
+          "text": "Invoice {{invoiceId}} was created."
+        },
+        "paymentReceived": {
+          "subject": "Payment received",
+          "html": "<p>We received your payment of {{amount}}.</p>",
+          "text": "We received your payment of {{amount}}."
+        },
+        "genericSystem": {
+          "subject": "Notification",
+          "html": "<p>{{detail}}</p>",
+          "text": "{{detail}}"
+        }
+      },
+      "settings": {
+        "title": "Email Settings",
+        "enabled": "Enable email delivery",
+        "smtpHost": "SMTP host",
+        "smtpPort": "SMTP port",
+        "username": "Username",
+        "password": "Password",
+        "encryption": "Encryption",
+        "encryptionStartTls": "STARTTLS",
+        "encryptionSsl": "SSL/TLS",
+        "encryptionNone": "None",
+        "fromEmail": "From email",
+        "fromName": "From name",
+        "saved": "Email settings saved",
+        "saveFailed": "Could not save email settings",
+        "healthTitle": "Provider health",
+        "healthOk": "SMTP connection healthy ({{ms}} ms)",
+        "healthFailed": "SMTP check failed: {{error}}",
+        "testConnection": "Send test email",
+        "testRecipient": "Test recipient",
+        "testSuccess": "Test email sent",
+        "testFailed": "Test email failed",
+        "apiMissing": "Configure VITE_API_SERVER_URL to run SMTP health checks.",
+        "processQueue": "Process email queue",
+        "queueProcessed": "Processed {{completed}} emails"
+      }
+    },
+    "whatsapp": {
+      "templates": {
+        "appointmentConfirmation": {
+          "body": "Hi {{customerName}}, your {{service}} appointment is confirmed for {{date}} at {{time}}."
+        },
+        "appointmentReminder": {
+          "body": "Reminder: {{customerName}}, your {{service}} appointment is on {{date}} at {{time}}."
+        },
+        "appointmentUpdated": {
+          "body": "Hi {{customerName}}, your {{service}} appointment was updated to {{date}} at {{time}}."
+        },
+        "appointmentCancelled": {
+          "body": "Hi {{customerName}}, your {{service}} appointment on {{date}} was cancelled."
+        },
+        "invoiceCreated": {
+          "body": "Hi {{customerName}}, invoice {{invoiceId}} for {{amount}} was created."
+        },
+        "paymentReceived": {
+          "body": "Hi {{customerName}}, we received your payment of {{amount}}. Thank you!"
+        },
+        "genericSystem": {
+          "body": "{{detail}}"
+        }
+      },
+      "settings": {
+        "title": "WhatsApp Settings",
+        "enabled": "Enable WhatsApp delivery",
+        "provider": "Provider",
+        "providerMetaCloud": "Meta WhatsApp Cloud API",
+        "providerTwilio": "Twilio WhatsApp (coming soon)",
+        "provider360Dialog": "360dialog (coming soon)",
+        "accessToken": "Access token",
+        "phoneNumberId": "Phone number ID",
+        "businessAccountId": "Business account ID",
+        "webhookVerifyToken": "Webhook verify token",
+        "webhookFutureHint": "Reserved for future webhook verification.",
+        "defaultLanguage": "Default template language",
+        "saved": "WhatsApp settings saved",
+        "saveFailed": "Could not save WhatsApp settings",
+        "healthTitle": "Provider health",
+        "healthOk": "WhatsApp connection healthy ({{ms}} ms)",
+        "healthFailed": "WhatsApp check failed: {{error}}",
+        "testMessage": "Send test message",
+        "testRecipient": "Test phone (E.164)",
+        "testSuccess": "Test message sent",
+        "testFailed": "Test message failed",
+        "apiMissing": "Configure VITE_API_SERVER_URL to run WhatsApp health checks.",
+        "processQueue": "Process WhatsApp queue",
+        "queueProcessed": "Processed {{completed}} WhatsApp messages"
+      }
     },
     "defaults": {
       "unknown": "Unknown",
@@ -314,6 +490,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "saveChanges": "Save Changes",
+    "save": "Save",
     "addBooking": "Add Booking",
     "createInvoice": "Create Invoice",
     "saveRole": "Save role",
@@ -334,6 +511,18 @@
       "invalidEmail": "Invalid email",
       "phone": "Phone",
       "phonePlaceholder": "+1 555 000 0000",
+      "age": "Age",
+      "agePlaceholder": "e.g. 32",
+      "invalidAge": "Age must be a whole number between 0 and 150",
+      "gender": "Gender",
+      "genderPlaceholder": "Select gender",
+      "genderOptions": {
+        "male": "Male",
+        "female": "Female",
+        "other": "Other",
+        "preferNotToSay": "Prefer not to say"
+      },
+      "notSet": "Not set",
       "notes": "Notes",
       "optionalNotes": "Optional notes…",
       "add": "Add Customer"
@@ -341,14 +530,46 @@
     "booking": {
       "editTitle": "Edit Booking",
       "newTitle": "New Booking",
+      "rescheduleTitle": "Reschedule Booking",
       "customer": "Customer",
+      "customerRequired": "Customer is required",
       "noCustomer": "— No customer —",
       "service": "Service *",
       "serviceRequired": "Service is required",
       "servicePlaceholder": "e.g. Consultation",
+      "resource": "Resource *",
+      "resourceRequired": "Resource is required",
+      "selectService": "Select a service",
+      "selectResource": "Select a resource",
+      "date": "Date *",
       "dateTime": "Date & Time *",
       "dateRequired": "Date is required",
+      "slot": "Available slot *",
+      "slotRequired": "Select an available slot",
+      "selectSlot": "Select a slot",
+      "loadingSlots": "Loading slots…",
+      "loadingResources": "Loading resources…",
+      "noSlots": "No slots available for this date",
+      "resourcesLoadError": "Unable to load resources. Please try again.",
+      "slotsLoadError": "Unable to load available slots. Please try again.",
+      "noEligibleResources": "No eligible resources are assigned to this service.",
+      "noEligibleResourcesHint": "Open Settings → Scheduling → Services, select this service, and assign resources that can perform it.",
+      "slotReasons": {
+        "holiday": "This date is a company holiday — no appointments can be booked.",
+        "exceptionBlocked": "This resource is unavailable on the selected date due to a schedule exception.",
+        "noWorkingHours": "No working hours are configured for this resource on the selected day.",
+        "outsideBookingWindow": "This date is outside the allowed booking window for your clinic.",
+        "insideMinimumNotice": "The selected date is too soon — more advance notice is required to book.",
+        "resourceUnavailable": "This resource or service combination is not available for booking.",
+        "allSlotsBooked": "All slots on this date are already booked.",
+        "noSlotsRemaining": "No appointment times remain on this date for the selected resource.",
+        "noSlotsGeneric": "No slots are available for this date."
+      },
+      "notes": "Notes",
+      "notesPlaceholder": "Optional notes",
       "status": "Status",
+      "reschedule": "Reschedule",
+      "companyRequired": "Company context is required for scheduling bookings",
       "add": "Add Booking"
     },
     "invoice": {
@@ -432,6 +653,158 @@
       "emptyAll": "No customers yet. Add your first one!",
       "emptySearch": "No customers match your search."
     },
+    "customerDetails": {
+      "title": "Customer Details",
+      "subtitle": "Profile for customer support agents",
+      "loadError": "Could not load customer details.",
+      "notLinked": "No customer linked to this conversation.",
+      "editHint": "Click a value to edit",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "viewCustomer": "View customer",
+      "quickEdit": "Quick Edit",
+      "doneEditing": "Done",
+      "unavailable": "Not available",
+      "sections": {
+        "basicInformation": "Basic Information",
+        "additionalInformation": "Additional Information",
+        "activitySummary": "Activity Summary",
+        "systemInformation": "System Information"
+      },
+      "fields": {
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "status": "Status",
+        "totalBookings": "Total Bookings",
+        "totalInvoices": "Total Invoices",
+        "lastInteraction": "Last Interaction",
+        "conversationId": "Conversation ID",
+        "customerId": "Customer ID",
+        "companyId": "Company ID"
+      },
+      "metrics": {
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "lastInteraction": "Last Interaction"
+      }
+    },
+    "customerProfile": {
+      "title": "Customer Profile",
+      "subtitle": "Unified customer profile center",
+      "sections": {
+        "contactDetails": "Contact Details"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "timeline": "Timeline",
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "notes": "Notes",
+        "files": "Files",
+        "ai-insights": "AI Insights",
+        "system": "System"
+      },
+      "quickActions": {
+        "title": "Quick Actions",
+        "call": "Call",
+        "whatsapp": "WhatsApp",
+        "newBooking": "New Booking",
+        "newInvoice": "New Invoice",
+        "addNote": "Add Note",
+        "errors": {
+          "title": "Action failed",
+          "generic": "Something went wrong. Please try again.",
+          "phoneMissing": "This customer has no phone number on file.",
+          "whatsappNotFound": "No WhatsApp conversation found for this customer."
+        },
+        "success": {
+          "bookingCreated": "Booking created successfully.",
+          "invoiceCreated": "Invoice created successfully."
+        }
+      },
+      "notes": {
+        "hint": "Internal notes visible to your team."
+      },
+      "metrics": {
+        "title": "Activity Summary",
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "lastInteraction": "Last Interaction"
+      },
+      "placeholders": {
+        "bookings": "Customer bookings will appear here in a future release.",
+        "invoices": "Customer invoices will appear here in a future release.",
+        "files": "Uploaded files and attachments will appear here.",
+        "aiInsights": "AI-generated insights and summaries will appear here."
+      },
+      "timeline": {
+        "title": "Activity Timeline",
+        "subtitle": "Unified chronological stream across bookings, messages, billing, and automation.",
+        "loading": "Loading timeline…",
+        "loadError": "Could not load timeline.",
+        "empty": "No activity recorded yet.",
+        "emptySearch": "No events match your search.",
+        "loadMore": "Load more activity",
+        "searchPlaceholder": "Search timeline…",
+        "byActor": "by {{actor}}",
+        "fallbackTitle": "{{type}}",
+        "filters": {
+          "all": "All",
+          "messages": "Messages",
+          "bookings": "Bookings",
+          "invoices": "Invoices",
+          "notes": "Notes",
+          "calls": "Calls",
+          "notifications": "Notifications",
+          "automation": "Automation",
+          "email": "Email",
+          "ai": "AI"
+        },
+        "groupModes": {
+          "day": "Day",
+          "week": "Week",
+          "month": "Month",
+          "conversation": "Conversation",
+          "workflow": "Workflow",
+          "booking": "Booking"
+        },
+        "events": {
+          "customer_created": {
+            "title": "Customer created",
+            "description": "Profile added to CRM"
+          },
+          "whatsapp_message_received": { "title": "WhatsApp message received" },
+          "whatsapp_message_sent": { "title": "WhatsApp message sent" },
+          "template_sent": { "title": "WhatsApp template sent" },
+          "interactive_reply": { "title": "Interactive reply" },
+          "facebook_message": { "title": "Facebook message" },
+          "instagram_message": { "title": "Instagram message" },
+          "booking_created": { "title": "Booking created" },
+          "booking_confirmed": { "title": "Booking confirmed" },
+          "booking_rescheduled": { "title": "Booking rescheduled" },
+          "booking_completed": { "title": "Booking completed" },
+          "booking_cancelled": { "title": "Booking cancelled" },
+          "invoice_created": { "title": "Invoice created" },
+          "invoice_paid": { "title": "Invoice paid" },
+          "invoice_overdue": { "title": "Invoice overdue" },
+          "payment_received": { "title": "Payment received" },
+          "note_added": { "title": "Note added" },
+          "customer_updated": { "title": "Customer updated" },
+          "conversation_closed": { "title": "Conversation closed" },
+          "conversation_reopened": { "title": "Conversation reopened" },
+          "call_started": { "title": "Call started" },
+          "call_finished": { "title": "Call finished" },
+          "email_received": { "title": "Email received" },
+          "email_sent": { "title": "Email sent" },
+          "notification_delivered": { "title": "Notification delivered" },
+          "calendar_event": { "title": "Calendar event" },
+          "manual_activity": { "title": "Manual activity" },
+          "automation_started": { "title": "Automation started" },
+          "automation_finished": { "title": "Automation finished" },
+          "ai_summary_updated": { "title": "AI summary updated" }
+        }
+      }
+    },
     "bookings": {
       "title": "Bookings",
       "subtitle": "Upcoming appointments and sessions",
@@ -463,6 +836,7 @@
       "conversationsHint": "Select a thread to view messages and respond",
       "selectConversation": "Select a conversation to view the thread",
       "empty": "No conversations match your filters",
+      "unknownContact": "Unknown contact",
       "noPreview": "No message preview",
       "unread": "{{count}} unread",
       "searchPlaceholder": "Search conversations…",
@@ -480,7 +854,8 @@
         "unread": "Unread (team)",
         "human": "Human active",
         "channels": "Active channels"
-      }
+      },
+      "viewCustomer": "Customer details"
     },
     "channels": {
       "title": "Channel Administration",
@@ -499,7 +874,27 @@
       "phoneNumberId": "Phone number ID",
       "accessToken": "Access token",
       "verifyToken": "Webhook verify token",
+      "regenerateVerifyToken": "Regenerate",
+      "webhookUrl": "Meta webhook callback URL",
+      "webhookUrlHelp": "Register this URL in Meta Developer Console. Routing resolves the company channel from the phone number ID in each webhook payload.",
+      "webhookUrlMissingBase": "Set VITE_API_SERVER_URL in the portal environment to display the full callback URL.",
       "apiVersion": "API version",
+      "automationWorkflow": {
+        "title": "Automation Workflow",
+        "helper": "Use AI Runtime when no workflow is assigned.",
+        "enableToggle": "Enable workflow",
+        "workflowLabel": "Workflow",
+        "selectWorkflow": "Select a workflow",
+        "noWorkflow": "No workflow",
+        "noActiveFlows": "No active workflows found. Publish a workflow in Automation first.",
+        "saveSuccess": "Channel configuration saved.",
+        "bindingCreated": "Workflow binding created.",
+        "bindingUpdated": "Workflow binding updated.",
+        "bindingDisabled": "Workflow binding disabled.",
+        "bindingRemoved": "Workflow binding removed.",
+        "saveError": "Could not save workflow binding.",
+        "missingWorkflow": "Select a workflow before enabling automation."
+      },
       "stats": {
         "total": "Total channels",
         "enabled": "Enabled",
@@ -617,7 +1012,10 @@
         "accountInformation": "Account Information",
         "companySettings": "Company Settings",
         "security": "Security",
-        "notifications": "Notifications"
+        "notifications": "Notifications",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "scheduling": "Scheduling"
       },
       "security": {
         "changePassword": "Change Password",
@@ -809,6 +1207,79 @@
       "active": "Active"
     }
   },
+  "automation": {
+    "triggers": {
+      "appointment_created": "Appointment created",
+      "appointment_updated": "Appointment updated",
+      "appointment_cancelled": "Appointment cancelled",
+      "appointment_completed": "Appointment completed",
+      "customer_created": "Customer created",
+      "invoice_created": "Invoice created",
+      "invoice_paid": "Invoice paid",
+      "system_event": "System event",
+      "custom_event": "Custom event"
+    },
+    "delays": {
+      "immediate": "Immediately",
+      "after_minutes": "After minutes",
+      "after_hours": "After hours",
+      "after_days": "After days",
+      "before_appointment": "Before appointment",
+      "at_specific_time": "At specific time"
+    },
+    "actions": {
+      "create_notification": "Create notification",
+      "send_email": "Send email",
+      "send_whatsapp": "Send WhatsApp",
+      "internal_notification": "Internal notification",
+      "sms": "SMS (coming soon)",
+      "push": "Push (coming soon)",
+      "webhook": "Webhook (coming soon)",
+      "ai_action": "AI action (coming soon)"
+    },
+    "center": {
+      "title": "Automation Center",
+      "subtitle": "Orchestrate business workflows through the notification platform.",
+      "nav": {
+        "workflows": "Workflows",
+        "editor": "Editor",
+        "history": "Execution history",
+        "templates": "Template gallery"
+      },
+      "loading": "Loading automation…",
+      "newWorkflow": "New workflow",
+      "newWorkflowPlaceholder": "Payment reminder flow",
+      "create": "Create workflow",
+      "createFailed": "Could not create workflow",
+      "saved": "Workflow saved",
+      "saveFailed": "Could not save workflow",
+      "manualRun": "Run now",
+      "manualRunSuccess": "Workflow executed",
+      "manualRunFailed": "Workflow execution failed",
+      "processSchedules": "Process due schedules",
+      "installTemplate": "Install template",
+      "templateInstalled": "Template installed",
+      "templateInstallFailed": "Could not install template",
+      "editor": {
+        "title": "Workflow editor",
+        "name": "Name",
+        "description": "Description",
+        "trigger": "Trigger",
+        "delay": "Delay",
+        "action": "Primary action",
+        "graph": "Pipeline preview (read-only)"
+      },
+      "history": {
+        "title": "Execution history",
+        "event": "Event",
+        "status": "Status",
+        "started": "Started",
+        "actions": "Actions",
+        "viewSteps": "View steps",
+        "steps": "Execution steps"
+      }
+    }
+  },
   "workflowBuilder": {
     "list": {
       "title": "Workflows",
@@ -885,7 +1356,8 @@
     },
     "nodeEmpty": {
       "start": "Every workflow begins here automatically.",
-      "end": "This step closes the conversation."
+      "end": "This step closes the conversation.",
+      "return_to_main_menu": "Re-displays the workflow Primary Menu and keeps the conversation open."
     },
     "nodes": {
       "start": {
@@ -931,6 +1403,10 @@
       "end": {
         "displayName": "End",
         "description": "Finish the conversation."
+      },
+      "return_to_main_menu": {
+        "displayName": "Return to Main Menu",
+        "description": "Show the main menu again without restarting the conversation."
       },
       "create_customer": {
         "displayName": "Create Customer",
@@ -979,6 +1455,40 @@
         }
       }
     },
+    "validationPanel": {
+      "title": "Workflow Validation",
+      "allClear": "No validation issues",
+      "allClearHint": "Your workflow paths look good. You can publish when you're ready.",
+      "errorCount": "Issue {{current}} of {{total}}",
+      "suggestedFix": "Suggested Fixes",
+      "fixes": {
+        "connectNextStep": "Connect this node to another step",
+        "addEnd": "Add an End node",
+        "addReturnToMainMenu": "Add a Return to Main Menu node",
+        "addLoopExit": "Add a path that exits the loop",
+        "connectToTerminal": "Connect the loop to a terminal node",
+        "connectToWorkflow": "Connect this node to the workflow",
+        "removeIfUnused": "Remove it if it is no longer needed"
+      },
+      "fixActions": {
+        "addEnd": "Add End Node",
+        "addReturnToMainMenu": "Add Return to Main Menu",
+        "connectNextStep": "Connect to another node",
+        "connectCycleToTerminal": "Connect the cycle to a terminal node",
+        "removeCycleConnection": "Remove one of the cycle connections",
+        "connectToWorkflow": "Connect to workflow",
+        "deleteNode": "Delete node",
+        "markPrimaryMenu": "Mark this Buttons node as Primary Menu",
+        "comingSoon": "Coming Soon"
+      }
+    },
+    "validationSummary": {
+      "valid": "Workflow Valid",
+      "errors": "{{count}} Errors",
+      "warnings": "{{count}} Warnings",
+      "errorsAndWarnings": "{{errors}} Errors • {{warnings}} Warnings",
+      "openPanel": "Open validation panel"
+    },
     "validationIssues": {
       "requiredField": "Add {{field}} before publishing.",
       "missing-start": "Add a Start step so your workflow knows when to begin.",
@@ -1025,6 +1535,15 @@
       "continueEditing": "Continue editing",
       "discard": "Discard changes",
       "saveDraft": "Save draft"
+    },
+    "primaryMenu": {
+      "label": "Primary Menu",
+      "help": "Mark this as the conversation entry point. Return to Main Menu steps use it automatically."
+    },
+    "returnToMainMenu": {
+      "targetLabel": "Main menu step",
+      "targetPlaceholder": "Select a Buttons or List step",
+      "targetHelp": "The selected menu is shown again. The welcome message is not repeated."
     },
     "versionHistory": {
       "title": "Version history",
@@ -1084,6 +1603,8 @@
       "nameField": "Name field",
       "emailField": "Email field (optional)",
       "phoneField": "Phone field (optional)",
+      "ageField": "Age field (optional)",
+      "genderField": "Gender field (optional)",
       "fieldToUpdate": "Field to update",
       "newValue": "New value",
       "serviceName": "Service name",
@@ -1154,6 +1675,8 @@
           "name": "Name",
           "email": "Email",
           "phone": "Phone",
+          "age": "Age",
+          "gender": "Gender",
           "notes": "Notes",
           "type": "Customer type",
           "country": "Country",
@@ -1196,6 +1719,11 @@
         }
       }
     },
+    "routing": {
+      "title": "Selection routing",
+      "description": "Interactive nodes must route through a Switch node on conversation.last_button_id. Generate routing to insert one automatically.",
+      "generate": "Generate Routing"
+    },
     "preview": {
       "title": "Live preview",
       "empty": "Your preview will appear here."
@@ -1218,6 +1746,12 @@
       "question": "Question",
       "questionPlaceholder": "What would you like to ask?",
       "saveAnswerAs": "Save answer as",
+      "saveSelectedValueAs": "Save selected value to",
+      "saveSelectedValueAsPlaceholder": "customer_gender",
+      "variableBindingSection": "Variable Binding",
+      "variableBindingHint": "Optional. Stores the selected option value for later steps such as Create Customer.",
+      "listDisplayLabel": "Display label",
+      "listStoredValue": "Stored value (optional — defaults to selection ID)",
       "placeholder": "Placeholder",
       "placeholderExample": "Type your answer here",
       "validationMessage": "Validation message",
@@ -1547,6 +2081,274 @@
       "previous": "Previous",
       "next": "Next",
       "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
+    }
+  },
+  "scheduling": {
+    "title": "Scheduling",
+    "subtitle": "Configure resources, availability, booking rules, and holidays for appointment-based businesses.",
+    "noPermission": "You do not have permission to view scheduling settings.",
+    "nav": {
+      "resources": "Resources",
+      "services": "Services",
+      "availability": "Availability",
+      "bookingRules": "Booking Rules",
+      "holidays": "Holidays"
+    },
+    "errors": {
+      "title": "Scheduling error"
+    },
+    "bookingDomain": {
+      "errors": {
+        "generic": "Booking operation failed.",
+        "resourceNotFound": "The selected resource was not found.",
+        "resourceInactive": "The selected resource is not active.",
+        "serviceNotFound": "The selected service was not found.",
+        "serviceInactive": "The selected service is not active.",
+        "customerNotFound": "The selected customer was not found.",
+        "capabilityMissing": "This resource cannot perform the selected service.",
+        "slotUnavailable": "The selected time slot is no longer available.",
+        "bookingConflict": "Another booking already exists at this time.",
+        "outsideBookingWindow": "This date is outside the allowed booking window.",
+        "insideMinimumNotice": "Not enough advance notice for this booking.",
+        "companyMismatch": "Booking does not belong to this company.",
+        "invalidDate": "Enter a valid date.",
+        "invalidSlotTime": "Enter a valid time slot.",
+        "bookingNotFound": "Booking was not found.",
+        "invalidStatusTransition": "This booking status change is not allowed.",
+        "cancellationWindowExpired": "Cancellation window has expired.",
+        "rescheduleWindowExpired": "Rescheduling is no longer allowed."
+      }
+    },
+    "validation": {
+      "generic": "Please check the form and try again.",
+      "resourceNameRequired": "Resource name is required.",
+      "timezoneRequired": "Timezone is required.",
+      "invalidTimezone": "Select a valid business timezone.",
+      "invalidSlotInterval": "Slot interval must be between 5 and 480 minutes.",
+      "invalidNoticeMinutes": "Enter a value between 0 and 43,200 minutes (30 days).",
+      "invalidBookingWindow": "Booking window must be between 1 and 365 days.",
+      "invalidBufferMinutes": "Buffer must be between 0 and 480 minutes.",
+      "invalidTime": "Enter a valid time (HH:MM).",
+      "breakEndAfterStart": "Break end must be after start.",
+      "invalidWeekday": "Invalid weekday.",
+      "hoursRequiredWhenOpen": "Open and close times are required when not closed.",
+      "closeAfterOpen": "Close time must be after open time.",
+      "exceptionTitleRequired": "Exception title is required.",
+      "exceptionEndAfterStart": "End must be after start.",
+      "holidayTitleRequired": "Holiday title is required.",
+      "invalidDate": "Enter a valid date.",
+      "serviceNameRequired": "Service name is required."
+    },
+    "resources": {
+      "title": "Resources",
+      "subtitle": "People, rooms, and equipment that can receive bookings.",
+      "add": "Add Resource",
+      "empty": "No resources yet. Add your first bookable resource to get started.",
+      "createTitle": "New Resource",
+      "editTitle": "Edit Resource",
+      "noBranch": "No branch (company-wide)",
+      "created": "Resource created.",
+      "updated": "Resource updated.",
+      "deleted": "Resource removed.",
+      "deleteTitle": "Remove resource?",
+      "deleteDescription": "Remove {{name}}? Existing bookings are not affected.",
+      "fields": {
+        "name": "Name",
+        "type": "Type",
+        "branch": "Branch",
+        "status": "Status",
+        "timezone": "Timezone",
+        "description": "Description"
+      },
+      "types": {
+        "doctor": "Doctor",
+        "employee": "Employee",
+        "therapist": "Therapist",
+        "room": "Room",
+        "chair": "Chair",
+        "equipment": "Equipment",
+        "other": "Other"
+      },
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "archived": "Archived"
+      },
+      "notFound": "Resource not found.",
+      "backToList": "Back to resources",
+      "editDetails": "Edit details",
+      "tabs": {
+        "overview": "Overview",
+        "services": "Services"
+      }
+    },
+    "services": {
+      "title": "Services",
+      "subtitle": "Bookable services offered by your business.",
+      "add": "Add Service",
+      "empty": "No services yet. Create services before mapping them to resources.",
+      "createTitle": "New Service",
+      "editTitle": "Edit Service",
+      "created": "Service created.",
+      "updated": "Service updated.",
+      "deleted": "Service removed.",
+      "deleteTitle": "Remove service?",
+      "deleteDescription": "Remove {{name}}? Capability mappings will be removed.",
+      "notFound": "Service not found.",
+      "backToList": "Back to services",
+      "editDetails": "Edit details",
+      "durationLabel": "{{minutes}} min",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "duration": "Duration (minutes)",
+        "status": "Status"
+      },
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "archived": "Archived"
+      }
+    },
+    "capabilities": {
+      "resourceServicesTitle": "Assigned Services",
+      "resourceServicesSubtitle": "Select which services this resource can perform.",
+      "serviceResourcesTitle": "Eligible Resources",
+      "serviceResourcesSubtitle": "Select which resources can perform this service.",
+      "resourceSaved": "Service assignments saved.",
+      "serviceSaved": "Resource assignments saved.",
+      "noServicesAvailable": "Create services in the Services catalog first.",
+      "noResourcesAvailable": "Create resources before assigning capabilities.",
+      "serviceMeta": "{{minutes}} min · {{status}}",
+      "resourceMeta": "{{type}} · {{status}}"
+    },
+    "availability": {
+      "selectResource": "Resource",
+      "resourceTimezone": "Timezone: {{timezone}}",
+      "noResources": "Create a resource before configuring availability.",
+      "weeklyTitle": "Weekly Schedule",
+      "weeklySubtitle": "Recurring hours and breaks per day. Slot generation is configured in a later sprint.",
+      "closed": "Closed",
+      "breaks": "Breaks",
+      "addBreak": "Add break",
+      "saved": "Weekly schedule saved.",
+      "exceptionsTitle": "Special Exceptions",
+      "exceptionsSubtitle": "Vacation, training, conferences, and other unavailable periods.",
+      "addException": "Add exception",
+      "noExceptions": "No exceptions configured.",
+      "exceptionCreated": "Exception added.",
+      "exceptionDeleted": "Exception removed.",
+      "fields": {
+        "type": "Type",
+        "title": "Title",
+        "startsAt": "Starts",
+        "endsAt": "Ends"
+      },
+      "exceptionTypes": {
+        "vacation": "Vacation",
+        "training": "Training",
+        "conference": "Conference",
+        "unavailable": "Unavailable",
+        "custom": "Custom"
+      },
+      "weekdays": {
+        "0": "Sunday",
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday"
+      }
+    },
+    "bookingRules": {
+      "title": "Booking Rules",
+      "subtitle": "Company-wide policies that control when customers can book, cancel, and reschedule appointments.",
+      "saved": "Booking rules saved.",
+      "sections": {
+        "bookingWindow": {
+          "title": "Booking window",
+          "subtitle": "How far in advance customers can book and how much notice you require."
+        },
+        "slotGeneration": {
+          "title": "Appointment slots",
+          "subtitle": "How the system divides available time into bookable slots."
+        },
+        "buffers": {
+          "title": "Preparation time",
+          "subtitle": "Extra time blocked before or after each appointment for setup or cleanup."
+        },
+        "policies": {
+          "title": "Cancellation & rescheduling",
+          "subtitle": "Rules customers must follow when changing or canceling an appointment."
+        },
+        "calendar": {
+          "title": "Calendar & timezone",
+          "subtitle": "How dates and times are displayed for your clinic."
+        }
+      },
+      "fields": {
+        "minNotice": "Minimum booking notice",
+        "minNoticeHelp": "How many minutes before an appointment start time a customer must book. Example: 60 means bookings must be made at least 1 hour ahead.",
+        "minNoticeTooltip": "Used by the scheduling engine to reject last-minute bookings. Set to 0 to allow bookings up to the last available slot.",
+        "maxWindow": "Maximum booking window",
+        "maxWindowHelp": "How many days into the future customers can see and book appointments.",
+        "maxWindowTooltip": "Prevents bookings too far ahead. Example: 90 days limits the calendar to roughly three months.",
+        "slotInterval": "Slot interval (minutes)",
+        "slotIntervalHelp": "Spacing between generated appointment start times. Shorter intervals offer more choices; longer intervals simplify the schedule.",
+        "slotIntervalTooltip": "The slot engine uses this value when building available times from working hours. Must be between 5 and 480 minutes.",
+        "bufferBefore": "Buffer before appointment",
+        "bufferBeforeHelp": "Minutes blocked before each appointment so staff can prepare the room or review the chart.",
+        "bufferBeforeTooltip": "Reduces visible slots that would start too close to a prior booking when preparation time is needed.",
+        "bufferAfter": "Buffer after appointment",
+        "bufferAfterHelp": "Minutes blocked after each appointment for cleanup, notes, or turnover.",
+        "bufferAfterTooltip": "Extends the blocked period beyond the service duration so back-to-back bookings leave no gap for staff.",
+        "minCancellationNotice": "Minimum cancellation notice",
+        "minCancellationNoticeHelp": "How many minutes before the appointment a customer may cancel. Example: 240 means cancellation is allowed only if the appointment starts more than 4 hours later.",
+        "minCancellationNoticeTooltip": "Future booking channels (public booking, WhatsApp, AI) will enforce this rule. Set to 0 to allow cancellation at any time before the appointment.",
+        "minRescheduleNotice": "Minimum reschedule notice",
+        "minRescheduleNoticeHelp": "How many minutes before the appointment a customer may move it to another time. Example: 720 means rescheduling is allowed only more than 12 hours before start.",
+        "minRescheduleNoticeTooltip": "The booking domain will use this when validating reschedule requests. Set to 0 to allow rescheduling at any time before the appointment.",
+        "allowOverbooking": "Allow overbooking",
+        "allowOverbookingHelp": "When enabled, more than one booking may occupy the same time slot if your availability rules permit it.",
+        "allowOverbookingTooltip": "Use only if your clinic intentionally double-books resources. Most clinics should leave this off.",
+        "allowOverbookingOn": "Overbooking is allowed",
+        "allowOverbookingOff": "Overbooking is not allowed",
+        "timezone": "Business timezone",
+        "timezoneHelp": "The timezone your clinic operates in. Appointment times are shown to staff and customers in this zone.",
+        "timezoneTooltip": "Appointment timestamps are stored in UTC in the database. This setting controls how local business hours and slot labels are calculated and displayed.",
+        "weekStart": "Week starts on",
+        "weekStartHelp": "The first day shown on weekly calendars and availability views.",
+        "weekStartTooltip": "Common choices are Monday for business weeks or Sunday for regional calendars."
+      },
+      "examples": {
+        "slotInterval": "15 minutes → 09:00, 09:15, 09:30, 09:45",
+        "cancellationNotice": "240 minutes = customers may cancel only if the appointment is more than 4 hours away.",
+        "rescheduleNotice": "720 minutes = rescheduling allowed only more than 12 hours before the appointment."
+      },
+      "docs": {
+        "overview": "These rules apply company-wide. They do not replace individual staff schedules—those are configured under Resources and Availability.",
+        "timezoneRecommendation": "Recommendation: select your clinic's local timezone (e.g. Africa/Cairo). Times are stored securely in UTC; this setting only affects how hours and slots are shown and calculated for your business."
+      }
+    },
+    "holidays": {
+      "title": "Holidays",
+      "subtitle": "Company-wide or branch-specific non-working days.",
+      "add": "Add Holiday",
+      "empty": "No holidays configured.",
+      "companyWide": "All branches",
+      "createTitle": "New Holiday",
+      "editTitle": "Edit Holiday",
+      "created": "Holiday added.",
+      "updated": "Holiday updated.",
+      "deleted": "Holiday removed.",
+      "deleteTitle": "Remove holiday?",
+      "deleteDescription": "Remove {{title}}?",
+      "fields": {
+        "title": "Title",
+        "date": "Date",
+        "branch": "Branch"
+      }
     }
   },
   "billing": {
@@ -2698,6 +3500,86 @@
       "asiaSingapore": "Singapore",
       "asiaTokyo": "Tokyo",
       "australiaSydney": "Sydney"
+    }
+  },
+  "calendar": {
+    "title": "Calendar",
+    "subtitle": "View and manage appointments across your schedule.",
+    "loading": "Loading calendar…",
+    "navigation": {
+      "today": "Today"
+    },
+    "views": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "agenda": "Agenda",
+      "timeline": "Timeline"
+    },
+    "filters": {
+      "label": "Filters",
+      "branch": "Branch",
+      "resource": "Resource",
+      "allBranches": "All branches",
+      "allResources": "All resources",
+      "clear": "Clear filters"
+    },
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "no_show": "No show",
+      "rescheduled": "Rescheduled"
+    },
+    "empty": {
+      "title": "No appointments in this range",
+      "subtitle": "Create a booking or adjust your filters to see more events."
+    },
+    "placeholders": {
+      "comingSoon": "This view will be available in a future release."
+    },
+    "errors": {
+      "retry": "Retry"
+    },
+    "timeline": {
+      "mobileUnavailable": {
+        "title": "Timeline unavailable on mobile",
+        "subtitle": "The resource timeline requires a larger screen. Use Day or Week view here, or switch to Agenda when it becomes available."
+      }
+    },
+    "interaction": {
+      "openBooking": "Open booking",
+      "openCustomer": "Open customer",
+      "reschedule": "Reschedule",
+      "complete": "Complete booking",
+      "cancel": "Cancel booking",
+      "completeSuccess": "Booking marked as completed",
+      "cancelSuccess": "Booking cancelled",
+      "zoomHint": "Cycle zoom level",
+      "zoom": {
+        "compact": "Compact",
+        "comfortable": "Comfortable",
+        "expanded": "Expanded"
+      }
+    },
+    "month": {
+      "gridLabel": "{{month}} calendar",
+      "dayLabel": "{{date}}, {{count}} appointments",
+      "moreEvents": "+{{count}} more",
+      "weekdays": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat"
+      }
+    },
+    "agenda": {
+      "emptyDay": "No appointments",
+      "loadMore": "Load more days"
     }
   },
   "status": {

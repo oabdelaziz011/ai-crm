@@ -41,6 +41,8 @@ export type WorkflowNodeData = {
   subtitle?: string;
   onQuickAdd?: (sourceNodeId: string, nodeType: BuilderNodeType) => void;
   executionStatus?: "ready" | "running" | "completed" | "failed";
+  validationSeverity?: "error" | "warning";
+  validationActive?: boolean;
 };
 
 function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
@@ -61,6 +63,18 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
 
   const statusLabel = executionStatusLabel(nodeData.executionStatus ?? "ready");
   const stepName = nodeData.label;
+  const validationRing =
+    nodeData.validationActive && nodeData.validationSeverity === "error"
+      ? "ring-2 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.35)]"
+      : nodeData.validationActive && nodeData.validationSeverity === "warning"
+        ? "ring-2 ring-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.3)]"
+        : nodeData.validationSeverity === "error"
+          ? "ring-2 ring-red-500/70"
+          : nodeData.validationSeverity === "warning"
+            ? "ring-2 ring-amber-500/70"
+            : selected
+              ? `ring-2 ${tokens.ring} shadow-xl`
+              : "";
 
   return (
     <motion.div
@@ -70,7 +84,7 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 420, damping: 28 }}
       className={`group relative min-w-[248px] rounded-3xl border bg-card/95 p-4 shadow-lg backdrop-blur transition-shadow ${
-        selected ? `ring-2 ${tokens.ring} shadow-xl` : "shadow-black/10 hover:shadow-xl"
+        validationRing || (selected ? `ring-2 ${tokens.ring} shadow-xl` : "shadow-black/10 hover:shadow-xl")
       } ${tokens.border} bg-gradient-to-br ${tokens.accent}`}
       role="group"
       aria-label={wb("connection.stepAria", { name: stepName })}

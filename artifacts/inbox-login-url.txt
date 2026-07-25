@@ -1,0 +1,1 @@
+[REDACTED]/auth/v1/verify?token=654039136f644ab0000a1c4f390dbaadd0c268522231e7e4af2b364b&type=magiclink&redirect_to=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fcallback%3Fnext%3D%2Fdashboard%2Finbox

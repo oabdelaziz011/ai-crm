@@ -60,6 +60,8 @@ export type ResolveSessionInput = {
   senderExternalId?: string | null;
   conversationId?: string;
   aiAssistantId?: string;
+  /** When false, session creation may resolve assistant from company settings (workflow path). */
+  requireAiAssistant?: boolean;
   metadata?: Record<string, unknown>;
 };
 

@@ -21,7 +21,11 @@ import type {
   ServiceContext,
 } from "../types.js";
 import { AutomationEngine } from "../engine/automation-engine.js";
-import { createNoopAutomationFlowVersionRepository } from "../lifecycle/test-version-repository.js";
+import { createInMemoryAutomationFlowVersionGraphRepository } from "../lifecycle/test-version-graph-repository.js";
+import {
+  createInMemoryAutomationFlowVersionRepository,
+  seedPublishedVersionGraph,
+} from "../lifecycle/test-version-fixtures.js";
 import { createDefaultAutomationNodeRegistry } from "../engine/node-registry.js";
 import { createDefaultChannelAdapterRegistry } from "./channel-adapter.js";
 import { ConversationOrchestrator } from "./conversation-orchestrator.js";
@@ -106,6 +110,9 @@ function createEnvironment(options?: {
   const sessions: ConversationSessionRecord[] = [];
   const messages: ConversationMessageRecord[] = [];
 
+  const versionRepository = createInMemoryAutomationFlowVersionRepository();
+  const versionGraph = createInMemoryAutomationFlowVersionGraphRepository();
+
   const flowRepository: AutomationFlowRepository = {
     create: async (input) => {
       const record: AutomationFlowRecord = {
@@ -129,7 +136,14 @@ function createEnvironment(options?: {
       flows.push(record);
       return record;
     },
-    update: async () => flows[0]!,
+    update: async (input) => {
+      const record = flows.find((flow) => flow.id === input.flowId)!;
+      if (input.activeVersionId !== undefined) record.active_version_id = input.activeVersionId;
+      if (input.version !== undefined) record.version = input.version;
+      if (input.status !== undefined) record.status = input.status;
+      if (input.hasUnpublishedDraft !== undefined) record.has_unpublished_draft = input.hasUnpublishedDraft;
+      return record;
+    },
     updateStatus: async () => flows[0]!,
     softDelete: async () => flows[0]!,
     findById: async (id) => flows.find((flow) => flow.id === id && !flow.deleted_at) ?? null,
@@ -195,6 +209,7 @@ function createEnvironment(options?: {
         finished_at: null,
         error_message: null,
         metadata: input.metadata ?? {},
+        flow_version_id: input.flowVersionId ?? null,
         current_node_id: input.currentNodeId ?? null,
         session_id: input.sessionId ?? null,
         variables: input.variables ?? {},
@@ -208,6 +223,7 @@ function createEnvironment(options?: {
     updateState: async (input) => {
       const record = runs.find((run) => run.id === input.runId)!;
       if (input.status !== undefined) record.status = input.status;
+      if (input.flowVersionId !== undefined) record.flow_version_id = input.flowVersionId;
       if (input.currentNodeId !== undefined) record.current_node_id = input.currentNodeId;
       if (input.sessionId !== undefined) record.session_id = input.sessionId;
       if (input.variables !== undefined) record.variables = input.variables;
@@ -226,6 +242,7 @@ function createEnvironment(options?: {
         external_user_id: input.externalUserId ?? null,
         customer_id: input.customerId ?? null,
         flow_id: input.flowId ?? null,
+        flow_version_id: input.flowVersionId ?? null,
         run_id: input.runId ?? null,
         current_node_id: input.currentNodeId ?? null,
         status: input.status ?? "active",
@@ -250,6 +267,7 @@ function createEnvironment(options?: {
     updateState: async (input) => {
       const record = sessions.find((session) => session.id === input.sessionId)!;
       if (input.status !== undefined) record.status = input.status;
+      if (input.flowVersionId !== undefined) record.flow_version_id = input.flowVersionId;
       if (input.currentNodeId !== undefined) record.current_node_id = input.currentNodeId;
       if (input.runId !== undefined) record.run_id = input.runId;
       if (input.variables !== undefined) record.variables = input.variables;
@@ -276,11 +294,10 @@ function createEnvironment(options?: {
 
   const engine = new AutomationEngine({
     flows: flowRepository,
-    nodes: nodeRepository,
-    edges: edgeRepository,
     runs: runRepository,
     sessions: sessionRepository,
-    versions: createNoopAutomationFlowVersionRepository(),
+    versions: versionRepository,
+    versionGraph,
     registry: createDefaultAutomationNodeRegistry(),
   });
 
@@ -308,7 +325,29 @@ function createEnvironment(options?: {
     sessions,
     messages,
     flows,
+    nodes,
+    edges,
+    flowRepository,
+    versionRepository,
+    versionGraph,
   };
+}
+
+async function publishFlowGraph(
+  env: ReturnType<typeof createEnvironment>,
+  flowId: string,
+) {
+  const flowNodes = env.nodes.filter((node) => node.flow_id === flowId);
+  const flowEdges = env.edges.filter((edge) => edge.flow_id === flowId);
+  await seedPublishedVersionGraph({
+    flowId,
+    companyId: "company-1",
+    nodes: flowNodes,
+    edges: flowEdges,
+    versions: env.versionRepository,
+    versionGraph: env.versionGraph,
+    flows: env.flowRepository,
+  });
 }
 
 async function buildWaitFlow(env: ReturnType<typeof createEnvironment>, flowId = "flow-inbound") {
@@ -321,12 +360,14 @@ async function buildWaitFlow(env: ReturnType<typeof createEnvironment>, flowId =
   const end = await env.nodeRepository.create({ flowId, type: "end", config: {} });
   await env.edgeRepository.create({ flowId, sourceNodeId: trigger.id, targetNodeId: wait.id });
   await env.edgeRepository.create({ flowId, sourceNodeId: wait.id, targetNodeId: end.id });
+  await publishFlowGraph(env, flowId);
 }
 
 async function buildLinearFlow(env: ReturnType<typeof createEnvironment>, flowId: string) {
   const trigger = await env.nodeRepository.create({ flowId, type: "trigger", config: {} });
   const end = await env.nodeRepository.create({ flowId, type: "end", config: {} });
   await env.edgeRepository.create({ flowId, sourceNodeId: trigger.id, targetNodeId: end.id });
+  await publishFlowGraph(env, flowId);
 }
 
 describe("session-policy", () => {
@@ -338,6 +379,7 @@ describe("session-policy", () => {
       external_user_id: "u1",
       customer_id: null,
       flow_id: "f1",
+      flow_version_id: "version-1",
       run_id: "r1",
       current_node_id: "n1",
       status: "waiting_input",
@@ -358,6 +400,7 @@ describe("session-policy", () => {
       metadata: {},
       current_node_id: "n1",
       session_id: "s1",
+      flow_version_id: "version-1",
       variables: { __waitingFor: "email" },
     };
 

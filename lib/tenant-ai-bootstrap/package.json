@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./src/services/tenant-runtime-config-service.js": "./src/services/tenant-runtime-config-service.ts",
+    "./src/resolve-tenant-runtime-config.js": "./src/resolve-tenant-runtime-config.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

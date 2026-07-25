@@ -2,6 +2,7 @@ import { ValidationError } from "../../errors.js";
 import { CUSTOMER_LOOKUP_FIELDS, type CustomerLookupField } from "../lookup/types.js";
 import type { CustomerRepositoryPort } from "./customer-repository-port.js";
 import type { FindCustomerInput, FindCustomerResult } from "../types/find-customer-input.js";
+import type { CreateCustomerInput, CreateCustomerResult, UpdateCustomerInput, UpdateCustomerResult } from "../types/customer-mutation-input.js";
 
 function readRequiredString(value: unknown, label: string): string {
   const normalized = typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
@@ -35,5 +36,26 @@ export class CustomerService {
       return { status: "found", count: 1, customer: record };
     }
     return { status: "duplicate", count };
+  }
+
+  async createCustomer(input: CreateCustomerInput): Promise<CreateCustomerResult> {
+    readRequiredString(input.companyId, "company");
+    readRequiredString(input.userId, "owner");
+    const name = readRequiredString(input.name, "name");
+    const customer = await this.repository.createCustomer({
+      ...input,
+      name,
+    });
+    return { customer };
+  }
+
+  async updateCustomer(input: UpdateCustomerInput): Promise<UpdateCustomerResult> {
+    readRequiredString(input.companyId, "company");
+    readRequiredString(input.userId, "owner");
+    readRequiredString(input.customerId, "customer id");
+    readRequiredString(input.field, "field");
+    readRequiredString(input.value, "value");
+    const customer = await this.repository.updateCustomer(input);
+    return { customer };
   }
 }

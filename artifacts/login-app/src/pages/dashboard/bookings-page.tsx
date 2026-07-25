@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
   CalendarDays, Clock, AlertCircle, CheckCircle2, Plus, Download, Pencil, Trash2,
 } from "lucide-react";
+import { useCustomerProfile } from "@/context/customer-profile-context";
+import { useAuth } from "@/context/auth-context";
 import { useBookings, useDeleteBooking } from "@/hooks/use-bookings";
 import { useCustomers } from "@/hooks/use-customers";
 import { BookingModal } from "@/components/dashboard/booking-modal";
@@ -21,6 +23,9 @@ import {
 
 export default function BookingsPage() {
   const { t } = useTranslation("common");
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+  const { openCustomerProfile } = useCustomerProfile();
   const { data: bookings = [], isLoading, error } = useBookings();
   const { data: customers = [] } = useCustomers();
   const deleteBooking = useDeleteBooking();
@@ -85,7 +90,20 @@ export default function BookingsPage() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{booking.customers?.name ?? "—"}</p>
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-left hover:text-primary transition-colors truncate block w-full"
+                    disabled={!booking.customer_id}
+                    onClick={() => {
+                      if (!booking.customer_id) return;
+                      openCustomerProfile({
+                        customerId: booking.customer_id,
+                        context: { companyId },
+                      });
+                    }}
+                  >
+                    {booking.customers?.name ?? "—"}
+                  </button>
                   <p className="text-xs text-muted-foreground">
                     {booking.service} · {format(new Date(booking.booking_date), "h:mm a")}
                   </p>
@@ -118,13 +136,21 @@ export default function BookingsPage() {
         onClose={() => setModal({ open: false })}
         booking={modal.booking}
         customers={customers}
+        companyId={companyId}
       />
       <DeleteDialog
         open={!!del}
         onClose={() => setDel(null)}
         onConfirm={() => {
           if (!del || !canDeleteBookings) return;
-          deleteBooking.mutate(del.id, { onSuccess: () => setDel(null) });
+          deleteBooking.mutate(
+            {
+              id: del.id,
+              isSchedulingBooking: del.isSchedulingBooking,
+              customerId: del.customer_id,
+            },
+            { onSuccess: () => setDel(null) },
+          );
         }}
         isPending={deleteBooking.isPending}
         itemName={del?.service}

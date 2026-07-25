@@ -1,0 +1,868 @@
+{
+  "testedAt": "2026-07-24T23:24:09.865Z",
+  "flowId": "aef7c4ab-513a-4b64-a700-2be6cf51dafc",
+  "activeVersionId": "51022517-74a8-4179-af4f-83d220e1bbd1",
+  "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+  "scenarios": [
+    {
+      "scenario": "book",
+      "waUser": "15554011814",
+      "kickoffRunId": "0e3f59c4-05f8-4686-addf-59996baa9bfe",
+      "replyRunId": "0e3f59c4-05f8-4686-addf-59996baa9bfe",
+      "outboundTexts": [
+        "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+        "please press on what you want",
+        "Book Appointment",
+        "Pricing",
+        "Talk to Support",
+        "what is your phone number?"
+      ],
+      "matched": true,
+      "runTrace": {
+        "id": "0e3f59c4-05f8-4686-addf-59996baa9bfe",
+        "status": "waiting_input",
+        "current_node_id": "04f805f8-085a-4d1e-bcc7-8f9228ee1ff8",
+        "flow_version_id": "51022517-74a8-4179-af4f-83d220e1bbd1",
+        "variables": {
+          "__prompt": "what is your phone number?",
+          "__outbound": null,
+          "senderName": "Switch Live Test",
+          "lastMessage": "hi",
+          "__switchCase": "book",
+          "__waitingFor": "customer_phone",
+          "conversation": {
+            "last_message": "Book Appointment",
+            "last_button_id": "book",
+            "last_button_title": "Book Appointment",
+            "last_selection_type": "button"
+          },
+          "phoneNumberId": "1214681355059951",
+          "conversationId": "0d053317-1e42-43ab-9f70-ba4e397cd5a7",
+          "inboundEventId": "aebcf509-68ae-41b1-8239-c04db94b7aea",
+          "__outboundQueue": [],
+          "channelSessionId": "9f3f301f-cfd8-4dd7-9d83-60b42c5ee336",
+          "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "whatsappMessageType": "text",
+          "interactive_selection": "book"
+        }
+      }
+    },
+    {
+      "scenario": "pricing",
+      "waUser": "15554163377",
+      "kickoffRunId": "bf34cf05-3f2b-4a04-9378-25db3c435695",
+      "replyRunId": "bf34cf05-3f2b-4a04-9378-25db3c435695",
+      "outboundTexts": [
+        "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+        "please press on what you want",
+        "Book Appointment",
+        "Pricing",
+        "Talk to Support",
+        "Pick the option that fits you best."
+      ],
+      "matched": true,
+      "runTrace": {
+        "id": "bf34cf05-3f2b-4a04-9378-25db3c435695",
+        "status": "waiting_input",
+        "current_node_id": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80",
+        "flow_version_id": "51022517-74a8-4179-af4f-83d220e1bbd1",
+        "variables": {
+          "__prompt": "Pick the option that fits you best.",
+          "__outbound": {
+            "body": "Pick the option that fits you best.",
+            "kind": "list",
+            "title": "Choose a doctor",
+            "sections": [
+              {
+                "rows": [
+                  {
+                    "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                    "title": "dr1"
+                  },
+                  {
+                    "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                    "title": "dr2"
+                  },
+                  {
+                    "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                    "title": "dr3"
+                  }
+                ],
+                "title": "Options"
+              }
+            ],
+            "buttonLabel": "View options"
+          },
+          "senderName": "Switch Live Test",
+          "lastMessage": "hi",
+          "__switchCase": "pricing",
+          "__waitingFor": "interactive_selection",
+          "conversation": {
+            "last_message": "Pricing",
+            "last_button_id": "pricing",
+            "last_button_title": "Pricing",
+            "last_selection_type": "button"
+          },
+          "phoneNumberId": "1214681355059951",
+          "conversationId": "5933bce1-f078-435e-8948-18d68d1d47ed",
+          "inboundEventId": "7d0380ed-f80e-4763-a194-0c60b6019591",
+          "__outboundQueue": [
+            {
+              "body": "Pick the option that fits you best.",
+              "kind": "list",
+              "title": "Choose a doctor",
+              "sections": [
+                {
+                  "rows": [
+                    {
+                      "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                      "title": "dr1"
+                    },
+                    {
+                      "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                      "title": "dr2"
+                    },
+                    {
+                      "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                      "title": "dr3"
+                    }
+                  ],
+                  "title": "Options"
+                }
+              ],
+              "buttonLabel": "View options"
+            }
+          ],
+          "channelSessionId": "f3f3a339-efc0-4272-a64f-81157b9ad5c9",
+          "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "whatsappMessageType": "text",
+          "interactive_selection": "pricing"
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "waUser": "15554313107",
+      "kickoffRunId": "b20e849b-e9be-4b73-b696-f3594da43e82",
+      "replyRunId": "b20e849b-e9be-4b73-b696-f3594da43e82",
+      "outboundTexts": [
+        "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+        "please press on what you want",
+        "Book Appointment",
+        "Pricing",
+        "Talk to Support",
+        "For supporting please call :19666",
+        "Hello 👋\nThank you for your trust on us",
+        "please press on what you want",
+        "Book Appointment",
+        "Pricing",
+        "Talk to Support"
+      ],
+      "matched": true,
+      "runTrace": {
+        "id": "b20e849b-e9be-4b73-b696-f3594da43e82",
+        "status": "waiting_input",
+        "current_node_id": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+        "flow_version_id": "51022517-74a8-4179-af4f-83d220e1bbd1",
+        "variables": {
+          "__prompt": "please press on what you want",
+          "__outbound": {
+            "kind": "buttons",
+            "text": "please press on what you want",
+            "buttons": [
+              {
+                "id": "book",
+                "label": "Book Appointment"
+              },
+              {
+                "id": "pricing",
+                "label": "Pricing"
+              },
+              {
+                "id": "support",
+                "label": "Talk to Support"
+              }
+            ]
+          },
+          "senderName": "Switch Live Test",
+          "lastMessage": "hi",
+          "__switchCase": "support",
+          "__waitingFor": "interactive_selection",
+          "conversation": {
+            "last_message": "Talk to Support",
+            "last_button_id": "support",
+            "last_button_title": "Talk to Support",
+            "last_selection_type": "button"
+          },
+          "phoneNumberId": "1214681355059951",
+          "conversationId": "ab431304-d25f-4520-9b25-5a617f65286e",
+          "inboundEventId": "c2f8be70-4340-4869-8191-8e30fdcc7fe7",
+          "__outboundQueue": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            },
+            {
+              "kind": "text",
+              "text": "Hello 👋\nThank you for your trust on us"
+            },
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "channelSessionId": "986a1133-aa4b-4ca7-a7ea-f369e6377a68",
+          "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "whatsappMessageType": "text",
+          "interactive_selection": null
+        }
+      }
+    }
+  ],
+  "trace": [
+    {
+      "scenario": "setup",
+      "step": "published_switch_present",
+      "pass": true,
+      "detail": "switchNodes=1",
+      "evidence": {
+        "activeVersionId": "51022517-74a8-4179-af4f-83d220e1bbd1"
+      }
+    },
+    {
+      "scenario": "book",
+      "step": "kickoff",
+      "pass": true,
+      "detail": "automationRunId=0e3f59c4-05f8-4686-addf-59996baa9bfe",
+      "evidence": {
+        "inboundEventId": "aebcf509-68ae-41b1-8239-c04db94b7aea"
+      }
+    },
+    {
+      "scenario": "book",
+      "step": "button_reply",
+      "pass": true,
+      "detail": "automationRunId=0e3f59c4-05f8-4686-addf-59996baa9bfe",
+      "evidence": {
+        "inboundEventId": "150d51ec-cda4-4065-8b58-cddb33273551",
+        "outboundDeliveryId": "1c32d8d9-e703-4864-b0c6-64f7de380e7f"
+      }
+    },
+    {
+      "scenario": "book",
+      "step": "session_resumed",
+      "pass": true,
+      "detail": "kickoff=0e3f59c4-05f8-4686-addf-59996baa9bfe reply=0e3f59c4-05f8-4686-addf-59996baa9bfe"
+    },
+    {
+      "scenario": "book",
+      "step": "expected_response",
+      "pass": true,
+      "detail": "prompt \"what is your phone number?\"",
+      "evidence": {
+        "outboundTexts": [
+          "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+          "please press on what you want",
+          "Book Appointment",
+          "Pricing",
+          "Talk to Support",
+          "what is your phone number?"
+        ],
+        "deliveryTexts": [
+          "what is your phone number?"
+        ],
+        "combined": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟\nplease press on what you want\nBook Appointment\nPricing\nTalk to Support\nwhat is your phone number?\nwhat is your phone number?",
+        "pattern": "what is your phone number"
+      }
+    },
+    {
+      "scenario": "book",
+      "step": "run_pinned_version",
+      "pass": true,
+      "detail": "flowVersionId=51022517-74a8-4179-af4f-83d220e1bbd1",
+      "evidence": {
+        "currentNodeId": "04f805f8-085a-4d1e-bcc7-8f9228ee1ff8",
+        "variables": {
+          "__prompt": "what is your phone number?",
+          "__outbound": null,
+          "senderName": "Switch Live Test",
+          "lastMessage": "hi",
+          "__switchCase": "book",
+          "__waitingFor": "customer_phone",
+          "conversation": {
+            "last_message": "Book Appointment",
+            "last_button_id": "book",
+            "last_button_title": "Book Appointment",
+            "last_selection_type": "button"
+          },
+          "phoneNumberId": "1214681355059951",
+          "conversationId": "0d053317-1e42-43ab-9f70-ba4e397cd5a7",
+          "inboundEventId": "aebcf509-68ae-41b1-8239-c04db94b7aea",
+          "__outboundQueue": [],
+          "channelSessionId": "9f3f301f-cfd8-4dd7-9d83-60b42c5ee336",
+          "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "whatsappMessageType": "text",
+          "interactive_selection": "book"
+        }
+      }
+    },
+    {
+      "scenario": "pricing",
+      "step": "kickoff",
+      "pass": true,
+      "detail": "automationRunId=bf34cf05-3f2b-4a04-9378-25db3c435695",
+      "evidence": {
+        "inboundEventId": "7d0380ed-f80e-4763-a194-0c60b6019591"
+      }
+    },
+    {
+      "scenario": "pricing",
+      "step": "button_reply",
+      "pass": true,
+      "detail": "automationRunId=bf34cf05-3f2b-4a04-9378-25db3c435695",
+      "evidence": {
+        "inboundEventId": "fd24348a-09f5-4e53-96af-1c387ed30a51",
+        "outboundDeliveryId": "6f5f38c2-d51e-46a2-bf71-59f84b1528fe"
+      }
+    },
+    {
+      "scenario": "pricing",
+      "step": "session_resumed",
+      "pass": true,
+      "detail": "kickoff=bf34cf05-3f2b-4a04-9378-25db3c435695 reply=bf34cf05-3f2b-4a04-9378-25db3c435695"
+    },
+    {
+      "scenario": "pricing",
+      "step": "expected_response",
+      "pass": true,
+      "detail": "Pricing flow (list)",
+      "evidence": {
+        "outboundTexts": [
+          "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+          "please press on what you want",
+          "Book Appointment",
+          "Pricing",
+          "Talk to Support",
+          "Pick the option that fits you best."
+        ],
+        "deliveryTexts": [
+          "Pick the option that fits you best."
+        ],
+        "combined": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟\nplease press on what you want\nBook Appointment\nPricing\nTalk to Support\nPick the option that fits you best.\nPick the option that fits you best.",
+        "pattern": "choose a doctor|pick the option"
+      }
+    },
+    {
+      "scenario": "pricing",
+      "step": "run_pinned_version",
+      "pass": true,
+      "detail": "flowVersionId=51022517-74a8-4179-af4f-83d220e1bbd1",
+      "evidence": {
+        "currentNodeId": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80",
+        "variables": {
+          "__prompt": "Pick the option that fits you best.",
+          "__outbound": {
+            "body": "Pick the option that fits you best.",
+            "kind": "list",
+            "title": "Choose a doctor",
+            "sections": [
+              {
+                "rows": [
+                  {
+                    "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                    "title": "dr1"
+                  },
+                  {
+                    "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                    "title": "dr2"
+                  },
+                  {
+                    "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                    "title": "dr3"
+                  }
+                ],
+                "title": "Options"
+              }
+            ],
+            "buttonLabel": "View options"
+          },
+          "senderName": "Switch Live Test",
+          "lastMessage": "hi",
+          "__switchCase": "pricing",
+          "__waitingFor": "interactive_selection",
+          "conversation": {
+            "last_message": "Pricing",
+            "last_button_id": "pricing",
+            "last_button_title": "Pricing",
+            "last_selection_type": "button"
+          },
+          "phoneNumberId": "1214681355059951",
+          "conversationId": "5933bce1-f078-435e-8948-18d68d1d47ed",
+          "inboundEventId": "7d0380ed-f80e-4763-a194-0c60b6019591",
+          "__outboundQueue": [
+            {
+              "body": "Pick the option that fits you best.",
+              "kind": "list",
+              "title": "Choose a doctor",
+              "sections": [
+                {
+                  "rows": [
+                    {
+                      "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                      "title": "dr1"
+                    },
+                    {
+                      "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                      "title": "dr2"
+                    },
+                    {
+                      "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                      "title": "dr3"
+                    }
+                  ],
+                  "title": "Options"
+                }
+              ],
+              "buttonLabel": "View options"
+            }
+          ],
+          "channelSessionId": "f3f3a339-efc0-4272-a64f-81157b9ad5c9",
+          "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "whatsappMessageType": "text",
+          "interactive_selection": "pricing"
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "step": "kickoff",
+      "pass": true,
+      "detail": "automationRunId=b20e849b-e9be-4b73-b696-f3594da43e82",
+      "evidence": {
+        "inboundEventId": "c2f8be70-4340-4869-8191-8e30fdcc7fe7"
+      }
+    },
+    {
+      "scenario": "support",
+      "step": "button_reply",
+      "pass": true,
+      "detail": "automationRunId=b20e849b-e9be-4b73-b696-f3594da43e82",
+      "evidence": {
+        "inboundEventId": "019c274f-308d-46ad-b0f2-1fe4d39931aa",
+        "outboundDeliveryId": "b4e92cd6-248e-4279-be61-126152446734"
+      }
+    },
+    {
+      "scenario": "support",
+      "step": "session_resumed",
+      "pass": true,
+      "detail": "kickoff=b20e849b-e9be-4b73-b696-f3594da43e82 reply=b20e849b-e9be-4b73-b696-f3594da43e82"
+    },
+    {
+      "scenario": "support",
+      "step": "expected_response",
+      "pass": true,
+      "detail": "message \"For supporting please call :19666\"",
+      "evidence": {
+        "outboundTexts": [
+          "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟",
+          "please press on what you want",
+          "Book Appointment",
+          "Pricing",
+          "Talk to Support",
+          "For supporting please call :19666",
+          "Hello 👋\nThank you for your trust on us",
+          "please press on what you want",
+          "Book Appointment",
+          "Pricing",
+          "Talk to Support"
+        ],
+        "deliveryTexts": [
+          "please press on what you want"
+        ],
+        "combined": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟\nplease press on what you want\nBook Appointment\nPricing\nTalk to Support\nFor supporting please call :19666\nHello 👋\nThank you for your trust on us\nplease press on what you want\nBook Appointment\nPricing\nTalk to Support\nplease press on what you want",
+        "pattern": "for supporting please call :19666"
+      }
+    },
+    {
+      "scenario": "support",
+      "step": "run_pinned_version",
+      "pass": true,
+      "detail": "flowVersionId=51022517-74a8-4179-af4f-83d220e1bbd1",
+      "evidence": {
+        "currentNodeId": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+        "variables": {
+          "__prompt": "please press on what you want",
+          "__outbound": {
+            "kind": "buttons",
+            "text": "please press on what you want",
+            "buttons": [
+              {
+                "id": "book",
+                "label": "Book Appointment"
+              },
+              {
+                "id": "pricing",
+                "label": "Pricing"
+              },
+              {
+                "id": "support",
+                "label": "Talk to Support"
+              }
+            ]
+          },
+          "senderName": "Switch Live Test",
+          "lastMessage": "hi",
+          "__switchCase": "support",
+          "__waitingFor": "interactive_selection",
+          "conversation": {
+            "last_message": "Talk to Support",
+            "last_button_id": "support",
+            "last_button_title": "Talk to Support",
+            "last_selection_type": "button"
+          },
+          "phoneNumberId": "1214681355059951",
+          "conversationId": "ab431304-d25f-4520-9b25-5a617f65286e",
+          "inboundEventId": "c2f8be70-4340-4869-8191-8e30fdcc7fe7",
+          "__outboundQueue": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            },
+            {
+              "kind": "text",
+              "text": "Hello 👋\nThank you for your trust on us"
+            },
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "channelSessionId": "986a1133-aa4b-4ca7-a7ea-f369e6377a68",
+          "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "whatsappMessageType": "text",
+          "interactive_selection": null
+        }
+      }
+    }
+  ],
+  "graphRequests": [
+    {
+      "scenario": "book",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554011814",
+        "type": "text",
+        "text": {
+          "body": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟"
+        }
+      }
+    },
+    {
+      "scenario": "book",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554011814",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": {
+            "text": "please press on what you want"
+          },
+          "action": {
+            "buttons": [
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "book",
+                  "title": "Book Appointment"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "pricing",
+                  "title": "Pricing"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "support",
+                  "title": "Talk to Support"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "scenario": "book",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554011814",
+        "type": "text",
+        "text": {
+          "body": "what is your phone number?"
+        }
+      }
+    },
+    {
+      "scenario": "pricing",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554163377",
+        "type": "text",
+        "text": {
+          "body": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟"
+        }
+      }
+    },
+    {
+      "scenario": "pricing",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554163377",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": {
+            "text": "please press on what you want"
+          },
+          "action": {
+            "buttons": [
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "book",
+                  "title": "Book Appointment"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "pricing",
+                  "title": "Pricing"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "support",
+                  "title": "Talk to Support"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "scenario": "pricing",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554163377",
+        "type": "interactive",
+        "interactive": {
+          "type": "list",
+          "header": {
+            "type": "text",
+            "text": "Choose a doctor"
+          },
+          "body": {
+            "text": "Pick the option that fits you best."
+          },
+          "action": {
+            "button": "View options",
+            "sections": [
+              {
+                "title": "Options",
+                "rows": [
+                  {
+                    "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                    "title": "dr1"
+                  },
+                  {
+                    "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                    "title": "dr2"
+                  },
+                  {
+                    "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                    "title": "dr3"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554313107",
+        "type": "text",
+        "text": {
+          "body": "اهلا بيك يا فندم اقدر اساعد حضرتك اذاي؟"
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554313107",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": {
+            "text": "please press on what you want"
+          },
+          "action": {
+            "buttons": [
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "book",
+                  "title": "Book Appointment"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "pricing",
+                  "title": "Pricing"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "support",
+                  "title": "Talk to Support"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554313107",
+        "type": "text",
+        "text": {
+          "body": "For supporting please call :19666"
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554313107",
+        "type": "text",
+        "text": {
+          "body": "Hello 👋\nThank you for your trust on us"
+        }
+      }
+    },
+    {
+      "scenario": "support",
+      "url": "https://graph.facebook.com/v21.0/1214681355059951/messages",
+      "body": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "15554313107",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": {
+            "text": "please press on what you want"
+          },
+          "action": {
+            "buttons": [
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "book",
+                  "title": "Book Appointment"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "pricing",
+                  "title": "Pricing"
+                }
+              },
+              {
+                "type": "reply",
+                "reply": {
+                  "id": "support",
+                  "title": "Talk to Support"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "passed": 16,
+    "failed": 0,
+    "total": 16
+  }
+}

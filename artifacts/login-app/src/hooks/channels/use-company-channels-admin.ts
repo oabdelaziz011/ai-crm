@@ -53,8 +53,13 @@ export function useChannelAdminMutations(companyId: string | null) {
   });
 
   const updateConfig = useMutation({
-    mutationFn: (input: UpdateCompanyChannelConfigurationInput) =>
-      services.companyChannels.updateConfiguration(context, input),
+    mutationFn: (input: UpdateCompanyChannelConfigurationInput) => {
+      console.log("[channel-save-debug] useChannelAdminMutations.updateConfig mutationFn", {
+        companyChannelId: input.companyChannelId,
+        configurationKeys: Object.keys(input.configuration ?? {}),
+      });
+      return services.companyChannels.updateConfiguration(context, input);
+    },
     onSuccess: invalidate,
   });
 

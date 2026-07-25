@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import type { NodePropertyEditorProps } from "../../core/node-registry";
 import { buildInteractiveOptionIdRefactorPatches } from "../../core/logic/interactive-config-refactor";
 import { slugifyInteractionOptionId } from "../../core/variables/interaction-variables";
+import { GenerateRoutingAction } from "./conversation/generate-routing-action";
 
 type ListRow = {
   id: string;
   title?: string;
   description?: string;
+  value?: string;
 };
 
 function readString(value: unknown, fallback = ""): string {
@@ -31,6 +33,7 @@ function readListRows(config: Record<string, unknown>): ListRow[] {
     id: row.id ?? String(index + 1),
     title: row.title ?? "",
     description: row.description ?? "",
+    value: row.value ?? "",
   }));
 }
 
@@ -191,7 +194,7 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
           </div>
           <Input
             value={readString(row.title)}
-            placeholder={t("workflowBuilder.fields.buttonLabel", { number: index + 1 })}
+            placeholder={t("workflowBuilder.fields.listDisplayLabel")}
             onChange={(event) => {
               const next = rows.map((entry) =>
                 entry.id === row.id ? { ...entry, title: event.target.value } : entry,
@@ -199,6 +202,17 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
               updateRows(next);
             }}
             className="rounded-xl bg-background/80"
+          />
+          <Input
+            value={readString(row.value)}
+            placeholder={t("workflowBuilder.fields.listStoredValue")}
+            onChange={(event) => {
+              const next = rows.map((entry) =>
+                entry.id === row.id ? { ...entry, value: event.target.value } : entry,
+              );
+              updateRows(next);
+            }}
+            className="rounded-xl bg-background/80 font-mono text-xs"
           />
           <Input
             value={row.id}
@@ -211,6 +225,7 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
             }}
             className="rounded-xl bg-background/80 font-mono text-xs"
           />
+          <p className="text-[11px] text-muted-foreground -mt-1">{t("workflowBuilder.fields.buttonIdHint")}</p>
           <Input
             value={readString(row.description)}
             placeholder={t("workflowBuilder.logic.shortDescription")}
@@ -224,6 +239,7 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
           />
         </div>
       ))}
+      <GenerateRoutingAction context={context} />
     </div>
   );
 }
@@ -240,7 +256,7 @@ export function DelayEditor({ config, onChange }: NodePropertyEditorProps) {
   );
 }
 
-export function EmptyProperties({ labelKey }: { labelKey: "start" | "end" }) {
+export function EmptyProperties({ labelKey }: { labelKey: "start" | "end" | "return_to_main_menu" }) {
   const { t } = useTranslation("common");
   return <p className="text-sm text-muted-foreground">{t(`workflowBuilder.nodeEmpty.${labelKey}`)}</p>;
 }

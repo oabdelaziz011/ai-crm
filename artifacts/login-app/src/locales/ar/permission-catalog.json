@@ -362,6 +362,16 @@
       "description": "يسمح بتعديل إعدادات الشركة والتطبيق.",
       "group": "settings"
     },
+    "scheduling.view": {
+      "name": "عرض الجدولة",
+      "description": "يسمح بعرض موارد الجدولة والتوفر والقواعد والعطلات.",
+      "group": "scheduling"
+    },
+    "scheduling.edit": {
+      "name": "إدارة الجدولة",
+      "description": "يسمح بإنشاء وتعديل إعدادات الجدولة.",
+      "group": "scheduling"
+    },
     "audit_logs.view": {
       "name": "عرض سجلات التدقيق",
       "description": "يسمح بعرض سجلات تدقيق النظام.",

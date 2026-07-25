@@ -1,8 +1,8 @@
-import type { KnowledgeDocumentRepository } from "@workspace/knowledge-platform";
+import type { KnowledgeDocumentRepository } from "@workspace/knowledge-platform/repositories";
 import {
   getPublishingMetadata,
   withPublishingMetadata,
-} from "@workspace/knowledge-platform";
+} from "@workspace/knowledge-platform/repositories";
 import type { EmbeddingJobRepository } from "../repositories/embedding-repositories.js";
 import type { EmbeddingJobRecord, ServiceContext } from "../types.js";
 

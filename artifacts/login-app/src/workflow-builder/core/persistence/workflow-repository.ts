@@ -9,6 +9,8 @@ import {
   createSupabaseAutomationFlowRepository,
   createSupabaseAutomationNodeRepository,
   createSupabaseAutomationFlowVersionRepository,
+  createSupabaseAutomationFlowVersionGraphRepository,
+  createSupabaseWorkflowPublishTransactionRepository,
   type AutomationFlowVersionRecord,
 } from "@workspace/automation-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -75,9 +77,11 @@ export function createSupabaseWorkflowRepository(client: SupabaseClient): Workfl
   const nodes = createSupabaseAutomationNodeRepository(client);
   const edges = createSupabaseAutomationEdgeRepository(client);
   const versions = createSupabaseAutomationFlowVersionRepository(client);
+  const versionGraph = createSupabaseAutomationFlowVersionGraphRepository(client);
+  const publishTransaction = createSupabaseWorkflowPublishTransactionRepository(client);
   const audit = new WorkflowAuditService();
   const lifecycle = new WorkflowLifecycleService(flows, versions, audit);
-  const publishService = new WorkflowPublishService(flows, versions, audit);
+  const publishService = new WorkflowPublishService(flows, publishTransaction, audit);
   const rollbackService = new WorkflowRollbackService(flows, versions, nodes, edges, audit);
 
   return {

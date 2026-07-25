@@ -12,6 +12,13 @@ import type { BuilderEdge, BuilderNode } from "../types";
 import { resolveBranchEdgeStyle } from "../logic/branch-utils";
 import { getWorkflowNodeDefinition } from "../node-registry";
 
+export type ValidationHighlightOptions = {
+  nodeSeverity: Map<string, "error" | "warning">;
+  edgeIds: Set<string>;
+  activeNodeIds: Set<string>;
+  activeEdgeIds: Set<string>;
+};
+
 export function documentNodeSignature(
   nodes: Array<{ id: string; position: { x: number; y: number } }>,
 ): string {
@@ -23,6 +30,7 @@ export function documentToFlowNodes(
   selectedNodeIds: string[],
   nodeText: (nodeId: string, field: "displayName" | "description", fallback: string) => string,
   onQuickAdd: WorkflowNodeData["onQuickAdd"],
+  validationHighlight?: ValidationHighlightOptions,
 ): Node<WorkflowNodeData>[] {
   const selectedIds = new Set(selectedNodeIds);
   return nodes.map((node) => {
@@ -36,6 +44,8 @@ export function documentToFlowNodes(
           : typeof node.config.label === "string"
             ? node.config.label
             : nodeText(definition.id, "description", definition.description);
+    const validationSeverity = validationHighlight?.nodeSeverity.get(node.id);
+    const validationActive = validationHighlight?.activeNodeIds.has(node.id) ?? false;
     return {
       id: node.id,
       type: "workflowNode",
@@ -47,6 +57,8 @@ export function documentToFlowNodes(
         subtitle,
         executionStatus: "ready",
         onQuickAdd,
+        validationSeverity,
+        validationActive,
       },
     };
   });
@@ -56,6 +68,7 @@ export function documentToFlowEdges(
   nodes: BuilderNode[],
   edges: BuilderEdge[],
   localizeBranchLabel: (label: string) => string,
+  validationHighlight?: ValidationHighlightOptions,
 ) {
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   return edges.flatMap((edge) => {
@@ -68,6 +81,11 @@ export function documentToFlowEdges(
     if (!sourceDef.allowOutgoing || !targetDef.allowIncoming) return [];
 
     const branchStyle = resolveBranchEdgeStyle(sourceNode, edge);
+    const isValidationEdge = validationHighlight?.edgeIds.has(edge.id) ?? false;
+    const isActiveValidationEdge = validationHighlight?.activeEdgeIds.has(edge.id) ?? false;
+    const validationStroke = isActiveValidationEdge ? "#ef4444" : isValidationEdge ? "#f87171" : branchStyle.stroke;
+    const validationStrokeWidth = isActiveValidationEdge ? 3.5 : isValidationEdge ? 3 : 2.5;
+    const validationStrokeDasharray = isValidationEdge ? "6 4" : undefined;
     return [
       {
         id: edge.id,
@@ -75,10 +93,14 @@ export function documentToFlowEdges(
         target: edge.target,
         sourceHandle: "source",
         targetHandle: "target",
-        animated: true,
+        animated: !isValidationEdge,
         label: localizeBranchLabel(branchStyle.label ?? ""),
-        labelStyle: { fill: branchStyle.stroke, fontWeight: 600 },
-        style: { strokeWidth: 2.5, stroke: branchStyle.stroke },
+        labelStyle: { fill: validationStroke, fontWeight: 600 },
+        style: {
+          strokeWidth: validationStrokeWidth,
+          stroke: validationStroke,
+          ...(validationStrokeDasharray ? { strokeDasharray: validationStrokeDasharray } : {}),
+        },
       },
     ];
   });

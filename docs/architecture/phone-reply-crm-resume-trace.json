@@ -1,0 +1,46 @@
+{
+  "RUN_ID": "7d0d2754-81cf-4b44-946f-8c0a75c53914",
+  "trace": [
+    {
+      "step": "pre_resume",
+      "runStatus": "running",
+      "currentNodeId": "c078acba-0cd1-4e3c-a803-8ce11407b6e3",
+      "findCustomerNodeId": "c078acba-0cd1-4e3c-a803-8ce11407b6e3",
+      "findCustomerBinding": {
+        "mode": "variable",
+        "variable": "{{customer.phone}}"
+      },
+      "stored": {
+        "customer_phone": "+201234567890"
+      },
+      "resolvedLookupValue": ""
+    },
+    {
+      "step": "buildResumeInput",
+      "resumeInput": {
+        "whatsappMessageType": "text",
+        "customer_phone": "+201234567890"
+      }
+    },
+    {
+      "step": "find_customer.query",
+      "queryLog": null
+    },
+    {
+      "step": "resume_result",
+      "resumeResult": null,
+      "resumeError": "AutomationError: Create booking requires lookup value."
+    },
+    {
+      "step": "run_after",
+      "status": "running",
+      "current_node_id": "c078acba-0cd1-4e3c-a803-8ce11407b6e3",
+      "variables": {
+        "customer_phone": "+201234567890",
+        "__waitingFor": null
+      }
+    }
+  ],
+  "resumeError": "AutomationError: Create booking requires lookup value.",
+  "resumeResult": null
+}

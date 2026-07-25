@@ -6,6 +6,7 @@ import { useAuthUser } from "@/hooks/use-rbac";
 import { usePreferredLanguageSync } from "@/lib/i18n/use-preferred-language-sync";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { DashboardOutlet } from "@/components/dashboard/dashboard-outlet";
+import { CustomerProfileProvider } from "@/context/customer-profile-context";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -46,8 +47,10 @@ export default function DashboardApp() {
   }
 
   return (
-    <DashboardLayout>
-      <DashboardOutlet />
-    </DashboardLayout>
+    <CustomerProfileProvider>
+      <DashboardLayout>
+        <DashboardOutlet />
+      </DashboardLayout>
+    </CustomerProfileProvider>
   );
 }

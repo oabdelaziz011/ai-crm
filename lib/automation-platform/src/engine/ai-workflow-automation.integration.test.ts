@@ -4,7 +4,11 @@ import { actionNodeHandler, createBuiltInAutomationNodeHandlers } from "./built-
 import { AutomationEngine } from "./automation-engine.js";
 import type { ExecutionContext } from "./execution-context.js";
 import { AutomationNodeRegistry } from "./node-registry.js";
-import { createNoopAutomationFlowVersionRepository } from "../lifecycle/test-version-repository.js";
+import { createInMemoryAutomationFlowVersionGraphRepository } from "../lifecycle/test-version-graph-repository.js";
+import {
+  createInMemoryAutomationFlowVersionRepository,
+  seedPublishedVersionGraph,
+} from "../lifecycle/test-version-fixtures.js";
 import type {
   AutomationEdgeRepository,
   AutomationFlowRepository,
@@ -204,9 +208,18 @@ function createAIEnabledEnvironment(channel: ConversationSessionRecord["channel"
   const runs: AutomationRunRecord[] = [];
   const sessions: ConversationSessionRecord[] = [];
 
+  const versionRepository = createInMemoryAutomationFlowVersionRepository();
+  const versionGraph = createInMemoryAutomationFlowVersionGraphRepository();
+
   const flowRepository: AutomationFlowRepository = {
     create: async () => flow,
-    update: async () => flow,
+    update: async (input) => {
+      if (input.activeVersionId !== undefined) flow.active_version_id = input.activeVersionId;
+      if (input.version !== undefined) flow.version = input.version;
+      if (input.status !== undefined) flow.status = input.status;
+      if (input.hasUnpublishedDraft !== undefined) flow.has_unpublished_draft = input.hasUnpublishedDraft;
+      return flow;
+    },
     updateStatus: async () => flow,
     softDelete: async () => flow,
     findById: async () => flow,
@@ -265,6 +278,7 @@ function createAIEnabledEnvironment(channel: ConversationSessionRecord["channel"
         finished_at: null,
         error_message: null,
         metadata: input.metadata ?? {},
+        flow_version_id: input.flowVersionId ?? null,
         current_node_id: input.currentNodeId ?? null,
         session_id: input.sessionId ?? null,
         variables: input.variables ?? {},
@@ -296,6 +310,7 @@ function createAIEnabledEnvironment(channel: ConversationSessionRecord["channel"
         external_user_id: input.externalUserId ?? null,
         customer_id: input.customerId ?? null,
         flow_id: input.flowId ?? null,
+        flow_version_id: input.flowVersionId ?? null,
         run_id: input.runId ?? null,
         current_node_id: input.currentNodeId ?? null,
         status: input.status ?? "active",
@@ -330,11 +345,10 @@ function createAIEnabledEnvironment(channel: ConversationSessionRecord["channel"
 
   const engine = new AutomationEngine({
     flows: flowRepository,
-    nodes: nodeRepository,
-    edges: edgeRepository,
     runs: runRepository,
     sessions: sessionRepository,
-    versions: createNoopAutomationFlowVersionRepository(),
+    versions: versionRepository,
+    versionGraph,
     registry,
   });
 
@@ -342,6 +356,11 @@ function createAIEnabledEnvironment(channel: ConversationSessionRecord["channel"
     engine,
     nodeRepository,
     edgeRepository,
+    nodes,
+    edges,
+    flowRepository,
+    versionRepository,
+    versionGraph,
     defaultChannel: channel,
   };
 }
@@ -368,6 +387,16 @@ async function connectLinear(
       targetNodeId: created[index + 1]!.id,
     });
   }
+
+  await seedPublishedVersionGraph({
+    flowId: "flow-1",
+    companyId: "company-1",
+    nodes: env.nodes,
+    edges: env.edges,
+    versions: env.versionRepository,
+    versionGraph: env.versionGraph,
+    flows: env.flowRepository,
+  });
 
   return created;
 }
@@ -467,6 +496,15 @@ describe("AutomationEngine AI workflow integration", () => {
       sourceNodeId: condition.id,
       targetNodeId: end.id,
       condition: { branch: "yes" },
+    });
+    await seedPublishedVersionGraph({
+      flowId: "flow-1",
+      companyId: "company-1",
+      nodes: env.nodes,
+      edges: env.edges,
+      versions: env.versionRepository,
+      versionGraph: env.versionGraph,
+      flows: env.flowRepository,
     });
 
     const result = await env.engine.start(createContext(), {

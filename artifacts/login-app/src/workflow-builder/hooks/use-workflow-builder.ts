@@ -22,7 +22,7 @@ import {
   undoHistory,
   type HistoryState,
 } from "../core/state/history";
-import type { BuilderAction, BuilderNodeType, BuilderState, WorkflowDocument } from "../core/types";
+import type { BuilderAction, BuilderNodeType, BuilderState, ValidationIssue, WorkflowDocument } from "../core/types";
 import { createBuilderNode } from "../core/persistence/workflow-mapper";
 import { validateWorkflow } from "../core/validation/workflow-validator";
 import i18n from "i18next";
@@ -90,6 +90,7 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   });
   const autosaveTimer = useRef<number | null>(null);
   const savingRef = useRef(false);
+  const focusValidationIssueRef = useRef<(issue: ValidationIssue) => void>(() => {});
   const loadedFlowIdRef = useRef<string | null>(flowId || null);
   const documentRef = useRef(history.present.document);
   documentRef.current = history.present.document;
@@ -133,6 +134,13 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     dispatch({ type: "SET_VALIDATION", issues });
     return issues;
   }, [dispatch]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      runValidation();
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [history.present.document, runValidation]);
 
   const persist = useCallback(async () => {
     if (savingRef.current) return documentRef.current;
@@ -250,6 +258,24 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     dispatch({ type: "UPDATE_NODE_POSITIONS", positions });
   }, [dispatch]);
 
+  const registerCanvasFocusHandler = useCallback((handler: (issue: ValidationIssue) => void) => {
+    focusValidationIssueRef.current = handler;
+  }, []);
+
+  const focusValidationIssue = useCallback((issue: ValidationIssue) => {
+    focusValidationIssueRef.current(issue);
+  }, []);
+
+  const openValidationPanel = useCallback(() => {
+    dispatch({ type: "REQUEST_VALIDATION_PANEL_FOCUS" });
+    const issues = state.validationIssues;
+    const firstIssue = issues.find((issue) => issue.severity === "error") ?? issues[0];
+    if (firstIssue) {
+      dispatch({ type: "SET_ACTIVE_VALIDATION_ISSUE", issueId: firstIssue.id });
+      focusValidationIssueRef.current(firstIssue);
+    }
+  }, [dispatch, state.validationIssues]);
+
   const undo = useCallback(() => setHistory((current) => undoHistory(current)), []);
   const redo = useCallback(() => setHistory((current) => redoHistory(current)), []);
 
@@ -267,12 +293,15 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
       rollback,
       hasUnsavedChanges,
       runValidation,
+      registerCanvasFocusHandler,
+      focusValidationIssue,
+      openValidationPanel,
       undo,
       redo,
       canUndo: canUndo(history),
       canRedo: canRedo(history),
     }),
-    [state, dispatch, addNode, insertNodeAfter, duplicateSelected, alignSelected, applyAutoLayout, persist, publish, rollback, hasUnsavedChanges, runValidation, undo, redo, history],
+    [state, dispatch, addNode, insertNodeAfter, duplicateSelected, alignSelected, applyAutoLayout, persist, publish, rollback, hasUnsavedChanges, runValidation, registerCanvasFocusHandler, focusValidationIssue, openValidationPanel, undo, redo, history],
   );
 }
 

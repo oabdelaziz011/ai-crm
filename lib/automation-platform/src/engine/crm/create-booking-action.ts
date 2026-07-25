@@ -42,6 +42,19 @@ function resolveActorUserId(context: ExecutionContext): string {
   return "";
 }
 
+function resolveCustomerId(scope: Record<string, unknown>, binding: unknown): string {
+  const resolved = resolveRequiredFieldBindingAsString(binding, scope, "customer");
+  if (/^[0-9a-f-]{36}$/i.test(resolved)) return resolved;
+
+  const customer = scope.customer;
+  if (customer && typeof customer === "object" && !Array.isArray(customer)) {
+    const id = (customer as { id?: unknown }).id;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+
+  return resolved;
+}
+
 export async function executeCreateBookingAction(
   context: ExecutionContext,
   config: Record<string, unknown>,
@@ -58,7 +71,7 @@ export async function executeCreateBookingAction(
     locationId: resolveRequiredFieldBindingAsString(normalized.location, scope, "location"),
     appointmentDate: resolveRequiredFieldBindingAsString(normalized.appointmentDate, scope, "appointment date"),
     appointmentTime: resolveRequiredFieldBindingAsString(normalized.appointmentTime, scope, "appointment time"),
-    customerId: resolveRequiredFieldBindingAsString(normalized.customer, scope, "customer"),
+    customerId: resolveCustomerId(scope, normalized.customer),
     durationMinutes: readOptionalDurationMinutes(normalized.duration, scope),
     notes: readOptionalBindingString(normalized.notes, scope),
   });

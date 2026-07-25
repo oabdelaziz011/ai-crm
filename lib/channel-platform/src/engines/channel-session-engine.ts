@@ -23,13 +23,26 @@ export class ChannelSessionEngine {
     let conversationId = input.conversationId;
 
     if (!conversationId) {
-      if (!input.aiAssistantId) {
+      const requireAiAssistant = input.requireAiAssistant !== false;
+      let aiAssistantId = input.aiAssistantId?.trim() || null;
+
+      if (!aiAssistantId && !requireAiAssistant) {
+        aiAssistantId = (await this.ports.conversation.resolveCompanyAssistantId?.(input.companyId)) ?? null;
+      }
+
+      if (!aiAssistantId && requireAiAssistant) {
         throw new ValidationError("aiAssistantId is required when creating a new channel session.");
+      }
+
+      if (!aiAssistantId) {
+        throw new ValidationError(
+          "A company AI assistant record is required when creating a new workflow channel session.",
+        );
       }
 
       const created = await this.ports.conversation.createConversation({
         companyId: input.companyId,
-        aiAssistantId: input.aiAssistantId,
+        aiAssistantId,
         companyChannelId: input.companyChannelId,
         channelType: input.channelKey,
         metadata: {

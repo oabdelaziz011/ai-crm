@@ -8,6 +8,7 @@ import { DeliveryStatusPipeline } from "./pipelines/delivery-status-pipeline.js"
 import { InboundMessagePipeline } from "./pipelines/inbound-message-pipeline.js";
 import { OutboundMessagePipeline } from "./pipelines/outbound-message-pipeline.js";
 import type {
+  ChannelAutomationPort,
   ChannelConversationPort,
   ChannelDispatcherPort,
   ChannelPlatformPorts,
@@ -15,6 +16,7 @@ import type {
   ChannelRuntimePort,
 } from "./ports/channel-platform-ports.js";
 import { ChannelRouter } from "./router/channel-router.js";
+import { ChannelWorkflowResolver } from "./services/channel-workflow-resolver.js";
 import type {
   ChannelDeliveryEventRepository,
   ChannelInboundEventRepository,
@@ -49,6 +51,16 @@ export function createContext(overrides?: Partial<ServiceContext>): ServiceConte
 export function createTestEnvironment(options?: {
   companyChannel?: Partial<ResolvedCompanyChannel>;
   runtimeResponse?: string;
+  automationResponse?: string;
+  automationPort?: ChannelAutomationPort;
+  adapters?: ChannelAdapterPort[];
+  workflowBinding?: {
+    companyId: string;
+    companyChannelId: string;
+    automationFlowId: string;
+    enabled?: boolean;
+    executable?: boolean;
+  };
 }) {
   const companyChannel: ResolvedCompanyChannel = {
     id: "company-channel-1",
@@ -68,6 +80,8 @@ export function createTestEnvironment(options?: {
   const outgoingMessages: ConversationMessageSummary[] = [];
   const conversations: Array<{ id: string; companyChannelId: string }> = [];
   const telemetryEvents: Array<Record<string, unknown>> = [];
+  let runtimeCalls = 0;
+  let automationCalls = 0;
 
   const sessionRepository: ChannelSessionRepository = {
     findByExternalThread: async (companyChannelId, externalThreadId) =>
@@ -204,9 +218,29 @@ export function createTestEnvironment(options?: {
   const registryPort: ChannelRegistryPort = {
     getCompanyChannel: async (companyChannelId) =>
       companyChannelId === companyChannel.id ? companyChannel : null,
+    findCompanyChannelByPhoneNumberId: async (phoneNumberId) => {
+      const configuredPhoneNumberId = companyChannel.configuration.phoneNumberId;
+      if (typeof configuredPhoneNumberId === "string" && configuredPhoneNumberId === phoneNumberId) {
+        return [companyChannel];
+      }
+      return [];
+    },
+    findCompanyChannelsByWhatsAppVerifyToken: async (verifyToken) => {
+      const configuredVerifyToken = companyChannel.configuration.verifyToken;
+      if (typeof configuredVerifyToken === "string" && configuredVerifyToken === verifyToken) {
+        return [companyChannel];
+      }
+      return [];
+    },
+    listEnabledWhatsAppChannels: async () => [companyChannel],
+    syncWhatsAppPhoneNumberId: async (companyChannelId, phoneNumberId) => {
+      if (companyChannelId !== companyChannel.id) return;
+      companyChannel.configuration.phoneNumberId = phoneNumberId;
+    },
   };
 
   const conversationPort: ChannelConversationPort = {
+    resolveCompanyAssistantId: async () => "assistant-company-default",
     createConversation: async (input) => {
       const record = {
         id: `conv-${conversations.length + 1}`,
@@ -240,20 +274,64 @@ export function createTestEnvironment(options?: {
   };
 
   const runtimePort: ChannelRuntimePort = {
-    execute: async (input): Promise<RuntimeExecutionSummary> => ({
-      executionId: "runtime-exec-1",
-      responseContent: options?.runtimeResponse ?? `Echo: ${input.messageText}`,
-      correlationId: input.correlationId ?? "corr-1",
-    }),
+    execute: async (input): Promise<RuntimeExecutionSummary> => {
+      runtimeCalls += 1;
+      return {
+        executionId: "runtime-exec-1",
+        responseContent: options?.runtimeResponse ?? `Echo: ${input.messageText}`,
+        correlationId: input.correlationId ?? "corr-1",
+      };
+    },
   };
+
+  const automationPort: ChannelAutomationPort =
+    options?.automationPort ?? {
+      startWorkflow: async (input) => {
+        automationCalls += 1;
+        return {
+          runId: "automation-run-1",
+          responseContent: options?.automationResponse ?? `Workflow: ${input.messageText}`,
+        };
+      },
+    };
 
   const ports: ChannelPlatformPorts = {
     registry: registryPort,
     conversation: conversationPort,
     runtime: runtimePort,
+    automation: automationPort,
   };
 
-  const adapterRegistry = createChannelAdapterRegistry([createStubWebChatAdapter()]);
+  const workflowResolver = options?.workflowBinding
+    ? new ChannelWorkflowResolver({
+        bindings: {
+          async findByCompanyChannelId(companyChannelId) {
+            const binding = options.workflowBinding!;
+            if (binding.companyChannelId !== companyChannelId) return null;
+            return {
+              id: "binding-1",
+              company_id: binding.companyId,
+              company_channel_id: binding.companyChannelId,
+              automation_flow_id: binding.automationFlowId,
+              is_enabled: binding.enabled ?? true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              deleted_at: null,
+            };
+          },
+        },
+        flowValidator: {
+          async isExecutableFlow() {
+            return options.workflowBinding?.executable ?? true;
+          },
+        },
+      })
+    : undefined;
+
+  const adapterRegistry = createChannelAdapterRegistry([
+    createStubWebChatAdapter(),
+    ...(options?.adapters ?? []),
+  ]);
   const sessionEngine = new ChannelSessionEngine(sessionRepository, ports);
   const deliveryEngine = new DeliveryTrackingEngine(deliveryRepository);
   const outboundPipeline = new OutboundMessagePipeline(ports, adapterRegistry, deliveryEngine, sessionRepository);
@@ -279,6 +357,7 @@ export function createTestEnvironment(options?: {
     dispatcher,
     inboundRepository,
     sessionRepository,
+    workflowResolver,
   );
 
   const router = new ChannelRouter(
@@ -304,5 +383,14 @@ export function createTestEnvironment(options?: {
     companyChannel,
     ports,
     adapterRegistry,
+    sessionRepository,
+    inboundRepository,
+    deliveryRepository,
+    get runtimeCalls() {
+      return runtimeCalls;
+    },
+    get automationCalls() {
+      return automationCalls;
+    },
   };
 }

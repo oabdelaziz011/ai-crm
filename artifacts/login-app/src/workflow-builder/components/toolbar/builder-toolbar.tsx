@@ -27,6 +27,7 @@ import type { AlignmentMode } from "../../core/layout/alignment";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import { PublishDialog } from "../lifecycle/publish-dialog";
 import { WorkflowStatusBadge } from "../lifecycle/workflow-status-badge";
+import { ValidationSummary } from "../validation/validation-summary";
 import { BuilderStatusBar } from "../status/builder-status-bar";
 import { usePermissions } from "@/hooks/use-rbac";
 
@@ -77,9 +78,12 @@ export function BuilderToolbar({
           status={controller.state.document.status}
           hasUnpublishedDraft={controller.state.document.hasUnpublishedDraft}
         />
+        <ValidationSummary
+          issues={controller.state.validationIssues}
+          onOpenPanel={() => controller.openValidationPanel()}
+        />
         <BuilderStatusBar
           saveStatus={controller.state.saveStatus}
-          validationCount={controller.state.validationIssues.filter((issue) => issue.severity === "error").length}
           documentStatus={controller.state.document.status}
           hasUnpublishedDraft={controller.state.document.hasUnpublishedDraft}
         />

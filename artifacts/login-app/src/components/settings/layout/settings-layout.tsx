@@ -32,11 +32,17 @@ export function SettingsLayout() {
           <Route path={NEST_INDEX}>
             <Redirect to={SETTINGS_DEFAULT_NESTED_PATH} />
           </Route>
-          {safeArray([...SETTINGS_ROUTE_REGISTRY]).map((route) => (
-            <Route key={route.id} path={route.nestedPath}>
-              <SettingsRoute route={route} />
-            </Route>
-          ))}
+          {safeArray([...SETTINGS_ROUTE_REGISTRY]).map((route) =>
+            route.id === "scheduling" ? (
+              <Route key={route.id} path={route.nestedPath} nest>
+                <SettingsRoute route={route} />
+              </Route>
+            ) : (
+              <Route key={route.id} path={route.nestedPath}>
+                <SettingsRoute route={route} />
+              </Route>
+            ),
+          )}
         </Switch>
       </Suspense>
     </div>

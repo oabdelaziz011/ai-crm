@@ -7,6 +7,13 @@ import {
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Customer } from "@/lib/types";
@@ -17,6 +24,8 @@ type FormValues = {
   name: string;
   email?: string;
   phone?: string;
+  age?: string;
+  gender?: string;
   notes?: string;
 };
 
@@ -37,12 +46,17 @@ export function CustomerModal({ open, onClose, customer }: Props) {
     name: z.string().min(1, t("forms.customer.nameRequired")),
     email: z.string().email(t("forms.customer.invalidEmail")).or(z.literal("")).optional(),
     phone: z.string().optional(),
+    age: z.string().optional().refine(
+      (value) => !value?.trim() || (/^\d+$/.test(value.trim()) && Number.parseInt(value, 10) >= 0 && Number.parseInt(value, 10) <= 150),
+      t("forms.customer.invalidAge"),
+    ),
+    gender: z.string().optional(),
     notes: z.string().optional(),
   });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", email: "", phone: "", notes: "" },
+    defaultValues: { name: "", email: "", phone: "", age: "", gender: "", notes: "" },
   });
 
   useEffect(() => {
@@ -51,6 +65,8 @@ export function CustomerModal({ open, onClose, customer }: Props) {
         name:  customer?.name  ?? "",
         email: customer?.email ?? "",
         phone: customer?.phone ?? "",
+        age: customer?.age == null ? "" : String(customer.age),
+        gender: customer?.gender ?? "",
         notes: customer?.notes ?? "",
       });
     }
@@ -61,6 +77,8 @@ export function CustomerModal({ open, onClose, customer }: Props) {
       name:  values.name,
       email: values.email || null,
       phone: values.phone || null,
+      age: values.age?.trim() ? Number.parseInt(values.age.trim(), 10) : null,
+      gender: values.gender?.trim() || null,
       notes: values.notes || null,
     };
 
@@ -117,6 +135,37 @@ export function CustomerModal({ open, onClose, customer }: Props) {
                 <FormMessage />
               </FormItem>
             )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="age" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.customer.age")}</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={0} max={150} placeholder={t("forms.customer.agePlaceholder")} className="bg-background/50 border-white/10" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="gender" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.customer.gender")}</FormLabel>
+                  <Select value={field.value || "__empty__"} onValueChange={(value) => field.onChange(value === "__empty__" ? "" : value)}>
+                    <FormControl>
+                      <SelectTrigger className="bg-background/50 border-white/10">
+                        <SelectValue placeholder={t("forms.customer.genderPlaceholder")} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__empty__">{t("forms.customer.notSet")}</SelectItem>
+                      <SelectItem value="Male">{t("forms.customer.genderOptions.male")}</SelectItem>
+                      <SelectItem value="Female">{t("forms.customer.genderOptions.female")}</SelectItem>
+                      <SelectItem value="Other">{t("forms.customer.genderOptions.other")}</SelectItem>
+                      <SelectItem value="Prefer not to say">{t("forms.customer.genderOptions.preferNotToSay")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t("forms.customer.notes")}</FormLabel>

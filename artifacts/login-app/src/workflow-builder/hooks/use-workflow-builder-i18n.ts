@@ -85,6 +85,20 @@ export function useWorkflowBuilderI18n() {
     [t, nodeText],
   );
 
+  const validationSuggestedFixes = useCallback(
+    (issue: ValidationIssue) =>
+      (issue.suggestedFixKeys ?? []).map((key) =>
+        t(`workflowBuilder.validationPanel.fixes.${key}`, { defaultValue: key }),
+      ),
+    [t],
+  );
+
+  const validationFixActionLabel = useCallback(
+    (action: import("../core/types").ValidationFixAction) =>
+      action.labelKey ? t(action.labelKey, { defaultValue: action.label }) : action.label,
+    [t],
+  );
+
   const lifecycleLabel = useCallback(
     (status: "draft" | "active" | "disabled" | "archived", hasUnpublishedDraft?: boolean) => {
       if (status === "active" && hasUnpublishedDraft) {
@@ -135,6 +149,8 @@ export function useWorkflowBuilderI18n() {
     ai,
     nodeText,
     validationMessage,
+    validationSuggestedFixes,
+    validationFixActionLabel,
     lifecycleLabel,
     categoryLabel,
     executionStatusLabel,

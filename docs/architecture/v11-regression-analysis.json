@@ -1,0 +1,17 @@
+{
+  "analyzedAt": "2026-07-25T00:51:00Z",
+  "whyV11Regressed": {
+    "summary": "v11 was published from the workflow builder draft, which still had {{customer.phone}}. The v10 script fix updated draft node a05b1c07, but a subsequent builder publish at 00:28:53 created version v11 from the current draft graph where Find Customer node id is 2da94711 with the original broken binding.",
+    "timeline": [
+      { "version": 10, "publishedAt": "2026-07-25T00:04:22Z", "binding": "{{customer_phone}}", "releaseNotes": "Fix Find Customer lookup binding to customer_phone" },
+      { "version": 11, "publishedAt": "2026-07-25T00:28:53Z", "binding": "{{customer.phone}}", "releaseNotes": "" }
+    ],
+    "rootCause": "Manual republish from builder UI without applying the customer_phone binding fix to the draft before publishing. v10 fix lived only in the published version snapshot, not persisted in the builder draft the user edited."
+  },
+  "v12Fix": {
+    "versionId": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+    "versionNumber": 12,
+    "binding": "{{customer_phone}}",
+    "releaseNotes": "Fix Find Customer binding regression: use customer_phone (v12)"
+  }
+}

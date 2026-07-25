@@ -2,10 +2,15 @@ import { findUpstreamNodeIds } from "../graph/upstream-interactive-nodes";
 import type { WorkflowDocument } from "../types";
 import type { WorkflowVariable } from "./variable-provider-registry";
 
-const WORKFLOW_VARIABLE_NODE_TYPES = new Set(["ask_question", "wait_for_reply"]);
+const WORKFLOW_VARIABLE_NODE_TYPES = new Set(["ask_question", "wait_for_reply", "list"]);
 
 function readSaveAsKey(config: Record<string, unknown>): string | null {
-  const saveAs = typeof config.saveAs === "string" ? config.saveAs.trim() : "";
+  const saveAs =
+    typeof config.saveAs === "string"
+      ? config.saveAs.trim()
+      : typeof config.inputKey === "string"
+        ? config.inputKey.trim()
+        : "";
   return saveAs || null;
 }
 

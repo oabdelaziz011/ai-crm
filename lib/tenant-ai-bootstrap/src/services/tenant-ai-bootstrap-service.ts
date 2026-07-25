@@ -1,22 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AIProviderFactory,
+  AIProviderRegistryService,
   createAIProviderAdapterRegistry,
   createSupabaseAIProviderConnectionRepository,
   createSupabaseAIProviderDefinitionRepository,
   createStubAdapters,
 } from "@workspace/ai-provider-layer";
-import { AIProviderRegistryService } from "@workspace/ai-provider-layer/src/services/ai-provider-registry-service.js";
 import {
-  EmbeddingProviderFactory,
   createEmbeddingProviderAdapterRegistry,
-} from "@workspace/embedding-platform";
-import { createOpenAIEmbeddingAdapter } from "@workspace/embedding-platform/src/providers/openai-embedding-adapter.js";
-import {
+  createOpenAIEmbeddingAdapter,
   createSupabaseEmbeddingProviderConnectionRepository,
   createSupabaseEmbeddingProviderDefinitionRepository,
-} from "@workspace/embedding-platform/src/repositories/supabase-embedding-repositories.js";
-import { EmbeddingProviderRegistryService } from "@workspace/embedding-platform/src/services/embedding-provider-registry-service.js";
+  EmbeddingProviderFactory,
+  EmbeddingProviderRegistryService,
+} from "@workspace/embedding-platform";
 import { createVectorStoreServices } from "@workspace/vector-store";
 import {
   DEFAULT_ASSISTANT_SETTINGS,
@@ -99,7 +97,16 @@ export class TenantAiBootstrapService {
       };
     }
 
-    if (company.company_type === "platform" || company.company_type === "demo") {
+    if (company.company_type === "demo") {
+      return {
+        companyId,
+        skipped: true,
+        reason: "non_tenant_company",
+        steps: [],
+      };
+    }
+
+    if (company.company_type === "platform" && !options.includePlatformCompanies) {
       return {
         companyId,
         skipped: true,

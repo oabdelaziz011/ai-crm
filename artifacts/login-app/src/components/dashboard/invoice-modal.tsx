@@ -27,9 +27,20 @@ interface Props {
   onClose: () => void;
   invoice?: Invoice | null;
   customers: Customer[];
+  defaultCustomerId?: string | null;
+  lockCustomer?: boolean;
+  onCreated?: (invoice: Invoice) => void;
 }
 
-export function InvoiceModal({ open, onClose, invoice, customers }: Props) {
+export function InvoiceModal({
+  open,
+  onClose,
+  invoice,
+  customers,
+  defaultCustomerId,
+  lockCustomer = false,
+  onCreated,
+}: Props) {
   const { t } = useTranslation("common");
   const isEdit = !!invoice;
   const create = useCreateInvoice();
@@ -54,15 +65,15 @@ export function InvoiceModal({ open, onClose, invoice, customers }: Props) {
   useEffect(() => {
     if (open) {
       form.reset({
-        customer_id:  invoice?.customer_id  ?? "",
-        amount:       invoice?.amount       ?? 0,
-        status:       invoice?.status       ?? "Unpaid",
+        customer_id: invoice?.customer_id ?? defaultCustomerId ?? "",
+        amount: invoice?.amount ?? 0,
+        status: invoice?.status ?? "Unpaid",
         invoice_date: invoice?.invoice_date
           ? invoice.invoice_date.slice(0, 10)
           : new Date().toISOString().slice(0, 10),
       });
     }
-  }, [open, invoice, form]);
+  }, [open, invoice, defaultCustomerId, form]);
 
   const onSubmit = (values: FormValues) => {
     const payload = {
@@ -79,7 +90,11 @@ export function InvoiceModal({ open, onClose, invoice, customers }: Props) {
       });
     } else {
       create.mutate(payload, {
-        onSuccess: () => { onClose(); form.reset(); },
+        onSuccess: (created) => {
+          onCreated?.(created);
+          onClose();
+          form.reset();
+        },
         onError: (e) => form.setError("root", { message: e.message }),
       });
     }
@@ -103,7 +118,8 @@ export function InvoiceModal({ open, onClose, invoice, customers }: Props) {
                 <FormLabel>{t("forms.invoice.customer")}</FormLabel>
                 <FormControl>
                   <select
-                    className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors"
+                    className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                    disabled={lockCustomer}
                     {...field}
                   >
                     <option value="">{t("forms.invoice.noCustomer")}</option>

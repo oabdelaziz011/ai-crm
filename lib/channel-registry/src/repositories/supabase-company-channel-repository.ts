@@ -110,6 +110,58 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
       return mapRow(data as Record<string, unknown>);
     },
 
+    async findCompanyChannelByPhoneNumberId(phoneNumberId: string): Promise<CompanyChannelRecord[]> {
+      const trimmed = phoneNumberId.trim();
+      if (!trimmed) return [];
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>phoneNumberId", "eq", trimmed)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "whatsapp");
+    },
+
+    async findCompanyChannelsByWhatsAppVerifyToken(
+      verifyToken: string,
+      excludeCompanyChannelId?: string,
+    ): Promise<CompanyChannelRecord[]> {
+      const trimmed = verifyToken.trim();
+      if (!trimmed) return [];
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>verifyToken", "eq", trimmed)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "whatsapp")
+        .filter((row) => row.id !== excludeCompanyChannelId);
+    },
+
+    async listEnabledWhatsAppChannels(): Promise<CompanyChannelRecord[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "whatsapp");
+    },
+
     async findDefault(companyId: string): Promise<CompanyChannelRecord | null> {
       const { data, error } = await client
         .from(TABLE)
@@ -159,6 +211,10 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
       if (input.externalAccountId !== undefined) patch.external_account_id = input.externalAccountId;
       if (input.displayName !== undefined) patch.display_name = input.displayName;
 
+      console.log("[channel-save-debug] repository.updateConfiguration() before Supabase update", {
+        companyChannelId: input.companyChannelId,
+        patchKeys: Object.keys(patch),
+      });
       const { data, error } = await client
         .from(TABLE)
         .update(patch)
@@ -166,6 +222,11 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
         .is("deleted_at", null)
         .select(SELECT_WITH_CHANNEL)
         .single();
+      console.log("[channel-save-debug] repository.updateConfiguration() after Supabase update", {
+        companyChannelId: input.companyChannelId,
+        hasData: Boolean(data),
+        errorMessage: error?.message ?? null,
+      });
 
       if (error) throw error;
       if (!data) throw new CompanyChannelNotFoundError(input.companyChannelId);

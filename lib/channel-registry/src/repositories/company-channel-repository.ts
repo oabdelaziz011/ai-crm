@@ -9,6 +9,12 @@ import type {
 export interface CompanyChannelRepository {
   create(input: CreateCompanyChannelInput): Promise<CompanyChannelRecord>;
   findById(id: string): Promise<CompanyChannelRecord | null>;
+  findCompanyChannelByPhoneNumberId(phoneNumberId: string): Promise<CompanyChannelRecord[]>;
+  findCompanyChannelsByWhatsAppVerifyToken(
+    verifyToken: string,
+    excludeCompanyChannelId?: string,
+  ): Promise<CompanyChannelRecord[]>;
+  listEnabledWhatsAppChannels(): Promise<CompanyChannelRecord[]>;
   findDefault(companyId: string): Promise<CompanyChannelRecord | null>;
   list(filter: ListCompanyChannelsFilter): Promise<CompanyChannelRecord[]>;
   updateConfiguration(input: UpdateCompanyChannelConfigurationInput): Promise<CompanyChannelRecord>;

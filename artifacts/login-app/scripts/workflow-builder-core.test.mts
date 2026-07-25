@@ -13,6 +13,7 @@ import { createBuilderNode, mapDocumentToPersistence, mapFlowToDocument } from "
 import { createEdgeFromNodes, createInitialBuilderState, builderReducer } from "../src/workflow-builder/core/state/builder-reducer";
 import { createHistoryState, historyReducer, undoHistory, redoHistory } from "../src/workflow-builder/core/state/history";
 import { validateWorkflow } from "../src/workflow-builder/core/validation/workflow-validator";
+import { isTerminalWorkflowNode, TERMINAL_BUILDER_NODE_TYPES, workflowHasTerminalNode } from "../src/workflow-builder/core/validation/terminal-nodes";
 import { validateBranching } from "../src/workflow-builder/core/validation/branch-validation";
 import { resolveBranchEdgeStyle } from "../src/workflow-builder/core/logic/branch-utils";
 import { registerBuiltInVariableProviders } from "../src/workflow-builder/core/variables/built-in-variable-providers";
@@ -78,9 +79,74 @@ assert.equal(issues.some((issue) => issue.id === "missing-start"), false);
 assert.equal(issues.some((issue) => issue.id === "missing-end"), false);
 console.log("  ✓ validation accepts a connected start-to-end workflow");
 
+assert.deepEqual([...TERMINAL_BUILDER_NODE_TYPES], ["end", "return_to_main_menu"]);
+assert.equal(isTerminalWorkflowNode(end), true);
+assert.equal(isTerminalWorkflowNode(message), false);
+
+const returnToMenu = createBuilderNode("return_to_main_menu", { x: 0, y: 360 }, "return-1");
+const menu = createBuilderNode("buttons", { x: 0, y: 120 }, "menu-1");
+menu.config = { ...menu.config, primaryMenu: true, message: "Main menu", buttons: [{ id: "support", label: "Support" }] };
+const supportMessage = createBuilderNode("send_message", { x: 0, y: 240 }, "support-1");
+supportMessage.config = { ...supportMessage.config, message: "Call us" };
+
+const returnToMenuDocument = {
+  ...baseDocument,
+  nodes: [start, menu, supportMessage, returnToMenu],
+  edges: [
+    createEdgeFromNodes("start-1", "menu-1"),
+    createEdgeFromNodes("menu-1", "support-1"),
+    createEdgeFromNodes("support-1", "return-1"),
+  ],
+};
+const returnToMenuIssues = validateWorkflow(returnToMenuDocument);
+assert.equal(workflowHasTerminalNode(returnToMenuDocument.nodes), true);
+assert.equal(returnToMenuIssues.some((issue) => issue.id === "missing-end"), false);
+assert.equal(returnToMenuIssues.some((issue) => issue.id === "missing-primary-menu"), false);
+console.log("  ✓ validation accepts a branch ending with Return to Main Menu");
+
+const openBranchDocument = {
+  ...baseDocument,
+  nodes: [start, message],
+  edges: [createEdgeFromNodes("start-1", "msg-1")],
+};
+assert.equal(workflowHasTerminalNode(openBranchDocument.nodes), false);
+const openBranchIssues = validateWorkflow(openBranchDocument);
+assert.ok(openBranchIssues.some((issue) => issue.id === "missing-end"));
+assert.ok(openBranchIssues.some((issue) => issue.id === "dead-end-msg-1"));
+console.log("  ✓ validation rejects branches without a terminal node");
+
+const ifElse = createBuilderNode("if_else", { x: 0, y: 180 }, "if-1");
+const openBranchMessage = createBuilderNode("send_message", { x: -120, y: 300 }, "open-1");
+openBranchMessage.config = { ...openBranchMessage.config, message: "Still open" };
+const incompleteBranchDocument = {
+  ...baseDocument,
+  nodes: [start, ifElse, message, openBranchMessage, end],
+  edges: [
+    createEdgeFromNodes("start-1", "if-1"),
+    { ...createEdgeFromNodes("if-1", "end-1"), branchKey: "yes", branchLabel: "YES" },
+    { ...createEdgeFromNodes("if-1", "open-1"), branchKey: "no", branchLabel: "NO" },
+  ],
+};
+const incompleteBranchIssues = validateWorkflow(incompleteBranchDocument);
+assert.ok(incompleteBranchIssues.some((issue) => issue.message.includes("Branch 'NO' ends without a terminal step.")));
+console.log("  ✓ validation rejects incomplete IF branches");
+
+const unreachableCustomer = createBuilderNode("create_customer", { x: 400, y: 0 }, "cust-1");
+const unreachableDocument = {
+  ...baseDocument,
+  nodes: [...baseDocument.nodes, unreachableCustomer],
+  edges: baseDocument.edges,
+};
+assert.ok(
+  validateWorkflow(unreachableDocument).some(
+    (issue) => issue.id === "unreachable-cust-1" && issue.severity === "warning",
+  ),
+);
+console.log("  ✓ validation warns about unreachable nodes");
+
 const invalid = validateWorkflow({ ...baseDocument, nodes: [start], edges: [] });
 assert.ok(invalid.some((issue) => issue.id === "missing-end"));
-console.log("  ✓ validation requires end step");
+console.log("  ✓ validation requires a terminal step");
 
 let history = createHistoryState(createInitialBuilderState(baseDocument));
 history = historyReducer(history, { type: "ADD_NODE", node: createBuilderNode("buttons", { x: 100, y: 100 }) });

@@ -5,6 +5,7 @@ import {
   BookOpen,
   Bot,
   Building2,
+  Calendar,
   CalendarDays,
   CreditCard,
   FileText,
@@ -35,6 +36,7 @@ export type DashboardSectionId =
   | "ai-runtime"
   | "customers"
   | "bookings"
+  | "calendar"
   | "invoices"
   | "companies"
   | "workspace"
@@ -170,6 +172,15 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: CalendarDays,
     permission: "bookings.view",
     Page: lazyPage(() => import("@/pages/dashboard/bookings-page")),
+  },
+  {
+    id: "calendar",
+    path: "/dashboard/calendar",
+    nestedPath: "/calendar",
+    titleKey: "navigation.calendar",
+    icon: Calendar,
+    permission: "bookings.view",
+    Page: lazyNamed(() => import("@/pages/dashboard/calendar/calendar-page"), "CalendarPage"),
   },
   {
     id: "invoices",
@@ -344,6 +355,7 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "group", id: "ai-platform" },
   { type: "route", id: "customers" },
   { type: "route", id: "bookings" },
+  { type: "route", id: "calendar" },
   { type: "route", id: "invoices" },
   { type: "route", id: "companies" },
   { type: "route", id: "demo-scenarios" },

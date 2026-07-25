@@ -1,0 +1,13 @@
+{
+  "nodeId": "2da94711-d616-4846-8383-c1b1084f0bb3",
+  "before": {
+    "mode": "variable",
+    "variable": "{{customer.phone}}"
+  },
+  "after": {
+    "mode": "variable",
+    "variable": "{{customer_phone}}"
+  },
+  "versionId": "018d469b-b996-430c-baa2-e31bdf7b7c86",
+  "versionNumber": 12
+}

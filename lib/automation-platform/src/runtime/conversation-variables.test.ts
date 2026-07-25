@@ -148,4 +148,61 @@ describe("buildResumeInput", () => {
     assert.equal(input.replyId, "booking");
     assert.equal(input.title, "Book now");
   });
+
+  it("does not treat plain text as an interactive selection", () => {
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+          __outbound: { kind: "list", title: "Choose a doctor" },
+        },
+      } as never,
+      "Hello",
+      {},
+    );
+
+    assert.equal(input.interactive_selection, undefined);
+    assert.equal(input.replyId, undefined);
+    assert.equal(input.title, undefined);
+  });
+
+  it("maps plain text into wait_for_reply input keys", () => {
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: "input",
+        },
+      } as never,
+      "Hello",
+      {},
+    );
+
+    assert.equal(input.input, "Hello");
+  });
+
+  it("prefers list reply id over title for interactive_selection", () => {
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+          __outbound: { kind: "list", title: "Choose a doctor" },
+        },
+      } as never,
+      "Dr Three",
+      {
+        kind: "interactive_reply",
+        replyId: "dr3",
+        title: "Dr Three",
+        interactionType: "list_reply",
+      },
+    );
+
+    assert.equal(input.interactive_selection, "dr3");
+    assert.equal(input.replyId, "dr3");
+    assert.equal(input.title, "Dr Three");
+    assert.equal(input.interactionType, "list_reply");
+  });
 });

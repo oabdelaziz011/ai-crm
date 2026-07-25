@@ -56,6 +56,8 @@ export async function executeFindCustomerAction(
       name: result.customer.name,
       email: result.customer.email,
       phone: result.customer.phone,
+      age: result.customer.age,
+      gender: result.customer.gender,
       notes: result.customer.notes,
       tags: null,
       type: null,

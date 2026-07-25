@@ -14,9 +14,16 @@ import type {
 
 export type ChannelRegistryPort = {
   getCompanyChannel(companyChannelId: string): Promise<ResolvedCompanyChannel | null>;
+  findCompanyChannelByPhoneNumberId(phoneNumberId: string): Promise<ResolvedCompanyChannel[]>;
+  findCompanyChannelsByWhatsAppVerifyToken(verifyToken: string): Promise<ResolvedCompanyChannel[]>;
+  listEnabledWhatsAppChannels(): Promise<ResolvedCompanyChannel[]>;
+  syncWhatsAppPhoneNumberId(companyChannelId: string, phoneNumberId: string): Promise<void>;
 };
 
 export type ChannelConversationPort = {
+  /** Resolves the company's assistant record for workflow sessions (no provider required). */
+  resolveCompanyAssistantId?(companyId: string): Promise<string | null>;
+
   createConversation(input: {
     companyId: string;
     aiAssistantId: string;
@@ -51,10 +58,35 @@ export type ChannelRuntimePort = {
   }): Promise<RuntimeExecutionSummary>;
 };
 
+export type ChannelAutomationPort = {
+  startWorkflow(input: {
+    companyId: string;
+    flowId: string;
+    channelKey: string;
+    externalUserId: string;
+    messageText: string;
+    externalMessageId?: string;
+    initialVariables?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
+  }): Promise<{
+    runId: string;
+    responseContent?: string;
+    outboundMessages?: Array<{
+      text: string;
+      payload?: Record<string, unknown>;
+      attachments?: import("../dto/channel-dto.js").ChannelAttachmentDto[];
+    }>;
+    lifecycle?: string;
+    flowVersionId?: string;
+    resumed?: boolean;
+  }>;
+};
+
 export type ChannelPlatformPorts = {
   registry: ChannelRegistryPort;
   conversation: ChannelConversationPort;
   runtime: ChannelRuntimePort;
+  automation?: ChannelAutomationPort;
 };
 
 export type ChannelRouterPort = {

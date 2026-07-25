@@ -41,6 +41,12 @@ import {
   createDefaultWaitForReplyConfig,
   normalizeWaitForReplyNodeConfig,
 } from "./conversation/wait-for-reply-config";
+import {
+  normalizeListNodeConfig,
+  validateListVariableBinding,
+} from "./conversation/list-node-config";
+import { PrimaryMenuToggle } from "../components/properties/conversation/primary-menu-toggle";
+import { ListVariableBindingEditor } from "../components/properties/rich-editors/list-variable-binding-editor";
 
 function withBuilderType(builderType: string, config: Record<string, unknown>) {
   return { builderType, ...config };
@@ -185,7 +191,12 @@ export function registerBuiltInWorkflowNodes(): void {
       return issues;
     },
     toEngineConfig: (config) =>
-      withBuilderType("buttons", { action: "send_buttons", message: config.message, buttons: config.buttons }),
+      withBuilderType("buttons", {
+        action: "send_buttons",
+        message: config.message,
+        buttons: config.buttons,
+        ...(config.primaryMenu === true ? { primaryMenu: true } : {}),
+      }),
     fromEngineConfig: matchBuilderType("buttons"),
   });
 
@@ -207,16 +218,19 @@ export function registerBuiltInWorkflowNodes(): void {
     allowOutgoing: true,
     PropertyEditor: (props) => (
       <div className="space-y-4">
+        <PrimaryMenuToggle {...props} />
         <TextFieldEditor {...props} labelKey="menuTitle" field="title" />
         <TextFieldEditor {...props} labelKey="menuMessage" field="body" multiline />
         <TextFieldEditor {...props} labelKey="menuButtonLabel" field="buttonLabel" />
         <ListRowsEditor {...props} />
+        <ListVariableBindingEditor {...props} />
       </div>
     ),
     validate: (config, nodeId) => {
       const issues: ValidationIssue[] = [
         ...requiredTextIssue("title", "title", nodeId, config),
         ...requiredTextIssue("body", "body", nodeId, config),
+        ...validateListVariableBinding(config, nodeId),
       ];
       const rows = Array.isArray(config.rows) ? config.rows : [];
       if (
@@ -233,15 +247,31 @@ export function registerBuiltInWorkflowNodes(): void {
       }
       return issues;
     },
-    toEngineConfig: (config) =>
-      withBuilderType("list", {
+    toEngineConfig: (config) => {
+      const normalized = normalizeListNodeConfig(config);
+      const saveAs = typeof normalized.saveAs === "string" ? normalized.saveAs.trim() : "";
+      return withBuilderType("list", {
         action: "send_list",
         title: config.title,
         body: config.body,
         buttonLabel: config.buttonLabel,
         sections: [{ title: "Options", rows: config.rows }],
-      }),
-    fromEngineConfig: matchBuilderType("list"),
+        ...(config.primaryMenu === true ? { primaryMenu: true } : {}),
+        ...(saveAs ? { inputKey: saveAs, saveAs } : {}),
+      });
+    },
+    fromEngineConfig: (_engineType, config) => {
+      if (config.builderType !== "list") return null;
+      const sections = Array.isArray(config.sections) ? config.sections : [];
+      const sectionRows = sections[0] && typeof sections[0] === "object" && Array.isArray((sections[0] as { rows?: unknown }).rows)
+        ? (sections[0] as { rows: unknown[] }).rows
+        : config.rows;
+      return normalizeListNodeConfig({
+        ...config,
+        rows: sectionRows,
+        saveAs: config.saveAs ?? config.inputKey ?? "",
+      });
+    },
   });
 
   registerWorkflowNode({
@@ -367,6 +397,28 @@ export function registerBuiltInWorkflowNodes(): void {
   });
 
   registerWorkflowNode({
+    id: "return_to_main_menu",
+    displayName: "Return to Main Menu",
+    description: "Show the main menu again without restarting the conversation.",
+    category: "conversation",
+    engineType: "action",
+    icon: "RotateCcw",
+    accentClass: "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30",
+    searchKeywords: ["menu", "return", "main menu", "back", "options"],
+    defaultConfig: { label: "Return to main menu" },
+    allowIncoming: true,
+    allowOutgoing: false,
+    PropertyEditor: () => <EmptyProperties labelKey="return_to_main_menu" />,
+    validate: () => [],
+    toEngineConfig: (config) =>
+      withBuilderType("return_to_main_menu", {
+        action: "return_to_main_menu",
+        label: config.label,
+      }),
+    fromEngineConfig: matchBuilderType("return_to_main_menu"),
+  });
+
+  registerWorkflowNode({
     id: "create_customer",
     displayName: "Create Customer",
     description: "Save a new customer record.",
@@ -375,7 +427,7 @@ export function registerBuiltInWorkflowNodes(): void {
     icon: "UserPlus",
     accentClass: "from-teal-500/20 to-teal-500/5 border-teal-500/30",
     searchKeywords: ["create customer", "customer", "crm", "new customer"],
-    defaultConfig: { nameField: "customer_name", emailField: "", phoneField: "" },
+    defaultConfig: { nameField: "customer_name", emailField: "", phoneField: "", ageField: "", genderField: "" },
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => (
@@ -383,6 +435,8 @@ export function registerBuiltInWorkflowNodes(): void {
         <TextFieldEditor {...props} labelKey="nameField" field="nameField" placeholder="customer_name" />
         <TextFieldEditor {...props} labelKey="emailField" field="emailField" />
         <TextFieldEditor {...props} labelKey="phoneField" field="phoneField" />
+        <TextFieldEditor {...props} labelKey="ageField" field="ageField" />
+        <TextFieldEditor {...props} labelKey="genderField" field="genderField" />
       </div>
     ),
     validate: (config, nodeId) => requiredTextIssue("nameField", "nameField", nodeId, config),

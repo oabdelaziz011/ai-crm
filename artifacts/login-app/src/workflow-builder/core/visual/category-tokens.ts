@@ -70,7 +70,7 @@ export const CATEGORY_VISUAL_TOKENS: Record<VisualCategory, CategoryVisualTokens
 };
 
 export function resolveVisualCategory(nodeType: BuilderNodeType): VisualCategory {
-  if (nodeType === "end") return "terminal";
+  if (nodeType === "end" || nodeType === "return_to_main_menu") return "terminal";
   if (nodeType === "delay" || nodeType === "wait_for_reply") return "timing";
   if (nodeType === "if_else" || nodeType === "switch" || nodeType === "merge") return "logic";
   if (nodeType === "create_customer" || nodeType === "update_customer" || nodeType === "find_customer" || nodeType === "create_booking") return "crm";

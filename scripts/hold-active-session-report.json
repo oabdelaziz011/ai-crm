@@ -1,0 +1,3505 @@
+{
+  "holdReports": [
+    {
+      "inboundEventId": "de2233e1-5abc-42c5-bb9c-9f72982081ba",
+      "created_at": "2026-07-23T23:50:15.584454+00:00",
+      "preview": "Talk to Support",
+      "processing_status": "processed",
+      "session": {
+        "id": "5f32e579-c69d-4eca-b0fd-a458d821920d",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:50:06.118681+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "2611e944-31d1-4d4b-a050-d3dc85bc3d59",
+        "status": "running",
+        "session_id": "5f32e579-c69d-4eca-b0fd-a458d821920d",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 9466
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 9466,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-23T23:50:06.118681+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "93230bf7-414a-4b82-b4ef-cdf16cf795af",
+      "created_at": "2026-07-23T23:55:41.627031+00:00",
+      "preview": "Talk to Support",
+      "processing_status": "processed",
+      "session": {
+        "id": "053fefef-accb-49c0-8ca7-4821f0dd305c",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:55:32.905173+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "19811b2c-a6b2-4cbe-9bb0-2bf769187f06",
+        "status": "running",
+        "session_id": "053fefef-accb-49c0-8ca7-4821f0dd305c",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 8722
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 8722,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-23T23:55:32.905173+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "3c08200a-10d2-4d17-91ca-4e9c3ad92f7d",
+      "created_at": "2026-07-24T00:01:17.588491+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "deb4f156-4bae-4a34-a76a-97714b8c6658",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:01:03.87096+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "10bd0a27-b374-4fc5-a7c5-ccf8b28786cf",
+        "status": "running",
+        "session_id": "deb4f156-4bae-4a34-a76a-97714b8c6658",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 13718
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 13718,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-24T00:01:03.87096+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "bf4d8be7-8a3b-43bc-8b28-3b378bb1c0a2",
+      "created_at": "2026-07-24T04:01:31.327831+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": {
+        "id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "status": "running",
+        "run_id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "last_activity_at": "2026-07-24T04:01:17.009482+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "status": "running",
+        "session_id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 14318
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 14318,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-24T04:01:17.009482+00:00 within 15000ms"
+    }
+  ],
+  "allReports": [
+    {
+      "inboundEventId": "b62dc564-1e8b-4602-a14f-df66c740ea58",
+      "created_at": "2026-07-23T23:50:03.764324+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "ee3cd1ff-5fa6-49b5-8b62-e1a305073c9a",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:47:48.081151+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "41c846fa-136b-46b5-87b4-b1976aa70626",
+        "status": "running",
+        "session_id": "ee3cd1ff-5fa6-49b5-8b62-e1a305073c9a",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 135683
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "de2233e1-5abc-42c5-bb9c-9f72982081ba",
+      "created_at": "2026-07-23T23:50:15.584454+00:00",
+      "preview": "Talk to Support",
+      "processing_status": "processed",
+      "session": {
+        "id": "5f32e579-c69d-4eca-b0fd-a458d821920d",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:50:06.118681+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "2611e944-31d1-4d4b-a050-d3dc85bc3d59",
+        "status": "running",
+        "session_id": "5f32e579-c69d-4eca-b0fd-a458d821920d",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 9466
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 9466,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-23T23:50:06.118681+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "0cfb10c3-d45d-4d41-8cc4-a0784a4fc798",
+      "created_at": "2026-07-23T23:51:51.100569+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": {
+        "id": "5f32e579-c69d-4eca-b0fd-a458d821920d",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:50:06.118681+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "2611e944-31d1-4d4b-a050-d3dc85bc3d59",
+        "status": "running",
+        "session_id": "5f32e579-c69d-4eca-b0fd-a458d821920d",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 104982
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "08b15d94-7c94-4a5f-b2aa-28814c25f925",
+      "created_at": "2026-07-23T23:54:31.026509+00:00",
+      "preview": "Book Appointment",
+      "processing_status": "processed",
+      "session": {
+        "id": "e8ba265c-f89f-4385-835a-b274267cbbda",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:51:51.100569+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ce0b070b-aa83-4f50-993c-c6a205cad029",
+        "status": "running",
+        "session_id": "e8ba265c-f89f-4385-835a-b274267cbbda",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 159926
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "4d29da06-c93e-4998-a2cb-57a7be95d433",
+      "created_at": "2026-07-23T23:54:50.393385+00:00",
+      "preview": "Book Appointment",
+      "processing_status": "processed",
+      "session": {
+        "id": "1bb08a8e-d000-4805-aeb6-9fdaa97f8675",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:54:32.98397+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "414099b9-2779-4a8c-ad0a-2a21c0137513",
+        "status": "running",
+        "session_id": "1bb08a8e-d000-4805-aeb6-9fdaa97f8675",
+        "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 17410
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "f83105a1-4032-47ab-8784-0bf0118342b7",
+      "created_at": "2026-07-23T23:55:32.905173+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": {
+        "id": "03a22ec5-2ef9-4c09-bfb9-516e9a6b49cb",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:54:50.393385+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "d467e966-7ee3-4a10-9dc3-4b43d73fd0be",
+        "status": "running",
+        "session_id": "03a22ec5-2ef9-4c09-bfb9-516e9a6b49cb",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 42512
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "93230bf7-414a-4b82-b4ef-cdf16cf795af",
+      "created_at": "2026-07-23T23:55:41.627031+00:00",
+      "preview": "Talk to Support",
+      "processing_status": "processed",
+      "session": {
+        "id": "053fefef-accb-49c0-8ca7-4821f0dd305c",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:55:32.905173+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "19811b2c-a6b2-4cbe-9bb0-2bf769187f06",
+        "status": "running",
+        "session_id": "053fefef-accb-49c0-8ca7-4821f0dd305c",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 8722
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 8722,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-23T23:55:32.905173+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "e9121201-d028-43c2-8762-c09eb68129b9",
+      "created_at": "2026-07-23T23:56:53.930067+00:00",
+      "preview": "Book Appointment",
+      "processing_status": "processed",
+      "session": {
+        "id": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:55:51.372571+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "8f82c50f-eeec-463a-8030-f6c5e50f192d",
+        "status": "running",
+        "session_id": "b99f4d4b-80ad-4b0b-a2fa-84dbc08971b5",
+        "current_node_id": "c2ffcce3-fe1a-461b-b605-5df579200a23",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 62558
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "6fc8649e-9933-464d-aa40-b271aeaae4ce",
+      "created_at": "2026-07-24T00:00:09.343355+00:00",
+      "preview": "01011404109",
+      "processing_status": "processed",
+      "session": {
+        "id": "053fefef-accb-49c0-8ca7-4821f0dd305c",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-23T23:56:53.930067+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "19811b2c-a6b2-4cbe-9bb0-2bf769187f06",
+        "status": "running",
+        "session_id": "053fefef-accb-49c0-8ca7-4821f0dd305c",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 195413
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "cdb97ae8-bb43-4c02-9686-882610a57ee5",
+      "created_at": "2026-07-24T00:00:30.176164+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "c894dc3a-d08f-4e77-aa7d-f4a19fd2459e",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:00:09.343355+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "bc8fd324-1056-4e33-8125-668806e7fe0e",
+        "status": "running",
+        "session_id": "c894dc3a-d08f-4e77-aa7d-f4a19fd2459e",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 20833
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "4c6e8af0-9723-4827-9a0e-6650fda060c1",
+      "created_at": "2026-07-24T00:01:03.87096+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "33d0517b-9d35-4f2e-85d5-6c013a016c8b",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:00:32.857474+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "87561aad-9f24-4669-baa4-201490291796",
+        "status": "running",
+        "session_id": "33d0517b-9d35-4f2e-85d5-6c013a016c8b",
+        "current_node_id": "926c1a58-8561-454d-846c-f46cd09d375d",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 31013
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "3c08200a-10d2-4d17-91ca-4e9c3ad92f7d",
+      "created_at": "2026-07-24T00:01:17.588491+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "deb4f156-4bae-4a34-a76a-97714b8c6658",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:01:03.87096+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "10bd0a27-b374-4fc5-a7c5-ccf8b28786cf",
+        "status": "running",
+        "session_id": "deb4f156-4bae-4a34-a76a-97714b8c6658",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 13718
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 13718,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-24T00:01:03.87096+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "ed6b21d2-ae29-44eb-8052-81afc65d5cf4",
+      "created_at": "2026-07-24T00:02:53.159075+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "1403651d-79ba-4424-b573-14f93b135e38",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:01:20.303748+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "09cce9bd-8cb1-4553-9728-d46a925089a0",
+        "status": "running",
+        "session_id": "1403651d-79ba-4424-b573-14f93b135e38",
+        "current_node_id": "926c1a58-8561-454d-846c-f46cd09d375d",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 92856
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "848f2b07-d5f3-417e-84e8-ba93e9f36d48",
+      "created_at": "2026-07-24T00:19:02.523061+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "deb4f156-4bae-4a34-a76a-97714b8c6658",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:02:53.159075+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "10bd0a27-b374-4fc5-a7c5-ccf8b28786cf",
+        "status": "running",
+        "session_id": "deb4f156-4bae-4a34-a76a-97714b8c6658",
+        "current_node_id": "95871c82-95f8-489a-9aa9-6cce7dc11f69",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 969364
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "0e999b6c-10de-48dc-857b-3d7b4d0d0009",
+      "created_at": "2026-07-24T00:19:20.635971+00:00",
+      "preview": "Talk to Support",
+      "processing_status": "processed",
+      "session": {
+        "id": "652a02bd-0873-4458-8e20-f4ebd45034b5",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:19:04.703803+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ebd02de3-a8c7-48ff-bc91-688dc8c1378a",
+        "status": "running",
+        "session_id": "652a02bd-0873-4458-8e20-f4ebd45034b5",
+        "current_node_id": "926c1a58-8561-454d-846c-f46cd09d375d",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 15932
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "793a4c90-a627-4066-8b54-fbb1c0f60b9f",
+      "created_at": "2026-07-24T00:20:48.958352+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": {
+        "id": "f9367c3b-62a9-4351-8cd1-aa3fe7b36131",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:19:20.635971+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "9f49a87c-dca6-4812-ac04-013b11ede97a",
+        "status": "running",
+        "session_id": "f9367c3b-62a9-4351-8cd1-aa3fe7b36131",
+        "current_node_id": "b0953e88-c5ec-461a-99e9-d771d2ace4c7",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 88323
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "c69c4247-cfe9-48a7-a9a4-329651036eb3",
+      "created_at": "2026-07-24T00:21:43.675186+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": {
+        "id": "64fd0e8d-f523-4ca8-9ef5-ff63459b6569",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:20:51.492891+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "7dcdb982-ccdd-4bdc-ae2c-ec957c726718",
+        "status": "running",
+        "session_id": "64fd0e8d-f523-4ca8-9ef5-ff63459b6569",
+        "current_node_id": "926c1a58-8561-454d-846c-f46cd09d375d",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 52183
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "0769cba8-6258-432d-8082-b1bbb99d77d9",
+      "created_at": "2026-07-24T00:22:08.348923+00:00",
+      "preview": "dr1",
+      "processing_status": "processed",
+      "session": {
+        "id": "2ad57a5f-e1f5-42d3-b2fc-e669fc99fa1b",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:21:43.675186+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "cac776e0-1224-44b2-b6bf-9c61b7900876",
+        "status": "running",
+        "session_id": "2ad57a5f-e1f5-42d3-b2fc-e669fc99fa1b",
+        "current_node_id": "b0953e88-c5ec-461a-99e9-d771d2ace4c7",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 24673
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "cac3478c-fa0e-4678-a664-6dfafb30b397",
+      "created_at": "2026-07-24T00:33:53.426889+00:00",
+      "preview": "Hi",
+      "processing_status": "processed",
+      "session": {
+        "id": "601bce9c-ad97-4d9b-a2cc-71542f50eeaa",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:22:08.348923+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "243aaee6-2efc-4307-8c2b-183a62bbfc7f",
+        "status": "running",
+        "session_id": "601bce9c-ad97-4d9b-a2cc-71542f50eeaa",
+        "current_node_id": "b0953e88-c5ec-461a-99e9-d771d2ace4c7",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 705078
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "dd983337-d3c0-47c8-addb-734eb04d74f1",
+      "created_at": "2026-07-24T00:34:10.21238+00:00",
+      "preview": "dr1",
+      "processing_status": "processed",
+      "session": {
+        "id": "3cf4d0f7-9de0-44be-9be4-7daaf5967f8d",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:33:53.426889+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "4af7ad99-be95-4d65-ab8e-2af1ca480431",
+        "status": "running",
+        "session_id": "3cf4d0f7-9de0-44be-9be4-7daaf5967f8d",
+        "current_node_id": null,
+        "__waitingFor": "interactive_selection"
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": "interactive_selection",
+            "hasValidPins": null
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 16786
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "25622061-d8a0-4b39-aae5-02084ab8c73f",
+      "created_at": "2026-07-24T00:37:48.88805+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": {
+        "id": "bf88c2ab-ed6f-492d-bf38-e5a74a529649",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:34:10.21238+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "90afeacd-29c7-4560-aecc-76cfa6de5d47",
+        "status": "running",
+        "session_id": "bf88c2ab-ed6f-492d-bf38-e5a74a529649",
+        "current_node_id": null,
+        "__waitingFor": "interactive_selection"
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": "interactive_selection",
+            "hasValidPins": null
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 218676
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "e1d2d6eb-055c-4934-a52c-ca0c9faa2065",
+      "created_at": "2026-07-24T02:07:50.907143+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "57a10555-533c-4d6a-8132-7ec416591980",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T00:37:48.88805+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "c8412d79-515d-43fa-9b4d-9d9f534a0b86",
+        "status": "running",
+        "session_id": "57a10555-533c-4d6a-8132-7ec416591980",
+        "current_node_id": null,
+        "__waitingFor": "interactive_selection"
+      },
+      "expired": true,
+      "routingMode": "start",
+      "routingReason": "session_expired",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": true,
+            "hasSession": true
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "af3b6e32-e63d-4181-8e84-ade74c2e8746",
+      "created_at": "2026-07-24T02:08:39.148396+00:00",
+      "preview": "dr1",
+      "processing_status": "processed",
+      "session": {
+        "id": "57a10555-533c-4d6a-8132-7ec416591980",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T02:07:50.907143+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "c8412d79-515d-43fa-9b4d-9d9f534a0b86",
+        "status": "running",
+        "session_id": "57a10555-533c-4d6a-8132-7ec416591980",
+        "current_node_id": null,
+        "__waitingFor": "interactive_selection"
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": "interactive_selection",
+            "hasValidPins": null
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 48241
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "48191123-f18b-4ea0-ae07-1fdf77fc4f15",
+      "created_at": "2026-07-24T02:09:53.950394+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "5f91faa3-680c-4ad5-9977-75122e8e0306",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T02:08:39.148396+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "2a174b26-2083-471f-9a0a-e60619b86932",
+        "status": "running",
+        "session_id": "5f91faa3-680c-4ad5-9977-75122e8e0306",
+        "current_node_id": null,
+        "__waitingFor": "interactive_selection"
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": "interactive_selection",
+            "hasValidPins": null
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 74802
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "ace3a838-a8f4-4027-847c-9777bb7ef38b",
+      "created_at": "2026-07-24T02:18:48.813225+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": {
+        "id": "a85005b6-0d67-4479-8e27-1ec40015e26a",
+        "status": "running",
+        "run_id": null,
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T02:09:53.950394+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "c607a1b4-3385-43cb-b1e0-9e01e5510c23",
+        "status": "running",
+        "session_id": "a85005b6-0d67-4479-8e27-1ec40015e26a",
+        "current_node_id": null,
+        "__waitingFor": "interactive_selection"
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": "interactive_selection",
+            "hasValidPins": null
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 534863
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "1807ffc2-9809-40d3-8946-da2dbe0c7514",
+      "created_at": "2026-07-24T02:46:15.153546+00:00",
+      "preview": "What time is it?",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "5c37bcd4-a661-48bb-81f7-783fc3de01a6",
+      "created_at": "2026-07-24T02:47:54.12992+00:00",
+      "preview": "Hello’",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "3ab83c12-f8c9-44b4-bf27-36e27cb21a01",
+      "created_at": "2026-07-24T02:50:25.945578+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "83543371-7d73-469f-a299-252d3c0df1b5",
+      "created_at": "2026-07-24T02:50:40.562559+00:00",
+      "preview": "dr2",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "b6875429-a820-402f-9675-2e3f83dfa4d2",
+      "created_at": "2026-07-24T03:03:28.250517+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "a1e9d4ac-a4dd-40f2-b00a-744e0664b3f0",
+      "created_at": "2026-07-24T03:10:56.761977+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "81a8bb1e-d9ea-4032-a977-00fe00362eaa",
+      "created_at": "2026-07-24T03:12:29.822483+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "31e746be-34d9-47e0-93d7-829c86d1c1c7",
+      "created_at": "2026-07-24T03:13:28.352925+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "a2e51bdc-47da-4324-ade6-f070b28e449b",
+      "created_at": "2026-07-24T03:14:06.005296+00:00",
+      "preview": "dr2",
+      "processing_status": "processing",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "10906fc0-6946-4b49-80b5-06ba71aac9e1",
+      "created_at": "2026-07-24T03:16:13.887485+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "89820dca-d9f5-478c-86c4-dacd97138e49",
+      "created_at": "2026-07-24T03:16:37.113161+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "b6f96cf1-0415-4cb6-8e05-6a48a5bf64bf",
+      "created_at": "2026-07-24T03:34:26.090378+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "7f7d1802-f824-4c94-87b2-35fb66af2c8e",
+      "created_at": "2026-07-24T03:34:38.558882+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "6ba6509e-214e-4ccf-8f2b-c914c0903b69",
+      "created_at": "2026-07-24T03:35:41.322775+00:00",
+      "preview": "Yes",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "d1859427-0b0f-41b0-865d-9910577d252d",
+      "created_at": "2026-07-24T03:38:46.641937+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "654839c7-248c-43e8-a773-b5bef1140df7",
+      "created_at": "2026-07-24T03:39:26.465911+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "f3ae5788-1c47-46cd-808c-25f6b4fba848",
+      "created_at": "2026-07-24T03:40:09.950526+00:00",
+      "preview": "Hi",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "f3057824-e183-4eb2-8d16-9292677b781e",
+      "created_at": "2026-07-24T03:43:07.098158+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "ca30b6b9-5ae8-4698-82cb-a0aace113912",
+      "created_at": "2026-07-24T03:44:52.920113+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "00d6873e-e8fe-432f-933c-b421d0659880",
+      "created_at": "2026-07-24T04:00:55.582644+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "0655cf6e-e0c3-4fee-a542-e0128295cbbe",
+      "created_at": "2026-07-24T04:01:17.009482+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": {
+        "id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "status": "running",
+        "run_id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "last_activity_at": "2026-07-24T04:00:55.582644+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "status": "running",
+        "session_id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 21427
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "bf4d8be7-8a3b-43bc-8b28-3b378bb1c0a2",
+      "created_at": "2026-07-24T04:01:31.327831+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": {
+        "id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "status": "running",
+        "run_id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "last_activity_at": "2026-07-24T04:01:17.009482+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "status": "running",
+        "session_id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "hold_active_session",
+      "routingReason": "active_session_executing_recently",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": false,
+          "detail": {
+            "orphan": false,
+            "mismatch": false,
+            "msSinceActivity": 14318
+          }
+        },
+        {
+          "n": 6,
+          "check": "shouldStartNewConversation",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 7,
+          "check": "isActivelyExecutingRun",
+          "pass": true,
+          "detail": {
+            "msSinceActivity": 14318,
+            "windowMs": 15000
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": "isActivelyExecutingRun: session+run in running/active, last_activity 2026-07-24T04:01:17.009482+00:00 within 15000ms"
+    },
+    {
+      "inboundEventId": "7211423d-0d45-4c09-9b36-0075a39609bf",
+      "created_at": "2026-07-24T04:04:21.790082+00:00",
+      "preview": "Yes",
+      "processing_status": "processed",
+      "session": {
+        "id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "status": "running",
+        "run_id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "last_activity_at": "2026-07-24T04:01:17.009482+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "status": "running",
+        "session_id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 184781
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "1abdd887-7cc2-4806-b605-770fe88bccad",
+      "created_at": "2026-07-24T04:04:47.717003+00:00",
+      "preview": "01011404109",
+      "processing_status": "processed",
+      "session": {
+        "id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "status": "running",
+        "run_id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "last_activity_at": "2026-07-24T04:04:21.790082+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "status": "running",
+        "session_id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 25927
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "3e869f48-393d-4f44-a568-41ee500cc169",
+      "created_at": "2026-07-24T04:06:54.330616+00:00",
+      "preview": "Hi",
+      "processing_status": "processed",
+      "session": {
+        "id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "status": "running",
+        "run_id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "last_activity_at": "2026-07-24T04:04:47.717003+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "ff904a3a-f827-4eb3-b64d-ca88a6d10efc",
+        "status": "running",
+        "session_id": "cc116ad7-80b8-42c8-aacd-96d6cca51f98",
+        "current_node_id": "0bf11653-f706-4806-84ff-85ffb30557fa",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 126613
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "f384b6d5-75e5-4725-8e7a-01c8c30dc310",
+      "created_at": "2026-07-24T04:19:18.030271+00:00",
+      "preview": "Hi",
+      "processing_status": "processed",
+      "session": {
+        "id": "dad4f358-d034-4800-8481-64181598fd48",
+        "status": "running",
+        "run_id": "f627b887-30ce-4c8b-a772-8be95881a49c",
+        "current_node_id": null,
+        "last_activity_at": "2026-07-24T04:06:54.330616+00:00",
+        "__waitingFor": null
+      },
+      "run": {
+        "id": "f627b887-30ce-4c8b-a772-8be95881a49c",
+        "status": "running",
+        "session_id": "dad4f358-d034-4800-8481-64181598fd48",
+        "current_node_id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+        "__waitingFor": null
+      },
+      "expired": false,
+      "routingMode": "abandon_and_start",
+      "routingReason": "orphaned_active_run_not_waiting_for_input",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": false,
+          "detail": {
+            "expired": false,
+            "hasSession": true
+          }
+        },
+        {
+          "n": 2,
+          "check": "flow mismatch",
+          "pass": false,
+          "detail": {
+            "sessionFlow": "aef7c4ab-513a-4b64-a700-2be6cf51dafc"
+          }
+        },
+        {
+          "n": 3,
+          "check": "canResumeWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running",
+            "__waitingFor": null,
+            "hasValidPins": true
+          }
+        },
+        {
+          "n": 4,
+          "check": "isStaleWaitingRun",
+          "pass": false,
+          "detail": {
+            "sessionStatus": "running",
+            "runStatus": "running"
+          }
+        },
+        {
+          "n": 5,
+          "check": "orphaned || mismatch",
+          "pass": true,
+          "detail": {
+            "orphan": true,
+            "mismatch": false,
+            "msSinceActivity": 743700
+          }
+        }
+      ],
+      "resumeRejectedBecause": "resume requires both waiting_input; got session=running, run=running",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "af149d1a-0422-4248-b0bd-ab32fd80e0ee",
+      "created_at": "2026-07-24T04:19:51.690752+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "dbb8f723-95c2-4e1e-9f58-498d09233c12",
+      "created_at": "2026-07-24T04:20:07.837268+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "609b6b95-62c3-43b0-8f4b-622da3cdd80c",
+      "created_at": "2026-07-24T04:20:59.476842+00:00",
+      "preview": "No",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "4b5980af-0c5e-4bcd-b38f-02c1d9cd16e3",
+      "created_at": "2026-07-24T04:21:55.887631+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "5afba5ed-73ae-4cdb-b180-1b275322362d",
+      "created_at": "2026-07-24T04:22:08.52846+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "890374c7-e0a4-4546-bc22-ed9a7d7de0a0",
+      "created_at": "2026-07-24T04:35:17.49004+00:00",
+      "preview": "Hello",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "2b90ec7f-a370-4bc6-b0d6-96128c1fae30",
+      "created_at": "2026-07-24T04:35:39.059184+00:00",
+      "preview": "No",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "b34d99d3-cb21-4a88-89be-dd55e63addcc",
+      "created_at": "2026-07-24T04:36:07.416265+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "6208c08d-e7df-45e1-b15e-2dd8cd1603c8",
+      "created_at": "2026-07-24T04:36:20.790478+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "8bc5b0a2-4dfb-4e9d-8d07-aad685d9fa10",
+      "created_at": "2026-07-24T04:36:55.591092+00:00",
+      "preview": "Hi",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "37d3823f-6c44-4649-8e6b-59c1707d9563",
+      "created_at": "2026-07-24T04:37:31.872625+00:00",
+      "preview": "Pricing",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    },
+    {
+      "inboundEventId": "ad0b1961-31a2-46a2-9268-905cff261ec0",
+      "created_at": "2026-07-24T04:37:42.515643+00:00",
+      "preview": "dr3",
+      "processing_status": "processed",
+      "session": null,
+      "run": null,
+      "expired": false,
+      "routingMode": "start",
+      "routingReason": "no_active_session",
+      "conditionsEvaluated": [
+        {
+          "n": 1,
+          "check": "!session || expired",
+          "pass": true,
+          "detail": {
+            "expired": false,
+            "hasSession": false
+          }
+        }
+      ],
+      "resumeRejectedBecause": "no active session",
+      "holdSelectedBecause": null
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { KnowledgeDocumentRecord, KnowledgeDocumentRepository } from "@workspace/knowledge-platform";
+import type { KnowledgeDocumentRecord, KnowledgeDocumentRepository } from "@workspace/knowledge-platform/repositories";
 import type {
   EmbeddingJobRepository,
   EmbeddingProviderConnectionRepository,

@@ -9,6 +9,7 @@ import type {
 export type PersistRunningStateInput = {
   runId: string;
   sessionId: string;
+  flowVersionId: string;
   currentNodeId: string;
   variables: Record<string, unknown>;
 };
@@ -17,6 +18,7 @@ export type PersistTerminalStateInput = {
   runId: string;
   sessionId: string;
   lifecycle: ExecutionLifecycleStatus;
+  flowVersionId?: string | null;
   currentNodeId?: string | null;
   variables: Record<string, unknown>;
   errorMessage?: string | null;
@@ -55,6 +57,7 @@ export function createAutomationRuntimeStore(deps: {
       const run = await deps.updateRun({
         runId: input.runId,
         status: "running",
+        flowVersionId: input.flowVersionId,
         currentNodeId: input.currentNodeId,
         sessionId: input.sessionId,
         variables: input.variables,
@@ -62,6 +65,7 @@ export function createAutomationRuntimeStore(deps: {
       const session = await deps.updateSession({
         sessionId: input.sessionId,
         status: "running",
+        flowVersionId: input.flowVersionId,
         currentNodeId: input.currentNodeId,
         runId: input.runId,
         variables: input.variables,
@@ -78,6 +82,7 @@ export function createAutomationRuntimeStore(deps: {
       const run = await deps.updateRun({
         runId: input.runId,
         status: runStatus,
+        flowVersionId: input.flowVersionId ?? null,
         currentNodeId: input.currentNodeId ?? null,
         sessionId: input.sessionId,
         variables: input.variables,
@@ -87,6 +92,7 @@ export function createAutomationRuntimeStore(deps: {
       const session = await deps.updateSession({
         sessionId: input.sessionId,
         status: sessionStatus,
+        flowVersionId: input.flowVersionId ?? null,
         currentNodeId: input.currentNodeId ?? null,
         runId: input.runId,
         variables: input.variables,

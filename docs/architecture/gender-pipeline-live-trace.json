@@ -1,0 +1,692 @@
+{
+  "generatedAt": "2026-07-25T04:09:04.116Z",
+  "flowId": "aef7c4ab-513a-4b64-a700-2be6cf51dafc",
+  "steps": {
+    "latestWhatsAppConversation": {
+      "id": "a35d7fff-cac7-47f3-9604-df683e726b71",
+      "conversation_number": "CNV-000010",
+      "customer_id": null,
+      "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "external_thread_id": null,
+      "last_message_at": "2026-07-25T04:04:57.151561+00:00",
+      "created_at": "2026-07-24T17:57:06.163466+00:00"
+    },
+    "allListRepliesInConversation": [
+      {
+        "id": "1455f7ee-8a92-4fe6-8d4a-d7070e1a051c",
+        "created_at": "2026-07-24T17:57:20.462078+00:00",
+        "replyId": "pricing",
+        "title": "Pricing",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Pricing",
+          "source": "webhook",
+          "replyId": "pricing",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E3NjA1NUQxQjkyQkI2MzlFQTIA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Pricing"
+      },
+      {
+        "id": "7852d268-7f06-43fd-9fd5-dec8c4f0add2",
+        "created_at": "2026-07-24T17:57:35.586848+00:00",
+        "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+        "title": "dr3",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "dr3",
+          "source": "webhook",
+          "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E3MjZFQ0M4RUJCODJEQkQ0QUMA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "dr3"
+      },
+      {
+        "id": "f6515933-6502-4898-b624-03ab8326bb15",
+        "created_at": "2026-07-24T17:57:50.638232+00:00",
+        "replyId": "d6c4e9b0-47ef-4c55-823b-6b56d8fd4c94",
+        "title": "Yes",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Yes",
+          "source": "webhook",
+          "replyId": "d6c4e9b0-47ef-4c55-823b-6b56d8fd4c94",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCQ0UyOEM2MTgwQTZCMDVFQzAA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Yes"
+      },
+      {
+        "id": "3e685b10-cbee-424a-81fb-9e39c20eb1c3",
+        "created_at": "2026-07-24T18:00:30.96778+00:00",
+        "replyId": "support",
+        "title": "Talk to Support",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Talk to Support",
+          "source": "webhook",
+          "replyId": "support",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwMzM2Mjc4QTJEMTYxRDBBMUEA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Talk to Support"
+      },
+      {
+        "id": "c88edc76-5350-47c8-85bb-794ae9a11e2a",
+        "created_at": "2026-07-24T18:16:26.451954+00:00",
+        "replyId": "pricing",
+        "title": "Pricing",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Pricing",
+          "source": "webhook",
+          "replyId": "pricing",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E3RDBCREI1QjRBQjU0M0ZDMkYA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Pricing"
+      },
+      {
+        "id": "5d05ca4a-d282-42eb-ae32-e04972af195f",
+        "created_at": "2026-07-24T18:16:40.59773+00:00",
+        "replyId": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+        "title": "dr2",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "dr2",
+          "source": "webhook",
+          "replyId": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E0NUQ2REM4Q0VBMENFMkRBNTAA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "dr2"
+      },
+      {
+        "id": "e7093b48-c258-44dc-8441-26a1340c0a0a",
+        "created_at": "2026-07-24T19:44:35.357242+00:00",
+        "replyId": "pricing",
+        "title": "Pricing",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Pricing",
+          "source": "webhook",
+          "replyId": "pricing",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EyOTNFNTYwOEUzMUIwNzdEQkIA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Pricing"
+      },
+      {
+        "id": "615ece40-bdf6-42c2-95ca-d075b4dbc045",
+        "created_at": "2026-07-24T19:44:51.278952+00:00",
+        "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+        "title": "dr3",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "dr3",
+          "source": "webhook",
+          "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FFOEY5Q0IyNDM3MkQyOEFDNjUA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "dr3"
+      },
+      {
+        "id": "97023441-3ea4-4da6-8447-e9f0e31dfcb8",
+        "created_at": "2026-07-24T21:36:13.93043+00:00",
+        "replyId": "d6c4e9b0-47ef-4c55-823b-6b56d8fd4c94",
+        "title": "Yes",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Yes",
+          "source": "webhook",
+          "replyId": "d6c4e9b0-47ef-4c55-823b-6b56d8fd4c94",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E0QTU0OUUyMjg1ODhFRTUxRUMA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Yes"
+      },
+      {
+        "id": "ccaba331-3113-4e5e-bf7b-03b79e619a25",
+        "created_at": "2026-07-24T21:42:06.271917+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FFM0YwNzQyODc0RDE5N0JCMjkA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "8e065d6d-6d75-4adc-842a-5a8793b7e077",
+        "created_at": "2026-07-24T21:42:25.616853+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FGNzk4QzhBRENFMUY4MEY5QkEA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "52f81bab-e386-447a-926c-3030fb76d63a",
+        "created_at": "2026-07-24T21:42:49.161212+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FDMUY5REY1QjdEMkQzRDU2MDQA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "fac1acd0-66f2-4b3b-b002-a83500880bf0",
+        "created_at": "2026-07-24T21:43:34.195753+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FGQjRGRjc5QjI0MDYwRTNDNzEA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "ed450009-bb6e-44d7-abbf-aba16ca74b47",
+        "created_at": "2026-07-24T23:36:18.300654+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FGOEI5QzVDRDFCMTM4OEIxMzYA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "5ab8b95e-81bc-4a32-880f-3f67e486e9af",
+        "created_at": "2026-07-24T23:37:25.928884+00:00",
+        "replyId": "pricing",
+        "title": "Pricing",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Pricing",
+          "source": "webhook",
+          "replyId": "pricing",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FDMUZBQjk1QjUwMzUxNUE2RUYA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Pricing"
+      },
+      {
+        "id": "f03ecd60-c06e-435f-b05f-cd48fc6fd719",
+        "created_at": "2026-07-25T00:30:36.038486+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FFMTczNEQ1NzlDREUyMTYxQUUA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "fde1c423-f5eb-4911-8839-cd3e1ca0c49b",
+        "created_at": "2026-07-25T02:21:57.351219+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwOTA5MjAwNUVGQTlBMzcwMDcA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "265a892b-ae7a-4126-afdf-b3c112f103c6",
+        "created_at": "2026-07-25T03:18:09.346029+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0EwMzYwNjcyQkY2MzUzMjIxNkMA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "3130dbc5-eaaf-4104-a616-1e06c75ee300",
+        "created_at": "2026-07-25T03:18:52.411353+00:00",
+        "replyId": "afdb3575-46ed-4dab-b310-bcf06142419e",
+        "title": "أنثي",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "أنثي",
+          "source": "webhook",
+          "replyId": "afdb3575-46ed-4dab-b310-bcf06142419e",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FENTBDQ0RGRTIzQzQxMjZDN0UA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "أنثي"
+      },
+      {
+        "id": "867a819b-9592-428f-99da-0f00cc70da92",
+        "created_at": "2026-07-25T03:31:08.119038+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FCOTAyRDcxRjkyNjA3MDk3NDUA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "3b5a81a3-020b-439c-b762-095d97888531",
+        "created_at": "2026-07-25T03:31:53.464947+00:00",
+        "replyId": "1",
+        "title": "ذكر",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "ذكر",
+          "source": "webhook",
+          "replyId": "1",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FDQjA5M0ZCMzI0NzJEQzAzMEIA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "ذكر"
+      },
+      {
+        "id": "274a8078-abeb-4ff7-b22d-8100a6f3dc15",
+        "created_at": "2026-07-25T03:55:48.586245+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0ExRjkwRTc2NUNFRUI0MEFBODQA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "b5f0a7e4-5ff8-4bf1-8a5a-fc254c9b7680",
+        "created_at": "2026-07-25T03:56:31.733229+00:00",
+        "replyId": "1",
+        "title": "ذكر",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "ذكر",
+          "source": "webhook",
+          "replyId": "1",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FEQzczMkJCOTczNDgyOUY1NTMA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "ذكر"
+      },
+      {
+        "id": "d1ed39dd-c65c-4773-9b94-52e5e2924c99",
+        "created_at": "2026-07-25T04:03:50.385802+00:00",
+        "replyId": "book",
+        "title": "Book Appointment",
+        "interactionType": "button_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "Book Appointment",
+          "source": "webhook",
+          "replyId": "book",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "button_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0FFRDQxRTYyM0E5OUVDRENCNjAA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "Book Appointment"
+      },
+      {
+        "id": "6377f7be-5756-417b-b4cf-4daab709c83c",
+        "created_at": "2026-07-25T04:04:39.971341+00:00",
+        "replyId": "1",
+        "title": "ذكر",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "ذكر",
+          "source": "webhook",
+          "replyId": "1",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E3MUNBRUJGNEQ1QkZDQ0NENDkA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "ذكر"
+      }
+    ],
+    "step1_interactiveListSelected": {
+      "messageId": "6377f7be-5756-417b-b4cf-4daab709c83c",
+      "created_at": "2026-07-25T04:04:39.971341+00:00",
+      "listReply": {
+        "replyId": "1",
+        "title": "ذكر",
+        "interactionType": "list_reply",
+        "rawMetadata": {
+          "kind": "interactive_reply",
+          "title": "ذكر",
+          "source": "webhook",
+          "replyId": "1",
+          "channelKey": "whatsapp",
+          "senderName": "Nessma Hossam",
+          "attachments": [],
+          "phoneNumberId": "1214681355059951",
+          "interactionType": "list_reply",
+          "externalMessageId": "wamid.HBgMMjAxMDIzMTY5MDc1FQIAEhgUM0E3MUNBRUJGNEQ1QkZDQ0NENDkA",
+          "whatsappMessageType": "interactive"
+        },
+        "rawContent": "ذكر"
+      }
+    },
+    "selectedRun": {
+      "id": "b6557a55-374e-46c6-a113-b5b8c51509da",
+      "status": "running",
+      "flow_version_id": "448effe1-6b08-4481-bba3-3a71461adc69",
+      "started_at": "2026-07-25T04:03:39.992912+00:00",
+      "finished_at": null,
+      "current_node_id": "0403be55-7e0c-4e6a-8555-84cc7493ca7f",
+      "error_message": null
+    },
+    "step2_afterListReply_workflowVariables": {
+      "customer_gender_exists": true,
+      "customer_gender_value": "male",
+      "customer_gender_type": "string",
+      "relatedKeys": {
+        "customer_gender": "male"
+      },
+      "topLevelKeys": [
+        "channelSessionId",
+        "companyChannelId",
+        "conversation",
+        "conversationId",
+        "customer",
+        "customer_age",
+        "customer_gender",
+        "customer_name",
+        "customer_phone",
+        "inboundEventId",
+        "interactive_selection",
+        "lastMessage",
+        "lookup",
+        "phoneNumberId",
+        "senderName",
+        "whatsappMessageType"
+      ]
+    },
+    "genderListNodeConfig": {
+      "id": "88b0f46d-0d49-42d6-8bb8-cee72fef6da7",
+      "inputKey": "customer_gender",
+      "saveAs": "customer_gender",
+      "rows": [
+        {
+          "id": "1",
+          "title": "ذكر",
+          "value": "male",
+          "description": ""
+        },
+        {
+          "id": "afdb3575-46ed-4dab-b310-bcf06142419e",
+          "title": "أنثي",
+          "value": "female",
+          "description": ""
+        }
+      ]
+    },
+    "step3_createCustomerNodeConfig": {
+      "id": "e1857d58-113c-4ad2-aaa8-a63bc6d1a082",
+      "genderField": "customer_gender",
+      "nameField": "customer_name",
+      "phoneField": "customer_phone",
+      "ageField": "customer_age"
+    },
+    "step3_genderFieldResolvedBeforeCreateCustomer": {
+      "genderField": "customer_gender",
+      "resolvedValue": "male",
+      "resolvedType": "string"
+    },
+    "runEvents": [],
+    "createCustomerEvent": null,
+    "step4_customerServiceCreateCustomer": {
+      "fromRunVariablesCustomerEntity": {
+        "id": "c58eb5bf-4cbb-4890-beda-24a7c388d77e",
+        "gender": "male",
+        "genderType": "string",
+        "age": 22
+      },
+      "inferredPayloadFromVariables": {
+        "gender": "male",
+        "note": "No separate audit log of createCustomer() call in DB; inferred from run variables at create_customer node output"
+      }
+    },
+    "step5_databaseInsert": {
+      "customerId": "c58eb5bf-4cbb-4890-beda-24a7c388d77e",
+      "customers_gender": "male",
+      "customers_gender_type": "string",
+      "customers_age": 22,
+      "fullRow": {
+        "id": "c58eb5bf-4cbb-4890-beda-24a7c388d77e",
+        "user_id": "a9b150d0-cf93-4937-a6f2-1b75213eada8",
+        "name": "Test Age",
+        "email": null,
+        "phone": "01098231657",
+        "notes": null,
+        "created_at": "2026-07-25T04:04:53.164675+00:00",
+        "updated_at": "2026-07-25T04:04:53.164675+00:00",
+        "age": 22,
+        "gender": "male"
+      }
+    },
+    "step6_apiReactQueryPayload": {
+      "id": "c58eb5bf-4cbb-4890-beda-24a7c388d77e",
+      "name": "Test Age",
+      "phone": "01098231657",
+      "email": null,
+      "age": 22,
+      "gender": "male",
+      "notes": null,
+      "created_at": "2026-07-25T04:04:53.164675+00:00",
+      "updated_at": "2026-07-25T04:04:53.164675+00:00"
+    },
+    "step6_customerDetailsDialogAnalysis": {
+      "dbGender": "male",
+      "selectValueProp": "male",
+      "canonicalGenderForLabel": "Male",
+      "matchesSelectOption": true,
+      "dropdownEmptyReason": "value should display",
+      "lossPoint": null
+    },
+    "step1_expectedStoredValue": {
+      "replyId": "1",
+      "matchedRow": {
+        "id": "1",
+        "title": "ذكر",
+        "value": "male",
+        "description": ""
+      },
+      "expectedStoredValue": "male"
+    }
+  }
+}

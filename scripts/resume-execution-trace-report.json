@@ -1,0 +1,1134 @@
+{
+  "generatedAt": "2026-07-24T16:45:42.153Z",
+  "traces": [
+    {
+      "inbound": {
+        "id": "890374c7-e0a4-4546-bc22-ed9a7d7de0a0",
+        "text": "Hello",
+        "type": "text"
+      },
+      "steps": [
+        {
+          "fn": "buildResumeInput()",
+          "file": "lib/automation-platform/src/orchestrator/session-policy.ts",
+          "lines": "158-212",
+          "runtime": {
+            "waitingFor": "interactive_selection",
+            "inboundText": "Hello",
+            "payload": {},
+            "resumeInput": {
+              "outboundKind": "buttons"
+            }
+          }
+        },
+        {
+          "fn": "AutomationEngine.resume() → resetOutboundQueue()",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "209",
+          "__outboundQueue_before": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "__outboundQueue_after": [],
+          "firstQueueEmptyPoint": "line 209 resetOutboundQueue"
+        },
+        {
+          "fn": "handler.execute() on waiting node (NOT executeWaitingNode — does not exist)",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "221-222",
+          "node": {
+            "id": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+            "type": "action",
+            "action": "send_buttons"
+          },
+          "nodeInput": {
+            "outboundKind": "buttons"
+          },
+          "variables_before": {
+            "__outboundQueue": [],
+            "__waitingFor": "interactive_selection"
+          }
+        },
+        {
+          "fn": "executeInteractiveMessageAction() — no selection, re-prompt",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "92-129",
+          "nodeOutput": {
+            "outcome": "waiting_input",
+            "outbound": {
+              "kind": "buttons",
+              "text": "please press on what you want ",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          },
+          "__outboundQueue_after": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want ",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "lifecycle": "waiting_input",
+      "outboundCount": 1,
+      "outboundMessages": [
+        {
+          "text": "please press on what you want ",
+          "kind": "buttons"
+        }
+      ],
+      "firstEmptyQueueAt": "line 209 resetOutboundQueue"
+    },
+    {
+      "inbound": {
+        "id": "b34d99d3-cb21-4a88-89be-dd55e63addcc",
+        "text": "Pricing",
+        "replyId": "pricing",
+        "type": "interactive"
+      },
+      "lifecycle": "waiting_input",
+      "outboundCount": 1,
+      "outboundMessages": [
+        {
+          "text": "Pick the option that fits you best.",
+          "kind": "list"
+        }
+      ],
+      "firstEmptyQueueAt": "automation-engine.ts:209 resetOutboundQueue(run.variables)",
+      "steps": [
+        {
+          "fn": "buildResumeInput()",
+          "file": "lib/automation-platform/src/orchestrator/session-policy.ts",
+          "lines": "158-212",
+          "runtime": {
+            "waitingFor": "interactive_selection",
+            "inboundText": "Pricing",
+            "payload": {
+              "kind": "interactive_reply",
+              "replyId": "pricing",
+              "title": "Pricing",
+              "interactionType": "button_reply"
+            },
+            "resumeInput": {
+              "kind": "interactive_reply",
+              "replyId": "pricing",
+              "title": "Pricing",
+              "interactionType": "button_reply",
+              "interactive_selection": "pricing",
+              "outboundKind": "buttons"
+            }
+          }
+        },
+        {
+          "fn": "AutomationEngine.resume() → resetOutboundQueue()",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "209",
+          "__outboundQueue_before": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "__outboundQueue_after": [],
+          "firstQueueEmptyPoint": "line 209 resetOutboundQueue"
+        },
+        {
+          "fn": "handler.execute() on waiting node (NOT executeWaitingNode — does not exist)",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "221-222",
+          "node": {
+            "id": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+            "type": "action",
+            "action": "send_buttons"
+          },
+          "nodeInput": {
+            "kind": "interactive_reply",
+            "replyId": "pricing",
+            "title": "Pricing",
+            "interactionType": "button_reply",
+            "interactive_selection": "pricing",
+            "outboundKind": "buttons"
+          },
+          "variables_before": {
+            "__outboundQueue": [],
+            "__waitingFor": "interactive_selection"
+          }
+        },
+        {
+          "fn": "executeInteractiveMessageAction() — selection branch",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "71-89",
+          "nodeOutput": {
+            "outcome": "continue",
+            "selection": {
+              "last_button_id": "pricing",
+              "last_button_title": "Pricing",
+              "last_message": "Pricing",
+              "last_selection_type": "button"
+            }
+          },
+          "variables_after": {
+            "conversation": {
+              "last_button_id": "pricing",
+              "last_button_title": "Pricing",
+              "last_message": "Pricing",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "__waitingFor": null
+          },
+          "__outboundQueue_after": [],
+          "note": "Queue stays empty; prior outbound cleared at line 209, clearLatestOutboundSlot sets __outbound null"
+        },
+        {
+          "fn": "resolveNextNodeId() after waiting node",
+          "file": "lib/automation-platform/src/engine/flow-graph.ts",
+          "lines": "150-177 (action: outgoing[0])",
+          "runtime": {
+            "outgoingTargets": [
+              {
+                "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+                "type": "condition"
+              },
+              {
+                "id": "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29",
+                "type": "condition"
+              }
+            ],
+            "selectedNext": {
+              "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+              "type": "condition"
+            },
+            "reason": "send_buttons has 2 unconditional edges; resolveNextNodeId returns edges[0] only → d4a5623d (Pricing IF)"
+          }
+        },
+        {
+          "fn": "conditionNodeHandler.execute() + IF edge selection",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts + flow-graph.ts",
+          "lines": "286-294, 169-174",
+          "node": {
+            "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+            "type": "condition"
+          },
+          "nodeInput": {
+            "variables_snapshot": {
+              "last_button_id": "pricing",
+              "last_button_title": "Pricing",
+              "last_message": "Pricing",
+              "last_selection_type": "button"
+            }
+          },
+          "nodeOutput": {
+            "branch": "yes",
+            "clauses": [
+              {
+                "index": 0,
+                "field": "conversation.last_button_title",
+                "operator": "equals",
+                "expected": "Pricing",
+                "actual": "Pricing",
+                "matched": true
+              }
+            ]
+          },
+          "edgeSelection": {
+            "requestedBranch": "yes",
+            "yesTarget": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80",
+            "noTarget": "c3d26feb-d999-421e-a676-6ec895126c72",
+            "selected": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80"
+          },
+          "variables_before": {
+            "__waitingFor": null,
+            "conversation": {
+              "last_button_id": "pricing",
+              "last_button_title": "Pricing",
+              "last_message": "Pricing",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "interactive_selection": "pricing",
+            "__prompt": null,
+            "__outbound": null
+          },
+          "variables_after": {
+            "__waitingFor": null,
+            "conversation": {
+              "last_button_id": "pricing",
+              "last_button_title": "Pricing",
+              "last_message": "Pricing",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "interactive_selection": "pricing",
+            "__prompt": null,
+            "__outbound": null,
+            "__branch": "yes"
+          },
+          "__outboundQueue_before": [],
+          "__outboundQueue_after": []
+        },
+        {
+          "fn": "executeInteractiveMessageAction() send_list",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "104-129",
+          "node": {
+            "id": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80",
+            "type": "action",
+            "action": "send_list"
+          },
+          "__outboundQueue_before": [],
+          "__outboundQueue_after": [
+            {
+              "kind": "list",
+              "body": "Pick the option that fits you best.",
+              "title": "Choose a doctor",
+              "buttonLabel": "View options",
+              "sections": [
+                {
+                  "rows": [
+                    {
+                      "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                      "title": "dr1",
+                      "description": ""
+                    },
+                    {
+                      "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                      "title": "dr2",
+                      "description": ""
+                    },
+                    {
+                      "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                      "title": "dr3",
+                      "description": ""
+                    }
+                  ],
+                  "title": "Options"
+                }
+              ]
+            }
+          ],
+          "nodeOutput": {
+            "outcome": "waiting_input",
+            "outboundPreview": "Pick the option that fits you best."
+          }
+        },
+        {
+          "fn": "extractAutomationOutboundMessages()",
+          "file": "lib/channel-platform/src/services/extract-automation-outbound.ts",
+          "lines": "112-139",
+          "runtime": {
+            "lifecycle": "waiting_input",
+            "queueLength": 1,
+            "queue": [
+              {
+                "kind": "list",
+                "body": "Pick the option that fits you best.",
+                "title": "Choose a doctor",
+                "buttonLabel": "View options",
+                "sections": [
+                  {
+                    "rows": [
+                      {
+                        "id": "bc0d8cfa-a31d-4c72-a71f-fb86d418906d",
+                        "title": "dr1",
+                        "description": ""
+                      },
+                      {
+                        "id": "ab8daf75-56a8-410f-a527-a49d9f49b545",
+                        "title": "dr2",
+                        "description": ""
+                      },
+                      {
+                        "id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+                        "title": "dr3",
+                        "description": ""
+                      }
+                    ],
+                    "title": "Options"
+                  }
+                ]
+              }
+            ]
+          },
+          "outputCount": 1,
+          "outputMessages": [
+            {
+              "text": "Pick the option that fits you best.",
+              "kind": "list"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "inbound": {
+        "id": "6208c08d-e7df-45e1-b15e-2dd8cd1603c8",
+        "text": "dr3",
+        "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+        "type": "interactive"
+      },
+      "lifecycle": "completed",
+      "outboundCount": 2,
+      "outboundMessages": [
+        {
+          "text": "For supporting please call :19666",
+          "kind": "text"
+        },
+        {
+          "text": "Hello 👋\nThank you for your trust on us",
+          "kind": "text"
+        }
+      ],
+      "firstEmptyQueueAt": "automation-engine.ts:209 resetOutboundQueue(run.variables)",
+      "steps": [
+        {
+          "fn": "buildResumeInput()",
+          "file": "lib/automation-platform/src/orchestrator/session-policy.ts",
+          "lines": "158-212",
+          "runtime": {
+            "waitingFor": "interactive_selection",
+            "inboundText": "dr3",
+            "payload": {
+              "kind": "interactive_reply",
+              "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "title": "dr3",
+              "interactionType": "button_reply"
+            },
+            "resumeInput": {
+              "kind": "interactive_reply",
+              "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "title": "dr3",
+              "interactionType": "button_reply",
+              "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "outboundKind": "buttons"
+            }
+          }
+        },
+        {
+          "fn": "AutomationEngine.resume() → resetOutboundQueue()",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "209",
+          "__outboundQueue_before": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "__outboundQueue_after": [],
+          "firstQueueEmptyPoint": "line 209 resetOutboundQueue"
+        },
+        {
+          "fn": "handler.execute() on waiting node (NOT executeWaitingNode — does not exist)",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "221-222",
+          "node": {
+            "id": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+            "type": "action",
+            "action": "send_buttons"
+          },
+          "nodeInput": {
+            "kind": "interactive_reply",
+            "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "title": "dr3",
+            "interactionType": "button_reply",
+            "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "outboundKind": "buttons"
+          },
+          "variables_before": {
+            "__outboundQueue": [],
+            "__waitingFor": "interactive_selection"
+          }
+        },
+        {
+          "fn": "executeInteractiveMessageAction() — selection branch",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "71-89",
+          "nodeOutput": {
+            "outcome": "continue",
+            "selection": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            }
+          },
+          "variables_after": {
+            "conversation": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "__waitingFor": null
+          },
+          "__outboundQueue_after": [],
+          "note": "Queue stays empty; prior outbound cleared at line 209, clearLatestOutboundSlot sets __outbound null"
+        },
+        {
+          "fn": "resolveNextNodeId() after waiting node",
+          "file": "lib/automation-platform/src/engine/flow-graph.ts",
+          "lines": "150-177 (action: outgoing[0])",
+          "runtime": {
+            "outgoingTargets": [
+              {
+                "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+                "type": "condition"
+              },
+              {
+                "id": "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29",
+                "type": "condition"
+              }
+            ],
+            "selectedNext": {
+              "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+              "type": "condition"
+            },
+            "reason": "send_buttons has 2 unconditional edges; resolveNextNodeId returns edges[0] only → d4a5623d (Pricing IF)"
+          }
+        },
+        {
+          "fn": "conditionNodeHandler.execute() + IF edge selection",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts + flow-graph.ts",
+          "lines": "286-294, 169-174",
+          "node": {
+            "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+            "type": "condition"
+          },
+          "nodeInput": {
+            "variables_snapshot": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            }
+          },
+          "nodeOutput": {
+            "branch": "no",
+            "clauses": [
+              {
+                "index": 0,
+                "field": "conversation.last_button_title",
+                "operator": "equals",
+                "expected": "Pricing",
+                "actual": "dr3",
+                "matched": false
+              }
+            ]
+          },
+          "edgeSelection": {
+            "requestedBranch": "no",
+            "yesTarget": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80",
+            "noTarget": "c3d26feb-d999-421e-a676-6ec895126c72",
+            "selected": "c3d26feb-d999-421e-a676-6ec895126c72"
+          },
+          "variables_before": {
+            "__waitingFor": null,
+            "conversation": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "__prompt": null,
+            "__outbound": null
+          },
+          "variables_after": {
+            "__waitingFor": null,
+            "conversation": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "__prompt": null,
+            "__outbound": null,
+            "__branch": "no"
+          },
+          "__outboundQueue_before": [],
+          "__outboundQueue_after": []
+        },
+        {
+          "fn": "send_message action",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "197-219",
+          "node": {
+            "id": "c3d26feb-d999-421e-a676-6ec895126c72",
+            "type": "action",
+            "action": "send_message"
+          },
+          "__outboundQueue_before": [],
+          "__outboundQueue_after": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            }
+          ],
+          "nodeOutput": {
+            "text": "For supporting please call :19666"
+          }
+        },
+        {
+          "fn": "send_message action",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "197-219",
+          "node": {
+            "id": "82a22c5f-41f4-48b6-aaba-f79de6e03a60",
+            "type": "action",
+            "action": "send_message"
+          },
+          "__outboundQueue_before": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            }
+          ],
+          "__outboundQueue_after": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            },
+            {
+              "kind": "text",
+              "text": "Hello 👋\nThank you for your trust on us"
+            }
+          ],
+          "nodeOutput": {
+            "text": "Hello 👋\nThank you for your trust on us"
+          }
+        },
+        {
+          "fn": "return_to_main_menu",
+          "node": {
+            "id": "3f38e30e-8161-4589-a7b3-44509d466260",
+            "type": "action",
+            "action": "return_to_main_menu"
+          },
+          "lines": "233-239"
+        },
+        {
+          "fn": "extractAutomationOutboundMessages()",
+          "file": "lib/channel-platform/src/services/extract-automation-outbound.ts",
+          "lines": "112-139",
+          "runtime": {
+            "lifecycle": "completed",
+            "queueLength": 2,
+            "queue": [
+              {
+                "kind": "text",
+                "text": "For supporting please call :19666"
+              },
+              {
+                "kind": "text",
+                "text": "Hello 👋\nThank you for your trust on us"
+              }
+            ]
+          },
+          "outputCount": 2,
+          "outputMessages": [
+            {
+              "text": "For supporting please call :19666",
+              "kind": "text"
+            },
+            {
+              "text": "Hello 👋\nThank you for your trust on us",
+              "kind": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "inbound": {
+        "id": "8bc5b0a2-4dfb-4e9d-8d07-aad685d9fa10",
+        "text": "Hi",
+        "type": "text"
+      },
+      "steps": [
+        {
+          "fn": "buildResumeInput()",
+          "file": "lib/automation-platform/src/orchestrator/session-policy.ts",
+          "lines": "158-212",
+          "runtime": {
+            "waitingFor": "interactive_selection",
+            "inboundText": "Hi",
+            "payload": {},
+            "resumeInput": {
+              "outboundKind": "buttons"
+            }
+          }
+        },
+        {
+          "fn": "AutomationEngine.resume() → resetOutboundQueue()",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "209",
+          "__outboundQueue_before": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "__outboundQueue_after": [],
+          "firstQueueEmptyPoint": "line 209 resetOutboundQueue"
+        },
+        {
+          "fn": "handler.execute() on waiting node (NOT executeWaitingNode — does not exist)",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "221-222",
+          "node": {
+            "id": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+            "type": "action",
+            "action": "send_buttons"
+          },
+          "nodeInput": {
+            "outboundKind": "buttons"
+          },
+          "variables_before": {
+            "__outboundQueue": [],
+            "__waitingFor": "interactive_selection"
+          }
+        },
+        {
+          "fn": "executeInteractiveMessageAction() — no selection, re-prompt",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "92-129",
+          "nodeOutput": {
+            "outcome": "waiting_input",
+            "outbound": {
+              "kind": "buttons",
+              "text": "please press on what you want ",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          },
+          "__outboundQueue_after": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want ",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "lifecycle": "waiting_input",
+      "outboundCount": 1,
+      "outboundMessages": [
+        {
+          "text": "please press on what you want ",
+          "kind": "buttons"
+        }
+      ],
+      "firstEmptyQueueAt": "line 209 resetOutboundQueue"
+    },
+    {
+      "inbound": {
+        "id": "ad0b1961-31a2-46a2-9268-905cff261ec0",
+        "text": "dr3",
+        "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+        "type": "interactive"
+      },
+      "lifecycle": "completed",
+      "outboundCount": 2,
+      "outboundMessages": [
+        {
+          "text": "For supporting please call :19666",
+          "kind": "text"
+        },
+        {
+          "text": "Hello 👋\nThank you for your trust on us",
+          "kind": "text"
+        }
+      ],
+      "firstEmptyQueueAt": "automation-engine.ts:209 resetOutboundQueue(run.variables)",
+      "steps": [
+        {
+          "fn": "buildResumeInput()",
+          "file": "lib/automation-platform/src/orchestrator/session-policy.ts",
+          "lines": "158-212",
+          "runtime": {
+            "waitingFor": "interactive_selection",
+            "inboundText": "dr3",
+            "payload": {
+              "kind": "interactive_reply",
+              "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "title": "dr3",
+              "interactionType": "button_reply"
+            },
+            "resumeInput": {
+              "kind": "interactive_reply",
+              "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "title": "dr3",
+              "interactionType": "button_reply",
+              "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "outboundKind": "buttons"
+            }
+          }
+        },
+        {
+          "fn": "AutomationEngine.resume() → resetOutboundQueue()",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "209",
+          "__outboundQueue_before": [
+            {
+              "kind": "buttons",
+              "text": "please press on what you want",
+              "buttons": [
+                {
+                  "id": "book",
+                  "label": "Book Appointment"
+                },
+                {
+                  "id": "pricing",
+                  "label": "Pricing"
+                },
+                {
+                  "id": "support",
+                  "label": "Talk to Support"
+                }
+              ]
+            }
+          ],
+          "__outboundQueue_after": [],
+          "firstQueueEmptyPoint": "line 209 resetOutboundQueue"
+        },
+        {
+          "fn": "handler.execute() on waiting node (NOT executeWaitingNode — does not exist)",
+          "file": "lib/automation-platform/src/engine/automation-engine.ts",
+          "lines": "221-222",
+          "node": {
+            "id": "991d1d70-7ec1-42e0-8cb5-1516a4f387ad",
+            "type": "action",
+            "action": "send_buttons"
+          },
+          "nodeInput": {
+            "kind": "interactive_reply",
+            "replyId": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "title": "dr3",
+            "interactionType": "button_reply",
+            "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "outboundKind": "buttons"
+          },
+          "variables_before": {
+            "__outboundQueue": [],
+            "__waitingFor": "interactive_selection"
+          }
+        },
+        {
+          "fn": "executeInteractiveMessageAction() — selection branch",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "71-89",
+          "nodeOutput": {
+            "outcome": "continue",
+            "selection": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            }
+          },
+          "variables_after": {
+            "conversation": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "__waitingFor": null
+          },
+          "__outboundQueue_after": [],
+          "note": "Queue stays empty; prior outbound cleared at line 209, clearLatestOutboundSlot sets __outbound null"
+        },
+        {
+          "fn": "resolveNextNodeId() after waiting node",
+          "file": "lib/automation-platform/src/engine/flow-graph.ts",
+          "lines": "150-177 (action: outgoing[0])",
+          "runtime": {
+            "outgoingTargets": [
+              {
+                "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+                "type": "condition"
+              },
+              {
+                "id": "014b0bf2-0a67-4a4a-9bd2-d55144dc6f29",
+                "type": "condition"
+              }
+            ],
+            "selectedNext": {
+              "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+              "type": "condition"
+            },
+            "reason": "send_buttons has 2 unconditional edges; resolveNextNodeId returns edges[0] only → d4a5623d (Pricing IF)"
+          }
+        },
+        {
+          "fn": "conditionNodeHandler.execute() + IF edge selection",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts + flow-graph.ts",
+          "lines": "286-294, 169-174",
+          "node": {
+            "id": "d4a5623d-cf4c-415a-b6cb-dbe28a2e4baf",
+            "type": "condition"
+          },
+          "nodeInput": {
+            "variables_snapshot": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            }
+          },
+          "nodeOutput": {
+            "branch": "no",
+            "clauses": [
+              {
+                "index": 0,
+                "field": "conversation.last_button_title",
+                "operator": "equals",
+                "expected": "Pricing",
+                "actual": "dr3",
+                "matched": false
+              }
+            ]
+          },
+          "edgeSelection": {
+            "requestedBranch": "no",
+            "yesTarget": "dab15807-9a9a-41e1-b8c5-15c6e40a7a80",
+            "noTarget": "c3d26feb-d999-421e-a676-6ec895126c72",
+            "selected": "c3d26feb-d999-421e-a676-6ec895126c72"
+          },
+          "variables_before": {
+            "__waitingFor": null,
+            "conversation": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "__prompt": null,
+            "__outbound": null
+          },
+          "variables_after": {
+            "__waitingFor": null,
+            "conversation": {
+              "last_button_id": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+              "last_button_title": "dr3",
+              "last_message": "dr3",
+              "last_selection_type": "button"
+            },
+            "__outboundQueue": [],
+            "interactive_selection": "080c0381-1b5e-4bf3-a0e5-f1544b59cf28",
+            "__prompt": null,
+            "__outbound": null,
+            "__branch": "no"
+          },
+          "__outboundQueue_before": [],
+          "__outboundQueue_after": []
+        },
+        {
+          "fn": "send_message action",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "197-219",
+          "node": {
+            "id": "c3d26feb-d999-421e-a676-6ec895126c72",
+            "type": "action",
+            "action": "send_message"
+          },
+          "__outboundQueue_before": [],
+          "__outboundQueue_after": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            }
+          ],
+          "nodeOutput": {
+            "text": "For supporting please call :19666"
+          }
+        },
+        {
+          "fn": "send_message action",
+          "file": "lib/automation-platform/src/engine/built-in-nodes.ts",
+          "lines": "197-219",
+          "node": {
+            "id": "82a22c5f-41f4-48b6-aaba-f79de6e03a60",
+            "type": "action",
+            "action": "send_message"
+          },
+          "__outboundQueue_before": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            }
+          ],
+          "__outboundQueue_after": [
+            {
+              "kind": "text",
+              "text": "For supporting please call :19666"
+            },
+            {
+              "kind": "text",
+              "text": "Hello 👋\nThank you for your trust on us"
+            }
+          ],
+          "nodeOutput": {
+            "text": "Hello 👋\nThank you for your trust on us"
+          }
+        },
+        {
+          "fn": "return_to_main_menu",
+          "node": {
+            "id": "3f38e30e-8161-4589-a7b3-44509d466260",
+            "type": "action",
+            "action": "return_to_main_menu"
+          },
+          "lines": "233-239"
+        },
+        {
+          "fn": "extractAutomationOutboundMessages()",
+          "file": "lib/channel-platform/src/services/extract-automation-outbound.ts",
+          "lines": "112-139",
+          "runtime": {
+            "lifecycle": "completed",
+            "queueLength": 2,
+            "queue": [
+              {
+                "kind": "text",
+                "text": "For supporting please call :19666"
+              },
+              {
+                "kind": "text",
+                "text": "Hello 👋\nThank you for your trust on us"
+              }
+            ]
+          },
+          "outputCount": 2,
+          "outputMessages": [
+            {
+              "text": "For supporting please call :19666",
+              "kind": "text"
+            },
+            {
+              "text": "Hello 👋\nThank you for your trust on us",
+              "kind": "text"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

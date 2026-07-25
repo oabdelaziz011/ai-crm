@@ -6,6 +6,7 @@ export type NodePropertyEditorContext = {
   nodeId: string;
   document: import("./types").WorkflowDocument;
   applyConfigPatches: (patches: Array<{ nodeId: string; patch: Record<string, unknown> }>) => void;
+  generateInteractiveRouting?: () => void;
 };
 
 export type NodePropertyEditorProps = {

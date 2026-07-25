@@ -1,0 +1,127 @@
+{
+  "startedAt": "2026-07-25T03:45:50.171Z",
+  "migration141": [
+    {
+      "column_name": "age"
+    },
+    {
+      "column_name": "gender"
+    }
+  ],
+  "draftUpdates": [
+    {
+      "id": "5227f658-74d5-44a5-a30e-4256ea9eb111",
+      "label": "list_gender",
+      "config": {
+        "body": "What Is Your Gender?",
+        "rows": [
+          {
+            "id": "male",
+            "title": "Male",
+            "value": "male",
+            "description": ""
+          },
+          {
+            "id": "female",
+            "title": "Female",
+            "value": "female",
+            "description": ""
+          }
+        ],
+        "title": "Choose an option",
+        "action": "send_list",
+        "saveAs": "customer_gender",
+        "inputKey": "customer_gender",
+        "sections": [
+          {
+            "title": "Options",
+            "rows": [
+              {
+                "id": "male",
+                "title": "Male",
+                "value": "male",
+                "description": ""
+              },
+              {
+                "id": "female",
+                "title": "Female",
+                "value": "female",
+                "description": ""
+              }
+            ]
+          }
+        ],
+        "builderType": "list",
+        "buttonLabel": "View options"
+      }
+    },
+    {
+      "id": "53e0708a-3dcd-4bda-9892-7b55425f1cdf",
+      "label": "ask_age",
+      "config": {
+        "action": "wait_for_input",
+        "prompt": "What is your age?",
+        "saveAs": "customer_age",
+        "inputKey": "customer_age",
+        "builderType": "ask_question"
+      }
+    },
+    {
+      "id": "26471c3d-0527-4d76-a5ce-4bb22c8df013",
+      "label": "create_customer",
+      "config": {
+        "action": "create_customer",
+        "ageField": "customer_age",
+        "nameField": "customer_name",
+        "emailField": "",
+        "phoneField": "customer_phone",
+        "builderType": "create_customer",
+        "genderField": "customer_gender"
+      }
+    }
+  ],
+  "publish": {
+    "versionId": "03c856e2-3a95-4d3d-8fe8-2d46ae1b8e53",
+    "versionNumber": 18,
+    "activeVersionId": "03c856e2-3a95-4d3d-8fe8-2d46ae1b8e53"
+  },
+  "e2ePostCreateError": "Create booking action requires a booking service.",
+  "e2e": {
+    "waUser": "201051154034",
+    "testPhone": "01051154034",
+    "testName": "E2E Verify ac5ecf",
+    "runId": "b8af23ac-c4ee-444b-9225-884e1b62d24c",
+    "runStatus": "running",
+    "flowVersionId": "03c856e2-3a95-4d3d-8fe8-2d46ae1b8e53",
+    "variables": {
+      "customer_name": "E2E Verify ac5ecf",
+      "customer_phone": "01051154034",
+      "customer_age": "55",
+      "customer_gender": "female"
+    },
+    "createCustomerPayload": {
+      "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+      "userId": "",
+      "name": "E2E Verify ac5ecf",
+      "email": null,
+      "phone": "01051154034",
+      "age": 55,
+      "gender": "female"
+    },
+    "customerRow": {
+      "id": "8b316e71-c338-4f23-a7b5-191f57737caa",
+      "name": "E2E Verify ac5ecf",
+      "phone": "01051154034",
+      "age": 55,
+      "gender": "female",
+      "created_at": "2026-07-25T03:46:21.949644+00:00"
+    },
+    "customerDetailsDisplay": {
+      "gender": "Female",
+      "age": 55
+    },
+    "pass": true
+  },
+  "finishedAt": "2026-07-25T03:46:23.109Z",
+  "pass": true
+}

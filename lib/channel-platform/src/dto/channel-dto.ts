@@ -1,4 +1,5 @@
 import type { AttachmentType, InboundSource, WebhookEventType } from "../constants.js";
+import type { WebhookProcessingTrace } from "../webhooks/webhook-processing-trace.js";
 
 export type ChannelAttachmentDto = {
   attachmentId: string;
@@ -62,6 +63,7 @@ export type InboundRouteRequestDto = {
   aiAssistantId?: string;
   onStreamChunk?: (chunk: string) => void;
   abortSignal?: AbortSignal;
+  trace?: WebhookProcessingTrace;
 };
 
 export type InboundRouteResponseDto = {
@@ -70,7 +72,9 @@ export type InboundRouteResponseDto = {
   channelSessionId: string;
   incomingMessageId: string;
   runtimeExecutionId?: string;
+  automationRunId?: string;
   outboundDeliveryId?: string;
+  outboundDeliveryIds?: string[];
   responseContent?: string;
   duplicate?: boolean;
 };
@@ -84,6 +88,8 @@ export type OutboundDispatchRequestDto = {
   externalThreadId: string;
   text: string;
   attachments?: ChannelAttachmentDto[];
+  /** Structured automation outbound entry (buttons, list, template, etc.). */
+  outboundPayload?: Record<string, unknown>;
   outboundMessageId?: string;
   metadata?: Record<string, unknown>;
   /** When false, conversation outgoing message is not created (runtime already persisted it). */

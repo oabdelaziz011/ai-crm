@@ -9,7 +9,7 @@ import type { AutomationFlowRepository } from "../repositories/automation-reposi
 import type { ServiceContext } from "../types.js";
 import { WorkflowAuditService } from "./audit-service.js";
 import { hasBlockingPublishIssues, validateWorkflowSnapshot } from "./publish-validation.js";
-import type { AutomationFlowVersionRepository } from "./version-repository.js";
+import type { WorkflowPublishTransactionRepository } from "./publish-transaction-repository.js";
 import type { PublishWorkflowInput } from "./types.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
@@ -25,7 +25,7 @@ function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
 export class WorkflowPublishService {
   constructor(
     private readonly flows: AutomationFlowRepository,
-    private readonly versions: AutomationFlowVersionRepository,
+    private readonly publishTransaction: WorkflowPublishTransactionRepository,
     private readonly audit: WorkflowAuditService,
   ) {}
 
@@ -43,39 +43,24 @@ export class WorkflowPublishService {
       throw new ValidationError(issues[0]?.message ?? "This workflow is not ready to publish yet.");
     }
 
-    const versionNumber = await this.versions.getNextVersionNumber(flow.id);
-    const version = await this.versions.create({
+    const result = await this.publishTransaction.publishAtomically({
       flowId: flow.id,
       companyId: flow.company_id,
-      versionNumber,
-      releaseNotes: input.releaseNotes ?? "",
+      releaseNotes: input.releaseNotes,
       snapshot: input.snapshot,
       publishedBy: ctx.userId,
-    });
-    const activeVersion = await this.versions.setActiveVersion(flow.id, version.id);
-
-    const updated = await this.flows.update({
-      flowId: flow.id,
-      name: input.snapshot.name,
-      description: input.snapshot.description,
-      triggerType: input.snapshot.triggerType,
-      metadata: input.snapshot.metadata,
       updatedBy: ctx.userId,
-      activeVersionId: activeVersion.id,
-      version: versionNumber,
-      hasUnpublishedDraft: false,
-      status: "active",
     });
 
     this.audit.record({
       flowId: flow.id,
       companyId: flow.company_id,
       action: "published",
-      versionNumber,
+      versionNumber: result.version.version_number,
       userId: ctx.userId,
       details: { releaseNotes: input.releaseNotes ?? "" },
     });
 
-    return { flow: updated, version: activeVersion, issues };
+    return { flow: result.flow, version: result.version, issues };
   }
 }

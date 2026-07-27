@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import { Can } from "@/components/rbac/permission-guard";
 import { useHasPermission } from "@/hooks/use-rbac";
 import type { Invoice } from "@/lib/types";
 import { useTranslation } from "react-i18next";
+import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import {
   DashboardCard,
   DashboardStatCard,
@@ -39,6 +40,34 @@ export default function InvoicesPage() {
   const totalPaid     = invoices.filter((invoice: Invoice) => invoice.status === "Paid").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
   const totalUnpaid   = invoices.filter((invoice: Invoice) => invoice.status === "Unpaid").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
   const totalOverdue  = invoices.filter((invoice: Invoice) => invoice.status === "Overdue").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
+
+  const floatingAiContext = useMemo(
+    () => ({
+      page: "invoices" as const,
+      moduleLabel: t("navigation.invoices"),
+      pageTitle: t("dashboard.invoices.title"),
+      filters: {
+        totalBilled,
+        totalUnpaid,
+        totalOverdue,
+        count: invoices.length,
+      },
+      selectedInvoice: modal.invoice
+        ? { id: modal.invoice.id, label: `INV-${modal.invoice.id.slice(0, 8).toUpperCase()}` }
+        : null,
+      currentEntity: modal.invoice
+        ? {
+            type: "invoice" as const,
+            id: modal.invoice.id,
+            label: `INV-${modal.invoice.id.slice(0, 8).toUpperCase()}`,
+            reference: `INV-${modal.invoice.id.slice(0, 8).toUpperCase()}`,
+          }
+        : null,
+    }),
+    [t, modal.invoice, invoices.length, totalBilled, totalUnpaid, totalOverdue],
+  );
+
+  useRegisterFloatingAiContext(floatingAiContext);
 
   const fmt = (n: number) =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });

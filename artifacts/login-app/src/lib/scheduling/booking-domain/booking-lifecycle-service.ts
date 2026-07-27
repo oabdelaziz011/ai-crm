@@ -1,8 +1,9 @@
 import type { SchedulingBookingStatus } from "@/lib/scheduling/booking-domain/types";
 
 const ALLOWED_TRANSITIONS: Record<SchedulingBookingStatus, SchedulingBookingStatus[]> = {
-  pending: ["confirmed", "cancelled", "rescheduled"],
-  confirmed: ["completed", "cancelled", "no_show", "rescheduled"],
+  pending: ["confirmed", "checked_in", "cancelled", "rescheduled"],
+  confirmed: ["checked_in", "completed", "cancelled", "no_show", "rescheduled"],
+  checked_in: ["completed", "cancelled", "no_show"],
   completed: [],
   cancelled: [],
   no_show: [],
@@ -31,6 +32,6 @@ export class BookingLifecycleService {
   }
 
   static isActive(status: SchedulingBookingStatus): boolean {
-    return status === "pending" || status === "confirmed";
+    return status === "pending" || status === "confirmed" || status === "checked_in";
   }
 }

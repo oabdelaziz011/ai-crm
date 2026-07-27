@@ -8,12 +8,17 @@ import {
   createBookingCompletedEvent,
   createBookingCreatedEvent,
   createBookingRescheduledEvent,
+  createBookingCheckedInEvent,
+  createBookingNoShowEvent,
   type BookingEventPublisher,
   NoOpBookingEventPublisher,
 } from "@/lib/scheduling/booking-domain/events";
 import type {
   BookingMutationContext,
+  CancelBookingInput,
   CancelBookingResult,
+  CheckInBookingResult,
+  MarkNoShowBookingResult,
   CompleteBookingResult,
   CreateBookingInput,
   CreateBookingResult,
@@ -108,7 +113,7 @@ export class BookingDomainService {
     return { booking };
   }
 
-  async cancelBooking(input: BookingMutationContext): Promise<CancelBookingResult> {
+  async cancelBooking(input: CancelBookingInput): Promise<CancelBookingResult> {
     const booking = await this.requireBooking(input.companyId, input.bookingId);
     BookingLifecycleService.assertTransition(booking.status, "cancelled");
 
@@ -121,14 +126,53 @@ export class BookingDomainService {
       throw new BookingDomainError(policyCheck.errors);
     }
 
+    const cancellationNote = buildCancellationNote(input.reason, input.notes, booking.notes);
+
     const updated = await this.bookingRepo.updateStatus(
       booking.id,
       input.companyId,
       "cancelled",
       input.updatedBy ?? null,
+      cancellationNote,
     );
 
-    await this.eventPublisher.publish(createBookingCancelledEvent(updated));
+    await this.eventPublisher.publish(
+      createBookingCancelledEvent(updated, input.reason ?? input.notes ?? null),
+    );
+    return { booking: updated };
+  }
+
+  async checkInBooking(input: BookingMutationContext): Promise<CheckInBookingResult> {
+    const booking = await this.requireBooking(input.companyId, input.bookingId);
+    BookingLifecycleService.assertTransition(booking.status, "checked_in");
+
+    const updated = await this.bookingRepo.updateStatus(
+      booking.id,
+      input.companyId,
+      "checked_in",
+      input.updatedBy ?? null,
+    );
+
+    await this.eventPublisher.publish(createBookingCheckedInEvent(updated));
+    return { booking: updated };
+  }
+
+  async markNoShowBooking(
+    input: BookingMutationContext & { gracePeriodMinutes?: number },
+  ): Promise<MarkNoShowBookingResult> {
+    const booking = await this.requireBooking(input.companyId, input.bookingId);
+    BookingLifecycleService.assertTransition(booking.status, "no_show");
+
+    const updated = await this.bookingRepo.updateStatus(
+      booking.id,
+      input.companyId,
+      "no_show",
+      input.updatedBy ?? null,
+    );
+
+    await this.eventPublisher.publish(
+      createBookingNoShowEvent(updated, input.gracePeriodMinutes ?? 0),
+    );
     return { booking: updated };
   }
 
@@ -225,4 +269,15 @@ export class BookingDomainError extends Error {
     super(codes.join(", "));
     this.name = "BookingDomainError";
   }
+}
+
+function buildCancellationNote(
+  reason: string | null | undefined,
+  notes: string | null | undefined,
+  existingNotes: string | null,
+): string | null {
+  const parts = [existingNotes, reason ? `[Cancellation: ${reason}]` : null, notes]
+    .filter((part) => part && part.trim().length > 0)
+    .map((part) => part!.trim());
+  return parts.length > 0 ? parts.join("\n") : existingNotes;
 }

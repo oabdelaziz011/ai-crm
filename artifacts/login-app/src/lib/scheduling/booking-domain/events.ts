@@ -36,11 +36,30 @@ export type BookingRescheduledEvent = {
   };
 };
 
+export type BookingCheckedInEvent = {
+  type: "BookingCheckedIn";
+  occurredAt: string;
+  payload: {
+    booking: SchedulingBooking;
+  };
+};
+
+export type BookingNoShowEvent = {
+  type: "BookingNoShow";
+  occurredAt: string;
+  payload: {
+    booking: SchedulingBooking;
+    gracePeriodMinutes: number;
+  };
+};
+
 export type BookingDomainEvent =
   | BookingCreatedEvent
   | BookingCancelledEvent
   | BookingCompletedEvent
-  | BookingRescheduledEvent;
+  | BookingRescheduledEvent
+  | BookingCheckedInEvent
+  | BookingNoShowEvent;
 
 export interface BookingEventPublisher {
   publish(event: BookingDomainEvent): void | Promise<void>;
@@ -100,5 +119,24 @@ export function createBookingRescheduledEvent(
     type: "BookingRescheduled",
     occurredAt: new Date().toISOString(),
     payload: { previousBooking, booking },
+  };
+}
+
+export function createBookingCheckedInEvent(booking: SchedulingBooking): BookingCheckedInEvent {
+  return {
+    type: "BookingCheckedIn",
+    occurredAt: new Date().toISOString(),
+    payload: { booking },
+  };
+}
+
+export function createBookingNoShowEvent(
+  booking: SchedulingBooking,
+  gracePeriodMinutes: number,
+): BookingNoShowEvent {
+  return {
+    type: "BookingNoShow",
+    occurredAt: new Date().toISOString(),
+    payload: { booking, gracePeriodMinutes },
   };
 }

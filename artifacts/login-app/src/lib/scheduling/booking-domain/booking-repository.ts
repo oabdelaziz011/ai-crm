@@ -44,13 +44,19 @@ export class BookingRepository {
     companyId: string,
     status: SchedulingBookingStatus,
     updatedBy: string | null,
+    notes?: string | null,
   ): Promise<SchedulingBooking> {
+    const payload: Record<string, unknown> = {
+      status,
+      updated_by: updatedBy,
+    };
+    if (notes !== undefined) {
+      payload.notes = notes;
+    }
+
     const { data, error } = await this.client
       .from("scheduling_bookings")
-      .update({
-        status,
-        updated_by: updatedBy,
-      })
+      .update(payload)
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)

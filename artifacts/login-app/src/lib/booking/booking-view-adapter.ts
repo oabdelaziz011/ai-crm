@@ -26,6 +26,7 @@ export type AppBooking = Booking & {
 const STATUS_MAP: Record<SchedulingBooking["status"], BookingStatus> = {
   pending: "Pending",
   confirmed: "Confirmed",
+  checked_in: "Confirmed",
   completed: "Confirmed",
   cancelled: "Cancelled",
   no_show: "Cancelled",

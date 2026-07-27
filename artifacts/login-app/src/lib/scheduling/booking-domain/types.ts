@@ -3,6 +3,7 @@
 export const SCHEDULING_BOOKING_STATUSES = [
   "pending",
   "confirmed",
+  "checked_in",
   "completed",
   "cancelled",
   "no_show",
@@ -23,7 +24,11 @@ export const SCHEDULING_BOOKING_SOURCES = [
 export type SchedulingBookingSource = (typeof SCHEDULING_BOOKING_SOURCES)[number];
 
 /** Statuses that block resource time for slot generation. */
-export const ACTIVE_BOOKING_STATUSES: SchedulingBookingStatus[] = ["pending", "confirmed"];
+export const ACTIVE_BOOKING_STATUSES: SchedulingBookingStatus[] = [
+  "pending",
+  "confirmed",
+  "checked_in",
+];
 
 export type SchedulingBooking = {
   id: string;
@@ -45,6 +50,7 @@ export type SchedulingBooking = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  invoice_id?: string | null;
 };
 
 export type SchedulingBookingInsert = {
@@ -92,6 +98,19 @@ export type BookingMutationContext = {
   bookingId: string;
   updatedBy?: string | null;
   referenceNow?: Date;
+};
+
+export type CancelBookingInput = BookingMutationContext & {
+  reason?: string | null;
+  notes?: string | null;
+};
+
+export type CheckInBookingResult = {
+  booking: SchedulingBooking;
+};
+
+export type MarkNoShowBookingResult = {
+  booking: SchedulingBooking;
 };
 
 export type BookingValidationErrorCode =

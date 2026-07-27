@@ -28,16 +28,24 @@ export type SchedulingExceptionType = (typeof SCHEDULING_EXCEPTION_TYPES)[number
 export const WEEKDAY_INDICES = [0, 1, 2, 3, 4, 5, 6] as const;
 export type WeekdayIndex = (typeof WEEKDAY_INDICES)[number];
 
+export type BranchStatus = "active" | "inactive" | "archived";
+
 export type Branch = {
   id: string;
   company_id: string;
   name: string;
+  code: string | null;
   timezone: string;
-  status: "active" | "inactive" | "archived";
+  status: BranchStatus;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
+  state: string | null;
   country: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  email: string | null;
+  is_primary: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;

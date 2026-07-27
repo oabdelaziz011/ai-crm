@@ -122,6 +122,7 @@
     "@workspace/ai-observability": "workspace:*",
     "@workspace/ai-prompt-orchestrator": "workspace:*",
     "@workspace/ai-provider-layer": "workspace:*",
+    "@workspace/agent-runtime": "workspace:*",
     "@workspace/ai-tool-router": "workspace:*",
     "@workspace/ai-workflow-platform": "workspace:*",
     "@workspace/automation-platform": "workspace:*",

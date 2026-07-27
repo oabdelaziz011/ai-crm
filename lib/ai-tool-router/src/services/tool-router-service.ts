@@ -3,6 +3,7 @@ import {
   ConversationAccessDeniedError,
   ConversationNotFoundError,
   PermissionDeniedError,
+  TenantContextMissingError,
   ToolDisabledError,
   ToolHandlerNotFoundError,
   ToolNotFoundError,
@@ -14,6 +15,7 @@ import type { ToolDefinitionRepository, ToolExecutionRepository } from "../repos
 import type { ToolHandlerRegistry } from "../tools/tool-contract.js";
 import type { RouteToolInput, ServiceContext, ToolRouteResult } from "../types.js";
 import { sleep, supportsConversationState, validateAgainstSchema, withTimeout } from "../utils/tool-utils.js";
+import { logToolEvent } from "../utils/tool-logger.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -30,6 +32,13 @@ function findMissingPermission(ctx: ServiceContext, permissions: string[]): stri
     }
   }
   return null;
+}
+
+function assertTenantContext(ctx: ServiceContext): void {
+  if (ctx.isSuperAdmin) return;
+  if (!ctx.companyId?.trim() || !ctx.userId?.trim()) {
+    throw new TenantContextMissingError();
+  }
 }
 
 function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
@@ -52,6 +61,7 @@ export class ToolRouterService {
   ) {}
 
   async route(ctx: ServiceContext, input: RouteToolInput): Promise<ToolRouteResult> {
+    assertTenantContext(ctx);
     assertPermission(ctx, TOOL_PERMISSIONS.execute);
 
     const conversation = await this.conversationReader.findById(input.conversationId);
@@ -82,6 +92,15 @@ export class ToolRouterService {
 
     validateAgainstSchema(definition.input_schema, input.input);
     handler.validate(input.input);
+
+    logToolEvent({
+      event: "tool_selected",
+      conversationId: conversation.id,
+      companyId: conversation.company_id,
+      toolKey: definition.key,
+      triggeredBy: input.triggeredBy ?? "router",
+      input: input.input,
+    });
 
     const missingPermission = findMissingPermission(ctx, definition.required_permissions);
     const startedAt = Date.now();
@@ -146,6 +165,19 @@ export class ToolRouterService {
           durationMs,
         });
 
+        logToolEvent({
+          event: "tool_execution_completed",
+          conversationId: conversation.id,
+          companyId: conversation.company_id,
+          toolKey: completed.tool_key,
+          executionId: completed.id,
+          triggeredBy: input.triggeredBy ?? "router",
+          input: input.input,
+          output: completed.output,
+          durationMs: completed.duration_ms ?? durationMs,
+          status: completed.status,
+        });
+
         return {
           executionId: completed.id,
           toolKey: completed.tool_key,
@@ -186,6 +218,20 @@ export class ToolRouterService {
       errorCode,
       errorMessage,
       durationMs,
+    });
+
+    logToolEvent({
+      event: "tool_execution_failed",
+      conversationId: conversation.id,
+      companyId: conversation.company_id,
+      toolKey: completed.tool_key,
+      executionId: completed.id,
+      triggeredBy: input.triggeredBy ?? "router",
+      input: input.input,
+      durationMs: completed.duration_ms ?? durationMs,
+      status: completed.status,
+      errorCode: completed.error_code,
+      errorMessage: completed.error_message,
     });
 
     return {

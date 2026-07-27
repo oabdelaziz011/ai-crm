@@ -67,3 +67,9 @@ export class ConversationNotFoundError extends ToolRouterError {
     );
   }
 }
+
+export class TenantContextMissingError extends ToolRouterError {
+  constructor() {
+    super("TENANT_CONTEXT_MISSING", "Tool execution requires tenant context (companyId and userId).");
+  }
+}

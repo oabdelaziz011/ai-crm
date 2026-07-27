@@ -85,7 +85,10 @@ export class PromptRuntimeService {
     let gatewayResponse: PromptRuntimeExecuteResult["gatewayResponse"];
     if (input.invokeGateway && this.deps.gateway) {
       gatewayResponse = await this.deps.gateway.chatCompletion({
-        messages: [{ role: "user", content: builtPrompt.final_prompt }],
+        messages: builtPrompt.gateway_messages.map((message) => ({
+          role: message.role === "developer" ? "system" : message.role,
+          content: message.content,
+        })),
         model: input.model ?? policy.allowedModels?.[0],
         providerKey: input.providerKey ?? policy.allowedProviders?.[0],
         temperature: policy.temperature,

@@ -222,7 +222,7 @@ describe("Prompt builders", () => {
 });
 
 describe("Prompt composition utilities", () => {
-  it("orders sections according to template section_order", () => {
+  it("orders conversation sections without recent messages or JSON output contract", () => {
     const context = createSampleContext();
     const merged = mergeBuilderSections(
       [new SystemPromptBuilder(), new ConversationBuilder(), new ToolResultBuilder(), new PolicyBuilder()],
@@ -235,6 +235,7 @@ describe("Prompt composition utilities", () => {
       responseContractBuilder,
       systemVersion,
       context.formattingRules,
+      "conversation",
     );
 
     assert.deepEqual(
@@ -242,16 +243,33 @@ describe("Prompt composition utilities", () => {
       [
         "system_instructions",
         "assistant_profile",
-        "recent_messages",
         "conversation_state",
         "intent_decision",
         "tool_results",
         "language",
         "tone",
         "formatting_rules",
-        "output_contract",
       ],
     );
+  });
+
+  it("orders execution sections with JSON output contract", () => {
+    const context = createSampleContext();
+    const merged = mergeBuilderSections(
+      [new SystemPromptBuilder(), new ConversationBuilder(), new ToolResultBuilder(), new PolicyBuilder()],
+      context,
+    );
+    const responseContractBuilder = new ResponseContractBuilder();
+    const ordered = orderPromptSections(
+      conversationTemplate.section_order,
+      merged,
+      responseContractBuilder,
+      systemVersion,
+      context.formattingRules,
+      "execution",
+    );
+
+    assert.ok(ordered.some((section) => section.key === "output_contract"));
   });
 
   it("composes provider-independent final prompt text", () => {
@@ -273,12 +291,15 @@ describe("PromptOrchestratorService", () => {
       companyId: "company-1",
       templateKey: "conversation_default",
       conversationId: "conv-1",
+      currentUserMessage: "What are your hours?",
       context: createSampleContext(),
     });
 
     assert.equal(result.template_key, "conversation_default");
     assert.equal(result.template_version_id, "version-1");
-    assert.equal(result.output_contract.format, "json");
+    assert.equal(result.output_contract.format, "text");
+    assert.ok(result.gateway_messages.length > 0);
+    assert.equal(result.message_plan.userMessage.length > 0 || result.message_plan.history.length > 0, true);
     assert.ok(result.final_prompt.length > 0);
     assert.ok(result.sections.length > 0);
     assert.equal(builds.length, 1);

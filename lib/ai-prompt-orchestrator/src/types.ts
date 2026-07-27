@@ -1,5 +1,10 @@
 import type { ConversationState } from "@workspace/ai-conversation";
-import type { PromptSectionKey, PromptTemplateType, PromptLifecycleStatus } from "./constants.js";
+import type {
+  PromptOrchestrationMode,
+  PromptSectionKey,
+  PromptTemplateType,
+  PromptLifecycleStatus,
+} from "./constants.js";
 import type { PromptPolicy } from "./policies/prompt-policy.js";
 
 export type PromptSectionConfig = {
@@ -55,9 +60,26 @@ export type PromptBuildRecord = {
   sections: BuiltPromptSection[];
   final_prompt: string;
   output_contract: OutputContract;
+  message_plan: PromptMessagePlan | null;
+  gateway_messages: GatewayChatMessage[];
   metadata?: Record<string, unknown>;
   created_at: string;
   created_by: string | null;
+};
+
+export type GatewayChatMessage = {
+  role: "system" | "developer" | "user" | "assistant";
+  content: string;
+};
+
+export type PromptMessagePlan = {
+  mode: PromptOrchestrationMode;
+  systemContent: string;
+  developerContent?: string;
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  userMessage: string;
+  outputContract: OutputContract;
+  toolsEnabled?: boolean;
 };
 
 export type BuiltPromptSection = {
@@ -73,6 +95,8 @@ export type BuiltPrompt = {
   template_version_id: string;
   sections: BuiltPromptSection[];
   final_prompt: string;
+  message_plan: PromptMessagePlan;
+  gateway_messages: GatewayChatMessage[];
   output_contract: OutputContract;
   metadata?: {
     renderedSize: number;
@@ -128,6 +152,9 @@ export type BuildPromptInput = {
   templateKey?: string;
   templateType?: PromptTemplateType;
   conversationId?: string | null;
+  mode?: PromptOrchestrationMode;
+  currentUserMessage?: string;
+  toolsEnabled?: boolean;
   context: PromptContextInput;
 };
 

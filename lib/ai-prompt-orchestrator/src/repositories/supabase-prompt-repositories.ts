@@ -7,8 +7,10 @@ import type {
 import type {
   CreatePromptTemplateInput,
   CreatePromptTemplateVersionInput,
+  GatewayChatMessage,
   ListPromptTemplatesFilter,
   PromptBuildRecord,
+  PromptMessagePlan,
   PromptTemplateRecord,
   PromptTemplateVersionRecord,
 } from "../types.js";
@@ -53,6 +55,7 @@ function mapVersion(row: Record<string, unknown>): PromptTemplateVersionRecord {
 }
 
 function mapBuild(row: Record<string, unknown>): PromptBuildRecord {
+  const metadata = (row.metadata as Record<string, unknown> | null) ?? {};
   return {
     id: row.id as string,
     company_id: row.company_id as string,
@@ -64,6 +67,8 @@ function mapBuild(row: Record<string, unknown>): PromptBuildRecord {
     sections: (row.sections as PromptBuildRecord["sections"]) ?? [],
     final_prompt: row.final_prompt as string,
     output_contract: normalizeOutputContract(row.output_contract),
+    message_plan: (metadata.message_plan as PromptMessagePlan | undefined) ?? null,
+    gateway_messages: (metadata.gateway_messages as GatewayChatMessage[] | undefined) ?? [],
     created_at: row.created_at as string,
     created_by: (row.created_by as string | null) ?? null,
   };
@@ -126,15 +131,18 @@ export function createSupabasePromptTemplateRepository(client: SupabaseClient): 
     },
 
     async findByType(companyId: string, templateType: string): Promise<PromptTemplateRecord | null> {
-      const { data: companyTemplate, error: companyError } = await client
+      const { data: companyTemplates, error: companyError } = await client
         .from(TEMPLATES_TABLE)
         .select("*")
         .eq("company_id", companyId)
         .eq("template_type", templateType)
         .eq("is_enabled", true)
-        .maybeSingle();
+        .order("key", { ascending: true })
+        .limit(1);
       if (companyError) throw companyError;
-      if (companyTemplate) return mapTemplate(companyTemplate as Record<string, unknown>);
+      if (companyTemplates?.[0]) {
+        return mapTemplate(companyTemplates[0] as Record<string, unknown>);
+      }
 
       const { data, error } = await client
         .from(TEMPLATES_TABLE)
@@ -142,10 +150,11 @@ export function createSupabasePromptTemplateRepository(client: SupabaseClient): 
         .is("company_id", null)
         .eq("template_type", templateType)
         .eq("is_enabled", true)
-        .maybeSingle();
+        .order("key", { ascending: true })
+        .limit(1);
       if (error) throw error;
-      if (!data) return null;
-      return mapTemplate(data as Record<string, unknown>);
+      if (!data?.[0]) return null;
+      return mapTemplate(data[0] as Record<string, unknown>);
     },
 
     async create(input: CreatePromptTemplateInput): Promise<PromptTemplateRecord> {
@@ -316,6 +325,10 @@ export function createSupabasePromptBuildRepository(client: SupabaseClient): Pro
           sections: input.sections,
           final_prompt: input.finalPrompt,
           output_contract: input.outputContract,
+          metadata: {
+            message_plan: input.messagePlan,
+            gateway_messages: input.gatewayMessages,
+          },
           created_by: input.createdBy ?? null,
         })
         .select("*")

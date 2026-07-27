@@ -24,6 +24,8 @@ import {
   orderPromptSections,
   renderSectionsWithVariables,
 } from "../utils/compose-prompt.js";
+import { composeGatewayMessages } from "../utils/compose-gateway-messages.js";
+import { composeMessagePlan, resolveOrchestrationMode } from "../utils/compose-message-plan.js";
 import type { PromptRenderer } from "../rendering/prompt-renderer.js";
 import type { PromptContextService } from "./prompt-context-service.js";
 import type { BuildPromptInput, BuiltPrompt, ServiceContext } from "../types.js";
@@ -73,6 +75,11 @@ export class PromptOrchestratorService {
     }
 
     const version = await this.resolveActiveVersion(template);
+    const mode = resolveOrchestrationMode({
+      mode: input.mode,
+      templateType: template.template_type,
+    });
+
     const normalizedContext = this.contextService.normalize({
       ...input.context,
       companyId: input.companyId,
@@ -97,9 +104,20 @@ export class PromptOrchestratorService {
       this.responseContractBuilder,
       version,
       normalizedContext.formattingRules,
+      mode,
     );
 
+    const messagePlan = composeMessagePlan({
+      mode,
+      sections: orderedSections,
+      outputContract: version.output_contract,
+      currentUserMessage: input.currentUserMessage,
+      recentMessages: normalizedContext.recentMessages,
+      toolsEnabled: input.toolsEnabled,
+    });
+    const gatewayMessages = composeGatewayMessages(messagePlan);
     const finalPrompt = composeFinalPrompt(orderedSections);
+
     const build = await this.buildRepository.create({
       companyId: input.companyId,
       conversationId: input.conversationId ?? null,
@@ -109,7 +127,9 @@ export class PromptOrchestratorService {
       templateType: template.template_type,
       sections: orderedSections,
       finalPrompt,
-      outputContract: version.output_contract,
+      outputContract: messagePlan.outputContract,
+      messagePlan,
+      gatewayMessages,
       createdBy: ctx.userId,
     });
 
@@ -120,7 +140,9 @@ export class PromptOrchestratorService {
       template_version_id: version.id,
       sections: orderedSections,
       final_prompt: finalPrompt,
-      output_contract: version.output_contract,
+      message_plan: messagePlan,
+      gateway_messages: gatewayMessages,
+      output_contract: messagePlan.outputContract,
     };
   }
 

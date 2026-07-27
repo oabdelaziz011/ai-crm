@@ -6,7 +6,7 @@ import type {
   PromptTemplateRecord,
   PromptTemplateVersionRecord,
 } from "../types.js";
-import type { BuiltPromptSection, OutputContract } from "../types.js";
+import type { BuiltPromptSection, GatewayChatMessage, OutputContract, PromptMessagePlan } from "../types.js";
 
 export interface PromptTemplateRepository {
   list(filter: ListPromptTemplatesFilter): Promise<PromptTemplateRecord[]>;
@@ -41,6 +41,8 @@ export interface PromptBuildRepository {
     sections: BuiltPromptSection[];
     finalPrompt: string;
     outputContract: OutputContract;
+    messagePlan: PromptMessagePlan;
+    gatewayMessages: GatewayChatMessage[];
     createdBy?: string | null;
   }): Promise<PromptBuildRecord>;
 }

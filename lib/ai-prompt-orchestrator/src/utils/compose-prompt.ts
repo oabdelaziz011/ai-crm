@@ -1,5 +1,5 @@
 import { SECTION_SEPARATOR } from "../constants.js";
-import type { PromptSectionKey } from "../constants.js";
+import type { PromptOrchestrationMode, PromptSectionKey } from "../constants.js";
 import type { ResponseContractBuilder } from "../builders/prompt-builders.js";
 import type {
   BuiltPromptSection,
@@ -46,10 +46,12 @@ export function orderPromptSections(
   responseContractBuilder: ResponseContractBuilder,
   version: PromptTemplateVersionRecord,
   formattingRules?: string[],
+  mode: PromptOrchestrationMode = "conversation",
 ): BuiltPromptSection[] {
   const ordered: BuiltPromptSection[] = [];
 
   for (const key of sectionOrder) {
+    if (mode === "conversation" && key === "recent_messages") continue;
     const section = sections[key];
     if (section) {
       ordered.push(section);
@@ -60,7 +62,11 @@ export function orderPromptSections(
     ordered.push(responseContractBuilder.buildFormattingSection(formattingRules));
   }
 
-  if (!ordered.some((section) => section.key === "output_contract")) {
+  if (
+    mode === "execution" &&
+    !ordered.some((section) => section.key === "output_contract") &&
+    version.output_contract.format === "json"
+  ) {
     const contractConfig = version.sections.output_contract;
     if (contractConfig?.enabled !== false) {
       ordered.push(
@@ -98,8 +104,8 @@ export function normalizeOutputContract(value: unknown): OutputContract {
   }
 
   return {
-    format: "json",
-    instructions: "Return output that conforms to the structured response contract.",
+    format: "text",
+    instructions: "Respond naturally in plain text to the customer.",
   };
 }
 

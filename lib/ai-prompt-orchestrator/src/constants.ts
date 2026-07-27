@@ -86,4 +86,32 @@ export const DEFAULT_TEMPLATE_KEYS: Record<PromptTemplateType, string> = {
   escalation: "escalation_default",
 };
 
+export const PROMPT_ORCHESTRATION_MODES = ["conversation", "execution"] as const;
+
+export type PromptOrchestrationMode = (typeof PROMPT_ORCHESTRATION_MODES)[number];
+
+/** Sections surfaced to the model as system context (identity, policies, safety). */
+export const SYSTEM_PROMPT_SECTION_KEYS = [
+  "system_instructions",
+  "assistant_profile",
+  "company_policies",
+  "language",
+  "tone",
+  "safety_instructions",
+  "knowledge_context",
+  "conversation_summary",
+] as const satisfies readonly PromptSectionKey[];
+
+/** Internal runtime instructions — never mixed into the user turn. */
+export const DEVELOPER_PROMPT_SECTION_KEYS = [
+  "conversation_state",
+  "intent_decision",
+  "tool_results",
+  "formatting_rules",
+  "output_contract",
+] as const satisfies readonly PromptSectionKey[];
+
+export const CONVERSATION_TOOL_DEVELOPER_INSTRUCTIONS =
+  "You may call tools when the user asks you to perform an action. For general conversation, reply naturally in plain text.";
+
 export const SECTION_SEPARATOR = "\n\n---\n\n";

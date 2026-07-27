@@ -195,6 +195,7 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
             systemInstructions: input.retrieval
               ? formatRetrievalInstructions(input.retrieval.chunks)
               : undefined,
+            pageContext: input.pageContext,
           },
           recentMessages: input.recentMessages.map((message) => ({
             role: message.role,

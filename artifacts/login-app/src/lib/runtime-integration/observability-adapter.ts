@@ -1,5 +1,6 @@
 import type { ExecutionAnalyticsService, TraceService } from "@workspace/ai-observability";
 import type { RuntimeTelemetryEvent, RuntimeTelemetryPort, ServiceContext } from "@workspace/runtime-integration";
+import { supabase } from "@/lib/supabase";
 
 export type RuntimeObservabilityServices = {
   trace: TraceService;
@@ -104,6 +105,32 @@ export function createRuntimeObservabilityPort(
             },
             executionStatus: event.pipelineStage === "failed" ? "failed" : "succeeded",
           });
+
+          void supabase
+            .from("platform_ai_usage")
+            .insert({
+              company_id: event.companyId,
+              user_id: ctx.userId,
+              provider_key: event.providerKey,
+              model: event.model ?? "unknown",
+              use_case: "chat",
+              input_tokens: event.tokenUsage.promptTokens,
+              output_tokens: event.tokenUsage.completionTokens,
+              total_tokens: event.tokenUsage.totalTokens,
+              latency_ms: event.latencyMs ?? event.executionTimeMs,
+              status: event.pipelineStage === "failed" ? "failed" : "succeeded",
+              conversation_id: event.conversationId,
+              execution_id: event.aiExecutionId ?? event.executionId,
+              correlation_id: event.correlationId,
+              metadata: {
+                intentKey: event.intentKey,
+                runtimeId: event.runtimeId,
+                pipelineStage: event.pipelineStage,
+              },
+            })
+            .then(({ error }) => {
+              if (error) console.warn("[platform_ai_usage] record failed:", error.message);
+            });
         }
       } catch (error) {
         throw new Error(formatError(error));

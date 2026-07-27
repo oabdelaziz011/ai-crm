@@ -69,6 +69,7 @@ export interface PromptReadPort {
       recentMessages: MessageSnapshot[];
       intent: IntentSnapshot;
       retrieval: RetrievalSnapshot | null;
+      pageContext?: Record<string, unknown>;
     },
   ): Promise<PromptSnapshot>;
 }

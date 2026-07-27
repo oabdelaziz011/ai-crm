@@ -191,6 +191,7 @@ export class EnterpriseRuntimeCoordinator {
             recentMessages,
             intent: intent!,
             retrieval,
+            pageContext: input.pageContext,
           }),
         );
 

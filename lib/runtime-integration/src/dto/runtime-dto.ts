@@ -5,6 +5,8 @@ export type RuntimeExecutionRequest = {
   companyId: string;
   conversationId: string;
   messageText: string;
+  /** Current page/module context — injected into prompt orchestrator, not user message text */
+  pageContext?: Record<string, unknown>;
   correlationId?: string;
   policyId?: string;
   providerConnectionId?: string | null;

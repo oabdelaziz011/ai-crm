@@ -15,6 +15,7 @@ export function createRuntimeGatewayPort(gateway: AIGatewayService): RuntimeGate
         maxTokens: input.maxTokens,
         topP: input.topP,
         metadata: input.metadata,
+        tools: input.tools,
         context: {
           companyId: input.context.companyId,
           tenantId: input.context.tenantId,
@@ -36,6 +37,7 @@ export function createRuntimeGatewayPort(gateway: AIGatewayService): RuntimeGate
         },
         latencyMs: response.latencyMs,
         estimatedCostUsd: response.estimatedCostUsd,
+        toolCalls: response.toolCalls,
       };
     },
     streamChatCompletion(input) {
@@ -47,6 +49,7 @@ export function createRuntimeGatewayPort(gateway: AIGatewayService): RuntimeGate
         maxTokens: input.maxTokens,
         topP: input.topP,
         metadata: input.metadata,
+        tools: input.tools,
         context: {
           companyId: input.context.companyId,
           tenantId: input.context.tenantId,
@@ -70,6 +73,9 @@ export function createRuntimePromptPort(
         conversationId: input.conversationId,
         templateKey: input.templateKey,
         templateType: input.templateType as never,
+        mode: input.mode,
+        currentUserMessage: input.currentUserMessage,
+        toolsEnabled: input.toolsEnabled,
         context: input.context as never,
       });
       return {
@@ -78,6 +84,11 @@ export function createRuntimePromptPort(
           templateKey: result.builtPrompt.template_key,
           templateVersionId: result.builtPrompt.template_version_id,
           finalPrompt: result.builtPrompt.final_prompt,
+          gatewayMessages: result.builtPrompt.gateway_messages,
+          messagePlan: {
+            mode: result.builtPrompt.message_plan.mode,
+            outputContract: result.builtPrompt.message_plan.outputContract,
+          },
           metadata: result.builtPrompt.metadata,
         },
       };
@@ -117,10 +128,14 @@ export function createEnterpriseRuntimeIntegrations(deps: {
   promptRuntime: PromptRuntimeService;
   gateway: AIGatewayService;
   knowledge?: KnowledgeProvider;
+  tools?: import("@workspace/ai-execution-engine").RuntimeToolPort;
+  platformConfig?: import("@workspace/ai-execution-engine").PlatformRuntimeConfigPort;
 }) {
   return {
     prompt: createRuntimePromptPort(deps.promptRuntime),
     gateway: createRuntimeGatewayPort(deps.gateway),
     knowledge: deps.knowledge ? createRuntimeKnowledgePort(deps.knowledge) : undefined,
+    tools: deps.tools,
+    platformConfig: deps.platformConfig,
   };
 }

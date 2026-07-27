@@ -175,6 +175,9 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
           companyId: input.companyId,
           conversationId: input.conversationId,
           templateType: "conversation",
+          orchestrationMode: "conversation",
+          currentUserMessage: input.messageText,
+          toolsEnabled: true,
           promptContext: {
             companyId: input.companyId,
             conversationId: input.conversationId,
@@ -194,6 +197,7 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
             systemInstructions: input.retrieval
               ? formatRetrievalInstructions(input.retrieval.chunks)
               : undefined,
+            pageContext: input.pageContext,
           },
           recentMessages: input.recentMessages.map((message) => ({
             role: message.role,
@@ -211,6 +215,7 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
           buildId: built.buildId,
           templateKey: built.templateKey,
           finalPrompt: built.finalPrompt,
+          messagePlan: built.messagePlan,
         };
       },
     },
@@ -226,6 +231,8 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
           stream: input.policy?.streaming,
           onStreamChunk: input.onStreamChunk,
           abortSignal: input.abortSignal,
+          orchestrationMode: "conversation",
+          toolsEnabled: true,
           promptContext: {},
         });
 

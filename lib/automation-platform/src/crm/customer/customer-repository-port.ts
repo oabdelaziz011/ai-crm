@@ -14,6 +14,7 @@ function parseAgeValue(value: string): number | null {
 
 export interface CustomerRepositoryPort {
   findCustomersByField(input: {
+    companyId: string;
     lookupBy: CustomerLookupField;
     lookupValue: string;
   }): Promise<{ count: number; record: CustomerRecord | null }>;
@@ -35,6 +36,7 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
   }
 
   async findCustomersByField(input: {
+    companyId: string;
     lookupBy: CustomerLookupField;
     lookupValue: string;
   }): Promise<{ count: number; record: CustomerRecord | null }> {

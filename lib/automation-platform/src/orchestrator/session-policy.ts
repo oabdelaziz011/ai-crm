@@ -1,4 +1,5 @@
 import { DEFAULT_SESSION_TIMEOUT_MS } from "../constants.js";
+import { readClientEnvFlag } from "@workspace/platform-crypto/client";
 import { extractInteractiveSelection, INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
 import { readLatestOutbound } from "../runtime/outbound-queue.js";
 import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
@@ -194,7 +195,7 @@ export function buildResumeInput(
     input.title = selection.last_button_title;
   }
 
-  if (process.env.AUTOMATION_IF_TRACE_DEBUG === "1") {
+  if (readClientEnvFlag("AUTOMATION_IF_TRACE_DEBUG")) {
     void import("../debug/interactive-if-trace-debug.js").then(({ traceBuildResumeInput }) => {
       traceBuildResumeInput({
         runId: run.id,

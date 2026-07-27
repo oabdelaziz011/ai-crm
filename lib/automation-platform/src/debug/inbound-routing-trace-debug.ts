@@ -1,3 +1,4 @@
+import { readClientEnvFlag } from "@workspace/platform-crypto/client";
 import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
 import {
   buildInboundRoutingEligibility,
@@ -6,7 +7,7 @@ import {
 import type { InboundAutomationRoutingDecision } from "../orchestrator/inbound-automation-routing.js";
 
 export function isInboundRoutingTraceEnabled(): boolean {
-  return process.env.AUTOMATION_INBOUND_ROUTING_DEBUG === "1";
+  return readClientEnvFlag("AUTOMATION_INBOUND_ROUTING_DEBUG");
 }
 
 function logInboundRoutingTrace(payload: Record<string, unknown>): void {

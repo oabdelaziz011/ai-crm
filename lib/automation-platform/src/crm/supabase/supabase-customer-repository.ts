@@ -25,16 +25,19 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
   constructor(private readonly client: SupabaseClient) {}
 
   async findCustomersByField(input: {
+    companyId: string;
     lookupBy: CustomerLookupField;
     lookupValue: string;
   }): Promise<{ count: number; record: CustomerRecord | null }> {
     const normalizedValue = input.lookupValue.trim();
     const column = mapLookupColumn(input.lookupBy);
+    const lookupValue = input.lookupBy === "email" ? normalizedValue.toLowerCase() : normalizedValue;
 
     const { count, error: countError } = await this.client
       .from("customers")
       .select("id", { count: "exact", head: true })
-      .eq(column, input.lookupBy === "email" ? normalizedValue.toLowerCase() : normalizedValue);
+      .eq("company_id", input.companyId)
+      .eq(column, lookupValue);
 
     if (countError) throw new Error(countError.message);
 
@@ -49,7 +52,8 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
     const { data, error } = await this.client
       .from("customers")
       .select(CUSTOMER_COLUMNS)
-      .eq(column, input.lookupBy === "email" ? normalizedValue.toLowerCase() : normalizedValue)
+      .eq("company_id", input.companyId)
+      .eq(column, lookupValue)
       .limit(1)
       .maybeSingle();
 
@@ -64,6 +68,7 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
       .from("customers")
       .insert({
         user_id: input.userId,
+        company_id: input.companyId,
         name: input.name.trim(),
         email: input.email?.trim() || null,
         phone: input.phone?.trim() || null,
@@ -95,6 +100,7 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
       .from("customers")
       .update({ [field]: updateValue })
       .eq("id", input.customerId)
+      .eq("company_id", input.companyId)
       .select(CUSTOMER_COLUMNS)
       .single();
 

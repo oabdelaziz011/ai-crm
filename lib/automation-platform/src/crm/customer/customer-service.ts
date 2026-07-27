@@ -27,7 +27,11 @@ export class CustomerService {
     const lookupBy = readLookupBy(input.lookupBy);
     const lookupValue = readRequiredString(input.lookupValue, "lookup value");
 
-    const { count, record } = await this.repository.findCustomersByField({ lookupBy, lookupValue });
+    const { count, record } = await this.repository.findCustomersByField({
+      companyId: input.companyId,
+      lookupBy,
+      lookupValue,
+    });
 
     if (count === 0) {
       return { status: "not_found", count: 0 };

@@ -1,3 +1,4 @@
+import { readClientEnvFlag } from "@workspace/platform-crypto/client";
 import type { AutomationNodeRecord } from "../types.js";
 
 export type ListNodeLifecycleStage =
@@ -29,7 +30,7 @@ export type ListNodeLifecycleLog = {
 };
 
 export function isListNodeLifecycleDebugEnabled(): boolean {
-  return process.env.AUTOMATION_LIST_NODE_DEBUG === "1";
+  return readClientEnvFlag("AUTOMATION_LIST_NODE_DEBUG");
 }
 
 let listVisitCounter = 0;

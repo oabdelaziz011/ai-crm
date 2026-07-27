@@ -5,7 +5,10 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@login-app/*": ["../login-app/src/*"]
+    }
   },
   "include": ["src"],
   "references": [

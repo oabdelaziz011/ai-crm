@@ -1,4 +1,5 @@
 import type { VectorQueryTelemetryEvent } from "../types.js";
+import { isTestRuntime } from "@workspace/platform-crypto/client";
 
 export type VectorQueryLogEvent = {
   correlationId: string;
@@ -55,6 +56,6 @@ function sanitizeLogPayload(payload: VectorQueryLogEvent): VectorQueryLogEvent {
 }
 
 export function logVectorQueryEvent(payload: VectorQueryLogEvent): void {
-  if (process.env.NODE_ENV === "test") return;
+  if (isTestRuntime()) return;
   console.info(serializeStructuredLog(payload));
 }

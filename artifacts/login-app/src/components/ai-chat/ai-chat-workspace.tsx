@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
@@ -32,15 +33,29 @@ export function AiChatWorkspace() {
   const composerDisabled = !canUseAi || !canExecuteRuntime || configBlocked || isLoading;
   const showProviderSetupCta = configBlocked && !isLoading;
 
-  const errorMessage =
-    conversationError ??
-    (sendError === "runtime_config_missing"
-      ? t("dashboard.ai.errors.runtimeNotConfiguredDetail")
-      : sendError
-        ? t("dashboard.ai.errors.runtimeFailed", { detail: sendError })
-        : showProviderSetupCta
-          ? t("dashboard.ai.errors.runtimeNotConfiguredDetail")
-          : null);
+  const errorMessage = useMemo(() => {
+    if (conversationError === "conversation_start_failed") {
+      return t("dashboard.ai.errors.conversationStartFailed");
+    }
+    if (conversationError) return conversationError;
+
+    if (sendError === "runtime_config_missing") {
+      return t("dashboard.ai.errors.runtimeNotConfiguredDetail");
+    }
+    if (sendError === "web_chat_channel_missing") {
+      return t("dashboard.ai.errors.webChatChannelMissing");
+    }
+    if (sendError === "channel_route_failed") {
+      return t("dashboard.ai.errors.channelRouteFailed");
+    }
+    if (sendError) {
+      return t("dashboard.ai.errors.runtimeFailed", { detail: sendError });
+    }
+    if (showProviderSetupCta) {
+      return t("dashboard.ai.errors.runtimeNotConfiguredDetail");
+    }
+    return null;
+  }, [conversationError, sendError, showProviderSetupCta, t]);
 
   return (
     <div className="space-y-6 flex flex-col min-h-0">

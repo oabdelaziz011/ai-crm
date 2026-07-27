@@ -6,8 +6,16 @@ import { useChannelPlatformServices } from "@/lib/channel-platform";
 import { useConversationServices } from "@/lib/ai-conversation";
 import { useRuntimeChatConfig } from "./use-runtime-chat-config";
 import { useWebChatCompanyChannel } from "./use-web-chat-company-channel";
+import i18n from "@/i18n";
 
 const CONVERSATION_STORAGE_PREFIX = "vault-ai-chat-conversation";
+
+export type UseAiChatWorkspaceOptions = {
+  /** floating panel shares conversation across navigation */
+  source?: "floating" | "workspace";
+  /** Live page context resolver — passed to runtime as structured metadata */
+  getPageContext?: () => Record<string, unknown>;
+};
 
 export type ChatMessage = {
   id: string;
@@ -47,7 +55,8 @@ export function aiChatMessagesQueryKey(conversationId: string | null) {
   return ["ai-chat-messages", conversationId] as const;
 }
 
-export function useAiChatWorkspace() {
+export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
+  const { source = "workspace", getPageContext } = options;
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const queryClient = useQueryClient();
@@ -69,7 +78,9 @@ export function useAiChatWorkspace() {
   const streamingRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
 
-  const assistantName = assistantSettings?.assistant_name?.trim() || "Vault AI";
+  const assistantName =
+    assistantSettings?.assistant_name?.trim() ||
+    i18n.t("dashboard.ai.name", { ns: "common" });
   const welcomeMessage = assistantSettings?.welcome_message?.trim() || "";
 
   useEffect(() => {
@@ -98,13 +109,13 @@ export function useAiChatWorkspace() {
           aiAssistantId: assistantSettings!.id,
           channelType: "web_chat",
           companyChannelId: webChatChannel?.id,
-          metadata: { source: "ai_chat_workspace" },
+          metadata: { source: source === "floating" ? "floating_ai_assistant" : "ai_chat_workspace" },
         });
         sessionStorage.setItem(conversationStorageKey(companyId!), created.id);
         if (!cancelled) setConversationId(created.id);
       } catch (error) {
         if (!cancelled) {
-          setConversationError(error instanceof Error ? error.message : "Failed to start conversation.");
+          setConversationError("conversation_start_failed");
         }
       }
     }
@@ -167,7 +178,7 @@ export function useAiChatWorkspace() {
       aiAssistantId: assistantSettings.id,
       channelType: "web_chat",
       companyChannelId: webChatChannel?.id,
-      metadata: { source: "ai_chat_workspace", restarted: true },
+      metadata: { source: source === "floating" ? "floating_ai_assistant" : "ai_chat_workspace", restarted: true },
     });
 
     sessionStorage.setItem(conversationStorageKey(companyId), created.id);
@@ -182,6 +193,7 @@ export function useAiChatWorkspace() {
     conversationServices.conversations,
     queryClient,
     webChatChannel?.id,
+    source,
   ]);
 
   const sendMessage = useCallback(
@@ -208,6 +220,8 @@ export function useAiChatWorkspace() {
       abortRef.current = controller;
 
       try {
+        const pageContext = getPageContext?.();
+
         await channelPlatformServices.router.routeInbound(channelPlatformContext, {
           companyId,
           companyChannelId: webChatChannel.id,
@@ -220,6 +234,7 @@ export function useAiChatWorkspace() {
           executeAi: true,
           runtimeConfig: {
             providerConnectionId: runtimeConfig.providerConnectionId,
+            pageContext,
             knowledgeRetrieval:
               runtimeConfig.knowledgeRetrieval?.embeddingConnectionId &&
               runtimeConfig.knowledgeRetrieval?.vectorStoreConnectionId &&
@@ -242,7 +257,11 @@ export function useAiChatWorkspace() {
         await refreshMessages();
       } catch (error) {
         if (controller.signal.aborted) return;
-        setSendError(error instanceof Error ? error.message : "channel_route_failed");
+        setSendError(
+          error instanceof Error && !error.message.includes("_")
+            ? error.message
+            : "channel_route_failed",
+        );
       } finally {
         setIsSending(false);
         setStreamingContent("");
@@ -257,6 +276,7 @@ export function useAiChatWorkspace() {
       companyId,
       conversationId,
       isSending,
+      getPageContext,
       refreshMessages,
       runtimeConfig,
       webChatChannel?.id,

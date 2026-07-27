@@ -6,8 +6,12 @@ import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAIProviderServices } from "@/lib/ai-provider-layer";
 import { useRetrievalServices } from "@/lib/retrieval-engine";
+import { useToolRouterServices } from "@/lib/ai-tool-router";
 import { supabase } from "@/lib/supabase";
 import { createEnterpriseRuntimeIntegrations } from "@/lib/runtime-integration/runtime-adapters";
+import { createRuntimeToolPort } from "@/lib/runtime-integration/tool-port-adapter";
+import { createPlatformRuntimeConfigPort } from "@/lib/platform-ai-provider/platform-runtime-port";
+import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 
 /**
  * Factory hook for AI Execution Engine domain services.
@@ -19,6 +23,24 @@ export function useAIExecutionServices() {
   const { services: promptServices } = usePromptOrchestratorServices();
   const { services: providerServices } = useAIProviderServices();
   const { services: retrievalServices } = useRetrievalServices();
+  const { services: toolRouterServices } = useToolRouterServices();
+
+  const tools = useMemo(() => createRuntimeToolPort(toolRouterServices), [toolRouterServices]);
+  const platformServices = useMemo(() => createPlatformAIProviderServices(supabase), []);
+  const platformConfig = useMemo(
+    () =>
+      createPlatformRuntimeConfigPort(async ({ companyId, providerKey, useCase }) => {
+        const runtime = await platformServices.platform.resolveRuntimeConfig(companyId, providerKey, useCase);
+        return {
+          apiKey: runtime.apiKey,
+          model: runtime.model,
+          baseUrl: runtime.baseUrl,
+          providerKey: runtime.providerKey,
+          usesPlatformKey: runtime.usesPlatformKey,
+        };
+      }),
+    [platformServices],
+  );
 
   const services = useMemo(
     () =>
@@ -28,9 +50,11 @@ export function useAIExecutionServices() {
           promptRuntime: promptServices.runtime,
           gateway: providerServices.gateway,
           knowledge: retrievalServices.knowledge,
+          tools,
+          platformConfig,
         }),
       ),
-    [promptServices.runtime, providerServices.gateway, retrievalServices.knowledge],
+    [promptServices.runtime, providerServices.gateway, retrievalServices.knowledge, tools, platformConfig],
   );
 
   const context = useMemo<ServiceContext>(

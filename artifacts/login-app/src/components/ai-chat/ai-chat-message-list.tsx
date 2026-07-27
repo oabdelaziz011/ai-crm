@@ -1,5 +1,6 @@
 import { Sparkles, User } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage } from "@/hooks/ai-chat/use-ai-chat-workspace";
 
@@ -56,6 +57,7 @@ export function AiChatMessageList({
   streamingContent,
   isSending,
 }: AiChatMessageListProps) {
+  const { t } = useTranslation("common");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export function AiChatMessageList({
               <Sparkles className="w-4 h-4 text-primary animate-pulse" />
             </div>
             <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white/5 border border-white/5 text-sm text-muted-foreground">
-              …
+              {t("dashboard.ai.thinking")}
             </div>
           </div>
         )}

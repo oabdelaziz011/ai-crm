@@ -148,6 +148,7 @@ export function createChannelRuntimePort(
         providerConnectionId: input.runtimeConfig.providerConnectionId,
         knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
         executionPolicy: input.runtimeConfig.executionPolicy,
+        pageContext: input.runtimeConfig.pageContext,
         correlationId: input.correlationId,
         onStreamChunk: input.onStreamChunk,
         abortSignal: input.abortSignal,

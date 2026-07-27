@@ -32,6 +32,8 @@ export type OutboundChannelMessageDto = {
 
 export type ChannelRuntimeConfigDto = {
   providerConnectionId: string;
+  /** Current page/module context — passed to runtime separately from user message text */
+  pageContext?: Record<string, unknown>;
   knowledgeRetrieval?: {
     embeddingConnectionId: string;
     vectorStoreConnectionId: string;

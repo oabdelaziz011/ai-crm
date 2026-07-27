@@ -79,14 +79,32 @@ function mapMetrics(row: Record<string, unknown>): AIExecutionMetricsRecord {
   };
 }
 
+function sanitizeConfiguration(
+  configuration: Record<string, unknown>,
+  usesPlatformKey: boolean,
+): Record<string, unknown> {
+  if (!usesPlatformKey) return { ...configuration };
+  const next = { ...configuration };
+  delete next.apiKey;
+  delete next.api_key;
+  delete next.secret;
+  delete next.token;
+  return next;
+}
+
 function mapConnection(row: Record<string, unknown>, providerKey: string): ProviderConnectionSnapshot {
+  const usesPlatformKey = row.uses_platform_key !== false;
   return {
     id: row.id as string,
     company_id: row.company_id as string,
     provider_key: providerKey,
-    configuration: (row.configuration as Record<string, unknown>) ?? {},
+    configuration: sanitizeConfiguration(
+      (row.configuration as Record<string, unknown>) ?? {},
+      usesPlatformKey,
+    ),
     is_default: Boolean(row.is_default),
     is_enabled: Boolean(row.is_enabled),
+    uses_platform_key: usesPlatformKey,
   };
 }
 
@@ -95,14 +113,15 @@ export function createSupabasePromptBuildReader(client: SupabaseClient): PromptB
     async findById(id: string): Promise<PromptBuildSnapshot | null> {
       const { data, error } = await client
         .from("prompt_builds")
-        .select("id, company_id, conversation_id, final_prompt, output_contract")
+        .select("id, company_id, conversation_id, final_prompt, output_contract, metadata")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+      const metadata = (data.metadata as Record<string, unknown> | null) ?? {};
       const contract = (data.output_contract as PromptBuildSnapshot["output_contract"]) ?? {
-        format: "json",
-        instructions: "",
+        format: "text",
+        instructions: "Respond naturally in plain text.",
       };
       return {
         id: data.id as string,
@@ -110,6 +129,10 @@ export function createSupabasePromptBuildReader(client: SupabaseClient): PromptB
         conversation_id: (data.conversation_id as string | null) ?? null,
         final_prompt: data.final_prompt as string,
         output_contract: contract,
+        gateway_messages:
+          (metadata.gateway_messages as PromptBuildSnapshot["gateway_messages"]) ?? [],
+        message_plan:
+          (metadata.message_plan as PromptBuildSnapshot["message_plan"]) ?? null,
       };
     },
   };

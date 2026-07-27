@@ -29,6 +29,7 @@ export type ProviderConnectionSnapshot = {
   configuration: Record<string, unknown>;
   is_default: boolean;
   is_enabled: boolean;
+  uses_platform_key?: boolean;
 };
 
 export type PromptBuildSnapshot = {
@@ -41,6 +42,14 @@ export type PromptBuildSnapshot = {
     instructions: string;
     schema?: Record<string, unknown>;
   };
+  gateway_messages: Array<{
+    role: "system" | "developer" | "user" | "assistant";
+    content: string;
+  }>;
+  message_plan: {
+    mode: "conversation" | "execution";
+    outputContract: { format: ResponseFormat; instructions?: string };
+  } | null;
 };
 
 export type AIExecutionRecord = {
@@ -217,6 +226,9 @@ export type EnterpriseRuntimeExecuteInput = {
   promptBuildId?: string | null;
   templateKey?: string;
   templateType?: string;
+  orchestrationMode?: "conversation" | "execution";
+  currentUserMessage?: string;
+  toolsEnabled?: boolean;
   providerConnectionId?: string | null;
   providerKey?: string;
   model?: string | null;

@@ -1,4 +1,5 @@
 import type { AIStreamEvent } from "@workspace/ai-provider-layer";
+import type { ServiceContext } from "../types.js";
 
 export type RuntimeGatewayContext = {
   companyId: string;
@@ -10,7 +11,12 @@ export type RuntimeGatewayContext = {
 };
 
 export type RuntimeGatewayChatRequest = {
-  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+  messages: Array<{
+    role: "system" | "developer" | "user" | "assistant" | "tool";
+    content: string;
+    toolCallId?: string;
+    toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
+  }>;
   providerKey?: string;
   model?: string;
   temperature?: number;
@@ -18,6 +24,7 @@ export type RuntimeGatewayChatRequest = {
   topP?: number;
   context: RuntimeGatewayContext;
   metadata?: Record<string, unknown>;
+  tools?: unknown[];
 };
 
 export type RuntimeGatewayChatResponse = {
@@ -28,6 +35,7 @@ export type RuntimeGatewayChatResponse = {
   usage: { inputTokens: number; outputTokens: number; totalTokens: number };
   latencyMs: number;
   estimatedCostUsd?: number;
+  toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
 };
 
 export interface RuntimeGatewayPort {
@@ -40,6 +48,14 @@ export type RuntimeBuiltPrompt = {
   templateKey: string;
   templateVersionId: string;
   finalPrompt: string;
+  gatewayMessages?: Array<{
+    role: "system" | "developer" | "user" | "assistant";
+    content: string;
+  }>;
+  messagePlan?: {
+    mode: "conversation" | "execution";
+    outputContract: { format: "text" | "json"; instructions?: string };
+  };
   metadata?: {
     renderedSize: number;
     variableCount: number;
@@ -53,6 +69,9 @@ export type RuntimePromptExecuteInput = {
   conversationId?: string | null;
   templateKey?: string;
   templateType?: string;
+  mode?: "conversation" | "execution";
+  currentUserMessage?: string;
+  toolsEnabled?: boolean;
   context: Record<string, unknown>;
   workflowId?: string;
   executionId?: string;
@@ -64,3 +83,34 @@ export interface RuntimePromptPort {
     input: RuntimePromptExecuteInput,
   ): Promise<{ builtPrompt: RuntimeBuiltPrompt }>;
 }
+
+export type RuntimeToolRouteInput = {
+  conversationId: string;
+  toolKey: string;
+  input: Record<string, unknown>;
+  triggeredBy?: "router" | "agent" | "automation" | "llm";
+};
+
+export type RuntimeToolRouteResult = {
+  executionId: string;
+  toolKey: string;
+  status: string;
+  output: Record<string, unknown> | null;
+  durationMs: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
+export interface RuntimeToolPort {
+  route(ctx: ServiceContext, input: RuntimeToolRouteInput): Promise<RuntimeToolRouteResult>;
+  listLlmTools(): unknown[];
+  allowedToolKeys(): string[];
+}
+
+export type PlatformRuntimeConfigPort = {
+  resolve(input: {
+    companyId: string;
+    providerKey: string;
+    useCase?: string;
+  }): Promise<Record<string, unknown>>;
+};

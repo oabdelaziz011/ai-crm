@@ -36,7 +36,7 @@ export const DEFAULT_EXECUTION_POLICY = {
   presence_penalty: 0,
   frequency_penalty: 0,
   max_tokens: 1024,
-  response_format: "json" as const,
+  response_format: "text" as const,
   streaming: false,
   timeout_ms: 30000,
   retry_count: 2,

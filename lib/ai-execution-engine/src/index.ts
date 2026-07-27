@@ -13,7 +13,7 @@ import { createDefaultRuntimeRegistries } from "./registries/runtime-registries.
 import { RuntimeObservability } from "./observability/runtime-observability.js";
 import { ExecutionSessionService } from "./runtime/execution-session-service.js";
 import { EnterpriseAIRuntimeService } from "./runtime/enterprise-ai-runtime-service.js";
-import type { RuntimeGatewayPort, RuntimePromptPort } from "./ports/runtime-ports.js";
+import type { RuntimeGatewayPort, RuntimePromptPort, RuntimeToolPort, PlatformRuntimeConfigPort } from "./ports/runtime-ports.js";
 import type { RuntimeKnowledgePort } from "./ports/knowledge-port.js";
 import { AIExecutionMetricsService } from "./services/ai-execution-metrics-service.js";
 import { AIExecutionPolicyService } from "./services/ai-execution-policy-service.js";
@@ -23,6 +23,8 @@ export type EnterpriseRuntimeIntegrations = {
   prompt: RuntimePromptPort;
   gateway: RuntimeGatewayPort;
   knowledge?: RuntimeKnowledgePort;
+  tools?: RuntimeToolPort;
+  platformConfig?: PlatformRuntimeConfigPort;
 };
 
 export type AIExecutionServices = {
@@ -78,6 +80,8 @@ export function createAIExecutionServices(
       sessions,
       observability,
       knowledge: integrations.knowledge,
+      tools: integrations.tools,
+      platformConfig: integrations.platformConfig,
     });
   }
 
@@ -89,7 +93,6 @@ export * from "./errors.js";
 export * from "./errors/runtime-errors.js";
 export * from "./types.js";
 export * from "./utils/execution-utils.js";
-export * from "./ports/knowledge-port.js";
 export * from "./ports/runtime-ports.js";
 export * from "./context/knowledge-context-provider.js";
 export * from "./context/context-providers.js";
@@ -104,6 +107,7 @@ export * from "./observability/runtime-observability.js";
 export * from "./registries/runtime-registries.js";
 export * from "./runtime/enterprise-ai-runtime-service.js";
 export * from "./runtime/execution-session-service.js";
+export * from "./runtime/tool-call-loop-service.js";
 export * from "./runtime/streaming-runtime-service.js";
 export * from "./repositories/execution-repositories.js";
 export * from "./repositories/supabase-execution-repositories.js";

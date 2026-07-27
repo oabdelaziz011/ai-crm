@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/ai-provider-layer": "workspace:*"
+    "@workspace/ai-provider-layer": "workspace:*",
+    "@workspace/ai-prompt-orchestrator": "workspace:*",
+    "@workspace/platform-crypto": "file:../platform-crypto"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

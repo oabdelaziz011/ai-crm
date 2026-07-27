@@ -10,7 +10,7 @@ import {
   ProviderUnavailableError,
 } from "../errors/runtime-errors.js";
 import { PermissionDeniedError, ProviderConnectionDisabledError, ProviderConnectionNotFoundError } from "../errors.js";
-import type { RuntimeGatewayPort, RuntimePromptPort } from "../ports/runtime-ports.js";
+import type { RuntimeGatewayPort, RuntimePromptPort, RuntimeToolPort, PlatformRuntimeConfigPort } from "../ports/runtime-ports.js";
 import type { RuntimeKnowledgePort } from "../ports/knowledge-port.js";
 import { mapKnowledgeQueryResult } from "../ports/knowledge-port.js";
 import type {
@@ -22,6 +22,7 @@ import type {
 import type { RuntimeRegistryBundle } from "../registries/runtime-registries.js";
 import { RuntimeObservability } from "../observability/runtime-observability.js";
 import { ExecutionSessionService } from "./execution-session-service.js";
+import { ToolCallLoopService } from "./tool-call-loop-service.js";
 import { StreamingRuntimeService } from "./streaming-runtime-service.js";
 import type { AIExecutionPolicyService } from "../services/ai-execution-policy-service.js";
 import type {
@@ -30,17 +31,23 @@ import type {
   ServiceContext,
 } from "../types.js";
 import { resolveModel } from "../utils/execution-utils.js";
+import { resolveGatewayMessages } from "../utils/build-gateway-messages.js";
+import { normalizeConversationResponse } from "../utils/normalize-conversation-response.js";
+import { logOpenAIRequest } from "../utils/log-openai-request.js";
+import { createAIRuntimeLogEvent, logAIRuntimeEvent } from "../utils/ai-runtime-logger.js";
 
 export class EnterpriseAIRuntimeService {
   private readonly contextBuilder: ContextBuilder;
   private readonly conversationWindow = new ConversationWindowManager();
   private readonly tokenBudget = new TokenBudgetManager();
   private readonly streaming = new StreamingRuntimeService();
+  private readonly toolLoop: ToolCallLoopService;
 
   constructor(
     private readonly deps: {
       prompt: RuntimePromptPort;
       gateway: RuntimeGatewayPort;
+      tools?: RuntimeToolPort;
       registries: RuntimeRegistryBundle;
       executionRepository: AIExecutionRepository;
       metricsRepository: AIExecutionMetricsRepository;
@@ -50,9 +57,11 @@ export class EnterpriseAIRuntimeService {
       sessions: ExecutionSessionService;
       observability: RuntimeObservability;
       knowledge?: RuntimeKnowledgePort;
+      platformConfig?: PlatformRuntimeConfigPort;
     },
   ) {
     this.contextBuilder = new ContextBuilder(deps.registries.contextProviders);
+    this.toolLoop = new ToolCallLoopService({ gateway: deps.gateway, tools: deps.tools });
   }
 
   async buildPrompt(ctx: ServiceContext, input: EnterpriseRuntimeExecuteInput) {
@@ -79,10 +88,17 @@ export class EnterpriseAIRuntimeService {
       conversationId: input.conversationId,
       templateKey: input.templateKey,
       templateType: input.templateType,
+      mode: input.orchestrationMode,
+      currentUserMessage: input.currentUserMessage,
+      toolsEnabled: input.toolsEnabled,
       workflowId: input.workflowId ?? undefined,
       context: contextBuilt.context,
     });
-    return { ...promptResult.builtPrompt, contextSizeBytes: contextBuilt.sizeBytes, trimmedMessageCount: window.trimmedCount };
+    return {
+      ...promptResult.builtPrompt,
+      contextSizeBytes: contextBuilt.sizeBytes,
+      trimmedMessageCount: window.trimmedCount,
+    };
   }
 
   async execute(ctx: ServiceContext, input: EnterpriseRuntimeExecuteInput): Promise<EnterpriseRuntimeExecuteResult> {
@@ -90,6 +106,17 @@ export class EnterpriseAIRuntimeService {
     const executionId = input.executionId ?? createRuntimeId();
     const sessionId = input.sessionId ?? createRuntimeId();
     const started = Date.now();
+
+    logAIRuntimeEvent(
+      createAIRuntimeLogEvent("ai_runtime_request_started", {
+        correlationId: input.correlationId ?? undefined,
+        companyId: input.companyId,
+        conversationId: input.conversationId ?? undefined,
+        executionId,
+        sessionId,
+        streaming: Boolean(input.stream),
+      }),
+    );
 
     await this.deps.registries.hooks.emit("beforeContextBuild", { input });
 
@@ -109,7 +136,7 @@ export class EnterpriseAIRuntimeService {
         workflowId: input.workflowId,
         executionId,
         sessionId,
-        correlationId: input.correlationId,
+        correlationId: input.correlationId ?? undefined,
         recentMessages: window.messages,
         knowledge,
       },
@@ -127,6 +154,9 @@ export class EnterpriseAIRuntimeService {
       templateKey: string;
       templateVersionId: string;
       finalPrompt: string;
+      gatewayMessages: Array<{ role: "system" | "developer" | "user" | "assistant"; content: string }>;
+      outputContract?: { format: "text" | "json"; instructions?: string };
+      orchestrationMode?: "conversation" | "execution";
       metadata?: { renderedSize: number; variableCount: number; estimatedTokens: number; executionTimeMs: number };
     };
 
@@ -140,14 +170,37 @@ export class EnterpriseAIRuntimeService {
         templateKey: "loaded_build",
         templateVersionId: existing.id,
         finalPrompt: existing.final_prompt,
-        metadata: { renderedSize: existing.final_prompt.length, variableCount: 0, estimatedTokens: Math.ceil(existing.final_prompt.length / 4), executionTimeMs: 0 },
+        gatewayMessages: resolveGatewayMessages({
+          gatewayMessages: existing.gateway_messages,
+          finalPrompt: existing.final_prompt,
+        }),
+        outputContract: existing.output_contract,
+        orchestrationMode: existing.message_plan?.mode ?? "conversation",
+        metadata: {
+          renderedSize: existing.final_prompt.length,
+          variableCount: 0,
+          estimatedTokens: Math.ceil(existing.final_prompt.length / 4),
+          executionTimeMs: 0,
+        },
       };
     } else {
       const rendered = await this.buildPrompt(ctx, input);
-      builtPrompt = rendered;
+      builtPrompt = {
+        buildId: rendered.buildId,
+        templateKey: rendered.templateKey,
+        templateVersionId: rendered.templateVersionId,
+        finalPrompt: rendered.finalPrompt,
+        gatewayMessages: resolveGatewayMessages({
+          gatewayMessages: rendered.gatewayMessages,
+          finalPrompt: rendered.finalPrompt,
+        }),
+        outputContract: rendered.messagePlan?.outputContract,
+        orchestrationMode: rendered.messagePlan?.mode ?? input.orchestrationMode ?? "conversation",
+        metadata: rendered.metadata,
+      };
     }
-    if (!builtPrompt.finalPrompt.trim()) {
-      throw new PromptRenderError("Prompt runtime returned empty rendered prompt.");
+    if (builtPrompt.gatewayMessages.length === 0) {
+      throw new PromptRenderError("Prompt runtime returned empty gateway messages.");
     }
 
     this.tokenBudget.assertWithinBudget(
@@ -161,8 +214,75 @@ export class EnterpriseAIRuntimeService {
     if (!connection.is_enabled) throw new ProviderConnectionDisabledError(connection.id);
 
     const runtimePolicy = this.deps.policyService.resolvePolicy(connection, input.policy);
-    const model = resolveModel(connection.configuration, input.model);
+
+    const gatewayMessages = builtPrompt.gatewayMessages;
+    const responseFormat =
+      builtPrompt.orchestrationMode === "execution" &&
+      (builtPrompt.outputContract?.format ?? runtimePolicy.response_format) === "json"
+        ? "json"
+        : "text";
+
+    const llmTools = this.deps.tools?.listLlmTools() ?? [];
+    const useToolLoop = Boolean(
+      this.deps.tools && input.conversationId && llmTools.length > 0,
+    );
+
+    const useCase = useToolLoop ? "tool_calling" : "chat";
+    const platformConfiguration =
+      connection.uses_platform_key !== false && this.deps.platformConfig
+        ? await this.deps.platformConfig.resolve({
+            companyId: input.companyId,
+            providerKey: input.providerKey ?? connection.provider_key,
+            useCase,
+          })
+        : {};
+
+    const mergedConnectionConfiguration = {
+      ...connection.configuration,
+      ...platformConfiguration,
+      ...(typeof platformConfiguration.model === "string" && platformConfiguration.model
+        ? { model: platformConfiguration.model }
+        : {}),
+    };
+
+    const model = resolveModel(mergedConnectionConfiguration, input.model);
     const providerKey = input.providerKey ?? connection.provider_key;
+
+    logOpenAIRequest({
+      correlationId: input.correlationId ?? undefined,
+      companyId: input.companyId,
+      conversationId: input.conversationId ?? undefined,
+      executionId,
+      sessionId,
+      providerKey,
+      model,
+      promptBuildId: builtPrompt.buildId,
+      responseFormat,
+      request: {
+        messages: gatewayMessages,
+        providerKey,
+        model,
+        temperature: runtimePolicy.temperature,
+        maxTokens: runtimePolicy.max_tokens,
+        topP: runtimePolicy.top_p,
+        context: {
+          companyId: input.companyId,
+          workflowId: input.workflowId ?? undefined,
+          executionId,
+          conversationId: input.conversationId ?? undefined,
+          userId: ctx.userId,
+        },
+        metadata: {
+          ...mergedConnectionConfiguration,
+          companyId: input.companyId,
+          conversationId: input.conversationId ?? undefined,
+          executionId,
+          correlationId: input.correlationId,
+          response_format: responseFormat,
+        },
+        tools: useToolLoop ? llmTools : undefined,
+      },
+    });
 
     if (runtimePolicy.fallback_connection_id && !providerKey) {
       throw new PolicyViolationError("Provider key is required by runtime policy.");
@@ -200,26 +320,57 @@ export class EnterpriseAIRuntimeService {
     let estimatedCostUsd: number | null = null;
     let finishReason = "stop";
 
-    if (input.stream && this.deps.gateway.streamChatCompletion) {
+    const gatewayMetadata = {
+      ...mergedConnectionConfiguration,
+      companyId: input.companyId,
+      conversationId: input.conversationId ?? undefined,
+      executionId,
+      correlationId: input.correlationId,
+      response_format: responseFormat,
+      chatMessages: gatewayMessages,
+    };
+
+    const gatewayBaseRequest = {
+      messages: gatewayMessages,
+      providerKey,
+      model,
+      temperature: runtimePolicy.temperature,
+      maxTokens: runtimePolicy.max_tokens,
+      topP: runtimePolicy.top_p,
+      context: {
+        companyId: input.companyId,
+        workflowId: input.workflowId ?? undefined,
+        executionId,
+        conversationId: input.conversationId ?? undefined,
+        userId: ctx.userId,
+      },
+      metadata: gatewayMetadata,
+      tools: useToolLoop ? llmTools : undefined,
+    };
+
+    if (useToolLoop) {
+      const loopResult = await this.toolLoop.runWithOptionalStreaming({
+        ctx,
+        conversationId: input.conversationId!,
+        gatewayRequest: gatewayBaseRequest,
+        tools: llmTools,
+        allowedToolKeys: this.deps.tools!.allowedToolKeys(),
+        onStreamChunk: input.stream ? input.onStreamChunk : undefined,
+      });
+      gatewayLatencyMs = Date.now() - gatewayStarted;
+      responseText = loopResult.response.text;
+      finishReason = loopResult.response.finishReason;
+      tokenUsage = {
+        prompt_tokens: loopResult.response.usage.inputTokens,
+        completion_tokens: loopResult.response.usage.outputTokens,
+        total_tokens: loopResult.response.usage.totalTokens,
+      };
+      estimatedCostUsd = loopResult.response.estimatedCostUsd ?? null;
+    } else if (input.stream && this.deps.gateway.streamChatCompletion) {
       for await (const event of this.streaming.stream(
         executionId,
         this.deps.gateway,
-        {
-          messages: [{ role: "user", content: builtPrompt.finalPrompt }],
-          providerKey,
-          model,
-          temperature: runtimePolicy.temperature,
-          maxTokens: runtimePolicy.max_tokens,
-          topP: runtimePolicy.top_p,
-          context: {
-            companyId: input.companyId,
-            workflowId: input.workflowId ?? undefined,
-            executionId,
-            conversationId: input.conversationId ?? undefined,
-            userId: ctx.userId,
-          },
-          metadata: connection.configuration,
-        },
+        gatewayBaseRequest,
         (streamEvent) => {
           if (streamEvent.type === "delta") input.onStreamChunk?.(streamEvent.text);
         },
@@ -234,22 +385,7 @@ export class EnterpriseAIRuntimeService {
           (builtPrompt.metadata?.estimatedTokens ?? 0) + Math.ceil(responseText.length / 4),
       };
     } else {
-      const gatewayResponse = await this.deps.gateway.chatCompletion({
-        messages: [{ role: "user", content: builtPrompt.finalPrompt }],
-        providerKey,
-        model,
-        temperature: runtimePolicy.temperature,
-        maxTokens: runtimePolicy.max_tokens,
-        topP: runtimePolicy.top_p,
-        context: {
-          companyId: input.companyId,
-          workflowId: input.workflowId ?? undefined,
-          executionId,
-          conversationId: input.conversationId ?? undefined,
-          userId: ctx.userId,
-        },
-        metadata: connection.configuration,
-      });
+      const gatewayResponse = await this.deps.gateway.chatCompletion(gatewayBaseRequest);
       gatewayLatencyMs = gatewayResponse.latencyMs;
       responseText = gatewayResponse.text;
       finishReason = gatewayResponse.finishReason;
@@ -260,6 +396,32 @@ export class EnterpriseAIRuntimeService {
       };
       estimatedCostUsd = gatewayResponse.estimatedCostUsd ?? null;
     }
+
+    if (!responseText.trim()) {
+      throw new ProviderUnavailableError(providerKey);
+    }
+
+    logAIRuntimeEvent(
+      createAIRuntimeLogEvent("ai_runtime_model_response_received", {
+        correlationId: input.correlationId ?? undefined,
+        companyId: input.companyId,
+        conversationId: input.conversationId ?? undefined,
+        executionId,
+        sessionId,
+        providerKey,
+        model,
+        promptBuildId: builtPrompt.buildId,
+        rawModelResponse: responseText,
+        streaming: Boolean(input.stream),
+      }),
+    );
+
+    const normalizedResponseText = normalizeConversationResponse(
+      responseText,
+      builtPrompt.outputContract ?? { format: responseFormat },
+    );
+
+    responseText = normalizedResponseText;
 
     if (!responseText.trim()) {
       throw new ProviderUnavailableError(providerKey);
@@ -285,7 +447,7 @@ export class EnterpriseAIRuntimeService {
       status: "succeeded",
       finishReason,
       rawResponse: { text: responseText },
-      normalizedResponse: { content: responseText, format: runtimePolicy.response_format },
+      normalizedResponse: { content: responseText, format: responseFormat },
       tokenUsage,
       retryCount: 0,
       usedFallbackProvider: false,
@@ -331,6 +493,27 @@ export class EnterpriseAIRuntimeService {
         totalTokens: tokenUsage.total_tokens,
       },
     });
+
+    logAIRuntimeEvent(
+      createAIRuntimeLogEvent("ai_runtime_execution_completed", {
+        correlationId: input.correlationId ?? undefined,
+        companyId: input.companyId,
+        conversationId: input.conversationId ?? undefined,
+        executionId: execution.id,
+        sessionId: session.sessionId,
+        providerKey,
+        model,
+        promptBuildId: builtPrompt.buildId,
+        normalizedResponse: responseText,
+        inputTokens: tokenUsage.prompt_tokens,
+        outputTokens: tokenUsage.completion_tokens,
+        totalTokens: tokenUsage.total_tokens,
+        latencyMs,
+        gatewayLatencyMs,
+        streaming: Boolean(input.stream),
+        cacheHit: false,
+      }),
+    );
 
     const result: EnterpriseRuntimeExecuteResult = {
       executionId: execution.id,

@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -13,6 +14,8 @@ import {
   PieChart,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { queryShellStateFromQuery } from "@/lib/react-query/query-shell-state";
+import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
 import { useCustomers } from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
@@ -24,17 +27,39 @@ import {
   DashboardCard,
   DashboardStatCard,
 } from "@/components/dashboard/ui";
+import { useAuth } from "@/context/auth-context";
+import { BranchSelector } from "@/lib/company/branches/components";
+import { useBranches } from "@/lib/company/branches/hooks";
 
 export default function ReportsPage() {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+  const [branchFilter, setBranchFilter] = useState<string | null>(null);
+  const { data: branches = [] } = useBranches(companyId);
   const canViewReports = useHasPermission("reports.view");
   const canViewAiAnalytics = useHasPermission("ai.analytics.view");
   const canViewAiUsage = useHasPermission("ai.costs.view");
-  const { data: customers = [], isLoading: cLoading } = useCustomers();
-  const { data: bookings  = [], isLoading: bLoading } = useBookings();
-  const { data: invoices  = [], isLoading: iLoading } = useInvoices();
-  const loading = cLoading || bLoading || iLoading;
+  const customersQuery = useCustomers();
+  const bookingsQuery = useBookings();
+  const invoicesQuery = useInvoices();
+  const customers = customersQuery.data ?? [];
+  const allBookings = bookingsQuery.data ?? [];
+  const invoices = invoicesQuery.data ?? [];
+  const loading =
+    queryShellStateFromQuery(customersQuery).isInitialLoad
+    || queryShellStateFromQuery(bookingsQuery).isInitialLoad
+    || queryShellStateFromQuery(invoicesQuery).isInitialLoad;
+  const backgroundRefresh =
+    queryShellStateFromQuery(customersQuery).isBackgroundRefresh
+    || queryShellStateFromQuery(bookingsQuery).isBackgroundRefresh
+    || queryShellStateFromQuery(invoicesQuery).isBackgroundRefresh;
+
+  const bookings = useMemo(() => {
+    if (!branchFilter) return allBookings;
+    return allBookings.filter((booking: Booking) => booking.location_id === branchFilter);
+  }, [allBookings, branchFilter]);
 
   const totalRevenue  = invoices.filter((invoice: Invoice) => invoice.status === "Paid").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
   const totalBilled   = invoices.reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
@@ -70,14 +95,26 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t("dashboard.reports.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t("dashboard.reports.subtitle")}</p>
         </div>
-        <Button variant="outline" className="border-white/10 gap-2">
-          <Download className="w-4 h-4" /> {t("buttons.exportReport")}
-        </Button>
+        <div className="flex items-center gap-3">
+          <QueryRefreshIndicator active={backgroundRefresh} />
+          <div className="min-w-[180px]">
+            <BranchSelector
+              branches={branches}
+              value={branchFilter}
+              onChange={setBranchFilter}
+              allowAll
+              placeholder={t("branches.selector.allBranches")}
+            />
+          </div>
+          <Button variant="outline" className="border-white/10 gap-2">
+            <Download className="w-4 h-4" /> {t("buttons.exportReport")}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

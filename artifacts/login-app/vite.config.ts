@@ -21,6 +21,18 @@ export default defineConfig({
         '..',
         'attached_assets',
       ),
+      '@workspace/platform-crypto/client': path.resolve(
+        import.meta.dirname,
+        '..',
+        '..',
+        'lib/platform-crypto/src/runtime-env-client.ts',
+      ),
+      '@workspace/platform-crypto/server': path.resolve(
+        import.meta.dirname,
+        '..',
+        '..',
+        'lib/platform-crypto/src/runtime-env-server.ts',
+      ),
     },
     dedupe: ['react', 'react-dom'],
   },
@@ -30,7 +42,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   optimizeDeps: {
-    include: ['pdfjs-dist/legacy/build/pdf.mjs'],
+    include: [
+      'react-day-picker',
+      'date-fns',
+      'date-fns/locale',
+    ],
   },
   server: {
     port,

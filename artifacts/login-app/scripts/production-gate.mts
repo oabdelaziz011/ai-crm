@@ -65,9 +65,9 @@ function runCommand(
   return true;
 }
 
-console.log("\nVaultOS Production Release Gate — D5.4.1 Enterprise AI Runtime Integration\n");
+console.log("\nVaultOS Production Release Gate — Sprint 7.5.0 Go-Live Readiness\n");
 console.log(
-  "Pipeline: typecheck → platform tests → browser build → workflow builder → billing/runtime probes → blocker summary\n",
+  "Pipeline: typecheck → platform tests → browser build → workflow builder → billing/runtime probes → Sprint 7 enterprise → blocker summary\n",
 );
 
 runCommand("0. Root typecheck", "pnpm", ["typecheck"], projectRoot);
@@ -105,7 +105,19 @@ runCommand(
   loginAppRoot,
 );
 
-console.log("\n▶ 9. Verify no production blockers remain\n");
+runCommand("9. Customer portal platform tests", "pnpm", ["test:customer-portal"], projectRoot);
+
+runCommand("10. Financial platform tests", "pnpm", ["--dir", "artifacts/login-app", "test:financial-platform"], projectRoot);
+
+runCommand("11. Organization platform tests", "pnpm", ["test:organization-platform"], projectRoot);
+
+runCommand("12. Integration hub tests", "pnpm", ["test:integration-hub"], projectRoot);
+
+runCommand("13. Plugin marketplace tests", "pnpm", ["test:plugin-platform"], projectRoot);
+
+runCommand("14. Go-live readiness tests", "pnpm", ["--dir", "artifacts/login-app", "test:go-live-readiness"], projectRoot);
+
+console.log("\n▶ 15. Verify no production blockers remain\n");
 
 if (failures.length > 0) {
   console.log("FAIL\n");
@@ -118,5 +130,5 @@ if (failures.length > 0) {
 }
 
 console.log("PASS\n");
-console.log("Enterprise AI Runtime Integration is Production Ready.\n");
+console.log("Sprint 7.5.0 Go-Live Readiness gate passed.\n");
 process.exit(0);

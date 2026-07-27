@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
 import { refreshCustomerProfileCache } from "@/lib/customer-profile/refresh-customer-profile";
 import { BOOKINGS_KEY, BOOKING_SLOTS_KEY, bookingSlotsKey } from "@/lib/booking/booking-query-keys";
 import { invalidateCalendarQueries } from "@/lib/calendar/cache/invalidate-calendar-queries";
@@ -16,6 +17,7 @@ export function invalidateBookingQueries(
   scope: BookingCacheInvalidation = {},
 ): void {
   void queryClient.invalidateQueries({ queryKey: BOOKINGS_KEY });
+  void queryClient.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
   invalidateCalendarQueries(queryClient, scope.companyId);
 
   if (scope.customerId) {

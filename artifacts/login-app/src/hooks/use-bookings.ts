@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { BookingListService } from "@/lib/booking/booking-list-service";
 import { invalidateBookingQueries } from "@/lib/booking/invalidate-booking-queries";
 import { bookingsListKey } from "@/lib/booking/booking-query-keys";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { useAuth } from "@/context/auth-context";
 import type { Booking, BookingUpdate } from "@/lib/types";
 import {
@@ -24,6 +25,7 @@ export function useBookings() {
   return useQuery({
     queryKey: bookingsListKey(companyId),
     enabled: Boolean(user && companyId),
+    staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Booking[]> => {
       if (!companyId || !user) return [];
       const service = new BookingListService(supabase);

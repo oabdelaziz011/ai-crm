@@ -1,17 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/auth-context";
+import { CUSTOMER_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import type { Customer, CustomerInsert, CustomerUpdate } from "@/lib/types";
+import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
 import { customerKey } from "./use-customer";
 
 export const CUSTOMERS_KEY = ["customers"] as const;
 
+export function customersListKey(companyId: string | null | undefined) {
+  return [...CUSTOMERS_KEY, companyId ?? "none"] as const;
+}
+
 export function useCustomers() {
+  const { user, profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+
   return useQuery({
-    queryKey: CUSTOMERS_KEY,
+    queryKey: customersListKey(companyId),
+    enabled: Boolean(user),
+    staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Customer[]> => {
       const { data, error } = await supabase
         .from("customers")
-        .select("*")
+        .select(CUSTOMER_LIST_COLUMNS)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
@@ -35,6 +48,7 @@ export function useCreateCustomer() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
+      qc.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
       qc.invalidateQueries({ queryKey: customerKey(data.id) });
     },
   });
@@ -55,6 +69,7 @@ export function useUpdateCustomer() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
+      qc.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
       qc.invalidateQueries({ queryKey: customerKey(data.id) });
     },
   });
@@ -67,6 +82,9 @@ export function useDeleteCustomer() {
       const { error } = await supabase.from("customers").delete().eq("id", id);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: CUSTOMERS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
+      qc.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
+    },
   });
 }

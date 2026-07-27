@@ -22,6 +22,7 @@ import {
   Activity,
   Gauge,
   GitBranch,
+  KeyRound,
   Plug,
   Store,
   UserCog,
@@ -65,6 +66,7 @@ export type DashboardSectionId =
   | "reports"
   | "settings"
   | "demo-scenarios"
+  | "platform-ai-admin"
   | "platform-ai-operations";
 
 export type DashboardSidebarGroupId = "user-management" | "ai-platform";
@@ -294,6 +296,18 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     Page: lazyNamed(() => import("@/pages/companies"), "CompaniesPage"),
   },
   {
+    id: "platform-ai-admin",
+    path: "/dashboard/platform/ai-settings",
+    nestedPath: "/platform/ai-settings",
+    titleKey: "navigation.platformAiSettings",
+    icon: KeyRound,
+    superAdminOnly: true,
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/platform/platform-ai-admin-page"),
+      "PlatformAIAdminPage",
+    ),
+  },
+  {
     id: "platform-ai-operations",
     path: "/dashboard/platform/ai-operations",
     nestedPath: "/platform/ai-operations",
@@ -470,6 +484,7 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "integrations" },
   { type: "route", id: "marketplace" },
   { type: "route", id: "companies" },
+  { type: "route", id: "platform-ai-admin" },
   { type: "route", id: "platform-ai-operations" },
   { type: "route", id: "demo-scenarios" },
   { type: "route", id: "workspace" },

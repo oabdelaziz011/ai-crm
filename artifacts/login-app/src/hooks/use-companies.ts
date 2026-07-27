@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import type { Company, CompanyInsert, CompanyUpdate, TenantProvisioningStatus } from "@/lib/types";
 
 export const COMPANIES_KEY = ["companies"] as const;
@@ -34,6 +35,7 @@ export function useCompanies(enabled = true) {
   return useQuery({
     queryKey: COMPANIES_KEY,
     enabled,
+    staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Company[]> => {
       const { data, error } = await supabase
         .from("companies")

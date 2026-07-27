@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import {
   ChevronDown,
@@ -15,10 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuthUser } from "@/hooks/use-rbac";
-import { useCustomers } from "@/hooks/use-customers";
-import { useBookings } from "@/hooks/use-bookings";
-import { useInvoices } from "@/hooks/use-invoices";
-import type { Booking, Invoice } from "@/lib/types";
+import { useSidebarBadgeCounts } from "@/hooks/use-sidebar-badge-counts";
 import { useTranslation } from "react-i18next";
 import {
   DASHBOARD_SIDEBAR_GROUPS,
@@ -78,16 +75,33 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
     }
   }, [activeSectionId]);
 
-  const { data: customers = [] } = useCustomers();
-  const { data: bookings = [] } = useBookings();
-  const { data: invoices = [] } = useInvoices();
+  const badgePermissions = useMemo(
+    () => ({
+      customers: isDashboardRoutePermitted(
+        getDashboardRouteById("customers"),
+        isSuperAdmin,
+        hasPermission,
+      ),
+      bookings: isDashboardRoutePermitted(
+        getDashboardRouteById("bookings"),
+        isSuperAdmin,
+        hasPermission,
+      ),
+      invoices: isDashboardRoutePermitted(
+        getDashboardRouteById("invoices"),
+        isSuperAdmin,
+        hasPermission,
+      ),
+    }),
+    [hasPermission, isSuperAdmin],
+  );
+
+  const sidebarBadges = useSidebarBadgeCounts(badgePermissions);
 
   const badgeCounts: Partial<Record<DashboardSectionId, number>> = {
-    customers: customers.length,
-    bookings: bookings.filter((b: Booking) => b.status === "Pending").length,
-    invoices: invoices.filter(
-      (inv: Invoice) => inv.status === "Unpaid" || inv.status === "Overdue",
-    ).length,
+    customers: sidebarBadges.customers,
+    bookings: sidebarBadges.bookings,
+    invoices: sidebarBadges.invoices,
   };
 
   const navigate = useCallback(

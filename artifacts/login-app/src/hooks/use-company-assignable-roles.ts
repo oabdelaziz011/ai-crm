@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAssignableRolesForCompany } from "@/lib/users/fetch-assignable-roles";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import type { AssignableRoleRecord } from "@/lib/users/role-company-validation";
 
 export type CompanyAssignableRole = AssignableRoleRecord;
@@ -18,8 +19,7 @@ export function useCompanyAssignableRoles(
     queryFn: async (): Promise<CompanyAssignableRole[]> => {
       return fetchAssignableRolesForCompany(companyId!);
     },
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: APP_QUERY_STALE_MS,
     retry: false,
   });
 }

@@ -20,6 +20,7 @@ import {
   shouldSkipTokenRefreshReload,
   type AuthIdentitySnapshot,
 } from "@/context/auth-identity";
+import { fetchUserAuthContext } from "@/lib/auth/load-user-auth-context";
 import { wbDebug } from "@/workflow-builder/debug/wb-runtime-debug";
 
 interface ProfileRecord {
@@ -123,32 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     identityRef.current = { profile: null, roles: [] };
   };
 
-  const loadProfile = async (userId: string): Promise<ProfileRecord | null> => {
-    const profileColumns = "id, company_id, full_name, is_super_admin";
-
-    const byId = await supabase
-      .from("profiles")
-      .select(profileColumns)
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (!byId.error) {
-      return (byId.data as ProfileRecord | null) ?? null;
-    }
-
-    const byUserId = await supabase
-      .from("profiles")
-      .select(profileColumns)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (!byUserId.error) {
-      return (byUserId.data as ProfileRecord | null) ?? null;
-    }
-
-    throw byUserId.error;
-  };
-
   const loadAuthContext = async (
     userId: string | undefined,
     mode: LoadAuthMode,
@@ -177,7 +152,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const nextProfile = await loadProfile(userId);
+      const { profile: nextProfile, company: nextCompany, roles: nextRoles, permissions: nextPermissions } =
+        await fetchUserAuthContext(userId);
       if (isStale()) return;
 
       setProfile((current) => {
@@ -192,18 +168,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return nextProfile;
       });
 
-      let nextCompany: CompanyRecord | null = null;
-      if (nextProfile?.company_id) {
-        const { data: companyData, error: companyError } = await supabase
-          .from("companies")
-          .select("id, name, logo_url, status, subscription_status, billing_cycle, subscription_expires_at")
-          .eq("id", nextProfile.company_id)
-          .maybeSingle();
-
-        if (!companyError && companyData) {
-          nextCompany = companyData as CompanyRecord;
-        }
-      }
       if (isStale()) return;
 
       setCompany((current) => {
@@ -218,80 +182,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return nextCompany;
       });
 
-      const { data: userRoleRows, error: userRoleError } = await supabase
-        .from("user_roles")
-        .select("role_id")
-        .eq("user_id", userId);
-
-      if (userRoleError) {
-        console.warn("Unable to load user role assignments", userRoleError.message);
-      }
-
-      const assignedRoleIds = (userRoleRows ?? [])
-        .map((row) => row.role_id)
-        .filter(Boolean) as string[];
-
-      let nextRoles: RoleRecord[] = [];
-      if (assignedRoleIds.length > 0) {
-        const { data: roleRows, error: roleError } = await supabase
-          .from("roles")
-          .select("id, company_id, name, description, is_system")
-          .in("id", assignedRoleIds);
-
-        if (roleError) {
-          console.warn("Unable to load role metadata", roleError.message);
-        } else {
-          nextRoles = (roleRows ?? []) as RoleRecord[];
-        }
-      }
       if (isStale()) return;
 
       setRoles((current) => (arraysEqualById(current, nextRoles) ? current : nextRoles));
-
-      const permissionIds = new Set<string>();
-
-      if (assignedRoleIds.length > 0) {
-        const { data: rolePermissionRows, error: rolePermissionError } = await supabase
-          .from("role_permissions")
-          .select("permission_id")
-          .in("role_id", assignedRoleIds);
-
-        if (rolePermissionError) {
-          console.warn("Unable to load role permissions", rolePermissionError.message);
-        } else {
-          (rolePermissionRows ?? []).forEach((row) => {
-            if (row.permission_id) permissionIds.add(row.permission_id);
-          });
-        }
-      }
-
-      const { data: userPermissionRows, error: userPermissionError } = await supabase
-        .from("user_permissions")
-        .select("permission_id")
-        .eq("user_id", userId);
-
-      if (userPermissionError) {
-        console.warn("Unable to load direct user permissions", userPermissionError.message);
-      } else {
-        (userPermissionRows ?? []).forEach((row) => {
-          if (row.permission_id) permissionIds.add(row.permission_id);
-        });
-      }
-
-      let nextPermissions: PermissionRecord[] = [];
-      const permissionIdList = Array.from(permissionIds);
-      if (permissionIdList.length > 0) {
-        const { data: permissionRows, error: permissionError } = await supabase
-          .from("permissions")
-          .select("id, category, module, action, code, description")
-          .in("id", permissionIdList);
-
-        if (permissionError) {
-          console.warn("Unable to load permissions", permissionError.message);
-        } else {
-          nextPermissions = (permissionRows ?? []) as PermissionRecord[];
-        }
-      }
 
       if (isStale()) return;
 

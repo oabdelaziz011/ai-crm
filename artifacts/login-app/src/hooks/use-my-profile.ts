@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import type { AppLanguage } from "@/lib/i18n/resolve-app-language";
 import type { MyProfile, MyProfileUpdate } from "@/lib/types";
 
@@ -202,7 +203,8 @@ export function useMyProfile() {
   return useQuery({
     queryKey: MY_PROFILE_KEY,
     queryFn: fetchMyProfile,
-    staleTime: 60_000,
+    staleTime: APP_QUERY_STALE_MS,
+    refetchOnMount: false,
   });
 }
 

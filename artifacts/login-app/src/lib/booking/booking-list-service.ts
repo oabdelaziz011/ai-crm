@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  LEGACY_BOOKING_LIST_COLUMNS,
+  SCHEDULING_BOOKING_LIST_COLUMNS,
+} from "@/lib/crm/crm-query-columns";
+import {
   mergeBookingLists,
   schedulingBookingToAppBooking,
   type AppBooking,
@@ -26,16 +30,14 @@ export class BookingListService {
   private async listSchedulingBookings(companyId: string, userId: string): Promise<AppBooking[]> {
     const { data, error } = await this.client
       .from("scheduling_bookings")
-      .select(
-        "*, customers(id, name), scheduling_services(id, name, duration_minutes), scheduling_resources(id, name)",
-      )
+      .select(SCHEDULING_BOOKING_LIST_COLUMNS)
       .eq("company_id", companyId)
       .is("deleted_at", null)
       .not("status", "eq", "rescheduled")
       .order("start_at", { ascending: true });
 
     if (error) throw new Error(error.message);
-    return ((data ?? []) as SchedulingBookingListRow[]).map((row) =>
+    return ((data ?? []) as unknown as SchedulingBookingListRow[]).map((row) =>
       schedulingBookingToAppBooking(row, userId),
     );
   }
@@ -43,11 +45,11 @@ export class BookingListService {
   private async listLegacyBookings(userId: string): Promise<Booking[]> {
     const { data, error } = await this.client
       .from("bookings")
-      .select("*, customers(id, name)")
+      .select(LEGACY_BOOKING_LIST_COLUMNS)
       .eq("user_id", userId)
       .order("booking_date", { ascending: true });
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as Booking[];
+    return (data ?? []) as unknown as Booking[];
   }
 }

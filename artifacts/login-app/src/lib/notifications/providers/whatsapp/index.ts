@@ -21,7 +21,7 @@ const defaultRenderer = new WhatsAppRenderer((key, params) => {
 
 export function createWhatsAppProviderServices(
   client: SupabaseClient = supabase,
-  transport: WhatsAppTransport = new StubWhatsAppTransport(),
+  transport: WhatsAppTransport = resolveWhatsAppTransport(),
   renderer: WhatsAppRenderer = defaultRenderer,
 ): WhatsAppProviderServices {
   return {
@@ -32,6 +32,13 @@ export function createWhatsAppProviderServices(
 }
 
 let cached: WhatsAppProviderServices | null = null;
+
+function resolveWhatsAppTransport(): WhatsAppTransport {
+  const useMeta =
+    import.meta.env.VITE_WHATSAPP_USE_META === "true" ||
+    import.meta.env.PROD;
+  return useMeta ? new MetaWhatsAppTransport() : new StubWhatsAppTransport();
+}
 
 export function getWhatsAppProviderServices(): WhatsAppProviderServices {
   if (!cached) cached = createWhatsAppProviderServices();

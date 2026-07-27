@@ -24,6 +24,11 @@ import {
   buildWhatsAppWebhookUrl,
   resolveWhatsAppWebhookBaseUrl,
 } from "@/lib/channels/whatsapp-channel-utils";
+import {
+  isFixedProviderChannel,
+  resolveDefaultChannelProvider,
+  resolveDefaultHealthStatus,
+} from "@/lib/channels/channel-defaults";
 import type { CompanyChannelRecord } from "@workspace/channel-registry";
 import { generateWhatsAppVerifyToken } from "@workspace/channel-registry";
 import {
@@ -48,6 +53,38 @@ function readConfigString(configuration: Record<string, unknown>, key: string): 
   return typeof value === "string" ? value : "";
 }
 
+function channelTypeLabel(
+  translate: (key: string, options?: { defaultValue?: string }) => string,
+  channelKey: string | undefined,
+  fallbackName?: string,
+): string {
+  if (!channelKey) return fallbackName ?? "—";
+  return translate(`dashboard.channels.channelTypes.${channelKey}`, {
+    defaultValue: fallbackName ?? channelKey,
+  });
+}
+
+function healthStatusLabel(
+  translate: (key: string, options?: { defaultValue?: string }) => string,
+  healthStatus: string,
+): string {
+  return translate(`dashboard.channels.healthStatus.${healthStatus}`, {
+    defaultValue: healthStatus,
+  });
+}
+
+function providerLabel(
+  translate: (key: string, options?: { defaultValue?: string }) => string,
+  provider: string,
+): string {
+  if (!provider.trim()) {
+    return translate("dashboard.channels.providers.internal");
+  }
+  return translate(`dashboard.channels.providers.${provider}`, {
+    defaultValue: provider,
+  });
+}
+
 export default function ChannelsPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
@@ -62,7 +99,7 @@ export default function ChannelsPage() {
   const [configTarget, setConfigTarget] = useState<CompanyChannelRecord | null>(null);
   const [channelTypeId, setChannelTypeId] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [provider, setProvider] = useState("meta");
+  const [provider, setProvider] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
@@ -76,6 +113,8 @@ export default function ChannelsPage() {
 
   const selectedType = channelTypes.find((type) => type.id === channelTypeId);
   const isWhatsAppType = selectedType?.key === "whatsapp";
+  const isWebChatType = selectedType?.key === "web_chat";
+  const showProviderField = Boolean(selectedType) && !isFixedProviderChannel(selectedType?.key);
   const isWhatsAppChannel = (channel: CompanyChannelRecord) =>
     channel.communication_channel?.key === "whatsapp";
   const webhookBaseUrl = resolveWhatsAppWebhookBaseUrl();
@@ -84,9 +123,21 @@ export default function ChannelsPage() {
   const handleChannelTypeChange = (nextChannelTypeId: string) => {
     setChannelTypeId(nextChannelTypeId);
     const nextType = channelTypes.find((type) => type.id === nextChannelTypeId);
+    setProvider(resolveDefaultChannelProvider(nextType?.key));
     if (nextType?.key === "whatsapp") {
       setVerifyToken((current) => current.trim() || generateWhatsAppVerifyToken());
     }
+  };
+
+  const openCreateDialog = () => {
+    setChannelTypeId("");
+    setDisplayName("");
+    setProvider("");
+    setPhoneNumberId("");
+    setAccessToken("");
+    setVerifyToken("");
+    setApiVersion("v21.0");
+    setDialogOpen(true);
   };
 
   const openConfigDialog = (channel: CompanyChannelRecord) => {
@@ -116,7 +167,7 @@ export default function ChannelsPage() {
   const connectedCount = channels.filter((c) => c.health_status === "connected").length;
 
   const handleCreate = async () => {
-    if (!channelTypeId || !displayName.trim()) return;
+    if (!channelTypeId || !displayName.trim() || !selectedType) return;
     const configuration =
       isWhatsAppType && phoneNumberId.trim() && accessToken.trim()
         ? buildWhatsAppConfiguration()
@@ -124,19 +175,30 @@ export default function ChannelsPage() {
     if (isWhatsAppType && typeof configuration.verifyToken !== "string") {
       return;
     }
+
+    const resolvedProvider = isFixedProviderChannel(selectedType.key)
+      ? resolveDefaultChannelProvider(selectedType.key)
+      : provider.trim() || resolveDefaultChannelProvider(selectedType.key);
+    const hasExistingWebChat = channels.some(
+      (channel) => channel.communication_channel?.key === "web_chat",
+    );
+    const hasDefaultChannel = channels.some((channel) => channel.is_default);
+
     await create.mutateAsync({
       channelId: channelTypeId,
       displayName: displayName.trim(),
-      provider,
+      provider: resolvedProvider,
       isEnabled: true,
       status: "active",
-      healthStatus: "unknown",
+      healthStatus: resolveDefaultHealthStatus(selectedType.key),
+      isDefault: isWebChatType && !hasExistingWebChat && !hasDefaultChannel,
       configuration,
       webhookUrl: isWhatsAppType ? productionWebhookUrl : undefined,
     });
     setDialogOpen(false);
     setDisplayName("");
     setChannelTypeId("");
+    setProvider("");
     setPhoneNumberId("");
     setAccessToken("");
     setVerifyToken("");
@@ -216,7 +278,7 @@ export default function ChannelsPage() {
           <p className="text-sm text-muted-foreground mt-1">{t("dashboard.channels.subtitle")}</p>
         </div>
         <Can permission="channels.manage">
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+          <Button onClick={openCreateDialog} className="gap-2">
             <Plus className="w-4 h-4" />
             {t("dashboard.channels.addChannel")}
           </Button>
@@ -250,8 +312,12 @@ export default function ChannelsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium">{channel.display_name}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {channel.communication_channel?.display_name ?? channel.provider} ·{" "}
-                    {channel.communication_channel?.key ?? "—"}
+                    {channelTypeLabel(
+                      t,
+                      channel.communication_channel?.key,
+                      channel.communication_channel?.display_name,
+                    )}{" "}
+                    · {providerLabel(t, channel.provider)}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-1 font-mono truncate">{channel.id}</p>
                 </div>
@@ -263,9 +329,13 @@ export default function ChannelsPage() {
                         : "border-white/10 text-muted-foreground"
                     }`}
                   >
-                    {channel.is_enabled ? t("status.active") : t("status.inactive")}
+                    {channel.is_enabled
+                      ? t("dashboard.channels.enabledStatus.enabled")
+                      : t("dashboard.channels.enabledStatus.disabled")}
                   </span>
-                  <span className="text-xs text-muted-foreground capitalize">{channel.health_status}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {healthStatusLabel(t, channel.health_status)}
+                  </span>
                   {channel.is_default && (
                     <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
                       {t("dashboard.channels.default")}
@@ -334,10 +404,19 @@ export default function ChannelsPage() {
               <Label>{t("dashboard.channels.displayName")}</Label>
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label>{t("dashboard.channels.provider")}</Label>
-              <Input value={provider} onChange={(e) => setProvider(e.target.value)} />
-            </div>
+            {showProviderField && (
+              <div className="space-y-2">
+                <Label>{t("dashboard.channels.provider")}</Label>
+                <Input value={provider} onChange={(e) => setProvider(e.target.value)} />
+              </div>
+            )}
+            {isWebChatType && (
+              <p className="text-xs text-muted-foreground">
+                {t("dashboard.channels.webChatProviderHint", {
+                  provider: providerLabel(t, resolveDefaultChannelProvider("web_chat")),
+                })}
+              </p>
+            )}
             {isWhatsAppType && (
               <div className="space-y-3 rounded-lg border border-white/10 p-3">
                 <p className="text-xs font-medium">{t("dashboard.channels.whatsappConfig")}</p>

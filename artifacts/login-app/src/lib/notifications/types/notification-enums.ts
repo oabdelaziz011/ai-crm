@@ -32,6 +32,7 @@ export const NOTIFICATION_EVENTS = [
   "appointment_created",
   "appointment_updated",
   "appointment_cancelled",
+  "appointment_reminder",
   "customer_created",
   "invoice_created",
   "payment_received",

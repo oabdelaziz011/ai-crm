@@ -31,6 +31,16 @@ export const NOTIFICATION_TEMPLATE_REGISTRY: Record<string, NotificationTemplate
     category: "booking",
     visualType: "warning",
   },
+  appointment_reminder: {
+    key: "appointment_reminder",
+    event: "appointment_reminder",
+    titleKey: "notifications.platform.templates.appointmentReminder.title",
+    messageKey: "notifications.platform.templates.appointmentReminder.message",
+    defaultPriority: "normal",
+    defaultChannel: "in_app",
+    category: "booking",
+    visualType: "info",
+  },
   customer_created: {
     key: "customer_created",
     event: "customer_created",

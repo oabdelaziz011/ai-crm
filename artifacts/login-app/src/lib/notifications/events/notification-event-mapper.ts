@@ -3,10 +3,15 @@ import type { CreateNotificationInput, NotificationEvent } from "@/lib/notificat
 /** Maps business events to notification domain events. Provider-agnostic. */
 export const BUSINESS_EVENT_TO_NOTIFICATION: Record<string, NotificationEvent> = {
   "booking.created": "appointment_created",
+  "booking.confirmed": "appointment_created",
   "booking.updated": "appointment_updated",
+  "booking.rescheduled": "appointment_updated",
   "booking.cancelled": "appointment_cancelled",
+  "booking.checked_in": "generic_system",
+  "booking.completed": "generic_system",
   "customer.created": "customer_created",
   "invoice.created": "invoice_created",
+  "invoice.paid": "payment_received",
   "payment.received": "payment_received",
   "system.generic": "generic_system",
 };

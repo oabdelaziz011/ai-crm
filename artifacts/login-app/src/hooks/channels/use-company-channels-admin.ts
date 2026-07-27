@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
+import { webChatCompanyChannelQueryKey } from "@/hooks/ai-chat/use-web-chat-company-channel";
 import { useChannelRegistryServices } from "@/lib/channel-registry";
 import type { CreateCompanyChannelInput, UpdateCompanyChannelConfigurationInput } from "@workspace/channel-registry";
 
@@ -41,8 +42,10 @@ export function useChannelAdminMutations(companyId: string | null) {
   const queryClient = useQueryClient();
   const { services, context } = useChannelRegistryServices();
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: companyChannelsQueryKey(companyId) });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: companyChannelsQueryKey(companyId) });
+    void queryClient.invalidateQueries({ queryKey: webChatCompanyChannelQueryKey(companyId) });
+  };
 
   const create = useMutation({
     mutationFn: (input: Omit<CreateCompanyChannelInput, "companyId">) => {

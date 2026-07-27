@@ -4,6 +4,7 @@ export * from "@/lib/scheduling/operations/selectors";
 export * from "@/lib/scheduling/operations/utilities";
 export * from "@/lib/scheduling/operations/cache";
 export * from "@/lib/scheduling/operations/hooks";
+export * from "@/lib/scheduling/operations/notifications";
 export * from "@/lib/scheduling/operations/automation";
 export * from "@/lib/scheduling/operations/queue";
 export * from "@/lib/scheduling/operations/conflicts";

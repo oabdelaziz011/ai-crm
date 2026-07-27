@@ -7,6 +7,18 @@ export async function resolveRecipientEmail(
 ): Promise<string | null> {
   if (params.email?.trim()) return params.email.trim();
   if (params.recipientEmail?.trim()) return params.recipientEmail.trim();
+  if (params.customerEmail?.trim()) return params.customerEmail.trim();
+
+  const customerId = params.customerId?.trim() || params.customer_id?.trim();
+  if (customerId) {
+    const { data: customer } = await client
+      .from("customers")
+      .select("email")
+      .eq("id", customerId)
+      .maybeSingle();
+    if (customer?.email?.trim()) return customer.email.trim();
+  }
+
   if (!notificationId) return null;
 
   const { data, error } = await client

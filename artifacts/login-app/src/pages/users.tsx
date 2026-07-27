@@ -28,6 +28,8 @@ import {
   useResetManagedUserPassword,
   useUpdateManagedUser,
 } from "@/hooks/use-users-management";
+import { BranchAssignmentMultiSelect } from "@/lib/company/branches/components";
+import { useBranches, useUserBranchAssignmentMap } from "@/lib/company/branches/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -59,6 +61,7 @@ type CreateUserForm = {
   companyId: string | null;
   roleId: string;
   isActive: boolean;
+  branchIds: string[];
 };
 
 type EditUserForm = {
@@ -68,6 +71,7 @@ type EditUserForm = {
   companyId: string | null;
   roleId: string;
   isActive: boolean;
+  branchIds: string[];
 };
 
 export function UsersPage() {
@@ -102,6 +106,7 @@ export function UsersPage() {
     companyId: company?.id ?? null,
     roleId: "",
     isActive: true,
+    branchIds: [],
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -110,6 +115,8 @@ export function UsersPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   const createTargetCompanyId = resolveCompanyId(createForm.companyId);
+  const { data: branchAssignmentMap = {} } = useUserBranchAssignmentMap(company?.id ?? createTargetCompanyId);
+  const { data: companyBranches = [], isLoading: branchesLoading } = useBranches(createTargetCompanyId);
   const {
     data: createRoles = [],
     isLoading: createRolesLoading,
@@ -117,6 +124,7 @@ export function UsersPage() {
   } = useCompanyAssignableRoles(createTargetCompanyId, createOpen);
 
   const editTargetCompanyId = editForm ? resolveCompanyId(editForm.companyId) : null;
+  const { data: editCompanyBranches = [], isLoading: editBranchesLoading } = useBranches(editTargetCompanyId);
   const {
     data: editRoles = [],
     isLoading: editRolesLoading,
@@ -239,6 +247,7 @@ export function UsersPage() {
       companyId: user.company_id,
       roleId: assignedRole?.roleId ?? "",
       isActive: user.is_active,
+      branchIds: branchAssignmentMap[user.id] ?? [],
     });
     setEditOpen(true);
   };
@@ -276,6 +285,7 @@ export function UsersPage() {
         companyId,
         roleId: createForm.roleId,
         isActive: createForm.isActive,
+        branchIds: createForm.branchIds,
       },
       {
         onSuccess: () => {
@@ -290,6 +300,7 @@ export function UsersPage() {
             companyId: company?.id ?? null,
             roleId: "",
             isActive: true,
+            branchIds: [],
           });
         },
         onError: (mutationError) => setCreateError(mutationError.message),
@@ -327,6 +338,7 @@ export function UsersPage() {
         company_id: companyId,
         is_active: editForm.isActive,
         roleId: editForm.roleId,
+        branchIds: editForm.branchIds,
       },
       {
         onSuccess: () => {
@@ -658,6 +670,7 @@ export function UsersPage() {
                     ...current,
                     companyId: nextCompanyId,
                     roleId: "",
+                    branchIds: [],
                   }));
                 }}
                 disabled={!canPickCompany}
@@ -696,6 +709,18 @@ export function UsersPage() {
                 }
               />
             </div>
+
+            <BranchAssignmentMultiSelect
+              label={t("branches.users.assignmentLabel")}
+              branches={companyBranches}
+              selectedIds={createForm.branchIds}
+              onChange={(branchIds) =>
+                setCreateForm((current) => ({ ...current, branchIds }))
+              }
+              isLoading={branchesLoading}
+              disabled={!createTargetCompanyId}
+              emptyMessage={t("branches.users.noBranchesAvailable")}
+            />
 
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input
@@ -822,6 +847,18 @@ export function UsersPage() {
                   }
                 />
               </div>
+
+              <BranchAssignmentMultiSelect
+                label={t("branches.users.assignmentLabel")}
+                branches={editCompanyBranches}
+                selectedIds={editForm.branchIds}
+                onChange={(branchIds) =>
+                  setEditForm((current) => (current ? { ...current, branchIds } : current))
+                }
+                isLoading={editBranchesLoading}
+                disabled={!editTargetCompanyId}
+                emptyMessage={t("branches.users.noBranchesAvailable")}
+              />
 
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <input

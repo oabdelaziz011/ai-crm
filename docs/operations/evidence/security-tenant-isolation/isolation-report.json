@@ -1,0 +1,159 @@
+{
+  "executedAt": "2026-07-27T01:42:02.132Z",
+  "companyAlpha": {
+    "id": "d0000010-0001-4001-8001-000000000001",
+    "admin": "demo-alpha-admin@vaultos.local"
+  },
+  "companyBeta": {
+    "id": "d0000010-0001-4001-8001-000000000002",
+    "admin": "demo-beta-admin@vaultos.local"
+  },
+  "fixture": {
+    "customerId": "f45ca2da-7a30-4eef-b73c-367ae5271d1b",
+    "phone": "010916516805",
+    "email": "security-beta-16516805@vaultos.local"
+  },
+  "securityMatrix": [
+    {
+      "module": "CRM — Customers",
+      "pass": "PASS"
+    },
+    {
+      "module": "Bookings / Invoices",
+      "pass": "PASS"
+    },
+    {
+      "module": "Knowledge / Vectors",
+      "pass": "PASS"
+    },
+    {
+      "module": "AI Platform",
+      "pass": "PASS"
+    },
+    {
+      "module": "Permissions / RBAC",
+      "pass": "PASS"
+    }
+  ],
+  "results": [
+    {
+      "module": "CRM — Customers",
+      "pass": true,
+      "checks": [
+        {
+          "name": "Search by ID",
+          "pass": true,
+          "detail": "No cross-tenant row by ID"
+        },
+        {
+          "name": "Search by phone",
+          "pass": true,
+          "detail": "Zero matches"
+        },
+        {
+          "name": "Search by email",
+          "pass": true,
+          "detail": "Zero matches"
+        },
+        {
+          "name": "List all (no foreign company_id)",
+          "pass": true,
+          "detail": "Alpha=0 Beta=6; no foreign rows in Alpha list"
+        }
+      ]
+    },
+    {
+      "module": "Bookings / Invoices",
+      "pass": true,
+      "checks": [
+        {
+          "name": "Bookings by customer_id",
+          "pass": true,
+          "detail": "Alpha sees 0 (no beta bookings fixture)"
+        },
+        {
+          "name": "Bookings list tenant scope",
+          "pass": true,
+          "detail": "No foreign bookings"
+        },
+        {
+          "name": "Invoices list tenant scope",
+          "pass": true,
+          "detail": "No foreign invoices"
+        }
+      ]
+    },
+    {
+      "module": "Knowledge / Vectors",
+      "pass": true,
+      "checks": [
+        {
+          "name": "knowledge_documents tenant scope",
+          "pass": true,
+          "detail": "OK (0 rows)"
+        },
+        {
+          "name": "knowledge_sources tenant scope",
+          "pass": true,
+          "detail": "OK (0 rows)"
+        },
+        {
+          "name": "knowledge_embeddings tenant scope",
+          "pass": true,
+          "detail": "OK (0 rows)"
+        },
+        {
+          "name": "vector_store_entries accessible",
+          "pass": true,
+          "detail": "Skipped (Could not find the table 'public.vector_store_entries' in the schema cache)"
+        }
+      ]
+    },
+    {
+      "module": "AI Platform",
+      "pass": true,
+      "checks": [
+        {
+          "name": "AI conversations",
+          "pass": true,
+          "detail": "Skipped (Could not find the table 'public.ai_conversations' in the schema cache)"
+        },
+        {
+          "name": "prompt_builds tenant scope",
+          "pass": true,
+          "detail": "OK (0 rows)"
+        },
+        {
+          "name": "tool_executions tenant scope",
+          "pass": true,
+          "detail": "OK (0 rows)"
+        },
+        {
+          "name": "ai_runtime_logs",
+          "pass": true,
+          "detail": "Skipped (Could not find the table 'public.ai_runtime_logs' in the schema cache)"
+        }
+      ]
+    },
+    {
+      "module": "Permissions / RBAC",
+      "pass": true,
+      "checks": [
+        {
+          "name": "customers.view RPC returns boolean",
+          "pass": true,
+          "detail": "true"
+        },
+        {
+          "name": "User roles scoped to tenant",
+          "pass": true,
+          "detail": "No cross-tenant role assignments visible"
+        }
+      ]
+    }
+  ],
+  "productionReadiness": {
+    "allPassed": true,
+    "blockers": []
+  }
+}

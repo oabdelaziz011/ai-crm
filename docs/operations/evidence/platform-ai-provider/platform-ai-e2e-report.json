@@ -1,0 +1,41 @@
+{
+  "executedAt": "2026-07-27T02:09:05.816Z",
+  "checks": [
+    {
+      "name": "Platform providers readable by super admin",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Tenant cannot read platform API keys",
+      "pass": true,
+      "detail": "zero rows"
+    },
+    {
+      "name": "Company A runtime config resolves",
+      "pass": true,
+      "detail": "model=gpt-4o-mini"
+    },
+    {
+      "name": "Company B runtime config resolves",
+      "pass": true,
+      "detail": "model=gpt-4o-mini"
+    },
+    {
+      "name": "Tenant connection rows do not expose apiKey",
+      "pass": true,
+      "detail": "sanitized"
+    },
+    {
+      "name": "Company B blocked when AI disabled",
+      "pass": true,
+      "detail": "[object Object]"
+    },
+    {
+      "name": "Company A still works after B toggle",
+      "pass": true,
+      "detail": "model=gpt-4o-mini"
+    }
+  ],
+  "allPassed": true
+}

@@ -1,0 +1,20 @@
+{
+  "startedAt": "2026-07-27T01:41:27.678Z",
+  "migrations": [
+    {
+      "applied": true,
+      "via": "pooler",
+      "label": "170_crm_legacy_policy_purge.sql"
+    }
+  ],
+  "legacyPoliciesFound": [
+    "customers_all",
+    "customers_select"
+  ],
+  "verification": {
+    "hasCompanyId": true,
+    "hasTenantPolicy": true
+  },
+  "nullCompanyCustomers": 0,
+  "completedAt": "2026-07-27T01:41:30.287Z"
+}

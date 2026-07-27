@@ -1,0 +1,19 @@
+[
+  {
+    "event": "tool_selected",
+    "toolKey": "create_customer",
+    "triggeredBy": "llm",
+    "input": { "name": "Ahmed Mohamed", "phone": "01014974125" }
+  },
+  {
+    "event": "tool_execution_completed",
+    "toolKey": "create_customer",
+    "status": "succeeded",
+    "output": {
+      "success": true,
+      "customerId": "3657c735-3154-434a-b830-454f7e0a2371",
+      "message": "Customer created successfully"
+    },
+    "durationMs": 797
+  }
+]

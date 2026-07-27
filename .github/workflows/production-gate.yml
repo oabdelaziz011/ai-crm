@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Supabase migration version uniqueness
+        run: pnpm check:migrations
+
       - name: Platform crypto tests
         run: pnpm --dir lib/platform-crypto test
 

@@ -27,7 +27,8 @@
     "test:runtime-integration": "pnpm --dir lib/runtime-integration test",
     "test:ai-workflow-platform": "pnpm --dir lib/ai-workflow-platform test",
     "test:automation-platform": "pnpm --dir lib/automation-platform test",
-    "test:channel-platform": "pnpm --dir lib/channel-platform test"
+    "test:channel-platform": "pnpm --dir lib/channel-platform test",
+    "check:migrations": "node scripts/check-migration-version-uniqueness.mjs"
   },
   "private": true,
   "dependencies": {},

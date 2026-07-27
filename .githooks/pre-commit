@@ -1,0 +1,4 @@
+#!/bin/sh
+# Optional local hook — enable with: git config core.hooksPath .githooks
+set -e
+node scripts/check-migration-version-uniqueness.mjs

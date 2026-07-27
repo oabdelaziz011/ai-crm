@@ -186,6 +186,12 @@ importers:
       '@workspace/knowledge-platform':
         specifier: workspace:*
         version: link:../../lib/knowledge-platform
+      '@workspace/platform-ai-provider':
+        specifier: workspace:*
+        version: link:../../lib/platform-ai-provider
+      '@workspace/platform-crypto':
+        specifier: workspace:*
+        version: link:../../lib/platform-crypto
       '@workspace/retrieval-engine':
         specifier: workspace:*
         version: link:../../lib/retrieval-engine
@@ -618,6 +624,19 @@ importers:
         specifier: ^4.21.0
         version: 4.23.0
 
+  lib/agent-runtime:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
   lib/ai-conversation:
     dependencies:
       '@supabase/supabase-js':
@@ -636,9 +655,15 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/ai-prompt-orchestrator':
+        specifier: workspace:*
+        version: link:../ai-prompt-orchestrator
       '@workspace/ai-provider-layer':
         specifier: workspace:*
         version: link:../ai-provider-layer
+      '@workspace/platform-crypto':
+        specifier: file:../platform-crypto
+        version: link:../platform-crypto
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -700,6 +725,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/platform-crypto':
+        specifier: file:../platform-crypto
+        version: link:../platform-crypto
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -716,6 +744,9 @@ importers:
       '@workspace/ai-conversation':
         specifier: workspace:*
         version: link:../ai-conversation
+      '@workspace/platform-crypto':
+        specifier: file:../platform-crypto
+        version: link:../platform-crypto
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -861,6 +892,19 @@ importers:
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/platform-ai-provider:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
       tsx:
         specifier: ^4.21.0
         version: 4.23.0
@@ -6853,7 +6897,9 @@ snapshots:
   '@workspace/ai-execution-engine@file:lib/ai-execution-engine':
     dependencies:
       '@supabase/supabase-js': 2.110.2
+      '@workspace/ai-prompt-orchestrator': link:lib/ai-prompt-orchestrator
       '@workspace/ai-provider-layer': link:lib/ai-provider-layer
+      '@workspace/platform-crypto': file:lib/platform-crypto
 
   '@workspace/ai-intent-engine@file:lib/ai-intent-engine':
     dependencies:

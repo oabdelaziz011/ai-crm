@@ -1,20 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireClientEnv } from "@/lib/runtime-env";
 
-const runtimeEnv =
-  typeof import.meta !== "undefined" && import.meta.env
-    ? import.meta.env
-    : (process.env as ImportMetaEnv);
-
-const supabaseUrl = runtimeEnv.VITE_SUPABASE_URL;
-const supabaseKey = runtimeEnv.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Supabase environment variables are missing.");
-}
+const supabaseUrl = requireClientEnv("VITE_SUPABASE_URL");
+const supabaseKey = requireClientEnv("VITE_SUPABASE_PUBLISHABLE_KEY");
 
 if (
-  typeof import.meta !== "undefined" &&
-  import.meta.env?.DEV &&
+  import.meta.env.DEV &&
   /localhost:54321|127\.0\.0\.1:54321/.test(supabaseUrl)
 ) {
   throw new Error(

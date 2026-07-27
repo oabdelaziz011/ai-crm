@@ -19,6 +19,8 @@ import type {
 import { validateAgainstSchema } from "../utils/validate-configuration.js";
 import type { AIProvider } from "./provider-contract.js";
 import { fetchWithRetry } from "./http/retry-client.js";
+import { createAIProviderLogEvent, logAIProviderEvent } from "../utils/ai-provider-logger.js";
+import { resolveProviderApiKey } from "../utils/resolve-api-key.js";
 
 const OPENAI_CONFIGURATION_SCHEMA = {
   type: "object",
@@ -43,8 +45,14 @@ type ResolvedOpenAIConfig = {
 };
 
 type OpenAIChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
+  role: "system" | "developer" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_call_id?: string;
+  tool_calls?: Array<{
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+  }>;
 };
 
 type OpenAIChatCompletionResponse = {
@@ -52,7 +60,15 @@ type OpenAIChatCompletionResponse = {
   model: string;
   choices: Array<{
     index: number;
-    message?: { role: string; content: string };
+    message?: {
+      role: string;
+      content?: string | null;
+      tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: { name: string; arguments: string };
+      }>;
+    };
     delta?: { content?: string };
     finish_reason?: string | null;
   }>;
@@ -104,14 +120,11 @@ export class OpenAIChatAdapter implements AIProvider {
         ? this.configuration.baseUrl.replace(/\/$/, "")
         : "https://api.openai.com/v1";
 
-    const envVar = this.options?.apiKeyEnvVar ?? "OPENAI_API_KEY";
-    const apiKey =
-      (typeof this.configuration.apiKey === "string" && this.configuration.apiKey.trim()) ||
-      (typeof process.env[envVar] === "string" ? process.env[envVar] : "");
+    const apiKey = resolveProviderApiKey(this.configuration);
 
     if (!apiKey) {
       throw new AIProviderConfigurationError(
-        `OpenAI API key is required. Provide configuration.apiKey or set ${envVar}.`,
+        "OpenAI API key is required. Configure configuration.apiKey on the company provider connection.",
       );
     }
 
@@ -136,8 +149,30 @@ export class OpenAIChatAdapter implements AIProvider {
   async generate(input: GenerateInput): Promise<GenerateResult> {
     const config = this.resolveConfig(input.model);
     const metadata = input.metadata ?? {};
-    const messages = parsePromptToMessages(input.prompt);
-    const streaming = Boolean(metadata.streaming);
+    const messages = resolveChatMessages(input.prompt, metadata);
+    const streaming = Boolean(metadata.streaming) && !metadata.tools?.length;
+    const started = Date.now();
+    const correlationId =
+      typeof metadata.correlationId === "string" ? metadata.correlationId : undefined;
+    const companyId = typeof metadata.companyId === "string" ? metadata.companyId : undefined;
+    const conversationId =
+      typeof metadata.conversationId === "string" ? metadata.conversationId : undefined;
+    const executionId =
+      typeof metadata.executionId === "string" ? metadata.executionId : undefined;
+
+    logAIProviderEvent(
+      createAIProviderLogEvent("ai_request_started", {
+        correlationId,
+        companyId,
+        conversationId,
+        executionId,
+        providerKey: this.key,
+        model: config.model,
+        promptLength: input.prompt.length,
+        streaming,
+        mock: false,
+      }),
+    );
 
     const body = buildChatCompletionBody(config.model, messages, metadata, streaming);
 
@@ -149,37 +184,94 @@ export class OpenAIChatAdapter implements AIProvider {
       headers["OpenAI-Organization"] = config.organizationId;
     }
 
-    const response = await fetchWithRetry(
-      `${config.baseUrl}/chat/completions`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-      },
-      {
-        timeoutMs: config.timeoutMs,
-        maxRetries: config.maxRetries,
-        fetchFn: this.options?.fetchFn,
-        label: "OpenAI chat completion",
-      },
-    );
+    try {
+      const response = await fetchWithRetry(
+        `${config.baseUrl}/chat/completions`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        },
+        {
+          timeoutMs: config.timeoutMs,
+          maxRetries: config.maxRetries,
+          fetchFn: this.options?.fetchFn,
+          label: "OpenAI chat completion",
+        },
+      );
 
-    if (streaming) {
-      return this.consumeStream(response, config.model, metadata);
+      if (streaming) {
+        const result = await this.consumeStream(response, config.model, metadata);
+        logAIProviderEvent(
+          createAIProviderLogEvent("ai_response_completed", {
+            correlationId,
+            companyId,
+            conversationId,
+            executionId,
+            providerKey: this.key,
+            model: result.model,
+            inputTokens: result.tokenUsage?.prompt_tokens,
+            outputTokens: result.tokenUsage?.completion_tokens,
+            totalTokens: result.tokenUsage?.total_tokens,
+            latencyMs: Date.now() - started,
+            streaming: true,
+            mock: false,
+          }),
+        );
+        return result;
+      }
+
+      const payload = (await response.json()) as OpenAIChatCompletionResponse;
+      const message = payload.choices?.[0]?.message;
+      const text = message?.content ?? "";
+      const finishReason = payload.choices?.[0]?.finish_reason ?? "stop";
+      const tokenUsage = normalizeUsage(payload.usage);
+      const toolCalls = parseToolCalls(message?.tool_calls);
+
+      logAIProviderEvent(
+        createAIProviderLogEvent("ai_response_completed", {
+          correlationId,
+          companyId,
+          conversationId,
+          executionId,
+          providerKey: this.key,
+          model: payload.model ?? config.model,
+          inputTokens: tokenUsage?.prompt_tokens,
+          outputTokens: tokenUsage?.completion_tokens,
+          totalTokens: tokenUsage?.total_tokens,
+          latencyMs: Date.now() - started,
+          streaming: false,
+          mock: false,
+        }),
+      );
+
+      return {
+        text,
+        model: payload.model ?? config.model,
+        providerKey: this.key,
+        mock: false,
+        tokenUsage,
+        finishReason,
+        toolCalls,
+        rawAssistantMessage: message ? { ...message } : undefined,
+      };
+    } catch (error) {
+      logAIProviderEvent(
+        createAIProviderLogEvent("ai_request_failed", {
+          correlationId,
+          companyId,
+          conversationId,
+          executionId,
+          providerKey: this.key,
+          model: config.model,
+          latencyMs: Date.now() - started,
+          streaming,
+          mock: false,
+          errorMessage: error instanceof Error ? error.message : "OpenAI request failed.",
+        }),
+      );
+      throw error;
     }
-
-    const payload = (await response.json()) as OpenAIChatCompletionResponse;
-    const text = payload.choices?.[0]?.message?.content ?? "";
-    const finishReason = payload.choices?.[0]?.finish_reason ?? "stop";
-
-    return {
-      text,
-      model: payload.model ?? config.model,
-      providerKey: this.key,
-      mock: false,
-      tokenUsage: normalizeUsage(payload.usage),
-      finishReason,
-    };
   }
 
   private async consumeStream(
@@ -373,7 +465,51 @@ function buildChatCompletionBody(
     body.response_format = { type: "json_object" };
   }
 
+  if (Array.isArray(metadata.tools) && metadata.tools.length > 0) {
+    body.tools = metadata.tools;
+    body.tool_choice = metadata.toolChoice ?? "auto";
+  }
+
   return body;
+}
+
+function resolveChatMessages(
+  prompt: string,
+  metadata: GenerateMetadata,
+): OpenAIChatMessage[] {
+  if (Array.isArray(metadata.chatMessages) && metadata.chatMessages.length > 0) {
+    return metadata.chatMessages.map((message) => ({
+      role: message.role,
+      content: message.content,
+      ...(message.tool_call_id ? { tool_call_id: message.tool_call_id } : {}),
+      ...(message.tool_calls ? { tool_calls: message.tool_calls } : {}),
+    }));
+  }
+  return parsePromptToMessages(prompt);
+}
+
+function parseToolCalls(
+  toolCalls?: Array<{
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+  }>,
+) {
+  if (!toolCalls?.length) return undefined;
+  return toolCalls.map((call) => ({
+    id: call.id,
+    name: call.function.name,
+    arguments: parseToolArguments(call.function.arguments),
+  }));
+}
+
+function parseToolArguments(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 function parsePromptToMessages(prompt: string): OpenAIChatMessage[] {

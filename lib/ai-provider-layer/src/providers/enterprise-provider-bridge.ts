@@ -8,7 +8,7 @@ import type {
   TextGenerationRequest,
 } from "../models/request-response.js";
 import { createStreamEvent } from "../streaming/stream-events.js";
-import type { ConfigurationValidationResult } from "../types.js";
+import type { ConfigurationValidationResult, GenerateResult } from "../types.js";
 import type { AIProvider } from "./provider-contract.js";
 import type { EnterpriseAIProvider } from "./enterprise-provider-contract.js";
 
@@ -48,6 +48,25 @@ export function wrapLegacyProviderAsEnterprise(
           temperature: input.temperature,
           max_tokens: input.maxTokens,
           top_p: input.topP,
+          chatMessages: input.messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+            ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
+            ...(message.toolCalls
+              ? {
+                  tool_calls: message.toolCalls.map((call) => ({
+                    id: call.id,
+                    type: "function" as const,
+                    function: {
+                      name: call.name,
+                      arguments: JSON.stringify(call.arguments),
+                    },
+                  })),
+                }
+              : {}),
+          })),
+          tools: input.tools,
+          toolChoice: input.tools?.length ? "auto" : undefined,
           ...input.metadata,
         },
       });
@@ -59,18 +78,92 @@ export function wrapLegacyProviderAsEnterprise(
         usage: toTokenUsage(result.tokenUsage),
         latencyMs: Date.now() - started,
         providerMetadata: { mock: result.mock ?? false },
+        toolCalls: result.toolCalls?.map((call) => ({
+          id: call.id,
+          name: call.name,
+          arguments: call.arguments,
+        })),
+        assistantMessage: result.rawAssistantMessage
+          ? {
+              role: "assistant" as const,
+              content: result.text,
+              toolCalls: result.toolCalls,
+            }
+          : undefined,
       };
     },
     async *streamChatCompletion(input) {
-      const chunks = ["Streaming ", "responses ", "are ", "provider-independent."];
       yield createStreamEvent("start", provider.key, { model: input.model });
-      for (const chunk of chunks) {
-        yield createStreamEvent("delta", provider.key, { delta: chunk, model: input.model });
+
+      const pendingChunks: string[] = [];
+      let resolveWait: (() => void) | null = null;
+      let streamDone = false;
+      let streamError: Error | null = null;
+      let streamResult: GenerateResult | null = null;
+
+      const notify = () => {
+        resolveWait?.();
+        resolveWait = null;
+      };
+
+      const generatePromise = provider
+        .generate({
+          prompt: messagesToPrompt(input),
+          model: input.model,
+          metadata: {
+            temperature: input.temperature,
+            max_tokens: input.maxTokens,
+            top_p: input.topP,
+            streaming: true,
+            onChunk: (chunk: string) => {
+              pendingChunks.push(chunk);
+              notify();
+            },
+            ...input.metadata,
+          },
+        })
+        .then((result) => {
+          streamResult = result;
+          streamDone = true;
+          notify();
+        })
+        .catch((error: unknown) => {
+          streamError = error instanceof Error ? error : new Error(String(error));
+          streamDone = true;
+          notify();
+        });
+
+      while (!streamDone || pendingChunks.length > 0) {
+        while (pendingChunks.length > 0) {
+          const chunk = pendingChunks.shift()!;
+          yield createStreamEvent("delta", provider.key, { delta: chunk, model: input.model });
+        }
+        if (streamDone) break;
+        await new Promise<void>((resolve) => {
+          resolveWait = resolve;
+        });
       }
+
+      await generatePromise;
+
+      if (streamError) {
+        yield createStreamEvent("error", provider.key, {
+          errorMessage: streamError.message,
+          model: input.model,
+        });
+        throw streamError;
+      }
+
+      if (!streamResult) {
+        throw new Error("Streaming provider returned no result.");
+      }
+
+      const completedResult: GenerateResult = streamResult;
+
       yield createStreamEvent("done", provider.key, {
-        model: input.model,
-        finishReason: "stop",
-        usage: { inputTokens: 10, outputTokens: chunks.join("").length, totalTokens: 10 + chunks.join("").length },
+        model: completedResult.model ?? input.model,
+        finishReason: completedResult.finishReason ?? "stop",
+        usage: toTokenUsage(completedResult.tokenUsage),
       });
     },
     async generateText(input) {

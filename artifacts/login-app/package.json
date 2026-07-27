@@ -129,6 +129,8 @@
     "@workspace/channel-registry": "workspace:*",
     "@workspace/embedding-platform": "workspace:*",
     "@workspace/knowledge-platform": "workspace:*",
+    "@workspace/platform-ai-provider": "workspace:*",
+    "@workspace/platform-crypto": "workspace:*",
     "@workspace/retrieval-engine": "workspace:*",
     "@workspace/runtime-integration": "workspace:*",
     "@workspace/vector-query": "workspace:*",

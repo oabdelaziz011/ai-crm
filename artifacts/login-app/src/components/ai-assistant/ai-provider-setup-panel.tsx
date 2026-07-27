@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Can } from "@/components/rbac/permission-guard";
+import { useToast } from "@/hooks/use-toast";
 import { assistantProviderToRegistryKey } from "@/lib/ai-provider/provider-key-map";
 import { pickDefaultConnection } from "@/lib/runtime-integration/chat-config";
 import type { AiAssistantProvider } from "@/lib/types";
@@ -30,6 +31,7 @@ export function AiProviderSetupPanel({
   canEdit,
 }: AiProviderSetupPanelProps) {
   const { t } = useTranslation("common");
+  const { toast } = useToast();
   const registryKey = assistantProviderToRegistryKey(assistantProvider);
 
   const { data: connections = [], isLoading } = useAiProviderConnectionsAdmin(companyId);
@@ -68,28 +70,52 @@ export function AiProviderSetupPanel({
   const handleCreateConnection = async () => {
     if (!companyId || !providerDefinition) return;
 
-    await create.mutateAsync({
-      providerId: providerDefinition.id,
-      displayName: t("aiAssistant.providerSetup.defaultConnectionName", {
-        assistant: assistantName,
-        provider: providerDefinition.display_name,
-      }),
-      configuration: {
-        model: assistantModel.trim() || providerDefinition.default_configuration.model,
-        ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
-      },
-      isDefault: true,
-      isEnabled: true,
-      status: "active",
-      healthStatus: "unknown",
-    });
+    try {
+      await create.mutateAsync({
+        providerId: providerDefinition.id,
+        displayName: t("aiAssistant.providerSetup.defaultConnectionName", {
+          assistant: assistantName,
+          provider: providerDefinition.display_name,
+        }),
+        configuration: {
+          model: assistantModel.trim() || providerDefinition.default_configuration.model,
+          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+        },
+        isDefault: true,
+        isEnabled: true,
+        status: "active",
+        healthStatus: "unknown",
+      });
 
-    setApiKey("");
+      setApiKey("");
+      toast({
+        title: t("aiAssistant.providerSetup.saveSuccess"),
+        description: t("aiAssistant.providerSetup.saveSuccessDetail"),
+      });
+    } catch (error) {
+      toast({
+        title: t("aiAssistant.providerSetup.saveError"),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSetDefault = async () => {
     if (!effectiveSelectedId) return;
-    await setDefault.mutateAsync(effectiveSelectedId);
+    try {
+      await setDefault.mutateAsync(effectiveSelectedId);
+      toast({
+        title: t("aiAssistant.providerSetup.saveSuccess"),
+        description: t("aiAssistant.providerSetup.setDefaultSuccess"),
+      });
+    } catch (error) {
+      toast({
+        title: t("aiAssistant.providerSetup.saveError"),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    }
   };
 
   return (

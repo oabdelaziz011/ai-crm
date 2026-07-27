@@ -6,6 +6,7 @@ import type { AiAssistantProvider } from "@/lib/types";
 import { useAIProviderServices } from "@/lib/ai-provider-layer";
 import { useEmbeddingPlatformServices } from "@/lib/embedding-platform";
 import { useVectorStoreServices } from "@/lib/vector-store";
+import { usePlatformAIProviderServices } from "@/hooks/use-platform-ai-provider";
 
 export function runtimeChatConfigQueryKey(
   companyId: string | null,
@@ -25,6 +26,7 @@ export function useRuntimeChatConfig(
   assistantProvider?: AiAssistantProvider | null,
 ) {
   const { services: providerServices, context: providerContext } = useAIProviderServices();
+  const { services: platformServices } = usePlatformAIProviderServices();
   const { services: embeddingServices, context: embeddingContext } = useEmbeddingPlatformServices();
   const { services: vectorStoreServices, context: vectorStoreContext } = useVectorStoreServices();
 
@@ -38,6 +40,17 @@ export function useRuntimeChatConfig(
       }
 
       const missing: RuntimeChatExecutionConfig["missing"] = [];
+
+      const aiChatEnabled = await platformServices.platform.isFeatureEnabled(companyId, "ai_chat");
+      if (!aiChatEnabled) {
+        missing.push("provider");
+        return {
+          providerConnectionId: null,
+          knowledgeRetrieval: null,
+          ready: false,
+          missing,
+        };
+      }
 
       const providerConnections = await providerServices.registry.listConnections(providerContext, {
         companyId,

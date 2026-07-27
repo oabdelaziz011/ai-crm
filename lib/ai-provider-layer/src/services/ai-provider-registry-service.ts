@@ -34,6 +34,21 @@ function assertPermission(ctx: ServiceContext, permission: string): void {
   }
 }
 
+function rejectTenantCredentialOverrides(
+  ctx: ServiceContext,
+  configuration: Record<string, unknown> | undefined,
+): void {
+  if (ctx.isSuperAdmin || !configuration) return;
+  if (
+    typeof configuration.apiKey === "string" ||
+    typeof configuration.api_key === "string" ||
+    typeof configuration.secret === "string" ||
+    typeof configuration.token === "string"
+  ) {
+    throw new ValidationError("Tenant-managed provider credentials are disabled. Use the platform provider.");
+  }
+}
+
 function validateConnectionStatus(value: string): void {
   if (!PROVIDER_CONNECTION_STATUSES.includes(value as (typeof PROVIDER_CONNECTION_STATUSES)[number])) {
     throw new ValidationError(`Unsupported provider connection status: ${value}`);
@@ -99,6 +114,8 @@ export class AIProviderRegistryService {
 
     if (input.status) validateConnectionStatus(input.status);
 
+    rejectTenantCredentialOverrides(ctx, input.configuration);
+
     const mergedConfiguration = mergeConfiguration(providerType.default_configuration, input.configuration ?? {});
     const validation = await this.factory.validateConfiguration(providerType.key, mergedConfiguration);
     if (!validation.valid) {
@@ -131,6 +148,7 @@ export class AIProviderRegistryService {
         : undefined;
 
     if (mergedConfiguration) {
+      rejectTenantCredentialOverrides(ctx, mergedConfiguration);
       const validation = await this.factory.validateConfiguration(providerKey, mergedConfiguration);
       if (!validation.valid) {
         throw new ValidationError(validation.errors.join("; "));

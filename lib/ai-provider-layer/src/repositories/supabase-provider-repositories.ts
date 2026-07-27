@@ -38,9 +38,23 @@ function mapDefinition(row: Record<string, unknown>): AIProviderDefinitionRecord
   };
 }
 
+function sanitizeConnectionConfiguration(
+  configuration: Record<string, unknown>,
+  usesPlatformKey: boolean,
+): Record<string, unknown> {
+  if (!usesPlatformKey) return { ...configuration };
+  const next = { ...configuration };
+  delete next.apiKey;
+  delete next.api_key;
+  delete next.secret;
+  delete next.token;
+  return next;
+}
+
 function mapConnection(row: Record<string, unknown>): AIProviderConnectionRecord {
   const embedded = row.ai_provider_definition ?? row.ai_provider_definitions;
   const providerRow = Array.isArray(embedded) ? embedded[0] : embedded;
+  const usesPlatformKey = row.uses_platform_key !== false;
 
   return {
     id: row.id as string,
@@ -48,11 +62,15 @@ function mapConnection(row: Record<string, unknown>): AIProviderConnectionRecord
     provider_id: row.provider_id as string,
     display_name: row.display_name as string,
     status: row.status as AIProviderConnectionRecord["status"],
-    configuration: (row.configuration as Record<string, unknown>) ?? {},
+    configuration: sanitizeConnectionConfiguration(
+      (row.configuration as Record<string, unknown>) ?? {},
+      usesPlatformKey,
+    ),
     is_default: Boolean(row.is_default),
     is_enabled: Boolean(row.is_enabled),
     health_status: row.health_status as AIProviderConnectionRecord["health_status"],
     last_health_check: (row.last_health_check as string | null) ?? null,
+    uses_platform_key: usesPlatformKey,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     deleted_at: (row.deleted_at as string | null) ?? null,
@@ -108,11 +126,13 @@ export function createSupabaseAIProviderConnectionRepository(
   return {
     async create(input: CreateAIProviderConnectionInput): Promise<AIProviderConnectionRecord> {
       if (input.isDefault) {
-        await client
+        const { error: clearDefaultError } = await client
           .from(CONNECTIONS_TABLE)
           .update({ is_default: false })
           .eq("company_id", input.companyId)
           .is("deleted_at", null);
+
+        if (clearDefaultError) throw clearDefaultError;
       }
 
       const { data, error } = await client
@@ -124,6 +144,7 @@ export function createSupabaseAIProviderConnectionRepository(
           configuration: input.configuration ?? {},
           is_default: input.isDefault ?? false,
           is_enabled: input.isEnabled ?? false,
+          uses_platform_key: true,
           status: input.status ?? "pending",
           health_status: input.healthStatus ?? "unknown",
         })

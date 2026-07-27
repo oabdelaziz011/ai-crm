@@ -1,0 +1,8 @@
+{
+  "extends": "../automation-platform/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"]
+}

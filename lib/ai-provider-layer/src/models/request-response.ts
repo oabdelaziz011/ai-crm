@@ -1,8 +1,16 @@
-export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
+export type ChatMessageRole = "system" | "developer" | "user" | "assistant" | "tool";
+
+export type ChatToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+};
 
 export type ChatMessage = {
   role: ChatMessageRole;
   content: string;
+  toolCallId?: string;
+  toolCalls?: ChatToolCall[];
 };
 
 export type ChatCompletionRequest = {
@@ -31,6 +39,8 @@ export type ChatCompletionResponse = {
   latencyMs: number;
   estimatedCostUsd?: number;
   providerMetadata?: Record<string, unknown>;
+  toolCalls?: ChatToolCall[];
+  assistantMessage?: ChatMessage;
 };
 
 export type TextGenerationRequest = {

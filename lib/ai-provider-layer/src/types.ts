@@ -35,6 +35,7 @@ export type AIProviderConnectionRecord = {
   is_enabled: boolean;
   health_status: ProviderHealthStatus;
   last_health_check: string | null;
+  uses_platform_key?: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -98,6 +99,22 @@ export type GenerateMetadata = {
   response_format?: string;
   streaming?: boolean;
   onChunk?: (chunk: string) => void;
+  companyId?: string;
+  conversationId?: string;
+  executionId?: string;
+  correlationId?: string;
+  chatMessages?: Array<{
+    role: "system" | "developer" | "user" | "assistant" | "tool";
+    content: string;
+    tool_call_id?: string;
+    tool_calls?: Array<{
+      id: string;
+      type: "function";
+      function: { name: string; arguments: string };
+    }>;
+  }>;
+  tools?: unknown[];
+  toolChoice?: "auto" | "none";
 };
 
 export type GenerateInput = {
@@ -113,6 +130,12 @@ export type GenerateResult = {
   mock?: boolean;
   tokenUsage?: ProviderTokenUsage;
   finishReason?: string;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  }>;
+  rawAssistantMessage?: Record<string, unknown>;
 };
 
 export type ClassifyInput = {

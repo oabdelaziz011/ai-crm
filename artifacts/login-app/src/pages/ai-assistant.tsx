@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
-import { AiProviderSetupPanel } from "@/components/ai-assistant/ai-provider-setup-panel";
+import { PlatformManagedProviderStatus } from "@/components/ai-assistant/platform-managed-provider-status";
 import {
   useAiAssistantSettings,
   useCreateAiAssistantSettings,
@@ -435,13 +435,7 @@ export function AiAssistantPage() {
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
-          <AiProviderSetupPanel
-            companyId={companyId}
-            assistantProvider={draft.provider}
-            assistantModel={draft.model}
-            assistantName={draft.assistant_name}
-            canEdit={canEdit}
-          />
+          <PlatformManagedProviderStatus companyId={companyId} />
           <Card>
             <h2 className="mb-4 text-sm font-semibold">{t("aiAssistant.sections.general")}</h2>
             <div className="mb-4">

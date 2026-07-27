@@ -19,6 +19,7 @@ import {
 import { createMockEnterpriseProvider } from "../providers/mock-provider.js";
 import { ExponentialProviderRetryPolicy, executeProviderWithRetry } from "../retry/provider-retry-policy.js";
 import type { AIStreamEvent } from "../streaming/stream-events.js";
+import { createAIProviderLogEvent, logAIProviderEvent } from "../utils/ai-provider-logger.js";
 
 export type AIGatewayServices = {
   gateway: AIGatewayService;
@@ -62,6 +63,19 @@ export class AIGatewayService {
     const retryPolicy = this.deps.retryPolicy ?? new ExponentialProviderRetryPolicy();
 
     const started = Date.now();
+    const promptLength = input.messages.reduce((sum, message) => sum + message.content.length, 0);
+    logAIProviderEvent(
+      createAIProviderLogEvent("ai_prompt_sent", {
+        companyId: input.context.companyId,
+        conversationId: input.context.conversationId,
+        executionId: input.context.executionId,
+        providerKey: resolved.providerKey,
+        model: input.model,
+        promptLength,
+        streaming: false,
+      }),
+    );
+
     try {
       const response = await executeProviderWithRetry(() => provider.chatCompletion(input), retryPolicy);
       const latencyMs = Date.now() - started;
@@ -85,6 +99,18 @@ export class AIGatewayService {
       this.deps.health.recordAttempt(response.providerKey, true, latencyMs);
       return { ...response, estimatedCostUsd: cost.estimatedCostUsd, latencyMs };
     } catch (error) {
+      logAIProviderEvent(
+        createAIProviderLogEvent("ai_request_failed", {
+          companyId: input.context.companyId,
+          conversationId: input.context.conversationId,
+          executionId: input.context.executionId,
+          providerKey: resolved.providerKey,
+          model: input.model,
+          latencyMs: Date.now() - started,
+          streaming: false,
+          errorMessage: error instanceof Error ? error.message : "Unknown provider error",
+        }),
+      );
       this.deps.health.recordAttempt(
         resolved.providerKey,
         false,
@@ -103,6 +129,19 @@ export class AIGatewayService {
     });
     const provider = await this.resolveProvider(resolved.providerKey, resolved.configuration);
     const started = Date.now();
+    const promptLength = input.messages.reduce((sum, message) => sum + message.content.length, 0);
+    logAIProviderEvent(
+      createAIProviderLogEvent("ai_prompt_sent", {
+        companyId: input.context.companyId,
+        conversationId: input.context.conversationId,
+        executionId: input.context.executionId,
+        providerKey: resolved.providerKey,
+        model: input.model,
+        promptLength,
+        streaming: true,
+      }),
+    );
+
     let outputTokens = 0;
     try {
       for await (const event of provider.streamChatCompletion(input)) {
@@ -130,6 +169,18 @@ export class AIGatewayService {
       });
       this.deps.health.recordAttempt(provider.key, true, latencyMs);
     } catch (error) {
+      logAIProviderEvent(
+        createAIProviderLogEvent("ai_request_failed", {
+          companyId: input.context.companyId,
+          conversationId: input.context.conversationId,
+          executionId: input.context.executionId,
+          providerKey: provider.key,
+          model: input.model,
+          latencyMs: Date.now() - started,
+          streaming: true,
+          errorMessage: error instanceof Error ? error.message : "Unknown provider error",
+        }),
+      );
       this.deps.health.recordAttempt(
         provider.key,
         false,

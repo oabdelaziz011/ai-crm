@@ -22,7 +22,7 @@ export class ProviderConfigurationResolver {
       input.providerKey ??
       tenant?.defaultProviderKey ??
       tenant?.providerPriority?.[0] ??
-      "mock";
+      "openai";
 
     const baseConfiguration: Record<string, unknown> = {
       ...(tenant?.connections?.[providerKey] ?? {}),

@@ -27,6 +27,7 @@ export interface UsePermissionsResult {
   hasPermission: (permissionCode: string) => boolean;
   isSuperAdmin: boolean;
   isLoading: boolean;
+  isRefreshing: boolean;
   roles: RoleRecord[];
 }
 
@@ -74,7 +75,7 @@ export const DEFAULT_RBAC_PERMISSIONS: PermissionRecord[] = [
  * No Supabase queries. All data loaded by AuthContext.
  */
 export function usePermissions(): UsePermissionsResult {
-  const { permissions, roles, isSuperAdmin, isLoading } = useAuth();
+  const { permissions, roles, isSuperAdmin, isLoading, isRefreshing } = useAuth();
 
   const hasPermission = useCallback(
     (permissionCode: string) => {
@@ -88,6 +89,7 @@ export function usePermissions(): UsePermissionsResult {
     hasPermission,
     isSuperAdmin,
     isLoading,
+    isRefreshing,
     roles,
   };
 }

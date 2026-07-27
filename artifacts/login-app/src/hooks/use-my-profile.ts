@@ -202,6 +202,7 @@ export function useMyProfile() {
   return useQuery({
     queryKey: MY_PROFILE_KEY,
     queryFn: fetchMyProfile,
+    staleTime: 60_000,
   });
 }
 

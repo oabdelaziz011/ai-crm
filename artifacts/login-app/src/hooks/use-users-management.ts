@@ -13,6 +13,8 @@ import {
   validateUserRoleAssignment,
 } from "@/lib/users/role-company-validation";
 import { replaceUserRole } from "@/lib/users/replace-user-role";
+import { syncUserBranchAssignments } from "@/lib/company/branches/hooks";
+import { invalidateBranchQueries } from "@/lib/company/branches/cache";
 import { supabase } from "@/lib/supabase";
 import i18n from "@/i18n";
 
@@ -109,6 +111,7 @@ type CreateUserInput = {
   companyId: string;
   roleId: string;
   isActive: boolean;
+  branchIds?: string[];
 };
 
 export function useCreateManagedUser() {
@@ -153,10 +156,24 @@ export function useCreateManagedUser() {
       if (!data?.ok) {
         throw new Error(translateProvisionUserErrorMessage(null, { error: "Unable to invite user" }));
       }
+
+      const branchIds = input.branchIds ?? [];
+      if (branchIds.length > 0) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+
+        if (profile?.id) {
+          await syncUserBranchAssignments(profile.id, input.companyId, branchIds);
+        }
+      }
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await qc.invalidateQueries({ queryKey: USERS_MANAGEMENT_KEY });
       await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
+      invalidateBranchQueries(qc, variables.companyId);
     },
   });
 }
@@ -167,6 +184,7 @@ type UpdateUserInput = {
   company_id?: string | null;
   is_active?: boolean;
   roleId?: string;
+  branchIds?: string[];
 };
 
 export function useUpdateManagedUser() {
@@ -193,10 +211,23 @@ export function useUpdateManagedUser() {
           throw new Error(translateRoleAssignmentError(error));
         }
       }
+
+      if (input.branchIds !== undefined) {
+        const targetCompanyId =
+          values.company_id ??
+          (await supabase.from("profiles").select("company_id").eq("id", id).maybeSingle()).data
+            ?.company_id;
+        if (targetCompanyId) {
+          await syncUserBranchAssignments(id, targetCompanyId, input.branchIds);
+        }
+      }
     },
     onSuccess: async (_data, variables) => {
       await qc.invalidateQueries({ queryKey: USERS_MANAGEMENT_KEY });
       await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
+      if (variables.company_id) {
+        invalidateBranchQueries(qc, variables.company_id);
+      }
       if (variables.roleId && user?.id === variables.id) {
         await refreshAuthContext();
       }

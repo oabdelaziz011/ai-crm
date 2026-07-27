@@ -165,6 +165,17 @@ export class EmbeddingQueueService implements KnowledgeEmbeddingQueuePort {
         continue;
       }
 
+      const incrementalMatch = chunkJobs.find(
+        (job) =>
+          job.status === "completed" &&
+          typeof job.metadata?.chunkChecksum === "string" &&
+          job.metadata.chunkChecksum === chunk.checksum,
+      );
+      if (incrementalMatch) {
+        jobsSkipped += 1;
+        continue;
+      }
+
       let embeddingVersion: number;
       try {
         embeddingVersion = await this.versionService.resolveNextVersion(chunk.id, providerKey, model, false);

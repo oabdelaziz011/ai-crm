@@ -81,14 +81,14 @@ export class OpenAIEmbeddingAdapter implements EmbeddingProvider {
         ? this.configuration.baseUrl.replace(/\/$/, "")
         : "https://api.openai.com/v1";
 
-    const envVar = this.options?.apiKeyEnvVar ?? "OPENAI_API_KEY";
     const apiKey =
-      (typeof this.configuration.apiKey === "string" && this.configuration.apiKey.trim()) ||
-      (typeof process.env[envVar] === "string" ? process.env[envVar] : "");
+      typeof this.configuration.apiKey === "string" && this.configuration.apiKey.trim()
+        ? this.configuration.apiKey.trim()
+        : "";
 
     if (!apiKey) {
       throw new EmbeddingProviderConfigurationError(
-        `OpenAI API key is required. Provide configuration.apiKey or set ${envVar}.`,
+        "OpenAI API key is required. Provide configuration.apiKey on the embedding provider connection.",
       );
     }
 

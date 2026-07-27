@@ -4,6 +4,10 @@ packages:
   - lib/integrations/*
   - scripts
 
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+
 autoInstallPeers: false
 
 onlyBuiltDependencies:

@@ -1,6 +1,7 @@
 import type { ParsedDocument, ParserInput } from "../types.js";
 import type { Parser } from "./ingestion-contracts.js";
 import { PlainTextParser } from "./ingestion-contracts.js";
+import { CsvParser, DocxParser, HtmlParser, MarkdownParser } from "./format-parsers.js";
 
 export class ParserRegistry implements Parser {
   private readonly plainTextParser = new PlainTextParser();
@@ -24,7 +25,14 @@ export class ParserRegistry implements Parser {
       return this.parsers;
     }
 
-    return [await this.resolvePdfParser(), this.plainTextParser];
+    return [
+      await this.resolvePdfParser(),
+      new DocxParser(),
+      new MarkdownParser(),
+      new HtmlParser(),
+      new CsvParser(),
+      this.plainTextParser,
+    ];
   }
 
   supports(_mimeType: string): boolean {

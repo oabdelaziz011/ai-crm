@@ -2,8 +2,9 @@ import { DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE } from "../constants.js";
 import type { ChunkDraft } from "../types.js";
 import { computeChecksum, estimateTokenCount, normalizeWhitespace } from "../utils/knowledge-utils.js";
 import { ParagraphChunkingStrategy, type ChunkingOptions, type ChunkingStrategy } from "./chunking-strategy.js";
+import { HeadingAwareChunkingStrategy } from "./heading-aware-chunking.js";
 
-export type ChunkingStrategyName = "fixed_size" | "sentence" | "paragraph" | "sliding_window";
+export type ChunkingStrategyName = "fixed_size" | "sentence" | "paragraph" | "sliding_window" | "heading_aware";
 
 export class FixedSizeChunkingStrategy implements ChunkingStrategy {
   chunk(text: string, options?: ChunkingOptions): ChunkDraft[] {
@@ -72,6 +73,9 @@ export class ChunkStrategyRegistry {
   }
 
   resolve(name: ChunkingStrategyName = "paragraph"): ChunkingStrategy {
+    if (name === "heading_aware") {
+      return new HeadingAwareChunkingStrategy();
+    }
     return this.strategies.get(name) ?? new ParagraphChunkingStrategy();
   }
 }
@@ -82,5 +86,6 @@ export function createDefaultChunkStrategyRegistry(): ChunkStrategyRegistry {
   registry.register("sentence", new SentenceChunkingStrategy());
   registry.register("paragraph", new ParagraphChunkingStrategy());
   registry.register("sliding_window", new SlidingWindowChunkingStrategy());
+  registry.register("heading_aware", new HeadingAwareChunkingStrategy());
   return registry;
 }

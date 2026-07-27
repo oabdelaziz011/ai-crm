@@ -5,7 +5,8 @@ import {
   PermissionDeniedError,
   ValidationError,
 } from "../errors.js";
-import type { ChunkingStrategy } from "../ingestion/chunking-strategy.js";
+import type { ChunkStrategyRegistry, ChunkingStrategyName } from "../ingestion/chunk-strategy-registry.js";
+import type { ChunkingOptions } from "../ingestion/chunking-strategy.js";
 import type {
   KnowledgeChunkRepository,
   KnowledgeDocumentRepository,
@@ -24,16 +25,27 @@ function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
   if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.view);
 }
 
+export type GenerateChunksOptions = {
+  strategyName?: ChunkingStrategyName;
+  chunkingOptions?: ChunkingOptions;
+};
+
 export class KnowledgeChunkService {
   constructor(
     private readonly chunkRepository: KnowledgeChunkRepository,
     private readonly documentRepository: KnowledgeDocumentRepository,
     private readonly versionRepository: KnowledgeVersionRepository,
     private readonly sectionRepository: KnowledgeSectionRepository,
-    private readonly chunkingStrategy: ChunkingStrategy,
+    private readonly chunkStrategyRegistry: ChunkStrategyRegistry,
   ) {}
 
-  async generateChunksForVersion(ctx: ServiceContext, documentId: string, versionId: string, text?: string) {
+  async generateChunksForVersion(
+    ctx: ServiceContext,
+    documentId: string,
+    versionId: string,
+    text?: string,
+    options?: GenerateChunksOptions,
+  ) {
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.import);
     const document = await this.documentRepository.findById(documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(documentId);
@@ -54,8 +66,9 @@ export class KnowledgeChunkService {
 
     if (!sourceText) throw new ValidationError("No section content available to chunk.");
 
+    const strategy = this.chunkStrategyRegistry.resolve(options?.strategyName ?? "paragraph");
     await this.chunkRepository.softDeleteByVersion(versionId, ctx.userId);
-    const drafts = this.chunkingStrategy.chunk(sourceText);
+    const drafts = strategy.chunk(sourceText, options?.chunkingOptions);
     const inputs: CreateKnowledgeChunkInput[] = drafts.map((draft) => ({
       companyId: document.company_id,
       documentId,

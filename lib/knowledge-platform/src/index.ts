@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { KnowledgeEmbeddingQueuePort } from "./ports/knowledge-embedding-queue-port.js";
-import { ParagraphChunkingStrategy } from "./ingestion/chunking-strategy.js";
+import { createDefaultChunkStrategyRegistry, type ChunkStrategyRegistry, type ChunkingStrategyName } from "./ingestion/chunk-strategy-registry.js";
+import type { ChunkingOptions } from "./ingestion/chunking-strategy.js";
 import { PassthroughDocumentImporter } from "./ingestion/ingestion-contracts.js";
 import { ParserRegistry } from "./ingestion/parser-registry.js";
 import {
@@ -42,7 +43,7 @@ export function createKnowledgePlatformServices(
   const sectionRepository = createSupabaseKnowledgeSectionRepository(client);
   const tagRepository = createSupabaseKnowledgeTagRepository(client);
   const chunkRepository = createSupabaseKnowledgeChunkRepository(client);
-  const chunkingStrategy = new ParagraphChunkingStrategy();
+  const chunkStrategyRegistry = createDefaultChunkStrategyRegistry();
   const parserService = new KnowledgeParserService(new ParserRegistry());
 
   const sources = new KnowledgeSourceService(sourceRepository);
@@ -61,7 +62,7 @@ export function createKnowledgePlatformServices(
     documentRepository,
     versionRepository,
     sectionRepository,
-    chunkingStrategy,
+    chunkStrategyRegistry,
   );
 
   return {
@@ -101,3 +102,5 @@ export * from "./services/knowledge-chunk-service.js";
 export * from "./services/knowledge-publishing-service.js";
 export * from "./ports/knowledge-embedding-queue-port.js";
 export * from "./utils/document-lifecycle.js";
+export * from "./ingestion/chunk-strategy-registry.js";
+export * from "./utils/chunking-config.js";

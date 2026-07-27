@@ -15,6 +15,7 @@ import type {
 } from "../repositories/knowledge-repositories.js";
 import type { ImportDocumentInput, KnowledgeSectionRecord, ServiceContext } from "../types.js";
 import { buildImportMetadata, computeChecksum } from "../utils/knowledge-utils.js";
+import { resolveChunkingConfig } from "../utils/chunking-config.js";
 import type { KnowledgeChunkService } from "./knowledge-chunk-service.js";
 import type { KnowledgeDocumentService } from "./knowledge-document-service.js";
 import type { KnowledgeSectionService } from "./knowledge-section-service.js";
@@ -132,7 +133,14 @@ export class KnowledgeImportService {
       await this.tagRepository.setTags(input.companyId, document.id, input.tags);
     }
 
-    const chunks = await this.chunkService.generateChunksForVersion(ctx, document.id, version.id, imported.text);
+    const chunking = resolveChunkingConfig(source.configuration);
+    const chunks = await this.chunkService.generateChunksForVersion(
+      ctx,
+      document.id,
+      version.id,
+      imported.text,
+      { strategyName: chunking.strategyName, chunkingOptions: chunking.options },
+    );
     return { document, version, section: sections[0], sections, chunks };
   }
 }

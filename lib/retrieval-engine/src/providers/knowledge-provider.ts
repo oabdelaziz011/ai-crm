@@ -1,6 +1,10 @@
-import type { RetrievalContext, SemanticRetrievalRequest, SemanticRetrievalResponse } from "../dto/retrieval-dto.js";
+import type { SemanticRetrievalRequest, SemanticRetrievalResponse } from "../dto/retrieval-dto.js";
 import type { RetrievalOrchestrationEngine } from "../engines/retrieval-orchestration-engine.js";
 import type { ServiceContext } from "../types.js";
+import { fuseHybridResults } from "../services/hybrid-search-service.js";
+import { rerankChunks } from "../services/reranking-service.js";
+import { buildCitations, formatContextWithCitations, type KnowledgeCitation } from "../services/citation-engine.js";
+import { computeRetrievalConfidence } from "../services/confidence-scoring.js";
 
 export type KnowledgeQueryInput = SemanticRetrievalRequest & {
   policyKey?: string;
@@ -19,6 +23,8 @@ export type RuntimeKnowledgeChunkSnapshot = {
 export type KnowledgeQueryResult = {
   contextText: string;
   chunks: RuntimeKnowledgeChunkSnapshot[];
+  citations: KnowledgeCitation[];
+  confidence: number;
   chunkCount: number;
   totalTokens: number;
   executionId: string;
@@ -26,6 +32,7 @@ export type KnowledgeQueryResult = {
   retrievalLatencyMs: number;
   rankingLatencyMs: number;
   policyId: string | null;
+  searchMode: "vector" | "keyword" | "hybrid";
 };
 
 export type KnowledgePolicy = {
@@ -35,6 +42,8 @@ export type KnowledgePolicy = {
   rankingStrategy?: string;
   minimumScore?: number;
   topK?: number;
+  searchMode?: "vector" | "keyword" | "hybrid";
+  rerank?: boolean;
 };
 
 export class KnowledgePolicyRegistry {
@@ -55,9 +64,11 @@ export function createDefaultKnowledgePolicyRegistry(): KnowledgePolicyRegistry 
   registry.register("default", {
     maxChunks: 8,
     maxContextTokens: 2048,
-    rankingStrategy: "similarity",
+    rankingStrategy: "hybrid",
     minimumScore: 0.2,
     topK: 12,
+    searchMode: "hybrid",
+    rerank: true,
   });
   return registry;
 }
@@ -88,16 +99,7 @@ export function createDefaultKnowledgeRankingRegistry(): KnowledgeRankingRegistr
   return registry;
 }
 
-function formatKnowledgeContext(chunks: RuntimeKnowledgeChunkSnapshot[]): string {
-  return chunks
-    .map((chunk, index) => {
-      const title = chunk.documentTitle ?? `Source ${index + 1}`;
-      return `[${title}] ${chunk.content}`;
-    })
-    .join("\n\n");
-}
-
-function mapRetrievalContext(context: RetrievalContext): RuntimeKnowledgeChunkSnapshot[] {
+function mapRetrievalContext(context: SemanticRetrievalResponse["context"]): RuntimeKnowledgeChunkSnapshot[] {
   return context.chunks.map((chunk) => ({
     id: chunk.knowledgeChunkId,
     content: chunk.content,
@@ -109,18 +111,25 @@ function mapRetrievalContext(context: RetrievalContext): RuntimeKnowledgeChunkSn
   }));
 }
 
-export function mapSemanticRetrievalResponse(response: SemanticRetrievalResponse): KnowledgeQueryResult {
-  const chunks = mapRetrievalContext(response.context);
+export function mapSemanticRetrievalResponse(
+  response: SemanticRetrievalResponse,
+  chunks: RuntimeKnowledgeChunkSnapshot[],
+  searchMode: "vector" | "keyword" | "hybrid",
+): KnowledgeQueryResult {
+  const citations = buildCitations(chunks);
   return {
-    contextText: formatKnowledgeContext(chunks),
+    contextText: formatContextWithCitations(chunks),
     chunks,
-    chunkCount: response.context.chunkCount,
-    totalTokens: response.context.totalTokens,
+    citations,
+    confidence: computeRetrievalConfidence(chunks),
+    chunkCount: chunks.length,
+    totalTokens: chunks.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
     executionId: response.executionId,
     vectorQueryExecutionId: response.vectorQueryExecutionId,
     retrievalLatencyMs: response.executionTimeMs,
     rankingLatencyMs: Math.max(0, response.orchestrationTimeMs - response.executionTimeMs),
     policyId: response.policyId,
+    searchMode,
   };
 }
 
@@ -135,23 +144,45 @@ export class KnowledgeProvider {
 
   async retrieve(ctx: ServiceContext, input: KnowledgeQueryInput): Promise<KnowledgeQueryResult> {
     const policy = this.deps.policies.resolve(input.policyKey);
+    const searchMode = input.searchMode ?? policy.searchMode ?? "vector";
+    const shouldRerank = input.rerank ?? policy.rerank ?? false;
+
     const response = await this.deps.orchestration.retrieveFromQuestion(ctx, {
       ...input,
+      searchMode: searchMode === "hybrid" ? "vector" : searchMode,
       topK: input.topK ?? policy.topK,
       minimumScore: input.minimumScore ?? policy.minimumScore,
       maxTokenBudget: input.maxTokenBudget ?? policy.maxContextTokens,
+      sourceIds: input.sourceIds ?? policy.allowedSourceIds,
     });
 
     let chunks = mapRetrievalContext(response.context);
+
+    if (searchMode === "hybrid") {
+      const keywordHits = await this.deps.orchestration.getKeywordHits(
+        {
+          ...input,
+          topK: input.topK ?? policy.topK,
+          sourceIds: input.sourceIds ?? policy.allowedSourceIds,
+        },
+        input.question,
+      );
+      chunks = fuseHybridResults({ vectorChunks: chunks, keywordHits });
+    }
+
     chunks = this.deps.ranking.apply(policy.rankingStrategy, chunks);
+
+    if (shouldRerank) {
+      chunks = rerankChunks({
+        chunks,
+        query: input.question,
+        topN: policy.maxChunks ?? input.topK,
+      });
+    }
+
     if (policy.maxChunks) chunks = chunks.slice(0, policy.maxChunks);
 
-    return {
-      ...mapSemanticRetrievalResponse(response),
-      chunks,
-      chunkCount: chunks.length,
-      contextText: formatKnowledgeContext(chunks),
-    };
+    return mapSemanticRetrievalResponse(response, chunks, searchMode);
   }
 }
 

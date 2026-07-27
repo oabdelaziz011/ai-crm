@@ -15,6 +15,7 @@ import {
   NoopVectorQueryExecutionPort,
   type VectorQueryExecutionPort,
 } from "./ports/vector-query-execution-port.js";
+import { NoopKeywordSearchPort, type KeywordSearchPort } from "./ports/keyword-search-port.js";
 import {
   createDefaultKnowledgePolicyRegistry,
   createDefaultKnowledgeRankingRegistry,
@@ -29,11 +30,13 @@ import {
   createSupabaseRetrievalPolicyRepository,
   createSupabaseVectorQueryReadRepository,
 } from "./repositories/supabase-retrieval-repositories.js";
+import { createSupabaseKeywordSearchPort } from "./repositories/supabase-keyword-search-port.js";
 
 export type RetrievalServicesOptions = {
   telemetry?: RetrievalTelemetryPort;
   queryEmbeddingPort?: QueryEmbeddingPort;
   vectorQueryPort?: VectorQueryExecutionPort;
+  keywordSearchPort?: KeywordSearchPort;
 };
 
 export type RetrievalServices = {
@@ -81,7 +84,13 @@ export function createRetrievalServices(
 
   const queryEmbeddingPort = options?.queryEmbeddingPort ?? new NoopQueryEmbeddingPort();
   const vectorQueryPort = options?.vectorQueryPort ?? new NoopVectorQueryExecutionPort();
-  const orchestration = new RetrievalOrchestrationEngine(queryEmbeddingPort, vectorQueryPort, retrieval);
+  const keywordSearchPort = options?.keywordSearchPort ?? createSupabaseKeywordSearchPort(client);
+  const orchestration = new RetrievalOrchestrationEngine(
+    queryEmbeddingPort,
+    vectorQueryPort,
+    retrieval,
+    keywordSearchPort,
+  );
   const knowledgePolicies = createDefaultKnowledgePolicyRegistry();
   const knowledgeRanking = createDefaultKnowledgeRankingRegistry();
   const knowledgeObservability = new KnowledgeObservability();
@@ -125,4 +134,10 @@ export * from "./engines/retrieval-engine.js";
 export * from "./engines/retrieval-orchestration-engine.js";
 export * from "./providers/knowledge-provider.js";
 export * from "./observability/knowledge-observability.js";
+export * from "./ports/keyword-search-port.js";
+export * from "./services/hybrid-search-service.js";
+export * from "./services/reranking-service.js";
+export * from "./services/citation-engine.js";
+export * from "./services/confidence-scoring.js";
+export * from "./repositories/supabase-keyword-search-port.js";
 export * from "./platform-adapters.js";

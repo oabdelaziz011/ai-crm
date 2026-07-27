@@ -65,6 +65,11 @@ export type SemanticRetrievalRequest = {
   topK?: number;
   minimumScore?: number;
   correlationId?: string;
+  /** vector (default), keyword (FTS only), or hybrid (RRF fusion) */
+  searchMode?: "vector" | "keyword" | "hybrid";
+  sourceIds?: string[];
+  documentIds?: string[];
+  rerank?: boolean;
 };
 
 /** End-to-end semantic retrieval response — includes orchestration metadata. */

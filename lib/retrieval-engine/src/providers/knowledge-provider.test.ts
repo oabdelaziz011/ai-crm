@@ -56,17 +56,36 @@ const sampleResponse: SemanticRetrievalResponse = {
 
 describe("KnowledgeProvider utilities", () => {
   it("maps semantic retrieval responses into runtime knowledge snapshots", () => {
-    const mapped = mapSemanticRetrievalResponse(sampleResponse);
+    const snapshots = sampleResponse.context.chunks.map((chunk) => ({
+      id: chunk.knowledgeChunkId,
+      content: chunk.content,
+      score: chunk.normalizedScore,
+      rank: chunk.selectionRank,
+      tokenCount: chunk.tokenCount,
+      documentTitle: chunk.metadata.documentTitle as string,
+      metadata: chunk.metadata,
+    }));
+    const mapped = mapSemanticRetrievalResponse(sampleResponse, snapshots, "hybrid");
     assert.equal(mapped.chunkCount, 2);
     assert.match(mapped.contextText, /VaultOS hours/);
     assert.equal(mapped.executionId, "exec-1");
+    assert.equal(mapped.citations.length, 2);
   });
 
   it("applies knowledge policies and ranking strategies", () => {
     const policies = createDefaultKnowledgePolicyRegistry();
     const ranking = createDefaultKnowledgeRankingRegistry();
     const policy = policies.resolve("default");
-    const chunks = mapSemanticRetrievalResponse(sampleResponse).chunks;
+    const snapshots = sampleResponse.context.chunks.map((chunk) => ({
+      id: chunk.knowledgeChunkId,
+      content: chunk.content,
+      score: chunk.normalizedScore,
+      rank: chunk.selectionRank,
+      tokenCount: chunk.tokenCount,
+      documentTitle: chunk.metadata.documentTitle as string,
+      metadata: chunk.metadata,
+    }));
+    const chunks = mapSemanticRetrievalResponse(sampleResponse, snapshots, "vector").chunks;
     const ranked = ranking.apply(policy.rankingStrategy, chunks).slice(0, policy.maxChunks);
     assert.equal(ranked.length, 2);
     assert.ok((ranked[0]?.score ?? 0) >= (ranked[1]?.score ?? 0));

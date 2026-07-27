@@ -1,4 +1,5 @@
 import type { RetrievalTelemetryEvent } from "../types.js";
+import { isTestRuntime } from "@workspace/platform-crypto/client";
 
 export type RetrievalLogEvent = {
   correlationId: string;
@@ -65,6 +66,6 @@ export function serializeStructuredLog(payload: RetrievalLogEvent): string {
 }
 
 export function logRetrievalEvent(payload: RetrievalLogEvent): void {
-  if (process.env.NODE_ENV === "test") return;
+  if (isTestRuntime()) return;
   console.info(serializeStructuredLog(payload));
 }

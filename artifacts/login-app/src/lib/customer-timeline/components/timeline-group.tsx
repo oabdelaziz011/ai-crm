@@ -7,9 +7,10 @@ import { format } from "date-fns";
 type Props = {
   group: TimelineGroup | EnrichedTimelineGroup;
   renderContext: TimelineRenderContext;
+  cardVariant?: "default" | "workspace";
 };
 
-export function TimelineGroupSection({ group, renderContext }: Props) {
+export function TimelineGroupSection({ group, renderContext, cardVariant }: Props) {
   return (
     <section className="space-y-2">
       <TimelineDateDivider label={group.label} />
@@ -20,6 +21,7 @@ export function TimelineGroupSection({ group, renderContext }: Props) {
             activity={activity}
             renderContext={renderContext}
             occurredAtLabel={format(new Date(activity.occurredAt), "p")}
+            variant={cardVariant}
           />
         ))}
       </ol>

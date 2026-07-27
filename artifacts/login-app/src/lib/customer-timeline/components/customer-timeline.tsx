@@ -15,9 +15,10 @@ import { TimelineLoading } from "./timeline-loading";
 type CustomerTimelineProps = {
   customerId: string;
   companyId?: string | null;
+  cardVariant?: "default" | "workspace";
 };
 
-export function CustomerTimelinePanel({ customerId, companyId }: CustomerTimelineProps) {
+export function CustomerTimelinePanel({ customerId, companyId, cardVariant = "default" }: CustomerTimelineProps) {
   const { t, i18n } = useTranslation("common");
   const { filter, setLegacyFilter, groupMode, setGroupMode } = useTimelineFilters();
   const { search, setSearch, debouncedSearch } = useTimelineSearch();
@@ -94,6 +95,7 @@ export function CustomerTimelinePanel({ customerId, companyId }: CustomerTimelin
             : t("dashboard.customerProfile.timeline.empty")
         }
         loadMoreLabel={t("dashboard.customerProfile.timeline.loadMore")}
+        cardVariant={cardVariant}
       />
     </div>
   );

@@ -12,6 +12,7 @@ type Props = {
   onLoadMore?: () => void;
   emptyMessage: string;
   loadMoreLabel: string;
+  cardVariant?: "default" | "workspace";
 };
 
 const WINDOW_SIZE = 40;
@@ -24,6 +25,7 @@ export function TimelineList({
   onLoadMore,
   emptyMessage,
   loadMoreLabel,
+  cardVariant,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -67,7 +69,7 @@ export function TimelineList({
   return (
     <div className="space-y-5">
       {visibleGroups.map((group) => (
-        <TimelineGroupSection key={group.key} group={group} renderContext={renderContext} />
+        <TimelineGroupSection key={group.key} group={group} renderContext={renderContext} cardVariant={cardVariant} />
       ))}
       {hasMore ? (
         <div ref={sentinelRef} className="flex justify-center py-2">

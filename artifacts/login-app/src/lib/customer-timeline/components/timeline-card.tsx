@@ -7,9 +7,10 @@ type TimelineCardProps = {
   activity: TimelineActivity | EnrichedTimelineActivity;
   renderContext: TimelineRenderContext;
   occurredAtLabel: string;
+  variant?: "default" | "workspace";
 };
 
-export function TimelineCard({ activity, renderContext, occurredAtLabel }: TimelineCardProps) {
+export function TimelineCard({ activity, renderContext, occurredAtLabel, variant = "default" }: TimelineCardProps) {
   const enriched =
     "title" in activity && typeof activity.title === "string"
       ? activity
@@ -38,6 +39,8 @@ export function TimelineCard({ activity, renderContext, occurredAtLabel }: Timel
       accentClass={enriched.accentClass ?? descriptor.accentClass}
       occurredAt={occurredAtLabel}
       relativeTime={relativeTime}
+      variant={variant}
+      actionLabel={variant === "workspace" ? renderContext.translate("dashboard.customerWorkspace.timeline.viewDetails") : undefined}
     />
   );
 }

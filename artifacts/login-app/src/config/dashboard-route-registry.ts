@@ -174,7 +174,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.customers",
     icon: Users,
     permission: "customers.view",
-    Page: lazyPage(() => import("@/pages/dashboard/customers-page")),
+    Page: lazyPage(() => import("@/pages/dashboard/customers/customers-layout")),
   },
   {
     id: "bookings",
@@ -193,6 +193,15 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: Calendar,
     permission: "bookings.view",
     Page: lazyNamed(() => import("@/pages/dashboard/calendar/calendar-page"), "CalendarPage"),
+  },
+  {
+    id: "scheduling",
+    path: "/dashboard/scheduling",
+    nestedPath: "/scheduling",
+    titleKey: "navigation.scheduling",
+    icon: CalendarRange,
+    permission: "bookings.view",
+    Page: lazyNamed(() => import("@/pages/dashboard/scheduling/scheduling-page"), "SchedulingPage"),
   },
   {
     id: "communication",
@@ -439,6 +448,7 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "customers" },
   { type: "route", id: "bookings" },
   { type: "route", id: "calendar" },
+  { type: "route", id: "scheduling" },
   { type: "route", id: "communication" },
   { type: "route", id: "invoices" },
   { type: "route", id: "financial" },

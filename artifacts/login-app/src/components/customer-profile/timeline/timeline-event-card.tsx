@@ -1,4 +1,6 @@
 import type { LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type TimelineEventCardProps = {
   title: string;
@@ -9,6 +11,9 @@ type TimelineEventCardProps = {
   accentClass: string;
   occurredAt: string;
   relativeTime: string;
+  variant?: "default" | "workspace";
+  actionLabel?: string;
+  onAction?: () => void;
 };
 
 export function TimelineEventCard({
@@ -20,32 +25,54 @@ export function TimelineEventCard({
   accentClass,
   occurredAt,
   relativeTime,
+  variant = "default",
+  actionLabel,
+  onAction,
 }: TimelineEventCardProps) {
+  const isWorkspace = variant === "workspace";
+
   return (
-    <li className="rounded-lg border border-white/10 bg-background/20 px-3 py-2.5">
+    <li
+      className={cn(
+        "group rounded-xl border transition-colors",
+        isWorkspace
+          ? "border-border/60 bg-card/60 px-4 py-3 hover:border-primary/25 hover:bg-card/80"
+          : "border-white/10 bg-background/20 px-3 py-2.5",
+      )}
+    >
       <div className="flex gap-3">
         <div
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${accentClass}`}
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-lg border",
+            isWorkspace ? "size-9" : "mt-0.5 size-7 rounded-full",
+            accentClass,
+          )}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className={isWorkspace ? "size-4" : "size-3.5"} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-medium leading-snug">{title}</p>
-            <div className="text-end shrink-0">
-              <time className="text-[10px] text-muted-foreground block">{occurredAt}</time>
-              <span className="text-[10px] text-muted-foreground/80">{relativeTime}</span>
+            <p className={cn("font-semibold leading-snug", isWorkspace ? "text-sm" : "text-sm font-medium")}>{title}</p>
+            <div className="shrink-0 text-end">
+              <time className="block text-[10px] font-medium text-muted-foreground">{occurredAt}</time>
+              <span className="text-[10px] text-muted-foreground/70">{relativeTime}</span>
             </div>
           </div>
           {actor && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {actorLabel ?? actor}
-            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{actorLabel ?? actor}</p>
           )}
           {description && (
-            <p className="text-xs text-muted-foreground/90 mt-1 leading-relaxed line-clamp-3">
-              {description}
-            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">{description}</p>
+          )}
+          {isWorkspace && actionLabel && onAction && (
+            <button
+              type="button"
+              onClick={onAction}
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              {actionLabel}
+              <ArrowRight className="size-3" />
+            </button>
           )}
         </div>
       </div>

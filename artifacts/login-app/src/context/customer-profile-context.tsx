@@ -1,23 +1,14 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { CustomerProfileDrawer } from "@/components/customer-profile/customer-profile-drawer";
-import { BookingModal } from "@/components/dashboard/booking-modal";
-import { InvoiceModal } from "@/components/dashboard/invoice-modal";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import type {
   CustomerProfileContext,
   CustomerProfileOpenParams,
   CustomerProfileQuickAction,
   CustomerProfileTab,
+  LegacyCustomerProfileTab,
 } from "@/components/customer-profile/types";
-import { useCustomerProfileQuickActions } from "@/hooks/use-customer-profile-quick-actions";
-import { useCustomer } from "@/hooks/use-customer";
-import { useCustomers } from "@/hooks/use-customers";
-
-type CustomerProfileState = {
-  open: boolean;
-  customerId: string | null;
-  tab: CustomerProfileTab;
-  context?: CustomerProfileContext;
-};
+import { normalizeCustomerProfileTab } from "@/components/customer-profile/types";
+import { customerWorkspaceDashboardHref } from "@/lib/customer-workspace/customer-workspace-utils";
 
 type CustomerProfileContextValue = {
   openCustomerProfile: (params: CustomerProfileOpenParams) => void;
@@ -28,112 +19,63 @@ type CustomerProfileContextValue = {
 
 const CustomerProfileContextInstance = createContext<CustomerProfileContextValue | null>(null);
 
-const CLOSED_STATE: CustomerProfileState = {
-  open: false,
-  customerId: null,
-  tab: "overview",
-};
+function resolveTab(tab?: CustomerProfileTab | LegacyCustomerProfileTab): CustomerProfileTab {
+  return normalizeCustomerProfileTab(tab);
+}
 
-function CustomerProfileQuickActionHost({
-  state,
-  onClose,
-  onTabChange,
-}: {
-  state: CustomerProfileState;
-  onClose: () => void;
-  onTabChange: (tab: CustomerProfileTab) => void;
-}) {
-  const { data: customer } = useCustomer(state.open ? state.customerId : null);
-  const { data: customers = [] } = useCustomers();
+const CONTEXT_KEY_PREFIX = "valueor.customer-workspace.context:";
 
-  const {
-    executeQuickAction,
-    isActionPending,
-    bookingPrefill,
-    closeBookingModal,
-    invoicePrefill,
-    closeInvoiceModal,
-    handleBookingCreated,
-    handleInvoiceCreated,
-  } = useCustomerProfileQuickActions({
-    customer,
-    context: state.context,
-    onCloseProfile: onClose,
-    onOpenNotesTab: () => onTabChange("notes"),
-  });
-
-  return (
-    <>
-      <CustomerProfileDrawer
-        open={state.open}
-        onClose={onClose}
-        customerId={state.customerId}
-        defaultTab={state.tab}
-        context={state.context}
-        onQuickAction={(action) => void executeQuickAction(action)}
-        isQuickActionPending={isActionPending}
-      />
-
-      <BookingModal
-        open={!!bookingPrefill}
-        onClose={closeBookingModal}
-        customers={customers}
-        companyId={bookingPrefill?.companyId ?? state.context?.companyId ?? null}
-        defaultCustomerId={bookingPrefill?.customerId ?? null}
-        lockCustomer={!!bookingPrefill}
-        onCreated={handleBookingCreated}
-      />
-
-      <InvoiceModal
-        open={!!invoicePrefill}
-        onClose={closeInvoiceModal}
-        customers={customers}
-        defaultCustomerId={invoicePrefill?.customerId ?? null}
-        lockCustomer={!!invoicePrefill}
-        onCreated={handleInvoiceCreated}
-      />
-    </>
-  );
+export function readCustomerWorkspaceContext(customerId: string): CustomerProfileContext | undefined {
+  try {
+    const raw = sessionStorage.getItem(`${CONTEXT_KEY_PREFIX}${customerId}`);
+    return raw ? (JSON.parse(raw) as CustomerProfileContext) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function CustomerProfileProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<CustomerProfileState>(CLOSED_STATE);
+  const [location, setLocation] = useLocation();
 
-  const openCustomerProfile = useCallback((params: CustomerProfileOpenParams) => {
-    setState({
-      open: true,
-      customerId: params.customerId,
-      tab: params.tab ?? "overview",
-      context: params.context,
-    });
-  }, []);
+  const workspaceMatch = location.match(/^\/customers\/([^/]+)(?:\/([^/]+))?/);
+  const customerId = workspaceMatch?.[1] ?? null;
+  const isOpen = Boolean(customerId);
+
+  const openCustomerProfile = useCallback(
+    (params: CustomerProfileOpenParams) => {
+      const tab = resolveTab(params.tab);
+      if (params.context) {
+        try {
+          sessionStorage.setItem(
+            `${CONTEXT_KEY_PREFIX}${params.customerId}`,
+            JSON.stringify(params.context),
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      setLocation(customerWorkspaceDashboardHref(params.customerId, tab));
+    },
+    [setLocation],
+  );
 
   const closeCustomerProfile = useCallback(() => {
-    setState(CLOSED_STATE);
-  }, []);
-
-  const handleTabChange = useCallback((tab: CustomerProfileTab) => {
-    setState((prev) => ({ ...prev, tab, open: true }));
-  }, []);
+    setLocation("/customers");
+  }, [setLocation]);
 
   const value = useMemo(
     () => ({
       openCustomerProfile,
       closeCustomerProfile,
-      isOpen: state.open,
-      customerId: state.customerId,
+      isOpen,
+      customerId,
     }),
-    [closeCustomerProfile, openCustomerProfile, state.customerId, state.open],
+    [closeCustomerProfile, customerId, isOpen, openCustomerProfile],
   );
 
   return (
     <CustomerProfileContextInstance.Provider value={value}>
       {children}
-      <CustomerProfileQuickActionHost
-        state={state}
-        onClose={closeCustomerProfile}
-        onTabChange={handleTabChange}
-      />
     </CustomerProfileContextInstance.Provider>
   );
 }
@@ -146,4 +88,4 @@ export function useCustomerProfile() {
   return ctx;
 }
 
-export type { CustomerProfileQuickAction };
+export type { CustomerProfileQuickAction, CustomerProfileContext };

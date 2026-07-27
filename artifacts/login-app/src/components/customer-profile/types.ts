@@ -3,10 +3,15 @@ export type CustomerProfileTab =
   | "timeline"
   | "bookings"
   | "invoices"
+  | "payments"
+  | "communication"
   | "notes"
   | "files"
-  | "ai-insights"
-  | "system";
+  | "ai-summary"
+  | "history";
+
+/** @deprecated Use `ai-summary` */
+export type LegacyCustomerProfileTab = "ai-insights" | "system";
 
 export type CustomerProfileContext = {
   conversationId?: string | null;
@@ -23,7 +28,7 @@ export type CustomerProfileQuickAction =
 
 export type CustomerProfileOpenParams = {
   customerId: string;
-  tab?: CustomerProfileTab;
+  tab?: CustomerProfileTab | LegacyCustomerProfileTab;
   context?: CustomerProfileContext;
 };
 
@@ -32,11 +37,15 @@ export const CUSTOMER_PROFILE_TABS: CustomerProfileTab[] = [
   "timeline",
   "bookings",
   "invoices",
+  "payments",
+  "communication",
   "notes",
   "files",
-  "ai-insights",
-  "system",
+  "ai-summary",
+  "history",
 ];
+
+export { normalizeWorkspaceRouteTab as normalizeCustomerProfileTab } from "@/lib/customer-workspace/workspace-navigation";
 
 export type CustomerProfileDrawerProps = {
   open: boolean;

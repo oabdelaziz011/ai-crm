@@ -8,9 +8,9 @@ export function useKnowledgeDocuments(companyId: string | null, sourceId?: strin
 
   return useQuery({
     queryKey: [...KNOWLEDGE_DOCUMENTS_KEY, companyId, sourceId ?? "all"],
-    enabled: enabled && Boolean(companyId),
+    enabled: enabled && Boolean(companyId) && Boolean(services),
     queryFn: async () => {
-      if (!companyId) return [];
+      if (!companyId || !services) return [];
       return services.documents.listDocuments(context, {
         companyId,
         sourceId,

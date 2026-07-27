@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { useHasPermission } from "@/hooks/use-rbac";
 import { useAiPanel } from "@/hooks/floating-ai/use-ai-panel";
-import { useFloatingAiKeyboard } from "@/hooks/floating-ai/use-floating-ai-keyboard";
 import { useAiTasks } from "@/context/ai-task-context";
 import { useFloatingAi } from "@/context/floating-ai-context";
 import { FloatingAiButton } from "./floating-ai-button";
@@ -16,8 +15,6 @@ function FloatingAiAssistantInner() {
   const { onTaskComplete, activeTaskCount } = useAiTasks();
   const { incrementNotifications } = useFloatingAi();
 
-  useFloatingAiKeyboard();
-
   useEffect(() => {
     return onTaskComplete(() => {
       incrementNotifications();
@@ -28,7 +25,7 @@ function FloatingAiAssistantInner() {
 
   return (
     <>
-      <FloatingAiButton visible={!isPanelVisible || minimized} />
+      <FloatingAiButton visible={!isPanelVisible || minimized} onBeforeOpen={() => preloadFloatingAiAssistant()} />
       {isPanelVisible && (
         <Suspense fallback={null}>
           <FloatingAiPanel />

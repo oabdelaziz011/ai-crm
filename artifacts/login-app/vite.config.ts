@@ -1,17 +1,29 @@
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
+import { resolveManualChunk } from './src/lib/bundle/manual-chunks';
 
 const port = Number(process.env.PORT ?? 5173);
 const basePath = process.env.BASE_PATH ?? '/';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const analyzeBundle = mode === 'analyze';
+
+  return {
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
-  ],
+    analyzeBundle &&
+      visualizer({
+        filename: path.resolve(import.meta.dirname, 'dist/bundle-stats.html'),
+        gzipSize: true,
+        brotliSize: true,
+        open: false,
+      }),
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
@@ -40,6 +52,13 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          return resolveManualChunk(id);
+        },
+      },
+    },
   },
   optimizeDeps: {
     include: [
@@ -62,4 +81,5 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: true,
   },
+  };
 });

@@ -8,7 +8,10 @@ export function useImportKnowledgeDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: ImportDocumentInput) => services.import.importDocument(context, input),
+    mutationFn: async (input: ImportDocumentInput) => {
+      if (!services) throw new Error("Knowledge platform is still loading.");
+      return services.import.importDocument(context, input);
+    },
     onSuccess: (_result, input) => {
       void queryClient.invalidateQueries({ queryKey: KNOWLEDGE_DOCUMENTS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "sources", input.companyId] });

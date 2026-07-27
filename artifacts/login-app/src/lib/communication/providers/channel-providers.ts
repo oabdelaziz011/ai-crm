@@ -104,8 +104,9 @@ export async function processCommunicationQueue(
   }
 
   if (channel === "email") {
-    const { getEmailProviderServices } = await import("@/lib/notifications/providers/email");
-    const result = await getEmailProviderServices().provider.processPending(companyId, limit);
+    const { ensureEmailProviderServices } = await import("@/lib/notifications/providers/email");
+    const { provider } = await ensureEmailProviderServices();
+    const result = await provider.processPending(companyId, limit);
     return { processed: result.processed, failed: result.failed };
   }
 

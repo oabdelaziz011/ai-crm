@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,9 @@ import {
   AppSidebar,
   CommandPalette,
 } from "@/components/app-shell";
-import { preloadFloatingAiAssistant } from "@/components/floating-ai";
+import { FloatingAiLauncher } from "@/components/floating-ai/floating-ai-launcher";
+import { preloadLikelyNextRoute } from "@/lib/bundle/route-preloaders";
+import { sectionIdFromNestedPath } from "@/config/dashboard-route-registry";
 
 const FloatingAiAssistant = lazy(() =>
   import("@/components/floating-ai/floating-ai-assistant").then((m) => ({
@@ -25,16 +27,17 @@ type DashboardLayoutProps = {
 
 function DashboardLayoutInner({ children }: DashboardLayoutProps) {
   const { i18n } = useTranslation("common");
-  const [, setLocation] = useLocation();
-  const { signOut, company, profile } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { signOut, company } = useAuth();
   const queryClient = useQueryClient();
   const isRtl = i18n.dir() === "rtl";
+  const [floatingAiActive, setFloatingAiActive] = useState(false);
+  const activateFloatingAi = useCallback(() => setFloatingAiActive(true), []);
+  const activeSectionId = sectionIdFromNestedPath(location);
 
   useEffect(() => {
-    if (profile?.id) {
-      preloadFloatingAiAssistant();
-    }
-  }, [profile?.id]);
+    preloadLikelyNextRoute(activeSectionId);
+  }, [activeSectionId]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -66,9 +69,12 @@ function DashboardLayoutInner({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      <Suspense fallback={null}>
-        <FloatingAiAssistant />
-      </Suspense>
+      {!floatingAiActive && <FloatingAiLauncher onActivate={activateFloatingAi} />}
+      {floatingAiActive && (
+        <Suspense fallback={null}>
+          <FloatingAiAssistant />
+        </Suspense>
+      )}
 
       <CommandPalette />
     </div>

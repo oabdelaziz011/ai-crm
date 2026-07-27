@@ -9,6 +9,7 @@ export function usePublishKnowledgeDocument(companyId: string | null) {
   return useMutation({
     mutationFn: async (documentId: string) => {
       if (!companyId) throw new Error("Company is required.");
+      if (!services) throw new Error("Knowledge platform is still loading.");
       return services.publishing.publishDocument(context, documentId);
     },
     onSuccess: async () => {
@@ -24,6 +25,7 @@ export function useArchiveKnowledgeDocument(companyId: string | null) {
   return useMutation({
     mutationFn: async (documentId: string) => {
       if (!companyId) throw new Error("Company is required.");
+      if (!services) throw new Error("Knowledge platform is still loading.");
       return services.publishing.archiveDocument(context, documentId);
     },
     onSuccess: async () => {
@@ -39,6 +41,7 @@ export function useRestoreKnowledgeDocument(companyId: string | null) {
   return useMutation({
     mutationFn: async (documentId: string) => {
       if (!companyId) throw new Error("Company is required.");
+      if (!services) throw new Error("Knowledge platform is still loading.");
       return services.publishing.restoreDocument(context, documentId);
     },
     onSuccess: async () => {
@@ -54,6 +57,7 @@ export function useDeleteKnowledgeDocument(companyId: string | null) {
   return useMutation({
     mutationFn: async (documentId: string) => {
       if (!companyId) throw new Error("Company is required.");
+      if (!services) throw new Error("Knowledge platform is still loading.");
       return services.publishing.deleteDocument(context, documentId);
     },
     onSuccess: async () => {

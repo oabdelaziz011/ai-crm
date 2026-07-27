@@ -8,9 +8,9 @@ export function useKnowledgeSources(companyId: string | null, enabled = true) {
 
   return useQuery({
     queryKey: [...KNOWLEDGE_SOURCES_KEY, companyId],
-    enabled: enabled && Boolean(companyId),
+    enabled: enabled && Boolean(companyId) && Boolean(services),
     queryFn: async () => {
-      if (!companyId) return [];
+      if (!companyId || !services) return [];
       return services.sources.listSources(context, { companyId });
     },
   });

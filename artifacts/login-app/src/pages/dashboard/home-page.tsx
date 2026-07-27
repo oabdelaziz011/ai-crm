@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import {
@@ -35,7 +35,13 @@ import {
   DashboardErrorBanner,
 } from "@/components/dashboard/ui";
 import { ExecutiveKpiCard, ExecutiveKpiSkeleton } from "@/components/dashboard/executive/executive-kpi-card";
-import { ExecutiveTrendChart } from "@/components/dashboard/executive/executive-trend-chart";
+import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+
+const ExecutiveTrendChart = lazy(() =>
+  import("@/components/dashboard/executive/executive-trend-chart").then((module) => ({
+    default: module.ExecutiveTrendChart,
+  })),
+);
 import {
   buildActivityTimeline,
   buildMonthBuckets,
@@ -397,6 +403,7 @@ export function DashboardHomePage() {
                   {t("dashboard.home.executive.chartsTitle")}
                 </h2>
               </div>
+              <Suspense fallback={<DashboardPageFallback />}>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {(canViewReports || canViewInvoices) && (
                   <ExecutiveTrendChart
@@ -446,6 +453,7 @@ export function DashboardHomePage() {
                   />
                 )}
               </div>
+              </Suspense>
             </section>
           )}
 

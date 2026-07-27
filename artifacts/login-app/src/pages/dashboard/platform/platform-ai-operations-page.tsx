@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Gauge, ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AccessDeniedPage from "@/pages/access-denied";
@@ -31,12 +31,18 @@ import { OpsBackgroundTasks } from "@/components/platform-ai-operations/ops-back
 import { OpsAgentWorkflows } from "@/components/platform-ai-operations/ops-agent-workflows";
 import { OpsKnowledgeDashboard } from "@/components/platform-ai-operations/ops-knowledge-dashboard";
 import { OpsErrorCenter } from "@/components/platform-ai-operations/ops-error-center";
-import { OpsTrendChart } from "@/components/platform-ai-operations/charts/ops-trend-chart";
+import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { OpsCostDashboard } from "@/components/platform-ai-operations/ops-cost-dashboard";
 import { OpsFeatureFlags } from "@/components/platform-ai-operations/ops-feature-flags";
 import { OpsAuditLog } from "@/components/platform-ai-operations/ops-audit-log";
 import { OpsAlertsBanner } from "@/components/platform-ai-operations/ops-alerts-banner";
 import { OpsGlobalSearch } from "@/components/platform-ai-operations/ops-global-search";
+
+const OpsTrendChart = lazy(() =>
+  import("@/components/platform-ai-operations/charts/ops-trend-chart").then((module) => ({
+    default: module.OpsTrendChart,
+  })),
+);
 
 export function PlatformAiOperationsPage() {
   const { t } = useTranslation("common");
@@ -182,6 +188,7 @@ export function PlatformAiOperationsPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="grid gap-4 lg:grid-cols-2">
+          <Suspense fallback={<DashboardPageFallback />}>
           <OpsTrendChart
             title={t("platformAiOps.charts.tokens")}
             data={costTrends.data ?? []}
@@ -196,6 +203,7 @@ export function PlatformAiOperationsPage() {
             loading={costTrends.isLoading}
             valueFormatter={(v) => `$${v.toFixed(4)}`}
           />
+          </Suspense>
           <div className="lg:col-span-2">
             <OpsCostDashboard companies={costByCompany.data ?? []} loading={costByCompany.isLoading} />
           </div>

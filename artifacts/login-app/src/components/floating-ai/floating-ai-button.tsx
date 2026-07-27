@@ -18,9 +18,13 @@ const isMac =
 
 type FloatingAiButtonProps = {
   visible?: boolean;
+  onBeforeOpen?: () => void;
 };
 
-export const FloatingAiButton = memo(function FloatingAiButton({ visible = true }: FloatingAiButtonProps) {
+export const FloatingAiButton = memo(function FloatingAiButton({
+  visible = true,
+  onBeforeOpen,
+}: FloatingAiButtonProps) {
   const { t } = useTranslation("common");
   const { openPanel } = useAiPanel();
   const { notificationCount, incrementNotifications, setPendingFocusOnOpen } = useFloatingAi();
@@ -37,6 +41,7 @@ export const FloatingAiButton = memo(function FloatingAiButton({ visible = true 
       event.preventDefault();
       return;
     }
+    onBeforeOpen?.();
     setPendingFocusOnOpen(true);
     openPanel();
     if (activeTaskCount > 0) {

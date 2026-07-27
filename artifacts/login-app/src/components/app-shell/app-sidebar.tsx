@@ -26,6 +26,7 @@ import {
   type DashboardSectionId,
   type DashboardSidebarGroupId,
 } from "@/config/dashboard-route-registry";
+import { preloadDashboardRoute } from "@/lib/bundle/route-preloaders";
 import { isDashboardHomeNestedPath } from "@/lib/dashboard-home";
 import { useAppShell } from "@/context/app-shell-context";
 import { cn } from "@/lib/utils";
@@ -138,6 +139,8 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
         key={sectionId}
         type="button"
         onClick={() => navigate(route.nestedPath)}
+        onMouseEnter={() => preloadDashboardRoute(sectionId)}
+        onFocus={() => preloadDashboardRoute(sectionId)}
         aria-current={active ? "page" : undefined}
         className={cn(navItemClasses(active, collapsed), indented && !sidebarCollapsed && "ms-2 ps-8 pe-3 py-1.5 text-[12px]")}
       >

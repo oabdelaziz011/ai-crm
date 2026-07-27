@@ -8,7 +8,10 @@ export function useCreateKnowledgeSource() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateKnowledgeSourceInput) => services.sources.createSource(context, input),
+    mutationFn: async (input: CreateKnowledgeSourceInput) => {
+      if (!services) throw new Error("Knowledge platform is still loading.");
+      return services.sources.createSource(context, input);
+    },
     onSuccess: (_result, input) => {
       void queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_SOURCES_KEY, input.companyId] });
     },

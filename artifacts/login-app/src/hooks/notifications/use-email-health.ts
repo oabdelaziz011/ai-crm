@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { useHasPermission } from "@/hooks/use-rbac";
-import { getEmailProviderServices } from "@/lib/notifications/providers/email";
+import { ensureEmailProviderServices } from "@/lib/notifications/providers/email";
 import {
   fetchEmailHealth,
   isEmailApiConfigured,
@@ -17,22 +17,24 @@ export const emailHealthKey = (companyId: string | null) =>
   ["email", "health", companyId] as const;
 
 export function useEmailSettings(companyId: string | null) {
-  const { settings } = getEmailProviderServices();
-
   return useQuery({
     queryKey: emailSettingsKey(companyId),
     enabled: Boolean(companyId),
-    queryFn: () => settings.getPublic(companyId!),
+    queryFn: async () => {
+      const { settings } = await ensureEmailProviderServices();
+      return settings.getPublic(companyId!);
+    },
   });
 }
 
 export function useUpdateEmailSettings(companyId: string | null) {
   const qc = useQueryClient();
-  const { settings } = getEmailProviderServices();
 
   return useMutation({
-    mutationFn: (input: Omit<CompanyEmailSettings, "companyId" | "hasPassword" | "updatedAt">) =>
-      settings.upsert(companyId!, input),
+    mutationFn: async (input: Omit<CompanyEmailSettings, "companyId" | "hasPassword" | "updatedAt">) => {
+      const { settings } = await ensureEmailProviderServices();
+      return settings.upsert(companyId!, input);
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: emailSettingsKey(companyId) });
       void qc.invalidateQueries({ queryKey: emailHealthKey(companyId) });
@@ -65,11 +67,12 @@ export function useProcessEmailQueue(companyId: string | null) {
 }
 
 export function useEmailDeliverySummary(companyId: string | null) {
-  const { deliveryLog } = getEmailProviderServices();
-
   return useQuery({
     queryKey: ["email", "delivery-summary", companyId],
     enabled: Boolean(companyId),
-    queryFn: () => deliveryLog.latestHealthSummary(companyId!),
+    queryFn: async () => {
+      const { deliveryLog } = await ensureEmailProviderServices();
+      return deliveryLog.latestHealthSummary(companyId!);
+    },
   });
 }

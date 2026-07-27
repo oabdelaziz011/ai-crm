@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import NotFound from "@/pages/not-found";
@@ -8,7 +8,12 @@ import {
 } from "@/config/dashboard-route-registry";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { DashboardSectionRoute } from "@/components/dashboard/dashboard-section-route";
-import { DashboardHomePage } from "@/pages/dashboard/home-page";
+
+const DashboardHomePage = lazy(() =>
+  import("@/pages/dashboard/home-page").then((module) => ({
+    default: module.DashboardHomePage,
+  })),
+);
 
 const CUSTOMER_WORKSPACE_PATH = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i;
 
@@ -51,7 +56,9 @@ export function DashboardOutlet() {
                 ),
               )}
               <Route path="/">
-                <DashboardHomePage />
+                <Suspense fallback={<DashboardPageFallback />}>
+                  <DashboardHomePage />
+                </Suspense>
               </Route>
               <Route>
                 <NotFound />

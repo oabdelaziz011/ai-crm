@@ -1,4 +1,4 @@
-import { Component, useEffect, type ErrorInfo, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, type ErrorInfo, type ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createAppQueryClient } from "@/lib/react-query/create-query-client";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,8 +10,6 @@ import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
 import AuthCallback from "@/pages/auth-callback";
 import ResetPassword from "@/pages/reset-password";
-import DashboardApp from "@/pages/dashboard";
-import WorkflowBuilderDebugPage from "@/pages/debug/workflow-builder-debug-page";
 import AccessDeniedPage from "@/pages/access-denied";
 import { PUBLIC_BOOKING_ROUTES } from "@/config/customer-portal-route-registry";
 import { AuthProvider, useAuth } from "@/context/auth-context";
@@ -23,7 +21,26 @@ import {
 import { usePermissions } from "@/hooks/use-rbac";
 import { Loader2 } from "lucide-react";
 
+const DashboardApp = lazy(() => import("@/pages/dashboard"));
+const WorkflowBuilderDebugPage = lazy(() => import("@/pages/debug/workflow-builder-debug-page"));
+
 const queryClient = createAppQueryClient();
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+function LazyRoute({ component: Component }: { component: React.ComponentType }) {
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <Component />
+    </Suspense>
+  );
+}
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -88,7 +105,7 @@ function ProtectedRoute({
     return <AccessDeniedPage requiredPermission={requiredPermission} />;
   }
 
-  return <Component />;
+  return <LazyRoute component={Component} />;
 }
 
 /** Keeps invite/recovery users on the password setup route until they finish. */
@@ -119,7 +136,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/reset-password" component={ResetPassword} />
-        <Route path="/debug/workflow-builder" component={WorkflowBuilderDebugPage} />
+        <Route path="/debug/workflow-builder" component={() => <LazyRoute component={WorkflowBuilderDebugPage} />} />
         {PUBLIC_BOOKING_ROUTES.map(({ path, Page }) => (
           <Route key={path} path={path} component={Page} />
         ))}

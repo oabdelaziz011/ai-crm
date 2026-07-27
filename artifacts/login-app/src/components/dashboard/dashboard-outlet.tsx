@@ -10,29 +10,29 @@ import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fal
 import { DashboardSectionRoute } from "@/components/dashboard/dashboard-section-route";
 import { DashboardHomePage } from "@/pages/dashboard/home-page";
 
+const CUSTOMER_WORKSPACE_PATH = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i;
+
 export function DashboardOutlet() {
   const [location] = useLocation();
   const activeSectionId = sectionIdFromNestedPath(location) ?? "home";
+  const isCustomerWorkspace = CUSTOMER_WORKSPACE_PATH.test(location);
 
   return (
-    <main className="relative flex-1 overflow-y-auto p-6 lg:p-8">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right,#80808012 1px,transparent 1px),linear-gradient(to bottom,#80808012 1px,transparent 1px)",
-          backgroundSize: "40px 40px",
-          maskImage: "radial-gradient(ellipse 60% 50% at 50% 0%,#000 70%,transparent 100%)",
-        }}
-      />
+    <main
+      className={
+        isCustomerWorkspace
+          ? "relative flex-1 overflow-y-auto p-0"
+          : "relative flex-1 overflow-y-auto px-6 py-6 md:px-10 md:py-8 lg:px-12"
+      }
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={activeSectionId}
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative z-10 mx-auto max-w-6xl"
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="relative z-10 w-full"
         >
           <Suspense fallback={<DashboardPageFallback />}>
             <Switch>
@@ -40,7 +40,7 @@ export function DashboardOutlet() {
                 <Redirect to="/settings/profile" />
               </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "customers" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>

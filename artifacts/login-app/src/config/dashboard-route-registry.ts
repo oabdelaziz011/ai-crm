@@ -16,9 +16,13 @@ import {
   Sparkles,
   Inbox,
   Radio,
+  Send,
   Coins,
   Activity,
   Gauge,
+  GitBranch,
+  Plug,
+  Store,
   UserCog,
   Users,
   FlaskConical,
@@ -37,7 +41,13 @@ export type DashboardSectionId =
   | "customers"
   | "bookings"
   | "calendar"
+  | "communication"
   | "invoices"
+  | "financial"
+  | "executive"
+  | "organization"
+  | "integrations"
+  | "marketplace"
   | "companies"
   | "workspace"
   | "subscriptions"
@@ -183,6 +193,17 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     Page: lazyNamed(() => import("@/pages/dashboard/calendar/calendar-page"), "CalendarPage"),
   },
   {
+    id: "communication",
+    path: "/dashboard/communication",
+    nestedPath: "/communication",
+    titleKey: "navigation.communication",
+    icon: Send,
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/communication/communication-center-page"),
+      "CommunicationCenterPage",
+    ),
+  },
+  {
     id: "invoices",
     path: "/dashboard/invoices",
     nestedPath: "/invoices",
@@ -190,6 +211,66 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: FileText,
     permission: "invoices.view",
     Page: lazyPage(() => import("@/pages/dashboard/invoices-page")),
+  },
+  {
+    id: "financial",
+    path: "/dashboard/financial",
+    nestedPath: "/financial",
+    titleKey: "navigation.financial",
+    icon: Coins,
+    permission: "invoices.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/financial/financial-billing-dashboard-page"),
+      "FinancialBillingDashboardPage",
+    ),
+  },
+  {
+    id: "executive",
+    path: "/dashboard/executive",
+    nestedPath: "/executive",
+    titleKey: "navigation.executive",
+    icon: BarChart3,
+    permission: "executive.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/executive/executive-dashboard-page"),
+      "ExecutiveDashboardPage",
+    ),
+  },
+  {
+    id: "organization",
+    path: "/dashboard/organization",
+    nestedPath: "/organization",
+    titleKey: "navigation.organization",
+    icon: GitBranch,
+    permission: "organization.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/organization/organization-dashboard-page"),
+      "OrganizationDashboardPage",
+    ),
+  },
+  {
+    id: "integrations",
+    path: "/dashboard/integrations",
+    nestedPath: "/integrations",
+    titleKey: "navigation.integrations",
+    icon: Plug,
+    permission: "integrations.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/integrations/integrations-dashboard-page"),
+      "IntegrationsDashboardPage",
+    ),
+  },
+  {
+    id: "marketplace",
+    path: "/dashboard/marketplace",
+    nestedPath: "/marketplace",
+    titleKey: "navigation.marketplace",
+    icon: Store,
+    permission: "marketplace.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/marketplace/marketplace-dashboard-page"),
+      "MarketplaceDashboardPage",
+    ),
   },
   {
     id: "companies",
@@ -356,7 +437,13 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "customers" },
   { type: "route", id: "bookings" },
   { type: "route", id: "calendar" },
+  { type: "route", id: "communication" },
   { type: "route", id: "invoices" },
+  { type: "route", id: "financial" },
+  { type: "route", id: "executive" },
+  { type: "route", id: "organization" },
+  { type: "route", id: "integrations" },
+  { type: "route", id: "marketplace" },
   { type: "route", id: "companies" },
   { type: "route", id: "demo-scenarios" },
   { type: "route", id: "workspace" },

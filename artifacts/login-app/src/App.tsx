@@ -1,5 +1,6 @@
 import { Component, useEffect, type ErrorInfo, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createAppQueryClient } from "@/lib/react-query/create-query-client";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -12,6 +13,7 @@ import ResetPassword from "@/pages/reset-password";
 import DashboardApp from "@/pages/dashboard";
 import WorkflowBuilderDebugPage from "@/pages/debug/workflow-builder-debug-page";
 import AccessDeniedPage from "@/pages/access-denied";
+import { PUBLIC_BOOKING_ROUTES } from "@/config/customer-portal-route-registry";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import {
   hasPendingPasswordSetupIntent,
@@ -21,14 +23,7 @@ import {
 import { usePermissions } from "@/hooks/use-rbac";
 import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = createAppQueryClient();
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -71,9 +66,9 @@ function ProtectedRoute({
   superAdminOnly?: boolean;
 }) {
   const { user, isLoading } = useAuth();
-  const { hasPermission, isLoading: permissionsLoading, isSuperAdmin } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
 
-  if (isLoading || permissionsLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -125,6 +120,9 @@ function Router() {
         <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/debug/workflow-builder" component={WorkflowBuilderDebugPage} />
+        {PUBLIC_BOOKING_ROUTES.map(({ path, Page }) => (
+          <Route key={path} path={path} component={Page} />
+        ))}
         <Route path="/dashboard/permissions" component={() => <Redirect to="/dashboard/roles" />} />
         <Route
           path="/dashboard"

@@ -3,14 +3,175 @@
     "name": "VaultOS",
     "dashboard": "Dashboard"
   },
+  "appShell": {
+    "sidebar": {
+      "label": "Main navigation",
+      "navigation": "Dashboard sections",
+      "collapse": "Collapse sidebar",
+      "expand": "Expand sidebar",
+      "openMenu": "Open navigation menu",
+      "sections": {
+        "platform": "Platform",
+        "intelligence": "Intelligence",
+        "operations": "Operations",
+        "administration": "Administration",
+        "access": "Access & Security"
+      }
+    },
+    "commandPalette": {
+      "open": "Open command palette",
+      "search": "Search or jump to…",
+      "placeholder": "Search pages, actions…",
+      "empty": "No results found.",
+      "pages": "Pages",
+      "actions": "Actions",
+      "askAi": "Ask AI Copilot",
+      "hint": "Press {{shortcut}} anywhere to open"
+    },
+    "userMenu": {
+      "label": "User account menu"
+    },
+    "copilot": {
+      "label": "AI Copilot panel",
+      "title": "AI Copilot",
+      "beta": "Preview",
+      "toggle": "Toggle AI Copilot panel",
+      "close": "Close AI Copilot",
+      "placeholderTitle": "Your AI teammate",
+      "placeholderBody": "Context-aware assistance will appear here based on the page you're viewing. Full AI integration ships in a future sprint.",
+      "suggestions": "Suggestions",
+      "suggestion1": "Summarize today's schedule",
+      "suggestion2": "Draft a customer follow-up",
+      "suggestion3": "Explain this dashboard",
+      "inputPlaceholder": "AI chat input — coming soon"
+    },
+    "breadcrumbs": {
+      "detail": "Details"
+    }
+  },
+  "floatingAi": {
+    "button": {
+      "label": "Open AI assistant",
+      "tooltip": "Ask ValueOR AI"
+    },
+    "panel": {
+      "label": "ValueOR AI assistant",
+      "close": "Close assistant",
+      "minimize": "Minimize assistant",
+      "resize": "Change panel size",
+      "openWorkspace": "Open AI Workspace"
+    },
+    "tabs": {
+      "chat": "Chat",
+      "agent": "Agent"
+    },
+    "contextBar": {
+      "label": "Current page context",
+      "currentContext": "Current Context",
+      "selectedCount": "{{count}} selected",
+      "filtersActive": "Filters active"
+    },
+    "entity": {
+      "customer": "Customer",
+      "invoice": "Invoice",
+      "booking": "Booking",
+      "employee": "Employee",
+      "document": "Document",
+      "service": "Service"
+    },
+    "quickActions": {
+      "label": "Suggested actions",
+      "title": "Quick actions"
+    },
+    "composer": {
+      "placeholder": "Ask anything or type / for commands…",
+      "inputLabel": "Message to AI assistant",
+      "send": "Send message",
+      "attach": "Attach file",
+      "voice": "Voice input",
+      "comingSoon": "Coming soon"
+    },
+    "slash": {
+      "hints": "Slash commands",
+      "createCustomer": "/create customer",
+      "createCustomerDesc": "Start creating a new customer",
+      "searchInvoice": "/search invoice",
+      "searchInvoiceDesc": "Search for an invoice",
+      "bookAppointment": "/book appointment",
+      "bookAppointmentDesc": "Book a new appointment",
+      "help": "/help",
+      "helpDesc": "Show available commands",
+      "agent": "/agent",
+      "agentDesc": "Start a multi-step agent workflow"
+    },
+    "actions": {
+      "createCustomer": "Create customer",
+      "searchCustomer": "Search customer",
+      "mergeDuplicates": "Merge duplicates",
+      "importExcel": "Import Excel",
+      "createInvoice": "Create invoice",
+      "unpaidInvoices": "Unpaid invoices",
+      "revenueSummary": "Revenue summary",
+      "bookAppointment": "Book appointment",
+      "moveBooking": "Move booking",
+      "todaySchedule": "Today's schedule",
+      "askDocuments": "Ask documents",
+      "searchKnowledge": "Search knowledge",
+      "businessSummary": "Business summary",
+      "help": "Help"
+    },
+    "tasks": {
+      "label": "Background tasks",
+      "inProgress": "{{count}} task(s) in progress",
+      "dismiss": "Dismiss"
+    },
+    "confirmation": {
+      "title": "Confirm action",
+      "description": "This action may be destructive or irreversible. Please confirm before proceeding.",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "agent": {
+      "title": "Enterprise Agent",
+      "subtitle": "Plan → Execute → Verify → Report",
+      "crmBadge": "CRM Agent",
+      "goalPlaceholder": "Describe your CRM goal (e.g. create customer, find duplicates)…",
+      "planning": "Planning workflow…",
+      "progress": "Progress",
+      "status": "Status",
+      "resume": "Resume",
+      "pausedHint": "Workflow paused — review failed task and resume when ready.",
+      "noWorkflow": "No active workflow. Enter a goal to start planning.",
+      "noEvents": "Events will appear here as tasks run.",
+      "noReport": "Final report will appear when the workflow completes.",
+      "taskGraph": "Task graph",
+      "parallelGroup": "Parallel",
+      "tool": "Tool",
+      "retries": "{{count}} retries",
+      "tabs": {
+        "graph": "Graph",
+        "timeline": "Timeline",
+        "report": "Report"
+      }
+    }
+  },
   "navigation": {
     "home": "Home",
     "customers": "Customers",
     "bookings": "Bookings",
     "calendar": "Calendar",
+    "scheduling": "Scheduling",
+    "communication": "Communication Center",
     "invoices": "Invoices",
+    "financial": "Financial Billing",
+    "executive": "Executive Intelligence",
+    "organization": "Organization",
+    "integrations": "Integrations",
+    "marketplace": "Marketplace",
     "profiles": "Profiles",
     "companies": "Companies",
+    "platformAiAdmin": "Platform AI Providers",
+    "platformAiOperations": "AI Operations Center",
     "subscriptions": "Subscriptions",
     "billing": "Billing & Subscriptions",
     "workspace": "Workspace",
@@ -27,7 +188,7 @@
     "aiAnalytics": "AI Analytics",
     "aiRuntime": "AI Runtime",
     "aiAssistant": "AI Assistant",
-    "aiChat": "AI Chat",
+    "aiChat": "AI Workspace",
     "knowledge": "Knowledge",
     "prompts": "Prompts",
     "automation": "Workflows",
@@ -485,12 +646,14 @@
     "newInvoice": "New Invoice",
     "newFlow": "New Flow",
     "export": "Export",
+    "refresh": "Refresh",
     "exportReport": "Export Report",
     "filter": "Filter",
     "cancel": "Cancel",
     "delete": "Delete",
     "saveChanges": "Save Changes",
     "save": "Save",
+    "create": "Create",
     "addBooking": "Add Booking",
     "createInvoice": "Create Invoice",
     "saveRole": "Save role",
@@ -554,6 +717,9 @@
       "slotsLoadError": "Unable to load available slots. Please try again.",
       "noEligibleResources": "No eligible resources are assigned to this service.",
       "noEligibleResourcesHint": "Open Settings → Scheduling → Services, select this service, and assign resources that can perform it.",
+      "noEligibleResourcesEmptyState": "No resources can perform this service yet. Assign services to resources or resources to this service in Scheduling settings.",
+      "openResourcesSettings": "Open Resources",
+      "openServicesSettings": "Open Services",
       "slotReasons": {
         "holiday": "This date is a company holiday — no appointments can be booked.",
         "exceptionBlocked": "This resource is unavailable on the selected date due to a schedule exception.",
@@ -612,11 +778,74 @@
     },
     "home": {
       "title": "Dashboard Home",
+      "commandCenter": "Command Center",
+      "subtitle": "Your operational overview — metrics, shortcuts, and live workspace context in one place.",
       "greeting": "Welcome back, {{name}}.",
+      "greetingMorning": "Good morning, {{name}}.",
+      "greetingAfternoon": "Good afternoon, {{name}}.",
+      "greetingEvening": "Good evening, {{name}}.",
+      "metricsTitle": "Key metrics",
+      "metricsSubtitle": "Live counts from your workspace.",
       "quickLinks": "Quick links",
       "quickLinksSubtitle": "Jump to the sections you can access.",
       "openSection": "Open this section",
       "noSections": "You do not have access to any dashboard sections yet. Contact your administrator if you need access.",
+      "executive": {
+        "allBranches": "All branches",
+        "branchWithCount": "{{name}} · {{count}} branches",
+        "vsLastMonth": "vs last month",
+        "dailyInsight": "Insight: {{insight}}",
+        "dailyInsightFallback": "Review today's schedule and outstanding items to stay ahead.",
+        "kpiTitle": "Primary KPIs",
+        "chartsTitle": "Business overview",
+        "revenueTrend": "Revenue trend",
+        "revenueTrendSub": "Paid invoices · 7 months",
+        "bookingsTrend": "Bookings trend",
+        "bookingsTrendSub": "Scheduled appointments",
+        "customerGrowth": "Customer growth",
+        "customerGrowthSub": "Cumulative new customers",
+        "collections": "Collections rate",
+        "collectionsSub": "Paid vs billed each month",
+        "noChartData": "Not enough data yet to chart this metric.",
+        "operationsTitle": "Today's operations",
+        "todayBookings": "Today's bookings",
+        "pendingApprovals": "Pending approvals",
+        "waitingCustomers": "Waiting customers",
+        "missedAppointments": "Missed appointments",
+        "noTodayBookings": "No bookings scheduled for today.",
+        "noPending": "No bookings awaiting approval.",
+        "noWaiting": "No customers waiting right now.",
+        "noMissed": "No missed appointments today.",
+        "aiInsightTitle": "AI insight",
+        "atRisk": "at risk",
+        "quickActionsTitle": "Quick actions",
+        "activityTitle": "Recent activity",
+        "noActivity": "No recent activity yet.",
+        "conversionRate": "Conversion rate",
+        "utilization": "Utilization",
+        "primaryAction": {
+          "pending": "Review pending bookings",
+          "outstanding": "Collect outstanding payments",
+          "booking": "Create new booking"
+        },
+        "activity": {
+          "customer": "New customer",
+          "booking": "Booking · {{status}}",
+          "invoice": "Invoice · {{status}}"
+        },
+        "aiInsight": {
+          "overdueTitle": "Collections need attention",
+          "overdueBody": "{{count}} invoices are overdue. Prioritize follow-ups to protect cash flow.",
+          "pendingTitle": "Approval backlog building",
+          "pendingBody": "{{count}} bookings are waiting for confirmation. Clear the queue to reduce no-shows.",
+          "conversionTitle": "Conversion dipped this month",
+          "conversionBody": "Confirmation rate is {{current}}% vs {{previous}}% last month. Review pending bookings.",
+          "growthTitle": "Customer momentum is strong",
+          "growthBody": "{{count}} new customers joined this month — keep the acquisition flywheel spinning.",
+          "defaultTitle": "Operations look steady",
+          "defaultBody": "{{today}} bookings today across {{customers}} active customers. Monitor utilization and collections."
+        }
+      },
       "sections": {
         "customers": "Manage and track your customer base.",
         "bookings": "View upcoming appointments and sessions.",
@@ -651,7 +880,150 @@
       },
       "searchPlaceholder": "Search customers…",
       "emptyAll": "No customers yet. Add your first one!",
-      "emptySearch": "No customers match your search."
+      "emptySearch": "No customers match your search.",
+      "list": {
+        "searchPlaceholder": "Search name, phone, email, company, tags, notes…",
+        "sort": "Sort",
+        "sortBy": "Sort by",
+        "sortAsc": "Ascending",
+        "sortDesc": "Descending",
+        "import": "Import",
+        "export": "Export",
+        "exportSuccess": "Customer export downloaded.",
+        "importSoon": "Import coming soon",
+        "importSoonDetail": "CSV import will be available in a future release.",
+        "openProfile": "Open profile",
+        "unassigned": "Unassigned",
+        "selectAll": "Select all customers",
+        "selectRow": "Select {{name}}",
+        "resizeColumn": "Resize column",
+        "rowCount": "{{count}} customers",
+        "stats": {
+          "total": "Total Customers",
+          "active": "Active Customers",
+          "vip": "VIP Customers",
+          "newMonth": "New This Month",
+          "outstanding": "Outstanding Balance",
+          "appointmentsToday": "Appointments Today",
+          "revenue": "Revenue",
+          "monthlyGrowth": "Monthly Growth"
+        },
+        "views": {
+          "title": "Saved views",
+          "all": "All Customers",
+          "vip": "VIP",
+          "needFollowUp": "Need Follow Up",
+          "outstandingPayments": "Outstanding Payments",
+          "todaysAppointments": "Today's Appointments",
+          "inactive": "Inactive",
+          "saved": "View saved"
+        },
+        "sortFields": {
+          "name": "Name",
+          "company": "Company",
+          "created_at": "Registration date",
+          "ltv": "Lifetime value",
+          "outstanding": "Outstanding balance",
+          "lastActivity": "Last activity",
+          "nextAppointment": "Next appointment"
+        },
+        "columns": {
+          "title": "Columns",
+          "manage": "Show / hide & reorder",
+          "select": "Select",
+          "customer": "Customer",
+          "tags": "Tags",
+          "company": "Company",
+          "phone": "Phone",
+          "email": "Email",
+          "assigned": "Assigned",
+          "nextAppointment": "Next appointment",
+          "outstanding": "Outstanding",
+          "ltv": "Lifetime value",
+          "status": "Status",
+          "lastActivity": "Last activity",
+          "actions": "Actions"
+        },
+        "density": {
+          "title": "Density",
+          "comfortable": "Comfortable",
+          "compact": "Compact",
+          "ultra": "Ultra compact"
+        },
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive",
+          "atRisk": "At risk",
+          "new": "New"
+        },
+        "sources": {
+          "direct": "Direct",
+          "web": "Web",
+          "phone": "Phone",
+          "whatsapp": "WhatsApp",
+          "referral": "Referral",
+          "repeat": "Repeat"
+        },
+        "filters": {
+          "title": "Filters",
+          "subtitle": "Refine your customer list and save views for quick access.",
+          "status": "Status",
+          "vip": "VIP",
+          "gender": "Gender",
+          "ageMin": "Min age",
+          "ageMax": "Max age",
+          "source": "Customer source",
+          "tags": "Tags",
+          "outstandingMin": "Min outstanding",
+          "outstandingMax": "Max outstanding",
+          "registeredFrom": "Registered from",
+          "registeredTo": "Registered to",
+          "lastVisitFrom": "Last visit from",
+          "lastVisitTo": "Last visit to",
+          "appointmentFrom": "Appointment from",
+          "appointmentTo": "Appointment to",
+          "all": "All",
+          "yes": "Yes",
+          "no": "No",
+          "male": "Male",
+          "female": "Female",
+          "other": "Other",
+          "apply": "Apply",
+          "reset": "Reset",
+          "saveView": "Save view",
+          "saveViewName": "View name",
+          "saveViewPlaceholder": "e.g. High-value leads"
+        },
+        "bulk": {
+          "selected": "{{count}} selected",
+          "assign": "Assign",
+          "archive": "Archive",
+          "message": "Send message",
+          "campaign": "Campaign",
+          "export": "Export",
+          "addTag": "Add tag",
+          "invoice": "Create invoice",
+          "booking": "Book appointment",
+          "comingSoon": "Coming soon",
+          "deleteSuccess": "Selected customers deleted.",
+          "actions": {
+            "assign": "Bulk assign will be available in a future sprint.",
+            "archive": "Bulk archive will be available in a future sprint.",
+            "message": "Bulk messaging will be available in a future sprint.",
+            "campaign": "Campaign tools will be available in a future sprint.",
+            "tag": "Bulk tagging will be available in a future sprint.",
+            "invoice": "Bulk invoicing will be available in a future sprint.",
+            "booking": "Bulk booking will be available in a future sprint."
+          }
+        },
+        "empty": {
+          "title": "Build your customer base",
+          "filteredTitle": "No customers match your filters",
+          "description": "Create your first customer to start tracking appointments, invoices, and engagement in one workspace.",
+          "filteredDescription": "Try adjusting your search, filters, or saved view to see more results.",
+          "cta": "Create first customer"
+        }
+      }
     },
     "customerDetails": {
       "title": "Customer Details",
@@ -699,8 +1071,12 @@
         "timeline": "Timeline",
         "bookings": "Bookings",
         "invoices": "Invoices",
+        "payments": "Payments",
+        "communication": "Communication",
         "notes": "Notes",
         "files": "Files",
+        "ai-summary": "AI Summary",
+        "history": "History",
         "ai-insights": "AI Insights",
         "system": "System"
       },
@@ -805,6 +1181,207 @@
         }
       }
     },
+    "customerWorkspace": {
+      "listEyebrow": "CRM",
+      "backToList": "All customers",
+      "workspaceLabel": "Customer workspace",
+      "tabsLabel": "Customer workspace sections",
+      "memberSince": "Member since {{date}}",
+      "ltv": "Lifetime value",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusDue": "Payment due",
+      "created": "Created",
+      "assignedStaff": "Assigned staff",
+      "unassigned": "Unassigned",
+      "outstanding": "Outstanding balance",
+      "header": {
+        "message": "Message",
+        "newBooking": "New Booking",
+        "newInvoice": "New Invoice",
+        "more": "More actions",
+        "export": "Export",
+        "print": "Print",
+        "share": "Share"
+      },
+      "profile": {
+        "address": "Address",
+        "customerSince": "Customer since",
+        "nextBooking": "Next booking",
+        "lastVisit": "Last visit",
+        "notSet": "Not set",
+        "whatsappAvailable": "Available",
+        "book": "Book",
+        "invoice": "Invoice",
+        "call": "Call",
+        "branch": "Branch",
+        "source": "Source",
+        "direct": "Direct",
+        "pin": "Pin",
+        "favorite": "Favorite"
+      },
+      "tags": {
+        "email": "Email",
+        "phone": "Phone",
+        "notes": "Has notes",
+        "vip": "VIP"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "activity": "Activity",
+        "commerce": "Commerce",
+        "communication": "Communication",
+        "files": "Files",
+        "ai": "AI",
+        "history": "History"
+      },
+      "commerce": {
+        "navLabel": "Commerce sections",
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "payments": "Payments"
+      },
+      "health": {
+        "title": "Customer health",
+        "strong": "Strong relationship",
+        "moderate": "Needs attention",
+        "atRisk": "At risk"
+      },
+      "aiInsights": {
+        "label": "AI insights",
+        "cancelled": "Customer has cancelled {{count}} appointments — follow up to reduce churn.",
+        "highLtv": "High lifetime value ({{ltv}}) — prioritize white-glove service.",
+        "lastContact": "Last contact was {{days}} days ago — re-engage now.",
+        "firstBooking": "No bookings yet — schedule the first appointment.",
+        "collect": "{{count}} overdue invoice(s) — prioritize collection.",
+        "goldPackage": "Recommend Gold Package — strong engagement pattern.",
+        "healthy": "Relationship is healthy — maintain regular touchpoints."
+      },
+      "timeline": {
+        "subtitle": "Bookings, payments, invoices, messages, emails, notes, and AI events — newest first.",
+        "viewDetails": "View details"
+      },
+      "overview": {
+        "profileTitle": "Customer profile",
+        "profileSubtitle": "Contact details and demographics",
+        "summaryTitle": "Customer summary",
+        "summarySubtitle": "At-a-glance relationship overview",
+        "summaryEmpty": "New customer — no activity recorded yet.",
+        "summaryEmail": "Email on file",
+        "summaryPhone": "Phone on file",
+        "summaryBookings": "{{count}} bookings",
+        "kpisTitle": "Key metrics",
+        "upcomingTitle": "Upcoming booking",
+        "noUpcoming": "No upcoming bookings scheduled.",
+        "balanceTitle": "Outstanding balance",
+        "balanceHint": "Unpaid and overdue invoices",
+        "viewInvoices": "View all invoices →",
+        "lastPaymentTitle": "Last payment",
+        "noLastPayment": "No payments recorded yet.",
+        "recentInvoiceTitle": "Recent invoice",
+        "recentCommTitle": "Recent communication",
+        "recentCommHint": "Open the Communication tab for the full unified conversation stream.",
+        "viewCommunication": "Open communication",
+        "recentTitle": "Recent activity",
+        "recentSubtitle": "Latest bookings and invoices",
+        "noRecent": "No recent activity yet.",
+        "viewTimeline": "View full timeline",
+        "noUpcomingHint": "Schedule the next appointment to keep momentum.",
+        "aiRecommendation": "AI recommendation",
+        "takeAction": "Take action",
+        "actionsTitle": "Quick actions"
+      },
+      "bookings": {
+        "emptyTitle": "No bookings yet",
+        "emptyDescription": "Schedule the first appointment for this customer.",
+        "current": "Today",
+        "upcoming": "Upcoming",
+        "past": "Past",
+        "cancelled": "Cancelled",
+        "noCurrent": "Nothing scheduled for today.",
+        "noUpcoming": "No upcoming appointments.",
+        "noPast": "No past appointments.",
+        "noCancelled": "No cancelled appointments.",
+        "rescheduled": "Rescheduled",
+        "noRescheduled": "No rescheduled appointments."
+      },
+      "invoices": {
+        "emptyTitle": "No invoices yet",
+        "emptyDescription": "Create an invoice to track billing for this customer.",
+        "outstanding": "Outstanding",
+        "paid": "Paid",
+        "pending": "Pending",
+        "overdue": "Overdue",
+        "draft": "Draft",
+        "noOutstanding": "No outstanding invoices.",
+        "noPaid": "No paid invoices.",
+        "noPending": "No pending invoices.",
+        "noOverdue": "No overdue invoices.",
+        "noDraft": "No draft invoices."
+      },
+      "payments": {
+        "history": "Payment history",
+        "emptyTitle": "No payments recorded",
+        "emptyDescription": "Paid invoices will appear here as payment history.",
+        "refunds": "Refunds",
+        "noRefundsTitle": "No refunds",
+        "noRefundsDescription": "Refund activity will appear here when available.",
+        "methods": "Payment methods",
+        "methodsHint": "Saved payment methods will appear here in a future release."
+      },
+      "communication": {
+        "channels": "Channels",
+        "email": "Email",
+        "sms": "SMS",
+        "calls": "Calls",
+        "history": "Conversation history",
+        "historySubtitle": "Messages, emails, and notifications unified in one stream."
+      },
+      "notes": {
+        "pinnedTitle": "Pinned notes",
+        "pinnedHint": "Pinned note — visible to your team in this workspace.",
+        "noPinned": "No pinned notes yet.",
+        "internalTitle": "Internal notes",
+        "mentionsTitle": "Mentions",
+        "noMentions": "No mentions yet",
+        "mentionsHint": "@mentions from your team will appear here.",
+        "emptyHint": "Add context about preferences, history, or follow-ups."
+      },
+      "files": {
+        "upload": "Upload file",
+        "preview": "Preview",
+        "download": "Download",
+        "emptyTitle": "No files uploaded"
+      },
+      "ai": {
+        "label": "AI Summary",
+        "summary": "{{name}} · LTV {{ltv}} across {{bookings}} bookings.",
+        "behaviorTitle": "Buying behavior",
+        "behaviorPaying": "Repeat payer with {{bookings}} bookings and established payment history.",
+        "behaviorNew": "Early-stage customer — focus on first conversion and booking momentum.",
+        "missedTitle": "Missed appointments",
+        "missedYes": "{{cancelled}} cancelled appointments — follow up to reduce churn risk.",
+        "missedNo": "No missed appointments on record.",
+        "recommendedTitle": "Recommended action",
+        "actionCollect": "Prioritize collection — {{overdue}} overdue invoice(s) need attention.",
+        "actionReengage": "Re-engage with a booking offer — recent cancellations suggest drop-off risk.",
+        "actionBook": "Book the next appointment while engagement is healthy.",
+        "riskLabel": "Risk level",
+        "risk": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        },
+        "applyAction": "View recommended next step"
+      },
+      "history": {
+        "auditTitle": "Audit log",
+        "systemTitle": "System identifiers",
+        "noPermission": "You do not have permission to view audit logs.",
+        "emptyTitle": "No audit events",
+        "emptyDescription": "Changes to this customer profile will appear here."
+      }
+    },
     "bookings": {
       "title": "Bookings",
       "subtitle": "Upcoming appointments and sessions",
@@ -868,6 +1445,7 @@
       "selectType": "Select a channel type",
       "displayName": "Display name",
       "provider": "Provider",
+      "webChatProviderHint": "Uses the internal {{provider}} provider automatically.",
       "configure": "Configure",
       "saveConfig": "Save configuration",
       "whatsappConfig": "WhatsApp Cloud API credentials",
@@ -900,6 +1478,34 @@
         "enabled": "Enabled",
         "connected": "Connected",
         "types": "Channel types"
+      },
+      "enabledStatus": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "healthStatus": {
+        "connected": "Connected",
+        "disconnected": "Disconnected",
+        "warning": "Warning",
+        "error": "Error",
+        "unknown": "Not checked"
+      },
+      "channelTypes": {
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "messenger": "Messenger",
+        "instagram": "Instagram",
+        "web_chat": "Web Chat",
+        "email": "Email",
+        "sms": "SMS",
+        "voice": "Voice AI"
+      },
+      "providers": {
+        "internal": "Internal",
+        "meta": "Meta",
+        "telegram": "Telegram",
+        "generic.web_chat": "Internal Web Chat",
+        "generic.email": "Internal Email"
       }
     },
     "aiUsage": {
@@ -965,9 +1571,9 @@
       }
     },
     "ai": {
-      "title": "AI Chat",
-      "subtitle": "Your intelligent business assistant",
-      "subtitleRuntime": "Powered by the Enterprise AI Runtime",
+      "title": "AI Workspace",
+      "subtitle": "History, saved chats, and advanced AI sessions",
+      "subtitleRuntime": "Powered by the Enterprise AI Runtime — use Ctrl+K anywhere for the floating assistant",
       "online": "Online",
       "streaming": "Responding…",
       "loading": "Loading conversation…",
@@ -982,8 +1588,12 @@
         "runtimeNotConfigured": "AI runtime is not fully configured. Connect an OpenAI provider in settings before chatting.",
         "runtimeNotConfiguredDetail": "AI Chat needs an enabled provider connection in the AI Provider registry. Assistant preferences alone are not enough — connect your LLM provider below.",
         "runtimeFailed": "The assistant could not complete your request. {{detail}}",
-        "missingRuntimePermission": "You need runtime execution permission to send messages."
+        "missingRuntimePermission": "You need runtime execution permission to send messages.",
+        "webChatChannelMissing": "No web chat channel is configured for this company. Contact your administrator.",
+        "conversationStartFailed": "Could not start a conversation. Please try again.",
+        "channelRouteFailed": "The message could not be delivered to the AI runtime."
       },
+      "thinking": "Thinking…",
       "openProviderSetup": "Connect provider in AI Assistant"
     },
     "reports": {
@@ -1138,12 +1748,20 @@
     },
     "retrieval": {
       "title": "Retrieval Tester",
-      "subtitle": "Preview ranked knowledge chunks returned by the enterprise Knowledge Provider.",
+      "subtitle": "Preview hybrid RAG results with citations, confidence, and latency.",
       "run": "Run retrieval test",
       "running": "Retrieving…",
       "failed": "Knowledge retrieval failed.",
       "missingConnections": "Configure default embedding and vector store connections before testing retrieval.",
-      "noResults": "No matching knowledge chunks were returned."
+      "noResults": "No matching knowledge chunks were returned.",
+      "searchMode": "Search mode",
+      "modeHybrid": "Hybrid (vector + keyword)",
+      "modeVector": "Vector only",
+      "modeKeyword": "Keyword (FTS)",
+      "citations": "Citations",
+      "confidence": "{{value}}% confidence",
+      "latency": "{{ms}} ms",
+      "page": "Page {{page}}"
     }
   },
   "aiRuntime": {
@@ -2083,6 +2701,369 @@
       "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
     }
   },
+  "branches": {
+    "nav": {
+      "title": "Branches"
+    },
+    "companyDetails": "Company Details",
+    "companySubtitle": "Manage company profile, statistics, and branch locations.",
+    "listTitle": "Branches",
+    "listPreviewSubtitle": "Locations configured for this company.",
+    "managementTitle": "Branch Management",
+    "managementSubtitle": "Create and manage branch locations across your organization.",
+    "searchPlaceholder": "Search branches…",
+    "loadMore": "Load more",
+    "empty": "No branches configured yet.",
+    "notFound": "Branch not found.",
+    "primaryBadge": "Primary",
+    "created": "Branch created",
+    "updated": "Branch updated",
+    "deleted": "Branch deleted",
+    "deactivated": "Branch deactivated",
+    "noPermission": "You do not have permission to manage branches.",
+    "deleteConfirmTitle": "Delete branch?",
+    "deleteConfirmDescription": "Branches with users, resources, or bookings cannot be deleted. Deactivate instead to preserve history.",
+    "stats": {
+      "branches": "Branches",
+      "users": "Users",
+      "resources": "Resources",
+      "services": "Services"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "actions": {
+      "manageBranches": "Manage Branches",
+      "addBranch": "Add Branch",
+      "viewDetails": "View Details",
+      "backToList": "Back to branches",
+      "deactivate": "Deactivate"
+    },
+    "form": {
+      "createTitle": "Create Branch",
+      "editTitle": "Edit Branch",
+      "name": "Name",
+      "code": "Branch Code",
+      "address": "Address",
+      "city": "City",
+      "state": "State",
+      "country": "Country",
+      "postalCode": "Postal Code",
+      "phone": "Phone",
+      "email": "Email",
+      "timezone": "Timezone",
+      "primary": "Primary Branch",
+      "primaryHint": "Only one branch can be marked as primary per company."
+    },
+    "selector": {
+      "placeholder": "Select branch",
+      "allBranches": "All Branches",
+      "bookingLabel": "Branch",
+      "bookingRequired": "Select a branch to load resources and availability."
+    },
+    "users": {
+      "assignmentLabel": "Branch Assignment",
+      "noBranchesAvailable": "No branches available for this company."
+    },
+    "services": {
+      "availableAt": "Available at: {{branches}}"
+    },
+    "errors": {
+      "title": "Branch error",
+      "cannotDeleteTitle": "Cannot delete branch",
+      "deactivateInstead": "This branch has assigned users, resources, or bookings. Deactivate it instead."
+    }
+  },
+  "customerPortal": {
+    "notFound": "This booking page is not available.",
+    "bookAppointment": "Book an appointment",
+    "bookNow": "Book now",
+    "myPortal": "My portal",
+    "workingHours": "Working hours",
+    "services": "Services",
+    "doctors": "Doctors",
+    "contactForPrice": "Contact for price",
+    "step": "Step",
+    "steps": {
+      "service": "Select service",
+      "doctor": "Select doctor",
+      "date": "Select date",
+      "time": "Select time",
+      "customer": "Your information",
+      "review": "Review",
+      "confirm": "Confirm"
+    },
+    "selectDate": "Select date",
+    "fullName": "Full name",
+    "phone": "Phone number",
+    "email": "Email address",
+    "confirmBooking": "Confirm booking",
+    "bookingConfirmed": "Your appointment is confirmed.",
+    "bookingFailed": "Unable to complete booking. Please try again.",
+    "loginTitle": "Customer login",
+    "loginRequired": "Please sign in to access your portal.",
+    "sendOtp": "Send verification code",
+    "enterOtp": "Enter verification code",
+    "verify": "Verify",
+    "otpSent": "Verification code sent.",
+    "loginSuccess": "Signed in successfully.",
+    "loginFailed": "Unable to sign in. Please try again.",
+    "rateLimited": "Too many attempts. Please wait and try again.",
+    "dashboard": "Customer portal",
+    "bookAgain": "Book again",
+    "upcomingAppointments": "Upcoming appointments",
+    "noAppointments": "No upcoming appointments.",
+    "cancel": "Cancel",
+    "reschedule": "Reschedule",
+    "invoices": "Invoices",
+    "invoicesHint": "View and download your invoices.",
+    "payments": "Payments",
+    "paymentsHint": "Payment history and outstanding balance.",
+    "documents": "Documents",
+    "documentsHint": "Secure access to receipts and medical documents.",
+    "checkInTitle": "Online check-in",
+    "checkInDescription": "Let us know you have arrived for your appointment.",
+    "imHere": "I'm here",
+    "checkInSuccess": "You are checked in. Please wait to be called.",
+    "checkInFailed": "Check-in failed. The link may be invalid or expired.",
+    "cancelSuccess": "Appointment cancelled.",
+    "cancelFailed": "Unable to cancel appointment."
+  },
+  "financial": {
+    "title": "Financial Billing",
+    "subtitle": "Revenue, invoices, payments, refunds, and outstanding balance.",
+    "noCompany": "No company context available.",
+    "export": "Export invoices",
+    "revenueCards": "Revenue overview",
+    "dailyRevenue": "Daily revenue",
+    "monthlyRevenue": "Monthly revenue",
+    "outstanding": "Outstanding balance",
+    "avgInvoice": "Average invoice",
+    "recentInvoices": "Recent invoices",
+    "recentPayments": "Recent payments",
+    "recentRefunds": "Recent refunds",
+    "noInvoices": "No invoices yet.",
+    "noPayments": "No payments yet.",
+    "noRefunds": "No refunds yet."
+  },
+  "executive": {
+    "title": "Executive Intelligence",
+    "subtitle": "Decision-support platform for owners, executives, and branch managers.",
+    "noPermission": "You do not have permission to view executive intelligence.",
+    "noCompany": "No company context available.",
+    "export": "Export report",
+    "summaryTitle": "Executive Summary",
+    "todayRevenue": "Today's revenue",
+    "monthlyRevenue": "Monthly revenue",
+    "bookingsToday": "Bookings today",
+    "outstanding": "Outstanding balance",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "noShows": "No-shows",
+    "cashCollected": "Cash collected",
+    "operationalTitle": "Operational KPIs",
+    "completionRate": "Completion rate",
+    "cancellationRate": "Cancellation rate",
+    "noShowRate": "No-show rate",
+    "capacity": "Capacity utilization",
+    "peakHour": "Peak hour",
+    "avgWait": "Avg. wait",
+    "financialTitle": "Financial KPIs",
+    "revenue": "Revenue",
+    "refundRate": "Refund rate",
+    "perDoctor": "Revenue / doctor",
+    "perBranch": "Revenue / branch",
+    "taxSummary": "Tax collected",
+    "collections": "Collections",
+    "customerTitle": "Customer KPIs",
+    "newCustomers": "New customers",
+    "retention": "Retention rate",
+    "repeatBooking": "Repeat booking %",
+    "portalUsage": "Portal usage",
+    "communicationTitle": "Communication KPIs",
+    "delivered": "Delivered",
+    "failed": "Failed",
+    "deliverySuccess": "Delivery success",
+    "reminderSuccess": "Reminder success",
+    "alertsTitle": "Executive Alerts",
+    "noAlerts": "No active alerts.",
+    "dismiss": "Dismiss",
+    "branchTitle": "Branch Intelligence",
+    "doctorTitle": "Doctor Intelligence",
+    "forecastTitle": "Forecasts",
+    "revenueForecast7d": "7-day revenue forecast",
+    "bookingsForecast7d": "7-day bookings forecast",
+    "cashFlowForecast30d": "30-day cash flow forecast",
+    "trend": "trend",
+    "quickActions": "Quick Actions",
+    "actions": {
+      "financial": "Financial Dashboard",
+      "operations": "Operations Center",
+      "communication": "Communication Center",
+      "customers": "CRM",
+      "branches": "Branches"
+    }
+  },
+  "organization": {
+    "title": "Organization Management",
+    "subtitle": "Enterprise multi-branch hierarchy, transfers, policies, and analytics.",
+    "noPermission": "You do not have permission to view organization management.",
+    "noCompany": "No company context available.",
+    "overviewTitle": "Organization Overview",
+    "regions": "Regions",
+    "branches": "Branches",
+    "departments": "Departments",
+    "resources": "Resources",
+    "healthScore": "Health Score",
+    "pendingTransfers": "{{count}} pending transfers",
+    "hierarchyTitle": "Hierarchy Viewer",
+    "branchExplorer": "Branch Explorer",
+    "branchExplorerHint": "Browse and manage branch profiles, branding, and settings.",
+    "openBranchSettings": "Open branch settings",
+    "branchComparison": "Branch Comparison",
+    "noComparison": "No branch comparison data for today.",
+    "rank": "Rank",
+    "branch": "Branch",
+    "region": "Region",
+    "revenue": "Revenue",
+    "bookings": "Bookings",
+    "noShowRate": "No-show %",
+    "resourceAllocation": "Resource Allocation",
+    "resourceCountHint": "{{count}} resources assigned across branches.",
+    "transfersTitle": "Transfers",
+    "noTransfers": "No transfer requests yet.",
+    "approve": "Approve",
+    "execute": "Execute",
+    "policyTitle": "Policy Management",
+    "policyHint": "Policies inherit from organization → region → branch group → branch.",
+    "searchTitle": "Enterprise Search",
+    "searchPlaceholder": "Search branches, customers, bookings…",
+    "noSearchResults": "No results found.",
+    "analyticsTitle": "Enterprise Analytics",
+    "topPerformers": "Top Performers",
+    "underperformers": "Underperformers",
+    "noAnalytics": "No analytics data available.",
+    "noHierarchy": "No hierarchy configured yet.",
+    "loading": "Loading…",
+    "manageBranches": "Manage branches"
+  },
+  "integrations": {
+    "title": "Integration Hub",
+    "subtitle": "API keys, webhooks, OAuth clients, and third-party connectors.",
+    "noPermission": "You do not have permission to view integrations.",
+    "noCompany": "No company context available.",
+    "overviewTitle": "Integration Overview",
+    "apiKeys": "API Keys",
+    "webhooks": "Webhooks",
+    "connectors": "Connectors",
+    "apiCalls24h": "API Calls (24h)",
+    "avgLatency": "Avg. {{ms}}ms latency",
+    "apiExplorer": "API Explorer",
+    "keyCreated": "API key created — copy now, it won't be shown again:",
+    "keyNamePlaceholder": "Key name",
+    "generateKey": "Generate key",
+    "noKeys": "No API keys yet.",
+    "webhookSubscriptions": "Webhook Subscriptions",
+    "webhookNamePlaceholder": "Subscription name",
+    "webhookUrlPlaceholder": "https://example.com/webhooks",
+    "createWebhook": "Create subscription",
+    "eventTypes": "registered event types",
+    "noWebhooks": "No webhook subscriptions yet.",
+    "deliveries": "Webhook Deliveries",
+    "noDeliveries": "No deliveries yet.",
+    "retry": "Retry",
+    "registry": "Integration Registry",
+    "available": "Available",
+    "comingSoon": "Coming soon",
+    "monitoring": "Usage & Monitoring",
+    "errorRate": "Error rate (24h)",
+    "webhookSuccess": "Webhook success rate",
+    "topEndpoints": "Top endpoints"
+  },
+  "marketplace": {
+    "title": "Plugin Marketplace",
+    "subtitle": "Extend ValueOR with official and third-party plugins — isolated, secure, and versioned.",
+    "noPermission": "You do not have permission to view the marketplace.",
+    "noCompany": "No company context available.",
+    "overviewTitle": "Marketplace Overview",
+    "installed": "Installed",
+    "enabled": "Enabled",
+    "available": "Available",
+    "health": "Health",
+    "unhealthy": "unhealthy plugins",
+    "browse": "Browse",
+    "permissions": "Permissions",
+    "logs": "Plugin Logs",
+    "developer": "Developer",
+    "installedPlugins": "Installed Plugins",
+    "noInstalled": "No plugins installed yet.",
+    "availablePlugins": "Available Plugins",
+    "allInstalled": "All available plugins are installed.",
+    "official": "Official",
+    "install": "Install",
+    "enable": "Enable",
+    "disable": "Disable",
+    "uninstall": "Uninstall",
+    "permissionsHint": "Permissions granted to installed plugins require approval at install time.",
+    "healthMonitoring": "Health Monitoring",
+    "executions": "Total executions",
+    "errors": "Total errors",
+    "avgExecution": "Avg. execution",
+    "developerCenter": "Developer Center",
+    "developerHint": "Build plugins with the ValueOR Plugin SDK. Manifest validator, dev server, and CLI coming soon.",
+    "comingSoon": "Coming soon",
+    "noLogs": "No plugin activity logged yet."
+  },
+  "communication": {
+    "title": "Communication Center",
+    "subtitle": "Monitor outbound messages, delivery status, and queue health across all channels.",
+    "processEmail": "Process Email Queue",
+    "processWhatsapp": "Process WhatsApp Queue",
+    "processed": "Processed {{count}} messages",
+    "retrySuccess": "Message queued for retry.",
+    "retryFailed": "Failed to retry message.",
+    "stats": {
+      "sentToday": "Sent Today",
+      "delivered": "Delivered",
+      "queued": "Queued",
+      "failed": "Failed",
+      "retrying": "Retrying"
+    },
+    "filters": {
+      "channel": "Channel",
+      "status": "Status",
+      "allChannels": "All channels",
+      "allStatuses": "All statuses"
+    },
+    "history": {
+      "title": "Communication History",
+      "empty": "No messages match the selected filters.",
+      "channel": "Channel",
+      "recipient": "Recipient",
+      "template": "Template",
+      "status": "Status",
+      "retries": "Retries",
+      "actions": "Actions",
+      "retry": "Retry"
+    },
+    "templates": {
+      "bookingCreated": { "title": "Booking Created", "body": "Your appointment is confirmed." },
+      "bookingReminder": { "title": "Appointment Reminder", "body": "Reminder for your upcoming appointment." },
+      "bookingCancelled": { "title": "Booking Cancelled", "body": "Your appointment was cancelled." },
+      "bookingRescheduled": { "title": "Booking Rescheduled", "body": "Your appointment was rescheduled." },
+      "bookingCheckedIn": { "title": "Checked In", "body": "You have been checked in." },
+      "bookingCompleted": { "title": "Visit Completed", "body": "Thank you for your visit." },
+      "invoiceCreated": { "title": "Invoice Created", "body": "A new invoice is available." },
+      "invoicePaid": { "title": "Payment Received", "body": "Your payment was received." },
+      "paymentFailed": { "title": "Payment Failed", "body": "We could not process your payment." },
+      "birthdayGreeting": { "title": "Happy Birthday", "body": "Wishing you a wonderful birthday!" },
+      "followUpReminder": { "title": "Follow-up Reminder", "body": "Time for your follow-up appointment." },
+      "marketingCampaign": { "title": "Campaign", "body": "A message from our team." },
+      "customerCreated": { "title": "Welcome", "body": "Welcome to our clinic." }
+    }
+  },
   "scheduling": {
     "title": "Scheduling",
     "subtitle": "Configure resources, availability, booking rules, and holidays for appointment-based businesses.",
@@ -2093,6 +3074,185 @@
       "availability": "Availability",
       "bookingRules": "Booking Rules",
       "holidays": "Holidays"
+    },
+    "dashboard": {
+      "nav": {
+        "calendar": "Calendar",
+        "bookings": "Bookings",
+        "availability": "Availability",
+        "resources": "Resources",
+        "bookingRules": "Booking Rules",
+        "holidays": "Holidays",
+        "operations": "Operations Center"
+      }
+    },
+    "operations": {
+      "title": "Operations Center",
+      "subtitle": "Manage the working day — bookings, availability, and front-desk actions in one place.",
+      "noPermission": "You do not have permission to view the Operations Center.",
+      "minutes": "min",
+      "exportSuccess": "Operations data exported.",
+      "checkInSuccess": "Guest checked in.",
+      "completeSuccess": "Booking marked complete.",
+      "cancelSuccess": "Booking cancelled.",
+      "rescheduleSuccess": "Booking rescheduled.",
+      "date": {
+        "today": "Today",
+        "tomorrow": "Tomorrow",
+        "thisWeek": "This Week",
+        "custom": "Custom Date",
+        "viewing": "Viewing {{date}}"
+      },
+      "filters": {
+        "allResources": "All resources",
+        "allServices": "All services",
+        "allStatuses": "All statuses",
+        "searchPlaceholder": "Search by customer, phone, or booking ID",
+        "searchHint": "Filters apply instantly as you type."
+      },
+      "kpi": {
+        "bookings": "Bookings",
+        "availableSlots": "Available Slots",
+        "cancelled": "Cancelled",
+        "completed": "Completed",
+        "checkedIn": "Checked In",
+        "occupancy": "Occupancy %",
+        "expectedRevenue": "Expected Revenue",
+        "actualRevenue": "Actual Revenue"
+      },
+      "timeline": {
+        "title": "Operational Timeline",
+        "empty": "No time slots to display for the selected filters.",
+        "available": "Available",
+        "availableAt": "Available at {{time}}",
+        "bookingAria": "{{customer}} booking {{time}}"
+      },
+      "noShow": {
+        "automated": "Booking automatically marked as no show."
+      },
+      "stats": {
+        "title": "Daily Statistics",
+        "totalBookings": "Total Bookings",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "noShow": "No Show",
+        "available": "Available",
+        "occupancy": "Occupancy",
+        "revenue": "Revenue",
+        "avgDuration": "Avg. Duration",
+        "avgWaiting": "Avg. Waiting Time"
+      },
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Booked",
+        "checked_in": "Checked In",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No Show",
+        "rescheduled": "Rescheduled"
+      },
+      "payment": {
+        "unpaid": "Unpaid",
+        "paid": "Paid",
+        "partial": "Partial",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "call": "Call",
+        "whatsapp": "WhatsApp",
+        "edit": "Edit Booking",
+        "reschedule": "Reschedule",
+        "cancel": "Cancel Booking",
+        "checkIn": "Check In",
+        "complete": "Complete",
+        "invoice": "Invoice"
+      },
+      "drawer": {
+        "title": "Booking Details",
+        "phone": "Phone",
+        "email": "Email",
+        "service": "Service",
+        "resource": "Resource",
+        "time": "Time",
+        "duration": "Duration",
+        "price": "Price",
+        "notes": "Notes",
+        "createdBy": "Created By",
+        "bookingId": "Booking ID",
+        "bookingHistory": "Booking History",
+        "auditHistory": "Audit History",
+        "auditHint": "System audit entries for this booking appear in Audit Logs."
+      },
+      "cancel": {
+        "title": "Cancel Booking",
+        "description": "Select a reason and add optional notes. The booking will be cancelled and the timeline updated.",
+        "reason": "Reason",
+        "notes": "Notes",
+        "notesPlaceholder": "Additional details for the cancellation…",
+        "confirm": "Confirm Cancellation",
+        "reasons": {
+          "customer_request": "Customer Request",
+          "doctor_unavailable": "Doctor Unavailable",
+          "clinic_closed": "Clinic Closed",
+          "no_show": "No Show",
+          "other": "Other"
+        }
+      },
+      "reschedule": {
+        "title": "Reschedule Booking",
+        "description": "Choose a new date and available slot. Customer, notes, and payment context are preserved.",
+        "date": "Date",
+        "availableSlots": "Available slots",
+        "noSlots": "No available slots for this date.",
+        "loadingSlots": "Loading available slots…",
+        "confirm": "Confirm Reschedule",
+        "preserveHint": "Customer {{customer}} and existing notes will be carried over."
+      },
+      "capacity": {
+        "title": "Capacity Overview",
+        "occupancy": "Occupancy",
+        "availability": "Availability",
+        "utilization": "Utilization"
+      },
+      "queue": {
+        "title": "Waiting Queue",
+        "empty": "No customers are currently waiting.",
+        "customer": "Customer",
+        "priority": "Priority"
+      },
+      "utilization": {
+        "title": "Resource Utilization",
+        "empty": "No resource activity for the selected filters.",
+        "resource": "Resource",
+        "bookings": "Bookings",
+        "busy": "Busy %",
+        "completed": "Completed %",
+        "avgDelay": "Avg. Delay"
+      },
+      "analytics": {
+        "title": "Advanced Analytics",
+        "peakHour": "Peak Hour",
+        "peakHourBookings": "Peak Hour Bookings",
+        "avgDelay": "Average Delay",
+        "avgWait": "Average Wait Time",
+        "cancellationRate": "Cancellation Rate",
+        "noShowRate": "No Show Rate",
+        "resourceUtilization": "Resource Utilization",
+        "todaysLoad": "Today's Load",
+        "hourlyDistribution": "Hourly Distribution"
+      },
+      "conflicts": {
+        "doctor": "Doctor/resource schedule conflict",
+        "room": "Room schedule conflict",
+        "equipment": "Equipment schedule conflict",
+        "service": "Service scheduling conflict",
+        "timeOverlap": "Time overlap with another booking"
+      },
+      "dragReschedule": {
+        "title": "Confirm Reschedule",
+        "description": "Move this booking to the selected time slot. Customer, notes, and payment context will be preserved.",
+        "confirm": "Confirm Move"
+      }
     },
     "errors": {
       "title": "Scheduling error"
@@ -2180,7 +3340,10 @@
       "tabs": {
         "overview": "Overview",
         "services": "Services"
-      }
+      },
+      "servicesAssignedCount": "{{count}} services",
+      "noServicesAssigned": "No services assigned",
+      "servicesCountLoading": "Loading services…"
     },
     "services": {
       "title": "Services",
@@ -2220,7 +3383,12 @@
       "noServicesAvailable": "Create services in the Services catalog first.",
       "noResourcesAvailable": "Create resources before assigning capabilities.",
       "serviceMeta": "{{minutes}} min · {{status}}",
-      "resourceMeta": "{{type}} · {{status}}"
+      "resourceMeta": "{{type}} · {{status}}",
+      "searchPlaceholder": "Search…",
+      "noSearchResults": "No matches for your search.",
+      "selectedCount": "{{count}} selected",
+      "resourceNoServicesWarning": "This resource will not be available for booking.",
+      "serviceNoResourcesWarning": "No resources are assigned."
     },
     "availability": {
       "selectResource": "Resource",
@@ -2878,6 +4046,7 @@
       "subscriptionPlans": "Subscription Plans",
       "customers": "Customers",
       "bookings": "Bookings",
+      "schedulingBookings": "Scheduling Bookings",
       "invoices": "Invoices",
       "roles": "Roles",
       "permissions": "Permissions",
@@ -3527,6 +4696,7 @@
     "status": {
       "pending": "Pending",
       "confirmed": "Confirmed",
+      "checked_in": "Checked In",
       "completed": "Completed",
       "cancelled": "Cancelled",
       "no_show": "No show",
@@ -3604,6 +4774,172 @@
   "errors": {
     "notAuthenticated": "Not authenticated"
   },
+  "platformAiOps": {
+    "title": "AI Operations Center",
+    "subtitle": "Enterprise operations dashboard for platform AI health, performance, cost, and reliability",
+    "superAdminOnly": "Platform Super Admin · prompts and secrets are masked",
+    "tabs": {
+      "requests": "Request Monitor",
+      "tools": "Tool Monitor",
+      "tasks": "Background Tasks",
+      "knowledge": "Knowledge RAG",
+      "agents": "Agent Workflows",
+      "errors": "Error Center",
+      "analytics": "Token & Cost",
+      "features": "Feature Flags",
+      "audit": "Admin Audit"
+    },
+    "kpis": {
+      "requestsToday": "AI Requests Today",
+      "successful": "Successful",
+      "failed": "Failed",
+      "avgLatency": "Avg Latency",
+      "avgTokens": "Avg Tokens",
+      "estimatedCost": "Est. Cost",
+      "activeCompanies": "Active Companies",
+      "backgroundTasks": "Background Tasks"
+    },
+    "health": {
+      "title": "Live Provider Health",
+      "provider": "Provider",
+      "latency": "Latency",
+      "successRate": "Success Rate",
+      "rate429": "429 Rate",
+      "rate5xx": "5xx Rate",
+      "queue": "Queue Depth",
+      "lastError": "Last error",
+      "status": {
+        "green": "Healthy",
+        "yellow": "Degraded",
+        "red": "Critical",
+        "unknown": "No data"
+      }
+    },
+    "requests": {
+      "title": "Realtime Request Monitor",
+      "subtitle": "Live feed from ai_execution_analytics · auto-refreshes every 15s",
+      "empty": "No AI requests recorded yet.",
+      "columns": {
+        "time": "Time",
+        "company": "Company",
+        "module": "Module",
+        "model": "Model",
+        "tokens": "Tokens",
+        "latency": "Latency",
+        "cost": "Cost",
+        "result": "Result"
+      }
+    },
+    "tools": {
+      "title": "Tool Monitor",
+      "empty": "No tool pipeline activity in the last 7 days."
+    },
+    "tasks": {
+      "title": "Background Task Queue",
+      "empty": "No background tasks in queue.",
+      "retries": "{{count}} retries"
+    },
+    "agentWorkflows": {
+      "title": "Enterprise Agent Workflows",
+      "subtitle": "Active and recent agent workflows across all tenants",
+      "empty": "No agent workflows recorded yet.",
+      "tasks": "tasks"
+    },
+    "knowledge": {
+      "documents": "Documents",
+      "indexed": "Indexed",
+      "chunks": "Chunks",
+      "embeddings": "Active embeddings",
+      "documentsFeed": "Recent documents",
+      "jobsFeed": "Embedding jobs",
+      "emptyDocuments": "No knowledge documents yet.",
+      "emptyJobs": "No embedding jobs in queue.",
+      "chunksLabel": "chunks",
+      "embeddingStatus": "Embedding",
+      "queueStats": "{{queued}} queued · {{running}} running · {{failed}} failed (7d) · avg {{latency}} ms"
+    },
+    "errors": {
+      "title": "Centralized AI Errors",
+      "subtitle": "Grouped by error code · Runtime, Tool Router, Prompt, Knowledge, Automation",
+      "empty": "No errors recorded.",
+      "companies": "companies",
+      "firstSeen": "First seen",
+      "lastSeen": "Last seen",
+      "correlation": "Correlation"
+    },
+    "charts": {
+      "tokens": "Token Usage Trend (30d)",
+      "cost": "Estimated Cost Trend (30d)",
+      "empty": "No trend data yet."
+    },
+    "cost": {
+      "topConsumers": "Top Cost Consumers",
+      "subtitle": "Last 30 days by company",
+      "empty": "No cost data yet."
+    },
+    "features": {
+      "title": "Feature Flag Status",
+      "company": "Company",
+      "ai_chat": "AI Chat",
+      "tool_calling": "Tool Calling",
+      "knowledge": "Knowledge",
+      "automation": "Automation",
+      "voice": "Voice"
+    },
+    "audit": {
+      "title": "Platform Admin Audit",
+      "empty": "No AI admin audit events yet."
+    },
+    "alerts": {
+      "hint": "Alerts trigger on latency spikes, provider degradation, queue backlog, and cost anomalies."
+    },
+    "search": {
+      "label": "Global search",
+      "placeholder": "Search company, model, conversation ID, correlation ID…"
+    },
+    "export": {
+      "title": "Export",
+      "csv": "Export CSV",
+      "json": "Export JSON"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}}"
+    }
+  },
+  "platformAi": {
+    "tenant": {
+      "title": "Platform-managed AI provider",
+      "description": "Your company uses the VaultOS platform AI provider. API keys, models, and provider configuration are managed centrally by the platform administrator.",
+      "statusReady": "AI provider is active for your company.",
+      "statusDisabled": "AI is currently disabled for your company. Contact your platform administrator."
+    },
+    "admin": {
+      "title": "Platform AI Administration",
+      "subtitle": "Manage shared AI providers, encrypted API keys, default models, usage, and per-company feature flags.",
+      "accessDenied": "Platform AI administration is restricted to platform super administrators.",
+      "providers": "Providers",
+      "apiKeys": "API Keys",
+      "apiKeysHint": "Keys are encrypted at rest. Tenants never see or manage credentials.",
+      "activeKeyHint": "Active key ending in ••••{{hint}}",
+      "noKeyConfigured": "No platform API key configured yet.",
+      "newApiKey": "New API key",
+      "saveKey": "Save encrypted key",
+      "keySaved": "Platform API key saved.",
+      "keySaveError": "Failed to save platform API key.",
+      "defaultModels": "Default models",
+      "chatModel": "Chat / tool calling model",
+      "embeddingModel": "Embeddings model",
+      "saveModels": "Save default models",
+      "modelsSaved": "Default models updated.",
+      "featureFlags": "Feature flags",
+      "selectCompany": "Select company",
+      "aiChatFeature": "AI Chat",
+      "usageDashboard": "Usage dashboard",
+      "noUsageYet": "No platform AI usage recorded yet."
+    }
+  },
   "aiAssistant": {
     "title": "AI Assistant",
     "subtitle": "Configure your company AI assistant for future receptionist and automation features.",
@@ -3678,6 +5014,10 @@
       "apiKeyPlaceholder": "sk-… (optional if configured server-side)",
       "apiKeyHint": "Stored in ai_provider_connections.configuration — not in assistant settings.",
       "connectProvider": "Create & connect provider",
+      "saveSuccess": "Provider connected",
+      "saveSuccessDetail": "The provider connection was saved to your company registry.",
+      "setDefaultSuccess": "Default provider connection updated.",
+      "saveError": "Could not save provider connection",
       "readOnlyHint": "Ask an administrator with ai.providers.manage to connect a provider.",
       "defaultConnectionName": "{{assistant}} · {{provider}}"
     },

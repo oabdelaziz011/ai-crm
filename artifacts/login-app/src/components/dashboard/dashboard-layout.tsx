@@ -1,35 +1,40 @@
-import { useState, type ReactNode } from "react";
-import { useLocation } from "wouter";
-import { ChevronRight, Hash } from "lucide-react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/context/auth-context";
-import { NotificationBell } from "@/components/notifications/notification-bell";
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
-import {
-  getDashboardRouteById,
-  sectionIdFromNestedPath,
-} from "@/config/dashboard-route-registry";
-import { isDashboardHomeNestedPath } from "@/lib/dashboard-home";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/context/auth-context";
+import { AppShellProvider } from "@/context/app-shell-context";
+import { FloatingAiProvider } from "@/context/floating-ai-context";
+import { AiTaskProvider } from "@/context/ai-task-context";
+import {
+  AppHeader,
+  AppSidebar,
+  CommandPalette,
+} from "@/components/app-shell";
+import { preloadFloatingAiAssistant } from "@/components/floating-ai";
+
+const FloatingAiAssistant = lazy(() =>
+  import("@/components/floating-ai/floating-ai-assistant").then((m) => ({
+    default: m.FloatingAiAssistant,
+  })),
+);
 
 type DashboardLayoutProps = {
   children: ReactNode;
 };
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { t, i18n } = useTranslation("common");
-  const [nestedLocation, setLocation] = useLocation();
-  const { displayName, signOut, company } = useAuth();
+function DashboardLayoutInner({ children }: DashboardLayoutProps) {
+  const { i18n } = useTranslation("common");
+  const [, setLocation] = useLocation();
+  const { signOut, company, profile } = useAuth();
   const queryClient = useQueryClient();
   const isRtl = i18n.dir() === "rtl";
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const activeSectionId = sectionIdFromNestedPath(nestedLocation);
-  const activeTitleKey = isDashboardHomeNestedPath(nestedLocation)
-    ? "navigation.home"
-    : activeSectionId
-      ? getDashboardRouteById(activeSectionId).titleKey
-      : "navigation.home";
+  useEffect(() => {
+    if (profile?.id) {
+      preloadFloatingAiAssistant();
+    }
+  }, [profile?.id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -39,48 +44,45 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div
-      className="min-h-screen w-full bg-background text-foreground flex overflow-hidden"
+      className="flex min-h-screen w-full overflow-hidden shell-canvas text-foreground"
       dir={isRtl ? "rtl" : "ltr"}
     >
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
 
-      <DashboardSidebar
-        sidebarOpen={sidebarOpen}
-        onNavigate={() => setSidebarOpen(false)}
-        onSignOut={handleSignOut}
-      />
+      <AppSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 border-b border-white/5 bg-black/30 backdrop-blur-md flex items-center px-6 gap-4 shrink-0">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <Hash className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">{t("dashboard.breadcrumbs.root")}</span>
-            <ChevronRight
-              className={`w-3.5 h-3.5 text-muted-foreground ${isRtl ? "rotate-180" : ""}`}
-            />
-            <span className="font-medium text-foreground">{t(activeTitleKey)}</span>
-          </div>
-          <div className="ms-auto flex items-center gap-3">
-            <NotificationBell companyId={company?.id ?? null} />
-            <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          </div>
-        </header>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <AppHeader companyId={company?.id ?? null} onSignOut={handleSignOut} />
 
-        {children}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <main id="main-content" className="relative min-w-0 flex-1 overflow-y-auto focus:outline-none">
+            {children}
+          </main>
+        </div>
       </div>
+
+      <Suspense fallback={null}>
+        <FloatingAiAssistant />
+      </Suspense>
+
+      <CommandPalette />
     </div>
+  );
+}
+
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  return (
+    <AppShellProvider>
+      <FloatingAiProvider>
+        <AiTaskProvider>
+          <DashboardLayoutInner>{children}</DashboardLayoutInner>
+        </AiTaskProvider>
+      </FloatingAiProvider>
+    </AppShellProvider>
   );
 }

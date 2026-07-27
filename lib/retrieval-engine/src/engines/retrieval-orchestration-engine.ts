@@ -48,7 +48,6 @@ export class RetrievalOrchestrationEngine {
       createStructuredLogEvent("retrieval_orchestration_started", correlationId, {
         companyId: input.companyId,
         collectionId: input.collectionId,
-        searchMode,
       }),
     );
 
@@ -144,7 +143,6 @@ export class RetrievalOrchestrationEngine {
         vectorQueryExecutionId: response.vectorQueryExecutionId,
         chunksSelected: response.metrics.chunksSelected,
         orchestrationTimeMs: response.orchestrationTimeMs,
-        searchMode,
       }),
     );
 

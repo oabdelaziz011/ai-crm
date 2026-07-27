@@ -158,7 +158,7 @@ const CRM_PLAN_TEMPLATES: CrmPlanTemplate[] = [
   },
   {
     match: /import\s+(customer|list|csv|contacts)/i,
-    build: ({ workflowId, goal }) =>
+    build: ({ workflowId, goal, pageContext }) =>
       buildSequentialGraph(workflowId, goal, [
         createTaskNode({
           id: id("crm", 1),

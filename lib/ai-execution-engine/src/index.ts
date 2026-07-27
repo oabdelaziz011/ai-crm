@@ -114,3 +114,4 @@ export * from "./repositories/supabase-execution-repositories.js";
 export * from "./services/ai-execution-policy-service.js";
 export * from "./services/ai-execution-metrics-service.js";
 export * from "./services/ai-execution-service.js";
+export type { RuntimeKnowledgePort, RuntimeKnowledgeQueryInput, RuntimeKnowledgeQueryResult } from "./ports/knowledge-port.js";

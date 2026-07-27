@@ -97,11 +97,15 @@ export function createRuntimePromptPort(
 }
 
 import type { KnowledgeProvider } from "@workspace/retrieval-engine";
-import type { RuntimeKnowledgePort } from "@workspace/ai-execution-engine";
+import type {
+  RuntimeKnowledgePort,
+  RuntimeKnowledgeQueryInput,
+  ServiceContext,
+} from "@workspace/ai-execution-engine";
 
 export function createRuntimeKnowledgePort(knowledge: KnowledgeProvider): RuntimeKnowledgePort {
   return {
-    async retrieve(ctx, input) {
+    async retrieve(ctx: ServiceContext, input: RuntimeKnowledgeQueryInput) {
       const result = await knowledge.retrieve(ctx as never, input);
       return {
         contextText: result.contextText,

@@ -1,4 +1,4 @@
-import type { ChunkingStrategyName } from "./chunk-strategy-registry.js";
+import type { ChunkingStrategyName } from "../ingestion/chunk-strategy-registry.js";
 import { DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE } from "../constants.js";
 
 export type ChunkingConfig = {

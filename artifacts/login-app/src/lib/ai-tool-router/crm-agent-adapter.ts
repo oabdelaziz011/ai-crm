@@ -39,7 +39,7 @@ function normalizeEmailKey(email: string | null | undefined): string | null {
 
 export function createCrmAgentToolPorts(options: CreateCrmAgentToolPortsOptions): CrmAgentToolPorts {
   const { client, getActorUserId, retrieveKnowledge } = options;
-  const customerService = createSupabaseCustomerServicePort(client, { getActorUserId });
+  const customerService = createSupabaseCustomerServicePort(client, getActorUserId);
   const bookingService = new BookingListService(client);
   const invoiceRepository = new CustomerInvoiceRepository(client);
 

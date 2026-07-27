@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { invalidateAllBookingSlotQueries } from "@/lib/booking/invalidate-booking-queries";
 import { getSchedulingServices } from "@/lib/scheduling";
@@ -85,4 +86,52 @@ export function useSyncServiceResources(
       invalidateAllBookingSlotQueries(qc, companyId);
     },
   });
+}
+
+export async function syncResourceServicesFor(
+  companyId: string,
+  resourceId: string,
+  serviceIds: string[],
+) {
+  const userId = await requireUserId();
+  return services.capabilities.syncResourceServices(resourceId, companyId, userId, serviceIds);
+}
+
+export async function syncServiceResourcesFor(
+  companyId: string,
+  serviceId: string,
+  resourceIds: string[],
+) {
+  const userId = await requireUserId();
+  return services.capabilities.syncServiceResources(serviceId, companyId, userId, resourceIds);
+}
+
+export function useResourceServiceCounts(
+  companyId: string | null,
+  resourceIds: string[],
+) {
+  const queries = useQueries({
+    queries: resourceIds.map((resourceId) => ({
+      queryKey: schedulingResourceCapabilitiesKey(companyId, resourceId),
+      queryFn: () => services.capabilities.listServicesForResource(resourceId, companyId!),
+      enabled: Boolean(companyId && resourceId),
+      staleTime: 30_000,
+    })),
+  });
+
+  return useMemo(() => {
+    const counts = new Map<string, number>();
+    resourceIds.forEach((resourceId, index) => {
+      counts.set(resourceId, queries[index]?.data?.length ?? 0);
+    });
+    return {
+      counts,
+      isLoading: queries.some((query) => query.isLoading),
+    };
+  }, [queries, resourceIds]);
+}
+
+export function invalidateCapabilityQueries(qc: ReturnType<typeof useQueryClient>, companyId: string | null) {
+  void qc.invalidateQueries({ queryKey: SCHEDULING_CAPABILITIES_KEY });
+  invalidateAllBookingSlotQueries(qc, companyId);
 }

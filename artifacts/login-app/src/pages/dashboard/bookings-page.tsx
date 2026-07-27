@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,9 @@ import { Can } from "@/components/rbac/permission-guard";
 import { useHasPermission } from "@/hooks/use-rbac";
 import type { Booking } from "@/lib/types";
 import { useTranslation } from "react-i18next";
+import { queryShellStateFromQuery } from "@/lib/react-query/query-shell-state";
+import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
+import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import {
   DashboardCard,
   DashboardStatCard,
@@ -26,7 +29,9 @@ export default function BookingsPage() {
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { openCustomerProfile } = useCustomerProfile();
-  const { data: bookings = [], isLoading, error } = useBookings();
+  const bookingsQuery = useBookings();
+  const { data: bookings = [], error } = bookingsQuery;
+  const bookingsShell = queryShellStateFromQuery(bookingsQuery);
   const { data: customers = [] } = useCustomers();
   const deleteBooking = useDeleteBooking();
   const canCreateBookings = useHasPermission("bookings.create");
@@ -43,6 +48,29 @@ export default function BookingsPage() {
   const pending  = bookings.filter((booking: Booking) => booking.status === "Pending");
   const confirmed = bookings.filter((booking: Booking) => booking.status === "Confirmed");
 
+  const floatingAiContext = useMemo(
+    () => ({
+      page: "bookings" as const,
+      moduleLabel: t("navigation.bookings"),
+      pageTitle: t("dashboard.bookings.title"),
+      bookingId: modal.booking?.id ?? null,
+      filters: { today: today.length, pending: pending.length, confirmed: confirmed.length },
+      selectedBooking: modal.booking
+        ? { id: modal.booking.id, label: modal.booking.service ?? modal.booking.id }
+        : null,
+      currentEntity: modal.booking
+        ? {
+            type: "booking" as const,
+            id: modal.booking.id,
+            label: modal.booking.service ?? modal.booking.id,
+          }
+        : null,
+    }),
+    [t, modal.booking, today.length, pending.length, confirmed.length],
+  );
+
+  useRegisterFloatingAiContext(floatingAiContext);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -50,6 +78,7 @@ export default function BookingsPage() {
           <h1 className="text-2xl font-bold">{t("dashboard.bookings.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t("dashboard.bookings.subtitle")}</p>
         </div>
+        <QueryRefreshIndicator active={bookingsShell.isBackgroundRefresh} />
         <Can permission="bookings.create">
           <Button onClick={() => setModal({ open: true, booking: null })} className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary gap-2">
             <Plus className="w-4 h-4" /> {t("buttons.newBooking")}
@@ -58,10 +87,10 @@ export default function BookingsPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <DashboardStatCard label={t("dashboard.bookings.stats.total")}       value={bookings.length}   icon={CalendarDays} loading={isLoading} />
-        <DashboardStatCard label={t("dashboard.bookings.stats.today")}       value={today.length}      icon={Clock}        loading={isLoading} />
-        <DashboardStatCard label={t("dashboard.bookings.stats.pending")}     value={pending.length}    icon={AlertCircle}  loading={isLoading} />
-        <DashboardStatCard label={t("dashboard.bookings.stats.confirmed")}   value={confirmed.length}  icon={CheckCircle2} loading={isLoading} />
+        <DashboardStatCard label={t("dashboard.bookings.stats.total")}       value={bookings.length}   icon={CalendarDays} loading={bookingsShell.isInitialLoad} />
+        <DashboardStatCard label={t("dashboard.bookings.stats.today")}       value={today.length}      icon={Clock}        loading={bookingsShell.isInitialLoad} />
+        <DashboardStatCard label={t("dashboard.bookings.stats.pending")}     value={pending.length}    icon={AlertCircle}  loading={bookingsShell.isInitialLoad} />
+        <DashboardStatCard label={t("dashboard.bookings.stats.confirmed")}   value={confirmed.length}  icon={CheckCircle2} loading={bookingsShell.isInitialLoad} />
       </div>
 
       {error && <DashboardErrorBanner message={error.message} />}
@@ -73,7 +102,7 @@ export default function BookingsPage() {
             <Download className="w-3.5 h-3.5" /> {t("buttons.export")}
           </Button>
         </div>
-        {isLoading ? <DashboardTableSkeleton /> : bookings.length === 0 ? (
+        {bookingsShell.isInitialLoad ? <DashboardTableSkeleton /> : bookings.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground text-sm">
             {t("dashboard.bookings.empty")}
           </div>

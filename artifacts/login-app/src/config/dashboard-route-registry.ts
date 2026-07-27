@@ -7,6 +7,7 @@ import {
   Building2,
   Calendar,
   CalendarDays,
+  CalendarRange,
   CreditCard,
   FileText,
   LayoutGrid,
@@ -41,6 +42,7 @@ export type DashboardSectionId =
   | "customers"
   | "bookings"
   | "calendar"
+  | "scheduling"
   | "communication"
   | "invoices"
   | "financial"

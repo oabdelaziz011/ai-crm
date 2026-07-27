@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -14,15 +14,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  CapabilityMultiSelect,
+  type CapabilitySelectItem,
+} from "@/components/scheduling/capabilities/capability-multi-select";
+import { useResourceCapabilities } from "@/hooks/scheduling/use-resource-capabilities";
+import { useSchedulingServices } from "@/hooks/scheduling/use-scheduling-services";
+import {
   resourceFormSchema,
   type ResourceFormValues,
 } from "@/lib/scheduling/validation/schemas";
 import {
   SCHEDULING_RESOURCE_STATUSES,
   SCHEDULING_RESOURCE_TYPES,
+  type Branch,
   type SchedulingResource,
 } from "@/lib/scheduling/types";
-import type { Branch } from "@/lib/scheduling/types";
 
 const COMMON_TIMEZONES = [
   "UTC",
@@ -33,20 +39,27 @@ const COMMON_TIMEZONES = [
   "America/Los_Angeles",
 ];
 
+export type ResourceFormSubmitPayload = {
+  values: ResourceFormValues;
+  serviceIds: string[];
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
+  companyId: string | null;
   resource?: SchedulingResource | null;
   branches: Branch[];
   defaultTimezone?: string;
   canEdit: boolean;
   isPending: boolean;
-  onSubmit: (values: ResourceFormValues) => void;
+  onSubmit: (payload: ResourceFormSubmitPayload) => void;
 };
 
 export function ResourceFormDialog({
   open,
   onClose,
+  companyId,
   resource,
   branches,
   defaultTimezone = "UTC",
@@ -56,6 +69,14 @@ export function ResourceFormDialog({
 }: Props) {
   const { t } = useTranslation("common");
   const isEdit = Boolean(resource);
+
+  const { data: allServices = [], isLoading: servicesLoading } = useSchedulingServices(companyId);
+  const { data: mappedServices = [], isLoading: mappedLoading } = useResourceCapabilities(
+    companyId,
+    resource?.id ?? null,
+  );
+
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
 
   const form = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
@@ -79,14 +100,28 @@ export function ResourceFormDialog({
         timezone: resource?.timezone ?? defaultTimezone,
         description: resource?.description ?? "",
       });
+      setServiceIds(isEdit ? mappedServices.map((service) => service.id) : []);
     }
-  }, [open, resource, defaultTimezone, form]);
+  }, [open, resource, defaultTimezone, form, isEdit, mappedServices]);
 
-  const handleSubmit = form.handleSubmit((values) => onSubmit(values));
+  const serviceItems = useMemo<CapabilitySelectItem[]>(
+    () =>
+      allServices.map((service) => ({
+        id: service.id,
+        label: service.name,
+        meta: t("scheduling.capabilities.serviceMeta", {
+          minutes: service.duration_minutes,
+          status: t(`scheduling.services.statuses.${service.status}`),
+        }),
+      })),
+    [allServices, t],
+  );
+
+  const handleSubmit = form.handleSubmit((values) => onSubmit({ values, serviceIds }));
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-md border-white/10 bg-card">
+      <DialogContent className="sm:max-w-lg border-white/10 bg-card max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit
@@ -189,6 +224,24 @@ export function ResourceFormDialog({
               className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm resize-none"
               {...form.register("description")}
             />
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-background/20 p-3 space-y-3">
+            <CapabilityMultiSelect
+              label={t("scheduling.capabilities.resourceServicesTitle")}
+              items={serviceItems}
+              selectedIds={serviceIds}
+              onChange={setServiceIds}
+              disabled={!canEdit || isPending}
+              isLoading={servicesLoading || (isEdit && mappedLoading)}
+              emptyMessage={t("scheduling.capabilities.noServicesAvailable")}
+            />
+            {serviceIds.length === 0 && (
+              <p className="text-xs text-amber-400/90 flex items-start gap-2 leading-relaxed">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                {t("scheduling.capabilities.resourceNoServicesWarning")}
+              </p>
+            )}
           </div>
 
           <DialogFooter>

@@ -2,14 +2,20 @@ import { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { CapabilityMappingPanel } from "@/components/scheduling/capabilities/capability-mapping-panel";
-import { ServiceFormDialog } from "@/components/scheduling/services/service-form-dialog";
+import {
+  ServiceFormDialog,
+  type ServiceFormSubmitPayload,
+} from "@/components/scheduling/services/service-form-dialog";
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
+  invalidateCapabilityQueries,
+  syncServiceResourcesFor,
   useServiceResources,
   useSyncServiceResources,
 } from "@/hooks/scheduling/use-resource-capabilities";
@@ -19,11 +25,11 @@ import {
   useUpdateSchedulingService,
 } from "@/hooks/scheduling/use-scheduling-services";
 import { nestedSectionHref } from "@/lib/routing";
-import type { ServiceFormValues } from "@/lib/scheduling/validation/service-schemas";
 
 export function SchedulingServiceProfilePage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const canEdit = useSchedulingEditAccess();
@@ -66,22 +72,21 @@ export function SchedulingServiceProfilePage() {
     );
   }
 
-  const handleSaveDetails = (values: ServiceFormValues) => {
-    updateService.mutate(
-      { id: service.id, values },
-      {
-        onSuccess: () => {
-          setEditOpen(false);
-          toast({ title: t("scheduling.services.updated") });
-        },
-        onError: (e) =>
-          toast({
-            variant: "destructive",
-            title: t("scheduling.errors.title"),
-            description: e.message,
-          }),
-      },
-    );
+  const handleSaveDetails = async ({ values, resourceIds }: ServiceFormSubmitPayload) => {
+    if (!companyId) return;
+    try {
+      await updateService.mutateAsync({ id: service.id, values });
+      await syncServiceResourcesFor(companyId, service.id, resourceIds);
+      invalidateCapabilityQueries(qc, companyId);
+      setEditOpen(false);
+      toast({ title: t("scheduling.services.updated") });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: t("scheduling.errors.title"),
+        description: e instanceof Error ? e.message : t("scheduling.errors.title"),
+      });
+    }
   };
 
   const handleSaveResources = (resourceIds: string[]) => {
@@ -139,6 +144,7 @@ export function SchedulingServiceProfilePage() {
       <ServiceFormDialog
         open={editOpen}
         onClose={() => setEditOpen(false)}
+        companyId={companyId}
         service={service}
         canEdit={canEdit}
         isPending={updateService.isPending}

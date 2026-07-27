@@ -37,6 +37,7 @@ import { formatBookingDomainError } from "@/hooks/use-booking-domain";
 import { useCustomers } from "@/hooks/use-customers";
 import type { Booking } from "@/lib/types";
 import type { WeekdayIndex } from "@/lib/scheduling/types";
+import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 
 const CalendarDayView = lazy(
@@ -161,6 +162,34 @@ export function CalendarPage() {
   const { data: customers = [] } = useCustomers();
   const { data: branches = [] } = useSchedulingBranches(companyId);
   const { data: resources = [] } = useSchedulingResources(companyId);
+
+  const floatingAiContext = useMemo(
+    () => ({
+      page: "calendar" as const,
+      moduleLabel: t("navigation.calendar"),
+      pageTitle: t("navigation.calendar"),
+      selectedDate: viewState.selection.date ?? viewState.anchorDate,
+      bookingId: bookingModal.booking?.id ?? viewState.selection.eventId ?? null,
+      filters: viewState.filters,
+      currentEntity: bookingModal.booking
+        ? {
+            type: "booking" as const,
+            id: bookingModal.booking.id,
+            label: bookingModal.booking.service ?? bookingModal.booking.id,
+          }
+        : null,
+    }),
+    [
+      t,
+      viewState.selection.date,
+      viewState.selection.eventId,
+      viewState.anchorDate,
+      viewState.filters,
+      bookingModal.booking,
+    ],
+  );
+
+  useRegisterFloatingAiContext(floatingAiContext);
 
   const timelineResources = useMemo(() => {
     let list = resources.filter((resource) => resource.status === "active");
@@ -488,6 +517,7 @@ export function CalendarPage() {
         booking={bookingModal.booking}
         customers={customers}
         companyId={companyId}
+        branchId={viewState.filters.branchId}
       />
     </div>
   );

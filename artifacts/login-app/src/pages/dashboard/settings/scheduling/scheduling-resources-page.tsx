@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
-import { CalendarOff, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { AlertTriangle, CalendarOff, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { ResourceFormDialog } from "@/components/scheduling/resources/resource-form-dialog";
+import {
+  ResourceFormDialog,
+  type ResourceFormSubmitPayload,
+} from "@/components/scheduling/resources/resource-form-dialog";
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import {
@@ -14,6 +18,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
+  invalidateCapabilityQueries,
+  syncResourceServicesFor,
+  useResourceServiceCounts,
+} from "@/hooks/scheduling/use-resource-capabilities";
+import {
   useCreateSchedulingResource,
   useDeleteSchedulingResource,
   useSchedulingBranches,
@@ -21,19 +30,25 @@ import {
   useUpdateSchedulingResource,
 } from "@/hooks/scheduling/use-scheduling-resources";
 import type { SchedulingResource } from "@/lib/scheduling/types";
-import type { ResourceFormValues } from "@/lib/scheduling/validation/schemas";
 import { schedulingResourceProfileHref } from "@/config/scheduling-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
 
 export function SchedulingResourcesPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const canEdit = useSchedulingEditAccess();
 
   const { data: branches = [] } = useSchedulingBranches(companyId);
   const { data: resources = [], isLoading, error } = useSchedulingResources(companyId);
+  const resourceIds = useMemo(() => resources.map((resource) => resource.id), [resources]);
+  const { counts: serviceCounts, isLoading: countsLoading } = useResourceServiceCounts(
+    companyId,
+    resourceIds,
+  );
+
   const createResource = useCreateSchedulingResource(companyId);
   const updateResource = useUpdateSchedulingResource(companyId);
   const deleteResource = useDeleteSchedulingResource(companyId);
@@ -41,6 +56,7 @@ export function SchedulingResourcesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SchedulingResource | null>(null);
   const [deleting, setDeleting] = useState<SchedulingResource | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const defaultTimezone = useMemo(
     () => resources[0]?.timezone ?? "UTC",
@@ -57,32 +73,31 @@ export function SchedulingResourcesPage() {
     setModalOpen(true);
   };
 
-  const handleSubmit = (values: ResourceFormValues) => {
+  const handleSubmit = async ({ values, serviceIds }: ResourceFormSubmitPayload) => {
+    if (!companyId) return;
+
     const onError = (message: string) => {
       toast({ variant: "destructive", title: t("scheduling.errors.title"), description: message });
     };
 
-    if (editing) {
-      updateResource.mutate(
-        { id: editing.id, values },
-        {
-          onSuccess: () => {
-            setModalOpen(false);
-            toast({ title: t("scheduling.resources.updated") });
-          },
-          onError: (e) => onError(e.message),
-        },
-      );
-      return;
-    }
+    setIsSaving(true);
+    try {
+      const resourceId = editing
+        ? (await updateResource.mutateAsync({ id: editing.id, values })).id
+        : (await createResource.mutateAsync(values)).id;
 
-    createResource.mutate(values, {
-      onSuccess: () => {
-        setModalOpen(false);
-        toast({ title: t("scheduling.resources.created") });
-      },
-      onError: (e) => onError(e.message),
-    });
+      await syncResourceServicesFor(companyId, resourceId, serviceIds);
+      invalidateCapabilityQueries(qc, companyId);
+
+      setModalOpen(false);
+      toast({
+        title: editing ? t("scheduling.resources.updated") : t("scheduling.resources.created"),
+      });
+    } catch (error) {
+      onError(error instanceof Error ? error.message : t("scheduling.errors.title"));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = () => {
@@ -134,61 +149,79 @@ export function SchedulingResourcesPage() {
         </div>
       ) : (
         <div className="divide-y divide-white/5">
-          {resources.map((resource) => (
-            <div
-              key={resource.id}
-              className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02]"
-            >
-              <div className="flex-1 min-w-0">
-                <Link
-                  href={nestedSectionHref(schedulingResourceProfileHref(resource.id))}
-                  className="text-sm font-medium hover:text-primary transition-colors truncate block"
-                >
-                  {resource.name}
-                </Link>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t(`scheduling.resources.types.${resource.resource_type}`)}
-                  {resource.branches?.name ? ` · ${resource.branches.name}` : ""}
-                  {" · "}
-                  {t(`scheduling.resources.statuses.${resource.status}`)}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground hidden sm:block">{resource.timezone}</p>
-              {canEdit && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openEdit(resource)}
+          {resources.map((resource) => {
+            const assignedCount = serviceCounts.get(resource.id) ?? 0;
+            return (
+              <div
+                key={resource.id}
+                className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02]"
+              >
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={nestedSectionHref(schedulingResourceProfileHref(resource.id))}
+                    className="text-sm font-medium hover:text-primary transition-colors truncate block"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => setDeleting(resource)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                    {resource.name}
+                  </Link>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t(`scheduling.resources.types.${resource.resource_type}`)}
+                    {resource.branches?.name ? ` · ${resource.branches.name}` : ""}
+                    {" · "}
+                    {t(`scheduling.resources.statuses.${resource.status}`)}
+                  </p>
+                  <p className="text-xs mt-1 flex items-center gap-1.5">
+                    {countsLoading ? (
+                      <span className="text-muted-foreground">{t("scheduling.resources.servicesCountLoading")}</span>
+                    ) : assignedCount === 0 ? (
+                      <span className="text-amber-400/90 inline-flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        {t("scheduling.resources.noServicesAssigned")}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {t("scheduling.resources.servicesAssignedCount", { count: assignedCount })}
+                      </span>
+                    )}
+                  </p>
                 </div>
-              )}
-            </div>
-          ))}
+                <p className="text-xs text-muted-foreground hidden sm:block">{resource.timezone}</p>
+                {canEdit && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEdit(resource)}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => setDeleting(resource)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       <ResourceFormDialog
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        companyId={companyId}
         resource={editing}
         branches={branches}
         defaultTimezone={defaultTimezone}
         canEdit={canEdit}
-        isPending={createResource.isPending || updateResource.isPending}
+        isPending={isSaving || createResource.isPending || updateResource.isPending}
         onSubmit={handleSubmit}
       />
 

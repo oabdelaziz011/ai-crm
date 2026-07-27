@@ -2,23 +2,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { getSchedulingServices } from "@/lib/scheduling";
 import type { ResourceFormValues } from "@/lib/scheduling/validation/schemas";
+import {
+  SCHEDULING_BRANCHES_KEY,
+  SCHEDULING_RESOURCES_KEY,
+  schedulingBranchesKey,
+  schedulingResourceKey,
+  schedulingResourcesKey,
+} from "@/lib/scheduling/cache/query-keys";
 
 const services = getSchedulingServices();
 
-export const SCHEDULING_RESOURCES_KEY = ["scheduling", "resources"] as const;
-export const SCHEDULING_BRANCHES_KEY = ["scheduling", "branches"] as const;
-
-export function schedulingResourcesKey(companyId: string | null) {
-  return [...SCHEDULING_RESOURCES_KEY, companyId] as const;
-}
-
-export function schedulingResourceKey(companyId: string | null, resourceId: string | null) {
-  return [...SCHEDULING_RESOURCES_KEY, companyId, resourceId] as const;
-}
-
-export function schedulingBranchesKey(companyId: string | null) {
-  return [...SCHEDULING_BRANCHES_KEY, companyId] as const;
-}
+export {
+  SCHEDULING_RESOURCES_KEY,
+  SCHEDULING_BRANCHES_KEY,
+  schedulingResourcesKey,
+  schedulingResourceKey,
+  schedulingBranchesKey,
+};
 
 async function requireUserId(): Promise<string> {
   const {

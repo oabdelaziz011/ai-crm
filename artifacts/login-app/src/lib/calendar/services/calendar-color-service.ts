@@ -15,6 +15,12 @@ const STATUS_COLORS: Record<SchedulingBookingStatus, CalendarEventColor> = {
     textClass: "text-emerald-100",
     accentClass: "border-l-emerald-400",
   },
+  checked_in: {
+    bgClass: "bg-amber-500/15",
+    borderClass: "border-amber-500/40",
+    textClass: "text-amber-100",
+    accentClass: "border-l-amber-400",
+  },
   pending: {
     bgClass: "bg-amber-500/15",
     borderClass: "border-amber-500/40",

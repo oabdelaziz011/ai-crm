@@ -1,14 +1,15 @@
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Link } from "wouter";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import type { Booking, BookingStatus, Customer } from "@/lib/types";
 import {
   useAvailableBookingSlots,
@@ -26,6 +27,9 @@ import {
 import { schedulingBookingToAppBooking } from "@/lib/booking/booking-view-adapter";
 import { useAuth } from "@/context/auth-context";
 import { useTranslation } from "react-i18next";
+import { toDashboardAbsolutePath } from "@/lib/routing";
+import { BranchSelector } from "@/lib/company/branches/components";
+import { useCurrentUserBranches } from "@/lib/company/branches/hooks";
 
 const LEGACY_STATUSES: BookingStatus[] = ["Pending", "Confirmed", "Cancelled"];
 
@@ -101,6 +105,21 @@ export function BookingModal({
   const updateLegacy = useUpdateBooking();
   const isPending = createBooking.isPending || rescheduleBooking.isPending || updateLegacy.isPending;
 
+  const { data: userBranches = [] } = useCurrentUserBranches(companyId);
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+
+  const effectiveBranchId = useMemo(() => {
+    if (branchId) return branchId;
+    if (selectedBranchId) return selectedBranchId;
+    if (userBranches.length === 1) return userBranches[0]?.id ?? null;
+    return null;
+  }, [branchId, selectedBranchId, userBranches]);
+
+  const showBranchSelector =
+    isSchedulingCreate &&
+    !branchId &&
+    userBranches.length > 1;
+
   const schedulingSchema = z.object({
     customer_id: z.string().min(1, t("forms.booking.customerRequired")),
     service_id: z.string().min(1, t("forms.booking.serviceRequired")),
@@ -144,7 +163,7 @@ export function BookingModal({
     isLoading: resourcesLoading,
     isError: resourcesError,
     error: resourcesQueryError,
-  } = useServiceResources(companyId, watchedServiceId || null, branchId);
+  } = useServiceResources(companyId, watchedServiceId || null, effectiveBranchId);
   const {
     data: slotsResult,
     isLoading: slotsLoading,
@@ -158,8 +177,8 @@ export function BookingModal({
   );
 
   const eligibleResources = useMemo(
-    () => filterEligibleBookingResources(resources, branchId),
-    [resources, branchId],
+    () => filterEligibleBookingResources(resources, effectiveBranchId),
+    [resources, effectiveBranchId],
   );
 
   const slotMessageKey = useMemo(
@@ -185,6 +204,9 @@ export function BookingModal({
     resourcesError ||
     slotsError ||
     (!isSchedulingEdit &&
+      showBranchSelector &&
+      !selectedBranchId) ||
+    (!isSchedulingEdit &&
       Boolean(watchedServiceId) &&
       !resourcesLoading &&
       !resourcesError &&
@@ -200,6 +222,17 @@ export function BookingModal({
     () => services.filter((item) => item.status === "active"),
     [services],
   );
+
+  useEffect(() => {
+    if (!open) return;
+    if (branchId) {
+      setSelectedBranchId(branchId);
+    } else if (userBranches.length === 1) {
+      setSelectedBranchId(userBranches[0]?.id ?? null);
+    } else if (!isSchedulingCreate) {
+      setSelectedBranchId(null);
+    }
+  }, [open, branchId, userBranches, isSchedulingCreate]);
 
   useEffect(() => {
     if (!open) return;
@@ -284,6 +317,7 @@ export function BookingModal({
         slotStart: values.slot_start,
         notes: values.notes || null,
         source: "crm",
+        branchId: effectiveBranchId,
       },
       {
         onSuccess: (created) => {
@@ -360,6 +394,20 @@ export function BookingModal({
           </FormItem>
         )} />
 
+        {showBranchSelector && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("branches.selector.bookingLabel")}</label>
+            <BranchSelector
+              branches={userBranches}
+              value={selectedBranchId}
+              onChange={setSelectedBranchId}
+            />
+            {!selectedBranchId && (
+              <BookingFieldHint variant="muted">{t("branches.selector.bookingRequired")}</BookingFieldHint>
+            )}
+          </div>
+        )}
+
         <FormField control={schedulingForm.control} name="service_id" render={({ field }) => (
           <FormItem>
             <FormLabel>{t("forms.booking.service")}</FormLabel>
@@ -410,11 +458,25 @@ export function BookingModal({
               </BookingFieldHint>
             )}
             {showResourceEmptyState && (
-              <BookingFieldHint variant="muted">
-                {t("forms.booking.noEligibleResources")}
-                {" "}
-                {t("forms.booking.noEligibleResourcesHint")}
-              </BookingFieldHint>
+              <div className="rounded-xl border border-white/10 bg-background/25 px-3 py-3 space-y-3">
+                <BookingFieldHint variant="muted">
+                  {t("forms.booking.noEligibleResourcesEmptyState")}
+                </BookingFieldHint>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
+                    <Link href={toDashboardAbsolutePath("/settings/scheduling/resources")}>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {t("forms.booking.openResourcesSettings")}
+                    </Link>
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
+                    <Link href={toDashboardAbsolutePath("/settings/scheduling/services")}>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {t("forms.booking.openServicesSettings")}
+                    </Link>
+                  </Button>
+                </div>
+              </div>
             )}
             <FormMessage />
           </FormItem>

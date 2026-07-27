@@ -2,15 +2,21 @@ import { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { CapabilityMappingPanel } from "@/components/scheduling/capabilities/capability-mapping-panel";
-import { ResourceFormDialog } from "@/components/scheduling/resources/resource-form-dialog";
+import {
+  ResourceFormDialog,
+  type ResourceFormSubmitPayload,
+} from "@/components/scheduling/resources/resource-form-dialog";
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
+  invalidateCapabilityQueries,
+  syncResourceServicesFor,
   useResourceCapabilities,
   useSyncResourceServices,
 } from "@/hooks/scheduling/use-resource-capabilities";
@@ -21,11 +27,11 @@ import {
 } from "@/hooks/scheduling/use-scheduling-resources";
 import { useSchedulingServices } from "@/hooks/scheduling/use-scheduling-services";
 import { nestedSectionHref } from "@/lib/routing";
-import type { ResourceFormValues } from "@/lib/scheduling/validation/schemas";
 
 export function SchedulingResourceProfilePage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const canEdit = useSchedulingEditAccess();
@@ -71,22 +77,21 @@ export function SchedulingResourceProfilePage() {
     );
   }
 
-  const handleSaveDetails = (values: ResourceFormValues) => {
-    updateResource.mutate(
-      { id: resource.id, values },
-      {
-        onSuccess: () => {
-          setEditOpen(false);
-          toast({ title: t("scheduling.resources.updated") });
-        },
-        onError: (e) =>
-          toast({
-            variant: "destructive",
-            title: t("scheduling.errors.title"),
-            description: e.message,
-          }),
-      },
-    );
+  const handleSaveDetails = async ({ values, serviceIds }: ResourceFormSubmitPayload) => {
+    if (!companyId) return;
+    try {
+      await updateResource.mutateAsync({ id: resource.id, values });
+      await syncResourceServicesFor(companyId, resource.id, serviceIds);
+      invalidateCapabilityQueries(qc, companyId);
+      setEditOpen(false);
+      toast({ title: t("scheduling.resources.updated") });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: t("scheduling.errors.title"),
+        description: e instanceof Error ? e.message : t("scheduling.errors.title"),
+      });
+    }
   };
 
   const handleSaveServices = (serviceIds: string[]) => {
@@ -173,6 +178,7 @@ export function SchedulingResourceProfilePage() {
       <ResourceFormDialog
         open={editOpen}
         onClose={() => setEditOpen(false)}
+        companyId={companyId}
         resource={resource}
         branches={branches}
         defaultTimezone={resource.timezone}

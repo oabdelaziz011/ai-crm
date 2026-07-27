@@ -6,9 +6,9 @@ export type CalendarPermissions = {
   canCreate?: boolean;
 };
 
-const EDITABLE_STATUSES: SchedulingBookingStatus[] = ["pending", "confirmed"];
-const CANCELLABLE_STATUSES: SchedulingBookingStatus[] = ["pending", "confirmed"];
-const COMPLETABLE_STATUSES: SchedulingBookingStatus[] = ["confirmed"];
+const EDITABLE_STATUSES: SchedulingBookingStatus[] = ["pending", "confirmed", "checked_in"];
+const CANCELLABLE_STATUSES: SchedulingBookingStatus[] = ["pending", "confirmed", "checked_in"];
+const COMPLETABLE_STATUSES: SchedulingBookingStatus[] = ["confirmed", "checked_in"];
 
 export function canDragEvent(
   status: SchedulingBookingStatus,

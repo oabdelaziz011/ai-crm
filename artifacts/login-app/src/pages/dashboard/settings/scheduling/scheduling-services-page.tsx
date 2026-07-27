@@ -2,8 +2,12 @@ import { useState } from "react";
 import { Briefcase, Pencil, Plus, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { ServiceFormDialog } from "@/components/scheduling/services/service-form-dialog";
+import {
+  ServiceFormDialog,
+  type ServiceFormSubmitPayload,
+} from "@/components/scheduling/services/service-form-dialog";
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import {
@@ -14,6 +18,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
+  invalidateCapabilityQueries,
+  syncServiceResourcesFor,
+} from "@/hooks/scheduling/use-resource-capabilities";
+import { useServicesBranchMap } from "@/lib/company/branches/hooks";
+import {
   useCreateSchedulingService,
   useDeleteSchedulingService,
   useSchedulingServices,
@@ -22,16 +31,17 @@ import {
 import { schedulingServiceProfileHref } from "@/config/scheduling-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
 import type { SchedulingService } from "@/lib/scheduling/types";
-import type { ServiceFormValues } from "@/lib/scheduling/validation/service-schemas";
 
 export function SchedulingServicesPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const canEdit = useSchedulingEditAccess();
 
   const { data: services = [], isLoading, error } = useSchedulingServices(companyId);
+  const { data: serviceBranchMap = {} } = useServicesBranchMap(companyId);
   const createService = useCreateSchedulingService(companyId);
   const updateService = useUpdateSchedulingService(companyId);
   const deleteService = useDeleteSchedulingService(companyId);
@@ -39,32 +49,32 @@ export function SchedulingServicesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SchedulingService | null>(null);
   const [deleting, setDeleting] = useState<SchedulingService | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = (values: ServiceFormValues) => {
+  const handleSubmit = async ({ values, resourceIds }: ServiceFormSubmitPayload) => {
+    if (!companyId) return;
+
     const onError = (message: string) =>
       toast({ variant: "destructive", title: t("scheduling.errors.title"), description: message });
 
-    if (editing) {
-      updateService.mutate(
-        { id: editing.id, values },
-        {
-          onSuccess: () => {
-            setModalOpen(false);
-            toast({ title: t("scheduling.services.updated") });
-          },
-          onError: (e) => onError(e.message),
-        },
-      );
-      return;
-    }
+    setIsSaving(true);
+    try {
+      const serviceId = editing
+        ? (await updateService.mutateAsync({ id: editing.id, values })).id
+        : (await createService.mutateAsync(values)).id;
 
-    createService.mutate(values, {
-      onSuccess: () => {
-        setModalOpen(false);
-        toast({ title: t("scheduling.services.created") });
-      },
-      onError: (e) => onError(e.message),
-    });
+      await syncServiceResourcesFor(companyId, serviceId, resourceIds);
+      invalidateCapabilityQueries(qc, companyId);
+
+      setModalOpen(false);
+      toast({
+        title: editing ? t("scheduling.services.updated") : t("scheduling.services.created"),
+      });
+    } catch (error) {
+      onError(error instanceof Error ? error.message : t("scheduling.errors.title"));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -122,6 +132,16 @@ export function SchedulingServicesPage() {
                   {t("scheduling.services.durationLabel", { minutes: service.duration_minutes })}
                   {" · "}
                   {t(`scheduling.services.statuses.${service.status}`)}
+                  {(serviceBranchMap[service.id]?.length ?? 0) > 0 && (
+                    <>
+                      {" · "}
+                      {t("branches.services.availableAt", {
+                        branches: (serviceBranchMap[service.id] ?? [])
+                          .map((branch) => branch.name)
+                          .join(", "),
+                      })}
+                    </>
+                  )}
                 </p>
               </div>
               {canEdit && (
@@ -157,9 +177,10 @@ export function SchedulingServicesPage() {
       <ServiceFormDialog
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        companyId={companyId}
         service={editing}
         canEdit={canEdit}
-        isPending={createService.isPending || updateService.isPending}
+        isPending={isSaving || createService.isPending || updateService.isPending}
         onSubmit={handleSubmit}
       />
 

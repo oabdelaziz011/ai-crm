@@ -3,6 +3,8 @@ export type ExecutionGraphNode = {
   label: string;
   isTrigger: boolean;
   isTerminal: boolean;
+  /** Pause/resume nodes that may complete without an outgoing edge at runtime. */
+  isResumableCheckpoint?: boolean;
 };
 
 export type ExecutionGraphEdge = {
@@ -52,6 +54,14 @@ function formatBranchLabel(edge: ExecutionGraphEdge): string {
   if (edge.branchKey === "default") return "Default";
   if (edge.branchKey) return edge.branchKey;
   return "Next";
+}
+
+function branchIssueKey(edge: ExecutionGraphEdge): string {
+  return edge.branchKey?.trim() || edge.id;
+}
+
+function isEffectiveTerminal(node: ExecutionGraphNode, outgoingCount: number): boolean {
+  return node.isTerminal || (node.isResumableCheckpoint === true && outgoingCount === 0);
 }
 
 type ReverseEdge = { source: string; edge: ExecutionGraphEdge };
@@ -155,6 +165,7 @@ export function validateExecutionPaths(input: {
 }): ExecutionPathValidationIssue[] {
   const issues: ExecutionPathValidationIssue[] = [];
   const issueIds = new Set<string>();
+  const logicalIssueKeys = new Set<string>();
 
   const nodeById = new Map(input.nodes.map((node) => [node.id, node]));
   const adjacency = new Map<string, ExecutionGraphEdge[]>();
@@ -171,30 +182,14 @@ export function validateExecutionPaths(input: {
   }
 
   const pushIssue = (issue: ExecutionPathValidationIssue) => {
+    const focusNodeId = issue.focusNodeId ?? issue.nodeId;
+    const logicalKey = focusNodeId ? `${issue.kind}:${focusNodeId}` : issue.id;
+    if (logicalIssueKeys.has(logicalKey)) return;
     if (issueIds.has(issue.id)) return;
+    logicalIssueKeys.add(logicalKey);
     issueIds.add(issue.id);
     issues.push(issue);
   };
-
-  for (const node of input.nodes) {
-    if (node.isTerminal) continue;
-    const outgoing = adjacency.get(node.id) ?? [];
-    if (outgoing.length === 0) {
-      const traced = tracePathToTrigger(node.id, triggerIds, reverseAdjacency);
-      pushIssue(
-        createIssue({
-          id: `dead-end-${node.id}`,
-          nodeId: node.id,
-          message: `${node.label} is a dead end.`,
-          severity: "error",
-          kind: "dead-end",
-          pathNodeIds: traced.pathNodeIds,
-          pathEdgeIds: traced.pathEdgeIds,
-          focusNodeId: node.id,
-        }),
-      );
-    }
-  }
 
   const memo = new Map<string, PathStatus>();
   const cycleNodes = new Set<string>();
@@ -209,12 +204,12 @@ export function validateExecutionPaths(input: {
       return "bad";
     }
 
-    if (node.isTerminal) {
+    const outgoing = adjacency.get(nodeId) ?? [];
+    if (isEffectiveTerminal(node, outgoing.length)) {
       memo.set(nodeId, "ok");
       return "ok";
     }
 
-    const outgoing = adjacency.get(nodeId) ?? [];
     if (outgoing.length === 0) {
       memo.set(nodeId, "bad");
       return "bad";
@@ -243,12 +238,13 @@ export function validateExecutionPaths(input: {
         const branchLabel = formatBranchLabel(edge);
         const sourceNode = nodeById.get(edge.source);
         const targetNode = nodeById.get(edge.target);
+        const targetOutgoing = adjacency.get(edge.target) ?? [];
 
         if (outgoing.length > 1) {
           const traced = tracePathToTrigger(edge.target, triggerIds, reverseAdjacency, edge.id);
           pushIssue(
             createIssue({
-              id: `branch-dead-end-${edge.source}-${edge.id}`,
+              id: `branch-dead-end-${edge.source}-${branchIssueKey(edge)}`,
               nodeId: edge.source,
               branchLabel,
               message: `Branch '${branchLabel}' ends without a terminal step.`,
@@ -259,9 +255,31 @@ export function validateExecutionPaths(input: {
               focusNodeId: edge.source,
             }),
           );
-        } else if (targetNode && !targetNode.isTerminal && (adjacency.get(edge.target) ?? []).length === 0) {
-          // Dead-end issue already reported for the target node.
-        } else if (targetNode) {
+          continue;
+        }
+
+        if (
+          targetNode &&
+          !isEffectiveTerminal(targetNode, targetOutgoing.length) &&
+          targetOutgoing.length === 0
+        ) {
+          const traced = tracePathToTrigger(edge.target, triggerIds, reverseAdjacency, edge.id);
+          pushIssue(
+            createIssue({
+              id: `dead-end-${edge.target}`,
+              nodeId: edge.target,
+              message: `${targetNode.label} is a dead end.`,
+              severity: "error",
+              kind: "dead-end",
+              pathNodeIds: traced.pathNodeIds,
+              pathEdgeIds: traced.pathEdgeIds,
+              focusNodeId: edge.target,
+            }),
+          );
+          continue;
+        }
+
+        if (targetNode) {
           const traced = tracePathToTrigger(edge.target, triggerIds, reverseAdjacency, edge.id);
           pushIssue(
             createIssue({
@@ -275,7 +293,10 @@ export function validateExecutionPaths(input: {
               focusNodeId: edge.target,
             }),
           );
-        } else if (sourceNode) {
+          continue;
+        }
+
+        if (sourceNode) {
           const traced = tracePathToTrigger(edge.source, triggerIds, reverseAdjacency);
           pushIssue(
             createIssue({
@@ -334,7 +355,11 @@ export function validateExecutionPaths(input: {
 
   for (let index = 0; index < visitQueue.length; index += 1) {
     const nodeId = visitQueue[index]!;
-    for (const edge of adjacency.get(nodeId) ?? []) {
+    const node = nodeById.get(nodeId);
+    const outgoing = adjacency.get(nodeId) ?? [];
+    if (node && isEffectiveTerminal(node, outgoing.length)) continue;
+
+    for (const edge of outgoing) {
       if (reachable.has(edge.target)) continue;
       reachable.add(edge.target);
       visitQueue.push(edge.target);

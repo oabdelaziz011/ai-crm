@@ -171,6 +171,7 @@
     "profiles": "Profiles",
     "companies": "Companies",
     "platformAiAdmin": "Platform AI Providers",
+    "platformAiSettings": "Platform AI Settings",
     "platformAiOperations": "AI Operations Center",
     "subscriptions": "Subscriptions",
     "billing": "Billing & Subscriptions",
@@ -1990,6 +1991,10 @@
         "displayName": "Ask Question",
         "description": "Ask a question and wait for a reply."
       },
+      "date_picker": {
+        "displayName": "Date Picker",
+        "description": "Ask the customer to choose a date using your business calendar rules."
+      },
       "wait_for_reply": {
         "displayName": "Wait For Reply",
         "description": "Pause until the customer sends their next message."
@@ -2216,6 +2221,26 @@
       "and": "AND",
       "or": "OR",
       "listOptions": "List options",
+      "dataSource": "Data source",
+      "dataSourceManual": "Manual options",
+      "dataSourceLookup": "Lookup",
+      "lookupType": "Lookup type",
+      "displayField": "Display field",
+      "valueField": "Value field",
+      "lookupFilters": "Optional filters",
+      "lookupContext": "Lookup context",
+      "lookupContextHint": "Bind service, resource, and date from upstream workflow variables. Slots are generated using Scheduling Settings slot interval and availability rules.",
+      "allValues": "All values",
+      "lookupPreview": "Lookup preview",
+      "lookupLoading": "Loading lookup options…",
+      "lookupEmpty": "No lookup options matched the current filters.",
+      "lookupPreviewMore": "+{{count}} more options",
+      "lookupResolvedCount": "{{count}} options resolved from lookup",
+      "lookupPreviewDeferred": "Runtime variables will be resolved when the workflow executes.",
+      "lookupPreviewValues": "Preview values",
+      "lookupPreviewValuesHint": "Optional mock values to test this lookup in the builder without running the workflow.",
+      "lookupPreviewValueFor": "Preview {{field}}",
+      "lookupPreviewValuePlaceholder": "Enter a test value",
       "shortDescription": "Short description (optional)",
       "waitMinutes": "Wait time (minutes)",
       "nameField": "Name field",
@@ -2366,6 +2391,11 @@
       "saveAnswerAs": "Save answer as",
       "saveSelectedValueAs": "Save selected value to",
       "saveSelectedValueAsPlaceholder": "customer_gender",
+      "lookupOutputVariable": "Output variable",
+      "lookupOutputVariableHint": "Lookup lists store the full selected record under this variable. Bind fields such as {{selected_service.id}} in later steps.",
+      "lookupOutputFields": "Available fields",
+      "saveSelectedDateAs": "Save selected date as",
+      "prompt": "Prompt",
       "variableBindingSection": "Variable Binding",
       "variableBindingHint": "Optional. Stores the selected option value for later steps such as Create Customer.",
       "listDisplayLabel": "Display label",
@@ -2377,6 +2407,22 @@
       "required": "Required",
       "requiredHint": "Customer must answer before continuing.",
       "workflowName": "Workflow name"
+    },
+    "datePicker": {
+      "calendarConstraints": "Calendar constraints",
+      "disablePastDates": "Disable past dates",
+      "disablePastDatesHint": "Dates before today are not selectable.",
+      "disableCompanyHolidays": "Disable company holidays",
+      "disableCompanyHolidaysHint": "Reads holidays from Scheduling Settings automatically. No manual holiday list needed in the workflow.",
+      "holidayBehavior": "Holiday behavior",
+      "holidayBehaviorDisable": "Disable selection",
+      "holidayBehaviorWarning": "Warning only",
+      "disableClosedWeekdays": "Disable closed weekdays",
+      "disableClosedWeekdaysHint": "Weekdays when no active resource is open are not selectable.",
+      "preview": "Calendar preview",
+      "loading": "Loading business calendar…",
+      "previewUnavailable": "Save the workflow to preview calendar constraints.",
+      "warningSelectable": "Selectable with warning"
     },
     "search": {
       "placeholder": "Search steps…",
@@ -3074,6 +3120,16 @@
       "availability": "Availability",
       "bookingRules": "Booking Rules",
       "holidays": "Holidays"
+    },
+    "datePicker": {
+      "reasons": {
+        "pastDate": "Past dates cannot be selected.",
+        "holiday": "Company holiday: {{title}}",
+        "closedWeekday": "This weekday is closed for booking.",
+        "outsideBookingWindow": "Outside the allowed booking window.",
+        "minimumNotice": "Too soon to book for today.",
+        "fullyBooked": "Fully booked."
+      }
     },
     "dashboard": {
       "nav": {
@@ -5095,6 +5151,64 @@
     "audit": {
       "created": "Created AI Assistant settings",
       "updated": "Updated AI Assistant settings"
+    }
+  },
+  "lookups": {
+    "entities": {
+      "services": "Services",
+      "resources": "Resources",
+      "customers": "Customers",
+      "staff": "Staff",
+      "branches": "Branches",
+      "rooms": "Rooms",
+      "tags": "Tags",
+      "availableSlots": "Available Slots"
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "id": "ID",
+      "email": "Email",
+      "phone": "Phone",
+      "fullName": "Full name",
+      "resourceType": "Resource type",
+      "code": "Code",
+      "durationMinutes": "Duration",
+      "status": "Status",
+      "branchId": "Branch ID",
+      "displayTime": "Display time",
+      "startAt": "Start",
+      "endAt": "End",
+      "serviceId": "Service ID",
+      "resourceId": "Resource ID",
+      "timezone": "Timezone"
+    },
+    "outputVariables": {
+      "selectedService": "Selected Service",
+      "selectedResource": "Selected Resource",
+      "selectedCustomer": "Selected Customer",
+      "selectedStaff": "Selected Staff",
+      "selectedBranch": "Selected Branch",
+      "selectedRoom": "Selected Room",
+      "selectedTag": "Selected Tag",
+      "selectedSlot": "Selected Slot"
+    },
+    "filters": {
+      "status": "Status",
+      "branch": "Branch ID",
+      "resourceType": "Resource type",
+      "service": "Service ID",
+      "date": "Date",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "resourceTypes": {
+      "doctor": "Doctor",
+      "employee": "Employee",
+      "therapist": "Therapist",
+      "room": "Room",
+      "chair": "Chair",
+      "equipment": "Equipment"
     }
   }
 }

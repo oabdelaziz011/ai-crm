@@ -22,8 +22,20 @@ export function historyReducer(history: HistoryState, action: BuilderAction): Hi
   if (nextPresent === history.present) return history;
 
   const trackHistory =
-    !["SET_SAVE_STATUS", "SET_VALIDATION", "SET_ACTIVE_VALIDATION_ISSUE", "REQUEST_VALIDATION_PANEL_FOCUS", "SELECT_NODES", "SELECT_EDGES"].includes(action.type) &&
-    !(action.type === "UPDATE_NODE_POSITIONS" && action.transient);
+    ![
+      "SET_SAVE_STATUS",
+      "SET_VALIDATION",
+      "SET_ACTIVE_VALIDATION_ISSUE",
+      "REQUEST_VALIDATION_PANEL_FOCUS",
+      "SELECT_NODES",
+      "SELECT_EDGES",
+      "SET_LAYOUT_ANIMATION",
+      "FLUSH_HISTORY_BATCH",
+      "SET_VIEWPORT",
+    ].includes(action.type) &&
+    !(action.type === "UPDATE_NODE_POSITIONS" && action.transient) &&
+    !(action.type === "UPDATE_NODE_CONFIG" && action.batch) &&
+    !(action.type === "SET_METADATA" && action.batch);
   if (!trackHistory) {
     return { ...history, present: nextPresent };
   }

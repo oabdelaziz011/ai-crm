@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   readInteractiveListInputKey,
+  readInteractiveListOutputVariable,
+  resolveInteractiveListStoredRecord,
   resolveInteractiveListStoredValue,
 } from "./interactive-list-variable.js";
 
@@ -41,5 +43,42 @@ describe("interactive list variable binding", () => {
   it("returns null for empty reply id", () => {
     assert.equal(resolveInteractiveListStoredValue(config, ""), null);
     assert.equal(resolveInteractiveListStoredValue(config, "   "), null);
+  });
+
+  it("reads outputVariable with saveAs fallback", () => {
+    assert.equal(readInteractiveListOutputVariable({ outputVariable: "selected_service" }), "selected_service");
+    assert.equal(readInteractiveListOutputVariable({ saveAs: "selected_customer" }), "selected_customer");
+  });
+
+  it("resolves stored lookup record by reply id", () => {
+    const lookupConfig = {
+      outputVariable: "selected_service",
+      sections: [
+        {
+          title: "Options",
+          rows: [
+            {
+              id: "svc_1",
+              title: "Consultation",
+              value: "svc_1",
+              record: {
+                id: "svc_1",
+                name: "Consultation",
+                duration_minutes: 30,
+                status: "active",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    assert.deepEqual(resolveInteractiveListStoredRecord(lookupConfig, "svc_1"), {
+      id: "svc_1",
+      name: "Consultation",
+      duration_minutes: 30,
+      status: "active",
+    });
+    assert.equal(resolveInteractiveListStoredRecord(lookupConfig, "missing"), null);
   });
 });

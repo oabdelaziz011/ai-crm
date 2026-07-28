@@ -9,10 +9,9 @@ import {
   resolveAlignmentSelection,
   selectionKey,
 } from "../core/canvas/canvas-selection-guard";
-import { createInitialBuilderState } from "../core/state/builder-reducer";
-import {
-  applyPersistedSaveResult,
-} from "../core/state/persist-merge";
+import { documentTopologySignature } from "../core/canvas/document-signatures";
+import { builderReducer, createInitialBuilderState } from "../core/state/builder-reducer";
+import { applyPersistedSaveResult } from "../core/state/persist-merge";
 import {
   canRedo,
   canUndo,
@@ -24,12 +23,23 @@ import {
 } from "../core/state/history";
 import type { BuilderAction, BuilderNodeType, BuilderState, ValidationIssue, WorkflowDocument } from "../core/types";
 import { createBuilderNode } from "../core/persistence/workflow-mapper";
-import { validateWorkflow } from "../core/validation/workflow-validator";
+import {
+  mergeValidationIssues,
+  validateWorkflow,
+  validateWorkflowNodeConfigs,
+  validateWorkflowStructure,
+} from "../core/validation/workflow-validator";
 import i18n from "i18next";
 import { useWorkflowBuilderServices } from "../context/workflow-builder-services";
+import { builderRenderPerf } from "../debug/builder-render-perf";
+
+export { builderRenderPerf, type BuilderRenderPerfCounters } from "../debug/builder-render-perf";
 
 const AUTOSAVE_MS = 1500;
+const VALIDATION_DEBOUNCE_MS = 250;
+const HISTORY_BATCH_MS = 400;
 const UI_STATE_STORAGE_PREFIX = "workflow-builder-ui:";
+const HISTORY_LIMIT = 50;
 
 /** Survives builder remounts within the same browser tab session. */
 const builderSessionCache = new Map<string, HistoryState>();
@@ -78,6 +88,13 @@ function hydrateInitialState(document: WorkflowDocument): BuilderState {
   };
 }
 
+function configValidationSignature(document: WorkflowDocument): string {
+  return JSON.stringify({
+    name: document.name,
+    nodes: document.nodes.map((node) => ({ id: node.id, type: node.type, config: node.config })),
+  });
+}
+
 export function useWorkflowBuilder(document: WorkflowDocument | null) {
   const { repository, context } = useWorkflowBuilderServices();
   const flowId = document?.flowId ?? "";
@@ -88,7 +105,10 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     if (cached) return cached;
     return createHistoryState(hydrateInitialState(document));
   });
+
   const autosaveTimer = useRef<number | null>(null);
+  const validationTimer = useRef<number | null>(null);
+  const historyBatchTimer = useRef<number | null>(null);
   const savingRef = useRef(false);
   const focusValidationIssueRef = useRef<(issue: ValidationIssue) => void>(() => {});
   const loadedFlowIdRef = useRef<string | null>(flowId || null);
@@ -96,6 +116,11 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   documentRef.current = history.present.document;
   const selectedNodeIdsRef = useRef(history.present.selectedNodeIds);
   selectedNodeIdsRef.current = history.present.selectedNodeIds;
+
+  const batchBaseRef = useRef<BuilderState | null>(null);
+  const topologySigRef = useRef("");
+  const structuralIssuesRef = useRef<ValidationIssue[]>([]);
+  const configSigRef = useRef("");
 
   useEffect(() => {
     if (!document?.flowId) return;
@@ -125,38 +150,158 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   }, [document?.flowId, history]);
 
   const state = history.present;
-  const dispatch = useCallback((action: BuilderAction) => {
+
+  const flushHistoryBatch = useCallback(() => {
+    if (!batchBaseRef.current) return;
+    const base = batchBaseRef.current;
+    batchBaseRef.current = null;
+    setHistory((current) => {
+      if (current.present === base) return current;
+      const past = [...current.past, base].slice(-HISTORY_LIMIT);
+      return { ...current, past, future: [] };
+    });
+    setHistory((current) => historyReducer(current, { type: "SET_LAYOUT_ANIMATION", enabled: true }));
+  }, []);
+
+  const scheduleHistoryBatchFlush = useCallback(() => {
+    if (historyBatchTimer.current) window.clearTimeout(historyBatchTimer.current);
+    historyBatchTimer.current = window.setTimeout(() => {
+      flushHistoryBatch();
+    }, HISTORY_BATCH_MS);
+  }, [flushHistoryBatch]);
+
+  const dispatchRaw = useCallback((action: BuilderAction) => {
     setHistory((current) => historyReducer(current, action));
   }, []);
 
+  const dispatch = useCallback(
+    (action: BuilderAction) => {
+      const isBatchedEdit =
+        (action.type === "UPDATE_NODE_CONFIG" && action.batch !== false) ||
+        (action.type === "SET_METADATA" && action.batch !== false);
+
+      if (isBatchedEdit) {
+        setHistory((current) => {
+          if (!batchBaseRef.current) {
+            batchBaseRef.current = current.present;
+          }
+          const nextPresent = builderReducer(current.present, action);
+          if (nextPresent === current.present) return current;
+          const withLayoutOff =
+            nextPresent.layoutAnimationEnabled === false
+              ? nextPresent
+              : { ...nextPresent, layoutAnimationEnabled: false };
+          return { ...current, present: withLayoutOff };
+        });
+        scheduleHistoryBatchFlush();
+        return;
+      }
+
+      if (batchBaseRef.current) {
+        flushHistoryBatch();
+      }
+      dispatchRaw(action);
+    },
+    [dispatchRaw, flushHistoryBatch, scheduleHistoryBatchFlush],
+  );
+
+  const updateNodeConfig = useCallback(
+    (nodeId: string, patch: Record<string, unknown>) => {
+      dispatch({ type: "UPDATE_NODE_CONFIG", nodeId, patch, batch: true });
+    },
+    [dispatch],
+  );
+
+  const setMetadata = useCallback(
+    (patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType">>) => {
+      dispatch({ type: "SET_METADATA", patch, batch: true });
+    },
+    [dispatch],
+  );
+
   const runValidation = useCallback(() => {
-    const issues = validateWorkflow(documentRef.current);
-    dispatch({ type: "SET_VALIDATION", issues });
+    const doc = documentRef.current;
+    const topologySig = documentTopologySignature(doc);
+    const configSig = configValidationSignature(doc);
+    const topologyChanged = topologySig !== topologySigRef.current;
+    const configChanged = configSig !== configSigRef.current;
+
+    if (!topologyChanged && !configChanged) {
+      return state.validationIssues;
+    }
+
+    builderRenderPerf.validationRuns += 1;
+
+    if (topologyChanged) {
+      structuralIssuesRef.current = validateWorkflowStructure(doc);
+      topologySigRef.current = topologySig;
+      builderRenderPerf.structuralValidationRuns += 1;
+    }
+
+    let configIssues: ValidationIssue[] = [];
+    if (configChanged) {
+      configIssues = validateWorkflowNodeConfigs(doc);
+      configSigRef.current = configSig;
+      builderRenderPerf.configValidationRuns += 1;
+    } else if (topologyChanged) {
+      configIssues = validateWorkflowNodeConfigs(doc);
+      configSigRef.current = configSig;
+    }
+
+    const issues = mergeValidationIssues(doc, structuralIssuesRef.current, configIssues);
+    dispatchRaw({ type: "SET_VALIDATION", issues });
     return issues;
-  }, [dispatch]);
+  }, [dispatchRaw, state.validationIssues]);
+
+  const runFullValidation = useCallback(() => {
+    const doc = documentRef.current;
+    const issues = validateWorkflow(doc);
+    topologySigRef.current = documentTopologySignature(doc);
+    configSigRef.current = configValidationSignature(doc);
+    structuralIssuesRef.current = validateWorkflowStructure(doc);
+    builderRenderPerf.validationRuns += 1;
+    builderRenderPerf.structuralValidationRuns += 1;
+    builderRenderPerf.configValidationRuns += 1;
+    dispatchRaw({ type: "SET_VALIDATION", issues });
+    return issues;
+  }, [dispatchRaw]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const topologySig = documentTopologySignature(history.present.document);
+    const configSig = configValidationSignature(history.present.document);
+    if (topologySigRef.current === "" && configSigRef.current === "") {
+      topologySigRef.current = topologySig;
+      configSigRef.current = configSig;
+      structuralIssuesRef.current = validateWorkflowStructure(history.present.document);
+    }
+  }, [history.present.document]);
+
+  useEffect(() => {
+    if (validationTimer.current) window.clearTimeout(validationTimer.current);
+    validationTimer.current = window.setTimeout(() => {
       runValidation();
-    }, 250);
-    return () => window.clearTimeout(timer);
+    }, VALIDATION_DEBOUNCE_MS);
+    return () => {
+      if (validationTimer.current) window.clearTimeout(validationTimer.current);
+    };
   }, [history.present.document, runValidation]);
 
   const persist = useCallback(async () => {
+    if (batchBaseRef.current) flushHistoryBatch();
     if (savingRef.current) return documentRef.current;
     savingRef.current = true;
-    dispatch({ type: "SET_SAVE_STATUS", status: "saving" });
+    dispatchRaw({ type: "SET_SAVE_STATUS", status: "saving" });
     try {
       const saved = await repository.save(context, documentRef.current);
       setHistory((current) => applyPersistedSaveResult(current, saved));
       return saved;
     } catch {
-      dispatch({ type: "SET_SAVE_STATUS", status: "error" });
+      dispatchRaw({ type: "SET_SAVE_STATUS", status: "error" });
       throw new Error(i18n.t("workflowBuilder.errors.saveFailed", { ns: "common" }));
     } finally {
       savingRef.current = false;
     }
-  }, [context, repository, dispatch]);
+  }, [context, repository, dispatchRaw, flushHistoryBatch]);
 
   useEffect(() => {
     if (state.saveStatus !== "dirty") return;
@@ -170,11 +315,12 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   }, [state.saveStatus, persist]);
 
   const publish = useCallback(async (releaseNotes?: string) => {
-    const issues = runValidation();
+    if (batchBaseRef.current) flushHistoryBatch();
+    const issues = runFullValidation();
     if (issues.some((issue) => issue.severity === "error")) {
       throw new Error(i18n.t("workflowBuilder.publish.error", { ns: "common" }));
     }
-    dispatch({ type: "SET_SAVE_STATUS", status: "publishing" });
+    dispatchRaw({ type: "SET_SAVE_STATUS", status: "publishing" });
     try {
       const saved = await repository.publish(context, documentRef.current, releaseNotes);
       setHistory((current) => {
@@ -189,10 +335,10 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
       });
       return saved;
     } catch (error) {
-      dispatch({ type: "SET_SAVE_STATUS", status: "error" });
+      dispatchRaw({ type: "SET_SAVE_STATUS", status: "error" });
       throw error;
     }
-  }, [context, repository, runValidation, dispatch]);
+  }, [context, repository, runFullValidation, dispatchRaw, flushHistoryBatch]);
 
   const rollback = useCallback(
     async (targetVersionNumber: number) => {
@@ -200,6 +346,8 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
       const next = createHistoryState(createInitialBuilderState(saved));
       setHistory(next);
       builderSessionCache.set(saved.flowId, next);
+      topologySigRef.current = "";
+      configSigRef.current = "";
       return saved;
     },
     [context, repository, state.document.flowId],
@@ -276,13 +424,22 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
     }
   }, [dispatch, state.validationIssues]);
 
-  const undo = useCallback(() => setHistory((current) => undoHistory(current)), []);
-  const redo = useCallback(() => setHistory((current) => redoHistory(current)), []);
+  const undo = useCallback(() => {
+    if (batchBaseRef.current) flushHistoryBatch();
+    setHistory((current) => undoHistory(current));
+  }, [flushHistoryBatch]);
+
+  const redo = useCallback(() => {
+    if (batchBaseRef.current) flushHistoryBatch();
+    setHistory((current) => redoHistory(current));
+  }, [flushHistoryBatch]);
 
   return useMemo(
     () => ({
       state,
       dispatch,
+      updateNodeConfig,
+      setMetadata,
       addNode,
       insertNodeAfter,
       duplicateSelected,
@@ -292,7 +449,7 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
       publish,
       rollback,
       hasUnsavedChanges,
-      runValidation,
+      runValidation: runFullValidation,
       registerCanvasFocusHandler,
       focusValidationIssue,
       openValidationPanel,
@@ -301,7 +458,28 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
       canUndo: canUndo(history),
       canRedo: canRedo(history),
     }),
-    [state, dispatch, addNode, insertNodeAfter, duplicateSelected, alignSelected, applyAutoLayout, persist, publish, rollback, hasUnsavedChanges, runValidation, registerCanvasFocusHandler, focusValidationIssue, openValidationPanel, undo, redo, history],
+    [
+      state,
+      dispatch,
+      updateNodeConfig,
+      setMetadata,
+      addNode,
+      insertNodeAfter,
+      duplicateSelected,
+      alignSelected,
+      applyAutoLayout,
+      persist,
+      publish,
+      rollback,
+      hasUnsavedChanges,
+      runFullValidation,
+      registerCanvasFocusHandler,
+      focusValidationIssue,
+      openValidationPanel,
+      undo,
+      redo,
+      history,
+    ],
   );
 }
 

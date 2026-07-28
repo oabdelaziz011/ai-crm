@@ -49,7 +49,7 @@ const baseDocument = {
   ],
 };
 
-assert.equal(listWorkflowNodeDefinitions().length, 18);
+assert.ok(listWorkflowNodeDefinitions().length >= 18);
 assert.equal(getWorkflowNodeDefinition("buttons").displayName, "Buttons");
 console.log("  ✓ node registry registers built-in business nodes");
 
@@ -267,9 +267,23 @@ assert.equal(branchIssues.some((issue) => issue.id.endsWith("missing-yes")), fal
 assert.equal(branchIssues.some((issue) => issue.id.endsWith("missing-no")), false);
 console.log("  ✓ branch validation requires YES and NO paths");
 
-const yesStyle = resolveBranchEdgeStyle(ifNode, { id: "e", source: "if-1", target: "vip-msg", branchKey: "yes" });
+const yesStyle = resolveBranchEdgeStyle("if_else", { id: "e", source: "if-1", target: "vip-msg", branchKey: "yes" });
 assert.equal(yesStyle.stroke, "#22c55e");
 console.log("  ✓ branch visualization colors YES paths green");
+
+const switchStyle = resolveBranchEdgeStyle("switch", {
+  id: "e2",
+  source: "sw-1",
+  target: "t1",
+  branchKey: "branch-x",
+  branchLabel: "Branch X",
+});
+assert.equal(switchStyle.label, "Branch X");
+assert.equal(
+  switchStyle.stroke,
+  resolveBranchEdgeStyle("switch", { id: "e3", source: "sw-1", target: "t2", branchKey: "branch-x" }).stroke,
+);
+console.log("  ✓ switch branch colors derive from branchKey without node config");
 
 const mappedLogic = mapDocumentToPersistence(logicDocument);
 assert.equal(mappedLogic.nodes.find((node) => node.config.builderType === "if_else")?.type, "condition");

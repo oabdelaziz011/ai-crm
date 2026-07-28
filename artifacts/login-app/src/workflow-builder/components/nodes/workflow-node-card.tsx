@@ -18,6 +18,7 @@ import { getWorkflowNodeDefinition } from "../../core/node-registry";
 import { getCategoryTokens, resolveVisualCategory } from "../../core/visual/category-tokens";
 import { createBuilderNode } from "../../core/persistence/workflow-mapper";
 import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
+import { useLayoutAnimationEnabled } from "../../context/workflow-builder-context";
 import type { BuilderNodeType } from "../../core/types";
 import { QuickAddButton } from "../canvas/quick-add-button";
 
@@ -47,6 +48,7 @@ export type WorkflowNodeData = {
 
 function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
+  const layoutAnimationEnabled = useLayoutAnimationEnabled();
   const { wb, categoryLabel, executionStatusLabel } = useWorkflowBuilderI18n();
   const definition = getWorkflowNodeDefinition(nodeData.nodeType);
   const tokens = getCategoryTokens(nodeData.nodeType);
@@ -58,7 +60,7 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
       if (!nodeData.onQuickAdd) return;
       nodeData.onQuickAdd(id, nodeType);
     },
-    [id, nodeData],
+    [id, nodeData.onQuickAdd],
   );
 
   const statusLabel = executionStatusLabel(nodeData.executionStatus ?? "ready");
@@ -78,11 +80,11 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.96 }}
+      layout={layoutAnimationEnabled}
+      initial={layoutAnimationEnabled ? { opacity: 0, scale: 0.96 } : false}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -2 }}
-      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      whileHover={layoutAnimationEnabled ? { y: -2 } : undefined}
+      transition={layoutAnimationEnabled ? { type: "spring", stiffness: 420, damping: 28 } : { duration: 0 }}
       className={`group relative min-w-[248px] rounded-3xl border bg-card/95 p-4 shadow-lg backdrop-blur transition-shadow ${
         validationRing || (selected ? `ring-2 ${tokens.ring} shadow-xl` : "shadow-black/10 hover:shadow-xl")
       } ${tokens.border} bg-gradient-to-br ${tokens.accent}`}
@@ -138,7 +140,21 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
   );
 }
 
-export const WorkflowNodeCard = memo(WorkflowNodeCardComponent);
+export const WorkflowNodeCard = memo(WorkflowNodeCardComponent, (prev, next) => {
+  const prevData = prev.data as WorkflowNodeData;
+  const nextData = next.data as WorkflowNodeData;
+  return (
+    prev.id === next.id &&
+    prev.selected === next.selected &&
+    prevData.label === nextData.label &&
+    prevData.nodeType === nextData.nodeType &&
+    prevData.subtitle === nextData.subtitle &&
+    prevData.executionStatus === nextData.executionStatus &&
+    prevData.validationSeverity === nextData.validationSeverity &&
+    prevData.validationActive === nextData.validationActive &&
+    prevData.onQuickAdd === nextData.onQuickAdd
+  );
+});
 
 export const workflowNodeTypes = {
   workflowNode: WorkflowNodeCard,

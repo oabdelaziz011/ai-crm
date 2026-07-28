@@ -7,6 +7,7 @@ import {
   type InteractiveOption,
 } from "../validation/interactive-routing-validation";
 import type { BuilderEdge, BuilderNode, WorkflowDocument } from "../types";
+import { readListDataSourceMode } from "../conversation/list-node-config";
 
 export type { InteractiveOption };
 
@@ -27,8 +28,13 @@ function readButtonOptions(config: Record<string, unknown>): InteractiveOption[]
 }
 
 function readListOptions(config: Record<string, unknown>): InteractiveOption[] {
-  if (!Array.isArray(config.rows)) return [];
-  return (config.rows as Array<{ id?: string; title?: string }>).flatMap((entry) => {
+  const rows =
+    readListDataSourceMode(config) === "lookup" && Array.isArray(config._lookupPreviewRows)
+      ? config._lookupPreviewRows
+      : Array.isArray(config.rows)
+        ? config.rows
+        : [];
+  return rows.flatMap((entry) => {
     const id = typeof entry.id === "string" ? entry.id.trim() : "";
     const label = typeof entry.title === "string" ? entry.title.trim() : "";
     if (!id) return [];

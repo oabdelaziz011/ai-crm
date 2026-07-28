@@ -20,13 +20,14 @@ function edge(
 function node(
   id: string,
   label: string,
-  options?: { isTrigger?: boolean; isTerminal?: boolean },
+  options?: { isTrigger?: boolean; isTerminal?: boolean; isResumableCheckpoint?: boolean },
 ): ExecutionGraphNode {
   return {
     id,
     label,
     isTrigger: options?.isTrigger ?? false,
     isTerminal: options?.isTerminal ?? false,
+    isResumableCheckpoint: options?.isResumableCheckpoint ?? false,
   };
 }
 
@@ -84,7 +85,7 @@ describe("validateExecutionPaths", () => {
     });
 
     assert.ok(issues.some((issue) => issue.message.includes("Branch 'NO' ends without a terminal step.")));
-    assert.ok(issues.some((issue) => issue.id === "dead-end-message"));
+    assert.equal(issues.some((issue) => issue.id === "dead-end-message"), false);
   });
 
   it("reports non-terminating execution cycles", () => {
@@ -149,5 +150,97 @@ describe("validateExecutionPaths", () => {
 
     assert.equal(issues.some((issue) => issue.nodeId === "start-a" && issue.severity === "error"), false);
     assert.ok(issues.some((issue) => issue.id === "dead-end-message-b"));
+  });
+
+  it("treats resumable checkpoints without outgoing edges as valid pause points", () => {
+    const issues = validateExecutionPaths({
+      nodes: [
+        node("start", "Start", { isTrigger: true }),
+        node("list", "List", { isResumableCheckpoint: true }),
+        node("end", "End", { isTerminal: true }),
+      ],
+      edges: [edge("start", "list")],
+    });
+
+    assert.equal(issues.some((issue) => issue.severity === "error"), false);
+  });
+
+  it("accepts interactive routing through switch to terminal steps", () => {
+    const issues = validateExecutionPaths({
+      nodes: [
+        node("start", "Start", { isTrigger: true }),
+        node("list", "List", { isResumableCheckpoint: true }),
+        node("switch", "Switch"),
+        node("book-end", "End", { isTerminal: true }),
+        node("pricing-end", "End", { isTerminal: true }),
+      ],
+      edges: [
+        edge("start", "list"),
+        edge("list", "switch"),
+        edge("switch", "book-end", "book", "Book"),
+        edge("switch", "pricing-end", "pricing", "Pricing"),
+      ],
+    });
+
+    assert.equal(issues.some((issue) => issue.severity === "error"), false);
+  });
+
+  it("accepts branches ending in resumable checkpoints", () => {
+    const issues = validateExecutionPaths({
+      nodes: [
+        node("start", "Start", { isTrigger: true }),
+        node("if", "If / Else"),
+        node("end", "End", { isTerminal: true }),
+        node("ask", "Ask Question", { isResumableCheckpoint: true }),
+      ],
+      edges: [
+        edge("start", "if"),
+        edge("if", "end", "yes", "YES"),
+        edge("if", "ask", "no", "NO"),
+      ],
+    });
+
+    assert.equal(issues.some((issue) => issue.severity === "error"), false);
+  });
+
+  it("accepts converging branches through merge nodes", () => {
+    const issues = validateExecutionPaths({
+      nodes: [
+        node("start", "Start", { isTrigger: true }),
+        node("if", "If / Else"),
+        node("merge", "Merge"),
+        node("end", "End", { isTerminal: true }),
+        node("ask", "Ask Question", { isResumableCheckpoint: true }),
+      ],
+      edges: [
+        edge("start", "if"),
+        edge("if", "end", "yes", "YES"),
+        edge("if", "ask", "no", "NO"),
+        edge("ask", "merge"),
+        edge("merge", "end"),
+      ],
+    });
+
+    assert.equal(issues.some((issue) => issue.severity === "error"), false);
+  });
+
+  it("reports branch issues once without duplicating dead-end on the same branch", () => {
+    const issues = validateExecutionPaths({
+      nodes: [
+        node("start", "Start", { isTrigger: true }),
+        node("if", "If / Else"),
+        node("end", "End", { isTerminal: true }),
+        node("message", "Send Message"),
+      ],
+      edges: [
+        edge("start", "if"),
+        edge("if", "end", "yes", "YES"),
+        edge("if", "message", "no", "NO"),
+      ],
+    });
+
+    assert.ok(issues.some((issue) => issue.kind === "branch-dead-end" && issue.nodeId === "if"));
+    assert.equal(issues.some((issue) => issue.kind === "dead-end" && issue.nodeId === "message"), false);
+    assert.equal(issues.filter((issue) => issue.kind === "branch-dead-end" && issue.nodeId === "if").length, 1);
   });
 });

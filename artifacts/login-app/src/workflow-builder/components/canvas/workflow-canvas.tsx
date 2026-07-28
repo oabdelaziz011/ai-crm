@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type SetStateAction } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type SetStateAction } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -8,6 +8,7 @@ import {
   SelectionMode,
   applyEdgeChanges,
   applyNodeChanges,
+  useEdgesState,
   useNodesState,
   useReactFlow,
   type Connection,
@@ -24,16 +25,32 @@ import {
   rememberCanvasSelection,
   selectionKey,
 } from "../../core/canvas/canvas-selection-guard";
+import { canvasStructuralEdgeSignature, canvasStructuralNodeSignature } from "../../core/canvas/document-signatures";
 import { documentToFlowEdges, documentToFlowNodes } from "../../core/canvas/flow-document-bridge";
-import { buildValidationHighlightIndex } from "../../core/validation/path-validation";
-import type { ValidationIssue } from "../../core/types";
+import type { BuilderNode, ValidationIssue } from "../../core/types";
 import { listNodeRenderers, registerDefaultNodeRenderers } from "../../core/registry/node-renderer-registry";
 import { createEdgeFromNodes } from "../../core/state/builder-reducer";
-import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import type { BuilderNodeType } from "../../core/types";
 import { CanvasEmptyState } from "./canvas-empty-state";
 import {
-  documentProjectionSignature,
+  applyEdgeValidationPatch,
+  seedControlledEdgesFromDocument,
+  type WorkflowFlowEdge,
+} from "./canvas-edge-sync";
+import {
+  CanvasEdgePresentationSync,
+  CanvasEdgeValidationSync,
+  CanvasPresentationSync,
+  CanvasValidationSync,
+  patchNodePresentationData,
+  patchNodeValidationData,
+  patchEdgePresentationData,
+  type CanvasEdgePresentationPatcher,
+  type CanvasEdgeValidationPatcher,
+  type CanvasNodePresentationPatcher,
+  type CanvasNodeValidationPatcher,
+} from "./canvas-sync-layers";
+import {
   extractDragCommitPositions,
   filterControlledMirrorNodeChanges,
   filterRuntimeApplyNodeChanges,
@@ -43,37 +60,26 @@ import {
 } from "./canvas-node-sync";
 import { useCanvasSyncTrace } from "../../debug/canvas-sync-trace-context";
 import { quickAddPosition, type WorkflowNodeData } from "../nodes/workflow-node-card";
-import { useWorkflowBuilderI18n } from "@/workflow-builder/hooks/use-workflow-builder-i18n";
 import { useCanvasContainerSize } from "../../hooks/use-canvas-container-size";
+import { useBuilderActions, useCanvasBuilderSlice } from "../../context/workflow-builder-context";
+import { builderRenderPerf } from "../../debug/builder-render-perf";
 
 registerDefaultNodeRenderers();
 
-/** Tracks which flows already received the one-time fitView for empty viewport. */
 const fitViewAppliedFlowIds = new Set<string>();
 
-type WorkflowCanvasProps = {
-  controller: WorkflowBuilderController;
-};
-
-function localizeDefaultBranchLabel(label: string, branchLabel: (key: string, fallback?: string) => string): string {
-  if (label === "Default") return branchLabel("default", label);
-  if (label === "Case") return branchLabel("case", label);
-  if (label === "No") return branchLabel("no", label);
-  if (label === "Yes") return branchLabel("yes", label);
-  return label;
-}
-
-type WorkflowCanvasInnerProps = WorkflowCanvasProps & {
+type WorkflowCanvasInnerProps = {
   width: number;
   height: number;
 };
 
-export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanvasInnerProps) {
+export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, height }: WorkflowCanvasInnerProps) {
+  const canvasSlice = useCanvasBuilderSlice();
+  const { dispatch, addNode, insertNodeAfter, registerCanvasFocusHandler } = useBuilderActions();
   const { fitView, getNodes, getViewport, screenToFlowPosition, setCenter } = useReactFlow();
   const syncTrace = useCanvasSyncTrace();
-  const { nodeText, branchLabel } = useWorkflowBuilderI18n();
-  const dispatchRef = useRef(controller.dispatch);
-  dispatchRef.current = controller.dispatch;
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
 
   useEffect(() => {
     getLiveSelectedNodeIdsRef.current = () =>
@@ -82,19 +88,14 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
         .map((node) => node.id);
   }, [getNodes]);
 
-  const handleQuickAdd = useCallback(
-    (sourceNodeId: string, nodeType: BuilderNodeType) => {
-      const position = quickAddPosition(sourceNodeId, (id) => {
-        const node = controller.state.document.nodes.find((entry) => entry.id === id);
-        return node ? node.position : undefined;
-      });
-      controller.insertNodeAfter(sourceNodeId, nodeType, position);
-    },
-    [controller],
-  );
-
-  const handleQuickAddRef = useRef(handleQuickAdd);
-  handleQuickAddRef.current = handleQuickAdd;
+  const handleQuickAddRef = useRef<(sourceNodeId: string, nodeType: BuilderNodeType) => void>(() => {});
+  handleQuickAddRef.current = (sourceNodeId, nodeType) => {
+    const position = quickAddPosition(sourceNodeId, (id) => {
+      const node = canvasSlice.nodes.find((entry) => entry.id === id);
+      return node ? node.position : undefined;
+    });
+    insertNodeAfter(sourceNodeId, nodeType, position);
+  };
 
   const onQuickAddStable = useCallback<NonNullable<WorkflowNodeData["onQuickAdd"]>>(
     (sourceNodeId, nodeType) => {
@@ -103,18 +104,13 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
     [],
   );
 
-  const { document, selectedNodeIds, validationIssues, activeValidationIssueId } = controller.state;
-  const builderSelectedRef = useRef(selectedNodeIds);
-  builderSelectedRef.current = selectedNodeIds;
-
-  const validationHighlight = useMemo(
-    () => buildValidationHighlightIndex(validationIssues, activeValidationIssueId),
-    [validationIssues, activeValidationIssueId],
-  );
+  const builderSelectedRef = useRef(canvasSlice.selectedNodeIds);
+  builderSelectedRef.current = canvasSlice.selectedNodeIds;
 
   const focusValidationIssue = useCallback(
     (issue: ValidationIssue) => {
-      const nodeIds = issue.affectedNodeIds ?? (issue.focusNodeId ? [issue.focusNodeId] : issue.nodeId ? [issue.nodeId] : []);
+      const nodeIds =
+        issue.affectedNodeIds ?? (issue.focusNodeId ? [issue.focusNodeId] : issue.nodeId ? [issue.nodeId] : []);
       if (nodeIds.length === 0) return;
 
       dispatchRef.current({ type: "SELECT_NODES", nodeIds });
@@ -130,41 +126,53 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
       }
 
       const focusNodeId = issue.focusNodeId ?? nodeIds[0];
-      const documentNode = document.nodes.find((node) => node.id === focusNodeId);
+      const documentNode = canvasSlice.nodes.find((node) => node.id === focusNodeId);
       if (documentNode) {
         setCenter(documentNode.position.x + 124, documentNode.position.y + 56, { zoom: 1.05, duration: 280 });
       }
     },
-    [document.nodes, fitView, getNodes, setCenter],
+    [canvasSlice.nodes, fitView, getNodes, setCenter],
   );
 
   useEffect(() => {
-    controller.registerCanvasFocusHandler(focusValidationIssue);
-  }, [controller, focusValidationIssue]);
+    registerCanvasFocusHandler(focusValidationIssue);
+  }, [registerCanvasFocusHandler, focusValidationIssue]);
 
-  const documentNodesRef = useRef(document.nodes);
-  documentNodesRef.current = document.nodes;
-  const documentEdgesRef = useRef(document.edges);
-  documentEdgesRef.current = document.edges;
+  const structuralNodes = canvasSlice.nodes;
 
-  const viewportReadyRef = useRef(false);
-
-  const flowNodes = useMemo(
-    () => documentToFlowNodes(document.nodes, selectedNodeIds, nodeText, onQuickAddStable, validationHighlight),
-    [document.nodes, selectedNodeIds, nodeText, onQuickAddStable, validationHighlight],
+  const structuralNodeSignature = useMemo(
+    () => canvasStructuralNodeSignature(structuralNodes, canvasSlice.selectedNodeIds),
+    [structuralNodes, canvasSlice.selectedNodeIds],
   );
 
-  const projectionSignature = useMemo(() => documentProjectionSignature(flowNodes), [flowNodes]);
+  const flowNodes = useMemo(() => {
+    builderRenderPerf.structuralProjectionRuns += 1;
+    builderRenderPerf.projectionRuns += 1;
+    return documentToFlowNodes(structuralNodes, canvasSlice.selectedNodeIds, onQuickAddStable);
+  }, [structuralNodes, canvasSlice.selectedNodeIds, onQuickAddStable]);
 
-  // Mount bootstrap uses seed — not a direct documentToFlowNodes → setNodes bypass.
+  const structuralEdgeSignature = useMemo(
+    () => canvasStructuralEdgeSignature(structuralNodes, canvasSlice.edges),
+    [structuralNodes, canvasSlice.edges],
+  );
+
+  const structuralFlowEdges = useMemo(() => {
+    builderRenderPerf.structuralProjectionRuns += 1;
+    builderRenderPerf.projectionRuns += 1;
+    return documentToFlowEdges(structuralNodes, canvasSlice.edges);
+  }, [structuralNodes, canvasSlice.edges]);
+
   const [nodes, setNodesInternal] = useNodesState<Node<WorkflowNodeData>>(
     seedControlledNodesFromDocument([], flowNodes),
   );
+  const [edges, setEdgesInternal] = useEdgesState<WorkflowFlowEdge>(structuralFlowEdges);
   const nodeTypes = useMemo(() => listNodeRenderers(), []);
 
   const setNodesMetaRef = useRef<{ caller: string; reason: string } | null>(null);
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+  const edgesRef = useRef(edges);
+  edgesRef.current = edges;
   const prevNodesPropRef = useRef(nodes);
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
@@ -185,6 +193,13 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
     [setNodesInternal, syncTrace],
   );
 
+  const setEdges = useCallback(
+    (updater: SetStateAction<WorkflowFlowEdge[]>) => {
+      setEdgesInternal((current) => (typeof updater === "function" ? updater(current) : updater));
+    },
+    [setEdgesInternal],
+  );
+
   const callSetNodes = useCallback(
     (caller: string, reason: string, updater: SetStateAction<Node<WorkflowNodeData>[]>) => {
       setNodesMetaRef.current = { caller, reason };
@@ -192,6 +207,43 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
     },
     [setNodes],
   );
+
+  const presentationPatchRef = useRef<CanvasNodePresentationPatcher | null>(null);
+  presentationPatchRef.current = {
+    patchPresentation: (presentationNodes, presentationNodeText) => {
+      builderRenderPerf.presentationPatches += 1;
+      builderRenderPerf.presentationPatchRuns += 1;
+      callSetNodes("presentationSync", "label+subtitle patch", (current) =>
+        patchNodePresentationData(current, presentationNodes, presentationNodeText),
+      );
+    },
+  };
+
+  const validationPatchRef = useRef<CanvasNodeValidationPatcher | null>(null);
+  validationPatchRef.current = {
+    patchValidation: (highlight) => {
+      builderRenderPerf.validationPatches += 1;
+      callSetNodes("validationSync", "node validation patch", (current) =>
+        patchNodeValidationData(current, highlight),
+      );
+    },
+  };
+
+  const edgePresentationPatchRef = useRef<CanvasEdgePresentationPatcher | null>(null);
+  edgePresentationPatchRef.current = {
+    patchEdgePresentation: (localizedLabelById) => {
+      builderRenderPerf.edgePresentationPatches += 1;
+      setEdges((current) => patchEdgePresentationData(current, localizedLabelById));
+    },
+  };
+
+  const edgeValidationPatchRef = useRef<CanvasEdgeValidationPatcher | null>(null);
+  edgeValidationPatchRef.current = {
+    patchEdgeValidation: (highlight) => {
+      builderRenderPerf.edgeValidationPatches += 1;
+      setEdges((current) => applyEdgeValidationPatch(current, highlight));
+    },
+  };
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -210,6 +262,8 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
 
   const flowNodesRef = useRef(flowNodes);
   flowNodesRef.current = flowNodes;
+  const structuralFlowEdgesRef = useRef(structuralFlowEdges);
+  structuralFlowEdgesRef.current = structuralFlowEdges;
 
   useLayoutEffect(() => {
     if (!syncTrace) return;
@@ -220,12 +274,13 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
     prevNodesPropRef.current = nodes;
   });
 
-  // Commit 6 — sole document → controlled reconciliation path (bounded by projectionSignature).
-  useEffect(() => {
-    syncTrace?.syncEffect("documentProjectionSignature changed", nodesRef.current.length, false, {
-      projectionSignature,
+  useLayoutEffect(() => {
+    syncTrace?.syncEffect("structuralNodeSignature changed", nodesRef.current.length, false, {
+      structuralNodeSignature,
     });
-    callSetNodes("syncEffect→seedControlledNodesFromDocument", "documentProjectionSignature changed", (current) => {
+    callSetNodes("syncEffect→seedControlledNodesFromDocument", "structuralNodeSignature changed", (current) => {
+      builderRenderPerf.canvasSeeds += 1;
+      builderRenderPerf.canvasSeedCommits += 1;
       const seeded = seedControlledNodesFromDocument(current, flowNodesRef.current);
       return syncTrace
         ? syncTrace.seedControlledNodesFromDocument(
@@ -237,31 +292,29 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
           )
         : seeded;
     });
-  }, [projectionSignature, callSetNodes, syncTrace]);
+  }, [structuralNodeSignature, callSetNodes, syncTrace]);
 
-  const edges = useMemo(
-    () =>
-      documentToFlowEdges(
-        document.nodes,
-        document.edges,
-        (label) => localizeDefaultBranchLabel(label, branchLabel),
-        validationHighlight,
-      ),
-    [document.nodes, document.edges, branchLabel, validationHighlight],
-  );
-  const isEmpty = document.nodes.length === 0;
+  useLayoutEffect(() => {
+    setEdges((current) => {
+      builderRenderPerf.edgeSeeds += 1;
+      return seedControlledEdgesFromDocument(current, structuralFlowEdgesRef.current);
+    });
+  }, [structuralEdgeSignature, setEdges]);
 
-  const viewport = document.viewport;
+  const isEmpty = canvasSlice.nodes.length === 0;
+
+  const viewport = canvasSlice.viewport;
   const viewportRef = useRef(viewport);
   viewportRef.current = viewport;
+  const viewportReadyRef = useRef(false);
 
   useLayoutEffect(() => {
     viewportReadyRef.current = false;
 
     const hasStoredViewport = viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1;
-    if (!isEmpty && !hasStoredViewport && !fitViewAppliedFlowIds.has(document.flowId)) {
+    if (!isEmpty && !hasStoredViewport && !fitViewAppliedFlowIds.has(canvasSlice.flowId)) {
       fitView({ padding: 0.18, duration: 0 });
-      fitViewAppliedFlowIds.add(document.flowId);
+      fitViewAppliedFlowIds.add(canvasSlice.flowId);
       requestAnimationFrame(() => {
         dispatchRef.current({ type: "SET_VIEWPORT", viewport: getViewport() });
         viewportReadyRef.current = true;
@@ -273,7 +326,7 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
       viewportReadyRef.current = true;
     });
     return () => cancelAnimationFrame(frame);
-  }, [document.flowId, fitView, getViewport, isEmpty]);
+  }, [canvasSlice.flowId, fitView, getViewport, isEmpty, viewport]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -322,32 +375,28 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
     });
   }, [getNodes, handleNodesChange, syncTrace]);
 
-  const onSelectionChange = useCallback(
-    ({ nodes }: OnSelectionChangeParams) => {
-      // Semantic commit only — runtime `nodes[].selected` is synced via applyNodeChanges(select).
-      const rfSelectedIds = nodes.map((node) => node.id);
-      const builderSelectedIds = builderSelectedRef.current;
+  const onSelectionChange = useCallback(({ nodes: selectedNodes }: OnSelectionChangeParams) => {
+    const rfSelectedIds = selectedNodes.map((node) => node.id);
+    const builderSelectedIds = builderSelectedRef.current;
 
-      if (rfSelectedIds.length > 0) {
-        rememberCanvasSelection(rfSelectedIds);
-      } else if (builderSelectedIds.length === 0) {
-        rememberCanvasSelection([]);
-      } else {
-        rememberCanvasSelection(builderSelectedIds);
-      }
+    if (rfSelectedIds.length > 0) {
+      rememberCanvasSelection(rfSelectedIds);
+    } else if (builderSelectedIds.length === 0) {
+      rememberCanvasSelection([]);
+    } else {
+      rememberCanvasSelection(builderSelectedIds);
+    }
 
-      if (rfSelectedIds.length === 0 && builderSelectedIds.length > 0) {
-        return;
-      }
+    if (rfSelectedIds.length === 0 && builderSelectedIds.length > 0) {
+      return;
+    }
 
-      if (selectionKey(rfSelectedIds) === selectionKey(builderSelectedIds)) {
-        return;
-      }
+    if (selectionKey(rfSelectedIds) === selectionKey(builderSelectedIds)) {
+      return;
+    }
 
-      dispatchRef.current({ type: "SELECT_NODES", nodeIds: rfSelectedIds });
-    },
-    [],
-  );
+    dispatchRef.current({ type: "SELECT_NODES", nodeIds: rfSelectedIds });
+  }, []);
 
   const onViewportChange = useCallback((nextViewport: Viewport) => {
     if (!viewportReadyRef.current) return;
@@ -376,21 +425,21 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
       if (connection.sourceHandle != null && connection.sourceHandle !== "source") return;
       if (connection.targetHandle != null && connection.targetHandle !== "target") return;
 
-      const nodes = documentNodesRef.current;
-      const edges = documentEdgesRef.current;
+      const nodes = canvasSlice.nodes as BuilderNode[];
+      const edgeList = canvasSlice.edges;
       const allowed = canConnect({
         sourceId: connection.source,
         targetId: connection.target,
         nodes,
-        edges,
+        edges: edgeList,
       });
       if (!allowed.allowed) return;
       dispatchRef.current({
         type: "ADD_EDGE",
-        edge: createEdgeFromNodes(connection.source, connection.target, nodes, edges),
+        edge: createEdgeFromNodes(connection.source, connection.target, nodes, edgeList),
       });
     },
-    [],
+    [canvasSlice.edges, canvasSlice.nodes],
   );
 
   const onDrop = useCallback(
@@ -399,16 +448,24 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
       const type = event.dataTransfer.getData("application/workflow-node") as BuilderNodeType;
       if (!type) return;
       const flowPoint = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      controller.addNode(type, {
+      addNode(type, {
         x: flowPoint.x - PALETTE_DROP_NODE_ANCHOR.x,
         y: flowPoint.y - PALETTE_DROP_NODE_ANCHOR.y,
       });
     },
-    [controller, screenToFlowPosition],
+    [addNode, screenToFlowPosition],
   );
 
   return (
     <div className="relative h-full w-full" style={{ width, height }}>
+      <CanvasPresentationSync patchRef={presentationPatchRef} />
+      <CanvasValidationSync patchRef={validationPatchRef} />
+      <CanvasEdgePresentationSync
+        patchRef={edgePresentationPatchRef}
+        structuralNodes={structuralNodes}
+        edges={canvasSlice.edges}
+      />
+      <CanvasEdgeValidationSync patchRef={edgeValidationPatchRef} />
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -442,16 +499,12 @@ export function WorkflowCanvasInner({ controller, width, height }: WorkflowCanva
         <MiniMap pannable zoomable className="!rounded-xl !border !border-border/60 !bg-card/90" />
         <Controls showInteractive={false} className="!rounded-xl !border !border-border/60 !bg-card/90 !shadow-lg" />
       </ReactFlow>
-      {isEmpty ? (
-        <CanvasEmptyState
-          onAddStart={() => controller.addNode("start", { x: 280, y: 120 })}
-        />
-      ) : null}
+      {isEmpty ? <CanvasEmptyState onAddStart={() => addNode("start", { x: 280, y: 120 })} /> : null}
     </div>
   );
-}
+});
 
-export function WorkflowCanvas(props: WorkflowCanvasProps) {
+export const WorkflowCanvas = memo(function WorkflowCanvas() {
   const { containerRef, size, isReady } = useCanvasContainerSize();
 
   return (
@@ -459,7 +512,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
       ref={containerRef}
       className="h-full min-h-0 w-full overflow-hidden rounded-2xl border border-border/60 bg-card/40 shadow-inner"
     >
-      {isReady ? <WorkflowCanvasInner {...props} width={size.width} height={size.height} /> : null}
+      {isReady ? <WorkflowCanvasInner width={size.width} height={size.height} /> : null}
     </div>
   );
-}
+});

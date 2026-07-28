@@ -8,6 +8,7 @@ import type { WorkflowDocument } from "../core/types";
 import { useWorkflowBuilder } from "../hooks/use-workflow-builder";
 import { useWorkflowBuilderKeyboard } from "../hooks/use-workflow-builder-keyboard";
 import { useWorkflowBuilderServices } from "../context/workflow-builder-services";
+import { WorkflowBuilderProvider } from "../context/workflow-builder-context";
 import { WorkflowCanvas } from "./canvas/workflow-canvas";
 import { UnsavedChangesDialog } from "./lifecycle/unsaved-changes-dialog";
 import { CollapsibleNodePalette } from "./palette/collapsible-node-palette";
@@ -89,7 +90,7 @@ export function WorkflowBuilderShell({
           }}
         />
         <div className="min-h-0 min-w-0 flex-1">
-          <WorkflowCanvas controller={controller} />
+          <WorkflowCanvas />
         </div>
         <CollapsibleNodePalette />
       </div>
@@ -98,9 +99,11 @@ export function WorkflowBuilderShell({
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 z-20 flex flex-col gap-4 bg-background p-4 lg:start-64">
-      <ReactFlowProvider>
-        {TraceBoundary ? <TraceBoundary>{builderSurface}</TraceBoundary> : builderSurface}
-      </ReactFlowProvider>
+      <WorkflowBuilderProvider controller={controller}>
+        <ReactFlowProvider>
+          {TraceBoundary ? <TraceBoundary>{builderSurface}</TraceBoundary> : builderSurface}
+        </ReactFlowProvider>
+      </WorkflowBuilderProvider>
       <UnsavedChangesDialog
         open={leaveOpen}
         onOpenChange={setLeaveOpen}

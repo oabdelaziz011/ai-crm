@@ -19,6 +19,28 @@ function isTriggerSnapshotNode(node: WorkflowGraphSnapshot["nodes"][number]): bo
   return readBuilderType(node) === "start" || node.type === "trigger";
 }
 
+function isResumableCheckpointSnapshotNode(node: WorkflowGraphSnapshot["nodes"][number]): boolean {
+  const builderType = readBuilderType(node);
+  if (
+    builderType === "ask_question" ||
+    builderType === "wait_for_reply" ||
+    builderType === "date_picker" ||
+    builderType === "buttons" ||
+    builderType === "list"
+  ) {
+    return true;
+  }
+
+  const action = typeof node.config.action === "string" ? node.config.action : null;
+  return (
+    action === "wait_for_input" ||
+    action === "wait_for_reply" ||
+    action === "pick_date" ||
+    action === "send_buttons" ||
+    action === "send_list"
+  );
+}
+
 function snapshotToExecutionGraph(snapshot: WorkflowGraphSnapshot) {
   return {
     nodes: snapshot.nodes.map((node) => ({
@@ -26,6 +48,7 @@ function snapshotToExecutionGraph(snapshot: WorkflowGraphSnapshot) {
       label: nodeLabel(node),
       isTrigger: isTriggerSnapshotNode(node),
       isTerminal: isTerminalSnapshotNode(node),
+      isResumableCheckpoint: isResumableCheckpointSnapshotNode(node),
     })),
     edges: snapshot.edges.map((edge) => {
       const branchKey = typeof edge.condition.branch === "string" ? edge.condition.branch : undefined;

@@ -1,23 +1,26 @@
 /**
- * Document → React Flow display bridge.
+ * Structural document → React Flow bridge.
  *
- * Ownership (Sprint 5.6):
- * - Maps **persistent document nodes** to React Flow node props (id, type, position, data, selected).
- * - Does not read or write RF runtime fields (`measured`, `dimensions`, `handleBounds`, dragging).
- * - Controlled nodes are seeded from this output via `seedControlledNodesFromDocument`.
+ * P4.2: Projection uses topology + geometry only.
+ * Presentation and validation are patched by dedicated canvas sync layers.
  */
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 import type { WorkflowNodeData } from "../../components/nodes/workflow-node-card";
-import type { BuilderEdge, BuilderNode } from "../types";
+import type { BuilderEdge, BuilderNode, BuilderNodeType } from "../types";
 import { resolveBranchEdgeStyle } from "../logic/branch-utils";
 import { getWorkflowNodeDefinition } from "../node-registry";
 
-export type ValidationHighlightOptions = {
-  nodeSeverity: Map<string, "error" | "warning">;
-  edgeIds: Set<string>;
-  activeNodeIds: Set<string>;
-  activeEdgeIds: Set<string>;
+/** Canvas slice node — sufficient for structural graph projection. */
+export type StructuralCanvasNode = Pick<BuilderNode, "id" | "type" | "position">;
+
+export type WorkflowEdgeData = {
+  branchKey?: string;
+  branchLabel?: string;
+  sourceNodeType: BuilderNodeType;
+  baseStroke: string;
 };
+
+export type WorkflowFlowEdge = Edge<WorkflowEdgeData>;
 
 export function documentNodeSignature(
   nodes: Array<{ id: string; position: { x: number; y: number } }>,
@@ -26,50 +29,30 @@ export function documentNodeSignature(
 }
 
 export function documentToFlowNodes(
-  nodes: BuilderNode[],
+  nodes: StructuralCanvasNode[],
   selectedNodeIds: string[],
-  nodeText: (nodeId: string, field: "displayName" | "description", fallback: string) => string,
   onQuickAdd: WorkflowNodeData["onQuickAdd"],
-  validationHighlight?: ValidationHighlightOptions,
 ): Node<WorkflowNodeData>[] {
   const selectedIds = new Set(selectedNodeIds);
-  return nodes.map((node) => {
-    const definition = getWorkflowNodeDefinition(node.type);
-    const label = nodeText(definition.id, "displayName", definition.displayName);
-    const subtitle =
-      typeof node.config.message === "string"
-        ? node.config.message
-        : typeof node.config.question === "string"
-          ? node.config.question
-          : typeof node.config.label === "string"
-            ? node.config.label
-            : nodeText(definition.id, "description", definition.description);
-    const validationSeverity = validationHighlight?.nodeSeverity.get(node.id);
-    const validationActive = validationHighlight?.activeNodeIds.has(node.id) ?? false;
-    return {
-      id: node.id,
-      type: "workflowNode",
-      position: node.position,
-      selected: selectedIds.has(node.id),
-      data: {
-        label,
-        nodeType: node.type,
-        subtitle,
-        executionStatus: "ready",
-        onQuickAdd,
-        validationSeverity,
-        validationActive,
-      },
-    };
-  });
+  return nodes.map((node) => ({
+    id: node.id,
+    type: "workflowNode",
+    position: node.position,
+    selected: selectedIds.has(node.id),
+    data: {
+      label: "",
+      nodeType: node.type,
+      subtitle: "",
+      executionStatus: "ready",
+      onQuickAdd,
+    },
+  }));
 }
 
 export function documentToFlowEdges(
-  nodes: BuilderNode[],
+  nodes: StructuralCanvasNode[],
   edges: BuilderEdge[],
-  localizeBranchLabel: (label: string) => string,
-  validationHighlight?: ValidationHighlightOptions,
-) {
+): WorkflowFlowEdge[] {
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   return edges.flatMap((edge) => {
     const sourceNode = nodesById.get(edge.source);
@@ -80,12 +63,7 @@ export function documentToFlowEdges(
     const targetDef = getWorkflowNodeDefinition(targetNode.type);
     if (!sourceDef.allowOutgoing || !targetDef.allowIncoming) return [];
 
-    const branchStyle = resolveBranchEdgeStyle(sourceNode, edge);
-    const isValidationEdge = validationHighlight?.edgeIds.has(edge.id) ?? false;
-    const isActiveValidationEdge = validationHighlight?.activeEdgeIds.has(edge.id) ?? false;
-    const validationStroke = isActiveValidationEdge ? "#ef4444" : isValidationEdge ? "#f87171" : branchStyle.stroke;
-    const validationStrokeWidth = isActiveValidationEdge ? 3.5 : isValidationEdge ? 3 : 2.5;
-    const validationStrokeDasharray = isValidationEdge ? "6 4" : undefined;
+    const branchStyle = resolveBranchEdgeStyle(sourceNode.type, edge);
     return [
       {
         id: edge.id,
@@ -93,13 +71,18 @@ export function documentToFlowEdges(
         target: edge.target,
         sourceHandle: "source",
         targetHandle: "target",
-        animated: !isValidationEdge,
-        label: localizeBranchLabel(branchStyle.label ?? ""),
-        labelStyle: { fill: validationStroke, fontWeight: 600 },
+        animated: true,
+        label: branchStyle.label ?? "",
+        labelStyle: { fill: branchStyle.stroke, fontWeight: 600 },
         style: {
-          strokeWidth: validationStrokeWidth,
-          stroke: validationStroke,
-          ...(validationStrokeDasharray ? { strokeDasharray: validationStrokeDasharray } : {}),
+          strokeWidth: 2.5,
+          stroke: branchStyle.stroke,
+        },
+        data: {
+          branchKey: edge.branchKey,
+          branchLabel: edge.branchLabel,
+          sourceNodeType: sourceNode.type,
+          baseStroke: branchStyle.stroke,
         },
       },
     ];

@@ -7,6 +7,8 @@ import { createAutomationRegistryWithAIWorkflow } from "@/lib/ai-workflow-platfo
 import { useAIWorkflowPlatformServices } from "@/lib/ai-workflow-platform";
 import { createSchedulingAwareBookingServicePort } from "@/lib/booking/automation-booking-adapter";
 import { createSupabaseCustomerServicePort } from "@/lib/crm/supabase-customer-service-adapter";
+import { createLookupOptionsPort } from "@/lib/lookups/create-lookup-options-port";
+import { createBusinessCalendarPort } from "@/lib/scheduling/business-calendar/create-business-calendar-port";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -28,8 +30,15 @@ export function useAutomationPlatformServices() {
       }));
       const bookingService = createSchedulingAwareBookingServicePort(supabase, () => user?.id ?? null);
       const customerService = createSupabaseCustomerServicePort(supabase, () => user?.id ?? null);
+      const lookupOptions = createLookupOptionsPort(supabase);
+      const businessCalendar = createBusinessCalendarPort();
       return createAutomationPlatformServices(supabase, {
-        registry: createAutomationRegistryWithAIWorkflow(bridge, { bookingService, customerService }),
+        registry: createAutomationRegistryWithAIWorkflow(bridge, {
+          bookingService,
+          customerService,
+          lookupOptions,
+          businessCalendar,
+        }),
       });
     },
     [aiWorkflowServices, user?.id, profile?.company_id, isSuperAdmin, hasPermission],

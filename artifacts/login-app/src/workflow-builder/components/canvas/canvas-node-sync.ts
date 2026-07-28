@@ -91,11 +91,24 @@
  */
 import type { Node, NodeChange } from "@xyflow/react";
 import type { WorkflowNodeData } from "../nodes/workflow-node-card";
+import { documentStructuralProjectionSignature } from "../../core/canvas/document-signatures";
 
 export {
   documentNodeSignature,
   documentToFlowNodes,
 } from "../../core/canvas/flow-document-bridge";
+export {
+  documentPresentationSignature,
+  documentStructuralProjectionSignature,
+  documentTopologySignature,
+  documentValidationSignature,
+  documentEdgePresentationSignature,
+  canvasStructuralNodeSignature,
+  canvasStructuralEdgeSignature,
+  resolveNodePresentationLabel,
+  resolveNodePresentationSubtitle,
+} from "../../core/canvas/document-signatures";
+export { documentToFlowEdges } from "../../core/canvas/flow-document-bridge";
 
 /**
  * NodeChange types that update the controlled React Flow mirror via applyNodeChanges.
@@ -191,36 +204,22 @@ type FlowNode = Node<FlowNodeData>;
 type ProjectionNode = Pick<FlowNode, "id" | "position" | "selected" | "data">;
 
 /**
- * Bounded seed trigger — changes only when the document-derived node projection changes.
+ * Bounded structural seed trigger — excludes presentation fields (subtitle, labels, descriptions).
  * Excludes RF runtime fields (measured, width, height) so dimension apply does not re-seed.
  */
 export function documentProjectionSignature(flowNodes: ProjectionNode[]): string {
-  return flowNodes
-    .map((node) => {
-      const data = node.data;
-      return [
-        node.id,
-        `${node.position.x},${node.position.y}`,
-        node.selected ? "1" : "0",
-        data.nodeType,
-        data.label,
-        data.subtitle ?? "",
-        data.validationSeverity ?? "",
-        data.validationActive ? "1" : "0",
-      ].join(":");
-    })
-    .join("|");
+  return documentStructuralProjectionSignature(
+    flowNodes.map((node) => ({
+      id: node.id,
+      position: node.position,
+      selected: node.selected ?? false,
+      nodeType: node.data.nodeType,
+    })),
+  );
 }
 
 function flowNodeDataEqual(existing: FlowNodeData, next: FlowNodeData): boolean {
-  return (
-    existing.label === next.label &&
-    existing.nodeType === next.nodeType &&
-    existing.subtitle === next.subtitle &&
-    existing.executionStatus === next.executionStatus &&
-    existing.validationSeverity === next.validationSeverity &&
-    existing.validationActive === next.validationActive
-  );
+  return existing.nodeType === next.nodeType && existing.executionStatus === next.executionStatus;
 }
 
 /**

@@ -31,6 +31,13 @@ import {
   seedControlledNodesFromDocument,
 } from "../src/workflow-builder/components/canvas/canvas-node-sync";
 import { documentToFlowNodes } from "../src/workflow-builder/core/canvas/flow-document-bridge";
+import {
+  documentPresentationSignature,
+  resolveNodePresentationSubtitle,
+  documentValidationSignature,
+  canvasStructuralNodeSignature,
+} from "../src/workflow-builder/core/canvas/document-signatures";
+import { resolveBranchEdgeStyle } from "../src/workflow-builder/core/logic/branch-utils";
 import { canConnect } from "../src/workflow-builder/core/connection-rules";
 import { selectionKey, resolveAlignmentSelection } from "../src/workflow-builder/core/canvas/canvas-selection-guard";
 import { isAuthUserVisibleEqual, shouldSkipTokenRefreshReload, createAuthIdentitySnapshot } from "../src/context/auth-identity";
@@ -309,12 +316,7 @@ assert.equal(runtimeOnlyOnDragEnd[0]?.type, "select");
 console.log("  ✓ runtime semantic filter remains select + dimensions only");
 
 // Commit 6 — bounded seed trigger tracks full document projection, not runtime fields.
-const projectionBase = documentToFlowNodes(
-  baseDocument.nodes,
-  ["n2"],
-  (_id, _field, fallback) => fallback,
-  undefined,
-);
+const projectionBase = documentToFlowNodes(baseDocument.nodes, ["n2"], undefined);
 
 const dragMirror = applyNodeChanges(
   [{ type: "position", id: "n2", position: { x: 400, y: 200 }, dragging: true }],
@@ -325,36 +327,92 @@ console.log("  ✓ controlled mirror applies transient position during drag");
 const projectionSig = documentProjectionSignature(projectionBase);
 assert.ok(projectionSig.includes("n2:320,40:1"), "projection signature encodes position and selection");
 
-const configEdited = builderReducer(createInitialBuilderState(baseDocument), {
-  type: "UPDATE_NODE_CONFIG",
-  nodeId: "n2",
-  patch: { message: "Updated subtitle" },
-});
+const configEdited = builderReducer(
+  { ...createInitialBuilderState(baseDocument), selectedNodeIds: ["n2"] },
+  {
+    type: "UPDATE_NODE_CONFIG",
+    nodeId: "n2",
+    patch: { message: "Updated subtitle" },
+  },
+);
 const projectionAfterConfig = documentToFlowNodes(
   configEdited.document.nodes,
   configEdited.selectedNodeIds,
-  (_id, _field, fallback) => fallback,
   undefined,
 );
-assert.notEqual(documentProjectionSignature(projectionAfterConfig), projectionSig);
+assert.equal(documentProjectionSignature(projectionAfterConfig), projectionSig);
 
 const positionOnlySig = documentNodeSignature(configEdited.document.nodes);
 const positionOnlySigBefore = documentNodeSignature(baseDocument.nodes);
 assert.equal(positionOnlySig, positionOnlySigBefore, "config edit does not change position-only signature");
-assert.notEqual(
+assert.equal(
   documentProjectionSignature(projectionAfterConfig),
   documentProjectionSignature(projectionBase),
-  "config edit changes projection signature for seed",
+  "config edit does not change structural projection signature",
 );
-console.log("  ✓ documentProjectionSignature triggers seed on config changes, not runtime dimensions");
+console.log("  ✓ structural documentProjectionSignature ignores config-only edits");
 
-// Seed audit — subtitle-only updates preserve unchanged node identity.
-const measuredProjection = documentToFlowNodes(
-  baseDocument.nodes,
-  ["n2"],
-  (_id, _field, fallback) => fallback,
-  undefined,
-).map((node) => ({
+// P4 regression — canvas structural slice omits config; projection must not throw.
+const structuralSliceNodes = baseDocument.nodes.map((node) => ({
+  id: node.id,
+  type: node.type,
+  position: node.position,
+})) as typeof baseDocument.nodes;
+assert.doesNotThrow(() =>
+  documentToFlowNodes(structuralSliceNodes, ["n2"], undefined),
+);
+assert.equal(resolveNodePresentationSubtitle(structuralSliceNodes[1]!), "");
+assert.doesNotThrow(() => documentPresentationSignature(structuralSliceNodes));
+console.log("  ✓ presentation helpers tolerate structural nodes without config");
+
+// P4 D1/D4 — structural projection never reads config; labels/subtitles are presentation-only.
+const structuralProjection = documentToFlowNodes(structuralSliceNodes, ["n2"], undefined);
+assert.equal(structuralProjection.find((node) => node.id === "n2")?.data.subtitle, "");
+assert.equal(structuralProjection.find((node) => node.id === "n2")?.data.label, "");
+const labelOnlyProjection = structuralProjection.map((node) =>
+  node.id === "n2" ? { ...node, data: { ...node.data, label: "Send Message" } } : node,
+);
+assert.equal(seedControlledNodesFromDocument(structuralProjection, labelOnlyProjection), structuralProjection);
+console.log("  ✓ structural projection omits label/subtitle; seed ignores presentation-only label");
+
+// P4 D3 — switch edge styling uses branchKey only, never sourceNode.config.cases.
+const switchStyleA = resolveBranchEdgeStyle("switch", {
+  id: "e1",
+  source: "sw-1",
+  target: "t1",
+  branchKey: "case-a",
+  branchLabel: "Case A",
+});
+const switchStyleB = resolveBranchEdgeStyle("switch", {
+  id: "e2",
+  source: "sw-1",
+  target: "t2",
+  branchKey: "case-b",
+  branchLabel: "Case B",
+});
+assert.equal(switchStyleA.label, "Case A");
+assert.equal(switchStyleA.stroke, resolveBranchEdgeStyle("switch", {
+  id: "e3",
+  source: "sw-1",
+  target: "t3",
+  branchKey: "case-a",
+}).stroke);
+assert.notEqual(switchStyleA.stroke, switchStyleB.stroke);
+console.log("  ✓ switch branch colors derive deterministically from branchKey");
+
+// P4.2 — validation and presentation signatures are isolated from structural projection.
+const structuralSig = canvasStructuralNodeSignature(structuralSliceNodes, ["n2"]);
+const validationSigBefore = documentValidationSignature([], null);
+const validationSigAfter = documentValidationSignature(
+  [{ id: "v1", message: "Error", severity: "error", nodeId: "n2", affectedNodeIds: ["n2"] }],
+  "v1",
+);
+assert.notEqual(validationSigBefore, validationSigAfter);
+assert.equal(canvasStructuralNodeSignature(structuralSliceNodes, ["n2"]), structuralSig);
+console.log("  ✓ validation signature changes do not affect structural node signature");
+
+// Seed audit — subtitle-only projection changes do not re-seed (presentation sync patches separately).
+const measuredProjection = documentToFlowNodes(baseDocument.nodes, ["n2"], undefined).map((node) => ({
   ...node,
   measured: { width: 240, height: 88 },
 }));
@@ -364,12 +422,9 @@ const subtitleOnlyProjection = measuredProjection.map((node) =>
     : node,
 );
 const seededSubtitle = seedControlledNodesFromDocument(measuredProjection, subtitleOnlyProjection);
-assert.equal(seededSubtitle.find((node) => node.id === "n1"), measuredProjection.find((node) => node.id === "n1"));
-assert.notEqual(seededSubtitle.find((node) => node.id === "n2"), measuredProjection.find((node) => node.id === "n2"));
-assert.equal(seededSubtitle.find((node) => node.id === "n2")?.data.subtitle, "Updated subtitle");
+assert.equal(seededSubtitle, measuredProjection, "subtitle-only seed preserves all node references");
 assert.equal(seededSubtitle.find((node) => node.id === "n2")?.measured?.width, 240);
-assert.equal(seededSubtitle.find((node) => node.id === "n3"), measuredProjection.find((node) => node.id === "n3"));
-console.log("  ✓ subtitle-only seed preserves unchanged node references and RF measurements");
+console.log("  ✓ subtitle-only seed is a no-op; presentation patches are isolated");
 
 // Autosave merge — in-flight edits stay live when save completes dirty.
 let autosaveHistory = createHistoryState(createInitialBuilderState(baseDocument));
@@ -403,12 +458,7 @@ assert.notEqual(nodeWithClientKey.id, remappedAfterSave.id);
 console.log("  ✓ property editor key stays stable across save id remap");
 
 // S1.2 — seed preserves RF measurements when document is unchanged
-const flowFromDoc = documentToFlowNodes(
-  baseDocument.nodes,
-  ["n2"],
-  (_id, _field, fallback) => fallback,
-  undefined,
-);
+const flowFromDoc = documentToFlowNodes(baseDocument.nodes, ["n2"], undefined);
 const rfMeasured = flowFromDoc.map((node) => ({
   ...node,
   measured: { width: 240, height: 88 },
@@ -418,12 +468,7 @@ const rfMeasured = flowFromDoc.map((node) => ({
 assert.equal(seedControlledNodesFromDocument(rfMeasured, flowFromDoc), rfMeasured);
 console.log("  ✓ seed returns same reference when document nodes are unchanged");
 
-const flowWithNewSelection = documentToFlowNodes(
-  baseDocument.nodes,
-  ["n1", "n3"],
-  (_id, _field, fallback) => fallback,
-  undefined,
-);
+const flowWithNewSelection = documentToFlowNodes(baseDocument.nodes, ["n1", "n3"], undefined);
 const seededSelection = seedControlledNodesFromDocument(rfMeasured, flowWithNewSelection);
 assert.notEqual(seededSelection, rfMeasured);
 assert.equal(seededSelection.find((node) => node.id === "n1")?.selected, true);
@@ -431,12 +476,7 @@ assert.equal(seededSelection.find((node) => node.id === "n1")?.measured?.width, 
 console.log("  ✓ seed updates selection while preserving RF measurements");
 
 // Controlled canvas — RF nodes derive synchronously from document
-const documentNodes = documentToFlowNodes(
-  baseDocument.nodes,
-  ["n2"],
-  (_id, _field, fallback) => fallback,
-  undefined,
-);
+const documentNodes = documentToFlowNodes(baseDocument.nodes, ["n2"], undefined);
 assert.equal(documentNodes.find((node) => node.id === "n2")?.position.x, 320);
 console.log("  ✓ canvas nodes derive synchronously from builder document");
 
@@ -447,7 +487,6 @@ const alignedHistory = historyReducer(createHistoryState(createInitialBuilderSta
 const alignedNodes = documentToFlowNodes(
   alignedHistory.present.document.nodes,
   alignedHistory.present.selectedNodeIds,
-  (_id, _field, fallback) => fallback,
   undefined,
 );
 assert.equal(
@@ -548,7 +587,7 @@ type FlowNode = Node<WorkflowNodeData>;
 const stableNodeText = (_id: string, _field: "displayName" | "description", fallback: string) => fallback;
 
 function flowNodesFromState(state: BuilderState): FlowNode[] {
-  return documentToFlowNodes(state.document.nodes, state.selectedNodeIds, stableNodeText, undefined);
+  return documentToFlowNodes(state.document.nodes, state.selectedNodeIds, undefined);
 }
 
 function reconcileDocumentToControlled(state: BuilderState, current: FlowNode[] = []): FlowNode[] {
@@ -880,13 +919,11 @@ quickAddHistory = historyReducer(quickAddHistory, {
 const sidebarProjection = documentToFlowNodes(
   sidebarDropHistory.present.document.nodes,
   sidebarDropHistory.present.selectedNodeIds,
-  noopNodeText,
   noopQuickAdd,
 );
 const quickAddProjection = documentToFlowNodes(
   quickAddHistory.present.document.nodes,
   quickAddHistory.present.selectedNodeIds,
-  noopNodeText,
   noopQuickAdd,
 );
 const sidebarRfNode = sidebarProjection.find((node) => node.id === "sidebar-drop");

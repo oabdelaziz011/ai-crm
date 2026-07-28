@@ -1,6 +1,6 @@
+import { validateBranching } from "./branch-validation";
 import { findIsolatedNodeIds } from "../connection-rules";
 import { getWorkflowNodeDefinition } from "../node-registry";
-import { validateBranching } from "./branch-validation";
 import { validateInteractiveRouting } from "./interactive-routing-validation";
 import { validateExecutionPathsForDocument } from "./path-validation";
 import { workflowHasTerminalNode } from "./terminal-nodes";
@@ -36,7 +36,8 @@ function validatePrimaryMenu(document: WorkflowDocument): ValidationIssue[] {
   return issues;
 }
 
-export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] {
+/** Graph topology, paths, branches — run when edges or node types change. */
+export function validateWorkflowStructure(document: WorkflowDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const startNodes = document.nodes.filter((node) => node.type === "start");
 
@@ -77,15 +78,21 @@ export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] 
   }
 
   issues.push(...validateExecutionPathsForDocument(document));
+  issues.push(...validateBranching(document));
+  issues.push(...validateInteractiveRouting(document));
+  issues.push(...validatePrimaryMenu(document));
+
+  return issues;
+}
+
+/** Per-node config validators and document metadata — run on property edits. */
+export function validateWorkflowNodeConfigs(document: WorkflowDocument): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
 
   for (const node of document.nodes) {
     const definition = getWorkflowNodeDefinition(node.type);
     issues.push(...definition.validate(node.config, node.id));
   }
-
-  issues.push(...validateBranching(document));
-  issues.push(...validateInteractiveRouting(document));
-  issues.push(...validatePrimaryMenu(document));
 
   if (!document.name.trim()) {
     issues.push({
@@ -95,7 +102,23 @@ export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] 
     });
   }
 
-  return enrichValidationIssues(issues, document);
+  return issues;
+}
+
+export function mergeValidationIssues(
+  document: WorkflowDocument,
+  structural: ValidationIssue[],
+  config: ValidationIssue[],
+): ValidationIssue[] {
+  return enrichValidationIssues([...structural, ...config], document);
+}
+
+export function validateWorkflow(document: WorkflowDocument): ValidationIssue[] {
+  return mergeValidationIssues(
+    document,
+    validateWorkflowStructure(document),
+    validateWorkflowNodeConfigs(document),
+  );
 }
 
 export function hasBlockingValidationIssues(issues: ValidationIssue[]): boolean {

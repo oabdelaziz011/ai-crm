@@ -3,10 +3,18 @@ import { registerWorkflowNode } from "./node-registry";
 import type { ValidationIssue } from "./types";
 import {
   EmptyProperties,
-  ListRowsEditor,
   TextFieldEditor,
   requiredTextIssue,
 } from "../components/properties/property-editors";
+import { ListOptionsEditor } from "../components/properties/conversation/list-options-editor";
+import {
+  normalizeListNodeConfig,
+  readListDataSourceMode,
+  readListLookupConfig,
+  validateListNodeOptions,
+  validateListVariableBinding,
+} from "./conversation/list-node-config";
+import { resolveLookupOutputVariableName } from "@/lib/lookups";
 import { MessageFieldEditor } from "../components/properties/rich-editors/message-field-editor";
 import { RichButtonListEditor } from "../components/properties/rich-editors/button-list-editor";
 import { QuestionFieldEditor } from "../components/properties/rich-editors/question-field-editor";
@@ -41,12 +49,14 @@ import {
   createDefaultWaitForReplyConfig,
   normalizeWaitForReplyNodeConfig,
 } from "./conversation/wait-for-reply-config";
-import {
-  normalizeListNodeConfig,
-  validateListVariableBinding,
-} from "./conversation/list-node-config";
 import { PrimaryMenuToggle } from "../components/properties/conversation/primary-menu-toggle";
 import { ListVariableBindingEditor } from "../components/properties/rich-editors/list-variable-binding-editor";
+import { DatePickerOptionsEditor } from "../components/properties/conversation/date-picker-options-editor";
+import {
+  createDefaultDatePickerConfig,
+  normalizeDatePickerNodeConfig,
+  validateDatePickerNodeConfig,
+} from "./conversation/date-picker-node-config";
 
 function withBuilderType(builderType: string, config: Record<string, unknown>) {
   return { builderType, ...config };
@@ -130,6 +140,43 @@ export function registerBuiltInWorkflowNodes(): void {
     },
     fromEngineConfig: (_engineType, config) =>
       config.builderType === "ask_question" ? normalizeAskQuestionNodeConfig({ ...config }) : null,
+  });
+
+  registerWorkflowNode({
+    id: "date_picker",
+    displayName: "Date Picker",
+    description: "Ask the customer to choose a date using your business calendar rules.",
+    category: "conversation",
+    engineType: "action",
+    icon: "CalendarPlus",
+    accentClass: "from-teal-500/20 to-teal-500/5 border-teal-500/30",
+    searchKeywords: ["date", "calendar", "picker", "appointment", "holiday"],
+    defaultConfig: createDefaultDatePickerConfig(),
+    allowIncoming: true,
+    allowOutgoing: true,
+    PropertyEditor: (props) => (
+      <div className="space-y-4">
+        <TextFieldEditor {...props} labelKey="prompt" field="prompt" multiline />
+        <DatePickerOptionsEditor {...props} />
+      </div>
+    ),
+    validate: (config, nodeId) => validateDatePickerNodeConfig(config, nodeId),
+    toEngineConfig: (config) => {
+      const normalized = normalizeDatePickerNodeConfig(config);
+      return withBuilderType("date_picker", {
+        action: "pick_date",
+        prompt: normalized.prompt,
+        inputKey: normalized.saveAs,
+        saveAs: normalized.saveAs,
+        disablePastDates: normalized.disablePastDates,
+        disableCompanyHolidays: normalized.disableCompanyHolidays,
+        holidayBehavior: normalized.holidayBehavior,
+        disableClosedWeekdays: normalized.disableClosedWeekdays,
+        branchId: normalized.branchId,
+      });
+    },
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "date_picker" ? normalizeDatePickerNodeConfig({ ...config }) : null,
   });
 
   registerWorkflowNode({
@@ -222,7 +269,7 @@ export function registerBuiltInWorkflowNodes(): void {
         <TextFieldEditor {...props} labelKey="menuTitle" field="title" />
         <TextFieldEditor {...props} labelKey="menuMessage" field="body" multiline />
         <TextFieldEditor {...props} labelKey="menuButtonLabel" field="buttonLabel" />
-        <ListRowsEditor {...props} />
+        <ListOptionsEditor {...props} />
         <ListVariableBindingEditor {...props} />
       </div>
     ),
@@ -231,33 +278,42 @@ export function registerBuiltInWorkflowNodes(): void {
         ...requiredTextIssue("title", "title", nodeId, config),
         ...requiredTextIssue("body", "body", nodeId, config),
         ...validateListVariableBinding(config, nodeId),
+        ...validateListNodeOptions(config, nodeId),
       ];
-      const rows = Array.isArray(config.rows) ? config.rows : [];
-      if (
-        rows.filter(
-          (row) => typeof row === "object" && String((row as { title?: string }).title ?? "").trim().length > 0,
-        ).length === 0
-      ) {
-        issues.push({
-          id: `${nodeId}-rows`,
-          nodeId,
-          message: "Add at least one list option before publishing.",
-          severity: "error",
-        });
-      }
       return issues;
     },
     toEngineConfig: (config) => {
       const normalized = normalizeListNodeConfig(config);
       const saveAs = typeof normalized.saveAs === "string" ? normalized.saveAs.trim() : "";
-      return withBuilderType("list", {
+      const shared = {
         action: "send_list",
         title: config.title,
         body: config.body,
         buttonLabel: config.buttonLabel,
-        sections: [{ title: "Options", rows: config.rows }],
         ...(config.primaryMenu === true ? { primaryMenu: true } : {}),
         ...(saveAs ? { inputKey: saveAs, saveAs } : {}),
+      };
+
+      if (readListDataSourceMode(normalized) === "lookup") {
+        const lookup = readListLookupConfig(normalized);
+        const outputVariable = resolveLookupOutputVariableName(normalized);
+        return withBuilderType("list", {
+          ...shared,
+          mode: "lookup",
+          lookup: lookup?.lookup,
+          displayField: lookup?.displayField,
+          valueField: lookup?.valueField,
+          filters: lookup?.filters ?? {},
+          ...(outputVariable
+            ? { outputVariable, inputKey: outputVariable, saveAs: outputVariable }
+            : {}),
+        });
+      }
+
+      return withBuilderType("list", {
+        ...shared,
+        mode: "manual",
+        sections: [{ title: "Options", rows: config.rows }],
       });
     },
     fromEngineConfig: (_engineType, config) => {
@@ -266,9 +322,15 @@ export function registerBuiltInWorkflowNodes(): void {
       const sectionRows = sections[0] && typeof sections[0] === "object" && Array.isArray((sections[0] as { rows?: unknown }).rows)
         ? (sections[0] as { rows: unknown[] }).rows
         : config.rows;
+      const mode = config.mode === "lookup" || config.optionsSource === "lookup" ? "lookup" : "manual";
       return normalizeListNodeConfig({
         ...config,
+        mode,
         rows: sectionRows,
+        lookup: config.lookup,
+        displayField: config.displayField,
+        valueField: config.valueField,
+        filters: config.filters,
         saveAs: config.saveAs ?? config.inputKey ?? "",
       });
     },

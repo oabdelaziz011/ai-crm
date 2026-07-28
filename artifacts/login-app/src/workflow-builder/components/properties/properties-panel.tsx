@@ -1,51 +1,54 @@
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { getWorkflowNodeDefinition } from "../../core/node-registry";
 import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
 import { resolveBuilderNodeEditorKey } from "../../core/persistence/builder-node-identity";
-import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
+import { useBuilderActions, useDocumentBuilderSlice } from "../../context/workflow-builder-context";
 import { PropertyEditorErrorBoundary } from "./property-editor-error-boundary";
 
-export function PropertiesPanel({ controller }: { controller: WorkflowBuilderController }) {
+export const PropertiesPanel = memo(function PropertiesPanel() {
   const { wb, nodeText } = useWorkflowBuilderI18n();
+  const { document, selectedNodeIds } = useDocumentBuilderSlice();
+  const { dispatch, updateNodeConfig } = useBuilderActions();
+
   const selected =
-    controller.state.selectedNodeIds.length === 1
-      ? controller.state.document.nodes.find((node) => node.id === controller.state.selectedNodeIds[0])
-      : controller.state.document.nodes.find((node) => controller.state.selectedNodeIds.includes(node.id));
+    selectedNodeIds.length === 1
+      ? document.nodes.find((node) => node.id === selectedNodeIds[0])
+      : document.nodes.find((node) => selectedNodeIds.includes(node.id));
 
   const handleConfigChange = useCallback(
     (nodeId: string, patch: Record<string, unknown>) => {
-      controller.dispatch({ type: "UPDATE_NODE_CONFIG", nodeId, patch });
+      updateNodeConfig(nodeId, patch);
     },
-    [controller],
+    [updateNodeConfig],
   );
 
   const applyConfigPatches = useCallback(
     (patches: Array<{ nodeId: string; patch: Record<string, unknown> }>) => {
       for (const entry of patches) {
-        controller.dispatch({ type: "UPDATE_NODE_CONFIG", nodeId: entry.nodeId, patch: entry.patch });
+        updateNodeConfig(entry.nodeId, entry.patch);
       }
     },
-    [controller],
+    [updateNodeConfig],
   );
 
   const generateInteractiveRouting = useCallback(() => {
     if (!selected) return;
-    controller.dispatch({ type: "GENERATE_INTERACTIVE_ROUTING", interactiveNodeId: selected.id });
-  }, [controller, selected]);
+    dispatch({ type: "GENERATE_INTERACTIVE_ROUTING", interactiveNodeId: selected.id });
+  }, [dispatch, selected]);
 
   const editorContext = useMemo(
     () =>
       selected
         ? {
             nodeId: selected.id,
-            document: controller.state.document,
+            document,
             applyConfigPatches,
             generateInteractiveRouting:
               selected.type === "buttons" || selected.type === "list" ? generateInteractiveRouting : undefined,
           }
         : undefined,
-    [applyConfigPatches, controller.state.document, generateInteractiveRouting, selected],
+    [applyConfigPatches, document, generateInteractiveRouting, selected],
   );
 
   if (!selected) {
@@ -86,4 +89,4 @@ export function PropertiesPanel({ controller }: { controller: WorkflowBuilderCon
       </PropertyEditorErrorBoundary>
     </motion.aside>
   );
-}
+});

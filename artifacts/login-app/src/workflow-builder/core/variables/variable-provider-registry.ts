@@ -9,6 +9,10 @@ export type WorkflowVariable = {
   previewValue?: string;
   /** Nested picker group, e.g. "last_interaction" under Conversation. */
   subgroup?: string;
+  /** i18n key for subgroup header (lookup output variables). */
+  subgroupLabelKey?: string;
+  /** i18n key for field label when label is a raw field id. */
+  labelKey?: string;
 };
 
 export type VariableProvider = {
@@ -42,9 +46,13 @@ export function findWorkflowVariable(token: string): WorkflowVariable | undefine
   return listAllWorkflowVariables().find((variable) => variable.token === token);
 }
 
-export function findWorkflowVariableByField(field: string): WorkflowVariable | undefined {
+export function findWorkflowVariableByField(
+  field: string,
+  extraVariables: WorkflowVariable[] = [],
+): WorkflowVariable | undefined {
   const normalized = field.replace(/^\{\{|\}\}$/g, "").trim();
-  return listAllWorkflowVariables().find((variable) => normalizeVariableField(variable.token) === normalized);
+  const all = [...listAllWorkflowVariables(), ...extraVariables];
+  return all.find((variable) => normalizeVariableField(variable.token) === normalized);
 }
 
 function normalizeVariableField(token: string): string {

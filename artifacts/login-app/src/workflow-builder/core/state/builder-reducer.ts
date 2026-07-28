@@ -67,6 +67,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         selectedNodeIds: [action.node.id],
         selectedEdgeIds: [],
         saveStatus: "dirty",
+        layoutAnimationEnabled: true,
       };
     case "UPDATE_NODE_CONFIG":
       return {
@@ -93,9 +94,10 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         selectedNodeIds: state.selectedNodeIds,
         selectedEdgeIds: state.selectedEdgeIds,
         saveStatus: "dirty",
+        layoutAnimationEnabled: action.transient ? state.layoutAnimationEnabled : true,
       };
     case "DELETE_NODES":
-      return deleteNodes(state, action.nodeIds);
+      return { ...deleteNodes(state, action.nodeIds), layoutAnimationEnabled: true };
     case "ADD_EDGE": {
       const attempt = canConnect({
         sourceId: action.edge.source,
@@ -277,6 +279,10 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
       return { ...state, activeValidationIssueId: action.issueId };
     case "REQUEST_VALIDATION_PANEL_FOCUS":
       return { ...state, validationPanelFocusNonce: state.validationPanelFocusNonce + 1 };
+    case "SET_LAYOUT_ANIMATION":
+      return state.layoutAnimationEnabled === action.enabled
+        ? state
+        : { ...state, layoutAnimationEnabled: action.enabled };
     default:
       return state;
   }
@@ -292,6 +298,7 @@ export function createInitialBuilderState(document: WorkflowDocument): BuilderSt
     activeValidationIssueId: null,
     validationPanelFocusNonce: 0,
     clipboard: [],
+    layoutAnimationEnabled: true,
   };
 }
 

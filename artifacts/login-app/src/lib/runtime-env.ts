@@ -19,8 +19,13 @@ export function requireClientEnv(name: string): string {
   }
 
   const value = readEnv(name);
-  if (!value) {
-    throw new Error(`Missing browser environment variable: ${name}`);
+  if (value) return value;
+
+  // Node/tsx unit tests do not populate import.meta.env; allow process.env fallback off-browser only.
+  if (typeof window === "undefined" && typeof process !== "undefined") {
+    const fromProcess = process.env[name]?.trim();
+    if (fromProcess) return fromProcess;
   }
-  return value;
+
+  throw new Error(`Missing browser environment variable: ${name}`);
 }

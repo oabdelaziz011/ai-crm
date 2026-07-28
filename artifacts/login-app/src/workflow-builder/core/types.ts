@@ -2,6 +2,7 @@ export const BUILDER_NODE_TYPES = [
   "start",
   "send_message",
   "ask_question",
+  "date_picker",
   "buttons",
   "list",
   "delay",
@@ -141,13 +142,14 @@ export type BuilderState = {
   activeValidationIssueId: string | null;
   validationPanelFocusNonce: number;
   clipboard: BuilderNode[];
+  layoutAnimationEnabled: boolean;
 };
 
 export type BuilderAction =
   | { type: "LOAD_DOCUMENT"; document: WorkflowDocument }
-  | { type: "SET_METADATA"; patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType">> }
+  | { type: "SET_METADATA"; patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType">>; batch?: boolean }
   | { type: "ADD_NODE"; node: BuilderNode }
-  | { type: "UPDATE_NODE_CONFIG"; nodeId: string; patch: Record<string, unknown> }
+  | { type: "UPDATE_NODE_CONFIG"; nodeId: string; patch: Record<string, unknown>; batch?: boolean }
   | { type: "UPDATE_NODE_POSITIONS"; positions: Array<{ id: string; x: number; y: number }>; transient?: boolean }
   | { type: "DELETE_NODES"; nodeIds: string[] }
   | { type: "ADD_EDGE"; edge: BuilderEdge }
@@ -164,6 +166,8 @@ export type BuilderAction =
   | { type: "SET_VALIDATION"; issues: ValidationIssue[] }
   | { type: "SET_ACTIVE_VALIDATION_ISSUE"; issueId: string | null }
   | { type: "REQUEST_VALIDATION_PANEL_FOCUS" }
+  | { type: "FLUSH_HISTORY_BATCH" }
+  | { type: "SET_LAYOUT_ANIMATION"; enabled: boolean }
   | { type: "REPLACE_STATE"; state: BuilderState };
 
 export function createNodeId(): string {

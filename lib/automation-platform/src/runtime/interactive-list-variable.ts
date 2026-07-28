@@ -7,6 +7,7 @@ export type InteractiveListRow = {
   title: string;
   description?: string;
   value?: string;
+  record?: Record<string, unknown>;
 };
 
 function readListRowsFromConfig(config: Record<string, unknown>): InteractiveListRow[] {
@@ -25,7 +26,19 @@ function readListRowsFromConfig(config: Record<string, unknown>): InteractiveLis
       if (!id || !title) continue;
       const description = readString((row as { description?: unknown }).description) ?? undefined;
       const value = readString((row as { value?: unknown }).value) ?? undefined;
-      rows.push({ id, title, ...(description ? { description } : {}), ...(value ? { value } : {}) });
+      const record =
+        (row as { record?: unknown }).record &&
+        typeof (row as { record?: unknown }).record === "object" &&
+        !Array.isArray((row as { record?: unknown }).record)
+          ? ((row as { record: Record<string, unknown> }).record)
+          : undefined;
+      rows.push({
+        id,
+        title,
+        ...(description ? { description } : {}),
+        ...(value ? { value } : {}),
+        ...(record ? { record } : {}),
+      });
     }
   }
 
@@ -51,6 +64,28 @@ export function resolveInteractiveListStoredValue(
   }
 
   return normalizedReplyId;
+}
+
+export function resolveInteractiveListStoredRecord(
+  config: Record<string, unknown>,
+  replyId: string,
+): Record<string, unknown> | null {
+  const normalizedReplyId = replyId.trim();
+  if (!normalizedReplyId) return null;
+
+  const rows = readListRowsFromConfig(config);
+  const matched = rows.find((row) => row.id === normalizedReplyId);
+  if (matched?.record) {
+    return matched.record;
+  }
+
+  return null;
+}
+
+export function readInteractiveListOutputVariable(config: Record<string, unknown>): string | null {
+  const outputVariable = readString(config.outputVariable);
+  if (outputVariable) return outputVariable;
+  return readInteractiveListInputKey(config);
 }
 
 export function readInteractiveListInputKey(config: Record<string, unknown>): string | null {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlignCenterHorizontal,
@@ -24,35 +24,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AlignmentMode } from "../../core/layout/alignment";
-import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import { PublishDialog } from "../lifecycle/publish-dialog";
 import { WorkflowStatusBadge } from "../lifecycle/workflow-status-badge";
 import { ValidationSummary } from "../validation/validation-summary";
 import { BuilderStatusBar } from "../status/builder-status-bar";
 import { usePermissions } from "@/hooks/use-rbac";
+import {
+  useBuilderActions,
+  useDocumentBuilderSlice,
+  useHistoryBuilderSlice,
+  useValidationBuilderSlice,
+} from "../../context/workflow-builder-context";
+import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 
-export function BuilderToolbar({
-  controller,
+export const BuilderToolbar = memo(function BuilderToolbar({
   onBack,
+  controller,
 }: {
-  controller: WorkflowBuilderController;
   onBack: () => void;
+  controller: WorkflowBuilderController;
 }) {
   const { t } = useTranslation("common");
   const { hasPermission } = usePermissions();
   const [publishOpen, setPublishOpen] = useState(false);
+  const { document: workflowDocument } = useDocumentBuilderSlice();
+  const { validationIssues } = useValidationBuilderSlice();
+  const { canUndo, canRedo, saveStatus, hasUnsavedChanges } = useHistoryBuilderSlice();
+  const { alignSelected, applyAutoLayout, persist, publish, undo, redo, openValidationPanel, setMetadata } =
+    useBuilderActions();
 
   const align = (mode: AlignmentMode) => {
-    const minRequired = mode.startsWith("distribute") ? 3 : 2;
-    const builderSelection = controller.state.selectedNodeIds;
-    controller.alignSelected(
-      mode,
-      builderSelection.length >= minRequired ? builderSelection : undefined,
-    );
+    alignSelected(mode);
   };
 
   const focusWorkflowCanvas = () => {
-    const pane = document.querySelector<HTMLElement>(".react-flow__pane");
+    const pane = globalThis.document.querySelector<HTMLElement>(".react-flow__pane");
     if (!pane) return;
     pane.tabIndex = -1;
     pane.focus({ preventScroll: true });
@@ -68,24 +74,18 @@ export function BuilderToolbar({
           {t("workflowBuilder.actions.back")}
         </Button>
         <Input
-          value={controller.state.document.name}
-          onChange={(event) => controller.dispatch({ type: "SET_METADATA", patch: { name: event.target.value } })}
+          value={workflowDocument.name}
+          onChange={(event) => setMetadata({ name: event.target.value })}
           className="max-w-sm rounded-xl border-border/60 bg-background/80"
           aria-label={t("workflowBuilder.fields.workflowName")}
-          disabled={controller.state.document.readOnly}
+          disabled={workflowDocument.readOnly}
         />
-        <WorkflowStatusBadge
-          status={controller.state.document.status}
-          hasUnpublishedDraft={controller.state.document.hasUnpublishedDraft}
-        />
-        <ValidationSummary
-          issues={controller.state.validationIssues}
-          onOpenPanel={() => controller.openValidationPanel()}
-        />
+        <WorkflowStatusBadge status={workflowDocument.status} hasUnpublishedDraft={workflowDocument.hasUnpublishedDraft} />
+        <ValidationSummary issues={validationIssues} onOpenPanel={() => openValidationPanel()} />
         <BuilderStatusBar
-          saveStatus={controller.state.saveStatus}
-          documentStatus={controller.state.document.status}
-          hasUnpublishedDraft={controller.state.document.hasUnpublishedDraft}
+          saveStatus={saveStatus}
+          documentStatus={workflowDocument.status}
+          hasUnpublishedDraft={workflowDocument.hasUnpublishedDraft}
         />
         <div className="ms-auto flex flex-wrap items-center gap-2">
           <DropdownMenu modal={false}>
@@ -113,17 +113,17 @@ export function BuilderToolbar({
               <DropdownMenuItem onSelect={() => align("distribute-vertical")}><AlignHorizontalDistributeCenter className="me-2 h-4 w-4 rotate-90" />{t("workflowBuilder.align.distributeVertical")}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={controller.applyAutoLayout}>
+          <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={applyAutoLayout}>
             <LayoutTemplate className="me-2 h-4 w-4" />
             {t("workflowBuilder.actions.autoLayout")}
           </Button>
-          <Button type="button" variant="outline" size="sm" disabled={!controller.canUndo} onClick={controller.undo} className="rounded-xl" aria-label={t("workflowBuilder.actions.undo")}>
+          <Button type="button" variant="outline" size="sm" disabled={!canUndo} onClick={undo} className="rounded-xl" aria-label={t("workflowBuilder.actions.undo")}>
             <Undo2 className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="outline" size="sm" disabled={!controller.canRedo} onClick={controller.redo} className="rounded-xl" aria-label={t("workflowBuilder.actions.redo")}>
+          <Button type="button" variant="outline" size="sm" disabled={!canRedo} onClick={redo} className="rounded-xl" aria-label={t("workflowBuilder.actions.redo")}>
             <Redo2 className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => void controller.persist()} className="rounded-xl">
+          <Button type="button" variant="outline" size="sm" onClick={() => void persist()} className="rounded-xl">
             <Save className="me-2 h-4 w-4" />
             {t("workflowBuilder.actions.saveDraft")}
           </Button>
@@ -140,9 +140,9 @@ export function BuilderToolbar({
         onOpenChange={setPublishOpen}
         controller={controller}
         onPublish={async (releaseNotes) => {
-          await controller.publish(releaseNotes);
+          await publish(releaseNotes);
         }}
       />
     </>
   );
-}
+});

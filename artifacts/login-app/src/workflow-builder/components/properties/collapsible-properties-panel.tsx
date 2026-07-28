@@ -47,7 +47,7 @@ export function CollapsiblePropertiesPanel({
     >
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
         <div className="shrink-0">
-          <PropertiesPanel controller={controller} />
+          <PropertiesPanel />
         </div>
         <WorkflowValidationPanel controller={controller} />
         <div className="hidden min-h-0 shrink-0 2xl:block">

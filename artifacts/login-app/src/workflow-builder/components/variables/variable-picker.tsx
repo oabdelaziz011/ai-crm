@@ -53,8 +53,30 @@ export function VariablePicker({ onSelect, document, nodeId }: VariablePickerPro
       list.push(variable);
       groups.set(key, list);
     }
-    return groups;
+    return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right));
   }, [filtered]);
+
+  const resolveSubgroupLabel = (variables: WorkflowVariable[], subgroup?: string) => {
+    if (!subgroup) return null;
+    const subgroupLabelKey = variables.find((entry) => entry.subgroupLabelKey)?.subgroupLabelKey;
+    if (subgroupLabelKey) {
+      return t(subgroupLabelKey, { defaultValue: subgroup.replace(/_/g, " ") });
+    }
+    return t(`workflowBuilder.variables.subgroups.${subgroup}`, {
+      defaultValue: subgroup.replace(/_/g, " "),
+    });
+  };
+
+  const resolveVariableLabel = (variable: WorkflowVariable) => {
+    if (variable.labelKey) {
+      return t(variable.labelKey, { defaultValue: variable.label });
+    }
+    return variableFieldLabel(
+      variable.category,
+      variable.id.split(".").slice(1).join(".") || variable.id,
+      variable.label,
+    );
+  };
 
   return (
     <BuilderPopover
@@ -81,7 +103,7 @@ export function VariablePicker({ onSelect, document, nodeId }: VariablePickerPro
           </div>
         </div>
         <div className="max-h-72 overflow-y-auto p-2">
-          {[...grouped.entries()].map(([groupKey, variables]) => {
+          {[...grouped].map(([groupKey, variables]) => {
             const [category, subgroup] = groupKey.includes(":")
               ? (groupKey.split(":") as [VariableCategory, string])
               : ([groupKey as VariableCategory, undefined] as const);
@@ -92,9 +114,7 @@ export function VariablePicker({ onSelect, document, nodeId }: VariablePickerPro
               </p>
               {subgroup ? (
                 <p className="px-2 pb-1 ps-4 text-[11px] font-medium text-muted-foreground">
-                  {t(`workflowBuilder.variables.subgroups.${subgroup}`, {
-                    defaultValue: subgroup.replace(/_/g, " "),
-                  })}
+                  {resolveSubgroupLabel(variables, subgroup)}
                 </p>
               ) : null}
               {variables.map((variable) => (
@@ -108,7 +128,7 @@ export function VariablePicker({ onSelect, document, nodeId }: VariablePickerPro
                     setQuery("");
                   }}
                 >
-                  <span>{variableFieldLabel(variable.category, variable.id.split(".").slice(1).join(".") || variable.id, variable.label)}</span>
+                  <span>{resolveVariableLabel(variable)}</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
                 </button>
               ))}

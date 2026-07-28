@@ -3,6 +3,7 @@ import {
   type SupportedInteractionType,
 } from "../variables/interaction-variables";
 import type { BuilderNode, BuilderNodeType, WorkflowDocument } from "../types";
+import { readListDataSourceMode } from "../conversation/list-node-config";
 
 const INTERACTIVE_NODE_TYPES = new Set<BuilderNodeType>(["buttons", "list"]);
 
@@ -79,7 +80,12 @@ function readInteractiveOptionsFromNode(node: BuilderNode): InteractiveOption[] 
   }
 
   if (node.type === "list") {
-    const rows = Array.isArray(node.config.rows) ? node.config.rows : [];
+    const rows =
+      readListDataSourceMode(node.config) === "lookup" && Array.isArray(node.config._lookupPreviewRows)
+        ? node.config._lookupPreviewRows
+        : Array.isArray(node.config.rows)
+          ? node.config.rows
+          : [];
     return rows.flatMap((entry) => {
       if (!entry || typeof entry !== "object") return [];
       const id = typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id.trim() : "";

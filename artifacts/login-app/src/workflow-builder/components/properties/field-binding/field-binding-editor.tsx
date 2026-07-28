@@ -9,7 +9,7 @@ import {
   findWorkflowVariableByField,
   type WorkflowVariable,
 } from "../../../core/variables/variable-provider-registry";
-import { listDocumentWorkflowVariables } from "../../../core/variables/document-workflow-variable-provider";
+import { listDocumentWorkflowVariables, findDocumentWorkflowVariableByField } from "../../../core/variables/document-workflow-variable-provider";
 import type { WorkflowDocument } from "../../../core/types";
 import {
   isFieldBinding,
@@ -37,14 +37,25 @@ function emptyBinding(): FieldBinding {
   return staticBinding("");
 }
 
-function resolveVariableLabel(variable: string, extraVariables: WorkflowVariable[]): string {
+function resolveVariableLabel(
+  variable: string,
+  extraVariables: WorkflowVariable[],
+  translate: (key: string, fallback: string) => string,
+  document?: WorkflowDocument,
+  nodeId?: string,
+): string {
   const token = variable.startsWith("{{") ? variable : `{{${variable}}}`;
-  return (
-    findWorkflowVariable(token)?.label ??
-    findWorkflowVariableByField(variable)?.label ??
-    extraVariables.find((entry) => entry.token === token || entry.label === variable)?.label ??
-    variable
-  );
+  const matched =
+    findWorkflowVariable(token) ??
+    findWorkflowVariableByField(variable, extraVariables) ??
+    (document && nodeId ? findDocumentWorkflowVariableByField(document, nodeId, variable) : undefined) ??
+    extraVariables.find((entry) => entry.token === token || entry.label === variable);
+
+  if (matched?.labelKey) {
+    return translate(matched.labelKey, matched.label);
+  }
+
+  return matched?.label ?? variable;
 }
 
 export function FieldBindingEditor({
@@ -68,7 +79,13 @@ export function FieldBindingEditor({
 
   const variableLabel =
     normalized.mode === "variable"
-      ? resolveVariableLabel(normalized.variable, documentVariables)
+      ? resolveVariableLabel(
+          normalized.variable,
+          documentVariables,
+          (key, fallback) => t(key, { defaultValue: fallback }),
+          document,
+          nodeId,
+        )
       : null;
 
   const setMode = (nextMode: string) => {

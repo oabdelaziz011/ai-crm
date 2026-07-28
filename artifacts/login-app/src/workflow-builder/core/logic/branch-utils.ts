@@ -1,4 +1,4 @@
-import type { BuilderBranchKey, BuilderEdge, BuilderNode } from "../types";
+import type { BuilderBranchKey, BuilderEdge, BuilderNode, BuilderNodeType } from "../types";
 
 const SWITCH_BRANCH_COLORS = [
   "#0ea5e9",
@@ -9,24 +9,42 @@ const SWITCH_BRANCH_COLORS = [
   "#6366f1",
 ];
 
+const switchBranchColorCache = new Map<string, string>();
+
+function hashBranchKey(branchKey: string): number {
+  let hash = 0;
+  for (let index = 0; index < branchKey.length; index += 1) {
+    hash = (hash * 31 + branchKey.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+/** Cached deterministic switch branch color from branchKey. */
+export function getSwitchBranchColor(branchKey: string): string {
+  const cached = switchBranchColorCache.get(branchKey);
+  if (cached) return cached;
+  const color = SWITCH_BRANCH_COLORS[hashBranchKey(branchKey) % SWITCH_BRANCH_COLORS.length]!;
+  switchBranchColorCache.set(branchKey, color);
+  return color;
+}
+
+/** Edge styling from structural fields only — branchKey, branchLabel, source node type. */
 export function resolveBranchEdgeStyle(
-  sourceNode: BuilderNode | undefined,
+  sourceNodeType: BuilderNodeType | undefined,
   edge: BuilderEdge,
 ): { stroke: string; label?: string } {
-  if (sourceNode?.type === "if_else") {
+  if (sourceNodeType === "if_else") {
     if (edge.branchKey === "yes") return { stroke: "#22c55e", label: edge.branchLabel ?? "YES" };
     if (edge.branchKey === "no") return { stroke: "#ef4444", label: edge.branchLabel ?? "NO" };
   }
 
-  if (sourceNode?.type === "switch") {
-    const cases = Array.isArray(sourceNode.config.cases)
-      ? (sourceNode.config.cases as Array<{ id?: string; label?: string }>)
-      : [];
-    const index = cases.findIndex((item) => item.id === edge.branchKey);
-    const color = SWITCH_BRANCH_COLORS[(index >= 0 ? index : 0) % SWITCH_BRANCH_COLORS.length]!;
+  if (sourceNodeType === "switch") {
     if (edge.branchKey === "default") return { stroke: "#64748b", label: edge.branchLabel ?? "Default" };
-    const matched = cases.find((item) => item.id === edge.branchKey);
-    return { stroke: color, label: edge.branchLabel ?? matched?.label ?? String(edge.branchKey ?? "Case") };
+    const branchKey = edge.branchKey ?? "";
+    return {
+      stroke: getSwitchBranchColor(branchKey),
+      label: edge.branchLabel ?? (branchKey || "Case"),
+    };
   }
 
   return { stroke: "hsl(var(--primary))" };

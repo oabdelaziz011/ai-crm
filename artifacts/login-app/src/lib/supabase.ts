@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import { requireClientEnv } from "@/lib/runtime-env";
+import { isDevRuntime, requireClientEnv } from "@/lib/runtime-env";
 
 const supabaseUrl = requireClientEnv("VITE_SUPABASE_URL");
 const supabaseKey = requireClientEnv("VITE_SUPABASE_PUBLISHABLE_KEY");
 
 if (
-  import.meta.env.DEV &&
+  isDevRuntime() &&
   /localhost:54321|127\.0\.0\.1:54321/.test(supabaseUrl)
 ) {
   throw new Error(

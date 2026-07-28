@@ -12,6 +12,8 @@ import {
 } from "../runtime/conversation-variables.js";
 import {
   readInteractiveListInputKey,
+  readInteractiveListOutputVariable,
+  resolveInteractiveListStoredRecord,
   resolveInteractiveListStoredValue,
 } from "../runtime/interactive-list-variable.js";
 import {
@@ -21,6 +23,7 @@ import {
 import {
   appendOutboundQueueEntry,
   clearLatestOutboundSlot,
+  readOutboundQueue,
   type OutboundQueueEntry,
 } from "../runtime/outbound-queue.js";
 import type { BookingServicePort } from "../ports/booking-service-port.js";
@@ -40,12 +43,21 @@ import {
   logBeforeExecuteListNode,
   registerActiveListVisit,
 } from "../debug/list-node-lifecycle-debug.js";
-import { readOutboundQueue } from "../runtime/outbound-queue.js";
+import type { BusinessCalendarPort } from "../ports/business-calendar-port.js";
+import type { LookupOptionsPort } from "../ports/lookup-options-port.js";
+import {
+  normalizeSelectedDate,
+  readDatePickerRuntimeConfig,
+  validateSelectedDate,
+} from "../runtime/date-picker-validation.js";
+import { isListLookupMode, resolveListNodeSections } from "../runtime/list-lookup-resolver.js";
 
 export type AutomationActionDeps = {
   bookingService?: BookingServicePort;
   customerService?: CustomerServicePort;
   conversationCustomerLink?: ConversationCustomerLinkPort;
+  lookupOptions?: LookupOptionsPort;
+  businessCalendar?: BusinessCalendarPort;
 };
 
 function readString(value: unknown): string | null {
@@ -73,7 +85,80 @@ function readSwitchConfig(config: Record<string, unknown>): SwitchNodeConfig | n
   };
 }
 
-function executeInteractiveMessageAction(context: ExecutionContext, action: "send_buttons" | "send_list"): NodeExecutionResult {
+async function executeDatePickerAction(
+  context: ExecutionContext,
+  deps?: AutomationActionDeps,
+): Promise<NodeExecutionResult> {
+  const inputKey = readString(context.currentNode.config.inputKey) ?? readString(context.currentNode.config.saveAs) ?? "selected_date";
+  const prompt = readString(context.currentNode.config.prompt) ?? readString(context.currentNode.config.question);
+  const pickerConfig = readDatePickerRuntimeConfig(context.currentNode.config);
+
+  let constraints = null;
+  if (deps?.businessCalendar) {
+    constraints = await deps.businessCalendar.getDatePickerConstraints(context.company.id, pickerConfig);
+  }
+
+  const rawInput = context.input?.[inputKey] ?? context.input?.date ?? context.input?.value;
+  const selectedDate = normalizeSelectedDate(rawInput);
+
+  if (selectedDate) {
+    if (constraints) {
+      const validation = validateSelectedDate(selectedDate, constraints);
+      if (!validation.ok) {
+        return {
+          outcome: "waiting_input",
+          variables: mergeVariables(context.variables, {
+            __waitingFor: inputKey,
+            __prompt: prompt,
+            __datePickerConstraints: constraints,
+            __datePickerError: validation.reasonKey,
+            __datePickerErrorParams: validation.reasonParams ?? null,
+          }),
+          output: { waitingFor: inputKey, invalidDate: selectedDate, reasonKey: validation.reasonKey },
+        };
+      }
+    }
+
+    const warningEntry = constraints?.entries.find(
+      (entry) => entry.date === selectedDate && entry.warningOnly,
+    );
+
+    return {
+      outcome: "continue",
+      variables: mergeVariables(context.variables, {
+        [inputKey]: selectedDate,
+        __waitingFor: null,
+        __prompt: null,
+        __datePickerConstraints: null,
+        __datePickerError: null,
+        __datePickerErrorParams: null,
+        ...(warningEntry
+          ? {
+              [`${inputKey}_holiday_warning`]: warningEntry.messageParams?.title ?? true,
+            }
+          : {}),
+      }),
+    };
+  }
+
+  return {
+    outcome: "waiting_input",
+    variables: mergeVariables(context.variables, {
+      __waitingFor: inputKey,
+      __prompt: prompt,
+      __datePickerConstraints: constraints,
+      __datePickerError: null,
+      __datePickerErrorParams: null,
+    }),
+    output: { waitingFor: inputKey, datePicker: true },
+  };
+}
+
+async function executeInteractiveMessageAction(
+  context: ExecutionContext,
+  action: "send_buttons" | "send_list",
+  deps?: AutomationActionDeps,
+): Promise<NodeExecutionResult> {
   const selection = context.input
     ? extractInteractiveSelection(context.input, { fallbackHint: action })
     : null;
@@ -81,11 +166,29 @@ function executeInteractiveMessageAction(context: ExecutionContext, action: "sen
     const selectionVariablePatch: Record<string, unknown> = {};
     if (action === "send_list") {
       const inputKey = readInteractiveListInputKey(context.currentNode.config);
+      const outputVariable = readInteractiveListOutputVariable(context.currentNode.config);
       const replyId = selection.last_button_id ?? "";
-      if (inputKey && replyId) {
-        const storedValue = resolveInteractiveListStoredValue(context.currentNode.config, replyId);
-        if (storedValue !== null) {
-          selectionVariablePatch[inputKey] = storedValue;
+      if (replyId) {
+        let listConfig = context.currentNode.config;
+        if (isListLookupMode(listConfig)) {
+          const sections = await resolveListNodeSections(
+            context.currentNode,
+            context.company.id,
+            deps?.lookupOptions,
+            context.variables,
+          );
+          if (sections.length > 0) {
+            listConfig = { ...listConfig, sections };
+          }
+        }
+        const storedRecord = resolveInteractiveListStoredRecord(listConfig, replyId);
+        if (storedRecord && outputVariable) {
+          selectionVariablePatch[outputVariable] = storedRecord;
+        } else if (inputKey) {
+          const storedValue = resolveInteractiveListStoredValue(listConfig, replyId);
+          if (storedValue !== null) {
+            selectionVariablePatch[inputKey] = storedValue;
+          }
         }
       }
     }
@@ -111,8 +214,8 @@ function executeInteractiveMessageAction(context: ExecutionContext, action: "sen
     };
   }
 
-  let outbound: OutboundQueueEntry;
-  let prompt: string | null;
+  let outbound: OutboundQueueEntry | undefined;
+  let prompt: string | null = null;
 
   const listVisitIndex =
     action === "send_list"
@@ -123,6 +226,57 @@ function executeInteractiveMessageAction(context: ExecutionContext, action: "sen
         })
       : undefined;
 
+  const sendListMessage = async () => {
+    let menuNode = context.currentNode;
+    if (action === "send_list") {
+      const sections = await resolveListNodeSections(
+        context.currentNode,
+        context.company.id,
+        deps?.lookupOptions,
+        context.variables,
+      );
+      if (sections.length > 0) {
+        menuNode = {
+          ...context.currentNode,
+          config: {
+            ...context.currentNode.config,
+            sections,
+          },
+        };
+      }
+    }
+
+    ({ outbound, prompt } = buildInteractiveMenuOutbound(menuNode));
+  };
+
+  if (action === "send_list") {
+    await sendListMessage();
+    const queuePatch = appendOutboundQueueEntry(context.variables, outbound!);
+    const nextVariables = mergeVariables(context.variables, {
+      ...queuePatch,
+      __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+      __prompt: prompt,
+    });
+
+    if (listVisitIndex !== undefined) {
+      registerActiveListVisit(context.run.id, context.currentNode.id, listVisitIndex);
+      logAfterSendListMessage({
+        runId: context.run.id,
+        sessionId: context.session.id,
+        node: context.currentNode,
+        listVisitIndex,
+        outboundKind: outbound!.kind,
+        outboundQueueLength: readOutboundQueue(nextVariables).length,
+      });
+    }
+
+    return {
+      outcome: "waiting_input",
+      variables: nextVariables,
+      output: { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound: outbound! },
+    };
+  }
+
   ({ outbound, prompt } = buildInteractiveMenuOutbound(context.currentNode));
 
   const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
@@ -131,18 +285,6 @@ function executeInteractiveMessageAction(context: ExecutionContext, action: "sen
     __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
     __prompt: prompt,
   });
-
-  if (action === "send_list" && listVisitIndex !== undefined) {
-    registerActiveListVisit(context.run.id, context.currentNode.id, listVisitIndex);
-    logAfterSendListMessage({
-      runId: context.run.id,
-      sessionId: context.session.id,
-      node: context.currentNode,
-      listVisitIndex,
-      outboundKind: outbound.kind,
-      outboundQueueLength: readOutboundQueue(nextVariables).length,
-    });
-  }
 
   return {
     outcome: "waiting_input",
@@ -185,6 +327,9 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           variables: mergeVariables(context.variables, { [key]: context.currentNode.config.value ?? null }),
         };
       }
+      if (action === "pick_date") {
+        return executeDatePickerAction(context, deps);
+      }
       if (action === "wait_for_input" || action === "wait_for_reply") {
         const inputKey = readString(context.currentNode.config.inputKey) ?? "input";
         if (context.input && context.input[inputKey] !== undefined) {
@@ -214,7 +359,7 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
         };
       }
       if (action === "send_buttons" || action === "send_list") {
-        return executeInteractiveMessageAction(context, action);
+        return executeInteractiveMessageAction(context, action, deps);
       }
       if (action === "send_message") {
         const message =

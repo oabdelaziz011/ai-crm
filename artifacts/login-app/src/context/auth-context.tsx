@@ -33,6 +33,7 @@ import {
   type AuthIdentitySnapshot,
 } from "@/context/auth-identity";
 import { fetchUserAuthContext } from "@/lib/auth/load-user-auth-context";
+import { authBootstrapProfilesEqual } from "@/lib/auth/normalize-auth-bootstrap-profile";
 import { wbDebug } from "@/workflow-builder/debug/wb-runtime-debug";
 
 export interface ProfileRecord {
@@ -41,6 +42,8 @@ export interface ProfileRecord {
   full_name: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
+  timezone: string | null;
+  avatar_url: string | null;
 }
 
 export interface CompanyRecord {
@@ -189,13 +192,7 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
       if (isStale()) return;
 
       setProfile((current) => {
-        if (
-          current?.id === nextProfile?.id
-          && current?.company_id === nextProfile?.company_id
-          && current?.full_name === nextProfile?.full_name
-          && current?.is_super_admin === nextProfile?.is_super_admin
-          && current?.preferred_language === nextProfile?.preferred_language
-        ) {
+        if (authBootstrapProfilesEqual(current, nextProfile)) {
           return current;
         }
         appPerfAuthContextUpdate("user");

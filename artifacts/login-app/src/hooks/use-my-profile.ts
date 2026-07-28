@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
+import { writeMyProfileCache } from "@/lib/react-query/seed-auth-cache";
 import type { AppLanguage } from "@/lib/i18n/resolve-app-language";
 import type { MyProfile, MyProfileUpdate } from "@/lib/types";
 
@@ -251,8 +252,8 @@ export function useUpdateMyProfile() {
         hasPreferenceColumns: true,
       });
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: MY_PROFILE_KEY });
+    onSuccess: (updatedProfile) => {
+      writeMyProfileCache(qc, updatedProfile);
     },
   });
 }
@@ -287,8 +288,8 @@ export function useUpdatePreferredLanguage() {
 
       return fetchMyProfile();
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: MY_PROFILE_KEY });
+    onSuccess: (updatedProfile) => {
+      writeMyProfileCache(qc, updatedProfile);
     },
   });
 }

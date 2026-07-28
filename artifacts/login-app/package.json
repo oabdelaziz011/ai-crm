@@ -12,6 +12,7 @@
     "test:routing": "tsx scripts/nested-routing.test.mts",
     "test:nav-i18n": "tsx scripts/billing-nav-dom-i18n-verify.mts",
     "test:language-authority": "tsx scripts/language-authority.test.mts",
+    "test:profile-language-propagation": "tsx scripts/profile-language-propagation.test.mts",
     "test:language-regression": "tsx scripts/language-switch-regression-probe.mts",
     "test:user-role-company": "tsx ../../scripts/user-role-company-validation.test.mts",
     "test:user-role-company-e2e": "tsx ../../scripts/user-role-company-e2e.mts",

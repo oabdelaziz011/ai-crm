@@ -8,6 +8,8 @@ type AuthProfileSeed = {
   full_name: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
+  timezone: string | null;
+  avatar_url: string | null;
 };
 
 type AuthCompanySeed = {
@@ -33,10 +35,10 @@ export function seedMyProfileFromAuth(
     company_id: profile.company_id,
     email: existing?.email ?? null,
     full_name: profile.full_name,
-    avatar_url: existing?.avatar_url ?? null,
+    avatar_url: profile.avatar_url ?? existing?.avatar_url ?? null,
     job_title: existing?.job_title ?? null,
     preferred_language: profile.preferred_language ?? existing?.preferred_language ?? null,
-    timezone: existing?.timezone ?? "UTC",
+    timezone: profile.timezone ?? existing?.timezone ?? "UTC",
     is_super_admin: profile.is_super_admin,
     is_active: true,
     created_at: existing?.created_at ?? new Date(0).toISOString(),
@@ -47,4 +49,13 @@ export function seedMyProfileFromAuth(
   };
 
   queryClient.setQueryData(MY_PROFILE_KEY, seeded);
+}
+
+/** Write mutation result to cache immediately, then mark for background reconcile. */
+export function writeMyProfileCache(
+  queryClient: QueryClient,
+  updatedProfile: MyProfile,
+): void {
+  queryClient.setQueryData(MY_PROFILE_KEY, updatedProfile);
+  void queryClient.invalidateQueries({ queryKey: MY_PROFILE_KEY });
 }

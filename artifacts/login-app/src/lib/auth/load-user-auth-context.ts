@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { normalizeAuthBootstrapProfile } from "@/lib/auth/normalize-auth-bootstrap-profile";
+import { parseRpcPayloadForTest } from "@/lib/auth/parse-auth-rpc-payload";
 
 export interface AuthBootstrapProfile {
   id: string;
@@ -6,6 +8,8 @@ export interface AuthBootstrapProfile {
   full_name: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
+  timezone: string | null;
+  avatar_url: string | null;
 }
 
 export interface AuthBootstrapCompany {
@@ -57,14 +61,7 @@ function isMissingRpcError(message: string | undefined): boolean {
 }
 
 function parseRpcPayload(raw: unknown): AuthBootstrapPayload {
-  const record = (raw ?? {}) as Record<string, unknown>;
-  const profile = (record.profile as AuthBootstrapProfile | null) ?? null;
-  const company = (record.company as AuthBootstrapCompany | null) ?? null;
-  const roles = Array.isArray(record.roles) ? (record.roles as AuthBootstrapRole[]) : [];
-  const permissions = Array.isArray(record.permissions)
-    ? (record.permissions as AuthBootstrapPermission[])
-    : [];
-  return { profile, company, roles, permissions };
+  return parseRpcPayloadForTest(raw);
 }
 
 async function loadAuthContextViaRpc(userId: string): Promise<AuthBootstrapPayload> {
@@ -83,15 +80,15 @@ function isMissingColumnError(message: string | undefined): boolean {
 }
 
 async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null> {
-  const profileColumnsFull = "id, company_id, full_name, is_super_admin, preferred_language";
+  const profileColumnsFull =
+    "id, company_id, full_name, is_super_admin, preferred_language, timezone, avatar_url";
   const profileColumnsLegacy = "id, company_id, full_name, is_super_admin";
+
   const byId = await supabase.from("profiles").select(profileColumnsFull).eq("id", userId).maybeSingle();
   if (!byId.error && byId.data) {
-    return {
-      ...(byId.data as Omit<AuthBootstrapProfile, "preferred_language">),
-      preferred_language: (byId.data as AuthBootstrapProfile).preferred_language ?? null,
-    };
+    return normalizeAuthBootstrapProfile(byId.data);
   }
+
   if (byId.error && !isMissingColumnError(byId.error.message)) {
     const byUserId = await supabase
       .from("profiles")
@@ -99,10 +96,7 @@ async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null>
       .eq("user_id", userId)
       .maybeSingle();
     if (!byUserId.error && byUserId.data) {
-      return {
-        ...(byUserId.data as Omit<AuthBootstrapProfile, "preferred_language">),
-        preferred_language: (byUserId.data as AuthBootstrapProfile).preferred_language ?? null,
-      };
+      return normalizeAuthBootstrapProfile(byUserId.data);
     }
     if (byUserId.error && !isMissingColumnError(byUserId.error.message)) {
       throw byUserId.error;
@@ -111,8 +105,14 @@ async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null>
 
   const legacyById = await supabase.from("profiles").select(profileColumnsLegacy).eq("id", userId).maybeSingle();
   if (!legacyById.error && legacyById.data) {
-    return { ...(legacyById.data as AuthBootstrapProfile), preferred_language: null };
+    return normalizeAuthBootstrapProfile({
+      ...legacyById.data,
+      preferred_language: null,
+      timezone: "UTC",
+      avatar_url: null,
+    });
   }
+
   const legacyByUserId = await supabase
     .from("profiles")
     .select(profileColumnsLegacy)
@@ -120,7 +120,12 @@ async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null>
     .maybeSingle();
   if (legacyByUserId.error) throw legacyByUserId.error;
   return legacyByUserId.data
-    ? { ...(legacyByUserId.data as AuthBootstrapProfile), preferred_language: null }
+    ? normalizeAuthBootstrapProfile({
+        ...legacyByUserId.data,
+        preferred_language: null,
+        timezone: "UTC",
+        avatar_url: null,
+      })
     : null;
 }
 

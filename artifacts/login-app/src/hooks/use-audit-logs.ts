@@ -1,9 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { collectReferenceIds, readMetadataRecord, readMetadataString } from "@/lib/audit-log/mapping";
+import { AUDIT_LOG_PAGE_SIZE } from "@/lib/crm/crm-list-config";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { supabase } from "@/lib/supabase";
 import type { AuditLog, EnrichedAuditLog } from "@/lib/types";
 
 export const AUDIT_LOGS_KEY = ["audit-logs"] as const;
+export const AUDIT_LOGS_MAX_ROWS = AUDIT_LOG_PAGE_SIZE * 10;
+
+const AUDIT_LOG_COLUMNS =
+  "id, user_id, company_id, action, entity, entity_id, ip_address, metadata, created_at" as const;
 
 type ProfileRow = { id: string; full_name: string | null; email: string | null };
 type CompanyRow = { id: string; name: string | null };
@@ -87,23 +93,22 @@ function resolveEntityDisplayName(
   return null;
 }
 
-export function useAuditLogs(enabled = true) {
-  return useQuery({
-    queryKey: AUDIT_LOGS_KEY,
-    enabled,
-    queryFn: async (): Promise<EnrichedAuditLog[]> => {
-      const { data, error } = await supabase
-        .from("audit_logs")
-        .select("id, user_id, company_id, action, entity, entity_id, ip_address, metadata, created_at")
-        .order("created_at", { ascending: false })
-        .limit(500);
+async function fetchAuditLogsPage(offset: number, limit: number): Promise<AuditLog[]> {
+  const from = offset;
+  const to = offset + limit - 1;
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select(AUDIT_LOG_COLUMNS)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as AuditLog[];
+}
 
-      if (error) throw new Error(error.message);
+async function enrichAuditLogs(baseLogs: AuditLog[]): Promise<EnrichedAuditLog[]> {
+  if (baseLogs.length === 0) return [];
 
-      const baseLogs = (data ?? []) as AuditLog[];
-      if (baseLogs.length === 0) return [];
-
-      const refs = collectReferenceIds(baseLogs);
+  const refs = collectReferenceIds(baseLogs);
       const allUserIds = Array.from(new Set([...refs.userIds, ...refs.profileEntityIds]));
       const allCompanyIds = Array.from(new Set([...refs.companyIds, ...refs.companyEntityIds]));
       const allRoleIds = Array.from(new Set([...refs.roleIds, ...refs.roleEntityIds]));
@@ -240,6 +245,46 @@ export function useAuditLogs(enabled = true) {
           },
         };
       });
+}
+
+/** Progressive server pages for load-more UX. */
+export function useAuditLogsInfinite(enabled = true, pageSize = AUDIT_LOG_PAGE_SIZE) {
+  return useInfiniteQuery({
+    queryKey: [...AUDIT_LOGS_KEY, "infinite", pageSize],
+    enabled,
+    staleTime: APP_QUERY_STALE_MS,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const rows = await fetchAuditLogsPage(pageParam, pageSize);
+      return {
+        rows: await enrichAuditLogs(rows),
+        nextOffset: rows.length < pageSize ? null : pageParam + pageSize,
+      };
+    },
+    getNextPageParam: (lastPage, _pages, lastOffset) => {
+      if (lastPage.nextOffset == null) return undefined;
+      if (lastOffset + pageSize >= AUDIT_LOGS_MAX_ROWS) return undefined;
+      return lastPage.nextOffset;
+    },
+  });
+}
+
+/** Bounded list — fetches in server pages up to legacy 500-row cap. */
+export function useAuditLogs(enabled = true) {
+  return useQuery({
+    queryKey: [...AUDIT_LOGS_KEY, "bounded", AUDIT_LOGS_MAX_ROWS],
+    enabled,
+    staleTime: APP_QUERY_STALE_MS,
+    queryFn: async (): Promise<EnrichedAuditLog[]> => {
+      const all: AuditLog[] = [];
+      let offset = 0;
+      while (all.length < AUDIT_LOGS_MAX_ROWS) {
+        const page = await fetchAuditLogsPage(offset, AUDIT_LOG_PAGE_SIZE);
+        all.push(...page);
+        if (page.length < AUDIT_LOG_PAGE_SIZE) break;
+        offset += AUDIT_LOG_PAGE_SIZE;
+      }
+      return enrichAuditLogs(all);
     },
   });
 }

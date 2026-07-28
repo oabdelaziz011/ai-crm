@@ -3,6 +3,7 @@ import {
   LEGACY_BOOKING_LIST_COLUMNS,
   SCHEDULING_BOOKING_LIST_COLUMNS,
 } from "@/lib/crm/crm-query-columns";
+import { BOOKING_LIST_MAX_ROWS } from "@/lib/crm/crm-list-config";
 import {
   mergeBookingLists,
   schedulingBookingToAppBooking,
@@ -34,7 +35,8 @@ export class BookingListService {
       .eq("company_id", companyId)
       .is("deleted_at", null)
       .not("status", "eq", "rescheduled")
-      .order("start_at", { ascending: true });
+      .order("start_at", { ascending: true })
+      .limit(BOOKING_LIST_MAX_ROWS);
 
     if (error) throw new Error(error.message);
     return ((data ?? []) as unknown as SchedulingBookingListRow[]).map((row) =>
@@ -47,7 +49,8 @@ export class BookingListService {
       .from("bookings")
       .select(LEGACY_BOOKING_LIST_COLUMNS)
       .eq("user_id", userId)
-      .order("booking_date", { ascending: true });
+      .order("booking_date", { ascending: true })
+      .limit(BOOKING_LIST_MAX_ROWS);
 
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as Booking[];

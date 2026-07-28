@@ -1,7 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth-context";
 import { INVOICE_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
+import { CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import type { Invoice, InvoiceInsert, InvoiceUpdate } from "@/lib/types";
 import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
@@ -12,22 +13,53 @@ export function invoicesListKey(companyId: string | null | undefined) {
   return [...INVOICES_KEY, companyId ?? "none"] as const;
 }
 
+export type InvoicesPage = {
+  rows: Invoice[];
+  nextOffset: number | null;
+};
+
+async function fetchInvoicesPage(offset: number, limit: number): Promise<InvoicesPage> {
+  const from = offset;
+  const to = offset + limit - 1;
+  const { data, error } = await supabase
+    .from("invoices")
+    .select(INVOICE_LIST_COLUMNS)
+    .order("invoice_date", { ascending: false })
+    .range(from, to);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as unknown as Invoice[];
+  return {
+    rows,
+    nextOffset: rows.length < limit ? null : offset + limit,
+  };
+}
+
 export function useInvoices() {
   const { user, profile } = useAuth();
   const companyId = profile?.company_id ?? null;
 
   return useQuery({
-    queryKey: invoicesListKey(companyId),
+    queryKey: [...invoicesListKey(companyId), "bounded", CRM_LIST_MAX_ROWS],
     enabled: Boolean(user),
     staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Invoice[]> => {
-      const { data, error } = await supabase
-        .from("invoices")
-        .select(INVOICE_LIST_COLUMNS)
-        .order("invoice_date", { ascending: false });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as unknown as Invoice[];
+      const page = await fetchInvoicesPage(0, CRM_LIST_MAX_ROWS);
+      return page.rows;
     },
+  });
+}
+
+export function useInvoicesInfinite(pageSize = CRM_LIST_PAGE_SIZE) {
+  const { user, profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+
+  return useInfiniteQuery({
+    queryKey: [...invoicesListKey(companyId), "infinite", pageSize],
+    enabled: Boolean(user),
+    staleTime: APP_QUERY_STALE_MS,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => fetchInvoicesPage(pageParam, pageSize),
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
   });
 }
 

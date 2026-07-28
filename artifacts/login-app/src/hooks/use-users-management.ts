@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { getPasswordSetupCallbackUrl } from "@/lib/auth-redirect";
 import { translateAuthErrorMessage } from "@/lib/auth-errors";
@@ -15,6 +15,8 @@ import {
 import { replaceUserRole } from "@/lib/users/replace-user-role";
 import { syncUserBranchAssignments } from "@/lib/company/branches/hooks";
 import { invalidateBranchQueries } from "@/lib/company/branches/cache";
+import { USERS_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { supabase } from "@/lib/supabase";
 import i18n from "@/i18n";
 
@@ -34,6 +36,40 @@ export type ManagedUserRole = {
 };
 
 export const USERS_MANAGEMENT_KEY = ["users-management"] as const;
+export const USERS_LIST_MAX_ROWS = USERS_LIST_PAGE_SIZE * 20;
+
+const PROFILE_LIST_COLUMNS =
+  "id, email, full_name, company_id, is_active, is_super_admin, created_at" as const;
+
+export type ManagedUsersScope = {
+  companyId?: string | null;
+};
+
+function usersListKey(scope: ManagedUsersScope) {
+  return [...USERS_MANAGEMENT_KEY, scope.companyId ?? "all"] as const;
+}
+
+async function fetchManagedUsersPage(
+  offset: number,
+  limit: number,
+  scope: ManagedUsersScope,
+): Promise<ManagedUser[]> {
+  const from = offset;
+  const to = offset + limit - 1;
+  let query = supabase
+    .from("profiles")
+    .select(PROFILE_LIST_COLUMNS)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (scope.companyId) {
+    query = query.eq("company_id", scope.companyId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ManagedUser[];
+}
 
 function translateRoleAssignmentError(error: unknown): string {
   if (error instanceof CompanyHasNoRolesError) {
@@ -63,28 +99,56 @@ async function assignUserRole(
   await replaceUserRole(userId, roleId);
 }
 
-export function useManagedUsers() {
+export function useManagedUsers(scope: ManagedUsersScope = {}) {
   return useQuery({
-    queryKey: USERS_MANAGEMENT_KEY,
+    queryKey: [...usersListKey(scope), "bounded", USERS_LIST_MAX_ROWS],
+    staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<ManagedUser[]> => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, company_id, is_active, is_super_admin, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as ManagedUser[];
+      const all: ManagedUser[] = [];
+      let offset = 0;
+      while (all.length < USERS_LIST_MAX_ROWS) {
+        const page = await fetchManagedUsersPage(offset, USERS_LIST_PAGE_SIZE, scope);
+        all.push(...page);
+        if (page.length < USERS_LIST_PAGE_SIZE) break;
+        offset += USERS_LIST_PAGE_SIZE;
+      }
+      return all;
     },
   });
 }
 
-export function useManagedUserRoleMap() {
-  return useQuery({
-    queryKey: [...USERS_MANAGEMENT_KEY, "role-map"],
-    queryFn: async (): Promise<Record<string, ManagedUserRole>> => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("user_id, role_id, roles(name)");
+export function useManagedUsersInfinite(scope: ManagedUsersScope = {}, pageSize = USERS_LIST_PAGE_SIZE) {
+  return useInfiniteQuery({
+    queryKey: [...usersListKey(scope), "infinite", pageSize],
+    staleTime: APP_QUERY_STALE_MS,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const rows = await fetchManagedUsersPage(pageParam, pageSize, scope);
+      return {
+        rows,
+        nextOffset: rows.length < pageSize ? null : pageParam + pageSize,
+      };
+    },
+    getNextPageParam: (lastPage, _pages, lastOffset) => {
+      if (lastPage.nextOffset == null) return undefined;
+      if (lastOffset + pageSize >= USERS_LIST_MAX_ROWS) return undefined;
+      return lastPage.nextOffset;
+    },
+  });
+}
 
+export function useManagedUserRoleMap(scope: ManagedUsersScope = {}) {
+  return useQuery({
+    queryKey: [...usersListKey(scope), "role-map"],
+    staleTime: APP_QUERY_STALE_MS,
+    queryFn: async (): Promise<Record<string, ManagedUserRole>> => {
+      let query = supabase.from("user_roles").select("user_id, role_id, roles(name, company_id)");
+
+      if (scope.companyId) {
+        query = query.eq("roles.company_id", scope.companyId);
+      }
+
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
 
       const map: Record<string, ManagedUserRole> = {};
@@ -93,7 +157,7 @@ export function useManagedUserRoleMap() {
           continue;
         }
 
-        const role = row.roles as { name?: string | null } | null;
+        const role = row.roles as { name?: string | null; company_id?: string | null } | null;
         map[row.user_id] = {
           roleId: row.role_id,
           roleName: role?.name ?? null,

@@ -87,8 +87,13 @@ export function UsersPage() {
   const resolveCompanyId = (formCompanyId: string | null) =>
     canPickCompany ? formCompanyId : (company?.id ?? null);
 
-  const { data: users = [], isLoading, error } = useManagedUsers();
-  const { data: userRoleMap = {} } = useManagedUserRoleMap();
+  const usersScope = useMemo(
+    () => ({ companyId: canPickCompany ? null : (company?.id ?? null) }),
+    [canPickCompany, company?.id],
+  );
+
+  const { data: users = [], isLoading, error } = useManagedUsers(usersScope);
+  const { data: userRoleMap = {} } = useManagedUserRoleMap(usersScope);
   const { data: companies = [] } = useCompanies(canPickCompany);
   const createUser = useCreateManagedUser();
   const updateUser = useUpdateManagedUser();

@@ -1,7 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth-context";
 import { CUSTOMER_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
+import { CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import type { Customer, CustomerInsert, CustomerUpdate } from "@/lib/types";
 import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
@@ -13,22 +14,55 @@ export function customersListKey(companyId: string | null | undefined) {
   return [...CUSTOMERS_KEY, companyId ?? "none"] as const;
 }
 
+export type CustomersPage = {
+  rows: Customer[];
+  nextOffset: number | null;
+};
+
+async function fetchCustomersPage(offset: number, limit: number): Promise<CustomersPage> {
+  const from = offset;
+  const to = offset + limit - 1;
+  const { data, error } = await supabase
+    .from("customers")
+    .select(CUSTOMER_LIST_COLUMNS)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Customer[];
+  return {
+    rows,
+    nextOffset: rows.length < limit ? null : offset + limit,
+  };
+}
+
+/** Bounded list for dashboards and cross-entity enrichment. */
 export function useCustomers() {
   const { user, profile } = useAuth();
   const companyId = profile?.company_id ?? null;
 
   return useQuery({
-    queryKey: customersListKey(companyId),
+    queryKey: [...customersListKey(companyId), "bounded", CRM_LIST_MAX_ROWS],
     enabled: Boolean(user),
     staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Customer[]> => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select(CUSTOMER_LIST_COLUMNS)
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      const page = await fetchCustomersPage(0, CRM_LIST_MAX_ROWS);
+      return page.rows;
     },
+  });
+}
+
+/** Infinite scroll for the customers list workspace. */
+export function useCustomersInfinite(pageSize = CRM_LIST_PAGE_SIZE) {
+  const { user, profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+
+  return useInfiniteQuery({
+    queryKey: [...customersListKey(companyId), "infinite", pageSize],
+    enabled: Boolean(user),
+    staleTime: APP_QUERY_STALE_MS,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => fetchCustomersPage(pageParam, pageSize),
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
   });
 }
 

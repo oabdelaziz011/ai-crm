@@ -5,6 +5,7 @@ export interface AuthBootstrapProfile {
   company_id: string | null;
   full_name: string | null;
   is_super_admin: boolean;
+  preferred_language: string | null;
 }
 
 export interface AuthBootstrapCompany {
@@ -74,17 +75,53 @@ async function loadAuthContextViaRpc(userId: string): Promise<AuthBootstrapPaylo
   return parseRpcPayload(data);
 }
 
+function isMissingColumnError(message: string | undefined): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes("does not exist")
+    && (normalized.includes("column") || normalized.includes("42703"));
+}
+
 async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null> {
-  const profileColumns = "id, company_id, full_name, is_super_admin";
-  const byId = await supabase.from("profiles").select(profileColumns).eq("id", userId).maybeSingle();
-  if (!byId.error && byId.data) return byId.data as AuthBootstrapProfile;
-  const byUserId = await supabase
+  const profileColumnsFull = "id, company_id, full_name, is_super_admin, preferred_language";
+  const profileColumnsLegacy = "id, company_id, full_name, is_super_admin";
+  const byId = await supabase.from("profiles").select(profileColumnsFull).eq("id", userId).maybeSingle();
+  if (!byId.error && byId.data) {
+    return {
+      ...(byId.data as Omit<AuthBootstrapProfile, "preferred_language">),
+      preferred_language: (byId.data as AuthBootstrapProfile).preferred_language ?? null,
+    };
+  }
+  if (byId.error && !isMissingColumnError(byId.error.message)) {
+    const byUserId = await supabase
+      .from("profiles")
+      .select(profileColumnsFull)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!byUserId.error && byUserId.data) {
+      return {
+        ...(byUserId.data as Omit<AuthBootstrapProfile, "preferred_language">),
+        preferred_language: (byUserId.data as AuthBootstrapProfile).preferred_language ?? null,
+      };
+    }
+    if (byUserId.error && !isMissingColumnError(byUserId.error.message)) {
+      throw byUserId.error;
+    }
+  }
+
+  const legacyById = await supabase.from("profiles").select(profileColumnsLegacy).eq("id", userId).maybeSingle();
+  if (!legacyById.error && legacyById.data) {
+    return { ...(legacyById.data as AuthBootstrapProfile), preferred_language: null };
+  }
+  const legacyByUserId = await supabase
     .from("profiles")
-    .select(profileColumns)
+    .select(profileColumnsLegacy)
     .eq("user_id", userId)
     .maybeSingle();
-  if (byUserId.error) throw byUserId.error;
-  return (byUserId.data as AuthBootstrapProfile | null) ?? null;
+  if (legacyByUserId.error) throw legacyByUserId.error;
+  return legacyByUserId.data
+    ? { ...(legacyByUserId.data as AuthBootstrapProfile), preferred_language: null }
+    : null;
 }
 
 /** Fallback path when RPC is unavailable (pre-migration clients). */

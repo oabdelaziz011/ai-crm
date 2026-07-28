@@ -52,7 +52,7 @@ import {
   addMinutesToInstantIso,
 } from "@/lib/scheduling/booking-domain/booking-time-utils";
 import { getBookingNotificationDispatcher } from "@/lib/scheduling/operations/notifications";
-import { useCustomers } from "@/hooks/use-customers";
+import { useCustomersEnrichment } from "@/hooks/use-customers";
 import type { BookingConflictDetail } from "@/lib/scheduling/operations/conflicts";
 
 const exportService = new OperationsExportService(new OperationsRepository(supabase));
@@ -93,7 +93,7 @@ export function OperationsPage() {
   const { data: branches = [] } = useCurrentUserBranches(companyId);
   const { data: resources = [] } = useSchedulingResources(companyId);
   const { data: services = [] } = useSchedulingServices(companyId);
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useCustomersEnrichment();
 
   const checkIn = useCheckInDomainBooking(companyId);
   const cancelBooking = useCancelBookingWithReason(companyId);

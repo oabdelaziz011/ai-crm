@@ -1,15 +1,27 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { getAuthRedirectUrl } from "@/lib/auth-redirect";
 import type { AuthErrorLike } from "@/lib/auth-errors";
 import {
-  authPerfReloadEnd,
-  authPerfReloadError,
-  authPerfReloadStart,
-  authPerfRender,
-  authPerfTokenRefreshed,
-  authPerfTokenRefreshSkipped,
-} from "@/lib/auth/auth-perf";
+  appPerfAuthContextUpdate,
+  appPerfProviderRender,
+  appPerfReloadEnd,
+  appPerfReloadError,
+  appPerfReloadStart,
+  appPerfTokenRefreshed,
+  appPerfTokenRefreshSkipped,
+} from "@/lib/perf/app-render-perf";
+import { seedMyProfileFromAuth } from "@/lib/react-query/seed-auth-cache";
 import { supabase } from "@/lib/supabase";
 import { shouldSkipAuthContextReload } from "@/lib/auth-password-verify";
 import {
@@ -23,14 +35,15 @@ import {
 import { fetchUserAuthContext } from "@/lib/auth/load-user-auth-context";
 import { wbDebug } from "@/workflow-builder/debug/wb-runtime-debug";
 
-interface ProfileRecord {
+export interface ProfileRecord {
   id: string;
   company_id: string | null;
   full_name: string | null;
   is_super_admin: boolean;
+  preferred_language: string | null;
 }
 
-interface CompanyRecord {
+export interface CompanyRecord {
   id: string;
   name: string | null;
   logo_url: string | null;
@@ -42,7 +55,7 @@ interface CompanyRecord {
   updated_at?: string;
 }
 
-interface RoleRecord {
+export interface RoleRecord {
   id: string;
   company_id: string;
   name: string | null;
@@ -52,7 +65,7 @@ interface RoleRecord {
   updated_at?: string;
 }
 
-interface PermissionRecord {
+export interface PermissionRecord {
   id: string;
   category: string | null;
   module: string | null;
@@ -65,28 +78,48 @@ interface PermissionRecord {
 
 type LoadAuthMode = "bootstrap" | "background";
 
-interface AuthContextType {
+export type SessionContextValue = {
   session: Session | null;
   user: User | null;
-  profile: ProfileRecord | null;
-  company: CompanyRecord | null;
-  roles: RoleRecord[];
-  permissions: PermissionRecord[];
-  isSuperAdmin: boolean;
   /** Blocks the app shell — only true during INITIAL_SESSION bootstrap. */
   isLoading: boolean;
+};
+
+export type UserContextValue = {
+  profile: ProfileRecord | null;
+  company: CompanyRecord | null;
+  displayName: string;
+  isSuperAdmin: boolean;
+};
+
+export type PermissionsContextValue = {
+  roles: RoleRecord[];
+  permissions: PermissionRecord[];
   /** Silent RBAC reload — never blocks navigation or replaces page content. */
   isRefreshing: boolean;
+};
+
+export type AuthActionsContextValue = {
   signIn: (email: string, password: string) => Promise<{ error: AuthErrorLike | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthErrorLike | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   refreshAuthContext: () => Promise<void>;
-  displayName: string;
-}
+};
 
-const AuthContext = createContext<AuthContextType | null>(null);
+/** Combined view — prefer slice hooks to avoid cross-slice re-renders. */
+export interface AuthContextType extends SessionContextValue, UserContextValue, PermissionsContextValue, AuthActionsContextValue {}
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+const SessionContext = createContext<SessionContextValue | null>(null);
+const UserContext = createContext<UserContextValue | null>(null);
+const PermissionsContext = createContext<PermissionsContextValue | null>(null);
+const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
+
+type AuthProviderProps = {
+  children: ReactNode;
+  queryClient?: QueryClient;
+};
+
+export function AuthProvider({ children, queryClient }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [company, setCompany] = useState<CompanyRecord | null>(null);
@@ -101,7 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadGenerationRef = useRef(0);
   const bootstrapCompleteRef = useRef(false);
 
-  /** Always-current identity for the auth listener (avoids stale closures). */
   const identityRef = useRef({
     profile: null as ProfileRecord | null,
     roles: [] as RoleRecord[],
@@ -141,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const generation = ++loadGenerationRef.current;
     const isStale = () => generation !== loadGenerationRef.current;
 
-    authPerfReloadStart(trigger, mode);
+    appPerfReloadStart(trigger, mode);
 
     if (!isStale()) {
       if (mode === "bootstrap") {
@@ -162,9 +194,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           && current?.company_id === nextProfile?.company_id
           && current?.full_name === nextProfile?.full_name
           && current?.is_super_admin === nextProfile?.is_super_admin
+          && current?.preferred_language === nextProfile?.preferred_language
         ) {
           return current;
         }
+        appPerfAuthContextUpdate("user");
         return nextProfile;
       });
 
@@ -179,16 +213,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ) {
           return current;
         }
+        appPerfAuthContextUpdate("user");
         return nextCompany;
       });
 
       if (isStale()) return;
 
-      setRoles((current) => (arraysEqualById(current, nextRoles) ? current : nextRoles));
+      setRoles((current) => {
+        if (arraysEqualById(current, nextRoles)) return current;
+        appPerfAuthContextUpdate("permissions");
+        return nextRoles;
+      });
 
       if (isStale()) return;
 
-      setPermissions((current) => (permissionsEqual(current, nextPermissions) ? current : nextPermissions));
+      setPermissions((current) => {
+        if (permissionsEqual(current, nextPermissions)) return current;
+        appPerfAuthContextUpdate("permissions");
+        return nextPermissions;
+      });
+
+      if (queryClient && nextProfile) {
+        seedMyProfileFromAuth(queryClient, nextProfile, nextCompany, userId);
+      }
+
       loadedUserIdRef.current = userId;
       loadedIdentityRef.current = createAuthIdentitySnapshot(
         userId,
@@ -203,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isStale()) return;
 
       const message = error instanceof Error ? error.message : String(error);
-      authPerfReloadError(trigger, mode, message);
+      appPerfReloadError(trigger, mode, message);
       console.warn("Unable to load RBAC context", error);
 
       if (mode === "bootstrap") {
@@ -217,7 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setIsRefreshing(false);
         }
-        authPerfReloadEnd(trigger, mode);
+        appPerfReloadEnd(trigger, mode);
       }
     }
   };
@@ -230,6 +278,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         wbDebug("auth session preserved", { event, reason: "token-only refresh" });
         return current;
       }
+      if (current !== nextSession) {
+        appPerfAuthContextUpdate("session");
+      }
       return nextSession;
     });
   };
@@ -237,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleAuthStateChange = async (event: AuthChangeEvent, nextSession: Session | null) => {
       if (event === "TOKEN_REFRESHED") {
-        authPerfTokenRefreshed(nextSession?.user?.id ?? null);
+        appPerfTokenRefreshed(nextSession?.user?.id ?? null);
         wbDebug("TOKEN_REFRESHED", { userId: nextSession?.user?.id ?? null });
       }
 
@@ -268,7 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           roles: currentRoles,
         })
       ) {
-        authPerfTokenRefreshSkipped(nextUserId, "identity unchanged");
+        appPerfTokenRefreshSkipped(nextUserId, "identity unchanged");
         wbDebug("auth state change SKIP reload", { event, reason: "token refresh identity unchanged" });
         return;
       }
@@ -318,7 +369,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const result = await supabase.auth.signInWithPassword({ email, password });
@@ -364,52 +415,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const displayName = profile?.full_name || session?.user?.email?.split("@")[0] || "User";
 
-  const contextValue = useMemo<AuthContextType>(
+  const sessionValue = useMemo<SessionContextValue>(
     () => ({
       session,
       user: session?.user ?? null,
-      profile,
-      company,
-      roles,
-      permissions,
-      isSuperAdmin: profile?.is_super_admin === true,
       isLoading,
-      isRefreshing,
-      signIn,
-      signUp,
-      signOut,
-      refreshAuthContext,
-      displayName,
     }),
-    [
-      session,
+    [session, isLoading],
+  );
+
+  const userValue = useMemo<UserContextValue>(
+    () => ({
       profile,
       company,
+      displayName,
+      isSuperAdmin: profile?.is_super_admin === true,
+    }),
+    [profile, company, displayName],
+  );
+
+  const permissionsValue = useMemo<PermissionsContextValue>(
+    () => ({
       roles,
       permissions,
-      isLoading,
       isRefreshing,
+    }),
+    [roles, permissions, isRefreshing],
+  );
+
+  const actionsValue = useMemo<AuthActionsContextValue>(
+    () => ({
       signIn,
       signUp,
       signOut,
       refreshAuthContext,
-      displayName,
-    ],
+    }),
+    [signIn, signUp, signOut, refreshAuthContext],
   );
 
   useEffect(() => {
-    authPerfRender("AuthProvider");
+    appPerfProviderRender("AuthProvider");
   });
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+    <SessionContext.Provider value={sessionValue}>
+      <UserContext.Provider value={userValue}>
+        <PermissionsContext.Provider value={permissionsValue}>
+          <AuthActionsContext.Provider value={actionsValue}>
+            {children}
+          </AuthActionsContext.Provider>
+        </PermissionsContext.Provider>
+      </UserContext.Provider>
+    </SessionContext.Provider>
   );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+export function useSession(): SessionContextValue {
+  const ctx = useContext(SessionContext);
+  if (!ctx) throw new Error("useSession must be used inside AuthProvider");
   return ctx;
+}
+
+export function useUser(): UserContextValue {
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error("useUser must be used inside AuthProvider");
+  return ctx;
+}
+
+export function usePermissionsContext(): PermissionsContextValue {
+  const ctx = useContext(PermissionsContext);
+  if (!ctx) throw new Error("usePermissionsContext must be used inside AuthProvider");
+  return ctx;
+}
+
+export function useAuthActions(): AuthActionsContextValue {
+  const ctx = useContext(AuthActionsContext);
+  if (!ctx) throw new Error("useAuthActions must be used inside AuthProvider");
+  return ctx;
+}
+
+/** Prefer slice hooks (useSession, useUser, usePermissionsContext, useAuthActions). */
+export function useAuth(): AuthContextType {
+  return {
+    ...useSession(),
+    ...useUser(),
+    ...usePermissionsContext(),
+    ...useAuthActions(),
+  };
 }

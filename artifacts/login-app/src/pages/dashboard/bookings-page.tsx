@@ -7,7 +7,7 @@ import {
 import { useCustomerProfile } from "@/context/customer-profile-context";
 import { useAuth } from "@/context/auth-context";
 import { useBookings, useDeleteBooking } from "@/hooks/use-bookings";
-import { useCustomers } from "@/hooks/use-customers";
+import { useCustomersEnrichment } from "@/hooks/use-customers";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import { Can } from "@/components/rbac/permission-guard";
@@ -32,7 +32,7 @@ export default function BookingsPage() {
   const bookingsQuery = useBookings();
   const { data: bookings = [], error } = bookingsQuery;
   const bookingsShell = queryShellStateFromQuery(bookingsQuery);
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useCustomersEnrichment();
   const deleteBooking = useDeleteBooking();
   const canCreateBookings = useHasPermission("bookings.create");
   const canEditBookings = useHasPermission("bookings.edit");

@@ -4,6 +4,9 @@ export const CRM_LIST_PAGE_SIZE = 50;
 /** Safety cap for dashboard/aggregate hooks that still fetch list rows. */
 export const CRM_LIST_MAX_ROWS = 500;
 
+/** Smaller cap for cross-page enrichment (dropdowns, labels, AI context). */
+export const CRM_ENRICHMENT_MAX_ROWS = 100;
+
 /** Audit log server page size (matches UI PAGE_SIZE multiples). */
 export const AUDIT_LOG_PAGE_SIZE = 50;
 

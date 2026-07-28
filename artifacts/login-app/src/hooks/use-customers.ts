@@ -1,9 +1,10 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/auth-context";
+import { useSession, useUser } from "@/context/auth-context";
 import { CUSTOMER_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
-import { CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
+import { CRM_ENRICHMENT_MAX_ROWS, CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
+import { flattenInfinitePages } from "@/lib/react-query/infinite-utils";
 import type { Customer, CustomerInsert, CustomerUpdate } from "@/lib/types";
 import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
 import { customerKey } from "./use-customer";
@@ -36,24 +37,31 @@ async function fetchCustomersPage(offset: number, limit: number): Promise<Custom
 }
 
 /** Bounded list for dashboards and cross-entity enrichment. */
-export function useCustomers() {
-  const { user, profile } = useAuth();
+export function useCustomers(maxRows = CRM_LIST_MAX_ROWS) {
+  const { user } = useSession();
+  const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
 
   return useQuery({
-    queryKey: [...customersListKey(companyId), "bounded", CRM_LIST_MAX_ROWS],
+    queryKey: [...customersListKey(companyId), "bounded", maxRows],
     enabled: Boolean(user),
     staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Customer[]> => {
-      const page = await fetchCustomersPage(0, CRM_LIST_MAX_ROWS);
+      const page = await fetchCustomersPage(0, maxRows);
       return page.rows;
     },
   });
 }
 
+/** Lightweight customer list for dropdowns and label enrichment. */
+export function useCustomersEnrichment() {
+  return useCustomers(CRM_ENRICHMENT_MAX_ROWS);
+}
+
 /** Infinite scroll for the customers list workspace. */
 export function useCustomersInfinite(pageSize = CRM_LIST_PAGE_SIZE) {
-  const { user, profile } = useAuth();
+  const { user } = useSession();
+  const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
 
   return useInfiniteQuery({
@@ -64,6 +72,13 @@ export function useCustomersInfinite(pageSize = CRM_LIST_PAGE_SIZE) {
     queryFn: ({ pageParam }) => fetchCustomersPage(pageParam, pageSize),
     getNextPageParam: (lastPage) => lastPage.nextOffset,
   });
+}
+
+/** Flattened rows from useCustomersInfinite. */
+export function useCustomersInfiniteRows(pageSize = CRM_LIST_PAGE_SIZE) {
+  const query = useCustomersInfinite(pageSize);
+  const rows = flattenInfinitePages(query.data?.pages.map((page) => page.rows));
+  return { ...query, rows };
 }
 
 export function useCreateCustomer() {

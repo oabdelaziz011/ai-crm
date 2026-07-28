@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -10,23 +11,31 @@ import {
 } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@/context/auth-context";
+import { useUser } from "@/context/auth-context";
 import {
   DASHBOARD_ROUTE_REGISTRY,
   getDashboardRouteByNestedPath,
 } from "@/config/dashboard-route-registry";
 import type { FloatingAiPageContext } from "@/lib/floating-ai/types";
-import { PAGE_SPECIFIC_CONTEXT_KEYS } from "@/lib/floating-ai/types";
+import {
+  applyFloatingAiPatch,
+  clearPageSpecificFields,
+  floatingAiPatchChanged,
+  floatingAiRegistrationEqual,
+} from "@/lib/floating-ai/context-patch";
+import { appPerfFloatingAiUpdate, appPerfProviderRender } from "@/lib/perf/app-render-perf";
 
-type FloatingAiContextValue = {
+type FloatingAiPageContextValue = {
   pageContext: FloatingAiPageContext;
   setPageContext: (context: Partial<FloatingAiPageContext>) => void;
   registerPageContext: (context: Partial<FloatingAiPageContext>) => void;
   clearPageSpecificContext: () => void;
+};
+
+type FloatingAiUiContextValue = {
   notificationCount: number;
   setNotificationCount: (count: number) => void;
   incrementNotifications: () => void;
-  /** Ref for composer focus — Ctrl+K targets this */
   composerFocusRef: React.RefObject<HTMLTextAreaElement | null>;
   requestComposerFocus: () => void;
   pendingFocusOnOpen: boolean;
@@ -34,7 +43,10 @@ type FloatingAiContextValue = {
   setPendingFocusOnOpen: (value: boolean) => void;
 };
 
-const FloatingAiContext = createContext<FloatingAiContextValue | null>(null);
+export type FloatingAiContextValue = FloatingAiPageContextValue & FloatingAiUiContextValue;
+
+const FloatingAiPageContext = createContext<FloatingAiPageContextValue | null>(null);
+const FloatingAiUiContext = createContext<FloatingAiUiContextValue | null>(null);
 
 function routeToPageId(route: string): string {
   const segment = route.replace(/^\/+/, "").split("/")[0] ?? "home";
@@ -63,26 +75,10 @@ function baseContextFromRoute(
   };
 }
 
-function clearPageSpecificFields(context: FloatingAiPageContext): Partial<FloatingAiPageContext> {
-  const patch: Partial<FloatingAiPageContext> = {};
-  for (const key of PAGE_SPECIFIC_CONTEXT_KEYS) {
-    if (key === "selectedRows") {
-      patch.selectedRows = [];
-    } else if (key === "selectedCount") {
-      patch.selectedCount = 0;
-    } else if (key === "filters") {
-      patch.filters = {};
-    } else {
-      (patch as Record<string, unknown>)[key] = null;
-    }
-  }
-  return patch;
-}
-
 export function FloatingAiProvider({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { t } = useTranslation("common");
-  const { profile, company } = useAuth();
+  const { profile, company } = useUser();
   const companyId = profile?.company_id ?? company?.id ?? null;
   const companyName = company?.name ?? null;
   const userId = profile?.id ?? null;
@@ -120,51 +116,74 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
     ),
   );
 
-  /** Smart context switch: update module/route on navigation, preserve conversation (separate store) */
   useEffect(() => {
     const page = routeToPageId(location);
     const moduleLabel = resolveModuleLabel(location);
 
-    if (prevPageRef.current && prevPageRef.current !== page) {
-      setPageContextState((prev) => ({
-        ...prev,
-        ...clearPageSpecificFields(prev),
-        page,
-        route: location,
-        companyId,
-        companyName,
-        userId,
-        userName,
-        moduleLabel,
-        pageTitle: moduleLabel,
-      }));
-    } else {
-      setPageContextState((prev) => ({
-        ...prev,
-        page,
-        route: location,
-        companyId,
-        companyName,
-        userId,
-        userName,
-        moduleLabel,
-        pageTitle: prev.pageTitle ?? moduleLabel,
-      }));
-    }
+    setPageContextState((prev) => {
+      const routePatch: Partial<FloatingAiPageContext> =
+        prevPageRef.current && prevPageRef.current !== page
+          ? {
+              ...clearPageSpecificFields(prev),
+              page,
+              route: location,
+              companyId,
+              companyName,
+              userId,
+              userName,
+              moduleLabel,
+              pageTitle: moduleLabel,
+            }
+          : {
+              page,
+              route: location,
+              companyId,
+              companyName,
+              userId,
+              userName,
+              moduleLabel,
+              pageTitle: prev.pageTitle ?? moduleLabel,
+            };
+
+      const next = applyFloatingAiPatch(prev, routePatch);
+      if (next !== prev) {
+        appPerfFloatingAiUpdate("route");
+      }
+      return next;
+    });
 
     prevPageRef.current = page;
   }, [location, companyId, companyName, userId, userName, resolveModuleLabel]);
 
   const setPageContext = useCallback((patch: Partial<FloatingAiPageContext>) => {
-    setPageContextState((prev) => ({ ...prev, ...patch }));
+    setPageContextState((prev) => {
+      const next = applyFloatingAiPatch(prev, patch);
+      if (next !== prev) {
+        appPerfFloatingAiUpdate("setPageContext");
+      }
+      return next;
+    });
   }, []);
 
   const registerPageContext = useCallback((context: Partial<FloatingAiPageContext>) => {
-    setPageContextState((prev) => ({ ...prev, ...context }));
+    setPageContextState((prev) => {
+      const next = applyFloatingAiPatch(prev, context);
+      if (next !== prev) {
+        appPerfFloatingAiUpdate("registerPageContext");
+      }
+      return next;
+    });
   }, []);
 
   const clearPageSpecificContext = useCallback(() => {
-    setPageContextState((prev) => ({ ...prev, ...clearPageSpecificFields(prev) }));
+    setPageContextState((prev) => {
+      const patch = clearPageSpecificFields(prev);
+      if (!floatingAiPatchChanged(prev, patch)) {
+        return prev;
+      }
+      appPerfFloatingAiUpdate("clearPageSpecific");
+      return applyFloatingAiPatch(prev, patch);
+    });
   }, []);
 
   const incrementNotifications = useCallback(() => {
@@ -182,12 +201,18 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
     requestComposerFocus();
   }, [requestComposerFocus]);
 
-  const value = useMemo<FloatingAiContextValue>(
+  const pageValue = useMemo<FloatingAiPageContextValue>(
     () => ({
       pageContext,
       setPageContext,
       registerPageContext,
       clearPageSpecificContext,
+    }),
+    [pageContext, setPageContext, registerPageContext, clearPageSpecificContext],
+  );
+
+  const uiValue = useMemo<FloatingAiUiContextValue>(
+    () => ({
       notificationCount,
       setNotificationCount,
       incrementNotifications,
@@ -198,10 +223,6 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
       setPendingFocusOnOpen,
     }),
     [
-      pageContext,
-      setPageContext,
-      registerPageContext,
-      clearPageSpecificContext,
       notificationCount,
       incrementNotifications,
       requestComposerFocus,
@@ -210,28 +231,59 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <FloatingAiContext.Provider value={value}>{children}</FloatingAiContext.Provider>;
+  useEffect(() => {
+    appPerfProviderRender("FloatingAiProvider");
+  });
+
+  return (
+    <FloatingAiPageContext.Provider value={pageValue}>
+      <FloatingAiUiContext.Provider value={uiValue}>{children}</FloatingAiUiContext.Provider>
+    </FloatingAiPageContext.Provider>
+  );
 }
 
-export function useFloatingAi(): FloatingAiContextValue {
-  const ctx = useContext(FloatingAiContext);
+export function useFloatingAiPageContext(): FloatingAiPageContextValue {
+  const ctx = useContext(FloatingAiPageContext);
   if (!ctx) {
-    throw new Error("useFloatingAi must be used within FloatingAiProvider");
+    throw new Error("useFloatingAiPageContext must be used within FloatingAiProvider");
   }
   return ctx;
 }
 
+export function useFloatingAiUi(): FloatingAiUiContextValue {
+  const ctx = useContext(FloatingAiUiContext);
+  if (!ctx) {
+    throw new Error("useFloatingAiUi must be used within FloatingAiProvider");
+  }
+  return ctx;
+}
+
+/** Combined view — prefer slice hooks to avoid cross-slice re-renders. */
+export function useFloatingAi(): FloatingAiContextValue {
+  return {
+    ...useFloatingAiPageContext(),
+    ...useFloatingAiUi(),
+  };
+}
+
 /** Register rich page context from module pages — clears entity fields on unmount only */
 export function useRegisterFloatingAiContext(context: Partial<FloatingAiPageContext> | null) {
-  const { registerPageContext, clearPageSpecificContext } = useFloatingAi();
-  const serialized = context ? JSON.stringify(context) : null;
+  const { registerPageContext, clearPageSpecificContext } = useFloatingAiPageContext();
+  const lastRegistrationRef = useRef<Partial<FloatingAiPageContext> | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!context) return;
+    if (floatingAiRegistrationEqual(lastRegistrationRef.current, context)) {
+      return;
+    }
+    lastRegistrationRef.current = context;
     registerPageContext(context);
-  }, [serialized, registerPageContext, context]);
+  });
 
   useEffect(() => {
-    return () => clearPageSpecificContext();
+    return () => {
+      lastRegistrationRef.current = null;
+      clearPageSpecificContext();
+    };
   }, [clearPageSpecificContext]);
 }

@@ -10,7 +10,7 @@ import { useConversationList } from "@/hooks/conversations/use-conversation-list
 import { useConversationMessages } from "@/hooks/conversations/use-conversation-messages";
 import { useConversationActions } from "@/hooks/conversations/use-conversation-actions";
 import { useTeamInboxReply } from "@/hooks/conversations/use-team-inbox-reply";
-import { useCustomers } from "@/hooks/use-customers";
+import { useCustomersEnrichment } from "@/hooks/use-customers";
 import {
   consumeQueuedTeamInboxConversationFocus,
   subscribeTeamInboxConversationFocus,
@@ -49,7 +49,7 @@ export default function TeamInboxPage() {
   }, [filter, search, user?.id]);
 
   const { data: conversations = [], isLoading, error } = useConversationList(listFilters);
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useCustomersEnrichment();
   const customersById = useMemo(
     () => new Map(customers.map((customer) => [customer.id, customer])),
     [customers],

@@ -34,7 +34,7 @@ import {
 import { calendarEventToAppBooking } from "@/lib/calendar/adapters/legacy-booking-adapter";
 import type { CalendarEvent } from "@/lib/calendar/types/calendar-event";
 import { formatBookingDomainError } from "@/hooks/use-booking-domain";
-import { useCustomers } from "@/hooks/use-customers";
+import { useCustomersEnrichment } from "@/hooks/use-customers";
 import type { Booking } from "@/lib/types";
 import type { WeekdayIndex } from "@/lib/scheduling/types";
 import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
@@ -159,7 +159,7 @@ export function CalendarPage() {
     booking: null,
   });
 
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useCustomersEnrichment();
   const { data: branches = [] } = useSchedulingBranches(companyId);
   const { data: resources = [] } = useSchedulingResources(companyId);
 

@@ -6,6 +6,7 @@ import {
   saveChannelWorkflowBinding,
 } from "@/lib/channel-workflow-binding/channel-workflow-binding-repository";
 import type { ChannelWorkflowBindingRecord } from "@/lib/channel-workflow-binding/types";
+import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { supabase } from "@/lib/supabase";
 
 export function activeAutomationFlowsQueryKey(companyId: string | null) {
@@ -32,7 +33,7 @@ export function useChannelWorkflowBinding(companyChannelId: string | null, enabl
   return useQuery({
     queryKey: channelWorkflowBindingQueryKey(companyChannelId),
     enabled: Boolean(companyChannelId) && enabled,
-    staleTime: 0,
+    staleTime: APP_QUERY_STALE_MS,
     queryFn: async () => {
       if (!companyChannelId) return null;
       return fetchChannelWorkflowBinding(supabase, companyChannelId);

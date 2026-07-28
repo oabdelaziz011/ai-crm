@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { authPerfQueryFetch, installAuthPerfDebugGlobal } from "@/lib/auth/auth-perf";
+import { appPerfQueryFetch, installAppPerfDebugGlobal } from "@/lib/perf/app-render-perf";
 
 /** Keep previous cache entry visible while refetching (TanStack Query v5 placeholderData). */
 export function keepPreviousQueryData<T>(previousData: T | undefined): T | undefined {
@@ -30,12 +30,12 @@ export function createAppQueryClient(): QueryClient {
   client.getQueryCache().subscribe((event) => {
     if (event.type !== "updated") return;
     const { query, action } = event;
-    if (action.type === "fetch" || action.type === "invalidate") {
-      authPerfQueryFetch(query.queryKey, query.state.status);
+    if (action.type === "fetch") {
+      appPerfQueryFetch(query.queryKey, query.state.data !== undefined);
     }
   });
 
-  installAuthPerfDebugGlobal(() => client.getQueryCache().getAll().length);
+  installAppPerfDebugGlobal(() => client.getQueryCache().getAll().length);
 
   return client;
 }

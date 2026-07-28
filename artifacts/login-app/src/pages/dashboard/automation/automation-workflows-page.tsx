@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { nestedSectionHref } from "@/lib/routing";
 import { WorkflowStatusBadge } from "@/workflow-builder/components/lifecycle/workflow-status-badge";
+import { workflowBuilderWorkflowsKey } from "@/workflow-builder/cache/workflow-builder-query-keys";
 import { useWorkflowBuilderServices } from "@/workflow-builder/context/workflow-builder-services";
 
 export function AutomationWorkflowsPage() {
@@ -20,7 +21,7 @@ export function AutomationWorkflowsPage() {
   const companyId = context.companyId ?? "";
 
   const workflowsQuery = useQuery({
-    queryKey: ["automation-workflows", companyId],
+    queryKey: workflowBuilderWorkflowsKey(companyId),
     enabled: Boolean(companyId),
     queryFn: () => repository.list(companyId),
   });

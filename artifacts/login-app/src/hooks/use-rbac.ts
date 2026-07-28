@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/context/auth-context";
+import { useSession, useUser, usePermissionsContext } from "@/context/auth-context";
 import { supabase } from "@/lib/supabase";
 
 export interface RoleRecord {
@@ -75,7 +75,9 @@ export const DEFAULT_RBAC_PERMISSIONS: PermissionRecord[] = [
  * No Supabase queries. All data loaded by AuthContext.
  */
 export function usePermissions(): UsePermissionsResult {
-  const { permissions, roles, isSuperAdmin, isLoading, isRefreshing } = useAuth();
+  const { permissions, roles, isRefreshing } = usePermissionsContext();
+  const { isSuperAdmin } = useUser();
+  const { isLoading } = useSession();
 
   const hasPermission = useCallback(
     (permissionCode: string) => {
@@ -95,8 +97,9 @@ export function usePermissions(): UsePermissionsResult {
 }
 
 export function useAuthUser() {
-  const { user, profile, isLoading, displayName } = useAuth();
-  const { permissions, hasPermission, isSuperAdmin, roles } = usePermissions();
+  const { user, isLoading } = useSession();
+  const { profile, displayName, isSuperAdmin } = useUser();
+  const { permissions, hasPermission, roles } = usePermissions();
 
   const permissionCodes = useMemo(() => {
     const codes = new Set<string>();

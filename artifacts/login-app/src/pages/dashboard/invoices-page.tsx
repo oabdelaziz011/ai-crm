@@ -5,9 +5,9 @@ import {
   DollarSign, CheckCircle2, Clock, AlertCircle, Plus, Download, FileText, Pencil, Trash2,
 } from "lucide-react";
 import { useCustomerProfile } from "@/context/customer-profile-context";
-import { useAuth } from "@/context/auth-context";
+import { useUser } from "@/context/auth-context";
 import { useInvoices, useDeleteInvoice } from "@/hooks/use-invoices";
-import { useCustomers } from "@/hooks/use-customers";
+import { useCustomersEnrichment } from "@/hooks/use-customers";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import { Can } from "@/components/rbac/permission-guard";
@@ -24,11 +24,11 @@ import {
 
 export default function InvoicesPage() {
   const { t } = useTranslation("common");
-  const { profile } = useAuth();
+  const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
   const { openCustomerProfile } = useCustomerProfile();
   const { data: invoices = [], isLoading, error } = useInvoices();
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useCustomersEnrichment();
   const deleteInvoice = useDeleteInvoice();
   const canCreateInvoices = useHasPermission("invoices.create");
   const canEditInvoices = useHasPermission("invoices.edit");

@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCustomers, useDeleteCustomer } from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
-import { useAuth } from "@/context/auth-context";
+import { useUser } from "@/context/auth-context";
 import {
   BookingProfileService,
   CallService,
@@ -70,7 +70,7 @@ export function CustomersListWorkspace() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { profile } = useAuth();
+  const { profile } = useUser();
 
   const { data: customers = [], error, isPending, isFetching } = useCustomers();
   const customersShell = queryShellStateFromQuery({ isPending, isFetching });

@@ -1,9 +1,10 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/auth-context";
+import { useSession, useUser } from "@/context/auth-context";
 import { INVOICE_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
-import { CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
+import { CRM_ENRICHMENT_MAX_ROWS, CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
+import { flattenInfinitePages } from "@/lib/react-query/infinite-utils";
 import type { Invoice, InvoiceInsert, InvoiceUpdate } from "@/lib/types";
 import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
 
@@ -34,23 +35,29 @@ async function fetchInvoicesPage(offset: number, limit: number): Promise<Invoice
   };
 }
 
-export function useInvoices() {
-  const { user, profile } = useAuth();
+export function useInvoices(maxRows = CRM_LIST_MAX_ROWS) {
+  const { user } = useSession();
+  const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
 
   return useQuery({
-    queryKey: [...invoicesListKey(companyId), "bounded", CRM_LIST_MAX_ROWS],
+    queryKey: [...invoicesListKey(companyId), "bounded", maxRows],
     enabled: Boolean(user),
     staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Invoice[]> => {
-      const page = await fetchInvoicesPage(0, CRM_LIST_MAX_ROWS);
+      const page = await fetchInvoicesPage(0, maxRows);
       return page.rows;
     },
   });
 }
 
+export function useInvoicesEnrichment() {
+  return useInvoices(CRM_ENRICHMENT_MAX_ROWS);
+}
+
 export function useInvoicesInfinite(pageSize = CRM_LIST_PAGE_SIZE) {
-  const { user, profile } = useAuth();
+  const { user } = useSession();
+  const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
 
   return useInfiniteQuery({
@@ -61,6 +68,12 @@ export function useInvoicesInfinite(pageSize = CRM_LIST_PAGE_SIZE) {
     queryFn: ({ pageParam }) => fetchInvoicesPage(pageParam, pageSize),
     getNextPageParam: (lastPage) => lastPage.nextOffset,
   });
+}
+
+export function useInvoicesInfiniteRows(pageSize = CRM_LIST_PAGE_SIZE) {
+  const query = useInvoicesInfinite(pageSize);
+  const rows = flattenInfinitePages(query.data?.pages.map((page) => page.rows));
+  return { ...query, rows };
 }
 
 export function useCreateInvoice() {

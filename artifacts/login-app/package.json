@@ -139,6 +139,7 @@
     "@workspace/platform-crypto": "workspace:*",
     "@workspace/retrieval-engine": "workspace:*",
     "@workspace/runtime-integration": "workspace:*",
+    "@workspace/scheduling-engine": "workspace:*",
     "@workspace/vector-query": "workspace:*",
     "@workspace/vector-store": "workspace:*",
     "@xyflow/react": "^12.8.2",

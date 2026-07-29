@@ -20,7 +20,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;
@@ -111,6 +111,50 @@ const BOOKING_SEARCH_LLM: LlmFunctionToolDefinition = {
   },
 };
 
+const SEARCH_AVAILABILITY_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "search_availability",
+    description:
+      "Search real bookable appointment availability for a service. Returns available dates, time slots, resource id/name, duration, and capacity. Read-only.",
+    parameters: {
+      type: "object",
+      properties: {
+        serviceId: { type: "string", description: "Scheduling service UUID" },
+        resourceId: { type: "string", description: "Optional specific resource UUID" },
+        branchId: { type: "string", description: "Optional branch UUID filter" },
+        date: { type: "string", description: "Optional YYYY-MM-DD date for slot results" },
+        daysAhead: { type: "number", description: "Days to scan when date omitted (default 14)" },
+      },
+      required: ["serviceId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CREATE_BOOKING_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "create_booking",
+    description:
+      "Create a confirmed scheduling booking for a customer, service, resource, and slot. Persists to canonical scheduling tables only.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string", description: "CRM customer UUID" },
+        serviceId: { type: "string", description: "Scheduling service UUID" },
+        resourceId: { type: "string", description: "Scheduling resource UUID" },
+        date: { type: "string", description: "Appointment date YYYY-MM-DD" },
+        slotStart: { type: "string", description: "Local start time HH:mm" },
+        branchId: { type: "string", description: "Optional branch UUID" },
+        notes: { type: "string", description: "Optional booking notes" },
+      },
+      required: ["customerId", "serviceId", "resourceId", "date", "slotStart"],
+      additionalProperties: false,
+    },
+  },
+};
+
 const FIND_DUPLICATES_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
@@ -157,14 +201,24 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     exclusionReason: "Mock handler — use search_customer instead",
   },
   {
-    key: "appointment_lookup",
-    displayName: "Appointment Lookup",
+    key: "search_availability",
+    displayName: "Search Availability",
     category: "scheduling",
-    classification: "mock",
-    handlerSource: "builtin_mock",
-    description: "Returns fake appointment rows.",
-    requiredPermissions: ["tools.execute"],
-    exclusionReason: "Mock handler — use booking_search instead",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "Production availability search via slot and availability engines.",
+    requiredPermissions: ["tools.execute", "availability.search"],
+    llmDefinition: SEARCH_AVAILABILITY_LLM,
+  },
+  {
+    key: "create_booking",
+    displayName: "Create Booking",
+    category: "scheduling",
+    classification: "production_ready",
+    handlerSource: "scheduling_agent",
+    description: "Production booking creation via BookingDomainService.",
+    requiredPermissions: ["tools.execute", "bookings.create"],
+    llmDefinition: CREATE_BOOKING_LLM,
   },
   {
     key: "booking",
@@ -172,9 +226,9 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     category: "scheduling",
     classification: "mock",
     handlerSource: "builtin_mock",
-    description: "Returns a fake bookingId without persisting.",
+    description: "Deprecated mock booking handler.",
     requiredPermissions: ["tools.execute"],
-    exclusionReason: "Mock write — no real scheduling integration",
+    exclusionReason: "Mock write — replaced by create_booking",
   },
   {
     key: "faq",

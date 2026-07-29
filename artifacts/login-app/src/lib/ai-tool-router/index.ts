@@ -6,6 +6,7 @@ import { usePermissions } from "@/hooks/use-rbac";
 import { supabase } from "@/lib/supabase";
 import { createToolCustomerServicePort } from "./customer-service-adapter";
 import { useCrmAgentToolPorts } from "./use-crm-agent-tool-ports";
+import { createLoginAppSchedulingToolPorts } from "./scheduling-tool-ports-adapter";
 
 /**
  * Factory hook for Tool Router domain services.
@@ -20,6 +21,7 @@ export function useToolRouterServices() {
     () => ({
       customerService: createToolCustomerServicePort(() => user?.id ?? null),
       crmAgentPorts,
+      schedulingToolPorts: createLoginAppSchedulingToolPorts(supabase),
     }),
     [user?.id, crmAgentPorts],
   );

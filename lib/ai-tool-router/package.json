@@ -16,7 +16,8 @@
     "@workspace/ai-execution-engine": "workspace:*",
     "@workspace/automation-platform": "workspace:*",
     "@workspace/platform-crypto": "file:../platform-crypto",
-    "@workspace/runtime-integration": "workspace:*"
+    "@workspace/runtime-integration": "workspace:*",
+    "@workspace/scheduling-engine": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

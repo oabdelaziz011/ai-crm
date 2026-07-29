@@ -11,10 +11,12 @@ import type { RuntimeIntegrationServices } from "@workspace/runtime-integration"
 
 const FULLY_WIRED_LLM_TOOLS = [
   "booking_search",
+  "create_booking",
   "create_customer",
   "find_duplicate_customers",
   "invoice_search",
   "knowledge_search",
+  "search_availability",
   "search_customer",
   "update_customer",
 ];
@@ -60,6 +62,7 @@ describe("api-server webhook Tool Router wiring", () => {
       {
         customerService: {} as never,
         crmAgentPorts: {} as never,
+        schedulingToolPorts: {} as never,
       },
     );
 

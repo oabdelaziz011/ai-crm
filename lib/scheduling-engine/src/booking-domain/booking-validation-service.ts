@@ -1,27 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
-import { DEFAULT_BOOKING_RULES } from "@/lib/scheduling/types";
-import { SchedulingResourceRepository } from "@/lib/scheduling/repositories/resource-repository";
-import { SchedulingServiceCatalogRepository } from "@/lib/scheduling/repositories/service-catalog-repository";
-import { ResourceServiceMappingRepository } from "@/lib/scheduling/repositories/resource-service-mapping-repository";
-import { SchedulingBookingRulesRepository } from "@/lib/scheduling/repositories/rules-repository";
-import type { SlotGenerationEngine } from "@/lib/scheduling/slot-generation-engine/slot-generation-engine";
-import { BookingRepository } from "@/lib/scheduling/booking-domain/booking-repository";
-import {
-  addMinutesToInstantIso,
-  localDateTimeToInstantIso,
-} from "@/lib/scheduling/booking-domain/booking-time-utils";
-import {
-  evaluateCancellationPolicy,
-  evaluateReschedulePolicy,
-} from "@/lib/scheduling/booking-domain/booking-policy";
+import { TimezoneResolver } from "../availability-engine/timezone-resolver.js";
+import { DEFAULT_BOOKING_RULES } from "../types.js";
+import { SchedulingResourceRepository } from "../repositories/resource-repository.js";
+import { SchedulingServiceCatalogRepository } from "../repositories/service-catalog-repository.js";
+import { ResourceServiceMappingRepository } from "../repositories/resource-service-mapping-repository.js";
+import { SchedulingBookingRulesRepository } from "../repositories/rules-repository.js";
+import type { SlotGenerationEngine } from "../slot-generation-engine/slot-generation-engine.js";
+import { BookingRepository } from "./booking-repository.js";
+import { addMinutesToInstantIso, localDateTimeToInstantIso } from "./booking-time-utils.js";
+import { evaluateCancellationPolicy, evaluateReschedulePolicy } from "./booking-policy.js";
 import type {
   BookingValidationErrorCode,
   BookingValidationResult,
   CreateBookingInput,
   RescheduleBookingInput,
   SchedulingBooking,
-} from "@/lib/scheduling/booking-domain/types";
+} from "./types.js";
 
 export type ValidateBookingParams = {
   companyId: string;

@@ -9,6 +9,7 @@ import {
 import type { RuntimeToolPort } from "@workspace/ai-execution-engine";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolCustomerServicePort } from "./webhook-tool-customer-service-port.js";
+import { createWebhookSchedulingToolPorts } from "./webhook-scheduling-tool-ports.js";
 
 export type WebhookToolRouterIntegrations = {
   toolRouterServices: ToolRouterServices;
@@ -21,9 +22,11 @@ export function createWebhookToolRouterIntegrations(client: SupabaseClient): Web
   const crmAgentPorts = createSupabaseCrmAgentToolPorts(client, {
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });
+  const schedulingToolPorts = createWebhookSchedulingToolPorts(client);
   const createOptions: CreateToolRouterServicesOptions = {
     customerService,
     crmAgentPorts,
+    schedulingToolPorts,
   };
   const toolRouterServices = createToolRouterServices(client, createOptions);
 

@@ -65,6 +65,9 @@ importers:
       '@workspace/runtime-integration':
         specifier: file:../../lib/runtime-integration
         version: link:../../lib/runtime-integration
+      '@workspace/scheduling-engine':
+        specifier: file:../../lib/scheduling-engine
+        version: link:../../lib/scheduling-engine
       '@workspace/tenant-ai-bootstrap':
         specifier: file:../../lib/tenant-ai-bootstrap
         version: link:../../lib/tenant-ai-bootstrap
@@ -207,6 +210,9 @@ importers:
       '@workspace/runtime-integration':
         specifier: workspace:*
         version: link:../../lib/runtime-integration
+      '@workspace/scheduling-engine':
+        specifier: workspace:*
+        version: link:../../lib/scheduling-engine
       '@workspace/vector-query':
         specifier: workspace:*
         version: link:../../lib/vector-query
@@ -771,6 +777,9 @@ importers:
       '@workspace/runtime-integration':
         specifier: workspace:*
         version: link:../runtime-integration
+      '@workspace/scheduling-engine':
+        specifier: workspace:*
+        version: link:../scheduling-engine
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -981,6 +990,19 @@ importers:
         version: 4.23.0
 
   lib/runtime-integration:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/scheduling-engine:
     dependencies:
       '@supabase/supabase-js':
         specifier: ^2.110.2
@@ -7061,6 +7083,7 @@ snapshots:
       '@workspace/automation-platform': link:lib/automation-platform
       '@workspace/platform-crypto': file:lib/platform-crypto
       '@workspace/runtime-integration': link:lib/runtime-integration
+      '@workspace/scheduling-engine': link:lib/scheduling-engine
 
   '@workspace/platform-crypto@file:lib/platform-crypto': {}
 

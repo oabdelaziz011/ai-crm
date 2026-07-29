@@ -27,6 +27,7 @@
     "@workspace/embedding-platform": "file:../../lib/embedding-platform",
     "@workspace/retrieval-engine": "file:../../lib/retrieval-engine",
     "@workspace/runtime-integration": "file:../../lib/runtime-integration",
+    "@workspace/scheduling-engine": "file:../../lib/scheduling-engine",
     "@workspace/tenant-ai-bootstrap": "file:../../lib/tenant-ai-bootstrap",
     "@workspace/vector-query": "file:../../lib/vector-query",
     "@workspace/vector-store": "file:../../lib/vector-store",

@@ -97,50 +97,6 @@ export function createBuiltinTools(): Record<string, Tool> {
         };
       },
     }),
-    appointment_lookup: createMockTool({
-      key: "appointment_lookup",
-      supportedStates: ["collecting_information", "waiting_user", "waiting_api"],
-      inputSchema: {
-        type: "object",
-        properties: {
-          customerId: { type: "string" },
-          from: { type: "string" },
-          to: { type: "string" },
-        },
-      },
-      mockOutput(_context, input) {
-        return {
-          appointments: [
-            {
-              id: "appt-mock-1",
-              customerId: input.customerId ?? null,
-              startsAt: input.from ?? new Date().toISOString(),
-              status: "confirmed",
-            },
-          ],
-        };
-      },
-    }),
-    booking: createMockTool({
-      key: "booking",
-      supportedStates: ["collecting_information", "waiting_api"],
-      inputSchema: {
-        type: "object",
-        properties: {
-          service: { type: "string" },
-          slot: { type: "string" },
-        },
-        required: ["service", "slot"],
-      },
-      mockOutput(_context, input) {
-        return {
-          bookingId: "booking-mock-1",
-          status: "reserved",
-          service: String(input.service),
-          slot: String(input.slot),
-        };
-      },
-    }),
     faq: createMockTool({
       key: "faq",
       supportedStates: ["greeting", "waiting_user", "waiting_api"],

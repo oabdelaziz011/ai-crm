@@ -3,8 +3,6 @@ export const BUILTIN_TOOL_KEYS = [
   "crm_lookup",
   "customer_profile",
   "create_customer",
-  "appointment_lookup",
-  "booking",
   "faq",
   "notification",
   "escalation",

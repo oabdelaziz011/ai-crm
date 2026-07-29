@@ -1,5 +1,5 @@
 import type { ServiceContext } from "@workspace/ai-tool-router";
-import { createToolRouterServices } from "@workspace/ai-tool-router";
+import { createToolRouterServices, type CreateToolRouterServicesOptions } from "@workspace/ai-tool-router";
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -16,13 +16,17 @@ export function useToolRouterServices() {
   const { hasPermission } = usePermissions();
   const crmAgentPorts = useCrmAgentToolPorts();
 
-  const services = useMemo(
-    () =>
-      createToolRouterServices(supabase, {
-        customerService: createToolCustomerServicePort(() => user?.id ?? null),
-        crmAgentPorts,
-      }),
+  const createOptions = useMemo<CreateToolRouterServicesOptions>(
+    () => ({
+      customerService: createToolCustomerServicePort(() => user?.id ?? null),
+      crmAgentPorts,
+    }),
     [user?.id, crmAgentPorts],
+  );
+
+  const services = useMemo(
+    () => createToolRouterServices(supabase, createOptions),
+    [createOptions],
   );
 
   const context = useMemo<ServiceContext>(
@@ -35,5 +39,5 @@ export function useToolRouterServices() {
     [user?.id, profile?.company_id, isSuperAdmin, hasPermission],
   );
 
-  return { services, context };
+  return { services, context, createOptions };
 }

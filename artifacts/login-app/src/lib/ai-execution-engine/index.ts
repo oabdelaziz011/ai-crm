@@ -23,9 +23,12 @@ export function useAIExecutionServices() {
   const { services: promptServices } = usePromptOrchestratorServices();
   const { services: providerServices } = useAIProviderServices();
   const { services: retrievalServices } = useRetrievalServices();
-  const { services: toolRouterServices } = useToolRouterServices();
+  const { services: toolRouterServices, createOptions } = useToolRouterServices();
 
-  const tools = useMemo(() => createRuntimeToolPort(toolRouterServices), [toolRouterServices]);
+  const tools = useMemo(
+    () => createRuntimeToolPort(toolRouterServices, createOptions),
+    [toolRouterServices, createOptions],
+  );
   const platformServices = useMemo(() => createPlatformAIProviderServices(supabase), []);
   const platformConfig = useMemo(
     () =>

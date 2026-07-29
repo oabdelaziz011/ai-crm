@@ -35,6 +35,9 @@ importers:
       '@workspace/ai-provider-layer':
         specifier: file:../../lib/ai-provider-layer
         version: link:../../lib/ai-provider-layer
+      '@workspace/ai-tool-router':
+        specifier: file:../../lib/ai-tool-router
+        version: file:lib/ai-tool-router
       '@workspace/api-zod':
         specifier: file:../../lib/api-zod
         version: link:../../lib/api-zod
@@ -53,9 +56,9 @@ importers:
       '@workspace/embedding-platform':
         specifier: file:../../lib/embedding-platform
         version: link:../../lib/embedding-platform
-      '@workspace/platform-crypto':
-        specifier: file:../../lib/platform-crypto
-        version: link:../../lib/platform-crypto
+      '@workspace/platform-observability':
+        specifier: file:../../lib/platform-observability
+        version: link:../../lib/platform-observability
       '@workspace/retrieval-engine':
         specifier: file:../../lib/retrieval-engine
         version: link:../../lib/retrieval-engine
@@ -141,6 +144,9 @@ importers:
       thread-stream:
         specifier: 3.1.0
         version: 3.1.0
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
 
   artifacts/login-app:
     dependencies:
@@ -670,6 +676,9 @@ importers:
       '@workspace/platform-crypto':
         specifier: file:../platform-crypto
         version: link:../platform-crypto
+      '@workspace/retrieval-engine':
+        specifier: workspace:*
+        version: link:../retrieval-engine
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -750,9 +759,18 @@ importers:
       '@workspace/ai-conversation':
         specifier: workspace:*
         version: link:../ai-conversation
+      '@workspace/ai-execution-engine':
+        specifier: workspace:*
+        version: link:../ai-execution-engine
+      '@workspace/automation-platform':
+        specifier: workspace:*
+        version: link:../automation-platform
       '@workspace/platform-crypto':
         specifier: file:../platform-crypto
         version: link:../platform-crypto
+      '@workspace/runtime-integration':
+        specifier: workspace:*
+        version: link:../runtime-integration
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -3220,6 +3238,9 @@ packages:
 
   '@workspace/ai-prompt-orchestrator@file:lib/ai-prompt-orchestrator':
     resolution: {directory: lib/ai-prompt-orchestrator, type: directory}
+
+  '@workspace/ai-tool-router@file:lib/ai-tool-router':
+    resolution: {directory: lib/ai-tool-router, type: directory}
 
   '@workspace/platform-crypto@file:lib/platform-crypto':
     resolution: {directory: lib/platform-crypto, type: directory}
@@ -7020,6 +7041,7 @@ snapshots:
       '@workspace/ai-prompt-orchestrator': link:lib/ai-prompt-orchestrator
       '@workspace/ai-provider-layer': link:lib/ai-provider-layer
       '@workspace/platform-crypto': file:lib/platform-crypto
+      '@workspace/retrieval-engine': link:lib/retrieval-engine
 
   '@workspace/ai-intent-engine@file:lib/ai-intent-engine':
     dependencies:
@@ -7030,6 +7052,15 @@ snapshots:
     dependencies:
       '@supabase/supabase-js': 2.110.2
       '@workspace/ai-conversation': link:lib/ai-conversation
+
+  '@workspace/ai-tool-router@file:lib/ai-tool-router':
+    dependencies:
+      '@supabase/supabase-js': 2.110.2
+      '@workspace/ai-conversation': link:lib/ai-conversation
+      '@workspace/ai-execution-engine': link:lib/ai-execution-engine
+      '@workspace/automation-platform': link:lib/automation-platform
+      '@workspace/platform-crypto': file:lib/platform-crypto
+      '@workspace/runtime-integration': link:lib/runtime-integration
 
   '@workspace/platform-crypto@file:lib/platform-crypto': {}
 

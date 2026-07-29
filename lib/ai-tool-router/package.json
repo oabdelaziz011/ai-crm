@@ -13,7 +13,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
     "@workspace/ai-conversation": "workspace:*",
-    "@workspace/platform-crypto": "file:../platform-crypto"
+    "@workspace/ai-execution-engine": "workspace:*",
+    "@workspace/automation-platform": "workspace:*",
+    "@workspace/platform-crypto": "file:../platform-crypto",
+    "@workspace/runtime-integration": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

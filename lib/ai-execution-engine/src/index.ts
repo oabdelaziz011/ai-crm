@@ -115,3 +115,9 @@ export * from "./services/ai-execution-policy-service.js";
 export * from "./services/ai-execution-metrics-service.js";
 export * from "./services/ai-execution-service.js";
 export type { RuntimeKnowledgePort, RuntimeKnowledgeQueryInput, RuntimeKnowledgeQueryResult } from "./ports/knowledge-port.js";
+export {
+  createEnterpriseRuntimeIntegrations,
+  createRuntimeGatewayPort,
+  createRuntimeKnowledgePort,
+  createRuntimePromptPort,
+} from "./adapters/enterprise-runtime-adapters.js";

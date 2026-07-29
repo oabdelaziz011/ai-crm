@@ -7,12 +7,11 @@ import {
 import { ToolExecutionService } from "./services/tool-execution-service.js";
 import { ToolRegistryService } from "./services/tool-registry-service.js";
 import { ToolRouterService } from "./services/tool-router-service.js";
-import { createBuiltinTools } from "./tools/builtin-tools.js";
-import { createCreateCustomerTool } from "./tools/create-customer-tool.js";
-import { createCrmAgentTools } from "./tools/crm-agent-tools.js";
-import type { ToolCustomerServicePort } from "./tools/customer-service-port.js";
-import type { CrmAgentToolPorts } from "./tools/crm-agent-ports.js";
-import { createToolHandlerRegistry } from "./tools/tool-contract.js";
+import {
+  createToolHandlerRegistryFromOptions,
+  listRegisteredToolHandlerKeys,
+  type CreateToolRouterServicesOptions,
+} from "./tool-handler-registry.js";
 
 export type ToolRouterServices = {
   registry: ToolRegistryService;
@@ -20,21 +19,7 @@ export type ToolRouterServices = {
   router: ToolRouterService;
 };
 
-export type CreateToolRouterServicesOptions = {
-  customerService?: ToolCustomerServicePort;
-  crmAgentPorts?: CrmAgentToolPorts;
-};
-
-function buildToolHandlers(options?: CreateToolRouterServicesOptions) {
-  const handlers = createBuiltinTools();
-  if (options?.customerService) {
-    handlers.create_customer = createCreateCustomerTool(options.customerService);
-  }
-  if (options?.crmAgentPorts) {
-    Object.assign(handlers, createCrmAgentTools(options.crmAgentPorts));
-  }
-  return handlers;
-}
+export { listRegisteredToolHandlerKeys, type CreateToolRouterServicesOptions };
 
 export function createToolRouterServices(
   client: SupabaseClient,
@@ -43,7 +28,7 @@ export function createToolRouterServices(
   const definitionRepository = createSupabaseToolDefinitionRepository(client);
   const executionRepository = createSupabaseToolExecutionRepository(client);
   const conversationReader = createSupabaseConversationReader(client);
-  const handlers = createToolHandlerRegistry(buildToolHandlers(options));
+  const handlers = createToolHandlerRegistryFromOptions(options);
 
   return {
     registry: new ToolRegistryService(definitionRepository),
@@ -74,3 +59,6 @@ export * from "./tools/customer-service-port.js";
 export * from "./tools/crm-agent-ports.js";
 export * from "./tools/crm-agent-tools.js";
 export * from "./utils/tool-logger.js";
+export * from "./runtime-tool-port.js";
+export * from "./llm-tool-catalog.js";
+export * from "./adapters/supabase-crm-agent-tool-ports.js";

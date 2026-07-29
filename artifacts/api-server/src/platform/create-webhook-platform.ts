@@ -10,6 +10,7 @@ import {
   createChannelPlatformServices,
   createSupabaseChannelWorkflowBindingRepository,
   createWhatsAppWebhookHandler,
+  createSupabaseWhatsAppCredentialsLoader,
   ChannelWorkflowResolver,
   resolveWhatsAppCompanyChannel,
   type ChannelPlatformPorts,
@@ -30,7 +31,10 @@ import {
 } from "./channel-platform-ports.js";
 import { createChannelAutomationPortFromClient, createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
-import { createEnterpriseRuntimeIntegrations } from "./runtime-adapters.js";
+import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-engine";
+import { resolveCompanyActorUserId } from "@workspace/automation-platform";
+import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
+import { logger } from "../lib/logger.js";
 
 export type SystemServiceContext = {
   userId: null;
@@ -60,11 +64,17 @@ export function createSupabaseServiceClient(): SupabaseClient {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.SUPABASE_SECRET_KEY ??
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    process.env.SUPABASE_SECRET_KEY;
 
   if (!url || !key) {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for webhook processing.");
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    key === process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  ) {
+    throw new Error("Service role key must not use the publishable Supabase key in production.");
   }
 
   return createClient(url, key, {
@@ -92,12 +102,14 @@ export function getWebhookPlatform(): WebhookPlatform {
   });
   const prompt = createPromptOrchestratorServices(client);
   const provider = createAIProviderServices(client);
+  const { tools } = createWebhookToolRouterIntegrations(client);
   const execution = createAIExecutionServices(
     client,
     createEnterpriseRuntimeIntegrations({
       promptRuntime: prompt.runtime,
       gateway: provider.gateway,
       knowledge: retrieval.knowledge,
+      tools,
     }),
   );
   const tenantRuntimeConfig = createTenantRuntimeConfigService(client);
@@ -126,9 +138,34 @@ export function getWebhookPlatform(): WebhookPlatform {
       runtime: SYSTEM_CONTEXT,
       automation: SYSTEM_CONTEXT,
     },
+    {
+      resolveRuntimeActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),
+    },
   );
 
-  const channelPlatform = createChannelPlatformServices(client, { ports, workflowResolver });
+  const whatsAppCredentialsLoader = createSupabaseWhatsAppCredentialsLoader(client, {
+    onDiagnostic: (detail) =>
+      logger.info({ ...detail, event: "whatsapp.credentials" }, "WhatsApp credentials load"),
+  });
+
+  const channelPlatform = createChannelPlatformServices(client, {
+    ports,
+    workflowResolver,
+    whatsAppCredentialsLoader,
+    whatsAppOutboundDiagnostic: (detail) => logger.info({ ...detail, event: "whatsapp.outbound" }, "WhatsApp outbound diagnostic"),
+    whatsAppDirectOutboundBypass:
+      process.env.WHATSAPP_DIRECT_OUTBOUND_BYPASS === "true"
+        ? {
+            enabled: true,
+            credentialsLoader: whatsAppCredentialsLoader,
+            onResponse: (detail) =>
+              logger.info(
+                { ...detail, event: "whatsapp.direct_outbound_bypass" },
+                "WhatsApp direct outbound bypass Graph API response",
+              ),
+          }
+        : undefined,
+  });
 
   const whatsAppHandler = createWhatsAppWebhookHandler({
     client,
@@ -136,7 +173,7 @@ export function getWebhookPlatform(): WebhookPlatform {
     ports,
     resolveSystemContext: () => SYSTEM_CONTEXT,
     resolveCompanyChannel: (companyChannelId) =>
-      resolveWhatsAppCompanyChannel(ports, companyChannelId),
+      resolveWhatsAppCompanyChannel(ports, companyChannelId, whatsAppCredentialsLoader),
     resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
   });
 

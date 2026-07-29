@@ -1,0 +1,255 @@
+{
+  "auditedAt": "2026-07-29T09:29:29.456Z",
+  "registeredToolCount": 17,
+  "registeredTools": [
+    "appointment_lookup",
+    "booking",
+    "booking_search",
+    "create_customer",
+    "crm_lookup",
+    "customer_profile",
+    "escalation",
+    "faq",
+    "find_duplicate_customers",
+    "import_customers",
+    "invoice_search",
+    "knowledge_lookup",
+    "knowledge_search",
+    "merge_customers",
+    "notification",
+    "search_customer",
+    "update_customer"
+  ],
+  "classifications": [
+    {
+      "key": "knowledge_lookup",
+      "displayName": "Knowledge Lookup",
+      "category": "knowledge",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — no real retrieval"
+    },
+    {
+      "key": "crm_lookup",
+      "displayName": "CRM Lookup",
+      "category": "crm",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — superseded by search_customer"
+    },
+    {
+      "key": "customer_profile",
+      "displayName": "Customer Profile",
+      "category": "crm",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — use search_customer instead"
+    },
+    {
+      "key": "appointment_lookup",
+      "displayName": "Appointment Lookup",
+      "category": "scheduling",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — use booking_search instead"
+    },
+    {
+      "key": "booking",
+      "displayName": "Booking",
+      "category": "scheduling",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock write — no real scheduling integration"
+    },
+    {
+      "key": "faq",
+      "displayName": "FAQ",
+      "category": "knowledge",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — use knowledge_search instead"
+    },
+    {
+      "key": "notification",
+      "displayName": "Notification",
+      "category": "control",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — no channel delivery"
+    },
+    {
+      "key": "escalation",
+      "displayName": "Escalation",
+      "category": "control",
+      "classification": "mock",
+      "handlerSource": "builtin_mock",
+      "llmExposed": false,
+      "exclusionReason": "Mock handler — use runtime escalation path instead"
+    },
+    {
+      "key": "create_customer",
+      "displayName": "Create Customer",
+      "category": "crm",
+      "classification": "production_ready",
+      "handlerSource": "create_customer",
+      "llmExposed": true,
+      "exclusionReason": null
+    },
+    {
+      "key": "search_customer",
+      "displayName": "Search Customers",
+      "category": "crm",
+      "classification": "read_only",
+      "handlerSource": "crm_agent",
+      "llmExposed": true,
+      "exclusionReason": null
+    },
+    {
+      "key": "update_customer",
+      "displayName": "Update Customer",
+      "category": "crm",
+      "classification": "production_ready",
+      "handlerSource": "crm_agent",
+      "llmExposed": true,
+      "exclusionReason": null
+    },
+    {
+      "key": "merge_customers",
+      "displayName": "Merge Customers",
+      "category": "crm",
+      "classification": "requires_confirmation",
+      "handlerSource": "crm_agent",
+      "llmExposed": false,
+      "exclusionReason": "Requires explicit user confirmation — agent workflow only"
+    },
+    {
+      "key": "import_customers",
+      "displayName": "Import Customers",
+      "category": "crm",
+      "classification": "requires_confirmation",
+      "handlerSource": "crm_agent",
+      "llmExposed": false,
+      "exclusionReason": "Requires explicit user confirmation — agent workflow only"
+    },
+    {
+      "key": "knowledge_search",
+      "displayName": "Knowledge Search",
+      "category": "knowledge",
+      "classification": "read_only",
+      "handlerSource": "crm_agent",
+      "llmExposed": true,
+      "exclusionReason": null
+    },
+    {
+      "key": "invoice_search",
+      "displayName": "Invoice Search",
+      "category": "billing",
+      "classification": "read_only",
+      "handlerSource": "crm_agent",
+      "llmExposed": true,
+      "exclusionReason": null
+    },
+    {
+      "key": "booking_search",
+      "displayName": "Booking Search",
+      "category": "scheduling",
+      "classification": "read_only",
+      "handlerSource": "crm_agent",
+      "llmExposed": true,
+      "exclusionReason": null
+    },
+    {
+      "key": "find_duplicate_customers",
+      "displayName": "Find Duplicate Customers",
+      "category": "crm",
+      "classification": "read_only",
+      "handlerSource": "crm_agent",
+      "llmExposed": true,
+      "exclusionReason": null
+    }
+  ],
+  "llmExposure": {
+    "previouslyExposed": [
+      "create_customer"
+    ],
+    "newlyExposed": [
+      "search_customer",
+      "update_customer",
+      "knowledge_search",
+      "invoice_search",
+      "booking_search",
+      "find_duplicate_customers"
+    ],
+    "currentlyExposed": [
+      "create_customer",
+      "search_customer",
+      "update_customer",
+      "knowledge_search",
+      "invoice_search",
+      "booking_search",
+      "find_duplicate_customers"
+    ],
+    "exposedCount": 7
+  },
+  "excludedMockTools": [
+    {
+      "key": "knowledge_lookup",
+      "reason": "Mock handler — no real retrieval"
+    },
+    {
+      "key": "crm_lookup",
+      "reason": "Mock handler — superseded by search_customer"
+    },
+    {
+      "key": "customer_profile",
+      "reason": "Mock handler — use search_customer instead"
+    },
+    {
+      "key": "appointment_lookup",
+      "reason": "Mock handler — use booking_search instead"
+    },
+    {
+      "key": "booking",
+      "reason": "Mock write — no real scheduling integration"
+    },
+    {
+      "key": "faq",
+      "reason": "Mock handler — use knowledge_search instead"
+    },
+    {
+      "key": "notification",
+      "reason": "Mock handler — no channel delivery"
+    },
+    {
+      "key": "escalation",
+      "reason": "Mock handler — use runtime escalation path instead"
+    }
+  ],
+  "protectedConfirmationTools": [
+    {
+      "key": "merge_customers",
+      "reason": "Requires explicit user confirmation — agent workflow only"
+    },
+    {
+      "key": "import_customers",
+      "reason": "Requires explicit user confirmation — agent workflow only"
+    }
+  ],
+  "remainingGaps": [],
+  "rbacNote": "ToolRouterService.route() still enforces tools.execute and per-tool required_permissions from tool_definitions.",
+  "confirmationNote": "merge_customers and import_customers remain callable via agent workflows (triggeredBy=agent) with in-handler confirmation gates.",
+  "summary": {
+    "totalRegisteredInCatalog": 17,
+    "mockToolsExcluded": 8,
+    "confirmationProtected": 2,
+    "llmExposedAfterChange": 7,
+    "previouslyLlmExposed": 1
+  }
+}

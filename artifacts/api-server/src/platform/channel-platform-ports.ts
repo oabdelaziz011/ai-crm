@@ -144,10 +144,23 @@ export function createChannelConversationPort(
 export function createChannelRuntimePort(
   services: RuntimeIntegrationServices,
   ctx: RuntimeServiceContext,
+  options?: {
+    resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+  },
 ): ChannelRuntimePort {
   return {
     async execute(input) {
-      const response = await services.coordinator.execute(ctx, {
+      const actorUserId = options?.resolveRuntimeActorUserId
+        ? await options.resolveRuntimeActorUserId(input.companyId)
+        : ctx.userId;
+
+      const runtimeCtx: RuntimeServiceContext = {
+        ...ctx,
+        companyId: input.companyId,
+        userId: actorUserId ?? ctx.userId,
+      };
+
+      const response = await services.coordinator.execute(runtimeCtx, {
         companyId: input.companyId,
         conversationId: input.conversationId,
         messageText: input.messageText,
@@ -183,6 +196,9 @@ export function createChannelPlatformPortsWithContext(
     runtime: RuntimeServiceContext;
     automation?: RuntimeServiceContext;
   },
+  options?: {
+    resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+  },
 ): ChannelPlatformPorts {
   const resolveCompanyAssistantId = deps.supabaseClient
     ? async (companyId: string): Promise<string | null> => {
@@ -202,7 +218,9 @@ export function createChannelPlatformPortsWithContext(
     conversation: createChannelConversationPort(deps.conversation, ctx.conversation, {
       resolveCompanyAssistantId,
     }),
-    runtime: createChannelRuntimePort(deps.runtime, ctx.runtime),
+    runtime: createChannelRuntimePort(deps.runtime, ctx.runtime, {
+      resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
+    }),
   };
 
   if (deps.automation && ctx.automation) {

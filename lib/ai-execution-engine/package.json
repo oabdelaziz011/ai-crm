@@ -14,6 +14,7 @@
     "@supabase/supabase-js": "^2.110.2",
     "@workspace/ai-provider-layer": "workspace:*",
     "@workspace/ai-prompt-orchestrator": "workspace:*",
+    "@workspace/retrieval-engine": "workspace:*",
     "@workspace/platform-crypto": "file:../platform-crypto"
   },
   "devDependencies": {

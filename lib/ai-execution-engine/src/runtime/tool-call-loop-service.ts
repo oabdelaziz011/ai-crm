@@ -114,6 +114,14 @@ export class ToolCallLoopService {
       throw new Error("Tool call loop did not produce a gateway response.");
     }
 
+    if (!response.text.trim() && toolExecutions.length > 0) {
+      response = await this.deps.gateway.chatCompletion({
+        ...input.gatewayRequest,
+        messages,
+        tools: undefined,
+      });
+    }
+
     return { response, messages, toolExecutions };
   }
 
@@ -134,6 +142,11 @@ export class ToolCallLoopService {
       if (loopResult.response.text) {
         input.onStreamChunk(loopResult.response.text);
       }
+      return loopResult;
+    }
+
+    if (loopResult.response.text.trim()) {
+      input.onStreamChunk(loopResult.response.text);
       return loopResult;
     }
 

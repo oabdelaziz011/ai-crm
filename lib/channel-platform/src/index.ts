@@ -5,6 +5,7 @@ import { createStubWebChatAdapter } from "./adapters/stub-web-chat-adapter.js";
 import { createWhatsAppCloudAdapter } from "./adapters/whatsapp/whatsapp-cloud-adapter.js";
 import { createInstagramCloudAdapter } from "./adapters/instagram/instagram-cloud-adapter.js";
 import { createMessengerCloudAdapter } from "./adapters/messenger/messenger-cloud-adapter.js";
+import { createEmailCloudAdapter } from "./adapters/email/email-cloud-adapter.js";
 import { ChannelDispatcher } from "./dispatcher/channel-dispatcher.js";
 import { ChannelSessionEngine } from "./engines/channel-session-engine.js";
 import { DeliveryTrackingEngine } from "./engines/delivery-tracking-engine.js";
@@ -37,6 +38,8 @@ export type ChannelPlatformServicesOptions = {
   messengerFetchFn?: typeof fetch;
   messengerCredentialsLoader?: import("./adapters/messenger/messenger-canonical-credentials.js").MessengerCredentialsLoader;
   messengerOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
+  emailCredentialsLoader?: import("./adapters/email/email-canonical-credentials.js").EmailCredentialsLoader;
+  emailOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
   workflowResolver?: ChannelWorkflowResolver;
 };
 
@@ -72,6 +75,10 @@ export function createChannelPlatformServices(
       fetchFn: options.messengerFetchFn,
       credentialsLoader: options.messengerCredentialsLoader,
       onOutboundDiagnostic: options.messengerOutboundDiagnostic,
+    }),
+    createEmailCloudAdapter({
+      credentialsLoader: options.emailCredentialsLoader,
+      onOutboundDiagnostic: options.emailOutboundDiagnostic,
     }),
     ...(options.adapters ?? []),
   ]);
@@ -165,6 +172,22 @@ export * from "./adapters/messenger/messenger-config.js";
 export * from "./adapters/messenger/messenger-types.js";
 export * from "./adapters/messenger/messenger-canonical-credentials.js";
 export * from "./adapters/messenger/messenger-outbound-health.js";
+export * from "./adapters/email/email-cloud-adapter.js";
+export * from "./adapters/email/email-inbound-adapter.js";
+export * from "./adapters/email/email-smtp-client.js";
+export * from "./adapters/email/email-imap-client.js";
+export * from "./adapters/email/email-canonical-credentials.js";
+export * from "./adapters/email/email-config.js";
+export * from "./adapters/email/email-types.js";
+export * from "./adapters/email/email-outbound-health.js";
+export * from "./adapters/email/email-thread-resolver.js";
+export * from "./adapters/email/email-thread-lookup.js";
+export * from "./adapters/email/email-html-utils.js";
+export * from "./adapters/email/email-security.js";
+export * from "./webhooks/email-webhook-handler.js";
+export * from "./webhooks/email-webhook-routing.js";
+export * from "./webhooks/email-company-channel.js";
+export * from "./workers/email-polling-worker.js";
 export * from "./adapters/meta/meta-graph-config.js";
 export * from "./adapters/meta/meta-graph-webhook.js";
 export * from "./adapters/meta/meta-messaging-webhook.js";

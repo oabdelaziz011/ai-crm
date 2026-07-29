@@ -12,13 +12,19 @@ import {
   createWhatsAppWebhookHandler,
   createInstagramWebhookHandler,
   createMessengerWebhookHandler,
+  createEmailWebhookHandler,
   createSupabaseWhatsAppCredentialsLoader,
   createSupabaseInstagramCredentialsLoader,
   createSupabaseMessengerCredentialsLoader,
+  createSupabaseEmailCredentialsLoader,
+  createSupabaseEmailThreadLookup,
+  createEmailPollingWorker,
+  createEmailImapClient,
   ChannelWorkflowResolver,
   resolveWhatsAppCompanyChannel,
   resolveInstagramCompanyChannel,
   resolveMessengerCompanyChannel,
+  resolveEmailCompanyChannel,
   type ChannelPlatformPorts,
   type ChannelPlatformServices,
 } from "@workspace/channel-platform";
@@ -42,6 +48,7 @@ import { createPlatformAIProviderServices } from "@workspace/platform-ai-provide
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
+import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
 
 export type SystemServiceContext = {
@@ -65,6 +72,8 @@ export type WebhookPlatform = {
   whatsAppHandler: ReturnType<typeof createWhatsAppWebhookHandler>;
   instagramHandler: ReturnType<typeof createInstagramWebhookHandler>;
   messengerHandler: ReturnType<typeof createMessengerWebhookHandler>;
+  emailHandler: ReturnType<typeof createEmailWebhookHandler>;
+  emailPollingWorker: ReturnType<typeof createEmailPollingWorker>;
   resolveRuntimeConfig: (companyId: string) => Promise<TenantRuntimeConfig | null>;
 };
 
@@ -174,6 +183,9 @@ export function getWebhookPlatform(): WebhookPlatform {
 
   const messengerCredentialsLoader = createSupabaseMessengerCredentialsLoader(client);
 
+  const emailCredentialsLoader = createSupabaseEmailCredentialsLoader(client);
+  const emailThreadLookup = createSupabaseEmailThreadLookup(client);
+
   const channelPlatform = createChannelPlatformServices(client, {
     ports,
     workflowResolver,
@@ -197,6 +209,9 @@ export function getWebhookPlatform(): WebhookPlatform {
     messengerCredentialsLoader,
     messengerOutboundDiagnostic: (detail) =>
       logger.info({ ...detail, event: "messenger.outbound" }, "Messenger outbound diagnostic"),
+    emailCredentialsLoader,
+    emailOutboundDiagnostic: (detail) =>
+      logger.info({ ...detail, event: "email.outbound" }, "Email outbound diagnostic"),
   });
 
   const whatsAppHandler = createWhatsAppWebhookHandler({
@@ -227,6 +242,28 @@ export function getWebhookPlatform(): WebhookPlatform {
     resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
   });
 
+  const emailHandler = createEmailWebhookHandler({
+    services: channelPlatform,
+    ports,
+    resolveSystemContext: () => SYSTEM_CONTEXT,
+    resolveCompanyChannel: (companyChannelId) => resolveEmailCompanyChannel(ports, companyChannelId),
+    resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
+    threadLookup: emailThreadLookup,
+  });
+
+  const emailPollingWorker = createEmailPollingWorker({
+    client,
+    services: channelPlatform,
+    ports,
+    resolveSystemContext: () => SYSTEM_CONTEXT,
+    resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
+    threadLookup: emailThreadLookup,
+    imapClient: createEmailImapClient({
+      fetchImpl: async (input) => fetchImapRuntimeMessages(input),
+    }),
+    onDiagnostic: (detail) => logger.info({ ...detail, event: "email.poll" }, "Email polling diagnostic"),
+  });
+
   cachedPlatform = {
     client,
     channelPlatform,
@@ -234,6 +271,8 @@ export function getWebhookPlatform(): WebhookPlatform {
     whatsAppHandler,
     instagramHandler,
     messengerHandler,
+    emailHandler,
+    emailPollingWorker,
     resolveRuntimeConfig: (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
   };
 

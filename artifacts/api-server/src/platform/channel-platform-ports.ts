@@ -139,6 +139,24 @@ export function createChannelRegistryPort(
     async syncMessengerPageId(companyChannelId, pageId) {
       await services.companyChannels.syncMessengerPageId(ctx, companyChannelId, pageId);
     },
+
+    async findCompanyChannelByFromEmail(fromEmail) {
+      const records = await services.companyChannels.findCompanyChannelByFromEmail(ctx, fromEmail);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledEmailChannels() {
+      const records = await services.companyChannels.listEnabledEmailChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncEmailFromEmail(companyChannelId, fromEmail) {
+      await services.companyChannels.syncEmailFromEmail(ctx, companyChannelId, fromEmail);
+    },
   };
 }
 
@@ -169,8 +187,9 @@ export function createChannelConversationPort(
         messageType: "incoming",
         contentType: "text",
         content: input.content,
+        externalMessageId: input.externalMessageId ?? null,
         metadata: {
-          externalMessageId: input.externalMessageId,
+          ...(input.externalMessageId ? { externalMessageId: input.externalMessageId } : {}),
           ...(input.metadata ?? {}),
         },
       });

@@ -249,6 +249,46 @@ export class CompanyChannelService {
     });
   }
 
+  async findCompanyChannelByFromEmail(
+    ctx: ServiceContext,
+    fromEmail: string,
+  ): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.findCompanyChannelByFromEmail(fromEmail);
+  }
+
+  async listEnabledEmailChannels(ctx: ServiceContext): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.listEnabledEmailChannels();
+  }
+
+  async syncEmailFromEmail(
+    ctx: ServiceContext,
+    companyChannelId: string,
+    fromEmail: string,
+  ): Promise<CompanyChannelRecord> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.manage);
+    }
+
+    const channel = await this.repository.findById(companyChannelId);
+    if (!channel) throw new CompanyChannelNotFoundError(companyChannelId);
+
+    return this.repository.updateConfiguration({
+      companyChannelId,
+      configuration: {
+        ...channel.configuration,
+        fromEmail: fromEmail.trim().toLowerCase(),
+      },
+    });
+  }
+
   async findCompanyChannelByWhatsAppVerifyToken(
     ctx: ServiceContext,
     verifyToken: string,

@@ -369,6 +369,63 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
         .filter((row) => row.communication_channel?.key === "messenger");
     },
 
+    async findCompanyChannelByFromEmail(fromEmail: string): Promise<CompanyChannelRecord[]> {
+      const normalized = fromEmail.trim().toLowerCase();
+      if (!normalized) return [];
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>fromEmail", "eq", normalized)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      const byReference = (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "email");
+
+      if (byReference.length > 0) return byReference;
+
+      const { data: settingsRows, error: settingsError } = await client
+        .from("company_email_settings")
+        .select("company_id")
+        .eq("from_email_normalized", normalized)
+        .eq("conversation_enabled", true);
+
+      if (settingsError) throw settingsError;
+      if (!settingsRows?.length) return [];
+
+      const companyIds = settingsRows.map((row) => row.company_id as string);
+      const { data: channelRows, error: channelError } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .in("company_id", companyIds)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (channelError) throw channelError;
+
+      return (channelRows ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "email");
+    },
+
+    async listEnabledEmailChannels(): Promise<CompanyChannelRecord[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "email");
+    },
+
     async findCompanyChannelsByWhatsAppVerifyToken(
       verifyToken: string,
       excludeCompanyChannelId?: string,

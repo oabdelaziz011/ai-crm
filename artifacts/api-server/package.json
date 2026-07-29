@@ -24,6 +24,7 @@
     "@workspace/channel-registry": "file:../../lib/channel-registry",
     "@workspace/db": "file:../../lib/db",
     "@workspace/platform-observability": "file:../../lib/platform-observability",
+    "@workspace/platform-ai-provider": "file:../../lib/platform-ai-provider",
     "@workspace/embedding-platform": "file:../../lib/embedding-platform",
     "@workspace/retrieval-engine": "file:../../lib/retrieval-engine",
     "@workspace/runtime-integration": "file:../../lib/runtime-integration",
@@ -42,6 +43,8 @@
     "helmet": "^8.1.0",
     "i18next": "^26.3.6",
     "nodemailer": "^7.0.5",
+    "imapflow": "^1.0.164",
+    "mailparser": "^3.7.2",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0"
   },

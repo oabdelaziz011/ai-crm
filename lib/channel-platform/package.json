@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/platform-crypto": "file:../platform-crypto"
+    "@workspace/platform-crypto": "file:../platform-crypto",
+    "nodemailer": "^7.0.5"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
+    "@types/nodemailer": "^6.4.17",
     "@workspace/automation-platform": "file:../automation-platform",
     "tsx": "^4.21.0"
   }

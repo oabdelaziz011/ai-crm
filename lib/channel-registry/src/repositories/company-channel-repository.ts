@@ -26,9 +26,11 @@ export interface CompanyChannelRepository {
     verifyToken: string,
     excludeCompanyChannelId?: string,
   ): Promise<CompanyChannelRecord[]>;
+  findCompanyChannelByFromEmail(fromEmail: string): Promise<CompanyChannelRecord[]>;
   listEnabledWhatsAppChannels(): Promise<CompanyChannelRecord[]>;
   listEnabledInstagramChannels(): Promise<CompanyChannelRecord[]>;
   listEnabledMessengerChannels(): Promise<CompanyChannelRecord[]>;
+  listEnabledEmailChannels(): Promise<CompanyChannelRecord[]>;
   findDefault(companyId: string): Promise<CompanyChannelRecord | null>;
   list(filter: ListCompanyChannelsFilter): Promise<CompanyChannelRecord[]>;
   updateConfiguration(input: UpdateCompanyChannelConfigurationInput): Promise<CompanyChannelRecord>;

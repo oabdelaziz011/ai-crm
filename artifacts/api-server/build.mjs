@@ -53,6 +53,8 @@ async function buildAll() {
       "oracledb",
       "mongodb-client-encryption",
       "nodemailer",
+      "imapflow",
+      "mailparser",
       "handlebars",
       "knex",
       "typeorm",

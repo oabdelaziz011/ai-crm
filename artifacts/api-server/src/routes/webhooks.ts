@@ -17,6 +17,7 @@ import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 import { loadPlatformEnv } from "../config/env.js";
 import { processInstagramWebhookPost } from "./instagram-webhook-post.js";
 import { processMessengerWebhookPost } from "./messenger-webhook-post.js";
+import { processEmailWebhookPost } from "./email-channel-webhook-post.js";
 
 const router: IRouter = Router();
 const env = loadPlatformEnv();
@@ -543,6 +544,17 @@ router.post("/messenger/:companyChannelId", async (req: Request, res: Response) 
   const companyChannelId = routeParam(req.params.companyChannelId);
   logDiag("post.route.matched", { route: "POST /messenger/:companyChannelId", companyChannelId });
   await processMessengerWebhookPost(req, res, companyChannelId);
+});
+
+router.post("/email", async (req: Request, res: Response) => {
+  logDiag("post.route.matched", { route: "POST /email" });
+  await processEmailWebhookPost(req, res);
+});
+
+router.post("/email/:companyChannelId", async (req: Request, res: Response) => {
+  const companyChannelId = routeParam(req.params.companyChannelId);
+  logDiag("post.route.matched", { route: "POST /email/:companyChannelId", companyChannelId });
+  await processEmailWebhookPost(req, res, companyChannelId);
 });
 
 export default router;

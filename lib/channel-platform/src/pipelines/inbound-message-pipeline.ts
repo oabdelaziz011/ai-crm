@@ -402,6 +402,20 @@ export class InboundMessagePipeline {
 
         let outboundError: string | undefined;
         try {
+          const outboundMetadata =
+            request.channelKey === "email"
+              ? {
+                  recipientEmail: normalized.senderExternalId,
+                  inReplyTo: normalized.externalMessageId,
+                  emailSubject:
+                    typeof normalized.metadata?.subject === "string" ? normalized.metadata.subject : undefined,
+                  emailReferences: Array.isArray(normalized.metadata?.references)
+                    ? normalized.metadata.references.map(String)
+                    : undefined,
+                  threadRootMessageId: normalized.externalThreadId,
+                }
+              : {};
+
           const outbound = await this.dispatcher.dispatch(ctx, {
             companyId: request.companyId,
             companyChannelId: request.companyChannelId,
@@ -413,6 +427,7 @@ export class InboundMessagePipeline {
             metadata: {
               runtimeExecutionId,
               correlationId: runtimeResult.correlationId,
+              ...outboundMetadata,
             },
             persistConversationMessage: false,
           });

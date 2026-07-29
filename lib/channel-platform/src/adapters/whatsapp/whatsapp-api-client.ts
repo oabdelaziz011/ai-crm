@@ -1,4 +1,8 @@
-import { verifyHmacSha256Hex } from "@workspace/platform-crypto";
+import {
+  verifyMetaWebhookChallenge,
+  verifyMetaWebhookSignature,
+  mapMetaDeliveryStatus,
+} from "../meta/meta-graph-webhook.js";
 import type {
   ParsedWhatsAppWebhookEvent,
   WhatsAppSendMessagePayload,
@@ -11,6 +15,20 @@ import { ValidationError } from "../../errors.js";
 
 export type WhatsAppApiClientOptions = {
   fetchFn?: typeof fetch;
+  onOutboundRequest?: (detail: WhatsAppOutboundRequestDiagnostic) => void;
+};
+
+export type WhatsAppOutboundRequestDiagnostic = {
+  endpoint: string;
+  graphApiVersion: string;
+  phoneNumberId: string;
+  businessAccountId?: string;
+  accessTokenSource: string;
+  recipientType?: string;
+  messageType?: string;
+  httpStatus?: number;
+  metaErrorCode?: number;
+  metaErrorMessage?: string;
 };
 
 export class WhatsAppApiClient {
@@ -23,8 +41,10 @@ export class WhatsAppApiClient {
   async sendMessage(
     config: WhatsAppChannelConfiguration,
     payload: WhatsAppSendMessagePayload,
+    options?: { accessTokenSource?: string },
   ): Promise<WhatsAppSendMessageResponse> {
-    const response = await this.fetchFn(whatsAppMessagesUrl(config), {
+    const endpoint = whatsAppMessagesUrl(config);
+    const response = await this.fetchFn(endpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.accessToken}`,
@@ -34,8 +54,21 @@ export class WhatsAppApiClient {
     });
 
     const body = (await response.json()) as WhatsAppSendMessageResponse & {
-      error?: { message?: string; error_user_msg?: string };
+      error?: { message?: string; error_user_msg?: string; code?: number };
     };
+
+    this.options.onOutboundRequest?.({
+      endpoint,
+      graphApiVersion: config.apiVersion ?? "v21.0",
+      phoneNumberId: config.phoneNumberId,
+      businessAccountId: config.businessAccountId,
+      accessTokenSource: options?.accessTokenSource ?? "company_channels.configuration",
+      recipientType: payload.recipient_type,
+      messageType: payload.type,
+      httpStatus: response.status,
+      metaErrorCode: body.error?.code,
+      metaErrorMessage: body.error?.error_user_msg ?? body.error?.message,
+    });
 
     if (!response.ok) {
       throw new ValidationError(
@@ -65,9 +98,7 @@ export function verifyWhatsAppWebhookChallenge(input: {
   challenge?: string;
   expectedVerifyToken: string;
 }): string | null {
-  if (input.mode !== "subscribe") return null;
-  if (!input.challenge || input.verifyToken !== input.expectedVerifyToken) return null;
-  return input.challenge;
+  return verifyMetaWebhookChallenge(input);
 }
 
 export async function verifyWhatsAppWebhookSignature(input: {
@@ -76,22 +107,7 @@ export async function verifyWhatsAppWebhookSignature(input: {
   appSecret?: string | null;
   requireSecret?: boolean;
 }): Promise<boolean> {
-  const secret = input.appSecret?.trim();
-  if (!secret) {
-    return input.requireSecret ? false : true;
-  }
-
-  const header = input.signatureHeader?.trim();
-  if (!header?.startsWith("sha256=")) {
-    return false;
-  }
-
-  const expectedHex = header.slice("sha256=".length);
-  return verifyHmacSha256Hex({
-    secret,
-    payload: input.rawBody,
-    expectedHex,
-  });
+  return verifyMetaWebhookSignature(input);
 }
 
 export function parseWhatsAppWebhookEvents(rawPayload: Record<string, unknown>): ParsedWhatsAppWebhookEvent[] {
@@ -144,5 +160,5 @@ export function parseWhatsAppWebhookEvents(rawPayload: Record<string, unknown>):
 export function mapWhatsAppDeliveryStatus(
   status: "sent" | "delivered" | "read" | "failed",
 ): "sent" | "delivered" | "read" | "failed" {
-  return status;
+  return mapMetaDeliveryStatus(status);
 }

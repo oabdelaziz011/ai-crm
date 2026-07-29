@@ -20,11 +20,20 @@ import type {
 } from "../types.js";
 import {
   readWhatsAppPhoneNumberId,
-  readWhatsAppVerifyToken,
 } from "../utils/whatsapp-channel-utils.js";
+import { readInstagramBusinessAccountId } from "../utils/instagram-channel-utils.js";
+import { readMessengerPageId } from "../utils/messenger-channel-utils.js";
 
 function isWhatsAppChannel(channel: CompanyChannelRecord): boolean {
   return channel.communication_channel?.key === "whatsapp";
+}
+
+function isInstagramChannel(channel: CompanyChannelRecord): boolean {
+  return channel.communication_channel?.key === "instagram";
+}
+
+function isMessengerChannel(channel: CompanyChannelRecord): boolean {
+  return channel.communication_channel?.key === "messenger";
 }
 
 function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
@@ -83,15 +92,38 @@ export class CompanyChannelService {
         );
       }
     }
+  }
 
-    const verifyToken = readWhatsAppVerifyToken(configuration);
-    if (verifyToken) {
-      const matches = await this.repository.findCompanyChannelsByWhatsAppVerifyToken(
-        verifyToken,
-        excludeCompanyChannelId,
+  private async assertUniqueInstagramConfiguration(
+    configuration: Record<string, unknown>,
+    excludeCompanyChannelId?: string,
+  ): Promise<void> {
+    const instagramBusinessAccountId = readInstagramBusinessAccountId(configuration);
+    if (instagramBusinessAccountId) {
+      const matches = await this.repository.findCompanyChannelByInstagramBusinessAccountId(
+        instagramBusinessAccountId,
       );
-      if (matches.length > 0) {
-        throw new ValidationError("WhatsApp verify token is already in use by another channel.");
+      const duplicates = matches.filter((channel) => channel.id !== excludeCompanyChannelId);
+      if (duplicates.length > 0) {
+        throw new ValidationError(
+          `Instagram business account ID ${instagramBusinessAccountId} is already configured on another channel.`,
+        );
+      }
+    }
+  }
+
+  private async assertUniqueMessengerConfiguration(
+    configuration: Record<string, unknown>,
+    excludeCompanyChannelId?: string,
+  ): Promise<void> {
+    const pageId = readMessengerPageId(configuration);
+    if (pageId) {
+      const matches = await this.repository.findCompanyChannelByMessengerPageId(pageId);
+      const duplicates = matches.filter((channel) => channel.id !== excludeCompanyChannelId);
+      if (duplicates.length > 0) {
+        throw new ValidationError(
+          `Messenger page ID ${pageId} is already configured on another channel.`,
+        );
       }
     }
   }
@@ -105,6 +137,116 @@ export class CompanyChannelService {
     }
 
     return this.repository.findCompanyChannelByPhoneNumberId(phoneNumberId);
+  }
+
+  async findCompanyChannelByInstagramBusinessAccountId(
+    ctx: ServiceContext,
+    instagramBusinessAccountId: string,
+  ): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.findCompanyChannelByInstagramBusinessAccountId(instagramBusinessAccountId);
+  }
+
+  async findCompanyChannelByMessengerPageId(
+    ctx: ServiceContext,
+    pageId: string,
+  ): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.findCompanyChannelByMessengerPageId(pageId);
+  }
+
+  async findCompanyChannelsByInstagramVerifyToken(
+    ctx: ServiceContext,
+    verifyToken: string,
+    excludeCompanyChannelId?: string,
+  ): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.findCompanyChannelsByInstagramVerifyToken(
+      verifyToken,
+      excludeCompanyChannelId,
+    );
+  }
+
+  async findCompanyChannelsByMessengerVerifyToken(
+    ctx: ServiceContext,
+    verifyToken: string,
+    excludeCompanyChannelId?: string,
+  ): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.findCompanyChannelsByMessengerVerifyToken(
+      verifyToken,
+      excludeCompanyChannelId,
+    );
+  }
+
+  async listEnabledInstagramChannels(ctx: ServiceContext): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.listEnabledInstagramChannels();
+  }
+
+  async listEnabledMessengerChannels(ctx: ServiceContext): Promise<CompanyChannelRecord[]> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.view);
+    }
+
+    return this.repository.listEnabledMessengerChannels();
+  }
+
+  async syncInstagramBusinessAccountId(
+    ctx: ServiceContext,
+    companyChannelId: string,
+    instagramBusinessAccountId: string,
+  ): Promise<CompanyChannelRecord> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.manage);
+    }
+
+    const channel = await this.repository.findById(companyChannelId);
+    if (!channel) throw new CompanyChannelNotFoundError(companyChannelId);
+
+    return this.repository.updateConfiguration({
+      companyChannelId,
+      configuration: {
+        ...channel.configuration,
+        instagramBusinessAccountId: instagramBusinessAccountId.trim(),
+      },
+    });
+  }
+
+  async syncMessengerPageId(
+    ctx: ServiceContext,
+    companyChannelId: string,
+    pageId: string,
+  ): Promise<CompanyChannelRecord> {
+    if (!ctx.isSuperAdmin) {
+      throw new PermissionDeniedError(CHANNEL_PERMISSIONS.manage);
+    }
+
+    const channel = await this.repository.findById(companyChannelId);
+    if (!channel) throw new CompanyChannelNotFoundError(companyChannelId);
+
+    return this.repository.updateConfiguration({
+      companyChannelId,
+      configuration: {
+        ...channel.configuration,
+        pageId: pageId.trim(),
+      },
+    });
   }
 
   async findCompanyChannelByWhatsAppVerifyToken(
@@ -170,6 +312,12 @@ export class CompanyChannelService {
     if (createdChannelType?.key === "whatsapp" && input.configuration) {
       await this.assertUniqueWhatsAppConfiguration(input.configuration);
     }
+    if (createdChannelType?.key === "instagram" && input.configuration) {
+      await this.assertUniqueInstagramConfiguration(input.configuration);
+    }
+    if (createdChannelType?.key === "messenger" && input.configuration) {
+      await this.assertUniqueMessengerConfiguration(input.configuration);
+    }
 
     return this.repository.create(input);
   }
@@ -222,6 +370,12 @@ export class CompanyChannelService {
 
     if (isWhatsAppChannel(channel)) {
       await this.assertUniqueWhatsAppConfiguration(input.configuration, channel.id);
+    }
+    if (isInstagramChannel(channel)) {
+      await this.assertUniqueInstagramConfiguration(input.configuration, channel.id);
+    }
+    if (isMessengerChannel(channel)) {
+      await this.assertUniqueMessengerConfiguration(input.configuration, channel.id);
     }
 
     console.log("[channel-save-debug] before repository.updateConfiguration() call", {

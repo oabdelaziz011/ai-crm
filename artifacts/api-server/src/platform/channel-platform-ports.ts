@@ -76,6 +76,69 @@ export function createChannelRegistryPort(
     async syncWhatsAppPhoneNumberId(companyChannelId, phoneNumberId) {
       await services.companyChannels.syncWhatsAppPhoneNumberId(ctx, companyChannelId, phoneNumberId);
     },
+
+    async findCompanyChannelByInstagramBusinessAccountId(instagramBusinessAccountId) {
+      const records = await services.companyChannels.findCompanyChannelByInstagramBusinessAccountId(
+        ctx,
+        instagramBusinessAccountId,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async findCompanyChannelsByInstagramVerifyToken(verifyToken) {
+      const records = await services.companyChannels.findCompanyChannelsByInstagramVerifyToken(
+        ctx,
+        verifyToken,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledInstagramChannels() {
+      const records = await services.companyChannels.listEnabledInstagramChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncInstagramBusinessAccountId(companyChannelId, instagramBusinessAccountId) {
+      await services.companyChannels.syncInstagramBusinessAccountId(
+        ctx,
+        companyChannelId,
+        instagramBusinessAccountId,
+      );
+    },
+
+    async findCompanyChannelByMessengerPageId(pageId) {
+      const records = await services.companyChannels.findCompanyChannelByMessengerPageId(ctx, pageId);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async findCompanyChannelsByMessengerVerifyToken(verifyToken) {
+      const records = await services.companyChannels.findCompanyChannelsByMessengerVerifyToken(
+        ctx,
+        verifyToken,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledMessengerChannels() {
+      const records = await services.companyChannels.listEnabledMessengerChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncMessengerPageId(companyChannelId, pageId) {
+      await services.companyChannels.syncMessengerPageId(ctx, companyChannelId, pageId);
+    },
   };
 }
 

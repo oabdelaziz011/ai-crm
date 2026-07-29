@@ -10,9 +10,15 @@ import {
   createChannelPlatformServices,
   createSupabaseChannelWorkflowBindingRepository,
   createWhatsAppWebhookHandler,
+  createInstagramWebhookHandler,
+  createMessengerWebhookHandler,
   createSupabaseWhatsAppCredentialsLoader,
+  createSupabaseInstagramCredentialsLoader,
+  createSupabaseMessengerCredentialsLoader,
   ChannelWorkflowResolver,
   resolveWhatsAppCompanyChannel,
+  resolveInstagramCompanyChannel,
+  resolveMessengerCompanyChannel,
   type ChannelPlatformPorts,
   type ChannelPlatformServices,
 } from "@workspace/channel-platform";
@@ -57,6 +63,8 @@ export type WebhookPlatform = {
   channelPlatform: ChannelPlatformServices;
   ports: ChannelPlatformPorts;
   whatsAppHandler: ReturnType<typeof createWhatsAppWebhookHandler>;
+  instagramHandler: ReturnType<typeof createInstagramWebhookHandler>;
+  messengerHandler: ReturnType<typeof createMessengerWebhookHandler>;
   resolveRuntimeConfig: (companyId: string) => Promise<TenantRuntimeConfig | null>;
 };
 
@@ -162,6 +170,10 @@ export function getWebhookPlatform(): WebhookPlatform {
       logger.info({ ...detail, event: "whatsapp.credentials" }, "WhatsApp credentials load"),
   });
 
+  const instagramCredentialsLoader = createSupabaseInstagramCredentialsLoader(client);
+
+  const messengerCredentialsLoader = createSupabaseMessengerCredentialsLoader(client);
+
   const channelPlatform = createChannelPlatformServices(client, {
     ports,
     workflowResolver,
@@ -179,6 +191,12 @@ export function getWebhookPlatform(): WebhookPlatform {
               ),
           }
         : undefined,
+    instagramCredentialsLoader,
+    instagramOutboundDiagnostic: (detail) =>
+      logger.info({ ...detail, event: "instagram.outbound" }, "Instagram outbound diagnostic"),
+    messengerCredentialsLoader,
+    messengerOutboundDiagnostic: (detail) =>
+      logger.info({ ...detail, event: "messenger.outbound" }, "Messenger outbound diagnostic"),
   });
 
   const whatsAppHandler = createWhatsAppWebhookHandler({
@@ -191,11 +209,31 @@ export function getWebhookPlatform(): WebhookPlatform {
     resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
   });
 
+  const instagramHandler = createInstagramWebhookHandler({
+    services: channelPlatform,
+    ports,
+    resolveSystemContext: () => SYSTEM_CONTEXT,
+    resolveCompanyChannel: (companyChannelId) =>
+      resolveInstagramCompanyChannel(ports, companyChannelId, instagramCredentialsLoader),
+    resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
+  });
+
+  const messengerHandler = createMessengerWebhookHandler({
+    services: channelPlatform,
+    ports,
+    resolveSystemContext: () => SYSTEM_CONTEXT,
+    resolveCompanyChannel: (companyChannelId) =>
+      resolveMessengerCompanyChannel(ports, companyChannelId, messengerCredentialsLoader),
+    resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
+  });
+
   cachedPlatform = {
     client,
     channelPlatform,
     ports,
     whatsAppHandler,
+    instagramHandler,
+    messengerHandler,
     resolveRuntimeConfig: (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
   };
 

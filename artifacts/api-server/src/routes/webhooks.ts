@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import {
   createWebhookDiagnosticLogger,
   createWebhookProcessingTrace,
+  createSupabaseWhatsAppCredentialsLoader,
   extractWhatsAppPhoneNumberId,
   previewRawBody,
   probeWhatsAppPhoneNumberChannel,
@@ -14,6 +15,8 @@ import { logger } from "../lib/logger.js";
 import { webhookRateLimiter } from "../middleware/rate-limit.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 import { loadPlatformEnv } from "../config/env.js";
+import { processInstagramWebhookPost } from "./instagram-webhook-post.js";
+import { processMessengerWebhookPost } from "./messenger-webhook-post.js";
 
 const router: IRouter = Router();
 const env = loadPlatformEnv();
@@ -37,10 +40,9 @@ function readRawBody(req: Request): string {
       : JSON.stringify(req.body ?? {});
 }
 
-function readAppSecret(configuration: Record<string, unknown>): string | null {
-  if (typeof configuration.appSecret === "string") return configuration.appSecret;
-  if (typeof configuration.app_secret === "string") return configuration.app_secret;
-  return null;
+function resolveWebhookAppSecret(credentials: { appSecret?: string } | null): string | null {
+  const secret = credentials?.appSecret?.trim();
+  return secret || null;
 }
 
 router.use(webhookRateLimiter);
@@ -153,6 +155,10 @@ async function processWhatsAppWebhookPost(
   trace.step("webhook.phone_number_extracted", { phoneNumberId });
 
   const platform = getWebhookPlatform();
+  const credentialsLoader = createSupabaseWhatsAppCredentialsLoader(platform.client, {
+    onDiagnostic: (detail) =>
+      logger.info({ ...detail, event: "whatsapp.credentials" }, "WhatsApp credentials load"),
+  });
 
   const routing = await resolveWhatsAppWebhookCompanyChannelId({
     phoneNumberId,
@@ -191,6 +197,12 @@ async function processWhatsAppWebhookPost(
               companyId: channel.companyId,
               configuration: channel.configuration,
             })),
+            {
+              loadAccessToken: async (companyId) =>
+                (await credentialsLoader.loadByCompanyId(companyId))?.accessToken ?? null,
+              loadApiVersion: async (companyId) =>
+                (await credentialsLoader.loadByCompanyId(companyId))?.apiVersion ?? null,
+            },
           );
 
           if (!probed) return null;
@@ -312,17 +324,6 @@ async function processWhatsAppWebhookPost(
   });
 
   const channel = await platform.ports.registry.getCompanyChannel(companyChannelId);
-  diag("post.channel_lookup", {
-    companyChannelId,
-    found: Boolean(channel),
-    isEnabled: channel?.isEnabled ?? null,
-    channelKey: channel?.channelKey ?? null,
-    configuredPhoneNumberId:
-      typeof channel?.configuration.phoneNumberId === "string"
-        ? channel.configuration.phoneNumberId
-        : null,
-    hasAppSecret: Boolean(channel && readAppSecret(channel.configuration)),
-  });
 
   if (!channel) {
     diag("post.early_return", {
@@ -341,7 +342,21 @@ async function processWhatsAppWebhookPost(
     return;
   }
 
-  const appSecret = readAppSecret(channel.configuration);
+  const channelCredentials = await credentialsLoader.loadByCompanyId(channel.companyId);
+  const appSecretForSignature = resolveWebhookAppSecret(channelCredentials);
+
+  diag("post.channel_lookup", {
+    companyChannelId,
+    found: true,
+    isEnabled: channel.isEnabled,
+    channelKey: channel.channelKey,
+    configuredPhoneNumberId:
+      typeof channel.configuration.phoneNumberId === "string"
+        ? channel.configuration.phoneNumberId
+        : null,
+    hasAppSecret: Boolean(appSecretForSignature),
+  });
+
   const requireSecret = env.webhookRequireSignature && env.nodeEnv === "production";
   const signatureHeader = req.header("x-hub-signature-256");
 
@@ -349,7 +364,7 @@ async function processWhatsAppWebhookPost(
     companyChannelId,
     requireSecret,
     nodeEnv: env.nodeEnv,
-    hasAppSecret: Boolean(appSecret),
+    hasAppSecret: Boolean(appSecretForSignature),
     hasSignatureHeader: Boolean(signatureHeader),
     signatureHeaderPrefix: signatureHeader?.slice(0, 12) ?? null,
   });
@@ -357,14 +372,14 @@ async function processWhatsAppWebhookPost(
   const signatureValid = await verifyWhatsAppWebhookSignature({
     signatureHeader,
     rawBody,
-    appSecret,
+    appSecret: appSecretForSignature,
     requireSecret,
   });
 
   diag("post.signature_verification.result", {
     companyChannelId,
     signatureValid,
-    skippedBecauseNoSecret: !appSecret && !requireSecret,
+    skippedBecauseNoSecret: !appSecretForSignature && !requireSecret,
   });
 
   if (!signatureValid) {
@@ -373,7 +388,7 @@ async function processWhatsAppWebhookPost(
       reason: "invalid_signature",
       companyChannelId,
       requireSecret,
-      hasAppSecret: Boolean(appSecret),
+      hasAppSecret: Boolean(appSecretForSignature),
       hasSignatureHeader: Boolean(signatureHeader),
     });
     trace.step("webhook.signature_rejected", { companyChannelId });
@@ -456,6 +471,78 @@ router.post("/whatsapp/:companyChannelId", async (req: Request, res: Response) =
   const companyChannelId = routeParam(req.params.companyChannelId);
   logDiag("post.route.matched", { route: "POST /whatsapp/:companyChannelId", companyChannelId });
   await processWhatsAppWebhookPost(req, res, companyChannelId);
+});
+
+router.get("/instagram", async (req: Request, res: Response) => {
+  try {
+    const platform = getWebhookPlatform();
+    const result = await platform.instagramHandler.verifyGetByVerifyToken(req.query);
+    res.status(result.status).send(result.body);
+  } catch (error) {
+    logger.error({ err: error }, "Instagram production webhook verification failed");
+    res.status(403).send("Forbidden");
+  }
+});
+
+router.get("/instagram/:companyChannelId", async (req: Request, res: Response) => {
+  try {
+    const platform = getWebhookPlatform();
+    const result = await platform.instagramHandler.verifyGet({
+      companyChannelId: routeParam(req.params.companyChannelId),
+      ...req.query,
+    });
+    res.status(result.status).send(result.body);
+  } catch (error) {
+    logger.error({ err: error }, "Instagram webhook verification failed");
+    res.status(403).send("Forbidden");
+  }
+});
+
+router.post("/instagram", async (req: Request, res: Response) => {
+  logDiag("post.route.matched", { route: "POST /instagram" });
+  await processInstagramWebhookPost(req, res);
+});
+
+router.post("/instagram/:companyChannelId", async (req: Request, res: Response) => {
+  const companyChannelId = routeParam(req.params.companyChannelId);
+  logDiag("post.route.matched", { route: "POST /instagram/:companyChannelId", companyChannelId });
+  await processInstagramWebhookPost(req, res, companyChannelId);
+});
+
+router.get("/messenger", async (req: Request, res: Response) => {
+  try {
+    const platform = getWebhookPlatform();
+    const result = await platform.messengerHandler.verifyGetByVerifyToken(req.query);
+    res.status(result.status).send(result.body);
+  } catch (error) {
+    logger.error({ err: error }, "Messenger production webhook verification failed");
+    res.status(403).send("Forbidden");
+  }
+});
+
+router.get("/messenger/:companyChannelId", async (req: Request, res: Response) => {
+  try {
+    const platform = getWebhookPlatform();
+    const result = await platform.messengerHandler.verifyGet({
+      companyChannelId: routeParam(req.params.companyChannelId),
+      ...req.query,
+    });
+    res.status(result.status).send(result.body);
+  } catch (error) {
+    logger.error({ err: error }, "Messenger webhook verification failed");
+    res.status(403).send("Forbidden");
+  }
+});
+
+router.post("/messenger", async (req: Request, res: Response) => {
+  logDiag("post.route.matched", { route: "POST /messenger" });
+  await processMessengerWebhookPost(req, res);
+});
+
+router.post("/messenger/:companyChannelId", async (req: Request, res: Response) => {
+  const companyChannelId = routeParam(req.params.companyChannelId);
+  logDiag("post.route.matched", { route: "POST /messenger/:companyChannelId", companyChannelId });
+  await processMessengerWebhookPost(req, res, companyChannelId);
 });
 
 export default router;

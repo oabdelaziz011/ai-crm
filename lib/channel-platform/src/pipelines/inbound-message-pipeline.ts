@@ -26,6 +26,11 @@ import {
   logPipelineValidation,
   PIPELINE_VALIDATION_IMPL,
 } from "./pipeline-validation-log.js";
+import type { WhatsAppDirectOutboundBypassOptions } from "../adapters/whatsapp/whatsapp-direct-outbound-bypass.js";
+import {
+  sendWhatsAppDirectOutboundBypass,
+  WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD,
+} from "../adapters/whatsapp/whatsapp-direct-outbound-bypass.js";
 
 export class InboundMessagePipeline {
   constructor(
@@ -36,6 +41,7 @@ export class InboundMessagePipeline {
     private readonly inboundRepository: ChannelInboundEventRepository,
     private readonly sessionRepository: ChannelSessionRepository,
     private readonly workflowResolver?: ChannelWorkflowResolver,
+    private readonly whatsAppDirectOutboundBypass?: WhatsAppDirectOutboundBypassOptions,
   ) {}
 
   async process(ctx: ServiceContext, request: InboundRouteRequestDto): Promise<InboundRouteResponseDto> {
@@ -49,7 +55,10 @@ export class InboundMessagePipeline {
       request.companyChannelId,
       idempotencyKey,
     );
-    if (duplicate?.processing_status === "processed") {
+    if (
+      duplicate?.processing_status === "processed" ||
+      (duplicate?.processing_status === "failed" && duplicate.runtime_execution_id)
+    ) {
       return {
         inboundEventId: duplicate.id,
         conversationId: duplicate.conversation_id ?? request.conversationId ?? "",
@@ -188,6 +197,51 @@ export class InboundMessagePipeline {
           },
         });
         incomingMessageId = incomingMessage.id;
+      }
+
+      if (
+        this.whatsAppDirectOutboundBypass?.enabled &&
+        request.channelKey === "whatsapp" &&
+        this.whatsAppDirectOutboundBypass.credentialsLoader
+      ) {
+        request.trace?.step("webhook.diag", {
+          stage: "whatsapp.direct_outbound_bypass.start",
+          payload: WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD,
+          note: "Automation/workflow outbound bypassed — sending via WhatsAppApiClient.sendMessage()",
+        });
+
+        const graphApiResponseBody = await sendWhatsAppDirectOutboundBypass({
+          companyId: request.companyId,
+          companyChannelConfiguration: companyChannel.configuration,
+          credentialsLoader: this.whatsAppDirectOutboundBypass.credentialsLoader,
+        });
+
+        this.whatsAppDirectOutboundBypass.onResponse?.({
+          graphApiResponseBody,
+          payload: WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD,
+        });
+
+        request.trace?.step("webhook.diag", {
+          stage: "whatsapp.direct_outbound_bypass.response",
+          graphApiResponseBody,
+        });
+
+        await this.inboundRepository.updateEvent({
+          inboundEventId: inboundEvent.id,
+          processingStatus: "processed",
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId,
+          processedAt: new Date().toISOString(),
+        });
+
+        return {
+          inboundEventId: inboundEvent.id,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: incomingMessageId ?? "",
+          responseContent: WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD.text?.body,
+        };
       }
 
       let runtimeExecutionId: string | undefined;
@@ -336,22 +390,52 @@ export class InboundMessagePipeline {
         runtimeExecutionId = runtimeResult.executionId;
         responseContent = runtimeResult.responseContent;
 
-        const outbound = await this.dispatcher.dispatch(ctx, {
-          companyId: request.companyId,
-          companyChannelId: request.companyChannelId,
-          channelKey: request.channelKey,
+        await this.inboundRepository.updateEvent({
+          inboundEventId: inboundEvent.id,
+          processingStatus: "processed",
           conversationId: session.conversation_id,
           channelSessionId: session.id,
-          externalThreadId: normalized.externalThreadId,
-          text: responseContent,
-          metadata: {
-            runtimeExecutionId,
-            correlationId: runtimeResult.correlationId,
-          },
-          persistConversationMessage: false,
+          incomingMessageId,
+          runtimeExecutionId,
+          processedAt: new Date().toISOString(),
         });
 
-        outboundDeliveryId = outbound.deliveryEventId;
+        let outboundError: string | undefined;
+        try {
+          const outbound = await this.dispatcher.dispatch(ctx, {
+            companyId: request.companyId,
+            companyChannelId: request.companyChannelId,
+            channelKey: request.channelKey,
+            conversationId: session.conversation_id,
+            channelSessionId: session.id,
+            externalThreadId: normalized.externalThreadId,
+            text: responseContent,
+            metadata: {
+              runtimeExecutionId,
+              correlationId: runtimeResult.correlationId,
+            },
+            persistConversationMessage: false,
+          });
+
+          outboundDeliveryId = outbound.deliveryEventId;
+        } catch (error) {
+          outboundError = error instanceof Error ? error.message : "outbound_dispatch_failed";
+          request.trace?.step("webhook.outbound_failed", {
+            runtimeExecutionId,
+            error: outboundError,
+          });
+        }
+
+        return {
+          inboundEventId: inboundEvent.id,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: incomingMessageId ?? "",
+          runtimeExecutionId,
+          outboundDeliveryId,
+          outboundError,
+          responseContent,
+        };
       }
 
       await this.inboundRepository.updateEvent({

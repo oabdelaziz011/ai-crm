@@ -22,6 +22,12 @@ export type ChannelAdapterSendResult = {
 export type ChannelAdapterPort = {
   readonly channelKey: string;
 
+  /** Parse provider-specific webhook payloads into normalized envelopes (all events in payload). */
+  parseWebhookEvents?(
+    ctx: ChannelAdapterContext,
+    rawPayload: Record<string, unknown>,
+  ): WebhookEnvelopeDto[];
+
   /** Parse provider-specific webhook payloads into a normalized envelope. */
   parseWebhook?(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto;
 

@@ -3,6 +3,8 @@ import type { ChannelAdapterPort } from "./ports/channel-adapter-port.js";
 import { createChannelAdapterRegistry } from "./adapters/channel-adapter-registry.js";
 import { createStubWebChatAdapter } from "./adapters/stub-web-chat-adapter.js";
 import { createWhatsAppCloudAdapter } from "./adapters/whatsapp/whatsapp-cloud-adapter.js";
+import { createInstagramCloudAdapter } from "./adapters/instagram/instagram-cloud-adapter.js";
+import { createMessengerCloudAdapter } from "./adapters/messenger/messenger-cloud-adapter.js";
 import { ChannelDispatcher } from "./dispatcher/channel-dispatcher.js";
 import { ChannelSessionEngine } from "./engines/channel-session-engine.js";
 import { DeliveryTrackingEngine } from "./engines/delivery-tracking-engine.js";
@@ -19,11 +21,22 @@ import {
   createSupabaseChannelSessionRepository,
 } from "./repositories/supabase-channel-repositories.js";
 
+export type WhatsAppDirectOutboundBypassOptions = import("./adapters/whatsapp/whatsapp-direct-outbound-bypass.js").WhatsAppDirectOutboundBypassOptions;
+
 export type ChannelPlatformServicesOptions = {
   ports: ChannelPlatformPorts;
   adapters?: ChannelAdapterPort[];
   telemetry?: ChannelTelemetryPort;
   whatsAppFetchFn?: typeof fetch;
+  whatsAppCredentialsLoader?: import("./adapters/whatsapp/whatsapp-canonical-credentials.js").WhatsAppCredentialsLoader;
+  whatsAppOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
+  whatsAppDirectOutboundBypass?: WhatsAppDirectOutboundBypassOptions;
+  instagramFetchFn?: typeof fetch;
+  instagramCredentialsLoader?: import("./adapters/instagram/instagram-canonical-credentials.js").InstagramCredentialsLoader;
+  instagramOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
+  messengerFetchFn?: typeof fetch;
+  messengerCredentialsLoader?: import("./adapters/messenger/messenger-canonical-credentials.js").MessengerCredentialsLoader;
+  messengerOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
   workflowResolver?: ChannelWorkflowResolver;
 };
 
@@ -45,7 +58,21 @@ export function createChannelPlatformServices(
 
   const adapterRegistry = createChannelAdapterRegistry([
     createStubWebChatAdapter(),
-    createWhatsAppCloudAdapter({ fetchFn: options.whatsAppFetchFn }),
+    createWhatsAppCloudAdapter({
+      fetchFn: options.whatsAppFetchFn,
+      credentialsLoader: options.whatsAppCredentialsLoader,
+      onOutboundDiagnostic: options.whatsAppOutboundDiagnostic,
+    }),
+    createInstagramCloudAdapter({
+      fetchFn: options.instagramFetchFn,
+      credentialsLoader: options.instagramCredentialsLoader,
+      onOutboundDiagnostic: options.instagramOutboundDiagnostic,
+    }),
+    createMessengerCloudAdapter({
+      fetchFn: options.messengerFetchFn,
+      credentialsLoader: options.messengerCredentialsLoader,
+      onOutboundDiagnostic: options.messengerOutboundDiagnostic,
+    }),
     ...(options.adapters ?? []),
   ]);
 
@@ -71,6 +98,7 @@ export function createChannelPlatformServices(
     inboundRepository,
     sessionRepository,
     options.workflowResolver,
+    options.whatsAppDirectOutboundBypass,
   );
 
   const router = new ChannelRouter(
@@ -115,5 +143,33 @@ export * from "./services/extract-automation-response.js";
 export * from "./webhooks/whatsapp-webhook-handler.js";
 export * from "./webhooks/whatsapp-webhook-routing.js";
 export * from "./webhooks/whatsapp-phone-number-probe.js";
+export * from "./adapters/whatsapp/whatsapp-canonical-credentials.js";
+export * from "./adapters/whatsapp/whatsapp-outbound-health.js";
+export * from "./adapters/whatsapp/whatsapp-direct-outbound-bypass.js";
+export * from "./webhooks/whatsapp-company-channel.js";
+export * from "./webhooks/instagram-webhook-handler.js";
+export * from "./webhooks/instagram-webhook-routing.js";
+export * from "./webhooks/instagram-company-channel.js";
+export * from "./adapters/instagram/instagram-cloud-adapter.js";
+export * from "./adapters/instagram/instagram-api-client.js";
+export * from "./adapters/instagram/instagram-config.js";
+export * from "./adapters/instagram/instagram-types.js";
+export * from "./adapters/instagram/instagram-canonical-credentials.js";
+export * from "./adapters/instagram/instagram-outbound-health.js";
+export * from "./webhooks/messenger-webhook-handler.js";
+export * from "./webhooks/messenger-webhook-routing.js";
+export * from "./webhooks/messenger-company-channel.js";
+export * from "./adapters/messenger/messenger-cloud-adapter.js";
+export * from "./adapters/messenger/messenger-api-client.js";
+export * from "./adapters/messenger/messenger-config.js";
+export * from "./adapters/messenger/messenger-types.js";
+export * from "./adapters/messenger/messenger-canonical-credentials.js";
+export * from "./adapters/messenger/messenger-outbound-health.js";
+export * from "./adapters/meta/meta-graph-config.js";
+export * from "./adapters/meta/meta-graph-webhook.js";
+export * from "./adapters/meta/meta-messaging-webhook.js";
+export * from "./adapters/meta/meta-messaging-adapter.js";
+export * from "./webhooks/webhook-channel-guards.js";
+export * from "./debug/webhook-adapter-classification.js";
 export * from "./webhooks/webhook-processing-trace.js";
 export * from "./webhooks/webhook-diagnostics.js";

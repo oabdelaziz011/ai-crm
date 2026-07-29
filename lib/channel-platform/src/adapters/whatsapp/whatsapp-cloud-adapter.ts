@@ -12,12 +12,16 @@ import type {
 import { AttachmentEngine } from "../../engines/attachment-engine.js";
 import { ValidationError } from "../../errors.js";
 import { WhatsAppApiClient, parseWhatsAppWebhookEvents } from "./whatsapp-api-client.js";
-import { parseWhatsAppConfiguration } from "./whatsapp-config.js";
+import { parseWhatsAppChannelReferences } from "./whatsapp-config.js";
+import type { WhatsAppCredentialsLoader } from "./whatsapp-canonical-credentials.js";
+import { resolveWhatsAppRuntimeConfiguration } from "./whatsapp-canonical-credentials.js";
 import type { WhatsAppSendMessagePayload, WhatsAppWebhookMessage } from "./whatsapp-types.js";
 import { traceWhatsAppRawWebhookPayload } from "../../debug/interactive-if-trace-debug.js";
 
 export type WhatsAppCloudAdapterOptions = {
   fetchFn?: typeof fetch;
+  credentialsLoader?: WhatsAppCredentialsLoader;
+  onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
 };
 
 export class WhatsAppCloudAdapter implements ChannelAdapterPort {
@@ -25,51 +29,65 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
 
   private readonly apiClient: WhatsAppApiClient;
   private readonly attachmentEngine = new AttachmentEngine();
+  private readonly credentialsLoader?: WhatsAppCredentialsLoader;
+  private readonly onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
 
   constructor(options: WhatsAppCloudAdapterOptions = {}) {
-    this.apiClient = new WhatsAppApiClient({ fetchFn: options.fetchFn });
+    this.credentialsLoader = options.credentialsLoader;
+    this.onOutboundDiagnostic = options.onOutboundDiagnostic;
+    this.apiClient = new WhatsAppApiClient({
+      fetchFn: options.fetchFn,
+      onOutboundRequest: (detail) => this.onOutboundDiagnostic?.(detail),
+    });
+  }
+
+  parseWebhookEvents(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto[] {
+    const events = parseWhatsAppWebhookEvents(rawPayload);
+    return events.map((event) => {
+      if (event.kind === "status") {
+        return {
+          eventType: event.status === "read" ? "message.read" : "message.status",
+          companyChannelId: ctx.companyChannel.id,
+          channelKey: this.channelKey,
+          idempotencyKey: event.idempotencyKey,
+          externalThreadId: event.externalThreadId ?? "",
+          externalMessageId: event.externalMessageId,
+          payload: {
+            deliveryStatus: event.status,
+            providerResponse: event.providerResponse,
+            errorMessage: event.errorMessage,
+            raw: event.raw,
+          },
+        } satisfies WebhookEnvelopeDto;
+      }
+
+      return {
+        eventType: "message.received",
+        companyChannelId: ctx.companyChannel.id,
+        channelKey: this.channelKey,
+        idempotencyKey: event.idempotencyKey,
+        externalThreadId: event.externalThreadId,
+        externalMessageId: event.externalMessageId,
+        payload: {
+          message: event.message,
+          senderExternalId: event.senderExternalId,
+          senderName: event.senderName,
+          phoneNumberId: event.phoneNumberId,
+          raw: event.raw,
+        },
+      } satisfies WebhookEnvelopeDto;
+    });
   }
 
   parseWebhook(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto {
-    const events = parseWhatsAppWebhookEvents(rawPayload);
-    const primary = events[0];
+    const envelopes = this.parseWebhookEvents(ctx, rawPayload);
+    const primary = envelopes[0];
 
     if (!primary) {
       throw new ValidationError("WhatsApp webhook payload did not contain routable events.");
     }
 
-    if (primary.kind === "status") {
-      return {
-        eventType: primary.status === "read" ? "message.read" : "message.status",
-        companyChannelId: ctx.companyChannel.id,
-        channelKey: this.channelKey,
-        idempotencyKey: primary.idempotencyKey,
-        externalThreadId: primary.externalThreadId,
-        externalMessageId: primary.externalMessageId,
-        payload: {
-          deliveryStatus: primary.status,
-          providerResponse: primary.providerResponse,
-          errorMessage: primary.errorMessage,
-          raw: primary.raw,
-        },
-      };
-    }
-
-    return {
-      eventType: "message.received",
-      companyChannelId: ctx.companyChannel.id,
-      channelKey: this.channelKey,
-      idempotencyKey: primary.idempotencyKey,
-      externalThreadId: primary.externalThreadId,
-      externalMessageId: primary.externalMessageId,
-      payload: {
-        message: primary.message,
-        senderExternalId: primary.senderExternalId,
-        senderName: primary.senderName,
-        phoneNumberId: primary.phoneNumberId,
-        raw: primary.raw,
-      },
-    };
+    return primary;
   }
 
   normalizeInbound(_ctx: ChannelAdapterContext, payload: Record<string, unknown>): NormalizedInboundMessageDto {
@@ -216,9 +234,29 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
     ctx: ChannelAdapterContext,
     formattedPayload: Record<string, unknown>,
   ): Promise<ChannelAdapterSendResult> {
-    const config = parseWhatsAppConfiguration(ctx.companyChannel.configuration);
+    if (!this.credentialsLoader) {
+      throw new ValidationError("WhatsApp credentials loader is not configured.");
+    }
+
+    const channelReferences = parseWhatsAppChannelReferences(ctx.companyChannel.configuration);
+    const runtimeConfig = await resolveWhatsAppRuntimeConfiguration(
+      ctx.companyChannel.companyId,
+      channelReferences,
+      this.credentialsLoader,
+    );
+
+    this.onOutboundDiagnostic?.({
+      stage: "outbound.credentials.resolved",
+      companyId: ctx.companyChannel.companyId,
+      companyChannelId: ctx.companyChannel.id,
+      phoneNumberId: runtimeConfig.phoneNumberId,
+      credentialSource: "company_whatsapp_settings",
+    });
+
     const payload = formattedPayload.payload as WhatsAppSendMessagePayload;
-    const response = await this.apiClient.sendMessage(config, payload);
+    const response = await this.apiClient.sendMessage(runtimeConfig, payload, {
+      accessTokenSource: "company_whatsapp_settings",
+    });
     const externalMessageId = response.messages?.[0]?.id;
 
     if (!externalMessageId) {

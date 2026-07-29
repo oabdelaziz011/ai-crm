@@ -78,6 +78,8 @@ export type InboundRouteResponseDto = {
   outboundDeliveryId?: string;
   outboundDeliveryIds?: string[];
   responseContent?: string;
+  /** When outbound dispatch fails after inbound/AI succeeded */
+  outboundError?: string;
   duplicate?: boolean;
 };
 

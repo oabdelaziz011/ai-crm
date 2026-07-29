@@ -122,9 +122,251 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
 
       if (error) throw error;
 
-      return (data ?? [])
+      const byReference = (data ?? [])
         .map((row) => mapRow(row as Record<string, unknown>))
         .filter((row) => row.communication_channel?.key === "whatsapp");
+
+      if (byReference.length > 0) return byReference;
+
+      const { data: settingsRows, error: settingsError } = await client
+        .from("company_whatsapp_settings")
+        .select("company_id")
+        .eq("phone_number_id", trimmed);
+
+      if (settingsError) throw settingsError;
+      if (!settingsRows?.length) return [];
+
+      const companyIds = settingsRows.map((row) => row.company_id as string);
+      const { data: channelRows, error: channelError } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .in("company_id", companyIds)
+        .is("deleted_at", null);
+
+      if (channelError) throw channelError;
+
+      return (channelRows ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "whatsapp");
+    },
+
+    async findCompanyChannelByInstagramBusinessAccountId(
+      instagramBusinessAccountId: string,
+    ): Promise<CompanyChannelRecord[]> {
+      const trimmed = instagramBusinessAccountId.trim();
+      if (!trimmed) return [];
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>instagramBusinessAccountId", "eq", trimmed)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      const byReference = (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "instagram");
+
+      if (byReference.length > 0) return byReference;
+
+      const { data: settingsRows, error: settingsError } = await client
+        .from("company_instagram_settings")
+        .select("company_id")
+        .eq("instagram_business_account_id", trimmed);
+
+      if (settingsError) throw settingsError;
+      if (!settingsRows?.length) return [];
+
+      const companyIds = settingsRows.map((row) => row.company_id as string);
+      const { data: channelRows, error: channelError } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .in("company_id", companyIds)
+        .is("deleted_at", null);
+
+      if (channelError) throw channelError;
+
+      return (channelRows ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "instagram");
+    },
+
+    async findCompanyChannelsByInstagramVerifyToken(
+      verifyToken: string,
+      excludeCompanyChannelId?: string,
+    ): Promise<CompanyChannelRecord[]> {
+      const trimmed = verifyToken.trim();
+      if (!trimmed) return [];
+
+      const { data: hashData, error: hashError } = await client.rpc(
+        "whatsapp_verify_token_lookup_hash",
+        { p_plaintext: trimmed },
+      );
+      if (hashError) throw hashError;
+
+      const lookupHash = typeof hashData === "string" ? hashData : "";
+      if (lookupHash) {
+        const { data: settingsRows, error: settingsError } = await client
+          .from("company_instagram_settings")
+          .select("company_id")
+          .eq("webhook_verify_token_lookup_hash", lookupHash);
+
+        if (settingsError) throw settingsError;
+
+        if (settingsRows?.length) {
+          const companyIds = settingsRows.map((row) => row.company_id as string);
+          const { data: channelRows, error: channelError } = await client
+            .from(TABLE)
+            .select(SELECT_WITH_CHANNEL)
+            .in("company_id", companyIds)
+            .is("deleted_at", null);
+
+          if (channelError) throw channelError;
+
+          return (channelRows ?? [])
+            .map((row) => mapRow(row as Record<string, unknown>))
+            .filter((row) => row.communication_channel?.key === "instagram")
+            .filter((row) => row.id !== excludeCompanyChannelId);
+        }
+      }
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>verifyToken", "eq", trimmed)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "instagram")
+        .filter((row) => row.id !== excludeCompanyChannelId);
+    },
+
+    async listEnabledInstagramChannels(): Promise<CompanyChannelRecord[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "instagram");
+    },
+
+    async findCompanyChannelByMessengerPageId(pageId: string): Promise<CompanyChannelRecord[]> {
+      const trimmed = pageId.trim();
+      if (!trimmed) return [];
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>pageId", "eq", trimmed)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      const byReference = (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "messenger");
+
+      if (byReference.length > 0) return byReference;
+
+      const { data: settingsRows, error: settingsError } = await client
+        .from("company_messenger_settings")
+        .select("company_id")
+        .eq("page_id", trimmed)
+        .eq("enabled", true);
+
+      if (settingsError) throw settingsError;
+      if (!settingsRows?.length) return [];
+
+      const companyIds = settingsRows.map((row) => row.company_id as string);
+      const { data: channelRows, error: channelError } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .in("company_id", companyIds)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (channelError) throw channelError;
+
+      return (channelRows ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "messenger");
+    },
+
+    async findCompanyChannelsByMessengerVerifyToken(
+      verifyToken: string,
+      excludeCompanyChannelId?: string,
+    ): Promise<CompanyChannelRecord[]> {
+      const trimmed = verifyToken.trim();
+      if (!trimmed) return [];
+
+      const { data: hashData, error: hashError } = await client.rpc(
+        "whatsapp_verify_token_lookup_hash",
+        { p_plaintext: trimmed },
+      );
+      if (hashError) throw hashError;
+
+      const lookupHash = typeof hashData === "string" ? hashData : "";
+      if (lookupHash) {
+        const { data: settingsRows, error: settingsError } = await client
+          .from("company_messenger_settings")
+          .select("company_id")
+          .eq("webhook_verify_token_lookup_hash", lookupHash);
+
+        if (settingsError) throw settingsError;
+
+        if (settingsRows?.length) {
+          const companyIds = settingsRows.map((row) => row.company_id as string);
+          const { data: channelRows, error: channelError } = await client
+            .from(TABLE)
+            .select(SELECT_WITH_CHANNEL)
+            .in("company_id", companyIds)
+            .is("deleted_at", null);
+
+          if (channelError) throw channelError;
+
+          return (channelRows ?? [])
+            .map((row) => mapRow(row as Record<string, unknown>))
+            .filter((row) => row.communication_channel?.key === "messenger")
+            .filter((row) => row.id !== excludeCompanyChannelId);
+        }
+      }
+
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .filter("configuration->>verifyToken", "eq", trimmed)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "messenger")
+        .filter((row) => row.id !== excludeCompanyChannelId);
+    },
+
+    async listEnabledMessengerChannels(): Promise<CompanyChannelRecord[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select(SELECT_WITH_CHANNEL)
+        .eq("is_enabled", true)
+        .is("deleted_at", null);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .map((row) => mapRow(row as Record<string, unknown>))
+        .filter((row) => row.communication_channel?.key === "messenger");
     },
 
     async findCompanyChannelsByWhatsAppVerifyToken(
@@ -133,6 +375,38 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
     ): Promise<CompanyChannelRecord[]> {
       const trimmed = verifyToken.trim();
       if (!trimmed) return [];
+
+      const { data: hashData, error: hashError } = await client.rpc(
+        "whatsapp_verify_token_lookup_hash",
+        { p_plaintext: trimmed },
+      );
+      if (hashError) throw hashError;
+
+      const lookupHash = typeof hashData === "string" ? hashData : "";
+      if (lookupHash) {
+        const { data: settingsRows, error: settingsError } = await client
+          .from("company_whatsapp_settings")
+          .select("company_id")
+          .eq("webhook_verify_token_lookup_hash", lookupHash);
+
+        if (settingsError) throw settingsError;
+
+        if (settingsRows?.length) {
+          const companyIds = settingsRows.map((row) => row.company_id as string);
+          const { data: channelRows, error: channelError } = await client
+            .from(TABLE)
+            .select(SELECT_WITH_CHANNEL)
+            .in("company_id", companyIds)
+            .is("deleted_at", null);
+
+          if (channelError) throw channelError;
+
+          return (channelRows ?? [])
+            .map((row) => mapRow(row as Record<string, unknown>))
+            .filter((row) => row.communication_channel?.key === "whatsapp")
+            .filter((row) => row.id !== excludeCompanyChannelId);
+        }
+      }
 
       const { data, error } = await client
         .from(TABLE)

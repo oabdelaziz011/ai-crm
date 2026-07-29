@@ -15,9 +15,22 @@ import type {
 export type ChannelRegistryPort = {
   getCompanyChannel(companyChannelId: string): Promise<ResolvedCompanyChannel | null>;
   findCompanyChannelByPhoneNumberId(phoneNumberId: string): Promise<ResolvedCompanyChannel[]>;
+  findCompanyChannelByInstagramBusinessAccountId(
+    instagramBusinessAccountId: string,
+  ): Promise<ResolvedCompanyChannel[]>;
   findCompanyChannelsByWhatsAppVerifyToken(verifyToken: string): Promise<ResolvedCompanyChannel[]>;
+  findCompanyChannelsByInstagramVerifyToken(verifyToken: string): Promise<ResolvedCompanyChannel[]>;
+  findCompanyChannelByMessengerPageId(pageId: string): Promise<ResolvedCompanyChannel[]>;
+  findCompanyChannelsByMessengerVerifyToken(verifyToken: string): Promise<ResolvedCompanyChannel[]>;
   listEnabledWhatsAppChannels(): Promise<ResolvedCompanyChannel[]>;
+  listEnabledInstagramChannels(): Promise<ResolvedCompanyChannel[]>;
+  listEnabledMessengerChannels(): Promise<ResolvedCompanyChannel[]>;
   syncWhatsAppPhoneNumberId(companyChannelId: string, phoneNumberId: string): Promise<void>;
+  syncInstagramBusinessAccountId(
+    companyChannelId: string,
+    instagramBusinessAccountId: string,
+  ): Promise<void>;
+  syncMessengerPageId(companyChannelId: string, pageId: string): Promise<void>;
 };
 
 export type ChannelConversationPort = {

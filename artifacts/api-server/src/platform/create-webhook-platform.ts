@@ -32,8 +32,10 @@ import {
 import { createChannelAutomationPortFromClient, createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-engine";
+import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
+import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
 import { logger } from "../lib/logger.js";
 
 export type SystemServiceContext = {
@@ -102,6 +104,17 @@ export function getWebhookPlatform(): WebhookPlatform {
   });
   const prompt = createPromptOrchestratorServices(client);
   const provider = createAIProviderServices(client);
+  const platformServices = createPlatformAIProviderServices(client);
+  const platformConfig = createPlatformRuntimeConfigPort(async ({ companyId, providerKey, useCase }) => {
+    const runtime = await platformServices.platform.resolveRuntimeConfig(companyId, providerKey, useCase);
+    return {
+      apiKey: runtime.apiKey,
+      model: runtime.model,
+      baseUrl: runtime.baseUrl,
+      providerKey: runtime.providerKey,
+      usesPlatformKey: runtime.usesPlatformKey,
+    };
+  });
   const { tools } = createWebhookToolRouterIntegrations(client);
   const execution = createAIExecutionServices(
     client,
@@ -110,6 +123,7 @@ export function getWebhookPlatform(): WebhookPlatform {
       gateway: provider.gateway,
       knowledge: retrieval.knowledge,
       tools,
+      platformConfig,
     }),
   );
   const tenantRuntimeConfig = createTenantRuntimeConfigService(client);

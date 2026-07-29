@@ -86,12 +86,31 @@ describe("resolveInboundAutomationRoute", () => {
       }),
       run: run({
         status: "running",
+        started_at: new Date().toISOString(),
         variables: {},
       }),
     });
 
     assert.equal(decision.mode, "hold_active_session");
     assert.equal(decision.reason, "active_session_executing_recently");
+  });
+
+  it("does not hold zombie runs when session was touched by a new inbound", () => {
+    const decision = resolveInboundAutomationRoute({
+      boundFlowId: "flow-1",
+      session: session({
+        status: "running",
+        last_activity_at: new Date().toISOString(),
+      }),
+      run: run({
+        status: "running",
+        started_at: "2026-07-24T00:00:00.000Z",
+        variables: {},
+      }),
+    });
+
+    assert.equal(decision.mode, "abandon_and_start");
+    assert.equal(decision.reason, "orphaned_active_run_not_waiting_for_input");
   });
 
   it("abandons orphaned running sessions that are not waiting for input", () => {

@@ -220,7 +220,6 @@ export class BookingValidationService {
       .select("id")
       .eq("id", customerId)
       .eq("company_id", companyId)
-      .is("deleted_at", null)
       .maybeSingle();
 
     if (error) throw new Error(error.message);

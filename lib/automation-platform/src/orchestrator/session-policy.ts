@@ -94,8 +94,11 @@ export function isActivelyExecutingRun(
   if (!run) return false;
   if (run.status !== "running") return false;
   if (session.status !== "running" && session.status !== "active") return false;
-  const lastActivity = new Date(session.last_activity_at).getTime();
-  return now.getTime() - lastActivity <= activeWindowMs;
+  // Use run.started_at — session.last_activity_at is refreshed on every inbound touch
+  // (inbound-message-pipeline touchInbound) and falsely extends the active window.
+  const runStartedAt = new Date(run.started_at).getTime();
+  if (!Number.isFinite(runStartedAt)) return false;
+  return now.getTime() - runStartedAt <= activeWindowMs;
 }
 
 export function hasSessionRunStatusMismatch(

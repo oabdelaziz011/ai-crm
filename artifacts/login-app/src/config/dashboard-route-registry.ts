@@ -159,6 +159,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.aiAnalytics",
     icon: Activity,
     permission: "ai.analytics.view",
+    platformFeatureKey: PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS,
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/ai/ai-analytics-page")),
   },

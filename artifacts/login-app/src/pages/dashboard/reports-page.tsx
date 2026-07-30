@@ -19,7 +19,7 @@ import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
 import { useCustomers } from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
-import { useHasPermission } from "@/hooks/use-rbac";
+import { useHasPermission, useAuthUser } from "@/hooks/use-rbac";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
 import type { Booking, Invoice } from "@/lib/types";
 import { useTranslation } from "react-i18next";
@@ -30,6 +30,8 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { BranchSelector } from "@/lib/company/branches/components";
 import { useBranches } from "@/lib/company/branches/hooks";
+import { useAnalyticsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { isAnalyticsRouteAccessible } from "@/lib/platform-ai/analytics-access";
 
 export default function ReportsPage() {
   const { t } = useTranslation("common");
@@ -39,7 +41,13 @@ export default function ReportsPage() {
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
   const { data: branches = [] } = useBranches(companyId);
   const canViewReports = useHasPermission("reports.view");
-  const canViewAiAnalytics = useHasPermission("ai.analytics.view");
+  const { isSuperAdmin, hasPermission } = useAuthUser();
+  const { resolvedEnabled: analyticsFeatureEnabled } = useAnalyticsFeatureEnabled();
+  const canViewAiAnalytics = isAnalyticsRouteAccessible({
+    isSuperAdmin,
+    hasPermission,
+    analyticsFeatureEnabled,
+  });
   const canViewAiUsage = useHasPermission("ai.costs.view");
   const customersQuery = useCustomers();
   const bookingsQuery = useBookings();

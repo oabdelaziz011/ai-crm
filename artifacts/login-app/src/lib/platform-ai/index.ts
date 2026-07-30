@@ -61,6 +61,15 @@ export {
   shouldShowAutomationNavigation,
 } from "./workflow-access";
 
+export {
+  canReadAnalytics,
+  canReadTraces,
+  canViewAnalytics,
+  isAnalyticsRouteAccessible,
+  shouldShowAnalyticsIntegration,
+  shouldShowAnalyticsNavigation,
+} from "./analytics-access";
+
 /** @deprecated Use AI_CAPABILITY_CATALOG */
 export { AI_CAPABILITY_CATALOG as COMPANY_AI_FEATURE_REGISTRY } from "./ai-capability-catalog";
 

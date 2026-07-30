@@ -5,6 +5,8 @@ export type ServiceContext = {
   companyId: string | null;
   isSuperAdmin: boolean;
   hasPermission: (permissionCode: string) => boolean;
+  /** When set, blocks analytics read operations when the Platform AI analytics flag is off. */
+  isAnalyticsFeatureEnabled?: () => boolean;
 };
 
 export type TokenUsage = {

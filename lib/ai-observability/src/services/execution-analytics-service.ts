@@ -9,6 +9,7 @@ import type {
 } from "../types.js";
 import type { CostAccountingService } from "./cost-accounting-service.js";
 import { estimateTokenCost } from "../utils/cost-utils.js";
+import { assertAnalyticsFeatureEnabled } from "../utils/analytics-guards.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -74,12 +75,14 @@ export class ExecutionAnalyticsService {
 
   async listAnalytics(ctx: ServiceContext, filter: ListAnalyticsFilter) {
     assertPermission(ctx, AI_OBSERVABILITY_PERMISSIONS.analyticsView);
+    assertAnalyticsFeatureEnabled(ctx);
     assertCompanyAccess(ctx, filter.companyId);
     return this.analyticsRepository.list(filter);
   }
 
   async aggregateMetrics(ctx: ServiceContext, filter: ListAnalyticsFilter): Promise<AnalyticsAggregate> {
     assertPermission(ctx, AI_OBSERVABILITY_PERMISSIONS.analyticsView);
+    assertAnalyticsFeatureEnabled(ctx);
     assertCompanyAccess(ctx, filter.companyId);
 
     const records = await this.analyticsRepository.list(filter);

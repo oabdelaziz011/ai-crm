@@ -26,6 +26,12 @@ export class PermissionDeniedError extends AIObservabilityError {
   }
 }
 
+export class AnalyticsFeatureDisabledError extends AIObservabilityError {
+  constructor() {
+    super("ANALYTICS_FEATURE_DISABLED", "AI Analytics is disabled for this company.");
+  }
+}
+
 export class ValidationError extends AIObservabilityError {
   constructor(message: string) {
     super("VALIDATION_ERROR", message);

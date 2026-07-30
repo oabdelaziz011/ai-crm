@@ -36,7 +36,7 @@ export const PLATFORM_AI_CAPABILITY_FEATURE_MAPPINGS: readonly PlatformAICapabil
   {
     capabilityId: PLATFORM_AI_CAPABILITY_ID.AI_ANALYTICS,
     backendFeatureKey: PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS,
-    catalogLive: false,
+    catalogLive: true,
   },
   {
     capabilityId: PLATFORM_AI_CAPABILITY_ID.WORKFLOW_AI,

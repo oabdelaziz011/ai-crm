@@ -1939,6 +1939,9 @@
       "active": "Active"
     }
   },
+  "aiAnalytics": {
+    "featureDisabled": "AI Analytics is disabled for this company."
+  },
   "automation": {
     "featureDisabled": "Workflow AI is disabled for this company.",
     "aiNodesDisabled": "AI workflow nodes are disabled for this company. You can still view this workflow.",
@@ -5323,9 +5326,13 @@
         "title": "Knowledge Base",
         "description": "Manage documents and retrieval sources used by the AI runtime."
       },
-      "automation": {
+      "analytics": {
         "title": "AI Analytics",
         "description": "Review execution latency, traces, and runtime health."
+      },
+      "automation": {
+        "title": "Workflow Automation",
+        "description": "Build and manage AI-powered workflow automations."
       },
       "receptionist": {
         "title": "AI Receptionist",

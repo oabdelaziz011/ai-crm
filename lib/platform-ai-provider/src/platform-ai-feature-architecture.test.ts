@@ -24,6 +24,7 @@ describe("Platform AI feature keys", () => {
     assert.deepEqual(
       live.map((entry) => entry.capabilityId).sort(),
       [
+        PLATFORM_AI_CAPABILITY_ID.AI_ANALYTICS,
         PLATFORM_AI_CAPABILITY_ID.AI_CHAT,
         PLATFORM_AI_CAPABILITY_ID.KNOWLEDGE_BASE,
         PLATFORM_AI_CAPABILITY_ID.WORKFLOW_AI,
@@ -31,13 +32,13 @@ describe("Platform AI feature keys", () => {
     );
   });
 
-  it("maps ai_analytics capability to ai_analytics feature key without live catalog", () => {
+  it("maps ai_analytics capability to ai_analytics feature key as live catalog", () => {
     const mapping = PLATFORM_AI_CAPABILITY_FEATURE_MAPPINGS.find(
       (entry) => entry.capabilityId === PLATFORM_AI_CAPABILITY_ID.AI_ANALYTICS,
     );
     assert.ok(mapping);
     assert.equal(mapping.backendFeatureKey, PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS);
-    assert.equal(mapping.catalogLive, false);
+    assert.equal(mapping.catalogLive, true);
   });
 });
 

@@ -109,10 +109,13 @@ export const PLATFORM_AI_FEATURE_KEY_AUDIT: Record<PlatformAIFeatureKey, Platfor
       databaseKey: PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS,
       catalogCapabilityId: PLATFORM_AI_CAPABILITY_ID.AI_ANALYTICS,
       responsibility:
-        "AI observability / analytics dashboards (executions, traces, costs). Key added in Sprint 1 for future tenant gating; access remains RBAC-only until wired.",
-      runtimeUsage: ["Not enforced (Sprint 1) — ai-observability uses RBAC permissions only"],
-      opsUsage: ["Not shown in ops feature matrix (Sprint 1)"],
-      runtimeEnforcedToday: false,
+        "AI observability / analytics dashboards (executions, traces). Tenant toggle gates routes, sidebar, and read paths; telemetry ingestion remains ungated.",
+      runtimeUsage: [
+        "login-app ai-analytics route and sidebar → isFeatureEnabled(ai_analytics)",
+        "@workspace/ai-observability read services → assertAnalyticsFeatureEnabled",
+      ],
+      opsUsage: ["Not shown in ops feature matrix (Sprint 5)"],
+      runtimeEnforcedToday: true,
     },
   };
 

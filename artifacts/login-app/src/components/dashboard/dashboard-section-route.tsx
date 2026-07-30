@@ -39,6 +39,13 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
         </div>
       );
     }
+    if (route.platformFeatureKey && route.id === "ai-analytics") {
+      return (
+        <div className="flex min-h-[40vh] items-center justify-center px-6">
+          <p className="text-sm text-muted-foreground">{t("aiAnalytics.featureDisabled")}</p>
+        </div>
+      );
+    }
     if (route.superAdminOnly) {
       return <AccessDeniedPage requiredPermission="super_admin" />;
     }

@@ -3,6 +3,7 @@ import { createAIObservabilityServices } from "@workspace/ai-observability";
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
+import { useAnalyticsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -12,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 export function useAIObservabilityServices() {
   const { user, profile, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
+  const { isEnabled: analyticsFeatureEnabled } = useAnalyticsFeatureEnabled();
 
   const services = useMemo(() => createAIObservabilityServices(supabase), []);
 
@@ -21,8 +23,9 @@ export function useAIObservabilityServices() {
       companyId: profile?.company_id ?? null,
       isSuperAdmin,
       hasPermission,
+      isAnalyticsFeatureEnabled: () => analyticsFeatureEnabled,
     }),
-    [user?.id, profile?.company_id, isSuperAdmin, hasPermission],
+    [user?.id, profile?.company_id, isSuperAdmin, hasPermission, analyticsFeatureEnabled],
   );
 
   return { services, context };

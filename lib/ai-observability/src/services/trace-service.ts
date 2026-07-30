@@ -21,6 +21,7 @@ import {
   elapsedMs,
   toTraceContext,
 } from "../utils/trace-utils.js";
+import { assertAnalyticsFeatureEnabled } from "../utils/analytics-guards.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -175,6 +176,7 @@ export class TraceService {
 
   async getTrace(ctx: ServiceContext, traceId: string): Promise<{ trace: AITraceRecord; spans: AITraceSpanRecord[] }> {
     assertPermission(ctx, AI_OBSERVABILITY_PERMISSIONS.analyticsView);
+    assertAnalyticsFeatureEnabled(ctx);
 
     const trace = await this.traceRepository.findByTraceId(traceId);
     if (!trace) throw new TraceNotFoundError(traceId);
@@ -186,6 +188,7 @@ export class TraceService {
 
   async listTraces(ctx: ServiceContext, filter: ListTracesFilter): Promise<AITraceRecord[]> {
     assertPermission(ctx, AI_OBSERVABILITY_PERMISSIONS.analyticsView);
+    assertAnalyticsFeatureEnabled(ctx);
     assertCompanyAccess(ctx, filter.companyId);
     return this.traceRepository.list(filter);
   }

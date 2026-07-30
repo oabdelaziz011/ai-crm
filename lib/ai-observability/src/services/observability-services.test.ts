@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PermissionDeniedError } from "../errors.js";
+import { AnalyticsFeatureDisabledError, PermissionDeniedError } from "../errors.js";
 import type {
   ExecutionAnalyticsRepository,
   TokenCostRepository,
@@ -294,6 +294,27 @@ describe("TraceService", () => {
     assert.equal(failed.status, "failed");
     assert.equal(failed.error_code, "timeout");
   });
+
+  it("denies trace listing when feature flag is off", async () => {
+    const env = createEnvironment();
+    await assert.rejects(
+      () =>
+        env.traceService.listTraces(
+          createContext({ isAnalyticsFeatureEnabled: () => false }),
+          { companyId: "company-1" },
+        ),
+      AnalyticsFeatureDisabledError,
+    );
+  });
+
+  it("allows trace ingestion when feature flag is off", async () => {
+    const env = createEnvironment();
+    const started = await env.traceService.startTrace(
+      createContext({ isAnalyticsFeatureEnabled: () => false }),
+      { companyId: "company-1" },
+    );
+    assert.equal(started.trace.company_id, "company-1");
+  });
 });
 
 describe("ExecutionAnalyticsService", () => {
@@ -368,5 +389,41 @@ describe("ExecutionAnalyticsService", () => {
       () => env.analyticsService.listAnalytics(createContext({ hasPermission: () => false }), { companyId: "company-1" }),
       PermissionDeniedError,
     );
+  });
+
+  it("denies analytics reads when feature flag is off", async () => {
+    const env = createEnvironment();
+    await assert.rejects(
+      () =>
+        env.analyticsService.listAnalytics(
+          createContext({ isAnalyticsFeatureEnabled: () => false }),
+          { companyId: "company-1" },
+        ),
+      AnalyticsFeatureDisabledError,
+    );
+  });
+
+  it("allows analytics ingestion when feature flag is off", async () => {
+    const env = createEnvironment();
+    const { context } = await env.traceService.startTrace(createContext(), { companyId: "company-1" });
+
+    const record = await env.analyticsService.recordExecutionAnalytics(
+      createContext({ isAnalyticsFeatureEnabled: () => false }),
+      {
+        companyId: "company-1",
+        traceContext: context,
+        providerKey: "openai",
+        model: "gpt-4o-mini",
+        latencyMs: 120,
+        retryCount: 0,
+        usedFallback: false,
+        hadTimeout: false,
+        tokenUsage: { prompt_tokens: 50, completion_tokens: 25, total_tokens: 75 },
+        executionStatus: "succeeded",
+      },
+    );
+
+    assert.equal(record.total_tokens, 75);
+    assert.equal(env.costs.length, 1);
   });
 });

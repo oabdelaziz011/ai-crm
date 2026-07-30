@@ -24,13 +24,15 @@ import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
 import { PlatformManagedProviderStatus } from "@/components/ai-assistant/platform-managed-provider-status";
-import { useKnowledgeFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { useKnowledgeFeatureEnabled, useAnalyticsFeatureEnabled, useWorkflowFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import {
   useAiAssistantSettings,
   useCreateAiAssistantSettings,
   useUpdateAiAssistantSettings,
 } from "@/hooks/use-ai-assistant-settings";
 import { shouldShowKnowledgeAssistantTab } from "@/lib/platform-ai/knowledge-access";
+import { shouldShowAnalyticsIntegration } from "@/lib/platform-ai/analytics-access";
+import { isAutomationRouteAccessible } from "@/lib/platform-ai/workflow-access";
 import type {
   AiAssistantLanguage,
   AiAssistantProvider,
@@ -195,9 +197,21 @@ export function AiAssistantPage() {
   const canView = isSuperAdmin || hasPermission("ai_assistant.view");
   const canEdit = isSuperAdmin || hasPermission("ai_assistant.edit");
   const { resolvedEnabled: knowledgeFeatureEnabled } = useKnowledgeFeatureEnabled();
+  const { resolvedEnabled: analyticsFeatureEnabled } = useAnalyticsFeatureEnabled();
+  const { resolvedEnabled: workflowFeatureEnabled } = useWorkflowFeatureEnabled();
   const showKnowledgeTab = shouldShowKnowledgeAssistantTab({
     isSuperAdmin,
     knowledgeFeatureEnabled,
+  });
+  const showAnalyticsIntegration = shouldShowAnalyticsIntegration({
+    isSuperAdmin,
+    hasPermission,
+    analyticsFeatureEnabled,
+  });
+  const showAutomationIntegration = isAutomationRouteAccessible({
+    isSuperAdmin,
+    hasPermission,
+    workflowFeatureEnabled,
   });
 
   const [draft, setDraft] = useState<SettingsDraft>(() => buildDefaultDraft(t));
@@ -827,14 +841,21 @@ export function AiAssistantPage() {
                   description: t("aiAssistant.integrations.knowledge.description"),
                   action: t("aiAssistant.integrations.openLink"),
                   onClick: () => setLocation(getDashboardRouteById("knowledge").nestedPath),
-                  available: hasPermission("knowledge.view") || isSuperAdmin,
+                  available: (hasPermission("knowledge.view") || isSuperAdmin) && showKnowledgeTab,
+                },
+                {
+                  title: t("aiAssistant.integrations.analytics.title"),
+                  description: t("aiAssistant.integrations.analytics.description"),
+                  action: t("aiAssistant.integrations.openLink"),
+                  onClick: () => setLocation(getDashboardRouteById("ai-analytics").nestedPath),
+                  available: showAnalyticsIntegration,
                 },
                 {
                   title: t("aiAssistant.integrations.automation.title"),
                   description: t("aiAssistant.integrations.automation.description"),
                   action: t("aiAssistant.integrations.openLink"),
-                  onClick: () => setLocation(getDashboardRouteById("ai-analytics").nestedPath),
-                  available: hasPermission("ai.analytics.view") || isSuperAdmin,
+                  onClick: () => setLocation(getDashboardRouteById("automation").nestedPath),
+                  available: showAutomationIntegration,
                 },
                 {
                   title: t("aiAssistant.integrations.receptionist.title"),

@@ -119,8 +119,8 @@ async function fetchEntityRecords(
     case "tags":
       return fetchTags(companyId, client);
     case "available_slots":
-      return [];
     case "recommended_appointments":
+    case "available_dates":
       return [];
     default:
       throw new Error(`Unsupported lookup entity: ${lookup satisfies never}`);

@@ -218,7 +218,7 @@ export const LOOKUP_ENTITY_REGISTRY: LookupEntityDefinition[] = [
       field("branchName", "lookups.fields.branchName"),
       field("date", "lookups.fields.date"),
       field("displayTime", "lookups.fields.displayTime"),
-      field("score", "lookups.fields.score", "number"),
+      field("score", "lookups.fields.score"),
       field("reason", "lookups.fields.reason"),
     ],
     valueFields: [

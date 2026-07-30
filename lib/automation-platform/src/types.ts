@@ -16,6 +16,8 @@ export type ServiceContext = {
   companyId: string | null;
   isSuperAdmin: boolean;
   hasPermission: (permissionCode: string) => boolean;
+  /** When set, blocks workflow/automation operations when the Platform AI automation flag is off. */
+  isWorkflowFeatureEnabled?: () => boolean;
 };
 
 export type AutomationFlowRecord = {
@@ -203,6 +205,7 @@ export type ListConversationMessagesFilter = {
 export type UpdateAutomationRunStateInput = {
   runId: string;
   status?: AutomationRunStatus;
+  expectedStatus?: AutomationRunStatus;
   flowVersionId?: string | null;
   currentNodeId?: string | null;
   sessionId?: string | null;

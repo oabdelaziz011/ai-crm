@@ -10,6 +10,7 @@ import { businessEventToContext } from "@/lib/automation/domain/automation-mappe
 import { conditionEngine, memoizeConditionKey } from "@/lib/automation/conditions/condition-engine";
 import { triggerEngine } from "@/lib/automation/triggers/trigger-engine";
 import { delayScheduler } from "@/lib/automation/scheduler/delay-scheduler";
+import { assertLegacyAutomationWorkflowEnabled } from "@/lib/automation/utils/workflow-guard";
 import type { AutomationRepository } from "@/lib/automation/repositories/automation-repository";
 import type { AutomationRuntime } from "@/lib/automation/runtime/automation-runtime";
 
@@ -23,6 +24,7 @@ export class AutomationEngine {
   ) {}
 
   async handleEvent(event: AutomationBusinessEvent): Promise<AutomationEngineResult> {
+    assertLegacyAutomationWorkflowEnabled(event.companyId);
     const workflows = await this.repository.listEnabled(event.companyId);
     const matching = triggerEngine.findMatching(workflows, event.name);
     const context = businessEventToContext(event);
@@ -74,6 +76,7 @@ export class AutomationEngine {
   }
 
   async runManual(companyId: string, workflowId: string, contextOverride?: Partial<AutomationContext>) {
+    assertLegacyAutomationWorkflowEnabled(companyId);
     const workflow = await this.repository.getById(companyId, workflowId);
     if (!workflow) throw new Error("Workflow not found");
 

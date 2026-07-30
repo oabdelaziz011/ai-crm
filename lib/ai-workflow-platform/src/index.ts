@@ -73,6 +73,7 @@ export function createAIWorkflowPlatformServices(
   };
 }
 
+export * from "./utils/workflow-guards.js";
 export { AI_WORKFLOW_ACTION, AI_WORKFLOW_FRAMEWORK_VERSION } from "./constants.js";
 export * from "./constants.js";
 export * from "./types/configuration.js";

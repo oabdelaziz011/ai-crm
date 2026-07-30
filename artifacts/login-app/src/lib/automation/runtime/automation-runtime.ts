@@ -4,6 +4,7 @@ import { ActionEngine } from "@/lib/automation/actions/action-engine";
 import { conditionEngine } from "@/lib/automation/conditions/condition-engine";
 import { delayScheduler } from "@/lib/automation/scheduler/delay-scheduler";
 import type { AutomationRepository } from "@/lib/automation/repositories/automation-repository";
+import { assertLegacyAutomationWorkflowEnabled } from "@/lib/automation/utils/workflow-guard";
 
 export type RuntimeExecutionResult = {
   executionId: string;
@@ -135,6 +136,7 @@ export class AutomationRuntime {
   }
 
   async processDueSchedules(companyId: string, limit = 25): Promise<RuntimeExecutionResult[]> {
+    assertLegacyAutomationWorkflowEnabled(companyId);
     const due = await this.repository.listDueSchedules(companyId, limit);
     const results: RuntimeExecutionResult[] = [];
 

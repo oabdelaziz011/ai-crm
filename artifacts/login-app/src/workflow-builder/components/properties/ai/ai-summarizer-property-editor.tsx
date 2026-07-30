@@ -10,6 +10,7 @@ import { AIWorkflowConfigPanel } from "./ai-workflow-config-panel";
 import { AISummaryOptionsEditor } from "./ai-summary-options-editor";
 import { AISummarizerPreviewPanel } from "./ai-summarizer-preview-panel";
 import { AIWorkflowValidationPanel } from "./ai-validation-panel";
+import { AIWorkflowFeatureGate } from "./ai-workflow-feature-gate";
 import { readAIWorkflowConfig } from "./ai-workflow-config-utils";
 
 export function AISummarizerPropertyEditor({ config, onChange }: NodePropertyEditorProps) {
@@ -30,20 +31,22 @@ export function AISummarizerPropertyEditor({ config, onChange }: NodePropertyEdi
   );
 
   return (
-    <div className="space-y-5">
-      <AISummaryOptionsEditor
-        config={config}
-        onChange={(patch) => onChange({ ...config, ...patch })}
-      />
-      <AIWorkflowConfigPanel
-        config={config}
-        onChange={onChange}
-        nodeKey={AI_SUMMARIZER_NODE_KEY}
-        showPreview={false}
-      />
-      <AIWorkflowValidationPanel issues={validationIssues} />
-      <AISummarizerPreviewPanel preview={preview} />
-    </div>
+    <AIWorkflowFeatureGate>
+      <div className="space-y-5">
+        <AISummaryOptionsEditor
+          config={config}
+          onChange={(patch) => onChange({ ...config, ...patch })}
+        />
+        <AIWorkflowConfigPanel
+          config={config}
+          onChange={onChange}
+          nodeKey={AI_SUMMARIZER_NODE_KEY}
+          showPreview={false}
+        />
+        <AIWorkflowValidationPanel issues={validationIssues} />
+        <AISummarizerPreviewPanel preview={preview} />
+      </div>
+    </AIWorkflowFeatureGate>
   );
 }
 

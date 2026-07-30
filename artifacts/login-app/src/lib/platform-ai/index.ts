@@ -47,6 +47,20 @@ export {
   resolveRuntimeFeatureEnabled,
 } from "@workspace/platform-ai-provider";
 
+export {
+  isKnowledgeRetrievalEligible,
+  isKnowledgeRouteAccessible,
+  shouldShowKnowledgeAssistantTab,
+  shouldShowKnowledgeNavigation,
+} from "./knowledge-access";
+
+export {
+  isAutomationRouteAccessible,
+  areWorkflowAiNodesEnabled,
+  canViewAutomation,
+  shouldShowAutomationNavigation,
+} from "./workflow-access";
+
 /** @deprecated Use AI_CAPABILITY_CATALOG */
 export { AI_CAPABILITY_CATALOG as COMPANY_AI_FEATURE_REGISTRY } from "./ai-capability-catalog";
 

@@ -23,7 +23,11 @@ describe("Platform AI feature keys", () => {
     const live = PLATFORM_AI_CAPABILITY_FEATURE_MAPPINGS.filter((entry) => entry.catalogLive);
     assert.deepEqual(
       live.map((entry) => entry.capabilityId).sort(),
-      [PLATFORM_AI_CAPABILITY_ID.AI_CHAT, PLATFORM_AI_CAPABILITY_ID.KNOWLEDGE_BASE].sort(),
+      [
+        PLATFORM_AI_CAPABILITY_ID.AI_CHAT,
+        PLATFORM_AI_CAPABILITY_ID.KNOWLEDGE_BASE,
+        PLATFORM_AI_CAPABILITY_ID.WORKFLOW_AI,
+      ].sort(),
     );
   });
 

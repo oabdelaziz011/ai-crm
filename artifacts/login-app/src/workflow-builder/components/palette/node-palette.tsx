@@ -29,6 +29,7 @@ import { searchWorkflowNodes } from "../../core/search/node-search";
 import { useWorkflowBuilderI18n } from "@/workflow-builder/hooks/use-workflow-builder-i18n";
 import type { BuilderNodeCategory, BuilderNodeType } from "../../core/types";
 import { cn } from "@/lib/utils";
+import { useWorkflowAiNodesEnabled } from "@/workflow-builder/hooks/use-workflow-ai-nodes-enabled";
 
 const ICONS = {
   Play,
@@ -122,8 +123,10 @@ export function NodePalette({
   const [query, setQuery] = useState("");
   const handleDragStart = onDragStart ?? (() => undefined);
   const allNodes = useMemo(() => listWorkflowNodeDefinitions(), []);
+  const aiNodesEnabled = useWorkflowAiNodesEnabled();
   const results = useMemo(() => searchWorkflowNodes(query, allNodes), [allNodes, query]);
   const visibleIds = useMemo(() => new Set(results.map((node) => node.id)), [results]);
+  const showAiCategory = aiNodesEnabled;
 
   return (
     <motion.aside
@@ -168,12 +171,14 @@ export function NodePalette({
           nodeTypes={allNodes.filter((node) => node.category === "crm" && visibleIds.has(node.id)).map((node) => node.id)}
           onDragStart={handleDragStart}
         />
-        <CategorySection
-          category="ai"
-          title={t("workflowBuilder.palette.ai")}
-          nodeTypes={allNodes.filter((node) => node.category === "ai" && visibleIds.has(node.id)).map((node) => node.id)}
-          onDragStart={handleDragStart}
-        />
+        {showAiCategory ? (
+          <CategorySection
+            category="ai"
+            title={t("workflowBuilder.palette.ai")}
+            nodeTypes={allNodes.filter((node) => node.category === "ai" && visibleIds.has(node.id)).map((node) => node.id)}
+            onDragStart={handleDragStart}
+          />
+        ) : null}
       </div>
     </motion.aside>
   );

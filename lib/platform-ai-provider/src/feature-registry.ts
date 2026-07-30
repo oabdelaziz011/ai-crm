@@ -72,9 +72,14 @@ export const PLATFORM_AI_FEATURE_KEY_AUDIT: Record<PlatformAIFeatureKey, Platfor
       catalogCapabilityId: PLATFORM_AI_CAPABILITY_ID.WORKFLOW_AI,
       responsibility:
         "Workflow / automation builder product capability. Stored per company; not read by runtime guards today — access is RBAC on automation routes and tables.",
-      runtimeUsage: ["Not enforced in runtime guards (Sprint 1)"],
+      runtimeUsage: [
+        "login-app automation routes and sidebar → isFeatureEnabled(automation)",
+        "@workspace/automation-platform services → assertWorkflowFeatureEnabled",
+        "@workspace/ai-workflow-platform executor → layered composite policy",
+        "login-app legacy automation CRUD/run/schedule → workflow guard",
+      ],
       opsUsage: ["platform_ai_ops_company_feature_matrix → automation column"],
-      runtimeEnforcedToday: false,
+      runtimeEnforcedToday: true,
     },
     [PLATFORM_AI_FEATURE_KEY.VOICE]: {
       featureKey: PLATFORM_AI_FEATURE_KEY.VOICE,

@@ -42,7 +42,7 @@ export const PLATFORM_AI_CAPABILITY_FEATURE_MAPPINGS: readonly PlatformAICapabil
     capabilityId: PLATFORM_AI_CAPABILITY_ID.WORKFLOW_AI,
     backendFeatureKey: PLATFORM_AI_FEATURE_KEY.AUTOMATION,
     relatedFeatureKeys: [PLATFORM_AI_FEATURE_KEY.TOOL_CALLING],
-    catalogLive: false,
+    catalogLive: true,
   },
 ] as const;
 

@@ -1725,6 +1725,8 @@
     }
   },
   "automation": {
+    "featureDisabled": "سير عمل الذكاء الاصطناعي معطّل لهذه الشركة.",
+    "aiNodesDisabled": "عُقد سير عمل الذكاء الاصطناعي معطّلة لهذه الشركة. لا يزال بإمكانك عرض سير العمل.",
     "triggers": {
       "appointment_created": "إنشاء موعد",
       "appointment_updated": "تحديث موعد",

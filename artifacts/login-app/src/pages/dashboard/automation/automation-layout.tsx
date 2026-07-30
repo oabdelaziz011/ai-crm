@@ -5,9 +5,11 @@ import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fal
 import { AutomationCenterLayout } from "@/pages/dashboard/automation-center/automation-center-layout";
 import { AutomationWorkflowsPage } from "@/pages/dashboard/automation/automation-workflows-page";
 import { WorkflowBuilderPage } from "@/pages/dashboard/automation/workflow-builder-page";
+import { useLegacyAutomationWorkflowGuardSync } from "@/hooks/automation/use-legacy-automation-workflow-guard-sync";
 
 export function AutomationLayout() {
   const { t } = useTranslation("common");
+  useLegacyAutomationWorkflowGuardSync();
 
   return (
     <Switch>

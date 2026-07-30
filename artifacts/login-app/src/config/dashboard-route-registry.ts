@@ -422,6 +422,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.automation",
     icon: Workflow,
     permission: "automation.view",
+    platformFeatureKey: PLATFORM_AI_FEATURE_KEY.AUTOMATION,
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/automation-page")),
   },

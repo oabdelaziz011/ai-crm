@@ -91,6 +91,7 @@ export function createAutomationPlatformServices(
 
 export * from "./constants.js";
 export * from "./errors.js";
+export * from "./utils/workflow-guards.js";
 export * from "./types.js";
 export * from "./repositories/automation-repositories.js";
 export * from "./repositories/supabase-automation-repositories.js";
@@ -107,6 +108,9 @@ export * from "./orchestrator/conversation-orchestrator.js";
 export * from "./orchestrator/conversation-resolver.js";
 export * from "./orchestrator/session-policy.js";
 export * from "./orchestrator/inbound-automation-routing.js";
+export * from "./orchestrator/inbound-automation-context.js";
+export * from "./orchestrator/active-execution-manager.js";
+export * from "./orchestrator/interactive-resume-validation.js";
 export * from "./debug/list-node-lifecycle-debug.js";
 export {
   traceIfNodeEvaluation as traceInteractiveIfNodeEvaluation,

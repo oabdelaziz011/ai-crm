@@ -12,6 +12,7 @@ import type { AIWorkflowExecutionResult } from "../types/metadata.js";
 import type { AIWorkflowAutomationContext } from "../types/automation-context.js";
 import { BaseAIWorkflowNode } from "../nodes/base-ai-workflow-node.js";
 import type { AIWorkflowObservability } from "../observability/ai-workflow-observability.js";
+import { assertWorkflowAiNodeExecutionAllowed } from "../utils/workflow-guards.js";
 
 export class AIWorkflowNodeExecutor {
   constructor(
@@ -80,8 +81,17 @@ export class AIWorkflowNodeExecutor {
       nodeImpl?.onPrepared((event) => this.record(event), preparedConfig, context);
 
       if (this.isRetrievalOnlyNode(definition, preparedConfig)) {
+        assertWorkflowAiNodeExecutionAllowed(serviceContext, {
+          nodeKey: preparedConfig.nodeKey,
+          conversationId: context.session.id,
+        });
         return this.executeRetrievalNode(context, serviceContext, preparedConfig, nodeImpl);
       }
+
+      assertWorkflowAiNodeExecutionAllowed(serviceContext, {
+        nodeKey: preparedConfig.nodeKey,
+        conversationId: context.session.id,
+      });
 
       this.record({
         type: "prompt_rendered",

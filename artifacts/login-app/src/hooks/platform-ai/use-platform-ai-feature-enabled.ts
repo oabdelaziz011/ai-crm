@@ -39,20 +39,40 @@ export function useKnowledgeFeatureEnabled() {
   return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.KNOWLEDGE);
 }
 
+export function useWorkflowFeatureEnabled() {
+  return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.AUTOMATION);
+}
+
+export function useAiChatFeatureEnabled() {
+  return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.AI_CHAT);
+}
+
+export function useToolCallingFeatureEnabled() {
+  return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.TOOL_CALLING);
+}
+
+export function useEmbeddingsFeatureEnabled() {
+  return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.EMBEDDINGS);
+}
+
 export type PlatformFeatureEnabledLookup = (
   featureKey: PlatformAIFeatureKey,
 ) => boolean | undefined;
 
 export function usePlatformFeatureEnabledLookup(): PlatformFeatureEnabledLookup {
   const knowledge = useKnowledgeFeatureEnabled();
+  const workflow = useWorkflowFeatureEnabled();
 
   return useCallback(
     (featureKey: PlatformAIFeatureKey) => {
       if (featureKey === PLATFORM_AI_FEATURE_KEY.KNOWLEDGE) {
         return knowledge.resolvedEnabled;
       }
+      if (featureKey === PLATFORM_AI_FEATURE_KEY.AUTOMATION) {
+        return workflow.resolvedEnabled;
+      }
       return undefined;
     },
-    [knowledge.resolvedEnabled],
+    [knowledge.resolvedEnabled, workflow.resolvedEnabled],
   );
 }

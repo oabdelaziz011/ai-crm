@@ -32,6 +32,13 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
         </div>
       );
     }
+    if (route.platformFeatureKey && route.id === "automation") {
+      return (
+        <div className="flex min-h-[40vh] items-center justify-center px-6">
+          <p className="text-sm text-muted-foreground">{t("automation.featureDisabled")}</p>
+        </div>
+      );
+    }
     if (route.superAdminOnly) {
       return <AccessDeniedPage requiredPermission="super_admin" />;
     }

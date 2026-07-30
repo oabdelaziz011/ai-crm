@@ -6,6 +6,7 @@ import {
 import type { NodePropertyEditorProps } from "../../../core/node-registry";
 import { useAIWorkflowPlatformServices } from "@/lib/ai-workflow-platform";
 import { AIWorkflowValidationPanel } from "./ai-validation-panel";
+import { AIWorkflowFeatureGate } from "./ai-workflow-feature-gate";
 import { readAIWorkflowConfig } from "./ai-workflow-config-utils";
 import { AIKnowledgeSearchConfigEditor } from "./ai-knowledge-search-config-editor";
 import { AIKnowledgeSearchPreviewPanel } from "./ai-knowledge-search-preview-panel";
@@ -32,11 +33,13 @@ export function AIKnowledgeSearchPropertyEditor({ config, onChange }: NodeProper
   );
 
   return (
-    <div className="space-y-5">
-      <AIKnowledgeSearchConfigEditor config={config} onChange={(patch) => onChange({ ...config, ...patch })} />
-      <AIWorkflowValidationPanel issues={validationIssues} />
-      <AIKnowledgeSearchPreviewPanel preview={preview} />
-    </div>
+    <AIWorkflowFeatureGate>
+      <div className="space-y-5">
+        <AIKnowledgeSearchConfigEditor config={config} onChange={(patch) => onChange({ ...config, ...patch })} />
+        <AIWorkflowValidationPanel issues={validationIssues} />
+        <AIKnowledgeSearchPreviewPanel preview={preview} />
+      </div>
+    </AIWorkflowFeatureGate>
   );
 }
 

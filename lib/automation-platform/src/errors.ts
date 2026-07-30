@@ -56,6 +56,15 @@ export class AutomationExecutionError extends AutomationError {
   }
 }
 
+export class InteractiveResumeValidationError extends AutomationError {
+  readonly diagnostics: Record<string, unknown>;
+
+  constructor(message: string, diagnostics: Record<string, unknown>) {
+    super("INTERACTIVE_RESUME_VALIDATION_ERROR", message);
+    this.diagnostics = diagnostics;
+  }
+}
+
 export class AutomationGraphError extends AutomationError {
   constructor(message: string) {
     super("AUTOMATION_GRAPH_ERROR", message);
@@ -110,6 +119,12 @@ export class AutomationFlowVersionNotFoundError extends AutomationError {
       "AUTOMATION_FLOW_VERSION_NOT_FOUND",
       id ? `Automation flow version ${id} not found.` : "Automation flow version not found.",
     );
+  }
+}
+
+export class WorkflowFeatureDisabledError extends AutomationError {
+  constructor() {
+    super("WORKFLOW_FEATURE_DISABLED", "Workflow AI is disabled for this company.");
   }
 }
 

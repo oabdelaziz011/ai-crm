@@ -1940,6 +1940,8 @@
     }
   },
   "automation": {
+    "featureDisabled": "Workflow AI is disabled for this company.",
+    "aiNodesDisabled": "AI workflow nodes are disabled for this company. You can still view this workflow.",
     "triggers": {
       "appointment_created": "Appointment created",
       "appointment_updated": "Appointment updated",

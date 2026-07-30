@@ -3,6 +3,13 @@ export type AIWorkflowServiceContext = {
   companyId: string | null;
   isSuperAdmin: boolean;
   hasPermission: (permission: string) => boolean;
+  isWorkflowFeatureEnabled?: () => boolean;
+  isAiChatFeatureEnabled?: () => boolean;
+  isToolCallingFeatureEnabled?: () => boolean;
+  isKnowledgeFeatureEnabled?: () => boolean;
+  isEmbeddingsFeatureEnabled?: () => boolean;
+  /** When true, enterprise runtime may enter tool-loop use case. */
+  hasLlmTools?: () => boolean;
 };
 
 export type AIWorkflowExecutionRequest = {

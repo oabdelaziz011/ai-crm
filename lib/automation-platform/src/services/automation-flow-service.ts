@@ -3,7 +3,6 @@ import {
   AutomationFlowNotFoundError,
   AutomationFlowStateError,
   DuplicateAutomationFlowError,
-  PermissionDeniedError,
   ValidationError,
 } from "../errors.js";
 import type { AutomationFlowRepository } from "../repositories/automation-repositories.js";
@@ -13,23 +12,17 @@ import type {
   ServiceContext,
   UpdateAutomationFlowInput,
 } from "../types.js";
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(AUTOMATION_PERMISSIONS.view);
-}
+import {
+  assertCompanyAccess,
+  assertPermission,
+  assertWorkflowTenantAccess,
+} from "../utils/workflow-guards.js";
 
 export class AutomationFlowService {
   constructor(private readonly flowRepository: AutomationFlowRepository) {}
 
   async createFlow(ctx: ServiceContext, input: CreateAutomationFlowInput) {
-    assertPermission(ctx, AUTOMATION_PERMISSIONS.create);
-    assertCompanyAccess(ctx, input.companyId);
+    assertWorkflowTenantAccess(ctx, input.companyId, AUTOMATION_PERMISSIONS.create);
     if (!input.name.trim()) throw new ValidationError("Flow name is required.");
     const existing = await this.flowRepository.findByName(input.companyId, input.name.trim());
     if (existing) throw new DuplicateAutomationFlowError(input.name.trim());
@@ -43,7 +36,7 @@ export class AutomationFlowService {
   async updateFlow(ctx: ServiceContext, input: UpdateAutomationFlowInput) {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.edit);
     const flow = await this.requireFlow(input.flowId);
-    assertCompanyAccess(ctx, flow.company_id);
+    assertWorkflowTenantAccess(ctx, flow.company_id, AUTOMATION_PERMISSIONS.edit);
     if (flow.status === "archived") {
       throw new AutomationFlowStateError("Archived flows cannot be edited.");
     }
@@ -70,7 +63,7 @@ export class AutomationFlowService {
   async publishFlow(ctx: ServiceContext, flowId: string) {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.publish);
     const flow = await this.requireFlow(flowId);
-    assertCompanyAccess(ctx, flow.company_id);
+    assertWorkflowTenantAccess(ctx, flow.company_id, AUTOMATION_PERMISSIONS.publish);
     if (flow.status === "active") return flow;
     if (flow.status !== "draft" && flow.status !== "disabled") {
       throw new AutomationFlowStateError(`Flow in status ${flow.status} cannot be published.`);
@@ -81,7 +74,7 @@ export class AutomationFlowService {
   async disableFlow(ctx: ServiceContext, flowId: string) {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.edit);
     const flow = await this.requireFlow(flowId);
-    assertCompanyAccess(ctx, flow.company_id);
+    assertWorkflowTenantAccess(ctx, flow.company_id, AUTOMATION_PERMISSIONS.edit);
     if (flow.status === "disabled") return flow;
     if (flow.status !== "active") {
       throw new AutomationFlowStateError(`Flow in status ${flow.status} cannot be disabled.`);
@@ -92,7 +85,7 @@ export class AutomationFlowService {
   async archiveFlow(ctx: ServiceContext, flowId: string) {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.archive);
     const flow = await this.requireFlow(flowId);
-    assertCompanyAccess(ctx, flow.company_id);
+    assertWorkflowTenantAccess(ctx, flow.company_id, AUTOMATION_PERMISSIONS.archive);
     if (flow.status === "archived") return flow;
     return this.flowRepository.updateStatus(flowId, "archived", ctx.userId);
   }
@@ -100,7 +93,7 @@ export class AutomationFlowService {
   async deleteFlow(ctx: ServiceContext, flowId: string) {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.delete);
     const flow = await this.requireFlow(flowId);
-    assertCompanyAccess(ctx, flow.company_id);
+    assertWorkflowTenantAccess(ctx, flow.company_id, AUTOMATION_PERMISSIONS.delete);
     if (flow.status === "active") {
       throw new AutomationFlowStateError("Active flows must be disabled before deletion.");
     }

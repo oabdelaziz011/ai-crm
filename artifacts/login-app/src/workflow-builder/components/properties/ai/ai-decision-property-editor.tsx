@@ -8,6 +8,7 @@ import type { NodePropertyEditorProps } from "../../../core/node-registry";
 import { useAIWorkflowPlatformServices } from "@/lib/ai-workflow-platform";
 import { AIWorkflowConfigPanel } from "./ai-workflow-config-panel";
 import { AIWorkflowValidationPanel } from "./ai-validation-panel";
+import { AIWorkflowFeatureGate } from "./ai-workflow-feature-gate";
 import { readAIWorkflowConfig } from "./ai-workflow-config-utils";
 import { AIDecisionConfigEditor } from "./ai-decision-config-editor";
 import { AIDecisionOutcomeEditor } from "./ai-decision-outcome-editor";
@@ -31,18 +32,20 @@ export function AIDecisionPropertyEditor({ config, onChange }: NodePropertyEdito
   );
 
   return (
-    <div className="space-y-5">
-      <AIDecisionConfigEditor config={config} onChange={(patch) => onChange({ ...config, ...patch })} />
-      <AIDecisionOutcomeEditor config={config} onChange={(patch) => onChange({ ...config, ...patch })} />
-      <AIWorkflowConfigPanel
-        config={config}
-        onChange={onChange}
-        nodeKey={AI_DECISION_NODE_KEY}
-        showPreview={false}
-      />
-      <AIWorkflowValidationPanel issues={validationIssues} />
-      <AIDecisionPreviewPanel preview={preview} />
-    </div>
+    <AIWorkflowFeatureGate>
+      <div className="space-y-5">
+        <AIDecisionConfigEditor config={config} onChange={(patch) => onChange({ ...config, ...patch })} />
+        <AIDecisionOutcomeEditor config={config} onChange={(patch) => onChange({ ...config, ...patch })} />
+        <AIWorkflowConfigPanel
+          config={config}
+          onChange={onChange}
+          nodeKey={AI_DECISION_NODE_KEY}
+          showPreview={false}
+        />
+        <AIWorkflowValidationPanel issues={validationIssues} />
+        <AIDecisionPreviewPanel preview={preview} />
+      </div>
+    </AIWorkflowFeatureGate>
   );
 }
 

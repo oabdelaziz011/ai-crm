@@ -17,6 +17,7 @@ import type {
   ServiceContext,
   StartAutomationExecutionInput,
 } from "../types.js";
+import type { NodeExecutionResult } from "./execution-context.js";
 import {
   loadExecutionGraph,
   resolveExecutionVersionId,
@@ -33,7 +34,13 @@ import {
 } from "./execution-context.js";
 import type { AutomationNodeRegistry } from "./node-registry.js";
 import { createAutomationRuntimeStore, runLifecycle } from "./runtime-store.js";
-import { STALE_WAITING_RUN_REASON } from "../orchestrator/session-policy.js";
+import { assertWorkflowExecutionAllowed } from "../utils/workflow-guards.js";
+import { STALE_WAITING_RUN_REASON, isTerminalRunStatus, ABANDONED_ACTIVE_RUN_REASON } from "../orchestrator/session-policy.js";
+import { validateInteractiveResumeInput } from "../orchestrator/interactive-resume-validation.js";
+import {
+  abandonAllActiveExecutionsForUser,
+  listActiveExecutions,
+} from "../orchestrator/active-execution-manager.js";
 import { resetOutboundQueue } from "../runtime/outbound-queue.js";
 import { findPrimaryMenuNode } from "../runtime/main-menu.js";
 import {
@@ -42,6 +49,16 @@ import {
   logAfterTransactionCommit,
 } from "../debug/list-node-lifecycle-debug.js";
 import { readOutboundQueue } from "../runtime/outbound-queue.js";
+import {
+  flushExecutedNodeTrail,
+  recordExecutedNode,
+  traceWorkflowEdgeSelected,
+  traceWorkflowExecutionIdentity,
+  traceWorkflowNodeCompleted,
+  traceWorkflowNodeEntered,
+  traceWorkflowRunFinalized,
+  traceWorkflowRunStarted,
+} from "../debug/workflow-execution-trace-debug.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -90,6 +107,20 @@ export class AutomationEngine {
   async start(ctx: ServiceContext, input: StartAutomationExecutionInput): Promise<AutomationExecutionResult> {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.execute);
     assertCompanyAccess(ctx, input.companyId);
+    assertWorkflowExecutionAllowed(ctx);
+
+    if (input.externalUserId) {
+      await abandonAllActiveExecutionsForUser(this, ctx, {
+        sessions: this.deps.sessions,
+        runs: this.deps.runs,
+      }, {
+        companyId: input.companyId,
+        channel: input.channel,
+        externalUserId: input.externalUserId,
+        boundFlowId: input.flowId,
+        reason: "start_new_execution",
+      });
+    }
 
     const flow = await this.deps.flows.findById(input.flowId);
     if (!flow) throw new AutomationFlowNotFoundError(input.flowId);
@@ -153,6 +184,39 @@ export class AutomationEngine {
       variables: resetOutboundQueue(input.initialVariables ?? {}),
     });
 
+    traceWorkflowRunStarted({
+      runId: run.id,
+      sessionId: session.id,
+      flowId: flow.id,
+      flowVersionId: graphBundle.versionId,
+      triggerSource: input.triggerSource ?? "manual",
+      startNode: graph.startNode,
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+    });
+
+    traceWorkflowExecutionIdentity({
+      runId: run.id,
+      sessionId: session.id,
+      workflowId: flow.id,
+      automationFlowId: flow.id,
+      publishedVersionId: flow.active_version_id ?? graphBundle.versionId,
+      publishedVersionNumber: flow.version,
+      flowActiveVersionId: flow.active_version_id,
+      executedVersionId: graphBundle.versionId,
+      executedVersionNumber: graphBundle.versionNumber,
+      hasUnpublishedDraft: flow.has_unpublished_draft,
+      versionPinned: false,
+      versionMatchesPublished: flow.active_version_id === graphBundle.versionId,
+      graphSource: graphBundle.graphSource,
+      startNodeId: graph.startNode.id,
+      startNodeType: graph.startNode.type,
+      startNodeAction:
+        typeof graph.startNode.config.action === "string" ? graph.startNode.config.action : null,
+      triggerSource: input.triggerSource ?? "manual",
+      executionPath: "start",
+    });
+
     return this.executeFromNode(ctx, {
       companyId: input.companyId,
       flow,
@@ -168,6 +232,7 @@ export class AutomationEngine {
 
   async resume(ctx: ServiceContext, input: ResumeAutomationExecutionInput): Promise<AutomationExecutionResult> {
     assertPermission(ctx, AUTOMATION_PERMISSIONS.execute);
+    assertWorkflowExecutionAllowed(ctx);
 
     const run = await this.deps.runs.findById(input.runId);
     if (!run) throw new AutomationRunNotFoundError(input.runId);
@@ -207,10 +272,87 @@ export class AutomationEngine {
 
     const currentNode = findNodeById(run.current_node_id, nodes);
     const handler = this.deps.registry.get(currentNode.type);
+
+    traceWorkflowExecutionIdentity({
+      runId: run.id,
+      sessionId: session.id,
+      workflowId: flow.id,
+      automationFlowId: flow.id,
+      publishedVersionId: flow.active_version_id ?? pinnedVersionId,
+      publishedVersionNumber: flow.version,
+      flowActiveVersionId: flow.active_version_id,
+      executedVersionId: graphBundle.versionId,
+      executedVersionNumber: graphBundle.versionNumber,
+      hasUnpublishedDraft: flow.has_unpublished_draft,
+      versionPinned: true,
+      versionMatchesPublished: flow.active_version_id === graphBundle.versionId,
+      graphSource: graphBundle.graphSource,
+      startNodeId: currentNode.id,
+      startNodeType: currentNode.type,
+      startNodeAction: typeof currentNode.config.action === "string" ? currentNode.config.action : null,
+      triggerSource: run.trigger_source,
+      executionPath: "resume",
+    });
+
+    recordExecutedNode(run.id, currentNode);
+
     const resumeVariables = resetOutboundQueue(run.variables);
+
+    try {
+      validateInteractiveResumeInput({
+        run,
+        currentNode,
+        resumeInput: input.input ?? {},
+      });
+      const executionContext = this.buildContext({
+        flow,
+        run,
+        session,
+        nodes,
+        edges,
+        currentNode,
+        variables: resumeVariables,
+        input: input.input,
+      });
+
+      handler.validate(executionContext);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return this.finalize(run, session, {
+        lifecycle: "waiting_input",
+        flowVersionId: pinnedVersionId,
+        currentNodeId: currentNode.id,
+        variables: mergeVariables(resumeVariables, {
+          __waitingFor: run.variables.__waitingFor ?? null,
+          __prompt: "That selection was not valid. Please try again.",
+        }),
+        errorMessage,
+      });
+    }
+
+    let claimedRun: AutomationRunRecord;
+    try {
+      claimedRun = await this.deps.runs.updateState({
+        runId: run.id,
+        status: "running",
+        expectedStatus: "waiting_input",
+        flowVersionId: pinnedVersionId,
+        currentNodeId: currentNode.id,
+        sessionId: session.id,
+        variables: resumeVariables,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new AutomationExecutionError(
+        errorMessage.includes("concurrently")
+          ? errorMessage
+          : `Run ${run.id} could not be resumed because its state changed concurrently.`,
+      );
+    }
+
     const executionContext = this.buildContext({
       flow,
-      run,
+      run: claimedRun,
       session,
       nodes,
       edges,
@@ -219,12 +361,23 @@ export class AutomationEngine {
       input: input.input,
     });
 
-    handler.validate(executionContext);
-    const nodeResult = await handler.execute(executionContext);
+    let nodeResult: NodeExecutionResult;
+    try {
+      nodeResult = await handler.execute(executionContext);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return this.finalize(claimedRun, session, {
+        lifecycle: "failed",
+        flowVersionId: pinnedVersionId,
+        currentNodeId: currentNode.id,
+        variables: resumeVariables,
+        errorMessage,
+      });
+    }
     let variables = mergeVariables(resumeVariables, nodeResult.variables);
 
     if (nodeResult.outcome === "waiting_input") {
-      return this.finalize(run, session, {
+      return this.finalize(claimedRun, session, {
         lifecycle: "waiting_input",
         flowVersionId: pinnedVersionId,
         currentNodeId: currentNode.id,
@@ -232,7 +385,7 @@ export class AutomationEngine {
       });
     }
     if (nodeResult.outcome === "failed") {
-      return this.finalize(run, session, {
+      return this.finalize(claimedRun, session, {
         lifecycle: "failed",
         flowVersionId: pinnedVersionId,
         currentNodeId: currentNode.id,
@@ -249,7 +402,7 @@ export class AutomationEngine {
           : resolveNextNodeId(currentNode, { edges }, variables);
 
     if (!nextNodeId) {
-      return this.finalize(run, session, {
+      return this.finalize(claimedRun, session, {
         lifecycle: "completed",
         flowVersionId: pinnedVersionId,
         currentNodeId: currentNode.id,
@@ -258,9 +411,9 @@ export class AutomationEngine {
     }
 
     return this.executeFromNode(ctx, {
-      companyId: run.company_id,
+      companyId: claimedRun.company_id,
       flow,
-      run,
+      run: claimedRun,
       session,
       flowVersionId: pinnedVersionId,
       nodes,
@@ -289,10 +442,9 @@ export class AutomationEngine {
   }
 
   /**
-   * Terminates a waiting run that cannot be resumed safely (legacy orphans, missing pins).
-   * Does not require current_node_id — used before starting a fresh workflow for the user.
+   * Terminates any non-terminal run before starting a fresh workflow for the user.
    */
-  async abandonStaleWaitingRun(
+  async abandonActiveRun(
     ctx: ServiceContext,
     input: { runId: string; reason?: string },
   ): Promise<AutomationExecutionResult | null> {
@@ -302,11 +454,11 @@ export class AutomationEngine {
     if (!run) throw new AutomationRunNotFoundError(input.runId);
     assertCompanyAccess(ctx, run.company_id);
 
-    if (run.status !== "waiting_input") {
+    if (isTerminalRunStatus(run.status)) {
       return null;
     }
 
-    const reason = input.reason?.trim() || STALE_WAITING_RUN_REASON;
+    const reason = input.reason?.trim() || ABANDONED_ACTIVE_RUN_REASON;
     const variables = {
       ...run.variables,
       __abandonedReason: reason,
@@ -389,6 +541,31 @@ export class AutomationEngine {
     });
   }
 
+  /**
+   * @deprecated Use abandonActiveRun — kept for backward compatibility.
+   */
+  async abandonStaleWaitingRun(
+    ctx: ServiceContext,
+    input: { runId: string; reason?: string },
+  ): Promise<AutomationExecutionResult | null> {
+    return this.abandonActiveRun(ctx, {
+      runId: input.runId,
+      reason: input.reason ?? STALE_WAITING_RUN_REASON,
+    });
+  }
+
+  async listActiveExecutionsForUser(input: {
+    companyId: string;
+    channel: StartAutomationExecutionInput["channel"];
+    externalUserId: string;
+    boundFlowId: string;
+  }) {
+    return listActiveExecutions(
+      { sessions: this.deps.sessions, runs: this.deps.runs },
+      input,
+    );
+  }
+
   private async executeFromNode(
     ctx: ServiceContext,
     input: {
@@ -410,6 +587,7 @@ export class AutomationEngine {
     const graph = { nodes: input.nodes, edges: input.edges };
 
     while (true) {
+      try {
       await this.runtimeStore.updateRunningState({
         runId: input.run.id,
         sessionId: input.session.id,
@@ -417,6 +595,16 @@ export class AutomationEngine {
         currentNodeId: currentNode.id,
         variables,
       });
+
+      traceWorkflowNodeEntered({
+        runId: input.run.id,
+        sessionId: input.session.id,
+        node: currentNode,
+        executionPath: "executeFromNode",
+        hasUserInput: Boolean(input.userInput && Object.keys(input.userInput).length > 0),
+      });
+
+      recordExecutedNode(input.run.id, currentNode);
 
       const handler = this.deps.registry.get(currentNode.type);
       const executionContext = this.buildContext({
@@ -431,8 +619,37 @@ export class AutomationEngine {
       });
 
       handler.validate(executionContext);
-      const nodeResult = await handler.execute(executionContext);
+      let nodeResult: NodeExecutionResult;
+      try {
+        nodeResult = await handler.execute(executionContext);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return this.finalize(input.run, input.session, {
+          lifecycle: "failed",
+          flowVersionId: input.flowVersionId,
+          currentNodeId: currentNode.id,
+          variables,
+          errorMessage,
+        });
+      }
       variables = mergeVariables(variables, nodeResult.variables);
+
+      const outboundQueue = readOutboundQueue(variables);
+      const latestOutbound = variables.__outbound;
+      traceWorkflowNodeCompleted({
+        runId: input.run.id,
+        sessionId: input.session.id,
+        node: currentNode,
+        outcome: nodeResult.outcome,
+        output: nodeResult.output,
+        outboundQueueLength: outboundQueue.length,
+        latestOutboundKind:
+          latestOutbound && typeof latestOutbound === "object" && !Array.isArray(latestOutbound)
+            ? String((latestOutbound as { kind?: unknown }).kind ?? "unknown")
+            : null,
+        waitingFor:
+          typeof variables.__waitingFor === "string" ? variables.__waitingFor : null,
+      });
 
       if (nodeResult.output?.redirectToPrimaryMenu === true) {
         currentNode = findPrimaryMenuNode(input.nodes);
@@ -468,8 +685,32 @@ export class AutomationEngine {
           executionPath: "executeFromNode",
         });
         nextNodeId = edgeDiagnostic.nextNodeId;
+        traceWorkflowEdgeSelected({
+          runId: input.run.id,
+          sessionId: input.session.id,
+          fromNode: currentNode,
+          toNode: nextNodeId ? findNodeById(nextNodeId, input.nodes) : null,
+          nextNodeId,
+          selectionReason: edgeDiagnostic.selectionReason,
+          requestedBranch: branch,
+          selectedEdge: edgeDiagnostic.selectedEdge
+            ? {
+                edgeId: edgeDiagnostic.selectedEdge.edgeId,
+                targetNodeId: edgeDiagnostic.selectedEdge.targetNodeId,
+                conditionBranch: edgeDiagnostic.selectedEdge.resolvedBranch,
+              }
+            : null,
+        });
       } else {
         nextNodeId = resolveNextNodeId(currentNode, graph, variables);
+        traceWorkflowEdgeSelected({
+          runId: input.run.id,
+          sessionId: input.session.id,
+          fromNode: currentNode,
+          toNode: nextNodeId ? findNodeById(nextNodeId, input.nodes) : null,
+          nextNodeId,
+          selectionReason: "resolveNextNodeId()",
+        });
       }
 
       if (!nextNodeId) {
@@ -482,6 +723,16 @@ export class AutomationEngine {
       }
 
       currentNode = findNodeById(nextNodeId, input.nodes);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return this.finalize(input.run, input.session, {
+          lifecycle: "failed",
+          flowVersionId: input.flowVersionId,
+          currentNodeId: currentNode.id,
+          variables,
+          errorMessage,
+        });
+      }
     }
   }
 
@@ -550,6 +801,27 @@ export class AutomationEngine {
       logAfterPersistWaitingState(persistPayload);
       logAfterTransactionCommit(persistPayload);
     }
+
+    const outboundQueue = readOutboundQueue(input.variables);
+    flushExecutedNodeTrail({
+      runId: run.id,
+      sessionId: session.id,
+      lifecycle: input.lifecycle,
+    });
+    traceWorkflowRunFinalized({
+      runId: run.id,
+      sessionId: session.id,
+      lifecycle: input.lifecycle,
+      currentNodeId: input.currentNodeId,
+      outboundQueueLength: outboundQueue.length,
+      outboundMessages: outboundQueue.map((entry) => ({
+        kind: entry.kind,
+        preview:
+          ("text" in entry && typeof entry.text === "string" ? entry.text : null) ??
+          ("body" in entry && typeof entry.body === "string" ? entry.body : null) ??
+          ("title" in entry && typeof entry.title === "string" ? entry.title : null),
+      })),
+    });
 
     return {
       lifecycle: input.lifecycle,

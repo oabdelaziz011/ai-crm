@@ -29,7 +29,7 @@ function createSearchAvailabilityTool(ports: SchedulingToolPorts): Tool {
             resourceId: { type: "string" },
             branchId: { type: "string" },
             date: { type: "string", description: "YYYY-MM-DD" },
-            daysAhead: { type: "number" },
+            daysAhead: { type: "number", description: "Days to scan when date omitted (default 7, max 90)" },
           },
           required: ["serviceId"],
         },
@@ -55,6 +55,95 @@ function createSearchAvailabilityTool(ports: SchedulingToolPorts): Tool {
         availableDates: result.availableDates,
         resources: result.resources,
         message: result.message ?? null,
+        searchedWindow: result.searchedWindow ?? null,
+        nextSuggestion: result.nextSuggestion ?? null,
+      };
+    },
+  };
+}
+
+function createFindNextAvailableTool(ports: SchedulingToolPorts): Tool {
+  return {
+    supports: (state) => ACTIVE_STATES.includes(state),
+    validate(input) {
+      validateAgainstSchema(
+        {
+          type: "object",
+          properties: {
+            serviceId: { type: "string" },
+            resourceId: { type: "string" },
+            branchId: { type: "string" },
+            daysAhead: { type: "number", description: "Days to scan (default 7, max 90)" },
+          },
+          required: ["serviceId"],
+        },
+        input,
+      );
+    },
+    async execute(context, input) {
+      const userId = requireUser(context);
+      const result = await ports.findNextAvailable({
+        companyId: context.companyId,
+        userId,
+        serviceId: String(input.serviceId),
+        resourceId: typeof input.resourceId === "string" ? input.resourceId : undefined,
+        branchId: typeof input.branchId === "string" ? input.branchId : undefined,
+        daysAhead: typeof input.daysAhead === "number" ? input.daysAhead : undefined,
+      });
+
+      return {
+        success: result.success,
+        searchedWindow: result.searchedWindow,
+        nextSuggestion: result.nextSuggestion ?? null,
+        message: result.message ?? null,
+        slot: result.slot,
+      };
+    },
+  };
+}
+
+function createRecommendAppointmentTool(ports: SchedulingToolPorts): Tool {
+  return {
+    supports: (state) => ACTIVE_STATES.includes(state),
+    validate(input) {
+      validateAgainstSchema(
+        {
+          type: "object",
+          properties: {
+            serviceId: { type: "string" },
+            preferredResourceId: { type: "string" },
+            preferredBranchId: { type: "string" },
+            preferredDate: { type: "string", description: "YYYY-MM-DD" },
+            preferredTime: { type: "string", description: "HH:mm local wall time" },
+            daysAhead: { type: "number", description: "Days to scan (default 7, max 90)" },
+          },
+          required: ["serviceId"],
+        },
+        input,
+      );
+    },
+    async execute(context, input) {
+      const userId = requireUser(context);
+      const result = await ports.recommendAppointment({
+        companyId: context.companyId,
+        userId,
+        serviceId: String(input.serviceId),
+        preferredResourceId: typeof input.preferredResourceId === "string" ? input.preferredResourceId : undefined,
+        preferredBranchId: typeof input.preferredBranchId === "string" ? input.preferredBranchId : undefined,
+        preferredDate: typeof input.preferredDate === "string" ? input.preferredDate : undefined,
+        preferredTime: typeof input.preferredTime === "string" ? input.preferredTime : undefined,
+        daysAhead: typeof input.daysAhead === "number" ? input.daysAhead : undefined,
+      });
+
+      return {
+        success: result.success,
+        searchedWindow: result.searchedWindow,
+        recommendations: result.recommendations,
+        alternativeResource: result.alternativeResource,
+        alternativeBranch: result.alternativeBranch,
+        nearestDate: result.nearestDate,
+        message: result.message ?? null,
+        nextSuggestion: result.nextSuggestion ?? null,
       };
     },
   };
@@ -117,9 +206,13 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
 export function createSchedulingAgentTools(ports: SchedulingToolPorts): Record<string, Tool> {
   return {
     search_availability: createSearchAvailabilityTool(ports),
+    find_next_available: createFindNextAvailableTool(ports),
+    recommend_appointment: createRecommendAppointmentTool(ports),
     create_booking: createCreateBookingTool(ports),
   };
 }
 
 export const SEARCH_AVAILABILITY_TOOL_KEY = "search_availability";
+export const FIND_NEXT_AVAILABLE_TOOL_KEY = "find_next_available";
+export const RECOMMEND_APPOINTMENT_TOOL_KEY = "recommend_appointment";
 export const CREATE_BOOKING_TOOL_KEY = "create_booking";

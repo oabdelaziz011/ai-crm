@@ -3,6 +3,7 @@ import type { BookingRecord, CreateBookingResult } from "./types/create-booking-
 
 export interface BookingRepositoryPort {
   findConflictingBooking(input: {
+    companyId: string;
     userId: string;
     doctorId: string;
     bookingDate: string;
@@ -10,6 +11,7 @@ export interface BookingRepositoryPort {
   }): Promise<BookingRecord | null>;
 
   createBooking(input: {
+    companyId: string;
     userId: string;
     customerId: string;
     service: string;
@@ -21,6 +23,7 @@ export interface BookingRepositoryPort {
   }): Promise<CreateBookingResult>;
 
   findBookingsByField(input: {
+    companyId: string;
     userId: string;
     lookupBy: BookingLookupField;
     lookupValue: string;
@@ -44,6 +47,7 @@ export class InMemoryBookingRepository implements BookingRepositoryPort {
   }
 
   async findConflictingBooking(input: {
+    companyId: string;
     userId: string;
     doctorId: string;
     bookingDate: string;
@@ -62,6 +66,7 @@ export class InMemoryBookingRepository implements BookingRepositoryPort {
   }
 
   async createBooking(input: {
+    companyId: string;
     userId: string;
     customerId: string;
     service: string;
@@ -89,6 +94,7 @@ export class InMemoryBookingRepository implements BookingRepositoryPort {
   }
 
   async findBookingsByField(input: {
+    companyId: string;
     userId: string;
     lookupBy: BookingLookupField;
     lookupValue: string;

@@ -25,6 +25,25 @@ function createStubSchedulingPorts(
         resources: [],
       };
     },
+    async findNextAvailable() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        slot: null,
+        message: "No bookable appointments were found during the next 7 days.",
+      };
+    },
+    async recommendAppointment() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        recommendations: [],
+        alternativeResource: null,
+        alternativeBranch: null,
+        nearestDate: null,
+        message: "No recommendations available.",
+      };
+    },
     async createBooking() {
       return { success: false, message: "not configured" };
     },

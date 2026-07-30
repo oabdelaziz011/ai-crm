@@ -9,6 +9,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
   constructor(private readonly client: SupabaseClient) {}
 
   async findConflictingBooking(input: {
+    companyId: string;
     userId: string;
     doctorId: string;
     bookingDate: string;
@@ -17,6 +18,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
     let query = this.client
       .from("bookings")
       .select(BOOKING_SELECT)
+      .eq("company_id", input.companyId)
       .eq("user_id", input.userId)
       .eq("doctor_id", input.doctorId)
       .eq("booking_date", input.bookingDate)
@@ -34,6 +36,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
   }
 
   async createBooking(input: {
+    companyId: string;
     userId: string;
     customerId: string;
     service: string;
@@ -46,6 +49,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
     const { data, error } = await this.client
       .from("bookings")
       .insert({
+        company_id: input.companyId,
         user_id: input.userId,
         customer_id: input.customerId,
         service: input.service,
@@ -68,6 +72,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
   }
 
   async findBookingsByField(input: {
+    companyId: string;
     userId: string;
     lookupBy: BookingLookupField;
     lookupValue: string;
@@ -76,10 +81,14 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
     if (!normalizedValue) return { count: 0, record: null };
 
     if (input.lookupBy === "phone") {
-      return this.findBookingsByCustomerPhone(input.userId, normalizedValue);
+      return this.findBookingsByCustomerPhone(input.companyId, input.userId, normalizedValue);
     }
 
-    let query = this.client.from("bookings").select(BOOKING_SELECT, { count: "exact" }).eq("user_id", input.userId);
+    let query = this.client
+      .from("bookings")
+      .select(BOOKING_SELECT, { count: "exact" })
+      .eq("company_id", input.companyId)
+      .eq("user_id", input.userId);
 
     if (input.lookupBy === "booking_id") {
       query = query.eq("id", normalizedValue);
@@ -137,12 +146,14 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
   }
 
   private async findBookingsByCustomerPhone(
+    companyId: string,
     userId: string,
     phone: string,
   ): Promise<{ count: number; record: BookingRecord | null }> {
     const { data: customers, error: customerError } = await this.client
       .from("customers")
       .select("id")
+      .eq("company_id", companyId)
       .eq("phone", phone);
 
     if (customerError) throw new Error(customerError.message);
@@ -152,6 +163,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
     const { count, error: countError } = await this.client
       .from("bookings")
       .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId)
       .eq("user_id", userId)
       .in("customer_id", customerIds);
 
@@ -163,6 +175,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
     const { data, error } = await this.client
       .from("bookings")
       .select(BOOKING_SELECT)
+      .eq("company_id", companyId)
       .eq("user_id", userId)
       .in("customer_id", customerIds)
       .limit(1)

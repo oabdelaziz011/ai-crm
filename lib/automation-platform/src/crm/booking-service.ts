@@ -49,6 +49,7 @@ export class BookingService {
     const lookupValue = readRequiredString(input.lookupValue, "lookup value");
 
     const { count, record } = await this.repository.findBookingsByField({
+      companyId: input.companyId,
       userId: input.userId,
       lookupBy,
       lookupValue,
@@ -60,6 +61,7 @@ export class BookingService {
   }
 
   async createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
+    const companyId = readRequiredString(input.companyId, "company");
     const service = readRequiredString(input.service, "service");
     const doctorId = readRequiredString(input.doctorId, "doctor");
     const locationId = readRequiredString(input.locationId, "location");
@@ -74,6 +76,7 @@ export class BookingService {
     const bookingDate = mergeAppointmentDateTime(appointmentDate, appointmentTime);
 
     const conflict = await this.repository.findConflictingBooking({
+      companyId,
       userId,
       doctorId,
       bookingDate,
@@ -83,6 +86,7 @@ export class BookingService {
     }
 
     return this.repository.createBooking({
+      companyId,
       userId,
       customerId,
       service,

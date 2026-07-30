@@ -124,7 +124,49 @@ const SEARCH_AVAILABILITY_LLM: LlmFunctionToolDefinition = {
         resourceId: { type: "string", description: "Optional specific resource UUID" },
         branchId: { type: "string", description: "Optional branch UUID filter" },
         date: { type: "string", description: "Optional YYYY-MM-DD date for slot results" },
-        daysAhead: { type: "number", description: "Days to scan when date omitted (default 14)" },
+        daysAhead: { type: "number", description: "Days to scan when date omitted (default 7, min 1, max 90). Examples: next 7 days = 7, two weeks = 14, this month = 30." },
+      },
+      required: ["serviceId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const FIND_NEXT_AVAILABLE_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "find_next_available",
+    description:
+      "Find the first real bookable appointment slot for a service. Skips unavailable dates and returns the earliest open slot with resource, date, and time. Read-only.",
+    parameters: {
+      type: "object",
+      properties: {
+        serviceId: { type: "string", description: "Scheduling service UUID" },
+        resourceId: { type: "string", description: "Optional specific resource UUID" },
+        branchId: { type: "string", description: "Optional branch UUID filter" },
+        daysAhead: { type: "number", description: "Days to scan (default 7, min 1, max 90)" },
+      },
+      required: ["serviceId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const RECOMMEND_APPOINTMENT_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "recommend_appointment",
+    description:
+      "Recommend ranked appointment options for a service using scheduling intelligence. Supports preferred resource, branch, date, and time. Returns top recommendations plus alternatives when the preferred choice is unavailable. Read-only.",
+    parameters: {
+      type: "object",
+      properties: {
+        serviceId: { type: "string", description: "Scheduling service UUID" },
+        preferredResourceId: { type: "string", description: "Optional preferred resource UUID" },
+        preferredBranchId: { type: "string", description: "Optional preferred branch UUID" },
+        preferredDate: { type: "string", description: "Optional preferred date YYYY-MM-DD" },
+        preferredTime: { type: "string", description: "Optional preferred local time HH:mm" },
+        daysAhead: { type: "number", description: "Days to scan (default 7, min 1, max 90)" },
       },
       required: ["serviceId"],
       additionalProperties: false,
@@ -209,6 +251,26 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     description: "Production availability search via slot and availability engines.",
     requiredPermissions: ["tools.execute", "availability.search"],
     llmDefinition: SEARCH_AVAILABILITY_LLM,
+  },
+  {
+    key: "find_next_available",
+    displayName: "Find Next Available",
+    category: "scheduling",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "Returns the first bookable appointment slot within a configurable search window.",
+    requiredPermissions: ["tools.execute", "availability.search"],
+    llmDefinition: FIND_NEXT_AVAILABLE_LLM,
+  },
+  {
+    key: "recommend_appointment",
+    displayName: "Recommend Appointment",
+    category: "scheduling",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "Intelligent ranked appointment recommendations with alternative resource and branch suggestions.",
+    requiredPermissions: ["tools.execute", "availability.search"],
+    llmDefinition: RECOMMEND_APPOINTMENT_LLM,
   },
   {
     key: "create_booking",
@@ -405,8 +467,8 @@ export function resolveLlmToolExposure(registeredToolKeys: readonly string[]): {
 
 export function buildToolRouterAuditReport(registeredToolKeys: readonly string[]) {
   const exposure = resolveLlmToolExposure(registeredToolKeys);
-  const previouslyExposed = [CREATE_CUSTOMER_TOOL_KEY];
-  const newlyExposed = exposure.allowedToolKeys.filter((key) => !previouslyExposed.includes(key));
+    const previouslyExposed: string[] = [CREATE_CUSTOMER_TOOL_KEY];
+    const newlyExposed = exposure.allowedToolKeys.filter((key) => !previouslyExposed.includes(key));
 
   return {
     auditedAt: new Date().toISOString(),

@@ -29,6 +29,25 @@ function createStubSchedulingPorts(
         resources: [],
       };
     },
+    async findNextAvailable() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        slot: null,
+        message: "No bookable appointments were found during the next 7 days.",
+      };
+    },
+    async recommendAppointment() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        recommendations: [],
+        alternativeResource: null,
+        alternativeBranch: null,
+        nearestDate: null,
+        message: "No recommendations available.",
+      };
+    },
     async createBooking() {
       return { success: false, message: "not configured" };
     },
@@ -239,7 +258,26 @@ describe("create_booking production tool", () => {
 
   it("prevents double booking when domain service reports conflict", async () => {
     const bookingDomain: BookingDomainServicePort = {
-      async createBooking() {
+      async findNextAvailable() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        slot: null,
+        message: "No bookable appointments were found during the next 7 days.",
+      };
+    },
+    async recommendAppointment() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        recommendations: [],
+        alternativeResource: null,
+        alternativeBranch: null,
+        nearestDate: null,
+        message: "No recommendations available.",
+      };
+    },
+    async createBooking() {
         throw new BookingDomainError(["booking_conflict"]);
       },
     };
@@ -260,7 +298,26 @@ describe("create_booking production tool", () => {
 
   it("rejects invalid slots from domain validation", async () => {
     const bookingDomain: BookingDomainServicePort = {
-      async createBooking() {
+      async findNextAvailable() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        slot: null,
+        message: "No bookable appointments were found during the next 7 days.",
+      };
+    },
+    async recommendAppointment() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        recommendations: [],
+        alternativeResource: null,
+        alternativeBranch: null,
+        nearestDate: null,
+        message: "No recommendations available.",
+      };
+    },
+    async createBooking() {
         throw new BookingDomainError(["slot_unavailable"]);
       },
     };
@@ -459,7 +516,26 @@ describe("create_booking production tool", () => {
   it("routes LLM tool calls through BookingDomainService with no mock execution path", async () => {
     const domainCalls: string[] = [];
     const bookingDomain: BookingDomainServicePort = {
-      async createBooking() {
+      async findNextAvailable() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        slot: null,
+        message: "No bookable appointments were found during the next 7 days.",
+      };
+    },
+    async recommendAppointment() {
+      return {
+        success: false,
+        searchedWindow: 7,
+        recommendations: [],
+        alternativeResource: null,
+        alternativeBranch: null,
+        nearestDate: null,
+        message: "No recommendations available.",
+      };
+    },
+    async createBooking() {
         domainCalls.push("createBooking");
         return {
           booking: {

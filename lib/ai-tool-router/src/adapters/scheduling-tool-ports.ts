@@ -1,8 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildEmptyAvailabilityResult,
+  getNextAvailableSlot,
+  normalizeDaysAhead,
+  recommendAppointments,
+  scanAvailableDates,
+  TimezoneResolver,
+  type AvailabilityScanEnginePort,
+  type NextAvailableSlot,
+  type RecommendationBranchContext,
+  type RecommendationResourceContext,
+} from "@workspace/scheduling-engine";
 import type {
   BookingDomainServicePort,
   CreateBookingInput,
   CreateBookingResult,
+  FindNextAvailableInput,
+  FindNextAvailableResult,
+  RecommendAppointmentInput,
+  RecommendAppointmentResult,
   SearchAvailabilityInput,
   SearchAvailabilityResult,
   SchedulingToolPorts,
@@ -53,6 +69,8 @@ export type SchedulingEnginePort = {
 type ResourceRow = {
   id: string;
   name: string;
+  branchId: string | null;
+  branchName: string | null;
   metadata: Record<string, unknown> | null;
 };
 
@@ -66,14 +84,21 @@ function readCapacity(metadata: Record<string, unknown> | null | undefined): num
   return 1;
 }
 
-function addDaysIso(date: string, days: number): string {
-  const base = new Date(`${date}T12:00:00.000Z`);
-  base.setUTCDate(base.getUTCDate() + days);
-  return base.toISOString().slice(0, 10);
-}
+async function loadBookingRules(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<{ maxBookingWindowDays: number; timezone: string }> {
+  const { data, error } = await client
+    .from("scheduling_booking_rules")
+    .select("max_booking_window_days, timezone")
+    .eq("company_id", companyId)
+    .maybeSingle();
 
-function todayIso(referenceNow: Date): string {
-  return referenceNow.toISOString().slice(0, 10);
+  if (error) throw new Error(error.message);
+  return {
+    maxBookingWindowDays: Number(data?.max_booking_window_days ?? 90),
+    timezone: String(data?.timezone ?? "UTC"),
+  };
 }
 
 async function listResourceIdsForService(
@@ -113,7 +138,7 @@ async function loadResources(
 
   const { data, error } = await client
     .from("scheduling_resources")
-    .select("id, name, metadata")
+    .select("id, name, metadata, branch_id, branches(id, name)")
     .eq("company_id", companyId)
     .in("id", resourceIds)
     .eq("status", "active")
@@ -122,15 +147,42 @@ async function loadResources(
   if (error) throw new Error(error.message);
 
   return new Map(
-    (data ?? []).map((row) => [
-      String(row.id),
-      {
-        id: String(row.id),
-        name: String(row.name),
-        metadata: (row.metadata as Record<string, unknown> | null) ?? null,
-      },
-    ]),
+    (data ?? []).map((row) => {
+      const branch = row.branches as { id?: string; name?: string } | null;
+      return [
+        String(row.id),
+        {
+          id: String(row.id),
+          name: String(row.name),
+          branchId: row.branch_id ? String(row.branch_id) : null,
+          branchName: branch?.name ? String(branch.name) : null,
+          metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+        },
+      ];
+    }),
   );
+}
+
+async function loadBranches(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<RecommendationBranchContext[]> {
+  const { data, error } = await client
+    .from("branches")
+    .select("id, name, is_primary")
+    .eq("company_id", companyId)
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .order("name");
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row, index) => ({
+    branchId: String(row.id),
+    branchName: String(row.name),
+    isPrimary: Boolean(row.is_primary),
+    priority: row.is_primary ? 100 : Math.max(0, 50 - index),
+  }));
 }
 
 async function loadServiceDuration(
@@ -151,29 +203,84 @@ async function loadServiceDuration(
   return Number(data.duration_minutes ?? 30);
 }
 
-async function loadMaxBookingWindowDays(client: SupabaseClient, companyId: string): Promise<number> {
-  const { data, error } = await client
-    .from("scheduling_booking_rules")
-    .select("max_booking_window_days")
-    .eq("company_id", companyId)
-    .maybeSingle();
-
-  if (error) throw new Error(error.message);
-  return Number(data?.max_booking_window_days ?? 90);
+function createAvailabilityScanEnginePort(engines: SchedulingEnginePort): AvailabilityScanEnginePort {
+  return {
+    resolveAvailability: (...args) => engines.resolveAvailability(...args),
+    getAvailableSlots: (...args) => engines.getAvailableSlots(...args),
+  };
 }
 
-async function loadSlotsForDate(
-  engines: SchedulingEnginePort,
-  companyId: string,
-  resourceId: string,
-  serviceId: string,
-  date: string,
-  referenceNow: Date,
-): Promise<ResolvedSlotsPort> {
-  return engines.getAvailableSlots(companyId, resourceId, serviceId, date, {
-    respectBookingRules: true,
-    referenceNow,
+function mapNextAvailableResult(
+  next: NextAvailableSlot | null,
+  searchedWindow: number,
+): FindNextAvailableResult {
+  if (!next) {
+    const empty = buildEmptyAvailabilityResult(searchedWindow);
+    return {
+      success: false,
+      searchedWindow: empty.searchedWindow,
+      nextSuggestion: empty.nextSuggestion,
+      message: `No bookable appointments were found during the next ${empty.searchedWindow} days.`,
+      slot: null,
+    };
+  }
+
+  return {
+    success: true,
+    searchedWindow,
+    slot: {
+      date: next.date,
+      start: next.slot.start,
+      end: next.slot.end,
+      resourceId: next.resource.id,
+      resourceName: next.resource.name,
+      serviceId: next.service.id,
+      durationMinutes: next.service.durationMinutes,
+      capacity: next.resource.capacity,
+      timezone: next.timezone,
+    },
+  };
+}
+
+async function resolveSchedulingContext(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    serviceId: string;
+    resourceId?: string;
+    branchId?: string;
+  },
+) {
+  const durationMinutes = await loadServiceDuration(client, input.companyId, input.serviceId);
+  const bookingRules = await loadBookingRules(client, input.companyId);
+  const timezone = TimezoneResolver.resolveEffectiveTimezone(null, null, bookingRules.timezone);
+  const referenceNow = new Date();
+  const startDate = TimezoneResolver.localDateForInstant(referenceNow, timezone);
+
+  let resourceIds = input.resourceId
+    ? [input.resourceId]
+    : await listResourceIdsForService(client, input.companyId, input.serviceId, input.branchId);
+
+  resourceIds = [...new Set(resourceIds)];
+  const resourceMap = await loadResources(client, input.companyId, resourceIds);
+  const resources = resourceIds.flatMap((resourceId) => {
+    const resource = resourceMap.get(resourceId);
+    if (!resource) return [];
+    return [{
+      resourceId,
+      resourceName: resource.name,
+      capacity: readCapacity(resource.metadata),
+    }];
   });
+
+  return {
+    durationMinutes,
+    bookingRules,
+    timezone,
+    referenceNow,
+    startDate,
+    resources,
+  };
 }
 
 export async function executeSearchAvailability(
@@ -181,92 +288,165 @@ export async function executeSearchAvailability(
   engines: SchedulingEnginePort,
   input: SearchAvailabilityInput,
 ): Promise<SearchAvailabilityResult> {
-  const referenceNow = new Date();
-  const durationMinutes = await loadServiceDuration(client, input.companyId, input.serviceId);
-  const maxWindowDays = await loadMaxBookingWindowDays(client, input.companyId);
+  const context = await resolveSchedulingContext(client, input);
+  const scanEngine = createAvailabilityScanEnginePort(engines);
 
-  let resourceIds = input.resourceId
-    ? [input.resourceId]
-    : await listResourceIdsForService(client, input.companyId, input.serviceId, input.branchId);
-
-  resourceIds = [...new Set(resourceIds)];
-  if (resourceIds.length === 0) {
+  if (context.resources.length === 0) {
     return {
       success: true,
       serviceId: input.serviceId,
-      durationMinutes,
+      durationMinutes: context.durationMinutes,
       availableDates: [],
       resources: [],
       message: "No eligible resources found for this service.",
     };
   }
 
-  const resourceMap = await loadResources(client, input.companyId, resourceIds);
-  const scanDays = Math.min(Math.max(input.daysAhead ?? 14, 1), maxWindowDays);
-  const startDate = input.date ?? todayIso(referenceNow);
+  const scanResult = await scanAvailableDates(scanEngine, {
+    companyId: input.companyId,
+    serviceId: input.serviceId,
+    durationMinutes: context.durationMinutes,
+    resources: context.resources,
+    startDate: context.startDate,
+    daysAhead: input.daysAhead,
+    timezone: context.timezone,
+    maxBookingWindowDays: context.bookingRules.maxBookingWindowDays,
+    singleDate: input.date,
+    referenceNow: context.referenceNow,
+  });
 
-  const datesToScan: string[] = input.date
-    ? [input.date]
-    : Array.from({ length: scanDays }, (_, index) => addDaysIso(startDate, index));
-
-  const availableDatesSet = new Set<string>();
-  const resources: SearchAvailabilityResult["resources"] = [];
-
-  for (const resourceId of resourceIds) {
-    const resource = resourceMap.get(resourceId);
-    if (!resource) continue;
-
-    const capacity = readCapacity(resource.metadata);
-    const resourceAvailableDates: string[] = [];
-    const slots: SearchAvailabilityResult["resources"][number]["slots"] = [];
-
-    for (const date of datesToScan) {
-      const availability = await engines.resolveAvailability(
-        input.companyId,
-        resourceId,
-        input.serviceId,
-        date,
-        { respectBookingRules: true, referenceNow },
-      );
-
-      if (!availability.available) continue;
-
-      const resolved = await loadSlotsForDate(
-        engines,
-        input.companyId,
-        resourceId,
-        input.serviceId,
-        date,
-        referenceNow,
-      );
-
-      if (!resolved.available || resolved.generatedSlots.length === 0) continue;
-
-      resourceAvailableDates.push(date);
-      availableDatesSet.add(date);
-
-      for (const generated of resolved.generatedSlots) {
-        slots.push({ date, start: generated.start, end: generated.end });
-      }
-    }
-
-    resources.push({
-      resourceId,
-      resourceName: resource.name,
-      durationMinutes,
-      capacity,
-      availableDates: resourceAvailableDates,
-      slots,
-    });
-  }
+  const hasAvailability = scanResult.availableDates.length > 0;
 
   return {
-    success: true,
+    success: hasAvailability,
     serviceId: input.serviceId,
-    durationMinutes,
-    availableDates: [...availableDatesSet].sort(),
-    resources,
+    durationMinutes: context.durationMinutes,
+    availableDates: scanResult.availableDates,
+    resources: scanResult.resources,
+    searchedWindow: scanResult.searchedWindow,
+    ...(scanResult.emptyResult ?? {}),
+    ...(hasAvailability ? {} : {
+      message: scanResult.emptyResult?.message ?? `No appointments are available during the next ${scanResult.searchedWindow} days.`,
+      nextSuggestion: scanResult.emptyResult?.nextSuggestion ?? null,
+    }),
   };
+}
+
+export async function executeFindNextAvailable(
+  client: SupabaseClient,
+  engines: SchedulingEnginePort,
+  input: FindNextAvailableInput,
+): Promise<FindNextAvailableResult> {
+  const context = await resolveSchedulingContext(client, input);
+  const scanEngine = createAvailabilityScanEnginePort(engines);
+
+  if (context.resources.length === 0) {
+    return {
+      success: false,
+      searchedWindow: input.daysAhead ?? 7,
+      nextSuggestion: 14,
+      message: "No eligible resources found for this service.",
+      slot: null,
+    };
+  }
+
+  const searchedWindow = normalizeDaysAhead(
+    input.daysAhead,
+    context.bookingRules.maxBookingWindowDays,
+  );
+  const next = await getNextAvailableSlot(scanEngine, {
+    companyId: input.companyId,
+    serviceId: input.serviceId,
+    durationMinutes: context.durationMinutes,
+    resources: context.resources,
+    startDate: context.startDate,
+    daysAhead: input.daysAhead,
+    timezone: context.timezone,
+    maxBookingWindowDays: context.bookingRules.maxBookingWindowDays,
+    referenceNow: context.referenceNow,
+  });
+
+  return mapNextAvailableResult(next, searchedWindow);
+}
+
+async function resolveRecommendationContext(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    serviceId: string;
+  },
+) {
+  const durationMinutes = await loadServiceDuration(client, input.companyId, input.serviceId);
+  const bookingRules = await loadBookingRules(client, input.companyId);
+  const timezone = TimezoneResolver.resolveEffectiveTimezone(null, null, bookingRules.timezone);
+  const referenceNow = new Date();
+  const startDate = TimezoneResolver.localDateForInstant(referenceNow, timezone);
+  const resourceIds = [...new Set(await listResourceIdsForService(client, input.companyId, input.serviceId))];
+  const resourceMap = await loadResources(client, input.companyId, resourceIds);
+  const branches = await loadBranches(client, input.companyId);
+
+  const resources: RecommendationResourceContext[] = resourceIds.flatMap((resourceId) => {
+    const resource = resourceMap.get(resourceId);
+    if (!resource) return [];
+    return [{
+      resourceId,
+      resourceName: resource.name,
+      branchId: resource.branchId,
+      branchName: resource.branchName,
+      capacity: readCapacity(resource.metadata),
+    }];
+  });
+
+  return {
+    durationMinutes,
+    bookingRules,
+    timezone,
+    referenceNow,
+    startDate,
+    resources,
+    branches,
+  };
+}
+
+export async function executeRecommendAppointment(
+  client: SupabaseClient,
+  engines: SchedulingEnginePort,
+  input: RecommendAppointmentInput,
+): Promise<RecommendAppointmentResult> {
+  const context = await resolveRecommendationContext(client, input);
+  const scanEngine = createAvailabilityScanEnginePort(engines);
+
+  if (context.resources.length === 0) {
+    return {
+      success: false,
+      searchedWindow: input.daysAhead ?? 7,
+      recommendations: [],
+      alternativeResource: null,
+      alternativeBranch: null,
+      nearestDate: null,
+      message: "No eligible resources found for this service.",
+    };
+  }
+
+  return recommendAppointments(scanEngine, {
+    companyId: input.companyId,
+    serviceId: input.serviceId,
+    durationMinutes: context.durationMinutes,
+    resources: context.resources,
+    branches: context.branches,
+    startDate: context.startDate,
+    daysAhead: input.daysAhead,
+    timezone: context.timezone,
+    maxBookingWindowDays: context.bookingRules.maxBookingWindowDays,
+    referenceNow: context.referenceNow,
+    preferences: {
+      resourceId: input.preferredResourceId,
+      branchId: input.preferredBranchId,
+      date: input.preferredDate,
+      time: input.preferredTime,
+    },
+    limit: 3,
+  });
 }
 
 function isBookingDomainError(error: unknown): error is { codes: string[]; name: string } {
@@ -323,6 +503,12 @@ export function createSchedulingToolPorts(
   return {
     searchAvailability(input) {
       return executeSearchAvailability(client, engines, input);
+    },
+    findNextAvailable(input) {
+      return executeFindNextAvailable(client, engines, input);
+    },
+    recommendAppointment(input) {
+      return executeRecommendAppointment(client, engines, input);
     },
     createBooking(input) {
       if (!bookingDomain) {

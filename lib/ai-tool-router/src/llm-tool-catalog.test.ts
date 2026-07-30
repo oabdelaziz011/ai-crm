@@ -10,7 +10,7 @@ import { listRegisteredToolHandlerKeys as listHandlerKeys } from "./tool-handler
 
 describe("llm-tool-catalog", () => {
   it("registers every known tool with a classification", () => {
-    assert.equal(TOOL_REGISTRY.length, 18);
+    assert.equal(TOOL_REGISTRY.length, 20);
     for (const entry of TOOL_REGISTRY) {
       assert.ok(entry.key);
       assert.ok(entry.classification);
@@ -30,8 +30,10 @@ describe("llm-tool-catalog", () => {
       "create_booking",
       "create_customer",
       "find_duplicate_customers",
+      "find_next_available",
       "invoice_search",
       "knowledge_search",
+      "recommend_appointment",
       "search_availability",
       "search_customer",
       "update_customer",
@@ -45,7 +47,7 @@ describe("llm-tool-catalog", () => {
     const registered = listHandlerKeys({ customerService: {} as never });
     const exposure = resolveLlmToolExposure(registered);
     assert.deepEqual(exposure.allowedToolKeys, [CREATE_CUSTOMER_TOOL_KEY]);
-    assert.equal(exposure.gaps.length, 8);
+    assert.equal(exposure.gaps.length, 10);
   });
 
   it("builds audit report with newly exposed tools", () => {
@@ -55,8 +57,8 @@ describe("llm-tool-catalog", () => {
       schedulingToolPorts: {} as never,
     });
     const report = buildToolRouterAuditReport(registered);
-    assert.equal(report.llmExposure.exposedCount, 9);
-    assert.equal(report.llmExposure.newlyExposed.length, 8);
+    assert.equal(report.llmExposure.exposedCount, 11);
+    assert.equal(report.llmExposure.newlyExposed.length, 10);
     assert.equal(report.excludedMockTools.length, 7);
     assert.equal(report.protectedConfirmationTools.length, 2);
     assert.equal(report.remainingGaps.length, 0);

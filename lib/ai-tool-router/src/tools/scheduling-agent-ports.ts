@@ -1,7 +1,21 @@
+import type {
+  AlternativeBranchRecommendation,
+  AlternativeResourceRecommendation,
+  AppointmentRecommendation,
+  NearestDateRecommendation,
+} from "@workspace/scheduling-engine";
+
 export type AvailabilitySlot = {
   start: string;
   end: string;
 };
+
+export type {
+  AlternativeBranchRecommendation,
+  AlternativeResourceRecommendation,
+  AppointmentRecommendation,
+  NearestDateRecommendation,
+} from "@workspace/scheduling-engine";
 
 export type SearchAvailabilityResourceResult = {
   resourceId: string;
@@ -20,7 +34,7 @@ export type SearchAvailabilityInput = {
   branchId?: string;
   /** Single date (YYYY-MM-DD) to return slots for. */
   date?: string;
-  /** Scan this many days ahead for available dates when date is omitted. */
+  /** Days to scan when date is omitted (default 7, min 1, max 90). */
   daysAhead?: number;
 };
 
@@ -31,6 +45,60 @@ export type SearchAvailabilityResult = {
   availableDates: string[];
   resources: SearchAvailabilityResourceResult[];
   message?: string;
+  searchedWindow?: number;
+  nextSuggestion?: number | null;
+};
+
+export type FindNextAvailableInput = {
+  companyId: string;
+  userId: string;
+  serviceId: string;
+  resourceId?: string;
+  branchId?: string;
+  /** Days to scan (default 7, min 1, max 90). */
+  daysAhead?: number;
+};
+
+export type FindNextAvailableSlotResult = {
+  date: string;
+  start: string;
+  end: string;
+  resourceId: string;
+  resourceName: string;
+  serviceId: string;
+  durationMinutes: number;
+  capacity: number;
+  timezone: string;
+};
+
+export type FindNextAvailableResult = {
+  success: boolean;
+  searchedWindow: number;
+  nextSuggestion?: number | null;
+  message?: string;
+  slot: FindNextAvailableSlotResult | null;
+};
+
+export type RecommendAppointmentInput = {
+  companyId: string;
+  userId: string;
+  serviceId: string;
+  preferredResourceId?: string;
+  preferredBranchId?: string;
+  preferredDate?: string;
+  preferredTime?: string;
+  daysAhead?: number;
+};
+
+export type RecommendAppointmentResult = {
+  success: boolean;
+  searchedWindow: number;
+  recommendations: AppointmentRecommendation[];
+  alternativeResource: AlternativeResourceRecommendation | null;
+  alternativeBranch: AlternativeBranchRecommendation | null;
+  nearestDate: NearestDateRecommendation | null;
+  message?: string;
+  nextSuggestion?: number | null;
 };
 
 export type CreateBookingInput = {
@@ -82,5 +150,7 @@ export type BookingDomainServicePort = {
 /** Channel-agnostic scheduling port — hosts wire SlotGenerationEngine + AvailabilityEngine + BookingDomainService. */
 export type SchedulingToolPorts = {
   searchAvailability(input: SearchAvailabilityInput): Promise<SearchAvailabilityResult>;
+  findNextAvailable(input: FindNextAvailableInput): Promise<FindNextAvailableResult>;
+  recommendAppointment(input: RecommendAppointmentInput): Promise<RecommendAppointmentResult>;
   createBooking(input: CreateBookingInput): Promise<CreateBookingResult>;
 };

@@ -12,6 +12,7 @@ export type SettingsRouteId =
   | "email"
   | "whatsapp"
   | "messenger"
+  | "instagram"
   | "scheduling";
 
 export type SettingsRouteDefinition = {
@@ -112,6 +113,16 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/messenger-settings-page"),
       "SettingsMessengerPage",
+    ),
+  },
+  {
+    id: "instagram",
+    nestedPath: "/instagram",
+    titleKey: "dashboard.settings.nav.instagram",
+    permission: "settings.edit",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/instagram-settings-page"),
+      "SettingsInstagramPage",
     ),
   },
   {

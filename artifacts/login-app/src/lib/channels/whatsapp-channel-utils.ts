@@ -28,3 +28,16 @@ export function buildMessengerChannelWebhookUrl(apiBase: string, companyChannelI
   if (!normalizedBase) return `/api/webhooks/messenger/${encodedChannelId}`;
   return `${normalizedBase}/api/webhooks/messenger/${encodedChannelId}`;
 }
+
+export function buildInstagramWebhookUrl(apiBase: string): string {
+  const normalizedBase = apiBase.trim().replace(/\/$/, "");
+  if (!normalizedBase) return "/api/webhooks/instagram";
+  return `${normalizedBase}/api/webhooks/instagram`;
+}
+
+export function buildInstagramChannelWebhookUrl(apiBase: string, companyChannelId: string): string {
+  const normalizedBase = apiBase.trim().replace(/\/$/, "");
+  const encodedChannelId = encodeURIComponent(companyChannelId.trim());
+  if (!normalizedBase) return `/api/webhooks/instagram/${encodedChannelId}`;
+  return `${normalizedBase}/api/webhooks/instagram/${encodedChannelId}`;
+}

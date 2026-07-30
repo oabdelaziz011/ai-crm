@@ -30,3 +30,4 @@ export * from "./repositories/supabase-channel-registry-repository.js";
 export * from "./repositories/supabase-company-channel-repository.js";
 export * from "./utils/whatsapp-channel-utils.js";
 export * from "./utils/messenger-channel-utils.js";
+export * from "./utils/instagram-channel-utils.js";

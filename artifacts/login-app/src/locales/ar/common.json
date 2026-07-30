@@ -359,6 +359,37 @@
         "channelRequired": "أنشئ قناة Messenger قبل تشغيل فحوصات الصحة."
       }
     },
+    "instagram": {
+      "settings": {
+        "title": "إعدادات Instagram",
+        "enabled": "تفعيل قناة Instagram",
+        "instagramBusinessAccountId": "معرّف حساب Instagram Business",
+        "pageId": "معرّف صفحة Facebook",
+        "accessToken": "رمز وصول الصفحة",
+        "webhookVerifyToken": "رمز التحقق من Webhook",
+        "webhookVerifyHint": "يُستخدم للتحقق من اشتراك Meta webhook.",
+        "generateVerifyToken": "إنشاء رمز تحقق",
+        "apiVersion": "إصدار Graph API",
+        "appSecret": "سر التطبيق",
+        "appSecretHint": "يُستخدم للتحقق من توقيع Meta webhook (x-hub-signature-256).",
+        "webhookUrl": "رابط Webhook",
+        "webhookUrlGlobal": "Webhook عام (توجيه برمز التحقق)",
+        "webhookUrlChannel": "Webhook للقناة (لكل اتصال)",
+        "webhookUrlChannelMissing": "أنشئ قناة Instagram لعرض رابط webhook الخاص بالقناة.",
+        "openChannels": "فتح إدارة القنوات",
+        "saved": "تم حفظ إعدادات Instagram",
+        "saveFailed": "تعذر حفظ إعدادات Instagram",
+        "healthTitle": "صحة الاتصال",
+        "healthOk": "اتصال Instagram سليم ({{ms}} مللي ثانية)",
+        "healthFailed": "فشل فحص Instagram: {{error}}",
+        "accountVerified": "الحساب المتصل: {{name}}",
+        "connectionTest": "تشغيل اختبار الاتصال",
+        "connectionTestSuccess": "نجح اختبار اتصال Instagram",
+        "connectionTestFailed": "فشل اختبار اتصال Instagram",
+        "apiMissing": "عيّن VITE_API_SERVER_URL لتشغيل فحوصات Instagram.",
+        "channelRequired": "أنشئ قناة Instagram قبل تشغيل فحوصات الصحة."
+      }
+    },
     "defaults": {
       "unknown": "غير معروف",
       "service": "خدمة",
@@ -1509,6 +1540,7 @@
         "email": "البريد الإلكتروني",
         "whatsapp": "واتساب",
         "messenger": "Messenger",
+        "instagram": "Instagram",
         "scheduling": "الجدولة"
       },
       "security": {

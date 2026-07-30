@@ -468,6 +468,37 @@
         "channelRequired": "Create a Messenger channel before running health checks."
       }
     },
+    "instagram": {
+      "settings": {
+        "title": "Instagram Settings",
+        "enabled": "Enable Instagram channel",
+        "instagramBusinessAccountId": "Instagram Business Account ID",
+        "pageId": "Facebook Page ID",
+        "accessToken": "Page access token",
+        "webhookVerifyToken": "Webhook verify token",
+        "webhookVerifyHint": "Used for Meta webhook subscription verification.",
+        "generateVerifyToken": "Generate verify token",
+        "apiVersion": "Graph API version",
+        "appSecret": "App secret",
+        "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256).",
+        "webhookUrl": "Webhook URL",
+        "webhookUrlGlobal": "Global webhook (verify-token routing)",
+        "webhookUrlChannel": "Channel webhook (per connection)",
+        "webhookUrlChannelMissing": "Create an Instagram channel to show the per-channel webhook URL.",
+        "openChannels": "Open Channel Administration",
+        "saved": "Instagram settings saved",
+        "saveFailed": "Could not save Instagram settings",
+        "healthTitle": "Connection health",
+        "healthOk": "Instagram connection healthy ({{ms}} ms)",
+        "healthFailed": "Instagram check failed: {{error}}",
+        "accountVerified": "Connected account: {{name}}",
+        "connectionTest": "Run connection test",
+        "connectionTestSuccess": "Instagram connection test passed",
+        "connectionTestFailed": "Instagram connection test failed",
+        "apiMissing": "Configure VITE_API_SERVER_URL to run Instagram health checks.",
+        "channelRequired": "Create an Instagram channel before running health checks."
+      }
+    },
     "defaults": {
       "unknown": "Unknown",
       "service": "service",
@@ -1658,6 +1689,7 @@
         "email": "Email",
         "whatsapp": "WhatsApp",
         "messenger": "Messenger",
+        "instagram": "Instagram",
         "scheduling": "Scheduling"
       },
       "security": {

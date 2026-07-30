@@ -1,10 +1,12 @@
 import { ValidationError } from "../../errors.js";
 import {
   buildActionVariableScope,
+  coerceBindingStringValue,
   resolveFieldBindingAsString,
   resolveRequiredFieldBindingAsString,
 } from "../../field-binding/resolver.js";
 import { normalizeCreateBookingConfig } from "../../crm/create-booking-config.js";
+import type { CreateBookingSchedulingSlot } from "../../crm/types/create-booking-input.js";
 import type { BookingServicePort } from "../../ports/booking-service-port.js";
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
@@ -55,6 +57,64 @@ function resolveCustomerId(scope: Record<string, unknown>, binding: unknown): st
   return resolved;
 }
 
+function resolveCreateBookingService(
+  scope: Record<string, unknown>,
+  binding: unknown,
+): string {
+  const resolved = resolveFieldBindingAsString(binding, scope);
+  if (resolved) return resolved;
+
+  const selectedService = coerceBindingStringValue(scope.selected_service);
+  if (selectedService) return selectedService;
+
+  throw new ValidationError("Create booking requires service.");
+}
+
+function readSelectedSlotStartAt(scope: Record<string, unknown>): string | null {
+  const slot = scope.selected_slot;
+  if (!slot || typeof slot !== "object" || Array.isArray(slot)) return null;
+  const startAt = (slot as { start_at?: unknown }).start_at;
+  return typeof startAt === "string" && startAt.includes("T") ? startAt.trim() : null;
+}
+
+function readSelectedSlotScheduling(scope: Record<string, unknown>): CreateBookingSchedulingSlot | null {
+  const slot = scope.selected_slot;
+  if (!slot || typeof slot !== "object" || Array.isArray(slot)) return null;
+  const record = slot as Record<string, unknown>;
+  const startAt = typeof record.start_at === "string" ? record.start_at.trim() : "";
+  const timezone = typeof record.timezone === "string" ? record.timezone.trim() : "";
+  const serviceId = typeof record.service_id === "string" ? record.service_id.trim() : "";
+  const resourceId = typeof record.resource_id === "string" ? record.resource_id.trim() : "";
+  if (!startAt.includes("T") || !timezone || !serviceId || !resourceId) return null;
+  return { startAt, timezone, serviceId, resourceId };
+}
+
+function resolveCreateBookingAppointmentDate(
+  scope: Record<string, unknown>,
+  binding: unknown,
+): string {
+  const startAt = readSelectedSlotStartAt(scope);
+  if (startAt) return startAt.slice(0, 10);
+
+  const resolved = resolveFieldBindingAsString(binding, scope);
+  if (resolved) return resolved;
+
+  throw new ValidationError("Create booking requires appointment date.");
+}
+
+function resolveCreateBookingAppointmentTime(
+  scope: Record<string, unknown>,
+  binding: unknown,
+): string {
+  const startAt = readSelectedSlotStartAt(scope);
+  if (startAt) return startAt;
+
+  const resolved = resolveFieldBindingAsString(binding, scope);
+  if (resolved) return resolved;
+
+  throw new ValidationError("Create booking requires appointment time.");
+}
+
 export async function executeCreateBookingAction(
   context: ExecutionContext,
   config: Record<string, unknown>,
@@ -66,14 +126,15 @@ export async function executeCreateBookingAction(
   const result = await bookingService.createBooking({
     companyId: context.company.id,
     userId: resolveActorUserId(context),
-    service: resolveRequiredFieldBindingAsString(normalized.service, scope, "service"),
+    service: resolveCreateBookingService(scope, normalized.service),
     doctorId: resolveRequiredFieldBindingAsString(normalized.doctor, scope, "doctor"),
     locationId: resolveRequiredFieldBindingAsString(normalized.location, scope, "location"),
-    appointmentDate: resolveRequiredFieldBindingAsString(normalized.appointmentDate, scope, "appointment date"),
-    appointmentTime: resolveRequiredFieldBindingAsString(normalized.appointmentTime, scope, "appointment time"),
+    appointmentDate: resolveCreateBookingAppointmentDate(scope, normalized.appointmentDate),
+    appointmentTime: resolveCreateBookingAppointmentTime(scope, normalized.appointmentTime),
     customerId: resolveCustomerId(scope, normalized.customer),
     durationMinutes: readOptionalDurationMinutes(normalized.duration, scope),
     notes: readOptionalBindingString(normalized.notes, scope),
+    schedulingSlot: readSelectedSlotScheduling(scope),
   });
 
   return {

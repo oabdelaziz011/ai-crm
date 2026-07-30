@@ -16,6 +16,7 @@ import { parseWhatsAppChannelReferences } from "./whatsapp-config.js";
 import type { WhatsAppCredentialsLoader } from "./whatsapp-canonical-credentials.js";
 import { resolveWhatsAppRuntimeConfiguration } from "./whatsapp-canonical-credentials.js";
 import type { WhatsAppSendMessagePayload, WhatsAppWebhookMessage } from "./whatsapp-types.js";
+import { validateWhatsAppInteractiveListPayload } from "./whatsapp-interactive-list-validation.js";
 import { traceWhatsAppRawWebhookPayload } from "../../debug/interactive-if-trace-debug.js";
 
 export type WhatsAppCloudAdapterOptions = {
@@ -191,6 +192,7 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
           },
         },
       };
+      validateWhatsAppInteractiveListPayload(payload);
       return { payload, recipient: message.externalThreadId };
     }
 

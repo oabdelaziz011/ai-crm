@@ -50,7 +50,18 @@ import {
   readDatePickerRuntimeConfig,
   validateSelectedDate,
 } from "../runtime/date-picker-validation.js";
-import { isListLookupMode, resolveListNodeSections } from "../runtime/list-lookup-resolver.js";
+import { isListLookupMode, resolveListNodeSections, readListLookupRuntimeConfig, AVAILABLE_DATES_LOOKUP, resolveAvailableDatesEmptyMessageFromConfig } from "../runtime/list-lookup-resolver.js";
+import { resolveInteractiveListLimits } from "../runtime/channel-interactive-list-limits.js";
+import {
+  applyInteractiveListPaginationToSections,
+  buildPaginatedInteractiveListSections,
+  clearInteractiveListPaginationState,
+  INTERACTIVE_LIST_PAGINATION_VARIABLE,
+  isInteractiveListNextPageReply,
+  readInteractiveListPaginationState,
+  resolveInteractiveListRowByReplyId,
+  type InteractiveListSection,
+} from "../runtime/interactive-list-pagination.js";
 
 export type AutomationActionDeps = {
   bookingService?: BookingServicePort;
@@ -154,38 +165,143 @@ async function executeDatePickerAction(
   };
 }
 
+function buildListConfigWithSections(
+  config: Record<string, unknown>,
+  sections: InteractiveListSection[],
+): Record<string, unknown> {
+  return { ...config, sections };
+}
+
+function resolveListConfigForSelection(
+  config: Record<string, unknown>,
+  nodeId: string,
+  variables: Record<string, unknown>,
+  lookupSections: InteractiveListSection[] | null,
+): Record<string, unknown> {
+  const paginationState = readInteractiveListPaginationState(variables, nodeId);
+  if (paginationState) {
+    return buildListConfigWithSections(config, [
+      { title: paginationState.sectionTitle, rows: paginationState.rows },
+    ]);
+  }
+  if (lookupSections && lookupSections.length > 0) {
+    return buildListConfigWithSections(config, lookupSections);
+  }
+  return config;
+}
+
 async function executeInteractiveMessageAction(
   context: ExecutionContext,
   action: "send_buttons" | "send_list",
   deps?: AutomationActionDeps,
 ): Promise<NodeExecutionResult> {
+  const listLimits = resolveInteractiveListLimits(context.session.channel);
   const selection = context.input
     ? extractInteractiveSelection(context.input, { fallbackHint: action })
     : null;
   if (selection) {
+    const replyId = selection.last_button_id ?? "";
+
+    if (action === "send_list" && isInteractiveListNextPageReply(replyId)) {
+      const paginationState = readInteractiveListPaginationState(context.variables, context.currentNode.id);
+      if (!paginationState) {
+        return {
+          outcome: "waiting_input",
+          variables: mergeVariables(context.variables, {
+            __prompt: "That selection was not valid. Please try again.",
+          }),
+          errorMessage: `List pagination state missing for node ${context.currentNode.id}.`,
+        };
+      }
+
+      const nextPageIndex = paginationState.pageIndex + 1;
+      if (nextPageIndex >= paginationState.totalPages) {
+        return {
+          outcome: "waiting_input",
+          variables: mergeVariables(context.variables, {
+            __prompt: "That selection was not valid. Please try again.",
+          }),
+          errorMessage: `List pagination page ${nextPageIndex} is out of range.`,
+        };
+      }
+
+      const sections = buildPaginatedInteractiveListSections(
+        paginationState.rows,
+        nextPageIndex,
+        listLimits,
+        paginationState.sectionTitle,
+      );
+      const menuNode = {
+        ...context.currentNode,
+        config: buildListConfigWithSections(context.currentNode.config, sections),
+      };
+      const { outbound, prompt } = buildInteractiveMenuOutbound(menuNode);
+      const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
+      const nextVariables = mergeVariables(context.variables, {
+        ...mergeConversationVariables(context.variables, selection),
+        [INTERACTIVE_LIST_PAGINATION_VARIABLE]: {
+          ...paginationState,
+          pageIndex: nextPageIndex,
+        },
+        __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+        __prompt: prompt,
+        [INTERACTIVE_SELECTION_INPUT_KEY]: replyId,
+        ...queuePatch,
+      });
+
+      return {
+        outcome: "waiting_input",
+        variables: nextVariables,
+        output: { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound, listPagination: true },
+      };
+    }
+
     const selectionVariablePatch: Record<string, unknown> = {};
     if (action === "send_list") {
       const inputKey = readInteractiveListInputKey(context.currentNode.config);
       const outputVariable = readInteractiveListOutputVariable(context.currentNode.config);
-      const replyId = selection.last_button_id ?? "";
       if (replyId) {
-        let listConfig = context.currentNode.config;
-        if (isListLookupMode(listConfig)) {
-          const sections = await resolveListNodeSections(
-            context.currentNode,
-            context.company.id,
-            deps?.lookupOptions,
-            context.variables,
-          );
-          if (sections.length > 0) {
-            listConfig = { ...listConfig, sections };
+        let lookupSections: InteractiveListSection[] | null = null;
+        if (isListLookupMode(context.currentNode.config)) {
+          const paginationState = readInteractiveListPaginationState(context.variables, context.currentNode.id);
+          if (!paginationState) {
+            lookupSections = await resolveListNodeSections(
+              context.currentNode,
+              context.company.id,
+              deps?.lookupOptions,
+              context.variables,
+              { runId: context.run.id, sessionId: context.session.id },
+            );
           }
         }
-        const storedRecord = resolveInteractiveListStoredRecord(listConfig, replyId);
+
+        const listConfig = resolveListConfigForSelection(
+          context.currentNode.config,
+          context.currentNode.id,
+          context.variables,
+          lookupSections,
+        );
+        const paginationState = readInteractiveListPaginationState(context.variables, context.currentNode.id);
+        const matchedRow = paginationState
+          ? resolveInteractiveListRowByReplyId(paginationState.rows, replyId)
+          : null;
+
+        const storedRecord = matchedRow?.record ?? resolveInteractiveListStoredRecord(listConfig, replyId);
         if (storedRecord && outputVariable) {
           selectionVariablePatch[outputVariable] = storedRecord;
+        } else if (outputVariable) {
+          const storedValue =
+            matchedRow?.value ??
+            matchedRow?.id ??
+            resolveInteractiveListStoredValue(listConfig, replyId);
+          if (storedValue !== null) {
+            selectionVariablePatch[outputVariable] = storedValue;
+          }
         } else if (inputKey) {
-          const storedValue = resolveInteractiveListStoredValue(listConfig, replyId);
+          const storedValue =
+            matchedRow?.value ??
+            matchedRow?.id ??
+            resolveInteractiveListStoredValue(listConfig, replyId);
           if (storedValue !== null) {
             selectionVariablePatch[inputKey] = storedValue;
           }
@@ -200,6 +316,7 @@ async function executeInteractiveMessageAction(
       __waitingFor: null,
       __prompt: null,
       ...clearLatestOutboundSlot(),
+      ...clearInteractiveListPaginationState(),
     });
     traceListSelectionApplied({
       runId: context.run.id,
@@ -226,23 +343,47 @@ async function executeInteractiveMessageAction(
         })
       : undefined;
 
+  let emptyAvailableDates = false;
+  let paginationStatePatch: Record<string, unknown> | undefined;
+
   const sendListMessage = async () => {
     let menuNode = context.currentNode;
     if (action === "send_list") {
+      const lookupConfig = isListLookupMode(context.currentNode.config)
+        ? readListLookupRuntimeConfig(context.currentNode.config)
+        : null;
       const sections = await resolveListNodeSections(
         context.currentNode,
         context.company.id,
         deps?.lookupOptions,
         context.variables,
+        { runId: context.run.id, sessionId: context.session.id },
       );
+      if (sections.length === 0 && lookupConfig?.lookup === AVAILABLE_DATES_LOOKUP) {
+        const emptyMessage = resolveAvailableDatesEmptyMessageFromConfig(context.currentNode.config, context.variables);
+        outbound = { kind: "text", text: emptyMessage };
+        prompt = emptyMessage;
+        emptyAvailableDates = true;
+        return;
+      }
       if (sections.length > 0) {
+        const paginated = applyInteractiveListPaginationToSections(sections, {
+          nodeId: context.currentNode.id,
+          limits: listLimits,
+          variables: context.variables,
+        });
         menuNode = {
           ...context.currentNode,
           config: {
             ...context.currentNode.config,
-            sections,
+            sections: paginated.sections,
           },
         };
+        if (paginated.paginationState) {
+          paginationStatePatch = {
+            [INTERACTIVE_LIST_PAGINATION_VARIABLE]: paginated.paginationState,
+          };
+        }
       }
     }
 
@@ -251,10 +392,16 @@ async function executeInteractiveMessageAction(
 
   if (action === "send_list") {
     await sendListMessage();
-    const queuePatch = appendOutboundQueueEntry(context.variables, outbound!);
+    if (!outbound) {
+      throw new Error(
+        `send_list node ${context.currentNode.id} did not produce outbound payload (lookup=${String(context.currentNode.config.lookup ?? "static")}).`,
+      );
+    }
+    const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
     const nextVariables = mergeVariables(context.variables, {
       ...queuePatch,
-      __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+      ...(paginationStatePatch ?? {}),
+      __waitingFor: emptyAvailableDates ? null : INTERACTIVE_SELECTION_INPUT_KEY,
       __prompt: prompt,
     });
 
@@ -271,9 +418,11 @@ async function executeInteractiveMessageAction(
     }
 
     return {
-      outcome: "waiting_input",
+      outcome: emptyAvailableDates ? "continue" : "waiting_input",
       variables: nextVariables,
-      output: { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound: outbound! },
+      output: emptyAvailableDates
+        ? { sent: true, message: prompt, outbound: outbound! }
+        : { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound: outbound! },
     };
   }
 

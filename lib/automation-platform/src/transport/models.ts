@@ -143,6 +143,16 @@ export type ProviderCapabilities = {
   supportsInteractiveReplies: boolean;
   supportsDeliveryReceipts: boolean;
   supportsReadReceipts: boolean;
+  interactiveList?: InteractiveListLimits;
+};
+
+export type InteractiveListLimits = {
+  /** Maximum data/navigation rows allowed in a single outbound list message. */
+  maxRowsPerList: number;
+  /** Maximum sections in a single outbound list message. */
+  maxSectionsPerList: number;
+  /** Whether the runtime should paginate lookup lists automatically. */
+  supportsListPagination: boolean;
 };
 
 export type ProviderContext = {

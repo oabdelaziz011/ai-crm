@@ -31,6 +31,11 @@ class WebChatTransportProvider extends BaseChannelProvider {
       supportsLists: true,
       supportsTemplates: true,
       supportsReadReceipts: true,
+      interactiveList: {
+        maxRowsPerList: 100,
+        maxSectionsPerList: 10,
+        supportsListPagination: true,
+      },
     });
   }
 }

@@ -1,3 +1,10 @@
+export type CreateBookingSchedulingSlot = {
+  startAt: string;
+  timezone: string;
+  serviceId: string;
+  resourceId: string;
+};
+
 export type CreateBookingInput = {
   companyId: string;
   userId: string;
@@ -9,6 +16,8 @@ export type CreateBookingInput = {
   customerId: string;
   durationMinutes?: number | null;
   notes?: string | null;
+  /** Structured slot from available_slots lookup — preferred for scheduling-domain writes. */
+  schedulingSlot?: CreateBookingSchedulingSlot | null;
 };
 
 export type CreateBookingResult = {

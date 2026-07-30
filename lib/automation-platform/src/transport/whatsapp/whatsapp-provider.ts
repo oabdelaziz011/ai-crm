@@ -50,6 +50,11 @@ export class WhatsAppProvider extends BaseChannelProvider {
       supportsInteractiveReplies: true,
       supportsDeliveryReceipts: true,
       supportsReadReceipts: true,
+      interactiveList: {
+        maxRowsPerList: 10,
+        maxSectionsPerList: 10,
+        supportsListPagination: true,
+      },
     };
   }
 

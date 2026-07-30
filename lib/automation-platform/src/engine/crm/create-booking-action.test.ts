@@ -125,4 +125,70 @@ describe("executeCreateBookingAction", () => {
     assert.equal(boundResult.outcome, "continue");
     assert.ok(boundResult.variables?.booking_id);
   });
+
+  it("passes structured schedulingSlot from selected_slot lookup record", async () => {
+    let capturedInput: Record<string, unknown> | null = null;
+    const bookingService = {
+      async findBooking() {
+        return { status: "not_found" as const, booking: null };
+      },
+      async createBooking(input: Record<string, unknown>) {
+        capturedInput = input;
+        return { bookingId: "sched-booking-1", bookingDate: "2026-08-02T18:15:00.000Z" };
+      },
+      async updateBooking() {
+        return { bookingId: "sched-booking-1" };
+      },
+      async cancelBooking() {
+        return { bookingId: "sched-booking-1", status: "Cancelled" };
+      },
+    };
+
+    const result = await executeCreateBookingAction(
+      createContext(
+        {
+          action: "create_booking",
+          service: staticBinding("Clinic Visit"),
+          doctor: variableBinding("selected_resource.id"),
+          location: staticBinding("main"),
+          appointmentDate: variableBinding("selected_date"),
+          appointmentTime: variableBinding("selected_slot"),
+          customer: variableBinding("customer.id"),
+        },
+        {
+          selected_resource: { id: "resource-1" },
+          selected_date: { date: "2026-08-02" },
+          selected_slot: {
+            start_at: "2026-08-02T18:15:00.000Z",
+            end_at: "2026-08-02T18:45:00.000Z",
+            display_time: "9:15 PM",
+            duration_minutes: 30,
+            service_id: "service-1",
+            resource_id: "resource-1",
+            branch_id: null,
+            timezone: "Africa/Cairo",
+          },
+          customer: { id: "cust-1" },
+        },
+      ),
+      {
+        action: "create_booking",
+        service: staticBinding("Clinic Visit"),
+        doctor: variableBinding("selected_resource.id"),
+        location: staticBinding("main"),
+        appointmentDate: variableBinding("selected_date"),
+        appointmentTime: variableBinding("selected_slot"),
+        customer: variableBinding("customer.id"),
+      },
+      bookingService as never,
+    );
+
+    assert.equal(result.outcome, "continue");
+    assert.deepEqual(capturedInput?.schedulingSlot, {
+      startAt: "2026-08-02T18:15:00.000Z",
+      timezone: "Africa/Cairo",
+      serviceId: "service-1",
+      resourceId: "resource-1",
+    });
+  });
 });

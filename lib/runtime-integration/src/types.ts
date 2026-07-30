@@ -144,6 +144,8 @@ export type ConversationSnapshot = {
   id: string;
   companyId: string;
   state: string;
+  customerId?: string | null;
+  channelType?: string | null;
   metadata: Record<string, unknown>;
 };
 
@@ -164,11 +166,33 @@ export type IntentSnapshot = {
   status: string;
 };
 
+export type KnowledgeCitationSnapshot = {
+  citationId: string;
+  chunkId: string;
+  documentId: string;
+  documentTitle: string;
+  articleTitle: string | null;
+  sectionTitle: string | null;
+  pageNumber: number | null;
+  excerpt: string;
+  confidence: number;
+  score: number | null;
+  rank: number;
+};
+
 export type RetrievalSnapshot = {
   executionId: string;
   contextId: string;
   chunkCount: number;
   totalTokens: number;
+  confidence?: number;
+  searchMode?: "vector" | "keyword" | "hybrid";
+  vectorQueryExecutionId?: string;
+  retrievalLatencyMs?: number;
+  rankingLatencyMs?: number;
+  policyId?: string | null;
+  contextText?: string;
+  citations?: KnowledgeCitationSnapshot[];
   chunks: Array<{ content: string; metadata: Record<string, unknown> }>;
 };
 

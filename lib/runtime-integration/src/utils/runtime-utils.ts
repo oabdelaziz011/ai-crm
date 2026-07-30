@@ -23,6 +23,10 @@ export function mapRetrievalSnapshotToKnowledgeContext(
     executionId: string;
     chunkCount: number;
     totalTokens: number;
+    contextText?: string;
+    confidence?: number;
+    searchMode?: "vector" | "keyword" | "hybrid";
+    citations?: Array<Record<string, unknown>>;
     chunks: Array<{ content: string; metadata: Record<string, unknown> }>;
   } | null,
 ) {
@@ -31,12 +35,23 @@ export function mapRetrievalSnapshotToKnowledgeContext(
     id: String(chunk.metadata.knowledgeChunkId ?? chunk.metadata.chunkId ?? index),
     content: chunk.content,
     score: typeof chunk.metadata.score === "number" ? chunk.metadata.score : null,
+    documentTitle:
+      typeof chunk.metadata.documentTitle === "string" ? chunk.metadata.documentTitle : undefined,
+    sectionTitle:
+      typeof chunk.metadata.sectionTitle === "string" ? chunk.metadata.sectionTitle : undefined,
+    confidence: typeof chunk.metadata.confidence === "number" ? chunk.metadata.confidence : undefined,
+    citationId: typeof chunk.metadata.citationId === "string" ? chunk.metadata.citationId : undefined,
   }));
   return {
-    contextText: formatRetrievalInstructions(retrieval.chunks).join("\n\n"),
+    contextText:
+      retrieval.contextText?.trim() ||
+      formatRetrievalInstructions(retrieval.chunks).join("\n\n"),
     chunkCount: retrieval.chunkCount,
     totalTokens: retrieval.totalTokens,
     executionId: retrieval.executionId,
+    confidence: retrieval.confidence,
+    searchMode: retrieval.searchMode,
+    citations: retrieval.citations,
     chunks,
   };
 }

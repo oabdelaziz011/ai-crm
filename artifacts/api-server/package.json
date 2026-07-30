@@ -22,6 +22,8 @@
     "@workspace/automation-platform": "file:../../lib/automation-platform",
     "@workspace/channel-platform": "file:../../lib/channel-platform",
     "@workspace/channel-registry": "file:../../lib/channel-registry",
+    "@workspace/customer-360": "workspace:*",
+    "@workspace/knowledge-runtime": "workspace:*",
     "@workspace/db": "file:../../lib/db",
     "@workspace/platform-observability": "file:../../lib/platform-observability",
     "@workspace/platform-ai-provider": "file:../../lib/platform-ai-provider",

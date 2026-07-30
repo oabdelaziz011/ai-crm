@@ -14,6 +14,7 @@ import { useVectorQueryServices } from "@/lib/vector-query";
 import { supabase } from "@/lib/supabase";
 import { createRuntimeEnginePortsWithContext } from "./engine-ports";
 import { createRuntimeObservabilityPort } from "./observability-adapter";
+import { createDashboardRuntimeEnginePortOptions } from "./runtime-port-options";
 
 /**
  * Factory hook for Runtime Integration domain services.
@@ -54,6 +55,12 @@ export function useRuntimeIntegrationServices() {
           provider: providerServices,
         },
         context,
+        createDashboardRuntimeEnginePortOptions(supabase, retrievalServices, async (companyId) => {
+          if (context.userId && context.companyId === companyId) {
+            return context.userId;
+          }
+          return null;
+        }),
       ),
     [
       context,

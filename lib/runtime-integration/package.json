@@ -4,14 +4,24 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./factory/runtime-engine-ports": "./src/factory/runtime-engine-ports.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx/esm --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.2"
+    "@supabase/supabase-js": "^2.110.2",
+    "@workspace/ai-conversation": "workspace:*",
+    "@workspace/ai-execution-engine": "workspace:*",
+    "@workspace/ai-intent-engine": "workspace:*",
+    "@workspace/ai-provider-layer": "workspace:*",
+    "@workspace/ai-prompt-orchestrator": "workspace:*",
+    "@workspace/customer-360": "workspace:*",
+    "@workspace/knowledge-runtime": "workspace:*",
+    "@workspace/retrieval-engine": "workspace:*",
+    "@workspace/vector-query": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

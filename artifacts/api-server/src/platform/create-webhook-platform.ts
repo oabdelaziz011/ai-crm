@@ -7,7 +7,7 @@ import { createPromptOrchestratorServices } from "@workspace/ai-prompt-orchestra
 import { createChannelRegistryServices } from "@workspace/channel-registry";
 import { createWebhookAutomationPlatformServices } from "./create-webhook-automation-services.js";
 import {
-  createChannelPlatformServices,
+  createServerChannelPlatformServices,
   createSupabaseChannelWorkflowBindingRepository,
   createWhatsAppWebhookHandler,
   createInstagramWebhookHandler,
@@ -43,6 +43,8 @@ import {
 } from "./channel-platform-ports.js";
 import { createChannelAutomationPortFromClient, createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
+import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
+import { createKnowledgeRuntimeProvider } from "@workspace/knowledge-runtime";
 import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-engine";
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
@@ -111,14 +113,6 @@ export function getWebhookPlatform(): WebhookPlatform {
   const embedding = createEmbeddingPlatformServices(client);
   const vectorStore = createVectorStoreServices(client);
   const vectorQuery = createVectorQueryServices(client);
-  const retrievalPlatformPorts = createRetrievalPlatformPorts({
-    embedding: { registry: embedding.registry, factory: embedding.factory },
-    vectorQuery: { management: vectorQuery.management },
-  });
-  const retrieval = createRetrievalServices(client, {
-    queryEmbeddingPort: retrievalPlatformPorts.queryEmbeddingPort,
-    vectorQueryPort: retrievalPlatformPorts.vectorQueryPort,
-  });
   const prompt = createPromptOrchestratorServices(client);
   const provider = createAIProviderServices(client);
   const platformServices = createPlatformAIProviderServices(client);
@@ -131,6 +125,22 @@ export function getWebhookPlatform(): WebhookPlatform {
       providerKey: runtime.providerKey,
       usesPlatformKey: runtime.usesPlatformKey,
     };
+  });
+  const retrievalPlatformPorts = createRetrievalPlatformPorts({
+    embedding: { registry: embedding.registry, factory: embedding.factory },
+    vectorQuery: { management: vectorQuery.management },
+    resolvePlatformConfiguration: async ({ companyId, providerKey }) => {
+      const runtime = await platformServices.platform.resolveRuntimeConfig(companyId, providerKey, "embeddings");
+      return {
+        apiKey: runtime.apiKey,
+        model: runtime.model,
+        baseUrl: runtime.baseUrl,
+      };
+    },
+  });
+  const retrieval = createRetrievalServices(client, {
+    queryEmbeddingPort: retrievalPlatformPorts.queryEmbeddingPort,
+    vectorQueryPort: retrievalPlatformPorts.vectorQueryPort,
   });
   const { tools } = createWebhookToolRouterIntegrations(client);
   const execution = createAIExecutionServices(
@@ -145,9 +155,42 @@ export function getWebhookPlatform(): WebhookPlatform {
   );
   const tenantRuntimeConfig = createTenantRuntimeConfigService(client);
 
+  const knowledgeRuntimeProvider = createKnowledgeRuntimeProvider(retrieval.knowledge, {
+    embeddingQueue: {
+      async queuePendingEmbeddings(input) {
+        const { data: documents } = await client
+          .from("knowledge_documents")
+          .select("id, version_id, company_id, metadata")
+          .eq("company_id", input.companyId)
+          .in("metadata->publishing->>embedding_status", ["pending", "failed"])
+          .limit(5);
+
+        if (!documents?.length) return;
+
+        await Promise.allSettled(
+          documents.map((document) =>
+            embedding.queue.buildQueueForPublishedDocument(SYSTEM_CONTEXT, {
+              companyId: document.company_id,
+              documentId: document.id,
+              versionId: document.version_id,
+            }),
+          ),
+        );
+      },
+    },
+  });
+
   const runtimePorts = createRuntimeEnginePortsWithContext(
     { conversation, intent, vectorQuery, retrieval, prompt, execution, provider },
     SYSTEM_CONTEXT,
+    {
+      customer360Loader: createCustomer360Loader(createSupabaseCustomer360DataPort(client, {
+        resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
+      })),
+      knowledgeRuntimeProvider,
+      resolveActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),
+      promptMode: "webhook",
+    },
   );
 
   const runtime = createRuntimeIntegrationServices(client, {
@@ -186,7 +229,7 @@ export function getWebhookPlatform(): WebhookPlatform {
   const emailCredentialsLoader = createSupabaseEmailCredentialsLoader(client);
   const emailThreadLookup = createSupabaseEmailThreadLookup(client);
 
-  const channelPlatform = createChannelPlatformServices(client, {
+  const channelPlatform = createServerChannelPlatformServices(client, {
     ports,
     workflowResolver,
     whatsAppCredentialsLoader,

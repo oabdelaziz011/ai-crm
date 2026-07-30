@@ -57,3 +57,4 @@ export * from "./repositories/runtime-repositories.js";
 export * from "./repositories/supabase-runtime-repositories.js";
 export * from "./engines/runtime-policy-engine.js";
 export * from "./coordinator/enterprise-runtime-coordinator.js";
+export * from "./factory/runtime-engine-ports.js";

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
+import { Inbox, Loader2, Mail, MessageSquare, RefreshCw, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,26 +17,49 @@ import { DashboardCard } from "@/components/dashboard/ui";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
+  useEmailChannelConnectionTest,
+  useEmailChannelOutboundHealth,
+  useEmailCompanyChannel,
   useEmailConnectionTest,
   useEmailDeliverySummary,
   useEmailHealth,
+  useEmailPollInbox,
   useEmailSettings,
   useProcessEmailQueue,
   useUpdateEmailSettings,
 } from "@/hooks/notifications/use-email-health";
 import { isEmailApiConfigured } from "@/lib/notifications/providers/email/services/email-api-client";
-import type { CompanyEmailSettings, EmailEncryption } from "@/lib/notifications/providers/email/types/email-types";
+import type { EmailEncryption, EmailSettingsDraft } from "@/lib/notifications/providers/email/types/email-types";
+import {
+  buildEmailChannelWebhookUrl,
+  buildEmailWebhookUrl,
+  resolveChannelWebhookBaseUrl,
+} from "@/lib/channels/whatsapp-channel-utils";
 
-const EMPTY_SETTINGS: Omit<CompanyEmailSettings, "companyId" | "hasPassword" | "updatedAt"> = {
+const EMPTY_SETTINGS: EmailSettingsDraft = {
   enabled: false,
+  conversationEnabled: false,
+  inboundProvider: "imap",
+  outboundProvider: "smtp",
   smtpHost: "",
   smtpPort: 587,
   smtpUsername: "",
   smtpPassword: "",
   smtpEncryption: "starttls",
+  imapHost: "",
+  imapPort: 993,
+  imapUsername: "",
+  imapPassword: "",
+  imapEncryption: "ssl",
   fromEmail: "",
   fromName: "",
+  replyToEmail: "",
   maxRetryCount: 3,
+  maxAttachmentBytes: 26_214_400,
+  imapMailbox: "INBOX",
+  imapPollIntervalSeconds: 60,
+  oauthProvider: null,
+  oauthToken: "",
 };
 
 export function SettingsEmailPage() {
@@ -45,27 +69,58 @@ export function SettingsEmailPage() {
   const companyId = profile?.company_id ?? null;
 
   const { data: settings, isLoading } = useEmailSettings(companyId);
+  const emailChannel = useEmailCompanyChannel(companyId);
+  const companyChannelId = emailChannel?.id ?? null;
+
   const { data: health, isFetching: healthLoading, refetch: refetchHealth } = useEmailHealth(companyId);
+  const {
+    data: channelHealth,
+    isFetching: channelHealthLoading,
+    refetch: refetchChannelHealth,
+  } = useEmailChannelOutboundHealth(companyId, companyChannelId);
   const { data: deliverySummary } = useEmailDeliverySummary(companyId);
   const updateSettings = useUpdateEmailSettings(companyId);
   const testConnection = useEmailConnectionTest(companyId);
+  const channelConnectionTest = useEmailChannelConnectionTest(companyId, companyChannelId);
+  const pollInbox = useEmailPollInbox(companyId, companyChannelId);
   const processQueue = useProcessEmailQueue(companyId);
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
   const [testRecipient, setTestRecipient] = useState("");
 
+  const webhookBaseUrl = resolveChannelWebhookBaseUrl();
+  const globalWebhookUrl = useMemo(() => buildEmailWebhookUrl(webhookBaseUrl), [webhookBaseUrl]);
+  const channelWebhookUrl = useMemo(
+    () => (companyChannelId ? buildEmailChannelWebhookUrl(webhookBaseUrl, companyChannelId) : null),
+    [webhookBaseUrl, companyChannelId],
+  );
+
   useEffect(() => {
     if (settings) {
       setDraft({
         enabled: settings.enabled,
+        conversationEnabled: settings.conversationEnabled,
+        inboundProvider: settings.inboundProvider,
+        outboundProvider: settings.outboundProvider,
         smtpHost: settings.smtpHost,
         smtpPort: settings.smtpPort,
         smtpUsername: settings.smtpUsername,
         smtpPassword: settings.smtpPassword,
         smtpEncryption: settings.smtpEncryption,
+        imapHost: settings.imapHost,
+        imapPort: settings.imapPort,
+        imapUsername: settings.imapUsername,
+        imapPassword: settings.imapPassword,
+        imapEncryption: settings.imapEncryption,
         fromEmail: settings.fromEmail,
         fromName: settings.fromName,
+        replyToEmail: settings.replyToEmail,
         maxRetryCount: settings.maxRetryCount,
+        maxAttachmentBytes: settings.maxAttachmentBytes,
+        imapMailbox: settings.imapMailbox,
+        imapPollIntervalSeconds: settings.imapPollIntervalSeconds,
+        oauthProvider: settings.oauthProvider,
+        oauthToken: settings.oauthToken,
       });
     }
   }, [settings]);
@@ -74,7 +129,11 @@ export function SettingsEmailPage() {
     updateSettings.mutate(draft, {
       onSuccess: () => toast({ title: t("notifications.email.settings.saved") }),
       onError: (error) =>
-        toast({ title: t("notifications.email.settings.saveFailed"), description: error.message, variant: "destructive" }),
+        toast({
+          title: t("notifications.email.settings.saveFailed"),
+          description: error.message,
+          variant: "destructive",
+        }),
     });
   };
 
@@ -83,7 +142,48 @@ export function SettingsEmailPage() {
     testConnection.mutate(testRecipient.trim(), {
       onSuccess: () => toast({ title: t("notifications.email.settings.testSuccess") }),
       onError: (error) =>
-        toast({ title: t("notifications.email.settings.testFailed"), description: error.message, variant: "destructive" }),
+        toast({
+          title: t("notifications.email.settings.testFailed"),
+          description: error.message,
+          variant: "destructive",
+        }),
+    });
+  };
+
+  const onChannelConnectionTest = () => {
+    if (!companyChannelId) return;
+    channelConnectionTest.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.ok) {
+          toast({ title: t("notifications.email.conversation.connectionTestSuccess") });
+        } else {
+          toast({
+            title: t("notifications.email.conversation.connectionTestFailed"),
+            description: result.error ?? t("notifications.email.conversation.healthFailed", { error: "—" }),
+            variant: "destructive",
+          });
+        }
+        void refetchChannelHealth();
+      },
+      onError: (error) =>
+        toast({
+          title: t("notifications.email.conversation.connectionTestFailed"),
+          description: error.message,
+          variant: "destructive",
+        }),
+    });
+  };
+
+  const onPollInbox = () => {
+    if (!companyChannelId) return;
+    pollInbox.mutate(undefined, {
+      onSuccess: () => toast({ title: t("notifications.email.conversation.pollSuccess") }),
+      onError: (error) =>
+        toast({
+          title: t("notifications.email.conversation.pollFailed"),
+          description: error.message,
+          variant: "destructive",
+        }),
     });
   };
 
@@ -102,6 +202,7 @@ export function SettingsEmailPage() {
           <Mail className="w-4 h-4 text-primary" />
           <h3 className="font-semibold">{t("notifications.email.settings.title")}</h3>
         </div>
+        <p className="text-sm text-muted-foreground">{t("notifications.email.settings.subtitle")}</p>
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -149,7 +250,7 @@ export function SettingsEmailPage() {
                 <Input
                   type="password"
                   value={draft.smtpPassword}
-                  placeholder={settings?.hasPassword ? "********" : ""}
+                  placeholder={settings?.hasSmtpPassword ? "********" : ""}
                   onChange={(event) => setDraft((prev) => ({ ...prev, smtpPassword: event.target.value }))}
                 />
               </div>
@@ -197,11 +298,217 @@ export function SettingsEmailPage() {
         )}
       </DashboardCard>
 
+      <DashboardCard className="p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold">{t("notifications.email.conversation.title")}</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">{t("notifications.email.conversation.subtitle")}</p>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            {t("notifications.loading")}
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="email-conversation-enabled">
+                {t("notifications.email.conversation.enabled")}
+              </Label>
+              <Switch
+                id="email-conversation-enabled"
+                checked={draft.conversationEnabled}
+                onCheckedChange={(conversationEnabled) =>
+                  setDraft((prev) => ({ ...prev, conversationEnabled }))
+                }
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("notifications.email.conversation.inboundProvider")}</Label>
+                <Select
+                  value={draft.inboundProvider}
+                  onValueChange={(value) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      inboundProvider: value as EmailSettingsDraft["inboundProvider"],
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="imap">{t("notifications.email.conversation.inboundImap")}</SelectItem>
+                    <SelectItem value="webhook">{t("notifications.email.conversation.inboundWebhook")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("notifications.email.conversation.outboundProvider")}</Label>
+                <Input readOnly value={t("notifications.email.conversation.outboundSmtp")} />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>{t("notifications.email.conversation.replyToEmail")}</Label>
+                <Input
+                  value={draft.replyToEmail}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, replyToEmail: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            {draft.inboundProvider === "imap" ? (
+              <div className="grid gap-4 sm:grid-cols-2 rounded-lg border border-white/5 bg-white/[0.02] p-4">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("notifications.email.conversation.imapSection")}</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapHost")}</Label>
+                  <Input
+                    value={draft.imapHost}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, imapHost: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapPort")}</Label>
+                  <Input
+                    type="number"
+                    value={draft.imapPort}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, imapPort: Number(event.target.value) || 993 }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapUsername")}</Label>
+                  <Input
+                    value={draft.imapUsername}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, imapUsername: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapPassword")}</Label>
+                  <Input
+                    type="password"
+                    value={draft.imapPassword}
+                    placeholder={settings?.hasImapPassword ? "********" : ""}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, imapPassword: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapEncryption")}</Label>
+                  <Select
+                    value={draft.imapEncryption}
+                    onValueChange={(value) =>
+                      setDraft((prev) => ({ ...prev, imapEncryption: value as EmailEncryption }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ssl">{t("notifications.email.settings.encryptionSsl")}</SelectItem>
+                      <SelectItem value="starttls">{t("notifications.email.settings.encryptionStartTls")}</SelectItem>
+                      <SelectItem value="none">{t("notifications.email.settings.encryptionNone")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapMailbox")}</Label>
+                  <Input
+                    value={draft.imapMailbox}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, imapMailbox: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.email.conversation.imapPollInterval")}</Label>
+                  <Input
+                    type="number"
+                    value={draft.imapPollIntervalSeconds}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        imapPollIntervalSeconds: Number(event.target.value) || 60,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("notifications.email.conversation.maxAttachmentBytes")}</Label>
+                <Input
+                  type="number"
+                  value={draft.maxAttachmentBytes}
+                  onChange={(event) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      maxAttachmentBytes: Number(event.target.value) || 26_214_400,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-white/5 bg-white/[0.02] p-4">
+              <Label>{t("notifications.email.conversation.webhookUrl")}</Label>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {t("notifications.email.conversation.webhookUrlGlobal")}
+                  </p>
+                  <Input readOnly value={globalWebhookUrl} />
+                </div>
+                {channelWebhookUrl ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {t("notifications.email.conversation.webhookUrlChannel")}
+                    </p>
+                    <Input readOnly value={channelWebhookUrl} />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {t("notifications.email.conversation.webhookUrlChannelMissing")}{" "}
+                    <Link href="/dashboard/channels" className="text-primary underline-offset-2 hover:underline">
+                      {t("notifications.email.conversation.openChannels")}
+                    </Link>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={onSave} disabled={updateSettings.isPending}>
+                {updateSettings.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t("buttons.save")}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={onPollInbox}
+                disabled={pollInbox.isPending || !companyChannelId || !draft.conversationEnabled}
+              >
+                {pollInbox.isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Inbox className="mr-1.5 h-4 w-4" />
+                )}
+                {t("notifications.email.conversation.pollInbox")}
+              </Button>
+            </div>
+          </>
+        )}
+      </DashboardCard>
+
       <DashboardCard className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-primary" />
           <h3 className="font-semibold">{t("notifications.email.settings.healthTitle")}</h3>
         </div>
+        <p className="text-sm text-muted-foreground">{t("notifications.email.settings.healthSubtitle")}</p>
 
         {!isEmailApiConfigured() ? (
           <p className="text-sm text-muted-foreground">{t("notifications.email.settings.apiMissing")}</p>
@@ -255,6 +562,71 @@ export function SettingsEmailPage() {
             {deliverySummary?.lastError ? (
               <p className="text-xs text-rose-400">{deliverySummary.lastError}</p>
             ) : null}
+          </>
+        )}
+      </DashboardCard>
+
+      <DashboardCard className="p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold">{t("notifications.email.conversation.healthTitle")}</h3>
+        </div>
+
+        {!isEmailApiConfigured() ? (
+          <p className="text-sm text-muted-foreground">{t("notifications.email.conversation.apiMissing")}</p>
+        ) : !companyChannelId ? (
+          <p className="text-sm text-muted-foreground">
+            {t("notifications.email.conversation.channelRequired")}{" "}
+            <Link href="/dashboard/channels" className="text-primary underline-offset-2 hover:underline">
+              {t("notifications.email.conversation.openChannels")}
+            </Link>
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 text-sm">
+              <span
+                className={`inline-flex h-2.5 w-2.5 rounded-full ${channelHealth?.ok ? "bg-emerald-400" : "bg-rose-400"}`}
+              />
+              <span>
+                {channelHealth?.ok
+                  ? t("notifications.email.conversation.healthOk", { ms: channelHealth.latencyMs })
+                  : t("notifications.email.conversation.healthFailed", {
+                      error: channelHealth?.error ?? channelHealth?.smtp.error ?? "—",
+                    })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void refetchChannelHealth()}
+                disabled={channelHealthLoading}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${channelHealthLoading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+
+            {channelHealth?.smtp.fromEmail ? (
+              <p className="text-xs text-muted-foreground">
+                {t("notifications.email.conversation.smtpVerified", { email: channelHealth.smtp.fromEmail })}
+              </p>
+            ) : null}
+
+            {channelHealth?.imap?.configured ? (
+              <p className="text-xs text-muted-foreground">
+                {t("notifications.email.conversation.imapConfigured", {
+                  host: channelHealth.imap.host,
+                  mailbox: channelHealth.imap.mailbox ?? "INBOX",
+                })}
+              </p>
+            ) : null}
+
+            <Button
+              variant="outline"
+              onClick={onChannelConnectionTest}
+              disabled={channelConnectionTest.isPending || !companyChannelId}
+            >
+              {channelConnectionTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {t("notifications.email.conversation.connectionTest")}
+            </Button>
           </>
         )}
       </DashboardCard>

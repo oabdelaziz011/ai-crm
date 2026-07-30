@@ -1,5 +1,9 @@
 export type EmailEncryption = "none" | "starttls" | "ssl";
 
+export type EmailInboundProvider = "imap" | "webhook";
+
+export type EmailOutboundProvider = "smtp";
+
 export type SmtpConfig = {
   host: string;
   port: number;
@@ -61,17 +65,39 @@ export type EmailDeliveryResult = {
 export type CompanyEmailSettings = {
   companyId: string;
   enabled: boolean;
+  conversationEnabled: boolean;
+  inboundProvider: EmailInboundProvider;
+  outboundProvider: EmailOutboundProvider;
   smtpHost: string;
   smtpPort: number;
   smtpUsername: string;
   smtpPassword: string;
   smtpEncryption: EmailEncryption;
+  imapHost: string;
+  imapPort: number;
+  imapUsername: string;
+  imapPassword: string;
+  imapEncryption: EmailEncryption;
   fromEmail: string;
   fromName: string;
+  replyToEmail: string;
   maxRetryCount: number;
-  hasPassword: boolean;
+  maxAttachmentBytes: number;
+  imapMailbox: string;
+  imapLastUid: number;
+  imapPollIntervalSeconds: number;
+  oauthProvider: string | null;
+  oauthToken: string;
+  hasSmtpPassword: boolean;
+  hasImapPassword: boolean;
+  hasOauthToken: boolean;
   updatedAt?: string;
 };
+
+export type EmailSettingsDraft = Omit<
+  CompanyEmailSettings,
+  "companyId" | "hasSmtpPassword" | "hasImapPassword" | "hasOauthToken" | "updatedAt" | "imapLastUid"
+>;
 
 export const EMAIL_PROVIDER = "smtp" as const;
 

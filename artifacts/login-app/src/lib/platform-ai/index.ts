@@ -70,6 +70,16 @@ export {
   shouldShowAnalyticsNavigation,
 } from "./analytics-access";
 
+export {
+  canResumeAgent,
+  canStartAgent,
+  canExecuteRuntime,
+  canResumeAgentWorkflow,
+  canStartAgentWorkflow,
+  isAgentsAccessible,
+  shouldShowAgentsNavigation,
+} from "./agents-access";
+
 /** @deprecated Use AI_CAPABILITY_CATALOG */
 export { AI_CAPABILITY_CATALOG as COMPANY_AI_FEATURE_REGISTRY } from "./ai-capability-catalog";
 

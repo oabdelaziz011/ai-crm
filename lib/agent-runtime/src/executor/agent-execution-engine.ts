@@ -21,6 +21,7 @@ import type {
 } from "../types.js";
 import type { AgentWorkflowRepository, CheckpointSnapshot } from "../checkpoint/checkpoint-service.js";
 import { createInitialMemory } from "../memory/agent-memory.js";
+import { assertAgentsFeatureEnabled } from "../utils/agents-guards.js";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,9 +44,22 @@ export class AgentExecutionEngine {
     private readonly ports: AgentRuntimePorts,
   ) {}
 
+  async getWorkflow(ctx: ServiceContext, workflowId: string) {
+    assertAgentsFeatureEnabled(ctx);
+    if (!ctx.isSuperAdmin && !ctx.hasPermission("runtime.execute")) {
+      throw new Error("runtime.execute permission required for agent workflows.");
+    }
+
+    const workflow = await this.repo.getWorkflow(workflowId);
+    if (!workflow) return null;
+    assertTenantAccess(ctx, workflow.company_id);
+    return workflow;
+  }
+
   subscribeEvents = this.events.subscribe.bind(this.events);
 
   async start(ctx: ServiceContext, input: StartAgentWorkflowInput): Promise<AgentWorkflowResult> {
+    assertAgentsFeatureEnabled(ctx);
     assertTenantAccess(ctx, input.companyId);
     if (!ctx.hasPermission("runtime.execute") && !ctx.isSuperAdmin) {
       throw new Error("runtime.execute permission required for agent workflows.");
@@ -93,6 +107,7 @@ export class AgentExecutionEngine {
   }
 
   async resume(ctx: ServiceContext, workflowId: string): Promise<AgentWorkflowResult> {
+    assertAgentsFeatureEnabled(ctx);
     const workflow = await this.repo.getWorkflow(workflowId);
     if (!workflow) throw new Error("Workflow not found.");
     assertTenantAccess(ctx, workflow.company_id);
@@ -386,6 +401,10 @@ export class AgentRuntimeService {
 
   resume(ctx: ServiceContext, workflowId: string) {
     return this.engine.resume(ctx, workflowId);
+  }
+
+  getWorkflow(ctx: ServiceContext, workflowId: string) {
+    return this.engine.getWorkflow(ctx, workflowId);
   }
 
   subscribeEvents(listener: Parameters<AgentExecutionEngine["subscribeEvents"]>[0]) {

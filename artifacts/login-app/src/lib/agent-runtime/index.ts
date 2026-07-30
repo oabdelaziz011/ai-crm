@@ -3,6 +3,7 @@ import { createAgentRuntimeServices } from "@workspace/agent-runtime";
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
+import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { supabase } from "@/lib/supabase";
 import { useToolRouterServices } from "@/lib/ai-tool-router";
 import { useChannelPlatformServices } from "@/lib/channel-platform";
@@ -12,6 +13,7 @@ import { useWebChatCompanyChannel } from "@/hooks/ai-chat/use-web-chat-company-c
 export function useAgentRuntimeServices() {
   const { user, profile, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
+  const { isEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
   const { services: toolRouterServices, context: toolRouterContext } = useToolRouterServices();
   const { services: channelServices, context: channelContext } = useChannelPlatformServices();
   const companyId = profile?.company_id ?? null;
@@ -24,8 +26,9 @@ export function useAgentRuntimeServices() {
       companyId,
       isSuperAdmin,
       hasPermission,
+      isAgentsFeatureEnabled: () => agentsFeatureEnabled,
     }),
-    [user?.id, companyId, isSuperAdmin, hasPermission],
+    [user?.id, companyId, isSuperAdmin, hasPermission, agentsFeatureEnabled],
   );
 
   const services = useMemo(() => {

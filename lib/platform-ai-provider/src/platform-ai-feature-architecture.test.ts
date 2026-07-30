@@ -14,8 +14,8 @@ import {
 } from "./feature-defaults.js";
 
 describe("Platform AI feature keys", () => {
-  it("includes ai_analytics and matches audit registry size", () => {
-    assert.ok(PLATFORM_AI_FEATURE_KEYS.includes(PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS));
+  it("includes ai_agents and matches audit registry size", () => {
+    assert.ok(PLATFORM_AI_FEATURE_KEYS.includes(PLATFORM_AI_FEATURE_KEY.AI_AGENTS));
     assert.equal(Object.keys(PLATFORM_AI_FEATURE_KEY_AUDIT).length, PLATFORM_AI_FEATURE_KEYS.length);
   });
 
@@ -24,6 +24,7 @@ describe("Platform AI feature keys", () => {
     assert.deepEqual(
       live.map((entry) => entry.capabilityId).sort(),
       [
+        PLATFORM_AI_CAPABILITY_ID.AI_AGENTS,
         PLATFORM_AI_CAPABILITY_ID.AI_ANALYTICS,
         PLATFORM_AI_CAPABILITY_ID.AI_CHAT,
         PLATFORM_AI_CAPABILITY_ID.KNOWLEDGE_BASE,
@@ -32,13 +33,14 @@ describe("Platform AI feature keys", () => {
     );
   });
 
-  it("maps ai_analytics capability to ai_analytics feature key as live catalog", () => {
+  it("maps ai_agents capability to ai_agents feature key as live catalog", () => {
     const mapping = PLATFORM_AI_CAPABILITY_FEATURE_MAPPINGS.find(
-      (entry) => entry.capabilityId === PLATFORM_AI_CAPABILITY_ID.AI_ANALYTICS,
+      (entry) => entry.capabilityId === PLATFORM_AI_CAPABILITY_ID.AI_AGENTS,
     );
     assert.ok(mapping);
-    assert.equal(mapping.backendFeatureKey, PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS);
+    assert.equal(mapping.backendFeatureKey, PLATFORM_AI_FEATURE_KEY.AI_AGENTS);
     assert.equal(mapping.catalogLive, true);
+    assert.deepEqual(mapping.relatedFeatureKeys, [PLATFORM_AI_FEATURE_KEY.AI_CHAT]);
   });
 });
 

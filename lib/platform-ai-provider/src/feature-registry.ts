@@ -117,6 +117,19 @@ export const PLATFORM_AI_FEATURE_KEY_AUDIT: Record<PlatformAIFeatureKey, Platfor
       opsUsage: ["Not shown in ops feature matrix (Sprint 5)"],
       runtimeEnforcedToday: true,
     },
+    [PLATFORM_AI_FEATURE_KEY.AI_AGENTS]: {
+      featureKey: PLATFORM_AI_FEATURE_KEY.AI_AGENTS,
+      databaseKey: PLATFORM_AI_FEATURE_KEY.AI_AGENTS,
+      catalogCapabilityId: PLATFORM_AI_CAPABILITY_ID.AI_AGENTS,
+      responsibility:
+        "AI Agents orchestration (Floating AI Agent tab, task graphs). Tenant toggle gates start/resume/read; Enterprise Runtime and Tool Router remain ungated.",
+      runtimeUsage: [
+        "login-app Floating AI Agent tab → isFeatureEnabled(ai_agents)",
+        "@workspace/agent-runtime start/resume/getWorkflow → assertAgentsFeatureEnabled",
+      ],
+      opsUsage: ["Not shown in ops feature matrix (Sprint 6.1)"],
+      runtimeEnforcedToday: true,
+    },
   };
 
 /** Ordered audit list for tooling and tests. */

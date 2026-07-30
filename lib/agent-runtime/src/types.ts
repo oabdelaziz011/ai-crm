@@ -7,6 +7,8 @@ export type ServiceContext = {
   companyId: string | null;
   isSuperAdmin: boolean;
   hasPermission: (permissionCode: string) => boolean;
+  /** When set, blocks agent start/resume/read when the Platform AI agents flag is off. */
+  isAgentsFeatureEnabled?: () => boolean;
 };
 
 export type AgentTaskEdge = {

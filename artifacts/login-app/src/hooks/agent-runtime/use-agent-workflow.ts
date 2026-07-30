@@ -6,6 +6,9 @@ import { useFloatingAi } from "@/context/floating-ai-context";
 import { buildRuntimePageContext } from "@/lib/floating-ai/global-context";
 import { isCrmAgentGoal } from "@/lib/floating-ai/agent-goals";
 import { useAiChatWorkspace } from "@/hooks/ai-chat/use-ai-chat-workspace";
+import { useAuthUser } from "@/hooks/use-rbac";
+import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { isAgentsAccessible } from "@/lib/platform-ai/agents-access";
 import { supabase } from "@/lib/supabase";
 import type { AgentTaskGraph, AgentWorkflowEventRecord } from "@workspace/agent-runtime";
 import { graphProgress } from "@workspace/agent-runtime";
@@ -55,6 +58,13 @@ async function persistBackgroundTask(input: {
 
 export function useAgentWorkflow() {
   const { services, context } = useAgentRuntimeServices();
+  const { isSuperAdmin, hasPermission } = useAuthUser();
+  const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
+  const agentsAccessible = isAgentsAccessible({
+    isSuperAdmin,
+    hasPermission,
+    agentsFeatureEnabled,
+  });
   const { pageContext, incrementNotifications } = useFloatingAi();
   const { startTask, updateTaskProgress, completeTask, failTask } = useAiTasks();
   const queryClient = useQueryClient();
@@ -78,20 +88,15 @@ export function useAgentWorkflow() {
 
   const workflowQuery = useQuery({
     queryKey: ["agent-workflow", activeWorkflowId],
-    enabled: Boolean(activeWorkflowId),
+    enabled: Boolean(activeWorkflowId) && agentsAccessible,
     refetchInterval: (query) => {
       const status = query.state.data?.status as string | undefined;
       if (status === "completed" || status === "failed" || status === "cancelled") return false;
       return 3_000;
     },
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agent_workflows")
-        .select("*")
-        .eq("id", activeWorkflowId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      if (!activeWorkflowId) return null;
+      return services.runtime.getWorkflow(context, activeWorkflowId);
     },
   });
 

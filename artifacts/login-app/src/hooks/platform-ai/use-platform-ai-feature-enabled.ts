@@ -59,6 +59,10 @@ export function useAnalyticsFeatureEnabled() {
   return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS);
 }
 
+export function useAgentsFeatureEnabled() {
+  return usePlatformAIFeatureEnabled(PLATFORM_AI_FEATURE_KEY.AI_AGENTS);
+}
+
 export type PlatformFeatureEnabledLookup = (
   featureKey: PlatformAIFeatureKey,
 ) => boolean | undefined;
@@ -67,6 +71,7 @@ export function usePlatformFeatureEnabledLookup(): PlatformFeatureEnabledLookup 
   const knowledge = useKnowledgeFeatureEnabled();
   const workflow = useWorkflowFeatureEnabled();
   const analytics = useAnalyticsFeatureEnabled();
+  const agents = useAgentsFeatureEnabled();
 
   return useCallback(
     (featureKey: PlatformAIFeatureKey) => {
@@ -79,8 +84,11 @@ export function usePlatformFeatureEnabledLookup(): PlatformFeatureEnabledLookup 
       if (featureKey === PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS) {
         return analytics.resolvedEnabled;
       }
+      if (featureKey === PLATFORM_AI_FEATURE_KEY.AI_AGENTS) {
+        return agents.resolvedEnabled;
+      }
       return undefined;
     },
-    [knowledge.resolvedEnabled, workflow.resolvedEnabled, analytics.resolvedEnabled],
+    [knowledge.resolvedEnabled, workflow.resolvedEnabled, analytics.resolvedEnabled, agents.resolvedEnabled],
   );
 }

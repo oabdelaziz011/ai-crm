@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Bot,
@@ -16,7 +16,9 @@ import { AiChatMessageList } from "@/components/ai-chat/ai-chat-message-list";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
-import { useHasPermission } from "@/hooks/use-rbac";
+import { useAuthUser, useHasPermission } from "@/hooks/use-rbac";
+import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { shouldShowAgentsNavigation } from "@/lib/platform-ai/agents-access";
 import { useAiPanel } from "@/hooks/floating-ai/use-ai-panel";
 import { useFloatingAiChat } from "@/hooks/floating-ai/use-floating-ai-chat";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
@@ -42,11 +44,24 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { company } = useAuth();
+  const { isSuperAdmin, hasPermission } = useAuthUser();
   const canUseAi = useHasPermission("ai_chat.use");
   const canExecuteRuntime = useHasPermission("runtime.execute");
+  const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
+  const showAgentTab = shouldShowAgentsNavigation({
+    isSuperAdmin,
+    hasPermission,
+    agentsFeatureEnabled,
+  });
   const { panelSize, cyclePanelSize, minimizePanel, closePanel } = useAiPanel();
   const [panelTab, setPanelTab] = useState<"chat" | "agent">("chat");
   const [pendingAgentGoal, setPendingAgentGoal] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!showAgentTab && panelTab === "agent") {
+      setPanelTab("chat");
+    }
+  }, [showAgentTab, panelTab]);
 
   const {
     assistantName,
@@ -75,20 +90,21 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   }, [sendError, t]);
 
   const routeToAgent = useCallback((goal: string) => {
+    if (!showAgentTab) return;
     setPendingAgentGoal(normalizeAgentGoal(goal));
     setPanelTab("agent");
-  }, []);
+  }, [showAgentTab]);
 
   const handleSend = useCallback(
     async (text: string) => {
       const slash = parseSlashCommand(text);
-      if (slash?.command.agentMode && FLOATING_AI_CAPABILITIES.agentMode) {
+      if (slash?.command.agentMode && FLOATING_AI_CAPABILITIES.agentMode && showAgentTab) {
         const goal = slash.remainder || "Execute multi-step workflow for current page context";
         routeToAgent(goal);
         return;
       }
 
-      if (FLOATING_AI_CAPABILITIES.agentMode && isAgentGoal(text)) {
+      if (FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && isAgentGoal(text)) {
         routeToAgent(text);
         return;
       }
@@ -96,7 +112,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
       const result = await sendMessage(text);
       if (result?.needsConfirmation) return;
     },
-    [sendMessage, routeToAgent],
+    [sendMessage, routeToAgent, showAgentTab],
   );
 
   const handleQuickAction = useCallback(
@@ -219,7 +235,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
               <Sparkles className="size-3" />
               {t("floatingAi.tabs.chat")}
             </TabsTrigger>
-            {FLOATING_AI_CAPABILITIES.agentMode && (
+            {FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && (
               <TabsTrigger value="agent" className="gap-1 text-xs">
                 <Bot className="size-3" />
                 {t("floatingAi.tabs.agent")}
@@ -252,7 +268,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
             <FloatingAiComposer disabled={composerDisabled} isSending={isSending} onSend={handleSend} />
           </TabsContent>
 
-          {FLOATING_AI_CAPABILITIES.agentMode && (
+          {FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && (
             <TabsContent value="agent" className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
               <AgentWorkflowPanel
                 initialGoal={pendingAgentGoal}

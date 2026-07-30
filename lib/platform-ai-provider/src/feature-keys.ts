@@ -14,8 +14,9 @@ export const PLATFORM_AI_FEATURE_KEY = {
   AUTOMATION: "automation",
   VOICE: "voice",
   EMBEDDINGS: "embeddings",
-  /** Prepared in Sprint 1 — not wired to catalog, ops, or runtime guards yet. */
   AI_ANALYTICS: "ai_analytics",
+  /** Sprint 6.1 — AI Agents orchestration product toggle. */
+  AI_AGENTS: "ai_agents",
 } as const;
 
 /** All valid Platform AI feature flag keys (matches DB check constraint). */

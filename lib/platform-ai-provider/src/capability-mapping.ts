@@ -44,6 +44,12 @@ export const PLATFORM_AI_CAPABILITY_FEATURE_MAPPINGS: readonly PlatformAICapabil
     relatedFeatureKeys: [PLATFORM_AI_FEATURE_KEY.TOOL_CALLING],
     catalogLive: true,
   },
+  {
+    capabilityId: PLATFORM_AI_CAPABILITY_ID.AI_AGENTS,
+    backendFeatureKey: PLATFORM_AI_FEATURE_KEY.AI_AGENTS,
+    relatedFeatureKeys: [PLATFORM_AI_FEATURE_KEY.AI_CHAT],
+    catalogLive: true,
+  },
 ] as const;
 
 const CAPABILITY_TO_FEATURE_KEY = new Map<PlatformAICapabilityId, PlatformAIFeatureKey>(

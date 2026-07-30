@@ -1,4 +1,5 @@
 export * from "./constants.js";
+export * from "./errors.js";
 export * from "./types.js";
 export * from "./task-graph/task-graph.js";
 export * from "./planner/agent-planner.js";

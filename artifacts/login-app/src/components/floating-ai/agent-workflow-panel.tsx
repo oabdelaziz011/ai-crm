@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useHasPermission } from "@/hooks/use-rbac";
+import { useAuthUser, useHasPermission } from "@/hooks/use-rbac";
+import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { canResumeAgentWorkflow, canStartAgentWorkflow } from "@/lib/platform-ai/agents-access";
 import { useAgentWorkflow } from "@/hooks/agent-runtime/use-agent-workflow";
 import { FLOATING_AI_CAPABILITIES } from "@/lib/floating-ai/types";
 import { requiresAgentConfirmation } from "@/lib/floating-ai/agent-goals";
@@ -28,7 +30,19 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   onGoalConsumed,
 }: AgentWorkflowPanelProps) {
   const { t } = useTranslation("common");
+  const { isSuperAdmin, hasPermission } = useAuthUser();
+  const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
   const canExecuteRuntime = useHasPermission("runtime.execute");
+  const canStart = canStartAgentWorkflow({
+    isSuperAdmin,
+    hasPermission,
+    agentsFeatureEnabled,
+  });
+  const canResume = canResumeAgentWorkflow({
+    isSuperAdmin,
+    hasPermission,
+    agentsFeatureEnabled,
+  });
   const {
     workflow,
     taskGraph,
@@ -57,7 +71,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   const handleStart = useCallback(
     async (text: string) => {
       const goal = text.trim();
-      if (!goal || !FLOATING_AI_CAPABILITIES.agentMode) return;
+      if (!goal || !FLOATING_AI_CAPABILITIES.agentMode || !canStart) return;
 
       if (requiresAgentConfirmation(goal)) {
         setPendingConfirmation(createPendingConfirmation(goal, goal));
@@ -66,7 +80,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
 
       await runGoal(goal);
     },
-    [runGoal],
+    [runGoal, canStart],
   );
 
   const handleConfirmStart = useCallback(async () => {
@@ -77,9 +91,9 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   }, [pendingConfirmation, runGoal]);
 
   const handleResume = useCallback(async () => {
-    if (!activeWorkflowId) return;
+    if (!activeWorkflowId || !canResume) return;
     await resumeAgent(activeWorkflowId);
-  }, [activeWorkflowId, resumeAgent]);
+  }, [activeWorkflowId, resumeAgent, canResume]);
 
   const autoStartedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -89,12 +103,18 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
     void handleStart(initialGoal);
   }, [initialGoal, activeWorkflowId, isStarting, handleStart]);
 
-  const disabled = !canExecuteRuntime || isStarting || isResuming || isConversationLoading;
+  const disabled = !canStart || !canExecuteRuntime || isStarting || isResuming || isConversationLoading;
+  const featureDisabled = agentsFeatureEnabled === false && !isSuperAdmin;
   const status = (workflow?.status as string | undefined) ?? "idle";
   const needsResume = status === "waiting_user" || status === "paused";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {featureDisabled && (
+        <div className="shrink-0 border-b border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          {t("agents.featureDisabled")}
+        </div>
+      )}
       <div className="shrink-0 space-y-2 border-b border-border px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -111,7 +131,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
             </p>
           </div>
           {needsResume && (
-            <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => void handleResume()} disabled={isResuming}>
+            <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => void handleResume()} disabled={!canResume || isResuming}>
               {isResuming ? <Loader2 className="size-3 animate-spin" /> : <RotateCcw className="size-3" />}
               {t("floatingAi.agent.resume")}
             </Button>

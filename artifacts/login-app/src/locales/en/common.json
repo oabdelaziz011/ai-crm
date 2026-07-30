@@ -1942,6 +1942,9 @@
   "aiAnalytics": {
     "featureDisabled": "AI Analytics is disabled for this company."
   },
+  "agents": {
+    "featureDisabled": "AI Agents is disabled for this company."
+  },
   "automation": {
     "featureDisabled": "Workflow AI is disabled for this company.",
     "aiNodesDisabled": "AI workflow nodes are disabled for this company. You can still view this workflow.",

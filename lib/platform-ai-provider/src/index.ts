@@ -7,6 +7,7 @@ export * from "./feature-registry.js";
 export * from "./knowledge-feature-access.js";
 export * from "./workflow-feature-access.js";
 export * from "./analytics-feature-access.js";
+export * from "./agents-feature-access.js";
 export * from "./platform-ai-provider-service.js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";

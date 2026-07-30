@@ -1,5 +1,5 @@
 {
-  "executedAt": "2026-07-27T01:42:02.132Z",
+  "executedAt": "2026-07-29T18:20:36.080Z",
   "companyAlpha": {
     "id": "d0000010-0001-4001-8001-000000000001",
     "admin": "demo-alpha-admin@vaultos.local"
@@ -9,9 +9,9 @@
     "admin": "demo-beta-admin@vaultos.local"
   },
   "fixture": {
-    "customerId": "f45ca2da-7a30-4eef-b73c-367ae5271d1b",
-    "phone": "010916516805",
-    "email": "security-beta-16516805@vaultos.local"
+    "customerId": "030afbb3-c90d-42af-a489-4d2bf072b96d",
+    "phone": "010949229228",
+    "email": "security-beta-49229228@vaultos.local"
   },
   "securityMatrix": [
     {
@@ -58,7 +58,7 @@
         {
           "name": "List all (no foreign company_id)",
           "pass": true,
-          "detail": "Alpha=0 Beta=6; no foreign rows in Alpha list"
+          "detail": "Alpha=0 Beta=8; no foreign rows in Alpha list"
         }
       ]
     },

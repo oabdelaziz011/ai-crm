@@ -24,11 +24,13 @@ import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
 import { PlatformManagedProviderStatus } from "@/components/ai-assistant/platform-managed-provider-status";
+import { useKnowledgeFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import {
   useAiAssistantSettings,
   useCreateAiAssistantSettings,
   useUpdateAiAssistantSettings,
 } from "@/hooks/use-ai-assistant-settings";
+import { shouldShowKnowledgeAssistantTab } from "@/lib/platform-ai/knowledge-access";
 import type {
   AiAssistantLanguage,
   AiAssistantProvider,
@@ -192,11 +194,22 @@ export function AiAssistantPage() {
 
   const canView = isSuperAdmin || hasPermission("ai_assistant.view");
   const canEdit = isSuperAdmin || hasPermission("ai_assistant.edit");
+  const { resolvedEnabled: knowledgeFeatureEnabled } = useKnowledgeFeatureEnabled();
+  const showKnowledgeTab = shouldShowKnowledgeAssistantTab({
+    isSuperAdmin,
+    knowledgeFeatureEnabled,
+  });
 
   const [draft, setDraft] = useState<SettingsDraft>(() => buildDefaultDraft(t));
   const [activeTab, setActiveTab] = useState("general");
   const [initialized, setInitialized] = useState(false);
   const createAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!showKnowledgeTab && activeTab === "knowledge") {
+      setActiveTab("general");
+    }
+  }, [activeTab, showKnowledgeTab]);
 
   const isBusy = createSettings.isPending || updateSettings.isPending;
 
@@ -422,11 +435,13 @@ export function AiAssistantPage() {
             <span className="hidden md:inline sm:hidden">{t("aiAssistant.sections.businessRulesShort")}</span>
             <span className="md:hidden">{t("aiAssistant.sections.businessShort")}</span>
           </TabsTrigger>
-          <TabsTrigger value="knowledge" className="gap-2 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("aiAssistant.sections.knowledge")}</span>
-            <span className="sm:hidden">{t("aiAssistant.sections.knowledgeShort")}</span>
-          </TabsTrigger>
+          {showKnowledgeTab ? (
+            <TabsTrigger value="knowledge" className="gap-2 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("aiAssistant.sections.knowledge")}</span>
+              <span className="sm:hidden">{t("aiAssistant.sections.knowledgeShort")}</span>
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="integrations" className="gap-2 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
             <Plug className="h-4 w-4" />
             <span className="hidden sm:inline">{t("aiAssistant.sections.integrations")}</span>
@@ -754,20 +769,21 @@ export function AiAssistantPage() {
           </Card>
         </TabsContent>
 
+        {showKnowledgeTab ? (
         <TabsContent value="knowledge" className="space-y-4">
           <Card>
             <h2 className="mb-4 text-sm font-semibold">{t("aiAssistant.sections.knowledge")}</h2>
             <SettingRow
               label={t("aiAssistant.knowledge.enable")}
               description={t("aiAssistant.knowledge.enableDesc")}
-              disabled={!canEdit}
+              disabled={!canEdit || knowledgeFeatureEnabled === false}
             >
               <Switch
                 checked={draft.knowledge_enabled}
                 onCheckedChange={(checked) =>
                   setDraft((current) => ({ ...current, knowledge_enabled: checked }))
                 }
-                disabled={!canEdit}
+                disabled={!canEdit || knowledgeFeatureEnabled === false}
               />
             </SettingRow>
             <div className="mt-4 rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4">
@@ -775,6 +791,7 @@ export function AiAssistantPage() {
             </div>
           </Card>
         </TabsContent>
+        ) : null}
 
         <TabsContent value="integrations" className="space-y-4">
           <Card>

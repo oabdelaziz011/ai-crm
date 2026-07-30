@@ -3,20 +3,14 @@ import {
   ImmutableVersionError,
   KnowledgeDocumentNotFoundError,
   KnowledgeVersionNotFoundError,
-  PermissionDeniedError,
 } from "../errors.js";
 import type { KnowledgeDocumentRepository, KnowledgeVersionRepository } from "../repositories/knowledge-repositories.js";
 import type { ListKnowledgeVersionsFilter, ServiceContext } from "../types.js";
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.view);
-}
+import {
+  assertCompanyAccess,
+  assertKnowledgeFeatureEnabled,
+  assertPermission,
+} from "../utils/knowledge-guards.js";
 
 export class KnowledgeVersionService {
   constructor(
@@ -28,6 +22,7 @@ export class KnowledgeVersionService {
     ctx: ServiceContext,
     input: { companyId: string; documentId: string; checksum: string; mimeType?: string; metadata?: Record<string, unknown> },
   ) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     assertCompanyAccess(ctx, input.companyId);
 
@@ -56,6 +51,7 @@ export class KnowledgeVersionService {
   }
 
   async publishVersion(ctx: ServiceContext, versionId: string) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.publish);
 
     const version = await this.versionRepository.findById(versionId);
@@ -79,6 +75,7 @@ export class KnowledgeVersionService {
   }
 
   async archiveVersion(ctx: ServiceContext, versionId: string) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const version = await this.versionRepository.findById(versionId);
     if (!version) throw new KnowledgeVersionNotFoundError(versionId);
@@ -87,6 +84,7 @@ export class KnowledgeVersionService {
   }
 
   async rollbackToVersion(ctx: ServiceContext, documentId: string, targetVersionNumber: number) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const document = await this.documentRepository.findById(documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(documentId);
@@ -105,12 +103,14 @@ export class KnowledgeVersionService {
   }
 
   async listVersions(ctx: ServiceContext, filter: ListKnowledgeVersionsFilter) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.view);
     assertCompanyAccess(ctx, filter.companyId);
     return this.versionRepository.list(filter);
   }
 
   async getVersion(ctx: ServiceContext, versionId: string) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.view);
     const version = await this.versionRepository.findById(versionId);
     if (!version) throw new KnowledgeVersionNotFoundError(versionId);

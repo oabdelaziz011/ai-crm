@@ -2,7 +2,6 @@ import { KNOWLEDGE_PERMISSIONS } from "../constants.js";
 import {
   KnowledgeDocumentNotFoundError,
   KnowledgeVersionNotFoundError,
-  PermissionDeniedError,
   ValidationError,
 } from "../errors.js";
 import type {
@@ -19,6 +18,11 @@ import {
   withLifecycleMetadata,
   withPublishingMetadata,
 } from "../utils/document-lifecycle.js";
+import {
+  assertCompanyAccess,
+  assertKnowledgeFeatureEnabled,
+  assertPermission,
+} from "../utils/knowledge-guards.js";
 import type { KnowledgeEmbeddingQueuePort } from "../ports/knowledge-embedding-queue-port.js";
 import type { KnowledgeVersionService } from "./knowledge-version-service.js";
 
@@ -38,16 +42,6 @@ async function enqueueAfterPublish(
   } catch {
     return input.document;
   }
-}
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.view);
 }
 
 export type PublishDocumentResult = {
@@ -76,6 +70,7 @@ export class KnowledgePublishingService {
   ) {}
 
   async publishDocument(ctx: ServiceContext, documentId: string): Promise<PublishDocumentResult> {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.publish);
 
     const document = await this.documentRepository.findById(documentId);
@@ -162,6 +157,7 @@ export class KnowledgePublishingService {
   }
 
   async archiveDocument(ctx: ServiceContext, documentId: string): Promise<ArchiveDocumentResult> {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
 
     const document = await this.documentRepository.findById(documentId);
@@ -195,6 +191,7 @@ export class KnowledgePublishingService {
   }
 
   async restoreDocument(ctx: ServiceContext, documentId: string): Promise<RestoreDocumentResult> {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
 
     const document = await this.documentRepository.findById(documentId);
@@ -232,6 +229,7 @@ export class KnowledgePublishingService {
   }
 
   async deleteDocument(ctx: ServiceContext, documentId: string): Promise<KnowledgeDocumentRecord> {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
 
     const document = await this.documentRepository.findById(documentId);

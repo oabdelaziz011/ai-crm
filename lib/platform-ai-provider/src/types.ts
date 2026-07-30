@@ -1,12 +1,11 @@
-export type PlatformAIUseCase = "chat" | "tool_calling" | "embeddings" | "vision" | "audio";
+import type { PlatformAIFeatureKey } from "./feature-keys.js";
 
-export type PlatformAIFeatureKey =
-  | "ai_chat"
-  | "tool_calling"
-  | "knowledge"
-  | "automation"
-  | "voice"
-  | "embeddings";
+export type { PlatformAIFeatureKey };
+export { PLATFORM_AI_FEATURE_KEY, PLATFORM_AI_FEATURE_KEYS } from "./feature-keys.js";
+export { PLATFORM_AI_CAPABILITY_ID, PLATFORM_AI_CAPABILITY_IDS } from "./capability-ids.js";
+export type { PlatformAICapabilityId } from "./capability-ids.js";
+
+export type PlatformAIUseCase = "chat" | "tool_calling" | "embeddings" | "vision" | "audio";
 
 export type PlatformAIProviderRecord = {
   id: string;

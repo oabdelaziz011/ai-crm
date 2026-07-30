@@ -5,6 +5,8 @@ export type ServiceContext = {
   companyId: string | null;
   isSuperAdmin: boolean;
   hasPermission: (permissionCode: string) => boolean;
+  /** When set, blocks knowledge operations when the Platform AI knowledge flag is off. */
+  isKnowledgeFeatureEnabled?: () => boolean;
 };
 
 export type KnowledgeSourceRecord = {

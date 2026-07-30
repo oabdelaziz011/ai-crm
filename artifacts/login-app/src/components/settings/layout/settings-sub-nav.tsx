@@ -14,7 +14,7 @@ export function SettingsSubNav() {
   const { hasPermission, isSuperAdmin } = useAuthUser();
 
   const items = safeArray([...settingsNavItems()]).filter((item) =>
-    isSettingsRoutePermitted(item.permission, hasPermission, isSuperAdmin),
+    isSettingsRoutePermitted(item, hasPermission, isSuperAdmin),
   );
 
   return (

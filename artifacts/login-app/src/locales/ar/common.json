@@ -353,7 +353,10 @@
         "phoneNumberId": "معرّف رقم الهاتف",
         "businessAccountId": "معرّف حساب الأعمال",
         "webhookVerifyToken": "رمز التحقق من Webhook",
-        "webhookFutureHint": "محجوز للتحقق من Webhook مستقبلاً.",
+        "webhookFutureHint": "يُستخدم للتحقق من اشتراك Meta webhook.",
+        "apiVersion": "إصدار Graph API",
+        "appSecret": "سر التطبيق",
+        "appSecretHint": "يُستخدم للتحقق من توقيع Meta webhook (x-hub-signature-256).",
         "defaultLanguage": "اللغة الافتراضية للقوالب",
         "saved": "تم حفظ إعدادات واتساب",
         "saveFailed": "تعذر حفظ إعدادات واتساب",
@@ -1401,7 +1404,9 @@
       "webChatProviderHint": "يستخدم مزود {{provider}} الداخلي تلقائياً.",
       "configure": "تهيئة",
       "saveConfig": "حفظ الإعدادات",
-      "whatsappConfig": "بيانات WhatsApp Cloud API",
+      "whatsappConfig": "قناة WhatsApp",
+      "whatsappCredentialsManagedInSettings": "بيانات Meta تُدار من الإعدادات →",
+      "phoneNumberIdSyncedHint": "تُزامَن من إعدادات مزود WhatsApp",
       "phoneNumberId": "معرف رقم الهاتف",
       "accessToken": "رمز الوصول",
       "verifyToken": "رمز التحقق من webhook",
@@ -1581,7 +1586,8 @@
         "whatsapp": "واتساب",
         "messenger": "Messenger",
         "instagram": "Instagram",
-        "scheduling": "الجدولة"
+        "scheduling": "الجدولة",
+        "platformAi": "الذكاء الاصطناعي للمنصة"
       },
       "security": {
         "changePassword": "تغيير كلمة المرور",
@@ -1614,6 +1620,9 @@
     "title": "المعرفة",
     "subtitle": "إدارة مصادر المعرفة والمستندات المستوردة وحالة الاستيراد.",
     "noPermission": "ليس لديك صلاحية عرض المعرفة.",
+    "featureDisabled": "قاعدة المعرفة معطلة لهذه الشركة.",
+    "companyRequired": "يلزم سياق شركة لإدارة المعرفة.",
+    "sectionNoPermission": "ليس لديك صلاحية عرض هذا القسم من المعرفة.",
     "nav": {
       "sources": "المصادر",
       "documents": "المستندات",
@@ -4730,6 +4739,116 @@
     "audit": {
       "created": "تم إنشاء إعدادات المساعد الذكي",
       "updated": "تم تحديث إعدادات المساعد الذكي"
+    }
+  },
+  "platformAi": {
+    "admin": {
+      "title": "إدارة الذكاء الاصطناعي للمنصة",
+      "subtitle": "إدارة موفري الذكاء الاصطناعي المشتركين ومفاتيح API المشفرة والنماذج الافتراضية والاستخدام وأعلام الميزات لكل شركة.",
+      "accessDenied": "إدارة الذكاء الاصطناعي للمنصة مقصورة على المسؤولين الفائقين للمنصة.",
+      "sections": {
+        "general": "عام",
+        "companyAiAccess": "وصول الشركة للذكاء الاصطناعي"
+      },
+      "providers": "موفرو الخدمة",
+      "apiKeys": "مفاتيح API",
+      "apiKeysHint": "يتم تشفير المفاتيح عند التخزين. لا يرى المستأجرون أو يديرون بيانات الاعتماد.",
+      "activeKeyHint": "مفتاح نشط ينتهي بـ ••••{{hint}}",
+      "noKeyConfigured": "لم يتم تهيئة مفتاح API للمنصة بعد.",
+      "newApiKey": "مفتاح API جديد",
+      "saveKey": "حفظ المفتاح المشفر",
+      "keySaved": "تم حفظ مفتاح API للمنصة.",
+      "keySaveError": "فشل حفظ مفتاح API للمنصة.",
+      "defaultModels": "النماذج الافتراضية",
+      "chatModel": "نموذج الدردشة / استدعاء الأدوات",
+      "embeddingModel": "نموذج التضمين",
+      "saveModels": "حفظ النماذج الافتراضية",
+      "modelsSaved": "تم تحديث النماذج الافتراضية.",
+      "featureFlags": "أعلام الميزات",
+      "selectCompany": "اختر شركة",
+      "searchCompanies": "البحث في الشركات…",
+      "noMatchingCompanies": "لا توجد شركات مطابقة.",
+      "noCompanies": "لا توجد شركات متاحة.",
+      "selectCompanyHint": "اختر شركة لإدارة ميزات الذكاء الاصطناعي وعرض ملخص الشركة.",
+      "aiChatFeature": "دردشة الذكاء الاصطناعي",
+      "usageDashboard": "لوحة الاستخدام",
+      "noUsageYet": "لم يُسجَّل استخدام للذكاء الاصطناعي للمنصة بعد.",
+      "categories": {
+        "core": "الذكاء الاصطناعي الأساسي",
+        "communication": "الاتصالات",
+        "intelligence": "الذكاء",
+        "advanced": "متقدم"
+      },
+      "companySummary": {
+        "aiStatus": "حالة الذكاء الاصطناعي",
+        "enabledFeatures": "الميزات المفعّلة",
+        "enabledFeaturesValue": "{{enabled}} من {{total}} مفعّلة",
+        "plan": "الخطة",
+        "planUnavailable": "غير متاح",
+        "statusActive": "نشط",
+        "statusInactive": "غير نشط",
+        "liveFeatures": "الميزات المتاحة",
+        "lockedFeatures": "الميزات المقفلة",
+        "comingSoonFeatures": "قريباً",
+        "betaFeatures": "تجريبي",
+        "lastUpdated": "آخر تحديث",
+        "neverUpdated": "لم يُحدَّث بعد"
+      },
+      "capabilityStates": {
+        "enabled": "مفعّل",
+        "disabled": "معطّل",
+        "locked": "مقفل",
+        "comingSoon": "قريباً",
+        "beta": "تجريبي"
+      },
+      "capabilityReasons": {
+        "planRequired": "يتطلب خطة {{plan}} أو أعلى.",
+        "requiresDependencies": "يتطلب تفعيل {{dependencies}} أولاً.",
+        "notYetAvailable": "هذه القدرة غير متاحة بعد على المنصة."
+      },
+      "features": {
+        "comingSoon": "قريباً",
+        "aiChat": {
+          "name": "دردشة الذكاء الاصطناعي",
+          "description": "تفعيل الدردشة الذكية والمساعد العائم لهذه الشركة."
+        },
+        "emailAssistant": {
+          "name": "مساعد البريد الإلكتروني",
+          "description": "صياغة الردود وتصنيف البريد الوارد بالذكاء الاصطناعي."
+        },
+        "whatsappAssistant": {
+          "name": "مساعد واتساب",
+          "description": "إدارة محادثات واتساب وأتمتتها بالذكاء الاصطناعي."
+        },
+        "knowledgeBase": {
+          "name": "قاعدة المعرفة",
+          "description": "ربط إجابات الذكاء الاصطناعي بمستندات الشركة ومصادر المعرفة."
+        },
+        "aiAnalytics": {
+          "name": "تحليلات الذكاء الاصطناعي",
+          "description": "رؤى الاستخدام وتتبع التكلفة وأداء الذكاء الاصطناعي."
+        },
+        "workflowAi": {
+          "name": "ذكاء سير العمل",
+          "description": "خطوات ذكاء اصطناعي داخل سير العمل والعمليات."
+        },
+        "aiAgents": {
+          "name": "وكلاء الذكاء الاصطناعي",
+          "description": "وكلاء مستقلون للمهام متعددة الخطوات والتنسيق."
+        },
+        "voiceAi": {
+          "name": "الذكاء الصوتي",
+          "description": "موظف استقبال صوتي ومعالجة المكالمات وواجهات الكلام."
+        },
+        "visionAi": {
+          "name": "الذكاء البصري",
+          "description": "فهم الصور والمستندات لسير عمل الذكاء الاصطناعي."
+        },
+        "aiAutomation": {
+          "name": "أتمتة الذكاء الاصطناعي",
+          "description": "تشغيل وتنسيق الأتمتة المدعومة بالذكاء الاصطناعي عبر المنصة."
+        }
+      }
     }
   }
 }

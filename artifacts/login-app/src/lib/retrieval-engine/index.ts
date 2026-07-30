@@ -9,6 +9,7 @@ import { useVectorQueryServices } from "@/lib/vector-query";
 import { supabase } from "@/lib/supabase";
 import { createRetrievalObservabilityPort } from "./observability-adapter";
 import { createRetrievalPlatformPorts } from "./platform-adapters";
+import { createPlatformAIProviderServices, PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 
 /**
  * Factory hook for Retrieval Engine domain services.
@@ -20,6 +21,7 @@ export function useRetrievalServices() {
   const { services: observabilityServices } = useAIObservabilityServices();
   const { services: embeddingServices } = useEmbeddingPlatformServices();
   const { services: vectorQueryServices } = useVectorQueryServices();
+  const platformServices = useMemo(() => createPlatformAIProviderServices(supabase), []);
 
   const context = useMemo<ServiceContext>(
     () => ({
@@ -41,8 +43,20 @@ export function useRetrievalServices() {
         vectorQuery: {
           management: vectorQueryServices.management,
         },
+        resolvePlatformConfiguration: async ({ companyId, providerKey }) => {
+          const runtime = await platformServices.platform.resolveRuntimeConfig(
+            companyId,
+            providerKey,
+            PLATFORM_AI_FEATURE_KEY.EMBEDDINGS,
+          );
+          return {
+            apiKey: runtime.apiKey,
+            model: runtime.model,
+            baseUrl: runtime.baseUrl,
+          };
+        },
       }),
-    [embeddingServices.registry, embeddingServices.factory, vectorQueryServices.management],
+    [embeddingServices.registry, embeddingServices.factory, vectorQueryServices.management, platformServices],
   );
 
   const services = useMemo(

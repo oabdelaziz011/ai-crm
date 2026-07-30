@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 import type { RuntimeChatExecutionConfig } from "@/lib/runtime-integration/chat-config";
 import { pickDefaultConnection } from "@/lib/runtime-integration/chat-config";
+import { isKnowledgeRetrievalEligible } from "@/lib/platform-ai/knowledge-access";
 import { assistantProviderToRegistryKey } from "@/lib/ai-provider/provider-key-map";
 import type { AiAssistantProvider } from "@/lib/types";
 import { useAIProviderServices } from "@/lib/ai-provider-layer";
@@ -41,7 +43,10 @@ export function useRuntimeChatConfig(
 
       const missing: RuntimeChatExecutionConfig["missing"] = [];
 
-      const aiChatEnabled = await platformServices.platform.isFeatureEnabled(companyId, "ai_chat");
+      const aiChatEnabled = await platformServices.platform.isFeatureEnabled(
+        companyId,
+        PLATFORM_AI_FEATURE_KEY.AI_CHAT,
+      );
       if (!aiChatEnabled) {
         missing.push("provider");
         return {
@@ -76,7 +81,18 @@ export function useRuntimeChatConfig(
 
       let knowledgeRetrieval: RuntimeChatExecutionConfig["knowledgeRetrieval"] = null;
 
-      if (knowledgeEnabled) {
+      const knowledgeFeatureEnabled = await platformServices.platform.isFeatureEnabled(
+        companyId,
+        PLATFORM_AI_FEATURE_KEY.KNOWLEDGE,
+      );
+
+      if (
+        isKnowledgeRetrievalEligible({
+          aiChatEnabled: true,
+          knowledgeFeatureEnabled,
+          assistantKnowledgeEnabled: knowledgeEnabled,
+        })
+      ) {
         const embeddingConnections = await embeddingServices.registry.listConnections(embeddingContext, {
           companyId,
           isEnabled: true,

@@ -1,3 +1,4 @@
+import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 import { CheckCircle2, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -12,11 +13,11 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
   const { services } = usePlatformAIProviderServices();
 
   const { data: enabled = true, isLoading } = useQuery({
-    queryKey: ["platform-ai-feature", companyId, "ai_chat"],
+    queryKey: ["platform-ai-feature", companyId, PLATFORM_AI_FEATURE_KEY.AI_CHAT],
     enabled: Boolean(companyId),
     queryFn: async () => {
       if (!companyId) return false;
-      return services.platform.isFeatureEnabled(companyId, "ai_chat");
+      return services.platform.isFeatureEnabled(companyId, PLATFORM_AI_FEATURE_KEY.AI_CHAT);
     },
   });
 

@@ -13,21 +13,24 @@ export function canEditSettings(
 }
 
 export function isSettingsRoutePermitted(
-  permission: string | undefined,
+  route: { permission?: string; superAdminOnly?: boolean },
   hasPermission: (code: string) => boolean,
   isSuperAdmin: boolean,
 ): boolean {
+  if (route.superAdminOnly && !isSuperAdmin) {
+    return false;
+  }
   if (!canViewSettings(hasPermission, isSuperAdmin)) {
     return false;
   }
-  if (!permission) {
+  if (!route.permission) {
     return true;
   }
   if (isSuperAdmin) {
     return true;
   }
-  if (permission === "scheduling.view") {
+  if (route.permission === "scheduling.view") {
     return hasPermission("scheduling.view") || hasPermission("settings.view");
   }
-  return hasPermission(permission);
+  return hasPermission(route.permission);
 }

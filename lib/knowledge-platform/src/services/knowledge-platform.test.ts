@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ParagraphChunkingStrategy } from "../ingestion/chunking-strategy.js";
+import { createDefaultChunkStrategyRegistry } from "../ingestion/chunk-strategy-registry.js";
 import { PassthroughDocumentImporter } from "../ingestion/ingestion-contracts.js";
 import { ParserRegistry } from "../ingestion/parser-registry.js";
 import {
   DocumentLockedError,
   DuplicateKnowledgeSourceError,
+  KnowledgeFeatureDisabledError,
   PermissionDeniedError,
 } from "../errors.js";
 import type {
@@ -288,7 +289,7 @@ function createEnvironment() {
       ),
   };
 
-  const chunkingStrategy = new ParagraphChunkingStrategy();
+  const chunkStrategyRegistry = createDefaultChunkStrategyRegistry();
   const sourceService = new KnowledgeSourceService(sourceRepository);
   const documentService = new KnowledgeDocumentService(documentRepository, sourceRepository, versionRepository);
   const versionService = new KnowledgeVersionService(versionRepository, documentRepository);
@@ -304,7 +305,7 @@ function createEnvironment() {
     documentRepository,
     versionRepository,
     sectionRepository,
-    chunkingStrategy,
+    chunkStrategyRegistry,
   );
   const importService = new KnowledgeImportService(
     sourceRepository,
@@ -655,6 +656,19 @@ describe("KnowledgePublishingService", () => {
       () =>
         env.publishingService.publishDocument(createContext({ hasPermission: (code) => code === "knowledge.view" }), document.id),
       PermissionDeniedError,
+    );
+  });
+
+  it("blocks knowledge operations when the platform feature is disabled", async () => {
+    const env = createEnvironment();
+
+    await assert.rejects(
+      () =>
+        env.sources.listSources(
+          createContext({ isKnowledgeFeatureEnabled: () => false }),
+          { companyId: "company-1" },
+        ),
+      KnowledgeFeatureDisabledError,
     );
   });
 });

@@ -56,6 +56,12 @@ export class PermissionDeniedError extends KnowledgeError {
   }
 }
 
+export class KnowledgeFeatureDisabledError extends KnowledgeError {
+  constructor() {
+    super("KNOWLEDGE_FEATURE_DISABLED", "Knowledge Base is disabled for this company.");
+  }
+}
+
 export class ValidationError extends KnowledgeError {
   constructor(message: string) {
     super("VALIDATION_ERROR", message);

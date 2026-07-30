@@ -22,7 +22,6 @@ import {
   Activity,
   Gauge,
   GitBranch,
-  KeyRound,
   Plug,
   Store,
   UserCog,
@@ -31,6 +30,8 @@ import {
   Workflow,
   ScrollText,
 } from "lucide-react";
+import type { PlatformAIFeatureKey } from "@workspace/platform-ai-provider";
+import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 
 export const DASHBOARD_BASE_PATH = "/dashboard";
 
@@ -66,7 +67,6 @@ export type DashboardSectionId =
   | "reports"
   | "settings"
   | "demo-scenarios"
-  | "platform-ai-admin"
   | "platform-ai-operations";
 
 export type DashboardSidebarGroupId = "user-management" | "ai-platform";
@@ -82,6 +82,8 @@ export type DashboardRouteDefinition = {
   permission?: string;
   superAdminOnly?: boolean;
   sidebarGroup?: DashboardSidebarGroupId;
+  /** When set, route and sidebar require the Platform AI feature flag (in addition to RBAC). */
+  platformFeatureKey?: PlatformAIFeatureKey;
   Page: LazyExoticComponent<ComponentType>;
 };
 
@@ -296,18 +298,6 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     Page: lazyNamed(() => import("@/pages/companies"), "CompaniesPage"),
   },
   {
-    id: "platform-ai-admin",
-    path: "/dashboard/platform/ai-settings",
-    nestedPath: "/platform/ai-settings",
-    titleKey: "navigation.platformAiSettings",
-    icon: KeyRound,
-    superAdminOnly: true,
-    Page: lazyNamed(
-      () => import("@/pages/dashboard/platform/platform-ai-admin-page"),
-      "PlatformAIAdminPage",
-    ),
-  },
-  {
     id: "platform-ai-operations",
     path: "/dashboard/platform/ai-operations",
     nestedPath: "/platform/ai-operations",
@@ -411,6 +401,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.knowledge",
     icon: BookOpen,
     permission: "knowledge.view",
+    platformFeatureKey: PLATFORM_AI_FEATURE_KEY.KNOWLEDGE,
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/knowledge"), "KnowledgePage"),
   },
@@ -484,7 +475,6 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "integrations" },
   { type: "route", id: "marketplace" },
   { type: "route", id: "companies" },
-  { type: "route", id: "platform-ai-admin" },
   { type: "route", id: "platform-ai-operations" },
   { type: "route", id: "demo-scenarios" },
   { type: "route", id: "workspace" },
@@ -537,10 +527,15 @@ export function sectionIdFromAbsolutePath(path: string): DashboardSectionId | nu
   return getDashboardRouteByAbsolutePath(path)?.id ?? null;
 }
 
+export type PlatformFeatureEnabledLookup = (
+  featureKey: PlatformAIFeatureKey,
+) => boolean | undefined;
+
 export function isDashboardRoutePermitted(
   route: DashboardRouteDefinition,
   isSuperAdmin: boolean,
   hasPermission: (permission: string) => boolean,
+  platformFeatureEnabled?: PlatformFeatureEnabledLookup,
 ): boolean {
   if (isSuperAdmin) {
     return true;
@@ -548,20 +543,32 @@ export function isDashboardRoutePermitted(
   if (route.superAdminOnly) {
     return false;
   }
-  if (!route.permission) {
-    return true;
+  if (route.permission) {
+    if (route.id === "subscriptions") {
+      if (!hasPermission(route.permission) && !hasPermission("billing.view")) {
+        return false;
+      }
+    } else if (route.id === "workspace") {
+      if (
+        !hasPermission("workspace.view") &&
+        !hasPermission("billing.view_own") &&
+        !hasPermission("subscriptions.view")
+      ) {
+        return false;
+      }
+    } else if (!hasPermission(route.permission)) {
+      return false;
+    }
   }
-  if (route.id === "subscriptions") {
-    return hasPermission(route.permission) || hasPermission("billing.view");
+
+  if (route.platformFeatureKey) {
+    const enabled = platformFeatureEnabled?.(route.platformFeatureKey);
+    if (enabled === false) {
+      return false;
+    }
   }
-  if (route.id === "workspace") {
-    return (
-      hasPermission("workspace.view") ||
-      hasPermission("billing.view_own") ||
-      hasPermission("subscriptions.view")
-    );
-  }
-  return hasPermission(route.permission);
+
+  return true;
 }
 
 export function getDefaultDashboardRoute(

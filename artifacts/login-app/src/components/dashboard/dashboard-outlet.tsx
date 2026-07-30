@@ -44,6 +44,9 @@ export function DashboardOutlet() {
               <Route path="/profiles">
                 <Redirect to="/settings/profile" />
               </Route>
+              <Route path="/platform/ai-settings">
+                <Redirect to="/settings/platform-ai" />
+              </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
                 route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "customers" ? (
                   <Route key={route.id} path={route.nestedPath} nest>

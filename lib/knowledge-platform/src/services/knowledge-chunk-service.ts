@@ -2,7 +2,6 @@ import { KNOWLEDGE_PERMISSIONS } from "../constants.js";
 import {
   KnowledgeDocumentNotFoundError,
   KnowledgeVersionNotFoundError,
-  PermissionDeniedError,
   ValidationError,
 } from "../errors.js";
 import type { ChunkStrategyRegistry, ChunkingStrategyName } from "../ingestion/chunk-strategy-registry.js";
@@ -14,16 +13,11 @@ import type {
   KnowledgeVersionRepository,
 } from "../repositories/knowledge-repositories.js";
 import type { CreateKnowledgeChunkInput, ListKnowledgeChunksFilter, ServiceContext } from "../types.js";
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.view);
-}
+import {
+  assertCompanyAccess,
+  assertKnowledgeFeatureEnabled,
+  assertPermission,
+} from "../utils/knowledge-guards.js";
 
 export type GenerateChunksOptions = {
   strategyName?: ChunkingStrategyName;
@@ -46,6 +40,7 @@ export class KnowledgeChunkService {
     text?: string,
     options?: GenerateChunksOptions,
   ) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.import);
     const document = await this.documentRepository.findById(documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(documentId);
@@ -84,6 +79,7 @@ export class KnowledgeChunkService {
   }
 
   async listChunks(ctx: ServiceContext, filter: ListKnowledgeChunksFilter) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.view);
     assertCompanyAccess(ctx, filter.companyId);
     const chunks = await this.chunkRepository.list(filter);

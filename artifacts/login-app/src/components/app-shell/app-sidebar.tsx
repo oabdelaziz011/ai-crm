@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useSidebarBadgeCounts } from "@/hooks/use-sidebar-badge-counts";
 import { useTranslation } from "react-i18next";
@@ -51,6 +52,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
   const { t, i18n } = useTranslation("common");
   const [location, setLocation] = useLocation();
   const { hasPermission, isSuperAdmin } = useAuthUser();
+  const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
   const isRtl = i18n.dir() === "rtl";
   const {
     sidebarCollapsed,
@@ -126,7 +128,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
 
   const renderNavItem = (sectionId: DashboardSectionId, indented = false) => {
     const route = getDashboardRouteById(sectionId);
-    if (!isDashboardRoutePermitted(route, isSuperAdmin, hasPermission)) return null;
+    if (!isDashboardRoutePermitted(route, isSuperAdmin, hasPermission, platformFeatureEnabled)) return null;
 
     const active = activeSectionId === sectionId;
     const badge = badgeCounts[sectionId];
@@ -192,7 +194,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
     if (!group) return null;
 
     const visibleChildren = group.childIds.filter((childId) =>
-      isDashboardRoutePermitted(getDashboardRouteById(childId), isSuperAdmin, hasPermission),
+      isDashboardRoutePermitted(getDashboardRouteById(childId), isSuperAdmin, hasPermission, platformFeatureEnabled),
     );
     if (visibleChildren.length === 0) return null;
 

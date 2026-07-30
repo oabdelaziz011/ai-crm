@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
+import { useKnowledgeFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { supabase } from "@/lib/supabase";
 import type { ServiceContext } from "@workspace/knowledge-platform";
 
@@ -22,6 +23,7 @@ async function loadKnowledgePlatformModule() {
 export function useKnowledgePlatformServices() {
   const { user, profile, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
+  const { isEnabled: knowledgeFeatureEnabled } = useKnowledgeFeatureEnabled();
   const moduleQuery = useQuery({
     queryKey: knowledgePlatformModuleKey,
     queryFn: loadKnowledgePlatformModule,
@@ -43,8 +45,9 @@ export function useKnowledgePlatformServices() {
       companyId: profile?.company_id ?? null,
       isSuperAdmin,
       hasPermission,
+      isKnowledgeFeatureEnabled: () => knowledgeFeatureEnabled,
     }),
-    [user?.id, profile?.company_id, isSuperAdmin, hasPermission],
+    [user?.id, profile?.company_id, isSuperAdmin, hasPermission, knowledgeFeatureEnabled],
   );
 
   return { services, context, isLoading: moduleQuery.isLoading };

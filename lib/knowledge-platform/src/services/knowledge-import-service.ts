@@ -4,7 +4,6 @@ import { KNOWLEDGE_PERMISSIONS } from "../constants.js";
 import {
   KnowledgeSourceDisabledError,
   KnowledgeSourceNotFoundError,
-  PermissionDeniedError,
 } from "../errors.js";
 import type {
   KnowledgeDocumentRepository,
@@ -16,19 +15,14 @@ import type {
 import type { ImportDocumentInput, KnowledgeSectionRecord, ServiceContext } from "../types.js";
 import { buildImportMetadata, computeChecksum } from "../utils/knowledge-utils.js";
 import { resolveChunkingConfig } from "../utils/chunking-config.js";
+import {
+  assertCompanyAccess,
+  assertKnowledgeFeatureEnabled,
+  assertPermission,
+} from "../utils/knowledge-guards.js";
 import type { KnowledgeChunkService } from "./knowledge-chunk-service.js";
 import type { KnowledgeDocumentService } from "./knowledge-document-service.js";
 import type { KnowledgeSectionService } from "./knowledge-section-service.js";
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.import);
-}
 
 export class KnowledgeParserService {
   constructor(private readonly parser: Parser = new ParserRegistry()) {}
@@ -58,6 +52,7 @@ export class KnowledgeImportService {
   ) {}
 
   async importDocument(ctx: ServiceContext, input: ImportDocumentInput) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.import);
     assertCompanyAccess(ctx, input.companyId);
 

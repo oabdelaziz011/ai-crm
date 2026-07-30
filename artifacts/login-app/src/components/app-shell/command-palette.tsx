@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { useAuthUser } from "@/hooks/use-rbac";
 import {
   DASHBOARD_ROUTE_REGISTRY,
@@ -26,6 +27,7 @@ function CommandPaletteInner() {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { hasPermission, isSuperAdmin } = useAuthUser();
+  const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
   const { commandPaletteOpen, setCommandPaletteOpen, setCopilotOpen } = useAppShell();
 
   const navigate = useCallback(
@@ -40,12 +42,12 @@ function CommandPaletteInner() {
     const items: { id: DashboardSectionId; label: string; path: string }[] = [];
 
     for (const route of DASHBOARD_ROUTE_REGISTRY) {
-      if (!isDashboardRoutePermitted(route, isSuperAdmin, hasPermission)) continue;
+      if (!isDashboardRoutePermitted(route, isSuperAdmin, hasPermission, platformFeatureEnabled)) continue;
       items.push({ id: route.id, label: t(route.titleKey), path: route.nestedPath });
     }
 
     return items.sort((a, b) => a.label.localeCompare(b.label));
-  }, [hasPermission, isSuperAdmin, t]);
+  }, [hasPermission, isSuperAdmin, platformFeatureEnabled, t]);
 
   return (
     <CommandDialog open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen}>

@@ -462,7 +462,10 @@
         "phoneNumberId": "Phone number ID",
         "businessAccountId": "Business account ID",
         "webhookVerifyToken": "Webhook verify token",
-        "webhookFutureHint": "Reserved for future webhook verification.",
+        "webhookFutureHint": "Used for Meta webhook subscription verification.",
+        "apiVersion": "Graph API version",
+        "appSecret": "App secret",
+        "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256).",
         "defaultLanguage": "Default template language",
         "saved": "WhatsApp settings saved",
         "saveFailed": "Could not save WhatsApp settings",
@@ -1550,7 +1553,9 @@
       "webChatProviderHint": "Uses the internal {{provider}} provider automatically.",
       "configure": "Configure",
       "saveConfig": "Save configuration",
-      "whatsappConfig": "WhatsApp Cloud API credentials",
+      "whatsappConfig": "WhatsApp channel",
+      "whatsappCredentialsManagedInSettings": "Meta credentials are managed in Settings →",
+      "phoneNumberIdSyncedHint": "Synced from WhatsApp Provider settings",
       "phoneNumberId": "Phone number ID",
       "accessToken": "Access token",
       "verifyToken": "Webhook verify token",
@@ -1730,7 +1735,8 @@
         "whatsapp": "WhatsApp",
         "messenger": "Messenger",
         "instagram": "Instagram",
-        "scheduling": "Scheduling"
+        "scheduling": "Scheduling",
+        "platformAi": "Platform AI"
       },
       "security": {
         "changePassword": "Change Password",
@@ -1763,6 +1769,9 @@
     "title": "Knowledge",
     "subtitle": "Manage company knowledge sources, imported documents, and import status.",
     "noPermission": "You do not have permission to view knowledge.",
+    "featureDisabled": "Knowledge Base is disabled for this company.",
+    "companyRequired": "A company context is required to manage knowledge.",
+    "sectionNoPermission": "You do not have permission to view this knowledge section.",
     "nav": {
       "sources": "Sources",
       "documents": "Documents",
@@ -5079,6 +5088,10 @@
       "title": "Platform AI Administration",
       "subtitle": "Manage shared AI providers, encrypted API keys, default models, usage, and per-company feature flags.",
       "accessDenied": "Platform AI administration is restricted to platform super administrators.",
+      "sections": {
+        "general": "General",
+        "companyAiAccess": "Company AI Access"
+      },
       "providers": "Providers",
       "apiKeys": "API Keys",
       "apiKeysHint": "Keys are encrypted at rest. Tenants never see or manage credentials.",
@@ -5095,9 +5108,89 @@
       "modelsSaved": "Default models updated.",
       "featureFlags": "Feature flags",
       "selectCompany": "Select company",
+      "searchCompanies": "Search companies…",
+      "noMatchingCompanies": "No matching companies.",
+      "noCompanies": "No companies available.",
+      "selectCompanyHint": "Select a company to manage AI features and view the company summary.",
       "aiChatFeature": "AI Chat",
       "usageDashboard": "Usage dashboard",
-      "noUsageYet": "No platform AI usage recorded yet."
+      "noUsageYet": "No platform AI usage recorded yet.",
+      "categories": {
+        "core": "Core AI",
+        "communication": "Communication",
+        "intelligence": "Intelligence",
+        "advanced": "Advanced"
+      },
+      "companySummary": {
+        "aiStatus": "AI status",
+        "enabledFeatures": "Enabled features",
+        "enabledFeaturesValue": "{{enabled}} of {{total}} live",
+        "plan": "Plan",
+        "planUnavailable": "Not available",
+        "statusActive": "Active",
+        "statusInactive": "Inactive",
+        "liveFeatures": "Live features",
+        "lockedFeatures": "Locked features",
+        "comingSoonFeatures": "Coming soon",
+        "betaFeatures": "Beta",
+        "lastUpdated": "Last updated",
+        "neverUpdated": "Not yet updated"
+      },
+      "capabilityStates": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "locked": "Locked",
+        "comingSoon": "Coming soon",
+        "beta": "Beta"
+      },
+      "capabilityReasons": {
+        "planRequired": "Requires {{plan}} plan or higher.",
+        "requiresDependencies": "Requires {{dependencies}} to be enabled first.",
+        "notYetAvailable": "This capability is not yet available on the platform."
+      },
+      "features": {
+        "comingSoon": "Coming soon",
+        "aiChat": {
+          "name": "AI Chat",
+          "description": "Enable conversational AI chat and the floating assistant for this company."
+        },
+        "emailAssistant": {
+          "name": "Email Assistant",
+          "description": "AI-assisted email drafting, replies, and inbox triage."
+        },
+        "whatsappAssistant": {
+          "name": "WhatsApp Assistant",
+          "description": "AI-powered WhatsApp conversation handling and automation."
+        },
+        "knowledgeBase": {
+          "name": "Knowledge Base",
+          "description": "Ground AI responses in company documents and knowledge sources."
+        },
+        "aiAnalytics": {
+          "name": "AI Analytics",
+          "description": "Usage insights, cost tracking, and AI performance analytics."
+        },
+        "workflowAi": {
+          "name": "Workflow AI",
+          "description": "AI steps inside automation workflows and business processes."
+        },
+        "aiAgents": {
+          "name": "AI Agents",
+          "description": "Autonomous agents for multi-step tasks and orchestration."
+        },
+        "voiceAi": {
+          "name": "Voice AI",
+          "description": "Voice receptionist, call handling, and speech interfaces."
+        },
+        "visionAi": {
+          "name": "Vision AI",
+          "description": "Image and document understanding for AI workflows."
+        },
+        "aiAutomation": {
+          "name": "AI Automation",
+          "description": "Trigger and coordinate AI-driven automations across the platform."
+        }
+      }
     }
   },
   "aiAssistant": {
@@ -5266,7 +5359,9 @@
       "branches": "Branches",
       "rooms": "Rooms",
       "tags": "Tags",
-      "availableSlots": "Available Slots"
+      "availableSlots": "Available Slots",
+      "availableDates": "Available Dates",
+      "recommendedAppointments": "Recommended Appointments"
     },
     "fields": {
       "name": "Name",
@@ -5281,6 +5376,17 @@
       "status": "Status",
       "branchId": "Branch ID",
       "displayTime": "Display time",
+      "displayDate": "Display date",
+      "date": "Date",
+      "displayLabel": "Display label",
+      "resourceName": "Resource",
+      "branchName": "Branch",
+      "score": "Score",
+      "reason": "Reason",
+      "slotKey": "Slot key",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "time": "Preferred time",
       "startAt": "Start",
       "endAt": "End",
       "serviceId": "Service ID",
@@ -5295,7 +5401,9 @@
       "selectedBranch": "Selected Branch",
       "selectedRoom": "Selected Room",
       "selectedTag": "Selected Tag",
-      "selectedSlot": "Selected Slot"
+      "selectedSlot": "Selected Slot",
+      "selectedDate": "Selected Date",
+      "selectedRecommendation": "Selected Recommendation"
     },
     "filters": {
       "status": "Status",
@@ -5303,6 +5411,12 @@
       "resourceType": "Resource type",
       "service": "Service ID",
       "date": "Date",
+      "daysAhead": "Search window (days)",
+      "daysAhead7": "Next 7 days",
+      "daysAhead14": "Next 14 days",
+      "daysAhead30": "Next 30 days",
+      "daysAhead60": "Next 60 days",
+      "daysAhead90": "Next 90 days",
       "active": "Active",
       "inactive": "Inactive"
     },

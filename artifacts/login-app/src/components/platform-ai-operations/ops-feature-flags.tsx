@@ -1,3 +1,4 @@
+import { PLATFORM_AI_OPS_MATRIX_FEATURE_KEYS } from "@workspace/platform-ai-provider";
 import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DashboardCard, DashboardTableSkeleton } from "@/components/dashboard/ui";
@@ -18,7 +19,7 @@ function FlagCell({ enabled }: { enabled: boolean }) {
 
 export function OpsFeatureFlags({ rows, loading }: OpsFeatureFlagsProps) {
   const { t } = useTranslation("common");
-  const flags = ["ai_chat", "tool_calling", "knowledge", "automation", "voice"] as const;
+  const flags = PLATFORM_AI_OPS_MATRIX_FEATURE_KEYS;
 
   return (
     <DashboardCard className="overflow-hidden">
@@ -44,11 +45,11 @@ export function OpsFeatureFlags({ rows, loading }: OpsFeatureFlagsProps) {
               {rows.map((row) => (
                 <tr key={row.company_id} className="border-b border-border/30">
                   <td className="px-4 py-2.5 font-medium">{row.company_name}</td>
-                  <td className="px-2 py-2.5"><FlagCell enabled={row.ai_chat} /></td>
-                  <td className="px-2 py-2.5"><FlagCell enabled={row.tool_calling} /></td>
-                  <td className="px-2 py-2.5"><FlagCell enabled={row.knowledge} /></td>
-                  <td className="px-2 py-2.5"><FlagCell enabled={row.automation} /></td>
-                  <td className="px-2 py-2.5"><FlagCell enabled={row.voice} /></td>
+                  {flags.map((flag) => (
+                    <td key={flag} className="px-2 py-2.5">
+                      <FlagCell enabled={row[flag]} />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

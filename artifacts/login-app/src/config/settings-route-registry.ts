@@ -13,13 +13,16 @@ export type SettingsRouteId =
   | "whatsapp"
   | "messenger"
   | "instagram"
-  | "scheduling";
+  | "scheduling"
+  | "platform-ai";
 
 export type SettingsRouteDefinition = {
   id: SettingsRouteId;
   nestedPath: string;
   titleKey: string;
   permission?: string;
+  /** Restrict to platform super administrators (future: platform_ai.manage). */
+  superAdminOnly?: boolean;
   Page: LazyExoticComponent<ComponentType>;
 };
 
@@ -133,6 +136,16 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/scheduling-page"),
       "SettingsSchedulingPage",
+    ),
+  },
+  {
+    id: "platform-ai",
+    nestedPath: "/platform-ai",
+    titleKey: "dashboard.settings.nav.platformAi",
+    superAdminOnly: true,
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/platform-ai-settings-page"),
+      "SettingsPlatformAiPage",
     ),
   },
 ] as const;

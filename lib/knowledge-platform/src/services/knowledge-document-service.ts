@@ -3,7 +3,6 @@ import {
   DocumentLockedError,
   KnowledgeDocumentNotFoundError,
   KnowledgeSourceNotFoundError,
-  PermissionDeniedError,
   ValidationError,
 } from "../errors.js";
 import type {
@@ -17,16 +16,11 @@ import type {
   ServiceContext,
   UpdateKnowledgeDocumentInput,
 } from "../types.js";
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.view);
-}
+import {
+  assertCompanyAccess,
+  assertKnowledgeFeatureEnabled,
+  assertPermission,
+} from "../utils/knowledge-guards.js";
 
 export class KnowledgeDocumentService {
   constructor(
@@ -36,6 +30,7 @@ export class KnowledgeDocumentService {
   ) {}
 
   async createDocument(ctx: ServiceContext, input: CreateKnowledgeDocumentInput) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     assertCompanyAccess(ctx, input.companyId);
 
@@ -58,6 +53,7 @@ export class KnowledgeDocumentService {
   }
 
   async updateDocument(ctx: ServiceContext, input: UpdateKnowledgeDocumentInput) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const document = await this.documentRepository.findById(input.documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(input.documentId);
@@ -69,6 +65,7 @@ export class KnowledgeDocumentService {
   }
 
   async archiveDocument(ctx: ServiceContext, documentId: string) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const document = await this.documentRepository.findById(documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(documentId);
@@ -79,6 +76,7 @@ export class KnowledgeDocumentService {
   }
 
   async getDocument(ctx: ServiceContext, documentId: string) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.view);
     const document = await this.documentRepository.findById(documentId);
     if (!document) throw new KnowledgeDocumentNotFoundError(documentId);
@@ -87,6 +85,7 @@ export class KnowledgeDocumentService {
   }
 
   async listDocuments(ctx: ServiceContext, filter: ListKnowledgeDocumentsFilter) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.view);
     assertCompanyAccess(ctx, filter.companyId);
     return this.documentRepository.list(filter);

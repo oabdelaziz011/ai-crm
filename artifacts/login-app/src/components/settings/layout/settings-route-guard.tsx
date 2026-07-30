@@ -12,8 +12,12 @@ type Props = {
 export function SettingsRouteGuard({ route, Page }: Props) {
   const { hasPermission, isSuperAdmin } = useAuthUser();
 
-  if (!isSettingsRoutePermitted(route.permission, hasPermission, isSuperAdmin)) {
-    return <AccessDeniedPage requiredPermission={route.permission ?? "settings.view"} />;
+  if (!isSettingsRoutePermitted(route, hasPermission, isSuperAdmin)) {
+    return (
+      <AccessDeniedPage
+        requiredPermission={route.superAdminOnly ? "super_admin" : (route.permission ?? "settings.view")}
+      />
+    );
   }
 
   if (!Page) {

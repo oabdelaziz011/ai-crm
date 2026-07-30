@@ -3,7 +3,6 @@ import {
   KnowledgeDocumentNotFoundError,
   KnowledgeSectionNotFoundError,
   KnowledgeVersionNotFoundError,
-  PermissionDeniedError,
   ValidationError,
 } from "../errors.js";
 import type { KnowledgeSectionRepository, KnowledgeVersionRepository } from "../repositories/knowledge-repositories.js";
@@ -14,16 +13,11 @@ import type {
   ServiceContext,
   UpdateKnowledgeSectionInput,
 } from "../types.js";
-
-function assertPermission(ctx: ServiceContext, permission: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.hasPermission(permission)) throw new PermissionDeniedError(permission);
-}
-
-function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
-  if (ctx.isSuperAdmin) return;
-  if (!ctx.companyId || ctx.companyId !== companyId) throw new PermissionDeniedError(KNOWLEDGE_PERMISSIONS.view);
-}
+import {
+  assertCompanyAccess,
+  assertKnowledgeFeatureEnabled,
+  assertPermission,
+} from "../utils/knowledge-guards.js";
 
 export type SectionTreeNode = KnowledgeSectionRecord & { children: SectionTreeNode[] };
 
@@ -34,6 +28,7 @@ export class KnowledgeSectionService {
   ) {}
 
   async createSection(ctx: ServiceContext, input: CreateKnowledgeSectionInput) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     assertCompanyAccess(ctx, input.companyId);
 
@@ -45,6 +40,7 @@ export class KnowledgeSectionService {
   }
 
   async updateSection(ctx: ServiceContext, input: UpdateKnowledgeSectionInput) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const section = await this.sectionRepository.findById(input.sectionId);
     if (!section) throw new KnowledgeSectionNotFoundError(input.sectionId);
@@ -53,6 +49,7 @@ export class KnowledgeSectionService {
   }
 
   async reorderSection(ctx: ServiceContext, sectionId: string, sectionOrder: number) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const section = await this.sectionRepository.findById(sectionId);
     if (!section) throw new KnowledgeSectionNotFoundError(sectionId);
@@ -61,6 +58,7 @@ export class KnowledgeSectionService {
   }
 
   async archiveSection(ctx: ServiceContext, sectionId: string) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.manage);
     const section = await this.sectionRepository.findById(sectionId);
     if (!section) throw new KnowledgeSectionNotFoundError(sectionId);
@@ -69,6 +67,7 @@ export class KnowledgeSectionService {
   }
 
   async listSections(ctx: ServiceContext, filter: ListKnowledgeSectionsFilter) {
+    assertKnowledgeFeatureEnabled(ctx);
     assertPermission(ctx, KNOWLEDGE_PERMISSIONS.view);
     assertCompanyAccess(ctx, filter.companyId);
     return this.sectionRepository.list(filter);

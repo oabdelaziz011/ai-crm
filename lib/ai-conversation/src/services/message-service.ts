@@ -5,6 +5,7 @@ import {
 } from "../message-cache.js";
 import {
   ConversationNotFoundError,
+  DuplicateExternalMessageError,
   ParticipantNotFoundError,
   PermissionDeniedError,
   ValidationError,
@@ -101,6 +102,37 @@ export class MessageService {
     });
 
     return message;
+  }
+
+  async findByConversationAndExternalMessageId(
+    ctx: ServiceContext,
+    conversationId: string,
+    externalMessageId: string,
+  ): Promise<ConversationMessageRecord | null> {
+    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
+    await this.getReadableConversation(ctx, conversationId);
+    return this.messageRepository.findByConversationAndExternalMessageId(conversationId, externalMessageId);
+  }
+
+  async addIncomingMessageIdempotent(
+    ctx: ServiceContext,
+    input: AddMessageInput,
+  ): Promise<{ message: ConversationMessageRecord; reused: boolean }> {
+    try {
+      return { message: await this.addMessage(ctx, input), reused: false };
+    } catch (error) {
+      if (error instanceof DuplicateExternalMessageError && input.externalMessageId) {
+        const existing = await this.findByConversationAndExternalMessageId(
+          ctx,
+          input.conversationId,
+          input.externalMessageId,
+        );
+        if (existing) {
+          return { message: existing, reused: true };
+        }
+      }
+      throw error;
+    }
   }
 
   async listMessages(

@@ -9,9 +9,25 @@ type EmbeddingRegistry = EmbeddingPlatformServices["registry"];
 type EmbeddingFactory = EmbeddingPlatformServices["factory"];
 type VectorQueryManagement = VectorQueryServices["management"];
 
+export type EmbeddingPlatformConfigurationResolver = (input: {
+  companyId: string;
+  providerKey: string;
+}) => Promise<Record<string, unknown>>;
+
+function connectionNeedsPlatformKey(configuration: Record<string, unknown>): boolean {
+  const apiKey =
+    typeof configuration.apiKey === "string"
+      ? configuration.apiKey
+      : typeof configuration.api_key === "string"
+        ? configuration.api_key
+        : "";
+  return !apiKey.trim();
+}
+
 export function createQueryEmbeddingPort(deps: {
   registry: EmbeddingRegistry;
   factory: EmbeddingFactory;
+  resolvePlatformConfiguration?: EmbeddingPlatformConfigurationResolver;
 }): QueryEmbeddingPort {
   return {
     async generateQueryEmbedding(ctx, input) {
@@ -33,12 +49,28 @@ export function createQueryEmbeddingPort(deps: {
         throw new Error("Embedding model is required.");
       }
 
+      let mergedConfiguration: Record<string, unknown> = {
+        ...connection.configuration,
+        companyId: connection.company_id,
+      };
+
+      if (connectionNeedsPlatformKey(connection.configuration) && deps.resolvePlatformConfiguration) {
+        const platformConfiguration = await deps.resolvePlatformConfiguration({
+          companyId: input.companyId,
+          providerKey,
+        });
+        mergedConfiguration = {
+          ...mergedConfiguration,
+          ...platformConfiguration,
+          ...(typeof platformConfiguration.model === "string" && platformConfiguration.model
+            ? { model: platformConfiguration.model }
+            : {}),
+        };
+      }
+
       const provider = await deps.factory.resolve({
         providerKey,
-        configuration: {
-          ...connection.configuration,
-          companyId: connection.company_id,
-        },
+        configuration: mergedConfiguration,
       });
 
       const result = await provider.generateEmbedding({
@@ -91,9 +123,13 @@ export function createVectorQueryExecutionPort(deps: {
 export function createRetrievalPlatformPorts(deps: {
   embedding: Pick<EmbeddingPlatformServices, "registry" | "factory">;
   vectorQuery: Pick<VectorQueryServices, "management">;
+  resolvePlatformConfiguration?: EmbeddingPlatformConfigurationResolver;
 }) {
   return {
-    queryEmbeddingPort: createQueryEmbeddingPort(deps.embedding),
+    queryEmbeddingPort: createQueryEmbeddingPort({
+      ...deps.embedding,
+      resolvePlatformConfiguration: deps.resolvePlatformConfiguration,
+    }),
     vectorQueryPort: createVectorQueryExecutionPort(deps.vectorQuery),
   };
 }

@@ -1,13 +1,13 @@
 # Knowledge Foundation E2E Verification Report
 
-**Generated:** 2026-07-18T03:46:29.423Z
-**Target:** [REDACTED]
+**Generated:** 2026-07-29T18:21:34.592Z
+**Target:** https://lfbtnskmvibikalsxwsm.supabase.co
 **Company:** DEMO Beta (`d0000010-0001-4001-8001-000000000002`)
 
 ## Summary
 
-- **Passed:** 10
-- **Failed:** 0
+- **Passed:** 9
+- **Failed:** 1
 - **Total:** 10
 
 ## Scenarios
@@ -15,12 +15,12 @@
 ### 1. Single-page PDF import
 
 - **Result:** PASS
-- **Detail:** doc=ff99c600-d0cc-4f27-bdad-55df896c2a76, sections=1, chunks=1, db_sections=1
+- **Detail:** doc=1384b389-f458-426d-824e-2bda8656ab3c, sections=1, chunks=1, db_sections=1
 - **Evidence:**
 ```json
 {
   "document": {
-    "id": "ff99c600-d0cc-4f27-bdad-55df896c2a76",
+    "id": "1384b389-f458-426d-824e-2bda8656ab3c",
     "title": "E2E Single Page PDF",
     "status": "draft",
     "checksum": "6f9e95dec2bd932a51446c53e52cd485fe7dda70d4c91fbd68b0f6d5d62edbdc",
@@ -32,7 +32,7 @@
         "file_name": "e2e-single.pdf",
         "mime_type": "application/pdf",
         "page_count": 1,
-        "imported_at": "2026-07-18T03:46:16.377Z",
+        "imported_at": "2026-07-29T18:21:21.598Z",
         "imported_by": "d0000001-0001-4001-8001-000000000001"
       },
       "parser": "pdf",
@@ -45,13 +45,13 @@
     }
   },
   "version": {
-    "id": "1d8fd24f-e308-409f-b7f3-4d5fb4b01bec",
+    "id": "d19654a3-5a82-4426-839b-778b2bbc5c21",
     "version_number": 1,
     "checksum": "6f9e95dec2bd932a51446c53e52cd485fe7dda70d4c91fbd68b0f6d5d62edbdc"
   },
   "sections": [
     {
-      "id": "0a27168e-9789-49ea-84d2-fbf595dd98ff",
+      "id": "9d2142ff-b411-4f2d-b710-0434f916a73b",
       "title": "Page 1",
       "section_order": 0,
       "metadata": {
@@ -61,7 +61,7 @@
   ],
   "chunks": [
     {
-      "id": "364de217-23eb-4cd7-aede-c1d462ce6562",
+      "id": "37f56335-5fd4-4448-bcfd-92cdaf4674f9",
       "chunk_order": 0,
       "token_count": 15,
       "content_preview": "VaultOS Knowledge PDF Enterprise policy handbook excerpt."
@@ -114,7 +114,7 @@
 ```json
 {
   "document": {
-    "id": "16f6b5a4-16b5-47b6-b3ba-db3f9d01edc2",
+    "id": "c7663257-04d2-48b5-9ec7-f13161b1ed87",
     "mime_type": "text/plain",
     "metadata": {
       "import": {
@@ -123,7 +123,7 @@
         "file_name": null,
         "mime_type": "text/plain",
         "page_count": null,
-        "imported_at": "2026-07-18T03:46:21.955Z",
+        "imported_at": "2026-07-29T18:21:27.564Z",
         "imported_by": "d0000001-0001-4001-8001-000000000001"
       },
       "parser": "plain_text",
@@ -145,8 +145,8 @@
 - **Evidence:**
 ```json
 {
-  "documentsBefore": 4,
-  "documentsAfter": 4,
+  "documentsBefore": 25,
+  "documentsAfter": 25,
   "errorType": "KnowledgeParseError"
 }
 ```
@@ -160,16 +160,16 @@
 {
   "behavior": "Each import creates a new draft document and v1 version. Checksum is stored for integrity tracking but not used for deduplication.",
   "futureRecommendation": "Increment 2+ may add optional dedup by (company_id, source_id, checksum) or explicit upsert semantics.",
-  "firstDocumentId": "94448c7e-614a-4bca-bd13-b9c9afaf5618",
-  "secondDocumentId": "11448a06-9ebc-4fb4-8316-0bb4fb790089",
+  "firstDocumentId": "6805d22d-6ed0-4608-af43-c9815b1bd4ae",
+  "secondDocumentId": "369d2c42-0f8e-4b1f-ae17-f6f5fcdca435",
   "sharedChecksum": "6f9e95dec2bd932a51446c53e52cd485fe7dda70d4c91fbd68b0f6d5d62edbdc"
 }
 ```
 
 ### 6a. Knowledge UI route registry
 
-- **Result:** PASS
-- **Detail:** sources@/dashboard/knowledge, documents@/dashboard/knowledge/documents, import@/dashboard/knowledge/import
+- **Result:** FAIL
+- **Detail:** sources@/dashboard/knowledge, documents@/dashboard/knowledge/documents, import@/dashboard/knowledge/import, retrieval@/dashboard/knowledge/retrieval
 - **Evidence:**
 ```json
 {
@@ -188,6 +188,11 @@
       "id": "import",
       "path": "/dashboard/knowledge/import",
       "permission": "knowledge.import"
+    },
+    {
+      "id": "retrieval",
+      "path": "/dashboard/knowledge/retrieval",
+      "permission": "knowledge.view"
     }
   ]
 }
@@ -213,22 +218,16 @@
     "knowledge.import",
     "knowledge.publish"
   ],
-  "employeePermissionSample": [
-    "billing.view_own",
-    "billing.documents.download_own",
-    "workspace.view",
-    "customers.view",
-    "bookings.view"
-  ],
+  "employeePermissionSample": [],
   "adminPermissionSample": [
+    "customers.view",
+    "customers.create",
+    "customers.edit",
     "ai_chat.view",
-    "billing.view_own",
-    "billing.payment_method.manage_own",
-    "billing.documents.download_own",
-    "billing.manage_own",
-    "users.view",
-    "workspace.view",
-    "ai_chat.use"
+    "ai_chat.use",
+    "ai_assistant.view",
+    "ai_assistant.edit",
+    "ai.conversations.view"
   ],
   "betaAdminRoles": [
     {
@@ -271,4 +270,4 @@
 
 ## Increment 2 Gate
 
-Knowledge Foundation verified end-to-end. Approved to proceed with **Increment 2 — Real Embedding Platform** upon user sign-off.
+Resolve failing scenarios before Increment 2.

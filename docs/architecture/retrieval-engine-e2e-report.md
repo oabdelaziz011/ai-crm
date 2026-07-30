@@ -1,7 +1,7 @@
 # Retrieval Engine E2E Verification Report
 
-**Generated:** 2026-07-19T21:38:01.034Z
-**Target:** [REDACTED]
+**Generated:** 2026-07-29T18:28:28.940Z
+**Target:** https://lfbtnskmvibikalsxwsm.supabase.co
 
 ## Summary
 
@@ -12,7 +12,7 @@
 ### 1. Question → Query Embedding
 
 - **Result:** PASS
-- **Detail:** provider=openai, dimensions=8, latencyMs=1166.28
+- **Detail:** provider=openai, dimensions=8, latencyMs=407.80
 - **Evidence:**
 ```json
 {
@@ -29,23 +29,23 @@
 ### 2. Query Embedding → Semantic Search
 
 - **Result:** PASS
-- **Detail:** results=1, provider=pgvector, latencyMs=3049.24
+- **Detail:** results=1, provider=pgvector, latencyMs=1688.75
 - **Evidence:**
 ```json
 {
-  "executionId": "9a5d9d11-04dd-4448-81f0-07a2d2db73b5"
+  "executionId": "ad00b502-0504-4be6-be93-f616db20284f"
 }
 ```
 
 ### 3. Candidate Retrieval
 
 - **Result:** PASS
-- **Detail:** chunks=1, vectorQueryExecutionId=ae932ff4-5f7a-428f-802b-3e3f80719bc7
+- **Detail:** chunks=1, vectorQueryExecutionId=c1a1c031-3eb8-4dd8-9506-f66aa603bb4b
 - **Evidence:**
 ```json
 {
   "chunkIds": [
-    "f63bbb9d-fb25-4521-91e8-8257b800e535"
+    "340ac19c-0342-4455-85f3-c25035a70bc7"
   ]
 }
 ```
@@ -89,7 +89,7 @@
 ### 7. Context assembly
 
 - **Result:** PASS
-- **Detail:** totalTokens=18, executionId=34904002-11ea-44f0-9166-601f3725f60d, orchestrationMs=8848
+- **Detail:** totalTokens=18, executionId=96721dc7-284d-4c12-9950-2fbe4747aee8, orchestrationMs=4447
 - **Evidence:**
 ```json
 {
@@ -106,9 +106,9 @@
 
 ## Performance Observations
 
-- Query embedding generation: ~1166.28 ms (mock OpenAI)
-- Semantic search execution: ~3049.24 ms
-- Full orchestration pipeline: ~8848.98 ms
+- Query embedding generation: ~407.80 ms (mock OpenAI)
+- Semantic search execution: ~1688.75 ms
+- Full orchestration pipeline: ~4446.59 ms
 
 ## Known Limitations
 

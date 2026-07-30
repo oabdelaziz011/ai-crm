@@ -7,5 +7,9 @@ import type {
 export interface MessageRepository {
   add(input: AddMessageInput): Promise<ConversationMessageRecord>;
   findById(id: string): Promise<ConversationMessageRecord | null>;
+  findByConversationAndExternalMessageId(
+    conversationId: string,
+    externalMessageId: string,
+  ): Promise<ConversationMessageRecord | null>;
   list(filter: ListMessagesFilter): Promise<ConversationMessageRecord[]>;
 }

@@ -1,5 +1,6 @@
 export type ContextPolicy = {
   includeCustomer: boolean;
+  includeCustomer360: boolean;
   includeBooking: boolean;
   includeConversation: boolean;
   includeWorkflowVariables: boolean;
@@ -10,6 +11,7 @@ export type ContextPolicy = {
 
 export const DEFAULT_CONTEXT_POLICY: ContextPolicy = {
   includeCustomer: true,
+  includeCustomer360: true,
   includeBooking: true,
   includeConversation: true,
   includeWorkflowVariables: true,
@@ -34,6 +36,7 @@ export class ContextPolicyRegistry {
   enabledProviders(policy: ContextPolicy): string[] {
     const providers: string[] = ["system", "execution"];
     if (policy.includeCustomer) providers.push("customer");
+    if (policy.includeCustomer360) providers.push("customer360");
     if (policy.includeBooking) providers.push("booking");
     if (policy.includeConversation) providers.push("conversation");
     if (policy.includeWorkflowVariables) providers.push("workflow");
@@ -48,6 +51,7 @@ export function createDefaultContextPolicyRegistry(): ContextPolicyRegistry {
   registry.register("default", DEFAULT_CONTEXT_POLICY);
   registry.register("minimal", {
     includeCustomer: false,
+    includeCustomer360: false,
     includeBooking: false,
     includeConversation: true,
     includeWorkflowVariables: false,

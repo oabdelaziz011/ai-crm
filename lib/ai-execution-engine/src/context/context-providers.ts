@@ -1,4 +1,5 @@
 import { KnowledgeContextProvider } from "./knowledge-context-provider.js";
+import { Customer360ContextProvider } from "@workspace/customer-360";
 
 export type RuntimeContextSource = Record<string, unknown>;
 
@@ -93,5 +94,6 @@ export function createDefaultRuntimeContextProviders(): RuntimeContextProvider[]
     new ExecutionContextProvider(),
     new SystemContextProvider(),
     new KnowledgeContextProvider(),
+    new Customer360ContextProvider(),
   ];
 }

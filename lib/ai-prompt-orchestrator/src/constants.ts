@@ -13,6 +13,7 @@ export type PromptTemplateType = (typeof PROMPT_TEMPLATE_TYPES)[number];
 export const PROMPT_SECTION_KEYS = [
   "system_instructions",
   "assistant_profile",
+  "customer_360",
   "conversation_summary",
   "recent_messages",
   "conversation_state",
@@ -94,6 +95,7 @@ export type PromptOrchestrationMode = (typeof PROMPT_ORCHESTRATION_MODES)[number
 export const SYSTEM_PROMPT_SECTION_KEYS = [
   "system_instructions",
   "assistant_profile",
+  "customer_360",
   "company_policies",
   "language",
   "tone",

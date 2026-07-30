@@ -114,6 +114,43 @@ export function parseSectionOrder(value: unknown): PromptSectionKey[] {
   return value.filter((item): item is PromptSectionKey => typeof item === "string");
 }
 
+export function ensureCustomer360SectionOrder(
+  sectionOrder: PromptSectionKey[],
+  includeCustomer360: boolean,
+): PromptSectionKey[] {
+  if (!includeCustomer360 || sectionOrder.includes("customer_360")) {
+    return sectionOrder;
+  }
+
+  const assistantIndex = sectionOrder.indexOf("assistant_profile");
+  const insertAt = assistantIndex >= 0 ? assistantIndex + 1 : Math.min(1, sectionOrder.length);
+  return [...sectionOrder.slice(0, insertAt), "customer_360", ...sectionOrder.slice(insertAt)];
+}
+
+export function ensureKnowledgeSectionOrder(
+  sectionOrder: PromptSectionKey[],
+  includeKnowledge: boolean,
+): PromptSectionKey[] {
+  if (!includeKnowledge || sectionOrder.includes("knowledge_context")) {
+    return sectionOrder;
+  }
+
+  const customer360Index = sectionOrder.indexOf("customer_360");
+  const toolIndex = sectionOrder.indexOf("intent_decision");
+  const toolResultsIndex = sectionOrder.indexOf("tool_results");
+
+  let insertAt = sectionOrder.length;
+  if (customer360Index >= 0) {
+    insertAt = customer360Index + 1;
+  } else if (toolIndex >= 0) {
+    insertAt = toolIndex;
+  } else if (toolResultsIndex >= 0) {
+    insertAt = toolResultsIndex;
+  }
+
+  return [...sectionOrder.slice(0, insertAt), "knowledge_context", ...sectionOrder.slice(insertAt)];
+}
+
 export function renderSectionsWithVariables(
   renderer: import("../rendering/prompt-renderer.js").PromptRenderer,
   sections: BuilderSectionMap,

@@ -20,6 +20,16 @@ export type RuntimeKnowledgeQueryInput = {
 export type RuntimeKnowledgeQueryResult = {
   contextText: string;
   chunks: Array<{ id: string; content: string; score: number | null; rank: number; tokenCount: number }>;
+  citations?: Array<{
+    citationId: string;
+    chunkId: string;
+    documentId: string;
+    documentTitle: string;
+    sectionTitle: string | null;
+    confidence: number;
+  }>;
+  confidence?: number;
+  searchMode?: "vector" | "keyword" | "hybrid";
   chunkCount: number;
   totalTokens: number;
   executionId: string;
@@ -38,6 +48,9 @@ export type KnowledgeContextSnapshot = {
   chunkCount: number;
   totalTokens: number;
   executionId?: string;
+  confidence?: number;
+  searchMode?: "vector" | "keyword" | "hybrid";
+  citations?: RuntimeKnowledgeQueryResult["citations"];
   chunks?: Array<{ id: string; content: string; score: number | null }>;
 };
 
@@ -47,6 +60,9 @@ export function mapKnowledgeQueryResult(result: RuntimeKnowledgeQueryResult): Kn
     chunkCount: result.chunkCount,
     totalTokens: result.totalTokens,
     executionId: result.executionId,
+    confidence: result.confidence,
+    searchMode: result.searchMode,
+    citations: result.citations,
     chunks: result.chunks.map((chunk) => ({
       id: chunk.id,
       content: chunk.content,

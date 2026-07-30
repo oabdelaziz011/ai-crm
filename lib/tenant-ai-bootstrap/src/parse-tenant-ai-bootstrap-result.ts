@@ -1,4 +1,4 @@
-import type { TenantAiBootstrapResult, TenantAiBootstrapStepResult } from "../types.js";
+import type { TenantAiBootstrapResult, TenantAiBootstrapStepResult } from "./types.js";
 
 export function parseTenantAiBootstrapResult(payload: unknown, companyId: string): TenantAiBootstrapResult {
   const record = (payload ?? {}) as Record<string, unknown>;

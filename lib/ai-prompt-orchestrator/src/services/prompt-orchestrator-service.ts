@@ -1,6 +1,8 @@
 import { DEFAULT_TEMPLATE_KEYS, PROMPT_PERMISSIONS } from "../constants.js";
 import {
   ConversationBuilder,
+  Customer360Builder,
+  KnowledgeContextBuilder,
   mergeBuilderSections,
   PolicyBuilder,
   ResponseContractBuilder,
@@ -22,6 +24,8 @@ import {
   applyTemplateSectionOverrides,
   composeFinalPrompt,
   orderPromptSections,
+  ensureCustomer360SectionOrder,
+  ensureKnowledgeSectionOrder,
   renderSectionsWithVariables,
 } from "../utils/compose-prompt.js";
 import { composeGatewayMessages } from "../utils/compose-gateway-messages.js";
@@ -47,6 +51,8 @@ function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
 export class PromptOrchestratorService {
   private readonly builders = [
     new SystemPromptBuilder(),
+    new Customer360Builder(),
+    new KnowledgeContextBuilder(),
     new ConversationBuilder(),
     new ToolResultBuilder(),
     new PolicyBuilder(),
@@ -98,8 +104,13 @@ export class PromptOrchestratorService {
       );
     }
 
+    const sectionOrder = ensureKnowledgeSectionOrder(
+      ensureCustomer360SectionOrder(template.section_order, Boolean(normalizedContext.customer360)),
+      Boolean(normalizedContext.knowledge?.contextText),
+    );
+
     const orderedSections = orderPromptSections(
-      template.section_order,
+      sectionOrder,
       renderedSections,
       this.responseContractBuilder,
       version,

@@ -83,6 +83,101 @@ export class ConversationBuilder implements PromptBuilder {
   }
 }
 
+export class Customer360Builder implements PromptBuilder {
+  build(context: PromptContextInput): BuilderSectionMap {
+    const sections: BuilderSectionMap = {};
+    const customer360 = context.customer360 as Record<string, unknown> | null | undefined;
+    if (!customer360) return sections;
+
+    const customer = customer360.customer as Record<string, unknown> | undefined;
+    const timeline = Array.isArray(customer360.timeline) ? customer360.timeline : [];
+    const bookings = customer360.bookings as Record<string, unknown> | undefined;
+    const invoices = customer360.invoices as Record<string, unknown> | undefined;
+    const sales = customer360.sales as Record<string, unknown> | undefined;
+
+    const lines = [
+      customer?.name ? `Customer: ${String(customer.name)}` : "",
+      customer?.id ? `Customer ID: ${String(customer.id)}` : "",
+      Array.isArray(customer?.emails) && customer.emails.length
+        ? `Emails: ${customer.emails.map(String).join(", ")}`
+        : "",
+      Array.isArray(customer?.phones) && customer.phones.length
+        ? `Phones: ${customer.phones.map(String).join(", ")}`
+        : "",
+    ];
+
+    const upcoming = Array.isArray(bookings?.upcoming) ? bookings.upcoming : [];
+    if (upcoming.length) {
+      lines.push(`Upcoming bookings: ${upcoming.length}`);
+    }
+
+    const overdue = Array.isArray(invoices?.overdue) ? invoices.overdue : [];
+    const unpaid = Array.isArray(invoices?.unpaid) ? invoices.unpaid : [];
+    if (overdue.length) lines.push(`Overdue invoices: ${overdue.length}`);
+    else if (unpaid.length) lines.push(`Unpaid invoices: ${unpaid.length}`);
+
+    const opportunities = Array.isArray(sales?.opportunities) ? sales.opportunities : [];
+    if (opportunities.length) lines.push(`Open opportunities: ${opportunities.length}`);
+
+    if (timeline.length) {
+      lines.push("Recent timeline:");
+      for (const entry of timeline.slice(0, 8)) {
+        const record = entry as Record<string, unknown>;
+        lines.push(`- [${String(record.category ?? "activity")}] ${String(record.title ?? "Event")}: ${String(record.summary ?? "")}`);
+      }
+    }
+
+    sections.customer_360 = {
+      key: "customer_360",
+      title: "Customer 360 Context",
+      content: joinLines(lines),
+    };
+
+    return sections;
+  }
+}
+
+export class KnowledgeContextBuilder implements PromptBuilder {
+  build(context: PromptContextInput): BuilderSectionMap {
+    const sections: BuilderSectionMap = {};
+    const knowledge = context.knowledge as Record<string, unknown> | null | undefined;
+    if (!knowledge) return sections;
+
+    const contextText = typeof knowledge.contextText === "string" ? knowledge.contextText.trim() : "";
+    if (!contextText) return sections;
+
+    const citations = Array.isArray(knowledge.citations) ? knowledge.citations : [];
+    const confidence = typeof knowledge.confidence === "number" ? knowledge.confidence : null;
+
+    const lines = [
+      "Use the following company knowledge to answer accurately. Cite sources internally when referencing facts.",
+      contextText,
+    ];
+
+    if (confidence != null) {
+      lines.push(`Retrieval confidence: ${confidence.toFixed(3)}`);
+    }
+
+    if (citations.length) {
+      lines.push("Available citations:");
+      for (const cite of citations.slice(0, 8)) {
+        const record = cite as Record<string, unknown>;
+        lines.push(
+          `- ${String(record.citationId ?? "cite")}: ${String(record.documentTitle ?? "Document")}${record.sectionTitle ? ` (${String(record.sectionTitle)})` : ""}`,
+        );
+      }
+    }
+
+    sections.knowledge_context = {
+      key: "knowledge_context",
+      title: "Knowledge Context",
+      content: joinLines(lines),
+    };
+
+    return sections;
+  }
+}
+
 export class ToolResultBuilder implements PromptBuilder {
   build(context: PromptContextInput): BuilderSectionMap {
     const sections: BuilderSectionMap = {};

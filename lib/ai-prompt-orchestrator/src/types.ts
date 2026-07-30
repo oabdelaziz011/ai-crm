@@ -130,6 +130,36 @@ export type PromptAssistantProfile = {
   welcome_message?: string;
 };
 
+export type PromptKnowledgeCitation = {
+  citationId: string;
+  chunkId: string;
+  documentId: string;
+  documentTitle: string;
+  sectionTitle?: string | null;
+  confidence: number;
+};
+
+export type PromptKnowledgeChunk = {
+  id: string;
+  content: string;
+  score: number | null;
+  documentTitle?: string;
+  sectionTitle?: string;
+  confidence?: number;
+  citationId?: string;
+};
+
+export type PromptKnowledgeContext = {
+  contextText: string;
+  chunkCount: number;
+  totalTokens: number;
+  executionId?: string;
+  confidence?: number;
+  searchMode?: "vector" | "keyword" | "hybrid";
+  citations?: PromptKnowledgeCitation[];
+  chunks?: PromptKnowledgeChunk[];
+};
+
 export type PromptContextInput = {
   companyId: string;
   conversationId?: string | null;
@@ -145,6 +175,9 @@ export type PromptContextInput = {
   formattingRules?: string[];
   safetyInstructions?: string[];
   systemInstructions?: string[];
+  customer360?: Record<string, unknown> | null;
+  knowledge?: PromptKnowledgeContext | null;
+  pageContext?: Record<string, unknown>;
 };
 
 export type BuildPromptInput = {

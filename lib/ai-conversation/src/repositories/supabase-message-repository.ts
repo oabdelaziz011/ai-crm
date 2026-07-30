@@ -81,6 +81,19 @@ export function createSupabaseMessageRepository(client: SupabaseClient): Message
       return mapRow(data as Record<string, unknown>);
     },
 
+    async findByConversationAndExternalMessageId(conversationId, externalMessageId) {
+      const { data, error } = await client
+        .from(TABLE)
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .eq("external_message_id", externalMessageId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return null;
+      return mapRow(data as Record<string, unknown>);
+    },
+
     async list(filter: ListMessagesFilter): Promise<ConversationMessageRecord[]> {
       let query = client
         .from(TABLE)

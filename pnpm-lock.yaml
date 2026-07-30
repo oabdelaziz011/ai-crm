@@ -51,8 +51,8 @@ importers:
         specifier: file:../../lib/channel-registry
         version: link:../../lib/channel-registry
       '@workspace/customer-360':
-        specifier: file:../../lib/customer-360
-        version: file:lib/customer-360
+        specifier: workspace:*
+        version: link:../../lib/customer-360
       '@workspace/db':
         specifier: file:../../lib/db
         version: link:../../lib/db
@@ -60,8 +60,8 @@ importers:
         specifier: file:../../lib/embedding-platform
         version: link:../../lib/embedding-platform
       '@workspace/knowledge-runtime':
-        specifier: file:../../lib/knowledge-runtime
-        version: file:lib/knowledge-runtime
+        specifier: workspace:*
+        version: link:../../lib/knowledge-runtime
       '@workspace/platform-ai-provider':
         specifier: file:../../lib/platform-ai-provider
         version: link:../../lib/platform-ai-provider
@@ -147,9 +147,6 @@ importers:
       '@types/express-session':
         specifier: ^1.19.0
         version: 1.19.0
-      '@types/mailparser':
-        specifier: ^3.4.6
-        version: 3.4.6
       '@types/node':
         specifier: ^25.3.3
         version: 25.9.4
@@ -3308,9 +3305,6 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
-  '@types/mailparser@3.4.6':
-    resolution: {integrity: sha512-wVV3cnIKzxTffaPH8iRnddX1zahbYB1ZEoAxyhoBo3TBCBuK6nZ8M8JYO/RhsCuuBVOw/DEN/t/ENbruwlxn6Q==}
-
   '@types/node@25.9.4':
     resolution: {integrity: sha512-dszCsrKb5U7ZsVZBWiHFklTloVl0mSEnWH/iZXfZUlI4rzCUnsvGmgqfuVRHL54ugE7/wRuxEIXRa2iMZ+BG6g==}
 
@@ -3366,9 +3360,6 @@ packages:
 
   '@workspace/customer-360@file:lib/customer-360':
     resolution: {directory: lib/customer-360, type: directory}
-
-  '@workspace/knowledge-runtime@file:lib/knowledge-runtime':
-    resolution: {directory: lib/knowledge-runtime, type: directory}
 
   '@workspace/platform-crypto@file:lib/platform-crypto':
     resolution: {directory: lib/platform-crypto, type: directory}
@@ -4156,10 +4147,6 @@ packages:
   iceberg-js@0.8.1:
     resolution: {integrity: sha512-1dhVQZXhcHje7798IVM+xoo/1ZdVfzOMIc8/rgVSijRK38EDqOJoGula9N/8ZI5RD8QTxNQtK/Gozpr+qUqRRA==}
     engines: {node: '>=20.0.0'}
-
-  iconv-lite@0.6.3:
-    resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
-    engines: {node: '>=0.10.0'}
 
   iconv-lite@0.7.3:
     resolution: {integrity: sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==}
@@ -7210,11 +7197,6 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
-  '@types/mailparser@3.4.6':
-    dependencies:
-      '@types/node': 25.9.4
-      iconv-lite: 0.6.3
-
   '@types/node@25.9.4':
     dependencies:
       undici-types: 7.24.6
@@ -7295,11 +7277,6 @@ snapshots:
       '@supabase/supabase-js': 2.110.2
       '@workspace/automation-platform': link:lib/automation-platform
       '@workspace/platform-cache': link:lib/platform-cache
-
-  '@workspace/knowledge-runtime@file:lib/knowledge-runtime':
-    dependencies:
-      '@workspace/platform-cache': link:lib/platform-cache
-      '@workspace/retrieval-engine': link:lib/retrieval-engine
 
   '@workspace/platform-crypto@file:lib/platform-crypto': {}
 
@@ -8101,10 +8078,6 @@ snapshots:
       typescript: 5.9.3
 
   iceberg-js@0.8.1: {}
-
-  iconv-lite@0.6.3:
-    dependencies:
-      safer-buffer: 2.1.2
 
   iconv-lite@0.7.3:
     dependencies:

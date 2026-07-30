@@ -13,6 +13,7 @@ import type {
 } from "../repositories/automation-repositories.js";
 import type {
   AutomationExecutionResult,
+  AutomationRunRecord,
   ResumeAutomationExecutionInput,
   ServiceContext,
   StartAutomationExecutionInput,

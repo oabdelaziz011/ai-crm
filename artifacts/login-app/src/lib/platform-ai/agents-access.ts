@@ -1,8 +1,6 @@
 export {
   canResumeAgent,
   canStartAgent,
-  isAgentsAccessible,
-  shouldShowAgentsNavigation,
 } from "@workspace/platform-ai-provider";
 import {
   isAgentsAccessible as isAgentsAccessibleBase,

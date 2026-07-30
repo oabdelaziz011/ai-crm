@@ -1,8 +1,5 @@
 export {
   isKnowledgeRetrievalEligible,
-  isKnowledgeRouteAccessible,
-  shouldShowKnowledgeAssistantTab,
-  shouldShowKnowledgeNavigation,
 } from "@workspace/platform-ai-provider";
 import {
   isKnowledgeRouteAccessible as isKnowledgeRouteAccessibleBase,

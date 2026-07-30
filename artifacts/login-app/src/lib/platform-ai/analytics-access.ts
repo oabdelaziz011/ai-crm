@@ -1,8 +1,6 @@
 export {
   canReadAnalytics,
   canReadTraces,
-  isAnalyticsRouteAccessible,
-  shouldShowAnalyticsNavigation,
 } from "@workspace/platform-ai-provider";
 import { isAnalyticsRouteAccessible as isAnalyticsRouteAccessibleBase } from "@workspace/platform-ai-provider";
 

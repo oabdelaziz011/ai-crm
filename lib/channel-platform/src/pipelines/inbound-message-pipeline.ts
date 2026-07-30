@@ -248,7 +248,10 @@ export class InboundMessagePipeline {
           conversationId: session.conversation_id,
           channelSessionId: session.id,
           incomingMessageId: incomingMessageId ?? "",
-          responseContent: WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD.text?.body,
+          responseContent:
+            WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD.type === "text"
+              ? WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD.text.body
+              : undefined,
         };
       }
 

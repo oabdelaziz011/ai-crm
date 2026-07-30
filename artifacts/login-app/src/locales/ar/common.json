@@ -329,6 +329,36 @@
         "queueProcessed": "تمت معالجة {{completed}} رسالة واتساب"
       }
     },
+    "messenger": {
+      "settings": {
+        "title": "إعدادات Messenger",
+        "enabled": "تفعيل قناة Messenger",
+        "pageId": "معرّف الصفحة",
+        "accessToken": "رمز وصول الصفحة",
+        "webhookVerifyToken": "رمز التحقق من Webhook",
+        "webhookVerifyHint": "يُستخدم للتحقق من اشتراك Meta webhook.",
+        "generateVerifyToken": "إنشاء رمز تحقق",
+        "apiVersion": "إصدار Graph API",
+        "appSecret": "سر التطبيق",
+        "appSecretHint": "يُستخدم للتحقق من توقيع Meta webhook (x-hub-signature-256).",
+        "webhookUrl": "رابط Webhook",
+        "webhookUrlGlobal": "Webhook عام (توجيه برمز التحقق)",
+        "webhookUrlChannel": "Webhook للقناة (لكل اتصال)",
+        "webhookUrlChannelMissing": "أنشئ قناة Messenger لعرض رابط webhook الخاص بالقناة.",
+        "openChannels": "فتح إدارة القنوات",
+        "saved": "تم حفظ إعدادات Messenger",
+        "saveFailed": "تعذر حفظ إعدادات Messenger",
+        "healthTitle": "صحة الاتصال",
+        "healthOk": "اتصال Messenger سليم ({{ms}} مللي ثانية)",
+        "healthFailed": "فشل فحص Messenger: {{error}}",
+        "pageVerified": "الصفحة المتصلة: {{name}}",
+        "connectionTest": "تشغيل اختبار الاتصال",
+        "connectionTestSuccess": "نجح اختبار اتصال Messenger",
+        "connectionTestFailed": "فشل اختبار اتصال Messenger",
+        "apiMissing": "عيّن VITE_API_SERVER_URL لتشغيل فحوصات Messenger.",
+        "channelRequired": "أنشئ قناة Messenger قبل تشغيل فحوصات الصحة."
+      }
+    },
     "defaults": {
       "unknown": "غير معروف",
       "service": "خدمة",
@@ -1478,6 +1508,7 @@
         "notifications": "الإشعارات",
         "email": "البريد الإلكتروني",
         "whatsapp": "واتساب",
+        "messenger": "Messenger",
         "scheduling": "الجدولة"
       },
       "security": {

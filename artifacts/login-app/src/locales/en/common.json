@@ -438,6 +438,36 @@
         "queueProcessed": "Processed {{completed}} WhatsApp messages"
       }
     },
+    "messenger": {
+      "settings": {
+        "title": "Messenger Settings",
+        "enabled": "Enable Messenger channel",
+        "pageId": "Page ID",
+        "accessToken": "Page access token",
+        "webhookVerifyToken": "Webhook verify token",
+        "webhookVerifyHint": "Used for Meta webhook subscription verification.",
+        "generateVerifyToken": "Generate verify token",
+        "apiVersion": "Graph API version",
+        "appSecret": "App secret",
+        "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256).",
+        "webhookUrl": "Webhook URL",
+        "webhookUrlGlobal": "Global webhook (verify-token routing)",
+        "webhookUrlChannel": "Channel webhook (per connection)",
+        "webhookUrlChannelMissing": "Create a Messenger channel to show the per-channel webhook URL.",
+        "openChannels": "Open Channel Administration",
+        "saved": "Messenger settings saved",
+        "saveFailed": "Could not save Messenger settings",
+        "healthTitle": "Connection health",
+        "healthOk": "Messenger connection healthy ({{ms}} ms)",
+        "healthFailed": "Messenger check failed: {{error}}",
+        "pageVerified": "Connected page: {{name}}",
+        "connectionTest": "Run connection test",
+        "connectionTestSuccess": "Messenger connection test passed",
+        "connectionTestFailed": "Messenger connection test failed",
+        "apiMissing": "Configure VITE_API_SERVER_URL to run Messenger health checks.",
+        "channelRequired": "Create a Messenger channel before running health checks."
+      }
+    },
     "defaults": {
       "unknown": "Unknown",
       "service": "service",
@@ -1627,6 +1657,7 @@
         "notifications": "Notifications",
         "email": "Email",
         "whatsapp": "WhatsApp",
+        "messenger": "Messenger",
         "scheduling": "Scheduling"
       },
       "security": {

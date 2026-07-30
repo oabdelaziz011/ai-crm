@@ -2,6 +2,10 @@
  * Sprint AI.3 production channel config:
  * - Disable workflow binding (preserve row; routes to Enterprise Runtime)
  * - Terminate stuck automation runs for WhatsApp test user
+ *
+ * WARNING: Disabling the binding forces all inbound WhatsApp messages through AI
+ * Runtime fallback. Re-enable via Channels → Configure → "Enable workflow", or:
+ *   node scripts/restore-channel-workflow-binding.mjs [companyChannelId]
  */
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";

@@ -145,9 +145,11 @@ export class InboundMessagePipeline {
         metadata: normalized.metadata ?? {},
       });
 
-      const resolvedWorkflow = this.workflowResolver
-        ? await this.workflowResolver.resolve(request.companyChannelId)
-        : null;
+      const workflowResolution = this.workflowResolver
+        ? await this.workflowResolver.resolveDetail(request.companyChannelId)
+        : { status: "skipped" as const, reason: "no_binding" as const };
+      const resolvedWorkflow =
+        workflowResolution.status === "resolved" ? workflowResolution.workflow : null;
       const useWorkflow = Boolean(resolvedWorkflow && this.ports.automation);
 
       request.trace?.step(
@@ -156,7 +158,13 @@ export class InboundMessagePipeline {
           ? {
               automationFlowId: resolvedWorkflow.automationFlowId,
             }
-          : { companyChannelId: request.companyChannelId },
+          : {
+              companyChannelId: request.companyChannelId,
+              skipReason: workflowResolution.status === "skipped" ? workflowResolution.reason : "no_binding",
+              ...(workflowResolution.status === "skipped" && workflowResolution.automationFlowId
+                ? { automationFlowId: workflowResolution.automationFlowId }
+                : {}),
+            },
       );
 
       if (request.executeAi && !useWorkflow && !request.aiAssistantId) {

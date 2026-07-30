@@ -69,4 +69,24 @@ describe("ChannelWorkflowResolver", () => {
     const resolved = await resolver.resolve("channel-1");
     assert.equal(resolved, null);
   });
+
+  it("resolveDetail reports binding_disabled when is_enabled is false", async () => {
+    const resolver = createResolver({ binding: createBinding({ is_enabled: false }) });
+    const resolution = await resolver.resolveDetail("channel-1");
+    assert.deepEqual(resolution, {
+      status: "skipped",
+      reason: "binding_disabled",
+      automationFlowId: "flow-1",
+    });
+  });
+
+  it("resolveDetail reports flow_not_executable when validator rejects flow", async () => {
+    const resolver = createResolver({ binding: createBinding(), executable: false });
+    const resolution = await resolver.resolveDetail("channel-1");
+    assert.deepEqual(resolution, {
+      status: "skipped",
+      reason: "flow_not_executable",
+      automationFlowId: "flow-1",
+    });
+  });
 });

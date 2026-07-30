@@ -93,6 +93,11 @@ export function ChannelWorkflowBindingSection({
             {t("dashboard.channels.automationWorkflow.noActiveFlows")}
           </p>
         ) : null}
+        {!workflowEnabled && selectedFlowId ? (
+          <p className="text-xs text-amber-400" data-testid="channel-workflow-disabled-hint">
+            {t("dashboard.channels.automationWorkflow.disabledBindingHint")}
+          </p>
+        ) : null}
       </div>
     </div>
   );

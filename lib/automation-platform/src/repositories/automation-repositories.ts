@@ -48,6 +48,13 @@ export interface AutomationRunRepository {
   create(input: CreateAutomationRunInput): Promise<AutomationRunRecord>;
   findById(id: string): Promise<AutomationRunRecord | null>;
   findBySessionId(sessionId: string): Promise<AutomationRunRecord | null>;
+  findLatestResumableForExternalUser?(input: {
+    companyId: string;
+    channel: AutomationChannel;
+    externalUserId: string;
+    boundFlowId: string;
+    activitySince: string;
+  }): Promise<{ session: ConversationSessionRecord; run: AutomationRunRecord } | null>;
   list(filter: ListAutomationRunsFilter): Promise<AutomationRunRecord[]>;
   updateState(input: UpdateAutomationRunStateInput): Promise<AutomationRunRecord>;
 }
@@ -59,6 +66,8 @@ export interface ConversationSessionRepository {
     companyId: string;
     channel: AutomationChannel;
     externalUserId: string;
+    preferStatus?: ConversationSessionRecord["status"];
+    activitySince?: string;
   }): Promise<ConversationSessionRecord | null>;
   list(filter: ListConversationSessionsFilter): Promise<ConversationSessionRecord[]>;
   updateState(input: UpdateConversationSessionStateInput): Promise<ConversationSessionRecord>;

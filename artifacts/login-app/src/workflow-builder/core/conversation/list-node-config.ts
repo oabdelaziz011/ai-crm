@@ -47,6 +47,29 @@ export function createDefaultListLookupConfig(lookup: LookupEntityId = "services
     filters: {},
   };
 
+  if (lookup === "recommended_appointments") {
+    return {
+      ...base,
+      filters: {
+        service_id: "{{selected_service.id}}",
+        resource_id: "{{selected_resource.id}}",
+        branch_id: "{{selected_branch.id}}",
+        days_ahead: "7",
+      },
+    };
+  }
+
+  if (lookup === "available_dates") {
+    return {
+      ...base,
+      filters: {
+        service_id: "{{selected_service.id}}",
+        resource_id: "{{selected_resource.id}}",
+        days_ahead: "7",
+      },
+    };
+  }
+
   if (lookup === "available_slots") {
     return {
       ...base,

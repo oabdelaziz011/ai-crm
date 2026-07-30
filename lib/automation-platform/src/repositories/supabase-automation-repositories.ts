@@ -322,6 +322,33 @@ export function createSupabaseAutomationRunRepository(client: SupabaseClient): A
       if (error) throw error;
       return data ? mapRun(data) : null;
     },
+    async findLatestResumableForExternalUser(input) {
+      const { data, error } = await client
+        .from(RUNS_TABLE)
+        .select("*, conversation_sessions!automation_runs_session_id_fkey(*)")
+        .eq("company_id", input.companyId)
+        .eq("status", "waiting_input")
+        .eq("flow_id", input.boundFlowId)
+        .eq("conversation_sessions.channel", input.channel)
+        .eq("conversation_sessions.external_user_id", input.externalUserId)
+        .eq("conversation_sessions.status", "waiting_input")
+        .gte("conversation_sessions.last_activity_at", input.activitySince)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return null;
+
+      const sessionRow = (data as { conversation_sessions?: Record<string, unknown> })
+        .conversation_sessions;
+      if (!sessionRow || typeof sessionRow !== "object") return null;
+
+      return {
+        run: mapRun(data as Record<string, unknown>),
+        session: mapSession(sessionRow),
+      };
+    },
     async list(filter) {
       let query = client
         .from(RUNS_TABLE)
@@ -344,8 +371,15 @@ export function createSupabaseAutomationRunRepository(client: SupabaseClient): A
       if (input.errorMessage !== undefined) patch.error_message = input.errorMessage;
       if (input.finishedAt !== undefined) patch.finished_at = input.finishedAt;
       if (input.metadata !== undefined) patch.metadata = input.metadata;
-      const { data, error } = await client.from(RUNS_TABLE).update(patch).eq("id", input.runId).select("*").single();
+      let query = client.from(RUNS_TABLE).update(patch).eq("id", input.runId);
+      if (input.expectedStatus !== undefined) {
+        query = query.eq("status", input.expectedStatus);
+      }
+      const { data, error } = await query.select("*").maybeSingle();
       if (error) throw error;
+      if (!data) {
+        throw new Error(`Automation run ${input.runId} state changed concurrently (expected status ${String(input.expectedStatus)}).`);
+      }
       return mapRun(data);
     },
   };
@@ -380,13 +414,23 @@ export function createSupabaseConversationSessionRepository(client: SupabaseClie
       return data ? mapSession(data) : null;
     },
     async findActiveSession(input) {
-      const { data, error } = await client
+      let query = client
         .from(SESSIONS_TABLE)
         .select("*")
         .eq("company_id", input.companyId)
         .eq("channel", input.channel)
         .eq("external_user_id", input.externalUserId)
-        .in("status", ["active", "running", "waiting_input", "paused"])
+        .in("status", ["active", "running", "waiting_input", "paused"]);
+
+      if (input.activitySince) {
+        query = query.gte("last_activity_at", input.activitySince);
+      }
+
+      if (input.preferStatus) {
+        query = query.eq("status", input.preferStatus);
+      }
+
+      const { data, error } = await query
         .order("last_activity_at", { ascending: false })
         .limit(1)
         .maybeSingle();

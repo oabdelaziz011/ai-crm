@@ -23,6 +23,7 @@ import {
   useLookupOptionsPreview,
   type ListDataSourceMode,
 } from "@/lib/lookups";
+import { readAvailableDatesEmptyMessage } from "@/lib/lookups/available-dates/available-dates-lookup-service";
 import { ListRowsEditor } from "../property-editors";
 
 function readRowsPreview(config: Record<string, unknown>) {
@@ -323,7 +324,11 @@ export function ListOptionsEditor(props: NodePropertyEditorProps) {
             ) : error ? (
               <p className="text-sm text-destructive">{error.message}</p>
             ) : lookupRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("workflowBuilder.logic.lookupEmpty")}</p>
+              <p className="text-sm text-muted-foreground">
+                {lookupConfig?.lookup === "available_dates"
+                  ? readAvailableDatesEmptyMessage(lookupConfig.filters)
+                  : t("workflowBuilder.logic.lookupEmpty")}
+              </p>
             ) : (
               <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
                 {lookupRows.slice(0, 12).map((row) => (

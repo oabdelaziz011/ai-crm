@@ -39,6 +39,12 @@ export function buildCrmAgentReport(
     if (output?.contextText && node.tool === "knowledge_search") {
       referencedDocuments.push(String(output.contextText).slice(0, 200));
     }
+    if (Array.isArray(output?.citations)) {
+      for (const citation of output.citations as Array<{ title?: string; source?: string }>) {
+        if (citation.title) referencedDocuments.push(citation.title);
+        else if (citation.source) referencedDocuments.push(citation.source);
+      }
+    }
     if (Array.isArray(output?.results)) {
       for (const item of output.results as Array<{ title?: string }>) {
         if (item.title) referencedDocuments.push(item.title);

@@ -12,6 +12,8 @@ export type ServiceContext = {
   isAgentsFeatureEnabled?: () => boolean;
 };
 
+export type AgentRetrievalPolicy = "disabled" | "optional" | "required";
+
 export type AgentTaskEdge = {
   from: string;
   to: string;
@@ -44,6 +46,7 @@ export type AgentTaskGraph = {
   nodes: AgentTaskNode[];
   edges: AgentTaskEdge[];
   agentType?: "crm" | "generic";
+  retrievalPolicy?: AgentRetrievalPolicy;
 };
 
 export type AgentMemoryState = {
@@ -95,6 +98,8 @@ export type StartAgentWorkflowInput = {
   agentType?: "crm" | "generic";
   /** Runtime-only: issues pre-start confirmation tokens after planning (UI pre-confirm flow). */
   preStartConfirmationAcknowledged?: boolean;
+  /** Optional recent conversation turns for knowledge context assembly. */
+  conversationHistory?: string[];
   /** Recover an existing unfinished workflow instead of creating a new one. */
   recoverWorkflowId?: string;
 };
@@ -136,10 +141,58 @@ export type RuntimeChatPort = {
       messageText: string;
       pageContext?: Record<string, unknown>;
     },
-  ): Promise<{ responseContent: string }>;
+  ): Promise<{ responseContent: string; citations?: Array<Record<string, unknown>> }>;
+};
+
+export type AgentKnowledgeRetrievalInput = {
+  companyId: string;
+  question: string;
+  searchMode?: "vector" | "keyword" | "hybrid";
+  metadataFilters?: Record<string, unknown>;
+  sourceIds?: string[];
+  documentIds?: string[];
+  policyKey?: string;
+  minimumScore?: number;
+  topK?: number;
+  rerank?: boolean;
+};
+
+export type AgentKnowledgeRetrievalResult = {
+  contextText: string;
+  citations: Array<{
+    citationId: string;
+    sourceId: string;
+    title: string;
+    chunkId: string;
+    confidence: number;
+    score: number | null;
+    excerpt: string;
+    sectionTitle?: string | null;
+  }>;
+  chunks: Array<{
+    id: string;
+    content: string;
+    title: string;
+    sourceId: string;
+    chunkId: string;
+    confidence: number;
+    score: number | null;
+    tokenCount: number;
+  }>;
+  confidence: number;
+  chunkCount: number;
+  totalTokens: number;
+  searchMode: "vector" | "keyword" | "hybrid";
+  executionId: string | null;
+  vectorQueryExecutionId: string | null;
+};
+
+export type KnowledgeRetrievalPort = {
+  retrieve(ctx: ServiceContext, input: AgentKnowledgeRetrievalInput): Promise<AgentKnowledgeRetrievalResult>;
 };
 
 export type AgentRuntimePorts = {
   toolRouter: ToolRoutePort;
   runtimeChat?: RuntimeChatPort;
+  knowledgeRetrieval?: KnowledgeRetrievalPort;
 };

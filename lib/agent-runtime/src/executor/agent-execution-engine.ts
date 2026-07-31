@@ -33,7 +33,20 @@ import {
   DEFAULT_EXECUTION_LEASE_TTL_MS,
   createRuntimeLeaseHolder,
 } from "../checkpoint/workflow-execution-lease.js";
-import { AgentCheckpointRecoveryError, AgentExecutionLeaseError } from "../errors.js";
+import {
+  AgentCheckpointRecoveryError,
+  AgentConfirmationError,
+  AgentCrmToolPermissionDeniedError,
+  AgentExecutionLeaseError,
+  AgentKnowledgeRetrievalError,
+} from "../errors.js";
+import { AgentKnowledgeRetrievalService } from "../knowledge/knowledge-retrieval-service.js";
+import { assertKnowledgeRetrievalPermissions } from "../knowledge/knowledge-retrieval-permissions.js";
+import {
+  isKnowledgeTool,
+  normalizeKnowledgeToolKey,
+  resolveRetrievalPolicy,
+} from "../knowledge/retrieval-policy.js";
 import { createInitialMemory } from "../memory/agent-memory.js";
 import {
   assertAgentsExecuteAccess,
@@ -41,7 +54,6 @@ import {
   assertAgentsReadAccess,
 } from "../utils/agents-guards.js";
 import { findMissingAlignedPermission } from "../utils/crm-tool-permissions.js";
-import { AgentConfirmationError, AgentCrmToolPermissionDeniedError } from "../errors.js";
 import { evaluateConfirmationGate, findPendingConfirmationTask, issuePreStartConfirmationTokens } from "../confirmation/confirmation-gate.js";
 import { invalidateAllConfirmationTokens } from "../confirmation/confirmation-token.js";
 import type { AgentConfirmationRequest, ResumeAgentWorkflowInput } from "../confirmation/confirmation-types.js";
@@ -61,6 +73,7 @@ export class AgentExecutionEngine {
   private readonly planner = new AgentPlanner();
   private readonly verification = new VerificationService();
   private readonly events = new AgentEventPublisher();
+  private readonly knowledgeService = new AgentKnowledgeRetrievalService();
   private readonly runtimeInstanceId = crypto.randomUUID();
 
   constructor(
@@ -147,8 +160,18 @@ export class AgentExecutionEngine {
       });
     }
 
+    memory = await this.applyKnowledgeRetrieval(ctx, {
+      companyId: input.companyId,
+      goal: input.goal,
+      taskGraph,
+      memory,
+      pageContext: input.pageContext,
+      conversationHistory: input.conversationHistory,
+    });
+
     await this.publish(ctx, input.companyId, workflowId, "PlanningCompleted", null, {
       taskCount: taskGraph.nodes.length,
+      retrievalPolicy: taskGraph.retrievalPolicy ?? null,
     });
 
     const workflow = await this.repo.createWorkflow({
@@ -527,7 +550,36 @@ export class AgentExecutionEngine {
       let output: Record<string, unknown> | null = null;
       let taskMemory = workflow.memory;
 
-      if (task.tool && workflow.conversation_id) {
+      if (task.tool && isKnowledgeTool(task.tool) && this.ports.knowledgeRetrieval) {
+        await this.assertToolPermissions(ctx, normalizeKnowledgeToolKey(task.tool));
+
+        const pageContext = workflow.memory.executionState?.pageContext as Record<string, unknown> | undefined;
+        const metadataFilters =
+          (task.toolInput?.metadataFilters as Record<string, unknown> | undefined) ??
+          (pageContext?.knowledgeMetadataFilters as Record<string, unknown> | undefined);
+
+        output = await this.knowledgeService.retrieveForTask(
+          ctx,
+          {
+            companyId: workflow.company_id,
+            question: String(task.toolInput?.query ?? workflow.goal),
+            searchMode: (task.toolInput?.searchMode as "vector" | "keyword" | "hybrid" | undefined) ?? "hybrid",
+            metadataFilters,
+            sourceIds: Array.isArray(task.toolInput?.sourceIds)
+              ? (task.toolInput?.sourceIds as string[])
+              : undefined,
+            documentIds: Array.isArray(task.toolInput?.documentIds)
+              ? (task.toolInput?.documentIds as string[])
+              : undefined,
+            rerank: true,
+          },
+          this.ports.knowledgeRetrieval,
+          {
+            resolveRequiredPermissions: (toolKey) =>
+              this.ports.toolRouter.getRequiredPermissions?.(toolKey) ?? Promise.resolve(null),
+          },
+        );
+      } else if (task.tool && workflow.conversation_id) {
         await this.assertToolPermissions(ctx, task.tool);
 
         const gate = evaluateConfirmationGate({
@@ -585,13 +637,20 @@ export class AgentExecutionEngine {
         }
         output = routeResult.output;
       } else if (this.ports.runtimeChat && workflow.conversation_id) {
+        const knowledgePageContext = this.buildKnowledgePageContext(workflow.memory, workflow.id, taskId);
         const response = await this.ports.runtimeChat.execute(ctx, {
           companyId: workflow.company_id,
           conversationId: workflow.conversation_id,
           messageText: `[Agent Task: ${task.title}] ${task.description}\n\nGoal: ${workflow.goal}`,
-          pageContext: { agentTaskId: taskId, workflowId: workflow.id },
+          pageContext: {
+            ...knowledgePageContext,
+            ...(workflow.memory.executionState?.pageContext as Record<string, unknown> | undefined),
+          },
         });
-        output = { response: response.responseContent };
+        output = {
+          response: response.responseContent,
+          citations: response.citations ?? knowledgePageContext.knowledge?.citations,
+        };
       } else {
         output = { acknowledged: true, task: task.title };
       }
@@ -767,6 +826,80 @@ export class AgentExecutionEngine {
     const workflow = await this.repo.getWorkflow(workflowId);
     if (!workflow) return;
     await this.saveCheckpoint(workflow, graph, memory, currentTaskId);
+  }
+
+  private async applyKnowledgeRetrieval(
+    ctx: ServiceContext,
+    input: {
+      companyId: string;
+      goal: string;
+      taskGraph: AgentTaskGraph;
+      memory: AgentMemoryState;
+      pageContext?: Record<string, unknown>;
+      conversationHistory?: string[];
+    },
+  ): Promise<AgentMemoryState> {
+    const policy = resolveRetrievalPolicy(input.taskGraph);
+    if (policy === "disabled") return input.memory;
+
+    const resolveRequiredPermissions = (toolKey: string) =>
+      this.ports.toolRouter.getRequiredPermissions?.(toolKey) ?? Promise.resolve(null);
+
+    await assertKnowledgeRetrievalPermissions(ctx, { resolveRequiredPermissions });
+
+    if (!this.ports.knowledgeRetrieval) {
+      if (policy === "required") {
+        throw new AgentKnowledgeRetrievalError(
+          "KNOWLEDGE_RETRIEVAL_UNAVAILABLE",
+          "Required knowledge retrieval is unavailable because the retrieval port is not configured.",
+        );
+      }
+      return input.memory;
+    }
+
+    const { status, executionContext } = await this.knowledgeService.retrieveForWorkflow(
+      ctx,
+      {
+        companyId: input.companyId,
+        goal: input.goal,
+        taskGraph: input.taskGraph,
+        pageContext: input.pageContext,
+        conversationHistory: input.conversationHistory,
+        metadataFilters: input.pageContext?.knowledgeMetadataFilters as Record<string, unknown> | undefined,
+        sourceIds: Array.isArray(input.pageContext?.knowledgeSourceIds)
+          ? (input.pageContext?.knowledgeSourceIds as string[])
+          : undefined,
+        documentIds: Array.isArray(input.pageContext?.knowledgeDocumentIds)
+          ? (input.pageContext?.knowledgeDocumentIds as string[])
+          : undefined,
+      },
+      this.ports.knowledgeRetrieval,
+      { resolveRequiredPermissions },
+    );
+
+    return mergeExecutionState(input.memory, {
+      knowledgeContext: executionContext.contextText,
+      knowledgeCitations: executionContext.citations,
+      knowledgeRetrievalStatus: status.status,
+      knowledgeConfidence: executionContext.citations[0]?.confidence ?? 0,
+      knowledgeTruncated: executionContext.truncated,
+    });
+  }
+
+  private buildKnowledgePageContext(memory: AgentMemoryState, workflowId: string, taskId: string) {
+    const citations = memory.executionState?.knowledgeCitations;
+    const contextText = memory.executionState?.knowledgeContext;
+    return {
+      agentTaskId: taskId,
+      workflowId,
+      knowledge:
+        typeof contextText === "string" && contextText.length > 0
+          ? {
+              contextText,
+              citations,
+            }
+          : undefined,
+    };
   }
 
   private async saveCheckpoint(

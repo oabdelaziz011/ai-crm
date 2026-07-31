@@ -86,6 +86,7 @@ npx supabase db push --linked
 
 - 6.3.1 Execution concurrency & lifecycle
 - ~~6.3.2 Checkpoint recovery~~ **Done** — checkpoint engine, recover API, idempotent resume, confirmation state restore, execution lease, monotonic checkpoint guard
+- ~~6.4 Knowledge retrieval integration~~ **Done** — retrieval port, context builder, planner policies, citation propagation
 - ~~6.3.3 Mid-flight CRM confirmation~~ **Done** — policy engine, pre-router gate, short-lived tokens, mid-flight UI
 - 6.3.5 UI lifecycle completeness (cancel/delete/history)
 - 6.3.6 Feature flag & ops hardening

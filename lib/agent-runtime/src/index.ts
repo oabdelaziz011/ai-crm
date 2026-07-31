@@ -12,6 +12,20 @@ export * from "./checkpoint/checkpoint-service.js";
 export * from "./executor/agent-execution-engine.js";
 export * from "./utils/crm-tool-permissions.js";
 export * from "./confirmation/index.js";
+export {
+  AgentKnowledgeContextBuilder,
+  buildKnowledgeToolOutput,
+  mapCitationsForToolOutput,
+} from "./knowledge/agent-knowledge-context-builder.js";
+export { AgentKnowledgeRetrievalService, normalizePortRetrievalResult } from "./knowledge/knowledge-retrieval-service.js";
+export {
+  inferRetrievalQuery,
+  isKnowledgeTool,
+  normalizeKnowledgeToolKey,
+  resolveRetrievalPolicy,
+} from "./knowledge/retrieval-policy.js";
+export type { AgentKnowledgeRetrievalStatus, AgentKnowledgeExecutionContext } from "./knowledge/retrieval-types.js";
+export { DEFAULT_AGENT_KNOWLEDGE_TOKEN_BUDGET } from "./knowledge/retrieval-types.js";
 export { createSupabaseAgentWorkflowRepository } from "./checkpoint/checkpoint-service.js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";

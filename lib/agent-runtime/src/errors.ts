@@ -55,6 +55,15 @@ export class AgentExecutionLeaseError extends AgentRuntimeError {
   }
 }
 
+export class AgentKnowledgeRetrievalError extends AgentRuntimeError {
+  readonly retrievalCode: string;
+
+  constructor(code: string, message: string) {
+    super(code, message);
+    this.retrievalCode = code;
+  }
+}
+
 export class AgentConfirmationError extends AgentRuntimeError {
   readonly confirmationCode: string;
 

@@ -84,13 +84,13 @@ const PLAN_TEMPLATES: PlanTemplate[] = [
   },
   {
     match: /knowledge|document|search/i,
-    build: ({ workflowId, goal }) =>
-      buildSequentialGraph(workflowId, goal, [
+    build: ({ workflowId, goal }) => ({
+      ...buildSequentialGraph(workflowId, goal, [
         createTaskNode({
           id: id("task", 1),
           title: "Search knowledge base",
-          description: "Run knowledge_lookup with user goal",
-          tool: "knowledge_lookup",
+          description: "Run knowledge_search with user goal",
+          tool: "knowledge_search",
           toolInput: { query: goal },
           dependencies: [],
           verificationRule: "knowledge_has_results",
@@ -105,6 +105,8 @@ const PLAN_TEMPLATES: PlanTemplate[] = [
           estimatedDurationMs: 1500,
         }),
       ]),
+      retrievalPolicy: "required" as const,
+    }),
   },
   {
     match: /invoice|unpaid|revenue/i,
@@ -153,7 +155,7 @@ export function buildParallelExampleGraph(workflowId: string, goal: string): Age
       id: "C",
       title: "Knowledge search",
       description: "Parallel branch C",
-      tool: "knowledge_lookup",
+      tool: "knowledge_search",
       toolInput: { query: goal },
       dependencies: ["A"],
       parallelGroup: "parallel_1",

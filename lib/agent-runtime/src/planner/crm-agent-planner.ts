@@ -287,8 +287,8 @@ const CRM_PLAN_TEMPLATES: CrmPlanTemplate[] = [
   },
   {
     match: /knowledge|onboarding|policy|faq|procedure|manual|documentation/i,
-    build: ({ workflowId, goal }) =>
-      buildSequentialGraph(workflowId, goal, [
+    build: ({ workflowId, goal }) => ({
+      ...buildSequentialGraph(workflowId, goal, [
         createTaskNode({
           id: id("crm", 1),
           title: "Search knowledge base",
@@ -301,6 +301,9 @@ const CRM_PLAN_TEMPLATES: CrmPlanTemplate[] = [
         }),
         reportNode(id("crm", 2), "Summarize knowledge findings"),
       ]),
+      agentType: "crm" as const,
+      retrievalPolicy: "required" as const,
+    }),
   },
   {
     match: /search\s+customer|find\s+customer|lookup\s+customer/i,

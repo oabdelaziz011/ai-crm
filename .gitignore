@@ -58,3 +58,19 @@ artifacts/inbox-browser-session.json
 # Replit
 .cache/
 .local/
+
+# Local performance profiling output
+artifacts/performance-profile/
+
+# UX verification screenshots (generated during manual QA)
+artifacts/login-app/docs/ux-*/
+
+# Generated architecture traces, probes, and reports
+docs/architecture/*-trace.json
+docs/architecture/*-probe.json
+docs/architecture/*-report.json
+docs/architecture/rc2-*.json
+docs/architecture/rc3-*.json
+docs/architecture/sprint-ai3-*.json
+docs/architecture/book-workflow-*.json
+docs/architecture/production-booking-flow-e2e-report.json

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/platform-crypto": "file:../platform-crypto",
+    "@workspace/platform-crypto": "workspace:*",
     "@workspace/vector-store": "workspace:*"
   },
   "devDependencies": {

@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/platform-crypto": "file:../platform-crypto"
+    "@workspace/platform-crypto": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
-    "@workspace/ai-workflow-platform": "file:../ai-workflow-platform",
+    "@workspace/ai-workflow-platform": "workspace:*",
     "tsx": "^4.21.0"
   }
 }

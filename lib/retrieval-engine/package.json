@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/embedding-platform": "file:../embedding-platform",
-    "@workspace/platform-crypto": "file:../platform-crypto",
-    "@workspace/vector-query": "file:../vector-query"
+    "@workspace/embedding-platform": "workspace:*",
+    "@workspace/platform-crypto": "workspace:*",
+    "@workspace/vector-query": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

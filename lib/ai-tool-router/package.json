@@ -15,7 +15,7 @@
     "@workspace/ai-conversation": "workspace:*",
     "@workspace/ai-execution-engine": "workspace:*",
     "@workspace/automation-platform": "workspace:*",
-    "@workspace/platform-crypto": "file:../platform-crypto",
+    "@workspace/platform-crypto": "workspace:*",
     "@workspace/runtime-integration": "workspace:*",
     "@workspace/scheduling-engine": "workspace:*"
   },

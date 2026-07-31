@@ -9,9 +9,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/embedding-platform": "file:../../lib/embedding-platform",
-    "@workspace/platform-observability": "file:../../lib/platform-observability",
-    "@workspace/vector-store": "file:../../lib/vector-store"
+    "@workspace/embedding-platform": "workspace:*",
+    "@workspace/platform-observability": "workspace:*",
+    "@workspace/vector-store": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

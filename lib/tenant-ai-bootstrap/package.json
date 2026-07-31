@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/ai-provider-layer": "file:../ai-provider-layer",
-    "@workspace/embedding-platform": "file:../embedding-platform",
-    "@workspace/vector-store": "file:../vector-store"
+    "@workspace/ai-provider-layer": "workspace:*",
+    "@workspace/embedding-platform": "workspace:*",
+    "@workspace/vector-store": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

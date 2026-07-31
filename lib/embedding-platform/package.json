@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/knowledge-platform": "file:../knowledge-platform",
-    "@workspace/platform-crypto": "file:../platform-crypto",
-    "@workspace/vector-store": "file:../vector-store"
+    "@workspace/knowledge-platform": "workspace:*",
+    "@workspace/platform-crypto": "workspace:*",
+    "@workspace/vector-store": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

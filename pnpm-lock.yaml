@@ -650,13 +650,13 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/embedding-platform':
-        specifier: file:../../lib/embedding-platform
+        specifier: workspace:*
         version: link:../../lib/embedding-platform
       '@workspace/platform-observability':
-        specifier: file:../../lib/platform-observability
+        specifier: workspace:*
         version: link:../../lib/platform-observability
       '@workspace/vector-store':
-        specifier: file:../../lib/vector-store
+        specifier: workspace:*
         version: link:../../lib/vector-store
     devDependencies:
       '@types/node':
@@ -742,7 +742,7 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
     devDependencies:
       '@types/node':
@@ -774,7 +774,7 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
     devDependencies:
       '@types/node':
@@ -799,7 +799,7 @@ importers:
         specifier: workspace:*
         version: link:../automation-platform
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
       '@workspace/runtime-integration':
         specifier: workspace:*
@@ -848,14 +848,14 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
         version: 25.9.4
       '@workspace/ai-workflow-platform':
-        specifier: file:../ai-workflow-platform
+        specifier: workspace:*
         version: link:../ai-workflow-platform
       tsx:
         specifier: ^4.21.0
@@ -946,13 +946,13 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/knowledge-platform':
-        specifier: file:../knowledge-platform
+        specifier: workspace:*
         version: link:../knowledge-platform
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
       '@workspace/vector-store':
-        specifier: file:../vector-store
+        specifier: workspace:*
         version: link:../vector-store
     devDependencies:
       '@types/node':
@@ -1041,14 +1041,14 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/embedding-platform':
-        specifier: file:../embedding-platform
+        specifier: workspace:*
         version: link:../embedding-platform
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
       '@workspace/vector-query':
-        specifier: file:../vector-query
-        version: file:lib/vector-query
+        specifier: workspace:*
+        version: link:../vector-query
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1116,13 +1116,13 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/ai-provider-layer':
-        specifier: file:../ai-provider-layer
+        specifier: workspace:*
         version: link:../ai-provider-layer
       '@workspace/embedding-platform':
-        specifier: file:../embedding-platform
+        specifier: workspace:*
         version: link:../embedding-platform
       '@workspace/vector-store':
-        specifier: file:../vector-store
+        specifier: workspace:*
         version: link:../vector-store
     devDependencies:
       '@types/node':
@@ -1138,7 +1138,7 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
       '@workspace/vector-store':
         specifier: workspace:*
@@ -1157,7 +1157,7 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
     devDependencies:
       '@types/node':
@@ -3354,12 +3354,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
-
-  '@workspace/platform-crypto@file:lib/platform-crypto':
-    resolution: {directory: lib/platform-crypto, type: directory}
-
-  '@workspace/vector-query@file:lib/vector-query':
-    resolution: {directory: lib/vector-query, type: directory}
 
   '@xyflow/react@12.11.2':
     resolution: {integrity: sha512-eLAlDWJfWnQEhJwGMjlWdAXO9eYllKpliUmPQlAmOLxz6mExXuzMVDUKLMquixgkrtmMFFtug3jGKmYYld12cA==}
@@ -7251,14 +7245,6 @@ snapshots:
       vite: 7.3.6(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.0)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
-
-  '@workspace/platform-crypto@file:lib/platform-crypto': {}
-
-  '@workspace/vector-query@file:lib/vector-query':
-    dependencies:
-      '@supabase/supabase-js': 2.110.2
-      '@workspace/platform-crypto': file:lib/platform-crypto
-      '@workspace/vector-store': link:lib/vector-store
 
   '@xyflow/react@12.11.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:

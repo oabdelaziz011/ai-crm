@@ -1943,7 +1943,9 @@
     "featureDisabled": "AI Analytics is disabled for this company."
   },
   "agents": {
-    "featureDisabled": "AI Agents is disabled for this company."
+    "featureDisabled": "AI Agents is disabled for this company.",
+    "permissionDenied": "You don't have permission to view AI Agents.",
+    "executeDenied": "You don't have permission to start or resume AI agent workflows."
   },
   "automation": {
     "featureDisabled": "Workflow AI is disabled for this company.",

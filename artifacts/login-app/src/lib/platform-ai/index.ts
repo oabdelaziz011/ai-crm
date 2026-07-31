@@ -71,11 +71,16 @@ export {
 } from "./analytics-access";
 
 export {
+  canExecuteAgents,
+  canExecuteAgentWorkflow,
   canResumeAgent,
   canStartAgent,
-  canExecuteRuntime,
+  canViewAgents,
   canResumeAgentWorkflow,
   canStartAgentWorkflow,
+  canViewAgentHistory,
+  hasAgentsExecutePermission,
+  hasAgentsViewPermission,
   isAgentsAccessible,
   shouldShowAgentsNavigation,
 } from "./agents-access";

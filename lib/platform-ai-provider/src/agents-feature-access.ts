@@ -1,13 +1,13 @@
 /**
- * Pure helpers for AI Agents tenant gating (Sprint 6.1).
+ * Pure helpers for AI Agents tenant gating and product permissions (Sprint 6.1–6.2).
  */
 
-export function isAgentsAccessible(input: {
+export function canViewAgents(input: {
   isSuperAdmin: boolean;
-  hasRuntimeExecutePermission: boolean;
+  hasAgentsViewPermission: boolean;
   agentsFeatureEnabled: boolean | undefined;
 }): boolean {
-  if (!input.hasRuntimeExecutePermission && !input.isSuperAdmin) {
+  if (!input.hasAgentsViewPermission && !input.isSuperAdmin) {
     return false;
   }
   if (input.isSuperAdmin) {
@@ -17,32 +17,53 @@ export function isAgentsAccessible(input: {
     return false;
   }
   return true;
+}
+
+export function canExecuteAgents(input: {
+  isSuperAdmin: boolean;
+  hasAgentsExecutePermission: boolean;
+  agentsFeatureEnabled: boolean | undefined;
+}): boolean {
+  if (!input.hasAgentsExecutePermission && !input.isSuperAdmin) {
+    return false;
+  }
+  if (input.isSuperAdmin) {
+    return true;
+  }
+  if (input.agentsFeatureEnabled === false) {
+    return false;
+  }
+  return true;
+}
+
+export function isAgentsAccessible(input: {
+  isSuperAdmin: boolean;
+  hasAgentsViewPermission: boolean;
+  agentsFeatureEnabled: boolean | undefined;
+}): boolean {
+  return canViewAgents(input);
 }
 
 export function shouldShowAgentsNavigation(input: {
   isSuperAdmin: boolean;
-  hasRuntimeExecutePermission: boolean;
+  hasAgentsViewPermission: boolean;
   agentsFeatureEnabled: boolean | undefined;
 }): boolean {
-  return isAgentsAccessible(input);
+  return canViewAgents(input);
 }
 
 export function canStartAgent(input: {
   isSuperAdmin: boolean;
+  hasAgentsExecutePermission: boolean;
   agentsFeatureEnabled: boolean | undefined;
 }): boolean {
-  if (input.isSuperAdmin) {
-    return true;
-  }
-  if (input.agentsFeatureEnabled === false) {
-    return false;
-  }
-  return true;
+  return canExecuteAgents(input);
 }
 
 export function canResumeAgent(input: {
   isSuperAdmin: boolean;
+  hasAgentsExecutePermission: boolean;
   agentsFeatureEnabled: boolean | undefined;
 }): boolean {
-  return canStartAgent(input);
+  return canExecuteAgents(input);
 }

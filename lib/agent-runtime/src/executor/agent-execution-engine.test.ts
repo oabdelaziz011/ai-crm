@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { AgentsFeatureDisabledError } from "../errors.js";
+import { AGENT_PERMISSIONS } from "../constants.js";
+import { AgentsFeatureDisabledError, AgentsPermissionDeniedError } from "../errors.js";
 import { AgentExecutionEngine } from "./agent-execution-engine.js";
 import type { AgentWorkflowRepository } from "../checkpoint/checkpoint-service.js";
 import type { AgentRuntimePorts, AgentWorkflowRecord, ServiceContext } from "../types.js";
@@ -10,7 +11,8 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
     userId: "user-1",
     companyId: "company-1",
     isSuperAdmin: false,
-    hasPermission: (code) => code === "runtime.execute",
+    hasPermission: (code) =>
+      code === AGENT_PERMISSIONS.view || code === AGENT_PERMISSIONS.execute,
     ...overrides,
   };
 }
@@ -75,7 +77,25 @@ describe("AgentExecutionEngine feature gating", () => {
     );
   });
 
-  it("denies resume when agents feature is off", async () => {
+  it("denies start when agents.execute missing", async () => {
+    const engine = new AgentExecutionEngine(createRepo(), createPorts());
+
+    await assert.rejects(
+      () =>
+        engine.start(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.view,
+          }),
+          {
+            companyId: "company-1",
+            goal: "Create a customer named Test User",
+          },
+        ),
+      AgentsPermissionDeniedError,
+    );
+  });
+
+  it("denies resume when agents.execute missing", async () => {
     const repo = createRepo();
     const engine = new AgentExecutionEngine(repo, createPorts());
     const started = await engine.start(createContext(), {
@@ -84,12 +104,18 @@ describe("AgentExecutionEngine feature gating", () => {
     });
 
     await assert.rejects(
-      () => engine.resume(createContext({ isAgentsFeatureEnabled: () => false }), started.workflowId),
-      AgentsFeatureDisabledError,
+      () =>
+        engine.resume(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.view,
+          }),
+          started.workflowId,
+        ),
+      AgentsPermissionDeniedError,
     );
   });
 
-  it("denies getWorkflow when agents feature is off", async () => {
+  it("denies getWorkflow when agents.view missing", async () => {
     const repo = createRepo();
     const engine = new AgentExecutionEngine(repo, createPorts());
     const started = await engine.start(createContext(), {
@@ -98,16 +124,66 @@ describe("AgentExecutionEngine feature gating", () => {
     });
 
     await assert.rejects(
-      () => engine.getWorkflow(createContext({ isAgentsFeatureEnabled: () => false }), started.workflowId),
-      AgentsFeatureDisabledError,
+      () =>
+        engine.getWorkflow(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.execute,
+          }),
+          started.workflowId,
+        ),
+      AgentsPermissionDeniedError,
     );
   });
 
-  it("allows super-admin when agents feature is off", async () => {
+  it("denies listEvents when agents.view missing", async () => {
+    const repo = createRepo();
+    const engine = new AgentExecutionEngine(repo, createPorts());
+    const started = await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    await assert.rejects(
+      () =>
+        engine.listEvents(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.execute,
+          }),
+          started.workflowId,
+        ),
+      AgentsPermissionDeniedError,
+    );
+  });
+
+  it("denies cancel when agents.execute missing", async () => {
+    const repo = createRepo();
+    const engine = new AgentExecutionEngine(repo, createPorts());
+    const started = await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    await assert.rejects(
+      () =>
+        engine.cancel(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.view,
+          }),
+          started.workflowId,
+        ),
+      AgentsPermissionDeniedError,
+    );
+  });
+
+  it("allows super-admin when agents permissions missing", async () => {
     const engine = new AgentExecutionEngine(createRepo(), createPorts());
 
     const result = await engine.start(
-      createContext({ isSuperAdmin: true, isAgentsFeatureEnabled: () => false }),
+      createContext({
+        isSuperAdmin: true,
+        hasPermission: () => false,
+        isAgentsFeatureEnabled: () => false,
+      }),
       {
         companyId: "company-1",
         goal: "Create a customer named Test User",
@@ -117,7 +193,7 @@ describe("AgentExecutionEngine feature gating", () => {
     assert.ok(result.workflowId);
   });
 
-  it("allows start when agents feature lookup is missing (existing tenants)", async () => {
+  it("allows start when agents permissions and feature lookup are missing (existing tenants)", async () => {
     const engine = new AgentExecutionEngine(createRepo(), createPorts());
 
     const result = await engine.start(createContext(), {
@@ -126,5 +202,16 @@ describe("AgentExecutionEngine feature gating", () => {
     });
 
     assert.ok(result.workflowId);
+  });
+
+  it("cancels workflow when agents.execute granted", async () => {
+    const engine = new AgentExecutionEngine(createRepo(), createPorts());
+    const started = await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    const cancelled = await engine.cancel(createContext(), started.workflowId);
+    assert.equal(cancelled?.status, "cancelled");
   });
 });

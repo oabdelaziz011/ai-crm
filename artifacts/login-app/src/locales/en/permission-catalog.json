@@ -512,6 +512,21 @@
       "description": "Allows managing runtime policies and configuration.",
       "group": "aiPlatform"
     },
+    "agents.view": {
+      "name": "View AI Agents",
+      "description": "Allows viewing AI agent workflows, events, and checkpoints.",
+      "group": "aiPlatform"
+    },
+    "agents.execute": {
+      "name": "Execute AI Agents",
+      "description": "Allows starting, resuming, and cancelling AI agent workflows.",
+      "group": "aiPlatform"
+    },
+    "agents.manage": {
+      "name": "Manage AI Agents",
+      "description": "Allows managing AI agent configuration and policies.",
+      "group": "aiPlatform"
+    },
     "ai.execution.view": {
       "name": "View AI Executions",
       "description": "Allows viewing AI execution history and metrics.",

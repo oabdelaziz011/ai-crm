@@ -124,8 +124,9 @@ export const PLATFORM_AI_FEATURE_KEY_AUDIT: Record<PlatformAIFeatureKey, Platfor
       responsibility:
         "AI Agents orchestration (Floating AI Agent tab, task graphs). Tenant toggle gates start/resume/read; Enterprise Runtime and Tool Router remain ungated.",
       runtimeUsage: [
-        "login-app Floating AI Agent tab → isFeatureEnabled(ai_agents)",
-        "@workspace/agent-runtime start/resume/getWorkflow → assertAgentsFeatureEnabled",
+        "login-app Floating AI Agent tab → agents.view + isFeatureEnabled(ai_agents)",
+        "@workspace/agent-runtime read paths → agents.view + assertAgentsFeatureEnabled",
+        "@workspace/agent-runtime execute paths → agents.execute + assertAgentsFeatureEnabled",
       ],
       opsUsage: ["Not shown in ops feature matrix (Sprint 6.1)"],
       runtimeEnforcedToday: true,

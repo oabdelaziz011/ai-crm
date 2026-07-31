@@ -512,6 +512,21 @@
       "description": "يسمح بإدارة سياسات وإعدادات التشغيل.",
       "group": "aiPlatform"
     },
+    "agents.view": {
+      "name": "عرض وكلاء الذكاء الاصطناعي",
+      "description": "يسمح بعرض سير عمل الوكلاء والأحداث ونقاط التحقق.",
+      "group": "aiPlatform"
+    },
+    "agents.execute": {
+      "name": "تنفيذ وكلاء الذكاء الاصطناعي",
+      "description": "يسمح ببدء واستئناف وإلغاء سير عمل الوكلاء.",
+      "group": "aiPlatform"
+    },
+    "agents.manage": {
+      "name": "إدارة وكلاء الذكاء الاصطناعي",
+      "description": "يسمح بإدارة إعدادات وسياسات الوكلاء.",
+      "group": "aiPlatform"
+    },
     "ai.execution.view": {
       "name": "عرض تنفيذات الذكاء الاصطناعي",
       "description": "يسمح بعرض سجل التنفيذ ومؤشرات الأداء.",

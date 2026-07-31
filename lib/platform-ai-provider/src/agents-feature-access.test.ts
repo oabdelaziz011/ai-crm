@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  canExecuteAgents,
   canResumeAgent,
   canStartAgent,
+  canViewAgents,
   isAgentsAccessible,
   shouldShowAgentsNavigation,
 } from "./agents-feature-access.js";
@@ -12,44 +14,74 @@ import { getBackendFeatureKeyForCapability } from "./capability-mapping.js";
 import { resolveCatalogFeatureEnabled } from "./feature-defaults.js";
 
 describe("Agents feature access", () => {
-  it("allows access when feature ON and runtime.execute granted", () => {
+  it("allows view when feature ON and agents.view granted", () => {
     assert.equal(
-      isAgentsAccessible({
+      canViewAgents({
         isSuperAdmin: false,
-        hasRuntimeExecutePermission: true,
+        hasAgentsViewPermission: true,
         agentsFeatureEnabled: true,
       }),
       true,
     );
   });
 
-  it("denies access when feature OFF even with runtime.execute", () => {
+  it("denies view when feature OFF even with agents.view", () => {
     assert.equal(
-      isAgentsAccessible({
+      canViewAgents({
         isSuperAdmin: false,
-        hasRuntimeExecutePermission: true,
+        hasAgentsViewPermission: true,
         agentsFeatureEnabled: false,
       }),
       false,
     );
   });
 
-  it("denies access when runtime.execute missing even if feature ON", () => {
+  it("denies view when agents.view missing even if feature ON", () => {
     assert.equal(
-      isAgentsAccessible({
+      canViewAgents({
         isSuperAdmin: false,
-        hasRuntimeExecutePermission: false,
+        hasAgentsViewPermission: false,
         agentsFeatureEnabled: true,
       }),
       false,
     );
   });
 
-  it("allows super-admin access regardless of feature flag", () => {
+  it("allows execute when feature ON and agents.execute granted", () => {
     assert.equal(
-      isAgentsAccessible({
+      canExecuteAgents({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: true,
+        agentsFeatureEnabled: true,
+      }),
+      true,
+    );
+  });
+
+  it("denies execute when agents.execute missing even if feature ON", () => {
+    assert.equal(
+      canExecuteAgents({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: false,
+        agentsFeatureEnabled: true,
+      }),
+      false,
+    );
+  });
+
+  it("allows super-admin view and execute regardless of feature flag", () => {
+    assert.equal(
+      canViewAgents({
         isSuperAdmin: true,
-        hasRuntimeExecutePermission: false,
+        hasAgentsViewPermission: false,
+        agentsFeatureEnabled: false,
+      }),
+      true,
+    );
+    assert.equal(
+      canExecuteAgents({
+        isSuperAdmin: true,
+        hasAgentsExecutePermission: false,
         agentsFeatureEnabled: false,
       }),
       true,
@@ -60,7 +92,7 @@ describe("Agents feature access", () => {
     assert.equal(
       isAgentsAccessible({
         isSuperAdmin: false,
-        hasRuntimeExecutePermission: true,
+        hasAgentsViewPermission: true,
         agentsFeatureEnabled: undefined,
       }),
       true,
@@ -71,27 +103,73 @@ describe("Agents feature access", () => {
     assert.equal(
       shouldShowAgentsNavigation({
         isSuperAdmin: false,
-        hasRuntimeExecutePermission: true,
+        hasAgentsViewPermission: true,
         agentsFeatureEnabled: false,
       }),
       false,
     );
   });
 
-  it("allows start and resume when feature ON or missing row", () => {
-    assert.equal(canStartAgent({ isSuperAdmin: false, agentsFeatureEnabled: true }), true);
-    assert.equal(canStartAgent({ isSuperAdmin: false, agentsFeatureEnabled: undefined }), true);
-    assert.equal(canResumeAgent({ isSuperAdmin: false, agentsFeatureEnabled: true }), true);
+  it("hides agent navigation when agents.view missing", () => {
+    assert.equal(
+      shouldShowAgentsNavigation({
+        isSuperAdmin: false,
+        hasAgentsViewPermission: false,
+        agentsFeatureEnabled: true,
+      }),
+      false,
+    );
   });
 
-  it("denies start and resume when feature OFF", () => {
-    assert.equal(canStartAgent({ isSuperAdmin: false, agentsFeatureEnabled: false }), false);
-    assert.equal(canResumeAgent({ isSuperAdmin: false, agentsFeatureEnabled: false }), false);
+  it("allows start and resume when execute permission ON or missing row", () => {
+    assert.equal(
+      canStartAgent({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: true,
+        agentsFeatureEnabled: true,
+      }),
+      true,
+    );
+    assert.equal(
+      canStartAgent({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: true,
+        agentsFeatureEnabled: undefined,
+      }),
+      true,
+    );
+    assert.equal(
+      canResumeAgent({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: true,
+        agentsFeatureEnabled: true,
+      }),
+      true,
+    );
+  });
+
+  it("denies start and resume when feature OFF or execute missing", () => {
+    assert.equal(
+      canStartAgent({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: true,
+        agentsFeatureEnabled: false,
+      }),
+      false,
+    );
+    assert.equal(
+      canStartAgent({
+        isSuperAdmin: false,
+        hasAgentsExecutePermission: false,
+        agentsFeatureEnabled: true,
+      }),
+      false,
+    );
   });
 
   it("allows super-admin start regardless of feature flag", () => {
-    assert.equal(canStartAgent({ isSuperAdmin: true, agentsFeatureEnabled: false }), true);
-    assert.equal(canResumeAgent({ isSuperAdmin: true, agentsFeatureEnabled: false }), true);
+    assert.equal(canStartAgent({ isSuperAdmin: true, hasAgentsExecutePermission: false, agentsFeatureEnabled: false }), true);
+    assert.equal(canResumeAgent({ isSuperAdmin: true, hasAgentsExecutePermission: false, agentsFeatureEnabled: false }), true);
   });
 });
 

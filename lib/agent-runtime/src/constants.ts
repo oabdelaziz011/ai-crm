@@ -41,3 +41,10 @@ export type AgentEventType = (typeof AGENT_EVENT_TYPES)[number];
 
 export const DEFAULT_MAX_RETRIES = 2;
 export const DEFAULT_RETRY_BACKOFF_MS = 1000;
+
+/** AI Agents product permissions (Sprint 6.2). */
+export const AGENT_PERMISSIONS = {
+  view: "agents.view",
+  execute: "agents.execute",
+  manage: "agents.manage",
+} as const;

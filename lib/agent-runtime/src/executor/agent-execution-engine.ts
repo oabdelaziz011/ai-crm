@@ -21,7 +21,10 @@ import type {
 } from "../types.js";
 import type { AgentWorkflowRepository, CheckpointSnapshot } from "../checkpoint/checkpoint-service.js";
 import { createInitialMemory } from "../memory/agent-memory.js";
-import { assertAgentsFeatureEnabled } from "../utils/agents-guards.js";
+import {
+  assertAgentsExecuteAccess,
+  assertAgentsReadAccess,
+} from "../utils/agents-guards.js";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,10 +48,7 @@ export class AgentExecutionEngine {
   ) {}
 
   async getWorkflow(ctx: ServiceContext, workflowId: string) {
-    assertAgentsFeatureEnabled(ctx);
-    if (!ctx.isSuperAdmin && !ctx.hasPermission("runtime.execute")) {
-      throw new Error("runtime.execute permission required for agent workflows.");
-    }
+    assertAgentsReadAccess(ctx);
 
     const workflow = await this.repo.getWorkflow(workflowId);
     if (!workflow) return null;
@@ -56,14 +56,33 @@ export class AgentExecutionEngine {
     return workflow;
   }
 
+  async listWorkflows(ctx: ServiceContext, companyId: string, limit?: number) {
+    assertAgentsReadAccess(ctx);
+    assertTenantAccess(ctx, companyId);
+    return this.repo.listWorkflows(companyId, limit);
+  }
+
+  async listEvents(ctx: ServiceContext, workflowId: string) {
+    assertAgentsReadAccess(ctx);
+    const workflow = await this.repo.getWorkflow(workflowId);
+    if (!workflow) return [];
+    assertTenantAccess(ctx, workflow.company_id);
+    return this.repo.listEvents(workflowId);
+  }
+
+  async loadLatestCheckpoint(ctx: ServiceContext, workflowId: string) {
+    assertAgentsReadAccess(ctx);
+    const workflow = await this.repo.getWorkflow(workflowId);
+    if (!workflow) return null;
+    assertTenantAccess(ctx, workflow.company_id);
+    return this.repo.loadLatestCheckpoint(workflowId);
+  }
+
   subscribeEvents = this.events.subscribe.bind(this.events);
 
   async start(ctx: ServiceContext, input: StartAgentWorkflowInput): Promise<AgentWorkflowResult> {
-    assertAgentsFeatureEnabled(ctx);
+    assertAgentsExecuteAccess(ctx);
     assertTenantAccess(ctx, input.companyId);
-    if (!ctx.hasPermission("runtime.execute") && !ctx.isSuperAdmin) {
-      throw new Error("runtime.execute permission required for agent workflows.");
-    }
 
     const workflowId = crypto.randomUUID();
     const correlationId = input.correlationId ?? crypto.randomUUID();
@@ -107,7 +126,7 @@ export class AgentExecutionEngine {
   }
 
   async resume(ctx: ServiceContext, workflowId: string): Promise<AgentWorkflowResult> {
-    assertAgentsFeatureEnabled(ctx);
+    assertAgentsExecuteAccess(ctx);
     const workflow = await this.repo.getWorkflow(workflowId);
     if (!workflow) throw new Error("Workflow not found.");
     assertTenantAccess(ctx, workflow.company_id);
@@ -117,6 +136,40 @@ export class AgentExecutionEngine {
     }
 
     return this.runUntilBlocked(ctx, workflowId);
+  }
+
+  async cancel(ctx: ServiceContext, workflowId: string): Promise<AgentWorkflowResult | null> {
+    assertAgentsExecuteAccess(ctx);
+    const workflow = await this.repo.getWorkflow(workflowId);
+    if (!workflow) return null;
+    assertTenantAccess(ctx, workflow.company_id);
+
+    if (workflow.status === "completed" || workflow.status === "cancelled") {
+      return {
+        workflowId,
+        status: workflow.status,
+        finalReport: workflow.final_report,
+        taskGraph: workflow.task_graph,
+        events: await this.repo.listEvents(workflowId),
+      };
+    }
+
+    await this.repo.updateWorkflow(workflowId, {
+      status: "cancelled",
+      completed_at: new Date().toISOString(),
+    });
+    await this.publish(ctx, workflow.company_id, workflowId, "WorkflowPaused", null, {
+      reason: "cancelled",
+    });
+
+    const final = (await this.repo.getWorkflow(workflowId))!;
+    return {
+      workflowId,
+      status: final.status,
+      finalReport: final.final_report,
+      taskGraph: final.task_graph,
+      events: await this.repo.listEvents(workflowId),
+    };
   }
 
   async runUntilBlocked(ctx: ServiceContext, workflowId: string): Promise<AgentWorkflowResult> {
@@ -405,6 +458,22 @@ export class AgentRuntimeService {
 
   getWorkflow(ctx: ServiceContext, workflowId: string) {
     return this.engine.getWorkflow(ctx, workflowId);
+  }
+
+  listWorkflows(ctx: ServiceContext, companyId: string, limit?: number) {
+    return this.engine.listWorkflows(ctx, companyId, limit);
+  }
+
+  listEvents(ctx: ServiceContext, workflowId: string) {
+    return this.engine.listEvents(ctx, workflowId);
+  }
+
+  loadLatestCheckpoint(ctx: ServiceContext, workflowId: string) {
+    return this.engine.loadLatestCheckpoint(ctx, workflowId);
+  }
+
+  cancel(ctx: ServiceContext, workflowId: string) {
+    return this.engine.cancel(ctx, workflowId);
   }
 
   subscribeEvents(listener: Parameters<AgentExecutionEngine["subscribeEvents"]>[0]) {

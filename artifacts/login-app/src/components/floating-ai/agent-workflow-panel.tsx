@@ -1,13 +1,13 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Play, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthUser, useHasPermission } from "@/hooks/use-rbac";
+import { useAuthUser } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
-import { canResumeAgentWorkflow, canStartAgentWorkflow } from "@/lib/platform-ai/agents-access";
+import { canResumeAgentWorkflow, canStartAgentWorkflow, canViewAgentHistory } from "@/lib/platform-ai/agents-access";
 import { useAgentWorkflow } from "@/hooks/agent-runtime/use-agent-workflow";
 import { FLOATING_AI_CAPABILITIES } from "@/lib/floating-ai/types";
 import { requiresAgentConfirmation } from "@/lib/floating-ai/agent-goals";
@@ -32,7 +32,11 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   const { t } = useTranslation("common");
   const { isSuperAdmin, hasPermission } = useAuthUser();
   const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
-  const canExecuteRuntime = useHasPermission("runtime.execute");
+  const canView = canViewAgentHistory({
+    isSuperAdmin,
+    hasPermission,
+    agentsFeatureEnabled,
+  });
   const canStart = canStartAgentWorkflow({
     isSuperAdmin,
     hasPermission,
@@ -103,16 +107,37 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
     void handleStart(initialGoal);
   }, [initialGoal, activeWorkflowId, isStarting, handleStart]);
 
-  const disabled = !canStart || !canExecuteRuntime || isStarting || isResuming || isConversationLoading;
+  const disabled = !canStart || isStarting || isResuming || isConversationLoading;
   const featureDisabled = agentsFeatureEnabled === false && !isSuperAdmin;
+  const permissionDenied = !canView && !isSuperAdmin;
+  const executeDenied = !canStart && !isSuperAdmin && canView;
   const status = (workflow?.status as string | undefined) ?? "idle";
   const needsResume = status === "waiting_user" || status === "paused";
+
+  const resolvedStartError = useMemo(() => {
+    if (!startError) return null;
+    if (startError.includes("agents.execute")) {
+      return t("agents.executeDenied");
+    }
+    if (startError.includes("AGENTS_PERMISSION_DENIED") || startError.includes("Permission denied")) {
+      return t("agents.permissionDenied");
+    }
+    if (startError.includes("AGENTS_FEATURE_DISABLED")) {
+      return t("agents.featureDisabled");
+    }
+    return startError;
+  }, [startError, t]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {featureDisabled && (
         <div className="shrink-0 border-b border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           {t("agents.featureDisabled")}
+        </div>
+      )}
+      {permissionDenied && (
+        <div className="shrink-0 border-b border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          {t("agents.permissionDenied")}
         </div>
       )}
       <div className="shrink-0 space-y-2 border-b border-border px-3 py-2">
@@ -130,7 +155,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
               {workflow?.goal ?? t("floatingAi.agent.subtitle")}
             </p>
           </div>
-          {needsResume && (
+          {needsResume && canResume && (
             <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => void handleResume()} disabled={!canResume || isResuming}>
               {isResuming ? <Loader2 className="size-3 animate-spin" /> : <RotateCcw className="size-3" />}
               {t("floatingAi.agent.resume")}
@@ -151,12 +176,12 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
         )}
       </div>
 
-      {(isLoading || isStarting) && !taskGraph ? (
+      {(isLoading || isStarting) && !taskGraph && canView ? (
         <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
           {isStarting ? t("floatingAi.agent.planning") : t("dashboard.ai.loading")}
         </div>
-      ) : (
+      ) : canView ? (
         <Tabs defaultValue="graph" className="flex min-h-0 flex-1 flex-col">
           <TabsList className="mx-3 mt-2 h-8 shrink-0">
             <TabsTrigger value="graph" className="text-xs">
@@ -192,16 +217,20 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
             </div>
           </TabsContent>
         </Tabs>
+      ) : (
+        <div className="flex flex-1 items-center justify-center px-3 text-xs text-muted-foreground">
+          {t("agents.permissionDenied")}
+        </div>
       )}
 
-      {startError && (
+      {resolvedStartError && (
         <div className="shrink-0 border-t border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          {startError}
+          {resolvedStartError}
         </div>
       )}
 
       <div className="shrink-0 border-t border-border">
-        {!activeWorkflowId && (
+        {!activeWorkflowId && canStart && (
           <FloatingAiComposer
             disabled={disabled}
             isSending={isStarting}
@@ -210,6 +239,9 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
             sendIcon={Play}
             hideExtras
           />
+        )}
+        {executeDenied && !activeWorkflowId && (
+          <div className="px-3 py-2 text-[10px] text-muted-foreground">{t("agents.executeDenied")}</div>
         )}
         {activeWorkflowId && needsResume && (
           <div className="px-3 py-2 text-[10px] text-amber-600">{t("floatingAi.agent.pausedHint")}</div>

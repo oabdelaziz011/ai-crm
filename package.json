@@ -5,8 +5,8 @@
   "scripts": {
     "preinstall": "node -e \"const fs=require('fs'); ['package-lock.json','yarn.lock'].forEach(p=>{try{fs.rmSync(p,{force:true})}catch{}});\"",
     "dev": "pnpm --dir artifacts/login-app dev",
-    "dev:api": "pnpm --dir artifacts/api-server run build && pnpm --dir artifacts/api-server start",
-    "dev:webhook": "node scripts/cloudflare/start-webhook-stack.mjs",
+    "dev:api": "node scripts/ensure-root-env.mjs && pnpm --dir artifacts/api-server run build && pnpm --dir artifacts/api-server start",
+    "dev:webhook": "node scripts/ensure-root-env.mjs && node scripts/cloudflare/start-webhook-stack.mjs",
     "tunnel:setup": "node scripts/cloudflare/setup-tunnel.mjs",
     "tunnel:run": "node scripts/cloudflare/run-tunnel.mjs",
     "tunnel:url": "node scripts/cloudflare/print-webhook-url.mjs",

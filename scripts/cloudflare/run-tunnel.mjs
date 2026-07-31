@@ -52,7 +52,7 @@ function main() {
 
   const child = spawn("cloudflared", args, {
     stdio: "inherit",
-    shell: process.platform === "win32",
+    shell: false,
     env: process.env,
   });
 

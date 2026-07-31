@@ -146,6 +146,14 @@ describe("legacy waiting WhatsApp inbound recovery", () => {
           status: 200,
           json: async () => ({ messaging_product: "whatsapp", messages: [{ id: "wamid.outbound-legacy" }] }),
         }) as Response,
+      credentialsLoader: {
+        loadByCompanyId: async () => ({
+          accessToken: "test-token",
+          phoneNumberId: "123456789",
+          verifyToken: "vault-verify-token",
+          apiVersion: "v21.0",
+        }),
+      },
     });
 
     const env = createTestEnvironment({
@@ -157,8 +165,7 @@ describe("legacy waiting WhatsApp inbound recovery", () => {
         provider: "meta",
         configuration: {
           phoneNumberId: "123456789",
-          accessToken: "test-token",
-          verifyToken: "vault-verify-token",
+          credentialsSource: "company_whatsapp_settings",
         },
       },
       adapters: [whatsAppAdapter],

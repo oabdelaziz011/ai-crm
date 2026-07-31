@@ -1,7 +1,10 @@
-import { readClientEnvFlag } from "@workspace/platform-crypto/client";
+import { readRuntimeEnvFlag } from "@workspace/platform-crypto/runtime-env-unified";
 
 export function isInteractiveIfTraceEnabled(): boolean {
-  return readClientEnvFlag("AUTOMATION_IF_TRACE_DEBUG");
+  return (
+    readRuntimeEnvFlag("AUTOMATION_WORKFLOW_TRACE_DEBUG") ||
+    readRuntimeEnvFlag("AUTOMATION_IF_TRACE_DEBUG")
+  );
 }
 
 export function logInteractiveIfTrace(payload: Record<string, unknown>): void {

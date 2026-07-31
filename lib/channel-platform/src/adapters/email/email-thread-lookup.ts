@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeEmailMessageId } from "./email-html-utils.js";
-import type { EmailThreadLookupPort } from "../adapters/email/email-thread-resolver.js";
+import type { EmailThreadLookupPort } from "./email-thread-resolver.js";
 
 export function createSupabaseEmailThreadLookup(client: SupabaseClient): EmailThreadLookupPort {
   return {
-    async findByExternalMessageId(companyChannelId, externalMessageId) {
+    async findByExternalMessageId(companyChannelId: string, externalMessageId: string) {
       const normalized = normalizeEmailMessageId(externalMessageId);
       if (!normalized) return null;
 

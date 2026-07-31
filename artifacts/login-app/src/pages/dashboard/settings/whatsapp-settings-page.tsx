@@ -31,7 +31,7 @@ import type {
 
 const EMPTY_SETTINGS: Omit<
   CompanyWhatsAppSettings,
-  "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "updatedAt"
+  "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "hasAppSecret" | "updatedAt"
 > = {
   enabled: false,
   provider: "meta_cloud",
@@ -39,6 +39,8 @@ const EMPTY_SETTINGS: Omit<
   phoneNumberId: "",
   businessAccountId: "",
   webhookVerifyToken: "",
+  apiVersion: "v21.0",
+  appSecret: "",
   defaultLanguage: "en",
   maxRetryCount: 3,
 };
@@ -68,6 +70,8 @@ export function SettingsWhatsAppPage() {
         phoneNumberId: settings.phoneNumberId,
         businessAccountId: settings.businessAccountId,
         webhookVerifyToken: settings.webhookVerifyToken,
+        apiVersion: settings.apiVersion,
+        appSecret: settings.appSecret,
         defaultLanguage: settings.defaultLanguage,
         maxRetryCount: settings.maxRetryCount,
       });
@@ -195,6 +199,26 @@ export function SettingsWhatsAppPage() {
                     setDraft((prev) => ({ ...prev, businessAccountId: event.target.value }))
                   }
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("notifications.whatsapp.settings.apiVersion")}</Label>
+                <Input
+                  value={draft.apiVersion}
+                  placeholder="v21.0"
+                  onChange={(event) => setDraft((prev) => ({ ...prev, apiVersion: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>{t("notifications.whatsapp.settings.appSecret")}</Label>
+                <Input
+                  type="password"
+                  value={draft.appSecret}
+                  placeholder={settings?.hasAppSecret ? "********" : ""}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, appSecret: event.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.appSecretHint")}
+                </p>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>{t("notifications.whatsapp.settings.webhookVerifyToken")}</Label>

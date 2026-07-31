@@ -86,6 +86,8 @@ export type ConversationMessageSummary = {
   messageType: string;
   content: string;
   createdAt: string;
+  /** True when an existing row was returned for the same external message id. */
+  reused?: boolean;
 };
 
 export type RuntimeExecutionSummary = {

@@ -12,6 +12,7 @@ type SettingsRow = {
   phone_number_id: string;
   business_account_id: string;
   webhook_verify_token: string;
+  api_version: string;
   default_language: string;
   max_retry_count: number;
   updated_at: string;
@@ -26,11 +27,34 @@ function mapSettings(row: SettingsRow, maskSecrets = true): CompanyWhatsAppSetti
     phoneNumberId: row.phone_number_id,
     businessAccountId: row.business_account_id,
     webhookVerifyToken: maskSecrets && row.webhook_verify_token ? "********" : row.webhook_verify_token,
+    apiVersion: row.api_version || "v21.0",
+    appSecret: "",
     defaultLanguage: row.default_language,
     maxRetryCount: row.max_retry_count,
     hasAccessToken: Boolean(row.access_token),
     hasWebhookVerifyToken: Boolean(row.webhook_verify_token),
+    hasAppSecret: false,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettings {
+  return {
+    companyId: String(record.company_id),
+    enabled: Boolean(record.enabled),
+    provider: (record.provider as WhatsAppProviderKind) ?? "meta_cloud",
+    accessToken: String(record.access_token ?? ""),
+    phoneNumberId: String(record.phone_number_id ?? ""),
+    businessAccountId: String(record.business_account_id ?? ""),
+    webhookVerifyToken: String(record.webhook_verify_token ?? ""),
+    apiVersion: String(record.api_version ?? "v21.0"),
+    appSecret: String(record.app_secret ?? ""),
+    defaultLanguage: String(record.default_language ?? "en"),
+    maxRetryCount: Number(record.max_retry_count ?? 3),
+    hasAccessToken: Boolean(record.has_access_token),
+    hasWebhookVerifyToken: Boolean(record.has_webhook_verify_token),
+    hasAppSecret: Boolean(record.has_app_secret),
+    updatedAt: record.updated_at ? String(record.updated_at) : undefined,
   };
 }
 
@@ -42,21 +66,7 @@ export class WhatsAppSettingsRepository {
       p_company_id: companyId,
     });
     if (error) throw new Error(error.message);
-    const record = data as Record<string, unknown>;
-    return {
-      companyId: String(record.company_id),
-      enabled: Boolean(record.enabled),
-      provider: (record.provider as WhatsAppProviderKind) ?? "meta_cloud",
-      accessToken: String(record.access_token ?? ""),
-      phoneNumberId: String(record.phone_number_id ?? ""),
-      businessAccountId: String(record.business_account_id ?? ""),
-      webhookVerifyToken: String(record.webhook_verify_token ?? ""),
-      defaultLanguage: String(record.default_language ?? "en"),
-      maxRetryCount: Number(record.max_retry_count ?? 3),
-      hasAccessToken: Boolean(record.has_access_token),
-      hasWebhookVerifyToken: Boolean(record.has_webhook_verify_token),
-      updatedAt: record.updated_at ? String(record.updated_at) : undefined,
-    };
+    return mapPublicRecord(data as Record<string, unknown>);
   }
 
   /** Server-side only — includes plaintext secrets. */
@@ -74,7 +84,10 @@ export class WhatsAppSettingsRepository {
 
   async upsert(
     companyId: string,
-    settings: Omit<CompanyWhatsAppSettings, "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "updatedAt">,
+    settings: Omit<
+      CompanyWhatsAppSettings,
+      "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "hasAppSecret" | "updatedAt"
+    >,
   ): Promise<CompanyWhatsAppSettings> {
     const { data, error } = await this.client.rpc("upsert_company_whatsapp_settings", {
       p_company_id: companyId,
@@ -86,22 +99,10 @@ export class WhatsAppSettingsRepository {
       p_webhook_verify_token: settings.webhookVerifyToken,
       p_default_language: settings.defaultLanguage,
       p_max_retry_count: settings.maxRetryCount,
+      p_api_version: settings.apiVersion,
+      p_app_secret: settings.appSecret,
     });
     if (error) throw new Error(error.message);
-    const record = data as Record<string, unknown>;
-    return {
-      companyId: String(record.company_id),
-      enabled: Boolean(record.enabled),
-      provider: (record.provider as WhatsAppProviderKind) ?? "meta_cloud",
-      accessToken: String(record.access_token ?? ""),
-      phoneNumberId: String(record.phone_number_id ?? ""),
-      businessAccountId: String(record.business_account_id ?? ""),
-      webhookVerifyToken: String(record.webhook_verify_token ?? ""),
-      defaultLanguage: String(record.default_language ?? "en"),
-      maxRetryCount: Number(record.max_retry_count ?? 3),
-      hasAccessToken: Boolean(record.has_access_token),
-      hasWebhookVerifyToken: Boolean(record.has_webhook_verify_token),
-      updatedAt: record.updated_at ? String(record.updated_at) : undefined,
-    };
+    return mapPublicRecord(data as Record<string, unknown>);
   }
 }

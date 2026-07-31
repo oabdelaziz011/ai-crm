@@ -1,3 +1,11 @@
+export const WHATSAPP_CHANNEL_CREDENTIALS_SOURCE = "company_whatsapp_settings" as const;
+
+export type WhatsAppChannelReferences = {
+  phoneNumberId?: string;
+  credentialsSource?: typeof WHATSAPP_CHANNEL_CREDENTIALS_SOURCE | string;
+  apiVersion?: string;
+};
+
 export type WhatsAppChannelConfiguration = {
   phoneNumberId: string;
   accessToken: string;
@@ -7,6 +15,17 @@ export type WhatsAppChannelConfiguration = {
   businessAccountId?: string;
 };
 
+export function parseWhatsAppChannelReferences(
+  configuration: Record<string, unknown>,
+): WhatsAppChannelReferences {
+  return {
+    phoneNumberId: readOptionalString(configuration, "phoneNumberId"),
+    credentialsSource: readOptionalString(configuration, "credentialsSource"),
+    apiVersion: readOptionalString(configuration, "apiVersion"),
+  };
+}
+
+/** @deprecated Secrets live in company_whatsapp_settings. Use resolveWhatsAppRuntimeConfiguration. */
 export function parseWhatsAppConfiguration(
   configuration: Record<string, unknown>,
 ): WhatsAppChannelConfiguration {
@@ -21,6 +40,15 @@ export function parseWhatsAppConfiguration(
     appSecret: readOptionalString(configuration, "appSecret"),
     apiVersion: readOptionalString(configuration, "apiVersion") ?? "v21.0",
     businessAccountId: readOptionalString(configuration, "businessAccountId"),
+  };
+}
+
+export function buildWhatsAppChannelReferenceConfiguration(
+  phoneNumberId: string,
+): Record<string, unknown> {
+  return {
+    phoneNumberId: phoneNumberId.trim(),
+    credentialsSource: WHATSAPP_CHANNEL_CREDENTIALS_SOURCE,
   };
 }
 

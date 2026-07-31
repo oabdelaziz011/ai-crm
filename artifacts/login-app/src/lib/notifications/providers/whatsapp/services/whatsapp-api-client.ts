@@ -1,7 +1,19 @@
+import { supabase } from "@/lib/supabase";
+
 function getApiBaseUrl(): string {
   const runtimeEnv = import.meta.env as Record<string, string | undefined>;
   const base = runtimeEnv.VITE_API_SERVER_URL?.trim() ?? "";
   return base.replace(/\/$/, "");
+}
+
+async function buildAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 async function postWhatsAppApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -12,14 +24,14 @@ async function postWhatsAppApi<T>(path: string, body: Record<string, unknown>): 
 
   const response = await fetch(`${base}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await buildAuthHeaders(),
     credentials: "include",
     body: JSON.stringify(body),
   });
 
-  const payload = (await response.json()) as T & { error?: string };
+  const payload = (await response.json()) as T & { error?: string; message?: string };
   if (!response.ok) {
-    throw new Error(payload.error ?? `WhatsApp API failed (${response.status})`);
+    throw new Error(payload.message ?? payload.error ?? `WhatsApp API failed (${response.status})`);
   }
   return payload;
 }

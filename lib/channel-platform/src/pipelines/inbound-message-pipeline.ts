@@ -190,9 +190,9 @@ export class InboundMessagePipeline {
         requireAiAssistant: !useWorkflow,
       });
 
-      let incomingMessageId: string | undefined;
+      let incomingMessageId: string | undefined = inboundEvent.incoming_message_id ?? undefined;
 
-      if (!request.executeAi || useWorkflow) {
+      if (!incomingMessageId && (!request.executeAi || useWorkflow)) {
         const incomingMessage = await this.ports.conversation.addIncomingMessage({
           conversationId: session.conversation_id,
           content: inboundText,
@@ -205,6 +205,18 @@ export class InboundMessagePipeline {
           },
         });
         incomingMessageId = incomingMessage.id;
+        if (incomingMessage.reused) {
+          request.trace?.step("webhook.inbound_message_reused", {
+            incomingMessageId,
+            externalMessageId: normalized.externalMessageId,
+          });
+        }
+      } else if (incomingMessageId) {
+        request.trace?.step("webhook.inbound_message_reused", {
+          incomingMessageId,
+          inboundEventId: inboundEvent.id,
+          source: "inbound_event",
+        });
       }
 
       if (

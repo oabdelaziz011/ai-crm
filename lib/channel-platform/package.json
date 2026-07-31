@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -12,13 +13,13 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
-    "@workspace/platform-crypto": "file:../platform-crypto",
+    "@workspace/platform-crypto": "workspace:*",
     "nodemailer": "^7.0.5"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
     "@types/nodemailer": "^6.4.17",
-    "@workspace/automation-platform": "file:../automation-platform",
+    "@workspace/automation-platform": "workspace:*",
     "tsx": "^4.21.0"
   }
 }

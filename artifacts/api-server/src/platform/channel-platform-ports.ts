@@ -182,7 +182,7 @@ export function createChannelConversationPort(
     },
 
     async addIncomingMessage(input) {
-      const message = await services.messages.addMessage(ctx, {
+      const { message, reused } = await services.messages.addIncomingMessageIdempotent(ctx, {
         conversationId: input.conversationId,
         messageType: "incoming",
         contentType: "text",
@@ -200,6 +200,7 @@ export function createChannelConversationPort(
         messageType: message.message_type,
         content: message.content,
         createdAt: message.created_at,
+        reused,
       };
     },
 

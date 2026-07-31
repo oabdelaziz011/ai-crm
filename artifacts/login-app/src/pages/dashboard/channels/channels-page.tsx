@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { format } from "date-fns";
 import { Plus, Radio, Settings2, Wifi, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -30,7 +31,6 @@ import {
   resolveDefaultHealthStatus,
 } from "@/lib/channels/channel-defaults";
 import type { CompanyChannelRecord } from "@workspace/channel-registry";
-import { generateWhatsAppVerifyToken } from "@workspace/channel-registry";
 import {
   Dialog,
   DialogContent,
@@ -101,9 +101,6 @@ export default function ChannelsPage() {
   const [displayName, setDisplayName] = useState("");
   const [provider, setProvider] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [accessToken, setAccessToken] = useState("");
-  const [verifyToken, setVerifyToken] = useState("");
-  const [apiVersion, setApiVersion] = useState("v21.0");
 
   const workflowBinding = useChannelWorkflowBindingForm(
     companyId,
@@ -124,9 +121,6 @@ export default function ChannelsPage() {
     setChannelTypeId(nextChannelTypeId);
     const nextType = channelTypes.find((type) => type.id === nextChannelTypeId);
     setProvider(resolveDefaultChannelProvider(nextType?.key));
-    if (nextType?.key === "whatsapp") {
-      setVerifyToken((current) => current.trim() || generateWhatsAppVerifyToken());
-    }
   };
 
   const openCreateDialog = () => {
@@ -134,47 +128,28 @@ export default function ChannelsPage() {
     setDisplayName("");
     setProvider("");
     setPhoneNumberId("");
-    setAccessToken("");
-    setVerifyToken("");
-    setApiVersion("v21.0");
     setDialogOpen(true);
   };
 
   const openConfigDialog = (channel: CompanyChannelRecord) => {
     setConfigTarget(channel);
     setPhoneNumberId(readConfigString(channel.configuration, "phoneNumberId"));
-    setAccessToken(readConfigString(channel.configuration, "accessToken"));
-    const existingVerifyToken = readConfigString(channel.configuration, "verifyToken");
-    setVerifyToken(existingVerifyToken || generateWhatsAppVerifyToken());
-    setApiVersion(readConfigString(channel.configuration, "apiVersion") || "v21.0");
     setConfigDialogOpen(true);
   };
 
-  const buildWhatsAppConfiguration = () => {
-    const resolvedVerifyToken = verifyToken.trim() || generateWhatsAppVerifyToken();
-    if (!verifyToken.trim()) {
-      setVerifyToken(resolvedVerifyToken);
-    }
-    return {
-      phoneNumberId: phoneNumberId.trim(),
-      accessToken: accessToken.trim(),
-      verifyToken: resolvedVerifyToken,
-      ...(apiVersion.trim() ? { apiVersion: apiVersion.trim() } : {}),
-    };
-  };
+  const buildWhatsAppReferenceConfiguration = () => ({
+    credentialsSource: "company_whatsapp_settings",
+    ...(phoneNumberId.trim() ? { phoneNumberId: phoneNumberId.trim() } : {}),
+  });
 
   const enabledCount = channels.filter((c) => c.is_enabled).length;
   const connectedCount = channels.filter((c) => c.health_status === "connected").length;
 
   const handleCreate = async () => {
     if (!channelTypeId || !displayName.trim() || !selectedType) return;
-    const configuration =
-      isWhatsAppType && phoneNumberId.trim() && accessToken.trim()
-        ? buildWhatsAppConfiguration()
-        : ({} as Record<string, unknown>);
-    if (isWhatsAppType && typeof configuration.verifyToken !== "string") {
-      return;
-    }
+    const configuration = isWhatsAppType
+      ? buildWhatsAppReferenceConfiguration()
+      : ({} as Record<string, unknown>);
 
     const resolvedProvider = isFixedProviderChannel(selectedType.key)
       ? resolveDefaultChannelProvider(selectedType.key)
@@ -200,9 +175,6 @@ export default function ChannelsPage() {
     setChannelTypeId("");
     setProvider("");
     setPhoneNumberId("");
-    setAccessToken("");
-    setVerifyToken("");
-    setApiVersion("v21.0");
   };
 
   const handleSaveConfig = async () => {
@@ -220,7 +192,7 @@ export default function ChannelsPage() {
     try {
       await updateConfig.mutateAsync({
         companyChannelId: configTarget.id,
-        configuration: buildWhatsAppConfiguration(),
+        configuration: buildWhatsAppReferenceConfiguration(),
         webhookUrl: productionWebhookUrl,
       });
 
@@ -265,10 +237,7 @@ export default function ChannelsPage() {
   const isSaveConfigDisabled =
     updateConfig.isPending
     || workflowBinding.saveBinding.isPending
-    || workflowBinding.bindingLoading
-    || !phoneNumberId.trim()
-    || !accessToken.trim()
-    || !verifyToken.trim();
+    || workflowBinding.bindingLoading;
 
   return (
     <div className="space-y-6">
@@ -420,28 +389,12 @@ export default function ChannelsPage() {
             {isWhatsAppType && (
               <div className="space-y-3 rounded-lg border border-white/10 p-3">
                 <p className="text-xs font-medium">{t("dashboard.channels.whatsappConfig")}</p>
-                <div className="space-y-2">
-                  <Label>{t("dashboard.channels.phoneNumberId")}</Label>
-                  <Input value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("dashboard.channels.accessToken")}</Label>
-                  <Input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("dashboard.channels.verifyToken")}</Label>
-                  <div className="flex gap-2">
-                    <Input value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-white/10 shrink-0"
-                      onClick={() => setVerifyToken(generateWhatsAppVerifyToken())}
-                    >
-                      {t("dashboard.channels.regenerateVerifyToken")}
-                    </Button>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.channels.whatsappCredentialsManagedInSettings")}{" "}
+                  <Link to="/dashboard/settings/whatsapp" className="text-primary underline underline-offset-2">
+                    {t("dashboard.settings.nav.whatsapp")}
+                  </Link>
+                </p>
                 <div className="space-y-2">
                   <Label>{t("dashboard.channels.webhookUrl")}</Label>
                   <Input value={productionWebhookUrl} readOnly className="font-mono text-xs" />
@@ -450,10 +403,6 @@ export default function ChannelsPage() {
                       ? t("dashboard.channels.webhookUrlHelp")
                       : t("dashboard.channels.webhookUrlMissingBase")}
                   </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("dashboard.channels.apiVersion")}</Label>
-                  <Input value={apiVersion} onChange={(e) => setApiVersion(e.target.value)} />
                 </div>
               </div>
             )}
@@ -473,27 +422,20 @@ export default function ChannelsPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-xs text-muted-foreground">{t("dashboard.channels.whatsappConfig")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("dashboard.channels.whatsappCredentialsManagedInSettings")}{" "}
+              <Link to="/dashboard/settings/whatsapp" className="text-primary underline underline-offset-2">
+                {t("dashboard.settings.nav.whatsapp")}
+              </Link>
+            </p>
             <div className="space-y-2">
               <Label>{t("dashboard.channels.phoneNumberId")}</Label>
-              <Input value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("dashboard.channels.accessToken")}</Label>
-              <Input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("dashboard.channels.verifyToken")}</Label>
-              <div className="flex gap-2">
-                <Input value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-white/10 shrink-0"
-                  onClick={() => setVerifyToken(generateWhatsAppVerifyToken())}
-                >
-                  {t("dashboard.channels.regenerateVerifyToken")}
-                </Button>
-              </div>
+              <Input
+                value={phoneNumberId}
+                readOnly
+                placeholder={t("dashboard.channels.phoneNumberIdSyncedHint")}
+                className="font-mono text-xs"
+              />
             </div>
             <div className="space-y-2">
               <Label>{t("dashboard.channels.webhookUrl")}</Label>
@@ -503,10 +445,6 @@ export default function ChannelsPage() {
                   ? t("dashboard.channels.webhookUrlHelp")
                   : t("dashboard.channels.webhookUrlMissingBase")}
               </p>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("dashboard.channels.apiVersion")}</Label>
-              <Input value={apiVersion} onChange={(e) => setApiVersion(e.target.value)} />
             </div>
             <ChannelWorkflowBindingSection
               workflowEnabled={workflowBinding.workflowEnabled}

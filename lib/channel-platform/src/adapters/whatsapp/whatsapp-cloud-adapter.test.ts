@@ -107,8 +107,7 @@ describe("WhatsAppCloudAdapter", () => {
       provider: "meta",
       configuration: {
         phoneNumberId: "123456789",
-        accessToken: "test-token",
-        verifyToken: "vault-verify-token",
+        credentialsSource: "company_whatsapp_settings",
       },
     },
   };
@@ -154,6 +153,14 @@ describe("WhatsAppCloudAdapter", () => {
           status: 200,
           json: async () => ({ messages: [{ id: "wamid.outbound-1" }] }),
         } as Response;
+      },
+      credentialsLoader: {
+        loadByCompanyId: async () => ({
+          accessToken: "test-token",
+          phoneNumberId: "123456789",
+          verifyToken: "vault-verify-token",
+          apiVersion: "v21.0",
+        }),
       },
     });
 

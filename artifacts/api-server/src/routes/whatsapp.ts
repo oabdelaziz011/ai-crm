@@ -5,6 +5,14 @@ import en from "@login-app/locales/en/common.json" with { type: "json" };
 import { MetaWhatsAppTransport } from "@login-app/lib/notifications/providers/whatsapp/adapter/meta-whatsapp-transport";
 import { WhatsAppRenderer } from "@login-app/lib/notifications/providers/whatsapp/renderer/whatsapp-renderer";
 import { createWhatsAppProvider } from "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-provider";
+import {
+  parseWhatsAppChannelReferences,
+  performWhatsAppOutboundHealthCheck,
+  createSupabaseWhatsAppCredentialsLoader,
+  resolveWhatsAppRuntimeConfiguration,
+} from "@workspace/channel-platform";
+import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
+import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 
 const router: IRouter = Router();
 
@@ -12,6 +20,10 @@ void i18next.init({
   lng: "en",
   resources: { en: { common: en } },
 });
+
+router.use(providerOpsRateLimiter);
+router.use(requireSupabaseAuth);
+router.use(requireCompanyScope("companyId"));
 
 function getServiceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -28,28 +40,24 @@ function createProvider(client: ReturnType<typeof createClient>) {
   return createWhatsAppProvider(client, new MetaWhatsAppTransport(), renderer);
 }
 
-router.post("/whatsapp/health", async (req, res) => {
+router.post("/whatsapp/health", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
-    if (!companyId) {
-      res.status(400).json({ error: "companyId required" });
-      return;
-    }
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.healthCheck(companyId);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    next(error);
   }
 });
 
-router.post("/whatsapp/test-message", async (req, res) => {
+router.post("/whatsapp/test-message", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
     const recipientPhone = String(req.body?.recipientPhone ?? "");
-    if (!companyId || !recipientPhone) {
-      res.status(400).json({ error: "companyId and recipientPhone required" });
+    if (!recipientPhone) {
+      res.status(400).json({ error: "recipientPhone required" });
       return;
     }
     const client = getServiceClient();
@@ -57,23 +65,62 @@ router.post("/whatsapp/test-message", async (req, res) => {
     const result = await provider.sendTestMessage(companyId, recipientPhone);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    next(error);
   }
 });
 
-router.post("/whatsapp/process-queue", async (req, res) => {
+router.post("/whatsapp/process-queue", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
-    if (!companyId) {
-      res.status(400).json({ error: "companyId required" });
-      return;
-    }
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.processPending(companyId);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    next(error);
+  }
+});
+
+router.post("/whatsapp/channel-outbound-health", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "");
+    const companyChannelId = String(req.body?.companyChannelId ?? "");
+    if (!companyChannelId) {
+      res.status(400).json({ error: "companyChannelId required" });
+      return;
+    }
+
+    const client = getServiceClient();
+    const credentialsLoader = createSupabaseWhatsAppCredentialsLoader(client);
+
+    const { data: channel, error: channelError } = await client
+      .from("company_channels")
+      .select("id, company_id, configuration")
+      .eq("id", companyChannelId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (channelError) throw channelError;
+    if (!channel) {
+      res.status(404).json({ error: "channel_not_found" });
+      return;
+    }
+
+    const channelReferences = parseWhatsAppChannelReferences(channel.configuration ?? {});
+    const runtimeConfig = await resolveWhatsAppRuntimeConfiguration(
+      companyId,
+      channelReferences,
+      credentialsLoader,
+    );
+
+    const report = await performWhatsAppOutboundHealthCheck({
+      companyId,
+      runtimeConfig,
+    });
+
+    res.json(report);
+  } catch (error) {
+    next(error);
   }
 });
 

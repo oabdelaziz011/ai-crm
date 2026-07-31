@@ -4,6 +4,7 @@ export type ResolvedChannelWorkflow = {
   companyId: string;
   companyChannelId: string;
   automationFlowId: string;
+  executionMetadata?: ChannelWorkflowExecutionMetadata;
 };
 
 export type ChannelWorkflowSkipReason =
@@ -15,8 +16,19 @@ export type ChannelWorkflowResolution =
   | { status: "resolved"; workflow: ResolvedChannelWorkflow }
   | { status: "skipped"; reason: ChannelWorkflowSkipReason; automationFlowId?: string };
 
+export type ChannelWorkflowExecutionMetadata = {
+  workflowId: string;
+  automationFlowId: string;
+  publishedVersionId: string | null;
+  publishedVersionNumber: number | null;
+  hasUnpublishedDraft: boolean;
+  flowStatus: string;
+  bindingUsesPublishedVersion: boolean;
+};
+
 export type ChannelWorkflowFlowValidator = {
   isExecutableFlow(flowId: string, companyId: string): Promise<boolean>;
+  getExecutionMetadata?(flowId: string, companyId: string): Promise<ChannelWorkflowExecutionMetadata | null>;
 };
 
 export type ChannelWorkflowResolverDeps = {
@@ -53,12 +65,20 @@ export class ChannelWorkflowResolver {
       };
     }
 
+    const executionMetadata = this.deps.flowValidator.getExecutionMetadata
+      ? await this.deps.flowValidator.getExecutionMetadata(
+          binding.automation_flow_id,
+          binding.company_id,
+        )
+      : null;
+
     return {
       status: "resolved",
       workflow: {
         companyId: binding.company_id,
         companyChannelId: binding.company_channel_id,
         automationFlowId: binding.automation_flow_id,
+        ...(executionMetadata ? { executionMetadata } : {}),
       },
     };
   }

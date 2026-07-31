@@ -9,6 +9,7 @@ export type WebhookProcessingStep =
   | "webhook.handler_started"
   | "webhook.adapter_parsed"
   | "webhook.inbound_event_created"
+  | "webhook.inbound_message_reused"
   | "webhook.message_normalized"
   | "webhook.workflow_resolved"
   | "webhook.workflow_missing"
@@ -21,7 +22,8 @@ export type WebhookProcessingStep =
   | "webhook.processing_completed"
   | "webhook.processing_failed"
   | "webhook.diag_early_return"
-  | "webhook.diag";
+  | "webhook.diag"
+  | "webhook.email_thread_resolved";
 
 export type WebhookProcessingTrace = {
   step: (step: WebhookProcessingStep, detail?: Record<string, unknown>) => void;

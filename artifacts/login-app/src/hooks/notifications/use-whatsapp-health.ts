@@ -33,7 +33,7 @@ export function useUpdateWhatsAppSettings(companyId: string | null) {
     mutationFn: (
       input: Omit<
         CompanyWhatsAppSettings,
-        "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "updatedAt"
+        "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "hasAppSecret" | "updatedAt"
       >,
     ) => settings.upsert(companyId!, input),
     onSuccess: () => {

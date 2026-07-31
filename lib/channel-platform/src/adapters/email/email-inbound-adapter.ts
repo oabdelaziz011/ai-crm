@@ -199,35 +199,35 @@ export class EmailInboundAdapter {
   private readAttachments(value: unknown): ParsedInboundEmail["attachments"] {
     if (!Array.isArray(value)) return [];
 
-    return value
-      .map((item, index) => {
-        if (!item || typeof item !== "object") return null;
-        const record = item as Record<string, unknown>;
-        const filename =
-          typeof record.filename === "string" ? record.filename.trim() : `attachment-${index + 1}`;
-        const mimeType =
-          typeof record.mimeType === "string"
-            ? record.mimeType
-            : typeof record.contentType === "string"
-              ? record.contentType
-              : "application/octet-stream";
-        const sizeBytes =
-          typeof record.sizeBytes === "number"
-            ? record.sizeBytes
-            : typeof record.size === "number"
-              ? record.size
-              : 0;
+    const attachments: ParsedInboundEmail["attachments"] = [];
+    for (const [index, item] of value.entries()) {
+      if (!item || typeof item !== "object") continue;
+      const record = item as Record<string, unknown>;
+      const filename =
+        typeof record.filename === "string" ? record.filename.trim() : `attachment-${index + 1}`;
+      const mimeType =
+        typeof record.mimeType === "string"
+          ? record.mimeType
+          : typeof record.contentType === "string"
+            ? record.contentType
+            : "application/octet-stream";
+      const sizeBytes =
+        typeof record.sizeBytes === "number"
+          ? record.sizeBytes
+          : typeof record.size === "number"
+            ? record.size
+            : 0;
 
-        return {
-          attachmentId:
-            typeof record.attachmentId === "string" ? record.attachmentId : `email-attachment-${index + 1}`,
-          filename,
-          mimeType,
-          sizeBytes,
-          url: typeof record.url === "string" ? record.url : undefined,
-        };
-      })
-      .filter((item): item is ParsedInboundEmail["attachments"][number] => item !== null);
+      attachments.push({
+        attachmentId:
+          typeof record.attachmentId === "string" ? record.attachmentId : `email-attachment-${index + 1}`,
+        filename,
+        mimeType,
+        sizeBytes,
+        url: typeof record.url === "string" ? record.url : undefined,
+      });
+    }
+    return attachments;
   }
 }
 

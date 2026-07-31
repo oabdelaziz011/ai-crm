@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createSecureRandomId } from "./secure-random-id.js";
 
 export function readMessengerPageId(configuration: Record<string, unknown>): string | null {
   const value = configuration.pageId;
@@ -8,5 +8,5 @@ export function readMessengerPageId(configuration: Record<string, unknown>): str
 }
 
 export function generateMessengerVerifyToken(): string {
-  return `messenger_verify_${randomUUID().replace(/-/g, "")}`;
+  return `messenger_verify_${createSecureRandomId().replace(/-/g, "")}`;
 }

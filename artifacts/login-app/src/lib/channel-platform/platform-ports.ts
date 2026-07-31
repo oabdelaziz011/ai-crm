@@ -1,15 +1,14 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ConversationChannelType, ConversationServices, ServiceContext as ConversationServiceContext } from "@workspace/ai-conversation";
-import type { ServiceContext as RegistryServiceContext } from "@workspace/channel-registry";
-import type { ChannelRegistryServices } from "@workspace/channel-registry";
+import type { ChannelRegistryServices, ServiceContext as RegistryServiceContext } from "@workspace/channel-registry";
 import type {
   ChannelConversationPort,
   ChannelPlatformPorts,
   ChannelRegistryPort,
   ChannelRuntimePort,
   ResolvedCompanyChannel,
-} from "@workspace/channel-platform";
-import type { ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
-import type { RuntimeIntegrationServices } from "@workspace/runtime-integration";
+} from "@workspace/channel-platform/client";
+import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
 import { extractResponseContent } from "@workspace/runtime-integration";
 
 function mapCompanyChannelRecord(record: {
@@ -75,14 +74,100 @@ export function createChannelRegistryPort(
     async syncWhatsAppPhoneNumberId(companyChannelId, phoneNumberId) {
       await services.companyChannels.syncWhatsAppPhoneNumberId(ctx, companyChannelId, phoneNumberId);
     },
+
+    async findCompanyChannelByInstagramBusinessAccountId(instagramBusinessAccountId) {
+      const records = await services.companyChannels.findCompanyChannelByInstagramBusinessAccountId(
+        ctx,
+        instagramBusinessAccountId,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async findCompanyChannelsByInstagramVerifyToken(verifyToken) {
+      const records = await services.companyChannels.findCompanyChannelsByInstagramVerifyToken(
+        ctx,
+        verifyToken,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledInstagramChannels() {
+      const records = await services.companyChannels.listEnabledInstagramChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncInstagramBusinessAccountId(companyChannelId, instagramBusinessAccountId) {
+      await services.companyChannels.syncInstagramBusinessAccountId(
+        ctx,
+        companyChannelId,
+        instagramBusinessAccountId,
+      );
+    },
+
+    async findCompanyChannelByMessengerPageId(pageId) {
+      const records = await services.companyChannels.findCompanyChannelByMessengerPageId(ctx, pageId);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async findCompanyChannelsByMessengerVerifyToken(verifyToken) {
+      const records = await services.companyChannels.findCompanyChannelsByMessengerVerifyToken(
+        ctx,
+        verifyToken,
+      );
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledMessengerChannels() {
+      const records = await services.companyChannels.listEnabledMessengerChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncMessengerPageId(companyChannelId, pageId) {
+      await services.companyChannels.syncMessengerPageId(ctx, companyChannelId, pageId);
+    },
+
+    async findCompanyChannelByFromEmail(fromEmail) {
+      const records = await services.companyChannels.findCompanyChannelByFromEmail(ctx, fromEmail);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async listEnabledEmailChannels() {
+      const records = await services.companyChannels.listEnabledEmailChannels(ctx);
+      return records
+        .map((record) => mapCompanyChannelRecord(record))
+        .filter((record): record is ResolvedCompanyChannel => record != null);
+    },
+
+    async syncEmailFromEmail(companyChannelId, fromEmail) {
+      await services.companyChannels.syncEmailFromEmail(ctx, companyChannelId, fromEmail);
+    },
   };
 }
 
 export function createChannelConversationPort(
   services: ConversationServices,
   ctx: ConversationServiceContext,
+  options?: {
+    resolveCompanyAssistantId?: (companyId: string) => Promise<string | null>;
+  },
 ): ChannelConversationPort {
   return {
+    resolveCompanyAssistantId: options?.resolveCompanyAssistantId,
+
     async createConversation(input) {
       const created = await services.conversations.createConversation(ctx, {
         companyId: input.companyId,
@@ -95,13 +180,14 @@ export function createChannelConversationPort(
     },
 
     async addIncomingMessage(input) {
-      const message = await services.messages.addMessage(ctx, {
+      const { message, reused } = await services.messages.addIncomingMessageIdempotent(ctx, {
         conversationId: input.conversationId,
         messageType: "incoming",
         contentType: "text",
         content: input.content,
+        externalMessageId: input.externalMessageId ?? null,
         metadata: {
-          externalMessageId: input.externalMessageId,
+          ...(input.externalMessageId ? { externalMessageId: input.externalMessageId } : {}),
           ...(input.metadata ?? {}),
         },
       });
@@ -112,6 +198,7 @@ export function createChannelConversationPort(
         messageType: message.message_type,
         content: message.content,
         createdAt: message.created_at,
+        reused,
       };
     },
 
@@ -138,10 +225,23 @@ export function createChannelConversationPort(
 export function createChannelRuntimePort(
   services: RuntimeIntegrationServices,
   ctx: RuntimeServiceContext,
+  options?: {
+    resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+  },
 ): ChannelRuntimePort {
   return {
     async execute(input) {
-      const response = await services.coordinator.execute(ctx, {
+      const actorUserId = options?.resolveRuntimeActorUserId
+        ? await options.resolveRuntimeActorUserId(input.companyId)
+        : ctx.userId;
+
+      const runtimeCtx: RuntimeServiceContext = {
+        ...ctx,
+        companyId: input.companyId,
+        userId: actorUserId ?? ctx.userId,
+      };
+
+      const response = await services.coordinator.execute(runtimeCtx, {
         companyId: input.companyId,
         conversationId: input.conversationId,
         messageText: input.messageText,
@@ -168,16 +268,37 @@ export function createChannelPlatformPortsWithContext(
     channelRegistry: ChannelRegistryServices;
     conversation: ConversationServices;
     runtime: RuntimeIntegrationServices;
+    supabaseClient?: SupabaseClient;
   },
   ctx: {
     registry: RegistryServiceContext;
     conversation: ConversationServiceContext;
     runtime: RuntimeServiceContext;
   },
+  options?: {
+    resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+  },
 ): ChannelPlatformPorts {
+  const resolveCompanyAssistantId = deps.supabaseClient
+    ? async (companyId: string): Promise<string | null> => {
+        const { data, error } = await deps.supabaseClient!
+          .from("ai_assistant_settings")
+          .select("id")
+          .eq("company_id", companyId)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (error) throw error;
+        return data?.id ?? null;
+      }
+    : undefined;
+
   return {
     registry: createChannelRegistryPort(deps.channelRegistry, ctx.registry),
-    conversation: createChannelConversationPort(deps.conversation, ctx.conversation),
-    runtime: createChannelRuntimePort(deps.runtime, ctx.runtime),
+    conversation: createChannelConversationPort(deps.conversation, ctx.conversation, {
+      resolveCompanyAssistantId,
+    }),
+    runtime: createChannelRuntimePort(deps.runtime, ctx.runtime, {
+      resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
+    }),
   };
 }

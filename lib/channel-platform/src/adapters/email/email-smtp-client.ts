@@ -1,3 +1,4 @@
+import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 import type { EmailChannelConfiguration } from "./email-config.js";
 import type { EmailSmtpSendPayload, EmailSmtpSendResult } from "./email-types.js";
 import { normalizeEmailMessageId } from "./email-html-utils.js";
@@ -22,7 +23,7 @@ export class EmailSmtpClient {
     const references =
       payload.references?.map((item) => `<${normalizeEmailMessageId(item)}>`).join(" ") || undefined;
 
-    const result = await transporter.sendMail({
+    const result = (await transporter.sendMail({
       from: config.fromName ? `"${config.fromName}" <${config.fromEmail}>` : config.fromEmail,
       to: payload.to,
       replyTo: payload.replyTo ?? config.replyToEmail ?? config.fromEmail,
@@ -37,7 +38,7 @@ export class EmailSmtpClient {
         contentType: attachment.mimeType,
         path: attachment.url,
       })),
-    });
+    })) as SMTPTransport.SentMessageInfo;
 
     const messageId = normalizeEmailMessageId(result.messageId ?? `generated-${Date.now()}@valueor.local`);
 

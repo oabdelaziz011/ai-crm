@@ -8,6 +8,8 @@ export type WhatsAppCredentialProbeChannel = {
 
 export type WhatsAppPhoneNumberProbeOptions = {
   fetchFn?: typeof fetch;
+  loadAccessToken?: (companyId: string) => Promise<string | null>;
+  loadApiVersion?: (companyId: string) => Promise<string | null>;
 };
 
 export async function verifyWhatsAppPhoneNumberAccess(
@@ -47,13 +49,15 @@ export async function probeWhatsAppPhoneNumberChannel(
   const matches: WhatsAppCredentialProbeChannel[] = [];
 
   for (const channel of channels) {
-    const accessToken = channel.configuration.accessToken;
-    if (typeof accessToken !== "string" || !accessToken.trim()) continue;
+    const accessToken = options.loadAccessToken
+      ? ((await options.loadAccessToken(channel.companyId))?.trim() ?? "")
+      : readLegacyChannelAccessToken(channel.configuration);
 
-    const apiVersion =
-      typeof channel.configuration.apiVersion === "string" && channel.configuration.apiVersion.trim()
-        ? channel.configuration.apiVersion.trim()
-        : "v21.0";
+    if (!accessToken) continue;
+
+    const apiVersion = options.loadApiVersion
+      ? ((await options.loadApiVersion(channel.companyId))?.trim() || "v21.0")
+      : readLegacyChannelApiVersion(channel.configuration);
 
     const ownsPhoneNumber = await verifyWhatsAppPhoneNumberAccess(
       phoneNumberId,
@@ -66,4 +70,14 @@ export async function probeWhatsAppPhoneNumberChannel(
 
   if (matches.length === 1) return matches[0]!;
   return null;
+}
+
+function readLegacyChannelAccessToken(configuration: Record<string, unknown>): string {
+  const value = configuration.accessToken;
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readLegacyChannelApiVersion(configuration: Record<string, unknown>): string {
+  const value = configuration.apiVersion;
+  return typeof value === "string" && value.trim() ? value.trim() : "v21.0";
 }

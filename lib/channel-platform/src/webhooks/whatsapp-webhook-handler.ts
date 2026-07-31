@@ -3,7 +3,6 @@ import type { ChannelPlatformServices } from "../index.js";
 import type { ChannelPlatformPorts } from "../ports/channel-platform-ports.js";
 import type { ServiceContext } from "../types.js";
 import { verifyWhatsAppWebhookChallenge } from "../adapters/whatsapp/whatsapp-api-client.js";
-import { CompanyChannelNotFoundError } from "../errors.js";
 
 export type WhatsAppWebhookHandlerDeps = {
   client: SupabaseClient;
@@ -120,18 +119,4 @@ export function createWhatsAppWebhookHandler(deps: WhatsAppWebhookHandlerDeps) {
   };
 }
 
-export async function resolveWhatsAppCompanyChannel(
-  ports: ChannelPlatformPorts,
-  companyChannelId: string,
-): Promise<{ companyId: string; verifyToken: string }> {
-  const channel = await ports.registry.getCompanyChannel(companyChannelId);
-  if (!channel) throw new CompanyChannelNotFoundError(companyChannelId);
-
-  const verifyToken =
-    typeof channel.configuration.verifyToken === "string" ? channel.configuration.verifyToken : "";
-  if (!verifyToken) {
-    throw new Error("WhatsApp verifyToken is not configured for this company channel.");
-  }
-
-  return { companyId: channel.companyId, verifyToken };
-}
+export { resolveWhatsAppCompanyChannel } from "./whatsapp-company-channel.js";

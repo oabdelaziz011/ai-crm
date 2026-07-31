@@ -238,6 +238,14 @@ describe("InboundMessagePipeline WhatsApp version graph E2E regression", () => {
           }),
         } as Response;
       },
+      credentialsLoader: {
+        loadByCompanyId: async () => ({
+          accessToken: "test-token",
+          phoneNumberId: "123456789",
+          verifyToken: "vault-verify-token",
+          apiVersion: "v21.0",
+        }),
+      },
     });
 
     const env = createTestEnvironment({
@@ -249,8 +257,7 @@ describe("InboundMessagePipeline WhatsApp version graph E2E regression", () => {
         provider: "meta",
         configuration: {
           phoneNumberId: "123456789",
-          accessToken: "test-token",
-          verifyToken: "vault-verify-token",
+          credentialsSource: "company_whatsapp_settings",
         },
       },
       adapters: [whatsAppAdapter],

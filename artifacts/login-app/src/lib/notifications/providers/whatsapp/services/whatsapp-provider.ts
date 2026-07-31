@@ -246,6 +246,8 @@ export class WhatsAppProvider {
       phoneNumberId: settings.phoneNumberId,
       businessAccountId: settings.businessAccountId,
       webhookVerifyToken: settings.webhookVerifyToken,
+      apiVersion: settings.apiVersion,
+      appSecret: settings.appSecret || undefined,
       defaultLanguage: settings.defaultLanguage,
     };
   }

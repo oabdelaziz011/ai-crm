@@ -6,6 +6,7 @@ export type MetaWhatsAppConfig = {
   businessAccountId: string;
   webhookVerifyToken: string;
   apiVersion?: string;
+  appSecret?: string;
   defaultLanguage: string;
 };
 
@@ -68,10 +69,13 @@ export type CompanyWhatsAppSettings = {
   phoneNumberId: string;
   businessAccountId: string;
   webhookVerifyToken: string;
+  apiVersion: string;
+  appSecret: string;
   defaultLanguage: string;
   maxRetryCount: number;
   hasAccessToken: boolean;
   hasWebhookVerifyToken: boolean;
+  hasAppSecret: boolean;
   updatedAt?: string;
 };
 

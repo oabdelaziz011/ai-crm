@@ -68,7 +68,7 @@ export class MessengerCloudAdapter implements ChannelAdapterPort {
             ? payload.externalMessageId
             : `${payload.senderExternalId ?? "unknown"}:postback`,
         senderExternalId:
-          typeof payload.senderExternalId === "string" ? payload.senderExternalId : undefined,
+          typeof payload.senderExternalId === "string" ? payload.senderExternalId : null,
         text,
         attachments: [],
         metadata: {
@@ -90,9 +90,9 @@ export class MessengerCloudAdapter implements ChannelAdapterPort {
     return {
       externalThreadId:
         typeof payload.senderExternalId === "string" ? payload.senderExternalId : "",
-      externalMessageId: message.mid ?? "",
+      externalMessageId: message.mid ?? `${payload.senderExternalId ?? "unknown"}:message`,
       senderExternalId:
-        typeof payload.senderExternalId === "string" ? payload.senderExternalId : undefined,
+        typeof payload.senderExternalId === "string" ? payload.senderExternalId : null,
       text,
       attachments,
       metadata: {

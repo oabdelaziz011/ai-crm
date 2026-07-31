@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createSecureRandomId } from "./secure-random-id.js";
 
 export function readInstagramBusinessAccountId(configuration: Record<string, unknown>): string | null {
   const value = configuration.instagramBusinessAccountId;
@@ -15,5 +15,5 @@ export function readInstagramPageId(configuration: Record<string, unknown>): str
 }
 
 export function generateInstagramVerifyToken(): string {
-  return `ig_verify_${randomUUID().replace(/-/g, "")}`;
+  return `ig_verify_${createSecureRandomId().replace(/-/g, "")}`;
 }

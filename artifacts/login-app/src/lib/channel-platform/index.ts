@@ -1,4 +1,4 @@
-import { createChannelPlatformServices } from "@workspace/channel-platform";
+import { createChannelPlatformServices } from "@workspace/channel-platform/client";
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -36,11 +36,20 @@ export function useChannelPlatformServices() {
           channelRegistry: channelRegistryServices,
           conversation: conversationServices,
           runtime: runtimeServices,
+          supabaseClient: supabase,
         },
         {
           registry: channelRegistryContext,
           conversation: conversationContext,
           runtime: runtimeContext,
+        },
+        {
+          resolveRuntimeActorUserId: async (companyId) => {
+            if (user?.id && profile?.company_id === companyId) {
+              return user.id;
+            }
+            return null;
+          },
         },
       ),
     [
@@ -48,8 +57,10 @@ export function useChannelPlatformServices() {
       channelRegistryContext,
       conversationContext,
       conversationServices,
+      profile?.company_id,
       runtimeContext,
       runtimeServices,
+      user?.id,
     ],
   );
 

@@ -1,4 +1,4 @@
-import type { AiEmployeeStatus } from "./ai-employee-types";
+import type { AiEmployeeStatus } from "@/lib/ai-employees/types";
 
 export type AiEmployeeRetrievalPriority = "balanced" | "precision" | "recall";
 

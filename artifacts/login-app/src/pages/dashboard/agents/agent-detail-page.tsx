@@ -1,6 +1,7 @@
 import { useLocation, useParams } from "wouter";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { lazy, Suspense, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
@@ -12,22 +13,96 @@ import {
 } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AiEmployeeDeleteDialog, AiEmployeeStatusBadge } from "@/lib/ai-employees/components";
+import { AiEmployeeDeleteDialog, AiEmployeeStatusBadge, AgentConfigurationWorkspace } from "@/lib/ai-employees/components";
 import {
   formatAiEmployeeError,
+  formatAiEmployeeLifecycleError,
+  formatAiEmployeeSkillError,
   useAiEmployee,
+  useAiEmployeeCollaboration,
+  useAiEmployeeGovernance,
+  useAiEmployeeAdministration,
+  useControlTowerEmployeeFilter,
+  useAiEmployeeConfigurationState,
+  useAiEmployeeLifecycleState,
+  useAiEmployeeMemory,
+  useAiEmployeeMemorySearch,
+  useAiEmployeeOperations,
+  useAiEmployeeOperationsControl,
+  useAiEmployeeSkills,
+  useAiEmployeeSkillsMarketplace,
+  useAssignAiEmployeeSkills,
+  useTestAiSkill,
+  useToggleAiSkillFavorite,
+  useArchiveAiEmployee,
   useDeleteAiEmployee,
+  useDisableAiEmployee,
+  usePublishAiEmployee,
+  useRestoreAiEmployee,
+  useRollbackAiEmployee,
+  useUpdateAiEmployeeConfiguration,
 } from "@/lib/ai-employees/hooks";
 import {
+  hasAiEmployeesCollaborationViewPermission,
+  hasAiEmployeesGovernanceViewPermission,
+  hasAiEmployeesAdministrationViewPermission,
   hasAiEmployeesDeletePermission,
   hasAiEmployeesEditPermission,
+  hasAiEmployeesMemoryViewPermission,
+  hasAiEmployeesOperationsControlPermission,
+  hasAiEmployeesOperationsViewPermission,
+  hasAiEmployeesPublishPermission,
+  hasAiEmployeesRollbackPermission,
+  hasAiEmployeesSkillsEditPermission,
+  hasAiEmployeesSkillsViewPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
 import { agentEditHref } from "@/config/agents-route-registry";
 import { nestedSectionHref, NEST_INDEX } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
 import { Activity, BarChart3, Clock, HeartPulse } from "lucide-react";
-import { useState } from "react";
+
+const MemoryCenterPanel = lazy(() =>
+  import("@/lib/ai-employees/components/memory/memory-center-panel").then((module) => ({
+    default: module.MemoryCenterPanel,
+  })),
+);
+
+const LifecycleManagerPanel = lazy(() =>
+  import("@/lib/ai-employees/components/lifecycle/lifecycle-manager-panel").then((module) => ({
+    default: module.LifecycleManagerPanel,
+  })),
+);
+
+const OperationsCenterPanel = lazy(() =>
+  import("@/lib/ai-employees/components/operations/operations-center-panel").then((module) => ({
+    default: module.OperationsCenterPanel,
+  })),
+);
+
+const SkillsPlatformPanel = lazy(() =>
+  import("@/lib/ai-employees/components/skills/skills-platform-panel").then((module) => ({
+    default: module.SkillsPlatformPanel,
+  })),
+);
+
+const CollaborationPlatformPanel = lazy(() =>
+  import("@/lib/ai-employees/components/collaboration/collaboration-platform-panel").then((module) => ({
+    default: module.CollaborationPlatformPanel,
+  })),
+);
+
+const GovernancePlatformPanel = lazy(() =>
+  import("@/lib/ai-employees/components/governance/governance-platform-panel").then((module) => ({
+    default: module.GovernancePlatformPanel,
+  })),
+);
+
+const ControlTowerPanel = lazy(() =>
+  import("@/lib/ai-employees/components/administration/control-tower-panel").then((module) => ({
+    default: module.ControlTowerPanel,
+  })),
+);
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50,12 +125,41 @@ export function AgentDetailPage() {
   });
   const canEdit = hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
   const canDelete = hasAiEmployeesDeletePermission(hasPermission, isSuperAdmin);
+  const canPublish = hasAiEmployeesPublishPermission(hasPermission, isSuperAdmin);
+  const canRollback = hasAiEmployeesRollbackPermission(hasPermission, isSuperAdmin);
+  const canViewOperations = hasAiEmployeesOperationsViewPermission(hasPermission, isSuperAdmin);
+  const canViewMemory = hasAiEmployeesMemoryViewPermission(hasPermission, isSuperAdmin);
+  const canViewSkills = hasAiEmployeesSkillsViewPermission(hasPermission, isSuperAdmin);
+  const canViewCollaboration = hasAiEmployeesCollaborationViewPermission(hasPermission, isSuperAdmin);
+  const canViewGovernance = hasAiEmployeesGovernanceViewPermission(hasPermission, isSuperAdmin);
+  const canViewAdministration = hasAiEmployeesAdministrationViewPermission(hasPermission, isSuperAdmin);
+  const canEditSkills = hasAiEmployeesSkillsEditPermission(hasPermission, isSuperAdmin);
+  const canControlOperations = hasAiEmployeesOperationsControlPermission(hasPermission, isSuperAdmin);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const { data: employee, isLoading, error } = useAiEmployee(
-    companyId,
-    agentId && UUID_PATTERN.test(agentId) ? agentId : null,
-  );
+  const validAgentId = agentId && UUID_PATTERN.test(agentId) ? agentId : null;
+  const { data: employee, isLoading, error } = useAiEmployee(companyId, validAgentId);
+  const configState = useAiEmployeeConfigurationState(companyId, validAgentId);
+  const lifecycleState = useAiEmployeeLifecycleState(companyId, validAgentId);
+  const operationsQuery = useAiEmployeeOperations(companyId, validAgentId);
+  const memoryQuery = useAiEmployeeMemory(companyId, validAgentId);
+  const memorySearch = useAiEmployeeMemorySearch(memoryQuery.data);
+  const skillsQuery = useAiEmployeeSkills(companyId, validAgentId);
+  const skillsMarketplace = useAiEmployeeSkillsMarketplace(skillsQuery.data);
+  const collaborationQuery = useAiEmployeeCollaboration(companyId, validAgentId);
+  const governanceQuery = useAiEmployeeGovernance(companyId, validAgentId);
+  const administrationQuery = useAiEmployeeAdministration(companyId, validAgentId);
+  const controlTowerFilter = useControlTowerEmployeeFilter(administrationQuery.data);
+  const assignSkills = useAssignAiEmployeeSkills(companyId, validAgentId);
+  const testSkill = useTestAiSkill(companyId);
+  const toggleFavorite = useToggleAiSkillFavorite(companyId, validAgentId);
+  const operationsControl = useAiEmployeeOperationsControl(companyId, validAgentId);
+  const updateConfiguration = useUpdateAiEmployeeConfiguration(companyId, validAgentId);
+  const publishEmployee = usePublishAiEmployee(companyId, validAgentId);
+  const rollbackEmployee = useRollbackAiEmployee(companyId, validAgentId);
+  const archiveEmployee = useArchiveAiEmployee(companyId, validAgentId);
+  const restoreEmployee = useRestoreAiEmployee(companyId, validAgentId);
+  const disableEmployee = useDisableAiEmployee(companyId, validAgentId);
   const deleteEmployee = useDeleteAiEmployee(companyId);
 
   const handleDelete = async () => {
@@ -130,10 +234,36 @@ export function AgentDetailPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <DashboardStatCard label={t("aiEmployees.detail.runtimeStatus")} value={t("aiEmployees.detail.notConnected")} icon={Activity} />
-          <DashboardStatCard label={t("aiEmployees.detail.health")} value={t("aiEmployees.detail.placeholder")} icon={HeartPulse} />
-          <DashboardStatCard label={t("aiEmployees.detail.analytics")} value={t("aiEmployees.detail.placeholder")} icon={BarChart3} />
-          <DashboardStatCard label={t("aiEmployees.detail.executions")} value={t("aiEmployees.detail.placeholder")} icon={Clock} />
+          <DashboardStatCard
+            label={t("aiEmployees.detail.runtimeStatus")}
+            value={
+              operationsQuery.data
+                ? t(`aiEmployees.operations.runtimeStatus.presence.${operationsQuery.data.runtimeStatus.presence}`)
+                : t("aiEmployees.operations.loading")
+            }
+            icon={Activity}
+          />
+          <DashboardStatCard
+            label={t("aiEmployees.detail.health")}
+            value={
+              operationsQuery.data ? `${operationsQuery.data.metrics.successRate}%` : t("aiEmployees.detail.placeholder")
+            }
+            icon={HeartPulse}
+          />
+          <DashboardStatCard
+            label={t("aiEmployees.detail.analytics")}
+            value={
+              operationsQuery.data
+                ? formatCost(operationsQuery.data.costs.estimatedDailyCost, operationsQuery.data.costs.currency)
+                : t("aiEmployees.detail.placeholder")
+            }
+            icon={BarChart3}
+          />
+          <DashboardStatCard
+            label={t("aiEmployees.detail.executions")}
+            value={operationsQuery.data?.metrics.executionsToday ?? t("aiEmployees.detail.placeholder")}
+            icon={Clock}
+          />
         </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
@@ -159,7 +289,217 @@ export function AgentDetailPage() {
           <SummaryCard title={t("aiEmployees.detail.tools")}>
             <p className="text-sm text-muted-foreground">{employee.toolSummary}</p>
           </SummaryCard>
+
+          <SummaryCard title={t("aiEmployees.detail.skills")}>
+            <p className="text-sm text-muted-foreground">{employee.skillsSummary}</p>
+          </SummaryCard>
         </div>
+
+        <AgentConfigurationWorkspace
+          employee={employee}
+          preview={configState.preview}
+          canEdit={canEdit}
+          isSaving={updateConfiguration.isPending || configState.isLoading}
+          onSave={(patch) => {
+            void updateConfiguration.mutateAsync(patch).catch((saveError) => {
+              toast({
+                variant: "destructive",
+                title: t("aiEmployees.errors.title"),
+                description: formatAiEmployeeError(saveError),
+              });
+            });
+          }}
+        />
+
+        {canViewAdministration ? (
+          <Suspense fallback={<DashboardPageFallback />}>
+            <ControlTowerPanel
+              employee={employee}
+              snapshot={administrationQuery.data ?? null}
+              isLoading={administrationQuery.isLoading}
+              employeeFilter={controlTowerFilter}
+            />
+          </Suspense>
+        ) : null}
+
+        {canViewOperations ? (
+          <Suspense fallback={<DashboardPageFallback />}>
+            <OperationsCenterPanel
+              employee={employee}
+              snapshot={operationsQuery.data ?? null}
+              isLoading={operationsQuery.isLoading}
+              canControl={canControlOperations}
+              isControlling={operationsControl.isPending}
+              onControl={async (action) => {
+                try {
+                  await operationsControl.mutateAsync(action);
+                  toast({ title: t(`aiEmployees.operations.controlSuccess.${action}`) });
+                } catch (controlError) {
+                  toast({
+                    variant: "destructive",
+                    title: t("aiEmployees.errors.title"),
+                    description: formatAiEmployeeLifecycleError(controlError),
+                  });
+                  throw controlError;
+                }
+              }}
+            />
+          </Suspense>
+        ) : null}
+
+        {canViewMemory ? (
+          <Suspense fallback={<DashboardPageFallback />}>
+            <MemoryCenterPanel
+              employee={employee}
+              snapshot={memoryQuery.data ?? null}
+              isLoading={memoryQuery.isLoading}
+              search={memorySearch}
+            />
+          </Suspense>
+        ) : null}
+
+        {canViewSkills ? (
+          <Suspense fallback={<DashboardPageFallback />}>
+            <SkillsPlatformPanel
+              employee={employee}
+              snapshot={skillsQuery.data ?? null}
+              isLoading={skillsQuery.isLoading}
+              marketplace={skillsMarketplace}
+              canEdit={canEditSkills}
+              isAssigning={assignSkills.isPending}
+              onAssign={async (skillIds) => {
+                try {
+                  await assignSkills.mutateAsync(skillIds);
+                  toast({ title: t("aiEmployees.skills.assigned.saved") });
+                } catch (assignError) {
+                  toast({
+                    variant: "destructive",
+                    title: t("aiEmployees.errors.title"),
+                    description: formatAiEmployeeSkillError(assignError),
+                  });
+                  throw assignError;
+                }
+              }}
+              onToggleFavorite={async (skillId, favorite) => {
+                await toggleFavorite.mutateAsync({ skillId, favorite });
+              }}
+              onTestSkill={async (skillId) => {
+                try {
+                  const result = await testSkill.mutateAsync(skillId);
+                  toast({
+                    title: t("aiEmployees.skills.test.success"),
+                    description: t("aiEmployees.skills.test.score", { score: result.readiness.score }),
+                  });
+                } catch (testError) {
+                  toast({
+                    variant: "destructive",
+                    title: t("aiEmployees.errors.title"),
+                    description: formatAiEmployeeSkillError(testError),
+                  });
+                }
+              }}
+            />
+          </Suspense>
+        ) : null}
+
+        {canViewCollaboration ? (
+          <Suspense fallback={<DashboardPageFallback />}>
+            <CollaborationPlatformPanel
+              employee={employee}
+              snapshot={collaborationQuery.data ?? null}
+              isLoading={collaborationQuery.isLoading}
+            />
+          </Suspense>
+        ) : null}
+
+        {canViewGovernance ? (
+          <Suspense fallback={<DashboardPageFallback />}>
+            <GovernancePlatformPanel
+              employee={employee}
+              snapshot={governanceQuery.data ?? null}
+              isLoading={governanceQuery.isLoading}
+            />
+          </Suspense>
+        ) : null}
+
+        <Suspense fallback={<DashboardPageFallback />}>
+          <LifecycleManagerPanel
+            companyId={companyId}
+            agentId={validAgentId}
+            employee={employee}
+            preview={lifecycleState.preview}
+            validation={lifecycleState.validation}
+            readiness={lifecycleState.readiness}
+            versions={lifecycleState.versions}
+            deployments={lifecycleState.deployments}
+            timeline={lifecycleState.timeline}
+            isLoading={lifecycleState.isLoading}
+            canPublish={canPublish}
+            canRollback={canRollback}
+            canArchive={canDelete}
+            canDisable={canEdit}
+            isPublishing={publishEmployee.isPending}
+            isRollingBack={rollbackEmployee.isPending}
+            isArchiving={archiveEmployee.isPending}
+            isDisabling={disableEmployee.isPending}
+            onPublish={async (publishNotes) => {
+              if (!lifecycleState.preview) {
+                throw new Error(t("aiEmployees.lifecycle.publish.notReady"));
+              }
+              await publishEmployee.mutateAsync({ publishNotes, preview: lifecycleState.preview });
+              toast({ title: t("aiEmployees.lifecycle.publish.success") });
+            }}
+            onRollback={async (versionNumber) => {
+              try {
+                await rollbackEmployee.mutateAsync(versionNumber);
+                toast({ title: t("aiEmployees.lifecycle.rollback.success") });
+              } catch (rollbackError) {
+                toast({
+                  variant: "destructive",
+                  title: t("aiEmployees.errors.title"),
+                  description: formatAiEmployeeLifecycleError(rollbackError),
+                });
+                throw rollbackError;
+              }
+            }}
+            onArchive={async () => {
+              try {
+                await archiveEmployee.mutateAsync();
+                toast({ title: t("aiEmployees.deleted") });
+              } catch (archiveError) {
+                toast({
+                  variant: "destructive",
+                  title: t("aiEmployees.errors.title"),
+                  description: formatAiEmployeeLifecycleError(archiveError),
+                });
+              }
+            }}
+            onRestore={async () => {
+              try {
+                await restoreEmployee.mutateAsync();
+                toast({ title: t("aiEmployees.lifecycle.restore.success") });
+              } catch (restoreError) {
+                toast({
+                  variant: "destructive",
+                  title: t("aiEmployees.errors.title"),
+                  description: formatAiEmployeeLifecycleError(restoreError),
+                });
+              }
+            }}
+            onDisable={async () => {
+              try {
+                await disableEmployee.mutateAsync();
+                toast({ title: t("aiEmployees.lifecycle.disable.success") });
+              } catch (disableError) {
+                toast({
+                  variant: "destructive",
+                  title: t("aiEmployees.errors.title"),
+                  description: formatAiEmployeeLifecycleError(disableError),
+                });
+              }
+            }}
+          />
+        </Suspense>
       </div>
 
       <AiEmployeeDeleteDialog
@@ -189,4 +529,8 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
       <span className="text-sm font-medium">{value?.trim() || "—"}</span>
     </div>
   );
+}
+
+function formatCost(value: number, currency: string): string {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
 }

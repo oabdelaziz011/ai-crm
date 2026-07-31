@@ -28,7 +28,7 @@ const sampleRow: AiEmployeeDbRow = {
   avatar: null,
   department: "Support",
   owner_id: "user-1",
-  status: "active",
+  status: "published",
   provider: "openai",
   model: "gpt-4.1",
   temperature: 0.7,
@@ -39,12 +39,37 @@ const sampleRow: AiEmployeeDbRow = {
   knowledge_summary: "2 knowledge sources",
   allowed_tool_keys: ["knowledge_lookup"],
   tool_summary: "knowledge_lookup",
+  allowed_skill_ids: [],
+  skills_summary: "No skills assigned",
   tags: ["support", "tier-1"],
   created_at: "2026-07-31T10:00:00.000Z",
   updated_at: "2026-07-31T12:00:00.000Z",
   deleted_at: null,
   created_by: "user-1",
   updated_by: "user-1",
+  prompt_version_label: "v1",
+  runtime_configuration: {
+    executionTimeoutMs: 120_000,
+    retryCount: 2,
+    rateLimitPerMinute: 60,
+    maxConcurrency: 1,
+    disabledToolKeys: [],
+    runtimeFlags: {
+      streaming: true,
+      memoryMode: "session",
+      confirmationPolicy: "destructive",
+      recoveryEnabled: true,
+      checkpointEnabled: true,
+    },
+    retrievalPolicy: {
+      topK: 5,
+      minScore: 0.7,
+      priority: "balanced",
+    },
+  },
+  published_version_id: null,
+  current_version_number: 0,
+  has_unpublished_draft: true,
 };
 
 function sampleRecord(overrides: Partial<AiEmployeeRecord> = {}): AiEmployeeRecord {
@@ -83,7 +108,7 @@ describe("AiEmployee selectors", () => {
       }),
     ];
 
-    assert.equal(filterAiEmployees(employees, { status: "active" }).length, 1);
+    assert.equal(filterAiEmployees(employees, { status: "published" }).length, 1);
     assert.equal(filterAiEmployees(employees, { ownerId: "user-2" }).length, 1);
     assert.equal(filterAiEmployees(employees, { tags: ["sales"] }).length, 1);
     assert.equal(filterAiEmployees(employees, { search: "sales" }).length, 1);

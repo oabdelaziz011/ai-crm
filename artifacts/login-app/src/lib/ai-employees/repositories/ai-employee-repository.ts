@@ -13,6 +13,11 @@ function readStringArray(value: unknown): string[] {
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
+function readUuidArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
 export class AiEmployeeRepository {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -112,6 +117,18 @@ export class AiEmployeeRepository {
     return (data as AiEmployeeDbRow | null) ?? null;
   }
 
+  async getByIdIncludingDeleted(id: string, companyId: string): Promise<AiEmployeeDbRow | null> {
+    const { data, error } = await this.client
+      .from("ai_employees")
+      .select("*")
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return (data as AiEmployeeDbRow | null) ?? null;
+  }
+
   async getByName(companyId: string, name: string, excludeId?: string): Promise<AiEmployeeDbRow | null> {
     let query = this.client
       .from("ai_employees")
@@ -153,7 +170,6 @@ export class AiEmployeeRepository {
     const { error } = await this.client
       .from("ai_employees")
       .update({
-        deleted_at: new Date().toISOString(),
         status: "archived",
         updated_by: actorId ?? null,
       })
@@ -162,6 +178,23 @@ export class AiEmployeeRepository {
       .is("deleted_at", null);
 
     if (error) throw new Error(error.message);
+  }
+
+  async restoreArchived(id: string, companyId: string, actorId?: string | null): Promise<AiEmployeeDbRow> {
+    const { data, error } = await this.client
+      .from("ai_employees")
+      .update({
+        deleted_at: null,
+        status: "draft",
+        updated_by: actorId ?? null,
+      })
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .select("*")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as AiEmployeeDbRow;
   }
 
   async listOwnerProfiles(
@@ -264,6 +297,7 @@ export class AiEmployeeRepository {
       ...row,
       knowledge_source_ids: readStringArray(row.knowledge_source_ids),
       allowed_tool_keys: readStringArray(row.allowed_tool_keys),
+      allowed_skill_ids: readUuidArray(row.allowed_skill_ids),
       tags: readStringArray(row.tags),
       prompt_version_label: row.prompt_version_label ?? "v1",
       runtime_configuration: row.runtime_configuration ?? {},

@@ -10,6 +10,11 @@ function readStringArray(value: unknown): string[] {
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
+function readUuidArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
 export function mapAiEmployeeRow(row: AiEmployeeDbRow, ownerLabel?: string | null): AiEmployeeRecord {
   return {
     id: row.id,
@@ -31,11 +36,16 @@ export function mapAiEmployeeRow(row: AiEmployeeDbRow, ownerLabel?: string | nul
     knowledgeSummary: row.knowledge_summary,
     allowedToolKeys: readStringArray(row.allowed_tool_keys),
     toolSummary: row.tool_summary,
+    allowedSkillIds: readUuidArray(row.allowed_skill_ids),
+    skillsSummary: row.skills_summary ?? "No skills assigned",
     tags: readStringArray(row.tags),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     promptVersionLabel: row.prompt_version_label ?? "v1",
     runtimeConfiguration: mapRuntimeConfiguration(row.runtime_configuration),
+    publishedVersionId: row.published_version_id ?? null,
+    currentVersionNumber: row.current_version_number ?? 0,
+    hasUnpublishedDraft: row.has_unpublished_draft ?? false,
   };
 }
 
@@ -83,6 +93,13 @@ export function summarizeKnowledge(sourceNames: string[]): string {
   if (sourceNames.length === 1) return sourceNames[0]!;
   if (sourceNames.length <= 3) return sourceNames.join(", ");
   return `${sourceNames.length} knowledge sources`;
+}
+
+export function summarizeSkills(skillNames: string[]): string {
+  if (skillNames.length === 0) return "No skills assigned";
+  if (skillNames.length === 1) return skillNames[0]!;
+  if (skillNames.length <= 3) return skillNames.join(", ");
+  return `${skillNames.length} skills assigned`;
 }
 
 export function summarizeTools(toolKeys: string[]): string {

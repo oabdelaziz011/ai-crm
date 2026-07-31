@@ -4,7 +4,7 @@ import { DashboardCard, DashboardPageFallback } from "@/components/dashboard/ui"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { AgentRuntimeConfiguration } from "@/lib/ai-employees/adapters";
-import type { AiEmployeeRecord } from "@/lib/ai-employees/types";
+import type { AiEmployeeConfigurationUpdate, AiEmployeeRecord } from "@/lib/ai-employees/types";
 
 const GeneralConfigTab = lazy(() =>
   import("@/lib/ai-employees/components/configuration/tabs/general-config-tab").then((module) => ({
@@ -68,7 +68,7 @@ type AgentConfigurationWorkspaceProps = {
   preview: AgentRuntimeConfiguration | null;
   canEdit: boolean;
   isSaving: boolean;
-  onSave: (patch: Parameters<typeof import("@/lib/ai-employees/hooks").useUpdateAiEmployeeConfiguration>[0] extends never ? never : import("@/lib/ai-employees/types").AiEmployeeConfigurationUpdate>) => void;
+  onSave: (patch: AiEmployeeConfigurationUpdate) => void;
 };
 
 const TAB_ORDER: AgentConfigurationTabId[] = [

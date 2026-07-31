@@ -67,9 +67,9 @@ export function AgentsListPage() {
   }, [employees]);
 
   const stats = useMemo(() => {
-    const active = employees.filter((employee) => employee.status === "active").length;
+    const published = employees.filter((employee) => employee.status === "published").length;
     const draft = employees.filter((employee) => employee.status === "draft").length;
-    return { total: employees.length, active, draft };
+    return { total: employees.length, published, draft };
   }, [employees]);
 
   const handleDelete = async () => {
@@ -120,7 +120,7 @@ export function AgentsListPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <DashboardStatCard label={t("aiEmployees.stats.total")} value={stats.total} icon={Bot} />
-          <DashboardStatCard label={t("aiEmployees.stats.active")} value={stats.active} icon={Bot} />
+          <DashboardStatCard label={t("aiEmployees.stats.published")} value={stats.published} icon={Bot} />
           <DashboardStatCard label={t("aiEmployees.stats.draft")} value={stats.draft} icon={Bot} />
         </div>
 

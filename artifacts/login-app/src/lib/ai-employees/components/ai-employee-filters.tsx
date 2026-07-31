@@ -55,8 +55,8 @@ export const AiEmployeeFilters = memo(function AiEmployeeFilters({
         options={[
           { value: "all", label: t("aiEmployees.filters.all") },
           { value: "draft", label: t("aiEmployees.status.draft") },
-          { value: "active", label: t("aiEmployees.status.active") },
-          { value: "inactive", label: t("aiEmployees.status.inactive") },
+          { value: "published", label: t("aiEmployees.status.published") },
+          { value: "disabled", label: t("aiEmployees.status.disabled") },
           { value: "archived", label: t("aiEmployees.status.archived") },
         ]}
       />

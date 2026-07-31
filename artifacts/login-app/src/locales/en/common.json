@@ -2896,13 +2896,13 @@
     "backToDetail": "Back to profile",
     "status": {
       "draft": "Draft",
-      "active": "Active",
-      "inactive": "Inactive",
+      "published": "Published",
+      "disabled": "Disabled",
       "archived": "Archived"
     },
     "stats": {
       "total": "Total employees",
-      "active": "Active",
+      "published": "Published",
       "draft": "Draft"
     },
     "filters": {
@@ -2963,6 +2963,7 @@
       "prompt": "Prompt summary",
       "knowledge": "Knowledge summary",
       "tools": "Tool summary",
+      "skills": "Skills summary",
       "runtimeStatus": "Runtime status",
       "health": "Health",
       "analytics": "Analytics",
@@ -2999,6 +3000,584 @@
       "knowledge": "Knowledge",
       "tools": "Tools",
       "selectedCount": "{{count}} selected"
+    },
+    "config": {
+      "title": "Runtime configuration",
+      "subtitle": "Preview and tune employee runtime binding. Execution remains in Agent Runtime.",
+      "ready": "Ready",
+      "notReady": "Not ready",
+      "issueCount": "{{count}} issues",
+      "tabs": {
+        "general": "General",
+        "provider": "Provider",
+        "model": "Model",
+        "prompt": "Prompt",
+        "knowledge": "Knowledge",
+        "tools": "Tools",
+        "runtime": "Runtime",
+        "limits": "Limits",
+        "preview": "Preview"
+      },
+      "sections": {
+        "profile": "Profile",
+        "readiness": "Readiness",
+        "provider": "Provider binding",
+        "model": "Model capabilities",
+        "prompt": "System prompt",
+        "promptMetrics": "Prompt metrics",
+        "knowledge": "Knowledge retrieval",
+        "sources": "Assigned sources",
+        "tools": "Tool policy",
+        "toolCatalog": "Tool catalog",
+        "runtimeInfo": "Runtime info",
+        "runtimeFlags": "Runtime flags",
+        "limits": "Execution limits",
+        "preview": "Binding preview",
+        "binding": "Channel binding",
+        "knowledgeBinding": "Knowledge binding",
+        "missing": "Missing requirements"
+      },
+      "fields": {
+        "connection": "Connection",
+        "apiStatus": "API status",
+        "capabilities": "Capabilities",
+        "contextWindow": "Context window",
+        "availableModels": "Available models",
+        "reasoning": "Reasoning",
+        "vision": "Vision",
+        "functionCalling": "Function calling",
+        "streaming": "Streaming",
+        "maxOutputTokens": "Max output tokens",
+        "promptVersion": "Prompt version",
+        "estimatedTokens": "Estimated tokens",
+        "variables": "Variables",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "collection": "Collection",
+        "documentsSummary": "Documents",
+        "topK": "Top K",
+        "minScore": "Min score",
+        "priority": "Priority",
+        "allowedTools": "Allowed tools",
+        "enabledTools": "Enabled tools",
+        "disabledTools": "Disabled tools",
+        "currentRuntime": "Current runtime",
+        "executionStatus": "Execution status",
+        "coordinator": "Coordinator",
+        "memoryMode": "Memory mode",
+        "checkpointStatus": "Checkpoint status",
+        "confirmationPolicy": "Confirmation policy",
+        "recoveryEnabled": "Recovery enabled",
+        "checkpointEnabled": "Checkpoint enabled",
+        "executionTimeoutMs": "Execution timeout (ms)",
+        "retryCount": "Retry count",
+        "rateLimitPerMinute": "Rate limit / minute",
+        "maxConcurrency": "Max concurrency",
+        "channelBinding": "Channel binding",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "providerConnection": "Provider connection"
+      }
+    },
+    "lifecycle": {
+      "title": "Lifecycle & deployment",
+      "subtitle": "Draft, validate, publish, rollback, and archive employee configurations.",
+      "currentVersion": "Current version: v{{number}}",
+      "unpublishedDraft": "Unpublished changes",
+      "readiness": {
+        "title": "Readiness score",
+        "subtitle": "Derived from validation results — no runtime execution."
+      },
+      "actions": {
+        "publish": "Publish",
+        "rollback": "Rollback",
+        "archive": "Archive",
+        "restore": "Restore",
+        "disable": "Disable"
+      },
+      "publish": {
+        "title": "Publish AI Employee",
+        "description": "Create an immutable version and deployment record.",
+        "readyTitle": "Ready to publish",
+        "readyDescription": "Readiness score: {{score}}%",
+        "fixTitle": "Fix blocking issues before publishing",
+        "notReady": "Employee is not ready to publish",
+        "notesLabel": "Publish notes",
+        "notesPlaceholder": "Describe what changed in this release…",
+        "continue": "Continue",
+        "back": "Back",
+        "confirm": "Publish version",
+        "done": "Done",
+        "success": "Employee published successfully",
+        "failed": "Publish failed"
+      },
+      "rollback": {
+        "success": "Rolled back to selected version"
+      },
+      "restore": {
+        "success": "Employee restored from archive"
+      },
+      "disable": {
+        "success": "Employee disabled"
+      },
+      "versions": {
+        "title": "Version history",
+        "empty": "No published versions yet.",
+        "version": "Version {{number}}",
+        "current": "Current",
+        "noNotes": "No publish notes"
+      },
+      "versionStatus": {
+        "published": "Published",
+        "superseded": "Superseded",
+        "rolled_back": "Rolled back"
+      },
+      "deployments": {
+        "title": "Deployment history",
+        "empty": "No deployments yet.",
+        "version": "Deployment v{{number}}",
+        "noNotes": "No deployment notes"
+      },
+      "deploymentStatus": {
+        "active": "Active",
+        "superseded": "Superseded",
+        "rolled_back": "Rolled back"
+      },
+      "timeline": {
+        "title": "Change timeline",
+        "empty": "No lifecycle events recorded yet."
+      },
+      "events": {
+        "prompt_updated": "Prompt updated",
+        "knowledge_updated": "Knowledge updated",
+        "tools_updated": "Tools updated",
+        "runtime_updated": "Runtime updated",
+        "published": "Published",
+        "rolled_back": "Rolled back",
+        "archived": "Archived",
+        "restored": "Restored",
+        "disabled": "Disabled",
+        "draft_saved": "Draft saved"
+      },
+      "compare": {
+        "title": "Compare versions",
+        "summary": "v{{left}} vs v{{right}}",
+        "changed": "Changed",
+        "unchanged": "Unchanged",
+        "before": "Before",
+        "after": "After"
+      }
+    },
+    "operations": {
+      "title": "Operations center",
+      "subtitle": "Runtime observability for this employee. Execution remains in Agent Runtime.",
+      "loading": "Loading operations data…",
+      "empty": "No operations data available yet.",
+      "controls": {
+        "pause": "Pause",
+        "resume": "Resume",
+        "disable": "Disable",
+        "restart": "Restart"
+      },
+      "runtimeStatus": {
+        "title": "Runtime status",
+        "paused": "Paused",
+        "lastHeartbeat": "Last heartbeat",
+        "currentExecution": "Current execution",
+        "queueLength": "Queue length",
+        "presence": {
+          "online": "Online",
+          "offline": "Offline",
+          "busy": "Busy",
+          "idle": "Idle",
+          "waiting": "Waiting"
+        }
+      },
+      "queue": {
+        "title": "Execution queue",
+        "pending": "Pending",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "running": {
+        "title": "Running executions",
+        "empty": "No active executions."
+      },
+      "tools": {
+        "title": "Tool execution log",
+        "empty": "No tool executions recorded."
+      },
+      "knowledge": {
+        "title": "Knowledge usage",
+        "retrievalCount": "Retrieval count",
+        "documentsUsed": "Documents used",
+        "averageConfidence": "Average confidence",
+        "averageDuration": "Average duration",
+        "successRate": "Success rate"
+      },
+      "metrics": {
+        "title": "Runtime metrics",
+        "executionsToday": "Executions today",
+        "successRate": "Success rate",
+        "averageRuntime": "Average runtime",
+        "averageQueueTime": "Average queue time",
+        "retryCount": "Retry count",
+        "timeoutCount": "Timeout count"
+      },
+      "errors": {
+        "title": "Error center",
+        "empty": "No recent failures."
+      },
+      "costs": {
+        "title": "Cost analytics",
+        "requests": "Requests",
+        "promptTokens": "Prompt tokens",
+        "completionTokens": "Completion tokens",
+        "daily": "Estimated daily cost",
+        "monthly": "Estimated monthly cost"
+      },
+      "timeline": {
+        "title": "Live event timeline",
+        "empty": "No runtime events recorded yet.",
+        "events": {
+          "workflow_started": "Workflow started",
+          "workflow_finished": "Workflow finished",
+          "execution_failed": "Execution failed",
+          "tool_executed": "Tool executed",
+          "knowledge_retrieved": "Knowledge retrieval"
+        }
+      },
+      "controlSuccess": {
+        "pause": "Employee paused",
+        "resume": "Employee resumed",
+        "disable": "Employee disabled",
+        "restart": "Employee restarted from current version"
+      }
+    },
+    "memory": {
+      "title": "Memory & context",
+      "subtitle": "Read-only memory and context assembly for this employee. No AI execution.",
+      "loading": "Loading memory data…",
+      "empty": "No memory data available yet.",
+      "overview": {
+        "contextSize": "Context size (tokens)",
+        "storedMemories": "Stored memories",
+        "memoryHealth": "Memory health",
+        "memoryUsage": "Memory usage",
+        "health": {
+          "healthy": "Healthy",
+          "degraded": "Degraded",
+          "empty": "Empty"
+        }
+      },
+      "shortTerm": {
+        "title": "Short-term memory",
+        "session": "Current session",
+        "variables": "Active variables",
+        "recentFacts": "Recent facts"
+      },
+      "longTerm": {
+        "title": "Long-term memory",
+        "empty": "No persistent memory entries found."
+      },
+      "contextWindow": {
+        "title": "Context window",
+        "usage": "{{estimated}} / {{max}} estimated tokens",
+        "excluded": "Excluded"
+      },
+      "timeline": {
+        "title": "Memory timeline",
+        "empty": "No memory events recorded yet.",
+        "events": {
+          "created": "Created",
+          "updated": "Updated",
+          "retrieved": "Retrieved",
+          "expired": "Expired"
+        }
+      },
+      "search": {
+        "keyword": "Search memories…",
+        "allTypes": "All types",
+        "allSources": "All sources"
+      },
+      "inspector": {
+        "title": "Context inspector",
+        "prompt": "Prompt",
+        "memories": "Memories",
+        "knowledge": "Knowledge references",
+        "tools": "Tool context"
+      },
+      "policies": {
+        "title": "Memory policies",
+        "memoryMode": "Memory mode",
+        "retention": "Retention policy",
+        "expiration": "Expiration policy",
+        "maxContext": "Max context size",
+        "privacy": "Privacy rules"
+      },
+      "analytics": {
+        "title": "Memory analytics",
+        "hits": "Memory hits",
+        "misses": "Memory misses",
+        "retrievalSuccess": "Retrieval success",
+        "averageRetrievalTime": "Average retrieval time",
+        "contextGrowth": "Context growth"
+      },
+      "debugger": {
+        "title": "Context debugger",
+        "show": "Show debugger",
+        "hide": "Hide debugger",
+        "collapsed": "Expand the debugger to inspect context assembly.",
+        "finalSize": "Final context size: {{tokens}} tokens",
+        "memorySources": "Memory sources",
+        "knowledgeSources": "Knowledge sources"
+      }
+    },
+    "skills": {
+      "title": "Skills platform",
+      "subtitle": "Compose reusable capability groups from existing tools. Execution remains in Agent Runtime via Tool Router.",
+      "loading": "Loading skills data…",
+      "empty": "No skills data available",
+      "stats": {
+        "assigned": "Assigned skills",
+        "readiness": "Readiness score",
+        "tools": "Effective tools",
+        "successRate": "Success rate"
+      },
+      "assigned": {
+        "title": "Assigned skills",
+        "empty": "No skills assigned to this employee.",
+        "save": "Save skill assignments",
+        "saved": "Skill assignments updated"
+      },
+      "documentation": {
+        "title": "Skill documentation",
+        "empty": "Select or assign a skill to view documentation.",
+        "tools": "Required tools",
+        "permissions": "Required permissions",
+        "version": "Version"
+      },
+      "marketplace": {
+        "title": "Skill marketplace",
+        "searchPlaceholder": "Search skills…",
+        "favoritesOnly": "Favorites only",
+        "empty": "No skills match your filters.",
+        "select": "Select",
+        "selected": "Selected",
+        "favorite": "Favorite",
+        "unfavorite": "Unfavorite",
+        "test": "Test"
+      },
+      "readiness": {
+        "title": "Skill readiness"
+      },
+      "analytics": {
+        "title": "Skill analytics",
+        "assignments": "Assignments",
+        "usage": "Usage count",
+        "failures": "Failures",
+        "avgTime": "Avg execution time"
+      },
+      "test": {
+        "success": "Skill configuration validated",
+        "score": "Readiness score: {{score}}%"
+      }
+    },
+    "collaboration": {
+      "title": "Multi-agent collaboration",
+      "subtitle": "Orchestrate agent groups, handovers, shared context, and escalations. Execution remains in Agent Runtime.",
+      "loading": "Loading collaboration data…",
+      "empty": "No collaboration data available",
+      "stats": {
+        "agents": "Agent directory",
+        "handovers": "Handovers",
+        "successRate": "Handover success",
+        "readiness": "Collaboration readiness"
+      },
+      "directory": {
+        "title": "Agent directory",
+        "empty": "No agents in directory.",
+        "health": "Health"
+      },
+      "groups": {
+        "title": "Agent groups"
+      },
+      "handovers": {
+        "title": "Task handovers",
+        "empty": "No handovers recorded."
+      },
+      "sharedContext": {
+        "title": "Shared context",
+        "empty": "No shared context available."
+      },
+      "sharedMemory": {
+        "title": "Shared memory",
+        "empty": "No shared memories visible."
+      },
+      "escalations": {
+        "title": "Escalations",
+        "empty": "No escalations recorded."
+      },
+      "timeline": {
+        "title": "Collaboration timeline",
+        "empty": "No collaboration events yet."
+      },
+      "analytics": {
+        "title": "Collaboration analytics",
+        "collaborations": "Collaborations",
+        "avgCompletion": "Avg completion",
+        "avgResponse": "Avg response",
+        "failed": "Failed transfers"
+      },
+      "policies": {
+        "title": "Collaboration policies",
+        "allowed": "Allowed collaborations",
+        "blocked": "Blocked collaborations"
+      },
+      "readiness": {
+        "title": "Collaboration readiness"
+      }
+    },
+    "governance": {
+      "title": "AI Governance Center",
+      "subtitle": "Manage policies, compliance, risk, and approvals. Configuration only — no runtime execution.",
+      "loading": "Loading governance data…",
+      "empty": "No governance data available",
+      "stats": {
+        "policies": "Active policies",
+        "violations": "Open violations",
+        "compliance": "Compliance score",
+        "risk": "Risk score"
+      },
+      "policies": {
+        "title": "AI Policies",
+        "empty": "No policies configured."
+      },
+      "model": {
+        "title": "Model governance",
+        "allowed": "Allowed models",
+        "blocked": "Blocked models",
+        "default": "Default model"
+      },
+      "provider": {
+        "title": "Provider governance",
+        "allowed": "Allowed providers",
+        "blocked": "Blocked providers"
+      },
+      "prompt": {
+        "title": "Prompt governance"
+      },
+      "tools": {
+        "title": "Tool restrictions"
+      },
+      "skills": {
+        "title": "Skill governance"
+      },
+      "risk": {
+        "title": "Risk assessment",
+        "level": "Risk level",
+        "score": "Risk score"
+      },
+      "compliance": {
+        "title": "Compliance",
+        "audit": "Audit status",
+        "retention": "Retention",
+        "privacy": "Privacy rules"
+      },
+      "approvals": {
+        "title": "Approval queue",
+        "empty": "No pending approvals."
+      },
+      "audit": {
+        "title": "Audit center",
+        "empty": "No audit events recorded."
+      }
+    },
+    "administration": {
+      "title": "AI Control Tower",
+      "subtitle": "Enterprise administration overview for the complete AI platform. Read-only — no runtime, tool, or LLM execution.",
+      "loading": "Loading control tower data…",
+      "empty": "No administration data available",
+      "overview": {
+        "employees": "Employees",
+        "skills": "Skills",
+        "activeRuntime": "Active runtime",
+        "executions": "Executions today",
+        "successRate": "Success rate",
+        "health": "Health score"
+      },
+      "employees": {
+        "title": "Employee administration",
+        "searchPlaceholder": "Search employees…",
+        "empty": "No employees match the current filters."
+      },
+      "skills": {
+        "title": "Skills administration",
+        "total": "Total skills",
+        "published": "Published skills",
+        "assignments": "Assignments",
+        "usage": "Usage"
+      },
+      "runtime": {
+        "title": "Runtime administration",
+        "online": "Online",
+        "offline": "Offline",
+        "busy": "Busy",
+        "queue": "Queue",
+        "workers": "Workers"
+      },
+      "providers": {
+        "title": "Provider administration"
+      },
+      "costs": {
+        "title": "Cost administration",
+        "daily": "Daily cost",
+        "monthly": "Monthly cost",
+        "requests": "Requests"
+      },
+      "memory": {
+        "title": "Memory administration",
+        "usage": "Memory usage",
+        "context": "Context size",
+        "retrievals": "Retrievals"
+      },
+      "collaboration": {
+        "title": "Collaboration administration",
+        "groups": "Groups",
+        "handovers": "Handovers",
+        "success": "Success rate"
+      },
+      "governance": {
+        "title": "Governance administration",
+        "policies": "Policies",
+        "violations": "Violations",
+        "compliance": "Compliance",
+        "risk": "Risk level"
+      },
+      "executions": {
+        "title": "Execution administration",
+        "total": "Total executions",
+        "running": "Running",
+        "failed": "Failed"
+      },
+      "tokens": {
+        "title": "Token administration",
+        "prompt": "Prompt tokens",
+        "completion": "Completion tokens",
+        "total": "Total tokens"
+      },
+      "capacity": {
+        "title": "Capacity administration",
+        "utilization": "Utilization",
+        "workers": "Active workers",
+        "licenses": "Licenses"
+      },
+      "health": {
+        "title": "Platform health",
+        "score": "Health score: {{score}}%",
+        "recommendations": "Recommendations"
+      }
     }
   },
   "branches": {

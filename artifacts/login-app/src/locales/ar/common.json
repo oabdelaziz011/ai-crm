@@ -2540,13 +2540,13 @@
     "backToDetail": "العودة إلى الملف",
     "status": {
       "draft": "مسودة",
-      "active": "نشط",
-      "inactive": "غير نشط",
+      "published": "منشور",
+      "disabled": "معطّل",
       "archived": "مؤرشف"
     },
     "stats": {
       "total": "إجمالي الموظفين",
-      "active": "نشط",
+      "published": "منشور",
       "draft": "مسودة"
     },
     "filters": {
@@ -2607,6 +2607,7 @@
       "prompt": "ملخص التوجيه",
       "knowledge": "ملخص المعرفة",
       "tools": "ملخص الأدوات",
+      "skills": "ملخص المهارات",
       "runtimeStatus": "حالة التشغيل",
       "health": "الصحة",
       "analytics": "التحليلات",
@@ -2643,6 +2644,584 @@
       "knowledge": "المعرفة",
       "tools": "الأدوات",
       "selectedCount": "{{count}} محدد"
+    },
+    "config": {
+      "title": "إعدادات وقت التشغيل",
+      "subtitle": "معاينة وضبط ربط وقت تشغيل الموظف. التنفيذ يبقى في Agent Runtime.",
+      "ready": "جاهز",
+      "notReady": "غير جاهز",
+      "issueCount": "{{count}} مشكلات",
+      "tabs": {
+        "general": "عام",
+        "provider": "المزود",
+        "model": "النموذج",
+        "prompt": "التوجيه",
+        "knowledge": "المعرفة",
+        "tools": "الأدوات",
+        "runtime": "وقت التشغيل",
+        "limits": "الحدود",
+        "preview": "معاينة"
+      },
+      "sections": {
+        "profile": "الملف",
+        "readiness": "الجاهزية",
+        "provider": "ربط المزود",
+        "model": "قدرات النموذج",
+        "prompt": "توجيه النظام",
+        "promptMetrics": "مقاييس التوجيه",
+        "knowledge": "استرجاع المعرفة",
+        "sources": "المصادر المعينة",
+        "tools": "سياسة الأدوات",
+        "toolCatalog": "فهرس الأدوات",
+        "runtimeInfo": "معلومات وقت التشغيل",
+        "runtimeFlags": "أعلام وقت التشغيل",
+        "limits": "حدود التنفيذ",
+        "preview": "معاينة الربط",
+        "binding": "ربط القناة",
+        "knowledgeBinding": "ربط المعرفة",
+        "missing": "المتطلبات الناقصة"
+      },
+      "fields": {
+        "connection": "الاتصال",
+        "apiStatus": "حالة API",
+        "capabilities": "القدرات",
+        "contextWindow": "نافذة السياق",
+        "availableModels": "النماذج المتاحة",
+        "reasoning": "الاستدلال",
+        "vision": "الرؤية",
+        "functionCalling": "استدعاء الدوال",
+        "streaming": "البث",
+        "maxOutputTokens": "الحد الأقصى لرموز الإخراج",
+        "promptVersion": "إصدار التوجيه",
+        "estimatedTokens": "الرموز المقدرة",
+        "variables": "المتغيرات",
+        "enabled": "مفعّل",
+        "disabled": "معطّل",
+        "collection": "المجموعة",
+        "documentsSummary": "المستندات",
+        "topK": "Top K",
+        "minScore": "الحد الأدنى للدرجة",
+        "priority": "الأولوية",
+        "allowedTools": "الأدوات المسموحة",
+        "enabledTools": "الأدوات المفعّلة",
+        "disabledTools": "الأدوات المعطّلة",
+        "currentRuntime": "وقت التشغيل الحالي",
+        "executionStatus": "حالة التنفيذ",
+        "coordinator": "المنسّق",
+        "memoryMode": "وضع الذاكرة",
+        "checkpointStatus": "حالة نقطة الحفظ",
+        "confirmationPolicy": "سياسة التأكيد",
+        "recoveryEnabled": "الاستعادة مفعّلة",
+        "checkpointEnabled": "نقطة الحفظ مفعّلة",
+        "executionTimeoutMs": "مهلة التنفيذ (ms)",
+        "retryCount": "عدد إعادة المحاولة",
+        "rateLimitPerMinute": "حد المعدل / دقيقة",
+        "maxConcurrency": "الحد الأقصى للتزامن",
+        "channelBinding": "ربط القناة",
+        "configured": "مُعد",
+        "notConfigured": "غير مُعد",
+        "providerConnection": "اتصال المزود"
+      }
+    },
+    "lifecycle": {
+      "title": "دورة الحياة والنشر",
+      "subtitle": "مسودة، تحقق، نشر، تراجع، وأرشفة إعدادات الموظف.",
+      "currentVersion": "الإصدار الحالي: v{{number}}",
+      "unpublishedDraft": "تغييرات غير منشورة",
+      "readiness": {
+        "title": "درجة الجاهزية",
+        "subtitle": "مستمدة من نتائج التحقق — بدون تنفيذ وقت التشغيل."
+      },
+      "actions": {
+        "publish": "نشر",
+        "rollback": "تراجع",
+        "archive": "أرشفة",
+        "restore": "استعادة",
+        "disable": "تعطيل"
+      },
+      "publish": {
+        "title": "نشر موظف الذكاء الاصطناعي",
+        "description": "إنشاء إصدار ثابت وسجل نشر.",
+        "readyTitle": "جاهز للنشر",
+        "readyDescription": "درجة الجاهزية: {{score}}%",
+        "fixTitle": "أصلح المشكلات الحرجة قبل النشر",
+        "notReady": "الموظف غير جاهز للنشر",
+        "notesLabel": "ملاحظات النشر",
+        "notesPlaceholder": "صف ما تغيّر في هذا الإصدار…",
+        "continue": "متابعة",
+        "back": "رجوع",
+        "confirm": "نشر الإصدار",
+        "done": "تم",
+        "success": "تم نشر الموظف بنجاح",
+        "failed": "فشل النشر"
+      },
+      "rollback": {
+        "success": "تم التراجع إلى الإصدار المحدد"
+      },
+      "restore": {
+        "success": "تمت استعادة الموظف من الأرشيف"
+      },
+      "disable": {
+        "success": "تم تعطيل الموظف"
+      },
+      "versions": {
+        "title": "سجل الإصدارات",
+        "empty": "لا توجد إصدارات منشورة بعد.",
+        "version": "الإصدار {{number}}",
+        "current": "الحالي",
+        "noNotes": "لا توجد ملاحظات نشر"
+      },
+      "versionStatus": {
+        "published": "منشور",
+        "superseded": "مستبدل",
+        "rolled_back": "تم التراجع"
+      },
+      "deployments": {
+        "title": "سجل النشر",
+        "empty": "لا توجد عمليات نشر بعد.",
+        "version": "نشر v{{number}}",
+        "noNotes": "لا توجد ملاحظات نشر"
+      },
+      "deploymentStatus": {
+        "active": "نشط",
+        "superseded": "مستبدل",
+        "rolled_back": "تم التراجع"
+      },
+      "timeline": {
+        "title": "الخط الزمني للتغييرات",
+        "empty": "لا توجد أحداث دورة حياة مسجلة بعد."
+      },
+      "events": {
+        "prompt_updated": "تم تحديث التوجيه",
+        "knowledge_updated": "تم تحديث المعرفة",
+        "tools_updated": "تم تحديث الأدوات",
+        "runtime_updated": "تم تحديث وقت التشغيل",
+        "published": "تم النشر",
+        "rolled_back": "تم التراجع",
+        "archived": "تمت الأرشفة",
+        "restored": "تمت الاستعادة",
+        "disabled": "تم التعطيل",
+        "draft_saved": "تم حفظ المسودة"
+      },
+      "compare": {
+        "title": "مقارنة الإصدارات",
+        "summary": "v{{left}} مقابل v{{right}}",
+        "changed": "تغيّر",
+        "unchanged": "بدون تغيير",
+        "before": "قبل",
+        "after": "بعد"
+      }
+    },
+    "operations": {
+      "title": "مركز العمليات",
+      "subtitle": "مراقبة وقت التشغيل لهذا الموظف. التنفيذ يبقى في Agent Runtime.",
+      "loading": "جاري تحميل بيانات العمليات…",
+      "empty": "لا توجد بيانات عمليات بعد.",
+      "controls": {
+        "pause": "إيقاف مؤقت",
+        "resume": "استئناف",
+        "disable": "تعطيل",
+        "restart": "إعادة تشغيل"
+      },
+      "runtimeStatus": {
+        "title": "حالة وقت التشغيل",
+        "paused": "متوقف مؤقتاً",
+        "lastHeartbeat": "آخر نبضة",
+        "currentExecution": "التنفيذ الحالي",
+        "queueLength": "طول قائمة الانتظار",
+        "presence": {
+          "online": "متصل",
+          "offline": "غير متصل",
+          "busy": "مشغول",
+          "idle": "خامل",
+          "waiting": "في الانتظار"
+        }
+      },
+      "queue": {
+        "title": "قائمة انتظار التنفيذ",
+        "pending": "قيد الانتظار",
+        "running": "قيد التشغيل",
+        "completed": "مكتمل",
+        "failed": "فشل"
+      },
+      "running": {
+        "title": "عمليات التنفيذ الجارية",
+        "empty": "لا توجد عمليات تنفيذ نشطة."
+      },
+      "tools": {
+        "title": "سجل تنفيذ الأدوات",
+        "empty": "لا توجد عمليات تنفيذ للأدوات."
+      },
+      "knowledge": {
+        "title": "استخدام المعرفة",
+        "retrievalCount": "عدد الاسترجاعات",
+        "documentsUsed": "المستندات المستخدمة",
+        "averageConfidence": "متوسط الثقة",
+        "averageDuration": "متوسط المدة",
+        "successRate": "معدل النجاح"
+      },
+      "metrics": {
+        "title": "مقاييس وقت التشغيل",
+        "executionsToday": "عمليات التنفيذ اليوم",
+        "successRate": "معدل النجاح",
+        "averageRuntime": "متوسط وقت التشغيل",
+        "averageQueueTime": "متوسط وقت الانتظار",
+        "retryCount": "عدد إعادة المحاولة",
+        "timeoutCount": "عدد المهلات"
+      },
+      "errors": {
+        "title": "مركز الأخطاء",
+        "empty": "لا توجد إخفاقات حديثة."
+      },
+      "costs": {
+        "title": "تحليلات التكلفة",
+        "requests": "الطلبات",
+        "promptTokens": "رموز التوجيه",
+        "completionTokens": "رموز الإكمال",
+        "daily": "التكلفة اليومية المقدرة",
+        "monthly": "التكلفة الشهرية المقدرة"
+      },
+      "timeline": {
+        "title": "الخط الزمني للأحداث",
+        "empty": "لا توجد أحداث وقت تشغيل مسجلة بعد.",
+        "events": {
+          "workflow_started": "بدء سير العمل",
+          "workflow_finished": "انتهاء سير العمل",
+          "execution_failed": "فشل التنفيذ",
+          "tool_executed": "تنفيذ أداة",
+          "knowledge_retrieved": "استرجاع المعرفة"
+        }
+      },
+      "controlSuccess": {
+        "pause": "تم إيقاف الموظف مؤقتاً",
+        "resume": "تم استئناف الموظف",
+        "disable": "تم تعطيل الموظف",
+        "restart": "تمت إعادة تشغيل الموظف من الإصدار الحالي"
+      }
+    },
+    "memory": {
+      "title": "الذاكرة والسياق",
+      "subtitle": "عرض قراءة فقط لذاكرة وتجميع سياق هذا الموظف. بدون تنفيذ ذكاء اصطناعي.",
+      "loading": "جاري تحميل بيانات الذاكرة…",
+      "empty": "لا توجد بيانات ذاكرة بعد.",
+      "overview": {
+        "contextSize": "حجم السياق (رموز)",
+        "storedMemories": "الذكريات المخزنة",
+        "memoryHealth": "صحة الذاكرة",
+        "memoryUsage": "استخدام الذاكرة",
+        "health": {
+          "healthy": "سليم",
+          "degraded": "متدهور",
+          "empty": "فارغ"
+        }
+      },
+      "shortTerm": {
+        "title": "الذاكرة قصيرة المدى",
+        "session": "الجلسة الحالية",
+        "variables": "المتغيرات النشطة",
+        "recentFacts": "حقائق حديثة"
+      },
+      "longTerm": {
+        "title": "الذاكرة طويلة المدى",
+        "empty": "لا توجد إدخالات ذاكرة دائمة."
+      },
+      "contextWindow": {
+        "title": "نافذة السياق",
+        "usage": "{{estimated}} / {{max}} رموز مقدرة",
+        "excluded": "مستبعد"
+      },
+      "timeline": {
+        "title": "الخط الزمني للذاكرة",
+        "empty": "لا توجد أحداث ذاكرة مسجلة بعد.",
+        "events": {
+          "created": "تم الإنشاء",
+          "updated": "تم التحديث",
+          "retrieved": "تم الاسترجاع",
+          "expired": "منتهي"
+        }
+      },
+      "search": {
+        "keyword": "ابحث في الذكريات…",
+        "allTypes": "كل الأنواع",
+        "allSources": "كل المصادر"
+      },
+      "inspector": {
+        "title": "فاحص السياق",
+        "prompt": "التوجيه",
+        "memories": "الذكريات",
+        "knowledge": "مراجع المعرفة",
+        "tools": "سياق الأدوات"
+      },
+      "policies": {
+        "title": "سياسات الذاكرة",
+        "memoryMode": "وضع الذاكرة",
+        "retention": "سياسة الاحتفاظ",
+        "expiration": "سياسة الانتهاء",
+        "maxContext": "الحد الأقصى للسياق",
+        "privacy": "قواعد الخصوصية"
+      },
+      "analytics": {
+        "title": "تحليلات الذاكرة",
+        "hits": "نجاحات الذاكرة",
+        "misses": "إخفاقات الذاكرة",
+        "retrievalSuccess": "نجاح الاسترجاع",
+        "averageRetrievalTime": "متوسط وقت الاسترجاع",
+        "contextGrowth": "نمو السياق"
+      },
+      "debugger": {
+        "title": "مصحح السياق",
+        "show": "إظهار المصحح",
+        "hide": "إخفاء المصحح",
+        "collapsed": "وسّع المصحح لفحص تجميع السياق.",
+        "finalSize": "حجم السياق النهائي: {{tokens}} رمز",
+        "memorySources": "مصادر الذاكرة",
+        "knowledgeSources": "مصادر المعرفة"
+      }
+    },
+    "skills": {
+      "title": "منصة المهارات",
+      "subtitle": "تجميع مجموعات قدرات قابلة لإعادة الاستخدام من الأدوات الحالية. يبقى التنفيذ في Agent Runtime عبر Tool Router.",
+      "loading": "جاري تحميل بيانات المهارات…",
+      "empty": "لا تتوفر بيانات مهارات",
+      "stats": {
+        "assigned": "المهارات المعيّنة",
+        "readiness": "درجة الجاهزية",
+        "tools": "الأدوات الفعّالة",
+        "successRate": "معدل النجاح"
+      },
+      "assigned": {
+        "title": "المهارات المعيّنة",
+        "empty": "لا توجد مهارات معيّنة لهذا الموظف.",
+        "save": "حفظ تعيينات المهارات",
+        "saved": "تم تحديث تعيينات المهارات"
+      },
+      "documentation": {
+        "title": "توثيق المهارة",
+        "empty": "عيّن مهارة لعرض التوثيق.",
+        "tools": "الأدوات المطلوبة",
+        "permissions": "الصلاحيات المطلوبة",
+        "version": "الإصدار"
+      },
+      "marketplace": {
+        "title": "سوق المهارات",
+        "searchPlaceholder": "البحث في المهارات…",
+        "favoritesOnly": "المفضلة فقط",
+        "empty": "لا توجد مهارات تطابق عوامل التصفية.",
+        "select": "اختيار",
+        "selected": "محدّد",
+        "favorite": "إضافة للمفضلة",
+        "unfavorite": "إزالة من المفضلة",
+        "test": "اختبار"
+      },
+      "readiness": {
+        "title": "جاهزية المهارة"
+      },
+      "analytics": {
+        "title": "تحليلات المهارة",
+        "assignments": "التعيينات",
+        "usage": "عدد الاستخدام",
+        "failures": "الإخفاقات",
+        "avgTime": "متوسط وقت التنفيذ"
+      },
+      "test": {
+        "success": "تم التحقق من إعداد المهارة",
+        "score": "درجة الجاهزية: {{score}}%"
+      }
+    },
+    "collaboration": {
+      "title": "التعاون متعدد الوكلاء",
+      "subtitle": "تنسيق مجموعات الوكلاء والتسليم والسياق المشترك والتصعيد. يبقى التنفيذ في Agent Runtime.",
+      "loading": "جاري تحميل بيانات التعاون…",
+      "empty": "لا تتوفر بيانات تعاون",
+      "stats": {
+        "agents": "دليل الوكلاء",
+        "handovers": "التسليمات",
+        "successRate": "نجاح التسليم",
+        "readiness": "جاهزية التعاون"
+      },
+      "directory": {
+        "title": "دليل الوكلاء",
+        "empty": "لا يوجد وكلاء في الدليل.",
+        "health": "الصحة"
+      },
+      "groups": {
+        "title": "مجموعات الوكلاء"
+      },
+      "handovers": {
+        "title": "تسليم المهام",
+        "empty": "لا توجد تسليمات مسجلة."
+      },
+      "sharedContext": {
+        "title": "السياق المشترك",
+        "empty": "لا يتوفر سياق مشترك."
+      },
+      "sharedMemory": {
+        "title": "الذاكرة المشتركة",
+        "empty": "لا توجد ذكريات مشتركة مرئية."
+      },
+      "escalations": {
+        "title": "التصعيد",
+        "empty": "لا توجد عمليات تصعيد مسجلة."
+      },
+      "timeline": {
+        "title": "جدول التعاون الزمني",
+        "empty": "لا توجد أحداث تعاون بعد."
+      },
+      "analytics": {
+        "title": "تحليلات التعاون",
+        "collaborations": "التعاونات",
+        "avgCompletion": "متوسط الإكمال",
+        "avgResponse": "متوسط الاستجابة",
+        "failed": "عمليات النقل الفاشلة"
+      },
+      "policies": {
+        "title": "سياسات التعاون",
+        "allowed": "التعاونات المسموحة",
+        "blocked": "التعاونات المحظورة"
+      },
+      "readiness": {
+        "title": "جاهزية التعاون"
+      }
+    },
+    "governance": {
+      "title": "مركز حوكمة الذكاء الاصطناعي",
+      "subtitle": "إدارة السياسات والامتثال والمخاطر والموافقات. إعدادات فقط — بدون تنفيذ وقت التشغيل.",
+      "loading": "جاري تحميل بيانات الحوكمة…",
+      "empty": "لا تتوفر بيانات حوكمة",
+      "stats": {
+        "policies": "السياسات النشطة",
+        "violations": "المخالفات المفتوحة",
+        "compliance": "درجة الامتثال",
+        "risk": "درجة المخاطر"
+      },
+      "policies": {
+        "title": "سياسات الذكاء الاصطناعي",
+        "empty": "لم يتم إعداد سياسات."
+      },
+      "model": {
+        "title": "حوكمة النماذج",
+        "allowed": "النماذج المسموحة",
+        "blocked": "النماذج المحظورة",
+        "default": "النموذج الافتراضي"
+      },
+      "provider": {
+        "title": "حوكمة المزودين",
+        "allowed": "المزودون المسموحون",
+        "blocked": "المزودون المحظورون"
+      },
+      "prompt": {
+        "title": "حوكمة التوجيهات"
+      },
+      "tools": {
+        "title": "قيود الأدوات"
+      },
+      "skills": {
+        "title": "حوكمة المهارات"
+      },
+      "risk": {
+        "title": "تقييم المخاطر",
+        "level": "مستوى المخاطر",
+        "score": "درجة المخاطر"
+      },
+      "compliance": {
+        "title": "الامتثال",
+        "audit": "حالة التدقيق",
+        "retention": "الاحتفاظ",
+        "privacy": "قواعد الخصوصية"
+      },
+      "approvals": {
+        "title": "قائمة الموافقات",
+        "empty": "لا توجد موافقات معلقة."
+      },
+      "audit": {
+        "title": "مركز التدقيق",
+        "empty": "لا توجد أحداث تدقيق مسجلة."
+      }
+    },
+    "administration": {
+      "title": "برج التحكم بالذكاء الاصطناعي",
+      "subtitle": "نظرة إدارية شاملة على منصة الذكاء الاصطناعي. للقراءة فقط — بدون تنفيذ وقت التشغيل أو الأدوات أو النماذج.",
+      "loading": "جاري تحميل بيانات برج التحكم…",
+      "empty": "لا تتوفر بيانات إدارية",
+      "overview": {
+        "employees": "الموظفون",
+        "skills": "المهارات",
+        "activeRuntime": "وقت التشغيل النشط",
+        "executions": "التنفيذات اليوم",
+        "successRate": "معدل النجاح",
+        "health": "درجة الصحة"
+      },
+      "employees": {
+        "title": "إدارة الموظفين",
+        "searchPlaceholder": "البحث في الموظفين…",
+        "empty": "لا يوجد موظفون يطابقون عوامل التصفية الحالية."
+      },
+      "skills": {
+        "title": "إدارة المهارات",
+        "total": "إجمالي المهارات",
+        "published": "المهارات المنشورة",
+        "assignments": "التعيينات",
+        "usage": "الاستخدام"
+      },
+      "runtime": {
+        "title": "إدارة وقت التشغيل",
+        "online": "متصل",
+        "offline": "غير متصل",
+        "busy": "مشغول",
+        "queue": "قائمة الانتظار",
+        "workers": "العمال"
+      },
+      "providers": {
+        "title": "إدارة المزودين"
+      },
+      "costs": {
+        "title": "إدارة التكاليف",
+        "daily": "التكلفة اليومية",
+        "monthly": "التكلفة الشهرية",
+        "requests": "الطلبات"
+      },
+      "memory": {
+        "title": "إدارة الذاكرة",
+        "usage": "استخدام الذاكرة",
+        "context": "حجم السياق",
+        "retrievals": "عمليات الاسترجاع"
+      },
+      "collaboration": {
+        "title": "إدارة التعاون",
+        "groups": "المجموعات",
+        "handovers": "عمليات التسليم",
+        "success": "معدل النجاح"
+      },
+      "governance": {
+        "title": "إدارة الحوكمة",
+        "policies": "السياسات",
+        "violations": "المخالفات",
+        "compliance": "الامتثال",
+        "risk": "مستوى المخاطر"
+      },
+      "executions": {
+        "title": "إدارة التنفيذ",
+        "total": "إجمالي التنفيذات",
+        "running": "قيد التشغيل",
+        "failed": "فشل"
+      },
+      "tokens": {
+        "title": "إدارة الرموز",
+        "prompt": "رموز التوجيه",
+        "completion": "رموز الإكمال",
+        "total": "إجمالي الرموز"
+      },
+      "capacity": {
+        "title": "إدارة السعة",
+        "utilization": "الاستخدام",
+        "workers": "العمال النشطون",
+        "licenses": "التراخيص"
+      },
+      "health": {
+        "title": "صحة المنصة",
+        "score": "درجة الصحة: {{score}}%",
+        "recommendations": "التوصيات"
+      }
     }
   },
   "branches": {

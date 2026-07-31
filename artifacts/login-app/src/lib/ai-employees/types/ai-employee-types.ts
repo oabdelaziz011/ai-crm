@@ -1,6 +1,6 @@
 import type { AiEmployeeRuntimeConfiguration } from "@/lib/ai-employees/adapters";
 
-export type AiEmployeeStatus = "draft" | "active" | "inactive" | "archived";
+export type AiEmployeeStatus = "draft" | "published" | "disabled" | "archived";
 
 export type AiEmployeeDbRow = {
   id: string;
@@ -22,6 +22,8 @@ export type AiEmployeeDbRow = {
   knowledge_summary: string;
   allowed_tool_keys: string[];
   tool_summary: string;
+  allowed_skill_ids: string[];
+  skills_summary: string;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -30,6 +32,9 @@ export type AiEmployeeDbRow = {
   updated_by: string | null;
   prompt_version_label: string;
   runtime_configuration: Record<string, unknown>;
+  published_version_id: string | null;
+  current_version_number: number;
+  has_unpublished_draft: boolean;
 };
 
 export type AiEmployeeRecord = {
@@ -52,11 +57,16 @@ export type AiEmployeeRecord = {
   knowledgeSummary: string;
   allowedToolKeys: string[];
   toolSummary: string;
+  allowedSkillIds: string[];
+  skillsSummary: string;
   tags: string[];
   createdAt: string;
   updatedAt: string;
   promptVersionLabel: string;
   runtimeConfiguration: AiEmployeeRuntimeConfiguration;
+  publishedVersionId: string | null;
+  currentVersionNumber: number;
+  hasUnpublishedDraft: boolean;
 };
 
 export type AiEmployeeListFilter = {
@@ -83,6 +93,7 @@ export type AiEmployeeFormValues = {
   systemPrompt: string;
   knowledgeSourceIds: string[];
   allowedToolKeys: string[];
+  allowedSkillIds?: string[];
   tags: string[];
 };
 
@@ -126,6 +137,7 @@ export type AiEmployeeConfigurationUpdate = {
   systemPrompt?: string;
   knowledgeSourceIds?: string[];
   allowedToolKeys?: string[];
+  allowedSkillIds?: string[];
   promptVersionLabel?: string;
   runtimeConfiguration?: Partial<AiEmployeeRuntimeConfiguration>;
   disabledToolKeys?: string[];

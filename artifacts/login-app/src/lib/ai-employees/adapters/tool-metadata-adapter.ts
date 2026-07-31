@@ -1,4 +1,4 @@
-import { TOOL_REGISTRY, type ToolClassification } from "@workspace/ai-tool-router/src/llm-tool-catalog.js";
+import { TOOL_REGISTRY, type ToolClassification } from "@workspace/ai-tool-router";
 
 export type ToolMetadataEntry = {
   key: string;

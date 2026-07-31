@@ -22,11 +22,11 @@ export function validateAiEmployeeRuntimeConfiguration(input: {
 }): AiEmployeeConfigValidationIssue[] {
   const issues: AiEmployeeConfigValidationIssue[] = [];
 
-  if (input.employeeStatus !== "active") {
+  if (input.employeeStatus !== "published") {
     issues.push({
       field: "status",
-      code: "employee_inactive",
-      message: "Employee must be active for runtime binding",
+      code: "employee_not_published",
+      message: "Employee must be published for runtime binding",
       severity: "warning",
     });
   }
@@ -169,7 +169,7 @@ export function isAgentRuntimeConfigurationReady(issues: AiEmployeeConfigValidat
 
 export function collectRuntimeMissing(input: AiEmployeeRuntimeAdapterInput): string[] {
   const missing = [...input.tenantRuntime.missing];
-  if (input.employee.status !== "active") missing.push("employee_inactive");
+  if (input.employee.status !== "published") missing.push("employee_not_published");
   if (!input.employee.provider) missing.push("employee_provider");
   if (!input.employee.model) missing.push("employee_model");
   if (!input.tenantRuntime.providerConnectionId) missing.push("provider_connection");

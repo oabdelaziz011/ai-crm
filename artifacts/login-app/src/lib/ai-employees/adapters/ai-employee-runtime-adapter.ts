@@ -147,7 +147,7 @@ export function buildAgentRuntimeConfiguration(
     runtimeFlags: employee.runtimeConfiguration.runtimeFlags,
     runtimeInfo: {
       currentRuntime: "Agent Runtime",
-      executionStatus: employee.status === "active" && ready ? "idle" : employee.status === "active" ? "not_bound" : "inactive",
+      executionStatus: employee.status === "published" && ready ? "idle" : employee.status === "published" ? "not_bound" : "inactive",
       coordinator: "Runtime Coordinator",
       memoryMode: employee.runtimeConfiguration.runtimeFlags.memoryMode,
       checkpointStatus: employee.runtimeConfiguration.runtimeFlags.checkpointEnabled ? "enabled" : "disabled",

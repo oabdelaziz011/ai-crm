@@ -1,4 +1,5 @@
 import type { AiEmployeeFormValues } from "@/lib/ai-employees/types";
+import { DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION } from "@/lib/ai-employees/adapters";
 import {
   summarizeKnowledge,
   summarizeSystemPrompt,
@@ -39,7 +40,14 @@ export function formValuesToInsert(
     knowledge_summary: summarizeKnowledge(knowledgeNames),
     allowed_tool_keys: values.allowedToolKeys,
     tool_summary: summarizeTools(values.allowedToolKeys),
+    allowed_skill_ids: values.allowedSkillIds ?? [],
+    skills_summary: "No skills assigned",
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
+    prompt_version_label: "v1",
+    runtime_configuration: DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
+    published_version_id: null,
+    current_version_number: 0,
+    has_unpublished_draft: true,
     created_by: actorId ?? null,
     updated_by: actorId ?? null,
   };
@@ -69,6 +77,8 @@ export function formValuesToUpdate(
     knowledge_summary: summarizeKnowledge(knowledgeNames),
     allowed_tool_keys: values.allowedToolKeys,
     tool_summary: summarizeTools(values.allowedToolKeys),
+    allowed_skill_ids: values.allowedSkillIds ?? [],
+    skills_summary: "No skills assigned",
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
     updated_by: actorId ?? null,
   };
@@ -89,6 +99,7 @@ export function recordToFormValues(record: {
   systemPrompt: string;
   knowledgeSourceIds: string[];
   allowedToolKeys: string[];
+  allowedSkillIds: string[];
   tags: string[];
 }): AiEmployeeFormValues {
   return {
@@ -106,6 +117,7 @@ export function recordToFormValues(record: {
     systemPrompt: record.systemPrompt,
     knowledgeSourceIds: record.knowledgeSourceIds,
     allowedToolKeys: record.allowedToolKeys,
+    allowedSkillIds: record.allowedSkillIds,
     tags: record.tags,
   };
 }
@@ -125,5 +137,6 @@ export const DEFAULT_AI_EMPLOYEE_FORM: AiEmployeeFormValues = {
   systemPrompt: "",
   knowledgeSourceIds: [],
   allowedToolKeys: [],
+  allowedSkillIds: [],
   tags: [],
 };

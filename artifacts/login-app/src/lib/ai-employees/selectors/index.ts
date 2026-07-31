@@ -6,6 +6,7 @@ export {
   selectUniqueProviders,
   selectUniqueTags,
   summarizeKnowledge,
+  summarizeSkills,
   summarizeSystemPrompt,
   summarizeTools,
 } from "./ai-employee-selectors";

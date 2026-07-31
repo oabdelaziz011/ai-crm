@@ -105,8 +105,8 @@ export function AiEmployeeFormSections({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="draft">{t("aiEmployees.status.draft")}</SelectItem>
-              <SelectItem value="active">{t("aiEmployees.status.active")}</SelectItem>
-              <SelectItem value="inactive">{t("aiEmployees.status.inactive")}</SelectItem>
+              <SelectItem value="published">{t("aiEmployees.status.published")}</SelectItem>
+              <SelectItem value="disabled">{t("aiEmployees.status.disabled")}</SelectItem>
             </SelectContent>
           </Select>
         </Field>

@@ -42,6 +42,124 @@ export function isAiEmployeesWorkspaceAccessible(input: {
   return hasAiEmployeesViewPermission(input.hasPermission, input.isSuperAdmin);
 }
 
+export function hasAiEmployeesAdministrationViewPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    hasPermission(AGENTS_MANAGE) ||
+    hasAiEmployeesOperationsViewPermission(hasPermission, isSuperAdmin) ||
+    hasAiEmployeesGovernanceViewPermission(hasPermission, isSuperAdmin)
+  );
+}
+
+export function hasAiEmployeesGovernanceViewPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    hasPermission("governance.view") ||
+    (hasAiEmployeesViewPermission(hasPermission, isSuperAdmin) && hasPermission("agents.manage"))
+  );
+}
+
+export function hasAiEmployeesGovernanceEditPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    hasPermission("governance.edit") ||
+    hasPermission("governance.manage") ||
+    hasPermission("agents.manage")
+  );
+}
+
+export function hasAiEmployeesCollaborationViewPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    hasPermission("collaboration.view") ||
+    (hasAiEmployeesViewPermission(hasPermission, isSuperAdmin) && hasPermission("agents.manage"))
+  );
+}
+
+export function hasAiEmployeesCollaborationHandoverPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    hasPermission("collaboration.handover") ||
+    hasPermission("collaboration.manage") ||
+    hasPermission("agents.manage")
+  );
+}
+
+export function hasAiEmployeesSkillsViewPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    hasPermission("skills.view") ||
+    (hasAiEmployeesViewPermission(hasPermission, isSuperAdmin) && hasPermission("agents.manage"))
+  );
+}
+
+export function hasAiEmployeesSkillsEditPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return isSuperAdmin || hasPermission("skills.edit") || hasPermission("skills.manage");
+}
+
+export function hasAiEmployeesMemoryViewPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return hasAiEmployeesOperationsViewPermission(hasPermission, isSuperAdmin);
+}
+
+export function hasAiEmployeesOperationsViewPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return (
+    isSuperAdmin ||
+    (hasAiEmployeesViewPermission(hasPermission, isSuperAdmin) &&
+      (hasPermission("ai.analytics.view") || hasPermission("ai.execution.view") || hasPermission(AGENTS_MANAGE)))
+  );
+}
+
+export function hasAiEmployeesOperationsControlPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
+}
+
+const AGENTS_PUBLISH = "agents.publish";
+const AGENTS_ROLLBACK = "agents.rollback";
+
+export function hasAiEmployeesPublishPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return isSuperAdmin || hasPermission(AGENTS_PUBLISH) || hasPermission(AGENTS_MANAGE);
+}
+
+export function hasAiEmployeesRollbackPermission(
+  hasPermission: (code: string) => boolean,
+  isSuperAdmin: boolean,
+): boolean {
+  return isSuperAdmin || hasPermission(AGENTS_ROLLBACK) || hasPermission(AGENTS_MANAGE);
+}
+
 export function shouldShowAiEmployeesNavigation(input: {
   isSuperAdmin: boolean;
   hasPermission: (code: string) => boolean;

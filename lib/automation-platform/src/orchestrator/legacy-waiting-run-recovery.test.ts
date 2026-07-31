@@ -177,6 +177,100 @@ describe("legacy waiting run recovery", () => {
     assert.equal(runs[0]?.variables.__abandonedReason, STALE_WAITING_RUN_REASON);
   });
 
+  it("abandons non-terminal running orphans via abandonActiveRun", async () => {
+    const session = legacyWaitingSession({ status: "running", current_node_id: "node-dates" });
+    const run = legacyWaitingRun({
+      status: "running",
+      current_node_id: "node-dates",
+      variables: {},
+    });
+    const runs = [structuredClone(run)];
+    const sessions = [structuredClone(session)];
+
+    const engine = new AutomationEngine({
+      flows: {
+        findById: async () => null,
+        create: async () => {
+          throw new Error("not used");
+        },
+        update: async () => {
+          throw new Error("not used");
+        },
+        updateStatus: async () => {
+          throw new Error("not used");
+        },
+        softDelete: async () => {
+          throw new Error("not used");
+        },
+        findByName: async () => null,
+        list: async () => [],
+      },
+      runs: {
+        findById: async (id) => runs.find((item) => item.id === id) ?? null,
+        findBySessionId: async (sessionId) => runs.find((item) => item.session_id === sessionId) ?? null,
+        create: async () => {
+          throw new Error("not used");
+        },
+        list: async () => [...runs],
+        updateState: async (input) => {
+          const record = runs.find((item) => item.id === input.runId)!;
+          if (input.status !== undefined) record.status = input.status;
+          if (input.currentNodeId !== undefined) record.current_node_id = input.currentNodeId;
+          if (input.variables !== undefined) record.variables = input.variables;
+          if (input.errorMessage !== undefined) record.error_message = input.errorMessage;
+          if (input.finishedAt !== undefined) record.finished_at = input.finishedAt;
+          return { ...record };
+        },
+      },
+      sessions: {
+        findById: async (id) => sessions.find((item) => item.id === id) ?? null,
+        findActiveSession: async () => null,
+        create: async () => {
+          throw new Error("not used");
+        },
+        list: async () => [...sessions],
+        updateState: async (input) => {
+          const record = sessions.find((item) => item.id === input.sessionId)!;
+          if (input.status !== undefined) record.status = input.status;
+          if (input.currentNodeId !== undefined) record.current_node_id = input.currentNodeId;
+          if (input.variables !== undefined) record.variables = input.variables;
+          record.last_activity_at = input.lastActivityAt ?? new Date().toISOString();
+          return { ...record };
+        },
+      },
+      versions: {
+        findById: async () => null,
+        findByFlowAndNumber: async () => null,
+        findActiveByFlowId: async () => null,
+        listByFlowId: async () => [],
+        create: async () => {
+          throw new Error("not used");
+        },
+        setActiveVersion: async () => {
+          throw new Error("not used");
+        },
+        getNextVersionNumber: async () => 1,
+      },
+      versionGraph: {
+        materialize: async () => {
+          throw new Error("not used");
+        },
+        hasNode: async () => false,
+        listExecutionGraph: async () => ({ nodes: [], edges: [] }),
+      },
+      registry: createDefaultAutomationNodeRegistry(),
+    });
+
+    const result = await engine.abandonActiveRun(createContext(), {
+      runId: run.id,
+      reason: "orphaned_active_run_not_waiting_for_input",
+    });
+
+    assert.equal(result?.lifecycle, "cancelled");
+    assert.equal(runs[0]?.status, "cancelled");
+    assert.equal(sessions[0]?.status, "cancelled");
+  });
+
   it("rejects resume for legacy orphan waiting runs in the engine", async () => {
     const run = legacyWaitingRun();
     const engine = new AutomationEngine({

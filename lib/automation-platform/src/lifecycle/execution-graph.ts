@@ -8,11 +8,14 @@ import type { AutomationFlowVersionRepository } from "./version-repository.js";
 import type { AutomationFlowVersionGraphRepository } from "./version-graph-repository.js";
 import { snapshotToExecutionRecords } from "./version-repository.js";
 
+export type ExecutionGraphSource = "published_materialized" | "published_snapshot";
+
 export type ExecutionGraphBundle = {
   nodes: AutomationNodeRecord[];
   edges: AutomationEdgeRecord[];
   versionId: string;
   versionNumber: number;
+  graphSource: ExecutionGraphSource;
 };
 
 export async function loadExecutionGraph(
@@ -40,6 +43,7 @@ export async function loadExecutionGraph(
       edges: materialized.edges,
       versionId: version.id,
       versionNumber: version.version_number,
+      graphSource: "published_materialized",
     };
   }
 
@@ -49,6 +53,7 @@ export async function loadExecutionGraph(
     edges: mapped.edges as AutomationEdgeRecord[],
     versionId: version.id,
     versionNumber: version.version_number,
+    graphSource: "published_snapshot",
   };
 }
 

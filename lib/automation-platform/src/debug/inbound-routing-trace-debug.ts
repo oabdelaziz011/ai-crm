@@ -1,14 +1,11 @@
-import { readClientEnvFlag } from "@workspace/platform-crypto/client";
-import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
+import { isInboundRoutingTraceEnabled } from "./runtime-trace-flags.js";
+export { isInboundRoutingTraceEnabled } from "./runtime-trace-flags.js";
 import {
   buildInboundRoutingEligibility,
   type InboundRoutingEligibility,
 } from "../orchestrator/session-policy.js";
 import type { InboundAutomationRoutingDecision } from "../orchestrator/inbound-automation-routing.js";
-
-export function isInboundRoutingTraceEnabled(): boolean {
-  return readClientEnvFlag("AUTOMATION_INBOUND_ROUTING_DEBUG");
-}
+import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
 
 function logInboundRoutingTrace(payload: Record<string, unknown>): void {
   if (!isInboundRoutingTraceEnabled()) return;
@@ -113,5 +110,61 @@ export function traceInboundRoutingHoldResult(input: {
     hasResponseContent: false,
     explanation:
       "channel-automation-port returned early without calling engine.start/resume; inbound-message-pipeline receives empty outboundMessages",
+  });
+}
+
+export function traceInboundRoutingLookup(input: {
+  externalUserId: string;
+  channel: string;
+  boundFlowId: string;
+  lookup: {
+    strategy: string;
+    skippedExpiredSessionIds: string[];
+  };
+  session: ConversationSessionRecord | null;
+  run: AutomationRunRecord | null;
+  expired: boolean;
+  inboundKind?: string | null;
+  interactionType?: string | null;
+  replyId?: string | null;
+}): void {
+  const { session, run } = input;
+
+  logInboundRoutingTrace({
+    stage: "routing_lookup",
+    externalUserId: input.externalUserId,
+    channel: input.channel,
+    boundFlowId: input.boundFlowId,
+    lookupStrategy: input.lookup.strategy,
+    skippedExpiredSessionIds: input.lookup.skippedExpiredSessionIds,
+    sessionExpired: input.expired,
+    inboundKind: input.inboundKind ?? null,
+    interactionType: input.interactionType ?? null,
+    replyId: input.replyId ?? null,
+    session: session
+      ? {
+          id: session.id,
+          status: session.status,
+          flowId: session.flow_id,
+          flowVersionId: session.flow_version_id,
+          runId: session.run_id,
+          currentNodeId: session.current_node_id,
+          lastActivityAt: session.last_activity_at,
+          waitingInput: readWaitingInput(session),
+          ...readLastOutboundSummary(session.variables),
+        }
+      : null,
+    run: run
+      ? {
+          id: run.id,
+          status: run.status,
+          flowId: run.flow_id,
+          flowVersionId: run.flow_version_id,
+          sessionId: run.session_id,
+          currentNodeId: run.current_node_id,
+          waitingInput: readWaitingInput(run),
+          ...readLastOutboundSummary(run.variables),
+        }
+      : null,
   });
 }

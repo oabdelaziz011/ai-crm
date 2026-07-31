@@ -1,4 +1,5 @@
-import { readClientEnvFlag } from "@workspace/platform-crypto/client";
+import { isListNodeLifecycleDebugEnabled } from "./runtime-trace-flags.js";
+export { isListNodeLifecycleDebugEnabled } from "./runtime-trace-flags.js";
 import type { AutomationNodeRecord } from "../types.js";
 
 export type ListNodeLifecycleStage =
@@ -28,10 +29,6 @@ export type ListNodeLifecycleLog = {
   reason?: string;
   messageTextPreview?: string;
 };
-
-export function isListNodeLifecycleDebugEnabled(): boolean {
-  return readClientEnvFlag("AUTOMATION_LIST_NODE_DEBUG");
-}
 
 let listVisitCounter = 0;
 const activeListVisitByRun = new Map<string, { nodeId: string; visitIndex: number }>();

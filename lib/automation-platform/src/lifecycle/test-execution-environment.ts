@@ -242,6 +242,9 @@ export function createExecutionEnvironment() {
     list: async () => [...runs],
     updateState: async (input) => {
       const record = runs.find((item) => item.id === input.runId)!;
+      if (input.expectedStatus !== undefined && record.status !== input.expectedStatus) {
+        throw new Error(`Automation run ${input.runId} state changed concurrently (expected status ${String(input.expectedStatus)}).`);
+      }
       if (input.status !== undefined) record.status = input.status;
       if (input.flowVersionId !== undefined) record.flow_version_id = input.flowVersionId;
       if (input.currentNodeId !== undefined) record.current_node_id = input.currentNodeId;

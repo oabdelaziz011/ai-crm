@@ -1,4 +1,5 @@
-import { readClientEnvFlag } from "@workspace/platform-crypto/client";
+import { isIfNodeTraceEnabled } from "./runtime-trace-flags.js";
+export { isIfNodeTraceEnabled } from "./runtime-trace-flags.js";
 import type { CompiledRuleSet, RuleClause, RuleGroup } from "../logic/types.js";
 import { evaluateIfElseCondition } from "../logic/condition-evaluator.js";
 import { evaluateRuleClause, resolveFieldValue } from "../logic/expression-engine.js";
@@ -26,10 +27,6 @@ export type IfNodeEvaluationDiagnostic = {
   matchedRuleIndex: number | null;
   evaluationReason: string;
 };
-
-export function isIfNodeTraceEnabled(): boolean {
-  return readClientEnvFlag("AUTOMATION_IF_TRACE_DEBUG");
-}
 
 function logIfNodeTrace(payload: Record<string, unknown>): void {
   if (!isIfNodeTraceEnabled()) return;

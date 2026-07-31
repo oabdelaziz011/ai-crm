@@ -1,5 +1,5 @@
 import { DEFAULT_SESSION_TIMEOUT_MS } from "../constants.js";
-import { readClientEnvFlag } from "@workspace/platform-crypto/client";
+import { isIfNodeTraceEnabled } from "../debug/runtime-trace-flags.js";
 import { extractInteractiveSelection, INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
 import { readLatestOutbound } from "../runtime/outbound-queue.js";
 import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
@@ -27,6 +27,18 @@ export function isSessionExpired(
 
 export const STALE_WAITING_RUN_REASON =
   "stale_waiting_run: missing execution pin (legacy or corrupted waiting state)";
+
+export const ABANDONED_ACTIVE_RUN_REASON = "abandoned_active_run: superseded by new inbound execution";
+
+const TERMINAL_RUN_STATUSES = new Set(["completed", "failed", "cancelled"]);
+
+export function isTerminalRunStatus(status: AutomationRunRecord["status"]): boolean {
+  return TERMINAL_RUN_STATUSES.has(status);
+}
+
+export function isNonTerminalRunStatus(status: AutomationRunRecord["status"]): boolean {
+  return !isTerminalRunStatus(status);
+}
 
 export function hasValidWaitingRunState(
   session: ConversationSessionRecord,
@@ -198,7 +210,7 @@ export function buildResumeInput(
     input.title = selection.last_button_title;
   }
 
-  if (readClientEnvFlag("AUTOMATION_IF_TRACE_DEBUG")) {
+  if (isIfNodeTraceEnabled()) {
     void import("../debug/interactive-if-trace-debug.js").then(({ traceBuildResumeInput }) => {
       traceBuildResumeInput({
         runId: run.id,

@@ -1,8 +1,8 @@
+import { isIfNodeTraceEnabled } from "./runtime-trace-flags.js";
 import type { CompiledRuleSet, RuleClause, RuleGroup } from "../logic/types.js";
 import { evaluateRuleClause, resolveFieldValue } from "../logic/expression-engine.js";
 import { evaluateIfElseCondition } from "../logic/condition-evaluator.js";
-import { readConversationVariables } from "../runtime/conversation-variables.js";
-import { INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
+import { readConversationVariables, INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
 
 export type InteractiveIfTraceStage =
   | "raw_webhook_payload"
@@ -22,10 +22,8 @@ export type InteractiveIfTraceLog = {
   [key: string]: unknown;
 };
 
-import { readClientEnvFlag } from "@workspace/platform-crypto/client";
-
 export function isInteractiveIfTraceEnabled(): boolean {
-  return readClientEnvFlag("AUTOMATION_IF_TRACE_DEBUG");
+  return isIfNodeTraceEnabled();
 }
 
 export function logInteractiveIfTrace(payload: InteractiveIfTraceLog): void {

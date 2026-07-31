@@ -2,14 +2,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AutomationChannel } from "@workspace/automation-platform";
 import type { AutomationEngine, ServiceContext as AutomationServiceContext } from "@workspace/automation-platform";
 import {
+  ABANDONED_ACTIVE_RUN_REASON,
   buildResumeInput,
+  cleanupStaleExecutionsForUser,
   createSupabaseAutomationRunRepository,
   createSupabaseConversationSessionRepository,
-  isSessionExpired,
   logInboundListNodeRouting,
+  resolveInboundAutomationContext,
   resolveInboundAutomationRoute,
   traceEngineResumeInput,
   traceInboundRoutingHoldResult,
+  traceInboundRoutingLookup,
   traceParsedInboundMessage,
 } from "@workspace/automation-platform";
 import type { ChannelAutomationPort } from "@workspace/channel-platform";
@@ -31,6 +34,16 @@ function mapChannelKey(channelKey: string): AutomationChannel {
   return CHANNEL_KEY_MAP[channelKey] ?? "api";
 }
 
+function readWaitingFor(source: { variables: Record<string, unknown> } | null | undefined): string | null {
+  if (!source) return null;
+  return typeof source.variables.__waitingFor === "string" ? source.variables.__waitingFor : null;
+}
+
+function logInboundRoutingDecision(payload: Record<string, unknown>): void {
+  logger.info(payload, "automation inbound routing decision");
+  console.info(JSON.stringify({ event: "automation.inbound_routing_decision", ...payload }));
+}
+
 export function createChannelAutomationPort(
   engine: AutomationEngine,
   ctx: AutomationServiceContext,
@@ -45,34 +58,55 @@ export function createChannelAutomationPort(
       const resumePayload = {
         ...(input.metadata ?? {}),
       };
+      let session: Awaited<ReturnType<NonNullable<typeof deps>["sessions"]["findById"]>> = null;
+      let run: Awaited<ReturnType<NonNullable<typeof deps>["runs"]["findById"]>> = null;
+      let route: ReturnType<typeof resolveInboundAutomationRoute> | undefined;
 
       if (deps) {
-        const session = await deps.sessions.findActiveSession({
+        await cleanupStaleExecutionsForUser(engine, ctx, deps, {
           companyId: input.companyId,
           channel,
           externalUserId: input.externalUserId,
+          boundFlowId: input.flowId,
         });
 
-        const run = session
-          ? session.run_id
-            ? await deps.runs.findById(session.run_id)
-            : await deps.runs.findBySessionId(session.id)
-          : null;
+        const context = await resolveInboundAutomationContext(deps, {
+          companyId: input.companyId,
+          channel,
+          externalUserId: input.externalUserId,
+          boundFlowId: input.flowId,
+        });
+        session = context.session;
+        run = context.run;
+        const expired = context.expired;
 
-        const expired = session ? isSessionExpired(session) : false;
+        traceInboundRoutingLookup({
+          externalUserId: input.externalUserId,
+          channel,
+          boundFlowId: input.flowId,
+          lookup: context.lookup,
+          session,
+          run,
+          expired,
+          inboundKind: typeof resumePayload.kind === "string" ? resumePayload.kind : null,
+          interactionType:
+            typeof resumePayload.interactionType === "string" ? resumePayload.interactionType : null,
+          replyId: typeof resumePayload.replyId === "string" ? resumePayload.replyId : null,
+        });
 
-        const route = resolveInboundAutomationRoute({
+        const routeDecision = resolveInboundAutomationRoute({
           boundFlowId: input.flowId,
           session,
           run,
           expired,
         });
+        route = routeDecision;
 
         logger.info(
           {
             event: "automation.inbound_routing",
-            executionMode: route.mode,
-            reason: route.reason,
+            executionMode: routeDecision.mode,
+            reason: routeDecision.reason,
             workflowId: input.flowId,
             externalUserId: input.externalUserId,
             channel,
@@ -87,24 +121,69 @@ export function createChannelAutomationPort(
               session && typeof session.variables.__waitingFor === "string"
                 ? session.variables.__waitingFor
                 : null,
-            ...route.diagnostics,
+            ...routeDecision.diagnostics,
+            lookupStrategy: context.lookup.strategy,
+            skippedExpiredSessionIds: context.lookup.skippedExpiredSessionIds,
+            willStartNewWorkflow: routeDecision.mode === "start" || routeDecision.mode === "abandon_and_start",
           },
-          "Resolved inbound automation execution mode",
+          routeDecision.mode === "start"
+            ? "Starting new workflow — prior session not resumable"
+            : routeDecision.mode === "abandon_and_start"
+              ? "Abandoning stale waiting run and starting new workflow"
+              : "Resolved inbound automation execution mode",
         );
 
         logInboundListNodeRouting({
-          runId: route.diagnostics.runId,
-          sessionId: route.diagnostics.sessionId,
-          currentNodeId: route.diagnostics.currentNodeId,
-          waitingInput: route.diagnostics.waitingInput,
-          sessionStatus: route.diagnostics.sessionStatus,
-          runStatus: route.diagnostics.runStatus,
-          executionMode: route.mode,
-          reason: route.reason,
+          runId: routeDecision.diagnostics.runId,
+          sessionId: routeDecision.diagnostics.sessionId,
+          currentNodeId: routeDecision.diagnostics.currentNodeId,
+          waitingInput: routeDecision.diagnostics.waitingInput,
+          sessionStatus: routeDecision.diagnostics.sessionStatus,
+          runStatus: routeDecision.diagnostics.runStatus,
+          executionMode: routeDecision.mode,
+          reason: routeDecision.reason,
           messageTextPreview: input.messageText.slice(0, 120),
         });
 
-        if (route.mode === "resume" && session && run) {
+        logInboundRoutingDecision({
+          executionMode: routeDecision.mode,
+          routingReason: routeDecision.reason,
+          sessionId: session?.id ?? routeDecision.diagnostics.sessionId ?? null,
+          runId: run?.id ?? routeDecision.diagnostics.runId ?? null,
+          currentNodeId: run?.current_node_id ?? session?.current_node_id ?? routeDecision.diagnostics.currentNodeId ?? null,
+          waitingFor: readWaitingFor(run) ?? readWaitingFor(session) ?? routeDecision.diagnostics.waitingInput ?? null,
+          flowVersionId: run?.flow_version_id ?? session?.flow_version_id ?? null,
+          sessionStatus: session?.status ?? null,
+          runStatus: run?.status ?? null,
+          sessionExpired: expired,
+          lookupStrategy: context.lookup.strategy,
+          skippedExpiredSessionIds: context.lookup.skippedExpiredSessionIds,
+          inboundKind: typeof resumePayload.kind === "string" ? resumePayload.kind : null,
+          interactionType:
+            typeof resumePayload.interactionType === "string" ? resumePayload.interactionType : null,
+          replyId: typeof resumePayload.replyId === "string" ? resumePayload.replyId : null,
+          replyTitle: typeof resumePayload.title === "string" ? resumePayload.title : null,
+          externalUserId: input.externalUserId,
+          boundFlowId: input.flowId,
+          engineResumeCalled: false,
+          engineStartCalled: false,
+          resumeGatePassed: Boolean(routeDecision.mode === "resume" && session && run),
+        });
+
+        if (routeDecision.mode === "resume" && session && run) {
+          logInboundRoutingDecision({
+            executionMode: routeDecision.mode,
+            routingReason: routeDecision.reason,
+            sessionId: session.id,
+            runId: run.id,
+            currentNodeId: run.current_node_id ?? session.current_node_id,
+            waitingFor: readWaitingFor(run) ?? readWaitingFor(session),
+            flowVersionId: run.flow_version_id ?? session.flow_version_id,
+            engineResumeCalled: true,
+            engineStartCalled: false,
+            resumeGatePassed: true,
+          });
+
           const resumeInput = buildResumeInput(run, input.messageText, resumePayload);
           traceParsedInboundMessage({
             channelKey: input.channelKey,
@@ -148,13 +227,29 @@ export function createChannelAutomationPort(
           };
         }
 
-        if (route.mode === "abandon_and_start" && run) {
-          await engine.abandonStaleWaitingRun(ctx, { runId: run.id });
+        if (routeDecision.mode === "abandon_and_start" && run) {
+          await engine.abandonActiveRun(ctx, {
+            runId: run.id,
+            reason: ABANDONED_ACTIVE_RUN_REASON,
+          });
         }
 
-        if (route.mode === "hold_active_session") {
+        if (routeDecision.mode === "hold_active_session") {
+          logInboundRoutingDecision({
+            executionMode: routeDecision.mode,
+            routingReason: routeDecision.reason,
+            sessionId: session?.id ?? null,
+            runId: run?.id ?? null,
+            currentNodeId: routeDecision.diagnostics.currentNodeId,
+            waitingFor: routeDecision.diagnostics.waitingInput,
+            flowVersionId: run?.flow_version_id ?? session?.flow_version_id ?? null,
+            engineResumeCalled: false,
+            engineStartCalled: false,
+            startSelectedBecause: "channel-automation-port.ts hold_active_session early return",
+          });
+
           traceInboundRoutingHoldResult({
-            decision: route,
+            decision: routeDecision,
             runId: run?.id ?? session?.run_id ?? "",
             lifecycle: run?.status ?? session?.status,
           });
@@ -162,14 +257,14 @@ export function createChannelAutomationPort(
           logger.warn(
             {
               event: "automation.inbound_routing_held",
-              executionMode: route.mode,
-              reason: route.reason,
+              executionMode: routeDecision.mode,
+              reason: routeDecision.reason,
               runId: run?.id ?? session?.run_id ?? null,
               sessionId: session?.id ?? null,
-              currentNodeId: route.diagnostics.currentNodeId,
-              sessionStatus: route.diagnostics.sessionStatus,
-              runStatus: route.diagnostics.runStatus,
-              waitingInput: route.diagnostics.waitingInput,
+              currentNodeId: routeDecision.diagnostics.currentNodeId,
+              sessionStatus: routeDecision.diagnostics.sessionStatus,
+              runStatus: routeDecision.diagnostics.runStatus,
+              waitingInput: routeDecision.diagnostics.waitingInput,
             },
             "Inbound message held with no automation execution; outbound will be empty",
           );
@@ -182,6 +277,37 @@ export function createChannelAutomationPort(
           };
         }
       }
+
+      let startSelectedBecause = "channel-automation-port.ts engine.start()";
+      if (!deps) {
+        startSelectedBecause =
+          "channel-automation-port.ts engine.start() — deps undefined (no session/run repositories; resume routing disabled)";
+      } else if (route?.mode === "start") {
+        startSelectedBecause = `channel-automation-port.ts engine.start() — resolveInboundAutomationRoute returned mode=start reason=${route.reason}`;
+      } else if (route?.mode === "abandon_and_start") {
+        startSelectedBecause = `channel-automation-port.ts engine.start() — resolveInboundAutomationRoute returned mode=abandon_and_start reason=${route.reason}`;
+      } else if (route?.mode === "resume" && (!session || !run)) {
+        startSelectedBecause =
+          "channel-automation-port.ts engine.start() — route.mode=resume but session or run missing after lookup";
+      } else if (route?.mode === "resume") {
+        startSelectedBecause =
+          "channel-automation-port.ts engine.start() — unexpected fallthrough after route.mode=resume";
+      } else if (route) {
+        startSelectedBecause = `channel-automation-port.ts engine.start() — fallthrough after mode=${route.mode}`;
+      }
+
+      logInboundRoutingDecision({
+        executionMode: route?.mode ?? "start",
+        routingReason: route?.reason ?? (deps ? "unknown_fallthrough" : "no_routing_deps"),
+        sessionId: session?.id ?? null,
+        runId: run?.id ?? null,
+        currentNodeId: run?.current_node_id ?? session?.current_node_id ?? null,
+        waitingFor: readWaitingFor(run) ?? readWaitingFor(session),
+        flowVersionId: run?.flow_version_id ?? session?.flow_version_id ?? null,
+        engineResumeCalled: false,
+        engineStartCalled: true,
+        startSelectedBecause,
+      });
 
       const result = await engine.start(ctx, {
         companyId: input.companyId,
@@ -222,15 +348,41 @@ export function createChannelAutomationPortFromClient(
 export function createChannelWorkflowFlowValidator(client: SupabaseClient) {
   return {
     async isExecutableFlow(flowId: string, companyId: string): Promise<boolean> {
+      const metadata = await this.getExecutionMetadata(flowId, companyId);
+      return Boolean(metadata && metadata.flowStatus === "active");
+    },
+
+    async getExecutionMetadata(
+      flowId: string,
+      companyId: string,
+    ): Promise<{
+      workflowId: string;
+      automationFlowId: string;
+      publishedVersionId: string | null;
+      publishedVersionNumber: number | null;
+      hasUnpublishedDraft: boolean;
+      flowStatus: string;
+      bindingUsesPublishedVersion: boolean;
+    } | null> {
       const { data, error } = await client
         .from("automation_flows")
-        .select("id, company_id, status")
+        .select("id, company_id, status, version, active_version_id, has_unpublished_draft")
         .eq("id", flowId)
         .is("deleted_at", null)
         .maybeSingle();
 
       if (error) throw error;
-      return Boolean(data && data.company_id === companyId && data.status === "active");
+      if (!data || data.company_id !== companyId) return null;
+
+      return {
+        workflowId: data.id,
+        automationFlowId: data.id,
+        publishedVersionId: data.active_version_id ?? null,
+        publishedVersionNumber: typeof data.version === "number" ? data.version : null,
+        hasUnpublishedDraft: data.has_unpublished_draft === true,
+        flowStatus: data.status,
+        bindingUsesPublishedVersion: Boolean(data.active_version_id),
+      };
     },
   };
 }

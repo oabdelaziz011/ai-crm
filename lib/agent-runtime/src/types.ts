@@ -1,4 +1,5 @@
 import type { AgentEventType, AgentTaskStatus, AgentWorkflowStatus } from "./constants.js";
+import type { AgentConfirmationRequest } from "./confirmation/confirmation-types.js";
 
 export type { AgentEventType, AgentTaskStatus, AgentWorkflowStatus };
 
@@ -65,6 +66,8 @@ export type AgentWorkflowRecord = {
   memory: AgentMemoryState;
   correlation_id: string;
   checkpoint_index: number;
+  execution_lease_holder: string | null;
+  execution_lease_expires_at: string | null;
   error_message: string | null;
   final_report: string | null;
   created_at: string;
@@ -90,6 +93,10 @@ export type StartAgentWorkflowInput = {
   pageContext?: Record<string, unknown>;
   correlationId?: string;
   agentType?: "crm" | "generic";
+  /** Runtime-only: issues pre-start confirmation tokens after planning (UI pre-confirm flow). */
+  preStartConfirmationAcknowledged?: boolean;
+  /** Recover an existing unfinished workflow instead of creating a new one. */
+  recoverWorkflowId?: string;
 };
 
 export type AgentWorkflowResult = {
@@ -98,6 +105,7 @@ export type AgentWorkflowResult = {
   finalReport: string | null;
   taskGraph: AgentTaskGraph;
   events: AgentWorkflowEventRecord[];
+  confirmationRequest?: AgentConfirmationRequest | null;
 };
 
 export type ToolRoutePort = {

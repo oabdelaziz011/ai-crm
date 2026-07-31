@@ -140,7 +140,7 @@
       "progress": "Progress",
       "status": "Status",
       "resume": "Resume",
-      "pausedHint": "Workflow paused — review failed task and resume when ready.",
+      "pausedHint": "Workflow paused — review the pending action and confirm to continue.",
       "noWorkflow": "No active workflow. Enter a goal to start planning.",
       "noEvents": "Events will appear here as tasks run.",
       "noReport": "Final report will appear when the workflow completes.",
@@ -148,6 +148,13 @@
       "parallelGroup": "Parallel",
       "tool": "Tool",
       "retries": "{{count}} retries",
+      "midFlightConfirmation": {
+        "title": "Confirm agent action",
+        "description": "This action requires your explicit approval before the agent can continue.",
+        "confirmAction": "Confirm and continue",
+        "risk": "Risk",
+        "irreversible": "Irreversible"
+      },
       "tabs": {
         "graph": "Graph",
         "timeline": "Timeline",

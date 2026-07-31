@@ -58,7 +58,7 @@ describe("CrmAgentPlanner", () => {
     assert.ok(graph);
     const mergeNode = graph.nodes.find((n) => n.tool === "merge_customers");
     assert.ok(mergeNode);
-    assert.equal(mergeNode.toolInput?.confirmed, false);
+    assert.notEqual(mergeNode.toolInput?.confirmed, true);
     assert.equal(mergeNode.verificationRule, "merge_completed");
   });
 });

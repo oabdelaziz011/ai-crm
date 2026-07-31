@@ -140,7 +140,6 @@ const CRM_PLAN_TEMPLATES: CrmPlanTemplate[] = [
           toolInput: {
             primaryCustomerId: selectedIds[0] ?? undefined,
             duplicateCustomerIds: selectedIds.slice(1),
-            confirmed: pageContext?.agentConfirmed === true,
           },
             dependencies: [],
             verificationRule: "merge_completed",
@@ -173,7 +172,7 @@ const CRM_PLAN_TEMPLATES: CrmPlanTemplate[] = [
           title: "Import customers",
           description: "Bulk create customers (requires confirmation)",
           tool: "import_customers",
-          toolInput: { rows: [], confirmed: pageContext?.agentConfirmed === true, goal },
+          toolInput: { rows: [], goal },
           dependencies: [],
           verificationRule: "import_completed",
           estimatedDurationMs: 4000,

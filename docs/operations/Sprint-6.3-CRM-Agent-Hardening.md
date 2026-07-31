@@ -85,8 +85,8 @@ npx supabase db push --linked
 ## Remaining Sprint 6.3 work (not in 6.3.4)
 
 - 6.3.1 Execution concurrency & lifecycle
-- 6.3.2 Checkpoint recovery
-- 6.3.3 Mid-flight CRM confirmation
+- ~~6.3.2 Checkpoint recovery~~ **Done** — checkpoint engine, recover API, idempotent resume, confirmation state restore, execution lease, monotonic checkpoint guard
+- ~~6.3.3 Mid-flight CRM confirmation~~ **Done** — policy engine, pre-router gate, short-lived tokens, mid-flight UI
 - 6.3.5 UI lifecycle completeness (cancel/delete/history)
 - 6.3.6 Feature flag & ops hardening
 - 6.3.7 Schema indexing

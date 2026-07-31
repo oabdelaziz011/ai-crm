@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { AgentExecutionEngine } from "./agent-execution-engine.js";
 import type { AgentWorkflowRepository } from "../checkpoint/checkpoint-service.js";
+import { createInMemoryAgentWorkflowRepository } from "../checkpoint/in-memory-agent-workflow-repository.js";
 import type { AgentRuntimePorts, AgentWorkflowRecord, ServiceContext } from "../types.js";
 import { AGENT_PERMISSIONS } from "../constants.js";
 
@@ -55,6 +56,8 @@ function createRepoWithToolWorkflow(): AgentWorkflowRepository {
     },
     correlation_id: "corr-1",
     checkpoint_index: 0,
+    execution_lease_holder: null,
+    execution_lease_expires_at: null,
     error_message: null,
     final_report: null,
     created_at: new Date().toISOString(),
@@ -62,25 +65,7 @@ function createRepoWithToolWorkflow(): AgentWorkflowRepository {
     completed_at: null,
   };
 
-  return {
-    createWorkflow: async (input) => ({
-      ...input,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      completed_at: null,
-    }),
-    updateWorkflow: async (_id, patch) => {
-      Object.assign(workflow, patch, { updated_at: new Date().toISOString() });
-      return { ...workflow };
-    },
-    getWorkflow: async () => ({ ...workflow, task_graph: { ...workflow.task_graph, nodes: [...workflow.task_graph.nodes] } }),
-    listWorkflows: async () => [workflow],
-    deleteWorkflow: async () => {},
-    saveCheckpoint: async () => {},
-    loadLatestCheckpoint: async () => null,
-    appendEvent: async (event) => ({ ...event, id: "evt-1", created_at: new Date().toISOString() }),
-    listEvents: async () => [],
-  };
+  return createInMemoryAgentWorkflowRepository({ seeds: [workflow] }).repo;
 }
 
 describe("AgentExecutionEngine CRM tool pre-flight", () => {

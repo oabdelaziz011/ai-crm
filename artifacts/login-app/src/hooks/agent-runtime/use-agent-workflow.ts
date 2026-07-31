@@ -70,6 +70,7 @@ export function useAgentWorkflow() {
   const queryClient = useQueryClient();
   const companyId = context.companyId;
   const bgTaskIdRef = useRef<string | null>(null);
+  const recoveredWorkflowRef = useRef<string | null>(null);
 
   const getPageContext = useCallback(
     () => buildRuntimePageContext(pageContext) as unknown as Record<string, unknown>,
@@ -103,7 +104,8 @@ export function useAgentWorkflow() {
   const startWorkflow = useMutation({
     mutationFn: async (input: string | { goal: string; confirmed?: boolean }) => {
       const goal = typeof input === "string" ? input : input.goal;
-      const agentConfirmed = typeof input === "string" ? false : Boolean(input.confirmed);
+      const preStartConfirmationAcknowledged =
+        typeof input === "string" ? false : Boolean(input.confirmed);
       if (!companyId) throw new Error("Company required");
 
       let conversationId = workspace.conversationId;
@@ -122,7 +124,8 @@ export function useAgentWorkflow() {
         userId: context.userId,
         conversationId,
         goal,
-        pageContext: { ...getPageContext(), agentConfirmed },
+        pageContext: getPageContext(),
+        preStartConfirmationAcknowledged,
         agentType: isCrmAgentGoal(goal) ? "crm" : "generic",
       });
 
@@ -163,17 +166,35 @@ export function useAgentWorkflow() {
     },
   });
 
-  const resumeWorkflow = useMutation({
+  const recoverWorkflow = useMutation({
     mutationFn: async (workflowId: string) => {
+      const result = await services.runtime.recover(context, workflowId);
+      void queryClient.invalidateQueries({ queryKey: ["agent-workflow", workflowId] });
+      return result;
+    },
+  });
+
+  const resumeWorkflow = useMutation({
+    mutationFn: async (input: string | { workflowId: string; confirmationToken?: string }) => {
+      const workflowId = typeof input === "string" ? input : input.workflowId;
+      const confirmationToken = typeof input === "string" ? undefined : input.confirmationToken;
+
       const bgTaskId = startTask("Resume agent workflow", { background: true });
       bgTaskIdRef.current = bgTaskId;
       updateTaskProgress(bgTaskId, 10, "Resuming…");
 
-      const result = await services.runtime.resume(context, workflowId);
+      const result = await services.runtime.resume(context, {
+        workflowId,
+        confirmationToken,
+      });
       updateTaskProgress(bgTaskId, graphProgress(result.taskGraph));
       if (result.status === "completed") {
         completeTask(bgTaskId);
-      } else if (result.status === "failed" || result.status === "waiting_user") {
+      } else if (result.status === "failed") {
+        failTask(bgTaskId, result.finalReport ?? "Workflow failed");
+      } else if (result.status === "waiting_user" && result.confirmationRequest) {
+        completeTask(bgTaskId, "Waiting for confirmation");
+      } else if (result.status === "waiting_user") {
         failTask(bgTaskId, result.finalReport ?? "Needs attention");
       } else {
         completeTask(bgTaskId);
@@ -184,6 +205,15 @@ export function useAgentWorkflow() {
       void queryClient.invalidateQueries({ queryKey: ["agent-workflow"] });
     },
   });
+
+  useEffect(() => {
+    if (!activeWorkflowId || !workflowQuery.data) return;
+    if (workflowQuery.data.status !== "running") return;
+    if (recoveredWorkflowRef.current === activeWorkflowId) return;
+
+    recoveredWorkflowRef.current = activeWorkflowId;
+    void recoverWorkflow.mutateAsync(activeWorkflowId);
+  }, [activeWorkflowId, workflowQuery.data?.status, recoverWorkflow]);
 
   useEffect(() => {
     if (!activeWorkflowId) return;

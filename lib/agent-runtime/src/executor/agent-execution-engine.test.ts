@@ -4,6 +4,7 @@ import { AGENT_PERMISSIONS } from "../constants.js";
 import { AgentsFeatureDisabledError, AgentsPermissionDeniedError } from "../errors.js";
 import { AgentExecutionEngine } from "./agent-execution-engine.js";
 import type { AgentWorkflowRepository } from "../checkpoint/checkpoint-service.js";
+import { createInMemoryAgentWorkflowRepository } from "../checkpoint/in-memory-agent-workflow-repository.js";
 import type { AgentRuntimePorts, AgentWorkflowRecord, ServiceContext } from "../types.js";
 
 function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
@@ -18,41 +19,7 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
 }
 
 function createRepo(): AgentWorkflowRepository {
-  const workflows = new Map<string, AgentWorkflowRecord>();
-
-  return {
-    createWorkflow: async (input) => {
-      const record: AgentWorkflowRecord = {
-        ...input,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        completed_at: null,
-      };
-      workflows.set(record.id, record);
-      return record;
-    },
-    updateWorkflow: async (id, patch) => {
-      const existing = workflows.get(id);
-      if (!existing) throw new Error("missing");
-      const updated = { ...existing, ...patch, updated_at: new Date().toISOString() };
-      workflows.set(id, updated);
-      return updated;
-    },
-    getWorkflow: async (id) => workflows.get(id) ?? null,
-    listWorkflows: async (companyId) =>
-      [...workflows.values()].filter((workflow) => workflow.company_id === companyId),
-    deleteWorkflow: async (id) => {
-      workflows.delete(id);
-    },
-    saveCheckpoint: async () => {},
-    loadLatestCheckpoint: async () => null,
-    appendEvent: async (event) => ({
-      ...event,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-    }),
-    listEvents: async () => [],
-  };
+  return createInMemoryAgentWorkflowRepository().repo;
 }
 
 function createPorts(): AgentRuntimePorts {

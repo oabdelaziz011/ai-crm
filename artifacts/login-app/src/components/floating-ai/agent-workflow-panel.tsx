@@ -19,6 +19,9 @@ import {
   type PendingConfirmation,
 } from "@/lib/floating-ai/action-confirmation";
 import { ActionConfirmationDialog } from "./action-confirmation-dialog";
+import { AgentConfirmationDialog } from "./agent-confirmation-dialog";
+import { resolveMidFlightConfirmation } from "@/lib/floating-ai/agent-confirmation";
+import type { AgentConfirmationRequest } from "@workspace/agent-runtime";
 import { AgentEventTimeline } from "./agent-event-timeline";
 import { AgentTaskGraphView } from "./agent-task-graph";
 import { FloatingAiComposer } from "./floating-ai-composer";
@@ -64,6 +67,12 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   } = useAgentWorkflow();
 
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [showMidFlightConfirmation, setShowMidFlightConfirmation] = useState(false);
+
+  const midFlightConfirmation = useMemo(
+    () => resolveMidFlightConfirmation({ workflow, taskGraph }),
+    [workflow, taskGraph],
+  );
 
   const runGoal = useCallback(
     async (goal: string, confirmed = false) => {
@@ -97,8 +106,21 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
 
   const handleResume = useCallback(async () => {
     if (!activeWorkflowId || !canResume) return;
+    if (midFlightConfirmation) {
+      setShowMidFlightConfirmation(true);
+      return;
+    }
     await resumeAgent(activeWorkflowId);
-  }, [activeWorkflowId, resumeAgent, canResume]);
+  }, [activeWorkflowId, resumeAgent, canResume, midFlightConfirmation]);
+
+  const handleConfirmMidFlight = useCallback(async () => {
+    if (!activeWorkflowId || !midFlightConfirmation) return;
+    setShowMidFlightConfirmation(false);
+    await resumeAgent({
+      workflowId: activeWorkflowId,
+      confirmationToken: midFlightConfirmation.confirmationToken,
+    });
+  }, [activeWorkflowId, midFlightConfirmation, resumeAgent]);
 
   const autoStartedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -152,7 +174,9 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
           {needsResume && canResume && (
             <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => void handleResume()} disabled={!canResume || isResuming}>
               {isResuming ? <Loader2 className="size-3 animate-spin" /> : <RotateCcw className="size-3" />}
-              {t("floatingAi.agent.resume")}
+              {midFlightConfirmation
+                ? t("floatingAi.agent.midFlightConfirmation.confirmAction")
+                : t("floatingAi.agent.resume")}
             </Button>
           )}
         </div>
@@ -245,6 +269,11 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
         pending={pendingConfirmation}
         onConfirm={() => void handleConfirmStart()}
         onCancel={() => setPendingConfirmation(null)}
+      />
+      <AgentConfirmationDialog
+        request={showMidFlightConfirmation ? (midFlightConfirmation as AgentConfirmationRequest | null) : null}
+        onConfirm={() => void handleConfirmMidFlight()}
+        onCancel={() => setShowMidFlightConfirmation(false)}
       />
     </div>
   );

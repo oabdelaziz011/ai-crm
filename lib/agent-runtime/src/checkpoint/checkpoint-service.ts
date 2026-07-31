@@ -6,6 +6,31 @@ import type {
   AgentWorkflowRecord,
   AgentWorkflowStatus,
 } from "../types.js";
+import type { AgentCheckpointSnapshot } from "./checkpoint-recovery.js";
+
+export type { AgentCheckpointSnapshot } from "./checkpoint-recovery.js";
+export {
+  buildCheckpointSnapshot,
+  validateCheckpointSnapshot,
+  applyCheckpointSnapshot,
+  evaluateMonotonicCheckpoint,
+  isRecoverableWorkflowStatus,
+  isTaskAlreadyCompleted,
+  findRecoverableWorkflow,
+  normalizeInterruptedGraph,
+} from "./checkpoint-recovery.js";
+export {
+  DEFAULT_EXECUTION_LEASE_TTL_MS,
+  canAcquireExecutionLease,
+  createRuntimeLeaseHolder,
+} from "./workflow-execution-lease.js";
+export { createInMemoryAgentWorkflowRepository } from "./in-memory-agent-workflow-repository.js";
+
+export type CheckpointSnapshot = {
+  taskGraph: AgentTaskGraph;
+  memory: AgentMemoryState;
+  status: AgentWorkflowStatus;
+};
 
 export type AgentWorkflowRepository = {
   createWorkflow(input: Omit<AgentWorkflowRecord, "created_at" | "updated_at" | "completed_at">): Promise<AgentWorkflowRecord>;
@@ -15,6 +40,9 @@ export type AgentWorkflowRepository = {
   deleteWorkflow(id: string): Promise<void>;
   saveCheckpoint(workflowId: string, companyId: string, checkpointIndex: number, snapshot: Record<string, unknown>): Promise<void>;
   loadLatestCheckpoint(workflowId: string): Promise<Record<string, unknown> | null>;
+  tryAcquireExecutionLease(workflowId: string, holder: string, ttlMs: number): Promise<boolean>;
+  releaseExecutionLease(workflowId: string, holder: string): Promise<boolean>;
+  renewExecutionLease(workflowId: string, holder: string, ttlMs: number): Promise<boolean>;
   appendEvent(event: Omit<AgentWorkflowEventRecord, "id" | "created_at">): Promise<AgentWorkflowEventRecord>;
   listEvents(workflowId: string): Promise<AgentWorkflowEventRecord[]>;
 };
@@ -37,6 +65,8 @@ export function createSupabaseAgentWorkflowRepository(client: SupabaseClient): A
           checkpoint_index: input.checkpoint_index,
           error_message: input.error_message,
           final_report: input.final_report,
+          execution_lease_holder: input.execution_lease_holder ?? null,
+          execution_lease_expires_at: input.execution_lease_expires_at ?? null,
         })
         .select("*")
         .single();
@@ -118,11 +148,34 @@ export function createSupabaseAgentWorkflowRepository(client: SupabaseClient): A
       if (error) throw error;
       return (data ?? []) as AgentWorkflowEventRecord[];
     },
+
+    async tryAcquireExecutionLease(workflowId, holder, ttlMs) {
+      const { data, error } = await client.rpc("try_acquire_agent_workflow_execution_lease", {
+        p_workflow_id: workflowId,
+        p_holder: holder,
+        p_ttl_seconds: Math.max(1, Math.ceil(ttlMs / 1000)),
+      });
+      if (error) throw error;
+      return Boolean(data);
+    },
+
+    async releaseExecutionLease(workflowId, holder) {
+      const { data, error } = await client.rpc("release_agent_workflow_execution_lease", {
+        p_workflow_id: workflowId,
+        p_holder: holder,
+      });
+      if (error) throw error;
+      return Boolean(data);
+    },
+
+    async renewExecutionLease(workflowId, holder, ttlMs) {
+      const { data, error } = await client.rpc("renew_agent_workflow_execution_lease", {
+        p_workflow_id: workflowId,
+        p_holder: holder,
+        p_ttl_seconds: Math.max(1, Math.ceil(ttlMs / 1000)),
+      });
+      if (error) throw error;
+      return Boolean(data);
+    },
   };
 }
-
-export type CheckpointSnapshot = {
-  taskGraph: AgentTaskGraph;
-  memory: AgentMemoryState;
-  status: AgentWorkflowStatus;
-};

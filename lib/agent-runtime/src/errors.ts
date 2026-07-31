@@ -36,3 +36,30 @@ export class AgentCrmToolPermissionDeniedError extends AgentRuntimeError {
     this.permission = permission;
   }
 }
+
+export class AgentCheckpointRecoveryError extends AgentRuntimeError {
+  readonly recoveryCode: string;
+
+  constructor(code: string, message: string) {
+    super(code, message);
+    this.recoveryCode = code;
+  }
+}
+
+export class AgentExecutionLeaseError extends AgentRuntimeError {
+  readonly leaseCode: string;
+
+  constructor(code: string, message: string) {
+    super(code, message);
+    this.leaseCode = code;
+  }
+}
+
+export class AgentConfirmationError extends AgentRuntimeError {
+  readonly confirmationCode: string;
+
+  constructor(code: string, message: string) {
+    super(code, message);
+    this.confirmationCode = code;
+  }
+}

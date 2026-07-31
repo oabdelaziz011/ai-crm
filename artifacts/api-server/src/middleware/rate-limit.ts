@@ -1,12 +1,37 @@
 import rateLimit from "express-rate-limit";
 import { logger } from "../lib/logger.js";
 
-export const globalRateLimiter = rateLimit({
-  windowMs: 60_000,
-  max: 300,
+const limiterDefaults = {
   standardHeaders: true,
   legacyHeaders: false,
+} as const;
+
+export const globalRateLimiter = rateLimit({
+  ...limiterDefaults,
+  windowMs: 60_000,
+  max: 300,
   message: { error: "rate_limit_exceeded" },
+});
+
+export const authRateLimiter = rateLimit({
+  ...limiterDefaults,
+  windowMs: 15 * 60_000,
+  max: 30,
+  message: { error: "auth_rate_limit_exceeded" },
+});
+
+export const providerOpsRateLimiter = rateLimit({
+  ...limiterDefaults,
+  windowMs: 60_000,
+  max: 60,
+  message: { error: "provider_rate_limit_exceeded" },
+});
+
+export const exportRateLimiter = rateLimit({
+  ...limiterDefaults,
+  windowMs: 60_000,
+  max: 20,
+  message: { error: "export_rate_limit_exceeded" },
 });
 
 export const webhookRateLimiter = rateLimit({

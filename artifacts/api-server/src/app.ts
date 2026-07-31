@@ -7,21 +7,32 @@ import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 import { applySecurityMiddleware } from "./middleware/security.js";
 import { globalRateLimiter } from "./middleware/rate-limit.js";
+import { requestContextMiddleware } from "./middleware/request-context.js";
+import { metricsMiddleware } from "./middleware/metrics.js";
+import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { loadPlatformEnv } from "./config/env.js";
 
 const env = loadPlatformEnv();
 
 const app: Express = express();
 
+app.set("trust proxy", 1);
 applySecurityMiddleware(app);
+app.use(requestContextMiddleware);
+app.use(metricsMiddleware);
 
 app.use(
   pinoHttp({
     logger,
+    genReqId: (req) => req.requestId ?? req.id,
+    customProps: (req) => ({
+      correlationId: req.correlationId,
+    }),
     serializers: {
       req(req) {
         return {
           id: req.id,
+          correlationId: req.correlationId,
           method: req.method,
           url: req.url?.split("?")[0],
         };
@@ -61,5 +72,7 @@ app.use(
 );
 
 app.use("/api", router);
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

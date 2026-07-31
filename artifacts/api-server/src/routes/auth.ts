@@ -10,8 +10,11 @@ import {
   LogoutResponse,
   GetMeResponse,
 } from "@workspace/api-zod";
+import { authRateLimiter } from "../middleware/rate-limit.js";
 
 const router: IRouter = Router();
+
+router.use(authRateLimiter);
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);

@@ -5,14 +5,17 @@ import {
   performInstagramOutboundHealthCheck,
   resolveInstagramRuntimeConfiguration,
 } from "@workspace/channel-platform";
-import { requireCompanyScope } from "../middleware/supabase-auth.js";
+import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 
 const router: IRouter = Router();
 
-router.post("/instagram/channel-outbound-health", requireCompanyScope, async (req, res, next) => {
+router.use(requireSupabaseAuth);
+router.use(requireCompanyScope("companyId"));
+
+router.post("/instagram/channel-outbound-health", async (req, res, next) => {
   try {
-    const companyId = req.companyId!;
+    const companyId = String(req.body?.companyId ?? "");
     const companyChannelId = String(req.body?.companyChannelId ?? "");
     if (!companyChannelId) {
       res.status(400).json({ error: "companyChannelId is required" });

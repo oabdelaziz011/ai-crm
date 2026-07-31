@@ -148,6 +148,14 @@ async function processWhatsAppWebhookPost(
   diag("post.payload_parsed", payloadSummary);
   trace.step("webhook.payload_parsed", payloadSummary);
 
+  if (payloadSummary.messageCount === 0 && payloadSummary.statusCount > 0) {
+    trace.step("webhook.diag", {
+      stage: "status_only_callback",
+      note: "Payload contains delivery/read status updates only — no inbound user message or workflow execution.",
+      statusCount: payloadSummary.statusCount,
+    });
+  }
+
   const phoneNumberId = extractWhatsAppPhoneNumberId(payload);
   diag("post.phone_number_id_extracted", {
     phoneNumberId,

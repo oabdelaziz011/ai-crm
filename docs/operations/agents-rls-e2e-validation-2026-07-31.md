@@ -2,7 +2,7 @@
 
 **Sprint:** 6.2.5
 **Date:** 2026-07-31
-**Result:** 1/4 passed (25%)
+**Result:** 46/46 passed (100%)
 **Issue target:** I-9 (RLS E2E for agent tables)
 
 ## Preconditions
@@ -16,19 +16,61 @@
 
 | Metric | Value |
 |---|---|
-| Total scenarios | 4 |
-| Passed | 1 |
-| Failed | 3 |
-| I-9 status | **OPEN** (see failures) |
+| Total scenarios | 46 |
+| Passed | 46 |
+| Failed | 0 |
+| I-9 status | **CLOSED** |
 
 ## Detailed results
 
 | Result | Scenario | Actor | Table | Op | Feature | Policy | Expected | Actual | Detail |
 |---|---|---|---|---|---|---|---|---|---|
-| FAIL | Precondition — agents RBAC permissions seeded | Super Admin | permissions | SELECT | n/a | agents.view / agents.execute / agents.manage | ALLOW | DENY | found=none — migration 196 may not be applied |
-| FAIL | Precondition — ai_agents feature flag writable | Super Admin | platform_ai_feature_flags | INSERT | n/a | platform_ai_feature_flags_write (super-admin) | ALLOW | DENY | new row for relation "platform_ai_feature_flags" violates check constraint "platform_ai_feature_flags_feature_key_check" |
-| PASS | Precondition — ai_agents effective for beta | Company Admin | platform_ai_feature_flags | SELECT | ON | platform_ai_feature_enabled(..., 'ai_agents') | ALLOW | ALLOW | feature flag row not writable |
-| FAIL | RLS matrix execution | all | agent_workflows | SELECT | n/a | company_has_agents_access(...) | ALLOW | DENY | skipped — migration 196 (agents RBAC) not applied on target DB |
+| PASS | Precondition — ai_agents effective for beta | Company Admin | platform_ai_feature_flags | SELECT | ON | platform_ai_feature_enabled(..., 'ai_agents') | ALLOW | ALLOW | row=missing→coalesce true |
+| PASS | Actor permission precondition | Company Admin | permissions | SELECT | n/a | user_has_permission() | ALLOW | ALLOW | agents.view |
+| PASS | Actor permission precondition | Company Admin | permissions | SELECT | n/a | user_has_permission() | ALLOW | ALLOW | agents.execute |
+| PASS | Actor permission precondition | Company Admin | permissions | SELECT | n/a | user_has_permission() | ALLOW | ALLOW | agents.manage |
+| PASS | Actor permission precondition | Runtime Execute | permissions | SELECT | n/a | user_has_permission() | ALLOW | ALLOW | agents.view |
+| PASS | Actor permission precondition | Runtime Execute | permissions | SELECT | n/a | user_has_permission() | ALLOW | ALLOW | agents.execute |
+| PASS | Actor permission precondition | Runtime Execute | permissions | SELECT | n/a | user_has_permission() | DENY | DENY | agents.manage |
+| PASS | Actor permission precondition | View Only | permissions | SELECT | n/a | user_has_permission() | ALLOW | ALLOW | agents.view |
+| PASS | Actor permission precondition | View Only | permissions | SELECT | n/a | user_has_permission() | DENY | DENY | agents.execute |
+| PASS | Actor permission precondition | View Only | permissions | SELECT | n/a | user_has_permission() | DENY | DENY | agents.manage |
+| PASS | Actor permission precondition | No Permission | permissions | SELECT | n/a | user_has_permission() | DENY | DENY | agents.view |
+| PASS | Actor permission precondition | No Permission | permissions | SELECT | n/a | user_has_permission() | DENY | DENY | agents.execute |
+| PASS | Feature ON — read own-tenant workflow | Super Admin | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow event | Super Admin | agent_workflow_events | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow checkpoint | Super Admin | agent_workflow_checkpoints | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read own-tenant workflow | Company Admin | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow event | Company Admin | agent_workflow_events | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow checkpoint | Company Admin | agent_workflow_checkpoints | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read own-tenant workflow | Runtime Execute | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow event | Runtime Execute | agent_workflow_events | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow checkpoint | Runtime Execute | agent_workflow_checkpoints | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read own-tenant workflow | View Only | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow event | View Only | agent_workflow_events | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read workflow checkpoint | View Only | agent_workflow_checkpoints | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
+| PASS | Feature ON — read own-tenant workflow | No Permission | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | DENY | DENY | rows=0 |
+| PASS | Feature ON — read workflow event | No Permission | agent_workflow_events | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | DENY | DENY | rows=0 |
+| PASS | Feature ON — read workflow checkpoint | No Permission | agent_workflow_checkpoints | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | DENY | DENY | rows=0 |
+| PASS | Feature ON — insert workflow | Company Admin | agent_workflows | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | ALLOW | ALLOW | ok |
+| PASS | Feature ON — insert workflow | Runtime Execute | agent_workflows | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | ALLOW | ALLOW | ok |
+| PASS | Feature ON — insert workflow | View Only | agent_workflows | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | new row violates row-level security policy for table "agent_workflows" |
+| PASS | Feature ON — insert workflow | No Permission | agent_workflows | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | new row violates row-level security policy for table "agent_workflows" |
+| PASS | Feature ON — update workflow | Company Admin | agent_workflows | UPDATE | ON | company_has_agents_access(company_id, 'agents.execute') | ALLOW | ALLOW | affected=1 |
+| PASS | Feature ON — update workflow | Runtime Execute | agent_workflows | UPDATE | ON | company_has_agents_access(company_id, 'agents.execute') | ALLOW | ALLOW | affected=1 |
+| PASS | Feature ON — update workflow | View Only | agent_workflows | UPDATE | ON | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | affected=0 |
+| PASS | Feature ON — insert workflow event | Runtime Execute | agent_workflow_events | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | ALLOW | ALLOW | ok |
+| PASS | Feature ON — insert workflow event | View Only | agent_workflow_events | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | new row violates row-level security policy for table "agent_workflow_events" |
+| PASS | Feature ON — insert workflow checkpoint | Runtime Execute | agent_workflow_checkpoints | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | ALLOW | ALLOW | ok |
+| PASS | Feature ON — delete workflow with agents.manage | Company Admin | agent_workflows | DELETE | ON | company_has_agents_access(company_id, 'agents.manage') | ALLOW | ALLOW | affected=1 |
+| PASS | Feature ON — delete workflow without agents.manage | Runtime Execute | agent_workflows | DELETE | ON | company_has_agents_access(company_id, 'agents.manage') | DENY | DENY | affected=0 |
+| PASS | Feature OFF precondition | Company Admin | platform_ai_feature_flags | SELECT | OFF | platform_ai_feature_enabled(..., 'ai_agents') | DENY | DENY | rpc=false |
+| PASS | Feature OFF — read workflow blocked by feature flag | Company Admin | agent_workflows | SELECT | OFF | company_has_agents_access(company_id, 'agents.view') | DENY | DENY | rows=0 |
+| PASS | Feature OFF — insert workflow blocked by feature flag | Company Admin | agent_workflows | INSERT | OFF | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | new row violates row-level security policy for table "agent_workflows" |
+| PASS | Feature OFF — update workflow blocked by feature flag | Company Admin | agent_workflows | UPDATE | OFF | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | affected=0 |
+| PASS | Tenant mismatch — cross-company SELECT hidden | Alpha Admin (tenant mismatch) | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | DENY | DENY | rows=0 |
+| PASS | Tenant mismatch — INSERT into other company | Alpha Admin (tenant mismatch) | agent_workflows | INSERT | ON | company_has_agents_access(company_id, 'agents.execute') | DENY | DENY | new row violates row-level security policy for table "agent_workflows" |
+| PASS | Super Admin cross-tenant read bypass | Super Admin | agent_workflows | SELECT | ON | company_has_agents_access(company_id, 'agents.view') | ALLOW | ALLOW | rows=1 |
 
 ## Policies exercised
 

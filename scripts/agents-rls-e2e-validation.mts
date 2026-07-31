@@ -130,10 +130,20 @@ async function grantUserPermissions(
   for (const code of codes) {
     const permissionId = permMap.get(code);
     if (!permissionId) throw new Error(`permission not found: ${code}`);
-    const { error } = await platform.from("user_permissions").upsert(
-      { user_id: userId, permission_id: permissionId },
-      { onConflict: "user_id,permission_id" },
-    );
+
+    const { data: existing, error: lookupError } = await platform
+      .from("user_permissions")
+      .select("permission_id")
+      .eq("user_id", userId)
+      .eq("permission_id", permissionId)
+      .maybeSingle();
+    if (lookupError) throw new Error(`grant ${code} lookup: ${lookupError.message}`);
+    if (existing) continue;
+
+    const { error } = await platform.from("user_permissions").insert({
+      user_id: userId,
+      permission_id: permissionId,
+    });
     if (error) throw new Error(`grant ${code}: ${error.message}`);
   }
 }
@@ -212,6 +222,11 @@ function classifyWrite(error: { message: string; code?: string } | null, expectA
   return error ? "DENY" : "ALLOW";
 }
 
+function classifyAffectedWrite(error: { message: string; code?: string } | null, affectedRows: number): Access {
+  if (error) return "DENY";
+  return affectedRows > 0 ? "ALLOW" : "DENY";
+}
+
 async function testSelect(
   client: SupabaseClient,
   table: "agent_workflows" | "agent_workflow_events" | "agent_workflow_checkpoints",
@@ -263,18 +278,20 @@ async function testWorkflowUpdate(
   workflowId: string,
   meta: Omit<ValidationRow, "actual" | "pass" | "detail" | "operation" | "table" | "policy"> & { expected: Access },
 ) {
-  const { error } = await client
+  const { data, error } = await client
     .from("agent_workflows")
     .update({ status: "running" })
-    .eq("id", workflowId);
-  const actual = classifyWrite(error, meta.expected === "ALLOW");
+    .eq("id", workflowId)
+    .select("id");
+  const affectedRows = data?.length ?? 0;
+  const actual = classifyAffectedWrite(error, affectedRows);
   record({
     ...meta,
     table: "agent_workflows",
     operation: "UPDATE",
     policy: POLICIES.updateExecute,
     actual,
-    detail: error?.message ?? "ok",
+    detail: error?.message ?? `affected=${affectedRows}`,
   });
 }
 
@@ -283,15 +300,16 @@ async function testWorkflowDelete(
   workflowId: string,
   meta: Omit<ValidationRow, "actual" | "pass" | "detail" | "operation" | "table" | "policy"> & { expected: Access },
 ) {
-  const { error } = await client.from("agent_workflows").delete().eq("id", workflowId);
-  const actual = classifyWrite(error, meta.expected === "ALLOW");
+  const { data, error } = await client.from("agent_workflows").delete().eq("id", workflowId).select("id");
+  const affectedRows = data?.length ?? 0;
+  const actual = classifyAffectedWrite(error, affectedRows);
   record({
     ...meta,
     table: "agent_workflows",
     operation: "DELETE",
     policy: POLICIES.deleteManage,
     actual,
-    detail: error?.message ?? "ok",
+    detail: error?.message ?? `affected=${affectedRows}`,
   });
 }
 

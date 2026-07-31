@@ -179,6 +179,49 @@ describe("ToolRouterService", () => {
     assert.equal(result.errorCode, "PERMISSION_DENIED");
   });
 
+  it("allows legacy customers.update alias for customers.edit tool requirement", async () => {
+    const { definitionRepository, executionRepository, conversationReader } = createMemoryStores({
+      definition: {
+        key: "update_customer",
+        required_permissions: ["tools.execute", "customers.edit"],
+        input_schema: {
+          type: "object",
+          properties: {
+            customerId: { type: "string" },
+            field: { type: "string" },
+            value: { type: "string" },
+          },
+          required: ["customerId", "field", "value"],
+        },
+      },
+    });
+    const handler: Tool = {
+      supports: () => true,
+      validate: () => undefined,
+      execute: async () => ({ success: true, customerId: "cust-1" }),
+    };
+
+    const router = new ToolRouterService(
+      definitionRepository,
+      executionRepository,
+      conversationReader,
+      createToolHandlerRegistry({ update_customer: handler }),
+    );
+
+    const result = await router.route(
+      createContext({
+        hasPermission: (code) => code === "tools.execute" || code === "customers.update",
+      }),
+      {
+        conversationId: "conv-1",
+        toolKey: "update_customer",
+        input: { customerId: "cust-1", field: "phone", value: "+966501234567" },
+      },
+    );
+
+    assert.equal(result.status, "succeeded");
+  });
+
   it("rejects disabled tools before creating an execution", async () => {
     const { definitionRepository, executionRepository, conversationReader } = createMemoryStores({
       definition: { is_enabled: false },

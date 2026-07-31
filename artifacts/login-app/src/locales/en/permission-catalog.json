@@ -112,6 +112,26 @@
       "description": "Allows updating customer information.",
       "group": "customers"
     },
+    "customers.search": {
+      "name": "Search Customers (CRM Agent)",
+      "description": "Allows CRM agent search and duplicate-detection tools. Implies customers.view for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.update": {
+      "name": "Update Customers (CRM Agent)",
+      "description": "Allows CRM agent single-field update tools. Implies customers.edit for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.merge": {
+      "name": "Merge Customers (CRM Agent)",
+      "description": "Allows CRM agent customer merge tools. Implies customers.edit and customers.delete for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.import": {
+      "name": "Import Customers (CRM Agent)",
+      "description": "Allows CRM agent bulk import tools. Implies customers.create for RLS when used via agent tools.",
+      "group": "customers"
+    },
     "customers.delete": {
       "name": "Delete Customers",
       "description": "Allows removing customer records.",

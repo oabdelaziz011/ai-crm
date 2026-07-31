@@ -143,4 +143,27 @@ describe("resolveAgentStartErrorMessage", () => {
   it("passes through unknown errors without crashing", () => {
     assert.equal(resolveAgentStartErrorMessage("Conversation not ready", messages), "Conversation not ready");
   });
+
+  it("maps CRM tool permission runtime errors", () => {
+    assert.equal(
+      resolveAgentStartErrorMessage(
+        'AGENT_CRM_TOOL_PERMISSION_DENIED: Permission denied: customers.edit required for CRM agent tool "update_customer".',
+        {
+          ...messages,
+          crmToolPermissionDenied: (permission) => `crm denied: ${permission}`,
+        },
+      ),
+      "crm denied: customers.edit",
+    );
+  });
+
+  it("maps tool router PERMISSION_DENIED for customers.* codes", () => {
+    assert.equal(
+      resolveAgentStartErrorMessage('Missing required permission: customers.view', {
+        ...messages,
+        crmToolPermissionDenied: (permission) => `crm denied: ${permission}`,
+      }),
+      "crm denied: customers.view",
+    );
+  });
 });

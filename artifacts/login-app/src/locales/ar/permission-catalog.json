@@ -112,6 +112,26 @@
       "description": "يسمح بتعديل بيانات العملاء.",
       "group": "customers"
     },
+    "customers.search": {
+      "name": "بحث العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات بحث وكيل CRM واكتشاف التكرارات. يعادل customers.view على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.update": {
+      "name": "تحديث العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات تحديث حقل واحد عبر وكيل CRM. يعادل customers.edit على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.merge": {
+      "name": "دمج العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات دمج العملاء عبر وكيل CRM. يعادل customers.edit و customers.delete على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.import": {
+      "name": "استيراد العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات الاستيراد الجماعي عبر وكيل CRM. يعادل customers.create على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
     "customers.delete": {
       "name": "حذف العملاء",
       "description": "يسمح بحذف سجلات العملاء.",

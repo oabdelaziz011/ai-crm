@@ -26,6 +26,8 @@ import {
   assertAgentsManageAccess,
   assertAgentsReadAccess,
 } from "../utils/agents-guards.js";
+import { findMissingAlignedPermission } from "../utils/crm-tool-permissions.js";
+import { AgentCrmToolPermissionDeniedError } from "../errors.js";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -262,6 +264,8 @@ export class AgentExecutionEngine {
       let output: Record<string, unknown> | null = null;
 
       if (task.tool && workflow.conversation_id) {
+        await this.assertToolPermissions(ctx, task.tool);
+
         const routeResult = await this.ports.toolRouter.route(ctx, {
           conversationId: workflow.conversation_id,
           toolKey: task.tool,
@@ -370,6 +374,24 @@ export class AgentExecutionEngine {
 
       await this.publish(ctx, workflow.company_id, workflow.id, "TaskCompleted", taskId, { output });
     } catch (error) {
+      if (error instanceof AgentCrmToolPermissionDeniedError) {
+        currentGraph = updateNodeStatus(currentGraph, taskId, "failed", {
+          error: error.message,
+        });
+        await this.repo.updateWorkflow(workflow.id, {
+          task_graph: currentGraph,
+          status: "waiting_user",
+          error_message: error.message,
+        });
+        await this.publish(ctx, workflow.company_id, workflow.id, "TaskFailed", taskId, {
+          error: error.message,
+          recoverable: false,
+          errorCode: error.code,
+          missingPermission: error.permission,
+        });
+        return;
+      }
+
       const message = error instanceof Error ? error.message : String(error);
 
       if (task.retryCount < (task.maxRetries ?? DEFAULT_MAX_RETRIES)) {
@@ -395,6 +417,17 @@ export class AgentExecutionEngine {
         error: message,
         recoverable: true,
       });
+    }
+  }
+
+  private async assertToolPermissions(ctx: ServiceContext, toolKey: string): Promise<void> {
+    const required =
+      (await this.ports.toolRouter.getRequiredPermissions?.(toolKey)) ?? null;
+    if (!required?.length) return;
+
+    const missing = findMissingAlignedPermission(ctx, required, toolKey);
+    if (missing) {
+      throw new AgentCrmToolPermissionDeniedError(toolKey, missing);
     }
   }
 

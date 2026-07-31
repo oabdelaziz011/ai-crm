@@ -117,6 +117,8 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
       executeDenied: t("agents.executeDenied"),
       permissionDenied: t("agents.permissionDenied"),
       featureDisabled: t("agents.featureDisabled"),
+      crmToolPermissionDenied: (permission) =>
+        t("agents.crmToolPermissionDenied", { permission }),
     });
   }, [startError, t]);
 

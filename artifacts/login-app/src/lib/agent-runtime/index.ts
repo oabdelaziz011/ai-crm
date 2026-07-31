@@ -34,6 +34,9 @@ export function useAgentRuntimeServices() {
   const services = useMemo(() => {
     return createAgentRuntimeServices(supabase, {
       toolRouter: {
+        async getRequiredPermissions(toolKey) {
+          return toolRouterServices.registry.resolveRequiredPermissions(toolKey);
+        },
         async route(ctx, input) {
           const result = await toolRouterServices.router.route(toolRouterContext, {
             conversationId: input.conversationId,
@@ -46,6 +49,7 @@ export function useAgentRuntimeServices() {
             status: result.status,
             output: result.output,
             errorMessage: result.errorMessage,
+            errorCode: result.errorCode,
           };
         },
       },

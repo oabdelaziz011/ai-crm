@@ -41,4 +41,10 @@ export class ToolRegistryService {
     if (!existing) throw new ToolNotFoundError(input.toolId);
     return this.repository.updateEnabled(input);
   }
+
+  /** Read-only metadata for agent/runtime pre-flight permission checks. */
+  async resolveRequiredPermissions(toolKey: string): Promise<string[] | null> {
+    const tool = await this.repository.findByKey(toolKey);
+    return tool?.required_permissions ?? null;
+  }
 }

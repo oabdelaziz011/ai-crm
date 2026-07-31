@@ -22,3 +22,17 @@ export class AgentsPermissionDeniedError extends AgentRuntimeError {
     this.permission = permission;
   }
 }
+
+export class AgentCrmToolPermissionDeniedError extends AgentRuntimeError {
+  readonly toolKey: string;
+  readonly permission: string;
+
+  constructor(toolKey: string, permission: string) {
+    super(
+      "AGENT_CRM_TOOL_PERMISSION_DENIED",
+      `Permission denied: ${permission} required for CRM agent tool "${toolKey}".`,
+    );
+    this.toolKey = toolKey;
+    this.permission = permission;
+  }
+}

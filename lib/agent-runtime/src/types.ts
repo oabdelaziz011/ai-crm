@@ -113,7 +113,10 @@ export type ToolRoutePort = {
     status: string;
     output: Record<string, unknown> | null;
     errorMessage?: string | null;
+    errorCode?: string | null;
   }>;
+  /** Resolves tool_definitions.required_permissions for pre-flight checks. */
+  getRequiredPermissions?(toolKey: string): Promise<string[] | null>;
 };
 
 export type RuntimeChatPort = {

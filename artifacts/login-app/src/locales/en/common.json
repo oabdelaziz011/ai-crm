@@ -1945,7 +1945,8 @@
   "agents": {
     "featureDisabled": "AI Agents is disabled for this company.",
     "permissionDenied": "You don't have permission to view AI Agents.",
-    "executeDenied": "You don't have permission to start or resume AI agent workflows."
+    "executeDenied": "You don't have permission to start or resume AI agent workflows.",
+    "crmToolPermissionDenied": "You don't have permission to run this CRM agent action ({{permission}} required)."
   },
   "automation": {
     "featureDisabled": "Workflow AI is disabled for this company.",

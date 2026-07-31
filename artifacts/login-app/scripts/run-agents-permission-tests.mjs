@@ -10,6 +10,7 @@ const testFiles = [
   "src/lib/platform-ai/agent-ui-gating.test.ts",
   "scripts/agents-ui-permission.integration.test.mts",
   "../../scripts/agents-rls-feature-flag.test.mts",
+  "../../scripts/crm-agent-permission-alignment.test.mts",
 ];
 
 let exitCode = 0;

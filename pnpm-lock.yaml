@@ -789,6 +789,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/agent-runtime':
+        specifier: workspace:*
+        version: link:../agent-runtime
       '@workspace/ai-conversation':
         specifier: workspace:*
         version: link:../ai-conversation

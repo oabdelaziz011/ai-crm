@@ -10,6 +10,7 @@ export * from "./memory/agent-memory.js";
 export * from "./events/agent-event-publisher.js";
 export * from "./checkpoint/checkpoint-service.js";
 export * from "./executor/agent-execution-engine.js";
+export * from "./utils/crm-tool-permissions.js";
 export { createSupabaseAgentWorkflowRepository } from "./checkpoint/checkpoint-service.js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";

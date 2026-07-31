@@ -339,7 +339,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     classification: "read_only",
     handlerSource: "crm_agent",
     description: "Search CRM customers by query or inactivity.",
-    requiredPermissions: ["tools.execute", "customers.search"],
+    requiredPermissions: ["tools.execute", "customers.view"],
     llmDefinition: SEARCH_CUSTOMER_LLM,
   },
   {
@@ -349,7 +349,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     classification: "production_ready",
     handlerSource: "crm_agent",
     description: "Updates one field on an existing customer.",
-    requiredPermissions: ["tools.execute", "customers.update"],
+    requiredPermissions: ["tools.execute", "customers.edit"],
     llmDefinition: UPDATE_CUSTOMER_LLM,
   },
   {
@@ -359,7 +359,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     classification: "requires_confirmation",
     handlerSource: "crm_agent",
     description: "Merges duplicate customers after explicit confirmation.",
-    requiredPermissions: ["tools.execute", "customers.merge"],
+    requiredPermissions: ["tools.execute", "customers.edit", "customers.delete"],
     exclusionReason: "Requires explicit user confirmation — agent workflow only",
   },
   {
@@ -369,7 +369,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     classification: "requires_confirmation",
     handlerSource: "crm_agent",
     description: "Bulk imports customers after explicit confirmation.",
-    requiredPermissions: ["tools.execute", "customers.import"],
+    requiredPermissions: ["tools.execute", "customers.create"],
     exclusionReason: "Requires explicit user confirmation — agent workflow only",
   },
   {
@@ -409,7 +409,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     classification: "read_only",
     handlerSource: "crm_agent",
     description: "Groups duplicate CRM profiles by phone/email.",
-    requiredPermissions: ["tools.execute", "customers.search"],
+    requiredPermissions: ["tools.execute", "customers.view"],
     llmDefinition: FIND_DUPLICATES_LLM,
   },
 ];

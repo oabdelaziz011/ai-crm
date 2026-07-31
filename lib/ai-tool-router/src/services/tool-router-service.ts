@@ -1,3 +1,4 @@
+import { findMissingAlignedPermission } from "@workspace/agent-runtime";
 import { TOOL_PERMISSIONS } from "../constants.js";
 import {
   ConversationAccessDeniedError,
@@ -24,14 +25,12 @@ function assertPermission(ctx: ServiceContext, permission: string): void {
   }
 }
 
-function findMissingPermission(ctx: ServiceContext, permissions: string[]): string | null {
-  if (ctx.isSuperAdmin) return null;
-  for (const permission of permissions) {
-    if (!ctx.hasPermission(permission)) {
-      return permission;
-    }
-  }
-  return null;
+function findMissingPermission(
+  ctx: ServiceContext,
+  permissions: string[],
+  toolKey?: string,
+): string | null {
+  return findMissingAlignedPermission(ctx, permissions, toolKey);
 }
 
 function assertTenantContext(ctx: ServiceContext): void {
@@ -102,7 +101,7 @@ export class ToolRouterService {
       input: input.input,
     });
 
-    const missingPermission = findMissingPermission(ctx, definition.required_permissions);
+    const missingPermission = findMissingPermission(ctx, definition.required_permissions, definition.key);
     const startedAt = Date.now();
     const execution = await this.executionRepository.create({
       companyId: conversation.company_id,

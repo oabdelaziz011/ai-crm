@@ -44,9 +44,22 @@ export function resolveAgentStartErrorMessage(
     executeDenied: string;
     permissionDenied: string;
     featureDisabled: string;
+    crmToolPermissionDenied?: (permission: string) => string;
   },
 ): string | null {
   if (!startError) return null;
+  if (startError.includes("AGENT_CRM_TOOL_PERMISSION_DENIED")) {
+    const match = startError.match(/Permission denied: ([^\s]+) required/);
+    const permission = match?.[1] ?? "CRM";
+    return messages.crmToolPermissionDenied?.(permission) ?? startError;
+  }
+  if (startError.includes("PERMISSION_DENIED") || startError.includes("Missing required permission:")) {
+    const match = startError.match(/Missing required permission: ([^\s"]+)/);
+    const permission = match?.[1];
+    if (permission?.startsWith("customers.") && messages.crmToolPermissionDenied) {
+      return messages.crmToolPermissionDenied(permission);
+    }
+  }
   if (startError.includes("agents.execute")) return messages.executeDenied;
   if (startError.includes("AGENTS_PERMISSION_DENIED") || startError.includes("Permission denied")) {
     return messages.permissionDenied;

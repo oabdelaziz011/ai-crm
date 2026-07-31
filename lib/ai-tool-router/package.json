@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
+    "@workspace/agent-runtime": "workspace:*",
     "@workspace/ai-conversation": "workspace:*",
     "@workspace/ai-execution-engine": "workspace:*",
     "@workspace/automation-platform": "workspace:*",

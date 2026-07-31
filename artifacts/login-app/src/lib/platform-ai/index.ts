@@ -73,6 +73,8 @@ export {
 export {
   canExecuteAgents,
   canExecuteAgentWorkflow,
+  canManageAgentWorkflows,
+  canManageAgents,
   canResumeAgent,
   canStartAgent,
   canViewAgents,
@@ -80,7 +82,9 @@ export {
   canStartAgentWorkflow,
   canViewAgentHistory,
   hasAgentsExecutePermission,
+  hasAgentsManagePermission,
   hasAgentsViewPermission,
+  hasManagePermission,
   isAgentsAccessible,
   shouldShowAgentsNavigation,
 } from "./agents-access";

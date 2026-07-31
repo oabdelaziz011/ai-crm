@@ -39,7 +39,11 @@ function createRepo(): AgentWorkflowRepository {
       return updated;
     },
     getWorkflow: async (id) => workflows.get(id) ?? null,
-    listWorkflows: async () => [],
+    listWorkflows: async (companyId) =>
+      [...workflows.values()].filter((workflow) => workflow.company_id === companyId),
+    deleteWorkflow: async (id) => {
+      workflows.delete(id);
+    },
     saveCheckpoint: async () => {},
     loadLatestCheckpoint: async () => null,
     appendEvent: async (event) => ({
@@ -213,5 +217,107 @@ describe("AgentExecutionEngine feature gating", () => {
 
     const cancelled = await engine.cancel(createContext(), started.workflowId);
     assert.equal(cancelled?.status, "cancelled");
+  });
+});
+
+describe("AgentExecutionEngine manage gating", () => {
+  it("denies listWorkflows when agents.view missing", async () => {
+    const engine = new AgentExecutionEngine(createRepo(), createPorts());
+
+    await assert.rejects(
+      () =>
+        engine.listWorkflows(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.execute,
+          }),
+          "company-1",
+        ),
+      AgentsPermissionDeniedError,
+    );
+  });
+
+  it("denies listWorkflows when agents feature is off", async () => {
+    const engine = new AgentExecutionEngine(createRepo(), createPorts());
+
+    await assert.rejects(
+      () =>
+        engine.listWorkflows(createContext({ isAgentsFeatureEnabled: () => false }), "company-1"),
+      AgentsFeatureDisabledError,
+    );
+  });
+
+  it("lists workflows when agents.view granted", async () => {
+    const repo = createRepo();
+    const engine = new AgentExecutionEngine(repo, createPorts());
+    await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    const workflows = await engine.listWorkflows(
+      createContext({
+        hasPermission: (code) => code === AGENT_PERMISSIONS.view,
+      }),
+      "company-1",
+    );
+
+    assert.equal(workflows.length, 1);
+  });
+
+  it("denies deleteWorkflow when agents.manage missing", async () => {
+    const repo = createRepo();
+    const engine = new AgentExecutionEngine(repo, createPorts());
+    const started = await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    await assert.rejects(
+      () =>
+        engine.deleteWorkflow(
+          createContext({
+            hasPermission: (code) => code === AGENT_PERMISSIONS.execute,
+          }),
+          started.workflowId,
+        ),
+      AgentsPermissionDeniedError,
+    );
+  });
+
+  it("deletes workflow when agents.manage granted", async () => {
+    const repo = createRepo();
+    const engine = new AgentExecutionEngine(repo, createPorts());
+    const started = await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    const deleted = await engine.deleteWorkflow(
+      createContext({
+        hasPermission: (code) => code === AGENT_PERMISSIONS.manage,
+      }),
+      started.workflowId,
+    );
+
+    assert.equal(deleted, true);
+    assert.equal(await engine.getWorkflow(createContext(), started.workflowId), null);
+  });
+
+  it("allows super-admin delete regardless of manage permission", async () => {
+    const repo = createRepo();
+    const engine = new AgentExecutionEngine(repo, createPorts());
+    const started = await engine.start(createContext(), {
+      companyId: "company-1",
+      goal: "Create a customer named Test User",
+    });
+
+    const superAdminContext = createContext({
+      isSuperAdmin: true,
+      hasPermission: () => false,
+      isAgentsFeatureEnabled: () => false,
+    });
+
+    const deleted = await engine.deleteWorkflow(superAdminContext, started.workflowId);
+    assert.equal(deleted, true);
   });
 });

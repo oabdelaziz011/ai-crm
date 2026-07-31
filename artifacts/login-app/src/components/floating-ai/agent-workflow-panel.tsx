@@ -7,7 +7,10 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
-import { canResumeAgentWorkflow, canStartAgentWorkflow, canViewAgentHistory } from "@/lib/platform-ai/agents-access";
+import {
+  resolveAgentStartErrorMessage,
+  resolveAgentWorkflowPanelGating,
+} from "@/lib/platform-ai/agent-ui-gating";
 import { useAgentWorkflow } from "@/hooks/agent-runtime/use-agent-workflow";
 import { FLOATING_AI_CAPABILITIES } from "@/lib/floating-ai/types";
 import { requiresAgentConfirmation } from "@/lib/floating-ai/agent-goals";
@@ -32,21 +35,19 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   const { t } = useTranslation("common");
   const { isSuperAdmin, hasPermission } = useAuthUser();
   const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
-  const canView = canViewAgentHistory({
+  const accessInput = {
     isSuperAdmin,
     hasPermission,
     agentsFeatureEnabled,
-  });
-  const canStart = canStartAgentWorkflow({
-    isSuperAdmin,
-    hasPermission,
-    agentsFeatureEnabled,
-  });
-  const canResume = canResumeAgentWorkflow({
-    isSuperAdmin,
-    hasPermission,
-    agentsFeatureEnabled,
-  });
+  };
+  const {
+    canView,
+    canStart,
+    canResume,
+    featureDisabled,
+    permissionDenied,
+    executeDenied,
+  } = resolveAgentWorkflowPanelGating(accessInput);
   const {
     workflow,
     taskGraph,
@@ -108,24 +109,15 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   }, [initialGoal, activeWorkflowId, isStarting, handleStart]);
 
   const disabled = !canStart || isStarting || isResuming || isConversationLoading;
-  const featureDisabled = agentsFeatureEnabled === false && !isSuperAdmin;
-  const permissionDenied = !canView && !isSuperAdmin;
-  const executeDenied = !canStart && !isSuperAdmin && canView;
   const status = (workflow?.status as string | undefined) ?? "idle";
   const needsResume = status === "waiting_user" || status === "paused";
 
   const resolvedStartError = useMemo(() => {
-    if (!startError) return null;
-    if (startError.includes("agents.execute")) {
-      return t("agents.executeDenied");
-    }
-    if (startError.includes("AGENTS_PERMISSION_DENIED") || startError.includes("Permission denied")) {
-      return t("agents.permissionDenied");
-    }
-    if (startError.includes("AGENTS_FEATURE_DISABLED")) {
-      return t("agents.featureDisabled");
-    }
-    return startError;
+    return resolveAgentStartErrorMessage(startError, {
+      executeDenied: t("agents.executeDenied"),
+      permissionDenied: t("agents.permissionDenied"),
+      featureDisabled: t("agents.featureDisabled"),
+    });
   }, [startError, t]);
 
   return (

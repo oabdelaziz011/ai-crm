@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   canExecuteAgents,
+  canManageAgents,
   canResumeAgent,
   canStartAgent,
   canViewAgents,
@@ -170,6 +171,63 @@ describe("Agents feature access", () => {
   it("allows super-admin start regardless of feature flag", () => {
     assert.equal(canStartAgent({ isSuperAdmin: true, hasAgentsExecutePermission: false, agentsFeatureEnabled: false }), true);
     assert.equal(canResumeAgent({ isSuperAdmin: true, hasAgentsExecutePermission: false, agentsFeatureEnabled: false }), true);
+  });
+});
+
+describe("canManageAgents", () => {
+  it("allows manage when feature ON and agents.manage granted", () => {
+    assert.equal(
+      canManageAgents({
+        isSuperAdmin: false,
+        hasAgentsManagePermission: true,
+        agentsFeatureEnabled: true,
+      }),
+      true,
+    );
+  });
+
+  it("denies manage when feature OFF even with agents.manage", () => {
+    assert.equal(
+      canManageAgents({
+        isSuperAdmin: false,
+        hasAgentsManagePermission: true,
+        agentsFeatureEnabled: false,
+      }),
+      false,
+    );
+  });
+
+  it("denies manage when agents.manage missing even if feature ON", () => {
+    assert.equal(
+      canManageAgents({
+        isSuperAdmin: false,
+        hasAgentsManagePermission: false,
+        agentsFeatureEnabled: true,
+      }),
+      false,
+    );
+  });
+
+  it("allows super-admin manage regardless of feature flag", () => {
+    assert.equal(
+      canManageAgents({
+        isSuperAdmin: true,
+        hasAgentsManagePermission: false,
+        agentsFeatureEnabled: false,
+      }),
+      true,
+    );
+  });
+
+  it("treats missing DB row as manageable when permission granted", () => {
+    assert.equal(
+      canManageAgents({
+        isSuperAdmin: false,
+        hasAgentsManagePermission: true,
+        agentsFeatureEnabled: undefined,
+      }),
+      true,
+    );
   });
 });
 

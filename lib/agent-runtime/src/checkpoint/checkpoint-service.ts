@@ -12,6 +12,7 @@ export type AgentWorkflowRepository = {
   updateWorkflow(id: string, patch: Partial<AgentWorkflowRecord>): Promise<AgentWorkflowRecord>;
   getWorkflow(id: string): Promise<AgentWorkflowRecord | null>;
   listWorkflows(companyId: string, limit?: number): Promise<AgentWorkflowRecord[]>;
+  deleteWorkflow(id: string): Promise<void>;
   saveCheckpoint(workflowId: string, companyId: string, checkpointIndex: number, snapshot: Record<string, unknown>): Promise<void>;
   loadLatestCheckpoint(workflowId: string): Promise<Record<string, unknown> | null>;
   appendEvent(event: Omit<AgentWorkflowEventRecord, "id" | "created_at">): Promise<AgentWorkflowEventRecord>;
@@ -69,6 +70,11 @@ export function createSupabaseAgentWorkflowRepository(client: SupabaseClient): A
         .limit(limit);
       if (error) throw error;
       return (data ?? []) as AgentWorkflowRecord[];
+    },
+
+    async deleteWorkflow(id) {
+      const { error } = await client.from("agent_workflows").delete().eq("id", id);
+      if (error) throw error;
     },
 
     async saveCheckpoint(workflowId, companyId, checkpointIndex, snapshot) {

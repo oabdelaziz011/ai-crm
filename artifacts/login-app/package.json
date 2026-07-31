@@ -32,6 +32,7 @@
     "test:workflow-builder-render-perf": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-render-perf.test.mts",
     "test:app-render-perf": "tsx scripts/app-render-perf.test.mts",
     "test:channel-workflow-binding": "tsx --tsconfig tsconfig.test.json scripts/channel-workflow-binding.test.mts",
+    "test:agents-permissions": "node scripts/run-agents-permission-tests.mjs",
     "test:availability-engine": "tsx scripts/availability-engine.test.mts",
     "test:slot-generation-engine": "tsx scripts/slot-generation-engine.test.mts",
     "test:scheduling-booking-domain": "tsx scripts/scheduling-booking-domain.test.mts",

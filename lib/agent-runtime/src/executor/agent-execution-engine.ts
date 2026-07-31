@@ -23,6 +23,7 @@ import type { AgentWorkflowRepository, CheckpointSnapshot } from "../checkpoint/
 import { createInitialMemory } from "../memory/agent-memory.js";
 import {
   assertAgentsExecuteAccess,
+  assertAgentsManageAccess,
   assertAgentsReadAccess,
 } from "../utils/agents-guards.js";
 
@@ -60,6 +61,15 @@ export class AgentExecutionEngine {
     assertAgentsReadAccess(ctx);
     assertTenantAccess(ctx, companyId);
     return this.repo.listWorkflows(companyId, limit);
+  }
+
+  async deleteWorkflow(ctx: ServiceContext, workflowId: string): Promise<boolean> {
+    assertAgentsManageAccess(ctx);
+    const workflow = await this.repo.getWorkflow(workflowId);
+    if (!workflow) return false;
+    assertTenantAccess(ctx, workflow.company_id);
+    await this.repo.deleteWorkflow(workflowId);
+    return true;
   }
 
   async listEvents(ctx: ServiceContext, workflowId: string) {
@@ -462,6 +472,10 @@ export class AgentRuntimeService {
 
   listWorkflows(ctx: ServiceContext, companyId: string, limit?: number) {
     return this.engine.listWorkflows(ctx, companyId, limit);
+  }
+
+  deleteWorkflow(ctx: ServiceContext, workflowId: string) {
+    return this.engine.deleteWorkflow(ctx, workflowId);
   }
 
   listEvents(ctx: ServiceContext, workflowId: string) {

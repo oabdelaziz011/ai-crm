@@ -127,6 +127,7 @@ export const PLATFORM_AI_FEATURE_KEY_AUDIT: Record<PlatformAIFeatureKey, Platfor
         "login-app Floating AI Agent tab → agents.view + isFeatureEnabled(ai_agents)",
         "@workspace/agent-runtime read paths → agents.view + assertAgentsFeatureEnabled",
         "@workspace/agent-runtime execute paths → agents.execute + assertAgentsFeatureEnabled",
+        "@workspace/agent-runtime manage paths → agents.manage + assertAgentsFeatureEnabled",
       ],
       opsUsage: ["Not shown in ops feature matrix (Sprint 6.1)"],
       runtimeEnforcedToday: true,

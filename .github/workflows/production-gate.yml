@@ -36,7 +36,6 @@ jobs:
 
       - name: Login app typecheck
         run: pnpm --dir artifacts/login-app typecheck
-        continue-on-error: true
 
       - name: Login app production build
         run: pnpm --dir artifacts/login-app build
@@ -48,12 +47,9 @@ jobs:
         run: pnpm --dir artifacts/login-app production:gate
         env:
           CI: true
-        continue-on-error: true
 
       - name: Channel platform E2E
         run: pnpm --dir artifacts/login-app channel:e2e
-        continue-on-error: true
 
       - name: WhatsApp adapter E2E
         run: pnpm --dir artifacts/login-app whatsapp:e2e
-        continue-on-error: true

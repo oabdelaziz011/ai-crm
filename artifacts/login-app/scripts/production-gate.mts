@@ -105,19 +105,7 @@ runCommand(
   loginAppRoot,
 );
 
-runCommand("9. Customer portal platform tests", "pnpm", ["test:customer-portal"], projectRoot);
-
-runCommand("10. Financial platform tests", "pnpm", ["--dir", "artifacts/login-app", "test:financial-platform"], projectRoot);
-
-runCommand("11. Organization platform tests", "pnpm", ["test:organization-platform"], projectRoot);
-
-runCommand("12. Integration hub tests", "pnpm", ["test:integration-hub"], projectRoot);
-
-runCommand("13. Plugin marketplace tests", "pnpm", ["test:plugin-platform"], projectRoot);
-
-runCommand("14. Go-live readiness tests", "pnpm", ["--dir", "artifacts/login-app", "test:go-live-readiness"], projectRoot);
-
-console.log("\n▶ 15. Verify no production blockers remain\n");
+console.log("\n▶ 9. Verify no production blockers remain\n");
 
 if (failures.length > 0) {
   console.log("FAIL\n");

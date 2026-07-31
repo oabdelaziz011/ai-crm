@@ -21,70 +21,70 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/ai-conversation':
-        specifier: file:../../lib/ai-conversation
+        specifier: workspace:*
         version: link:../../lib/ai-conversation
       '@workspace/ai-execution-engine':
-        specifier: file:../../lib/ai-execution-engine
+        specifier: workspace:*
         version: link:../../lib/ai-execution-engine
       '@workspace/ai-intent-engine':
-        specifier: file:../../lib/ai-intent-engine
-        version: file:lib/ai-intent-engine
+        specifier: workspace:*
+        version: link:../../lib/ai-intent-engine
       '@workspace/ai-prompt-orchestrator':
-        specifier: file:../../lib/ai-prompt-orchestrator
-        version: file:lib/ai-prompt-orchestrator
+        specifier: workspace:*
+        version: link:../../lib/ai-prompt-orchestrator
       '@workspace/ai-provider-layer':
-        specifier: file:../../lib/ai-provider-layer
+        specifier: workspace:*
         version: link:../../lib/ai-provider-layer
       '@workspace/ai-tool-router':
-        specifier: file:../../lib/ai-tool-router
-        version: file:lib/ai-tool-router
+        specifier: workspace:*
+        version: link:../../lib/ai-tool-router
       '@workspace/api-zod':
-        specifier: file:../../lib/api-zod
+        specifier: workspace:*
         version: link:../../lib/api-zod
       '@workspace/automation-platform':
-        specifier: file:../../lib/automation-platform
+        specifier: workspace:*
         version: link:../../lib/automation-platform
       '@workspace/channel-platform':
-        specifier: file:../../lib/channel-platform
+        specifier: workspace:*
         version: link:../../lib/channel-platform
       '@workspace/channel-registry':
-        specifier: file:../../lib/channel-registry
+        specifier: workspace:*
         version: link:../../lib/channel-registry
       '@workspace/customer-360':
         specifier: workspace:*
         version: link:../../lib/customer-360
       '@workspace/db':
-        specifier: file:../../lib/db
+        specifier: workspace:*
         version: link:../../lib/db
       '@workspace/embedding-platform':
-        specifier: file:../../lib/embedding-platform
+        specifier: workspace:*
         version: link:../../lib/embedding-platform
       '@workspace/knowledge-runtime':
         specifier: workspace:*
         version: link:../../lib/knowledge-runtime
       '@workspace/platform-ai-provider':
-        specifier: file:../../lib/platform-ai-provider
+        specifier: workspace:*
         version: link:../../lib/platform-ai-provider
       '@workspace/platform-observability':
-        specifier: file:../../lib/platform-observability
+        specifier: workspace:*
         version: link:../../lib/platform-observability
       '@workspace/retrieval-engine':
-        specifier: file:../../lib/retrieval-engine
+        specifier: workspace:*
         version: link:../../lib/retrieval-engine
       '@workspace/runtime-integration':
-        specifier: file:../../lib/runtime-integration
-        version: file:lib/runtime-integration
+        specifier: workspace:*
+        version: link:../../lib/runtime-integration
       '@workspace/scheduling-engine':
-        specifier: file:../../lib/scheduling-engine
+        specifier: workspace:*
         version: link:../../lib/scheduling-engine
       '@workspace/tenant-ai-bootstrap':
-        specifier: file:../../lib/tenant-ai-bootstrap
+        specifier: workspace:*
         version: link:../../lib/tenant-ai-bootstrap
       '@workspace/vector-query':
-        specifier: file:../../lib/vector-query
-        version: file:lib/vector-query
+        specifier: workspace:*
+        version: link:../../lib/vector-query
       '@workspace/vector-store':
-        specifier: file:../../lib/vector-store
+        specifier: workspace:*
         version: link:../../lib/vector-store
       bcryptjs:
         specifier: ^3.0.3
@@ -147,6 +147,9 @@ importers:
       '@types/express-session':
         specifier: ^1.19.0
         version: 1.19.0
+      '@types/mailparser':
+        specifier: ^3.4.6
+        version: 3.4.6
       '@types/node':
         specifier: ^25.3.3
         version: 25.9.4
@@ -695,19 +698,19 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/ai-prompt-orchestrator':
-        specifier: file:../ai-prompt-orchestrator
-        version: file:lib/ai-prompt-orchestrator
+        specifier: workspace:*
+        version: link:../ai-prompt-orchestrator
       '@workspace/ai-provider-layer':
-        specifier: file:../ai-provider-layer
+        specifier: workspace:*
         version: link:../ai-provider-layer
       '@workspace/customer-360':
-        specifier: file:../customer-360
-        version: file:lib/customer-360
+        specifier: workspace:*
+        version: link:../customer-360
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
       '@workspace/retrieval-engine':
-        specifier: file:../retrieval-engine
+        specifier: workspace:*
         version: link:../retrieval-engine
     devDependencies:
       '@types/node':
@@ -864,7 +867,7 @@ importers:
         specifier: ^2.110.2
         version: 2.110.2
       '@workspace/platform-crypto':
-        specifier: file:../platform-crypto
+        specifier: workspace:*
         version: link:../platform-crypto
       nodemailer:
         specifier: ^7.0.5
@@ -877,7 +880,7 @@ importers:
         specifier: ^6.4.17
         version: 6.4.24
       '@workspace/automation-platform':
-        specifier: file:../automation-platform
+        specifier: workspace:*
         version: link:../automation-platform
       tsx:
         specifier: ^4.21.0
@@ -3305,6 +3308,9 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
+  '@types/mailparser@3.4.6':
+    resolution: {integrity: sha512-wVV3cnIKzxTffaPH8iRnddX1zahbYB1ZEoAxyhoBo3TBCBuK6nZ8M8JYO/RhsCuuBVOw/DEN/t/ENbruwlxn6Q==}
+
   '@types/node@25.9.4':
     resolution: {integrity: sha512-dszCsrKb5U7ZsVZBWiHFklTloVl0mSEnWH/iZXfZUlI4rzCUnsvGmgqfuVRHL54ugE7/wRuxEIXRa2iMZ+BG6g==}
 
@@ -3349,23 +3355,8 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  '@workspace/ai-intent-engine@file:lib/ai-intent-engine':
-    resolution: {directory: lib/ai-intent-engine, type: directory}
-
-  '@workspace/ai-prompt-orchestrator@file:lib/ai-prompt-orchestrator':
-    resolution: {directory: lib/ai-prompt-orchestrator, type: directory}
-
-  '@workspace/ai-tool-router@file:lib/ai-tool-router':
-    resolution: {directory: lib/ai-tool-router, type: directory}
-
-  '@workspace/customer-360@file:lib/customer-360':
-    resolution: {directory: lib/customer-360, type: directory}
-
   '@workspace/platform-crypto@file:lib/platform-crypto':
     resolution: {directory: lib/platform-crypto, type: directory}
-
-  '@workspace/runtime-integration@file:lib/runtime-integration':
-    resolution: {directory: lib/runtime-integration, type: directory}
 
   '@workspace/vector-query@file:lib/vector-query':
     resolution: {directory: lib/vector-query, type: directory}
@@ -4147,6 +4138,10 @@ packages:
   iceberg-js@0.8.1:
     resolution: {integrity: sha512-1dhVQZXhcHje7798IVM+xoo/1ZdVfzOMIc8/rgVSijRK38EDqOJoGula9N/8ZI5RD8QTxNQtK/Gozpr+qUqRRA==}
     engines: {node: '>=20.0.0'}
+
+  iconv-lite@0.6.3:
+    resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
+    engines: {node: '>=0.10.0'}
 
   iconv-lite@0.7.3:
     resolution: {integrity: sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==}
@@ -7197,6 +7192,11 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
+  '@types/mailparser@3.4.6':
+    dependencies:
+      '@types/node': 25.9.4
+      iconv-lite: 0.6.3
+
   '@types/node@25.9.4':
     dependencies:
       undici-types: 7.24.6
@@ -7252,46 +7252,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@workspace/ai-intent-engine@file:lib/ai-intent-engine':
-    dependencies:
-      '@supabase/supabase-js': 2.110.2
-      '@workspace/ai-conversation': link:lib/ai-conversation
-
-  '@workspace/ai-prompt-orchestrator@file:lib/ai-prompt-orchestrator':
-    dependencies:
-      '@supabase/supabase-js': 2.110.2
-      '@workspace/ai-conversation': link:lib/ai-conversation
-
-  '@workspace/ai-tool-router@file:lib/ai-tool-router':
-    dependencies:
-      '@supabase/supabase-js': 2.110.2
-      '@workspace/ai-conversation': link:lib/ai-conversation
-      '@workspace/ai-execution-engine': link:lib/ai-execution-engine
-      '@workspace/automation-platform': link:lib/automation-platform
-      '@workspace/platform-crypto': file:lib/platform-crypto
-      '@workspace/runtime-integration': link:lib/runtime-integration
-      '@workspace/scheduling-engine': link:lib/scheduling-engine
-
-  '@workspace/customer-360@file:lib/customer-360':
-    dependencies:
-      '@supabase/supabase-js': 2.110.2
-      '@workspace/automation-platform': link:lib/automation-platform
-      '@workspace/platform-cache': link:lib/platform-cache
-
   '@workspace/platform-crypto@file:lib/platform-crypto': {}
-
-  '@workspace/runtime-integration@file:lib/runtime-integration':
-    dependencies:
-      '@supabase/supabase-js': 2.110.2
-      '@workspace/ai-conversation': link:lib/ai-conversation
-      '@workspace/ai-execution-engine': link:lib/ai-execution-engine
-      '@workspace/ai-intent-engine': link:lib/ai-intent-engine
-      '@workspace/ai-prompt-orchestrator': link:lib/ai-prompt-orchestrator
-      '@workspace/ai-provider-layer': link:lib/ai-provider-layer
-      '@workspace/customer-360': link:lib/customer-360
-      '@workspace/knowledge-runtime': link:lib/knowledge-runtime
-      '@workspace/retrieval-engine': link:lib/retrieval-engine
-      '@workspace/vector-query': link:lib/vector-query
 
   '@workspace/vector-query@file:lib/vector-query':
     dependencies:
@@ -8078,6 +8039,10 @@ snapshots:
       typescript: 5.9.3
 
   iceberg-js@0.8.1: {}
+
+  iconv-lite@0.6.3:
+    dependencies:
+      safer-buffer: 2.1.2
 
   iconv-lite@0.7.3:
     dependencies:

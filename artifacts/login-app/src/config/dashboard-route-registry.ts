@@ -37,6 +37,7 @@ export const DASHBOARD_BASE_PATH = "/dashboard";
 
 export type DashboardSectionId =
   | "team-inbox"
+  | "omnichannel"
   | "channels"
   | "ai-usage"
   | "ai-analytics"
@@ -60,6 +61,7 @@ export type DashboardSectionId =
   | "roles"
   | "whatsapp"
   | "ai-assistant"
+  | "ai-employees"
   | "ai-chat"
   | "knowledge"
   | "prompts"
@@ -99,7 +101,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
     id: "ai-platform",
     titleKey: "navigation.aiPlatform",
     icon: Sparkles,
-    childIds: ["team-inbox", "channels", "ai-assistant", "ai-chat", "knowledge", "prompts", "automation", "ai-usage", "ai-analytics", "ai-runtime"],
+    childIds: ["team-inbox", "omnichannel", "channels", "ai-assistant", "ai-employees", "ai-chat", "knowledge", "prompts", "automation", "ai-usage", "ai-analytics", "ai-runtime"],
   },
   {
     id: "user-management",
@@ -130,7 +132,17 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: Inbox,
     permission: "ai.conversations.view",
     sidebarGroup: "ai-platform",
-    Page: lazyPage(() => import("@/pages/dashboard/conversations/team-inbox-page")),
+    Page: lazyPage(() => import("@/pages/dashboard/conversations/omnichannel-console-page")),
+  },
+  {
+    id: "omnichannel",
+    path: "/dashboard/omnichannel",
+    nestedPath: "/omnichannel",
+    titleKey: "navigation.omnichannel",
+    icon: MessageSquare,
+    permission: "ai.conversations.view",
+    sidebarGroup: "ai-platform",
+    Page: lazyPage(() => import("@/pages/dashboard/conversations/omnichannel-console-page")),
   },
   {
     id: "channels",
@@ -384,6 +396,17 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     permission: "ai_assistant.view",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/ai-assistant"), "AiAssistantPage"),
+  },
+  {
+    id: "ai-employees",
+    path: "/dashboard/agents",
+    nestedPath: "/agents",
+    titleKey: "navigation.aiEmployees",
+    icon: Bot,
+    permission: "agents.view",
+    platformFeatureKey: PLATFORM_AI_FEATURE_KEY.AI_AGENTS,
+    sidebarGroup: "ai-platform",
+    Page: lazyPage(() => import("@/pages/dashboard/agents/agents-page")),
   },
   {
     id: "ai-chat",

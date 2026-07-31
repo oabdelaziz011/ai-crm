@@ -4,6 +4,8 @@ export * from "./timeline-service";
 export * from "./timeline-filters";
 export * from "./customer-metrics";
 export { ensureCustomerTimelineProviders, customerTimelineService, createCustomerTimelineService } from "./timeline-service";
+export * from "./customer-timeline-permissions";
+export * from "./adapters/customer-timeline-engine";
 export { timelineAggregator, ensureTimelineAggregators } from "./aggregators";
 export { CustomerTimelineRepository } from "./repositories/customer-timeline-repository";
 export { CustomerTimelineService } from "./services/customer-timeline-service";

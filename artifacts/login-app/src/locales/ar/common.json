@@ -77,10 +77,12 @@
     "whatsapp": "أتمتة واتساب",
     "aiPlatform": "منصة الذكاء الاصطناعي",
     "teamInbox": "صندوق الفريق",
+    "omnichannel": "وحدة القنوات الموحدة",
     "channels": "القنوات",
     "aiUsage": "استخدام وتكلفة الذكاء الاصطناعي",
     "aiAnalytics": "تحليلات الذكاء الاصطناعي",
     "aiAssistant": "المساعد الذكي",
+    "aiEmployees": "موظفو الذكاء الاصطناعي",
     "aiChat": "مساحة الذكاء الاصطناعي",
     "knowledge": "المعرفة",
     "reports": "التقارير",
@@ -2522,6 +2524,127 @@
       "pageInfo": "الصفحة {{page}} من {{totalPages}} ({{total}} نتيجة)"
     }
   },
+  "aiEmployees": {
+    "title": "موظفو الذكاء الاصطناعي",
+    "subtitle": "إدارة ملفات موظفي الذكاء الاصطناعي والتوجيهات والمعرفة وصلاحيات الأدوات.",
+    "create": "إنشاء موظف ذكاء اصطناعي",
+    "save": "حفظ التغييرات",
+    "cancel": "إلغاء",
+    "created": "تم إنشاء موظف الذكاء الاصطناعي",
+    "updated": "تم تحديث موظف الذكاء الاصطناعي",
+    "deleted": "تم أرشفة موظف الذكاء الاصطناعي",
+    "empty": "لا يوجد موظفو ذكاء اصطناعي بعد. أنشئ أول ملف للبدء.",
+    "accessDenied": "ليس لديك صلاحية للوصول إلى مساحة موظفي الذكاء الاصطناعي.",
+    "notFound": "موظف الذكاء الاصطناعي غير موجود",
+    "backToList": "العودة إلى القائمة",
+    "backToDetail": "العودة إلى الملف",
+    "status": {
+      "draft": "مسودة",
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "archived": "مؤرشف"
+    },
+    "stats": {
+      "total": "إجمالي الموظفين",
+      "active": "نشط",
+      "draft": "مسودة"
+    },
+    "filters": {
+      "search": "بحث",
+      "searchPlaceholder": "ابحث بالاسم أو القسم أو المزود…",
+      "status": "الحالة",
+      "department": "القسم",
+      "provider": "المزود",
+      "owner": "المالك",
+      "tags": "الوسوم",
+      "all": "الكل"
+    },
+    "table": {
+      "employee": "الموظف",
+      "status": "الحالة",
+      "department": "القسم",
+      "provider": "المزود",
+      "model": "النموذج",
+      "owner": "المالك",
+      "created": "تاريخ الإنشاء",
+      "updated": "آخر تحديث",
+      "actions": "إجراءات"
+    },
+    "actions": {
+      "view": "عرض",
+      "edit": "تعديل",
+      "delete": "أرشفة"
+    },
+    "delete": {
+      "title": "أرشفة موظف الذكاء الاصطناعي",
+      "description": "أرشفة {{name}}؟ هذا يحذف الملف بشكل ناعم دون التأثير على سجل التنفيذ.",
+      "confirm": "أرشفة"
+    },
+    "errors": {
+      "title": "خطأ في موظف الذكاء الاصطناعي"
+    },
+    "wizard": {
+      "title": "إنشاء موظف ذكاء اصطناعي",
+      "subtitle": "إعداد الملف فقط — التنفيذ يبقى في Agent Runtime.",
+      "back": "رجوع",
+      "next": "التالي",
+      "create": "إنشاء الملف",
+      "steps": {
+        "general": "عام",
+        "provider": "المزود",
+        "model": "النموذج",
+        "prompt": "التوجيه",
+        "knowledge": "المعرفة",
+        "tools": "الأدوات",
+        "review": "مراجعة"
+      }
+    },
+    "edit": {
+      "title": "تعديل موظف الذكاء الاصطناعي"
+    },
+    "detail": {
+      "general": "معلومات عامة",
+      "prompt": "ملخص التوجيه",
+      "knowledge": "ملخص المعرفة",
+      "tools": "ملخص الأدوات",
+      "runtimeStatus": "حالة التشغيل",
+      "health": "الصحة",
+      "analytics": "التحليلات",
+      "executions": "عمليات التنفيذ الأخيرة",
+      "notConnected": "غير متصل",
+      "placeholder": "قريباً",
+      "noPrompt": "لا يوجد توجيه"
+    },
+    "form": {
+      "displayName": "اسم العرض",
+      "internalName": "الاسم الداخلي",
+      "internalNamePlaceholder": "support-agent",
+      "department": "القسم",
+      "owner": "المالك",
+      "selectOwner": "اختر المالك",
+      "noOwner": "غير معيّن",
+      "status": "الحالة",
+      "avatarUrl": "رابط الصورة",
+      "description": "الوصف",
+      "tags": "الوسوم",
+      "tagsPlaceholder": "support, sales, tier-1",
+      "providerConnection": "اتصال المزود",
+      "selectProvider": "اختر المزود",
+      "providerHint": "اختر اتصال المزود الذي سيستخدمه هذا الموظف عند التشغيل.",
+      "availableProviders": "{{count}} أنواع مزود متاحة على المنصة.",
+      "model": "النموذج",
+      "temperature": "درجة الحرارة",
+      "maxTokens": "الحد الأقصى للرموز",
+      "systemPrompt": "توجيه النظام",
+      "systemPromptPlaceholder": "صف دور الموظف ونبرته وقيوده…",
+      "knowledgeHint": "عيّن مصادر المعرفة المتاحة لهذا الموظف.",
+      "toolsHint": "اختر الأدوات المسموح بها لهذا الملف.",
+      "provider": "المزود",
+      "knowledge": "المعرفة",
+      "tools": "الأدوات",
+      "selectedCount": "{{count}} محدد"
+    }
+  },
   "branches": {
     "nav": {
       "title": "الفروع"
@@ -2670,6 +2793,167 @@
       "communication": "مركز الاتصالات",
       "customers": "إدارة العملاء",
       "branches": "الفروع"
+    }
+  },
+  "executiveDashboard": {
+    "title": "لوحة التحكم التنفيذية",
+    "subtitle": "نظرة تشغيلية مؤسسية — ما يحدث اليوم، ما يحتاج انتباهك، وما يجب فعله بعد ذلك.",
+    "defaultCompany": "شركتك",
+    "loading": "جاري تحميل لوحة التحكم التنفيذية",
+    "refresh": "تحديث",
+    "filter": "تصفية",
+    "searchPlaceholder": "ابحث في المؤشرات والوحدات",
+    "vsPreviousPeriod": "مقارنة بالفترة السابقة",
+    "noPermissionTitle": "مطلوب صلاحية لوحة التحكم",
+    "noPermissionBody": "تحتاج إلى صلاحية لوحة التحكم أو التنفيذية لعرض هذه الصفحة.",
+    "noCompanyTitle": "لم يتم اختيار شركة",
+    "noCompanyBody": "اختر مساحة عمل الشركة لتحميل لوحة التحكم التنفيذية.",
+    "emptyTitle": "لا توجد مقاييس بعد",
+    "emptyBody": "ستظهر المقاييس هنا عندما تعيد موفّرات البيانات نتائج لمساحة عملك.",
+    "errorTitle": "تعذر تحميل لوحة التحكم",
+    "errorBody": "تعذر على محرك لوحة التحكم إنشاء لقطة. حاول التحديث.",
+    "timeRange": {
+      "label": "النطاق الزمني",
+      "today": "اليوم",
+      "7d": "آخر 7 أيام",
+      "30d": "آخر 30 يومًا",
+      "90d": "آخر 90 يومًا"
+    },
+    "kpi": {
+      "revenue": "الإيرادات",
+      "customers": "العملاء",
+      "openTickets": "التذاكر المفتوحة",
+      "pipeline": "خط الأنابيب",
+      "aiConversations": "محادثات الذكاء الاصطناعي",
+      "automationRuns": "تشغيلات الأتمتة",
+      "bookings": "الحجوزات",
+      "invoices": "الفواتير المعلقة",
+      "empty": "—",
+      "error": "غير متاح"
+    },
+    "analytics": {
+      "revenueTrend": "اتجاه الإيرادات",
+      "revenueTrendSub": "الإيرادات المدفوعة عبر الزمن",
+      "customerGrowth": "نمو العملاء",
+      "customerGrowthSub": "العملاء الجدد المكتسبون",
+      "aiUsage": "استخدام الذكاء الاصطناعي",
+      "aiUsageSub": "حجم المحادثات",
+      "automationActivity": "نشاط الأتمتة",
+      "automationActivitySub": "حجم تنفيذ سير العمل",
+      "supportActivity": "نشاط الدعم",
+      "supportActivitySub": "عبء الدعم المفتوح",
+      "noData": "لا توجد بيانات كافية في اللقطة لعرض هذا المخطط بعد."
+    },
+    "activity": {
+      "title": "النشاط المباشر",
+      "empty": "لا توجد أحداث للوحة التحكم بعد.",
+      "loadMore": "سيتم تحميل المزيد من النشاط لاحقًا عبر التمرير اللانهائي.",
+      "providerSuccess": "تمت مزامنة الموفّر",
+      "providerFailed": "فشل الموفّر",
+      "providerSkipped": "تم تخطي الموفّر",
+      "warning": "تحذير لوحة التحكم"
+    },
+    "summary": {
+      "title": "الملخص التنفيذي بالذكاء الاصطناعي",
+      "subtitle": "رؤى قائمة على القواعد مستمدة من لقطة لوحة التحكم الحالية.",
+      "aiPrepared": "جاهز للذكاء الاصطناعي",
+      "topWins": "أبرز الإنجازات",
+      "topRisks": "أبرز المخاطر",
+      "immediateActions": "إجراءات فورية",
+      "longTermOpportunities": "فرص طويلة المدى"
+    },
+    "health": {
+      "excellent": "الصحة العامة للأعمال",
+      "good": "الصحة العامة للأعمال",
+      "fair": "الصحة العامة للأعمال",
+      "atRisk": "الصحة العامة للأعمال",
+      "critical": "الصحة العامة للأعمال"
+    },
+    "insights": {
+      "ticketsTitle": "قائمة الدعم تحتاج انتباهًا",
+      "ticketsBody": "{{count}} تذكرة مفتوحة تتطلب المراجعة.",
+      "deliveriesTitle": "تم رصد مشكلات في تسليم القنوات",
+      "deliveriesBody": "تم تسجيل {{count}} عملية تسليم فاشلة في اللقطة.",
+      "automationTitle": "تم رصد فشل في الأتمتة",
+      "automationBody": "{{count}} فشل في سير العمل يحتاج إلى مراجعة.",
+      "steadyTitle": "العمليات مستقرة",
+      "steadyBody": "لم يتم رصد تنبيهات حرجة في لقطة لوحة التحكم الحالية."
+    },
+    "actions": {
+      "title": "إجراءات سريعة",
+      "newCustomer": "عميل جديد",
+      "newBooking": "حجز جديد",
+      "createInvoice": "إنشاء فاتورة",
+      "launchCampaign": "إطلاق حملة",
+      "openAi": "فتح موظف الذكاء الاصطناعي"
+    }
+  },
+  "omnichannel": {
+    "title": "وحدة القنوات الموحدة",
+    "subtitle": "مساحة عمل موحدة لمحادثات واتساب والبريد الإلكتروني وماسنجر وإنستغرام.",
+    "noPermissionTitle": "مطلوب صلاحية المحادثات",
+    "noPermissionBody": "تحتاج إلى صلاحيات المحادثات لفتح وحدة القنوات الموحدة.",
+    "emptyTitle": "لا توجد محادثات بعد",
+    "emptyBody": "ستظهر محادثات العملاء هنا عند وصول الرسائل عبر القنوات المتصلة.",
+    "listTitle": "المحادثات",
+    "listSubtitle": "جميع القنوات في قائمة واحدة",
+    "searchPlaceholder": "ابحث عن العملاء أو الرسائل أو القنوات",
+    "selectConversation": "اختر محادثة للبدء",
+    "unknownContact": "جهة اتصال غير معروفة",
+    "noPreview": "لا توجد معاينة بعد",
+    "ai": "ذكاء اصطناعي",
+    "human": "بشري",
+    "typingPlaceholder": "placeholder لمؤشر الكتابة",
+    "stats": {
+      "open": "المحادثات المفتوحة",
+      "unread": "الرسائل غير المقروءة",
+      "human": "مملوكة لموظف",
+      "channels": "القنوات النشطة"
+    },
+    "filters": {
+      "all": "الكل",
+      "unread": "غير مقروء",
+      "mine": "محادثاتي",
+      "pinned": "مثبتة",
+      "archived": "مؤرشفة"
+    },
+    "channels": {
+      "whatsapp": "واتساب",
+      "email": "البريد الإلكتروني",
+      "messenger": "ماسنجر",
+      "instagram": "إنستغرام"
+    },
+    "composer": {
+      "reply": "رد",
+      "internalNote": "ملاحظة داخلية",
+      "send": "إرسال",
+      "placeholder": "اكتب ردًا أو ملاحظة أو اختر اقتراحًا…",
+      "templates": "القوالب",
+      "variables": "المتغيرات",
+      "voicePlaceholder": "الصوت (قريبًا)"
+    },
+    "aiAssist": {
+      "title": "مساعد الذكاء الاصطناعي",
+      "summary": "ملخص المحادثة",
+      "sentiment": "المشاعر",
+      "knowledge": "اقتراحات المعرفة",
+      "escalation": "يُوصى بالتصعيد لهذه المحادثة",
+      "translation": "الترجمة"
+    },
+    "actions": {
+      "takeover": "تولي الملكية",
+      "release": "إطلاق الملكية",
+      "close": "إغلاق المحادثة"
+    },
+    "sidebar": {
+      "profile": "ملف العميل",
+      "timeline": "الخط الزمني",
+      "bookings": "الحجوزات",
+      "invoices": "الفواتير",
+      "tickets": "التذاكر المفتوحة",
+      "knowledge": "اقتراحات المعرفة",
+      "aiActions": "إجراءات الذكاء الاصطناعي الأخيرة",
+      "empty": "اربط عميلًا لعرض سياق CRM"
     }
   },
   "organization": {

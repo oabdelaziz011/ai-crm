@@ -2,7 +2,7 @@ import type {
   TimelineActivity,
   TimelineActivitySource,
   TimelineEventProvider,
-  TimelineFetchInput,
+  TimelineProviderFetchInput,
 } from "@/lib/customer-timeline/types";
 
 export function adaptLegacyProvider(provider: TimelineEventProvider): TimelineActivitySource {
@@ -34,7 +34,7 @@ export class TimelineAggregator {
     return [...this.sources.values()];
   }
 
-  async collect(input: TimelineFetchInput): Promise<TimelineActivity[]> {
+  async collect(input: TimelineProviderFetchInput): Promise<TimelineActivity[]> {
     const sourceList = this.listSources();
     if (sourceList.length === 0) return [];
 

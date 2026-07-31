@@ -55,7 +55,7 @@ export type TimelineVisibility = (typeof TIMELINE_VISIBILITY)[number];
 export type TimelineActor = {
   id: string | null;
   label: string | null;
-  type: "customer" | "employee" | "system" | "automation";
+  type: "customer" | "employee" | "system" | "automation" | "ai";
 };
 
 export type TimelineAttachment = {
@@ -89,6 +89,8 @@ export type TimelineFilter = {
   dateTo?: string | null;
   categories?: TimelineCategory[];
   sources?: TimelineSource[];
+  sourceModules?: string[];
+  eventTypes?: TimelineEventType[];
   channels?: string[];
   employeeId?: string | null;
   automationOnly?: boolean;
@@ -101,11 +103,26 @@ export type TimelineFilter = {
 export type TimelineCursor = {
   occurredAt: string;
   id: string;
+  sourceModule?: string;
+  /** @deprecated Use sourceModule */
+  source?: string;
 };
 
-export type TimelineFetchInput = {
+export type TimelineAccess = {
+  userId: string;
+  companyId: string;
+  isSuperAdmin: boolean;
+  hasPermission: (code: string) => boolean;
+};
+
+export type TimelineProviderFetchInput = {
   customerId: string;
   companyId?: string | null;
+};
+
+export type TimelineFetchInput = TimelineProviderFetchInput & {
+  companyId: string;
+  access: TimelineAccess;
 };
 
 export type TimelinePageRequest = TimelineFetchInput & {
@@ -114,6 +131,8 @@ export type TimelinePageRequest = TimelineFetchInput & {
   filter?: TimelineFilter;
   search?: string;
   groupMode?: TimelineGroupMode;
+  sort?: "newest" | "oldest";
+  access: TimelineAccess;
 };
 
 export type TimelineGroup = {
@@ -162,6 +181,18 @@ export const TIMELINE_EVENT_TYPES = [
   "automation_finished",
   "manual_activity",
   "ai_summary_updated",
+  "crm_update",
+  "ticket_created",
+  "ticket_updated",
+  "ticket_closed",
+  "task_created",
+  "task_completed",
+  "ai_conversation_started",
+  "ai_conversation_message",
+  "workflow_started",
+  "workflow_completed",
+  "workflow_failed",
+  "system_event",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -187,6 +218,7 @@ export type TimelineActivity = {
   type: TimelineEventType;
   occurredAt: string;
   source: TimelineSource | string;
+  sourceModule?: TimelineSource | string;
   category?: TimelineCategory;
   payload: Record<string, unknown>;
   metadata?: TimelineMetadata;
@@ -199,13 +231,13 @@ export type TimelineEvent = TimelineActivity;
 
 export interface TimelineActivitySource {
   readonly sourceId: TimelineSource | string;
-  collect(input: TimelineFetchInput): Promise<TimelineActivity[]>;
+  collect(input: TimelineProviderFetchInput): Promise<TimelineActivity[]>;
 }
 
 /** @deprecated Use TimelineActivitySource */
 export interface TimelineEventProvider {
   readonly providerId: string;
-  getEvents(input: TimelineFetchInput): Promise<TimelineEvent[]>;
+  getEvents(input: TimelineProviderFetchInput): Promise<TimelineEvent[]>;
 }
 
 export type TimelineRenderContext = {

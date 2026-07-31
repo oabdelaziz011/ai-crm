@@ -20,6 +20,11 @@
       "order": 40,
       "label": "التقارير"
     },
+    "dashboard": {
+      "icon": "📈",
+      "order": 45,
+      "label": "لوحة التحكم"
+    },
     "workspace": {
       "icon": "🏢",
       "order": 50,
@@ -181,6 +186,11 @@
       "name": "عرض التقارير",
       "description": "يسمح بالوصول إلى التقارير والتحليلات.",
       "group": "reports"
+    },
+    "dashboard.view": {
+      "name": "عرض لوحة التحكم",
+      "description": "يسمح بعرض لوحة العمليات المؤسسية والمقاييس المجمعة.",
+      "group": "dashboard"
     },
     "workspace.view": {
       "name": "الوصول إلى بيئة العمل",
@@ -545,6 +555,21 @@
     "agents.manage": {
       "name": "إدارة وكلاء الذكاء الاصطناعي",
       "description": "يسمح بإدارة إعدادات وسياسات الوكلاء.",
+      "group": "aiPlatform"
+    },
+    "agents.create": {
+      "name": "إنشاء موظفي الذكاء الاصطناعي",
+      "description": "يسمح بإنشاء ملفات موظفي الذكاء الاصطناعي في مساحة العمل.",
+      "group": "aiPlatform"
+    },
+    "agents.edit": {
+      "name": "تعديل موظفي الذكاء الاصطناعي",
+      "description": "يسمح بتعديل ملفات موظفي الذكاء الاصطناعي والتعيينات.",
+      "group": "aiPlatform"
+    },
+    "agents.delete": {
+      "name": "أرشفة موظفي الذكاء الاصطناعي",
+      "description": "يسمح بأرشفة ملفات موظفي الذكاء الاصطناعي.",
       "group": "aiPlatform"
     },
     "ai.execution.view": {

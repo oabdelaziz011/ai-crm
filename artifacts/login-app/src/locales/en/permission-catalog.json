@@ -20,6 +20,11 @@
       "order": 40,
       "label": "Reports"
     },
+    "dashboard": {
+      "icon": "📈",
+      "order": 45,
+      "label": "Dashboard"
+    },
     "workspace": {
       "icon": "🏢",
       "order": 50,
@@ -181,6 +186,11 @@
       "name": "View Reports",
       "description": "Allows access to business and analytics reports.",
       "group": "reports"
+    },
+    "dashboard.view": {
+      "name": "View Dashboard",
+      "description": "Allows viewing the enterprise operations dashboard and aggregated metrics.",
+      "group": "dashboard"
     },
     "workspace.view": {
       "name": "Access Workspace",
@@ -545,6 +555,21 @@
     "agents.manage": {
       "name": "Manage AI Agents",
       "description": "Allows managing AI agent configuration and policies.",
+      "group": "aiPlatform"
+    },
+    "agents.create": {
+      "name": "Create AI Employees",
+      "description": "Allows creating AI employee profiles in the workspace.",
+      "group": "aiPlatform"
+    },
+    "agents.edit": {
+      "name": "Edit AI Employees",
+      "description": "Allows editing AI employee profiles and assignments.",
+      "group": "aiPlatform"
+    },
+    "agents.delete": {
+      "name": "Archive AI Employees",
+      "description": "Allows archiving AI employee profiles.",
       "group": "aiPlatform"
     },
     "ai.execution.view": {

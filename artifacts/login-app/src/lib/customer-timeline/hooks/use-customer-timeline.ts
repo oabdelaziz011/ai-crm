@@ -1,5 +1,8 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/context/auth-context";
+import { usePermissions } from "@/hooks/use-rbac";
+import type { TimelineAccess } from "@/lib/customer-timeline/types";
 import {
   customerTimelineKey,
   customerTimelinePageKey,
@@ -17,6 +20,24 @@ import type {
 } from "@/lib/customer-timeline/types";
 
 ensureCustomerTimelineProviders();
+
+function useTimelineAccess(companyId: string | null | undefined): TimelineAccess | undefined {
+  const { user, isSuperAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
+
+  return useMemo(
+    () =>
+      user?.id && companyId
+        ? {
+            userId: user.id,
+            companyId,
+            isSuperAdmin: Boolean(isSuperAdmin),
+            hasPermission,
+          }
+        : undefined,
+    [user?.id, companyId, isSuperAdmin, hasPermission],
+  );
+}
 
 export function useTimelineFilters(initial?: Partial<TimelineFilter>) {
   const [filter, setFilter] = useState<TimelineFilter>({
@@ -45,13 +66,16 @@ export function useCustomerTimeline(
   customerId: string | null | undefined,
   companyId?: string | null,
 ) {
+  const access = useTimelineAccess(companyId);
+
   return useQuery({
     queryKey: customerTimelineKey(customerId, companyId),
-    enabled: Boolean(customerId),
+    enabled: Boolean(customerId && companyId && access),
     queryFn: () =>
       customerTimelineService.getTimeline({
         customerId: customerId!,
-        companyId,
+        companyId: companyId!,
+        access: access!,
       }),
   });
 }
@@ -64,20 +88,23 @@ export function useTimelineActivities(
   groupMode: TimelineGroupMode = "day",
   renderContext?: { locale: string; translate: (key: string, options?: Record<string, unknown>) => string },
 ) {
+  const access = useTimelineAccess(companyId);
+
   return useInfiniteQuery({
     queryKey: customerTimelinePageKey(customerId, companyId, filter, search, groupMode),
-    enabled: Boolean(customerId),
-    initialPageParam: null as { occurredAt: string; id: string } | null,
+    enabled: Boolean(customerId && companyId && access),
+    initialPageParam: null as { occurredAt: string; id: string; sourceModule?: string } | null,
     queryFn: ({ pageParam }) =>
       customerTimelineService.buildTimeline(
         {
           customerId: customerId!,
-          companyId,
+          companyId: companyId!,
           cursor: pageParam,
           limit: 30,
           filter,
           search,
           groupMode,
+          access: access!,
         },
         renderContext ?? { locale: "en", translate: (key) => key },
       ),
@@ -89,13 +116,16 @@ export function useCustomerProfileMetrics(
   customerId: string | null | undefined,
   companyId?: string | null,
 ) {
+  const access = useTimelineAccess(companyId);
+
   return useQuery<CustomerProfileMetrics>({
     queryKey: customerProfileMetricsKey(customerId, companyId),
-    enabled: Boolean(customerId),
+    enabled: Boolean(customerId && companyId && access),
     queryFn: () =>
       fetchCustomerProfileMetrics({
         customerId: customerId!,
-        companyId,
+        companyId: companyId!,
+        access: access!,
       }),
   });
 }

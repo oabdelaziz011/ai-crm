@@ -39,6 +39,7 @@ export function inferGroupId(code: string): string {
   if (code.startsWith("bookings.")) return "bookings";
   if (code.startsWith("invoices.")) return "invoices";
   if (code.startsWith("reports.")) return "reports";
+  if (code.startsWith("dashboard.")) return "dashboard";
   if (code === "workspace.view") return "workspace";
   if (code.startsWith("billing.") || code.startsWith("subscriptions.")) return "billing";
   if (code.startsWith("users.")) return "users";

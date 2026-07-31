@@ -174,6 +174,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/activity-timeline':
+        specifier: workspace:*
+        version: link:../../lib/activity-timeline
       '@workspace/agent-runtime':
         specifier: workspace:*
         version: link:../../lib/agent-runtime
@@ -213,6 +216,9 @@ importers:
       '@workspace/customer-360':
         specifier: workspace:*
         version: link:../../lib/customer-360
+      '@workspace/dashboard-engine':
+        specifier: workspace:*
+        version: link:../../lib/dashboard-engine
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../../lib/embedding-platform
@@ -666,6 +672,15 @@ importers:
         specifier: ^4.21.0
         version: 4.23.0
 
+  lib/activity-timeline:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
   lib/agent-runtime:
     dependencies:
       '@supabase/supabase-js':
@@ -910,6 +925,15 @@ importers:
       '@workspace/platform-cache':
         specifier: workspace:*
         version: link:../platform-cache
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/dashboard-engine:
     devDependencies:
       '@types/node':
         specifier: ^25.3.3

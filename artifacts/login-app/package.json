@@ -122,6 +122,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
+    "@workspace/activity-timeline": "workspace:*",
     "@workspace/agent-runtime": "workspace:*",
     "@workspace/ai-conversation": "workspace:*",
     "@workspace/ai-execution-engine": "workspace:*",
@@ -135,6 +136,7 @@
     "@workspace/channel-platform": "workspace:*",
     "@workspace/channel-registry": "workspace:*",
     "@workspace/customer-360": "workspace:*",
+    "@workspace/dashboard-engine": "workspace:*",
     "@workspace/embedding-platform": "workspace:*",
     "@workspace/knowledge-platform": "workspace:*",
     "@workspace/knowledge-runtime": "workspace:*",

@@ -48,7 +48,7 @@ export function DashboardOutlet() {
                 <Redirect to="/settings/platform-ai" />
               </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "customers" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "customers" || route.id === "ai-employees" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>

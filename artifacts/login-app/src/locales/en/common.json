@@ -191,11 +191,13 @@
     "whatsapp": "WhatsApp Automation",
     "aiPlatform": "AI Platform",
     "teamInbox": "Team Inbox",
+    "omnichannel": "Omnichannel Console",
     "channels": "Channels",
     "aiUsage": "AI Usage & Cost",
     "aiAnalytics": "AI Analytics",
     "aiRuntime": "AI Runtime",
     "aiAssistant": "AI Assistant",
+    "aiEmployees": "AI Employees",
     "aiChat": "AI Workspace",
     "knowledge": "Knowledge",
     "prompts": "Prompts",
@@ -2878,6 +2880,127 @@
       "pageInfo": "Page {{page}} of {{totalPages}} ({{total}} results)"
     }
   },
+  "aiEmployees": {
+    "title": "AI Employees",
+    "subtitle": "Manage AI employee profiles, prompts, knowledge, and tool permissions.",
+    "create": "Create AI Employee",
+    "save": "Save changes",
+    "cancel": "Cancel",
+    "created": "AI Employee created",
+    "updated": "AI Employee updated",
+    "deleted": "AI Employee archived",
+    "empty": "No AI Employees yet. Create your first profile to get started.",
+    "accessDenied": "You do not have permission to access the AI Employee workspace.",
+    "notFound": "AI Employee not found",
+    "backToList": "Back to list",
+    "backToDetail": "Back to profile",
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "stats": {
+      "total": "Total employees",
+      "active": "Active",
+      "draft": "Draft"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Search by name, department, provider…",
+      "status": "Status",
+      "department": "Department",
+      "provider": "Provider",
+      "owner": "Owner",
+      "tags": "Tags",
+      "all": "All"
+    },
+    "table": {
+      "employee": "Employee",
+      "status": "Status",
+      "department": "Department",
+      "provider": "Provider",
+      "model": "Model",
+      "owner": "Owner",
+      "created": "Created",
+      "updated": "Updated",
+      "actions": "Actions"
+    },
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Archive"
+    },
+    "delete": {
+      "title": "Archive AI Employee",
+      "description": "Archive {{name}}? This soft-deletes the profile without affecting runtime execution history.",
+      "confirm": "Archive"
+    },
+    "errors": {
+      "title": "AI Employee error"
+    },
+    "wizard": {
+      "title": "Create AI Employee",
+      "subtitle": "Configure a profile only — execution remains in Agent Runtime.",
+      "back": "Back",
+      "next": "Next",
+      "create": "Create profile",
+      "steps": {
+        "general": "General",
+        "provider": "Provider",
+        "model": "Model",
+        "prompt": "Prompt",
+        "knowledge": "Knowledge",
+        "tools": "Tools",
+        "review": "Review"
+      }
+    },
+    "edit": {
+      "title": "Edit AI Employee"
+    },
+    "detail": {
+      "general": "General information",
+      "prompt": "Prompt summary",
+      "knowledge": "Knowledge summary",
+      "tools": "Tool summary",
+      "runtimeStatus": "Runtime status",
+      "health": "Health",
+      "analytics": "Analytics",
+      "executions": "Recent executions",
+      "notConnected": "Not connected",
+      "placeholder": "Coming soon",
+      "noPrompt": "No prompt configured"
+    },
+    "form": {
+      "displayName": "Display name",
+      "internalName": "Internal name",
+      "internalNamePlaceholder": "support-agent",
+      "department": "Department",
+      "owner": "Owner",
+      "selectOwner": "Select owner",
+      "noOwner": "Unassigned",
+      "status": "Status",
+      "avatarUrl": "Avatar URL",
+      "description": "Description",
+      "tags": "Tags",
+      "tagsPlaceholder": "support, sales, tier-1",
+      "providerConnection": "Provider connection",
+      "selectProvider": "Select provider",
+      "providerHint": "Select the tenant provider connection this employee should use at runtime.",
+      "availableProviders": "{{count}} provider types available on the platform.",
+      "model": "Model",
+      "temperature": "Temperature",
+      "maxTokens": "Max tokens",
+      "systemPrompt": "System prompt",
+      "systemPromptPlaceholder": "Describe the employee role, tone, and constraints…",
+      "knowledgeHint": "Assign knowledge sources available to this employee.",
+      "toolsHint": "Select allowed tools for this employee profile.",
+      "provider": "Provider",
+      "knowledge": "Knowledge",
+      "tools": "Tools",
+      "selectedCount": "{{count}} selected"
+    }
+  },
   "branches": {
     "nav": {
       "title": "Branches"
@@ -3081,6 +3204,167 @@
       "communication": "Communication Center",
       "customers": "CRM",
       "branches": "Branches"
+    }
+  },
+  "executiveDashboard": {
+    "title": "Executive Dashboard",
+    "subtitle": "Enterprise operations overview — what is happening, what needs attention, and what to do next.",
+    "defaultCompany": "Your company",
+    "loading": "Loading executive dashboard",
+    "refresh": "Refresh",
+    "filter": "Filters",
+    "searchPlaceholder": "Search KPIs and modules",
+    "vsPreviousPeriod": "vs previous period",
+    "noPermissionTitle": "Dashboard access required",
+    "noPermissionBody": "You need dashboard or executive permissions to view this page.",
+    "noCompanyTitle": "No company selected",
+    "noCompanyBody": "Select a company workspace to load the executive dashboard.",
+    "emptyTitle": "No dashboard metrics yet",
+    "emptyBody": "Metrics will appear here once providers return data for your workspace.",
+    "errorTitle": "Unable to load dashboard",
+    "errorBody": "The dashboard engine could not produce a snapshot. Try refreshing.",
+    "timeRange": {
+      "label": "Time range",
+      "today": "Today",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days"
+    },
+    "kpi": {
+      "revenue": "Revenue",
+      "customers": "Customers",
+      "openTickets": "Open Tickets",
+      "pipeline": "Pipeline",
+      "aiConversations": "AI Conversations",
+      "automationRuns": "Automation Runs",
+      "bookings": "Bookings",
+      "invoices": "Outstanding Invoices",
+      "empty": "—",
+      "error": "Unavailable"
+    },
+    "analytics": {
+      "revenueTrend": "Revenue Trend",
+      "revenueTrendSub": "Paid revenue over time",
+      "customerGrowth": "Customer Growth",
+      "customerGrowthSub": "New customers acquired",
+      "aiUsage": "AI Usage",
+      "aiUsageSub": "Conversation volume",
+      "automationActivity": "Automation Activity",
+      "automationActivitySub": "Workflow execution volume",
+      "supportActivity": "Support Activity",
+      "supportActivitySub": "Open support workload",
+      "noData": "Not enough snapshot data to chart this metric yet."
+    },
+    "activity": {
+      "title": "Live Activity",
+      "empty": "No dashboard events yet.",
+      "loadMore": "Infinite scroll will load more activity in a future sprint.",
+      "providerSuccess": "Provider synced",
+      "providerFailed": "Provider failed",
+      "providerSkipped": "Provider skipped",
+      "warning": "Dashboard warning"
+    },
+    "summary": {
+      "title": "AI Executive Summary",
+      "subtitle": "Rule-based insights derived from the current dashboard snapshot.",
+      "aiPrepared": "AI-ready",
+      "topWins": "Top Wins",
+      "topRisks": "Top Risks",
+      "immediateActions": "Immediate Actions",
+      "longTermOpportunities": "Long-term Opportunities"
+    },
+    "health": {
+      "excellent": "Overall Business Health",
+      "good": "Overall Business Health",
+      "fair": "Overall Business Health",
+      "atRisk": "Overall Business Health",
+      "critical": "Overall Business Health"
+    },
+    "insights": {
+      "ticketsTitle": "Support queue needs attention",
+      "ticketsBody": "{{count}} open tickets require review.",
+      "deliveriesTitle": "Channel delivery issues detected",
+      "deliveriesBody": "{{count}} failed deliveries were recorded in the snapshot.",
+      "automationTitle": "Automation failures detected",
+      "automationBody": "{{count}} workflow failures need investigation.",
+      "steadyTitle": "Operations look steady",
+      "steadyBody": "No critical alerts were detected in the current dashboard snapshot."
+    },
+    "actions": {
+      "title": "Quick Actions",
+      "newCustomer": "New Customer",
+      "newBooking": "New Booking",
+      "createInvoice": "Create Invoice",
+      "launchCampaign": "Launch Campaign",
+      "openAi": "Open AI Employee"
+    }
+  },
+  "omnichannel": {
+    "title": "Omnichannel Console",
+    "subtitle": "Unified workspace for WhatsApp, Email, Messenger, and Instagram conversations.",
+    "noPermissionTitle": "Conversation access required",
+    "noPermissionBody": "You need conversation permissions to open the omnichannel console.",
+    "emptyTitle": "No conversations yet",
+    "emptyBody": "Customer conversations will appear here as messages arrive across connected channels.",
+    "listTitle": "Conversations",
+    "listSubtitle": "All channels in one queue",
+    "searchPlaceholder": "Search customers, messages, or channels",
+    "selectConversation": "Select a conversation to begin",
+    "unknownContact": "Unknown contact",
+    "noPreview": "No preview yet",
+    "ai": "AI",
+    "human": "Human",
+    "typingPlaceholder": "Typing indicator placeholder",
+    "stats": {
+      "open": "Open conversations",
+      "unread": "Unread messages",
+      "human": "Human-owned",
+      "channels": "Active channels"
+    },
+    "filters": {
+      "all": "All",
+      "unread": "Unread",
+      "mine": "Mine",
+      "pinned": "Pinned",
+      "archived": "Archived"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "messenger": "Messenger",
+      "instagram": "Instagram"
+    },
+    "composer": {
+      "reply": "Reply",
+      "internalNote": "Internal note",
+      "send": "Send",
+      "placeholder": "Write a reply, note, or choose a suggested response…",
+      "templates": "Templates",
+      "variables": "Variables",
+      "voicePlaceholder": "Voice (coming soon)"
+    },
+    "aiAssist": {
+      "title": "AI Assist",
+      "summary": "Conversation summary",
+      "sentiment": "Sentiment",
+      "knowledge": "Knowledge suggestions",
+      "escalation": "Escalation recommended for this conversation",
+      "translation": "Translation"
+    },
+    "actions": {
+      "takeover": "Take ownership",
+      "release": "Release ownership",
+      "close": "Close conversation"
+    },
+    "sidebar": {
+      "profile": "Customer profile",
+      "timeline": "Timeline",
+      "bookings": "Bookings",
+      "invoices": "Invoices",
+      "tickets": "Open tickets",
+      "knowledge": "Knowledge suggestions",
+      "aiActions": "Recent AI actions",
+      "empty": "Link a customer to see CRM context"
     }
   },
   "organization": {

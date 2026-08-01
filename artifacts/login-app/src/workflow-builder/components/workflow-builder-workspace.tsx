@@ -23,6 +23,12 @@ const SimulationPanel = lazy(() =>
   })),
 );
 
+const DebuggerPanel = lazy(() =>
+  import("../debugger/components/debugger-panel").then((module) => ({
+    default: module.DebuggerPanel,
+  })),
+);
+
 type WorkflowBuilderWorkspaceProps = {
   controller: WorkflowBuilderController;
   document: WorkflowDocument;
@@ -93,15 +99,24 @@ export function WorkflowBuilderWorkspace({
             <CollapsibleNodePalette />
           </div>
           {canSimulate && simulation.panelOpen ? (
-            <div className="h-80 shrink-0">
-              <Suspense fallback={<DashboardPageFallback />}>
-                <SimulationPanel
-                  document={liveDocument}
-                  simulation={simulation}
-                  selectedNodeIds={selectedNodeIds}
-                  onFocusNode={focusNode}
-                />
-              </Suspense>
+            <div className="flex h-80 shrink-0 gap-2">
+              <div className="min-h-0 min-w-0 flex-1">
+                <Suspense fallback={<DashboardPageFallback />}>
+                  <SimulationPanel
+                    document={liveDocument}
+                    simulation={simulation}
+                    selectedNodeIds={selectedNodeIds}
+                    onFocusNode={focusNode}
+                  />
+                </Suspense>
+              </div>
+              {debuggerController.enabled ? (
+                <div className="min-h-0 min-w-0 flex-1">
+                  <Suspense fallback={<DashboardPageFallback />}>
+                    <DebuggerPanel onFocusNode={focusNode} />
+                  </Suspense>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

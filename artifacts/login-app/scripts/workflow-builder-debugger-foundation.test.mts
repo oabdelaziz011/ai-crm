@@ -20,6 +20,23 @@ import {
   mapReplayHistoryToActivityEvents,
   mapSelectedSnapshotToActivityEvents,
 } from "../src/workflow-builder/debugger/selectors/debug-timeline-adapter";
+import {
+  buildCallStackViewModel,
+  buildDebuggerPanelViewModel,
+  buildExecutionInspectorViewModel,
+  buildRuntimeInspectorViewModel,
+  buildVariableWatchViewModel,
+} from "../src/workflow-builder/debugger/selectors/debugger-ui-selectors";
+import {
+  findTimelineEventById,
+  resolveFrameIndexById,
+  resolvePrimaryTimelineEventId,
+} from "../src/workflow-builder/debugger/selectors/debugger-sync-selectors";
+import { createReplayActions, type ReplayActionDeps } from "../src/workflow-builder/debugger/controllers/replay-actions";
+import {
+  computeDebuggerListWindow,
+  DEBUGGER_LIST_VIRTUAL_THRESHOLD,
+} from "../src/workflow-builder/debugger/utilities/debugger-list-window";
 import { buildDebugFrame, freezeDebugFrame } from "../src/workflow-builder/debugger/utilities/debug-frame-utils";
 import { ImmutableHistoryBuffer } from "../src/workflow-builder/debugger/utilities/immutable-history-buffer";
 import { hasWorkflowDebuggerPermission } from "../src/workflow-builder/debugger/permissions/debugger-access";
@@ -442,6 +459,331 @@ function buildBranchingDocument() {
   assert.equal(kernel.listFrames(scope).length, 1);
   assert.ok(kernel.listFrames(scope)[0]?.frameId);
   console.log("  ✓ kernel appends immutable simulation snapshots without re-execution");
+}
+
+// Debugger UI selectors (presentation only)
+{
+  const snapshot = buildSnapshot({
+    currentNodeId: "node-2",
+    variables: { "customer.name": "Ada", count: 2 },
+    variableMutations: [
+      {
+        key: "count",
+        scope: "workflow",
+        previousValue: 1,
+        currentValue: 2,
+        nodeId: "node-2",
+        timestamp: "2026-01-01T00:00:01.000Z",
+      },
+    ],
+    stateInspector: {
+      currentNode: { id: "node-2", type: "send_message", label: "Message" },
+      workflowState: "running",
+      executionContext: { executedSteps: 2, waitingFor: null },
+      outputs: { message: "Hello" },
+    },
+    pathExplorer: [
+      { nodeId: "node-1", label: "Start", nodeType: "start", status: "executed" },
+      { nodeId: "node-2", label: "Message", nodeType: "send_message", status: "current" },
+    ],
+    timeline: [
+      { id: "t1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} },
+      { id: "t2", type: "node_entered", nodeId: "node-2", label: "Message", timestamp: "2026-01-01T00:00:01.000Z", metadata: {} },
+    ],
+  });
+
+  const execution = buildExecutionInspectorViewModel({
+    snapshot,
+    inspector: {
+      selectedNodeId: "node-2",
+      selectedFrameIndex: 1,
+      currentNodeId: "node-2",
+      previousNodeId: "node-1",
+      nextNodeId: null,
+      workflowState: "running",
+    },
+  });
+  assert.equal(execution.currentNodeLabel, "Message");
+  assert.equal(execution.previousNodeLabel, "Start");
+
+  const variables = buildVariableWatchViewModel({ snapshot });
+  assert.ok(variables.some((entry) => entry.key === "count" && entry.changed));
+
+  const runtime = buildRuntimeInspectorViewModel({
+    snapshot,
+    frame: {
+      frameId: "session-1:1:2",
+      timestamp: "2026-01-01T00:00:01.000Z",
+      stepNumber: 2,
+      executionDepth: 2,
+      branchDepth: 0,
+      parentFrameId: "session-1:0:1",
+    },
+  });
+  assert.equal(runtime.frameId, "session-1:1:2");
+  assert.equal(runtime.outputs.message, "Hello");
+
+  const callStack = buildCallStackViewModel({
+    frames: [
+      {
+        frameIndex: 0,
+        frameId: "f0",
+        timestamp: "2026-01-01T00:00:00.000Z",
+        stepNumber: 1,
+        executionDepth: 1,
+        branchDepth: 0,
+        parentFrameId: null,
+        status: "running",
+        currentNodeId: "node-1",
+        currentNodeLabel: "Start",
+        timelineLength: 1,
+        executedStepCount: 1,
+        capturedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+    replay: { capacity: 256, count: 1, index: 0, canStepBack: false, canStepForward: false, mode: "replay" },
+    selectedFrameId: "f0",
+  });
+  assert.equal(callStack[0]?.isSelected, true);
+  console.log("  ✓ debugger UI selectors build read-only presentation models");
+}
+
+// Debugger sync selectors (timeline ↔ frame resolution)
+{
+  const frame0 = buildSnapshot({
+    currentNodeId: "node-1",
+    timeline: [
+      { id: "evt-1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} },
+    ],
+  });
+  const frame1 = buildSnapshot({
+    currentNodeId: "node-2",
+    timeline: [
+      { id: "evt-1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} },
+      { id: "evt-2", type: "node_entered", nodeId: "node-2", label: "Message", timestamp: "2026-01-01T00:00:01.000Z", metadata: {} },
+    ],
+  });
+
+  assert.equal(resolvePrimaryTimelineEventId(frame0), "evt-1");
+  assert.equal(resolvePrimaryTimelineEventId(frame1), "evt-2");
+
+  const match = findTimelineEventById([frame0, frame1], "evt-2");
+  assert.ok(match);
+  assert.equal(match.frameIndex, 1);
+  assert.equal(match.nodeId, "node-2");
+
+  const frames = [
+    { frameId: "f0" },
+    { frameId: "f1" },
+  ];
+  assert.equal(resolveFrameIndexById(frames, "f1"), 1);
+  console.log("  ✓ debugger sync selectors resolve timeline events to replay frames");
+}
+
+// Replay action layer delegates through controller deps (not kernel)
+{
+  const calls: string[] = [];
+  const frames = [
+    {
+      frameIndex: 0,
+      frameId: "f0",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      stepNumber: 1,
+      executionDepth: 1,
+      branchDepth: 0,
+      parentFrameId: null,
+      status: "running" as const,
+      currentNodeId: "node-1",
+      currentNodeLabel: "Start",
+      timelineLength: 1,
+      executedStepCount: 1,
+      capturedAt: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      frameIndex: 1,
+      frameId: "f1",
+      timestamp: "2026-01-01T00:00:01.000Z",
+      stepNumber: 2,
+      executionDepth: 2,
+      branchDepth: 0,
+      parentFrameId: "f0",
+      status: "running" as const,
+      currentNodeId: "node-2",
+      currentNodeLabel: "Message",
+      timelineLength: 2,
+      executedStepCount: 2,
+      capturedAt: "2026-01-01T00:00:01.000Z",
+    },
+  ];
+  const snapshots = [
+    buildSnapshot({ currentNodeId: "node-1", timeline: [{ id: "evt-1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} }] }),
+    buildSnapshot({
+      currentNodeId: "node-2",
+      timeline: [
+        { id: "evt-1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} },
+        { id: "evt-2", type: "node_entered", nodeId: "node-2", label: "Message", timestamp: "2026-01-01T00:00:01.000Z", metadata: {} },
+      ],
+    }),
+  ];
+
+  const deps: ReplayActionDeps = {
+    stepFirst: () => { calls.push("stepFirst"); return true; },
+    stepBack: () => { calls.push("stepBack"); return true; },
+    stepForward: () => { calls.push("stepForward"); return true; },
+    stepLast: () => { calls.push("stepLast"); return true; },
+    followLive: () => calls.push("followLive"),
+    resetReplay: () => calls.push("resetReplay"),
+    jumpTo: (index) => { calls.push(`jumpTo:${index}`); return true; },
+    selectFrame: (frameId) => calls.push(`selectFrame:${frameId}`),
+    selectTimelineEvent: (eventId) => calls.push(`selectTimelineEvent:${eventId}`),
+    selectNode: (nodeId) => calls.push(`selectNode:${nodeId}`),
+    selectVariable: (key) => calls.push(`selectVariable:${key}`),
+    getFrames: () => frames,
+    getFrameSnapshots: () => snapshots,
+    getReplayIndex: () => 1,
+  };
+
+  const actions = createReplayActions(deps);
+  actions.next();
+  assert.ok(calls.includes("stepForward"));
+  assert.ok(calls.includes("selectFrame:f1"));
+  assert.ok(calls.includes("selectTimelineEvent:evt-2"));
+  assert.ok(calls.includes("selectNode:node-2"));
+
+  calls.length = 0;
+  actions.selectTimelineEvent("evt-2");
+  assert.ok(calls.some((entry) => entry.startsWith("jumpTo:1")));
+  assert.ok(calls.includes("selectTimelineEvent:evt-2"));
+  console.log("  ✓ replay actions delegate through controller deps and synchronize selection");
+}
+
+// List window virtualization thresholds
+{
+  const small = computeDebuggerListWindow({ count: 12, rowHeight: 88 });
+  assert.equal(small.shouldVirtualize, false);
+  assert.equal(small.endIndex, 12);
+
+  const large = computeDebuggerListWindow({
+    count: DEBUGGER_LIST_VIRTUAL_THRESHOLD + 1,
+    rowHeight: 88,
+    scrollTop: 0,
+    viewportHeight: 320,
+  });
+  assert.equal(large.shouldVirtualize, true);
+  assert.ok(large.endIndex < large.startIndex + DEBUGGER_LIST_VIRTUAL_THRESHOLD + 1);
+  console.log("  ✓ debugger list window enables virtualization for large datasets");
+}
+
+// Panel view model builder (single presentation source)
+{
+  const snapshot = buildSnapshot({
+    currentNodeId: "node-2",
+    variables: { count: 2 },
+    pathExplorer: [
+      { nodeId: "node-1", label: "Start", nodeType: "start", status: "executed" },
+      { nodeId: "node-2", label: "Message", nodeType: "send_message", status: "current" },
+    ],
+    stateInspector: {
+      currentNode: { id: "node-2", type: "send_message", label: "Message" },
+      workflowState: "running",
+      executionContext: { executedSteps: 2 },
+      outputs: {},
+    },
+    timeline: [
+      { id: "t1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} },
+      { id: "t2", type: "node_entered", nodeId: "node-2", label: "Message", timestamp: "2026-01-01T00:00:01.000Z", metadata: {} },
+    ],
+  });
+  const panel = buildDebuggerPanelViewModel({
+    displayedSnapshot: snapshot,
+    inspector: {
+      selectedNodeId: "node-2",
+      selectedFrameIndex: 1,
+      currentNodeId: "node-2",
+      previousNodeId: "node-1",
+      nextNodeId: null,
+      workflowState: "running",
+    },
+    selection: {
+      ...createDefaultDebugSelectionState(),
+      selectedTimelineEvent: "t2",
+      selectedVariable: "count",
+    },
+    replay: { capacity: 256, count: 2, index: 1, canStepBack: true, canStepForward: false, mode: "replay" },
+    frames: [
+      {
+        frameIndex: 0,
+        frameId: "f0",
+        timestamp: "2026-01-01T00:00:00.000Z",
+        stepNumber: 1,
+        executionDepth: 1,
+        branchDepth: 0,
+        parentFrameId: null,
+        status: "running",
+        currentNodeId: "node-1",
+        currentNodeLabel: "Start",
+        timelineLength: 1,
+        executedStepCount: 1,
+        capturedAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        frameIndex: 1,
+        frameId: "f1",
+        timestamp: "2026-01-01T00:00:01.000Z",
+        stepNumber: 2,
+        executionDepth: 2,
+        branchDepth: 0,
+        parentFrameId: "f0",
+        status: "running",
+        currentNodeId: "node-2",
+        currentNodeLabel: "Message",
+        timelineLength: 2,
+        executedStepCount: 2,
+        capturedAt: "2026-01-01T00:00:01.000Z",
+      },
+    ],
+  });
+
+  assert.equal(panel.execution.currentNodeLabel, "Message");
+  assert.equal(panel.selectedVariableKey, "count");
+  assert.ok(panel.timeline.cards.some((card) => card.highlight.isSelected));
+  assert.equal(panel.variableListWindow.shouldVirtualize, false);
+
+  const panelAgain = buildDebuggerPanelViewModel({
+    displayedSnapshot: snapshot,
+    inspector: {
+      selectedNodeId: "node-2",
+      selectedFrameIndex: 1,
+      currentNodeId: "node-2",
+      previousNodeId: "node-1",
+      nextNodeId: null,
+      workflowState: "running",
+    },
+    selection: {
+      ...createDefaultDebugSelectionState(),
+      selectedTimelineEvent: "t2",
+      selectedVariable: "count",
+    },
+    replay: { capacity: 256, count: 2, index: 1, canStepBack: true, canStepForward: false, mode: "replay" },
+    frames: panel.callStack.map((frame) => ({
+      frameIndex: frame.frameIndex,
+      frameId: frame.frameId,
+      timestamp: frame.frameIndex === 0 ? "2026-01-01T00:00:00.000Z" : "2026-01-01T00:00:01.000Z",
+      stepNumber: frame.stepNumber,
+      executionDepth: frame.executionDepth,
+      branchDepth: frame.branchDepth,
+      parentFrameId: frame.parentFrameId,
+      status: frame.status,
+      currentNodeId: frame.currentNodeId,
+      currentNodeLabel: frame.currentNodeLabel,
+      timelineLength: frame.frameIndex + 1,
+      executedStepCount: frame.stepNumber,
+      capturedAt: frame.frameIndex === 0 ? "2026-01-01T00:00:00.000Z" : "2026-01-01T00:00:01.000Z",
+    })),
+  });
+  assert.deepEqual(panel.execution, panelAgain.execution);
+  assert.deepEqual(panel.timeline.cards.map((card) => card.id), panelAgain.timeline.cards.map((card) => card.id));
+  console.log("  ✓ debugger panel view model is pure and aggregates synchronized presentation state");
 }
 
 console.log("\nAll debugger foundation tests passed.\n");

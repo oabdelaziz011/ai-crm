@@ -2128,6 +2128,68 @@
         "previewBadge": "معاينة المحاكاة"
       }
     },
+    "debugger": {
+      "title": "مصحح سير العمل",
+      "subtitle": "إعادة تشغيل ومعاينة للقراءة فقط فوق لقطات المحاكاة.",
+      "empty": "لا توجد بيانات مصحح بعد. ابدأ محاكاة لالتقاط إطارات إعادة التشغيل.",
+      "tabs": {
+        "execution": "التنفيذ",
+        "variables": "المتغيرات",
+        "runtime": "زمن التشغيل",
+        "callStack": "مكدس الاستدعاء",
+        "timeline": "الخط الزمني",
+        "groupLabel": "لوحات المصحح"
+      },
+      "replay": {
+        "live": "مباشر",
+        "replay": "إعادة تشغيل",
+        "followLive": "متابعة المباشر",
+        "reset": "إعادة ضبط",
+        "jump": "الانتقال إلى",
+        "jumpLabel": "الانتقال إلى إطار",
+        "position": "الإطار {{current}} / {{total}}",
+        "frameOption": "الإطار {{index}}",
+        "groupLabel": "عناصر التحكم بإعادة التشغيل",
+        "first": "الإطار الأول",
+        "previous": "الإطار السابق",
+        "next": "الإطار التالي",
+        "last": "الإطار الأخير"
+      },
+      "execution": {
+        "workflowState": "حالة التنفيذ",
+        "current": "الخطوة الحالية",
+        "previous": "الخطوة السابقة",
+        "next": "الخطوة التالية"
+      },
+      "variables": {
+        "changed": "تغيّر"
+      },
+      "runtime": {
+        "workflow": "زمن تشغيل سير العمل",
+        "workflowState": "حالة سير العمل",
+        "waitingFor": "بانتظار",
+        "pendingActions": "إجراءات معلّقة",
+        "frame": "إطار إعادة التشغيل",
+        "frameId": "معرّف الإطار",
+        "timestamp": "الطابع الزمني",
+        "stepNumber": "رقم الخطوة",
+        "executionDepth": "عمق التنفيذ",
+        "branchDepth": "عمق الفرع",
+        "parentFrame": "الإطار الأب",
+        "executionContext": "سياق التنفيذ",
+        "outputs": "المخرجات"
+      },
+      "callStack": {
+        "frameMeta": "خطوة {{step}} · عمق {{depth}} · فرع {{branch}}",
+        "parent": "الأب",
+        "replayPosition": "موضع إعادة التشغيل"
+      },
+      "timeline": {
+        "debuggerBadge": "المصحح",
+        "replayBadge": "إطار إعادة التشغيل",
+        "selectEvent": "اختر حدث الخط الزمني {{title}}"
+      }
+    },
     "triggers": {
       "title": "إعداد المُشغّل",
       "subtitle": "اضبط كيف يبدأ سير العمل. التنفيذ يبقى في منصة الأتمتة.",

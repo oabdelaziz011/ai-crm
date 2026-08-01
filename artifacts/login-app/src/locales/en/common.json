@@ -2372,6 +2372,68 @@
         "previewBadge": "Simulation preview"
       }
     },
+    "debugger": {
+      "title": "Workflow Debugger",
+      "subtitle": "Read-only replay and inspection over simulation snapshots.",
+      "empty": "No debugger data yet. Start a simulation to capture replay frames.",
+      "tabs": {
+        "execution": "Execution",
+        "variables": "Variables",
+        "runtime": "Runtime",
+        "callStack": "Call Stack",
+        "timeline": "Timeline",
+        "groupLabel": "Debugger panels"
+      },
+      "replay": {
+        "live": "Live",
+        "replay": "Replay",
+        "followLive": "Follow live",
+        "reset": "Reset replay",
+        "jump": "Jump to",
+        "jumpLabel": "Jump to frame",
+        "position": "Frame {{current}} / {{total}}",
+        "frameOption": "Frame {{index}}",
+        "groupLabel": "Replay controls",
+        "first": "First frame",
+        "previous": "Previous frame",
+        "next": "Next frame",
+        "last": "Last frame"
+      },
+      "execution": {
+        "workflowState": "Execution state",
+        "current": "Current node",
+        "previous": "Previous node",
+        "next": "Next node"
+      },
+      "variables": {
+        "changed": "Changed"
+      },
+      "runtime": {
+        "workflow": "Workflow runtime",
+        "workflowState": "Workflow state",
+        "waitingFor": "Waiting for",
+        "pendingActions": "Pending actions",
+        "frame": "Replay frame",
+        "frameId": "Frame ID",
+        "timestamp": "Timestamp",
+        "stepNumber": "Step number",
+        "executionDepth": "Execution depth",
+        "branchDepth": "Branch depth",
+        "parentFrame": "Parent frame",
+        "executionContext": "Execution context",
+        "outputs": "Outputs"
+      },
+      "callStack": {
+        "frameMeta": "Step {{step}} · depth {{depth}} · branch {{branch}}",
+        "parent": "Parent",
+        "replayPosition": "Replay position"
+      },
+      "timeline": {
+        "debuggerBadge": "Debugger",
+        "replayBadge": "Replay frame",
+        "selectEvent": "Select timeline event {{title}}"
+      }
+    },
     "triggers": {
       "title": "Trigger Configuration",
       "subtitle": "Configure how this workflow starts. Execution remains in the Automation Platform.",

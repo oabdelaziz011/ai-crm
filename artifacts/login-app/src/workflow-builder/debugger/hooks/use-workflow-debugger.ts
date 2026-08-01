@@ -17,6 +17,7 @@ type UseWorkflowDebuggerOptions = {
 type DebuggerViewModel = ReplayViewModel & {
   timelineEvents: ReturnType<typeof mapReplayHistoryToActivityEvents>;
   displayedSnapshot: ReturnType<typeof resolveDisplayedSnapshot>;
+  frameSnapshots: ReadonlyArray<Readonly<import("../types/debugger-types").DebugFrame>["snapshot"]>;
 };
 
 export function useWorkflowDebugger(
@@ -81,6 +82,7 @@ export function useWorkflowDebugger(
         frames: [],
         timelineEvents: [],
         displayedSnapshot: idleSnapshot,
+        frameSnapshots: [],
       };
     }
 
@@ -106,6 +108,7 @@ export function useWorkflowDebugger(
     return {
       ...replayViewModel,
       displayedSnapshot: selectedSnapshot,
+      frameSnapshots: frames.map((frame) => frame.snapshot),
       timelineEvents:
         replay.mode === "replay" && replaySnapshot
           ? mapSelectedSnapshotToActivityEvents({
@@ -164,6 +167,24 @@ export function useWorkflowDebugger(
     bump();
   }, [bump, enabled, kernel, scope]);
 
+  const stepFirst = useCallback(() => {
+    if (!enabled) return false;
+    const state = kernel.getReplayState(scope);
+    if (state.count === 0) return false;
+    const moved = kernel.jump(scope, 0);
+    if (moved) bump();
+    return moved;
+  }, [bump, enabled, kernel, scope]);
+
+  const stepLast = useCallback(() => {
+    if (!enabled) return false;
+    const state = kernel.getReplayState(scope);
+    if (state.count === 0) return false;
+    const moved = kernel.jump(scope, state.count - 1);
+    if (moved) bump();
+    return moved;
+  }, [bump, enabled, kernel, scope]);
+
   const selectFrame = useCallback(
     (frameId: string | null) => {
       if (!enabled) return;
@@ -209,17 +230,25 @@ export function useWorkflowDebugger(
     [bump, enabled, kernel, scope],
   );
 
+  const readReplayIndex = useCallback(() => {
+    if (!enabled) return -1;
+    return kernel.getReplayState(scope).index;
+  }, [enabled, kernel, scope]);
+
   return {
     enabled,
     kernel,
     repository,
     selection: enabled ? kernel.getSelectionState(scope) : createDefaultDebugSelectionState(),
     viewModel,
+    readReplayIndex,
     stepBack,
     stepForward,
     jumpTo,
     resetReplay,
     followLive,
+    stepFirst,
+    stepLast,
     selectFrame,
     selectNode,
     selectVariable,

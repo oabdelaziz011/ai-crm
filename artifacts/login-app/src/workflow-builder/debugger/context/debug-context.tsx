@@ -48,4 +48,6 @@ export function useDebugSelection() {
   return context.selection;
 }
 
+export { useReplayController, useDebuggerPanelViewModel } from "../hooks/use-replay-controller";
+
 export { createDefaultDebugSelectionState as DEFAULT_DEBUG_SELECTION };

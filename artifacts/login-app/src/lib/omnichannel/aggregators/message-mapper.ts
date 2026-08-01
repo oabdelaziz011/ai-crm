@@ -50,6 +50,7 @@ export function mapUnifiedMessage(
     attachments: buildAttachments(message),
     aiActionLabel: readMetadataString(message.metadata, "ai_action_label"),
     automationActionLabel: readMetadataString(message.metadata, "automation_action_label"),
+    isInternalNote: message.message_type === "internal_note",
     source: message,
   };
 }

@@ -19,7 +19,7 @@ try {
   await page.fill('input[placeholder="••••••••"]', "DemoVault2026!");
   await page.click('button:has-text("Authenticate")');
   await page.waitForURL(/\/dashboard/, { timeout: 60000 });
-  await page.goto("http://localhost:5173/dashboard/inbox", { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle", timeout: 60000 });
   await page.waitForTimeout(3000);
 
   const cnv = page.locator("button").filter({ hasText: "CNV-000010" }).first();

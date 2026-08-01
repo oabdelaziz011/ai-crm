@@ -47,7 +47,7 @@ await page.evaluate(
   { storageKey, sessionJson },
 );
 
-await page.goto("http://localhost:5173/dashboard/inbox", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(2000);
 
 const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="search"]').first();

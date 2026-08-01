@@ -15,7 +15,6 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
-  Inbox,
   Radio,
   Send,
   Coins,
@@ -36,7 +35,6 @@ import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 export const DASHBOARD_BASE_PATH = "/dashboard";
 
 export type DashboardSectionId =
-  | "team-inbox"
   | "omnichannel"
   | "channels"
   | "ai-usage"
@@ -101,7 +99,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
     id: "ai-platform",
     titleKey: "navigation.aiPlatform",
     icon: Sparkles,
-    childIds: ["team-inbox", "omnichannel", "channels", "ai-assistant", "ai-employees", "ai-chat", "knowledge", "prompts", "automation", "ai-usage", "ai-analytics", "ai-runtime"],
+    childIds: ["omnichannel", "channels", "ai-assistant", "ai-employees", "ai-chat", "knowledge", "prompts", "automation", "ai-usage", "ai-analytics", "ai-runtime"],
   },
   {
     id: "user-management",
@@ -124,16 +122,6 @@ const lazyNamed = <T extends ComponentType>(
   );
 
 export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
-  {
-    id: "team-inbox",
-    path: "/dashboard/inbox",
-    nestedPath: "/inbox",
-    titleKey: "navigation.teamInbox",
-    icon: Inbox,
-    permission: "ai.conversations.view",
-    sidebarGroup: "ai-platform",
-    Page: lazyPage(() => import("@/pages/dashboard/conversations/omnichannel-console-page")),
-  },
   {
     id: "omnichannel",
     path: "/dashboard/omnichannel",

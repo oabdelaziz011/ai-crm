@@ -16,7 +16,7 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 
 try {
   await page.goto(loginUrl, { waitUntil: "networkidle", timeout: 60000 });
-  await page.waitForURL(/\/dashboard\/inbox/, { timeout: 60000 });
+  await page.waitForURL(/\/dashboard\/omnichannel/, { timeout: 60000 });
   await page.waitForTimeout(2000);
 
   const cnvButton = page.locator("button").filter({ hasText: "CNV-000010" }).first();

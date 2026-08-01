@@ -44,7 +44,7 @@ const storageValue = JSON.stringify({
 
 writeFileSync(
   resolve(projectRoot, "artifacts/inbox-browser-session.json"),
-  JSON.stringify({ storageKey, storageValue, inboxUrl: "http://localhost:5173/dashboard/inbox" }, null, 2),
+  JSON.stringify({ storageKey, storageValue, inboxUrl: "http://localhost:5173/dashboard/omnichannel" }, null, 2),
   "utf8",
 );
 console.log("wrote artifacts/inbox-browser-session.json");

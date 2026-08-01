@@ -49,7 +49,7 @@ export function inferGroupId(code: string): string {
   if (code.startsWith("audit_logs.")) return "audit";
   if (code.startsWith("ai_assistant.")) return "aiAssistant";
   if (code.startsWith("ai_chat.")) return "aiChat";
-  if (code.startsWith("ai.conversations.")) return "conversations";
+  if (code.startsWith("ai.conversations.") || code.startsWith("conversation.")) return "conversations";
   if (code.startsWith("channels.") || code === "ai.whatsapp.manage") return "channels";
   if (code.startsWith("knowledge.") || code === "ai.knowledge.manage") return "knowledge";
   if (code.startsWith("whatsapp.")) return "whatsapp";

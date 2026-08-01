@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { forwardRef, memo } from "react";
 import { Search } from "lucide-react";
 import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-conversation";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
@@ -9,23 +9,26 @@ type ConversationSearchProps = {
   onChange: (value: string) => void;
 };
 
-export const ConversationSearch = memo(function ConversationSearch({
-  value,
-  placeholder,
-  onChange,
-}: ConversationSearchProps) {
-  return (
-    <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-white/5 bg-black/30 px-3 py-1.5">
-      <Search className="size-3.5 text-muted-foreground" />
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="flex-1 bg-transparent text-sm outline-none"
-      />
-    </div>
-  );
-});
+export const ConversationSearch = memo(
+  forwardRef<HTMLInputElement, ConversationSearchProps>(function ConversationSearch(
+    { value, placeholder, onChange },
+    ref,
+  ) {
+    return (
+      <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-white/5 bg-black/30 px-3 py-1.5">
+        <Search className="size-3.5 text-muted-foreground" />
+        <input
+          ref={ref}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className="flex-1 bg-transparent text-sm outline-none"
+        />
+      </div>
+    );
+  }),
+);
 
 type ConversationFiltersProps = {
   filters: OmnichannelListFilters;
@@ -33,8 +36,11 @@ type ConversationFiltersProps = {
     all: string;
     unread: string;
     mine: string;
+    assigned: string;
+    ai: string;
     pinned: string;
     archived: string;
+    tags: string;
     whatsapp: string;
     email: string;
     messenger: string;
@@ -57,11 +63,14 @@ export const ConversationFilters = memo(function ConversationFilters({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <FilterChip active={!filters.unreadOnly && !filters.pinnedOnly && !filters.archived} label={labels.all} onClick={() => onChange({ unreadOnly: false, pinnedOnly: false, archived: false, assignedUserId: undefined })} />
-      <FilterChip active={Boolean(filters.unreadOnly)} label={labels.unread} onClick={() => onChange({ unreadOnly: true, pinnedOnly: false, archived: false })} />
-      <FilterChip active={filters.assignedUserId === currentUserId} label={labels.mine} onClick={() => onChange({ assignedUserId: currentUserId ?? undefined, unreadOnly: false })} />
-      <FilterChip active={Boolean(filters.pinnedOnly)} label={labels.pinned} onClick={() => onChange({ pinnedOnly: true, archived: false })} />
-      <FilterChip active={Boolean(filters.archived)} label={labels.archived} onClick={() => onChange({ archived: true, pinnedOnly: false })} />
+      <FilterChip active={!filters.unreadOnly && !filters.pinnedOnly && !filters.archived && !filters.assignedOnly && filters.handlerMode !== "ai"} label={labels.all} onClick={() => onChange({ unreadOnly: false, pinnedOnly: false, archived: false, assignedOnly: false, assignedUserId: undefined, handlerMode: undefined })} />
+      <FilterChip active={Boolean(filters.unreadOnly)} label={labels.unread} onClick={() => onChange({ unreadOnly: true, pinnedOnly: false, archived: false, assignedOnly: false, handlerMode: undefined })} />
+      <FilterChip active={filters.assignedUserId === currentUserId} label={labels.mine} onClick={() => onChange({ assignedUserId: currentUserId ?? undefined, unreadOnly: false, assignedOnly: false })} />
+      <FilterChip active={Boolean(filters.assignedOnly)} label={labels.assigned} onClick={() => onChange({ assignedOnly: true, unreadOnly: false, assignedUserId: undefined, handlerMode: undefined })} />
+      <FilterChip active={filters.handlerMode === "ai"} label={labels.ai} onClick={() => onChange({ handlerMode: filters.handlerMode === "ai" ? undefined : "ai", unreadOnly: false, assignedOnly: false })} />
+      <FilterChip active={Boolean(filters.pinnedOnly)} label={labels.pinned} onClick={() => onChange({ pinnedOnly: true, archived: false, assignedOnly: false })} />
+      <FilterChip active={Boolean(filters.archived)} label={labels.archived} onClick={() => onChange({ archived: true, pinnedOnly: false, assignedOnly: false })} />
+      <FilterChip active={false} label={labels.tags} onClick={() => onChange({ pinnedOnly: filters.pinnedOnly })} />
       {OMNICHANNEL_PRIMARY_CHANNELS.map((channel) => (
         <FilterChip
           key={channel}

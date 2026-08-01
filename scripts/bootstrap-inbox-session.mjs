@@ -30,7 +30,7 @@ if (!user) {
 const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({
   type: "magiclink",
   email: EMAIL,
-  options: { redirectTo: "http://localhost:5173/auth/callback?next=/dashboard/inbox" },
+  options: { redirectTo: "http://localhost:5173/auth/callback?next=/dashboard/omnichannel" },
 });
 
 if (linkErr) {
@@ -70,7 +70,7 @@ if (props.email_otp) {
     token_type: session?.token_type,
     user: session?.user,
   };
-  const redirectTo = "http://localhost:5173/auth/callback?next=/dashboard/inbox";
+  const redirectTo = "http://localhost:5173/auth/callback?next=/dashboard/omnichannel";
   const verifyUrl = `[REDACTED]/auth/v1/verify?token=${props.hashed_token}&type=magiclink&redirect_to=${encodeURIComponent(redirectTo)}`;
   writeFileSync(resolve(projectRoot, "artifacts/inbox-login-url.txt"), verifyUrl, "utf8");
   console.log("wrote artifacts/inbox-login-url.txt");

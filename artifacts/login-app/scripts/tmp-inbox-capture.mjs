@@ -39,7 +39,7 @@ await page.evaluate(async ({ url, key }) => {
   });
 }, { url, key });
 
-await page.goto("http://localhost:5173/dashboard/inbox", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(8000);
 
 const searchInput = page.locator("input.bg-transparent.text-sm").first();

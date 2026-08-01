@@ -1,8 +1,31 @@
 import type { ConversationMessageRecord } from "@workspace/ai-conversation";
 import type { OmnichannelAiAssistModel } from "@/lib/omnichannel/types/unified-conversation";
+import {
+  buildLanguageAwareSuggestedReply,
+  detectConversationLanguage,
+  languageDisplayLabel,
+} from "@/lib/omnichannel/services/conversation-language-detector";
 
-const POSITIVE_HINTS = ["thanks", "great", "perfect", "awesome", "good"];
-const NEGATIVE_HINTS = ["angry", "upset", "bad", "issue", "problem", "refund", "complaint"];
+const POSITIVE_HINTS = ["thanks", "great", "perfect", "awesome", "good", "merci", "شكر"];
+const NEGATIVE_HINTS = ["angry", "upset", "bad", "issue", "problem", "refund", "complaint", "urgent"];
+
+function inferIntent(lastCustomerMessage: string): string {
+  if (/invoice|payment|bill|facture/i.test(lastCustomerMessage)) return "Billing";
+  if (/booking|appointment|schedule|réservation/i.test(lastCustomerMessage)) return "Scheduling";
+  if (/cancel|refund|complaint/i.test(lastCustomerMessage)) return "Support escalation";
+  if (/price|quote|offer/i.test(lastCustomerMessage)) return "Sales inquiry";
+  return "General inquiry";
+}
+
+function inferPriority(
+  sentiment: OmnichannelAiAssistModel["sentiment"],
+  corpus: string,
+): OmnichannelAiAssistModel["priority"] {
+  if (sentiment === "negative" && /urgent|asap|immediately|manager/i.test(corpus)) return "urgent";
+  if (sentiment === "negative") return "high";
+  if (/invoice|payment overdue/i.test(corpus)) return "high";
+  return "normal";
+}
 
 export function buildAiAssistModel(
   messages: ConversationMessageRecord[],
@@ -23,14 +46,24 @@ export function buildAiAssistModel(
         : "unknown";
 
   const lastCustomerMessage = [...messages].reverse().find((message) => message.message_type === "incoming");
+  const detectedLanguage = detectConversationLanguage(messages);
+  const baseSuggested = buildSuggestedReplies(lastCustomerMessage?.content ?? "");
+  const suggestedReplies = baseSuggested.map((reply) =>
+    buildLanguageAwareSuggestedReply(reply, detectedLanguage),
+  );
 
   return {
-    suggestedReplies: buildSuggestedReplies(lastCustomerMessage?.content ?? ""),
+    suggestedReplies,
     knowledgeSuggestions,
     sentiment,
     summary: buildConversationSummary(messages),
+    intent: inferIntent(lastCustomerMessage?.content ?? ""),
+    priority: inferPriority(sentiment, corpus),
     escalationRecommended: sentiment === "negative" || corpus.includes("manager"),
-    translationPlaceholder: "Translation will be provided by AI Runtime in a future sprint.",
+    translationPlaceholder: `AI replies will follow ${languageDisplayLabel(detectedLanguage)}.`,
+    detectedLanguage,
+    languageLabel: languageDisplayLabel(detectedLanguage),
+    confidence: corpus.length > 0 ? Math.min(0.95, 0.55 + corpus.length / 200) : 0.5,
   };
 }
 

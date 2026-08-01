@@ -9,7 +9,7 @@ const AI_DASHBOARD_SECTIONS = new Set<DashboardSectionId>([
   "prompts",
   "knowledge",
   "automation",
-  "team-inbox",
+  "omnichannel",
   "channels",
 ]);
 

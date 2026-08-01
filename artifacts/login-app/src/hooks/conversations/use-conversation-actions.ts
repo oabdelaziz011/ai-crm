@@ -32,5 +32,17 @@ export function useConversationActions(companyId: string | null) {
     onSuccess: (_, variables) => invalidate(variables.conversationId),
   });
 
-  return { assign, release, close, invalidate };
+  const updateMetadata = useMutation({
+    mutationFn: async (input: { conversationId: string; metadata: Record<string, unknown> }) =>
+      services.conversations.updateMetadata(context, input),
+    onSuccess: (_, variables) => invalidate(variables.conversationId),
+  });
+
+  const updateState = useMutation({
+    mutationFn: async (input: { conversationId: string; state: import("@workspace/ai-conversation").ConversationState }) =>
+      services.conversations.updateState(context, input),
+    onSuccess: (_, variables) => invalidate(variables.conversationId),
+  });
+
+  return { assign, release, close, updateMetadata, updateState, invalidate };
 }

@@ -190,7 +190,6 @@
     "permissions": "User Permissions",
     "whatsapp": "WhatsApp Automation",
     "aiPlatform": "AI Platform",
-    "teamInbox": "Team Inbox",
     "omnichannel": "Omnichannel Console",
     "channels": "Channels",
     "aiUsage": "AI Usage & Cost",
@@ -970,7 +969,7 @@
         "users": "Manage team members and access.",
         "roles": "Configure roles and permissions.",
         "whatsapp": "Manage WhatsApp automation flows.",
-        "team-inbox": "Monitor and reply to customer conversations across channels.",
+        "omnichannel": "Monitor and reply to customer conversations across channels.",
         "channels": "Connect and manage WhatsApp and other communication channels.",
         "ai-usage": "Track AI token usage and estimated costs.",
         "ai-analytics": "Review AI execution performance and traces.",
@@ -1521,8 +1520,8 @@
       "empty": "No invoices yet. Create your first one!"
     },
     "inbox": {
-      "title": "Team Inbox",
-      "subtitle": "Unified inbox for AI and human-handled conversations",
+      "title": "Omnichannel Console",
+      "subtitle": "Unified console for AI and human-handled conversations across channels",
       "conversations": "Conversations",
       "conversationsHint": "Select a thread to view messages and respond",
       "selectConversation": "Select a conversation to view the thread",
@@ -4450,17 +4449,51 @@
     "human": "Human",
     "typingPlaceholder": "Typing indicator placeholder",
     "stats": {
-      "open": "Open conversations",
-      "unread": "Unread messages",
+      "open": "Open",
+      "unread": "Unread",
+      "assigned": "Assigned",
+      "waiting": "Waiting",
+      "waitingCustomer": "Waiting Customer",
+      "waitingAi": "Waiting AI",
+      "escalated": "Escalated",
+      "resolved": "Resolved",
+      "resolvedToday": "Resolved Today",
       "human": "Human-owned",
       "channels": "Active channels"
+    },
+    "queues": {
+      "title": "Queues",
+      "unassigned": "Unassigned",
+      "mine": "My Conversations",
+      "team": "Team Queue",
+      "waitingCustomer": "Waiting Customer",
+      "waitingAi": "Waiting AI",
+      "escalated": "Escalated",
+      "closed24h": "Closed (24h)",
+      "closedToday": "Closed Today"
+    },
+    "tags": {
+      "title": "Tags",
+      "vip": "VIP",
+      "complaint": "Complaint",
+      "sales": "Sales",
+      "support": "Support"
+    },
+    "header": {
+      "status": "Status",
+      "sla": "Response SLA",
+      "language": "Language",
+      "lastActivity": "Last activity"
     },
     "filters": {
       "all": "All",
       "unread": "Unread",
       "mine": "Mine",
+      "assigned": "Assigned",
+      "ai": "AI",
       "pinned": "Pinned",
-      "archived": "Archived"
+      "archived": "Archived",
+      "tags": "Tags"
     },
     "channels": {
       "whatsapp": "WhatsApp",
@@ -4475,30 +4508,96 @@
       "placeholder": "Write a reply, note, or choose a suggested response…",
       "templates": "Templates",
       "variables": "Variables",
-      "voicePlaceholder": "Voice (coming soon)"
+      "voicePlaceholder": "Voice",
+      "emoji": "Emoji",
+      "attachments": "Attachments",
+      "aiRewrite": "AI rewrite",
+      "translate": "Translate",
+      "language": "Language"
     },
     "aiAssist": {
       "title": "AI Assist",
       "summary": "Conversation summary",
+      "intent": "Intent",
       "sentiment": "Sentiment",
+      "priority": "Priority",
       "knowledge": "Knowledge suggestions",
+      "suggestedReply": "Suggested reply",
+      "confidence": "Confidence",
       "escalation": "Escalation recommended for this conversation",
       "translation": "Translation"
     },
     "actions": {
+      "reply": "Reply",
+      "assign": "Assign",
+      "status": "Status",
+      "escalate": "Escalate",
+      "close": "Close",
+      "resolve": "Resolve",
+      "reopen": "Reopen",
+      "ai": "AI",
       "takeover": "Take ownership",
       "release": "Release ownership",
-      "close": "Close conversation"
+      "returnConversation": "Return conversation",
+      "cancelEscalation": "Cancel escalation",
+      "more": "More"
     },
+    "customer": {
+      "createCustomer": "Create Customer",
+      "linkCustomer": "Link Existing Customer",
+      "selectCustomer": "Select a customer",
+      "vip": "VIP",
+      "owner": "Owner",
+      "unassigned": "Unassigned"
+    },
+    "assignment": {
+      "user": "User",
+      "team": "Team",
+      "department": "Department",
+      "aiEmployee": "AI Employee",
+      "queue": "Queue"
+    },
+    "escalation": {
+      "defaultReason": "Escalated from omnichannel workspace",
+      "dialogTitle": "Escalate conversation",
+      "escalateTo": "Escalate to",
+      "reason": "Reason",
+      "priority": "Priority",
+      "notes": "Notes",
+      "levels": {
+        "agent": "Agent",
+        "team_leader": "Team Leader",
+        "manager": "Manager",
+        "admin": "Admin"
+      }
+    },
+    "escalatedBadge": "Escalated",
     "sidebar": {
-      "profile": "Customer profile",
+      "customer": "Customer",
+      "aiSummary": "AI Summary",
+      "crm": "CRM",
+      "assignment": "Assignment",
+      "properties": "Properties",
       "timeline": "Timeline",
+      "internalNotes": "Internal Notes",
+      "recentActivity": "Recent Activity",
+      "assignTo": "Assign to",
+      "escalationHistory": "Escalation history",
+      "profile": "Customer profile",
       "bookings": "Bookings",
       "invoices": "Invoices",
       "tickets": "Open tickets",
       "knowledge": "Knowledge suggestions",
       "aiActions": "Recent AI actions",
-      "empty": "Link a customer to see CRM context"
+      "empty": "Link a customer to see CRM context",
+      "crmTabs": {
+        "customer": "Customer",
+        "orders": "Orders",
+        "invoices": "Invoices",
+        "tickets": "Tickets",
+        "activities": "Activities",
+        "timeline": "Timeline"
+      }
     }
   },
   "organization": {
@@ -6745,8 +6844,8 @@
         "title": "WhatsApp Cloud",
         "description": "Manage WhatsApp credentials and webhook routing via Channel Administration."
       },
-      "teamInbox": {
-        "title": "Team Inbox",
+      "omnichannel": {
+        "title": "Omnichannel Console",
         "description": "Monitor conversations, take over from AI, and send human replies."
       },
       "openai": {

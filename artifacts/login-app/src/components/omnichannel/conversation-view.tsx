@@ -1,137 +1,248 @@
-import { memo } from "react";
-import { DashboardCard, DashboardErrorBanner } from "@/components/dashboard/ui";
-import { ConversationAssignment } from "@/components/omnichannel/conversation-assignment";
-import { MessageBubble } from "@/components/omnichannel/message-bubble";
-import { AiAssistPanel, ReplyComposer } from "@/components/omnichannel/reply-composer";
-import { ChannelBadge, HandlerModeBadge } from "@/components/omnichannel/channel-badge";
+import { memo, useRef } from "react";
+import { DashboardErrorBanner } from "@/components/dashboard/ui";
+import { CustomerHeader } from "@/components/omnichannel/customer-header";
+import { ConversationActionBar } from "@/components/omnichannel/conversation-action-bar";
+import { MessageThread } from "@/components/omnichannel/message-thread";
+import { ReplyComposer } from "@/components/omnichannel/reply-composer";
+import { OmnichannelPanel } from "@/components/omnichannel/omnichannel-panel";
 import type {
   OmnichannelAiAssistModel,
   UnifiedConversation,
   UnifiedMessage,
 } from "@/lib/omnichannel/types/unified-conversation";
+import type { LifecycleSnapshot, LifecycleAction } from "@/lib/conversation-lifecycle";
+import type { ConversationRecord } from "@workspace/ai-conversation";
+import { usePermissions } from "@/hooks/use-rbac";
+import { CONVERSATION_LIFECYCLE_PERMISSIONS } from "@/lib/conversation-lifecycle";
+
+export type ConversationViewLabels = {
+  selectConversation: string;
+  loading: string;
+  unknownContact: string;
+  createCustomer: string;
+  linkCustomer: string;
+  vip: string;
+  owner: string;
+  unassigned: string;
+  escalated: string;
+  status: string;
+  sla: string;
+  language: string;
+  lastActivity: string;
+  resolve: string;
+  reopen: string;
+  reply: string;
+  assign: string;
+  statusAction: string;
+  escalate: string;
+  close: string;
+  ai: string;
+  release: string;
+  returnConversation: string;
+  cancelEscalation: string;
+  more: string;
+  internalNote: string;
+  send: string;
+  templates: string;
+  variables: string;
+  voicePlaceholder: string;
+  emoji: string;
+  attachments: string;
+  aiRewrite: string;
+  translate: string;
+  composerPlaceholder: string;
+  languageComposer: string;
+};
 
 type ConversationViewProps = {
   conversation: UnifiedConversation | null;
   messages: UnifiedMessage[];
   aiAssist: OmnichannelAiAssistModel;
+  lifecycleSnapshot?: LifecycleSnapshot | null;
   isLoading: boolean;
   isSending: boolean;
   sendError: string | null;
   assignedToMe: boolean;
   actionsPending: boolean;
-  labels: {
-    selectConversation: string;
-    loading: string;
-    typingPlaceholder: string;
-    reply: string;
-    internalNote: string;
-    send: string;
-    templates: string;
-    variables: string;
-    voicePlaceholder: string;
-    aiAssistTitle: string;
-    summary: string;
-    sentiment: string;
-    knowledge: string;
-    escalation: string;
-    translation: string;
-    takeover: string;
-    release: string;
-    close: string;
-    ai: string;
-    human: string;
-    composerPlaceholder: string;
-  };
+  escalated?: boolean;
+  ownerLabel?: string | null;
+  isClosed?: boolean;
+  canPerform?: (record: ConversationRecord, action: LifecycleAction) => boolean;
+  canLinkCustomer?: boolean;
+  canCreateCustomer?: boolean;
+  labels: ConversationViewLabels;
   onSend: (payload: { text: string; mode: "reply" | "internal_note" }) => void;
   onAssign: () => void;
   onRelease: () => void;
   onClose: () => void;
+  onResolve?: () => void;
+  onReopen?: () => void;
+  onEscalate: () => void;
+  onReturnConversation: () => void;
+  onCancelEscalation: () => void;
+  onOpenAiSection: () => void;
+  onCreateCustomer?: () => void;
+  onLinkCustomer?: () => void;
 };
 
 export const ConversationView = memo(function ConversationView({
   conversation,
   messages,
   aiAssist,
+  lifecycleSnapshot,
   isLoading,
   isSending,
   sendError,
   assignedToMe,
   actionsPending,
+  escalated,
+  ownerLabel,
+  isClosed,
+  canPerform,
+  canLinkCustomer,
+  canCreateCustomer,
   labels,
   onSend,
   onAssign,
   onRelease,
   onClose,
+  onResolve,
+  onReopen,
+  onEscalate,
+  onReturnConversation,
+  onCancelEscalation,
+  onOpenAiSection,
+  onCreateCustomer,
+  onLinkCustomer,
 }: ConversationViewProps) {
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canViewInternalNotes =
+    isSuperAdmin
+    || hasPermission(CONVERSATION_LIFECYCLE_PERMISSIONS.internalNote)
+    || hasPermission(CONVERSATION_LIFECYCLE_PERMISSIONS.reply);
+
   if (!conversation) {
     return (
-      <DashboardCard className="flex h-full items-center justify-center p-8">
+      <OmnichannelPanel className="flex h-full items-center justify-center p-8">
         <p className="text-sm text-muted-foreground">{labels.selectConversation}</p>
-      </DashboardCard>
+      </OmnichannelPanel>
     );
   }
 
+  const customerMessages = messages.filter((message) => !message.isInternalNote);
+  const internalNotes = canViewInternalNotes
+    ? messages.filter((message) => message.isInternalNote)
+    : [];
+  const record = conversation.source;
+  const actionAllowed = (action: LifecycleAction) => canPerform?.(record, action) ?? false;
+  const header = lifecycleSnapshot?.header;
+
   return (
-    <DashboardCard className="flex h-full flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 p-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold">{conversation.customer?.name ?? labels.selectConversation}</h2>
-            <ChannelBadge channel={conversation.channel} />
-            <HandlerModeBadge mode={conversation.handlerMode} aiLabel={labels.ai} humanLabel={labels.human} />
-          </div>
-          <p className="mt-1 text-xs capitalize text-muted-foreground">
-            {conversation.status.replace(/_/g, " ")} · {conversation.priority}
-          </p>
-          <p className="mt-1 text-[10px] text-muted-foreground">{labels.typingPlaceholder}</p>
-        </div>
-        <ConversationAssignment
-          assignedToMe={assignedToMe}
-          disabled={actionsPending}
-          takeoverLabel={labels.takeover}
-          releaseLabel={labels.release}
-          closeLabel={labels.close}
-          onAssign={onAssign}
-          onRelease={onRelease}
-          onClose={onClose}
+    <OmnichannelPanel className="h-full">
+      {header ? (
+        <CustomerHeader
+          header={header}
+          handlerMode={conversation.handlerMode}
+          escalated={escalated}
+          languageLabel={aiAssist.languageLabel}
+          lastActivityAt={conversation.lastActivityAt}
+          canLinkCustomer={canLinkCustomer}
+          canCreateCustomer={canCreateCustomer}
+          labels={{
+          unknownContact: labels.unknownContact,
+          createCustomer: labels.createCustomer,
+          linkCustomer: labels.linkCustomer,
+          vip: labels.vip,
+          owner: labels.owner,
+          unassigned: labels.unassigned,
+          escalated: labels.escalated,
+          status: labels.status,
+          sla: labels.sla,
+          language: labels.language,
+          lastActivity: labels.lastActivity,
+        }}
+        onCreateCustomer={onCreateCustomer}
+        onLinkCustomer={onLinkCustomer}
         />
-      </div>
+      ) : null}
+
+      <ConversationActionBar
+        assignedToMe={assignedToMe}
+        disabled={actionsPending || Boolean(isClosed)}
+        escalated={escalated}
+        canAssign={actionAllowed("take_over")}
+        canRelease={actionAllowed("return_to_ai")}
+        canClose={actionAllowed("close")}
+        canResolve={actionAllowed("resolve")}
+        canReopen={actionAllowed("reopen")}
+        canEscalate={actionAllowed("escalate")}
+        isClosed={Boolean(isClosed)}
+        labels={{
+          reply: labels.reply,
+          assign: labels.assign,
+          status: labels.statusAction,
+          ai: labels.ai,
+          escalate: labels.escalate,
+          close: labels.close,
+          resolve: labels.resolve,
+          reopen: labels.reopen,
+          release: labels.release,
+          returnConversation: labels.returnConversation,
+          cancelEscalation: labels.cancelEscalation,
+          more: labels.more,
+        }}
+        onFocusComposer={() => composerRef.current?.focus()}
+        onAssign={onAssign}
+        onRelease={onRelease}
+        onClose={onClose}
+        onResolve={onResolve}
+        onReopen={onReopen}
+        onEscalate={onEscalate}
+        onReturnConversation={onReturnConversation}
+        onCancelEscalation={onCancelEscalation}
+        onOpenAi={onOpenAiSection}
+      />
 
       {sendError ? <DashboardErrorBanner message={sendError} /> : null}
 
-      <div className="grid flex-1 min-h-0 xl:grid-cols-[1fr_280px]">
-        <div className="flex min-h-0 flex-col">
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            {isLoading ? <p className="text-sm text-muted-foreground">{labels.loading}</p> : null}
-            {!isLoading &&
-              messages.map((message) => <MessageBubble key={message.id} message={message} />)}
-          </div>
-          <ReplyComposer
-            disabled={conversation.status === "closed"}
-            isSending={isSending}
-            suggestedReplies={aiAssist.suggestedReplies}
-            placeholder={labels.composerPlaceholder}
-            internalNoteLabel={labels.internalNote}
-            replyLabel={labels.reply}
-            sendLabel={labels.send}
-            templatesLabel={labels.templates}
-            variablesLabel={labels.variables}
-            voicePlaceholderLabel={labels.voicePlaceholder}
-            onSend={onSend}
-          />
+      <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-transparent to-black/[0.08]">
+        <div
+          className="flex-1 overflow-y-auto px-4 py-4 sm:px-5"
+          role="log"
+          aria-live="polite"
+          aria-label="Conversation messages"
+        >
+          {isLoading ? <p className="text-sm text-muted-foreground">{labels.loading}</p> : null}
+          {!isLoading ? (
+            <MessageThread
+              messages={[...customerMessages, ...internalNotes]}
+              showInternalNotes={canViewInternalNotes}
+            />
+          ) : null}
         </div>
-        <div className="hidden border-s border-white/5 p-4 xl:block">
-          <AiAssistPanel
-            model={aiAssist}
-            title={labels.aiAssistTitle}
-            summaryLabel={labels.summary}
-            sentimentLabel={labels.sentiment}
-            knowledgeLabel={labels.knowledge}
-            escalationLabel={labels.escalation}
-            translationLabel={labels.translation}
-          />
-        </div>
+
+        <ReplyComposer
+          ref={composerRef}
+          disabled={Boolean(isClosed)}
+          isSending={isSending}
+          suggestedReplies={aiAssist.suggestedReplies}
+          detectedLanguage={aiAssist.languageLabel}
+          placeholder={labels.composerPlaceholder}
+          internalNoteLabel={labels.internalNote}
+          replyLabel={labels.reply}
+          sendLabel={labels.send}
+          templatesLabel={labels.templates}
+          variablesLabel={labels.variables}
+          voicePlaceholderLabel={labels.voicePlaceholder}
+          emojiLabel={labels.emoji}
+          attachmentsLabel={labels.attachments}
+          aiRewriteLabel={labels.aiRewrite}
+          translateLabel={labels.translate}
+          languageLabel={labels.languageComposer}
+          onSend={onSend}
+        />
       </div>
-    </DashboardCard>
+    </OmnichannelPanel>
   );
 });

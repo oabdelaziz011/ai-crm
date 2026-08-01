@@ -13,6 +13,8 @@ type ReplyTarget = {
   externalThreadId: string | null;
 };
 
+type ReplyMode = "reply" | "internal_note";
+
 async function resolveChannelSession(conversationId: string) {
   const { data } = await supabase
     .from("channel_sessions")
@@ -33,7 +35,7 @@ export function useTeamInboxReply(companyId: string | null) {
   const [isSending, setIsSending] = useState(false);
 
   const sendReply = useCallback(
-    async (target: ReplyTarget, text: string) => {
+    async (target: ReplyTarget, text: string, mode: ReplyMode = "reply") => {
       const trimmed = text.trim();
       if (!trimmed || !companyId || isSending) return;
 
@@ -43,26 +45,31 @@ export function useTeamInboxReply(companyId: string | null) {
       try {
         await conversationServices.messages.addMessage(conversationContext, {
           conversationId: target.conversationId,
-          messageType: "outgoing",
+          messageType: mode === "internal_note" ? "internal_note" : "outgoing",
           contentType: "text",
           content: trimmed,
-          metadata: { source: "team_inbox", agentUserId: profile?.id ?? null },
+          metadata: {
+            source: mode === "internal_note" ? "omnichannel_internal_note" : "team_inbox",
+            agentUserId: profile?.id ?? null,
+          },
         });
 
-        const session = await resolveChannelSession(target.conversationId);
+        if (mode === "reply") {
+          const session = await resolveChannelSession(target.conversationId);
 
-        if (session?.id && session.company_channel_id && session.external_thread_id) {
-          await channelPlatform.dispatcher.dispatch(channelContext, {
-            companyId,
-            companyChannelId: session.company_channel_id,
-            channelKey: session.channel_key ?? target.channelKey,
-            conversationId: target.conversationId,
-            channelSessionId: session.id,
-            externalThreadId: session.external_thread_id,
-            text: trimmed,
-            persistConversationMessage: false,
-            metadata: { source: "team_inbox" },
-          });
+          if (session?.id && session.company_channel_id && session.external_thread_id) {
+            await channelPlatform.dispatcher.dispatch(channelContext, {
+              companyId,
+              companyChannelId: session.company_channel_id,
+              channelKey: session.channel_key ?? target.channelKey,
+              conversationId: target.conversationId,
+              channelSessionId: session.id,
+              externalThreadId: session.external_thread_id,
+              text: trimmed,
+              persistConversationMessage: false,
+              metadata: { source: "team_inbox" },
+            });
+          }
         }
 
         await queryClient.invalidateQueries({

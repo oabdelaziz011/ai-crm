@@ -30,7 +30,7 @@ await page.evaluate(async ({ url, key }) => {
 const before = await page.evaluate(() => Object.keys(localStorage));
 console.log("keys after sign-in", before);
 
-await page.goto("http://localhost:5173/dashboard/inbox", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(3000);
 console.log("final url", page.url());
 console.log("body snippet", (await page.textContent("body"))?.slice(0, 200));

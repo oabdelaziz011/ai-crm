@@ -452,6 +452,71 @@
       "description": "Allows releasing conversations back to AI handling.",
       "group": "conversations"
     },
+    "conversation.view": {
+      "name": "View Conversations",
+      "description": "Allows viewing omnichannel conversations.",
+      "group": "conversations"
+    },
+    "conversation.assign": {
+      "name": "Assign Conversations",
+      "description": "Allows assigning conversations to agents or queues.",
+      "group": "conversations"
+    },
+    "conversation.reassign": {
+      "name": "Reassign Conversations",
+      "description": "Allows reassigning conversations between agents or teams.",
+      "group": "conversations"
+    },
+    "conversation.take_over": {
+      "name": "Take Over Conversations",
+      "description": "Allows taking ownership of a conversation.",
+      "group": "conversations"
+    },
+    "conversation.return_to_ai": {
+      "name": "Return to AI",
+      "description": "Allows releasing conversations back to AI handling.",
+      "group": "conversations"
+    },
+    "conversation.escalate": {
+      "name": "Escalate Conversations",
+      "description": "Allows escalating conversations to supervisors.",
+      "group": "conversations"
+    },
+    "conversation.resolve": {
+      "name": "Resolve Conversations",
+      "description": "Allows marking conversations as resolved.",
+      "group": "conversations"
+    },
+    "conversation.close": {
+      "name": "Close Conversations",
+      "description": "Allows closing conversations.",
+      "group": "conversations"
+    },
+    "conversation.reopen": {
+      "name": "Reopen Conversations",
+      "description": "Allows reopening closed conversations.",
+      "group": "conversations"
+    },
+    "conversation.internal_note": {
+      "name": "Internal Notes",
+      "description": "Allows adding internal notes to conversations.",
+      "group": "conversations"
+    },
+    "conversation.link_customer": {
+      "name": "Link Customer",
+      "description": "Allows linking an existing customer to a conversation.",
+      "group": "conversations"
+    },
+    "conversation.create_customer": {
+      "name": "Create Customer",
+      "description": "Allows creating a customer from a conversation.",
+      "group": "conversations"
+    },
+    "conversation.reply": {
+      "name": "Reply in Conversations",
+      "description": "Allows replying to customer messages.",
+      "group": "conversations"
+    },
     "ai.analytics.view": {
       "name": "View AI Analytics",
       "description": "Allows viewing AI performance analytics.",

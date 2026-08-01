@@ -1,4 +1,10 @@
 import type { ConversationRecord } from "@workspace/ai-conversation";
+import type { LifecycleState } from "@/lib/conversation-lifecycle/types/lifecycle-types";
+import {
+  getActiveEscalation,
+  resolveConversationOwner,
+  resolveLifecycleState,
+} from "@/lib/conversation-lifecycle";
 import type {
   OmnichannelAgentRef,
   OmnichannelChannelKey,
@@ -19,10 +25,51 @@ function readBooleanMetadata(metadata: Record<string, unknown>, key: string): bo
   return metadata[key] === true;
 }
 
-function resolveHandlerMode(conversation: ConversationRecord): UnifiedConversation["handlerMode"] {
-  if (conversation.state === "transferred_to_human" || conversation.assigned_user_id) return "human";
-  if (conversation.state === "waiting_api") return "mixed";
+function resolveHandlerModeFromLifecycle(
+  lifecycleState: LifecycleState,
+  backendState: ConversationRecord["state"],
+): UnifiedConversation["handlerMode"] {
+  if (backendState === "waiting_api") return "mixed";
+  if (lifecycleState === "AI_HANDLING" || lifecycleState === "NEW") return "ai";
+  if (
+    lifecycleState === "ASSIGNED"
+    || lifecycleState === "ESCALATED"
+    || lifecycleState === "PENDING_CUSTOMER"
+    || lifecycleState === "PENDING_INTERNAL"
+    || lifecycleState === "WAITING_QUEUE"
+    || lifecycleState === "REOPENED"
+  ) {
+    return "human";
+  }
   return "ai";
+}
+
+function resolveLifecycleFields(conversation: ConversationRecord) {
+  const isEscalated = getActiveEscalation(conversation.metadata) != null;
+  const lifecycleState = resolveLifecycleState({
+    conversationId: conversation.id,
+    backendState: conversation.state,
+    assignedUserId: conversation.assigned_user_id,
+    aiAssistantId: conversation.ai_assistant_id,
+    metadata: conversation.metadata,
+    hasActiveEscalation: isEscalated,
+    lastParticipantType: conversation.last_participant_type,
+  });
+  const owner = resolveConversationOwner({
+    conversationId: conversation.id,
+    backendState: conversation.state,
+    assignedUserId: conversation.assigned_user_id,
+    aiAssistantId: conversation.ai_assistant_id,
+    metadata: conversation.metadata,
+    hasActiveEscalation: isEscalated,
+    lastParticipantType: conversation.last_participant_type,
+  });
+  return {
+    lifecycleState,
+    isEscalated,
+    ownerLabel: owner.label,
+    handlerMode: resolveHandlerModeFromLifecycle(lifecycleState, conversation.state),
+  };
 }
 
 function resolveChannelLabel(
@@ -46,6 +93,8 @@ export class ConversationAggregator {
       ? agentsById.get(conversation.assigned_user_id) ?? null
       : null;
 
+    const lifecycle = resolveLifecycleFields(conversation);
+
     return {
       id: conversation.id,
       companyId: conversation.company_id,
@@ -55,7 +104,10 @@ export class ConversationAggregator {
       lastMessage: conversation.last_message_preview,
       lastActivityAt: conversation.last_message_at ?? conversation.updated_at,
       assignedAgent,
-      handlerMode: resolveHandlerMode(conversation),
+      handlerMode: lifecycle.handlerMode,
+      lifecycleState: lifecycle.lifecycleState,
+      isEscalated: lifecycle.isEscalated,
+      ownerLabel: lifecycle.ownerLabel,
       priority: conversation.priority,
       status: conversation.state,
       unreadCount: conversation.unread_count_employee,
@@ -144,8 +196,21 @@ export class ConversationAggregator {
       result = result.filter((item) => item.assignedAgent?.id === filters.assignedUserId);
     }
 
+    if (filters.assignedOnly) {
+      result = result.filter((item) => Boolean(item.assignedAgent));
+    }
+
     if (filters.handlerMode && filters.handlerMode !== "all") {
       result = result.filter((item) => item.handlerMode === filters.handlerMode);
+    }
+
+    if (filters.tag?.trim()) {
+      const tag = filters.tag.trim().toLowerCase();
+      result = result.filter((item) => {
+        const tags = item.source.metadata?.tags;
+        if (!Array.isArray(tags)) return false;
+        return tags.some((entry) => String(entry).toLowerCase() === tag);
+      });
     }
 
     if (filters.search?.trim()) {

@@ -15,7 +15,7 @@ for (const p of [resolve(projectRoot, ".env"), resolve(projectRoot, "artifacts/l
 }
 
 const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const redirectTo = "http://localhost:5173/auth/callback?next=/dashboard/inbox";
+const redirectTo = "http://localhost:5173/auth/callback?next=/dashboard/omnichannel";
 const { data, error } = await admin.auth.admin.generateLink({
   type: "magiclink",
   email: "demo-platform@vaultos.local",

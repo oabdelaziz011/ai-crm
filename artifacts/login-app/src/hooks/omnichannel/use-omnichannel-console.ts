@@ -1,14 +1,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/use-rbac";
 import { useAuth } from "@/context/auth-context";
 import { useConversationListInfinite } from "@/hooks/conversations/use-conversation-list";
 import { useConversationMessages } from "@/hooks/conversations/use-conversation-messages";
 import { useConversationActions } from "@/hooks/conversations/use-conversation-actions";
 import { useTeamInboxReply } from "@/hooks/conversations/use-team-inbox-reply";
 import { useCustomersEnrichment } from "@/hooks/use-customers";
+import { useProfiles } from "@/hooks/use-profiles";
 import { conversationAggregator } from "@/lib/omnichannel/aggregators/conversation-aggregator";
 import { mapUnifiedMessages } from "@/lib/omnichannel/aggregators/message-mapper";
 import { buildAiAssistModel } from "@/lib/omnichannel/services/ai-assist-service";
+import { applyConversationQueue } from "@/lib/omnichannel/services/conversation-queues";
 import { OMNICHANNEL_LIST_STALE_MS } from "@/lib/omnichannel/cache/query-keys";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
 import {
@@ -17,6 +20,7 @@ import {
 } from "@/lib/omnichannel/permissions";
 import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-conversation";
 import { useConversationRealtime, useOmnichannelAccess } from "@/hooks/omnichannel/use-conversation-realtime";
+import { fetchOmnichannelCustomerContext } from "@/lib/omnichannel/services/omnichannel-customer-context-service";
 import { omnichannelCustomerContextKey } from "@/lib/omnichannel/cache/query-keys";
 
 function mapListFilters(filters: OmnichannelListFilters) {
@@ -31,6 +35,7 @@ function mapListFilters(filters: OmnichannelListFilters) {
 
 export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedId: string | null) {
   const access = useOmnichannelAccess();
+  const { user } = useAuth();
   const companyId = access?.companyId ?? null;
   const canView = canViewOmnichannelConsole(access);
 
@@ -41,6 +46,8 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
   );
 
   const { data: customers = [] } = useCustomersEnrichment();
+  const { data: profiles = [] } = useProfiles();
+
   const customersById = useMemo(
     () =>
       new Map(
@@ -57,7 +64,17 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     [customers],
   );
 
-  const agentsById = useMemo(() => new Map<string, { id: string; name: string }>(), []);
+  const agentsById = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const profile of profiles) {
+      if (!profile.user_id) continue;
+      map.set(profile.user_id, {
+        id: profile.user_id,
+        name: profile.full_name?.trim() || profile.email || profile.user_id,
+      });
+    }
+    return map;
+  }, [profiles]);
 
   const aggregated = useMemo(() => {
     if (!access) return [];
@@ -68,8 +85,8 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     });
     const supported = conversationAggregator.filterBySupportedChannels(unified);
     const filtered = conversationAggregator.applyFilters(supported, filters);
-    return filtered;
-  }, [flatConversations, customersById, agentsById, filters, access]);
+    return applyConversationQueue(filtered, filters.queue, user?.id);
+  }, [flatConversations, customersById, agentsById, filters, access, user?.id]);
 
   const visibleConversations = useMemo(
     () => filterConversationsByChannelPermission(aggregated, OMNICHANNEL_PRIMARY_CHANNELS),
@@ -108,6 +125,8 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     selectedConversation,
     messages: unifiedMessages,
     aiAssist,
+    agentsById,
+    profiles,
     listQuery,
     messagesQuery,
     assign,
@@ -120,20 +139,36 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
 }
 
 export function useOmnichannelCustomerContext(customerId: string | null) {
-  const { profile } = useAuth();
+  const { profile, user, isSuperAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
 
   return useQuery({
     queryKey: omnichannelCustomerContextKey(customerId),
     enabled: Boolean(customerId && profile?.company_id),
     staleTime: OMNICHANNEL_LIST_STALE_MS,
-    queryFn: async () => ({
-      customer: null,
-      openTickets: 0,
-      recentBookings: 0,
-      outstandingInvoices: 0,
-      timelinePreview: [] as string[],
-      knowledgeSuggestions: [] as string[],
-      recentAiActions: [] as string[],
-    }),
+    queryFn: async () => {
+      if (!customerId || !profile?.company_id) {
+        return {
+          customer: null,
+          openTickets: 0,
+          recentBookings: 0,
+          outstandingInvoices: 0,
+          timelinePreview: [] as string[],
+          knowledgeSuggestions: [] as string[],
+          recentAiActions: [] as string[],
+        };
+      }
+
+      return fetchOmnichannelCustomerContext({
+        customerId,
+        companyId: profile.company_id,
+        access: {
+          companyId: profile.company_id,
+          userId: user?.id ?? "",
+          isSuperAdmin: Boolean(isSuperAdmin),
+          hasPermission,
+        },
+      });
+    },
   });
 }

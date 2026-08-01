@@ -11,29 +11,33 @@ type MessageBubbleProps = {
 export const MessageBubble = memo(function MessageBubble({ message }: MessageBubbleProps) {
   const isCustomer = message.senderType === "customer";
   const isSystem = message.senderType === "system" || message.senderType === "automation";
+  const isInternalNote = message.isInternalNote;
 
   return (
     <div
       className={cn(
         "flex w-full",
-        isCustomer ? "justify-start" : isSystem ? "justify-center" : "justify-end",
+        isInternalNote ? "justify-center" : isCustomer ? "justify-start" : isSystem ? "justify-center" : "justify-end",
       )}
     >
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl border px-3 py-2",
-          isCustomer && "border-white/10 bg-white/5",
-          !isCustomer && !isSystem && "border-primary/20 bg-primary/10",
-          isSystem && "border-white/5 bg-black/20 text-center",
+          "max-w-[85%] rounded-2xl border px-3 py-2 transition-colors duration-150",
+          isInternalNote && "border-amber-400/25 bg-amber-400/10",
+          isCustomer && !isInternalNote && "border-white/10 bg-white/5",
+          !isCustomer && !isSystem && !isInternalNote && "border-primary/20 bg-primary/10",
+          isSystem && !isInternalNote && "border-white/5 bg-black/20 text-center",
         )}
       >
         <div className="mb-1 flex flex-wrap items-center gap-2">
-          <ChannelBadge channel={message.channel} />
-          <span className="text-[10px] font-medium text-muted-foreground">{message.senderLabel}</span>
+          {!isInternalNote ? <ChannelBadge channel={message.channel} /> : null}
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {isInternalNote ? "Internal note" : message.senderLabel}
+          </span>
           <span className="text-[10px] text-muted-foreground">
             {format(new Date(message.timestamp), "PPp")}
           </span>
-          {!isSystem ? (
+          {!isSystem && !isInternalNote ? (
             <span className="text-[10px] capitalize text-muted-foreground">{message.deliveryStatus}</span>
           ) : null}
         </div>

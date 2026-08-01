@@ -452,6 +452,71 @@
       "description": "يسمح بإسناد المحادثات مجدداً للذكاء الاصطناعي.",
       "group": "conversations"
     },
+    "conversation.view": {
+      "name": "عرض المحادثات",
+      "description": "يسمح بعرض محادثات القنوات المتعددة.",
+      "group": "conversations"
+    },
+    "conversation.assign": {
+      "name": "إسناد المحادثات",
+      "description": "يسمح بإسناد المحادثات للوكلاء أو قوائم الانتظار.",
+      "group": "conversations"
+    },
+    "conversation.reassign": {
+      "name": "إعادة إسناد المحادثات",
+      "description": "يسمح بإعادة إسناد المحادثات بين الوكلاء أو الفرق.",
+      "group": "conversations"
+    },
+    "conversation.take_over": {
+      "name": "الاستلام",
+      "description": "يسمح باستلام ملكية المحادثة.",
+      "group": "conversations"
+    },
+    "conversation.return_to_ai": {
+      "name": "إرجاع للذكاء الاصطناعي",
+      "description": "يسمح بإرجاع المحادثة للذكاء الاصطناعي.",
+      "group": "conversations"
+    },
+    "conversation.escalate": {
+      "name": "تصعيد المحادثات",
+      "description": "يسمح بتصعيد المحادثات للمشرفين.",
+      "group": "conversations"
+    },
+    "conversation.resolve": {
+      "name": "حل المحادثات",
+      "description": "يسمح بتحديد المحادثات كمحلولة.",
+      "group": "conversations"
+    },
+    "conversation.close": {
+      "name": "إغلاق المحادثات",
+      "description": "يسمح بإغلاق المحادثات.",
+      "group": "conversations"
+    },
+    "conversation.reopen": {
+      "name": "إعادة فتح المحادثات",
+      "description": "يسمح بإعادة فتح المحادثات المغلقة.",
+      "group": "conversations"
+    },
+    "conversation.internal_note": {
+      "name": "ملاحظات داخلية",
+      "description": "يسمح بإضافة ملاحظات داخلية للمحادثات.",
+      "group": "conversations"
+    },
+    "conversation.link_customer": {
+      "name": "ربط عميل",
+      "description": "يسمح بربط عميل موجود بمحادثة.",
+      "group": "conversations"
+    },
+    "conversation.create_customer": {
+      "name": "إنشاء عميل",
+      "description": "يسمح بإنشاء عميل من محادثة.",
+      "group": "conversations"
+    },
+    "conversation.reply": {
+      "name": "الرد في المحادثات",
+      "description": "يسمح بالرد على رسائل العملاء.",
+      "group": "conversations"
+    },
     "ai.analytics.view": {
       "name": "عرض تحليلات الذكاء الاصطناعي",
       "description": "يسمح بعرض تحليلات أداء الذكاء الاصطناعي.",

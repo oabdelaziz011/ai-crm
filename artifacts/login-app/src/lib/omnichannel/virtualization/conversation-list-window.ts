@@ -5,7 +5,7 @@ export type ConversationListWindow = {
   totalHeight: number;
 };
 
-export const OMNICHANNEL_LIST_ROW_HEIGHT = 96;
+export const OMNICHANNEL_LIST_ROW_HEIGHT = 112;
 export const OMNICHANNEL_LIST_OVERSCAN = 8;
 
 export function computeConversationListWindow(

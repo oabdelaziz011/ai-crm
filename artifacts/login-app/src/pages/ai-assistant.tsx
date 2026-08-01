@@ -820,10 +820,10 @@ export function AiAssistantPage() {
                   available: hasPermission("channels.view") || isSuperAdmin,
                 },
                 {
-                  title: t("aiAssistant.integrations.teamInbox.title"),
-                  description: t("aiAssistant.integrations.teamInbox.description"),
+                  title: t("aiAssistant.integrations.omnichannel.title"),
+                  description: t("aiAssistant.integrations.omnichannel.description"),
                   action: t("aiAssistant.integrations.openLink"),
-                  onClick: () => setLocation(getDashboardRouteById("team-inbox").nestedPath),
+                  onClick: () => setLocation(getDashboardRouteById("omnichannel").nestedPath),
                   available: hasPermission("ai.conversations.view") || isSuperAdmin,
                 },
                 {

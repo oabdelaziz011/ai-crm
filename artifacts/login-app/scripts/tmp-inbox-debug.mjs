@@ -40,7 +40,7 @@ await page.evaluate(async ({ url, key }) => {
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(5000);
 console.log("url after reload", page.url());
-await page.goto("http://localhost:5173/dashboard/inbox", { waitUntil: "networkidle" });
+await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
 await page.waitForTimeout(5000);
 const text = await page.textContent("body");
 console.log("has CNV-000031", text?.includes("CNV-000031"));

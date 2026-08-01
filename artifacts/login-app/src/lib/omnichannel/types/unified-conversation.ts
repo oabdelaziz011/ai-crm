@@ -7,6 +7,9 @@ import type {
   MessageStatus,
   MessageType,
 } from "@workspace/ai-conversation";
+import type { LifecycleState } from "@/lib/conversation-lifecycle/types/lifecycle-types";
+import type { DetectedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
+import type { OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
 
 export const OMNICHANNEL_PRIMARY_CHANNELS = [
   "whatsapp",
@@ -49,6 +52,9 @@ export type UnifiedConversation = {
   lastActivityAt: string | null;
   assignedAgent: OmnichannelAgentRef | null;
   handlerMode: "ai" | "human" | "mixed";
+  lifecycleState: LifecycleState;
+  isEscalated: boolean;
+  ownerLabel: string | null;
   priority: ConversationPriority;
   status: ConversationState;
   unreadCount: number;
@@ -73,6 +79,7 @@ export type UnifiedMessage = {
   attachments: UnifiedMessageAttachment[];
   aiActionLabel: string | null;
   automationActionLabel: string | null;
+  isInternalNote: boolean;
   source: ConversationMessageRecord;
 };
 
@@ -93,6 +100,9 @@ export type OmnichannelListFilters = {
   unreadOnly?: boolean;
   pinnedOnly?: boolean;
   archived?: boolean;
+  assignedOnly?: boolean;
+  queue?: OmnichannelQueueId;
+  tag?: string;
   sortBy?: "last_activity" | "priority" | "unread";
   sortDirection?: "asc" | "desc";
 };
@@ -102,8 +112,13 @@ export type OmnichannelAiAssistModel = {
   knowledgeSuggestions: string[];
   sentiment: "positive" | "neutral" | "negative" | "unknown";
   summary: string;
+  intent: string;
+  priority: ConversationPriority;
   escalationRecommended: boolean;
   translationPlaceholder: string;
+  detectedLanguage: DetectedConversationLanguage;
+  languageLabel: string;
+  confidence: number;
 };
 
 export type OmnichannelCustomerContext = {

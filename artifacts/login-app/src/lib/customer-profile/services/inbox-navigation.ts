@@ -34,5 +34,5 @@ export function consumeQueuedTeamInboxConversationFocus(): string | null {
 }
 
 export function getTeamInboxNestedPath(): string {
-  return getDashboardRouteById("team-inbox").nestedPath;
+  return getDashboardRouteById("omnichannel").nestedPath;
 }

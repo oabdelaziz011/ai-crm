@@ -76,7 +76,6 @@
     "permissions": "صلاحيات المستخدم",
     "whatsapp": "أتمتة واتساب",
     "aiPlatform": "منصة الذكاء الاصطناعي",
-    "teamInbox": "صندوق الفريق",
     "omnichannel": "وحدة القنوات الموحدة",
     "channels": "القنوات",
     "aiUsage": "استخدام وتكلفة الذكاء الاصطناعي",
@@ -854,7 +853,7 @@
         "users": "إدارة أعضاء الفريق والوصول.",
         "roles": "تهيئة الأدوار والصلاحيات.",
         "whatsapp": "إدارة تدفقات أتمتة واتساب.",
-        "team-inbox": "مراقبة والرد على محادثات العملاء عبر القنوات.",
+        "omnichannel": "مراقبة والرد على محادثات العملاء عبر القنوات.",
         "channels": "ربط وإدارة واتساب وقنوات التواصل الأخرى.",
         "ai-usage": "تتبع استخدام الرموز وتكاليف الذكاء الاصطناعي.",
         "ai-analytics": "مراجعة أداء تنفيذ الذكاء الاصطناعي والتتبعات.",
@@ -1365,8 +1364,8 @@
       "empty": "لا توجد فواتير بعد. أنشئ أول فاتورة!"
     },
     "inbox": {
-      "title": "صندوق الفريق",
-      "subtitle": "صندوق موحد لمحادثات الذكاء الاصطناعي والموظفين",
+      "title": "وحدة القنوات الموحدة",
+      "subtitle": "وحدة موحدة لمحادثات الذكاء الاصطناعي والموظفين عبر القنوات",
       "conversations": "المحادثات",
       "conversationsHint": "اختر محادثة لعرض الرسائل والرد",
       "selectConversation": "اختر محادثة لعرض المحادثة",
@@ -4039,17 +4038,51 @@
     "human": "بشري",
     "typingPlaceholder": "placeholder لمؤشر الكتابة",
     "stats": {
-      "open": "المحادثات المفتوحة",
-      "unread": "الرسائل غير المقروءة",
+      "open": "مفتوحة",
+      "unread": "غير مقروء",
+      "assigned": "مسندة",
+      "waiting": "بانتظار",
+      "waitingCustomer": "بانتظار العميل",
+      "waitingAi": "بانتظار الذكاء الاصطناعي",
+      "escalated": "مصعّدة",
+      "resolved": "محلولة",
+      "resolvedToday": "محلولة اليوم",
       "human": "مملوكة لموظف",
       "channels": "القنوات النشطة"
+    },
+    "queues": {
+      "title": "قوائم الانتظار",
+      "unassigned": "غير مسندة",
+      "mine": "محادثاتي",
+      "team": "قائمة الفريق",
+      "waitingCustomer": "بانتظار العميل",
+      "waitingAi": "بانتظار الذكاء الاصطناعي",
+      "escalated": "مصعّدة",
+      "closed24h": "مغلقة (24 س)",
+      "closedToday": "مغلقة اليوم"
+    },
+    "tags": {
+      "title": "الوسوم",
+      "vip": "VIP",
+      "complaint": "شكوى",
+      "sales": "مبيعات",
+      "support": "دعم"
+    },
+    "header": {
+      "status": "الحالة",
+      "sla": "زمن الاستجابة",
+      "language": "اللغة",
+      "lastActivity": "آخر نشاط"
     },
     "filters": {
       "all": "الكل",
       "unread": "غير مقروء",
       "mine": "محادثاتي",
+      "assigned": "مسندة",
+      "ai": "ذكاء اصطناعي",
       "pinned": "مثبتة",
-      "archived": "مؤرشفة"
+      "archived": "مؤرشفة",
+      "tags": "الوسوم"
     },
     "channels": {
       "whatsapp": "واتساب",
@@ -4064,30 +4097,93 @@
       "placeholder": "اكتب ردًا أو ملاحظة أو اختر اقتراحًا…",
       "templates": "القوالب",
       "variables": "المتغيرات",
-      "voicePlaceholder": "الصوت (قريبًا)"
+      "voicePlaceholder": "صوت",
+      "emoji": "إيموجي",
+      "attachments": "مرفقات",
+      "aiRewrite": "إعادة صياغة بالذكاء الاصطناعي",
+      "translate": "ترجمة",
+      "language": "اللغة"
     },
     "aiAssist": {
       "title": "مساعد الذكاء الاصطناعي",
       "summary": "ملخص المحادثة",
+      "intent": "النية",
       "sentiment": "المشاعر",
+      "priority": "الأولوية",
       "knowledge": "اقتراحات المعرفة",
+      "suggestedReply": "رد مقترح",
+      "confidence": "الثقة",
       "escalation": "يُوصى بالتصعيد لهذه المحادثة",
       "translation": "الترجمة"
     },
     "actions": {
+      "reply": "رد",
+      "assign": "إسناد",
+      "status": "الحالة",
+      "escalate": "تصعيد",
+      "close": "إغلاق",
+      "ai": "ذكاء اصطناعي",
       "takeover": "تولي الملكية",
       "release": "إطلاق الملكية",
-      "close": "إغلاق المحادثة"
+      "returnConversation": "إرجاع المحادثة",
+      "cancelEscalation": "إلغاء التصعيد",
+      "more": "المزيد"
     },
+    "customer": {
+      "createCustomer": "إنشاء عميل",
+      "linkCustomer": "ربط عميل موجود",
+      "vip": "VIP",
+      "owner": "المالك",
+      "unassigned": "غير مسند"
+    },
+    "assignment": {
+      "user": "مستخدم",
+      "team": "فريق",
+      "department": "قسم",
+      "aiEmployee": "موظف ذكاء اصطناعي",
+      "queue": "قائمة"
+    },
+    "escalation": {
+      "defaultReason": "تم التصعيد من وحدة القنوات الموحدة",
+      "dialogTitle": "تصعيد المحادثة",
+      "escalateTo": "تصعيد إلى",
+      "reason": "السبب",
+      "priority": "الأولوية",
+      "notes": "ملاحظات",
+      "levels": {
+        "agent": "الموظف",
+        "team_leader": "قائد الفريق",
+        "manager": "المدير",
+        "admin": "المسؤول"
+      }
+    },
+    "escalatedBadge": "مصعّدة",
     "sidebar": {
-      "profile": "ملف العميل",
+      "customer": "العميل",
+      "aiSummary": "ملخص الذكاء الاصطناعي",
+      "crm": "CRM",
+      "assignment": "الإسناد",
+      "properties": "الخصائص",
       "timeline": "الخط الزمني",
+      "internalNotes": "ملاحظات داخلية",
+      "recentActivity": "النشاط الأخير",
+      "assignTo": "إسناد إلى",
+      "escalationHistory": "سجل التصعيد",
+      "profile": "ملف العميل",
       "bookings": "الحجوزات",
       "invoices": "الفواتير",
       "tickets": "التذاكر المفتوحة",
       "knowledge": "اقتراحات المعرفة",
       "aiActions": "إجراءات الذكاء الاصطناعي الأخيرة",
-      "empty": "اربط عميلًا لعرض سياق CRM"
+      "empty": "اربط عميلًا لعرض سياق CRM",
+      "crmTabs": {
+        "customer": "العميل",
+        "orders": "الطلبات",
+        "invoices": "الفواتير",
+        "tickets": "التذاكر",
+        "activities": "الأنشطة",
+        "timeline": "الخط الزمني"
+      }
     }
   },
   "organization": {
@@ -6129,8 +6225,8 @@
         "title": "WhatsApp Cloud",
         "description": "إدارة بيانات واتساب وتوجيه webhook عبر إدارة القنوات."
       },
-      "teamInbox": {
-        "title": "صندوق الفريق",
+      "omnichannel": {
+        "title": "وحدة القنوات الموحدة",
         "description": "مراقبة المحادثات والتولّي من الذكاء الاصطناعي وإرسال ردود بشرية."
       },
       "openai": {

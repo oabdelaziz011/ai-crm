@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef, useState } from "react";
 import { ConversationItem } from "@/components/omnichannel/conversation-item";
-import { DashboardCard } from "@/components/dashboard/ui";
+import { OmnichannelPanel, OmnichannelPanelHeader } from "@/components/omnichannel/omnichannel-panel";
 import {
   computeConversationListWindow,
   OMNICHANNEL_LIST_ROW_HEIGHT,
@@ -22,6 +22,9 @@ type ConversationListProps = {
   onSelect: (conversationId: string) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  getOwnerLabel?: (conversation: UnifiedConversation) => string | null;
+  isEscalated?: (conversationId: string) => boolean;
+  escalatedLabel?: string;
 };
 
 export const ConversationList = memo(function ConversationList({
@@ -39,6 +42,9 @@ export const ConversationList = memo(function ConversationList({
   onSelect,
   onLoadMore,
   hasMore,
+  getOwnerLabel,
+  isEscalated,
+  escalatedLabel,
 }: ConversationListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -58,11 +64,8 @@ export const ConversationList = memo(function ConversationList({
   }, [hasMore, onLoadMore]);
 
   return (
-    <DashboardCard className="flex h-full flex-col overflow-hidden">
-      <div className="border-b border-white/5 p-4">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-      </div>
+    <OmnichannelPanel className="h-full">
+      <OmnichannelPanelHeader title={title} subtitle={subtitle} />
       <div ref={containerRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
         {isLoading ? <p className="p-4 text-sm text-muted-foreground">{loadingLabel}</p> : null}
         {!isLoading && conversations.length === 0 ? (
@@ -80,12 +83,15 @@ export const ConversationList = memo(function ConversationList({
                   noPreviewLabel={noPreviewLabel}
                   aiLabel={aiLabel}
                   humanLabel={humanLabel}
+                  ownerLabel={conversation.ownerLabel ?? getOwnerLabel?.(conversation) ?? null}
+                  escalated={conversation.isEscalated || (isEscalated?.(conversation.id) ?? false)}
+                  escalatedLabel={escalatedLabel}
                 />
               </div>
             ))}
           </div>
         </div>
       </div>
-    </DashboardCard>
+    </OmnichannelPanel>
   );
 });

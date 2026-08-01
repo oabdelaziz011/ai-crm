@@ -59,7 +59,7 @@ await page.waitForTimeout(4000);
 console.log("After reload URL:", page.url());
 
 if (!page.url().includes("/dashboard")) {
-  await page.goto("http://localhost:5173/dashboard/inbox", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:5173/dashboard/omnichannel", { waitUntil: "networkidle" });
   await page.waitForTimeout(4000);
 }
 console.log("Dashboard URL:", page.url());

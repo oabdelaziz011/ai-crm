@@ -33,9 +33,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   customer?: Customer | null;
+  defaultPhone?: string | null;
+  onCreated?: (customer: Customer) => void;
 }
 
-export function CustomerModal({ open, onClose, customer }: Props) {
+export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated }: Props) {
   const { t } = useTranslation("common");
   const isEdit = !!customer;
   const create = useCreateCustomer();
@@ -64,13 +66,13 @@ export function CustomerModal({ open, onClose, customer }: Props) {
       form.reset({
         name:  customer?.name  ?? "",
         email: customer?.email ?? "",
-        phone: customer?.phone ?? "",
+        phone: customer?.phone ?? defaultPhone ?? "",
         age: customer?.age == null ? "" : String(customer.age),
         gender: customer?.gender ?? "",
         notes: customer?.notes ?? "",
       });
     }
-  }, [open, customer, form]);
+  }, [open, customer, defaultPhone, form]);
 
   const onSubmit = (values: FormValues) => {
     const payload = {
@@ -89,7 +91,11 @@ export function CustomerModal({ open, onClose, customer }: Props) {
       });
     } else {
       create.mutate(payload, {
-        onSuccess: () => { onClose(); form.reset(); },
+        onSuccess: (created) => {
+          onCreated?.(created);
+          onClose();
+          form.reset();
+        },
         onError: (e) => form.setError("root", { message: e.message }),
       });
     }

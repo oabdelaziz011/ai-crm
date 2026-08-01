@@ -85,22 +85,3 @@ export class DebuggerInspectorSlotImpl implements DebuggerInspectorSlot {
   }
 }
 
-export function createWatchesSlotPlaceholder() {
-  return { kind: "watches" as const };
-}
-
-export function createBreakpointsSlotPlaceholder() {
-  return { kind: "breakpoints" as const };
-}
-
-export function createProfilerSlotPlaceholder() {
-  return { kind: "profiler" as const };
-}
-
-export function createCallStackSlotPlaceholder() {
-  return { kind: "call-stack" as const };
-}
-
-export function createReportsSlotPlaceholder() {
-  return { kind: "reports" as const };
-}

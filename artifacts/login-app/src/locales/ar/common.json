@@ -2138,6 +2138,14 @@
         "runtime": "زمن التشغيل",
         "callStack": "مكدس الاستدعاء",
         "timeline": "الخط الزمني",
+        "breakpoints": "نقاط التوقف",
+        "watches": "مراقبة",
+        "expression": "تقييم",
+        "profiler": "محلل الأداء",
+        "performance": "الأداء",
+        "hotPath": "المسار الساخن",
+        "metrics": "المقاييس",
+        "report": "التقرير",
         "groupLabel": "لوحات المصحح"
       },
       "replay": {
@@ -2188,6 +2196,70 @@
         "debuggerBadge": "المصحح",
         "replayBadge": "إطار إعادة التشغيل",
         "selectEvent": "اختر حدث الخط الزمني {{title}}"
+      },
+      "advanced": {
+        "loading": "جاري تحميل المصحح المتقدم…",
+        "enabled": "مفعّل",
+        "disabled": "معطّل",
+        "remove": "إزالة",
+        "breakpoints": {
+          "addNode": "نقطة توقف على خطوة",
+          "addVariable": "نقطة توقف على متغير",
+          "addExpression": "نقطة توقف على تعبير",
+          "addExecutionCount": "عدد التنفيذات",
+          "empty": "لا توجد نقاط توقف مشروطة.",
+          "hits": "{{count}} إصابات",
+          "recentHits": "آخر الإصابات"
+        },
+        "watches": {
+          "add": "إضافة مراقبة",
+          "empty": "لا توجد تعبيرات مراقبة بعد."
+        },
+        "expression": {
+          "label": "التعبير",
+          "placeholder": "count > 0",
+          "result": "النتيجة"
+        },
+        "profiler": {
+          "executions": "{{count}} تنفيذات",
+          "avg": "متوسط {{ms}}ms",
+          "min": "أدنى {{ms}}ms",
+          "max": "أقصى {{ms}}ms",
+          "total": "الإجمالي {{ms}}ms"
+        },
+        "performance": {
+          "empty": "لا توجد إبرازات أداء لهذا الإطار.",
+          "duration": "{{ms}}ms",
+          "kind": {
+            "slow": "بطيء",
+            "repeated": "مكرر",
+            "waiting": "بانتظار"
+          }
+        },
+        "hotPath": {
+          "empty": "لا توجد مسارات ساخنة من إعادة التشغيل بعد.",
+          "meta": "{{visits}} زيارات · {{ms}}ms",
+          "kind": {
+            "most_executed": "المسار الأكثر تنفيذًا",
+            "longest": "أطول مسار",
+            "slowest": "أبطأ مسار"
+          }
+        },
+        "metrics": {
+          "nodes": "خطوات سير العمل",
+          "branches": "فروع",
+          "frames": "إطارات إعادة التشغيل",
+          "variables": "المتغيرات",
+          "duration": "مدة إعادة التشغيل",
+          "memory": "تقدير الذاكرة"
+        },
+        "report": {
+          "readiness": "درجة الجاهزية",
+          "warnings": "تحذيرات",
+          "errors": "أخطاء",
+          "bottlenecks": "اختناقات",
+          "unusedBranches": "فروع غير مستخدمة"
+        }
       }
     },
     "triggers": {

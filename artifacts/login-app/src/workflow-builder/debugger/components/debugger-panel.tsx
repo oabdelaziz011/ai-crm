@@ -1,15 +1,22 @@
-import { memo, useCallback, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useState } from "react";
 import {
+  Activity,
+  BarChart3,
   Clock3,
   GitBranch,
   Layers3,
   PlayCircle,
+  Route,
+  ScrollText,
   Variable,
+  Eye,
+  FlaskConical,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard/ui";
+import { useDebuggerController } from "../context/debug-context";
 import { useDebuggerPanelViewModel, useReplayController } from "../hooks/use-replay-controller";
 import { CallStackViewer } from "./call-stack-viewer";
 import { DebuggerTimeline } from "./debugger-timeline";
@@ -18,7 +25,45 @@ import { ReplayControls } from "./replay-controls";
 import { RuntimeInspector } from "./runtime-inspector";
 import { VariableWatch } from "./variable-watch";
 
-type DebuggerTab = "execution" | "variables" | "runtime" | "callstack" | "timeline";
+const BreakpointsPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.BreakpointsPanel })),
+);
+const WatchesPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.WatchesPanel })),
+);
+const ExpressionEvaluatorPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.ExpressionEvaluatorPanel })),
+);
+const ProfilerPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.ProfilerPanel })),
+);
+const PerformanceTimelinePanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.PerformanceTimelinePanel })),
+);
+const HotPathPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.HotPathPanel })),
+);
+const ExecutionMetricsPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.ExecutionMetricsPanel })),
+);
+const DebugReportPanel = lazy(() =>
+  import("./debugger-advanced-panels").then((module) => ({ default: module.DebugReportPanel })),
+);
+
+type DebuggerTab =
+  | "execution"
+  | "variables"
+  | "runtime"
+  | "callstack"
+  | "timeline"
+  | "breakpoints"
+  | "watches"
+  | "expression"
+  | "profiler"
+  | "performance"
+  | "hotpath"
+  | "metrics"
+  | "report";
 
 type DebuggerPanelProps = {
   onFocusNode: (nodeId: string) => void;
@@ -28,6 +73,8 @@ export const DebuggerPanel = memo(function DebuggerPanel({ onFocusNode }: Debugg
   const { t } = useTranslation("common");
   const panelModel = useDebuggerPanelViewModel();
   const replayController = useReplayController();
+  const debuggerController = useDebuggerController();
+  const advancedModel = debuggerController.viewModel.advanced;
   const [tab, setTab] = useState<DebuggerTab>("execution");
 
   const handleSelectNode = useCallback(
@@ -77,9 +124,17 @@ export const DebuggerPanel = memo(function DebuggerPanel({ onFocusNode }: Debugg
         <TabButton active={tab === "runtime"} icon={Layers3} label={t("workflowBuilder.debugger.tabs.runtime")} onClick={() => setTab("runtime")} />
         <TabButton active={tab === "callstack"} icon={GitBranch} label={t("workflowBuilder.debugger.tabs.callStack")} onClick={() => setTab("callstack")} />
         <TabButton active={tab === "timeline"} icon={Clock3} label={t("workflowBuilder.debugger.tabs.timeline")} onClick={() => setTab("timeline")} />
+        <TabButton active={tab === "breakpoints"} icon={FlaskConical} label={t("workflowBuilder.debugger.tabs.breakpoints")} onClick={() => setTab("breakpoints")} />
+        <TabButton active={tab === "watches"} icon={Eye} label={t("workflowBuilder.debugger.tabs.watches")} onClick={() => setTab("watches")} />
+        <TabButton active={tab === "expression"} icon={Activity} label={t("workflowBuilder.debugger.tabs.expression")} onClick={() => setTab("expression")} />
+        <TabButton active={tab === "profiler"} icon={BarChart3} label={t("workflowBuilder.debugger.tabs.profiler")} onClick={() => setTab("profiler")} />
+        <TabButton active={tab === "performance"} icon={Route} label={t("workflowBuilder.debugger.tabs.performance")} onClick={() => setTab("performance")} />
+        <TabButton active={tab === "hotpath"} icon={GitBranch} label={t("workflowBuilder.debugger.tabs.hotPath")} onClick={() => setTab("hotpath")} />
+        <TabButton active={tab === "metrics"} icon={BarChart3} label={t("workflowBuilder.debugger.tabs.metrics")} onClick={() => setTab("metrics")} />
+        <TabButton active={tab === "report"} icon={ScrollText} label={t("workflowBuilder.debugger.tabs.report")} onClick={() => setTab("report")} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border/60 p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/60 p-3">
         {tab === "execution" ? <ExecutionInspector model={panelModel.execution} onSelectNode={handleSelectNode} /> : null}
         {tab === "variables" ? (
           <VariableWatch
@@ -102,6 +157,32 @@ export const DebuggerPanel = memo(function DebuggerPanel({ onFocusNode }: Debugg
         {tab === "timeline" ? (
           <DebuggerTimeline timeline={panelModel.timeline} onSelectTimelineEvent={handleSelectTimelineEvent} />
         ) : null}
+        <Suspense fallback={<p className="text-sm text-muted-foreground">{t("workflowBuilder.debugger.advanced.loading")}</p>}>
+          {tab === "breakpoints" ? (
+            <BreakpointsPanel
+              model={advancedModel}
+              onAdd={debuggerController.addBreakpoint}
+              onRemove={debuggerController.removeBreakpoint}
+              onToggle={debuggerController.toggleBreakpoint}
+            />
+          ) : null}
+          {tab === "watches" ? (
+            <WatchesPanel
+              model={advancedModel}
+              onAdd={(expression) => debuggerController.addWatch(expression)}
+              onRemove={debuggerController.removeWatch}
+              onToggle={debuggerController.toggleWatch}
+            />
+          ) : null}
+          {tab === "expression" ? (
+            <ExpressionEvaluatorPanel model={advancedModel} onChange={debuggerController.setExpressionDraft} />
+          ) : null}
+          {tab === "profiler" ? <ProfilerPanel model={advancedModel} /> : null}
+          {tab === "performance" ? <PerformanceTimelinePanel model={advancedModel} /> : null}
+          {tab === "hotpath" ? <HotPathPanel model={advancedModel} /> : null}
+          {tab === "metrics" ? <ExecutionMetricsPanel model={advancedModel} /> : null}
+          {tab === "report" ? <DebugReportPanel model={advancedModel} /> : null}
+        </Suspense>
       </div>
     </DashboardCard>
   );

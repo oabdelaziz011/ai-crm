@@ -2382,6 +2382,14 @@
         "runtime": "Runtime",
         "callStack": "Call Stack",
         "timeline": "Timeline",
+        "breakpoints": "Breakpoints",
+        "watches": "Watches",
+        "expression": "Evaluate",
+        "profiler": "Profiler",
+        "performance": "Performance",
+        "hotPath": "Hot Path",
+        "metrics": "Metrics",
+        "report": "Report",
         "groupLabel": "Debugger panels"
       },
       "replay": {
@@ -2432,6 +2440,70 @@
         "debuggerBadge": "Debugger",
         "replayBadge": "Replay frame",
         "selectEvent": "Select timeline event {{title}}"
+      },
+      "advanced": {
+        "loading": "Loading advanced debugger…",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "remove": "Remove",
+        "breakpoints": {
+          "addNode": "Node breakpoint",
+          "addVariable": "Variable breakpoint",
+          "addExpression": "Expression breakpoint",
+          "addExecutionCount": "Execution count",
+          "empty": "No conditional breakpoints configured.",
+          "hits": "{{count}} hits",
+          "recentHits": "Recent hits"
+        },
+        "watches": {
+          "add": "Add watch",
+          "empty": "No watch expressions yet."
+        },
+        "expression": {
+          "label": "Expression",
+          "placeholder": "count > 0",
+          "result": "Result"
+        },
+        "profiler": {
+          "executions": "{{count}} executions",
+          "avg": "Avg {{ms}}ms",
+          "min": "Min {{ms}}ms",
+          "max": "Max {{ms}}ms",
+          "total": "Total {{ms}}ms"
+        },
+        "performance": {
+          "empty": "No performance highlights for this frame.",
+          "duration": "{{ms}}ms",
+          "kind": {
+            "slow": "Slow",
+            "repeated": "Repeated",
+            "waiting": "Waiting"
+          }
+        },
+        "hotPath": {
+          "empty": "No hot paths derived from replay yet.",
+          "meta": "{{visits}} visits · {{ms}}ms",
+          "kind": {
+            "most_executed": "Most executed path",
+            "longest": "Longest path",
+            "slowest": "Slowest path"
+          }
+        },
+        "metrics": {
+          "nodes": "Workflow nodes",
+          "branches": "Branch edges",
+          "frames": "Replay frames",
+          "variables": "Variables",
+          "duration": "Replay duration",
+          "memory": "Memory estimate"
+        },
+        "report": {
+          "readiness": "Readiness score",
+          "warnings": "Warnings",
+          "errors": "Errors",
+          "bottlenecks": "Bottlenecks",
+          "unusedBranches": "Unused branches"
+        }
       }
     },
     "triggers": {

@@ -7,8 +7,12 @@ import { workflowDebuggerKey } from "../cache/debugger-query-keys";
 import { InMemoryDebuggerReplayRepository } from "../repositories/in-memory-debugger-replay-repository";
 import { mapReplayHistoryToActivityEvents, mapSelectedSnapshotToActivityEvents } from "../selectors/debug-timeline-adapter";
 import { buildReplayViewModel, resolveDisplayedSnapshot } from "../selectors/replay-selectors";
+import { buildDebuggerAdvancedViewModel } from "../selectors/debugger-advanced-selectors";
 import { DebuggerKernel } from "../services/debugger-kernel";
 import { createDefaultDebugSelectionState, type ReplayViewModel } from "../types/debugger-types";
+import type { DebuggerAdvancedViewModel } from "../types/debugger-advanced-types";
+import type { DebuggerBreakpointKind } from "../types/debugger-kernel-types";
+import { isDebuggerEventType } from "../types/debugger-event-types";
 
 type UseWorkflowDebuggerOptions = {
   enabled?: boolean;
@@ -18,6 +22,7 @@ type DebuggerViewModel = ReplayViewModel & {
   timelineEvents: ReturnType<typeof mapReplayHistoryToActivityEvents>;
   displayedSnapshot: ReturnType<typeof resolveDisplayedSnapshot>;
   frameSnapshots: ReadonlyArray<Readonly<import("../types/debugger-types").DebugFrame>["snapshot"]>;
+  advanced: DebuggerAdvancedViewModel;
 };
 
 export function useWorkflowDebugger(
@@ -35,6 +40,7 @@ export function useWorkflowDebugger(
   const kernel = useMemo(() => new DebuggerKernel(repository), [repository]);
   const [revision, setRevision] = useState(0);
   const lastSessionIdRef = useRef<string | null>(null);
+  const pausedBreakpointRef = useRef<string | null>(null);
 
   const bump = useCallback(() => {
     setRevision((value) => value + 1);
@@ -56,6 +62,22 @@ export function useWorkflowDebugger(
     kernel.observeSnapshot(scope, simulation.snapshot, document);
     bump();
   }, [bump, document, enabled, kernel, scope, simulation, simulation?.snapshot]);
+
+  useEffect(() => {
+    if (!enabled || !simulation) return;
+
+    return kernel.subscribe(scope, (event) => {
+      if (!isDebuggerEventType(event, "BreakpointHit") || !event.payload.live) return;
+      if (simulation.snapshot.status !== "running") {
+        pausedBreakpointRef.current = null;
+        return;
+      }
+      const breakpointId = event.payload.hit.breakpointId;
+      if (pausedBreakpointRef.current === breakpointId) return;
+      pausedBreakpointRef.current = breakpointId;
+      simulation.pause();
+    });
+  }, [enabled, kernel, scope, simulation]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -83,6 +105,13 @@ export function useWorkflowDebugger(
         timelineEvents: [],
         displayedSnapshot: idleSnapshot,
         frameSnapshots: [],
+        advanced: buildDebuggerAdvancedViewModel({
+          kernel,
+          scope,
+          document,
+          displayedSnapshot: idleSnapshot,
+          frames: [],
+        }),
       };
     }
 
@@ -109,6 +138,13 @@ export function useWorkflowDebugger(
       ...replayViewModel,
       displayedSnapshot: selectedSnapshot,
       frameSnapshots: frames.map((frame) => frame.snapshot),
+      advanced: buildDebuggerAdvancedViewModel({
+        kernel,
+        scope,
+        document,
+        displayedSnapshot: selectedSnapshot,
+        frames,
+      }),
       timelineEvents:
         replay.mode === "replay" && replaySnapshot
           ? mapSelectedSnapshotToActivityEvents({
@@ -130,6 +166,15 @@ export function useWorkflowDebugger(
     if (!enabled) return;
     queryClient.setQueryData(queryKey, viewModel);
   }, [enabled, queryClient, queryKey, viewModel]);
+
+  const runKernelAction = useCallback(
+    (action: () => void) => {
+      if (!enabled) return;
+      action();
+      bump();
+    },
+    [bump, enabled],
+  );
 
   const stepBack = useCallback(() => {
     if (!enabled) return false;
@@ -156,16 +201,12 @@ export function useWorkflowDebugger(
   );
 
   const resetReplay = useCallback(() => {
-    if (!enabled) return;
-    kernel.reset(scope);
-    bump();
-  }, [bump, enabled, kernel, scope]);
+    runKernelAction(() => kernel.reset(scope));
+  }, [kernel, runKernelAction, scope]);
 
   const followLive = useCallback(() => {
-    if (!enabled) return;
-    kernel.followLive(scope);
-    bump();
-  }, [bump, enabled, kernel, scope]);
+    runKernelAction(() => kernel.followLive(scope));
+  }, [kernel, runKernelAction, scope]);
 
   const stepFirst = useCallback(() => {
     if (!enabled) return false;
@@ -187,53 +228,119 @@ export function useWorkflowDebugger(
 
   const selectFrame = useCallback(
     (frameId: string | null) => {
-      if (!enabled) return;
-      kernel.selectFrame(scope, frameId);
-      bump();
+      runKernelAction(() => kernel.selectFrame(scope, frameId));
     },
-    [bump, enabled, kernel, scope],
+    [kernel, runKernelAction, scope],
   );
 
   const selectNode = useCallback(
     (nodeId: string | null) => {
-      if (!enabled) return;
-      kernel.selectNode(scope, nodeId);
-      bump();
+      runKernelAction(() => kernel.selectNode(scope, nodeId));
     },
-    [bump, enabled, kernel, scope],
+    [kernel, runKernelAction, scope],
   );
 
   const selectVariable = useCallback(
     (variableKey: string | null) => {
-      if (!enabled) return;
-      kernel.selectVariable(scope, variableKey);
-      bump();
+      runKernelAction(() => kernel.selectVariable(scope, variableKey));
     },
-    [bump, enabled, kernel, scope],
+    [kernel, runKernelAction, scope],
   );
 
   const selectTimelineEvent = useCallback(
     (eventId: string | null) => {
-      if (!enabled) return;
-      kernel.selectTimelineEvent(scope, eventId);
-      bump();
+      runKernelAction(() => kernel.selectTimelineEvent(scope, eventId));
     },
-    [bump, enabled, kernel, scope],
+    [kernel, runKernelAction, scope],
   );
 
   const selectExpression = useCallback(
     (expressionId: string | null) => {
-      if (!enabled) return;
-      kernel.selectExpression(scope, expressionId);
-      bump();
+      runKernelAction(() => kernel.selectExpression(scope, expressionId));
     },
-    [bump, enabled, kernel, scope],
+    [kernel, runKernelAction, scope],
   );
 
   const readReplayIndex = useCallback(() => {
     if (!enabled) return -1;
     return kernel.getReplayState(scope).index;
   }, [enabled, kernel, scope]);
+
+  const syncSimulationNodeBreakpoint = useCallback(
+    (nodeId: string | null | undefined) => {
+      if (nodeId && simulation) {
+        simulation.toggleBreakpoint(nodeId);
+      }
+    },
+    [simulation],
+  );
+
+  const addBreakpoint = useCallback(
+    (kind: DebuggerBreakpointKind) => {
+      if (!enabled) return null;
+      const created = kernel.addBreakpoint(scope, kind);
+      if (kind === "node") {
+        syncSimulationNodeBreakpoint(created.nodeId);
+      }
+      bump();
+      return created;
+    },
+    [bump, enabled, kernel, scope, syncSimulationNodeBreakpoint],
+  );
+
+  const removeBreakpoint = useCallback(
+    (breakpointId: string) => {
+      if (!enabled) return;
+      const removed = kernel.removeBreakpoint(scope, breakpointId);
+      if (removed?.kind === "node") {
+        syncSimulationNodeBreakpoint(removed.nodeId);
+      }
+      bump();
+    },
+    [bump, enabled, kernel, scope, syncSimulationNodeBreakpoint],
+  );
+
+  const toggleBreakpoint = useCallback(
+    (breakpointId: string, isEnabled: boolean) => {
+      runKernelAction(() => kernel.toggleBreakpoint(scope, breakpointId, isEnabled));
+    },
+    [kernel, runKernelAction, scope],
+  );
+
+  const addWatch = useCallback(
+    (expression: string, label?: string | null) => {
+      if (!enabled) return null;
+      const created = kernel.addWatch(scope, expression, label);
+      const snapshot = kernel.getSelectedSnapshot(scope) ?? simulation?.snapshot;
+      if (snapshot) {
+        kernel.observeSnapshot(scope, snapshot, document);
+      }
+      bump();
+      return created;
+    },
+    [bump, document, enabled, kernel, scope, simulation?.snapshot],
+  );
+
+  const removeWatch = useCallback(
+    (watchId: string) => {
+      runKernelAction(() => kernel.removeWatch(scope, watchId));
+    },
+    [kernel, runKernelAction, scope],
+  );
+
+  const toggleWatch = useCallback(
+    (watchId: string, isEnabled: boolean) => {
+      runKernelAction(() => kernel.toggleWatch(scope, watchId, isEnabled));
+    },
+    [kernel, runKernelAction, scope],
+  );
+
+  const setExpressionDraft = useCallback(
+    (expression: string | null) => {
+      runKernelAction(() => kernel.setExpressionDraft(scope, expression));
+    },
+    [kernel, runKernelAction, scope],
+  );
 
   return {
     enabled,
@@ -254,6 +361,13 @@ export function useWorkflowDebugger(
     selectVariable,
     selectTimelineEvent,
     selectExpression,
+    addBreakpoint,
+    removeBreakpoint,
+    toggleBreakpoint,
+    addWatch,
+    removeWatch,
+    toggleWatch,
+    setExpressionDraft,
   };
 }
 

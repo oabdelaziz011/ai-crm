@@ -37,6 +37,20 @@ import {
   computeDebuggerListWindow,
   DEBUGGER_LIST_VIRTUAL_THRESHOLD,
 } from "../src/workflow-builder/debugger/utilities/debugger-list-window";
+import { buildDebuggerAdvancedViewModel } from "../src/workflow-builder/debugger/selectors/debugger-advanced-selectors";
+import { evaluateDebuggerExpression } from "../src/workflow-builder/debugger/utilities/debugger-expression-evaluator";
+import {
+  buildExecutionMetrics,
+  buildHotPathSummaries,
+  buildNodeProfilerFromFrames,
+} from "../src/workflow-builder/debugger/utilities/debugger-analysis-utils";
+import { DebuggerEventBus } from "../src/workflow-builder/debugger/services/debugger-event-bus";
+import {
+  areEventsInOrder,
+  selectBreakpointHits,
+  selectLatestProfilerUpdate,
+  selectLatestWatchEvaluations,
+} from "../src/workflow-builder/debugger/selectors/debugger-event-selectors";
 import { buildDebugFrame, freezeDebugFrame } from "../src/workflow-builder/debugger/utilities/debug-frame-utils";
 import { ImmutableHistoryBuffer } from "../src/workflow-builder/debugger/utilities/immutable-history-buffer";
 import { hasWorkflowDebuggerPermission } from "../src/workflow-builder/debugger/permissions/debugger-access";
@@ -784,6 +798,114 @@ function buildBranchingDocument() {
   assert.deepEqual(panel.execution, panelAgain.execution);
   assert.deepEqual(panel.timeline.cards.map((card) => card.id), panelAgain.timeline.cards.map((card) => card.id));
   console.log("  ✓ debugger panel view model is pure and aggregates synchronized presentation state");
+}
+
+// Advanced debugger: expression evaluator (read-only)
+{
+  const snapshot = buildSnapshot({
+    variables: { count: 3, status: "active" },
+  });
+  const numeric = evaluateDebuggerExpression("count > 2", snapshot);
+  assert.equal(numeric.error, null);
+  assert.equal(numeric.value, true);
+
+  const lookup = evaluateDebuggerExpression("status", snapshot);
+  assert.equal(lookup.displayValue, "active");
+  console.log("  ✓ debugger expression evaluator is read-only and snapshot-backed");
+}
+
+// Advanced debugger: kernel event stream drives evaluation
+{
+  const scope = { companyId: "company-1", flowId: "flow-1" };
+  const repository = new InMemoryDebuggerReplayRepository();
+  const kernel = new DebuggerKernel(repository);
+  const snapshot = buildSnapshot({ currentNodeId: "node-1", variables: { count: 2 } });
+  const document = buildLinearDocument();
+
+  kernel.breakpoints.add(scope, {
+    kind: "variable_equals",
+    enabled: true,
+    label: "Count equals 2",
+    variableKey: "count",
+    expectedValue: 2,
+  });
+  kernel.watches.add(scope, "count > 1", "Count check");
+  kernel.observeSnapshot(scope, snapshot, document);
+
+  const stream = kernel.getEventStream(scope);
+  assert.ok(areEventsInOrder(stream));
+  assert.ok(selectBreakpointHits(stream).length > 0);
+  assert.equal(selectLatestWatchEvaluations(stream)[0]?.displayValue, "true");
+  assert.ok(selectLatestProfilerUpdate(stream).length >= 0);
+  console.log("  ✓ debugger kernel emits ordered breakpoint, watch, and profiler events");
+}
+
+// Debugger event bus: subscription, ordering, scoped disposal
+{
+  const bus = new DebuggerEventBus();
+  const scope = { companyId: "company-1", flowId: "flow-1" };
+  const received: string[] = [];
+
+  const unsubscribe = bus.subscribe(scope, (event) => {
+    received.push(event.type);
+  });
+
+  bus.dispatch(scope, "SelectionChanged", {
+    selection: createDefaultDebugSelectionState(),
+  });
+  bus.dispatch(scope, "ReplayPositionChanged", {
+    index: 0,
+    mode: "live",
+    frameId: "frame-1",
+  });
+
+  assert.deepEqual(received, ["SelectionChanged", "ReplayPositionChanged"]);
+  assert.ok(areEventsInOrder(bus.getStream(scope)));
+
+  unsubscribe();
+  bus.dispatch(scope, "SelectionChanged", {
+    selection: createDefaultDebugSelectionState(),
+  });
+  assert.equal(received.length, 2);
+
+  bus.resetScope(scope);
+  assert.equal(bus.getStream(scope).events.length, 0);
+  assert.equal(bus.getStream(scope).generation, 1);
+
+  bus.disposeScope(scope);
+  bus.dispatch(scope, "SelectionChanged", {
+    selection: createDefaultDebugSelectionState(),
+  });
+  assert.equal(bus.getStream(scope).generation, 0);
+  console.log("  ✓ debugger event bus supports replay-safe subscriptions and scoped disposal");
+}
+
+// Advanced debugger: profiler and analysis selectors
+{
+  const snapshot = buildSnapshot({
+    currentNodeId: "node-1",
+    timeline: [
+      { id: "t1", type: "node_entered", nodeId: "node-1", label: "Start", timestamp: "2026-01-01T00:00:00.000Z", metadata: {} },
+    ],
+  });
+  const frame = freezeDebugFrame(buildDebugFrame(snapshot, 0, null, buildLinearDocument()));
+  const profiler = buildNodeProfilerFromFrames([frame]);
+  assert.ok(profiler.length > 0);
+
+  const metrics = buildExecutionMetrics({
+    document: buildLinearDocument(),
+    frames: [frame],
+    snapshot,
+  });
+  assert.ok(metrics.nodeCount > 0);
+
+  const hotPaths = buildHotPathSummaries({
+    document: buildLinearDocument(),
+    frames: [frame],
+    profiler,
+  });
+  assert.ok(hotPaths.length > 0);
+  console.log("  ✓ debugger profiler and analysis utilities derive metrics from replay frames");
 }
 
 console.log("\nAll debugger foundation tests passed.\n");

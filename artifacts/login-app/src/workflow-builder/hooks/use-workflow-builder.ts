@@ -91,6 +91,8 @@ function hydrateInitialState(document: WorkflowDocument): BuilderState {
 function configValidationSignature(document: WorkflowDocument): string {
   return JSON.stringify({
     name: document.name,
+    triggerType: document.triggerType,
+    extensions: document.extensions ?? null,
     nodes: document.nodes.map((node) => ({ id: node.id, type: node.type, config: node.config })),
   });
 }
@@ -213,7 +215,7 @@ export function useWorkflowBuilder(document: WorkflowDocument | null) {
   );
 
   const setMetadata = useCallback(
-    (patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType">>) => {
+    (patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType" | "extensions">>) => {
       dispatch({ type: "SET_METADATA", patch, batch: true });
     },
     [dispatch],

@@ -60,6 +60,8 @@ export type WorkflowDocument = {
   name: string;
   description: string;
   triggerType: "inbound_message" | "manual" | "webhook" | "schedule" | "api_event";
+  /** Feature-owned slices keyed by extension id (e.g. triggerConfig). Core does not interpret contents. */
+  extensions?: Record<string, unknown>;
   status: "draft" | "active" | "disabled" | "archived";
   nodes: BuilderNode[];
   edges: BuilderEdge[];
@@ -147,7 +149,11 @@ export type BuilderState = {
 
 export type BuilderAction =
   | { type: "LOAD_DOCUMENT"; document: WorkflowDocument }
-  | { type: "SET_METADATA"; patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType">>; batch?: boolean }
+  | {
+      type: "SET_METADATA";
+      patch: Partial<Pick<WorkflowDocument, "name" | "description" | "triggerType" | "extensions">>;
+      batch?: boolean;
+    }
   | { type: "ADD_NODE"; node: BuilderNode }
   | { type: "UPDATE_NODE_CONFIG"; nodeId: string; patch: Record<string, unknown>; batch?: boolean }
   | { type: "UPDATE_NODE_POSITIONS"; positions: Array<{ id: string; x: number; y: number }>; transient?: boolean }

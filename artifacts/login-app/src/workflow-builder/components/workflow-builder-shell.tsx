@@ -4,6 +4,7 @@ import { usePermissions } from "@/hooks/use-rbac";
 import { registerBuiltInWorkflowNodes } from "../core/register-built-in-nodes";
 import { registerBuiltInVariableProviders } from "../core/variables/built-in-variable-providers";
 import { registerDefaultNodeRenderers } from "../core/registry/node-renderer-registry";
+import { registerTriggerPlatform } from "../triggers/register-trigger-platform";
 import type { WorkflowDocument } from "../core/types";
 import { useWorkflowBuilder } from "../hooks/use-workflow-builder";
 import { useWorkflowBuilderKeyboard } from "../hooks/use-workflow-builder-keyboard";
@@ -34,6 +35,7 @@ export function WorkflowBuilderShell({
     registerBuiltInWorkflowNodes();
     registerBuiltInVariableProviders();
     registerDefaultNodeRenderers();
+    registerTriggerPlatform();
   }, []);
 
   useEffect(() => {

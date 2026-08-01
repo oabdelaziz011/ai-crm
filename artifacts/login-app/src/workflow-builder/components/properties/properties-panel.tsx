@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { getWorkflowNodeDefinition } from "../../core/node-registry";
+import { resolveNodePropertyEditorOverride } from "../../core/node-property-editor-registry";
 import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
 import { resolveBuilderNodeEditorKey } from "../../core/persistence/builder-node-identity";
 import { useBuilderActions, useDocumentBuilderSlice } from "../../context/workflow-builder-context";
@@ -66,7 +67,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   }
 
   const definition = getWorkflowNodeDefinition(selected.type);
-  const PropertyEditor = definition.PropertyEditor;
+  const PropertyEditor = resolveNodePropertyEditorOverride(selected.type) ?? definition.PropertyEditor;
   const displayName = nodeText(definition.id, "displayName", definition.displayName);
   const description = nodeText(definition.id, "description", definition.description);
 

@@ -8,6 +8,8 @@ import type { WorkflowDocument } from "../core/types";
 import type { WorkflowRepository } from "../core/persistence/workflow-repository";
 import { useWorkflowSimulation } from "../simulation/hooks/use-workflow-simulation";
 import { hasWorkflowSimulationPermission } from "../simulation/permissions/workflow-simulation-access";
+import { useWorkflowTriggerConfiguration } from "../triggers/hooks/use-workflow-trigger-configuration";
+import { TriggerConfigurationProvider } from "../triggers/context/trigger-configuration-context";
 import { BuilderToolbar } from "./toolbar/builder-toolbar";
 import { CollapsiblePropertiesPanel } from "./properties/collapsible-properties-panel";
 import { WorkflowCanvas } from "./canvas/workflow-canvas";
@@ -45,6 +47,7 @@ export function WorkflowBuilderWorkspace({
   const canSimulate = hasWorkflowSimulationPermission(hasPermission, isSuperAdmin);
   const liveDocument = controller.state.document;
   const simulation = useWorkflowSimulation(liveDocument, { enabled: canSimulate });
+  const triggerConfiguration = useWorkflowTriggerConfiguration(liveDocument);
   const { selectedNodeIds } = useDocumentBuilderSlice();
   const { dispatch } = useBuilderActions();
   const [mounted, setMounted] = useState(false);
@@ -58,41 +61,46 @@ export function WorkflowBuilderWorkspace({
   };
 
   const workspace = (
-    <>
-      <BuilderToolbar
-        controller={controller}
-        onBack={onBack}
-        simulation={canSimulate ? simulation : null}
-      />
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-visible">
-        <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
-          <CollapsiblePropertiesPanel
-            controller={controller}
-            document={document}
-            repository={repository}
-            context={context}
-            canRollback={canRollback}
-            onRollback={onRollback}
-          />
-          <div className="min-h-0 min-w-0 flex-1">
-            <WorkflowCanvas />
+    <TriggerConfigurationProvider
+      trigger={triggerConfiguration}
+      simulation={canSimulate ? simulation : null}
+    >
+      <>
+        <BuilderToolbar
+          controller={controller}
+          onBack={onBack}
+          simulation={canSimulate ? simulation : null}
+        />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-visible">
+          <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
+            <CollapsiblePropertiesPanel
+              controller={controller}
+              document={document}
+              repository={repository}
+              context={context}
+              canRollback={canRollback}
+              onRollback={onRollback}
+            />
+            <div className="min-h-0 min-w-0 flex-1">
+              <WorkflowCanvas />
+            </div>
+            <CollapsibleNodePalette />
           </div>
-          <CollapsibleNodePalette />
+          {canSimulate && simulation.panelOpen ? (
+            <div className="h-80 shrink-0">
+              <Suspense fallback={<DashboardPageFallback />}>
+                <SimulationPanel
+                  document={liveDocument}
+                  simulation={simulation}
+                  selectedNodeIds={selectedNodeIds}
+                  onFocusNode={focusNode}
+                />
+              </Suspense>
+            </div>
+          ) : null}
         </div>
-        {canSimulate && simulation.panelOpen ? (
-          <div className="h-80 shrink-0">
-            <Suspense fallback={<DashboardPageFallback />}>
-              <SimulationPanel
-                document={liveDocument}
-                simulation={simulation}
-                selectedNodeIds={selectedNodeIds}
-                onFocusNode={focusNode}
-              />
-            </Suspense>
-          </div>
-        ) : null}
-      </div>
-    </>
+      </>
+    </TriggerConfigurationProvider>
   );
 
   if (!mounted) return workspace;

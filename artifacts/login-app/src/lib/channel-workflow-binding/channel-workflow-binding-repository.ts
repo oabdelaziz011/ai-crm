@@ -19,6 +19,40 @@ function mapBinding(row: Record<string, unknown>): ChannelWorkflowBindingRecord 
   };
 }
 
+export type FlowChannelBindingSnapshot = {
+  id: string;
+  companyChannelId: string;
+  channel: string | null;
+  isEnabled: boolean;
+};
+
+export async function listChannelWorkflowBindingsForFlow(
+  client: SupabaseClient,
+  companyId: string,
+  automationFlowId: string,
+): Promise<FlowChannelBindingSnapshot[]> {
+  const { data, error } = await client
+    .from(BINDINGS_TABLE)
+    .select("id, company_channel_id, is_enabled, company_channels(channel)")
+    .eq("company_id", companyId)
+    .eq("automation_flow_id", automationFlowId)
+    .eq("is_enabled", true)
+    .is("deleted_at", null);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const channels = row.company_channels as { channel?: string } | { channel?: string }[] | null;
+    const channelValue = Array.isArray(channels) ? channels[0]?.channel : channels?.channel;
+    return {
+      id: row.id as string,
+      companyChannelId: row.company_channel_id as string,
+      channel: channelValue ?? null,
+      isEnabled: Boolean(row.is_enabled),
+    };
+  });
+}
+
 export async function fetchChannelWorkflowBinding(
   client: SupabaseClient,
   companyChannelId: string,

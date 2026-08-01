@@ -2372,6 +2372,132 @@
         "previewBadge": "Simulation preview"
       }
     },
+    "triggers": {
+      "title": "Trigger Configuration",
+      "subtitle": "Configure how this workflow starts. Execution remains in the Automation Platform.",
+      "permissions": {
+        "viewDenied": "You do not have permission to view trigger configuration."
+      },
+      "badges": {
+        "executable": "Executable",
+        "configurationOnly": "Configuration Only"
+      },
+      "categories": {
+        "messaging": "Messaging",
+        "crm": "CRM",
+        "bookings": "Bookings",
+        "payments": "Payments",
+        "api": "API",
+        "scheduling": "Scheduling",
+        "system": "System"
+      },
+      "types": {
+        "manual": "Manual",
+        "restApi": "REST API",
+        "inboundMessage": "Inbound Message",
+        "whatsapp": "WhatsApp",
+        "facebookMessenger": "Facebook Messenger",
+        "instagram": "Instagram",
+        "email": "Email",
+        "customerCreated": "Customer Created",
+        "customerUpdated": "Customer Updated",
+        "bookingCreated": "Booking Created",
+        "bookingUpdated": "Booking Updated",
+        "bookingCancelled": "Booking Cancelled",
+        "paymentReceived": "Payment Received",
+        "paymentFailed": "Payment Failed",
+        "schedule": "Schedule",
+        "webhook": "Webhook",
+        "sms": "SMS",
+        "ticketCreated": "Ticket Created",
+        "ticketUpdated": "Ticket Updated",
+        "ticketClosed": "Ticket Closed",
+        "customEvent": "Custom Event"
+      },
+      "descriptions": {
+        "manualDescription": "Start this workflow manually from the dashboard or API.",
+        "restApiDescription": "Expose a REST API endpoint to start this workflow.",
+        "inboundMessageDescription": "Start when a message arrives on any connected channel.",
+        "whatsappDescription": "Start when a WhatsApp message arrives on a bound channel.",
+        "facebookMessengerDescription": "Start when a Messenger message arrives on a bound channel.",
+        "instagramDescription": "Start when an Instagram message arrives on a bound channel.",
+        "emailDescription": "Start when an email arrives on a bound channel.",
+        "customerCreatedDescription": "Start when a new customer is created.",
+        "customerUpdatedDescription": "Start when an existing customer is updated.",
+        "bookingCreatedDescription": "Start when a booking is created.",
+        "bookingUpdatedDescription": "Start when a booking is updated.",
+        "bookingCancelledDescription": "Start when a booking is cancelled.",
+        "paymentReceivedDescription": "Start when a payment is received.",
+        "paymentFailedDescription": "Start when a payment fails.",
+        "scheduleDescription": "Start on a recurring schedule. Configuration only — no scheduler runtime yet.",
+        "webhookDescription": "Start via inbound webhook. Configuration only — no dispatch runtime yet.",
+        "smsDescription": "Start when an SMS arrives. Configuration only — SMS runtime not available yet.",
+        "ticketCreatedDescription": "Start when a support ticket is created. Configuration only.",
+        "ticketUpdatedDescription": "Start when a support ticket is updated. Configuration only.",
+        "ticketClosedDescription": "Start when a support ticket is closed. Configuration only.",
+        "customEventDescription": "Start on a custom business event. Configuration only."
+      },
+      "catalog": {
+        "title": "Trigger Catalog",
+        "searchPlaceholder": "Search triggers…",
+        "allCategories": "All"
+      },
+      "configuration": {
+        "title": "Configuration"
+      },
+      "fields": {
+        "cronExpression": "Cron expression",
+        "timezone": "Timezone",
+        "webhookPath": "Webhook path",
+        "apiAuthHint": "API authentication notes",
+        "customEventName": "Custom event name",
+        "businessEvent": "Business event"
+      },
+      "preview": {
+        "title": "Preview",
+        "subtitle": "Read-only payload preview — never executes production runtime.",
+        "source": "Source",
+        "channel": "Channel",
+        "noChannel": "None"
+      },
+      "variables": {
+        "title": "Variable Mapping",
+        "subtitle": "Read-only preview of variables exposed to downstream steps."
+      },
+      "analytics": {
+        "title": "Trigger Analytics",
+        "loading": "Loading run history…",
+        "executions": "Executions",
+        "failures": "Failures",
+        "latency": "Avg latency",
+        "lastRun": "Last run",
+        "noData": "No data"
+      },
+      "testing": {
+        "title": "Trigger Testing",
+        "subtitle": "Generate a mock event via Simulation — never calls production runtime.",
+        "runMock": "Run mock trigger test"
+      },
+      "validation": {
+        "title": "Trigger Validation",
+        "configurationOnly": "Configuration only",
+        "missingChannelBinding": "Missing channel binding",
+        "missingCron": "Missing cron expression",
+        "missingWebhookPath": "Missing webhook path",
+        "missingCustomEvent": "Missing custom event name",
+        "missingApiAuth": "Missing API authentication notes"
+      },
+      "readiness": {
+        "score": "Readiness {{score}}%",
+        "configuration": "Required configuration complete",
+        "runtimeExecutable": "Runtime execution available",
+        "runtimeConfigurationOnly": "Runtime execution not available (configuration only)",
+        "channelBinding": "Channel binding configured",
+        "permissions": "Edit permissions granted",
+        "testing": "Simulation testing available",
+        "history": "Prior execution history found"
+      }
+    },
     "errors": {
       "saveFailed": "We couldn't save your workflow. Please try again."
     },

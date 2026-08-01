@@ -2128,6 +2128,132 @@
         "previewBadge": "معاينة المحاكاة"
       }
     },
+    "triggers": {
+      "title": "إعداد المُشغّل",
+      "subtitle": "اضبط كيف يبدأ سير العمل. التنفيذ يبقى في منصة الأتمتة.",
+      "permissions": {
+        "viewDenied": "ليس لديك صلاحية عرض إعداد المُشغّل."
+      },
+      "badges": {
+        "executable": "قابل للتنفيذ",
+        "configurationOnly": "إعداد فقط"
+      },
+      "categories": {
+        "messaging": "المراسلة",
+        "crm": "إدارة العملاء",
+        "bookings": "الحجوزات",
+        "payments": "المدفوعات",
+        "api": "واجهة برمجة",
+        "scheduling": "الجدولة",
+        "system": "النظام"
+      },
+      "types": {
+        "manual": "يدوي",
+        "restApi": "REST API",
+        "inboundMessage": "رسالة واردة",
+        "whatsapp": "واتساب",
+        "facebookMessenger": "Messenger",
+        "instagram": "إنستغرام",
+        "email": "البريد الإلكتروني",
+        "customerCreated": "إنشاء عميل",
+        "customerUpdated": "تحديث عميل",
+        "bookingCreated": "إنشاء حجز",
+        "bookingUpdated": "تحديث حجز",
+        "bookingCancelled": "إلغاء حجز",
+        "paymentReceived": "استلام دفعة",
+        "paymentFailed": "فشل دفعة",
+        "schedule": "جدولة",
+        "webhook": "Webhook",
+        "sms": "SMS",
+        "ticketCreated": "إنشاء تذكرة",
+        "ticketUpdated": "تحديث تذكرة",
+        "ticketClosed": "إغلاق تذكرة",
+        "customEvent": "حدث مخصص"
+      },
+      "descriptions": {
+        "manualDescription": "ابدأ سير العمل يدوياً من لوحة التحكم أو API.",
+        "restApiDescription": "وفّر نقطة REST API لبدء سير العمل.",
+        "inboundMessageDescription": "ابدأ عند وصول رسالة على أي قناة متصلة.",
+        "whatsappDescription": "ابدأ عند وصول رسالة واتساب على قناة مربوطة.",
+        "facebookMessengerDescription": "ابدأ عند وصول رسالة Messenger على قناة مربوطة.",
+        "instagramDescription": "ابدأ عند وصول رسالة إنستغرام على قناة مربوطة.",
+        "emailDescription": "ابدأ عند وصول بريد إلكتروني على قناة مربوطة.",
+        "customerCreatedDescription": "ابدأ عند إنشاء عميل جديد.",
+        "customerUpdatedDescription": "ابدأ عند تحديث عميل.",
+        "bookingCreatedDescription": "ابدأ عند إنشاء حجز.",
+        "bookingUpdatedDescription": "ابدأ عند تحديث حجز.",
+        "bookingCancelledDescription": "ابدأ عند إلغاء حجز.",
+        "paymentReceivedDescription": "ابدأ عند استلام دفعة.",
+        "paymentFailedDescription": "ابدأ عند فشل دفعة.",
+        "scheduleDescription": "ابدأ وفق جدولة. إعداد فقط — لا يوجد مجدول بعد.",
+        "webhookDescription": "ابدأ عبر webhook وارد. إعداد فقط — لا يوجد dispatch بعد.",
+        "smsDescription": "ابدأ عند وصول SMS. إعداد فقط — SMS غير متاح بعد.",
+        "ticketCreatedDescription": "ابدأ عند إنشاء تذكرة. إعداد فقط.",
+        "ticketUpdatedDescription": "ابدأ عند تحديث تذكرة. إعداد فقط.",
+        "ticketClosedDescription": "ابدأ عند إغلاق تذكرة. إعداد فقط.",
+        "customEventDescription": "ابدأ عند حدث مخصص. إعداد فقط."
+      },
+      "catalog": {
+        "title": "فهرس المُشغّلات",
+        "searchPlaceholder": "ابحث في المُشغّلات…",
+        "allCategories": "الكل"
+      },
+      "configuration": {
+        "title": "الإعداد"
+      },
+      "fields": {
+        "cronExpression": "تعبير Cron",
+        "timezone": "المنطقة الزمنية",
+        "webhookPath": "مسار Webhook",
+        "apiAuthHint": "ملاحظات مصادقة API",
+        "customEventName": "اسم الحدث المخصص",
+        "businessEvent": "حدث الأعمال"
+      },
+      "preview": {
+        "title": "معاينة",
+        "subtitle": "معاينة payload للقراءة فقط — لا ينفّذ runtime إنتاجي.",
+        "source": "المصدر",
+        "channel": "القناة",
+        "noChannel": "لا يوجد"
+      },
+      "variables": {
+        "title": "ربط المتغيرات",
+        "subtitle": "معاينة للقراءة فقط للمتغيرات المتاحة للخطوات التالية."
+      },
+      "analytics": {
+        "title": "تحليلات المُشغّل",
+        "loading": "جاري تحميل سجل التشغيل…",
+        "executions": "عمليات التنفيذ",
+        "failures": "الإخفاقات",
+        "latency": "متوسط التأخير",
+        "lastRun": "آخر تشغيل",
+        "noData": "لا توجد بيانات"
+      },
+      "testing": {
+        "title": "اختبار المُشغّل",
+        "subtitle": "أنشئ حدثاً وهمياً عبر المحاكاة — لا يستدعي runtime إنتاجي.",
+        "runMock": "تشغيل اختبار وهمي"
+      },
+      "validation": {
+        "title": "التحقق من المُشغّل",
+        "configurationOnly": "إعداد فقط",
+        "missingChannelBinding": "ربط قناة مفقود",
+        "missingCron": "تعبير cron مفقود",
+        "missingWebhookPath": "مسار webhook مفقود",
+        "missingCustomEvent": "اسم حدث مخصص مفقود",
+        "missingApiAuth": "ملاحظات مصادقة API مفقودة"
+      },
+      "readiness": {
+        "score": "الجاهزية {{score}}%",
+        "configuration": "الإعداد المطلوب مكتمل",
+        "runtimeExecutable": "تنفيذ runtime متاح",
+        "runtimeConfigurationOnly": "تنفيذ runtime غير متاح (إعداد فقط)",
+        "channelBinding": "ربط القناة مُعد",
+        "permissions": "صلاحيات التعديل ممنوحة",
+        "testing": "اختبار المحاكاة متاح",
+        "history": "سجل تنفيذ سابق موجود"
+      }
+    },
     "errors": {
       "saveFailed": "تعذّر حفظ سير العمل. يرجى المحاولة مرة أخرى."
     },

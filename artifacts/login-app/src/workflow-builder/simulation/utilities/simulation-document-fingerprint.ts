@@ -12,6 +12,7 @@ function stableHash(input: string): string {
 export function computeWorkflowDocumentFingerprint(document: WorkflowDocument): string {
   const payload = {
     triggerType: document.triggerType,
+    extensions: document.extensions ?? null,
     nodes: [...document.nodes]
       .map((node) => ({
         id: node.id,

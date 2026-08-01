@@ -2452,6 +2452,99 @@
         "path": "No execution path captured."
       }
     },
+    "analytics": {
+      "title": "Workflow Analytics",
+      "subtitle": "Read-only insights from testing history, simulation, debugger, and triggers.",
+      "readOnlyBadge": "Read-only",
+      "loading": "Loading analytics…",
+      "actions": {
+        "open": "Analytics",
+        "focusNode": "Focus node"
+      },
+      "health": {
+        "healthy": "Healthy",
+        "warning": "Warning",
+        "critical": "Critical",
+        "unknown": "Unknown"
+      },
+      "tabs": {
+        "dashboard": "Dashboard",
+        "performance": "Performance",
+        "trends": "Trends",
+        "branches": "Branches",
+        "triggers": "Triggers",
+        "failures": "Failures",
+        "coverage": "Coverage",
+        "heatmap": "Heatmap",
+        "kpis": "KPIs",
+        "report": "Report"
+      },
+      "dashboard": {
+        "executions": "Executions",
+        "successfulTests": "Successful tests",
+        "failedTests": "Failed tests",
+        "averageDuration": "Average duration",
+        "readinessScore": "Readiness score",
+        "overallHealth": "Overall health"
+      },
+      "performance": {
+        "fastest": "Fastest execution",
+        "slowest": "Slowest execution",
+        "average": "Average runtime",
+        "nodeExecutions": "Node executions",
+        "branchExecutions": "Branch executions"
+      },
+      "trends": {
+        "success": "Success trend",
+        "failures": "Failure trend",
+        "readiness": "Readiness trend"
+      },
+      "branches": {
+        "mostExecuted": "Most executed branch",
+        "leastExecuted": "Least executed branch",
+        "neverExecuted": "Never executed branches"
+      },
+      "triggers": {
+        "type": "Trigger type",
+        "executions": "Executions",
+        "failures": "Failures",
+        "successRate": "Success rate",
+        "averageLatency": "Average latency"
+      },
+      "failures": {
+        "assertions": "Common assertion failures",
+        "warnings": "Common warnings",
+        "unstableNodes": "Unstable nodes"
+      },
+      "coverage": {
+        "nodes": "Node coverage",
+        "branches": "Branch coverage",
+        "assertions": "Assertion coverage",
+        "triggers": "Trigger coverage"
+      },
+      "heatmap": {
+        "bottleneck": "Bottleneck",
+        "executions": "{{count}} executions"
+      },
+      "kpis": {
+        "quality": "Workflow quality",
+        "complexity": "Complexity",
+        "maintainability": "Maintainability",
+        "stability": "Stability",
+        "readiness": "Readiness"
+      },
+      "report": {
+        "recommendations": "Recommendations",
+        "bottlenecks": "Bottlenecks",
+        "exportReady": "Export-ready analytics report is available in the view model."
+      },
+      "empty": {
+        "branches": "All branches have execution history.",
+        "failures": "No failure patterns recorded.",
+        "unstableNodes": "No unstable nodes detected.",
+        "trends": "Run regression tests to populate trend charts."
+      }
+    },
     "debugger": {
       "title": "Workflow Debugger",
       "subtitle": "Read-only replay and inspection over simulation snapshots.",

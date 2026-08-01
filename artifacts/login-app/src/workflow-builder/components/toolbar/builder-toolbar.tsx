@@ -16,6 +16,7 @@ import {
   UploadCloud,
   FlaskConical,
   TestTube2,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,17 +41,20 @@ import {
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import type { WorkflowSimulationController } from "../../simulation/hooks/use-workflow-simulation";
 import type { WorkflowTestingController } from "../../testing/hooks/use-workflow-testing";
+import type { WorkflowAnalyticsController } from "../../analytics/hooks/use-workflow-analytics";
 
 export const BuilderToolbar = memo(function BuilderToolbar({
   onBack,
   controller,
   simulation,
   testing,
+  analytics,
 }: {
   onBack: () => void;
   controller: WorkflowBuilderController;
   simulation?: WorkflowSimulationController | null;
   testing?: WorkflowTestingController | null;
+  analytics?: WorkflowAnalyticsController | null;
 }) {
   const { t } = useTranslation("common");
   const { hasPermission } = usePermissions();
@@ -162,6 +166,18 @@ export const BuilderToolbar = memo(function BuilderToolbar({
             >
               <TestTube2 className="me-2 h-4 w-4" />
               {t("workflowBuilder.testing.actions.test")}
+            </Button>
+          ) : null}
+          {analytics ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => analytics.setPanelOpen(true)}
+            >
+              <BarChart3 className="me-2 h-4 w-4" />
+              {t("workflowBuilder.analytics.actions.open")}
             </Button>
           ) : null}
           {canPublish ? (

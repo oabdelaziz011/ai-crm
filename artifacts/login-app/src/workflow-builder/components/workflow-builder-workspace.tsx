@@ -12,12 +12,20 @@ import { useWorkflowSimulation } from "../simulation/hooks/use-workflow-simulati
 import { hasWorkflowSimulationPermission } from "../simulation/permissions/workflow-simulation-access";
 import { useWorkflowTesting } from "../testing/hooks/use-workflow-testing";
 import { hasWorkflowTestingPermission } from "../testing/permissions/testing-access";
+import { useWorkflowAnalytics } from "../analytics/hooks/use-workflow-analytics";
+import { hasWorkflowAnalyticsPermission } from "../analytics/permissions/workflow-analytics-access";
 import { useWorkflowTriggerConfiguration } from "../triggers/hooks/use-workflow-trigger-configuration";
 import { TriggerConfigurationProvider } from "../triggers/context/trigger-configuration-context";
 import { BuilderToolbar } from "./toolbar/builder-toolbar";
 import { CollapsiblePropertiesPanel } from "./properties/collapsible-properties-panel";
 import { WorkflowCanvas } from "./canvas/workflow-canvas";
 import { CollapsibleNodePalette } from "./palette/collapsible-node-palette";
+
+const AnalyticsPanel = lazy(() =>
+  import("../analytics/components/analytics-panel").then((module) => ({
+    default: module.AnalyticsPanel,
+  })),
+);
 
 const TestingPanel = lazy(() =>
   import("../testing/components/testing-panel").then((module) => ({
@@ -62,6 +70,7 @@ export function WorkflowBuilderWorkspace({
   const { hasPermission, isSuperAdmin } = usePermissions();
   const canSimulate = hasWorkflowSimulationPermission(hasPermission, isSuperAdmin);
   const canTest = hasWorkflowTestingPermission(hasPermission, isSuperAdmin);
+  const canAnalytics = hasWorkflowAnalyticsPermission(hasPermission, isSuperAdmin);
   const liveDocument = controller.state.document;
   const simulation = useWorkflowSimulation(liveDocument, { enabled: canSimulate });
   const testing = useWorkflowTesting(liveDocument, { enabled: canTest });
@@ -69,6 +78,16 @@ export function WorkflowBuilderWorkspace({
     enabled: canSimulate,
   });
   const triggerConfiguration = useWorkflowTriggerConfiguration(liveDocument);
+  const analytics = useWorkflowAnalytics(
+    liveDocument,
+    {
+      testing: canTest ? testing : null,
+      simulation: canSimulate ? simulation : null,
+      debugger: debuggerController.enabled ? debuggerController : null,
+      trigger: triggerConfiguration.enabled ? triggerConfiguration : null,
+    },
+    { enabled: canAnalytics },
+  );
   const { selectedNodeIds } = useDocumentBuilderSlice();
   const { dispatch } = useBuilderActions();
   const [mounted, setMounted] = useState(false);
@@ -93,6 +112,7 @@ export function WorkflowBuilderWorkspace({
           onBack={onBack}
           simulation={canSimulate ? simulation : null}
           testing={canTest ? testing : null}
+          analytics={canAnalytics ? analytics : null}
         />
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-visible">
           <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
@@ -134,6 +154,13 @@ export function WorkflowBuilderWorkspace({
             <div className="h-80 shrink-0">
               <Suspense fallback={<DashboardPageFallback />}>
                 <TestingPanel testing={testing} onFocusNode={focusNode} />
+              </Suspense>
+            </div>
+          ) : null}
+          {canAnalytics && analytics.panelOpen ? (
+            <div className="h-80 shrink-0">
+              <Suspense fallback={<DashboardPageFallback />}>
+                <AnalyticsPanel analytics={analytics} onFocusNode={focusNode} />
               </Suspense>
             </div>
           ) : null}

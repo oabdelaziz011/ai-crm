@@ -2208,6 +2208,99 @@
         "path": "لم يُلتقط مسار تنفيذ."
       }
     },
+    "analytics": {
+      "title": "تحليلات سير العمل",
+      "subtitle": "رؤى للقراءة فقط من سجل الاختبار والمحاكاة والمصحح والمشغّلات.",
+      "readOnlyBadge": "قراءة فقط",
+      "loading": "جاري تحميل التحليلات…",
+      "actions": {
+        "open": "التحليلات",
+        "focusNode": "تركيز على خطوة"
+      },
+      "health": {
+        "healthy": "سليم",
+        "warning": "تحذير",
+        "critical": "حرج",
+        "unknown": "غير معروف"
+      },
+      "tabs": {
+        "dashboard": "لوحة",
+        "performance": "الأداء",
+        "trends": "الاتجاهات",
+        "branches": "الفروع",
+        "triggers": "المشغّلات",
+        "failures": "الإخفاقات",
+        "coverage": "التغطية",
+        "heatmap": "خريطة حرارية",
+        "kpis": "مؤشرات",
+        "report": "التقرير"
+      },
+      "dashboard": {
+        "executions": "عمليات التنفيذ",
+        "successfulTests": "اختبارات ناجحة",
+        "failedTests": "اختبارات فاشلة",
+        "averageDuration": "متوسط المدة",
+        "readinessScore": "درجة الجاهزية",
+        "overallHealth": "الصحة العامة"
+      },
+      "performance": {
+        "fastest": "أسرع تنفيذ",
+        "slowest": "أبطأ تنفيذ",
+        "average": "متوسط زمن التشغيل",
+        "nodeExecutions": "تنفيذات الخطوات",
+        "branchExecutions": "تنفيذات الفروع"
+      },
+      "trends": {
+        "success": "اتجاه النجاح",
+        "failures": "اتجاه الفشل",
+        "readiness": "اتجاه الجاهزية"
+      },
+      "branches": {
+        "mostExecuted": "الفرع الأكثر تنفيذاً",
+        "leastExecuted": "الفرع الأقل تنفيذاً",
+        "neverExecuted": "فروع لم تُنفَّذ"
+      },
+      "triggers": {
+        "type": "نوع المشغّل",
+        "executions": "عمليات التنفيذ",
+        "failures": "الإخفاقات",
+        "successRate": "معدل النجاح",
+        "averageLatency": "متوسط زمن الاستجابة"
+      },
+      "failures": {
+        "assertions": "إخفاقات التحقق الشائعة",
+        "warnings": "تحذيرات شائعة",
+        "unstableNodes": "خطوات غير مستقرة"
+      },
+      "coverage": {
+        "nodes": "تغطية الخطوات",
+        "branches": "تغطية الفروع",
+        "assertions": "تغطية التحقق",
+        "triggers": "تغطية المشغّلات"
+      },
+      "heatmap": {
+        "bottleneck": "اختناق",
+        "executions": "{{count}} تنفيذات"
+      },
+      "kpis": {
+        "quality": "جودة سير العمل",
+        "complexity": "التعقيد",
+        "maintainability": "قابلية الصيانة",
+        "stability": "الاستقرار",
+        "readiness": "الجاهزية"
+      },
+      "report": {
+        "recommendations": "توصيات",
+        "bottlenecks": "اختناقات",
+        "exportReady": "تقرير التحليلات جاهز للتصدير في نموذج العرض."
+      },
+      "empty": {
+        "branches": "جميع الفروع لها سجل تنفيذ.",
+        "failures": "لا توجد أنماط إخفاق مسجّلة.",
+        "unstableNodes": "لم تُكتشف خطوات غير مستقرة.",
+        "trends": "شغّل اختبارات الانحدار لملء مخططات الاتجاه."
+      }
+    },
     "debugger": {
       "title": "مصحح سير العمل",
       "subtitle": "إعادة تشغيل ومعاينة للقراءة فقط فوق لقطات المحاكاة.",

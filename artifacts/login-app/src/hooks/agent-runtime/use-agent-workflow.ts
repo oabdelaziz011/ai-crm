@@ -9,6 +9,14 @@ import { useAiChatWorkspace } from "@/hooks/ai-chat/use-ai-chat-workspace";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { isAgentsAccessible } from "@/lib/platform-ai/agents-access";
+import { resolveEmployeeChannelRuntime } from "@/lib/ai-employees/services/resolve-employee-channel-runtime";
+import {
+  attachAgentEmployeeExecutionContext,
+  createAgentEmployeeExecutionContext,
+  readAgentEmployeeExecutionContext,
+} from "@/lib/ai-employees/utilities/agent-employee-execution-context";
+import { registerConversationToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
+import { mergeEmployeePageContext } from "@/lib/ai-employees/utilities/merge-employee-page-context";
 import { supabase } from "@/lib/supabase";
 import type { AgentTaskGraph, AgentWorkflowEventRecord } from "@workspace/agent-runtime";
 import { graphProgress } from "@workspace/agent-runtime";
@@ -102,8 +110,11 @@ export function useAgentWorkflow() {
   });
 
   const startWorkflow = useMutation({
-    mutationFn: async (input: string | { goal: string; confirmed?: boolean }) => {
+    mutationFn: async (
+      input: string | { goal: string; confirmed?: boolean; aiEmployeeId?: string },
+    ) => {
       const goal = typeof input === "string" ? input : input.goal;
+      const aiEmployeeId = typeof input === "string" ? undefined : input.aiEmployeeId;
       const preStartConfirmationAcknowledged =
         typeof input === "string" ? false : Boolean(input.confirmed);
       if (!companyId) throw new Error("Company required");
@@ -119,15 +130,37 @@ export function useAgentWorkflow() {
       bgTaskIdRef.current = bgTaskId;
       updateTaskProgress(bgTaskId, 5, "Planning…");
 
+      const basePageContext = getPageContext();
+      const channelRuntime =
+        aiEmployeeId != null
+          ? await resolveEmployeeChannelRuntime(companyId, aiEmployeeId)
+          : null;
+      const mergedPageContext = mergeEmployeePageContext(basePageContext, channelRuntime);
+      const pageContext =
+        channelRuntime != null
+          ? attachAgentEmployeeExecutionContext(
+              mergedPageContext,
+              createAgentEmployeeExecutionContext(channelRuntime, mergedPageContext),
+            )
+          : mergedPageContext;
+
       const result = await services.runtime.start(context, {
         companyId,
         userId: context.userId,
         conversationId,
         goal,
-        pageContext: getPageContext(),
+        pageContext,
         preStartConfirmationAcknowledged,
         agentType: isCrmAgentGoal(goal) ? "crm" : "generic",
       });
+
+      const executionContext = readAgentEmployeeExecutionContext(pageContext);
+      if (executionContext) {
+        registerConversationToolScope(conversationId, {
+          allowedToolKeys: executionContext.allowedToolKeys,
+          employeeId: executionContext.aiEmployeeId,
+        });
+      }
 
       storeWorkflowId(companyId, result.workflowId);
       setActiveWorkflowId(result.workflowId);
@@ -205,6 +238,22 @@ export function useAgentWorkflow() {
       void queryClient.invalidateQueries({ queryKey: ["agent-workflow"] });
     },
   });
+
+  useEffect(() => {
+    const pageContext = workflowQuery.data?.memory?.executionState?.pageContext as
+      | Record<string, unknown>
+      | undefined;
+    const conversationId = workspace.conversationId;
+    if (!pageContext || !conversationId) return;
+
+    const executionContext = readAgentEmployeeExecutionContext(pageContext);
+    if (!executionContext) return;
+
+    registerConversationToolScope(conversationId, {
+      allowedToolKeys: executionContext.allowedToolKeys,
+      employeeId: executionContext.aiEmployeeId,
+    });
+  }, [workflowQuery.data?.memory, workspace.conversationId]);
 
   useEffect(() => {
     if (!activeWorkflowId || !workflowQuery.data) return;

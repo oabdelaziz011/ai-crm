@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./factory/runtime-engine-ports": "./src/factory/runtime-engine-ports.ts"
+    "./factory/runtime-engine-ports": "./src/factory/runtime-engine-ports.ts",
+    "./coordinator/test-utils": "./src/coordinator/test-utils.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

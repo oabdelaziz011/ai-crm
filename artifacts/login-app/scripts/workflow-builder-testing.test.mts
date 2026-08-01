@@ -466,4 +466,16 @@ function buildSnapshotWithReport(overrides: Record<string, unknown> = {}) {
   console.log("  ✓ report sections generate independent export fragments");
 }
 
+{
+  const { AiEmployeeIntegrationTestingService, builtInAiEmployeeIntegrationSuites } = await import(
+    "../src/workflow-builder/testing/ai-employee/index.ts"
+  );
+  const suites = builtInAiEmployeeIntegrationSuites();
+  assert.ok(suites.some((suite) => suite.id === "suite-ai-employee-enterprise"));
+  const service = new AiEmployeeIntegrationTestingService();
+  const registration = await service.runScenario("workflow-testing-suite-registration");
+  assert.equal(registration.status, "passed");
+  console.log("  ✓ AI Employee integration suites registered in Workflow Testing Platform");
+}
+
 console.log("\nAll workflow builder testing platform tests passed.\n");

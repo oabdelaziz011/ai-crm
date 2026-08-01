@@ -13,3 +13,9 @@ export { AiEmployeeGovernanceService } from "./ai-employee-governance-service";
 export { AiEmployeeGovernanceError, formatAiEmployeeGovernanceError } from "./ai-employee-governance-errors";
 export { AiEmployeeAdministrationService } from "./ai-employee-administration-service";
 export type { TenantRuntimeContext } from "./ai-employee-configuration-service";
+export {
+  evaluateEmployeeChannelRuntimeBinding,
+} from "./evaluate-employee-channel-runtime-binding";
+export {
+  resolveEmployeeChannelRuntime,
+} from "./resolve-employee-channel-runtime";

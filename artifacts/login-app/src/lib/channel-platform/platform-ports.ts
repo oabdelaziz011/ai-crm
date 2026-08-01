@@ -10,6 +10,8 @@ import type {
 } from "@workspace/channel-platform/client";
 import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
 import { extractResponseContent } from "@workspace/runtime-integration";
+import { readAgentEmployeeExecutionContext } from "@/lib/ai-employees/utilities/agent-employee-execution-context";
+import { runWithEmployeeToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
 
 function mapCompanyChannelRecord(record: {
   id: string;
@@ -241,18 +243,34 @@ export function createChannelRuntimePort(
         userId: actorUserId ?? ctx.userId,
       };
 
-      const response = await services.coordinator.execute(runtimeCtx, {
-        companyId: input.companyId,
-        conversationId: input.conversationId,
-        messageText: input.messageText,
-        providerConnectionId: input.runtimeConfig.providerConnectionId,
-        knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
-        executionPolicy: input.runtimeConfig.executionPolicy,
-        pageContext: input.runtimeConfig.pageContext,
-        correlationId: input.correlationId,
-        onStreamChunk: input.onStreamChunk,
-        abortSignal: input.abortSignal,
-      });
+      const response = await (async () => {
+        const executionContext = readAgentEmployeeExecutionContext(input.runtimeConfig.pageContext);
+        const executeRuntime = () =>
+          services.coordinator.execute(runtimeCtx, {
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            messageText: input.messageText,
+            providerConnectionId: input.runtimeConfig.providerConnectionId,
+            knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
+            executionPolicy: input.runtimeConfig.executionPolicy,
+            pageContext: input.runtimeConfig.pageContext,
+            correlationId: input.correlationId,
+            onStreamChunk: input.onStreamChunk,
+            abortSignal: input.abortSignal,
+          });
+
+        if (!executionContext) {
+          return executeRuntime();
+        }
+
+        return runWithEmployeeToolScope(
+          {
+            allowedToolKeys: executionContext.allowedToolKeys,
+            employeeId: executionContext.aiEmployeeId,
+          },
+          executeRuntime,
+        );
+      })();
 
       return {
         executionId: response.executionId,

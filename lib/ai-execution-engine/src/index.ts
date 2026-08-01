@@ -108,6 +108,7 @@ export * from "./registries/runtime-registries.js";
 export * from "./runtime/enterprise-ai-runtime-service.js";
 export * from "./runtime/execution-session-service.js";
 export * from "./runtime/tool-call-loop-service.js";
+export * from "./runtime/runtime-tool-denial-factory.js";
 export * from "./runtime/streaming-runtime-service.js";
 export * from "./repositories/execution-repositories.js";
 export * from "./repositories/supabase-execution-repositories.js";

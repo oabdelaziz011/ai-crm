@@ -4,6 +4,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
+import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { DashboardCard, DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
@@ -36,6 +37,7 @@ export function AgentEditPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ agentId: string }>();
   const agentId = params.agentId;
+  const validAgentId = agentId && UUID_PATTERN.test(agentId) ? agentId : null;
   const { company, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
   const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
@@ -50,9 +52,9 @@ export function AgentEditPage() {
 
   const { data: employee, isLoading, error } = useAiEmployee(
     companyId,
-    agentId && UUID_PATTERN.test(agentId) ? agentId : null,
+    validAgentId,
   );
-  const updateEmployee = useUpdateAiEmployee(companyId, agentId ?? null);
+  const updateEmployee = useUpdateAiEmployee(companyId, validAgentId ?? null);
   const { data: toolOptions = [] } = useAiEmployeeToolOptions();
   const { data: knowledgeOptions = [] } = useAiEmployeeKnowledgeOptions(companyId);
 
@@ -82,6 +84,20 @@ export function AgentEditPage() {
   }, [employee]);
 
   const ownerOptions = useMemo(() => ownersQuery.data ?? [], [ownersQuery.data]);
+
+  const floatingAiContext = useMemo(
+    () =>
+      validAgentId && employee
+        ? {
+            page: "agents",
+            moduleLabel: t("aiEmployees.title"),
+            pageTitle: employee.displayName ?? employee.name,
+            aiEmployeeId: validAgentId,
+          }
+        : null,
+    [employee, t, validAgentId],
+  );
+  useRegisterFloatingAiContext(floatingAiContext);
 
   const handleSave = async () => {
     if (!values) return;

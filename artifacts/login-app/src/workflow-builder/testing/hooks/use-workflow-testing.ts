@@ -9,6 +9,8 @@ import {
   findFirstFailedCase,
 } from "../selectors/testing-ui-selectors";
 import { WorkflowTestingService } from "../services/test-runner-service";
+import { AiEmployeeIntegrationTestingService } from "../ai-employee/services/ai-employee-integration-testing-service";
+import { builtInAiEmployeeIntegrationSuites } from "../ai-employee/suites/register-built-in-ai-employee-integration-suites";
 import type {
   TestAssertion,
   TestCase,
@@ -55,12 +57,15 @@ export function useWorkflowTesting(document: WorkflowDocument, options: UseWorkf
   const queryKey = useMemo(() => workflowTestingKey(companyId, flowId), [companyId, flowId]);
   const repository = useMemo<WorkflowTestingRepository>(() => new InMemoryTestingRepository(), []);
   const service = useMemo(() => new WorkflowTestingService(repository), [repository]);
+  const aiEmployeeIntegrationService = useMemo(() => new AiEmployeeIntegrationTestingService(), []);
+  const aiEmployeeIntegrationSuites = useMemo(() => builtInAiEmployeeIntegrationSuites(), []);
   const scope = useMemo(() => ({ companyId: companyId ?? "", flowId: flowId ?? "" }), [companyId, flowId]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(null);
   const [selectedFailure, setSelectedFailure] = useState<TestCaseRunResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [aiEmployeeRunSummary, setAiEmployeeRunSummary] = useState<string | null>(null);
 
   useEffect(() => {
     if (!canRun) return;
@@ -276,6 +281,23 @@ export function useWorkflowTesting(document: WorkflowDocument, options: UseWorkf
     setSelectedFailure(result);
   }, []);
 
+  const runAiEmployeeIntegrationSuite = useCallback(
+    async (suiteId = "suite-ai-employee-enterprise") => {
+      if (!canRun || isRunning) return null;
+      setIsRunning(true);
+      try {
+        const run = await aiEmployeeIntegrationService.runSuite(suiteId);
+        if (run) {
+          setAiEmployeeRunSummary(`${run.passed}/${run.scenarioResults.length} passed`);
+        }
+        return run;
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    [aiEmployeeIntegrationService, canRun, isRunning],
+  );
+
   return {
     enabled: canRun,
     panelOpen,
@@ -286,6 +308,9 @@ export function useWorkflowTesting(document: WorkflowDocument, options: UseWorkf
     selectedFailure,
     selectFailure,
     isRunning,
+    aiEmployeeIntegrationSuites,
+    aiEmployeeRunSummary,
+    runAiEmployeeIntegrationSuite,
     createSuite,
     updateSuite,
     duplicateSuite,

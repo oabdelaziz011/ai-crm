@@ -4,6 +4,9 @@ import { useAuth } from "@/context/auth-context";
 import { useAiAssistantSettings } from "@/hooks/use-ai-assistant-settings";
 import { useChannelPlatformServices } from "@/lib/channel-platform";
 import { useConversationServices } from "@/lib/ai-conversation";
+import { readAiEmployeeIdFromPageContext } from "@/lib/ai-employees/utilities/merge-employee-page-context";
+import { prepareEmployeeChatRuntime } from "@/lib/ai-employees/utilities/prepare-employee-chat-runtime";
+import { rehydrateConversationExecutionContextFromMetadata } from "@/lib/ai-employees/utilities/conversation-employee-context-hydrator";
 import { useRuntimeChatConfig } from "./use-runtime-chat-config";
 import { useWebChatCompanyChannel } from "./use-web-chat-company-channel";
 import i18n from "@/i18n";
@@ -28,6 +31,19 @@ export type ChatMessage = {
 
 function conversationStorageKey(companyId: string) {
   return `${CONVERSATION_STORAGE_PREFIX}:${companyId}`;
+}
+
+function buildConversationMetadata(
+  source: UseAiChatWorkspaceOptions["source"],
+  pageContext?: Record<string, unknown>,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const aiEmployeeId = readAiEmployeeIdFromPageContext(pageContext);
+  return {
+    source: source === "floating" ? "floating_ai_assistant" : "ai_chat_workspace",
+    ...(aiEmployeeId ? { aiEmployeeId } : {}),
+    ...extra,
+  };
 }
 
 function mapMessageRecord(message: {
@@ -71,6 +87,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
   const { data: webChatChannel, isLoading: webChatChannelLoading } = useWebChatCompanyChannel(companyId);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationMetadata, setConversationMetadata] = useState<Record<string, unknown>>({});
   const [conversationError, setConversationError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -95,8 +112,19 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
 
       if (storedId) {
         try {
-          await conversationServices.conversations.getConversation(conversationContext, storedId);
-          if (!cancelled) setConversationId(storedId);
+          const conversation = await conversationServices.conversations.getConversation(
+            conversationContext,
+            storedId,
+          );
+          rehydrateConversationExecutionContextFromMetadata({
+            companyId: companyId!,
+            conversationId: storedId,
+            metadata: conversation.metadata,
+          });
+          if (!cancelled) {
+            setConversationId(storedId);
+            setConversationMetadata(conversation.metadata ?? {});
+          }
           return;
         } catch {
           sessionStorage.removeItem(conversationStorageKey(companyId!));
@@ -109,10 +137,13 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           aiAssistantId: assistantSettings!.id,
           channelType: "web_chat",
           companyChannelId: webChatChannel?.id,
-          metadata: { source: source === "floating" ? "floating_ai_assistant" : "ai_chat_workspace" },
+          metadata: buildConversationMetadata(source, getPageContext?.()),
         });
         sessionStorage.setItem(conversationStorageKey(companyId!), created.id);
-        if (!cancelled) setConversationId(created.id);
+        if (!cancelled) {
+          setConversationId(created.id);
+          setConversationMetadata(created.metadata ?? {});
+        }
       } catch (error) {
         if (!cancelled) {
           setConversationError("conversation_start_failed");
@@ -178,11 +209,12 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
       aiAssistantId: assistantSettings.id,
       channelType: "web_chat",
       companyChannelId: webChatChannel?.id,
-      metadata: { source: source === "floating" ? "floating_ai_assistant" : "ai_chat_workspace", restarted: true },
+      metadata: buildConversationMetadata(source, getPageContext?.(), { restarted: true }),
     });
 
     sessionStorage.setItem(conversationStorageKey(companyId), created.id);
     setConversationId(created.id);
+    setConversationMetadata(created.metadata ?? {});
     setStreamingContent("");
     streamingRef.current = "";
     await queryClient.invalidateQueries({ queryKey: aiChatMessagesQueryKey(created.id) });
@@ -220,7 +252,36 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
       abortRef.current = controller;
 
       try {
-        const pageContext = getPageContext?.();
+        const basePageContext = getPageContext?.() ?? {};
+        const employeeRuntime = await prepareEmployeeChatRuntime({
+          companyId,
+          conversationId,
+          basePageContext,
+          conversationMetadata,
+        });
+
+        if (employeeRuntime.metadataPatch && employeeRuntime.executionContext) {
+          const updated = await conversationServices.conversations.updateMetadata(conversationContext, {
+            conversationId,
+            metadata: employeeRuntime.metadataPatch,
+          });
+          setConversationMetadata(updated.metadata ?? employeeRuntime.metadataPatch);
+        }
+
+        const runtimeOverrides = employeeRuntime.runtimeConfigOverrides;
+        const providerConnectionId =
+          runtimeOverrides?.providerConnectionId ?? runtimeConfig.providerConnectionId;
+        const knowledgeRetrieval =
+          runtimeOverrides?.knowledgeRetrieval ??
+          (runtimeConfig.knowledgeRetrieval?.embeddingConnectionId &&
+          runtimeConfig.knowledgeRetrieval?.vectorStoreConnectionId &&
+          runtimeConfig.knowledgeRetrieval?.collectionId
+            ? {
+                embeddingConnectionId: runtimeConfig.knowledgeRetrieval.embeddingConnectionId,
+                vectorStoreConnectionId: runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId,
+                collectionId: runtimeConfig.knowledgeRetrieval.collectionId,
+              }
+            : undefined);
 
         await channelPlatformServices.router.routeInbound(channelPlatformContext, {
           companyId,
@@ -233,19 +294,10 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           payload: { text: trimmed, externalThreadId: conversationId },
           executeAi: true,
           runtimeConfig: {
-            providerConnectionId: runtimeConfig.providerConnectionId,
-            pageContext,
-            knowledgeRetrieval:
-              runtimeConfig.knowledgeRetrieval?.embeddingConnectionId &&
-              runtimeConfig.knowledgeRetrieval?.vectorStoreConnectionId &&
-              runtimeConfig.knowledgeRetrieval?.collectionId
-                ? {
-                    embeddingConnectionId: runtimeConfig.knowledgeRetrieval.embeddingConnectionId,
-                    vectorStoreConnectionId: runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId,
-                    collectionId: runtimeConfig.knowledgeRetrieval.collectionId,
-                  }
-                : undefined,
-            executionPolicy: { streaming: true },
+            providerConnectionId,
+            pageContext: employeeRuntime.pageContext,
+            knowledgeRetrieval,
+            executionPolicy: runtimeOverrides?.executionPolicy ?? { streaming: true },
           },
           onStreamChunk: (chunk) => {
             streamingRef.current += chunk;
@@ -275,11 +327,13 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
       channelPlatformServices.router,
       companyId,
       conversationId,
+      conversationMetadata,
       isSending,
       getPageContext,
       refreshMessages,
       runtimeConfig,
       webChatChannel?.id,
+      conversationServices.conversations,
     ],
   );
 

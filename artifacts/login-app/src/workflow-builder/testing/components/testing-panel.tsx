@@ -108,6 +108,38 @@ export const TestingPanel = memo(function TestingPanel({ testing, onFocusNode }:
 
       {tab === "suites" ? (
         <div className="grid min-h-0 flex-1 gap-3 overflow-auto md:grid-cols-2">
+          <section className="space-y-2 rounded-xl border border-border/60 p-3 md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold">AI Employee Integration</h3>
+                <p className="text-xs text-muted-foreground">
+                  Reusable enterprise runtime scenarios for binding, context, tool scope, and telemetry.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-xl"
+                disabled={testing.isRunning}
+                onClick={() => void testing.runAiEmployeeIntegrationSuite()}
+              >
+                <Play className="me-2 h-4 w-4" />
+                Run enterprise suite
+              </Button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              {testing.aiEmployeeIntegrationSuites.map((suite) => (
+                <div key={suite.id} className="rounded-lg border border-border/60 p-3 text-sm">
+                  <div className="font-medium">{suite.name}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{suite.description}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{suite.scenarioIds.length} scenarios</p>
+                </div>
+              ))}
+            </div>
+            {testing.aiEmployeeRunSummary ? (
+              <p className="text-xs text-muted-foreground">Last run: {testing.aiEmployeeRunSummary}</p>
+            ) : null}
+          </section>
           <section className="space-y-2 rounded-xl border border-border/60 p-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">{t("workflowBuilder.testing.sections.activeSuites")}</h3>

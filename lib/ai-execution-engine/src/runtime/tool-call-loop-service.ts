@@ -2,6 +2,11 @@ import type { ChatToolCall } from "@workspace/ai-provider-layer";
 import type { RuntimeGatewayPort, RuntimeGatewayChatRequest, RuntimeGatewayChatResponse } from "../ports/runtime-ports.js";
 import type { RuntimeToolPort } from "../ports/runtime-ports.js";
 import type { ServiceContext } from "../types.js";
+import {
+  createToolExecutionFailurePayload,
+  createToolNotAllowedDenial,
+  serializeRuntimeToolDenial,
+} from "./runtime-tool-denial-factory.js";
 
 const MAX_TOOL_ITERATIONS = 3;
 
@@ -68,11 +73,7 @@ export class ToolCallLoopService {
         if (!input.allowedToolKeys.includes(toolCall.name)) {
           messages.push({
             role: "tool",
-            content: JSON.stringify({
-              success: false,
-              errorCode: "TOOL_NOT_ALLOWED",
-              message: `Tool ${toolCall.name} is not enabled.`,
-            }),
+            content: serializeRuntimeToolDenial(createToolNotAllowedDenial({ toolKey: toolCall.name })),
             toolCallId: toolCall.id,
           });
           continue;
@@ -96,11 +97,10 @@ export class ToolCallLoopService {
         const toolPayload =
           routed.status === "succeeded" && routed.output
             ? routed.output
-            : {
-                success: false,
+            : createToolExecutionFailurePayload({
                 errorCode: routed.errorCode ?? "TOOL_FAILED",
-                message: routed.errorMessage ?? "Tool execution failed.",
-              };
+                reason: routed.errorMessage ?? "Tool execution failed.",
+              });
 
         messages.push({
           role: "tool",

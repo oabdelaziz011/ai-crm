@@ -48,7 +48,7 @@ export function buildRuntimePageContext(context: FloatingAiPageContext): Floatin
 export function buildRuntimeMetadata(context: FloatingAiPageContext): FloatingAiRuntimeMetadata {
   const currentEntity = resolveCurrentEntity(context);
 
-  return {
+  const metadata: FloatingAiRuntimeMetadata & Record<string, unknown> = {
     module: context.page,
     moduleLabel: context.moduleLabel,
     route: context.route,
@@ -67,4 +67,10 @@ export function buildRuntimeMetadata(context: FloatingAiPageContext): FloatingAi
     filters: context.filters ?? {},
     capturedAt: new Date().toISOString(),
   };
+
+  if (typeof context.aiEmployeeId === "string" && context.aiEmployeeId.length > 0) {
+    metadata.aiEmployeeId = context.aiEmployeeId;
+  }
+
+  return metadata;
 }

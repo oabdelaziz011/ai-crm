@@ -10,6 +10,7 @@ import { useToolRouterServices } from "@/lib/ai-tool-router";
 import { supabase } from "@/lib/supabase";
 import { createEnterpriseRuntimeIntegrations } from "@/lib/runtime-integration/runtime-adapters";
 import { createRuntimeToolPort } from "@/lib/runtime-integration/tool-port-adapter";
+import { createScopedRuntimeToolPort } from "@/lib/ai-employees/utilities/scoped-runtime-tool-port";
 import { createPlatformRuntimeConfigPort } from "@/lib/platform-ai-provider/platform-runtime-port";
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 
@@ -26,7 +27,7 @@ export function useAIExecutionServices() {
   const { services: toolRouterServices, createOptions } = useToolRouterServices();
 
   const tools = useMemo(
-    () => createRuntimeToolPort(toolRouterServices, createOptions),
+    () => createScopedRuntimeToolPort(createRuntimeToolPort(toolRouterServices, createOptions)),
     [toolRouterServices, createOptions],
   );
   const platformServices = useMemo(() => createPlatformAIProviderServices(supabase), []);

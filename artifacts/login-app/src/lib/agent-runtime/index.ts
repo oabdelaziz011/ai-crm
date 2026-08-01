@@ -11,6 +11,12 @@ import { useRetrievalServices } from "@/lib/retrieval-engine";
 import { useRuntimeChatConfig } from "@/hooks/ai-chat/use-runtime-chat-config";
 import { useWebChatCompanyChannel } from "@/hooks/ai-chat/use-web-chat-company-channel";
 import { createAgentKnowledgeRetrievalPort } from "@/lib/agent-runtime/knowledge-retrieval-port";
+import {
+  buildChannelRuntimeConfigFromExecutionContext,
+  readAgentEmployeeExecutionContext,
+} from "@/lib/ai-employees/utilities/agent-employee-execution-context";
+import { applyToolScopeBeforeRoute } from "@/lib/ai-employees/utilities/scoped-runtime-tool-port";
+import { runWithEmployeeToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
 
 export function useAgentRuntimeServices() {
   const { user, profile, isSuperAdmin } = useAuth();
@@ -68,12 +74,29 @@ export function useAgentRuntimeServices() {
           return toolRouterServices.registry.resolveRequiredPermissions(toolKey);
         },
         async route(ctx, input) {
-          const result = await toolRouterServices.router.route(toolRouterContext, {
-            conversationId: input.conversationId,
-            toolKey: input.toolKey,
-            input: input.input,
-            triggeredBy: "agent",
-          });
+          const result = await applyToolScopeBeforeRoute(
+            {
+              route: async (_ctx, routeInput) => {
+                const routed = await toolRouterServices.router.route(toolRouterContext, {
+                  conversationId: routeInput.conversationId,
+                  toolKey: routeInput.toolKey,
+                  input: routeInput.input,
+                  triggeredBy: "agent",
+                });
+                return {
+                  executionId: routed.executionId,
+                  toolKey: routed.toolKey ?? routeInput.toolKey,
+                  status: routed.status,
+                  output: routed.output,
+                  durationMs: routed.durationMs,
+                  errorCode: routed.errorCode,
+                  errorMessage: routed.errorMessage,
+                };
+              },
+            },
+            ctx,
+            input,
+          );
           return {
             executionId: result.executionId,
             status: result.status,
@@ -86,24 +109,62 @@ export function useAgentRuntimeServices() {
       knowledgeRetrieval,
       runtimeChat: {
         async execute(ctx, input) {
-          if (!webChatChannel?.id || !runtimeConfig?.providerConnectionId) {
+          if (!webChatChannel?.id) {
             return { responseContent: `[Simulated] ${input.messageText}` };
           }
-          const response = await channelServices.router.routeInbound(channelContext, {
-            companyId: input.companyId,
-            companyChannelId: webChatChannel.id,
-            channelKey: "web_chat",
-            source: "direct",
-            externalThreadId: input.conversationId,
-            conversationId: input.conversationId,
-            payload: { text: input.messageText, externalThreadId: input.conversationId },
-            executeAi: true,
-            runtimeConfig: {
-              providerConnectionId: runtimeConfig.providerConnectionId,
-              pageContext: input.pageContext,
-              executionPolicy: { streaming: false },
-            },
-          });
+
+          const executionContext = readAgentEmployeeExecutionContext(input.pageContext);
+          const providerConnectionId =
+            executionContext?.providerConnectionId ?? runtimeConfig?.providerConnectionId ?? null;
+
+          if (!providerConnectionId) {
+            return { responseContent: `[Simulated] ${input.messageText}` };
+          }
+
+          const runtimeConfigPayload = executionContext
+            ? buildChannelRuntimeConfigFromExecutionContext(
+                executionContext,
+                input.pageContext ?? {},
+              )
+            : {
+                providerConnectionId,
+                pageContext: input.pageContext,
+                knowledgeRetrieval:
+                  runtimeConfig?.knowledgeRetrieval?.embeddingConnectionId &&
+                  runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId &&
+                  runtimeConfig.knowledgeRetrieval.collectionId
+                    ? {
+                        embeddingConnectionId: runtimeConfig.knowledgeRetrieval.embeddingConnectionId,
+                        vectorStoreConnectionId: runtimeConfig.knowledgeRetrieval.vectorStoreConnectionId,
+                        collectionId: runtimeConfig.knowledgeRetrieval.collectionId,
+                      }
+                    : undefined,
+                executionPolicy: { streaming: false },
+              };
+
+          const executeChannelRuntime = async () =>
+            channelServices.router.routeInbound(channelContext, {
+              companyId: input.companyId,
+              companyChannelId: webChatChannel.id,
+              channelKey: "web_chat",
+              source: "direct",
+              externalThreadId: input.conversationId,
+              conversationId: input.conversationId,
+              payload: { text: input.messageText, externalThreadId: input.conversationId },
+              executeAi: true,
+              runtimeConfig: runtimeConfigPayload,
+            });
+
+          const response = executionContext
+            ? await runWithEmployeeToolScope(
+                {
+                  allowedToolKeys: executionContext.allowedToolKeys,
+                  employeeId: executionContext.aiEmployeeId,
+                },
+                executeChannelRuntime,
+              )
+            : await executeChannelRuntime();
+
           return { responseContent: response.responseContent ?? "" };
         },
       },

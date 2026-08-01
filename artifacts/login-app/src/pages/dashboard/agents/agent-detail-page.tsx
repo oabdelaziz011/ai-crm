@@ -1,8 +1,9 @@
 import { useLocation, useParams } from "wouter";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import {
@@ -161,6 +162,20 @@ export function AgentDetailPage() {
   const restoreEmployee = useRestoreAiEmployee(companyId, validAgentId);
   const disableEmployee = useDisableAiEmployee(companyId, validAgentId);
   const deleteEmployee = useDeleteAiEmployee(companyId);
+
+  const floatingAiContext = useMemo(
+    () =>
+      validAgentId && employee
+        ? {
+            page: "agents",
+            moduleLabel: t("aiEmployees.title"),
+            pageTitle: employee.displayName ?? employee.name,
+            aiEmployeeId: validAgentId,
+          }
+        : null,
+    [employee, t, validAgentId],
+  );
+  useRegisterFloatingAiContext(floatingAiContext);
 
   const handleDelete = async () => {
     if (!employee) return;

@@ -97,3 +97,4 @@ export {
   AiEmployeeGovernanceService,
   AiEmployeeAdministrationService,
 };
+export { resolveEmployeeChannelRuntime, evaluateEmployeeChannelRuntimeBinding } from "./services";

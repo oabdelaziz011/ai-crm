@@ -29,6 +29,7 @@
     "test:workflow-builder-debugger-foundation": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-debugger-foundation.test.mts",
     "test:workflow-builder-testing": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-testing.test.mts",
     "test:workflow-builder-analytics": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-analytics.test.mts",
+    "test:workflow-builder-optimization": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-optimization.test.mts",
     "test:workflow-builder-stability": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-stability.test.mts",
     "test:workflow-builder-d21-ux-audit": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-d21-ux-audit.test.mts",
     "test:workflow-builder-field-binding": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-field-binding.test.mts",

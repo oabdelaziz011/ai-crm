@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { DashboardPageFallback } from "@/components/dashboard/ui";
 import { usePermissions } from "@/hooks/use-rbac";
 import type { ServiceContext } from "@workspace/automation-platform";
-import { useDocumentBuilderSlice, useBuilderActions } from "../context/workflow-builder-context";
+import { useDocumentBuilderSlice, useBuilderActions, useValidationBuilderSlice } from "../context/workflow-builder-context";
 import type { WorkflowBuilderController } from "../hooks/use-workflow-builder";
 import type { WorkflowDocument } from "../core/types";
 import type { WorkflowRepository } from "../core/persistence/workflow-repository";
@@ -14,12 +14,20 @@ import { useWorkflowTesting } from "../testing/hooks/use-workflow-testing";
 import { hasWorkflowTestingPermission } from "../testing/permissions/testing-access";
 import { useWorkflowAnalytics } from "../analytics/hooks/use-workflow-analytics";
 import { hasWorkflowAnalyticsPermission } from "../analytics/permissions/workflow-analytics-access";
+import { useWorkflowOptimization } from "../optimization/hooks/use-workflow-optimization";
+import { hasWorkflowOptimizationPermission } from "../optimization/permissions/workflow-optimization-access";
 import { useWorkflowTriggerConfiguration } from "../triggers/hooks/use-workflow-trigger-configuration";
 import { TriggerConfigurationProvider } from "../triggers/context/trigger-configuration-context";
 import { BuilderToolbar } from "./toolbar/builder-toolbar";
 import { CollapsiblePropertiesPanel } from "./properties/collapsible-properties-panel";
 import { WorkflowCanvas } from "./canvas/workflow-canvas";
 import { CollapsibleNodePalette } from "./palette/collapsible-node-palette";
+
+const OptimizationPanel = lazy(() =>
+  import("../optimization/components/optimization-panel").then((module) => ({
+    default: module.OptimizationPanel,
+  })),
+);
 
 const AnalyticsPanel = lazy(() =>
   import("../analytics/components/analytics-panel").then((module) => ({
@@ -71,6 +79,7 @@ export function WorkflowBuilderWorkspace({
   const canSimulate = hasWorkflowSimulationPermission(hasPermission, isSuperAdmin);
   const canTest = hasWorkflowTestingPermission(hasPermission, isSuperAdmin);
   const canAnalytics = hasWorkflowAnalyticsPermission(hasPermission, isSuperAdmin);
+  const canOptimize = hasWorkflowOptimizationPermission(hasPermission, isSuperAdmin);
   const liveDocument = controller.state.document;
   const simulation = useWorkflowSimulation(liveDocument, { enabled: canSimulate });
   const testing = useWorkflowTesting(liveDocument, { enabled: canTest });
@@ -87,6 +96,15 @@ export function WorkflowBuilderWorkspace({
       trigger: triggerConfiguration.enabled ? triggerConfiguration : null,
     },
     { enabled: canAnalytics },
+  );
+  const { validationIssues } = useValidationBuilderSlice();
+  const optimization = useWorkflowOptimization(
+    liveDocument,
+    {
+      analytics: canAnalytics ? analytics : null,
+      validationIssues,
+    },
+    { enabled: canOptimize },
   );
   const { selectedNodeIds } = useDocumentBuilderSlice();
   const { dispatch } = useBuilderActions();
@@ -113,6 +131,7 @@ export function WorkflowBuilderWorkspace({
           simulation={canSimulate ? simulation : null}
           testing={canTest ? testing : null}
           analytics={canAnalytics ? analytics : null}
+          optimization={canOptimize ? optimization : null}
         />
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-visible">
           <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
@@ -161,6 +180,13 @@ export function WorkflowBuilderWorkspace({
             <div className="h-80 shrink-0">
               <Suspense fallback={<DashboardPageFallback />}>
                 <AnalyticsPanel analytics={analytics} onFocusNode={focusNode} />
+              </Suspense>
+            </div>
+          ) : null}
+          {canOptimize && optimization.panelOpen ? (
+            <div className="h-80 shrink-0">
+              <Suspense fallback={<DashboardPageFallback />}>
+                <OptimizationPanel optimization={optimization} onFocusNode={focusNode} />
               </Suspense>
             </div>
           ) : null}

@@ -17,6 +17,7 @@ import {
   FlaskConical,
   TestTube2,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder
 import type { WorkflowSimulationController } from "../../simulation/hooks/use-workflow-simulation";
 import type { WorkflowTestingController } from "../../testing/hooks/use-workflow-testing";
 import type { WorkflowAnalyticsController } from "../../analytics/hooks/use-workflow-analytics";
+import type { WorkflowOptimizationController } from "../../optimization/hooks/use-workflow-optimization";
 
 export const BuilderToolbar = memo(function BuilderToolbar({
   onBack,
@@ -49,12 +51,14 @@ export const BuilderToolbar = memo(function BuilderToolbar({
   simulation,
   testing,
   analytics,
+  optimization,
 }: {
   onBack: () => void;
   controller: WorkflowBuilderController;
   simulation?: WorkflowSimulationController | null;
   testing?: WorkflowTestingController | null;
   analytics?: WorkflowAnalyticsController | null;
+  optimization?: WorkflowOptimizationController | null;
 }) {
   const { t } = useTranslation("common");
   const { hasPermission } = usePermissions();
@@ -178,6 +182,18 @@ export const BuilderToolbar = memo(function BuilderToolbar({
             >
               <BarChart3 className="me-2 h-4 w-4" />
               {t("workflowBuilder.analytics.actions.open")}
+            </Button>
+          ) : null}
+          {optimization ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => optimization.setPanelOpen(true)}
+            >
+              <Sparkles className="me-2 h-4 w-4" />
+              {t("workflowBuilder.optimization.actions.open")}
             </Button>
           ) : null}
           {canPublish ? (

@@ -2301,6 +2301,69 @@
         "trends": "شغّل اختبارات الانحدار لملء مخططات الاتجاه."
       }
     },
+    "optimization": {
+      "title": "تحسين سير العمل",
+      "subtitle": "توصيات استشارية من التحليلات والتحقق والاختبار وتحليل الرسم. لا تغييرات تلقائية.",
+      "advisoryBadge": "استشاري فقط",
+      "actions": {
+        "open": "تحسين",
+        "focusNode": "تركيز على خطوة"
+      },
+      "health": {
+        "healthy": "سليم",
+        "warning": "يحتاج انتباهاً",
+        "critical": "حرج",
+        "unknown": "غير معروف"
+      },
+      "severity": {
+        "info": "معلومة",
+        "warning": "تحذير",
+        "critical": "حرج"
+      },
+      "tabs": {
+        "dashboard": "لوحة",
+        "performance": "الأداء",
+        "structure": "البنية",
+        "ai": "تكلفة الذكاء الاصطناعي",
+        "trigger": "المشغّلات",
+        "reliability": "الموثوقية",
+        "complexity": "التعقيد",
+        "report": "التقرير"
+      },
+      "dashboard": {
+        "score": "درجة التحسين",
+        "health": "الصحة العامة",
+        "impact": "الأثر المقدّر",
+        "recommendations": "التوصيات",
+        "critical": "عناصر حرجة"
+      },
+      "complexity": {
+        "graph": "تعقيد الرسم",
+        "branching": "تعقيد الفروع",
+        "maintainability": "قابلية الصيانة",
+        "readability": "قابلية القراءة"
+      },
+      "recommendation": {
+        "impact": "الأثر",
+        "confidence": "الثقة"
+      },
+      "report": {
+        "summary": "ملخص تنفيذي",
+        "risks": "المخاطر",
+        "opportunities": "الفرص",
+        "noSummary": "لا يوجد ملخص.",
+        "noRisks": "لم تُحدد مخاطر جوهرية.",
+        "noOpportunities": "لم تُحدد فرص تحسين."
+      },
+      "empty": {
+        "performance": "لا توصيات أداء.",
+        "structure": "لم تُكتشف مشاكل بنيوية.",
+        "ai": "لا اقتراحات لتكلفة الذكاء الاصطناعي.",
+        "trigger": "لا اقتراحات لمشغّلات.",
+        "reliability": "لا مخاوف موثوقية.",
+        "complexity": "التعقيد ضمن النطاق المقبول."
+      }
+    },
     "debugger": {
       "title": "مصحح سير العمل",
       "subtitle": "إعادة تشغيل ومعاينة للقراءة فقط فوق لقطات المحاكاة.",

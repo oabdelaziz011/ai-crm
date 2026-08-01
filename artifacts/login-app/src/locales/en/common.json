@@ -2545,6 +2545,69 @@
         "trends": "Run regression tests to populate trend charts."
       }
     },
+    "optimization": {
+      "title": "Workflow Optimization",
+      "subtitle": "Advisory recommendations from analytics, validation, testing, and graph analysis. No automatic changes.",
+      "advisoryBadge": "Advisory only",
+      "actions": {
+        "open": "Optimize",
+        "focusNode": "Focus node"
+      },
+      "health": {
+        "healthy": "Healthy",
+        "warning": "Needs attention",
+        "critical": "Critical",
+        "unknown": "Unknown"
+      },
+      "severity": {
+        "info": "Info",
+        "warning": "Warning",
+        "critical": "Critical"
+      },
+      "tabs": {
+        "dashboard": "Dashboard",
+        "performance": "Performance",
+        "structure": "Structure",
+        "ai": "AI Cost",
+        "trigger": "Triggers",
+        "reliability": "Reliability",
+        "complexity": "Complexity",
+        "report": "Report"
+      },
+      "dashboard": {
+        "score": "Optimization score",
+        "health": "Overall health",
+        "impact": "Estimated impact",
+        "recommendations": "Recommendations",
+        "critical": "Critical items"
+      },
+      "complexity": {
+        "graph": "Graph complexity",
+        "branching": "Branching complexity",
+        "maintainability": "Maintainability",
+        "readability": "Readability"
+      },
+      "recommendation": {
+        "impact": "Impact",
+        "confidence": "Confidence"
+      },
+      "report": {
+        "summary": "Executive summary",
+        "risks": "Risks",
+        "opportunities": "Opportunities",
+        "noSummary": "No summary available.",
+        "noRisks": "No significant risks identified.",
+        "noOpportunities": "No optimization opportunities identified."
+      },
+      "empty": {
+        "performance": "No performance recommendations.",
+        "structure": "No structural issues detected.",
+        "ai": "No AI cost optimizations suggested.",
+        "trigger": "No trigger optimizations suggested.",
+        "reliability": "No reliability concerns detected.",
+        "complexity": "Complexity is within acceptable range."
+      }
+    },
     "debugger": {
       "title": "Workflow Debugger",
       "subtitle": "Read-only replay and inspection over simulation snapshots.",

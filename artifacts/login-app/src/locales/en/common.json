@@ -2372,6 +2372,86 @@
         "previewBadge": "Simulation preview"
       }
     },
+    "testing": {
+      "title": "Workflow Testing",
+      "subtitle": "Isolated test suites run only through simulation — never production execution.",
+      "isolatedBadge": "Simulation-only",
+      "loading": "Loading testing panel…",
+      "defaults": {
+        "suiteName": "Regression suite",
+        "caseName": "Smoke test",
+        "readinessAssertion": "Minimum readiness score"
+      },
+      "actions": {
+        "test": "Test",
+        "createSuite": "Create suite",
+        "createCase": "Create case",
+        "duplicateSuite": "Duplicate suite",
+        "archiveSuite": "Archive suite",
+        "restoreSuite": "Restore suite",
+        "runSuite": "Run suite",
+        "runCase": "Run case",
+        "running": "Running…",
+        "focusNode": "Focus node"
+      },
+      "status": {
+        "passed": "Passed",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "running": "Running"
+      },
+      "tabs": {
+        "suites": "Suites",
+        "cases": "Cases",
+        "regression": "Regression",
+        "coverage": "Coverage",
+        "history": "History",
+        "failure": "Failure",
+        "report": "Report"
+      },
+      "sections": {
+        "activeSuites": "Active suites",
+        "archivedSuites": "Archived suites",
+        "testCases": "Test cases"
+      },
+      "labels": {
+        "caseCount": "{{count}} active cases",
+        "assertionCount": "{{count}} assertions",
+        "runSummary": "Passed {{passed}} · Failed {{failed}} · Skipped {{skipped}} · {{duration}}ms"
+      },
+      "coverage": {
+        "nodes": "Node coverage",
+        "branches": "Branch coverage",
+        "triggers": "Trigger coverage",
+        "assertions": "Assertion coverage"
+      },
+      "report": {
+        "passed": "Passed",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "readiness": "Readiness",
+        "warnings": "Warnings",
+        "bottlenecks": "Bottlenecks"
+      },
+      "failure": {
+        "title": "Assertion failures",
+        "duration": "Duration: {{duration}}ms",
+        "readiness": "Readiness score: {{score}}",
+        "executionPath": "Execution path",
+        "assertions": "Assertion results",
+        "timeline": "Timeline snapshot"
+      },
+      "empty": {
+        "suites": "No test suites yet.",
+        "archivedSuites": "No archived suites.",
+        "cases": "No test cases in this suite.",
+        "description": "No description",
+        "runs": "No regression runs yet.",
+        "history": "No test history yet.",
+        "failure": "Select a failed run to inspect failures.",
+        "path": "No execution path captured."
+      }
+    },
     "debugger": {
       "title": "Workflow Debugger",
       "subtitle": "Read-only replay and inspection over simulation snapshots.",

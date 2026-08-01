@@ -2128,6 +2128,86 @@
         "previewBadge": "معاينة المحاكاة"
       }
     },
+    "testing": {
+      "title": "اختبار سير العمل",
+      "subtitle": "مجموعات اختبار معزولة تعمل عبر المحاكاة فقط — بدون تنفيذ إنتاجي.",
+      "isolatedBadge": "محاكاة فقط",
+      "loading": "جاري تحميل لوحة الاختبار…",
+      "defaults": {
+        "suiteName": "مجموعة انحدار",
+        "caseName": "اختبار smoke",
+        "readinessAssertion": "الحد الأدنى لدرجة الجاهزية"
+      },
+      "actions": {
+        "test": "اختبار",
+        "createSuite": "إنشاء مجموعة",
+        "createCase": "إنشاء حالة",
+        "duplicateSuite": "نسخ المجموعة",
+        "archiveSuite": "أرشفة المجموعة",
+        "restoreSuite": "استعادة المجموعة",
+        "runSuite": "تشغيل المجموعة",
+        "runCase": "تشغيل الحالة",
+        "running": "جاري التشغيل…",
+        "focusNode": "تركيز على خطوة"
+      },
+      "status": {
+        "passed": "ناجح",
+        "failed": "فاشل",
+        "skipped": "متخطى",
+        "running": "قيد التشغيل"
+      },
+      "tabs": {
+        "suites": "المجموعات",
+        "cases": "الحالات",
+        "regression": "الانحدار",
+        "coverage": "التغطية",
+        "history": "السجل",
+        "failure": "الفشل",
+        "report": "التقرير"
+      },
+      "sections": {
+        "activeSuites": "المجموعات النشطة",
+        "archivedSuites": "المجموعات المؤرشفة",
+        "testCases": "حالات الاختبار"
+      },
+      "labels": {
+        "caseCount": "{{count}} حالات نشطة",
+        "assertionCount": "{{count}} assertions",
+        "runSummary": "ناجح {{passed}} · فاشل {{failed}} · متخطى {{skipped}} · {{duration}}ms"
+      },
+      "coverage": {
+        "nodes": "تغطية الخطوات",
+        "branches": "تغطية الفروع",
+        "triggers": "تغطية المشغّلات",
+        "assertions": "تغطية التحقق"
+      },
+      "report": {
+        "passed": "ناجح",
+        "failed": "فاشل",
+        "skipped": "متخطى",
+        "readiness": "الجاهزية",
+        "warnings": "تحذيرات",
+        "bottlenecks": "اختناقات"
+      },
+      "failure": {
+        "title": "فشل التحقق",
+        "duration": "المدة: {{duration}}ms",
+        "readiness": "درجة الجاهزية: {{score}}",
+        "executionPath": "مسار التنفيذ",
+        "assertions": "نتائج التحقق",
+        "timeline": "لقطة الخط الزمني"
+      },
+      "empty": {
+        "suites": "لا توجد مجموعات اختبار بعد.",
+        "archivedSuites": "لا توجد مجموعات مؤرشفة.",
+        "cases": "لا توجد حالات في هذه المجموعة.",
+        "description": "بدون وصف",
+        "runs": "لا توجد عمليات انحدار بعد.",
+        "history": "لا يوجد سجل اختبار بعد.",
+        "failure": "اختر تشغيلاً فاشلاً لمعاينة الأخطاء.",
+        "path": "لم يُلتقط مسار تنفيذ."
+      }
+    },
     "debugger": {
       "title": "مصحح سير العمل",
       "subtitle": "إعادة تشغيل ومعاينة للقراءة فقط فوق لقطات المحاكاة.",

@@ -10,12 +10,20 @@ import { DebugFoundationProvider } from "../debugger/context/debug-context";
 import { useWorkflowDebugger } from "../debugger/hooks/use-workflow-debugger";
 import { useWorkflowSimulation } from "../simulation/hooks/use-workflow-simulation";
 import { hasWorkflowSimulationPermission } from "../simulation/permissions/workflow-simulation-access";
+import { useWorkflowTesting } from "../testing/hooks/use-workflow-testing";
+import { hasWorkflowTestingPermission } from "../testing/permissions/testing-access";
 import { useWorkflowTriggerConfiguration } from "../triggers/hooks/use-workflow-trigger-configuration";
 import { TriggerConfigurationProvider } from "../triggers/context/trigger-configuration-context";
 import { BuilderToolbar } from "./toolbar/builder-toolbar";
 import { CollapsiblePropertiesPanel } from "./properties/collapsible-properties-panel";
 import { WorkflowCanvas } from "./canvas/workflow-canvas";
 import { CollapsibleNodePalette } from "./palette/collapsible-node-palette";
+
+const TestingPanel = lazy(() =>
+  import("../testing/components/testing-panel").then((module) => ({
+    default: module.TestingPanel,
+  })),
+);
 
 const SimulationPanel = lazy(() =>
   import("./simulation/simulation-panel").then((module) => ({
@@ -53,8 +61,10 @@ export function WorkflowBuilderWorkspace({
 }: WorkflowBuilderWorkspaceProps) {
   const { hasPermission, isSuperAdmin } = usePermissions();
   const canSimulate = hasWorkflowSimulationPermission(hasPermission, isSuperAdmin);
+  const canTest = hasWorkflowTestingPermission(hasPermission, isSuperAdmin);
   const liveDocument = controller.state.document;
   const simulation = useWorkflowSimulation(liveDocument, { enabled: canSimulate });
+  const testing = useWorkflowTesting(liveDocument, { enabled: canTest });
   const debuggerController = useWorkflowDebugger(liveDocument, canSimulate ? simulation : null, {
     enabled: canSimulate,
   });
@@ -82,6 +92,7 @@ export function WorkflowBuilderWorkspace({
           controller={controller}
           onBack={onBack}
           simulation={canSimulate ? simulation : null}
+          testing={canTest ? testing : null}
         />
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-visible">
           <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
@@ -117,6 +128,13 @@ export function WorkflowBuilderWorkspace({
                   </Suspense>
                 </div>
               ) : null}
+            </div>
+          ) : null}
+          {canTest && testing.panelOpen ? (
+            <div className="h-80 shrink-0">
+              <Suspense fallback={<DashboardPageFallback />}>
+                <TestingPanel testing={testing} onFocusNode={focusNode} />
+              </Suspense>
             </div>
           ) : null}
         </div>

@@ -15,6 +15,7 @@ import {
   Undo2,
   UploadCloud,
   FlaskConical,
+  TestTube2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,15 +39,18 @@ import {
 } from "../../context/workflow-builder-context";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
 import type { WorkflowSimulationController } from "../../simulation/hooks/use-workflow-simulation";
+import type { WorkflowTestingController } from "../../testing/hooks/use-workflow-testing";
 
 export const BuilderToolbar = memo(function BuilderToolbar({
   onBack,
   controller,
   simulation,
+  testing,
 }: {
   onBack: () => void;
   controller: WorkflowBuilderController;
   simulation?: WorkflowSimulationController | null;
+  testing?: WorkflowTestingController | null;
 }) {
   const { t } = useTranslation("common");
   const { hasPermission } = usePermissions();
@@ -146,6 +150,18 @@ export const BuilderToolbar = memo(function BuilderToolbar({
             >
               <FlaskConical className="me-2 h-4 w-4" />
               {t("workflowBuilder.simulation.actions.simulate")}
+            </Button>
+          ) : null}
+          {testing ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => testing.setPanelOpen(true)}
+            >
+              <TestTube2 className="me-2 h-4 w-4" />
+              {t("workflowBuilder.testing.actions.test")}
             </Button>
           ) : null}
           {canPublish ? (

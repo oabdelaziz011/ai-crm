@@ -26,6 +26,7 @@
     "test:workflow-builder-core": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-core.test.mts",
     "test:workflow-builder-simulation": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-simulation.test.mts",
     "test:workflow-builder-triggers": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-triggers.test.mts",
+    "test:workflow-builder-debugger-foundation": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-debugger-foundation.test.mts",
     "test:workflow-builder-stability": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-stability.test.mts",
     "test:workflow-builder-d21-ux-audit": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-d21-ux-audit.test.mts",
     "test:workflow-builder-field-binding": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-field-binding.test.mts",

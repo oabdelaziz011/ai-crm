@@ -6,6 +6,8 @@ import { useDocumentBuilderSlice, useBuilderActions } from "../context/workflow-
 import type { WorkflowBuilderController } from "../hooks/use-workflow-builder";
 import type { WorkflowDocument } from "../core/types";
 import type { WorkflowRepository } from "../core/persistence/workflow-repository";
+import { DebugFoundationProvider } from "../debugger/context/debug-context";
+import { useWorkflowDebugger } from "../debugger/hooks/use-workflow-debugger";
 import { useWorkflowSimulation } from "../simulation/hooks/use-workflow-simulation";
 import { hasWorkflowSimulationPermission } from "../simulation/permissions/workflow-simulation-access";
 import { useWorkflowTriggerConfiguration } from "../triggers/hooks/use-workflow-trigger-configuration";
@@ -47,6 +49,9 @@ export function WorkflowBuilderWorkspace({
   const canSimulate = hasWorkflowSimulationPermission(hasPermission, isSuperAdmin);
   const liveDocument = controller.state.document;
   const simulation = useWorkflowSimulation(liveDocument, { enabled: canSimulate });
+  const debuggerController = useWorkflowDebugger(liveDocument, canSimulate ? simulation : null, {
+    enabled: canSimulate,
+  });
   const triggerConfiguration = useWorkflowTriggerConfiguration(liveDocument);
   const { selectedNodeIds } = useDocumentBuilderSlice();
   const { dispatch } = useBuilderActions();
@@ -61,10 +66,11 @@ export function WorkflowBuilderWorkspace({
   };
 
   const workspace = (
-    <TriggerConfigurationProvider
-      trigger={triggerConfiguration}
-      simulation={canSimulate ? simulation : null}
-    >
+    <DebugFoundationProvider debugger={debuggerController}>
+      <TriggerConfigurationProvider
+        trigger={triggerConfiguration}
+        simulation={canSimulate ? simulation : null}
+      >
       <>
         <BuilderToolbar
           controller={controller}
@@ -100,7 +106,8 @@ export function WorkflowBuilderWorkspace({
           ) : null}
         </div>
       </>
-    </TriggerConfigurationProvider>
+      </TriggerConfigurationProvider>
+    </DebugFoundationProvider>
   );
 
   if (!mounted) return workspace;

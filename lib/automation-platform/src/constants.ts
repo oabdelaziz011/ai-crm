@@ -72,6 +72,7 @@ export const AUTOMATION_PERMISSIONS = {
   execute: "automation.execute",
   rollback: "automation.rollback",
   archive: "automation.archive",
+  simulate: "automation.simulate",
 } as const;
 
 export const AUTOMATION_AUDIT_EVENTS = [

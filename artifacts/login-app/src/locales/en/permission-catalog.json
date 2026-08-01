@@ -99,6 +99,11 @@
       "icon": "🔧",
       "order": 190,
       "label": "AI Platform Services"
+    },
+    "automation": {
+      "icon": "⚙️",
+      "order": 195,
+      "label": "Automation"
     }
   },
   "codes": {
@@ -641,6 +646,16 @@
       "name": "Execute Tools",
       "description": "Allows executing tools through the tool router.",
       "group": "aiPlatform"
+    },
+    "automation.view": {
+      "name": "View Automation",
+      "description": "Allows viewing automation flows, runs, and workflow builder access.",
+      "group": "automation"
+    },
+    "automation.simulate": {
+      "name": "Simulate Workflows",
+      "description": "Allows dry-run workflow simulation in the builder without production execution.",
+      "group": "automation"
     },
     "embeddings.view": {
       "name": "View Embeddings",

@@ -99,6 +99,11 @@
       "icon": "🔧",
       "order": 190,
       "label": "خدمات منصة الذكاء الاصطناعي"
+    },
+    "automation": {
+      "icon": "⚙️",
+      "order": 195,
+      "label": "الأتمتة"
     }
   },
   "codes": {
@@ -626,6 +631,16 @@
       "name": "تنفيذ الأدوات",
       "description": "يسمح بتنفيذ الأدوات عبر موجه الأدوات.",
       "group": "aiPlatform"
+    },
+    "automation.view": {
+      "name": "عرض الأتمتة",
+      "description": "يسمح بعرض تدفقات الأتمتة والتشغيلات والوصول إلى منشئ سير العمل.",
+      "group": "automation"
+    },
+    "automation.simulate": {
+      "name": "محاكاة سير العمل",
+      "description": "يسمح بتشغيل محاكاة تجريبية في المنشئ دون تنفيذ إنتاجي.",
+      "group": "automation"
     },
     "embeddings.view": {
       "name": "عرض التضمينات",

@@ -9,11 +9,8 @@ import { useWorkflowBuilder } from "../hooks/use-workflow-builder";
 import { useWorkflowBuilderKeyboard } from "../hooks/use-workflow-builder-keyboard";
 import { useWorkflowBuilderServices } from "../context/workflow-builder-services";
 import { WorkflowBuilderProvider } from "../context/workflow-builder-context";
-import { WorkflowCanvas } from "./canvas/workflow-canvas";
+import { WorkflowBuilderWorkspace } from "./workflow-builder-workspace";
 import { UnsavedChangesDialog } from "./lifecycle/unsaved-changes-dialog";
-import { CollapsibleNodePalette } from "./palette/collapsible-node-palette";
-import { CollapsiblePropertiesPanel } from "./properties/collapsible-properties-panel";
-import { BuilderToolbar } from "./toolbar/builder-toolbar";
 
 export function WorkflowBuilderShell({
   document,
@@ -76,33 +73,24 @@ export function WorkflowBuilderShell({
   };
 
   const builderSurface = (
-    <>
-      <BuilderToolbar controller={controller} onBack={handleBack} />
-      <div className="flex min-h-0 flex-1 gap-4 overflow-visible">
-        <CollapsiblePropertiesPanel
-          controller={controller}
-          document={document}
-          repository={repository}
-          context={context}
-          canRollback={hasPermission("automation.rollback")}
-          onRollback={async (versionNumber) => {
-            await controller.rollback(versionNumber);
-          }}
-        />
-        <div className="min-h-0 min-w-0 flex-1">
-          <WorkflowCanvas />
-        </div>
-        <CollapsibleNodePalette />
-      </div>
-    </>
+    <WorkflowBuilderWorkspace
+      controller={controller}
+      document={document}
+      repository={repository}
+      context={context}
+      canRollback={hasPermission("automation.rollback")}
+      onRollback={async (versionNumber) => {
+        await controller.rollback(versionNumber);
+      }}
+      onBack={handleBack}
+      TraceBoundary={TraceBoundary}
+    />
   );
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 z-20 flex flex-col gap-4 bg-background p-4 lg:start-64">
       <WorkflowBuilderProvider controller={controller}>
-        <ReactFlowProvider>
-          {TraceBoundary ? <TraceBoundary>{builderSurface}</TraceBoundary> : builderSurface}
-        </ReactFlowProvider>
+        <ReactFlowProvider>{builderSurface}</ReactFlowProvider>
       </WorkflowBuilderProvider>
       <UnsavedChangesDialog
         open={leaveOpen}

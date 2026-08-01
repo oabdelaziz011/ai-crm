@@ -53,6 +53,7 @@ export function inferGroupId(code: string): string {
   if (code.startsWith("channels.") || code === "ai.whatsapp.manage") return "channels";
   if (code.startsWith("knowledge.") || code === "ai.knowledge.manage") return "knowledge";
   if (code.startsWith("whatsapp.")) return "whatsapp";
+  if (code.startsWith("automation.")) return "automation";
   if (code.startsWith("ai.analytics.") || code.startsWith("ai.costs.")) return "aiAnalytics";
   return "aiPlatform";
 }

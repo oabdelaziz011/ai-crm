@@ -2069,6 +2069,65 @@
       "removedSteps": "خطوات مُزالة",
       "changedSettings": "إعدادات مُغيّرة"
     },
+    "simulation": {
+      "title": "وضع المحاكاة",
+      "subtitle": "تنفيذ تجريبي فقط — بدون واجهات برمجة أو أدوات أو كتابة قاعدة بيانات أو آثار جانبية إنتاجية.",
+      "empty": "لا توجد بيانات محاكاة بعد.",
+      "actions": {
+        "simulate": "محاكاة",
+        "start": "بدء",
+        "pause": "إيقاف مؤقت",
+        "resume": "استئناف",
+        "restart": "إعادة تشغيل",
+        "stop": "إيقاف",
+        "step": "خطوة",
+        "addBreakpoint": "إضافة نقطة توقف",
+        "removeBreakpoint": "إزالة نقطة توقف"
+      },
+      "status": {
+        "idle": "خامل",
+        "running": "قيد التشغيل",
+        "paused": "متوقف مؤقتاً",
+        "waiting_input": "بانتظار إدخال",
+        "completed": "مكتمل",
+        "stopped": "متوقف",
+        "failed": "فشل"
+      },
+      "tabs": {
+        "timeline": "الخط الزمني",
+        "variables": "المتغيرات",
+        "path": "المسار",
+        "state": "الحالة",
+        "errors": "الأخطاء",
+        "logs": "السجلات",
+        "report": "التقرير"
+      },
+      "variables": {
+        "current": "المتغيرات الحالية",
+        "mutations": "تغييرات المتغيرات"
+      },
+      "state": {
+        "currentNode": "الخطوة الحالية",
+        "workflowState": "حالة سير العمل",
+        "executedSteps": "الخطوات المنفذة",
+        "waitingFor": "بانتظار"
+      },
+      "report": {
+        "pending": "شغّل المحاكاة أو أكملها لإنشاء تقرير.",
+        "duration": "المدة",
+        "executed": "الخطوات المنفذة",
+        "skipped": "الخطوات المتخطاة",
+        "coverage": "التغطية",
+        "readiness": "درجة الجاهزية"
+      },
+      "documentDrift": {
+        "message": "تغيّر سير العمل. هل تريد إعادة تشغيل المحاكاة؟",
+        "restart": "إعادة تشغيل المحاكاة"
+      },
+      "timeline": {
+        "previewBadge": "معاينة المحاكاة"
+      }
+    },
     "errors": {
       "saveFailed": "تعذّر حفظ سير العمل. يرجى المحاولة مرة أخرى."
     },

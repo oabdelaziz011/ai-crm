@@ -2313,6 +2313,65 @@
       "removedSteps": "Removed steps",
       "changedSettings": "Changed settings"
     },
+    "simulation": {
+      "title": "Simulation Mode",
+      "subtitle": "Dry-run execution only — no APIs, tools, database writes, or production side effects.",
+      "empty": "No simulation data yet.",
+      "actions": {
+        "simulate": "Simulate",
+        "start": "Start",
+        "pause": "Pause",
+        "resume": "Resume",
+        "restart": "Restart",
+        "stop": "Stop",
+        "step": "Step",
+        "addBreakpoint": "Add breakpoint",
+        "removeBreakpoint": "Remove breakpoint"
+      },
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "paused": "Paused",
+        "waiting_input": "Waiting for input",
+        "completed": "Completed",
+        "stopped": "Stopped",
+        "failed": "Failed"
+      },
+      "tabs": {
+        "timeline": "Timeline",
+        "variables": "Variables",
+        "path": "Path",
+        "state": "State",
+        "errors": "Errors",
+        "logs": "Logs",
+        "report": "Report"
+      },
+      "variables": {
+        "current": "Current variables",
+        "mutations": "Variable mutations"
+      },
+      "state": {
+        "currentNode": "Current node",
+        "workflowState": "Workflow state",
+        "executedSteps": "Executed steps",
+        "waitingFor": "Waiting for"
+      },
+      "report": {
+        "pending": "Run or complete a simulation to generate a report.",
+        "duration": "Duration",
+        "executed": "Executed nodes",
+        "skipped": "Skipped nodes",
+        "coverage": "Coverage",
+        "readiness": "Readiness score"
+      },
+      "documentDrift": {
+        "message": "Workflow has changed. Restart simulation?",
+        "restart": "Restart simulation"
+      },
+      "timeline": {
+        "previewBadge": "Simulation preview"
+      }
+    },
     "errors": {
       "saveFailed": "We couldn't save your workflow. Please try again."
     },

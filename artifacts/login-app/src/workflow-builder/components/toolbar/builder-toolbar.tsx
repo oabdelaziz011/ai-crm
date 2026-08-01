@@ -14,6 +14,7 @@ import {
   Save,
   Undo2,
   UploadCloud,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,13 +37,16 @@ import {
   useValidationBuilderSlice,
 } from "../../context/workflow-builder-context";
 import type { WorkflowBuilderController } from "../../hooks/use-workflow-builder";
+import type { WorkflowSimulationController } from "../../simulation/hooks/use-workflow-simulation";
 
 export const BuilderToolbar = memo(function BuilderToolbar({
   onBack,
   controller,
+  simulation,
 }: {
   onBack: () => void;
   controller: WorkflowBuilderController;
+  simulation?: WorkflowSimulationController | null;
 }) {
   const { t } = useTranslation("common");
   const { hasPermission } = usePermissions();
@@ -127,6 +131,23 @@ export const BuilderToolbar = memo(function BuilderToolbar({
             <Save className="me-2 h-4 w-4" />
             {t("workflowBuilder.actions.saveDraft")}
           </Button>
+          {simulation ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => {
+                simulation.setPanelOpen(true);
+                if (simulation.snapshot.status === "idle" || simulation.snapshot.status === "stopped") {
+                  simulation.start({ autoAdvance: true });
+                }
+              }}
+            >
+              <FlaskConical className="me-2 h-4 w-4" />
+              {t("workflowBuilder.simulation.actions.simulate")}
+            </Button>
+          ) : null}
           {canPublish ? (
             <Button type="button" size="sm" className="rounded-xl" onClick={() => setPublishOpen(true)}>
               <UploadCloud className="me-2 h-4 w-4" />

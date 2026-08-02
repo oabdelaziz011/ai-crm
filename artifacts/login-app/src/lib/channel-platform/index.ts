@@ -65,7 +65,7 @@ export function useChannelPlatformServices() {
   );
 
   const services = useMemo(
-    () => createChannelPlatformServices(supabase, { ports }),
+    () => createChannelPlatformServices(supabase, { ports, browserSafeOutbound: true }),
     [ports],
   );
 

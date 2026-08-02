@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import { Bot, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,7 @@ import {
   hasAiEmployeesEditPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
+import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import { agentNewHref } from "@/config/agents-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +56,18 @@ export function AgentsListPage() {
 
   const { data: employees = [], isLoading, error } = useAiEmployees(companyId, filter);
   const deleteEmployee = useDeleteAiEmployee(companyId);
+
+  useEffect(() => {
+    const payload = {
+      companyId,
+      filter,
+      "employees.length": employees.length,
+      isLoading,
+      error: error?.message ?? null,
+    };
+    console.log("[AI_EMPLOYEES_TRACE agents-layout]", payload);
+    aiEmployeesTrace("agents-layout", payload);
+  }, [companyId, filter, employees.length, isLoading, error]);
 
   const ownerOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -98,6 +111,10 @@ export function AgentsListPage() {
   if (error) {
     return <DashboardErrorBanner message={error.message} />;
   }
+
+  const renderPayload = { "employees.length": employees.length, employees };
+  console.log("[AI_EMPLOYEES_TRACE agents-layout render]", renderPayload);
+  aiEmployeesTrace("agents-layout render", renderPayload);
 
   return (
     <>

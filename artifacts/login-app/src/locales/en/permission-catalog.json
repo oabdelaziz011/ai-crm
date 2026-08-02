@@ -502,6 +502,11 @@
       "description": "Allows adding internal notes to conversations.",
       "group": "conversations"
     },
+    "conversation.internal_notes.manage": {
+      "name": "Manage Internal Notes",
+      "description": "Allows editing and deleting internal notes on conversations.",
+      "group": "conversations"
+    },
     "conversation.link_customer": {
       "name": "Link Customer",
       "description": "Allows linking an existing customer to a conversation.",

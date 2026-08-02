@@ -5,6 +5,7 @@ import type {
   AiEmployeeListFilter,
   AiEmployeeUpdate,
 } from "@/lib/ai-employees/types";
+import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 
 const PAGE_SIZE = 25;
 
@@ -52,6 +53,20 @@ export class AiEmployeeRepository {
     }
 
     const { data, error } = await query;
+    console.log("[AI_EMPLOYEES_TRACE AiEmployeeRepository.listByCompany]", {
+      companyId,
+      filter,
+      rowCount: data?.length ?? 0,
+      rows: data,
+      error: error?.message ?? null,
+    });
+    aiEmployeesTrace("AiEmployeeRepository.listByCompany", {
+      companyId,
+      filter,
+      rowCount: data?.length ?? 0,
+      rows: data,
+      error: error?.message ?? null,
+    });
     if (error) throw new Error(error.message);
     return (data ?? []) as AiEmployeeDbRow[];
   }

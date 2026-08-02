@@ -1,150 +1,258 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { Menu, MessagesSquare, PanelRight } from "lucide-react";
-
 import { useTranslation } from "react-i18next";
-
 import { useAuth } from "@/context/auth-context";
-
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
-
-import { Button } from "@/components/ui/button";
-
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-
 import { CustomerModal } from "@/components/dashboard/customer-modal";
-
-import { ConversationList } from "@/components/omnichannel/conversation-list";
-
-import { ConversationView } from "@/components/omnichannel/conversation-view";
-
-import { WorkspaceSidebar } from "@/components/omnichannel/workspace-sidebar";
-
-import { ConversationFilters, ConversationSearch } from "@/components/omnichannel/conversation-filters";
-
-import { ConversationQueues } from "@/components/omnichannel/conversation-queues";
-
-import { OmnichannelStatsBar } from "@/components/omnichannel/omnichannel-stats-bar";
-
-import { OmnichannelWorkspaceLayout } from "@/components/omnichannel/omnichannel-workspace-layout";
-
-import { EscalationDialog } from "@/components/omnichannel/escalation-dialog";
-
+import { AgentWorkspace } from "@/components/omnichannel/workspace-v2";
+import type { ComposePanelHandle } from "@/components/omnichannel/agent-desk/compose-panel";
+import type { TeamInboxSendPayload } from "@/hooks/conversations/use-team-inbox-reply";
+import { AiAssistantSheet } from "@/components/omnichannel/workspace-v2/ai-assistant-sheet";
+import { getAiAssistantLabels } from "@/lib/omnichannel/presentation/ai-assistant-labels";
+import { EscalationSheet } from "@/components/omnichannel/escalation-sheet";
+import { AssignmentSheet } from "@/components/omnichannel/assignment-sheet";
 import { LinkCustomerDialog } from "@/components/omnichannel/link-customer-dialog";
-
-import { OmnichannelPanel } from "@/components/omnichannel/omnichannel-panel";
-
-import {
-
-  ConversationEmptyState,
-
-  ConversationPermissionState,
-
-} from "@/components/omnichannel/conversation-states";
-
+import { ConversationPermissionState } from "@/components/omnichannel/conversation-states";
+import { useToast } from "@/hooks/use-toast";
 import { useOmnichannelConsole, useOmnichannelCustomerContext } from "@/hooks/omnichannel/use-omnichannel-console";
-
+import { useOmnichannelTenantGuard } from "@/hooks/omnichannel/use-omnichannel-tenant-guard";
+import { useOmnichannelEmptyInboxCopy } from "@/hooks/omnichannel/use-omnichannel-empty-inbox-copy";
+import { useOmnichannelTenantBannerMessage } from "@/components/omnichannel/tenant/omnichannel-tenant-banner";
+import { useInboxViewState } from "@/hooks/omnichannel/use-inbox-view-state";
+import { buildEnrichedCustomerRef } from "@/lib/omnichannel/presentation/conversation-contact-identity";
+import { resolveUserDisplayName } from "@/lib/omnichannel/presentation/agent-display-name";
+import type { Profile } from "@/lib/types";
 import { useOmnichannelKeyboardShortcuts } from "@/hooks/omnichannel/use-omnichannel-keyboard-shortcuts";
-
 import {
-  useConversationTagOptions,
   useConversationViewLabels,
-  useWorkspaceSidebarLabels,
+  useAgentDeskLabels,
+  useWorkspaceNavLabels,
+  useWorkspaceChromeLabels,
+  useIntelligenceSidebarLabels,
 } from "@/hooks/omnichannel/use-omnichannel-labels";
-
 import { useConversationLifecycleActions } from "@/hooks/conversations/use-conversation-lifecycle-actions";
-
-import type { Customer } from "@/lib/types";
-
-import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
-
-import type { OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
-
-import { countQueueConversations } from "@/lib/omnichannel/services/conversation-queues";
-
-import { getOperationalProjection } from "@/lib/conversation-lifecycle";
-import { useLifecycleMetadataMigration } from "@/hooks/conversations/use-lifecycle-metadata-migration";
-
 import {
-
+  mergeInternalNotesForDisplay,
+  useInternalNotesManagement,
+} from "@/hooks/conversations/use-internal-notes-management";
+import type { Customer } from "@/lib/types";
+import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
+import {
+  countWorkspaceNav,
+  filtersToWorkspaceNav,
+  workspaceNavToFilters,
+  type WorkspaceNavId,
+} from "@/components/omnichannel/workspace-v2/workspace-nav";
+import type { OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
+import { getOperationalProjection, CONVERSATION_LIFECYCLE_PERMISSIONS } from "@/lib/conversation-lifecycle";
+import { usePermissions } from "@/hooks/use-rbac";
+import { useLifecycleMetadataMigration } from "@/hooks/conversations/use-lifecycle-metadata-migration";
+import {
   consumeQueuedTeamInboxConversationFocus,
-
   subscribeTeamInboxConversationFocus,
-
 } from "@/lib/customer-profile/services";
+import {
+  omniRenderTrace,
+  readOmnichannelSessionStorage,
+} from "@/lib/omnichannel/debug/omni-render-audit";
+import {
+  traceDomRenderProps,
+  traceDomRenderStage,
+} from "@/lib/omnichannel/debug/omni-dom-render-audit";
+import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 
+const OMNICHANNEL_SESSION_KEY = "omnichannel-console-session";
 
+const DEFAULT_FILTERS: OmnichannelListFilters = {
+  sortBy: "last_activity",
+  sortDirection: "desc",
+  archived: false,
+};
+
+function navForAssignmentTarget(
+  targetType: "user" | "team" | "department" | "ai_employee" | "queue",
+  targetId: string,
+): WorkspaceNavId {
+  if (targetType === "ai_employee") return "ai";
+  if (targetType === "user") return "mine";
+  if (targetType === "team" || targetType === "department") return "assigned";
+  if (targetType === "queue") {
+    const queueNav: Partial<Record<OmnichannelQueueId, WorkspaceNavId>> = {
+      unassigned: "inbox",
+      mine: "mine",
+      escalated: "escalated",
+      waiting_customer: "waiting",
+      waiting_ai: "ai",
+      closed: "closed",
+      resolved: "closed",
+    };
+    return queueNav[targetId as OmnichannelQueueId] ?? "inbox";
+  }
+  return "inbox";
+}
+
+function actorLabelFromUser(
+  user: { email?: string | null; id?: string } | null | undefined,
+  agentsById: ReadonlyMap<string, { id: string; name: string }>,
+  profilesByUserId: ReadonlyMap<string, Profile>,
+): string | null {
+  if (!user?.id) return null;
+  return resolveUserDisplayName(user.id, user.email, agentsById, profilesByUserId).display;
+}
+
+function loadOmnichannelSession(): { selectedId: string | null; filters: OmnichannelListFilters } {
+  try {
+    const raw = sessionStorage.getItem(OMNICHANNEL_SESSION_KEY);
+    if (!raw) return { selectedId: null, filters: DEFAULT_FILTERS };
+    const parsed = JSON.parse(raw) as {
+      selectedId?: string | null;
+      filters?: OmnichannelListFilters;
+    };
+    return {
+      selectedId: parsed.selectedId ?? null,
+      filters: { ...DEFAULT_FILTERS, ...parsed.filters },
+    };
+  } catch {
+    return { selectedId: null, filters: DEFAULT_FILTERS };
+  }
+}
 
 export const OmnichannelConsole = memo(function OmnichannelConsole() {
-
   const { t } = useTranslation("common");
-
+  const { toast } = useToast();
   const { user } = useAuth();
-
   const searchRef = useRef<HTMLInputElement>(null);
-
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
+  const composeRef = useRef<ComposePanelHandle>(null);
+  const initialSession = useMemo(() => loadOmnichannelSession(), []);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSession.selectedId);
   const [escalationOpen, setEscalationOpen] = useState(false);
-
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
   const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
-
   const [linkCustomerOpen, setLinkCustomerOpen] = useState(false);
+  const [pendingRetry, setPendingRetry] = useState<TeamInboxSendPayload | null>(null);
+  const [aiAssistOpen, setAiAssistOpen] = useState(false);
+  const [filters, setFilters] = useState<OmnichannelListFilters>(initialSession.filters);
 
-  const [filters, setFilters] = useState<OmnichannelListFilters>({
-
-    sortBy: "last_activity",
-
-    sortDirection: "desc",
-
-    archived: false,
-
-  });
-
-
-
-  const sidebarLabels = useWorkspaceSidebarLabels();
-
+  const intelligenceLabels = useIntelligenceSidebarLabels();
   const viewLabels = useConversationViewLabels();
-
-
+  const deskLabels = useAgentDeskLabels();
+  const navLabels = useWorkspaceNavLabels();
+  const chromeLabels = useWorkspaceChromeLabels();
 
   useEffect(() => subscribeTeamInboxConversationFocus(setSelectedId), []);
-
   useEffect(() => {
-
     const queued = consumeQueuedTeamInboxConversationFocus();
-
     if (queued) setSelectedId(queued);
-
   }, []);
 
-
+  useEffect(() => {
+    sessionStorage.setItem(
+      OMNICHANNEL_SESSION_KEY,
+      JSON.stringify({ selectedId, filters }),
+    );
+  }, [selectedId, filters]);
 
   const consoleState = useOmnichannelConsole(filters, selectedId);
+  const { applyViewState, markConversationViewedById } = useInboxViewState(
+    consoleState.inboxConversations,
+    initialSession.selectedId,
+  );
 
+  const displayConversations = useMemo(
+    () => applyViewState(consoleState.conversations),
+    [applyViewState, consoleState.conversations],
+  );
+
+  const displayInboxConversations = useMemo(
+    () => applyViewState(consoleState.inboxConversations),
+    [applyViewState, consoleState.inboxConversations],
+  );
+
+  useEffect(() => {
+    const session = readOmnichannelSessionStorage();
+    traceReorderStage({
+      stage: "OmnichannelConsole.displayConversations",
+      file: "omnichannel-console.tsx",
+      function: "OmnichannelConsole",
+      line: 159,
+      before: consoleState.conversations,
+      after: displayConversations,
+      arrayReferenceChanged: consoleState.conversations !== displayConversations,
+      sortCalled: false,
+      extra: { activeNav: filtersToWorkspaceNav(filters), selectedId },
+    });
+    traceDomRenderProps({
+      stage: "OmnichannelConsole.displayConversations.applyViewState",
+      file: "omnichannel-console.tsx",
+      function: "useMemo(displayConversations)",
+      line: 155,
+      conversationIdsKey: "displayConversations",
+      propsBefore: { displayConversations: consoleState.conversations },
+      propsAfter: { displayConversations },
+    });
+    omniRenderTrace("OmnichannelConsole.displayConversations", displayConversations, {
+      activeNav: filtersToWorkspaceNav(filters),
+      filters,
+      selectedId,
+      selectedQueue: filters.queue ?? "all",
+      sessionStorage: session,
+      sessionStorageFilters: session && typeof session === "object" && "filters" in session ? session.filters : null,
+      sessionStorageSelectedId: session && typeof session === "object" && "selectedId" in session ? session.selectedId : null,
+    });
+    traceDomRenderStage({
+      stage: "OmnichannelConsole.displayConversations",
+      file: "omnichannel-console.tsx",
+      function: "OmnichannelConsole",
+      line: 529,
+      rows: displayConversations,
+      extra: {
+        activeNav: filtersToWorkspaceNav(filters),
+        selectedId,
+        rawVisibleCount: consoleState.conversations.length,
+      },
+    });
+  }, [displayConversations, consoleState.conversations, filters, selectedId]);
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      markConversationViewedById(id, consoleState.inboxConversations);
+      setSelectedId(id);
+    },
+    [markConversationViewedById, consoleState.inboxConversations],
+  );
+
+  useEffect(() => {
+    if (selectedId) {
+      markConversationViewedById(selectedId, consoleState.inboxConversations);
+    }
+  }, [selectedId, consoleState.inboxConversations, markConversationViewedById]);
   const lifecycle = useConversationLifecycleActions(consoleState.companyId);
-
-
+  const notesManagement = useInternalNotesManagement(consoleState.companyId);
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canManageNotes =
+    isSuperAdmin || hasPermission(CONVERSATION_LIFECYCLE_PERMISSIONS.internalNotesManage);
 
   const selected = consoleState.selectedConversation;
-
   const selectedRecord = selected?.source ?? null;
-
+  const displayMessages = useMemo(
+    () => mergeInternalNotesForDisplay(consoleState.messages, selectedRecord?.metadata),
+    [consoleState.messages, selectedRecord?.metadata],
+  );
+  const enrichedCustomer = useMemo(() => buildEnrichedCustomerRef(selected), [selected]);
   const lifecycleSnapshot = lifecycle.snapshot(selectedRecord, {
-    customer: selected?.customer ?? null,
+    customer: enrichedCustomer,
     assignedAgent: selected?.assignedAgent ?? null,
   });
-
   const customerContext = useOmnichannelCustomerContext(selected?.customer?.id ?? null);
 
-  const tagOptions = useConversationTagOptions(consoleState.conversations);
+  const aiAssistantLabels = useMemo(
+    () => getAiAssistantLabels(consoleState.aiAssist.resolvedLanguage),
+    [consoleState.aiAssist.resolvedLanguage],
+  );
 
-
+  const currentActorLabel = useMemo(
+    () => actorLabelFromUser(user, consoleState.agentsById, consoleState.profilesByUserId),
+    [user, consoleState.agentsById, consoleState.profilesByUserId],
+  );
 
   const operationalState = useMemo(
     () =>
@@ -156,696 +264,480 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
 
   useLifecycleMetadataMigration(selectedRecord, consoleState.companyId);
 
-
-
-  const stats = useMemo(() => {
-
-    const conversations = consoleState.conversations;
-
-    const open = conversations.filter(
-
-      (item) => item.lifecycleState !== "CLOSED" && item.lifecycleState !== "RESOLVED",
-
-    ).length;
-
-    const assigned = conversations.filter((item) => Boolean(item.assignedAgent)).length;
-
-    const waitingCustomer = conversations.filter((item) => item.lifecycleState === "PENDING_CUSTOMER").length;
-
-    const waitingAi = conversations.filter((item) => item.lifecycleState === "AI_HANDLING").length;
-
-    const escalated = conversations.filter((item) => item.isEscalated).length;
-
-    const resolvedToday = conversations.filter(
-
-      (item) => item.lifecycleState === "CLOSED" || item.lifecycleState === "RESOLVED",
-
-    ).length;
-
-    return [
-
-      { key: "open", label: t("omnichannel.stats.open"), value: open, tone: "info" as const },
-
-      { key: "assigned", label: t("omnichannel.stats.assigned"), value: assigned, tone: "default" as const },
-
-      { key: "waitingCustomer", label: t("omnichannel.stats.waitingCustomer"), value: waitingCustomer, tone: "warning" as const },
-
-      { key: "waitingAi", label: t("omnichannel.stats.waitingAi"), value: waitingAi, tone: "muted" as const },
-
-      { key: "escalated", label: t("omnichannel.stats.escalated"), value: escalated, tone: "danger" as const },
-
-      { key: "resolved", label: t("omnichannel.stats.resolvedToday"), value: resolvedToday, tone: "success" as const },
-
-    ];
-
-  }, [consoleState.conversations, t]);
-
-
-
-  const queueCounts = useMemo(
-
-    () => countQueueConversations(consoleState.conversations, user?.id),
-
-    [consoleState.conversations, user?.id],
-
+  const navCounts = useMemo(
+    () => countWorkspaceNav(displayInboxConversations, user?.id),
+    [displayInboxConversations, user?.id],
   );
 
-
-
-  const queueLabels = useMemo(
-
-    () => ({
-
-      all: t("omnichannel.filters.all"),
-
-      unassigned: t("omnichannel.queues.unassigned"),
-
-      mine: t("omnichannel.queues.mine"),
-
-      team: t("omnichannel.queues.team"),
-
-      waiting_customer: t("omnichannel.queues.waitingCustomer"),
-
-      waiting_ai: t("omnichannel.queues.waitingAi"),
-
-      escalated: t("omnichannel.queues.escalated"),
-
-      closed_24h: t("omnichannel.queues.closedToday"),
-
-    }),
-
-    [t],
-
-  );
-
-
+  const navigateToNav = useCallback((nav: WorkspaceNavId) => {
+    setFilters((current) => ({ ...current, ...workspaceNavToFilters(nav) }));
+  }, []);
 
   const requireSelected = useCallback(() => {
-
     if (!selectedRecord) throw new Error("No conversation selected");
-
     return selectedRecord;
-
   }, [selectedRecord]);
 
-
-
   const handleAssignTarget = useCallback(
-
-    (payload: {
-
-      targetType: "user" | "team" | "department" | "ai_employee" | "queue";
-
-      targetId: string;
-
-      targetLabel: string;
-
-    }) => {
-
-      void lifecycle.assignTo(requireSelected(), payload, user?.id ?? null);
-
+    async (payload: { targetType: "user" | "team" | "department" | "ai_employee" | "queue"; targetId: string; targetLabel: string }) => {
+      const record = requireSelected();
+      if (!lifecycle.canPerform(record, "assign")) {
+        toast({
+          title: t("omnichannel.actions.permissionDenied"),
+          variant: "destructive",
+        });
+        return;
+      }
+      try {
+        await lifecycle.assignTo(
+          record,
+          payload,
+          user?.id ?? null,
+          currentActorLabel,
+        );
+        toast({ title: t("omnichannel.actions.assignSuccess") });
+        navigateToNav(navForAssignmentTarget(payload.targetType, payload.targetId));
+      } catch (error) {
+        toast({
+          title: t("omnichannel.actions.assignFailed"),
+          description: error instanceof Error ? error.message : undefined,
+          variant: "destructive",
+        });
+      }
     },
-
-    [lifecycle, requireSelected, user?.id],
-
+    [lifecycle, requireSelected, user, currentActorLabel, navigateToNav, toast, t],
   );
 
-
-
-  const handleTakeOver = useCallback(() => {
-
+  const handleTakeOver = useCallback(async () => {
     if (!user?.id) return;
+    try {
+      await lifecycle.takeOver(requireSelected(), user.id, currentActorLabel ?? user.id);
+      toast({ title: t("omnichannel.actions.takeOverSuccess") });
+      navigateToNav("mine");
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.takeOverFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, currentActorLabel, navigateToNav, toast, t]);
 
-    void lifecycle.takeOver(requireSelected(), user.id, user.email ?? user.id);
+  const handleReturnToAi = useCallback(async () => {
+    const record = requireSelected();
+    if (!lifecycle.canPerform(record, "return_to_ai")) {
+      toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+      return;
+    }
+    try {
+      await lifecycle.returnToAi(record, user?.id ?? null, currentActorLabel);
+      toast({ title: t("omnichannel.actions.returnToAiSuccess") });
+      navigateToNav("ai");
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.returnToAiFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
 
-  }, [lifecycle, requireSelected, user]);
+  const handleClose = useCallback(async () => {
+    const record = requireSelected();
+    if (!lifecycle.canPerform(record, "close")) {
+      toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+      return;
+    }
+    try {
+      await lifecycle.closeConversation(record, currentActorLabel);
+      toast({ title: t("omnichannel.actions.closeSuccess") });
+      navigateToNav("closed");
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.closeFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
 
+  const handleResolve = useCallback(async () => {
+    const record = requireSelected();
+    if (!lifecycle.canPerform(record, "resolve")) {
+      toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+      return;
+    }
+    try {
+      await lifecycle.resolveConversation(record, currentActorLabel);
+      toast({ title: t("omnichannel.actions.resolveSuccess") });
+      navigateToNav("closed");
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.resolveFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
 
+  const handleReopen = useCallback(async () => {
+    const record = requireSelected();
+    if (!lifecycle.canPerform(record, "reopen")) {
+      toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+      return;
+    }
+    try {
+      await lifecycle.reopenConversation(record, currentActorLabel);
+      toast({ title: t("omnichannel.actions.reopenSuccess") });
+      navigateToNav("inbox");
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.reopenFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
 
-  const handleReturnToAi = useCallback(() => {
+  const handleReturnEscalation = useCallback(async () => {
+    const record = requireSelected();
+    if (!lifecycle.canPerform(record, "return")) {
+      toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+      return;
+    }
+    try {
+      await lifecycle.returnEscalation(record, currentActorLabel);
+      toast({ title: t("omnichannel.actions.returnEscalationSuccess") });
+      navigateToNav("inbox");
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.returnEscalationFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
 
-    void lifecycle.returnToAi(requireSelected(), user?.id ?? null);
+  const handleCancelEscalation = useCallback(async () => {
+    const record = requireSelected();
+    if (!lifecycle.canPerform(record, "escalation_cancel")) {
+      toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+      return;
+    }
+    try {
+      await lifecycle.cancelEscalation(record, currentActorLabel);
+      toast({ title: t("omnichannel.actions.cancelEscalationSuccess") });
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.cancelEscalationFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, user, toast, t]);
 
-  }, [lifecycle, requireSelected, user?.id]);
+  const handleEditInternalNote = useCallback(
+    async (messageId: string, originalBody: string, nextBody: string) => {
+      if (!selectedRecord) return;
+      try {
+        await notesManagement.editNote({
+          record: selectedRecord,
+          messageId,
+          originalBody,
+          nextBody,
+          actor: { id: user?.id ?? null, label: currentActorLabel },
+        });
+        toast({ title: t("omnichannel.sidebar.internalNotesEditSuccess") });
+      } catch (error) {
+        toast({
+          title: t("omnichannel.sidebar.internalNotesEditFailed"),
+          description: error instanceof Error ? error.message : undefined,
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    [notesManagement, selectedRecord, user, toast, t],
+  );
 
-
-
-  const handleClose = useCallback(() => {
-
-    void lifecycle.closeConversation(requireSelected());
-
-  }, [lifecycle, requireSelected]);
-
-
-
-  const handleResolve = useCallback(() => {
-
-    void lifecycle.resolveConversation(requireSelected());
-
-  }, [lifecycle, requireSelected]);
-
-
-
-  const handleReopen = useCallback(() => {
-
-    void lifecycle.reopenConversation(requireSelected());
-
-  }, [lifecycle, requireSelected]);
-
-
-
-  const handleReturnEscalation = useCallback(() => {
-
-    void lifecycle.returnEscalation(requireSelected());
-
-  }, [lifecycle, requireSelected]);
-
-
-
-  const handleCancelEscalation = useCallback(() => {
-
-    void lifecycle.cancelEscalation(requireSelected());
-
-  }, [lifecycle, requireSelected]);
-
-
+  const handleDeleteInternalNote = useCallback(
+    async (messageId: string) => {
+      if (!selectedRecord) return;
+      try {
+        await notesManagement.deleteNote({
+          record: selectedRecord,
+          messageId,
+          actor: { id: user?.id ?? null, label: currentActorLabel },
+        });
+        toast({ title: t("omnichannel.sidebar.internalNotesDeleteSuccess") });
+      } catch (error) {
+        toast({
+          title: t("omnichannel.sidebar.internalNotesDeleteFailed"),
+          description: error instanceof Error ? error.message : undefined,
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    [notesManagement, selectedRecord, user, toast, t],
+  );
 
   const handleCustomerCreated = useCallback(
-
     (created: Customer) => {
-
       if (!selectedRecord) return;
-
-      void lifecycle.linkCustomer.mutateAsync({
-
-        record: selectedRecord,
-
-        customerId: created.id,
-
-        customerName: created.name,
-
-      });
-
+      void lifecycle.linkCustomer.mutateAsync({ record: selectedRecord, customerId: created.id, customerName: created.name });
     },
-
     [lifecycle.linkCustomer, selectedRecord],
-
   );
 
+  const handleOpenAssignment = useCallback(() => {
+    setAssignmentOpen(true);
+  }, []);
 
-
-  const prefilledPhone =
-
-    typeof selectedRecord?.metadata?.phone === "string" ? selectedRecord.metadata.phone : null;
-
-
+  const prefilledPhone = typeof selectedRecord?.metadata?.phone === "string" ? selectedRecord.metadata.phone : null;
 
   useOmnichannelKeyboardShortcuts({
-
     enabled: consoleState.canView,
-
-    onReply: () => undefined,
-
-    onAssign: handleTakeOver,
-
+    onReply: () => composeRef.current?.focus(),
+    onAssign: handleOpenAssignment,
     onClose: handleClose,
-
     onSearch: () => searchRef.current?.focus(),
-
   });
 
+  const activeNav = filtersToWorkspaceNav(filters);
 
+  const tenantGuard = useOmnichannelTenantGuard({
+    rawRowCount: consoleState.flatRowCount,
+    visibleCount: displayConversations.length,
+    listLoading: consoleState.listQuery.isLoading,
+    activeNav,
+    filters,
+    selectedConversation: selected,
+  });
+
+  const tenantBannerMessage = useOmnichannelTenantBannerMessage(tenantGuard.whatsAppChannelMismatch);
+
+  const explainedEmpty = useOmnichannelEmptyInboxCopy(tenantGuard.emptyDiagnosis, tenantGuard.tenant);
+
+  const inboxEmptyTitle = explainedEmpty?.title ?? t("omnichannel.emptyTitle");
+  const inboxEmptyHint = explainedEmpty?.hint ?? t("omnichannel.emptyBody");
+
+  const tenantContext = {
+    companyName: tenantGuard.tenant.companyName,
+    companyId: tenantGuard.tenant.companyId,
+    userEmail: tenantGuard.tenant.userEmail,
+    developerMode: tenantGuard.tenant.developerMode,
+    companyLabel: t("omnichannel.tenantGuard.companyLabel"),
+    signedInLabel: t("omnichannel.tenantGuard.signedInLabel"),
+  };
 
   if (!consoleState.canView) {
-
     return (
-
       <ConversationPermissionState
-
         title={t("omnichannel.noPermissionTitle")}
-
         description={t("omnichannel.noPermissionBody")}
-
       />
-
     );
-
   }
 
+  const isClosed = lifecycleSnapshot?.state === "CLOSED" || lifecycleSnapshot?.state === "RESOLVED";
 
-
-  const queuesPanel = (
-
-    <ConversationQueues
-
-      title={t("omnichannel.queues.title")}
-
-      activeQueue={filters.queue}
-
-      counts={queueCounts}
-
-      labels={queueLabels}
-
-      tagsTitle={t("omnichannel.tags.title")}
-
-      tagLabels={tagOptions}
-
-      activeTag={filters.tag}
-
-      onTagChange={(tag) => setFilters((current) => ({ ...current, tag }))}
-
-      onChange={(queue) => {
-
-        setFilters((current) => ({ ...current, queue: queue as OmnichannelQueueId | undefined }));
-
-      }}
-
-    />
-
-  );
-
-
-
-  const listPanel = (
-
-    <div className="flex h-full min-h-0 flex-col gap-2">
-
-      <OmnichannelPanel className="shrink-0 gap-2 p-3">
-
-        <ConversationSearch
-
-          ref={searchRef}
-
-          value={filters.search ?? ""}
-
-          placeholder={t("omnichannel.searchPlaceholder")}
-
-          onChange={(search) => setFilters((current) => ({ ...current, search }))}
-
-        />
-
-        <ConversationFilters
-
-          filters={filters}
-
-          currentUserId={user?.id}
-
-          onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
-
-          labels={{
-
-            all: t("omnichannel.filters.all"),
-
-            unread: t("omnichannel.filters.unread"),
-
-            mine: t("omnichannel.filters.mine"),
-
-            assigned: t("omnichannel.filters.assigned"),
-
-            ai: t("omnichannel.filters.ai"),
-
-            pinned: t("omnichannel.filters.pinned"),
-
-            archived: t("omnichannel.filters.archived"),
-
-            tags: t("omnichannel.filters.tags"),
-
-            whatsapp: t("omnichannel.channels.whatsapp"),
-
-            email: t("omnichannel.channels.email"),
-
-            messenger: t("omnichannel.channels.messenger"),
-
-            instagram: t("omnichannel.channels.instagram"),
-
-          }}
-
-        />
-
-      </OmnichannelPanel>
-
-      <ConversationList
-
-        title={t("omnichannel.listTitle")}
-
-        subtitle={t("omnichannel.listSubtitle")}
-
-        conversations={consoleState.conversations}
-
-        selectedId={selected?.id ?? selectedId}
-
-        isLoading={consoleState.listQuery.isLoading}
-
-        emptyLabel={t("omnichannel.emptyTitle")}
-
-        loadingLabel={t("status.loading")}
-
-        unknownContactLabel={t("omnichannel.unknownContact")}
-
-        noPreviewLabel={t("omnichannel.noPreview")}
-
-        aiLabel={t("omnichannel.ai")}
-
-        humanLabel={t("omnichannel.human")}
-
-        escalatedLabel={t("omnichannel.escalatedBadge")}
-
-        onSelect={setSelectedId}
-
-        onLoadMore={() => {
-
-          if (consoleState.listQuery.hasNextPage && !consoleState.listQuery.isFetchingNextPage) {
-
-            void consoleState.listQuery.fetchNextPage();
-
-          }
-
-        }}
-
-        hasMore={consoleState.listQuery.hasNextPage}
-
-      />
-
-    </div>
-
-  );
-
-
-
-  const isClosed =
-
-    lifecycleSnapshot?.state === "CLOSED" || lifecycleSnapshot?.state === "RESOLVED";
-
-
-
-  const conversationPanel = (
-
-    <ConversationView
-
-      conversation={selected}
-
-      messages={consoleState.messages}
-
-      aiAssist={consoleState.aiAssist}
-
-      lifecycleSnapshot={lifecycleSnapshot}
-
-      isLoading={consoleState.messagesQuery.isLoading}
-
-      isSending={consoleState.isSending}
-
-      sendError={consoleState.sendError}
-
-      assignedToMe={selected?.assignedAgent?.id === user?.id}
-
-      actionsPending={lifecycle.isPending}
-
-      escalated={selected?.isEscalated ?? false}
-
-      ownerLabel={lifecycleSnapshot?.owner.label ?? selected?.ownerLabel ?? null}
-
-      canPerform={lifecycle.canPerform}
-
-      canLinkCustomer={lifecycle.canLinkCustomer}
-
-      canCreateCustomer={lifecycle.canCreateCustomer}
-
-      labels={viewLabels}
-
-      onSend={({ text, mode }) => {
-
-        if (!selected) return;
-
-        void consoleState.sendReply(
-
-          {
-
-            conversationId: selected.id,
-
-            companyChannelId: selected.companyChannelId,
-
-            channelKey: selected.channel,
-
-            externalThreadId: selected.externalThreadId,
-
-          },
-
-          text,
-
-          mode,
-
-        );
-
-      }}
-
-      onAssign={handleTakeOver}
-
-      onRelease={handleReturnToAi}
-
-      onClose={handleClose}
-
-      onResolve={handleResolve}
-
-      onReopen={handleReopen}
-
-      onEscalate={() => setEscalationOpen(true)}
-
-      onReturnConversation={handleReturnEscalation}
-
-      onCancelEscalation={handleCancelEscalation}
-
-      onOpenAiSection={() => setSidebarOpen(true)}
-
-      onCreateCustomer={() => setCreateCustomerOpen(true)}
-
-      onLinkCustomer={() => setLinkCustomerOpen(true)}
-
-      isClosed={isClosed}
-
-    />
-
-  );
-
-
-
-  const sidebarPanel = (
-
-    <WorkspaceSidebar
-
-      conversation={selected}
-
-      messages={consoleState.messages}
-
-      context={customerContext.data ?? null}
-
-      aiAssist={consoleState.aiAssist}
-
-      profiles={consoleState.profiles}
-
-      lifecycleSnapshot={lifecycleSnapshot}
-
-      operationalState={operationalState}
-
-      labels={sidebarLabels}
-
-      onAssignTarget={handleAssignTarget}
-
-      onReturnEscalation={handleReturnEscalation}
-
-    />
-
-  );
-
-
+  const inboxTitle = navLabels[activeNav] ?? navLabels.inbox;
 
   return (
-
-    <div className="flex h-[calc(100vh-5.5rem)] flex-col gap-4">
-
-      <header className="flex shrink-0 flex-col gap-3">
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-
-          <div>
-
-            <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-
-              <MessagesSquare className="size-5 text-primary" aria-hidden />
-
-              {t("omnichannel.title")}
-
-            </h1>
-
-            <p className="mt-0.5 text-xs text-muted-foreground">{t("omnichannel.subtitle")}</p>
-
-          </div>
-
-          <div className="flex items-center gap-2 xl:hidden">
-
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-
-              <SheetTrigger asChild>
-
-                <Button variant="outline" size="sm">
-
-                  <Menu className="size-4" />
-
-                </Button>
-
-              </SheetTrigger>
-
-              <SheetContent side="left" className="w-[92vw] max-w-md p-3">
-
-                <div className="grid h-full gap-3 md:grid-cols-2">
-
-                  {queuesPanel}
-
-                  {listPanel}
-
-                </div>
-
-              </SheetContent>
-
-            </Sheet>
-
-            <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
-
-              <PanelRight className="size-4" />
-
-            </Button>
-
-          </div>
-
-        </div>
-
-        <OmnichannelStatsBar items={stats} loading={consoleState.listQuery.isLoading} />
-
-      </header>
-
-
-
+    <>
       {consoleState.listQuery.error ? (
-
         <DashboardErrorBanner message={(consoleState.listQuery.error as Error).message} />
-
       ) : null}
 
-
-
-      {!consoleState.listQuery.isLoading && consoleState.conversations.length === 0 ? (
-
-        <ConversationEmptyState title={t("omnichannel.emptyTitle")} description={t("omnichannel.emptyBody")} />
-
-      ) : (
-
-        <OmnichannelWorkspaceLayout
-
-          queues={queuesPanel}
-
-          list={listPanel}
-
-          conversation={conversationPanel}
-
-          sidebar={sidebarPanel}
-
-        />
-
-      )}
-
-
-
-      <EscalationDialog
-
-        open={escalationOpen}
-
-        currentLevel={operationalState.escalations.at(-1)?.escalateTo ?? null}
-
-        onOpenChange={setEscalationOpen}
-
-        onSubmit={(payload) => {
-
-          if (!selectedRecord) return;
-
-          void lifecycle.escalate(selectedRecord, payload, filters.queue ?? "escalated");
-
-          setFilters((current) => ({ ...current, queue: "escalated" }));
-
+      <AgentWorkspace
+        composeRef={composeRef}
+        searchRef={searchRef}
+        title={t("omnichannel.title")}
+        searchValue={filters.search ?? ""}
+        searchPlaceholder={t("omnichannel.searchPlaceholder")}
+        onSearchChange={(value) => setFilters((current) => ({ ...current, search: value || undefined }))}
+        navLabels={navLabels}
+        navCounts={navCounts}
+        activeNav={activeNav}
+        onNavChange={navigateToNav}
+        navAriaLabel={chromeLabels.navAria}
+        inboxTitle={inboxTitle}
+        conversations={displayConversations}
+        selectedId={selected?.id ?? selectedId}
+        listLoading={consoleState.listQuery.isLoading}
+        hasMore={Boolean(consoleState.listQuery.hasNextPage)}
+        onSelectConversation={handleSelectConversation}
+        onLoadMore={() => {
+          if (consoleState.listQuery.hasNextPage && !consoleState.listQuery.isFetchingNextPage) {
+            void consoleState.listQuery.fetchNextPage();
+          }
         }}
-
+        inboxEmptyTitle={inboxEmptyTitle}
+        inboxEmptyHint={inboxEmptyHint}
+        tenantContext={tenantContext}
+        tenantBannerMessage={tenantBannerMessage}
+        loadingLabel={t("status.loading")}
+        rowLabels={{
+          visitorLabel: t("omnichannel.visitorLabel"),
+          noPreview: t("omnichannel.noPreview"),
+          aiEmployee: t("omnichannel.assignment.aiEmployee"),
+          unassigned: t("omnichannel.customer.unassigned"),
+          open: t("omnichannel.actions.open"),
+          pin: t("omnichannel.experience.pinConversation"),
+          star: t("omnichannel.experience.starConversation"),
+          markUnread: t("omnichannel.experience.markUnread"),
+          follow: t("omnichannel.experience.followConversation"),
+        }}
+        unreadOverflowLabel={deskLabels.unreadOverflow}
+        conversation={selected}
+        messages={displayMessages}
+        aiAssist={consoleState.aiAssist}
+        lifecycleSnapshot={lifecycleSnapshot}
+        messagesLoading={consoleState.messagesQuery.isLoading}
+        isSending={consoleState.isSending}
+        sendError={consoleState.sendError}
+        onDismissSendError={consoleState.clearSendError}
+        actionsPending={lifecycle.isPending}
+        escalated={selected?.isEscalated ?? false}
+        isClosed={isClosed}
+        canPerform={lifecycle.canPerform}
+        canLinkCustomer={lifecycle.canLinkCustomer}
+        canCreateCustomer={lifecycle.canCreateCustomer}
+        viewLabels={viewLabels}
+        deskLabels={deskLabels}
+        sessionEmptyTitle={viewLabels.selectConversation}
+        sessionEmptyHint={viewLabels.sessionEmptyDescription}
+        onOpenAiAssistant={() => setAiAssistOpen(true)}
+        filters={filters}
+        onSend={async (payload) => {
+          if (!selected) return false;
+          setPendingRetry(payload);
+          const ok = await consoleState.sendReply(
+            {
+              conversationId: selected.id,
+              companyChannelId: selected.companyChannelId,
+              channelKey: selected.channel,
+              externalThreadId: selected.externalThreadId,
+            },
+            payload,
+          );
+          if (ok) {
+            setPendingRetry(null);
+            consoleState.clearSendError?.();
+          }
+          return ok;
+        }}
+        onRetrySend={
+          pendingRetry
+            ? () => {
+                if (!selected || !pendingRetry) return;
+                void consoleState.sendReply(
+                  {
+                    conversationId: selected.id,
+                    companyChannelId: selected.companyChannelId,
+                    channelKey: selected.channel,
+                    externalThreadId: selected.externalThreadId,
+                  },
+                  pendingRetry,
+                ).then((ok) => {
+                  if (ok) setPendingRetry(null);
+                });
+              }
+            : undefined
+        }
+        retrySendLabel={t("omnichannel.composer.retrySend")}
+        sessionActions={{
+          onTakeOver: handleTakeOver,
+          onAssign: handleOpenAssignment,
+          onOpenAssignment: handleOpenAssignment,
+          onRelease: handleReturnToAi,
+          onClose: handleClose,
+          onResolve: handleResolve,
+          onReopen: handleReopen,
+          onEscalate: () => setEscalationOpen(true),
+          onReturnConversation: handleReturnEscalation,
+          onCancelEscalation: handleCancelEscalation,
+          onOpenAiSection: () => setAiAssistOpen(true),
+          onCreateCustomer: () => setCreateCustomerOpen(true),
+          onLinkCustomer: () => setLinkCustomerOpen(true),
+        }}
+        customerContext={customerContext.data ?? null}
+        intelligenceLabels={intelligenceLabels}
+        agentsById={consoleState.agentsById}
+        smartTimeLabels={viewLabels.smartTime}
+        profilesByUserId={consoleState.profilesByUserId}
+        canManageNotes={canManageNotes}
+        onEditInternalNote={canManageNotes ? handleEditInternalNote : undefined}
+        onDeleteInternalNote={canManageNotes ? handleDeleteInternalNote : undefined}
+        internalNotesManaging={notesManagement.isPending}
       />
 
+      <AiAssistantSheet
+        open={aiAssistOpen}
+        onOpenChange={setAiAssistOpen}
+        model={consoleState.aiAssist}
+        hasConversation={Boolean(selected)}
+        getDraftText={() => composeRef.current?.getDraft() ?? ""}
+        labels={aiAssistantLabels}
+        onApplyText={(text) => {
+          composeRef.current?.setDraft(text);
+          composeRef.current?.focus();
+        }}
+      />
 
+      <EscalationSheet
+        open={escalationOpen}
+        currentLevel={operationalState.escalations.at(-1)?.escalateTo ?? null}
+        escalationHistory={operationalState.escalations}
+        onOpenChange={setEscalationOpen}
+        onSubmit={async (payload) => {
+          if (!selectedRecord) return;
+          if (!lifecycle.canPerform(selectedRecord, "escalate")) {
+            toast({ title: t("omnichannel.actions.permissionDenied"), variant: "destructive" });
+            return;
+          }
+          try {
+            await lifecycle.escalate(selectedRecord, payload, "escalated", currentActorLabel);
+            toast({ title: t("omnichannel.actions.escalateSuccess") });
+            navigateToNav("escalated");
+            setEscalationOpen(false);
+          } catch (error) {
+            toast({
+              title: t("omnichannel.actions.escalateFailed"),
+              description: error instanceof Error ? error.message : undefined,
+              variant: "destructive",
+            });
+          }
+        }}
+        onReturn={handleReturnEscalation}
+        onCancel={handleCancelEscalation}
+      />
+
+      <AssignmentSheet
+        open={assignmentOpen}
+        companyId={consoleState.companyId}
+        profiles={consoleState.profiles}
+        lifecycleSnapshot={lifecycleSnapshot}
+        onOpenChange={setAssignmentOpen}
+        onAssign={handleAssignTarget}
+      />
 
       <LinkCustomerDialog
-
         open={linkCustomerOpen}
-
         onOpenChange={setLinkCustomerOpen}
-
         onLink={(customerId, customerName) => {
-
           if (!selectedRecord) return;
-
           void lifecycle.linkCustomer.mutateAsync({ record: selectedRecord, customerId, customerName });
-
         }}
-
       />
-
-
 
       <CustomerModal
-
         open={createCustomerOpen}
-
         onClose={() => setCreateCustomerOpen(false)}
-
         defaultPhone={prefilledPhone}
-
         onCreated={handleCustomerCreated}
-
       />
-
-
-
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-
-        <SheetContent side="right" className="w-[92vw] max-w-sm p-0 xl:hidden">
-
-          <WorkspaceSidebar
-
-            embedded
-
-            conversation={selected}
-
-            messages={consoleState.messages}
-
-            context={customerContext.data ?? null}
-
-            aiAssist={consoleState.aiAssist}
-
-            profiles={consoleState.profiles}
-
-            lifecycleSnapshot={lifecycleSnapshot}
-
-            operationalState={operationalState}
-
-            labels={sidebarLabels}
-
-            onAssignTarget={handleAssignTarget}
-
-            onReturnEscalation={handleReturnEscalation}
-
-          />
-
-        </SheetContent>
-
-      </Sheet>
-
-    </div>
-
+    </>
   );
-
 });
-
-

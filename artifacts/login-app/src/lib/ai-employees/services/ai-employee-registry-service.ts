@@ -13,16 +13,28 @@ import {
   formValuesToUpdate,
   normalizeAiEmployeeName,
 } from "@/lib/ai-employees/validators";
+import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import { AiEmployeeRegistryError } from "./ai-employee-errors";
 
 export class AiEmployeeRegistryService {
   constructor(private readonly repository: AiEmployeeRepository) {}
 
   async list(companyId: string, filter: AiEmployeeListFilter = {}): Promise<AiEmployeeRecord[]> {
+    console.log("[AI_EMPLOYEES_TRACE AiEmployeeRegistryService.list]", { companyId, filter });
+    aiEmployeesTrace("AiEmployeeRegistryService.list", { companyId, filter });
     const rows = await this.repository.listByCompany(companyId, filter);
     const ownerIds = [...new Set(rows.map((row) => row.owner_id).filter(Boolean))] as string[];
     const ownerLabels = await this.repository.listOwnerProfiles(companyId, ownerIds);
-    return mapAiEmployeeRows(rows, ownerLabels);
+    const mapped = mapAiEmployeeRows(rows, ownerLabels);
+    console.log("[AI_EMPLOYEES_TRACE AiEmployeeRegistryService.list result]", {
+      rowCount: rows.length,
+      mappedCount: mapped.length,
+    });
+    aiEmployeesTrace("AiEmployeeRegistryService.list result", {
+      rowCount: rows.length,
+      mappedCount: mapped.length,
+    });
+    return mapped;
   }
 
   async listPage(

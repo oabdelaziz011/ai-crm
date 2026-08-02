@@ -9,7 +9,10 @@ import type {
 } from "@workspace/ai-conversation";
 import type { LifecycleState } from "@/lib/conversation-lifecycle/types/lifecycle-types";
 import type { DetectedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
-import type { OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
+import type { OutboundDeliveryPhase } from "@/lib/omnichannel/services/outbound-delivery";
+import type { OmnichannelQueueFilter } from "@/lib/omnichannel/services/conversation-queues";
+import type { OwnershipTier } from "@/lib/omnichannel/presentation/conversation-ownership";
+import type { IntelligentSuggestedReply } from "@/lib/omnichannel/types/suggested-reply-types";
 
 export const OMNICHANNEL_PRIMARY_CHANNELS = [
   "whatsapp",
@@ -55,6 +58,8 @@ export type UnifiedConversation = {
   lifecycleState: LifecycleState;
   isEscalated: boolean;
   ownerLabel: string | null;
+  ownershipTier: OwnershipTier;
+  assignedToUserId: string | null;
   priority: ConversationPriority;
   status: ConversationState;
   unreadCount: number;
@@ -75,6 +80,7 @@ export type UnifiedMessage = {
   timestamp: string;
   body: string;
   deliveryStatus: MessageStatus;
+  outboundPhase?: OutboundDeliveryPhase;
   contentType: ConversationMessageRecord["content_type"];
   attachments: UnifiedMessageAttachment[];
   aiActionLabel: string | null;
@@ -88,6 +94,7 @@ export type UnifiedMessageAttachment = {
   url: string | null;
   mimeType: string | null;
   fileSize: number | null;
+  name?: string | null;
 };
 
 export type OmnichannelListFilters = {
@@ -101,22 +108,30 @@ export type OmnichannelListFilters = {
   pinnedOnly?: boolean;
   archived?: boolean;
   assignedOnly?: boolean;
-  queue?: OmnichannelQueueId;
+  queue?: OmnichannelQueueFilter;
   tag?: string;
   sortBy?: "last_activity" | "priority" | "unread";
   sortDirection?: "asc" | "desc";
 };
 
+export type CustomerTone = "neutral" | "happy" | "angry" | "urgent" | "confused";
+
 export type OmnichannelAiAssistModel = {
-  suggestedReplies: string[];
+  suggestedReplies: IntelligentSuggestedReply[];
   knowledgeSuggestions: string[];
   sentiment: "positive" | "neutral" | "negative" | "unknown";
+  customerTone: CustomerTone;
   summary: string;
   intent: string;
   priority: ConversationPriority;
   escalationRecommended: boolean;
   translationPlaceholder: string;
   detectedLanguage: DetectedConversationLanguage;
+  resolvedLanguage: "ar" | "en";
+  /** Language used to generate suggested reply chips. */
+  suggestedReplyTargetLanguage: "ar" | "en";
+  /** Alias for AI generation/runtime consumers. */
+  targetLanguage: "ar" | "en";
   languageLabel: string;
   confidence: number;
 };

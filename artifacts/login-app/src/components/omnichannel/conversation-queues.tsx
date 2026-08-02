@@ -17,11 +17,11 @@ import { OmnichannelPanel, OmnichannelPanelHeader } from "@/components/omnichann
 const QUEUE_ICONS: Record<OmnichannelQueueId, typeof Inbox> = {
   unassigned: Inbox,
   mine: User,
-  team: Users,
   waiting_customer: Archive,
   waiting_ai: Bot,
   escalated: AlertTriangle,
-  closed_24h: Archive,
+  resolved: Archive,
+  closed: Archive,
 };
 
 type ConversationQueuesProps = {

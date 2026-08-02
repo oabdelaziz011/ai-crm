@@ -33,7 +33,10 @@ import {
   type AuthIdentitySnapshot,
 } from "@/context/auth-identity";
 import { fetchUserAuthContext } from "@/lib/auth/load-user-auth-context";
+import { omniCompanyTrace } from "@/lib/omnichannel/debug/omni-company-audit";
+import { logOmniAuthBootstrapOnce } from "@/lib/omnichannel/debug/omni-session-probe";
 import { authBootstrapProfilesEqual } from "@/lib/auth/normalize-auth-bootstrap-profile";
+import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import { wbDebug } from "@/workflow-builder/debug/wb-runtime-debug";
 
 export interface ProfileRecord {
@@ -189,6 +192,26 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     try {
       const { profile: nextProfile, company: nextCompany, roles: nextRoles, permissions: nextPermissions } =
         await fetchUserAuthContext(userId);
+      omniCompanyTrace("AuthContext.loadAuthContext", {
+        userId,
+        userEmail: latestSessionRef.current?.user?.email ?? session?.user?.email ?? null,
+        profileCompanyId: nextProfile?.company_id ?? null,
+        companyRecordId: nextCompany?.id ?? null,
+        companyId: nextProfile?.company_id ?? null,
+        extra: { mode, trigger, profileId: nextProfile?.id ?? null, companyName: nextCompany?.name ?? null },
+      });
+      console.log("[AI_EMPLOYEES_TRACE auth-context loadAuthContext]", {
+        userId,
+        mode,
+        "company?.id": nextCompany?.id ?? null,
+        company: nextCompany,
+      });
+      aiEmployeesTrace("auth-context loadAuthContext", {
+        userId,
+        mode,
+        "company?.id": nextCompany?.id ?? null,
+        company: nextCompany,
+      });
       if (isStale()) return;
 
       setProfile((current) => {
@@ -243,6 +266,12 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
 
       if (mode === "bootstrap") {
         bootstrapCompleteRef.current = true;
+        logOmniAuthBootstrapOnce({
+          userEmail: latestSessionRef.current?.user?.email ?? session?.user?.email ?? null,
+          profileCompanyId: nextProfile?.company_id ?? null,
+          companyId: nextCompany?.id ?? null,
+          companyName: nextCompany?.name ?? null,
+        });
       }
     } catch (error) {
       if (isStale()) return;
@@ -454,6 +483,22 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     appPerfProviderRender("AuthProvider");
   });
 
+  useEffect(() => {
+    omniCompanyTrace("AuthContext.provider", {
+      userId: session?.user?.id ?? null,
+      userEmail: session?.user?.email ?? null,
+      profileCompanyId: profile?.company_id ?? null,
+      companyRecordId: company?.id ?? null,
+      companyId: profile?.company_id ?? null,
+      extra: {
+        profileId: profile?.id ?? null,
+        companyName: company?.name ?? null,
+        isLoading,
+        isRefreshing,
+      },
+    });
+  }, [session?.user?.id, session?.user?.email, profile, company, isLoading, isRefreshing]);
+
   return (
     <SessionContext.Provider value={sessionValue}>
       <UserContext.Provider value={userValue}>
@@ -493,10 +538,33 @@ export function useAuthActions(): AuthActionsContextValue {
 
 /** Prefer slice hooks (useSession, useUser, usePermissionsContext, useAuthActions). */
 export function useAuth(): AuthContextType {
+  const sessionCtx = useSession();
+  const userCtx = useUser();
+  const permissionsCtx = usePermissionsContext();
+  const actionsCtx = useAuthActions();
+
+  useEffect(() => {
+    omniCompanyTrace("useAuth", {
+      userId: sessionCtx.user?.id ?? null,
+      userEmail: sessionCtx.user?.email ?? null,
+      profileCompanyId: userCtx.profile?.company_id ?? null,
+      companyRecordId: userCtx.company?.id ?? null,
+      companyId: userCtx.profile?.company_id ?? null,
+      extra: { profileId: userCtx.profile?.id ?? null, companyName: userCtx.company?.name ?? null },
+    });
+  }, [
+    sessionCtx.user?.id,
+    sessionCtx.user?.email,
+    userCtx.profile?.company_id,
+    userCtx.profile?.id,
+    userCtx.company?.id,
+    userCtx.company?.name,
+  ]);
+
   return {
-    ...useSession(),
-    ...useUser(),
-    ...usePermissionsContext(),
-    ...useAuthActions(),
+    ...sessionCtx,
+    ...userCtx,
+    ...permissionsCtx,
+    ...actionsCtx,
   };
 }

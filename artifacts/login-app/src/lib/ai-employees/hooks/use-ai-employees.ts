@@ -9,16 +9,36 @@ import {
 } from "@/lib/ai-employees/cache";
 import { getAiEmployeeServices } from "@/lib/ai-employees";
 import { AiEmployeeRegistryError } from "@/lib/ai-employees/services";
+import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import type { AiEmployeeFormValues, AiEmployeeListFilter } from "@/lib/ai-employees/types";
 
 const services = getAiEmployeeServices();
 
 export function useAiEmployees(companyId: string | null, filter: AiEmployeeListFilter = {}) {
-  return useQuery({
-    queryKey: aiEmployeesListKey(companyId, filter),
-    enabled: Boolean(companyId),
+  const queryKey = aiEmployeesListKey(companyId, filter);
+  const enabled = Boolean(companyId);
+  const hookPayload = { companyId, enabled, queryKey };
+  console.log("[AI_EMPLOYEES_TRACE use-ai-employees]", hookPayload);
+  aiEmployeesTrace("use-ai-employees", hookPayload);
+
+  const query = useQuery({
+    queryKey,
+    enabled,
     queryFn: () => services.registry.list(companyId!, filter),
   });
+
+  const resultPayload = {
+    data: query.data,
+    employees: query.data,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    status: query.status,
+    fetchStatus: query.fetchStatus,
+  };
+  console.log("[AI_EMPLOYEES_TRACE use-ai-employees result]", resultPayload);
+  aiEmployeesTrace("use-ai-employees result", resultPayload);
+
+  return query;
 }
 
 export function useAiEmployeesInfinite(companyId: string | null, filter: AiEmployeeListFilter = {}) {

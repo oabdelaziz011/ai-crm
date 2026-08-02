@@ -69,6 +69,7 @@ export {
   canPerformLifecycleAction,
   canLinkCustomer,
   canCreateCustomer,
+  canManageInternalNotes,
   filterAllowedActionsForRole,
   buildPermissionMatrix,
   inferLifecycleRole,

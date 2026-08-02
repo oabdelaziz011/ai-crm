@@ -32,6 +32,9 @@ export function inboxChannelLabel(channelType: string): string {
   if (channelType === "instagram") return "Instagram";
   if (channelType === "sms") return "SMS";
   if (channelType === "email") return "Email";
+  if (channelType === "telegram") return "Telegram";
+  if (channelType === "voice" || channelType === "phone") return "Voice";
+  if (channelType === "web_chat" || channelType === "live_chat") return "Live Chat";
   return channelType
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -51,6 +54,14 @@ export function inboxChannelBadgeClass(channelType: string): string {
       return "bg-violet-500/15 text-violet-300 border-violet-500/35";
     case "email":
       return "bg-amber-500/15 text-amber-300 border-amber-500/35";
+    case "telegram":
+      return "bg-sky-500/15 text-sky-300 border-sky-500/35";
+    case "voice":
+    case "phone":
+      return "bg-orange-500/15 text-orange-300 border-orange-500/35";
+    case "web_chat":
+    case "live_chat":
+      return "bg-teal-500/15 text-teal-300 border-teal-500/35";
     default:
       return "bg-white/8 text-foreground/80 border-white/15";
   }

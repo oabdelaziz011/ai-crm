@@ -6,10 +6,11 @@ import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conver
 type ChannelBadgeProps = {
   channel: string;
   className?: string;
+  size?: "sm" | "lg";
 };
 
-export const ChannelBadge = memo(function ChannelBadge({ channel, className }: ChannelBadgeProps) {
-  return <InboxChannelBadge channelType={channel} className={className} />;
+export const ChannelBadge = memo(function ChannelBadge({ channel, className, size = "lg" }: ChannelBadgeProps) {
+  return <InboxChannelBadge channelType={channel} className={className} size={size} showIcon />;
 });
 
 type HandlerModeBadgeProps = {

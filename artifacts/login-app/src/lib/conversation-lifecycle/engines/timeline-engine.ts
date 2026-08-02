@@ -135,7 +135,12 @@ export function buildConversationTimeline(input: BuildTimelineInput): TimelineEv
   }
 
   for (const assignment of overlay?.assignmentHistory ?? []) {
-    events.push(assignmentToTimelineEvent(assignment));
+    const storedAssignment = (overlay?.timelineEvents ?? []).some(
+      (event) => event.payload?.assignmentId === assignment.id,
+    );
+    if (!storedAssignment) {
+      events.push(assignmentToTimelineEvent(assignment));
+    }
   }
 
   for (const escalation of overlay?.escalations ?? []) {

@@ -14,6 +14,7 @@ export const CONVERSATION_LIFECYCLE_PERMISSIONS = {
   close: "conversation.close",
   reopen: "conversation.reopen",
   internalNote: "conversation.internal_note",
+  internalNotesManage: "conversation.internal_notes.manage",
   linkCustomer: "conversation.link_customer",
   createCustomer: "conversation.create_customer",
 } as const;
@@ -31,6 +32,10 @@ export const LEGACY_CONVERSATION_PERMISSION_ALIASES: Record<string, readonly str
   [CONVERSATION_LIFECYCLE_PERMISSIONS.close]: [CONVERSATION_PERMISSIONS.reply],
   [CONVERSATION_LIFECYCLE_PERMISSIONS.reopen]: [CONVERSATION_LIFECYCLE_PERMISSIONS.close],
   [CONVERSATION_LIFECYCLE_PERMISSIONS.internalNote]: [CONVERSATION_PERMISSIONS.reply],
+  [CONVERSATION_LIFECYCLE_PERMISSIONS.internalNotesManage]: [
+    CONVERSATION_LIFECYCLE_PERMISSIONS.internalNote,
+    CONVERSATION_PERMISSIONS.reply,
+  ],
   [CONVERSATION_LIFECYCLE_PERMISSIONS.linkCustomer]: ["customers.edit"],
   [CONVERSATION_LIFECYCLE_PERMISSIONS.createCustomer]: ["customers.create"],
 };
@@ -91,6 +96,7 @@ const ROLE_ACTION_MATRIX: Record<LifecycleRole, readonly LifecycleAction[]> = {
   supervisor: [
     "take_over", "assign", "reassign", "transfer", "close", "reply", "internal_note",
     "return_to_ai", "escalate", "return", "resolve", "reopen", "escalation_accept",
+    "escalation_cancel",
   ],
   agent: [
     "take_over", "assign", "reply", "internal_note", "return_to_ai", "escalate",
@@ -150,6 +156,10 @@ export function canLinkCustomer(ctx: LifecyclePermissionContext): boolean {
 
 export function canCreateCustomer(ctx: LifecyclePermissionContext): boolean {
   return hasPermissionCode(ctx, CONVERSATION_LIFECYCLE_PERMISSIONS.createCustomer);
+}
+
+export function canManageInternalNotes(ctx: LifecyclePermissionContext): boolean {
+  return hasPermissionCode(ctx, CONVERSATION_LIFECYCLE_PERMISSIONS.internalNotesManage);
 }
 
 export function filterAllowedActionsForRole(

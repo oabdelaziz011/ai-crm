@@ -68,7 +68,7 @@ export function buildConversationHeader(input: HeaderBuildInput): ConversationHe
     conversationId: record.id,
     customer: {
       id: customer?.id ?? record.customer_id,
-      name: customer?.name ?? "Unknown",
+      name: customer?.name?.trim() ?? "",
       phone: customer?.phone ?? null,
       email: customer?.email ?? null,
     },

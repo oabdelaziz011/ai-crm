@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from "react";
 
+import type { InfiniteData } from "@tanstack/react-query";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { ConversationRecord } from "@workspace/ai-conversation";
@@ -43,6 +45,10 @@ import {
 } from "@/lib/conversation-lifecycle/adapters/backend-action-executor";
 
 import { conversationMessagesQueryKey } from "@/hooks/conversations/use-conversation-messages";
+
+import { invalidateOmnichannelQueries } from "@/lib/omnichannel/cache/invalidate-omnichannel-queries";
+
+import { omnichannelCustomerContextKey } from "@/lib/omnichannel/cache/query-keys";
 
 import type { EscalationLevel } from "@/lib/conversation-lifecycle/types/lifecycle-types";
 
@@ -102,26 +108,55 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
 
 
-  const invalidate = useCallback(
-
-    async (conversationId?: string) => {
-
-      await queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
-
-      if (conversationId) {
-
-        await queryClient.invalidateQueries({
-
-          queryKey: conversationMessagesQueryKey(conversationId),
-
-        });
-
-      }
-
+  const patchConversationListCache = useCallback(
+    (
+      conversationId: string,
+      patch: Partial<ConversationRecord> & { metadata?: Record<string, unknown> },
+    ) => {
+      queryClient.setQueriesData<InfiniteData<{ rows: ConversationRecord[]; nextOffset: number | null }>>(
+        { queryKey: ["conversation-list", companyId] },
+        (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              rows: page.rows.map((row) =>
+                row.id === conversationId
+                  ? {
+                      ...row,
+                      ...patch,
+                      metadata: patch.metadata ?? row.metadata,
+                    }
+                  : row,
+              ),
+            })),
+          };
+        },
+      );
     },
+    [companyId, queryClient],
+  );
 
+  const invalidate = useCallback(
+    async (conversationId?: string, customerId?: string | null) => {
+      if (companyId) {
+        invalidateOmnichannelQueries(queryClient, { companyId, conversationId });
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
+      }
+      if (conversationId) {
+        await queryClient.invalidateQueries({
+          queryKey: conversationMessagesQueryKey(conversationId),
+        });
+      }
+      if (customerId) {
+        await queryClient.invalidateQueries({
+          queryKey: omnichannelCustomerContextKey(customerId),
+        });
+      }
+    },
     [queryClient, companyId],
-
   );
 
 
@@ -200,7 +235,13 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
     },
 
-    onSuccess: (_, variables) => invalidate(variables.record.id),
+    onSuccess: (result, variables) => {
+      patchConversationListCache(variables.record.id, {
+        assigned_user_id: result.assignedUserId ?? variables.record.assigned_user_id,
+        metadata: result.metadata,
+      });
+      void invalidate(variables.record.id, variables.record.customer_id);
+    },
 
   });
 
@@ -262,7 +303,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
     },
 
-    onSuccess: (_, variables) => invalidate(variables.record.id),
+    onSuccess: (_, variables) => invalidate(variables.record.id, variables.record.customer_id),
 
   });
 
@@ -357,6 +398,8 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
       assignedByUserId: string | null,
 
+      actorLabel: string | null = null,
+
     ) =>
 
       transitionMutation.mutateAsync({
@@ -375,13 +418,17 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
             targetLabel: target.targetLabel,
 
-            method: "manual",
+            method: target.targetType === "queue" ? "queue" : "manual",
 
             assignedByUserId,
 
           },
 
+          queueId: target.targetType === "queue" ? target.targetId : undefined,
+
           actorUserId: assignedByUserId,
+
+          actorLabel,
 
         },
 
@@ -395,7 +442,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const returnToAi = useCallback(
 
-    (record: ConversationRecord, actorUserId: string | null) =>
+    (record: ConversationRecord, actorUserId: string | null, actorLabel: string | null = null) =>
 
       transitionMutation.mutateAsync({
 
@@ -403,7 +450,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         action: "return_to_ai",
 
-        payload: { actorUserId },
+        payload: { actorUserId, actorLabel },
 
       }),
 
@@ -415,7 +462,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const escalate = useCallback(
 
-    (record: ConversationRecord, payload: EscalationSubmitPayload, queueId?: string | null) => {
+    (record: ConversationRecord, payload: EscalationSubmitPayload, queueId?: string | null, actorLabel: string | null = null) => {
 
       const snap = getLifecycleSnapshot(record, permissionContext);
 
@@ -451,6 +498,8 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
           actorUserId: access?.userId ?? null,
 
+          actorLabel,
+
         },
 
       });
@@ -465,7 +514,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const returnEscalation = useCallback(
 
-    (record: ConversationRecord) =>
+    (record: ConversationRecord, actorLabel: string | null = null) =>
 
       transitionMutation.mutateAsync({
 
@@ -473,7 +522,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         action: "return",
 
-        payload: { actorUserId: access?.userId ?? null },
+        payload: { actorUserId: access?.userId ?? null, actorLabel },
 
       }),
 
@@ -485,7 +534,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const cancelEscalation = useCallback(
 
-    (record: ConversationRecord) =>
+    (record: ConversationRecord, actorLabel: string | null = null) =>
 
       transitionMutation.mutateAsync({
 
@@ -493,7 +542,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         action: "escalation_cancel",
 
-        payload: { actorUserId: access?.userId ?? null },
+        payload: { actorUserId: access?.userId ?? null, actorLabel },
 
       }),
 
@@ -505,7 +554,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const resolveConversation = useCallback(
 
-    (record: ConversationRecord) =>
+    (record: ConversationRecord, actorLabel: string | null = null) =>
 
       transitionMutation.mutateAsync({
 
@@ -513,7 +562,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         action: "resolve",
 
-        payload: { actorUserId: access?.userId ?? null },
+        payload: { actorUserId: access?.userId ?? null, actorLabel },
 
       }),
 
@@ -525,7 +574,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const closeConversation = useCallback(
 
-    (record: ConversationRecord) =>
+    (record: ConversationRecord, actorLabel: string | null = null) =>
 
       transitionMutation.mutateAsync({
 
@@ -533,7 +582,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         action: "close",
 
-        payload: { actorUserId: access?.userId ?? null },
+        payload: { actorUserId: access?.userId ?? null, actorLabel },
 
       }),
 
@@ -545,7 +594,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
   const reopenConversation = useCallback(
 
-    (record: ConversationRecord) =>
+    (record: ConversationRecord, actorLabel: string | null = null) =>
 
       transitionMutation.mutateAsync({
 
@@ -553,7 +602,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         action: "reopen",
 
-        payload: { actorUserId: access?.userId ?? null },
+        payload: { actorUserId: access?.userId ?? null, actorLabel },
 
       }),
 

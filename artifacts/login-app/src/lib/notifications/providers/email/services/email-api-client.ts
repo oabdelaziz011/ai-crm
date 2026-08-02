@@ -1,10 +1,8 @@
 import { supabase } from "@/lib/supabase";
-
-function getApiBaseUrl(): string {
-  const runtimeEnv = import.meta.env as Record<string, string | undefined>;
-  const base = runtimeEnv.VITE_API_SERVER_URL?.trim() ?? "";
-  return base.replace(/\/$/, "");
-}
+import {
+  isAuthenticatedApiConfigured,
+  resolveAuthenticatedApiBase,
+} from "@/lib/api-server/normalize-api-base";
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -17,7 +15,7 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
 }
 
 async function postEmailApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const base = getApiBaseUrl();
+  const base = resolveAuthenticatedApiBase();
   if (!base) {
     throw new Error("VITE_API_SERVER_URL is not configured");
   }
@@ -104,5 +102,5 @@ export function processEmailQueue(companyId: string) {
 }
 
 export function isEmailApiConfigured(): boolean {
-  return Boolean(getApiBaseUrl());
+  return isAuthenticatedApiConfigured();
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Sheet,
@@ -32,6 +32,7 @@ export function CustomerProfileDrawer({
   context,
   onQuickAction,
   isQuickActionPending,
+  backToConversationLabel,
 }: CustomerProfileDrawerProps) {
   const { t } = useTranslation("common");
   const canEdit = useHasPermission("customers.edit");
@@ -92,6 +93,16 @@ export function CustomerProfileDrawer({
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="shrink-0 border-b border-white/10 px-4 pt-4 pb-0">
+              {context?.conversationId && backToConversationLabel ? (
+                <button
+                  type="button"
+                  className="mb-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                  onClick={onClose}
+                >
+                  <ArrowLeft className="size-3.5" />
+                  {backToConversationLabel}
+                </button>
+              ) : null}
               <div className="mb-3 pe-8">
                 <h2 className="text-base font-semibold truncate">{customer.name}</h2>
                 <p className="text-xs text-muted-foreground">{t("dashboard.customerProfile.subtitle")}</p>

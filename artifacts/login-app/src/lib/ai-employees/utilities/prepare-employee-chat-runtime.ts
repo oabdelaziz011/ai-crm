@@ -79,6 +79,16 @@ export async function prepareEmployeeChatRuntime(
       metadataPatch: buildEmployeeConversationMetadataPatch(
         input.conversationMetadata ?? {},
         hydrated.executionContext,
+        {
+          publishedVersionId:
+            typeof input.conversationMetadata?.aiEmployeeVersionId === "string"
+              ? input.conversationMetadata.aiEmployeeVersionId
+              : null,
+          displayName:
+            typeof input.conversationMetadata?.aiEmployeeDisplayName === "string"
+              ? input.conversationMetadata.aiEmployeeDisplayName
+              : hydrated.executionContext.employeeRuntime.pageContext.aiEmployeeName,
+        },
       ),
       resolveCount: 0,
       reusedExistingContext: true,
@@ -132,6 +142,16 @@ export async function prepareEmployeeChatRuntime(
     metadataPatch: buildEmployeeConversationMetadataPatch(
       input.conversationMetadata ?? {},
       executionContext,
+      {
+        publishedVersionId:
+          typeof input.conversationMetadata?.aiEmployeeVersionId === "string"
+            ? input.conversationMetadata.aiEmployeeVersionId
+            : null,
+        displayName:
+          typeof input.conversationMetadata?.aiEmployeeDisplayName === "string"
+            ? input.conversationMetadata.aiEmployeeDisplayName
+            : executionContext.employeeRuntime.pageContext.aiEmployeeName,
+      },
     ),
     resolveCount: 1,
     reusedExistingContext: false,

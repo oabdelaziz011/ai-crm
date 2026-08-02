@@ -1,11 +1,12 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAIProviderServices } from "@workspace/ai-provider-layer";
 import { createEmbeddingPlatformServices } from "@workspace/embedding-platform";
 import { createPlatformAIProviderServices, PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 import { createVectorStoreServices } from "@workspace/vector-store";
 import type { AgentRuntimeChannelBinding } from "@/lib/ai-employees/adapters/ai-employee-runtime-types";
 import { resolveProviderCapabilities } from "@/lib/ai-employees/adapters/model-capabilities-catalog";
-import { getAiEmployeeServices } from "@/lib/ai-employees";
-import type { AiEmployeeConfigurationService, TenantRuntimeContext } from "./ai-employee-configuration-service";
+import { createAiEmployeeServices } from "@/lib/ai-employees";
+import type { TenantRuntimeContext } from "./ai-employee-configuration-service";
 import { evaluateEmployeeChannelRuntimeBinding } from "./evaluate-employee-channel-runtime-binding";
 import type { AiEmployeeRecord } from "@/lib/ai-employees/types";
 import { isKnowledgeRetrievalEligible } from "@/lib/platform-ai/knowledge-access";
@@ -22,14 +23,15 @@ function createCompanyServiceContext(companyId: string) {
 }
 
 async function loadRuntimeChatConfig(
+  client: SupabaseClient,
   companyId: string,
   knowledgeEnabled: boolean,
 ): Promise<RuntimeChatExecutionConfig> {
   const context = createCompanyServiceContext(companyId);
-  const providerServices = createAIProviderServices(supabase);
-  const platformServices = createPlatformAIProviderServices(supabase);
-  const embeddingServices = createEmbeddingPlatformServices(supabase);
-  const vectorStoreServices = createVectorStoreServices(supabase);
+  const providerServices = createAIProviderServices(client);
+  const platformServices = createPlatformAIProviderServices(client);
+  const embeddingServices = createEmbeddingPlatformServices(client);
+  const vectorStoreServices = createVectorStoreServices(client);
 
   const missing: RuntimeChatExecutionConfig["missing"] = [];
 
@@ -116,16 +118,17 @@ async function loadRuntimeChatConfig(
 }
 
 async function loadTenantRuntimeContext(
+  client: SupabaseClient,
   companyId: string,
   employee: AiEmployeeRecord,
 ): Promise<TenantRuntimeContext> {
   const context = createCompanyServiceContext(companyId);
-  const providerServices = createAIProviderServices(supabase);
-  const vectorStoreServices = createVectorStoreServices(supabase);
+  const providerServices = createAIProviderServices(client);
+  const vectorStoreServices = createVectorStoreServices(client);
   const knowledgeEnabled = employee.knowledgeSourceIds.length > 0;
 
   const [runtimeConfig, providerConnections] = await Promise.all([
-    loadRuntimeChatConfig(companyId, knowledgeEnabled),
+    loadRuntimeChatConfig(client, companyId, knowledgeEnabled),
     providerServices.registry.listConnections(context, { companyId, isEnabled: true }),
   ]);
 
@@ -167,12 +170,13 @@ export { evaluateEmployeeChannelRuntimeBinding } from "./evaluate-employee-chann
 export async function resolveEmployeeChannelRuntime(
   companyId: string,
   aiEmployeeId: string,
-  configuration: AiEmployeeConfigurationService = getAiEmployeeServices().configuration,
+  client: SupabaseClient = supabase,
 ): Promise<AgentRuntimeChannelBinding | null> {
-  const employee = await getAiEmployeeServices().registry.getById(aiEmployeeId, companyId);
+  const services = createAiEmployeeServices(client);
+  const employee = await services.registry.getById(aiEmployeeId, companyId);
   if (!employee) return null;
 
-  const tenantRuntime = await loadTenantRuntimeContext(companyId, employee);
-  const preview = await configuration.buildRuntimePreview(employee, tenantRuntime);
+  const tenantRuntime = await loadTenantRuntimeContext(client, companyId, employee);
+  const preview = await services.configuration.buildRuntimePreview(employee, tenantRuntime);
   return evaluateEmployeeChannelRuntimeBinding(employee, preview);
 }

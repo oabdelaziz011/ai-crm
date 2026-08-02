@@ -1,89 +1,137 @@
 import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
+import {
+  hasConversationAssignee,
+  resolveAssignedToUserId,
+} from "@/lib/omnichannel/presentation/conversation-ownership";
+import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 
 export const OMNICHANNEL_QUEUE_IDS = [
   "unassigned",
   "mine",
-  "team",
+  "escalated",
   "waiting_customer",
   "waiting_ai",
-  "escalated",
-  "closed_24h",
+  "resolved",
+  "closed",
 ] as const;
 
 export type OmnichannelQueueId = (typeof OMNICHANNEL_QUEUE_IDS)[number];
 
+/** UI filter including the default open inbox. */
+export type OmnichannelQueueFilter = OmnichannelQueueId | "all";
+
 const CLOSED_STATES = new Set(["closed", "completed", "cancelled", "archived"]);
 const CLOSED_LIFECYCLE = new Set(["CLOSED", "RESOLVED"]);
 
-function isClosedRecently(conversation: UnifiedConversation, nowMs: number): boolean {
-  if (!CLOSED_STATES.has(conversation.status) && !CLOSED_LIFECYCLE.has(conversation.lifecycleState)) {
-    return false;
-  }
-  const activity = conversation.lastActivityAt ? Date.parse(conversation.lastActivityAt) : 0;
-  return nowMs - activity <= 24 * 60 * 60 * 1000;
+export function isTerminalConversation(conversation: UnifiedConversation): boolean {
+  return CLOSED_STATES.has(conversation.status) || CLOSED_LIFECYCLE.has(conversation.lifecycleState);
+}
+
+export function isOpenConversation(conversation: UnifiedConversation): boolean {
+  return !isTerminalConversation(conversation);
+}
+
+function isClosedState(conversation: UnifiedConversation): boolean {
+  return conversation.lifecycleState === "CLOSED" || conversation.status === "closed";
+}
+
+function isResolvedState(conversation: UnifiedConversation): boolean {
+  return conversation.lifecycleState === "RESOLVED";
 }
 
 export function applyConversationQueue(
   conversations: UnifiedConversation[],
-  queue: OmnichannelQueueId | undefined,
+  queue: OmnichannelQueueFilter | undefined,
   currentUserId: string | null | undefined,
 ): UnifiedConversation[] {
-  if (!queue) return conversations;
+  const effective = queue ?? "all";
 
-  const nowMs = Date.now();
-
-  switch (queue) {
+  let result: UnifiedConversation[];
+  switch (effective) {
+    case "all":
+      result = conversations.filter(isOpenConversation);
+      break;
     case "unassigned":
-      return conversations.filter(
-        (item) =>
-          !item.assignedAgent
-          && !CLOSED_STATES.has(item.status)
-          && !CLOSED_LIFECYCLE.has(item.lifecycleState),
+      result = conversations.filter(
+        (item) => !hasConversationAssignee(item) && isOpenConversation(item),
       );
+      break;
     case "mine":
-      return conversations.filter(
-        (item) =>
-          item.assignedAgent?.id === currentUserId
-          && !CLOSED_STATES.has(item.status)
-          && !CLOSED_LIFECYCLE.has(item.lifecycleState),
+      result = conversations.filter(
+        (item) => resolveAssignedToUserId(item) === currentUserId && isOpenConversation(item),
       );
-    case "team":
-      return conversations.filter(
-        (item) =>
-          item.handlerMode === "human"
-          && !CLOSED_STATES.has(item.status)
-          && !CLOSED_LIFECYCLE.has(item.lifecycleState),
-      );
+      break;
     case "waiting_customer":
-      return conversations.filter(
+      result = conversations.filter(
         (item) =>
-          item.lifecycleState === "PENDING_CUSTOMER" || item.status === "waiting_user",
+          isOpenConversation(item)
+          && (item.lifecycleState === "PENDING_CUSTOMER" || item.status === "waiting_user"),
       );
+      break;
     case "waiting_ai":
-      return conversations.filter(
+      result = conversations.filter(
         (item) =>
-          item.lifecycleState === "AI_HANDLING"
-          && !CLOSED_STATES.has(item.status)
-          && !CLOSED_LIFECYCLE.has(item.lifecycleState),
+          isOpenConversation(item)
+          && (item.lifecycleState === "AI_HANDLING" || item.handlerMode === "ai"),
       );
+      break;
     case "escalated":
-      return conversations.filter((item) => item.isEscalated);
-    case "closed_24h":
-      return conversations.filter((item) => isClosedRecently(item, nowMs));
+      result = conversations.filter((item) => item.isEscalated && isOpenConversation(item));
+      break;
+    case "resolved":
+      result = conversations.filter(isResolvedState);
+      break;
+    case "closed":
+      result = conversations.filter(isClosedState);
+      break;
     default:
-      return conversations;
+      result = conversations;
   }
+
+  traceReorderStage({
+    stage: "applyConversationQueue",
+    file: "conversation-queues.ts",
+    function: "applyConversationQueue",
+    line: 41,
+    before: conversations,
+    after: result,
+    arrayReferenceChanged: true,
+    sortCalled: false,
+    extra: { queue: effective, currentUserId: currentUserId ?? null },
+  });
+
+  return result;
 }
 
 export function countQueueConversations(
   conversations: UnifiedConversation[],
   currentUserId: string | null | undefined,
-): Record<OmnichannelQueueId, number> {
-  return OMNICHANNEL_QUEUE_IDS.reduce(
-    (counts, queueId) => {
-      counts[queueId] = applyConversationQueue(conversations, queueId, currentUserId).length;
-      return counts;
+): Record<OmnichannelQueueId, number> & { all: number } {
+  const counts = OMNICHANNEL_QUEUE_IDS.reduce(
+    (acc, queueId) => {
+      acc[queueId] = applyConversationQueue(conversations, queueId, currentUserId).length;
+      return acc;
     },
     {} as Record<OmnichannelQueueId, number>,
   );
+  return {
+    all: applyConversationQueue(conversations, "all", currentUserId).length,
+    ...counts,
+  };
+}
+
+/** @deprecated use `closed` queue */
+export const LEGACY_QUEUE_ALIASES: Record<string, OmnichannelQueueFilter> = {
+  closed_24h: "closed",
+  team: "all",
+};
+
+export function normalizeQueueFilter(queue: string | undefined): OmnichannelQueueFilter | undefined {
+  if (!queue) return undefined;
+  if (queue === "all") return "all";
+  if (queue in LEGACY_QUEUE_ALIASES) return LEGACY_QUEUE_ALIASES[queue];
+  if ((OMNICHANNEL_QUEUE_IDS as readonly string[]).includes(queue)) {
+    return queue as OmnichannelQueueId;
+  }
+  return undefined;
 }

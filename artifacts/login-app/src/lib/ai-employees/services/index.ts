@@ -19,3 +19,7 @@ export {
 export {
   resolveEmployeeChannelRuntime,
 } from "./resolve-employee-channel-runtime";
+export {
+  buildInboundEmployeeConversationMetadata,
+  resolveInboundChannelEmployee,
+} from "./resolve-inbound-channel-employee";

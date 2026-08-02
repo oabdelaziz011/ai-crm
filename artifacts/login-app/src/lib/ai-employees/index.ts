@@ -98,3 +98,7 @@ export {
   AiEmployeeAdministrationService,
 };
 export { resolveEmployeeChannelRuntime, evaluateEmployeeChannelRuntimeBinding } from "./services";
+export {
+  buildInboundEmployeeConversationMetadata,
+  resolveInboundChannelEmployee,
+} from "./services/resolve-inbound-channel-employee";

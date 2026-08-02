@@ -502,6 +502,11 @@
       "description": "يسمح بإضافة ملاحظات داخلية للمحادثات.",
       "group": "conversations"
     },
+    "conversation.internal_notes.manage": {
+      "name": "إدارة الملاحظات الداخلية",
+      "description": "يسمح بتعديل وحذف الملاحظات الداخلية في المحادثات.",
+      "group": "conversations"
+    },
     "conversation.link_customer": {
       "name": "ربط عميل",
       "description": "يسمح بربط عميل موجود بمحادثة.",

@@ -15,7 +15,7 @@ export const ConversationSearch = memo(
     ref,
   ) {
     return (
-      <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-white/5 bg-black/30 px-3 py-1.5">
+      <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 focus-within:border-primary/30 focus-within:ring-1 focus-within:ring-primary/20">
         <Search className="size-3.5 text-muted-foreground" />
         <input
           ref={ref}

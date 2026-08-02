@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { normalizeAuthBootstrapProfile } from "@/lib/auth/normalize-auth-bootstrap-profile";
 import { parseRpcPayloadForTest } from "@/lib/auth/parse-auth-rpc-payload";
+import { omniCompanyTrace } from "@/lib/omnichannel/debug/omni-company-audit";
 
 export interface AuthBootstrapProfile {
   id: string;
@@ -69,7 +70,15 @@ async function loadAuthContextViaRpc(userId: string): Promise<AuthBootstrapPaylo
     p_user_id: userId,
   });
   if (error) throw error;
-  return parseRpcPayload(data);
+  const payload = parseRpcPayload(data);
+  omniCompanyTrace("load_user_auth_context", {
+    userId,
+    profileCompanyId: payload.profile?.company_id ?? null,
+    companyRecordId: payload.company?.id ?? null,
+    companyId: payload.profile?.company_id ?? null,
+    extra: { source: "rpc", profileId: payload.profile?.id ?? null },
+  });
+  return payload;
 }
 
 function isMissingColumnError(message: string | undefined): boolean {
@@ -199,6 +208,16 @@ async function loadAuthContextSequential(userId: string): Promise<AuthBootstrapP
   };
 }
 
+function traceSequentialBootstrap(userId: string, payload: AuthBootstrapPayload) {
+  omniCompanyTrace("load_user_auth_context.sequential_fallback", {
+    userId,
+    profileCompanyId: payload.profile?.company_id ?? null,
+    companyRecordId: payload.company?.id ?? null,
+    companyId: payload.profile?.company_id ?? null,
+    extra: { source: "sequential_fallback", profileId: payload.profile?.id ?? null },
+  });
+}
+
 export async function fetchUserAuthContext(userId: string): Promise<AuthBootstrapPayload> {
   try {
     return await loadAuthContextViaRpc(userId);
@@ -207,6 +226,8 @@ export async function fetchUserAuthContext(userId: string): Promise<AuthBootstra
     if (!isMissingRpcError(message)) {
       throw error;
     }
-    return loadAuthContextSequential(userId);
+    const payload = await loadAuthContextSequential(userId);
+    traceSequentialBootstrap(userId, payload);
+    return payload;
   }
 }

@@ -58,10 +58,25 @@ export function hydrateExecutionContextFromConversationMetadata(
 export function buildEmployeeConversationMetadataPatch(
   existingMetadata: Record<string, unknown>,
   executionContext: AgentEmployeeExecutionContext,
+  employee?: {
+    publishedVersionId?: string | null;
+    displayName?: string | null;
+  },
 ): Record<string, unknown> {
+  const displayName =
+    employee?.displayName?.trim() ||
+    executionContext.employeeRuntime.pageContext.aiEmployeeName ||
+    null;
+
   return {
     ...existingMetadata,
     aiEmployeeId: executionContext.aiEmployeeId,
+    aiEmployeeVersionId:
+      employee?.publishedVersionId ??
+      (typeof existingMetadata.aiEmployeeVersionId === "string"
+        ? existingMetadata.aiEmployeeVersionId
+        : null),
+    aiEmployeeDisplayName: displayName,
     [AGENT_EMPLOYEE_EXECUTION_CONTEXT_KEY]:
       serializeExecutionContextForConversationMetadata(executionContext),
   };

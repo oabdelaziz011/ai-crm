@@ -13,6 +13,46 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const PAGE_SIZE = 12;
 
+/** One realtime subscription per company — safe for multiple NotificationBell mounts. */
+const notificationRealtimeRefCounts = new Map<string, number>();
+const notificationRealtimeChannels = new Map<string, ReturnType<typeof supabase.channel>>();
+
+function retainNotificationRealtime(companyId: string, onChange: () => void) {
+  const count = notificationRealtimeRefCounts.get(companyId) ?? 0;
+  notificationRealtimeRefCounts.set(companyId, count + 1);
+
+  if (count === 0) {
+    const channel = supabase
+      .channel(`notifications-platform:${companyId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `company_id=eq.${companyId}`,
+        },
+        onChange,
+      )
+      .subscribe();
+    notificationRealtimeChannels.set(companyId, channel);
+  }
+
+  return () => {
+    const next = (notificationRealtimeRefCounts.get(companyId) ?? 1) - 1;
+    if (next <= 0) {
+      notificationRealtimeRefCounts.delete(companyId);
+      const channel = notificationRealtimeChannels.get(companyId);
+      if (channel) {
+        void supabase.removeChannel(channel);
+        notificationRealtimeChannels.delete(companyId);
+      }
+      return;
+    }
+    notificationRealtimeRefCounts.set(companyId, next);
+  };
+}
+
 export function useNotificationsInfinite(
   companyId: string | null,
   filter: NotificationListFilter = {},
@@ -54,23 +94,6 @@ export function useNotificationsRealtime(companyId: string | null) {
 
   useEffect(() => {
     if (!companyId) return;
-
-    const channel = supabase
-      .channel(`notifications-platform:${companyId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `company_id=eq.${companyId}`,
-        },
-        () => invalidateNotificationQueries(qc, companyId),
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return retainNotificationRealtime(companyId, () => invalidateNotificationQueries(qc, companyId));
   }, [companyId, qc]);
 }

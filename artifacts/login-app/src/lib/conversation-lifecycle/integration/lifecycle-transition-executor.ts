@@ -25,6 +25,17 @@ import {
   conversationLifecycleCoordinator,
   type CoordinatorInput,
 } from "../coordinator/conversation-lifecycle-coordinator.js";
+import {
+  buildCancelEscalationAuditSummary,
+  buildCloseAuditSummary,
+  buildEscalationAuditSummary,
+  buildReopenAuditSummary,
+  buildResolveAuditSummary,
+  buildReturnEscalationAuditSummary,
+  buildReturnToAiAuditSummary,
+  buildTakeOverAuditSummary,
+  buildAssignmentTransferAuditSummary,
+} from "@/lib/omnichannel/services/lifecycle-audit-summaries";
 
 export type TransitionPayload = {
   assignment?: {
@@ -59,23 +70,194 @@ export type TransitionResult = {
   assignedUserId?: string | null;
 };
 
-function appendTransitionTimeline(
+function appendAuditTimelineEvent(
   metadata: Record<string, unknown>,
   input: CoordinatorInput,
   action: LifecycleAction,
   actorUserId: string | null,
   actorLabel: string | null,
+  payload: TransitionPayload,
+  plan: ReturnType<typeof conversationLifecycleCoordinator.planAction>,
+  assignmentId?: string | null,
 ): Record<string, unknown> {
-  if (["assign", "reassign", "transfer", "escalate"].includes(action)) {
-    return metadata;
+  const overlay = readLifecycleOverlay(input.record.metadata) ?? {};
+  const previousOwner = overlay.owner?.label ?? overlay.owner?.id ?? null;
+  const previousOwnerKind = overlay.owner?.kind ?? null;
+  const previousQueueId = overlay.queueId ?? null;
+  const newOverlay = readLifecycleOverlay(metadata);
+  const newOwner = newOverlay?.owner?.label ?? newOverlay?.owner?.id ?? null;
+  const newOwnerKind = newOverlay?.owner?.kind ?? null;
+  const queueId = newOverlay?.queueId ?? payload.queueId ?? previousQueueId;
+  const previousState = plan.validation.fromState;
+  const newState = plan.validation.toState;
+  const timestamp = new Date().toISOString();
+  const basePayload = {
+    action,
+    previousState,
+    newState,
+    previousOwner,
+    previousOwnerKind,
+    newOwner,
+    newOwnerKind,
+    queueId,
+    handlerMode: newOwnerKind === "ai_employee" ? "ai" : newOwnerKind === "user" ? "human" : null,
+  };
+
+  if (action === "assign" || action === "reassign" || action === "transfer") {
+    const assignment = payload.assignment;
+    if (!assignment) return metadata;
+    const reason =
+      assignment.method === "manual"
+        ? "Manual assignment"
+        : assignment.method === "transfer"
+          ? "Transfer"
+          : assignment.method;
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "assignment",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildAssignmentTransferAuditSummary(
+        actorLabel,
+        previousOwner,
+        assignment.targetLabel,
+        assignment.targetType,
+        typeof queueId === "string" ? queueId : null,
+        reason,
+      ),
+      payload: {
+        ...basePayload,
+        assignmentId: assignmentId ?? undefined,
+        targetType: assignment.targetType,
+        targetId: assignment.targetId,
+        targetLabel: assignment.targetLabel,
+        reason,
+        method: assignment.method,
+      },
+    });
   }
-  const plan = conversationLifecycleCoordinator.planAction(input, action);
-  if (!plan.validation.allowed || !plan.validation.timelineEvent) return metadata;
-  return appendTimelineEvent(metadata, {
-    ...plan.validation.timelineEvent,
-    actorId: actorUserId,
-    actorLabel,
-  });
+
+  if (action === "take_over") {
+    const assignment = payload.assignment;
+    if (!assignment) return metadata;
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "assignment",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildTakeOverAuditSummary(
+        actorLabel,
+        previousOwner,
+        assignment.targetLabel,
+        typeof queueId === "string" ? queueId : null,
+      ),
+      payload: {
+        ...basePayload,
+        assignmentId: assignmentId ?? undefined,
+        targetType: assignment.targetType,
+        targetId: assignment.targetId,
+        targetLabel: assignment.targetLabel,
+        reason: "Manual Take Over",
+        method: assignment.method,
+      },
+    });
+  }
+
+  if (action === "escalate" && payload.escalation) {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "escalation",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildEscalationAuditSummary(
+        actorLabel,
+        payload.escalation.targetLevel,
+        payload.escalation.reason,
+      ),
+      payload: {
+        ...basePayload,
+        targetLevel: payload.escalation.targetLevel,
+        reason: payload.escalation.reason,
+      },
+    });
+  }
+
+  if (action === "return") {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "status_change",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildReturnEscalationAuditSummary(actorLabel),
+      payload: basePayload,
+    });
+  }
+
+  if (action === "escalation_cancel") {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "status_change",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildCancelEscalationAuditSummary(actorLabel),
+      payload: basePayload,
+    });
+  }
+
+  if (action === "return_to_ai") {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "ai_takeover",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildReturnToAiAuditSummary(actorLabel),
+      payload: basePayload,
+    });
+  }
+
+  if (action === "resolve") {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "close",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildResolveAuditSummary(actorLabel),
+      payload: basePayload,
+    });
+  }
+
+  if (action === "close") {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "close",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildCloseAuditSummary(actorLabel),
+      payload: basePayload,
+    });
+  }
+
+  if (action === "reopen") {
+    return appendTimelineEvent(metadata, {
+      conversationId: input.record.id,
+      type: "reopen",
+      timestamp,
+      actorId: actorUserId,
+      actorLabel,
+      summary: buildReopenAuditSummary(actorLabel),
+      payload: basePayload,
+    });
+  }
+
+  return metadata;
 }
 
 export function executeLifecycleTransition(
@@ -91,17 +273,19 @@ export function executeLifecycleTransition(
   let metadata = { ...input.record.metadata };
   const actorUserId = payload.actorUserId ?? null;
   const actorLabel = payload.actorLabel ?? null;
+  let latestAssignmentId: string | null = null;
 
   if (action === "assign" || action === "reassign" || action === "take_over" || action === "transfer") {
     const assignment = payload.assignment;
     if (!assignment) {
       return { success: false, reason: "Assignment payload required" };
     }
-    const { metadata: assignedMetadata } = assignConversation(input.record.metadata, {
+    const { record: assignmentRecord, metadata: assignedMetadata } = assignConversation(input.record.metadata, {
       conversationId: input.record.id,
       ...assignment,
       previousAssignmentId: getCurrentAssignment(input.record.metadata)?.id ?? null,
     });
+    latestAssignmentId = assignmentRecord.id;
     const overlay = readLifecycleOverlay(assignedMetadata) ?? {};
     metadata = writeLifecycleOverlay(assignedMetadata, {
       ...overlay,
@@ -154,19 +338,21 @@ export function executeLifecycleTransition(
       nextOverlay.reopenedAt = new Date().toISOString();
     }
     if (action === "return_to_ai") {
+      const recordMetadata = input.record.metadata ?? {};
+      const aiEmployeeId =
+        typeof recordMetadata.aiEmployeeId === "string" && recordMetadata.aiEmployeeId.length > 0
+          ? recordMetadata.aiEmployeeId
+          : input.record.ai_assistant_id;
+      const aiEmployeeLabel =
+        typeof recordMetadata.aiEmployeeDisplayName === "string" &&
+        recordMetadata.aiEmployeeDisplayName.trim()
+          ? recordMetadata.aiEmployeeDisplayName.trim()
+          : "AI Employee";
       nextOverlay.owner = {
         kind: "ai_employee",
-        id: input.record.ai_assistant_id,
-        label: "AI Employee",
+        id: aiEmployeeId,
+        label: aiEmployeeLabel,
       };
-      const current = getCurrentAssignment(metadata);
-      if (current) {
-        nextOverlay.owner = {
-          kind: "ai_employee",
-          id: input.record.ai_assistant_id,
-          label: "AI Employee",
-        };
-      }
     }
     metadata = writeLifecycleOverlay(metadata, nextOverlay);
   }
@@ -188,7 +374,16 @@ export function executeLifecycleTransition(
     });
   }
 
-  metadata = appendTransitionTimeline(metadata, input, action, actorUserId, actorLabel);
+  metadata = appendAuditTimelineEvent(
+    metadata,
+    input,
+    action,
+    actorUserId,
+    actorLabel,
+    payload,
+    plan,
+    latestAssignmentId,
+  );
 
   let assignedUserId: string | null = null;
   if (payload.assignment?.targetType === "user") {

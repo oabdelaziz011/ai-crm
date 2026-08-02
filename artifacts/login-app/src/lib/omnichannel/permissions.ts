@@ -1,4 +1,5 @@
 import { CONVERSATION_PERMISSIONS } from "@workspace/ai-conversation";
+import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 
 export const OMNICHANNEL_PERMISSIONS = {
   view: CONVERSATION_PERMISSIONS.view,
@@ -46,10 +47,22 @@ export function filterConversationsByOwnership<T extends { assignedAgent?: { id:
   return conversations.filter((item) => item.assignedAgent?.id === access.userId);
 }
 
-export function filterConversationsByChannelPermission<T extends { channel: string }>(
+export function filterConversationsByChannelPermission<T extends { channel: string; id: string }>(
   conversations: T[],
   allowedChannels: readonly string[],
 ): T[] {
   const allowed = new Set(allowedChannels);
-  return conversations.filter((item) => allowed.has(item.channel));
+  const result = conversations.filter((item) => allowed.has(item.channel));
+  traceReorderStage({
+    stage: "filterConversationsByChannelPermission",
+    file: "permissions.ts",
+    function: "filterConversationsByChannelPermission",
+    line: 54,
+    before: conversations,
+    after: result,
+    arrayReferenceChanged: true,
+    sortCalled: false,
+    extra: { allowedChannels: [...allowedChannels] },
+  });
+  return result;
 }

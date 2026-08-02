@@ -169,7 +169,6 @@ export function isAgentRuntimeConfigurationReady(issues: AiEmployeeConfigValidat
 
 export function collectRuntimeMissing(input: AiEmployeeRuntimeAdapterInput): string[] {
   const missing = [...input.tenantRuntime.missing];
-  if (input.employee.status !== "published") missing.push("employee_not_published");
   if (!input.employee.provider) missing.push("employee_provider");
   if (!input.employee.model) missing.push("employee_model");
   if (!input.tenantRuntime.providerConnectionId) missing.push("provider_connection");

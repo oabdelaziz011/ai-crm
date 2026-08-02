@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  isAuthenticatedApiConfigured,
+  resolveAuthenticatedApiBase,
+} from "@/lib/api-server/normalize-api-base";
 
 export type CompanyMessengerSettings = {
   companyId: string;
@@ -86,8 +90,7 @@ export async function upsertMessengerSettings(
 }
 
 function getApiBaseUrl(): string {
-  const runtimeEnv = import.meta.env as Record<string, string | undefined>;
-  return (runtimeEnv.VITE_API_SERVER_URL?.trim() ?? "").replace(/\/$/, "");
+  return resolveAuthenticatedApiBase();
 }
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
@@ -121,7 +124,7 @@ async function postMessengerApi<T>(path: string, body: Record<string, unknown>):
 }
 
 export function isMessengerApiConfigured(): boolean {
-  return Boolean(getApiBaseUrl());
+  return isAuthenticatedApiConfigured();
 }
 
 export function fetchMessengerOutboundHealth(

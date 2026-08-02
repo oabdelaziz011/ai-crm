@@ -24,11 +24,30 @@ export async function executeBackendLifecycleHint(
   input: ExecuteBackendHintInput,
 ): Promise<void> {
   const hint = input.hint;
-  if (!hint || hint.kind === "none") return;
+  const assignActions = new Set<LifecycleAction>(["assign", "reassign", "take_over", "transfer"]);
+  const assignedUserId = input.assignedUserId ?? null;
+
+  if (assignedUserId && assignActions.has(input.action)) {
+    await services.conversations.assignConversation(ctx, {
+      conversationId: input.conversationId,
+      assignedUserId,
+    });
+  }
+
+  if (!hint || hint.kind === "none") {
+    if (input.action === "reopen") {
+      await services.conversations.updateState(ctx, {
+        conversationId: input.conversationId,
+        state: "waiting_user",
+      });
+    }
+    return;
+  }
 
   switch (hint.kind) {
     case "assign": {
-      const userId = input.assignedUserId ?? hint.assignedUserId;
+      if (assignedUserId) return;
+      const userId = hint.assignedUserId;
       if (!userId) return;
       await services.conversations.assignConversation(ctx, {
         conversationId: input.conversationId,

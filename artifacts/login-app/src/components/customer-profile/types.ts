@@ -58,4 +58,5 @@ export type CustomerProfileDrawerProps = {
     customerId: string,
   ) => void;
   isQuickActionPending?: (action: CustomerProfileQuickAction) => boolean;
+  backToConversationLabel?: string;
 };

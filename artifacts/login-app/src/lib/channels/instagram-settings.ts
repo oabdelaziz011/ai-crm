@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  isAuthenticatedApiConfigured,
+  resolveAuthenticatedApiBase,
+} from "@/lib/api-server/normalize-api-base";
 
 export type CompanyInstagramSettings = {
   companyId: string;
@@ -91,8 +95,7 @@ export async function upsertInstagramSettings(
 }
 
 function getApiBaseUrl(): string {
-  const runtimeEnv = import.meta.env as Record<string, string | undefined>;
-  return (runtimeEnv.VITE_API_SERVER_URL?.trim() ?? "").replace(/\/$/, "");
+  return resolveAuthenticatedApiBase();
 }
 
 async function buildAuthHeaders(): Promise<Record<string, string>> {
@@ -126,7 +129,7 @@ async function postInstagramApi<T>(path: string, body: Record<string, unknown>):
 }
 
 export function isInstagramApiConfigured(): boolean {
-  return Boolean(getApiBaseUrl());
+  return isAuthenticatedApiConfigured();
 }
 
 export function fetchInstagramOutboundHealth(

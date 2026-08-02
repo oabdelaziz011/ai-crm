@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAuth } from "@/context/auth-context";
+import { useAiAssistantSettings } from "@/hooks/use-ai-assistant-settings";
 import { useConversationListInfinite } from "@/hooks/conversations/use-conversation-list";
 import { useConversationMessages } from "@/hooks/conversations/use-conversation-messages";
 import { useConversationActions } from "@/hooks/conversations/use-conversation-actions";
@@ -11,6 +13,9 @@ import { useProfiles } from "@/hooks/use-profiles";
 import { conversationAggregator } from "@/lib/omnichannel/aggregators/conversation-aggregator";
 import { mapUnifiedMessages } from "@/lib/omnichannel/aggregators/message-mapper";
 import { buildAiAssistModel } from "@/lib/omnichannel/services/ai-assist-service";
+import { resolveAgentWorkspaceLanguage, resolveProfileComposerLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
+import { resolveContactDisplayName } from "@/lib/omnichannel/presentation/contact-display";
+import { buildContactDisplayInput } from "@/lib/omnichannel/presentation/conversation-contact-identity";
 import { applyConversationQueue } from "@/lib/omnichannel/services/conversation-queues";
 import { OMNICHANNEL_LIST_STALE_MS } from "@/lib/omnichannel/cache/query-keys";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
@@ -22,6 +27,10 @@ import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-co
 import { useConversationRealtime, useOmnichannelAccess } from "@/hooks/omnichannel/use-conversation-realtime";
 import { fetchOmnichannelCustomerContext } from "@/lib/omnichannel/services/omnichannel-customer-context-service";
 import { omnichannelCustomerContextKey } from "@/lib/omnichannel/cache/query-keys";
+import { auditRenderPipeline, omniRenderTrace } from "@/lib/omnichannel/debug/omni-render-audit";
+import { auditOmniListPipeline } from "@/lib/omnichannel/debug/omni-list-pipeline-audit";
+import { traceDomRenderStage } from "@/lib/omnichannel/debug/omni-dom-render-audit";
+import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 
 function mapListFilters(filters: OmnichannelListFilters) {
   return {
@@ -34,10 +43,12 @@ function mapListFilters(filters: OmnichannelListFilters) {
 }
 
 export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedId: string | null) {
+  const { i18n, t } = useTranslation();
   const access = useOmnichannelAccess();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const companyId = access?.companyId ?? null;
   const canView = canViewOmnichannelConsole(access);
+  const { data: aiAssistantSettings } = useAiAssistantSettings(companyId);
 
   const listQuery = useConversationListInfinite(mapListFilters(filters));
   const flatConversations = useMemo(
@@ -76,56 +87,212 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     return map;
   }, [profiles]);
 
+  const profilesByUserId = useMemo(() => {
+    const map = new Map<string, (typeof profiles)[number]>();
+    for (const profile of profiles) {
+      if (profile.user_id) map.set(profile.user_id, profile);
+    }
+    return map;
+  }, [profiles]);
+
+  const ownershipLabels = useMemo(
+    () => ({
+      aiEmployee: t("omnichannel.assignment.aiEmployee"),
+      unassigned: t("omnichannel.customer.unassigned"),
+    }),
+    [t],
+  );
+
   const aggregated = useMemo(() => {
     if (!access) return [];
     const unified = conversationAggregator.aggregateList({
       conversations: flatConversations,
       customersById,
       agentsById,
+      profilesByUserId,
+      ownershipLabels,
     });
     const supported = conversationAggregator.filterBySupportedChannels(unified);
     const filtered = conversationAggregator.applyFilters(supported, filters);
-    return applyConversationQueue(filtered, filters.queue, user?.id);
-  }, [flatConversations, customersById, agentsById, filters, access, user?.id]);
+    const effectiveQueue = filters.queue ?? "all";
+    return applyConversationQueue(filtered, effectiveQueue, user?.id);
+  }, [flatConversations, customersById, agentsById, profilesByUserId, filters, access, user?.id, ownershipLabels]);
 
-  const visibleConversations = useMemo(
-    () => filterConversationsByChannelPermission(aggregated, OMNICHANNEL_PRIMARY_CHANNELS),
-    [aggregated],
-  );
+  const visibleConversations = useMemo(() => {
+    const result = filterConversationsByChannelPermission(aggregated, OMNICHANNEL_PRIMARY_CHANNELS);
+    traceReorderStage({
+      stage: "useOmnichannelConsole.visibleConversations",
+      file: "use-omnichannel-console.ts",
+      function: "useOmnichannelConsole",
+      line: 136,
+      before: aggregated,
+      after: result,
+      arrayReferenceChanged: true,
+      sortCalled: false,
+    });
+    return result;
+  }, [aggregated]);
+
+  const inboxConversations = useMemo(() => {
+    if (!access) return [];
+    const unified = conversationAggregator.aggregateList({
+      conversations: flatConversations,
+      customersById,
+      agentsById,
+      profilesByUserId,
+      ownershipLabels,
+    });
+    const supported = conversationAggregator.filterBySupportedChannels(unified);
+    return filterConversationsByChannelPermission(
+      conversationAggregator.applyFilters(supported, filters),
+      OMNICHANNEL_PRIMARY_CHANNELS,
+    );
+  }, [flatConversations, customersById, agentsById, profilesByUserId, filters, access, ownershipLabels]);
 
   const selectedConversation =
     visibleConversations.find((conversation) => conversation.id === selectedId)
     ?? visibleConversations[0]
     ?? null;
 
+  useEffect(() => {
+    if (!access || listQuery.isLoading) return;
+    auditRenderPipeline({
+      stage: "useOmnichannelConsole",
+      flatRows: flatConversations,
+      filters,
+      userId: user?.id,
+      customersById,
+      agentsById,
+      profilesByUserId,
+      ownershipLabels,
+    });
+    auditOmniListPipeline({
+      flatRows: flatConversations,
+      filters,
+      userId: user?.id,
+      customersById,
+      agentsById,
+      profilesByUserId,
+      ownershipLabels,
+    });
+    traceReorderStage({
+      stage: "reactQuery.flatMap",
+      file: "use-omnichannel-console.ts",
+      function: "pages.flatMap",
+      line: 54,
+      before: flatConversations,
+      after: flatConversations,
+      arrayReferenceChanged: false,
+      sortCalled: false,
+      extra: { pageCount: listQuery.data?.pages.length ?? 0 },
+    });
+    omniRenderTrace("useOmnichannelConsole.visibleConversations", visibleConversations, {
+      selectedQueue: filters.queue ?? "all",
+      activeFilters: filters,
+    });
+    traceDomRenderStage({
+      stage: "useOmnichannelConsole.visibleConversations",
+      file: "use-omnichannel-console.ts",
+      function: "useOmnichannelConsole",
+      line: 135,
+      rows: visibleConversations,
+      extra: { selectedQueue: filters.queue ?? "all" },
+    });
+    traceDomRenderStage({
+      stage: "useOmnichannelConsole.selectedConversation",
+      file: "use-omnichannel-console.ts",
+      function: "useOmnichannelConsole",
+      line: 183,
+      rows: selectedConversation ? [selectedConversation] : [],
+      previousPresent: visibleConversations.some((c) => c.id === selectedConversation?.id),
+      extra: {
+        selectedId,
+        selectedConversationId: selectedConversation?.id ?? null,
+        selectedConversationNumber: selectedConversation?.conversationNumber ?? null,
+      },
+    });
+    omniRenderTrace("useOmnichannelConsole.inboxConversations", inboxConversations, {
+      note: "used for nav counts, not InboxColumn",
+    });
+  }, [
+    access,
+    flatConversations,
+    filters,
+    user?.id,
+    customersById,
+    agentsById,
+    profilesByUserId,
+    ownershipLabels,
+    visibleConversations,
+    inboxConversations,
+    listQuery.isLoading,
+    selectedConversation,
+    selectedId,
+  ]);
+
+  const customerContextQuery = useOmnichannelCustomerContext(selectedConversation?.customer?.id ?? null);
+
   const messagesQuery = useConversationMessages(selectedConversation?.id ?? null);
   const unifiedMessages = useMemo(
-    () =>
-      selectedConversation
-        ? mapUnifiedMessages(messagesQuery.data ?? [], selectedConversation.channel)
-        : [],
-    [messagesQuery.data, selectedConversation],
+    () => {
+      if (!selectedConversation) return [];
+      const customerLabel = resolveContactDisplayName(
+        buildContactDisplayInput(selectedConversation, selectedConversation.customer, "Visitor"),
+      );
+      return mapUnifiedMessages(
+        messagesQuery.data ?? [],
+        selectedConversation.channel,
+        { customer: customerLabel },
+        profilesByUserId,
+        "Support Agent",
+      );
+    },
+    [messagesQuery.data, selectedConversation, profilesByUserId],
   );
 
-  const aiAssist = useMemo(
-    () => buildAiAssistModel(messagesQuery.data ?? []),
-    [messagesQuery.data],
-  );
+  const aiAssist = useMemo(() => {
+    const workspaceLanguage = resolveAgentWorkspaceLanguage(i18n.language);
+    const agentComposerLanguage = resolveProfileComposerLanguage(profile?.preferred_language);
+    const companyDefaultLanguage =
+      aiAssistantSettings?.language === "ar" || aiAssistantSettings?.language === "en"
+        ? aiAssistantSettings.language
+        : null;
+
+    return buildAiAssistModel(messagesQuery.data ?? [], customerContextQuery.data?.knowledgeSuggestions ?? [], {
+      metadata: selectedConversation?.source.metadata,
+      workspaceLanguage,
+      agentComposerLanguage,
+      companyDefaultLanguage,
+      lifecycleState: selectedConversation?.lifecycleState,
+      customerContext: customerContextQuery.data ?? null,
+    });
+  }, [
+    messagesQuery.data,
+    selectedConversation?.source.metadata,
+    selectedConversation?.lifecycleState,
+    i18n.language,
+    profile?.preferred_language,
+    aiAssistantSettings?.language,
+    customerContextQuery.data,
+  ]);
 
   useConversationRealtime(companyId, selectedConversation?.id ?? null);
 
   const { assign, release, close } = useConversationActions(companyId);
-  const { sendReply, isSending, error: sendError } = useTeamInboxReply(companyId);
+  const { sendReply, isSending, error: sendError, clearError: clearSendError } = useTeamInboxReply(companyId);
 
   return {
     access,
     canView,
     companyId,
+    flatRowCount: flatConversations.length,
     conversations: visibleConversations,
+    inboxConversations,
     selectedConversation,
     messages: unifiedMessages,
     aiAssist,
     agentsById,
+    profilesByUserId,
     profiles,
     listQuery,
     messagesQuery,
@@ -135,6 +302,7 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     sendReply,
     isSending,
     sendError,
+    clearSendError,
   };
 }
 

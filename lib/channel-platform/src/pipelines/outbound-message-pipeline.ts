@@ -6,6 +6,8 @@ import { CHANNEL_PLATFORM_PERMISSIONS } from "../constants.js";
 import { CompanyChannelNotFoundError, PermissionDeniedError, ValidationError } from "../errors.js";
 import type { ServiceContext } from "../types.js";
 import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
+import { traceOutboundValidationEnter, traceOutboundValidationFail, traceOutboundValidationPass } from "../debug/omni-outbound-400-bridge.js";
+import { traceMetaGraphOutboundStage } from "../debug/meta-graph-outbound-audit.js";
 
 export class OutboundMessagePipeline {
   constructor(
@@ -16,20 +18,80 @@ export class OutboundMessagePipeline {
   ) {}
 
   async process(ctx: ServiceContext, request: OutboundDispatchRequestDto): Promise<OutboundDispatchResponseDto> {
+    traceMetaGraphOutboundStage({
+      stage: "OutboundMessagePipeline.process.enter",
+      layer: "dispatcher.pipeline",
+      file: "outbound-message-pipeline.ts",
+      function: "process",
+      line: 19,
+      extra: {
+        companyId: request.companyId,
+        companyChannelId: request.companyChannelId,
+        channelKey: request.channelKey,
+        conversationId: request.conversationId,
+      },
+    });
+
+    traceOutboundValidationEnter({
+      validationName: "OutboundMessagePipeline.process",
+      layer: "dispatcher.pipeline",
+      file: "outbound-message-pipeline.ts",
+      function: "process",
+      line: 19,
+      requestPayload: request,
+    });
+
+    traceOutboundValidationEnter({
+      validationName: "assertDispatchPermission",
+      layer: "dispatcher.pipeline",
+      file: "outbound-message-pipeline.ts",
+      function: "assertDispatchPermission",
+      line: 28,
+      requestPayload: { companyId: request.companyId, userId: ctx.userId },
+    });
     this.assertDispatchPermission(ctx, request.companyId);
+    traceOutboundValidationPass("assertDispatchPermission");
 
     const companyChannel = await this.ports.registry.getCompanyChannel(request.companyChannelId);
+    traceOutboundValidationEnter({
+      validationName: "companyChannel.exists",
+      layer: "dispatcher.pipeline",
+      file: "outbound-message-pipeline.ts",
+      function: "process",
+      line: 38,
+      requestPayload: { companyChannelId: request.companyChannelId, found: Boolean(companyChannel) },
+    });
     if (!companyChannel || companyChannel.companyId !== request.companyId) {
       throw new CompanyChannelNotFoundError(request.companyChannelId);
     }
+    traceOutboundValidationPass("companyChannel.exists");
 
     const adapter = this.adapterRegistry.require(request.channelKey);
     const text = request.text.trim();
     const hasAttachments = (request.attachments?.length ?? 0) > 0;
     const hasStructuredPayload = Boolean(request.outboundPayload && typeof request.outboundPayload === "object");
+    traceOutboundValidationEnter({
+      validationName: "outboundPayload.textOrAttachments",
+      layer: "dispatcher.pipeline",
+      file: "outbound-message-pipeline.ts",
+      function: "process",
+      line: 52,
+      requestPayload: { hasText: Boolean(text), hasAttachments, hasStructuredPayload },
+    });
     if (!text && !hasAttachments && !hasStructuredPayload) {
+      traceOutboundValidationFail({
+        validationName: "outboundPayload.textOrAttachments",
+        layer: "dispatcher.pipeline",
+        file: "outbound-message-pipeline.ts",
+        function: "process",
+        line: 54,
+        error: "Outbound message text is required.",
+        responseBody: { error: "validation_error", message: "Outbound message text is required." },
+        rootCause: "Empty outbound text with no attachments or structured payload",
+      });
       throw new ValidationError("Outbound message text is required.");
     }
+    traceOutboundValidationPass("outboundPayload.textOrAttachments");
 
     const persistConversationMessage = request.persistConversationMessage ?? true;
     let outboundMessageId = request.outboundMessageId;
@@ -76,7 +138,18 @@ export class OutboundMessagePipeline {
     );
 
     try {
+      traceOutboundValidationEnter({
+        validationName: "WhatsAppCloudAdapter.sendOutbound",
+        layer: "whatsapp.provider",
+        file: "outbound-message-pipeline.ts",
+        function: "adapter.sendOutbound",
+        line: 95,
+        requestPayload: { channelKey: request.channelKey, externalThreadId: request.externalThreadId },
+      });
       const sendResult = await adapter.sendOutbound({ companyChannel }, formatted);
+      traceOutboundValidationPass("WhatsAppCloudAdapter.sendOutbound", {
+        externalMessageId: sendResult.externalMessageId ?? null,
+      });
       const updated = await this.deliveryEngine.markSent(
         delivery.id,
         sendResult.externalMessageId,
@@ -84,6 +157,10 @@ export class OutboundMessagePipeline {
       );
 
       await this.sessionRepository.touchOutbound(request.channelSessionId);
+
+      traceOutboundValidationPass("OutboundMessagePipeline.process", {
+        deliveryStatus: updated.delivery_status,
+      });
 
       return {
         deliveryEventId: updated.id,

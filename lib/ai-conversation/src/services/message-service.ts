@@ -20,6 +20,7 @@ import type {
   ListMessagesFilter,
   ServiceContext,
 } from "../types.js";
+import { traceOmniSendBridgeAsync } from "../debug/omni-send-bridge.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -84,22 +85,64 @@ export class MessageService {
       participantType = participant.participant_type;
     }
 
-    const message = await this.messageRepository.add({
-      ...input,
-      createdBy: input.createdBy ?? ctx.userId,
-    });
+    const message = await traceOmniSendBridgeAsync(
+      {
+        layer: 4,
+        stage: "ConversationService.addMessage",
+        file: "message-service.ts",
+        function: "addMessage",
+        line: 87,
+        conversationId: input.conversationId,
+        messageId: null,
+        statusBefore: input.status ?? "pending",
+        extra: { messageType: input.messageType },
+      },
+      () => this.messageRepository.add({
+        ...input,
+        createdBy: input.createdBy ?? ctx.userId,
+      }),
+      (result) => ({
+        messageId: result.id,
+        statusAfter: result.status,
+        extra: { sequenceNumber: result.sequence_number },
+      }),
+    );
 
-    await this.conversationRepository.applyMessageCache({
-      conversationId: input.conversationId,
-      messageAt: message.created_at,
-      preview: buildMessagePreview(message.content),
-      participantType: resolveParticipantTypeForCache(participantType, input.messageType),
-      messageType: input.messageType,
-      conversationNumber: conversation.conversation_number,
-      externalThreadId: conversation.external_thread_id,
-      currentUnreadEmployee: conversation.unread_count_employee,
-      currentUnreadCustomer: conversation.unread_count_customer,
-    });
+    await (async () => {
+      if (typeof globalThis !== "undefined" && globalThis.window?.__traceOmniSendEnter__) {
+        globalThis.window.__traceOmniSendEnter__({
+          layer: 10,
+          stage: "Database.conversation.applyMessageCache",
+          file: "message-service.ts",
+          function: "applyMessageCache",
+          line: 111,
+          conversationId: input.conversationId,
+          messageId: message.id,
+          statusBefore: message.status,
+        });
+      }
+      await this.conversationRepository.applyMessageCache({
+        conversationId: input.conversationId,
+        messageAt: message.created_at,
+        preview: buildMessagePreview(message.content),
+        participantType: resolveParticipantTypeForCache(participantType, input.messageType),
+        messageType: input.messageType,
+        conversationNumber: conversation.conversation_number,
+        externalThreadId: conversation.external_thread_id,
+        currentUnreadEmployee: conversation.unread_count_employee,
+        currentUnreadCustomer: conversation.unread_count_customer,
+      });
+      if (typeof globalThis !== "undefined" && globalThis.window?.__traceOmniSendExit__) {
+        globalThis.window.__traceOmniSendExit__({
+          layer: 10,
+          stage: "Database.conversation.applyMessageCache",
+          success: true,
+          conversationId: input.conversationId,
+          messageId: message.id,
+          statusAfter: message.status,
+        });
+      }
+    })();
 
     return message;
   }

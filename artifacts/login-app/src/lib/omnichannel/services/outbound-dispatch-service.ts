@@ -6,6 +6,7 @@ import {
   dispatchOmnichannelOutboundViaApi,
   isOmnichannelOutboundApiConfigured,
 } from "@/lib/omnichannel/services/omnichannel-outbound-api-client";
+import { traceOmniSendAsync } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 export type OutboundDispatchInput = {
   companyId: string;
@@ -42,11 +43,50 @@ export async function dispatchOutboundMessage(
       );
     }
 
-    return dispatchOmnichannelOutboundViaApi({
-      companyId: input.companyId,
+    return traceOmniSendAsync({
+      layer: 7,
+      stage: "WhatsAppTransport.serverDispatch",
+      file: "outbound-dispatch-service.ts",
+      function: "dispatchOmnichannelOutboundViaApi",
+      line: 45,
       conversationId: input.conversationId,
+      messageId: input.outboundMessageId ?? null,
+      extra: { channelKey, serverDispatch: true },
+      run: () => dispatchOmnichannelOutboundViaApi({
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        companyChannelId: input.companyChannelId,
+        channelKey: input.channelKey,
+        channelSessionId: input.channelSessionId,
+        externalThreadId: input.externalThreadId,
+        text: input.text,
+        attachments: input.attachments,
+        outboundMessageId: input.outboundMessageId,
+        metadata: input.metadata,
+        persistConversationMessage: input.persistConversationMessage,
+      }),
+      success: (result) => ({
+        messageId: input.outboundMessageId ?? null,
+        statusAfter: result.deliveryStatus,
+        extra: { externalMessageId: result.externalMessageId ?? null },
+      }),
+    });
+  }
+
+  return traceOmniSendAsync({
+    layer: 6,
+    stage: "CommunicationPlatform.dispatcher.dispatch",
+    file: "outbound-dispatch-service.ts",
+    function: "dispatcher.dispatch",
+    line: 60,
+    conversationId: input.conversationId,
+    messageId: input.outboundMessageId ?? null,
+    extra: { channelKey },
+    run: () => dispatcher.dispatch(channelContext, {
+      companyId: input.companyId,
       companyChannelId: input.companyChannelId,
       channelKey: input.channelKey,
+      conversationId: input.conversationId,
       channelSessionId: input.channelSessionId,
       externalThreadId: input.externalThreadId,
       text: input.text,
@@ -54,20 +94,11 @@ export async function dispatchOutboundMessage(
       outboundMessageId: input.outboundMessageId,
       metadata: input.metadata,
       persistConversationMessage: input.persistConversationMessage,
-    });
-  }
-
-  return dispatcher.dispatch(channelContext, {
-    companyId: input.companyId,
-    companyChannelId: input.companyChannelId,
-    channelKey: input.channelKey,
-    conversationId: input.conversationId,
-    channelSessionId: input.channelSessionId,
-    externalThreadId: input.externalThreadId,
-    text: input.text,
-    attachments: input.attachments,
-    outboundMessageId: input.outboundMessageId,
-    metadata: input.metadata,
-    persistConversationMessage: input.persistConversationMessage,
+    }),
+    success: (result) => ({
+      messageId: input.outboundMessageId ?? null,
+      statusAfter: result.deliveryStatus,
+      extra: { externalMessageId: result.externalMessageId ?? null },
+    }),
   });
 }

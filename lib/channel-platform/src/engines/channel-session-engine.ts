@@ -48,6 +48,7 @@ export class ChannelSessionEngine {
         metadata: {
           externalThreadId: input.externalThreadId,
           senderExternalId: input.senderExternalId ?? null,
+          ...(input.employeeConversationMetadata ?? {}),
           ...(input.metadata ?? {}),
         },
       });

@@ -19,6 +19,8 @@ export type WebhookProcessingStep =
   | "webhook.outbound_dispatched"
   | "webhook.outbound_failed"
   | "webhook.ai_runtime_started"
+  | "webhook.ai_employee_resolved"
+  | "webhook.ai_employee_runtime_prepared"
   | "webhook.processing_completed"
   | "webhook.processing_failed"
   | "webhook.diag_early_return"

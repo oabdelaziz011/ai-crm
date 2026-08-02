@@ -21,6 +21,14 @@ import type {
   ComposerUploadedAttachment,
 } from "@/lib/omnichannel/types/composer-enterprise-types";
 import { conversationMessagesQueryKey } from "./use-conversation-messages";
+import {
+  beginOmniSendRun,
+  detectOmniSendStall,
+  markOmniSendFirstStop,
+  traceOmniSendAsync,
+  traceOmniSendEnter,
+  traceOmniSendExit,
+} from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 type ReplyTarget = OutboundRouteTarget;
 
@@ -107,7 +115,14 @@ export function useTeamInboxReply(companyId: string | null) {
     async (target: ReplyTarget, payload: TeamInboxSendPayload): Promise<boolean> => {
       const trimmed = payload.text.trim();
       const attachments = payload.attachments ?? [];
-      if ((!trimmed && attachments.length === 0) || !companyId || isSending) return false;
+      if ((!trimmed && attachments.length === 0) || !companyId || isSending) {
+        return false;
+      }
+
+      const runId = beginOmniSendRun({
+        conversationId: target.conversationId,
+        extra: { mode: payload.mode, channelKey: target.channelKey },
+      });
 
       setError(null);
       setIsSending(true);
@@ -116,6 +131,16 @@ export function useTeamInboxReply(companyId: string | null) {
       let optimisticId: string | null = null;
 
       try {
+        traceOmniSendEnter({
+          runId,
+          layer: 2,
+          stage: "useSendMessage.sendReply",
+          file: "use-team-inbox-reply.ts",
+          function: "sendReply",
+          line: 123,
+          conversationId: target.conversationId,
+          extra: { mode: payload.mode },
+        });
         const attachmentFields = buildAttachmentMessageFields(attachments);
         const messageMetadata = {
           source: payload.mode === "internal_note" ? "omnichannel_internal_note" : "team_inbox",
@@ -141,16 +166,66 @@ export function useTeamInboxReply(companyId: string | null) {
           const routeCheck = validateOutboundRoute(session, target);
           if (!routeCheck.ok) {
             setError(buildOutboundSendError(routeCheck.issue));
+            markOmniSendFirstStop({
+              runId,
+              layer: 2,
+              stage: "useSendMessage.validateOutboundRoute",
+              file: "use-team-inbox-reply.ts",
+              function: "validateOutboundRoute",
+              line: 173,
+              reason: routeCheck.issue.message,
+              error: routeCheck.issue.code,
+              conversationId: target.conversationId,
+            });
+            traceOmniSendExit({
+              runId,
+              layer: 2,
+              stage: "useSendMessage.sendReply",
+              success: false,
+              error: routeCheck.issue.code,
+              conversationId: target.conversationId,
+            });
             return false;
           }
 
           optimisticId = `optimistic-${Date.now()}`;
+          traceOmniSendEnter({
+            runId,
+            layer: 3,
+            stage: "mutation.optimisticInsert",
+            file: "use-team-inbox-reply.ts",
+            function: "setQueryData",
+            line: 178,
+            conversationId: target.conversationId,
+            messageId: optimisticId,
+            statusBefore: null,
+            statusAfter: "preparing",
+          });
           queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) => [
             ...(current ?? []),
             buildOptimisticMessage(target, payload, profile?.id ?? null, optimisticId!, "preparing"),
           ]);
+          traceOmniSendExit({
+            runId,
+            layer: 3,
+            stage: "mutation.optimisticInsert",
+            success: true,
+            conversationId: target.conversationId,
+            messageId: optimisticId,
+            statusAfter: "preparing",
+          });
 
-          const persisted = await conversationServices.messages.addMessage(conversationContext, {
+          const persisted = await traceOmniSendAsync({
+            runId,
+            layer: 4,
+            stage: "ConversationService.addMessage",
+            file: "use-team-inbox-reply.ts",
+            function: "conversationServices.messages.addMessage",
+            line: 184,
+            conversationId: target.conversationId,
+            messageId: optimisticId,
+            statusBefore: "preparing",
+            run: () => conversationServices.messages.addMessage(conversationContext, {
             conversationId: target.conversationId,
             messageType: "outgoing",
             contentType: attachmentFields.contentType,
@@ -161,8 +236,25 @@ export function useTeamInboxReply(companyId: string | null) {
             mimeType: attachmentFields.mimeType,
             fileSize: attachmentFields.fileSize,
             metadata: messageMetadata,
+          }),
+            success: (result) => ({
+              messageId: result.id,
+              statusAfter: result.status,
+            }),
           });
 
+          traceOmniSendEnter({
+            runId,
+            layer: 3,
+            stage: "mutation.replaceOptimisticId",
+            file: "use-team-inbox-reply.ts",
+            function: "setQueryData",
+            line: 197,
+            conversationId: target.conversationId,
+            messageId: persisted.id,
+            statusBefore: "preparing",
+            statusAfter: "dispatching",
+          });
           queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
             (current ?? []).map((message) =>
               message.id === optimisticId
@@ -178,33 +270,75 @@ export function useTeamInboxReply(companyId: string | null) {
                 : message,
             ),
           );
+          traceOmniSendExit({
+            runId,
+            layer: 3,
+            stage: "mutation.replaceOptimisticId",
+            success: true,
+            conversationId: target.conversationId,
+            messageId: persisted.id,
+            statusBefore: "preparing",
+            statusAfter: "dispatching",
+          });
           optimisticId = persisted.id;
 
           const route = routeCheck.route;
-          const dispatchResponse = await dispatchOutboundMessage(
-            route.channel_key,
-            channelContext,
-            channelPlatform.dispatcher,
-            {
-              companyId,
-              companyChannelId: route.company_channel_id,
-              channelKey: route.channel_key,
-              conversationId: target.conversationId,
-              channelSessionId: route.id,
-              externalThreadId: route.external_thread_id,
-              text: trimmed,
-              attachments: mapAttachmentsForDispatch(attachments),
-              outboundMessageId: persisted.id,
-              persistConversationMessage: false,
-              metadata: {
-                source: "team_inbox",
-                conversationMessageId: persisted.id,
-                mentions: payload.mentions ?? [],
+          const dispatchResponse = await traceOmniSendAsync({
+            runId,
+            layer: 6,
+            stage: "CommunicationPlatform.dispatchOutboundMessage",
+            file: "use-team-inbox-reply.ts",
+            function: "dispatchOutboundMessage",
+            line: 293,
+            conversationId: target.conversationId,
+            messageId: persisted.id,
+            statusBefore: "dispatching",
+            extra: { channelKey: route.channel_key },
+            run: () => dispatchOutboundMessage(
+              route.channel_key,
+              channelContext,
+              channelPlatform.dispatcher,
+              {
+                companyId,
+                companyChannelId: route.company_channel_id,
+                channelKey: route.channel_key,
+                conversationId: target.conversationId,
+                channelSessionId: route.id,
+                externalThreadId: route.external_thread_id,
+                text: trimmed,
+                attachments: mapAttachmentsForDispatch(attachments),
+                outboundMessageId: persisted.id,
+                persistConversationMessage: false,
+                metadata: {
+                  source: "team_inbox",
+                  conversationMessageId: persisted.id,
+                  mentions: payload.mentions ?? [],
+                },
               },
-            },
-          );
+            ),
+            success: (result) => ({
+              messageId: persisted.id,
+              statusAfter: result.deliveryStatus,
+              extra: {
+                externalMessageId: result.externalMessageId ?? null,
+                providerResponse: result,
+              },
+            }),
+          });
 
           const confirmedStatus = mapDispatchResponseToMessageStatus(dispatchResponse.deliveryStatus);
+          traceOmniSendEnter({
+            runId,
+            layer: 3,
+            stage: "mutation.confirmDispatch",
+            file: "use-team-inbox-reply.ts",
+            function: "setQueryData",
+            line: 327,
+            conversationId: target.conversationId,
+            messageId: persisted.id,
+            statusBefore: "dispatching",
+            statusAfter: confirmedStatus,
+          });
           queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
             (current ?? []).map((message) =>
               message.id === persisted.id
@@ -221,6 +355,16 @@ export function useTeamInboxReply(companyId: string | null) {
                 : message,
             ),
           );
+          traceOmniSendExit({
+            runId,
+            layer: 3,
+            stage: "mutation.confirmDispatch",
+            success: true,
+            conversationId: target.conversationId,
+            messageId: persisted.id,
+            statusBefore: "dispatching",
+            statusAfter: confirmedStatus,
+          });
 
           await dispatchComposerMentions({
             companyId,
@@ -259,6 +403,15 @@ export function useTeamInboxReply(companyId: string | null) {
         await queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
         await queryClient.invalidateQueries({ queryKey: ["notifications"] });
         await queryClient.invalidateQueries({ queryKey: ["outbound-channel-route", target.conversationId] });
+
+        traceOmniSendExit({
+          runId,
+          layer: 2,
+          stage: "useSendMessage.sendReply",
+          success: true,
+          conversationId: target.conversationId,
+          messageId: optimisticId,
+        });
         return true;
       } catch (err) {
         if (optimisticId) {
@@ -276,8 +429,18 @@ export function useTeamInboxReply(companyId: string | null) {
               : "The internal note could not be saved.",
           detail,
         });
+        traceOmniSendExit({
+          runId,
+          layer: 2,
+          stage: "useSendMessage.sendReply",
+          success: false,
+          error: detail,
+          conversationId: target.conversationId,
+          messageId: optimisticId,
+        });
         return false;
       } finally {
+        detectOmniSendStall(runId);
         setIsSending(false);
       }
     },

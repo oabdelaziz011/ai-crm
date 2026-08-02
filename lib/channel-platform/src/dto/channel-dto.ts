@@ -63,6 +63,10 @@ export type InboundRouteRequestDto = {
   /** Existing conversation to bind (direct/web chat flows) */
   conversationId?: string;
   aiAssistantId?: string;
+  /** Published AI Employee selected for inbound channel runtime */
+  aiEmployeeId?: string;
+  /** Metadata seed applied when creating a new conversation */
+  employeeConversationMetadata?: Record<string, unknown>;
   onStreamChunk?: (chunk: string) => void;
   abortSignal?: AbortSignal;
   trace?: WebhookProcessingTrace;

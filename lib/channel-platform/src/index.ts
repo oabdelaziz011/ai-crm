@@ -57,6 +57,8 @@ export * from "./services/channel-workflow-resolver.js";
 export * from "./services/extract-automation-outbound.js";
 export * from "./services/dispatch-automation-outbound.js";
 export * from "./services/extract-automation-response.js";
+export * from "./services/outbound-route-validation.js";
+export * from "./services/server-outbound-channels.js";
 export * from "./webhooks/whatsapp-webhook-handler.js";
 export * from "./webhooks/whatsapp-webhook-routing.js";
 export * from "./webhooks/whatsapp-phone-number-probe.js";

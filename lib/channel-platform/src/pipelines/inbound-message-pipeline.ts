@@ -167,8 +167,41 @@ export class InboundMessagePipeline {
             },
       );
 
-      if (request.executeAi && !useWorkflow && !request.aiAssistantId) {
-        throw new ValidationError("aiAssistantId is required when executeAi is true.");
+      let aiEmployeeId = request.aiEmployeeId;
+      let employeeConversationMetadata = request.employeeConversationMetadata;
+
+      if (
+        request.executeAi &&
+        !useWorkflow &&
+        !aiEmployeeId &&
+        this.ports.employeeRuntime
+      ) {
+        const resolvedEmployee = await this.ports.employeeRuntime.resolveForInboundChannel({
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          channelKey: request.channelKey,
+        });
+        if (resolvedEmployee) {
+          aiEmployeeId = resolvedEmployee.aiEmployeeId;
+          employeeConversationMetadata = resolvedEmployee.conversationMetadataSeed;
+          request.trace?.step("webhook.ai_employee_resolved", {
+            aiEmployeeId,
+            companyChannelId: request.companyChannelId,
+            channelKey: request.channelKey,
+          });
+        }
+      }
+
+      let legacyAssistantId = request.aiAssistantId;
+      if (request.executeAi && !useWorkflow && !legacyAssistantId) {
+        legacyAssistantId =
+          (await this.ports.conversation.resolveCompanyAssistantId?.(request.companyId)) ?? undefined;
+      }
+
+      if (request.executeAi && !useWorkflow && !aiEmployeeId && !legacyAssistantId) {
+        throw new ValidationError(
+          "A published AI Employee or legacy assistant is required when executeAi is true.",
+        );
       }
 
       const session = await this.sessionEngine.resolveSession(ctx, {
@@ -178,8 +211,9 @@ export class InboundMessagePipeline {
         externalThreadId: normalized.externalThreadId,
         senderExternalId: normalized.senderExternalId,
         conversationId: request.conversationId,
-        aiAssistantId: request.aiAssistantId,
+        aiAssistantId: legacyAssistantId,
         requireAiAssistant: !useWorkflow,
+        employeeConversationMetadata,
         metadata: normalized.metadata,
       });
 
@@ -392,19 +426,62 @@ export class InboundMessagePipeline {
       }
 
       if (!useWorkflow && request.executeAi) {
-        if (!request.runtimeConfig?.providerConnectionId) {
+        let runtimeConfig = request.runtimeConfig;
+
+        if (aiEmployeeId && this.ports.employeeRuntime) {
+          const conversationMetadata =
+            (await this.ports.conversation.getConversationMetadata?.(session.conversation_id)) ??
+            employeeConversationMetadata ??
+            null;
+
+          const prepared = await this.ports.employeeRuntime.prepareForConversation({
+            companyId: request.companyId,
+            conversationId: session.conversation_id,
+            aiEmployeeId,
+            conversationMetadata,
+            basePageContext: {
+              module: "omnichannel",
+              channelKey: request.channelKey,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+            },
+          });
+
+          if (!prepared?.runtimeConfig.providerConnectionId) {
+            throw new ValidationError(
+              "Published AI Employee runtime is not ready for inbound channel execution.",
+            );
+          }
+
+          runtimeConfig = prepared.runtimeConfig;
+
+          if (prepared.metadataPatch && this.ports.conversation.updateConversationMetadata) {
+            await this.ports.conversation.updateConversationMetadata({
+              conversationId: session.conversation_id,
+              metadata: prepared.metadataPatch,
+            });
+          }
+
+          request.trace?.step("webhook.ai_employee_runtime_prepared", {
+            aiEmployeeId,
+            conversationId: session.conversation_id,
+          });
+        }
+
+        if (!runtimeConfig?.providerConnectionId) {
           throw new ValidationError("runtimeConfig.providerConnectionId is required when executeAi is true.");
         }
 
         request.trace?.step("webhook.ai_runtime_started", {
           conversationId: session.conversation_id,
+          aiEmployeeId: aiEmployeeId ?? null,
         });
 
         const runtimeResult = await this.ports.runtime.execute({
           companyId: request.companyId,
           conversationId: session.conversation_id,
           messageText: inboundText,
-          runtimeConfig: request.runtimeConfig,
+          runtimeConfig,
           correlationId: inboundEvent.id,
           onStreamChunk: request.onStreamChunk,
           abortSignal: request.abortSignal,

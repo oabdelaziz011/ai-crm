@@ -150,8 +150,9 @@ describe("InboundMessagePipeline automation routing", () => {
     assert.equal(env.automationCalls, 1);
   });
 
-  it("requires aiAssistantId when executeAi is true and no workflow binding exists", async () => {
+  it("requires aiAssistantId or AI Employee when executeAi is true and no workflow binding exists", async () => {
     const env = createTestEnvironment({ runtimeResponse: "AI reply" });
+    env.ports.conversation.resolveCompanyAssistantId = undefined;
     const ctx = createContext();
 
     await assert.rejects(
@@ -166,7 +167,7 @@ describe("InboundMessagePipeline automation routing", () => {
           executeAi: true,
           runtimeConfig: { providerConnectionId: "provider-1" },
         }),
-      /aiAssistantId is required when executeAi is true/,
+      /published AI Employee or legacy assistant is required when executeAi is true/,
     );
   });
 });

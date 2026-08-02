@@ -4,10 +4,10 @@
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
-    "rootDir": "src",
     "types": ["node"],
     "paths": {
-      "@login-app/*": ["../login-app/src/*"]
+      "@login-app/*": ["../login-app/src/*"],
+      "@/*": ["../login-app/src/*"]
     }
   },
   "include": ["src"],

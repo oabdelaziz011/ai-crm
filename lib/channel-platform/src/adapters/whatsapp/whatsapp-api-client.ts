@@ -12,6 +12,15 @@ import type {
 import type { WhatsAppChannelConfiguration } from "./whatsapp-config.js";
 import { whatsAppMessagesUrl } from "./whatsapp-config.js";
 import { ValidationError } from "../../errors.js";
+import {
+  traceOutboundValidationEnter,
+  traceOutboundValidationFail,
+  traceOutboundValidationPass,
+} from "../../debug/omni-outbound-400-bridge.js";
+import {
+  recordMetaGraphOutboundFailure,
+  traceMetaGraphOutboundStage,
+} from "../../debug/meta-graph-outbound-audit.js";
 
 export type WhatsAppApiClientOptions = {
   fetchFn?: typeof fetch;
@@ -41,9 +50,48 @@ export class WhatsAppApiClient {
   async sendMessage(
     config: WhatsAppChannelConfiguration,
     payload: WhatsAppSendMessagePayload,
-    options?: { accessTokenSource?: string },
+    options?: {
+      accessTokenSource?: string;
+      companyId?: string | null;
+      companyChannelId?: string | null;
+    },
   ): Promise<WhatsAppSendMessageResponse> {
     const endpoint = whatsAppMessagesUrl(config);
+    const graphApiVersion = config.apiVersion ?? "v21.0";
+    const accessTokenPresent = Boolean(config.accessToken?.trim());
+
+    traceMetaGraphOutboundStage({
+      stage: "WhatsAppApiClient.sendMessage.enter",
+      layer: "whatsapp.provider",
+      file: "whatsapp-api-client.ts",
+      function: "sendMessage",
+      line: 52,
+      extra: {
+        endpoint,
+        phoneNumberId: config.phoneNumberId,
+        graphApiVersion,
+        accessTokenPresent,
+        companyId: options?.companyId ?? null,
+        companyChannelId: options?.companyChannelId ?? null,
+        recipient: payload.to,
+        messageType: payload.type,
+      },
+    });
+
+    traceOutboundValidationEnter({
+      validationName: "WhatsAppApiClient.sendMessage",
+      layer: "whatsapp.provider",
+      file: "whatsapp-api-client.ts",
+      function: "sendMessage",
+      line: 46,
+      requestPayload: {
+        endpoint,
+        phoneNumberId: config.phoneNumberId,
+        recipient: payload.to,
+        messageType: payload.type,
+      },
+    });
+
     const response = await this.fetchFn(endpoint, {
       method: "POST",
       headers: {
@@ -54,12 +102,20 @@ export class WhatsAppApiClient {
     });
 
     const body = (await response.json()) as WhatsAppSendMessageResponse & {
-      error?: { message?: string; error_user_msg?: string; code?: number };
+      error?: {
+        message?: string;
+        error_user_msg?: string;
+        code?: number;
+        type?: string;
+        error_subcode?: number;
+        fbtrace_id?: string;
+        [key: string]: unknown;
+      };
     };
 
     this.options.onOutboundRequest?.({
       endpoint,
-      graphApiVersion: config.apiVersion ?? "v21.0",
+      graphApiVersion,
       phoneNumberId: config.phoneNumberId,
       businessAccountId: config.businessAccountId,
       accessTokenSource: options?.accessTokenSource ?? "company_channels.configuration",
@@ -71,10 +127,41 @@ export class WhatsAppApiClient {
     });
 
     if (!response.ok) {
-      throw new ValidationError(
-        body.error?.error_user_msg ?? body.error?.message ?? `WhatsApp API error (${response.status})`,
-      );
+      const errorMessage =
+        body.error?.error_user_msg ?? body.error?.message ?? `WhatsApp API error (${response.status})`;
+
+      recordMetaGraphOutboundFailure({
+        file: "whatsapp-api-client.ts",
+        function: "sendMessage",
+        line: 108,
+        httpStatus: response.status,
+        httpResponseBody: body,
+        endpoint,
+        phoneNumberId: config.phoneNumberId,
+        graphApiVersion,
+        accessTokenPresent,
+        companyChannelId: options?.companyChannelId ?? null,
+        companyId: options?.companyId ?? null,
+        mappedValidationMessage: errorMessage,
+      });
+
+      traceOutboundValidationFail({
+        validationName: "WhatsAppApiClient.sendMessage.responseOk",
+        layer: "whatsapp.provider",
+        file: "whatsapp-api-client.ts",
+        function: "sendMessage",
+        line: 108,
+        error: errorMessage,
+        responseBody: body,
+        rootCause: `Meta Graph API raw response HTTP ${response.status}`,
+      });
+      throw new ValidationError(errorMessage);
     }
+
+    traceOutboundValidationPass("WhatsAppApiClient.sendMessage.responseOk", {
+      httpStatus: response.status,
+    });
+    traceOutboundValidationPass("WhatsAppApiClient.sendMessage");
 
     return body;
   }

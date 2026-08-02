@@ -8,6 +8,7 @@ import type {
 } from "@/lib/omnichannel/types/unified-conversation";
 import { messageTypeToSenderType } from "@/lib/omnichannel/types/unified-conversation";
 import { resolveOutboundDeliveryPhase } from "@/lib/omnichannel/services/outbound-delivery";
+import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
   const value = metadata[key];
@@ -89,6 +90,31 @@ export function mapUnifiedMessage(
     senderType === "agent" || message.message_type === "internal_note"
       ? resolveAgentLabel(message, senderLabels, profilesByUserId, supportAgentFallback)
       : defaultLabels[senderType];
+
+  const outboundPhase = resolveOutboundDeliveryPhase(message);
+  if (message.message_type === "outgoing") {
+    traceOmniSendEnter({
+      layer: 12,
+      stage: "UI.mapUnifiedMessage",
+      file: "message-mapper.ts",
+      function: "mapUnifiedMessage",
+      line: 102,
+      conversationId: message.conversation_id,
+      messageId: message.id,
+      statusBefore: message.status,
+      statusAfter: outboundPhase,
+      extra: { deliveryStatus: message.status, outboundPhase },
+    });
+    traceOmniSendExit({
+      layer: 12,
+      stage: "UI.mapUnifiedMessage",
+      success: true,
+      conversationId: message.conversation_id,
+      messageId: message.id,
+      statusBefore: message.status,
+      statusAfter: outboundPhase,
+    });
+  }
 
   return {
     id: message.id,

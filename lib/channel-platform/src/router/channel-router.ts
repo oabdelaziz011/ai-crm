@@ -82,6 +82,8 @@ export class ChannelRouter {
       executeAi?: boolean;
       runtimeConfig?: InboundRouteRequestDto["runtimeConfig"];
       aiAssistantId?: string;
+      aiEmployeeId?: string;
+      employeeConversationMetadata?: Record<string, unknown>;
       trace?: InboundRouteRequestDto["trace"];
       requestId?: string | null;
     },
@@ -186,6 +188,8 @@ export class ChannelRouter {
         executeAi: request.executeAi,
         runtimeConfig: request.runtimeConfig,
         aiAssistantId: request.aiAssistantId,
+        aiEmployeeId: request.aiEmployeeId,
+        employeeConversationMetadata: request.employeeConversationMetadata,
         trace: request.trace,
       });
 

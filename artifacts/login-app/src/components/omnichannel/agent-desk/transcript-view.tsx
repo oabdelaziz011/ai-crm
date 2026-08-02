@@ -34,6 +34,7 @@ import {
 } from "@/components/omnichannel/agent-desk/attachment-preview-strip";
 import { findSearchMatches } from "@/hooks/omnichannel/use-conversation-experience";
 import type { TypingActor } from "@/hooks/omnichannel/use-conversation-experience";
+import { auditTranscriptMessagesFromRecords } from "@/lib/omnichannel/debug/omni-transcript-messages-audit";
 
 export type TranscriptViewHandle = {
   scrollToBottom: () => void;
@@ -147,6 +148,32 @@ export const TranscriptView = memo(
       if (!bookmarksOnly || !starredIds?.size) return filtered;
       return filtered.filter((message) => starredIds.has(message.id));
     }, [messages, bookmarksOnly, starredIds]);
+
+    useEffect(() => {
+      if (messages.length === 0) return;
+      const conversationId = messages[0]?.conversationId ?? null;
+      if (!conversationId) return;
+      auditTranscriptMessagesFromRecords(
+        conversationId,
+        visibleMessages.map((message) => ({
+          id: message.id,
+          created_at: message.timestamp,
+          message_type: message.senderType,
+          content: message.body,
+        })),
+        {
+          stage: "TranscriptView.RenderedTranscript.visibleMessages",
+          file: "transcript-view.tsx",
+          function: "TranscriptView",
+          line: 145,
+          extra: {
+            totalMessages: messages.length,
+            visibleCount: visibleMessages.length,
+            bookmarksOnly: Boolean(bookmarksOnly),
+          },
+        },
+      );
+    }, [bookmarksOnly, messages, visibleMessages]);
 
     const matchIds = useMemo(
       () => findSearchMatches(visibleMessages, searchQuery),

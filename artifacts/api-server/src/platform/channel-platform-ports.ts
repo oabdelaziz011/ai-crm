@@ -10,6 +10,7 @@ import type {
 import type { AutomationEngine } from "@workspace/automation-platform";
 import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
 import { extractResponseContent } from "@workspace/runtime-integration";
+import { readAgentEmployeeExecutionContext, runWithEmployeeToolScope } from "./employee-runtime-bridge.js";
 import { createChannelAutomationPort, createChannelAutomationPortFromClient } from "./channel-automation-port.js";
 import type { ResolvedCompanyChannel } from "@workspace/channel-platform";
 
@@ -221,6 +222,18 @@ export function createChannelConversationPort(
         createdAt: message.created_at,
       };
     },
+
+    async updateConversationMetadata(input) {
+      await services.conversations.updateMetadata(ctx, {
+        conversationId: input.conversationId,
+        metadata: input.metadata,
+      });
+    },
+
+    async getConversationMetadata(conversationId) {
+      const conversation = await services.conversations.getConversation(ctx, conversationId);
+      return conversation.metadata ?? null;
+    },
   };
 }
 
@@ -243,18 +256,34 @@ export function createChannelRuntimePort(
         userId: actorUserId ?? ctx.userId,
       };
 
-      const response = await services.coordinator.execute(runtimeCtx, {
-        companyId: input.companyId,
-        conversationId: input.conversationId,
-        messageText: input.messageText,
-        providerConnectionId: input.runtimeConfig.providerConnectionId,
-        knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
-        executionPolicy: input.runtimeConfig.executionPolicy,
-        pageContext: input.runtimeConfig.pageContext,
-        correlationId: input.correlationId,
-        onStreamChunk: input.onStreamChunk,
-        abortSignal: input.abortSignal,
-      });
+      const response = await (async () => {
+        const executionContext = readAgentEmployeeExecutionContext(input.runtimeConfig.pageContext);
+        const executeRuntime = () =>
+          services.coordinator.execute(runtimeCtx, {
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            messageText: input.messageText,
+            providerConnectionId: input.runtimeConfig.providerConnectionId,
+            knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
+            executionPolicy: input.runtimeConfig.executionPolicy,
+            pageContext: input.runtimeConfig.pageContext,
+            correlationId: input.correlationId,
+            onStreamChunk: input.onStreamChunk,
+            abortSignal: input.abortSignal,
+          });
+
+        if (!executionContext) {
+          return executeRuntime();
+        }
+
+        return runWithEmployeeToolScope(
+          {
+            allowedToolKeys: executionContext.allowedToolKeys,
+            employeeId: executionContext.aiEmployeeId,
+          },
+          executeRuntime,
+        );
+      })();
 
       return {
         executionId: response.executionId,
@@ -272,6 +301,7 @@ export function createChannelPlatformPortsWithContext(
     runtime: RuntimeIntegrationServices;
     automation?: AutomationEngine;
     supabaseClient?: SupabaseClient;
+    employeeRuntime?: ChannelPlatformPorts["employeeRuntime"];
   },
   ctx: {
     registry: RegistryServiceContext;
@@ -305,6 +335,10 @@ export function createChannelPlatformPortsWithContext(
       resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
     }),
   };
+
+  if (deps.employeeRuntime) {
+    ports.employeeRuntime = deps.employeeRuntime;
+  }
 
   if (deps.automation && ctx.automation) {
     ports.automation = deps.supabaseClient

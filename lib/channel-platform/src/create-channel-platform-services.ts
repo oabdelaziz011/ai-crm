@@ -27,6 +27,8 @@ export type WhatsAppDirectOutboundBypassOptions =
 export type ChannelPlatformServicesOptions = {
   ports: ChannelPlatformPorts;
   adapters?: ChannelAdapterPort[];
+  /** When true, only registers the web_chat stub adapter (browser-safe outbound). */
+  browserSafeOutbound?: boolean;
   registerEmailAdapter?: () => ChannelAdapterPort;
   telemetry?: ChannelTelemetryPort;
   whatsAppFetchFn?: typeof fetch;
@@ -60,24 +62,26 @@ export function createChannelPlatformServices(
   const inboundRepository = createSupabaseChannelInboundEventRepository(client);
   const deliveryRepository = createSupabaseChannelDeliveryEventRepository(client);
 
-  const adapters: ChannelAdapterPort[] = [
-    createStubWebChatAdapter(),
-    createWhatsAppCloudAdapter({
-      fetchFn: options.whatsAppFetchFn,
-      credentialsLoader: options.whatsAppCredentialsLoader,
-      onOutboundDiagnostic: options.whatsAppOutboundDiagnostic,
-    }),
-    createInstagramCloudAdapter({
-      fetchFn: options.instagramFetchFn,
-      credentialsLoader: options.instagramCredentialsLoader,
-      onOutboundDiagnostic: options.instagramOutboundDiagnostic,
-    }),
-    createMessengerCloudAdapter({
-      fetchFn: options.messengerFetchFn,
-      credentialsLoader: options.messengerCredentialsLoader,
-      onOutboundDiagnostic: options.messengerOutboundDiagnostic,
-    }),
-  ];
+  const adapters: ChannelAdapterPort[] = options.browserSafeOutbound
+    ? [createStubWebChatAdapter()]
+    : [
+        createStubWebChatAdapter(),
+        createWhatsAppCloudAdapter({
+          fetchFn: options.whatsAppFetchFn,
+          credentialsLoader: options.whatsAppCredentialsLoader,
+          onOutboundDiagnostic: options.whatsAppOutboundDiagnostic,
+        }),
+        createInstagramCloudAdapter({
+          fetchFn: options.instagramFetchFn,
+          credentialsLoader: options.instagramCredentialsLoader,
+          onOutboundDiagnostic: options.instagramOutboundDiagnostic,
+        }),
+        createMessengerCloudAdapter({
+          fetchFn: options.messengerFetchFn,
+          credentialsLoader: options.messengerCredentialsLoader,
+          onOutboundDiagnostic: options.messengerOutboundDiagnostic,
+        }),
+      ];
 
   if (options.registerEmailAdapter) {
     adapters.push(options.registerEmailAdapter());

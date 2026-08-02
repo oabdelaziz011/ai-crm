@@ -2,6 +2,12 @@ import type { NextFunction, Request, Response } from "express";
 import { createClient, type User } from "@supabase/supabase-js";
 import { loadPlatformEnv } from "../config/env.js";
 import { HttpError } from "./error-handler.js";
+import {
+  enterOutboundValidation,
+  isOutboundDispatchPath,
+  passOutboundValidation,
+  recordOutbound400FromHttpError,
+} from "../debug/omni-outbound-dispatch-audit.js";
 
 declare global {
   namespace Express {
@@ -93,8 +99,34 @@ export function requireCompanyScope(field = "companyId") {
       }
 
       const requestedCompanyId = String((req.body as Record<string, unknown> | undefined)?.[field] ?? "");
+      if (isOutboundDispatchPath(req)) {
+        enterOutboundValidation({
+          validationName: "middleware.requireCompanyScope",
+          layer: "middleware.auth",
+          file: "supabase-auth.ts",
+          function: "requireCompanyScope",
+          line: 96,
+          requestPayload: { [field]: requestedCompanyId, profileCompanyId: req.supabaseCompanyId ?? null },
+        });
+      }
       if (!requestedCompanyId) {
+        if (isOutboundDispatchPath(req)) {
+          recordOutbound400FromHttpError({
+            statusCode: 400,
+            validationName: "middleware.requireCompanyScope.companyIdRequired",
+            layer: "middleware.auth",
+            file: "supabase-auth.ts",
+            function: "requireCompanyScope",
+            line: 97,
+            code: "validation_error",
+            message: `${field} required`,
+            rootCause: `${field} missing from request body before route handler`,
+          });
+        }
         throw new HttpError(400, `${field} required`, "validation_error");
+      }
+      if (isOutboundDispatchPath(req)) {
+        passOutboundValidation("middleware.requireCompanyScope", { requestedCompanyId });
       }
 
       if (req.supabaseIsSuperAdmin) {

@@ -24,3 +24,5 @@ export * from "./pipelines/inbound-message-pipeline.js";
 export * from "./pipelines/outbound-message-pipeline.js";
 export * from "./router/channel-router.js";
 export * from "./dispatcher/channel-dispatcher.js";
+export * from "./services/outbound-route-validation.js";
+export * from "./services/server-outbound-channels.js";

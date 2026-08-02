@@ -16,6 +16,9 @@ import type {
 import { buildConversationSearchText, resolveUnreadDelta } from "../message-cache.js";
 import { ConversationNotFoundError, ConversationStateConflictError } from "../errors.js";
 
+const OMNI_LIST_TARGET_ID = "a35d7fff-cac7-47f3-9604-df683e726b71";
+const OMNI_LIST_RT = "[OMNI_LIST]";
+
 const TABLE = "conversations";
 
 function mapRow(row: Record<string, unknown>): ConversationRecord {
@@ -108,7 +111,7 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
     async list(filter: ListConversationsFilter): Promise<ConversationRecord[]> {
       let query = client
         .from(TABLE)
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("company_id", filter.companyId)
         .is("deleted_at", null)
         .order("last_message_at", { ascending: false, nullsFirst: false })
@@ -135,9 +138,188 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         query = query.range(filter.offset, filter.offset + limit - 1);
       }
 
-      const { data, error } = await query;
+      const supabaseFilters = {
+        companyId: filter.companyId,
+        searchQuery: filter.searchQuery,
+        state: filter.state,
+        assignedUserId: filter.assignedUserId,
+        archived: undefined as boolean | undefined,
+        channelType: filter.channelType,
+        pageSize: filter.limit ?? 50,
+        page: filter.offset != null ? Math.floor(filter.offset / (filter.limit ?? 50)) : 0,
+        offset: filter.offset ?? 0,
+        priority: filter.priority,
+        hasEmployeeUnread: filter.hasEmployeeUnread,
+        hasCustomerUnread: filter.hasCustomerUnread,
+        deletedAt: "IS NULL",
+        orderBy: "last_message_at DESC NULLS LAST, created_at DESC",
+      };
+
+      const postgrestFilter = {
+        table: TABLE,
+        select: "*",
+        eq: { company_id: filter.companyId, deleted_at: null },
+        optionalEq: {
+          ...(filter.state ? { state: filter.state } : {}),
+          ...(filter.channelType ? { channel_type: filter.channelType } : {}),
+          ...(filter.priority ? { priority: filter.priority } : {}),
+        },
+        optionalGt: {
+          ...(filter.hasEmployeeUnread ? { unread_count_employee: 0 } : {}),
+          ...(filter.hasCustomerUnread ? { unread_count_customer: 0 } : {}),
+        },
+        optionalIlike: filter.searchQuery?.trim()
+          ? { search_text: `%${filter.searchQuery.trim()}%` }
+          : undefined,
+        assignedUserId: filter.assignedUserId,
+        order: ["last_message_at.desc.nullslast", "created_at.desc"],
+        range:
+          filter.offset != null
+            ? { from: filter.offset, to: filter.offset + (filter.limit ?? 50) - 1 }
+            : filter.limit != null
+              ? { from: 0, to: filter.limit - 1 }
+              : null,
+        sqlEquivalent: [
+          "SELECT * FROM conversations",
+          `WHERE company_id = '${filter.companyId}' AND deleted_at IS NULL`,
+          filter.state ? `AND state = '${filter.state}'` : null,
+          filter.channelType ? `AND channel_type = '${filter.channelType}'` : null,
+          filter.priority ? `AND priority = '${filter.priority}'` : null,
+          filter.hasEmployeeUnread ? "AND unread_count_employee > 0" : null,
+          filter.hasCustomerUnread ? "AND unread_count_customer > 0" : null,
+          filter.searchQuery?.trim() ? `AND search_text ILIKE '%${filter.searchQuery.trim()}%'` : null,
+          filter.assignedUserId === null ? "AND assigned_user_id IS NULL" : null,
+          filter.assignedUserId ? `AND assigned_user_id = '${filter.assignedUserId}'` : null,
+          "ORDER BY last_message_at DESC NULLS LAST, created_at DESC",
+          filter.offset != null
+            ? `LIMIT ${filter.limit ?? 50} OFFSET ${filter.offset}`
+            : filter.limit != null
+              ? `LIMIT ${filter.limit}`
+              : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      };
+
+      const sessionEmail =
+        typeof client.auth?.getSession === "function"
+          ? (await client.auth.getSession()).data.session?.user?.email ?? null
+          : null;
+
+      console.info("[OMNI_SESSION_PROBE]", "listConversations.beforeQuery", {
+        companyId: filter.companyId,
+        userEmail: sessionEmail,
+        postgrestFilter,
+        supabaseFilters,
+      });
+
+      if (typeof globalThis !== "undefined") {
+        const w = globalThis as unknown as {
+          __OMNI_SESSION_PROBE__?: {
+            authBootstrap: unknown;
+            listConversations: unknown[];
+          };
+        };
+        w.__OMNI_SESSION_PROBE__ ??= { authBootstrap: null, listConversations: [] };
+        w.__OMNI_SESSION_PROBE__.listConversations.push({
+          at: new Date().toISOString(),
+          companyId: filter.companyId,
+          userEmail: sessionEmail,
+          postgrestFilter,
+        });
+      }
+
+      const { data, error, status, statusText, count } = await query;
+      const rawData = data ?? [];
+      const rows = rawData.map((row) => mapRow(row as Record<string, unknown>));
+      const targetIndex = rows.findIndex((r) => r.id === OMNI_LIST_TARGET_ID);
+      const targetRaw = rawData.find((row) => (row as { id?: string }).id === OMNI_LIST_TARGET_ID);
+      const first10RawIds = rawData
+        .map((row) => (row as { id?: string }).id)
+        .filter((id): id is string => typeof id === "string")
+        .slice(0, 10);
+
+      console.info(OMNI_LIST_RT, "supabase.list.raw_response.beforeMap", {
+        status,
+        statusText,
+        error: error?.message ?? null,
+        responseCount: count ?? null,
+        dataLength: rawData.length,
+        first10Ids: first10RawIds,
+        targetInRawData: targetRaw != null,
+        targetInRawDataIndex: targetRaw
+          ? rawData.findIndex((row) => (row as { id?: string }).id === OMNI_LIST_TARGET_ID)
+          : null,
+        supabaseFilters,
+      });
+
+      if (typeof globalThis !== "undefined") {
+        const w = globalThis as unknown as {
+          __OMNI_LIST_PIPELINE__?: {
+            rawSupabase: {
+              at: string;
+              status: number | null;
+              error: string | null;
+              responseCount: number | null;
+              dataLength: number;
+              first10Ids: string[];
+              targetInRawData: boolean;
+              targetInRawDataIndex: number | null;
+              targetInMappedRows: boolean;
+              targetInMappedRowsIndex: number | null;
+            } | null;
+            stages: unknown[];
+            firstRemoval: unknown;
+          };
+        };
+        w.__OMNI_LIST_PIPELINE__ ??= { rawSupabase: null, stages: [], firstRemoval: null };
+        w.__OMNI_LIST_PIPELINE__.rawSupabase = {
+          at: new Date().toISOString(),
+          status: status ?? null,
+          error: error?.message ?? null,
+          responseCount: count ?? null,
+          dataLength: rawData.length,
+          first10Ids: first10RawIds,
+          targetInRawData: targetRaw != null,
+          targetInRawDataIndex: targetRaw
+            ? rawData.findIndex((row) => (row as { id?: string }).id === OMNI_LIST_TARGET_ID)
+            : null,
+          targetInMappedRows: targetIndex >= 0,
+          targetInMappedRowsIndex: targetIndex >= 0 ? targetIndex : null,
+        };
+      }
+
+      console.info(OMNI_LIST_RT, "supabase.list.raw_response", {
+        status,
+        statusText,
+        error: error?.message ?? null,
+        supabaseFilters,
+        rowCount: rows.length,
+        targetPresent: targetIndex >= 0,
+        targetIndex: targetIndex >= 0 ? targetIndex : null,
+        targetObject: targetRaw ?? null,
+        top3: rows.slice(0, 3).map((r) => ({
+          id: r.id,
+          conversation_number: r.conversation_number,
+          last_message_at: r.last_message_at,
+        })),
+      });
+
+      if (typeof globalThis !== "undefined") {
+        const w = globalThis as unknown as { __OMNI_LIST_LOGS?: unknown[] };
+        w.__OMNI_LIST_LOGS ??= [];
+        w.__OMNI_LIST_LOGS.push({
+          at: new Date().toISOString(),
+          stage: "supabase.list.raw_response",
+          targetId: OMNI_LIST_TARGET_ID,
+          present: targetIndex >= 0,
+          index: targetIndex >= 0 ? targetIndex : undefined,
+          detail: { supabaseFilters, rowCount: rows.length, targetObject: targetRaw ?? null },
+        });
+      }
+
       if (error) throw error;
-      return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
+      return rows;
     },
 
     async close(input: CloseConversationInput): Promise<ConversationRecord> {

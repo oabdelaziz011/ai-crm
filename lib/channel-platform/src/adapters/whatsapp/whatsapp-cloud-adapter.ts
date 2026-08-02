@@ -11,6 +11,8 @@ import type {
 } from "../../dto/channel-dto.js";
 import { AttachmentEngine } from "../../engines/attachment-engine.js";
 import { ValidationError } from "../../errors.js";
+import { traceOutboundValidationEnter, traceOutboundValidationFail, traceOutboundValidationPass } from "../../debug/omni-outbound-400-bridge.js";
+import { traceMetaGraphOutboundStage } from "../../debug/meta-graph-outbound-audit.js";
 import { WhatsAppApiClient, parseWhatsAppWebhookEvents } from "./whatsapp-api-client.js";
 import { parseWhatsAppChannelReferences } from "./whatsapp-config.js";
 import type { WhatsAppCredentialsLoader } from "./whatsapp-canonical-credentials.js";
@@ -255,9 +257,26 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
       credentialSource: "company_whatsapp_settings",
     });
 
+    traceMetaGraphOutboundStage({
+      stage: "WhatsAppCloudAdapter.sendOutbound.credentialsResolved",
+      layer: "whatsapp.provider",
+      file: "whatsapp-cloud-adapter.ts",
+      function: "sendOutbound",
+      line: 251,
+      extra: {
+        companyId: ctx.companyChannel.companyId,
+        companyChannelId: ctx.companyChannel.id,
+        phoneNumberId: runtimeConfig.phoneNumberId,
+        graphApiVersion: runtimeConfig.apiVersion ?? "v21.0",
+        accessTokenPresent: Boolean(runtimeConfig.accessToken?.trim()),
+      },
+    });
+
     const payload = formattedPayload.payload as WhatsAppSendMessagePayload;
     const response = await this.apiClient.sendMessage(runtimeConfig, payload, {
       accessTokenSource: "company_whatsapp_settings",
+      companyId: ctx.companyChannel.companyId,
+      companyChannelId: ctx.companyChannel.id,
     });
     const externalMessageId = response.messages?.[0]?.id;
 

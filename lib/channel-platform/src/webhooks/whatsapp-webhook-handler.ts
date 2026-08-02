@@ -88,26 +88,46 @@ export function createWhatsAppWebhookHandler(deps: WhatsAppWebhookHandlerDeps) {
 
       const channel = await deps.resolveCompanyChannel(input.companyChannelId);
       const ctx = deps.resolveSystemContext();
-      const runtime = deps.resolveRuntimeConfig ? await deps.resolveRuntimeConfig(channel.companyId) : null;
+
+      let executeAi = input.executeAi;
+      if (executeAi == null) {
+        if (deps.ports.employeeRuntime) {
+          const employeeBinding = await deps.ports.employeeRuntime.resolveForInboundChannel({
+            companyId: channel.companyId,
+            companyChannelId: input.companyChannelId,
+            channelKey: "whatsapp",
+          });
+          executeAi = Boolean(employeeBinding);
+        } else if (deps.resolveRuntimeConfig) {
+          executeAi = Boolean(await deps.resolveRuntimeConfig(channel.companyId));
+        } else {
+          executeAi = false;
+        }
+      }
 
       input.trace?.step("webhook.handler_started", {
         companyChannelId: input.companyChannelId,
-        executeAi: input.executeAi ?? Boolean(runtime),
-        runtimeReady: Boolean(runtime),
+        executeAi,
+        employeeRuntimeEnabled: Boolean(deps.ports.employeeRuntime),
       });
+
+      const legacyRuntime =
+        !deps.ports.employeeRuntime && deps.resolveRuntimeConfig
+          ? await deps.resolveRuntimeConfig(channel.companyId)
+          : null;
 
       const response = await deps.services.router.routeWebhook(ctx, {
         companyId: channel.companyId,
         companyChannelId: input.companyChannelId,
         channelKey: "whatsapp",
         rawPayload: input.rawPayload,
-        executeAi: input.executeAi ?? Boolean(runtime),
-        aiAssistantId: runtime?.aiAssistantId,
+        executeAi,
+        aiAssistantId: legacyRuntime?.aiAssistantId,
         requestId: input.requestId ?? null,
-        runtimeConfig: runtime?.providerConnectionId
+        runtimeConfig: legacyRuntime?.providerConnectionId
           ? {
-              providerConnectionId: runtime.providerConnectionId,
-              ...(runtime.knowledgeRetrieval ? { knowledgeRetrieval: runtime.knowledgeRetrieval } : {}),
+              providerConnectionId: legacyRuntime.providerConnectionId,
+              ...(legacyRuntime.knowledgeRetrieval ? { knowledgeRetrieval: legacyRuntime.knowledgeRetrieval } : {}),
               executionPolicy: { streaming: false },
             }
           : undefined,

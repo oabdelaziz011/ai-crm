@@ -49,6 +49,8 @@ import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-eng
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
+import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
+import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
 import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
@@ -142,7 +144,8 @@ export function getWebhookPlatform(): WebhookPlatform {
     queryEmbeddingPort: retrievalPlatformPorts.queryEmbeddingPort,
     vectorQueryPort: retrievalPlatformPorts.vectorQueryPort,
   });
-  const { tools } = createWebhookToolRouterIntegrations(client);
+  const { tools: baseTools } = createWebhookToolRouterIntegrations(client);
+  const tools = createScopedRuntimeToolPort(baseTools);
   const execution = createAIExecutionServices(
     client,
     createEnterpriseRuntimeIntegrations({
@@ -204,8 +207,10 @@ export function getWebhookPlatform(): WebhookPlatform {
     flowValidator: createChannelWorkflowFlowValidator(client),
   });
 
+  const employeeRuntime = createWebhookEmployeeRuntimePort(client);
+
   const ports = createChannelPlatformPortsWithContext(
-    { channelRegistry, conversation, runtime, automation: automationPlatform.engine, supabaseClient: client },
+    { channelRegistry, conversation, runtime, automation: automationPlatform.engine, supabaseClient: client, employeeRuntime },
     {
       registry: SYSTEM_CONTEXT,
       conversation: SYSTEM_CONTEXT,

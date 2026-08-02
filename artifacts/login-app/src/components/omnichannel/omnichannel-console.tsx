@@ -58,6 +58,7 @@ import {
   traceDomRenderProps,
   traceDomRenderStage,
 } from "@/lib/omnichannel/debug/omni-dom-render-audit";
+import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 
 const OMNICHANNEL_SESSION_KEY = "omnichannel-console-session";
@@ -613,6 +614,18 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
         onSend={async (payload) => {
           if (!selected) return false;
           setPendingRetry(payload);
+          traceOmniSendEnter({
+            layer: 1,
+            stage: "OmnichannelConsole.onSend",
+            file: "omnichannel-console.tsx",
+            function: "onSend",
+            line: 613,
+            conversationId: selected.id,
+            extra: {
+              conversationNumber: selected.conversationNumber,
+              mode: payload.mode,
+            },
+          });
           const ok = await consoleState.sendReply(
             {
               conversationId: selected.id,
@@ -622,6 +635,13 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
             },
             payload,
           );
+          traceOmniSendExit({
+            layer: 1,
+            stage: "OmnichannelConsole.onSend",
+            success: ok,
+            conversationId: selected.id,
+            extra: { ok },
+          });
           if (ok) {
             setPendingRetry(null);
             consoleState.clearSendError?.();

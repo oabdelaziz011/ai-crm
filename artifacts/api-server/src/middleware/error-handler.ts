@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { logger } from "../lib/logger.js";
+import { isOutboundDispatchPath, logOutbound400Response } from "../debug/omni-outbound-dispatch-audit.js";
 
 export class HttpError extends Error {
   constructor(
@@ -55,9 +56,21 @@ export function errorHandler(
     return;
   }
 
-  res.status(statusCode).json({
+  const responseBody = {
     error: code,
     message,
     requestId: req.requestId,
-  });
+  };
+
+  if (statusCode === 400 && isOutboundDispatchPath(req)) {
+    logOutbound400Response({
+      statusCode,
+      responseBody,
+      file: "error-handler.ts",
+      function: "errorHandler",
+      line: 58,
+    });
+  }
+
+  res.status(statusCode).json(responseBody);
 }

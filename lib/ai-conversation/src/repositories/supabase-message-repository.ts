@@ -7,6 +7,9 @@ import type {
 } from "../types.js";
 import { buildMessageSearchText } from "../message-cache.js";
 import { DuplicateExternalMessageError } from "../errors.js";
+import { traceTranscriptMessageStageBridge } from "../debug/omni-transcript-messages-bridge.js";
+import { traceOmniSendBridgeAsync } from "../debug/omni-send-bridge.js";
+import { chronologicalFromLatestWindow } from "./message-list-window.js";
 
 const TABLE = "conversation_messages";
 
@@ -39,34 +42,57 @@ function isDuplicateExternalMessageError(error: { code?: string; message?: strin
 export function createSupabaseMessageRepository(client: SupabaseClient): MessageRepository {
   return {
     async add(input: AddMessageInput): Promise<ConversationMessageRecord> {
-      const { data, error } = await client
-        .from(TABLE)
-        .insert({
-          conversation_id: input.conversationId,
-          participant_id: input.participantId ?? null,
-          message_type: input.messageType,
-          content_type: input.contentType ?? "text",
-          content: input.content,
-          metadata: input.metadata ?? {},
-          status: input.status ?? "pending",
-          external_message_id: input.externalMessageId ?? null,
-          attachment_type: input.attachmentType ?? null,
-          attachment_url: input.attachmentUrl ?? null,
-          mime_type: input.mimeType ?? null,
-          file_size: input.fileSize ?? null,
-          search_text: buildMessageSearchText(input.content),
-          created_by: input.createdBy ?? null,
-        })
-        .select("*")
-        .single();
+      return traceOmniSendBridgeAsync(
+        {
+          layer: 5,
+          stage: "Repository.conversation_messages.insert",
+          file: "supabase-message-repository.ts",
+          function: "add",
+          line: 41,
+          conversationId: input.conversationId,
+          messageId: null,
+          statusBefore: input.status ?? "pending",
+          extra: { messageType: input.messageType },
+        },
+        async () => {
+          const { data, error } = await client
+            .from(TABLE)
+            .insert({
+              conversation_id: input.conversationId,
+              participant_id: input.participantId ?? null,
+              message_type: input.messageType,
+              content_type: input.contentType ?? "text",
+              content: input.content,
+              metadata: input.metadata ?? {},
+              status: input.status ?? "pending",
+              external_message_id: input.externalMessageId ?? null,
+              attachment_type: input.attachmentType ?? null,
+              attachment_url: input.attachmentUrl ?? null,
+              mime_type: input.mimeType ?? null,
+              file_size: input.fileSize ?? null,
+              search_text: buildMessageSearchText(input.content),
+              created_by: input.createdBy ?? null,
+            })
+            .select("*")
+            .single();
 
-      if (error) {
-        if (isDuplicateExternalMessageError(error) && input.externalMessageId) {
-          throw new DuplicateExternalMessageError(input.externalMessageId);
-        }
-        throw error;
-      }
-      return mapRow(data as Record<string, unknown>);
+          if (error) {
+            if (isDuplicateExternalMessageError(error) && input.externalMessageId) {
+              throw new DuplicateExternalMessageError(input.externalMessageId);
+            }
+            throw error;
+          }
+          return mapRow(data as Record<string, unknown>);
+        },
+        (result) => ({
+          messageId: result.id,
+          statusAfter: result.status,
+          extra: {
+            externalMessageId: result.external_message_id,
+            databaseInsert: true,
+          },
+        }),
+      );
     },
 
     async findById(id: string): Promise<ConversationMessageRecord | null> {
@@ -95,22 +121,72 @@ export function createSupabaseMessageRepository(client: SupabaseClient): Message
     },
 
     async list(filter: ListMessagesFilter): Promise<ConversationMessageRecord[]> {
+      const limit = filter.limit;
+      const offset = filter.offset ?? 0;
+
+      if (limit == null) {
+        const { data, error } = await client
+          .from(TABLE)
+          .select("*")
+          .eq("conversation_id", filter.conversationId)
+          .order("sequence_number", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+        const rows = (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
+        traceTranscriptMessageStageBridge({
+          stage: "Supabase.conversation_messages.select",
+          file: "supabase-message-repository.ts",
+          function: "list",
+          line: 135,
+          conversationId: filter.conversationId,
+          sqlWhere: `conversation_id = '${filter.conversationId}'`,
+          orderBy: "sequence_number ASC, created_at ASC",
+          limit: null,
+          rows: rows.map((row) => ({
+            id: row.id,
+            created_at: row.created_at,
+            message_type: row.message_type,
+            content: row.content,
+          })),
+        });
+        return rows;
+      }
+
       let query = client
         .from(TABLE)
         .select("*")
         .eq("conversation_id", filter.conversationId)
-        .order("sequence_number", { ascending: true })
-        .order("created_at", { ascending: true });
+        .order("sequence_number", { ascending: false })
+        .order("created_at", { ascending: false });
 
-      if (filter.limit != null) query = query.limit(filter.limit);
-      if (filter.offset != null) {
-        const limit = filter.limit ?? 100;
-        query = query.range(filter.offset, filter.offset + limit - 1);
-      }
+      query =
+        filter.offset != null
+          ? query.range(offset, offset + limit - 1)
+          : query.limit(limit);
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
+      const newestFirst = (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
+      const rows = chronologicalFromLatestWindow(newestFirst);
+      traceTranscriptMessageStageBridge({
+        stage: "Supabase.conversation_messages.select",
+        file: "supabase-message-repository.ts",
+        function: "list",
+        line: 165,
+        conversationId: filter.conversationId,
+        sqlWhere: `conversation_id = '${filter.conversationId}'`,
+        orderBy: "sequence_number DESC, created_at DESC → reversed to ASC",
+        limit,
+        rows: rows.map((row) => ({
+          id: row.id,
+          created_at: row.created_at,
+          message_type: row.message_type,
+          content: row.content,
+        })),
+        extra: { offset: filter.offset ?? null },
+      });
+      return rows;
     },
   };
 }

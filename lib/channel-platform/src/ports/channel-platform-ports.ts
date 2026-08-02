@@ -36,6 +36,28 @@ export type ChannelRegistryPort = {
   syncEmailFromEmail(companyChannelId: string, fromEmail: string): Promise<void>;
 };
 
+export type ChannelEmployeeRuntimePort = {
+  resolveForInboundChannel(input: {
+    companyId: string;
+    companyChannelId: string;
+    channelKey: string;
+  }): Promise<{
+    aiEmployeeId: string;
+    conversationMetadataSeed: Record<string, unknown>;
+  } | null>;
+
+  prepareForConversation(input: {
+    companyId: string;
+    conversationId: string;
+    aiEmployeeId: string;
+    conversationMetadata?: Record<string, unknown> | null;
+    basePageContext?: Record<string, unknown>;
+  }): Promise<{
+    runtimeConfig: ChannelRuntimeConfigDto;
+    metadataPatch: Record<string, unknown> | null;
+  } | null>;
+};
+
 export type ChannelConversationPort = {
   /** Resolves the company's assistant record for workflow sessions (no provider required). */
   resolveCompanyAssistantId?(companyId: string): Promise<string | null>;
@@ -60,6 +82,13 @@ export type ChannelConversationPort = {
     content: string;
     metadata?: Record<string, unknown>;
   }): Promise<ConversationMessageSummary>;
+
+  updateConversationMetadata?(input: {
+    conversationId: string;
+    metadata: Record<string, unknown>;
+  }): Promise<void>;
+
+  getConversationMetadata?(conversationId: string): Promise<Record<string, unknown> | null>;
 };
 
 export type ChannelRuntimePort = {
@@ -102,6 +131,7 @@ export type ChannelPlatformPorts = {
   registry: ChannelRegistryPort;
   conversation: ChannelConversationPort;
   runtime: ChannelRuntimePort;
+  employeeRuntime?: ChannelEmployeeRuntimePort;
   automation?: ChannelAutomationPort;
 };
 

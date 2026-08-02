@@ -50,6 +50,10 @@ import {
   parseMentionQuery,
 } from "@/lib/omnichannel/services/composer-mention-service";
 import { COMPOSER_ATTACHMENT_ACCEPT } from "@/lib/omnichannel/types/composer-enterprise-types";
+import {
+  traceOmniSendEnter,
+  traceOmniSendExit,
+} from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 import type {
   ComposerMentionTarget,
   ComposerSendPayload,
@@ -328,19 +332,42 @@ export const ComposePanel = memo(
       const payload = undoPayloadRef.current;
       if (!payload) return;
       undoPayloadRef.current = null;
+      traceOmniSendEnter({
+        layer: 1,
+        stage: "ReplyComposer.executeSend",
+        file: "compose-panel.tsx",
+        function: "executeSend",
+        line: 327,
+        conversationId: conversationId ?? null,
+        extra: { mode: payload.mode, textLength: payload.text.length },
+      });
       try {
         const result = await onSend(payload);
+        traceOmniSendExit({
+          layer: 1,
+          stage: "ReplyComposer.executeSend",
+          success: result !== false,
+          conversationId: conversationId ?? null,
+          extra: { onSendResult: result },
+        });
         if (result === false) {
           setDraft(payload.text);
           requestAnimationFrame(() => textareaRef.current?.focus());
         } else {
           attachmentState.clearAttachments();
         }
-      } catch {
+      } catch (error) {
+        traceOmniSendExit({
+          layer: 1,
+          stage: "ReplyComposer.executeSend",
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          conversationId: conversationId ?? null,
+        });
         setDraft(payload.text);
         requestAnimationFrame(() => textareaRef.current?.focus());
       }
-    }, [attachmentState, onSend]);
+    }, [attachmentState, conversationId, onSend]);
 
     const send = useCallback(() => {
       void (async () => {
@@ -377,7 +404,22 @@ export const ComposePanel = memo(
         if (scheduleSendWithUndo) {
           scheduleSendWithUndo(() => void executeSend());
         } else {
+          traceOmniSendEnter({
+            layer: 1,
+            stage: "ReplyComposer.submit",
+            file: "compose-panel.tsx",
+            function: "send",
+            line: 345,
+            conversationId: conversationId ?? null,
+            extra: { mode, hasAttachments: Boolean(uploadedAttachments?.length) },
+          });
           await executeSend();
+          traceOmniSendExit({
+            layer: 1,
+            stage: "ReplyComposer.submit",
+            success: true,
+            conversationId: conversationId ?? null,
+          });
         }
       })();
     }, [

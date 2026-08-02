@@ -62,6 +62,7 @@ export type ResolveSessionInput = {
   aiAssistantId?: string;
   /** When false, session creation may resolve assistant from company settings (workflow path). */
   requireAiAssistant?: boolean;
+  employeeConversationMetadata?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 };
 

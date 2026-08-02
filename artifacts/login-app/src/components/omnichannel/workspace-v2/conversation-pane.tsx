@@ -11,6 +11,7 @@ import { resolveAgentWorkspaceLanguage } from "@/lib/omnichannel/services/conver
 import { useConversationExperience } from "@/hooks/omnichannel/use-conversation-experience";
 import { useOutboundChannelRoute } from "@/hooks/omnichannel/use-outbound-channel-route";
 import type { ComposerSendPayload } from "@/lib/omnichannel/types/composer-enterprise-types";
+import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 import type { OutboundSendError } from "@/hooks/conversations/use-team-inbox-reply";
 import {
   channelDiagnosticsHref,
@@ -151,13 +152,29 @@ export const ConversationPane = memo(function ConversationPane({
   const handleSend = useCallback(
     async (payload: ComposerSendPayload) => {
       experience.notifyAgentTyping(false);
+      traceOmniSendEnter({
+        layer: 1,
+        stage: "AgentWorkspace.onSend",
+        file: "conversation-pane.tsx",
+        function: "handleSend",
+        line: 151,
+        conversationId: conversation?.id ?? null,
+        extra: { mode: payload.mode },
+      });
       const ok = await onSend(payload);
+      traceOmniSendExit({
+        layer: 1,
+        stage: "AgentWorkspace.onSend",
+        success: ok !== false,
+        conversationId: conversation?.id ?? null,
+        extra: { ok },
+      });
       if (ok !== false) {
         requestAnimationFrame(() => transcriptRef.current?.scrollToBottom());
       }
       return ok !== false;
     },
-    [onSend, experience],
+    [conversation?.id, onSend, experience],
   );
 
   if (!conversation) {

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { useAiAssistantSettings } from "@/hooks/use-ai-assistant-settings";
 import { useConversationListInfinite } from "@/hooks/conversations/use-conversation-list";
 import { useConversationMessages } from "@/hooks/conversations/use-conversation-messages";
+import { auditTranscriptMessagesFromRecords } from "@/lib/omnichannel/debug/omni-transcript-messages-audit";
 import { useConversationActions } from "@/hooks/conversations/use-conversation-actions";
 import { useTeamInboxReply } from "@/hooks/conversations/use-team-inbox-reply";
 import { useCustomersEnrichment } from "@/hooks/use-customers";
@@ -239,13 +240,31 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       const customerLabel = resolveContactDisplayName(
         buildContactDisplayInput(selectedConversation, selectedConversation.customer, "Visitor"),
       );
-      return mapUnifiedMessages(
+      const mapped = mapUnifiedMessages(
         messagesQuery.data ?? [],
         selectedConversation.channel,
         { customer: customerLabel },
         profilesByUserId,
         "Support Agent",
       );
+      auditTranscriptMessagesFromRecords(
+        selectedConversation.id,
+        mapped.map((message) => ({
+          id: message.id,
+          created_at: message.timestamp,
+          message_type: message.senderType,
+          content: message.body,
+        })),
+        {
+          stage: "useOmnichannelConsole.unifiedMessages.mapped",
+          file: "use-omnichannel-console.ts",
+          function: "useOmnichannelConsole",
+          line: 242,
+          queryKey: ["conversation-messages", selectedConversation.id],
+          extra: { sourceRowCount: messagesQuery.data?.length ?? 0 },
+        },
+      );
+      return mapped;
     },
     [messagesQuery.data, selectedConversation, profilesByUserId],
   );

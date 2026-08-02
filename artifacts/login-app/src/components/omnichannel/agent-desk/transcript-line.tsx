@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Bot, Check, CheckCheck, Clock, Loader2, Mic, Sparkles, Star } from "lucide-react";
 import type { MessageStatus } from "@workspace/ai-conversation";
@@ -21,6 +21,7 @@ import {
   ReactionBadge,
 } from "@/components/omnichannel/agent-desk/message-reactions-bar";
 import { highlightSearchText } from "@/hooks/omnichannel/use-conversation-experience";
+import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 export type MessageGroupPosition = "single" | "first" | "middle" | "last";
 
@@ -167,6 +168,31 @@ export const TranscriptLine = memo(function TranscriptLine({
   const linkPreview = firstLinkPreview(message.body);
   const outboundPhase = message.outboundPhase ?? "preparing";
   const showDelivery = isOutgoing && shouldShowDeliveryStatus(channel, outboundPhase);
+
+  useEffect(() => {
+    if (!isOutgoing) return;
+    traceOmniSendEnter({
+      layer: 12,
+      stage: "UI.TranscriptLine.render",
+      file: "transcript-line.tsx",
+      function: "TranscriptLine",
+      line: 168,
+      conversationId: message.conversationId,
+      messageId: message.id,
+      statusBefore: message.deliveryStatus,
+      statusAfter: outboundPhase,
+      extra: { showDelivery, channel },
+    });
+    traceOmniSendExit({
+      layer: 12,
+      stage: "UI.TranscriptLine.render",
+      success: true,
+      conversationId: message.conversationId,
+      messageId: message.id,
+      statusBefore: message.deliveryStatus,
+      statusAfter: outboundPhase,
+    });
+  }, [channel, isOutgoing, message.conversationId, message.deliveryStatus, message.id, outboundPhase, showDelivery]);
   const messageSourceLanguage = resolveMessageSourceLanguage(message.body);
 
   const canTranslate = Boolean(message.body.trim())

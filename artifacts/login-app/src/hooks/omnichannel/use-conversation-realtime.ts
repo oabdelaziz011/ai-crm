@@ -5,6 +5,7 @@ import { usePermissions } from "@/hooks/use-rbac";
 import { supabase } from "@/lib/supabase";
 import { invalidateOmnichannelQueries } from "@/lib/omnichannel/cache/invalidate-omnichannel-queries";
 import { omniCompanyTrace } from "@/lib/omnichannel/debug/omni-company-audit";
+import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 const RT = "[OMNI_REALTIME]";
 
@@ -73,6 +74,39 @@ export function useConversationRealtime(companyId: string | null, conversationId
             && "conversation_id" in payload.new
               ? String((payload.new as { conversation_id?: string }).conversation_id ?? "")
               : conversationId;
+          const row = (payload.new ?? payload.old) as {
+            id?: string;
+            status?: string;
+            message_type?: string;
+            metadata?: Record<string, unknown>;
+          } | null;
+          if (row?.message_type === "outgoing" || row?.message_type === "internal_note") {
+            traceOmniSendEnter({
+              layer: 11,
+              stage: "Realtime.conversation_messages",
+              file: "use-conversation-realtime.ts",
+              function: "postgres_changes",
+              line: 69,
+              conversationId: nextConversationId || conversationId,
+              messageId: row.id ?? null,
+              statusBefore: typeof payload.old === "object" && payload.old && "status" in payload.old
+                ? String((payload.old as { status?: string }).status ?? "")
+                : null,
+              statusAfter: row.status ?? null,
+              extra: {
+                eventType: payload.eventType,
+                outboundPhase: row.metadata?.outboundPhase ?? null,
+              },
+            });
+            traceOmniSendExit({
+              layer: 11,
+              stage: "Realtime.conversation_messages",
+              success: true,
+              conversationId: nextConversationId || conversationId,
+              messageId: row.id ?? null,
+              statusAfter: row.status ?? null,
+            });
+          }
           rtLog("postgres_changes", {
             schema: "public",
             table: "conversation_messages",

@@ -1,35 +1,46 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WebhookEventType } from "@/lib/integration/types";
-import { getIntegrationPlatformServices } from "@/lib/integration/services/integration-platform-factory";
-import { getPluginPlatformServices } from "@/lib/plugins/services/plugin-platform-factory";
-import type { PluginEventType } from "@/lib/plugins/types";
+import { createModulePublisher, type PlatformEventType } from "@workspace/platform-events";
+import { getLoginAppPlatformEventBus } from "./platform-event-bus-factory.js";
 
-/** Central enterprise event publisher — wires Integration Hub + Plugin runtime. */
+const WEBHOOK_TO_PLATFORM: Readonly<Partial<Record<WebhookEventType, PlatformEventType>>> = Object.freeze({
+  "lead.created": "LeadCreated",
+  "lead.updated": "LeadUpdated",
+  "lead.converted": "LeadConverted",
+  "lead.deleted": "LeadUpdated",
+  "lead.assigned": "LeadUpdated",
+  "booking.created": "BookingCreated",
+  "booking.updated": "BookingRescheduled",
+  "booking.cancelled": "BookingCancelled",
+  "booking.completed": "BookingCompleted",
+  "payment.completed": "PaymentCollected",
+  "invoice.paid": "InvoicePaid",
+  "invoice.created": "InvoiceGenerated",
+  "customer.created": "CustomerCreated",
+});
+
+/** Legacy bridge — routes webhook-style publishes through Platform Event Bus only. */
 export class EnterpriseEventPublisher {
-  private readonly integration = getIntegrationPlatformServices();
-  private readonly plugins = getPluginPlatformServices();
-
   async publish(input: {
     companyId: string;
     eventType: WebhookEventType;
     eventId: string;
     payload: Record<string, unknown>;
   }): Promise<void> {
-    try {
-      await this.integration.events.publish(input);
-    } catch (err) {
-      console.error("[EnterpriseEventPublisher] integration bus failed:", err);
-    }
+    const platformType = WEBHOOK_TO_PLATFORM[input.eventType];
+    if (!platformType) return;
 
-    try {
-      await this.plugins.events.dispatch(
-        input.companyId,
-        input.eventType as PluginEventType,
-        input.payload,
-      );
-    } catch (err) {
-      console.error("[EnterpriseEventPublisher] plugin dispatch failed:", err);
-    }
+    const publisher = createModulePublisher(getLoginAppPlatformEventBus(), "integration-bridge");
+    await publisher.publish(
+      platformType,
+      input.payload as never,
+      {
+        tenantId: input.companyId,
+        correlationId: input.eventId,
+        actorType: "system",
+        sourceModule: "integration-bridge",
+      },
+    );
   }
 }
 
@@ -40,7 +51,6 @@ export function getEnterpriseEventPublisher(): EnterpriseEventPublisher {
   return cached;
 }
 
-/** Maps booking domain events to integration bus event types. */
 export function bookingEventToBusType(eventType: string): WebhookEventType | null {
   const map: Record<string, WebhookEventType> = {
     BookingCreated: "booking.created",
@@ -52,11 +62,10 @@ export function bookingEventToBusType(eventType: string): WebhookEventType | nul
   return map[eventType] ?? null;
 }
 
-/** Booking event publisher adapter for enterprise bus. */
 export class IntegrationBookingEventPublisher {
   constructor(private readonly inner?: { publish(event: unknown): Promise<void> }) {}
 
-  async publish(event: { type: string; payload: { booking: { id: string; company_id: string } } }): Promise<void> {
+  async publish(event: { type: string; payload: { booking: { id: string; company_id: string; customer_id?: string } } }): Promise<void> {
     if (this.inner) await this.inner.publish(event);
 
     const busType = bookingEventToBusType(event.type);
@@ -67,7 +76,11 @@ export class IntegrationBookingEventPublisher {
       companyId: booking.company_id,
       eventType: busType,
       eventId: `${booking.id}:${event.type}:${Date.now()}`,
-      payload: { bookingId: booking.id, eventType: event.type },
+      payload: {
+        bookingId: booking.id,
+        customerId: booking.customer_id ?? "",
+        eventType: event.type,
+      },
     });
   }
 }

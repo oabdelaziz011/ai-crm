@@ -225,12 +225,18 @@ importers:
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../../lib/embedding-platform
+      '@workspace/identity-platform':
+        specifier: workspace:*
+        version: link:../../lib/identity-platform
       '@workspace/knowledge-platform':
         specifier: workspace:*
         version: link:../../lib/knowledge-platform
       '@workspace/knowledge-runtime':
         specifier: workspace:*
         version: link:../../lib/knowledge-runtime
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../../lib/lead-platform
       '@workspace/platform-ai-provider':
         specifier: workspace:*
         version: link:../../lib/platform-ai-provider

@@ -157,6 +157,8 @@
     "@workspace/vector-query": "workspace:*",
     "@workspace/vector-store": "workspace:*",
     "@workspace/configuration-platform": "workspace:*",
+    "@workspace/lead-platform": "workspace:*",
+    "@workspace/identity-platform": "workspace:*",
     "@workspace/platform-events": "workspace:*",
     "@workspace/universal-operations-engine": "workspace:*",
     "@workspace/universal-workspace-platform": "workspace:*",

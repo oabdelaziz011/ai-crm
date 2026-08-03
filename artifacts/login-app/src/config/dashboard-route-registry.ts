@@ -12,6 +12,8 @@ import {
   FileText,
   LayoutGrid,
   MessageSquare,
+  Briefcase,
+  Target,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -44,6 +46,8 @@ export type DashboardSectionId =
   | "bookings"
   | "calendar"
   | "scheduling"
+  | "universal-operations"
+  | "leads"
   | "communication"
   | "invoices"
   | "financial"
@@ -208,6 +212,23 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: CalendarRange,
     permission: "bookings.view",
     Page: lazyNamed(() => import("@/pages/dashboard/scheduling/scheduling-page"), "SchedulingPage"),
+  },
+  {
+    id: "universal-operations",
+    path: "/dashboard/operations",
+    nestedPath: "/operations",
+    titleKey: "navigation.universalOperations",
+    icon: Briefcase,
+    Page: lazyNamed(() => import("@/pages/dashboard/operations/operations-page"), "OperationsPage"),
+  },
+  {
+    id: "leads",
+    path: "/dashboard/leads",
+    nestedPath: "/leads",
+    titleKey: "navigation.leads",
+    icon: Target,
+    permission: "leads.view",
+    Page: lazyNamed(() => import("@/pages/dashboard/leads-page"), "LeadsPage"),
   },
   {
     id: "communication",
@@ -480,6 +501,8 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "bookings" },
   { type: "route", id: "calendar" },
   { type: "route", id: "scheduling" },
+  { type: "route", id: "universal-operations" },
+  { type: "route", id: "leads" },
   { type: "route", id: "communication" },
   { type: "route", id: "invoices" },
   { type: "route", id: "financial" },

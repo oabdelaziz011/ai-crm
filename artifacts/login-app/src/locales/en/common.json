@@ -168,6 +168,7 @@
     "bookings": "Bookings",
     "calendar": "Calendar",
     "scheduling": "Scheduling",
+    "universalOperations": "Operations",
     "communication": "Communication Center",
     "invoices": "Invoices",
     "financial": "Financial Billing",
@@ -4858,7 +4859,8 @@
       "pinConversation": "Pin conversation",
       "starConversation": "Star conversation",
       "markUnread": "Mark unread",
-      "followConversation": "Follow conversation"
+      "followConversation": "Follow conversation",
+      "newMessages": "New messages"
     },
     "sidebar": {
       "tabs": {
@@ -7655,6 +7657,548 @@
       "room": "Room",
       "chair": "Chair",
       "equipment": "Equipment"
+    }
+  },
+  "universalOperations": {
+    "noPermission": "You do not have permission to access this section.",
+    "loading": "Loading…",
+    "nav": {
+      "hub": "Command Hub",
+      "queue": "Queue",
+      "calendar": "Calendar",
+      "kanban": "Kanban",
+      "timeline": "Timeline",
+      "configuration": "Configuration",
+      "analytics": "Analytics",
+      "designer": "Designer"
+    },
+    "templates": {
+      "clinic": "Clinic / Medical",
+      "training": "Training Center",
+      "automotive": "Automotive Service"
+    },
+    "queue": {
+      "title": "Operations Queue",
+      "subtitle": "Metadata-driven daily operations — select any row to open the customer workspace.",
+      "template": "Business template"
+    },
+    "kpi": {
+      "total": "Today's Items",
+      "waiting": "Waiting",
+      "paid": "Paid",
+      "completed": "Completed"
+    },
+    "grid": {
+      "searchPlaceholder": "Global search…",
+      "aiSearch": "AI Search",
+      "savedViews": "Saved Views",
+      "viewToday": "Today",
+      "viewWaiting": "Waiting",
+      "viewUnpaid": "Unpaid",
+      "bulkActions": "Bulk Actions",
+      "export": "Export",
+      "import": "Import",
+      "columnSettings": "Column settings",
+      "sort": "Sort",
+      "filter": "Filter",
+      "pin": "Pin",
+      "hide": "Hide",
+      "selectAll": "Select all rows",
+      "rowCount": "{{count}} rows",
+      "selectedCount": "{{count}} selected"
+    },
+    "panel": {
+      "title": "Customer Workspace",
+      "tabs": {
+        "overview": "Overview",
+        "crm": "CRM",
+        "timeline": "Timeline",
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "payments": "Payments",
+        "activities": "Activities",
+        "files": "Files",
+        "notes": "Notes",
+        "tasks": "Tasks",
+        "ai_assistant": "AI Assistant"
+      },
+      "overview": {
+        "customerCard": "Customer",
+        "status": "Status",
+        "payment": "Payment",
+        "resource": "Assigned",
+        "priority": "Priority",
+        "quickActions": "Quick Actions"
+      },
+      "actions": {
+        "call": "Call",
+        "checkIn": "Check In",
+        "collect": "Collect Payment",
+        "note": "Add Note"
+      },
+      "crm": {
+        "profile": "Profile",
+        "email": "Email",
+        "phone": "Phone",
+        "company": "Company",
+        "address": "Address",
+        "birthday": "Birthday",
+        "leadOrigin": "Lead Origin",
+        "leadSource": "Lead Source",
+        "campaign": "Campaign",
+        "owner": "Owner",
+        "leadScore": "Lead Score"
+      }
+    },
+    "calendar": {
+      "title": "Calendar View",
+      "description": "Calendar visualization will render operational items from metadata. Coming in a future sprint."
+    },
+    "kanban": {
+      "title": "Kanban View",
+      "description": "Status-driven kanban boards are configured in the Status Engine. Coming in a future sprint."
+    },
+    "timeline": {
+      "title": "Timeline View",
+      "description": "Chronological operations timeline across all work items. Coming in a future sprint."
+    },
+    "configuration": {
+      "title": "Workspace Configuration",
+      "subtitle": "Configure columns, statuses, services, and permissions without code changes.",
+      "save": "Save Configuration",
+      "placeholder": "This configuration section uses mock metadata. Live persistence connects in a future sprint.",
+      "tabs": {
+        "general": "General",
+        "columns": "Columns",
+        "statuses": "Statuses",
+        "payment_status": "Payment Status",
+        "services": "Services",
+        "resources": "Resources",
+        "automation": "Automation",
+        "permissions": "Permissions",
+        "views": "Views",
+        "notifications": "Notifications",
+        "integrations": "Integrations",
+        "ai": "AI",
+        "advanced": "Advanced"
+      },
+      "general": {
+        "title": "General Settings",
+        "workspaceName": "Workspace Name",
+        "moduleName": "Module Name",
+        "rowEntity": "Row Entity Name",
+        "customerLabel": "Customer Label"
+      },
+      "columns": {
+        "title": "Column Definitions"
+      },
+      "statuses": {
+        "title": "Status Workflow",
+        "flowHint": "Transitions are validated by the Status Engine. Terminal statuses cannot advance further."
+      }
+    },
+    "analytics": {
+      "title": "Operations Analytics",
+      "subtitle": "Real-time operational KPIs (mock data for Sprint OP1).",
+      "todayOps": "Today's Operations",
+      "revenue": "Revenue",
+      "pendingPayments": "Pending Payments",
+      "upcoming": "Upcoming",
+      "noShows": "No Shows",
+      "completionRate": "Completion Rate",
+      "avgServiceTime": "Average Service Time",
+      "mockNote": "Metrics will connect to platform read ports in a future integration sprint."
+    }
+  },
+  "customer360": {
+    "badges": { "vip": "VIP" },
+    "rolePreview": "Preview role layout",
+    "roles": {
+      "receptionist": "Receptionist",
+      "cashier": "Cashier",
+      "nurse": "Nurse",
+      "manager": "Manager"
+    },
+    "header": {
+      "customerSince": "Since",
+      "quickSearch": "Search in workspace…",
+      "collapse": "Collapse header"
+    },
+    "actions": {
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "sms": "SMS",
+      "bookAgain": "Book Again",
+      "reschedule": "Reschedule",
+      "collectPayment": "Collect Payment",
+      "createInvoice": "Create Invoice",
+      "print": "Print",
+      "share": "Share",
+      "openCrm": "Open CRM",
+      "assignEmployee": "Assign",
+      "addNote": "Add Note",
+      "uploadFile": "Upload",
+      "aiAssistant": "AI",
+      "more": "More"
+    },
+    "sections": {
+      "todays_operation": "Today's Operation",
+      "customer_summary": "Customer Summary",
+      "communication": "Communication",
+      "timeline": "Timeline",
+      "notes": "Notes",
+      "invoices_payments": "Invoices & Payments",
+      "bookings": "Bookings",
+      "files": "Files",
+      "tasks": "Tasks",
+      "ai_assistant": "AI Assistant"
+    },
+    "todaysOperation": {
+      "today": "Today",
+      "employee": "Assigned",
+      "branch": "Branch",
+      "room": "Room",
+      "duration": "Duration",
+      "scheduled": "Scheduled",
+      "countdown": "Countdown",
+      "arrival": "Arrival",
+      "payment": "Payment",
+      "checkIn": "Check In",
+      "checkOut": "Check Out",
+      "noShow": "No Show",
+      "cancel": "Cancel",
+      "reschedule": "Reschedule",
+      "collect": "Collect"
+    },
+    "summary": {
+      "leadSource": "Lead Source",
+      "campaign": "Campaign",
+      "owner": "Owner",
+      "customerSince": "Customer Since",
+      "lastVisit": "Last Visit",
+      "totalVisits": "Total Visits",
+      "totalRevenue": "Total Revenue",
+      "ltv": "Lifetime Value",
+      "preferredEmployee": "Preferred Employee",
+      "preferredTime": "Preferred Time",
+      "preferredService": "Preferred Service",
+      "risk": "Risk Level",
+      "satisfaction": "Satisfaction",
+      "aiHealth": "AI Health Score"
+    },
+    "notes": {
+      "placeholder": "Write a note… Use @ to mention teammates.",
+      "pin": "Pin",
+      "template": "Template",
+      "aiRewrite": "AI Rewrite",
+      "pinned": "Pinned",
+      "private": "Private"
+    },
+    "finance": {
+      "balance": "Outstanding Balance",
+      "collect": "Collect Payment",
+      "generateInvoice": "Generate Invoice"
+    },
+    "bookings": {
+      "current": "Current",
+      "upcoming": "Upcoming",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "noShow": "No Show",
+      "bookAgain": "Book Again"
+    },
+    "files": {
+      "dropzone": "Drop files here",
+      "dropzoneHint": "PDF, images, contracts, medical files"
+    },
+    "tasks": {
+      "create": "Create Task",
+      "assign": "Assign Task"
+    },
+    "ai": {
+      "title": "AI Assistant",
+      "disclaimer": "AI suggestions require your confirmation before any action is taken.",
+      "actions": {
+        "summarize": "Summarize Customer",
+        "nextAction": "Suggest Next Action",
+        "predictCancel": "Predict Cancellation",
+        "upsell": "Upsell Opportunity",
+        "health": "Customer Health",
+        "paymentRisk": "Payment Risk",
+        "conversationSummary": "Conversation Summary",
+        "followUp": "Generate Follow-up",
+        "generateWhatsapp": "Generate WhatsApp",
+        "generateEmail": "Generate Email"
+      }
+    }
+  },
+  "intelligence": {
+    "operationalHealth": "Operational Health",
+    "alerts": "Smart Alerts",
+    "workflow": "Workflow Tracker",
+    "miniKpis": "Mini KPIs",
+    "recommendations": "AI Recommendations",
+    "confirmAction": "Confirm Action",
+    "businessContext": "Business Context",
+    "health": {
+      "waiting": "Customers Waiting",
+      "avgWait": "Average Wait",
+      "delayed": "Delayed Operations",
+      "overload": "Resource Overload",
+      "pendingPayments": "Pending Payments",
+      "noShows": "No Shows",
+      "completion": "Daily Completion"
+    },
+    "kpi": {
+      "visits": "Visits",
+      "revenue": "Revenue",
+      "ltv": "Lifetime Value",
+      "cancelRate": "Cancellation %",
+      "avgSpend": "Average Spend",
+      "aiHealth": "AI Health Score",
+      "satisfaction": "Satisfaction",
+      "customerScore": "Customer Score"
+    },
+    "copilot": {
+      "title": "AI Copilot",
+      "confirm": "Confirm",
+      "discard": "Discard",
+      "preview": "Preview draft"
+    },
+    "copilot.summarize": "Summarize Customer",
+    "copilot.explainTimeline": "Explain Timeline",
+    "copilot.answer": "Answer Questions",
+    "copilot.followUp": "Generate Follow-up",
+    "copilot.whatsapp": "Generate WhatsApp",
+    "copilot.email": "Generate Email",
+    "copilot.note": "Generate Note",
+    "copilot.risk": "Predict Risk",
+    "copilot.nextAction": "Suggest Next Action",
+    "journey.ad": "Facebook Ad",
+    "journey.lead": "Lead",
+    "journey.qualified": "Qualified",
+    "journey.customer": "Customer",
+    "journey.appointment": "Appointment",
+    "journey.deposit": "Deposit Paid",
+    "journey.waiting": "Waiting",
+    "journey.doctor": "Doctor",
+    "journey.completed": "Completed",
+    "journey.website": "Website",
+    "journey.candidate": "Candidate",
+    "journey.interview": "Interview",
+    "journey.offer": "Offer",
+    "journey.hired": "Hired",
+    "journey.inquiry": "Inquiry",
+    "journey.student": "Student",
+    "journey.enrolled": "Enrolled",
+    "journey.session": "Session",
+    "workflow.booked": "Booked",
+    "workflow.confirmed": "Confirmed",
+    "workflow.checkedIn": "Checked In",
+    "workflow.doctor": "Doctor",
+    "workflow.cashier": "Cashier",
+    "workflow.completed": "Completed",
+    "rec.collectPayment": "Collect Remaining Payment",
+    "rec.bookFollowup": "Book Follow-up",
+    "rec.upgradeService": "Upgrade Service",
+    "rec.reassign": "Assign Different Employee",
+    "rec.sendWhatsapp": "Send WhatsApp",
+    "rec.createTask": "Create Task",
+    "rec.escalate": "Escalate Manager",
+    "communicationSearch": "Search communications…",
+    "quickDecision": {
+      "status": "Status",
+      "outstanding": "Outstanding",
+      "employee": "Employee",
+      "room": "Room",
+      "priority": "Priority",
+      "risk": "Risk"
+    }
+  },
+  "workspacePlatform": {
+    "toolbar": {
+      "title": "Universal Workspace",
+      "search": "Search",
+      "commands": "Commands"
+    },
+    "commandCenter": {
+      "placeholder": "Search commands…",
+      "empty": "No commands found.",
+      "hint": "Ctrl+K to open · / for global search · G then O/H/T to navigate"
+    },
+    "commandCategories": {
+      "create": "Create",
+      "action": "Actions",
+      "navigate": "Navigate",
+      "search": "Search",
+      "ai": "AI",
+      "workspace": "Workspace"
+    },
+    "commands": {
+      "createCustomer": "Create Customer",
+      "createBooking": "Create Booking",
+      "collectPayment": "Collect Payment",
+      "generateInvoice": "Generate Invoice",
+      "openCrm": "Open CRM",
+      "openTimeline": "Open Timeline",
+      "searchCustomer": "Search Customer",
+      "assignEmployee": "Assign Employee",
+      "createTask": "Create Task",
+      "aiSummary": "Run AI Summary",
+      "switchWorkspace": "Switch Workspace",
+      "navQueue": "Go to Queue",
+      "navHub": "Go to Command Hub",
+      "navDesigner": "Open Workspace Designer"
+    },
+    "globalSearch": {
+      "placeholder": "Search everything…",
+      "empty": "No results found.",
+      "preview": "Preview"
+    },
+    "search": {
+      "groups": {
+        "customers": "Customers",
+        "leads": "Leads",
+        "companies": "Companies",
+        "employees": "Employees",
+        "invoices": "Invoices",
+        "payments": "Payments",
+        "bookings": "Bookings",
+        "tasks": "Tasks",
+        "projects": "Projects",
+        "tickets": "Tickets",
+        "assets": "Assets",
+        "files": "Files",
+        "emails": "Emails",
+        "whatsapp": "WhatsApp",
+        "notes": "Notes",
+        "commands": "Commands",
+        "settings": "Settings"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "markAll": "Mark all read"
+    },
+    "favorites": {
+      "title": "Favorites",
+      "unpin": "Unpin"
+    },
+    "widgets": {
+      "revenueToday": "Today's Revenue",
+      "upcomingBookings": "Upcoming Bookings",
+      "pendingPayments": "Pending Payments",
+      "employeeStatus": "Employee Status",
+      "aiRecommendations": "AI Recommendations",
+      "tasks": "Tasks",
+      "leaderboard": "Leaderboard",
+      "noData": "No data yet"
+    },
+    "activity": {
+      "search": "Search activity…",
+      "periods": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "older": "Older"
+      }
+    },
+    "hub": {
+      "title": "Command Hub",
+      "subtitle": "Operational overview — widgets, activity, and intelligence at a glance.",
+      "widgets": "Workspace Widgets",
+      "activity": "Company Activity"
+    },
+    "designer": {
+      "title": "Workspace Designer",
+      "subtitle": "Drag and drop blocks to configure workspaces — no code required.",
+      "palette": "Block Palette",
+      "canvasHint": "Drag blocks from the palette or click to add",
+      "save": "Save Layout",
+      "emptyCanvas": "Add blocks from the palette to build your workspace",
+      "defaultName": "New Workspace",
+      "palette.card": "Card",
+      "palette.widget": "Widget",
+      "palette.section": "Section",
+      "palette.kpi": "KPI",
+      "palette.list": "List",
+      "palette.chart": "Chart",
+      "palette.timeline": "Timeline",
+      "palette.form": "Form",
+      "palette.aiCard": "AI Card",
+      "palette.report": "Report",
+      "palette.communication": "Communication",
+      "palette.tasks": "Tasks",
+      "palette.files": "Files",
+      "palette.invoices": "Invoices",
+      "palette.bookings": "Bookings"
+    },
+    "personalization": {
+      "title": "Workspace Preferences",
+      "density": "Density",
+      "theme": "Theme",
+      "densities": {
+        "compact": "Compact",
+        "comfortable": "Comfortable",
+        "spacious": "Spacious"
+      },
+      "themes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "savedFilters": "Saved Filters",
+      "noSavedFilters": "No saved filters yet",
+      "filtersCount": "saved filters"
+    },
+    "copilot": {
+      "title": "AI Workspace Assistant",
+      "context": "Current workspace",
+      "summarize": "Summarize current record",
+      "explain": "Explain timeline",
+      "email": "Generate email",
+      "whatsapp": "Generate WhatsApp",
+      "overdue": "Find overdue items",
+      "nextAction": "Suggest next action",
+      "confirm": "Confirm",
+      "discard": "Discard",
+      "preview": "Preview draft",
+      "disclaimer": "AI suggestions require confirmation before any action."
+    },
+    "entities": {
+      "customer": "Customer",
+      "lead": "Lead",
+      "employee": "Employee",
+      "invoice": "Invoice",
+      "order": "Order",
+      "ticket": "Ticket",
+      "project": "Project",
+      "asset": "Asset",
+      "company": "Company",
+      "contract": "Contract"
+    },
+    "blocks": {
+      "summary": "Summary",
+      "timeline": "Timeline",
+      "tasks": "Tasks",
+      "files": "Files",
+      "aiAssistant": "AI Assistant"
+    },
+    "templates": {
+      "clinic": "Clinic",
+      "hospital": "Hospital",
+      "training": "Training Center",
+      "automotive": "Automotive",
+      "legal": "Legal",
+      "manufacturing": "Manufacturing",
+      "construction": "Construction",
+      "consulting": "Consulting",
+      "beauty": "Beauty & Spa",
+      "gym": "Gym & Fitness",
+      "education": "Education",
+      "hr": "HR & Recruitment",
+      "realEstate": "Real Estate"
     }
   }
 }

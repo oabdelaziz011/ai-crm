@@ -58,10 +58,13 @@ export type Customer360InvoiceDto = {
 
 export type Customer360SupportTicketDto = {
   id: string;
+  ticketNumber?: string | null;
   subject: string;
   priority?: string | null;
   status: string;
   slaDueAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type Customer360TimelineEntryDto = {
@@ -71,6 +74,29 @@ export type Customer360TimelineEntryDto = {
   title: string;
   summary: string;
   metadata?: Record<string, unknown>;
+};
+
+export type Customer360LeadOriginDto = {
+  leadId: string;
+  title: string;
+  sourceId?: string | null;
+  score: number;
+  lifecycleStatus: string;
+  convertedAt?: string | null;
+  pipelineId?: string | null;
+  stageId?: string | null;
+  assignedUserId?: string | null;
+  aiSummary?: string | null;
+  tags: string[];
+  activities: Array<{ id: string; activityType: string; summary: string; createdAt: string }>;
+  history: Array<{ id: string; fieldName: string; previousValue: string | null; newValue: string | null; createdAt: string }>;
+  notes: Array<{ id: string; body: string; createdAt: string }>;
+};
+
+export type Customer360AppointmentPlaceholderDto = {
+  id: string;
+  status: "future_ready";
+  label: string;
 };
 
 export type Customer360Dto = {
@@ -98,6 +124,13 @@ export type Customer360Dto = {
   };
   support: {
     openTickets: Customer360SupportTicketDto[];
+    closedTickets: Customer360SupportTicketDto[];
+    lastTicket: Customer360SupportTicketDto | null;
+    ticketCount: number;
+  };
+  leadOrigin?: Customer360LeadOriginDto | null;
+  appointments: {
+    upcoming: Customer360AppointmentPlaceholderDto[];
   };
   timeline: Customer360TimelineEntryDto[];
 };

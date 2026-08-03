@@ -5,7 +5,6 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { format, isSameDay } from "date-fns";
@@ -34,11 +33,13 @@ import {
 } from "@/components/omnichannel/agent-desk/attachment-preview-strip";
 import { findSearchMatches } from "@/hooks/omnichannel/use-conversation-experience";
 import type { TypingActor } from "@/hooks/omnichannel/use-conversation-experience";
+import { useConversationAutoScroll } from "@/hooks/omnichannel/use-conversation-auto-scroll";
 import { auditTranscriptMessagesFromRecords } from "@/lib/omnichannel/debug/omni-transcript-messages-audit";
 
 export type TranscriptViewHandle = {
   scrollToBottom: () => void;
   scrollToMessage: (messageId: string) => void;
+  onMessageSent: () => void;
 };
 
 type TranscriptViewProps = {
@@ -85,6 +86,9 @@ type TranscriptViewProps = {
   onPasteImage?: (file: File) => void;
   onFocusComposer?: () => void;
   focusComposerLabel?: string;
+  conversationId?: string | null;
+  isHistoryLoading?: boolean;
+  newMessagesLabel?: string;
 };
 
 type Row =
@@ -133,10 +137,19 @@ export const TranscriptView = memo(
       onPasteImage,
       onFocusComposer,
       focusComposerLabel,
+      conversationId = null,
+      isHistoryLoading = false,
+      newMessagesLabel = "New messages",
     },
     ref,
   ) {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const messageIds = useMemo(() => messages.map((message) => message.id), [messages]);
+    const autoScroll = useConversationAutoScroll({
+      conversationId: conversationId ?? messages[0]?.conversationId ?? null,
+      messageIds,
+      isHistoryLoading,
+    });
+    const containerRef = autoScroll.scrollContainerRef;
     const [scrollTop, setScrollTop] = useState(0);
     const [viewportHeight, setViewportHeight] = useState(480);
     const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
@@ -182,20 +195,29 @@ export const TranscriptView = memo(
     const activeMatchId = matchIds[activeMatchIndex] ?? null;
 
     const scrollToBottom = useCallback(() => {
+      autoScroll.scrollToBottom();
       const node = containerRef.current;
-      if (!node) return;
-      node.scrollTop = node.scrollHeight;
-      setScrollTop(node.scrollTop);
-    }, []);
+      if (node) setScrollTop(node.scrollTop);
+    }, [autoScroll, containerRef]);
 
-    const scrollToMessage = useCallback((messageId: string) => {
-      const node = containerRef.current;
-      if (!node) return;
-      const target = node.querySelector(`[data-message-id="${messageId}"]`);
-      target?.scrollIntoView({ block: "center" });
-    }, []);
+    const scrollToMessage = useCallback(
+      (messageId: string) => {
+        autoScroll.scrollToMessage(messageId);
+        const node = containerRef.current;
+        if (node) setScrollTop(node.scrollTop);
+      },
+      [autoScroll, containerRef],
+    );
 
-    useImperativeHandle(ref, () => ({ scrollToBottom, scrollToMessage }), [scrollToBottom, scrollToMessage]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        scrollToBottom,
+        scrollToMessage,
+        onMessageSent: autoScroll.onMessageSent,
+      }),
+      [autoScroll.onMessageSent, scrollToBottom, scrollToMessage],
+    );
 
     const rows = useMemo(
       () => flattenMessages(visibleMessages, todayLabel, conversationLanguage, agentLanguage),
@@ -207,19 +229,22 @@ export const TranscriptView = memo(
     const visible = rows.slice(window.startIndex, window.endIndex);
 
     useEffect(() => {
-      scrollToBottom();
-    }, [messages.length, scrollToBottom]);
+      const node = containerRef.current;
+      if (!node) return;
+      setViewportHeight(node.clientHeight);
+    }, [containerRef, rows.length]);
 
     useEffect(() => {
       if (activeMatchId) scrollToMessage(activeMatchId);
     }, [activeMatchId, scrollToMessage]);
 
     const handleScroll = useCallback(() => {
+      autoScroll.onScroll();
       const node = containerRef.current;
       if (!node) return;
       setScrollTop(node.scrollTop);
       setViewportHeight(node.clientHeight);
-    }, []);
+    }, [autoScroll, containerRef]);
 
     const addFiles = useCallback((files: FileList | File[]) => {
       const next = [...files].map((file) => createPendingAttachment(file));
@@ -389,6 +414,18 @@ export const TranscriptView = memo(
             </div>
           </div>
         </div>
+
+        {autoScroll.hasNewMessages ? (
+          <div className="flex shrink-0 justify-center px-2 py-1.5">
+            <button
+              type="button"
+              className="agent-desk-btn agent-desk-btn--primary shadow-md"
+              onClick={autoScroll.jumpToLatest}
+            >
+              {newMessagesLabel}
+            </button>
+          </div>
+        ) : null}
 
         {typingLabel ? <TypingIndicator label={typingLabel} /> : null}
       </div>

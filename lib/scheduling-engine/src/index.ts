@@ -47,7 +47,20 @@ export {
   type RecommendationScoreFactors,
 } from "./recommendation-engine/index.js";
 export { BookingDomainService, BookingDomainError } from "./booking-domain/booking-domain-service.js";
-export type { CreateBookingInput, CreateBookingResult, SchedulingBooking } from "./booking-domain/types.js";
+export type {
+  CreateBookingInput,
+  CreateBookingResult,
+  SchedulingBooking,
+  CancelBookingInput,
+  CancelBookingResult,
+  RescheduleBookingInput,
+  RescheduleBookingResult,
+  BookingMutationContext,
+  CheckInBookingResult,
+  MarkNoShowBookingResult,
+  CompleteBookingResult,
+  BookingValidationResult,
+} from "./booking-domain/types.js";
 export {
   BookingEventCollector,
   NoOpBookingEventPublisher,

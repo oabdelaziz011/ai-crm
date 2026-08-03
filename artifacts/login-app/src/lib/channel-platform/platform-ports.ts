@@ -8,7 +8,7 @@ import type {
   ChannelRuntimePort,
   ResolvedCompanyChannel,
 } from "@workspace/channel-platform/client";
-import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
+import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext, RuntimeExecutionRequest } from "@workspace/runtime-integration";
 import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext } from "@/lib/ai-employees/utilities/agent-employee-execution-context";
 import { runWithEmployeeToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
@@ -229,6 +229,26 @@ export function createChannelRuntimePort(
   ctx: RuntimeServiceContext,
   options?: {
     resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+    /** Unified AI runtime entry — preferred over direct coordinator access. */
+    unifiedExecute?: (
+      runtimeCtx: RuntimeServiceContext,
+      input: {
+        companyId: string;
+        conversationId: string;
+        messageText: string;
+        pageContext?: Record<string, unknown>;
+        correlationId?: string;
+        providerConnectionId?: string | null;
+        knowledgeRetrieval?: RuntimeExecutionRequest["knowledgeRetrieval"];
+        executionPolicy?: RuntimeExecutionRequest["executionPolicy"];
+        onStreamChunk?: (chunk: string) => void;
+        abortSignal?: AbortSignal | null;
+      },
+    ) => Promise<{
+      executionId: string;
+      responseContent: string;
+      correlationId: string | null;
+    }>;
   },
 ): ChannelRuntimePort {
   return {
@@ -245,8 +265,27 @@ export function createChannelRuntimePort(
 
       const response = await (async () => {
         const executionContext = readAgentEmployeeExecutionContext(input.runtimeConfig.pageContext);
-        const executeRuntime = () =>
-          services.coordinator.execute(runtimeCtx, {
+        const executeRuntime = async () => {
+          if (options?.unifiedExecute) {
+            const unified = await options.unifiedExecute(runtimeCtx, {
+              companyId: input.companyId,
+              conversationId: input.conversationId,
+              messageText: input.messageText,
+              pageContext: input.runtimeConfig.pageContext,
+              correlationId: input.correlationId,
+              providerConnectionId: input.runtimeConfig.providerConnectionId,
+              knowledgeRetrieval: input.runtimeConfig.knowledgeRetrieval,
+              executionPolicy: input.runtimeConfig.executionPolicy,
+              onStreamChunk: input.onStreamChunk,
+              abortSignal: input.abortSignal,
+            });
+            return {
+              executionId: unified.executionId,
+              responseContent: unified.responseContent,
+              correlationId: unified.correlationId,
+            };
+          }
+          return services.coordinator.execute(runtimeCtx, {
             companyId: input.companyId,
             conversationId: input.conversationId,
             messageText: input.messageText,
@@ -258,6 +297,7 @@ export function createChannelRuntimePort(
             onStreamChunk: input.onStreamChunk,
             abortSignal: input.abortSignal,
           });
+        };
 
         if (!executionContext) {
           return executeRuntime();
@@ -295,6 +335,9 @@ export function createChannelPlatformPortsWithContext(
   },
   options?: {
     resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+    unifiedExecute?: Parameters<typeof createChannelRuntimePort>[2] extends infer O
+      ? O extends { unifiedExecute?: infer U } ? U : never
+      : never;
   },
 ): ChannelPlatformPorts {
   const resolveCompanyAssistantId = deps.supabaseClient
@@ -317,6 +360,7 @@ export function createChannelPlatformPortsWithContext(
     }),
     runtime: createChannelRuntimePort(deps.runtime, ctx.runtime, {
       resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
+      unifiedExecute: options?.unifiedExecute,
     }),
   };
 }

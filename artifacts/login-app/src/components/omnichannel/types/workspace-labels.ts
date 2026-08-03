@@ -178,6 +178,7 @@ export type ConversationViewLabels = {
     bookmarks: string;
     noMatches: string;
   };
+  newMessages: string;
   typingIndicator: {
     customer: string;
     agent: string;

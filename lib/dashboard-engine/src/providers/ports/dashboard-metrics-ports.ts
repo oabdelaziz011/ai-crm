@@ -13,6 +13,9 @@ export type SupportMetricsData = {
   slaCompliancePercent: number;
   averageResponseMinutes: number;
   averageResolutionMinutes: number;
+  ticketsByPriority: Record<string, number>;
+  ticketsByStatus: Record<string, number>;
+  ticketsByAgent: Array<{ agentId: string; agentName: string; count: number }>;
 };
 
 export type AiMetricsData = {

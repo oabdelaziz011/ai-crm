@@ -467,7 +467,9 @@ export function createRuntimeEnginePortsWithContext(
               ? { systemInstructions: formatRetrievalInstructions(input.retrieval.chunks) }
               : {}),
             pageContext: input.pageContext,
-            customer360: customer360 ?? undefined,
+            assembledContext: input.pageContext?.assembledContext,
+            memorySnapshot: input.pageContext?.memorySnapshot,
+            customer360: customer360 ?? input.pageContext?.assembledContext?.customer360 ?? undefined,
           },
           recentMessages: input.recentMessages.map((message) => ({
             role: message.role,

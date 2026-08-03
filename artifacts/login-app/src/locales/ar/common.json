@@ -4445,7 +4445,8 @@
       "pinConversation": "تثبيت المحادثة",
       "starConversation": "تمييز المحادثة",
       "markUnread": "تعليم كغير مقروء",
-      "followConversation": "متابعة المحادثة"
+      "followConversation": "متابعة المحادثة",
+      "newMessages": "رسائل جديدة"
     },
     "sidebar": {
       "tabs": {

@@ -22,7 +22,14 @@ describe("Customer360ContextProvider", () => {
       sales: { opportunities: [] },
       bookings: { upcoming: [], completed: [], cancelled: [] },
       invoices: { unpaid: [], overdue: [], paid: [] },
-      support: { openTickets: [] },
+      support: {
+        openTickets: [],
+        closedTickets: [],
+        lastTicket: null,
+        ticketCount: 0,
+      },
+      leadOrigin: null,
+      appointments: { upcoming: [] },
       timeline: [],
     };
 

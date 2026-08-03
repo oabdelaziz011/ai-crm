@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseCustomerServicePort } from "@workspace/automation-platform";
+import type { TicketReadPort } from "@workspace/ticket-platform";
+import type { LeadReadPort } from "@workspace/lead-platform";
+import type { AppointmentReadPort } from "@workspace/appointment-platform";
 import type {
   Customer360AccessContext,
   Customer360DataPort,
@@ -17,6 +20,9 @@ import type {
 export type CreateSupabaseCustomer360DataPortOptions = {
   resolveActorUserIdForCompany?: (companyId: string) => Promise<string | null>;
   getActorUserId?: () => string | null;
+  ticketReads?: TicketReadPort;
+  leadReads?: LeadReadPort;
+  appointmentReads?: AppointmentReadPort;
 };
 
 function canView(access: Customer360AccessContext, permission: string): boolean {
@@ -120,16 +126,29 @@ export function createSupabaseCustomer360DataPort(
         notes: customer.notes,
       };
 
-      const [previousConversations, bookings, invoices] = await Promise.all([
+      const [previousConversations, bookings, invoices, support, leadOrigin] = await Promise.all([
         canView(access, "customers.view")
           ? fetchPreviousConversations(client, input.companyId, input.customerId, input.conversationId)
           : Promise.resolve([]),
         canView(access, "bookings.view")
-          ? fetchBookings(client, access, input)
+          ? options.appointmentReads
+            ? fetchAppointmentsViaReadPort(options.appointmentReads, access, input)
+            : fetchBookings(client, access, input)
           : Promise.resolve({ upcoming: [], completed: [], cancelled: [] }),
         canView(access, "invoices.view")
           ? fetchInvoices(client, input.companyId, input.customerId)
           : Promise.resolve({ unpaid: [], overdue: [], paid: [] }),
+        canView(access, "tickets.view") && options.ticketReads
+          ? fetchCustomerSupportTickets(options.ticketReads, access, input.companyId, input.customerId)
+          : Promise.resolve({
+              openTickets: [],
+              closedTickets: [],
+              lastTicket: null,
+              ticketCount: 0,
+            }),
+        canView(access, "leads.view") && options.leadReads
+          ? fetchLeadOrigin(options.leadReads, access, input.companyId, input.customerId)
+          : Promise.resolve(null),
       ]);
 
       const currentConversation = input.conversationId
@@ -140,12 +159,132 @@ export function createSupabaseCustomer360DataPort(
         profile,
         previousConversations,
         currentConversation,
-        opportunities: [],
+        opportunities: leadOrigin
+          ? [
+              {
+                id: leadOrigin.leadId,
+                title: leadOrigin.title,
+                pipelineStage: leadOrigin.lifecycleStatus,
+                estimatedValue: null,
+                ownerName: null,
+                status: leadOrigin.lifecycleStatus,
+              },
+            ]
+          : [],
         bookings,
         invoices,
-        support: { openTickets: [] },
+        support,
+        leadOrigin,
       };
     },
+  };
+}
+
+async function fetchLeadOrigin(
+  leadReads: LeadReadPort,
+  access: Customer360AccessContext,
+  companyId: string,
+  customerId: string,
+): Promise<Customer360RawBundle["leadOrigin"]> {
+  const leadContext = {
+    userId: access.actorUserId,
+    companyId,
+    isSuperAdmin: access.isSuperAdmin,
+    hasPermission: access.hasPermission,
+  };
+
+  const { lead } = await leadReads.getLeadByCustomer(leadContext, { companyId, customerId });
+  if (!lead) return null;
+
+  const [activities, history, notes, tags] = await Promise.all([
+    leadReads.listLeadActivities(leadContext, { companyId, leadId: lead.id, limit: 25 }),
+    leadReads.listLeadHistory(leadContext, { companyId, leadId: lead.id, limit: 25 }),
+    leadReads.listLeadNotes(leadContext, { companyId, leadId: lead.id }),
+    leadReads.listLeadTags(leadContext, { companyId, leadId: lead.id }),
+  ]);
+
+  return {
+    leadId: lead.id,
+    title: lead.title,
+    sourceId: lead.sourceId,
+    score: lead.score,
+    lifecycleStatus: lead.lifecycleStatus,
+    convertedAt: lead.convertedAt,
+    pipelineId: lead.pipelineId,
+    stageId: lead.stageId,
+    assignedUserId: lead.assignedUserId,
+    aiSummary: lead.aiSummary,
+    tags: tags.tags.map((tag) => tag.tag),
+    activities: activities.activities.map((activity) => ({
+      id: activity.id,
+      activityType: activity.activityType,
+      summary: activity.summary,
+      createdAt: activity.createdAt,
+    })),
+    history: history.history.map((entry) => ({
+      id: entry.id,
+      fieldName: entry.fieldName,
+      previousValue: entry.previousValue,
+      newValue: entry.newValue,
+      createdAt: entry.createdAt,
+    })),
+    notes: notes.notes.map((note) => ({
+      id: note.id,
+      body: note.body,
+      createdAt: note.createdAt,
+    })),
+  };
+}
+
+async function fetchCustomerSupportTickets(
+  ticketReads: TicketReadPort,
+  access: Customer360AccessContext,
+  companyId: string,
+  customerId: string,
+): Promise<Customer360RawBundle["support"]> {
+  const snapshot = await ticketReads.fetchCustomerSnapshot(
+    {
+      userId: access.actorUserId,
+      companyId,
+      isSuperAdmin: access.isSuperAdmin,
+      hasPermission: access.hasPermission,
+    },
+    { companyId, customerId },
+  );
+  return {
+    openTickets: snapshot.openTickets.map((ticket) => ({
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      priority: ticket.priority,
+      status: ticket.status,
+      slaDueAt: ticket.slaDueAt,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+    })),
+    closedTickets: snapshot.closedTickets.map((ticket) => ({
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      priority: ticket.priority,
+      status: ticket.status,
+      slaDueAt: ticket.slaDueAt,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+    })),
+    lastTicket: snapshot.lastTicket
+      ? {
+          id: snapshot.lastTicket.id,
+          ticketNumber: snapshot.lastTicket.ticketNumber,
+          subject: snapshot.lastTicket.subject,
+          priority: snapshot.lastTicket.priority,
+          status: snapshot.lastTicket.status,
+          slaDueAt: snapshot.lastTicket.slaDueAt,
+          createdAt: snapshot.lastTicket.createdAt,
+          updatedAt: snapshot.lastTicket.updatedAt,
+        }
+      : null,
+    ticketCount: snapshot.ticketCount,
   };
 }
 
@@ -189,6 +328,45 @@ function buildCurrentConversation(
     status: "active",
     latestMessages: recentMessages ?? [],
     sentiment: null,
+  };
+}
+
+async function fetchAppointmentsViaReadPort(
+  appointmentReads: AppointmentReadPort,
+  access: Customer360AccessContext,
+  input: Customer360FetchInput,
+): Promise<Customer360RawBundle["bookings"]> {
+  const readContext = {
+    userId: access.actorUserId,
+    companyId: input.companyId,
+    isSuperAdmin: access.isSuperAdmin,
+    hasPermission: access.hasPermission,
+  };
+
+  const { upcoming, completed, cancelled } = await appointmentReads.listByCustomer(readContext, {
+    companyId: input.companyId,
+    customerId: input.customerId,
+    limit: 50,
+  });
+
+  const mapAppointment = (row: {
+    id: string;
+    serviceId: string;
+    status: string;
+    startAt: string;
+    source: string;
+  }): Customer360BookingDto => ({
+    id: row.id,
+    service: row.serviceId,
+    status: row.status,
+    scheduledAt: row.startAt,
+    source: "scheduling" as const,
+  });
+
+  return {
+    upcoming: upcoming.map(mapAppointment),
+    completed: completed.map(mapAppointment),
+    cancelled: cancelled.map(mapAppointment),
   };
 }
 

@@ -29,6 +29,14 @@ export type ConversationInsightProviderInput = {
   messages: UnifiedMessage[];
   lifecycleSnapshot?: LifecycleSnapshot | null;
   customerContext?: OmnichannelCustomerContext | null;
+  conversationTickets?: Array<{
+    id: string;
+    ticketNumber: string;
+    subject: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   aiAssist: OmnichannelAiAssistModel;
   agentsById?: ReadonlyMap<string, { id: string; name: string }>;
   profilesByUserId?: ReadonlyMap<string, Profile>;

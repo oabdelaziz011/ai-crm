@@ -11,7 +11,7 @@ import {
   buildExecutiveDashboardViewModel,
   type DashboardTimeRange,
 } from "@/lib/dashboard/selectors/executive-dashboard-selectors";
-import { fetchDashboardSnapshot } from "@/lib/dashboard/services/dashboard-service";
+import { fetchExecutiveDashboardViaApplicationLayer } from "@/lib/application-layer/fetch-executive-dashboard";
 import { useDashboardRealtime } from "@/lib/dashboard/hooks/use-dashboard-realtime";
 
 export function useDashboardAccess(): DashboardAccess | null {
@@ -39,14 +39,19 @@ export function useDashboardSnapshot(timeRange: DashboardTimeRange = "30d") {
     || access?.hasPermission("reports.view");
 
   const query = useQuery({
-    queryKey: dashboardSnapshotKey(companyId ?? "", timeRange, "all"),
+    queryKey: dashboardSnapshotKey(companyId ?? "", timeRange, "application-layer"),
     enabled: Boolean(access && companyId && canView),
     staleTime: DASHBOARD_SNAPSHOT_STALE_MS,
     queryFn: () =>
-      fetchDashboardSnapshot(access!, {
-        companyId: companyId!,
-        timeRange,
-      }),
+      fetchExecutiveDashboardViaApplicationLayer(
+        {
+          companyId: companyId!,
+          actorUserId: access!.userId,
+          isSuperAdmin: access!.isSuperAdmin,
+          hasPermission: access!.hasPermission,
+        },
+        { companyId: companyId!, timeRange },
+      ),
   });
 
   const viewModel = useMemo(
@@ -72,7 +77,7 @@ export function useDashboardSnapshot(timeRange: DashboardTimeRange = "30d") {
 export function useRefreshDashboardSnapshot() {
   const queryClient = useQueryClient();
   return (companyId: string, timeRange: DashboardTimeRange) =>
-    queryClient.invalidateQueries({ queryKey: dashboardSnapshotKey(companyId, timeRange, "all") });
+    queryClient.invalidateQueries({ queryKey: dashboardSnapshotKey(companyId, timeRange, "application-layer") });
 }
 
 export type { DashboardTimeRange };

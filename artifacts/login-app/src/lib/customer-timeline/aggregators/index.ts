@@ -8,6 +8,7 @@ import { NotificationsTimelineAggregator } from "./notifications-timeline-aggreg
 import { EmailDeliveryTimelineAggregator } from "./email-delivery-timeline-aggregator";
 import { WhatsAppDeliveryTimelineAggregator } from "./whatsapp-delivery-timeline-aggregator";
 import { AutomationExecutionsTimelineAggregator } from "./automation-executions-timeline-aggregator";
+import { TicketsTimelineAggregator } from "./tickets-timeline-aggregator";
 
 let bootstrapped = false;
 
@@ -25,6 +26,7 @@ export function ensureTimelineAggregators(): void {
   timelineAggregator.registerSource(new EmailDeliveryTimelineAggregator());
   timelineAggregator.registerSource(new WhatsAppDeliveryTimelineAggregator());
   timelineAggregator.registerSource(new AutomationExecutionsTimelineAggregator());
+  timelineAggregator.registerSource(new TicketsTimelineAggregator());
 
   bootstrapped = true;
 }

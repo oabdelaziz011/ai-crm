@@ -54,6 +54,14 @@ type BuildHistoryInput = {
   messages: UnifiedMessage[];
   lifecycleSnapshot?: LifecycleSnapshot | null;
   customerContext?: OmnichannelCustomerContext | null;
+  conversationTickets?: Array<{
+    id: string;
+    ticketNumber: string;
+    subject: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   aiAssist: OmnichannelAiAssistModel;
   agentsById?: ReadonlyMap<string, { id: string; name: string }>;
   profilesByUserId?: ReadonlyMap<string, Profile>;
@@ -635,7 +643,28 @@ function eventsFromCrmContext(input: BuildHistoryInput): ConversationHistoryEven
     );
   }
 
-  if ((ctx?.openTickets ?? 0) > 0) {
+  if ((input.conversationTickets ?? []).length > 0) {
+    for (const ticket of input.conversationTickets ?? []) {
+      const isClosed = ticket.status === "closed" || ticket.status === "resolved";
+      events.push(
+        makeEvent(
+          {
+            id: `ticket-${ticket.id}`,
+            kind: isClosed ? "ticket_resolved" : "ticket_created",
+            timestamp: isClosed ? ticket.updatedAt : ticket.createdAt,
+            actorId: null,
+            actorLabel: null,
+            actorType: "system",
+            action: isClosed ? input.labels.ticketClosed : input.labels.ticketCreated,
+            target: ticket.ticketNumber,
+            summary: `${ticket.ticketNumber} · ${ticket.subject}`,
+            journeyEligible: true,
+          },
+          input,
+        ),
+      );
+    }
+  } else if ((ctx?.openTickets ?? 0) > 0) {
     events.push(
       makeEvent(
         {

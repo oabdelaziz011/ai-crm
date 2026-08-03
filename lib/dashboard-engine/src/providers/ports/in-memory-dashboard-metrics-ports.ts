@@ -32,6 +32,9 @@ const EMPTY_SUPPORT: SupportMetricsData = {
   slaCompliancePercent: 0,
   averageResponseMinutes: 0,
   averageResolutionMinutes: 0,
+  ticketsByPriority: {},
+  ticketsByStatus: {},
+  ticketsByAgent: [],
 };
 
 const EMPTY_AI: AiMetricsData = {
@@ -107,6 +110,9 @@ export const demoDashboardMetricsSeed: InMemoryDashboardMetricsSeed = {
       slaCompliancePercent: 92.5,
       averageResponseMinutes: 8.4,
       averageResolutionMinutes: 42.1,
+      ticketsByPriority: { normal: 10, high: 4 },
+      ticketsByStatus: { open: 14 },
+      ticketsByAgent: [{ agentId: "agent-1", agentName: "Agent One", count: 14 }],
     },
   },
   ai: {

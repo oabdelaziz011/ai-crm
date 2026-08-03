@@ -24,7 +24,12 @@ describe("Customer360Aggregator", () => {
           opportunities: [],
           bookings: { upcoming: [], completed: [], cancelled: [] },
           invoices: { unpaid: [], overdue: [], paid: [] },
-          support: { openTickets: [] },
+          support: {
+            openTickets: [],
+            closedTickets: [],
+            lastTicket: null,
+            ticketCount: 0,
+          },
         };
       },
     };

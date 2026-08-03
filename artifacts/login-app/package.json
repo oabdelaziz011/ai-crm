@@ -141,6 +141,7 @@
     "@workspace/ai-provider-layer": "workspace:*",
     "@workspace/ai-tool-router": "workspace:*",
     "@workspace/ai-workflow-platform": "workspace:*",
+    "@workspace/application-layer": "workspace:*",
     "@workspace/automation-platform": "workspace:*",
     "@workspace/channel-platform": "workspace:*",
     "@workspace/channel-registry": "workspace:*",

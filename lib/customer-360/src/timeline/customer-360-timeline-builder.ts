@@ -15,6 +15,7 @@ export type Customer360TimelineSource = {
   invoices?: Customer360InvoiceDto[];
   opportunities?: Customer360OpportunityDto[];
   supportTickets?: Customer360SupportTicketDto[];
+  leadOrigin?: import("../dto/customer-360-dto.js").Customer360LeadOriginDto | null;
 };
 
 export class Customer360TimelineBuilder {
@@ -83,12 +84,35 @@ export class Customer360TimelineBuilder {
     for (const ticket of source.supportTickets ?? []) {
       entries.push({
         id: `support:${ticket.id}`,
-        occurredAt: ticket.slaDueAt ?? new Date().toISOString(),
+        occurredAt: ticket.updatedAt ?? ticket.createdAt ?? ticket.slaDueAt ?? new Date().toISOString(),
         category: "support",
-        title: ticket.subject,
+        title: ticket.ticketNumber ? `${ticket.ticketNumber} · ${ticket.subject}` : ticket.subject,
         summary: `${ticket.status}${ticket.priority ? ` · ${ticket.priority}` : ""}`,
-        metadata: { ticketId: ticket.id },
+        metadata: { ticketId: ticket.id, ticketNumber: ticket.ticketNumber },
       });
+    }
+
+    if (source.leadOrigin) {
+      for (const activity of source.leadOrigin.activities) {
+        entries.push({
+          id: `lead-activity:${activity.id}`,
+          occurredAt: activity.createdAt,
+          category: "activity",
+          title: `Lead ${activity.activityType}`,
+          summary: activity.summary,
+          metadata: { leadId: source.leadOrigin.leadId, activityType: activity.activityType },
+        });
+      }
+      if (source.leadOrigin.convertedAt) {
+        entries.push({
+          id: `lead-converted:${source.leadOrigin.leadId}`,
+          occurredAt: source.leadOrigin.convertedAt,
+          category: "sales",
+          title: "Lead converted to customer",
+          summary: source.leadOrigin.title,
+          metadata: { leadId: source.leadOrigin.leadId },
+        });
+      }
     }
 
     return entries.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));

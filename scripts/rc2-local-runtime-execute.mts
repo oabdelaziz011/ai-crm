@@ -21,6 +21,7 @@ import { createRuntimeIntegrationServices, NoopRuntimeTelemetryPort } from "../l
 import { createRuntimeEnginePortsWithContext } from "../lib/runtime-integration/src/factory/runtime-engine-ports.ts";
 import { createKnowledgeRuntimeProvider } from "../lib/knowledge-runtime/src/index.ts";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "../lib/customer-360/src/index.ts";
+import { createTicketPlatformServices } from "../lib/ticket-platform/src/index.ts";
 import { createPlatformAIProviderServices } from "../lib/platform-ai-provider/src/index.ts";
 import { createPlatformRuntimeConfigPort } from "../artifacts/api-server/src/platform/platform-runtime-port.ts";
 import { createWebhookToolRouterIntegrations } from "../artifacts/api-server/src/platform/create-webhook-tool-router-integrations.ts";
@@ -86,6 +87,7 @@ const runtimePorts = createRuntimeEnginePortsWithContext(
     customer360Loader: createCustomer360Loader(
       createSupabaseCustomer360DataPort(client, {
         resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
+        ticketReads: createTicketPlatformServices(client).reads,
       }),
     ),
     knowledgeRuntimeProvider,

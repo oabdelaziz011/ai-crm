@@ -1,4 +1,5 @@
 import type { Customer360Dto } from "../dto/customer-360-dto.js";
+import type { LeadReadPort } from "@workspace/lead-platform";
 
 export type Customer360AccessContext = {
   companyId: string;
@@ -23,6 +24,7 @@ export type Customer360RawBundle = {
   bookings: Customer360Dto["bookings"];
   invoices: Customer360Dto["invoices"];
   support: Customer360Dto["support"];
+  leadOrigin?: Customer360Dto["leadOrigin"];
 };
 
 export interface Customer360DataPort {

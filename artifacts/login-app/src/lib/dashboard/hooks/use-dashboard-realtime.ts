@@ -2,12 +2,9 @@ import { useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createDashboardRealtimeEngine } from "@workspace/dashboard-engine";
 import { createSupabaseDashboardRealtimePort } from "@/lib/dashboard/adapters/supabase-dashboard-realtime-port";
-import {
-  createDashboardSnapshotRefreshCoordinator,
-  resolveAllowedDashboardProviderIds,
-} from "@/lib/dashboard/services/dashboard-snapshot-coordinator";
 import type { DashboardTimeRange } from "@/lib/dashboard/selectors/executive-dashboard-selectors";
 import { useDashboardAccess } from "@/lib/dashboard/hooks/use-dashboard-snapshot";
+import { dashboardSnapshotKey } from "@/lib/dashboard/cache/query-keys";
 
 const dashboardRealtimePort = createSupabaseDashboardRealtimePort();
 
@@ -27,12 +24,11 @@ export function useDashboardRealtime(
 
   const coordinator = useMemo(() => {
     if (!access || !companyId) return null;
-    return createDashboardSnapshotRefreshCoordinator({
-      queryClient,
-      access,
-      companyId,
-      timeRange,
-    });
+    return () => {
+      void queryClient.invalidateQueries({
+        queryKey: dashboardSnapshotKey(companyId, timeRange, "application-layer"),
+      });
+    };
   }, [access, companyId, queryClient, timeRange]);
 
   useEffect(() => {
@@ -56,7 +52,7 @@ export function useDashboardRealtime(
       .subscribe({
         companyId,
         access,
-        allowedProviderIds: resolveAllowedDashboardProviderIds(access),
+        allowedProviderIds: ["executive-analytics", "finance", "bookings", "invoices", "crm"],
         onRefresh: coordinator,
       })
       .then((active) => {

@@ -170,7 +170,7 @@ export const ConversationPane = memo(function ConversationPane({
         extra: { ok },
       });
       if (ok !== false) {
-        requestAnimationFrame(() => transcriptRef.current?.scrollToBottom());
+        transcriptRef.current?.onMessageSent();
       }
       return ok !== false;
     },
@@ -306,6 +306,8 @@ export const ConversationPane = memo(function ConversationPane({
         ) : (
           <TranscriptView
             ref={transcriptRef}
+            conversationId={conversation.id}
+            newMessagesLabel={labels.newMessages}
             messages={customerMessages}
             channel={conversation.channel}
             emptyLabel={labels.emptyTranscript}

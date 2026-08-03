@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { createAIWorkflowPlatformServices } from "@workspace/ai-workflow-platform";
 import { useAIExecutionServices } from "@/lib/ai-execution-engine";
 import { useRetrievalServices } from "@/lib/retrieval-engine";
+import { useRuntimeIntegrationServices } from "@/lib/runtime-integration";
+import { useUnifiedAIRuntime } from "@/lib/application-layer/use-unified-ai-runtime";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { createAIWorkflowKnowledgePortAdapter } from "./knowledge-port-adapter";
@@ -11,17 +13,15 @@ export function useAIWorkflowPlatformServices() {
   const { hasPermission } = usePermissions();
   const { services: executionServices } = useAIExecutionServices();
   const { services: retrievalServices } = useRetrievalServices();
+  const { services: runtimeServices } = useRuntimeIntegrationServices();
+  const { getInternalRuntime } = useUnifiedAIRuntime(runtimeServices, executionServices);
 
   const services = useMemo(() => {
-    const runtime = executionServices.enterpriseRuntime;
-    if (!runtime) {
-      throw new Error("Enterprise AI Runtime is required for AI workflow nodes.");
-    }
     return createAIWorkflowPlatformServices({
-      runtime,
+      runtime: getInternalRuntime(),
       knowledge: createAIWorkflowKnowledgePortAdapter(retrievalServices.knowledge),
     });
-  }, [executionServices.enterpriseRuntime, retrievalServices.knowledge]);
+  }, [getInternalRuntime, retrievalServices.knowledge]);
 
   const context = useMemo(
     () => ({

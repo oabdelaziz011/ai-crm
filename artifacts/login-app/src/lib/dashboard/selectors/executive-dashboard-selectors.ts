@@ -210,14 +210,18 @@ function resolveKpiState(
 }
 
 const KPI_DEFINITIONS = [
+  { id: "revenueToday", metricKey: "finance.revenue.today", titleKey: "executiveDashboard.kpi.revenueToday", icon: "DollarSign", providerId: "finance" },
   { id: "revenue", metricKey: "finance.revenue", titleKey: "executiveDashboard.kpi.revenue", icon: "DollarSign", providerId: "finance" },
+  { id: "outstanding", metricKey: "finance.outstanding", titleKey: "executiveDashboard.kpi.outstanding", icon: "FileText", providerId: "finance" },
+  { id: "collectedToday", metricKey: "finance.collected_today", titleKey: "executiveDashboard.kpi.collectedToday", icon: "DollarSign", providerId: "finance" },
+  { id: "bookingsToday", metricKey: "bookings.today", titleKey: "executiveDashboard.kpi.bookingsToday", icon: "CalendarDays", providerId: "bookings" },
+  { id: "completedOps", metricKey: "operations.completed", titleKey: "executiveDashboard.kpi.completedOps", icon: "CalendarDays", providerId: "bookings" },
+  { id: "utilization", metricKey: "operations.utilization", titleKey: "executiveDashboard.kpi.utilization", icon: "TrendingUp", providerId: "bookings" },
   { id: "customers", metricKey: "crm.customers.total", titleKey: "executiveDashboard.kpi.customers", icon: "Users", providerId: "crm" },
-  { id: "openTickets", metricKey: "support.tickets.open", titleKey: "executiveDashboard.kpi.openTickets", icon: "LifeBuoy", providerId: "support" },
-  { id: "pipeline", metricKey: "crm.pipeline.value", titleKey: "executiveDashboard.kpi.pipeline", icon: "TrendingUp", providerId: "crm" },
-  { id: "aiConversations", metricKey: "ai.conversations", titleKey: "executiveDashboard.kpi.aiConversations", icon: "Bot", providerId: "ai" },
-  { id: "automationRuns", metricKey: "automation.runs", titleKey: "executiveDashboard.kpi.automationRuns", icon: "Workflow", providerId: "automation" },
-  { id: "bookings", metricKey: "bookings.total", titleKey: "executiveDashboard.kpi.bookings", icon: "CalendarDays", providerId: "bookings" },
-  { id: "invoices", metricKey: "invoices.outstanding", titleKey: "executiveDashboard.kpi.invoices", icon: "FileText", providerId: "invoices" },
+  { id: "newCustomers", metricKey: "customers.new", titleKey: "executiveDashboard.kpi.newCustomers", icon: "Users", providerId: "crm" },
+  { id: "conversionRate", metricKey: "customers.conversion_rate", titleKey: "executiveDashboard.kpi.conversionRate", icon: "TrendingUp", providerId: "crm" },
+  { id: "pendingPayments", metricKey: "payments.pending", titleKey: "executiveDashboard.kpi.pendingPayments", icon: "FileText", providerId: "finance" },
+  { id: "noShowRate", metricKey: "operations.no_show_rate", titleKey: "executiveDashboard.kpi.noShowRate", icon: "CalendarDays", providerId: "bookings" },
 ] as const;
 
 const ANALYTICS_DEFINITIONS = [

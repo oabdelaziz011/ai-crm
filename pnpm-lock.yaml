@@ -207,6 +207,9 @@ importers:
       '@workspace/ai-workflow-platform':
         specifier: workspace:*
         version: link:../../lib/ai-workflow-platform
+      '@workspace/application-layer':
+        specifier: workspace:*
+        version: link:../../lib/application-layer
       '@workspace/appointment-platform':
         specifier: workspace:*
         version: link:../../lib/appointment-platform

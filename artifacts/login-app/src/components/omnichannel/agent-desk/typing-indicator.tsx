@@ -6,7 +6,7 @@ type TypingIndicatorProps = {
 
 export const TypingIndicator = memo(function TypingIndicator({ label }: TypingIndicatorProps) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--ad-text-muted)]" aria-live="polite">
+    <div className="flex shrink-0 items-center gap-2 px-3 py-2 text-[11px] text-[var(--ad-text-muted)]" aria-live="polite">
       <span dir="auto">{label}</span>
       <span className="inline-flex items-center gap-0.5" aria-hidden>
         {[0, 1, 2].map((index) => (

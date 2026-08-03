@@ -1,14 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
-import { getNotificationServices, notificationsUnreadKey } from "@/lib/notifications";
+import { notificationsUnreadKey } from "@/lib/notifications/cache/notification-query-keys";
+import { fetchNotificationsViaApplicationLayer } from "@/lib/application-layer/notification-application-bridge";
+import { useNotificationPortContext } from "@/hooks/notifications/use-notification-port-context";
 
 export function useUnreadNotifications(companyId: string | null) {
-  const { notifications } = getNotificationServices();
+  const portContext = useNotificationPortContext();
 
   return useQuery({
     queryKey: notificationsUnreadKey(companyId),
-    enabled: Boolean(companyId),
+    enabled: Boolean(companyId && portContext),
     staleTime: 15_000,
-    queryFn: () => notifications.getUnreadCount(companyId!),
+    queryFn: async () => {
+      const projection = await fetchNotificationsViaApplicationLayer(portContext!, {
+        page: 1,
+        pageSize: 1,
+      });
+      return projection.unreadCount;
+    },
   });
 }
 

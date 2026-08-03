@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
-import { CustomerModal } from "@/components/dashboard/customer-modal";
 import { AgentWorkspace } from "@/components/omnichannel/workspace-v2";
 import type { ComposePanelHandle } from "@/components/omnichannel/agent-desk/compose-panel";
 import type { TeamInboxSendPayload } from "@/hooks/conversations/use-team-inbox-reply";
@@ -11,6 +10,7 @@ import { getAiAssistantLabels } from "@/lib/omnichannel/presentation/ai-assistan
 import { EscalationSheet } from "@/components/omnichannel/escalation-sheet";
 import { AssignmentSheet } from "@/components/omnichannel/assignment-sheet";
 import { LinkCustomerDialog } from "@/components/omnichannel/link-customer-dialog";
+import { ensureLeadForConversation } from "@/lib/identity-platform";
 import { ConversationPermissionState } from "@/components/omnichannel/conversation-states";
 import { useToast } from "@/hooks/use-toast";
 import { useOmnichannelConsole, useOmnichannelCustomerContext } from "@/hooks/omnichannel/use-omnichannel-console";
@@ -34,7 +34,6 @@ import {
   mergeInternalNotesForDisplay,
   useInternalNotesManagement,
 } from "@/hooks/conversations/use-internal-notes-management";
-import type { Customer } from "@/lib/types";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
 import {
   countWorkspaceNav,
@@ -127,7 +126,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
   const [selectedId, setSelectedId] = useState<string | null>(initialSession.selectedId);
   const [escalationOpen, setEscalationOpen] = useState(false);
   const [assignmentOpen, setAssignmentOpen] = useState(false);
-  const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
+
   const [linkCustomerOpen, setLinkCustomerOpen] = useState(false);
   const [pendingRetry, setPendingRetry] = useState<TeamInboxSendPayload | null>(null);
   const [aiAssistOpen, setAiAssistOpen] = useState(false);
@@ -483,19 +482,35 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
     [notesManagement, selectedRecord, user, toast, t],
   );
 
-  const handleCustomerCreated = useCallback(
-    (created: Customer) => {
-      if (!selectedRecord) return;
-      void lifecycle.linkCustomer.mutateAsync({ record: selectedRecord, customerId: created.id, customerName: created.name });
-    },
-    [lifecycle.linkCustomer, selectedRecord],
-  );
-
   const handleOpenAssignment = useCallback(() => {
     setAssignmentOpen(true);
   }, []);
 
   const prefilledPhone = typeof selectedRecord?.metadata?.phone === "string" ? selectedRecord.metadata.phone : null;
+
+  const handleCreateLead = useCallback(async () => {
+    if (!selectedRecord || !profile?.company_id || !user?.id) return;
+    try {
+      const identity = await ensureLeadForConversation({
+        companyId: profile.company_id,
+        actorUserId: user.id,
+        conversationId: selectedRecord.id,
+        title: selectedRecord.displayName || selectedRecord.lastMessagePreview || "Conversation lead",
+        contactName: selectedRecord.displayName ?? undefined,
+        phone: prefilledPhone,
+      });
+      toast({
+        title: identity.kind === "lead" ? "Lead created" : "Identity linked",
+        description: identity.displayName ?? undefined,
+      });
+    } catch (error) {
+      toast({
+        title: "Lead creation failed",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [prefilledPhone, profile?.company_id, selectedRecord, toast, user?.id]);
 
   useOmnichannelKeyboardShortcuts({
     enabled: consoleState.canView,
@@ -679,7 +694,9 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
           onReturnConversation: handleReturnEscalation,
           onCancelEscalation: handleCancelEscalation,
           onOpenAiSection: () => setAiAssistOpen(true),
-          onCreateCustomer: () => setCreateCustomerOpen(true),
+          onCreateCustomer: () => {
+            void handleCreateLead();
+          },
           onLinkCustomer: () => setLinkCustomerOpen(true),
         }}
         customerContext={customerContext.data ?? null}
@@ -750,13 +767,6 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
           if (!selectedRecord) return;
           void lifecycle.linkCustomer.mutateAsync({ record: selectedRecord, customerId, customerName });
         }}
-      />
-
-      <CustomerModal
-        open={createCustomerOpen}
-        onClose={() => setCreateCustomerOpen(false)}
-        defaultPhone={prefilledPhone}
-        onCreated={handleCustomerCreated}
       />
     </>
   );

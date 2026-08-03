@@ -183,6 +183,7 @@
 
 .agent-workspace .ws-conversation-pane {
   background: var(--ws-bg);
+  min-height: 0;
 }
 
 .agent-workspace .ws-conversation-pane .agent-desk__grid-bg {

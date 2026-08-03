@@ -131,7 +131,7 @@ export const ActiveSession = memo(function ActiveSession({
       experience.notifyAgentTyping(false);
       const ok = await onSend(payload);
       if (ok !== false) {
-        requestAnimationFrame(() => transcriptRef.current?.scrollToBottom());
+        transcriptRef.current?.onMessageSent();
       }
       return ok !== false;
     },
@@ -232,6 +232,8 @@ export const ActiveSession = memo(function ActiveSession({
         ) : (
           <TranscriptView
             ref={transcriptRef}
+            conversationId={conversation.id}
+            newMessagesLabel={labels.newMessages}
             messages={customerMessages}
             channel={conversation.channel}
             emptyLabel={labels.emptyTranscript}

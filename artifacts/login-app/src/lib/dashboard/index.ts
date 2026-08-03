@@ -1,5 +1,3 @@
-export * from "@/lib/dashboard/services/dashboard-service";
-export * from "@/lib/dashboard/services/dashboard-snapshot-coordinator";
 export * from "@/lib/dashboard/hooks/use-dashboard-snapshot";
 export * from "@/lib/dashboard/hooks/use-dashboard-realtime";
 export * from "@/lib/dashboard/cache/invalidate-dashboard-queries";

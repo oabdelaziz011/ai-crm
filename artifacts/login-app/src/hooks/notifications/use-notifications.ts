@@ -1,15 +1,19 @@
 import { useEffect } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import {
-  getNotificationServices,
-  notificationsInfiniteKey,
-  notificationToLegacyItem,
-} from "@/lib/notifications";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NotificationListFilter } from "@/lib/notifications/types";
 import type { NotificationItem } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
+import {
+  notificationsInfiniteKey,
+  notificationsUnreadKey,
+} from "@/lib/notifications/cache/notification-query-keys";
 import { invalidateNotificationQueries } from "@/lib/notifications/cache/invalidate-notification-queries";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  fetchNotificationsViaApplicationLayer,
+  mapProjectionItemToLegacy,
+  mapProjectionItemToNotification,
+} from "@/lib/application-layer/notification-application-bridge";
+import { useNotificationPortContext } from "@/hooks/notifications/use-notification-port-context";
 
 const PAGE_SIZE = 12;
 
@@ -57,15 +61,25 @@ export function useNotificationsInfinite(
   companyId: string | null,
   filter: NotificationListFilter = {},
 ) {
-  const { notifications } = getNotificationServices();
+  const portContext = useNotificationPortContext();
 
   return useInfiniteQuery({
     queryKey: notificationsInfiniteKey(companyId, filter),
-    enabled: Boolean(companyId),
+    enabled: Boolean(companyId && portContext),
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
-      const page = await notifications.list(companyId!, pageParam, filter, PAGE_SIZE);
-      return page;
+      const projection = await fetchNotificationsViaApplicationLayer(portContext!, {
+        ...filter,
+        page: pageParam,
+        pageSize: PAGE_SIZE,
+      });
+      return {
+        items: projection.notifications.map((item) => mapProjectionItemToNotification(item, companyId!)),
+        total: projection.total,
+        page: projection.page,
+        pageSize: projection.pageSize,
+        hasMore: projection.hasMore,
+      };
     },
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
   });
@@ -73,17 +87,21 @@ export function useNotificationsInfinite(
 
 /** Backward-compatible paginated hook for legacy consumers. */
 export function useNotificationsPage(companyId: string | null, page: number, filter?: NotificationListFilter) {
-  const { notifications } = getNotificationServices();
+  const portContext = useNotificationPortContext();
 
   return useQuery({
     queryKey: [...notificationsInfiniteKey(companyId, filter ?? {}), "page", page],
-    enabled: Boolean(companyId),
+    enabled: Boolean(companyId && portContext),
     queryFn: async (): Promise<{ items: NotificationItem[]; total: number; pageSize: number }> => {
-      const result = await notifications.list(companyId!, page, filter, 8);
+      const projection = await fetchNotificationsViaApplicationLayer(portContext!, {
+        ...(filter ?? {}),
+        page,
+        pageSize: 8,
+      });
       return {
-        items: result.items.map(notificationToLegacyItem) as NotificationItem[],
-        total: result.total,
-        pageSize: result.pageSize,
+        items: projection.notifications.map(mapProjectionItemToLegacy) as NotificationItem[],
+        total: projection.total,
+        pageSize: projection.pageSize,
       };
     },
   });
@@ -97,3 +115,5 @@ export function useNotificationsRealtime(companyId: string | null) {
     return retainNotificationRealtime(companyId, () => invalidateNotificationQueries(qc, companyId));
   }, [companyId, qc]);
 }
+
+export { notificationsUnreadKey };

@@ -1,13 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getNotificationServices,
   invalidateNotificationQueries,
   notificationsUnreadKey,
 } from "@/lib/notifications";
+import {
+  archiveNotificationViaApplicationLayer,
+  markAllNotificationsReadViaApplicationLayer,
+  markNotificationReadViaApplicationLayer,
+  markNotificationUnreadViaPorts,
+} from "@/lib/application-layer/notification-application-bridge";
+import { useNotificationPortContext } from "@/hooks/notifications/use-notification-port-context";
 
 export function useNotificationActions(companyId: string | null) {
   const qc = useQueryClient();
-  const { notifications } = getNotificationServices();
+  const portContext = useNotificationPortContext();
 
   const invalidate = () => invalidateNotificationQueries(qc, companyId);
 
@@ -18,36 +24,52 @@ export function useNotificationActions(companyId: string | null) {
   };
 
   const markRead = useMutation({
-    mutationFn: (id: string) => notifications.markRead(companyId!, id),
-    onMutate: async (id) => {
+    mutationFn: (id: string) => {
+      if (!portContext) throw new Error("Not authenticated");
+      return markNotificationReadViaApplicationLayer(portContext, id);
+    },
+    onMutate: async () => {
       optimisticUnreadDelta(-1);
-      return { id };
     },
     onError: () => optimisticUnreadDelta(1),
     onSettled: invalidate,
   });
 
   const markUnread = useMutation({
-    mutationFn: (id: string) => notifications.markUnread(companyId!, id),
+    mutationFn: (id: string) => {
+      if (!portContext) throw new Error("Not authenticated");
+      return markNotificationUnreadViaPorts(portContext, id);
+    },
     onMutate: () => optimisticUnreadDelta(1),
     onError: () => optimisticUnreadDelta(-1),
     onSettled: invalidate,
   });
 
   const markAllRead = useMutation({
-    mutationFn: () => notifications.markAllRead(companyId!),
+    mutationFn: () => {
+      if (!portContext) throw new Error("Not authenticated");
+      return markAllNotificationsReadViaApplicationLayer(portContext);
+    },
     onMutate: () => qc.setQueryData(notificationsUnreadKey(companyId), 0),
     onSettled: invalidate,
   });
 
   const markManyRead = useMutation({
-    mutationFn: (ids: string[]) => notifications.markManyRead(companyId!, ids),
+    mutationFn: async (ids: string[]) => {
+      if (!portContext) throw new Error("Not authenticated");
+      for (const id of ids) {
+        await markNotificationReadViaApplicationLayer(portContext, id);
+      }
+    },
     onMutate: (ids) => optimisticUnreadDelta(-ids.length),
     onSettled: invalidate,
   });
 
   const archive = useMutation({
-    mutationFn: (id: string) => notifications.archive(companyId!, id),
+    mutationFn: (id: string) => {
+      if (!portContext) throw new Error("Not authenticated");
+      return archiveNotificationViaApplicationLayer(portContext, id);
+    },
     onSettled: invalidate,
   });
 

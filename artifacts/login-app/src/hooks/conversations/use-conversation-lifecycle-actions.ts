@@ -44,6 +44,12 @@ import {
 
 } from "@/lib/conversation-lifecycle/adapters/backend-action-executor";
 
+import {
+  buildHandoffServiceContext,
+  getLoginAppHandoffPlatformServices,
+} from "@/lib/human-handoff-platform/handoff-read-port-adapter";
+import { executeHandoffLifecycleBridge } from "@/lib/human-handoff-platform/handoff-lifecycle-bridge";
+
 import { conversationMessagesQueryKey } from "@/hooks/conversations/use-conversation-messages";
 
 import { invalidateOmnichannelQueries } from "@/lib/omnichannel/cache/invalidate-omnichannel-queries";
@@ -228,6 +234,29 @@ export function useConversationLifecycleActions(companyId: string | null) {
         metadata: result.metadata,
 
       });
+
+      if (companyId) {
+        const handoffPlatform = getLoginAppHandoffPlatformServices();
+        await executeHandoffLifecycleBridge(
+          handoffPlatform,
+          buildHandoffServiceContext({
+            companyId,
+            actorUserId: context.userId,
+            isSuperAdmin: context.isSuperAdmin,
+            hasPermission: context.hasPermission,
+          }),
+          {
+            action: input.action,
+            companyId,
+            conversationId: input.record.id,
+            actorUserId: context.userId,
+            assigneeUserId: result.assignedUserId ?? input.payload.assignment?.targetId ?? null,
+            queueId: input.payload.queueId ?? null,
+            reason: input.payload.escalation?.reason ?? input.payload.assignment?.targetLabel,
+            aiAssistantId: input.record.ai_assistant_id,
+          },
+        );
+      }
 
 
 

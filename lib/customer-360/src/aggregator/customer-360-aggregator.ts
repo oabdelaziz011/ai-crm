@@ -61,13 +61,26 @@ export class Customer360Aggregator {
       bookings: bundle.bookings,
       invoices: bundle.invoices,
       support: bundle.support,
+      leadOrigin: bundle.leadOrigin ?? null,
+      appointments: {
+        upcoming: bundle.bookings.upcoming.map((booking) => ({
+          id: booking.id,
+          scheduledAt: booking.scheduledAt,
+          status: booking.status,
+          serviceId: booking.service,
+        })),
+      },
       timeline: this.timelineBuilder.build({
         conversations: bundle.previousConversations,
         currentConversation: bundle.currentConversation,
         bookings: allBookings,
         invoices: allInvoices,
         opportunities: bundle.opportunities,
-        supportTickets: bundle.support.openTickets,
+        supportTickets: [
+          ...bundle.support.openTickets,
+          ...bundle.support.closedTickets,
+        ],
+        leadOrigin: bundle.leadOrigin ?? null,
       }),
     };
 

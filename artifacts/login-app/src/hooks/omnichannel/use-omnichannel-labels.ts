@@ -471,6 +471,7 @@ export function useConversationViewLabels() {
         bookmarks: t("omnichannel.experience.bookmarks"),
         noMatches: t("omnichannel.experience.noMatches"),
       },
+      newMessages: t("omnichannel.experience.newMessages"),
       typingIndicator: {
         customer: t("omnichannel.experience.customerTyping"),
         agent: t("omnichannel.experience.agentTyping"),

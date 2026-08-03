@@ -51,6 +51,8 @@ export type {
   CreateBookingInput,
   CreateBookingResult,
   SchedulingBooking,
+  SchedulingBookingSource,
+  SchedulingBookingStatus,
   CancelBookingInput,
   CancelBookingResult,
   RescheduleBookingInput,

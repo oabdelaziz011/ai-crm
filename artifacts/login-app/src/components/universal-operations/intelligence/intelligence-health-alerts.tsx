@@ -4,6 +4,11 @@ import type { OperationalAlert, OperationalHealthMetric, WorkflowStageState } fr
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import {
+  translateIntelligenceAlertMessage,
+  translateIntelligenceAlertTitle,
+  translateWorkflowStageLabel,
+} from "@/lib/i18n/workspace-mock-labels";
 
 export const IntelligenceOperationalHealth = memo(function IntelligenceOperationalHealth({
   metrics,
@@ -34,6 +39,7 @@ export const IntelligenceOperationalHealth = memo(function IntelligenceOperation
 });
 
 export const IntelligenceAlerts = memo(function IntelligenceAlerts({ alerts }: { alerts: OperationalAlert[] }) {
+  const { t } = useTranslation("common");
   if (alerts.length === 0) return null;
   return (
     <div className="space-y-2">
@@ -45,12 +51,16 @@ export const IntelligenceAlerts = memo(function IntelligenceAlerts({ alerts }: {
         >
           <AlertTriangle className="size-4 shrink-0" style={{ color: alert.color }} />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold">{alert.title}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{alert.message}</p>
+            <p className="text-xs font-semibold">
+              {translateIntelligenceAlertTitle(t, alert.alertType, alert.title)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {translateIntelligenceAlertMessage(t, alert.alertType, alert.message)}
+            </p>
           </div>
           {alert.actionKey && (
             <Button size="sm" variant="outline" className="h-7 shrink-0 text-[10px]" disabled>
-              Action
+              {t("intelligence.action")}
             </Button>
           )}
         </div>
@@ -64,6 +74,7 @@ export const IntelligenceWorkflowTracker = memo(function IntelligenceWorkflowTra
 }: {
   stages: WorkflowStageState[];
 }) {
+  const { t } = useTranslation("common");
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 p-4">
       <div className="flex flex-col gap-2">
@@ -77,7 +88,7 @@ export const IntelligenceWorkflowTracker = memo(function IntelligenceWorkflowTra
               <Circle className="size-4 text-muted-foreground/40" />
             )}
             <span className={cn("text-sm", stage.state === "active" && "font-semibold text-amber-600 dark:text-amber-400", stage.state === "done" && "text-muted-foreground")}>
-              {stage.label}
+              {translateWorkflowStageLabel(t, stage.id, stage.label)}
             </span>
           </div>
         ))}

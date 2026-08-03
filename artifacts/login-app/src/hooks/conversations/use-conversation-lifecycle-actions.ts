@@ -250,9 +250,9 @@ export function useConversationLifecycleActions(companyId: string | null) {
             companyId,
             conversationId: input.record.id,
             actorUserId: context.userId,
-            assigneeUserId: result.assignedUserId ?? input.payload.assignment?.targetId ?? null,
-            queueId: input.payload.queueId ?? null,
-            reason: input.payload.escalation?.reason ?? input.payload.assignment?.targetLabel,
+            assigneeUserId: result.assignedUserId ?? input.payload?.assignment?.targetId ?? null,
+            queueId: input.payload?.queueId ?? null,
+            reason: input.payload?.escalation?.reason ?? input.payload?.assignment?.targetLabel,
             aiAssistantId: input.record.ai_assistant_id,
           },
         );

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HandoffAgentResolverPort, HandoffContextAssemblyPort } from "@workspace/human-handoff-platform";
-import { getLoginAppTicketReadPort } from "@/lib/ticket-platform/ticket-read-port-adapter";
+import { createLoginAppTicketReadPort } from "@/lib/ticket-platform/ticket-read-port-adapter";
 import { TICKET_PERMISSIONS } from "@workspace/ticket-platform";
 
 export function createLoginAppHandoffAgentResolverPort(
@@ -66,7 +66,7 @@ export function createLoginAppHandoffContextAssemblyPort(
         }
       }
 
-      const ticketReads = getLoginAppTicketReadPort(client);
+      const ticketReads = createLoginAppTicketReadPort(client);
       let openTickets: unknown[] = [];
       if (conversation?.customer_id) {
         const snapshot = await ticketReads.fetchCustomerSnapshot(
@@ -78,7 +78,7 @@ export function createLoginAppHandoffContextAssemblyPort(
           },
           { companyId: input.companyId, customerId: conversation.customer_id },
         );
-        openTickets = [...snapshot.openTickets, ...snapshot.recentClosedTickets].slice(0, 10);
+        openTickets = [...snapshot.openTickets, ...snapshot.closedTickets].slice(0, 10);
       }
 
       let appointments: unknown[] = [];
@@ -114,7 +114,7 @@ export function createLoginAppHandoffContextAssemblyPort(
           openTickets,
           appointments,
           runtimeMetadata: input.runtimeMetadata,
-          workflowState: (conversation?.metadata as Record<string, unknown>)?.lifecycle ?? {},
+          workflowState: ((conversation?.metadata as Record<string, unknown>)?.lifecycle ?? {}) as Record<string, unknown>,
         },
         openTickets,
         appointments,

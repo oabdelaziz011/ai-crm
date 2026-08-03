@@ -10,7 +10,7 @@ import {
 import { dispatchAutomationEvent } from "@/lib/automation";
 import { getEnterpriseEventPublisher } from "@/lib/integration/events/enterprise-event-publisher";
 import type { WebhookEventType } from "@/lib/integration/types";
-import { BookingFactory } from "@/lib/scheduling/booking-domain/booking-factory";
+import { createSchedulingEngines, BookingDomainService } from "@workspace/scheduling-engine";
 
 const APPOINTMENT_WEBHOOK_EVENT_MAP: Partial<Record<string, WebhookEventType>> = {
   appointment_created: "booking.created",
@@ -100,15 +100,16 @@ export function createLoginAppAppointmentIdentityPort(client: SupabaseClient): A
 }
 
 export function createLoginAppAppointmentPlatformServices(client: SupabaseClient): AppointmentPlatformServices {
-  const bookingServices = BookingFactory.create(client);
+  const { availabilityEngine, slotGenerationEngine } = createSchedulingEngines(client);
+  const bookingDomain = new BookingDomainService(client, slotGenerationEngine);
 
   return createAppointmentPlatformServices(client, {
     events: createAppointmentEventBridge(),
     identity: createLoginAppAppointmentIdentityPort(client),
     bookingDomainStack: {
-      availabilityEngine: bookingServices.availabilityEngine,
-      slotGenerationEngine: bookingServices.slotGenerationEngine,
-      bookingDomain: bookingServices.bookingDomain,
+      availabilityEngine,
+      slotGenerationEngine,
+      bookingDomain,
     },
   });
 }

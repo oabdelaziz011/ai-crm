@@ -20,7 +20,7 @@ export function createLoginAppHandoffWritePort(client: SupabaseClient, ctx: Logi
       const result = await platform.commands.escalateConversation(serviceContext(ctx, input.tenantId), {
         companyId: input.tenantId,
         conversationId: input.conversationId,
-        triggerCode: input.triggerCode,
+        triggerCode: input.triggerCode as Parameters<typeof platform.commands.escalateConversation>[1]["triggerCode"],
         reason: input.reason,
         targetQueueId: input.targetQueueId,
         requestedByAiAssistantId: input.aiAssistantId,

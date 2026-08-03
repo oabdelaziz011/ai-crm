@@ -31,7 +31,7 @@ export function buildAgentRuntimeConfiguration(
   );
 
   const allowedKeys = resolveTicketToolKeysForEmployee({
-    tags: employee.tags ?? [],
+    tags: "tags" in employee && Array.isArray(employee.tags) ? employee.tags : [],
     allowedToolKeys: employee.allowedToolKeys,
   });
   const disabledKeys = employee.runtimeConfiguration.disabledToolKeys;

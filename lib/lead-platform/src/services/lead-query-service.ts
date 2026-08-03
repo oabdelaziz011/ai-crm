@@ -76,7 +76,7 @@ export class LeadQueryService {
     assertLeadPermission(ctx, LEAD_PERMISSIONS.view);
     const pipeline = await this.deps.leads.getPipeline(input.companyId, input.pipelineId);
     const stages = await this.deps.leads.listStages(input.companyId, input.pipelineId);
-    if (!pipeline) return { pipeline: null, stages: [] };
+    if (!pipeline) throw new Error(`Pipeline not found: ${input.pipelineId}`);
     return { pipeline, stages };
   }
 

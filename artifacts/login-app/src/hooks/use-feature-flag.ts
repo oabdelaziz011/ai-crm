@@ -62,7 +62,8 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
     isEnabled: query.data?.enabled ?? true,
     resolvedEnabled: query.isFetched ? query.data?.enabled : undefined,
     licenseBlocked: query.data?.licenseBlocked ?? false,
-    licenseReason: query.data?.licenseReason,
+    licenseReason:
+      query.data && "licenseReason" in query.data ? query.data.licenseReason : undefined,
     source: query.data?.source,
   };
 }

@@ -51,7 +51,7 @@ export function Customer360StickyHeader({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <h2 className="truncate text-base font-bold tracking-tight">{customer.name}</h2>
-            {summary.isVip && <Customer360Badge label="VIP" tone="vip" />}
+            {summary.isVip && <Customer360Badge label={t("customer360.badges.vip")} tone="vip" />}
             <Customer360Badge label={data.currentStatus} tone="success" />
             <Customer360Badge label={data.currentPaymentStatus} tone="warning" />
           </div>

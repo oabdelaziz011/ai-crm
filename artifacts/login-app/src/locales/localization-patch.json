@@ -1,0 +1,580 @@
+{
+  "en": {
+    "leads": {
+      "nav": {
+        "table": "Table",
+        "kanban": "Kanban",
+        "pipeline": "Pipeline",
+        "timeline": "Timeline",
+        "dashboard": "Dashboard"
+      },
+      "table": {
+        "title": "Leads",
+        "subtitle": "Manage your sales pipeline with live lead data.",
+        "search": "Search leads...",
+        "empty": "No leads found.",
+        "count": "{{shown}} / {{total}} leads"
+      },
+      "columns": {
+        "lead": "Lead",
+        "stage": "Stage",
+        "score": "Score",
+        "value": "Value",
+        "owner": "Owner"
+      },
+      "scoreBand": {
+        "hot": "Hot",
+        "warm": "Warm",
+        "cold": "Cold"
+      },
+      "scorePoints": "{{score}} pts",
+      "scoreLabel": "{{score}} score",
+      "kanban": {
+        "title": "Kanban",
+        "subtitle": "Drag leads across pipeline stages with realtime updates.",
+        "pipeline": "Pipeline"
+      },
+      "pipeline": {
+        "title": "Pipeline",
+        "subtitle": "Configurable stages from the pipeline configuration engine.",
+        "select": "Pipeline",
+        "totalLeads": "Total leads",
+        "pipelineValue": "Pipeline value",
+        "stages": "Stages",
+        "pipeline": "Pipeline",
+        "stageLeads": "{{count}} leads",
+        "probability": "{{percent}}% probability"
+      },
+      "timeline": {
+        "title": "Timeline",
+        "subtitle": "Recent lead activity ordered by last update.",
+        "empty": "No activity yet."
+      },
+      "dashboard": {
+        "title": "Lead Dashboard",
+        "subtitle": "Realtime KPIs for conversion, pipeline value, and lead sources.",
+        "forecast": "Forecast value",
+        "byStatus": "Leads by status",
+        "pipelines": "Pipeline performance",
+        "pipelineRow": "{{count}} leads · {{value}}"
+      },
+      "kpi": {
+        "total": "Total leads",
+        "conversionRate": "Conversion rate",
+        "created": "Created (period)",
+        "converted": "Converted (period)"
+      },
+      "lifecycle": {
+        "new": "New",
+        "qualified": "Qualified",
+        "converted": "Converted",
+        "lost": "Lost",
+        "archived": "Archived",
+        "nurturing": "Nurturing"
+      }
+    },
+    "leads360": {
+      "convert": "Convert to customer",
+      "scoreLabel": "{{score}} score",
+      "sections": {
+        "overview": "Overview",
+        "company": "Company",
+        "contacts": "Contacts",
+        "activities": "Activities",
+        "timeline": "Timeline",
+        "tags": "Tags",
+        "files": "Files",
+        "customFields": "Custom Fields",
+        "tasks": "Tasks",
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "communication": "Communication",
+        "relatedEntities": "Related Entities",
+        "aiAssistant": "AI Assistant",
+        "audit": "Audit"
+      },
+      "empty": {
+        "company": "No company",
+        "email": "No email",
+        "phone": "No phone",
+        "contacts": "No contacts",
+        "tags": "No tags",
+        "files": "No files",
+        "tasks": "No tasks",
+        "relatedEntities": "No related entities configured yet"
+      },
+      "ai": {
+        "nextAction": "Next action:",
+        "followUp": "Follow-up:"
+      }
+    },
+    "universalOperations": {
+      "workspaceNames": {
+        "clinic": "Front Desk Operations",
+        "training_center": "Training Operations",
+        "automotive": "Service Bay Operations"
+      }
+    },
+    "intelligence": {
+      "action": "Action",
+      "workflowStages": {
+        "booked": "Booked",
+        "confirmed": "Confirmed",
+        "checked_in": "Checked In",
+        "doctor": "Doctor",
+        "cashier": "Cashier",
+        "completed": "Completed"
+      },
+      "alertRules": {
+        "vip": {
+          "title": "VIP Customer",
+          "message": "This customer has VIP status — prioritize service."
+        },
+        "outstanding": {
+          "title": "Outstanding Balance",
+          "message": "Payment balance remains on account."
+        },
+        "waiting_long": {
+          "title": "Extended Wait",
+          "message": "Customer has been waiting longer than the target threshold."
+        },
+        "payment_delay": {
+          "title": "Payment Delay",
+          "message": "Partial payment outstanding beyond expected window."
+        },
+        "medical": {
+          "title": "Medical Alert",
+          "message": "Allergic to penicillin — review before treatment."
+        },
+        "no_show_history": {
+          "title": "No-Show History",
+          "message": "Customer has previous no-show records."
+        },
+        "low_satisfaction": {
+          "title": "Low Satisfaction",
+          "message": "Recent satisfaction score below team average."
+        }
+      },
+      "recReasons": {
+        "rec_collect": "Outstanding balance before checkout.",
+        "rec_followup": "Patient due for follow-up based on last completed visit pattern.",
+        "rec_upgrade": "VIP customer — premium service package has high acceptance rate.",
+        "rec_reassign": "Wait time exceeds target — alternate resource available.",
+        "rec_whatsapp": "Customer prefers WhatsApp — recent interactions were via messaging.",
+        "rec_task": "Lab results pending — create follow-up task for nursing team.",
+        "rec_escalate": "Elevated churn risk detected from engagement patterns."
+      }
+    },
+    "workspacePlatform": {
+      "favorites": {
+        "items": {
+          "waitingRoomQueue": "Waiting Room Queue",
+          "dailyRevenueReport": "Daily Revenue Report",
+          "clinicWorkspace": "Clinic Workspace",
+          "customerName": "Sara Hassan"
+        }
+      },
+      "notifications": {
+        "mock": {
+          "n1": {
+            "title": "VIP Arrived",
+            "message": "Sara Hassan checked in — Room 3"
+          },
+          "n2": {
+            "title": "Payment Received",
+            "message": "$80.00 partial payment from Ahmed Al-Rashid"
+          },
+          "n3": {
+            "title": "Invoice Overdue",
+            "message": "INV-2026-0831 is 5 days overdue ($340)"
+          },
+          "n4": {
+            "title": "Employee Late",
+            "message": "Dr. Khalid is 12 minutes late for shift"
+          },
+          "n5": {
+            "title": "Task Completed",
+            "message": "Lab results uploaded for Sara Hassan"
+          },
+          "n6": {
+            "title": "Room Available",
+            "message": "Room 5 is now available"
+          },
+          "n7": {
+            "title": "AI Recommendation",
+            "message": "Collect remaining $45 from Sara Hassan (94% confidence)"
+          },
+          "n8": {
+            "title": "Workflow Blocked",
+            "message": "Insurance verification pending for BK-9912"
+          }
+        }
+      },
+      "activity": {
+        "mock": {
+          "customerCreated": {
+            "title": "Customer Created",
+            "description": "New customer Ahmed Al-Rashid registered",
+            "actor": "Reception · Layla"
+          },
+          "leadConverted": {
+            "title": "Lead Converted",
+            "description": "Fatima Noor converted to customer",
+            "actor": "Sales · Omar"
+          },
+          "paymentCollected": {
+            "title": "Payment Collected",
+            "description": "$80.00 partial payment received",
+            "actor": "Cashier · Nadia"
+          },
+          "whatsappSent": {
+            "title": "WhatsApp Sent",
+            "description": "Appointment reminder sent to Sara Hassan",
+            "actor": "System"
+          },
+          "employeeAssigned": {
+            "title": "Employee Assigned",
+            "description": "Dr. Amira assigned to Sara Hassan",
+            "actor": "Manager · Khalid"
+          },
+          "invoiceGenerated": {
+            "title": "Invoice Generated",
+            "description": "INV-2026-0847 created ($245.00)",
+            "actor": "Billing · System"
+          },
+          "taskCompleted": {
+            "title": "Task Completed",
+            "description": "Lab results uploaded for Sara Hassan",
+            "actor": "Nurse · Hana"
+          },
+          "aiSummary": {
+            "title": "AI Summary Generated",
+            "description": "Customer health summary for Sara Hassan",
+            "actor": "AI Copilot"
+          },
+          "workflowTriggered": {
+            "title": "Workflow Triggered",
+            "description": "Insurance verification started for BK-9912",
+            "actor": "Automation"
+          },
+          "paymentCollected2": {
+            "title": "Payment Collected",
+            "description": "$120.00 full payment received",
+            "actor": "Cashier · Nadia"
+          },
+          "customerCreated2": {
+            "title": "Customer Created",
+            "description": "New customer Layla Mansour registered",
+            "actor": "Reception"
+          }
+        }
+      },
+      "widgets": {
+        "points": {
+          "today": "Today",
+          "target": "Target",
+          "next2h": "Next 2h",
+          "outstanding": "Outstanding",
+          "overdue": "Overdue",
+          "onDuty": "On duty",
+          "late": "Late",
+          "pending": "Pending",
+          "highConfidence": "High confidence",
+          "open": "Open",
+          "dueToday": "Due today",
+          "topPerformer": "Top performer",
+          "revenue": "Revenue"
+        }
+      }
+    }
+  },
+  "ar": {
+    "leads": {
+      "nav": {
+        "table": "جدول",
+        "kanban": "كانبان",
+        "pipeline": "خط الأنابيب",
+        "timeline": "الخط الزمني",
+        "dashboard": "لوحة التحكم"
+      },
+      "table": {
+        "title": "العملاء المحتملون",
+        "subtitle": "إدارة خط المبيعات ببيانات العملاء المحتملين المباشرة.",
+        "search": "بحث في العملاء المحتملين...",
+        "empty": "لم يُعثر على عملاء محتملين.",
+        "count": "{{shown}} / {{total}} عميل محتمل"
+      },
+      "columns": {
+        "lead": "العميل المحتمل",
+        "stage": "المرحلة",
+        "score": "الدرجة",
+        "value": "القيمة",
+        "owner": "المسؤول"
+      },
+      "scoreBand": {
+        "hot": "ساخن",
+        "warm": "دافئ",
+        "cold": "بارد"
+      },
+      "scorePoints": "{{score}} نقطة",
+      "scoreLabel": "{{score}} درجة",
+      "kanban": {
+        "title": "كانبان",
+        "subtitle": "اسحب العملاء المحتملين عبر مراحل خط الأنابيب مع تحديثات فورية.",
+        "pipeline": "خط الأنابيب"
+      },
+      "pipeline": {
+        "title": "خط الأنابيب",
+        "subtitle": "مراحل قابلة للتكوين من محرك إعداد خط الأنابيب.",
+        "select": "خط الأنابيب",
+        "totalLeads": "إجمالي العملاء المحتملين",
+        "pipelineValue": "قيمة خط الأنابيب",
+        "stages": "المراحل",
+        "pipeline": "خط الأنابيب",
+        "stageLeads": "{{count}} عميل محتمل",
+        "probability": "{{percent}}% احتمال"
+      },
+      "timeline": {
+        "title": "الخط الزمني",
+        "subtitle": "نشاط العملاء المحتملين الأخير مرتب حسب آخر تحديث.",
+        "empty": "لا يوجد نشاط بعد."
+      },
+      "dashboard": {
+        "title": "لوحة العملاء المحتملين",
+        "subtitle": "مؤشرات أداء فورية للتحويل وقيمة خط الأنابيب ومصادر العملاء المحتملين.",
+        "forecast": "قيمة التوقعات",
+        "byStatus": "العملاء المحتملون حسب الحالة",
+        "pipelines": "أداء خطوط الأنابيب",
+        "pipelineRow": "{{count}} عميل محتمل · {{value}}"
+      },
+      "kpi": {
+        "total": "إجمالي العملاء المحتملين",
+        "conversionRate": "معدل التحويل",
+        "created": "تم الإنشاء (الفترة)",
+        "converted": "تم التحويل (الفترة)"
+      },
+      "lifecycle": {
+        "new": "جديد",
+        "qualified": "مؤهل",
+        "converted": "تم التحويل",
+        "lost": "مفقود",
+        "archived": "مؤرشف",
+        "nurturing": "قيد الرعاية"
+      }
+    },
+    "leads360": {
+      "convert": "تحويل إلى عميل",
+      "scoreLabel": "{{score}} درجة",
+      "sections": {
+        "overview": "نظرة عامة",
+        "company": "الشركة",
+        "contacts": "جهات الاتصال",
+        "activities": "الأنشطة",
+        "timeline": "الخط الزمني",
+        "tags": "الوسوم",
+        "files": "الملفات",
+        "customFields": "حقول مخصصة",
+        "tasks": "المهام",
+        "bookings": "الحجوزات",
+        "invoices": "الفواتير",
+        "communication": "التواصل",
+        "relatedEntities": "الكيانات المرتبطة",
+        "aiAssistant": "مساعد الذكاء الاصطناعي",
+        "audit": "التدقيق"
+      },
+      "empty": {
+        "company": "لا توجد شركة",
+        "email": "لا يوجد بريد إلكتروني",
+        "phone": "لا يوجد هاتف",
+        "contacts": "لا توجد جهات اتصال",
+        "tags": "لا توجد وسوم",
+        "files": "لا توجد ملفات",
+        "tasks": "لا توجد مهام",
+        "relatedEntities": "لم يتم إعداد كيانات مرتبطة بعد"
+      },
+      "ai": {
+        "nextAction": "الإجراء التالي:",
+        "followUp": "المتابعة:"
+      }
+    },
+    "universalOperations": {
+      "workspaceNames": {
+        "clinic": "عمليات مكتب الاستقبال",
+        "training_center": "عمليات التدريب",
+        "automotive": "عمليات ورشة الخدمة"
+      }
+    },
+    "intelligence": {
+      "action": "إجراء",
+      "workflowStages": {
+        "booked": "محجوز",
+        "confirmed": "مؤكد",
+        "checked_in": "تم تسجيل الحضور",
+        "doctor": "الطبيب",
+        "cashier": "الصندوق",
+        "completed": "مكتمل"
+      },
+      "alertRules": {
+        "vip": {
+          "title": "عميل VIP",
+          "message": "هذا العميل من فئة VIP — أعطِ الأولوية للخدمة."
+        },
+        "outstanding": {
+          "title": "رصيد مستحق",
+          "message": "يوجد رصيد دفع متبقٍ على الحساب."
+        },
+        "waiting_long": {
+          "title": "انتظار طويل",
+          "message": "انتظر العميل أطول من الحد المستهدف."
+        },
+        "payment_delay": {
+          "title": "تأخر الدفع",
+          "message": "دفعة جزئية متأخرة عن الإطار المتوقع."
+        },
+        "medical": {
+          "title": "تنبيه طبي",
+          "message": "حساسية من البenicillin — راجع قبل العلاج."
+        },
+        "no_show_history": {
+          "title": "سجل عدم الحضور",
+          "message": "لدى العميل سجلات عدم حضور سابقة."
+        },
+        "low_satisfaction": {
+          "title": "رضا منخفض",
+          "message": "درجة الرضا الأخيرة أقل من متوسط الفريق."
+        }
+      },
+      "recReasons": {
+        "rec_collect": "رصيد مستحق قبل إنهاء الزيارة.",
+        "rec_followup": "المريض مستحق للمتابعة بناءً على نمط آخر زيارة مكتملة.",
+        "rec_upgrade": "عميل VIP — باقة الخدمة المميزة لها معدل قبول مرتفع.",
+        "rec_reassign": "وقت الانتظار يتجاوز الهدف — مورد بديل متاح.",
+        "rec_whatsapp": "يفضل العميل واتساب — آخر التفاعلات كانت عبر الرسائل.",
+        "rec_task": "نتائج المختبر معلقة — أنشئ مهمة متابعة لفريق التمريض.",
+        "rec_escalate": "تم رصد مخاطر انقطاع مرتفعة من أنماط التفاعل."
+      }
+    },
+    "workspacePlatform": {
+      "favorites": {
+        "items": {
+          "waitingRoomQueue": "قائمة انتظار غرفة الانتظار",
+          "dailyRevenueReport": "تقرير الإيرادات اليومي",
+          "clinicWorkspace": "مساحة عمل العيادة",
+          "customerName": "سارة حسن"
+        }
+      },
+      "notifications": {
+        "mock": {
+          "n1": {
+            "title": "وصول VIP",
+            "message": "سارة حسن سجلت حضورها — الغرفة 3"
+          },
+          "n2": {
+            "title": "تم استلام الدفع",
+            "message": "دفعة جزئية 80.00$ من أحمد الرashid"
+          },
+          "n3": {
+            "title": "فاتورة متأخرة",
+            "message": "INV-2026-0831 متأخرة 5 أيام (340$)"
+          },
+          "n4": {
+            "title": "تأخر موظف",
+            "message": "د. خالد متأخر 12 دقيقة عن ورديته"
+          },
+          "n5": {
+            "title": "اكتملت المهمة",
+            "message": "تم رفع نتائج المختبر لسارة حسن"
+          },
+          "n6": {
+            "title": "غرفة متاحة",
+            "message": "الغرفة 5 متاحة الآن"
+          },
+          "n7": {
+            "title": "توصية الذكاء الاصطناعي",
+            "message": "تحصيل 45$ المتبقية من سارة حسن (ثقة 94%)"
+          },
+          "n8": {
+            "title": "سير العمل متوقف",
+            "message": "التحقق من التأمين معلق لـ BK-9912"
+          }
+        }
+      },
+      "activity": {
+        "mock": {
+          "customerCreated": {
+            "title": "تم إنشاء عميل",
+            "description": "تم تسجيل العميل الجديد أحمد الرashid",
+            "actor": "الاستقبال · ليلى"
+          },
+          "leadConverted": {
+            "title": "تم تحويل عميل محتمل",
+            "description": "تم تحويل فاطمة نور إلى عميل",
+            "actor": "المبيعات · عمر"
+          },
+          "paymentCollected": {
+            "title": "تم تحصيل الدفع",
+            "description": "تم استلام دفعة جزئية 80.00$",
+            "actor": "أمين الصندوق · نادya"
+          },
+          "whatsappSent": {
+            "title": "تم إرسال واتساب",
+            "description": "تم إرسال تذكير بالموعد إلى سارة حسن",
+            "actor": "النظام"
+          },
+          "employeeAssigned": {
+            "title": "تم تعيين موظف",
+            "description": "تم تعيين د. أميرة لسارة حسن",
+            "actor": "المدير · خالد"
+          },
+          "invoiceGenerated": {
+            "title": "تم إنشاء فاتورة",
+            "description": "تم إنشاء INV-2026-0847 (245.00$)",
+            "actor": "الفوترة · النظام"
+          },
+          "taskCompleted": {
+            "title": "اكتملت المهمة",
+            "description": "تم رفع نتائج المختبر لسارة حسن",
+            "actor": "الممرضة · هana"
+          },
+          "aiSummary": {
+            "title": "تم إنشاء ملخص ذكاء",
+            "description": "ملخص صحة العميل لسارة حسن",
+            "actor": "مساعد الذكاء الاصطناعي"
+          },
+          "workflowTriggered": {
+            "title": "تم تشغيل سير العمل",
+            "description": "بدأ التحقق من التأمين لـ BK-9912",
+            "actor": "الأتمتة"
+          },
+          "paymentCollected2": {
+            "title": "تم تحصيل الدفع",
+            "description": "تم استلام دفعة كاملة 120.00$",
+            "actor": "أمين الصندوق · نادya"
+          },
+          "customerCreated2": {
+            "title": "تم إنشاء عميل",
+            "description": "تم تسجيل العميل الجديد ليلى منsur",
+            "actor": "الاستقبال"
+          }
+        }
+      },
+      "widgets": {
+        "points": {
+          "today": "اليوم",
+          "target": "الهدف",
+          "next2h": "الساعتان القادمتان",
+          "outstanding": "المستحق",
+          "overdue": "متأخر",
+          "onDuty": "في الخدمة",
+          "late": "متأخر",
+          "pending": "معلق",
+          "highConfidence": "ثقة عالية",
+          "open": "مفتوح",
+          "dueToday": "مستحق اليوم",
+          "topPerformer": "الأفضل أداءً",
+          "revenue": "الإيرادات"
+        }
+      }
+    }
+  }
+}

@@ -39,7 +39,7 @@ export class TicketsTimelineAggregator implements TimelineActivitySource {
         type: eventType,
         occurredAt: ticket.updatedAt,
         source: this.sourceId,
-        category: "support",
+        category: "system",
         payload: {
           ticketId: ticket.id,
           ticketNumber: ticket.ticketNumber,

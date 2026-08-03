@@ -119,7 +119,7 @@ function loadOmnichannelSession(): { selectedId: string | null; filters: Omnicha
 export const OmnichannelConsole = memo(function OmnichannelConsole() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const searchRef = useRef<HTMLInputElement>(null);
   const composeRef = useRef<ComposePanelHandle>(null);
   const initialSession = useMemo(() => loadOmnichannelSession(), []);
@@ -495,8 +495,8 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
         companyId: profile.company_id,
         actorUserId: user.id,
         conversationId: selectedRecord.id,
-        title: selectedRecord.displayName || selectedRecord.lastMessagePreview || "Conversation lead",
-        contactName: selectedRecord.displayName ?? undefined,
+        title: selected?.customer?.name || selected?.lastMessage || "Conversation lead",
+        contactName: selected?.customer?.name ?? undefined,
         phone: prefilledPhone,
       });
       toast({
@@ -510,7 +510,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
         variant: "destructive",
       });
     }
-  }, [prefilledPhone, profile?.company_id, selectedRecord, toast, user?.id]);
+  }, [prefilledPhone, profile?.company_id, selected, selectedRecord, toast, user?.id]);
 
   useOmnichannelKeyboardShortcuts({
     enabled: consoleState.canView,

@@ -23,7 +23,7 @@ export function createTicketNotificationBridge(): TicketNotificationPort {
         companyId: input.companyId,
         event: "generic_system",
         userId: input.actorUserId,
-        recipients: [{ userId: recipientUserId }],
+        recipients: [{ userId: recipientUserId, companyId: input.companyId }],
         channels: ["in_app"],
         params: {
           ticketId: input.ticketId,

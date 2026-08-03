@@ -212,7 +212,12 @@ export function createEventPublisherPort(bus: PlatformEventBus): EventPublisherP
       const result = await publisher.publish("KnowledgeUpdated", {
         documentId: input.documentId,
         title: input.title,
-        action: input.action,
+        action:
+          input.action === "published"
+            ? "updated"
+            : input.action === "archived"
+              ? "deleted"
+              : input.action,
       }, { ...ctx(input.context), sourceModule: "knowledge", entityType: "knowledge_document", entityId: input.documentId });
       return result.eventId;
     },
@@ -254,7 +259,7 @@ export function createEventPublisherPort(bus: PlatformEventBus): EventPublisherP
       const result = await publisher.publish("WorkflowStarted", {
         workflowId: input.workflowId,
         workflowName: input.workflowName,
-        triggerEventType: input.triggerEventType,
+        triggerEventType: input.triggerEventType ?? "",
       }, { ...ctx(input.context), sourceModule: "workflow", entityType: "workflow", entityId: input.workflowId });
       return result.eventId;
     },

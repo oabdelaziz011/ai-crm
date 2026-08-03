@@ -5,20 +5,22 @@ export function createHandoffNotificationBridge(): HandoffNotificationPort {
   return {
     async notify(input) {
       const notifications = getNotificationServices();
-      const recipients = input.recipientUserId ? [input.recipientUserId] : [];
 
-      await notifications.createNotification({
+      await notifications.notifications.createNotification({
         companyId: input.companyId,
-        event: `handoff.${input.kind}`,
-        title: notificationTitle(input.kind),
-        body: `Conversation ${input.conversationId}`,
-        recipients,
+        event: "generic_system",
+        userId: input.recipientUserId ?? null,
+        recipients: input.recipientUserId
+          ? [{ userId: input.recipientUserId, companyId: input.companyId }]
+          : [],
         channels: ["in_app", "push"],
-        metadata: {
+        params: {
+          title: notificationTitle(input.kind),
+          body: `Conversation ${input.conversationId}`,
           conversationId: input.conversationId,
-          queueId: input.queueId,
-          actorUserId: input.actorUserId,
-          ...input.metadata,
+          queueId: input.queueId ?? "",
+          actorUserId: input.actorUserId ?? "",
+          ...(input.metadata ?? {}),
         },
       });
     },

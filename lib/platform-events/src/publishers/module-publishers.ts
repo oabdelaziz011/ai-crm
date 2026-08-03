@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { PlatformEventType, PlatformEventMap, TypedPlatformEvent } from "../types/event-types.js";
 import type { PublishContext, PublishResult, PlatformEventEnvelope } from "../types/envelope.js";
 import { PLATFORM_EVENT_SCHEMA_VERSION } from "../types/envelope.js";
@@ -29,7 +28,7 @@ export class ModuleEventPublisher implements PlatformEventPublisherPort {
       ("customerId" in payload ? String((payload as { customerId?: string }).customerId) : undefined) ??
       ("bookingId" in payload ? String((payload as { bookingId?: string }).bookingId) : undefined) ??
       ("leadId" in payload ? String((payload as { leadId?: string }).leadId) : undefined) ??
-      randomUUID();
+      crypto.randomUUID();
 
     const envelope: TypedPlatformEvent<T> = {
       eventId: buildEventId(entityId, eventType, occurredAt),
@@ -37,7 +36,7 @@ export class ModuleEventPublisher implements PlatformEventPublisherPort {
       schemaVersion: PLATFORM_EVENT_SCHEMA_VERSION,
       occurredAt,
       publishedAt: new Date().toISOString(),
-      correlationId: context.correlationId ?? randomUUID(),
+      correlationId: context.correlationId ?? crypto.randomUUID(),
       causationId: context.causationId,
       tenantId: context.tenantId,
       workspaceId: context.workspaceId,

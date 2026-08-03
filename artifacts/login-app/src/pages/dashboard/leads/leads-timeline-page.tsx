@@ -15,10 +15,8 @@ export function LeadsTimelinePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-bold">{t("leads.timeline.title", "Timeline")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("leads.timeline.subtitle", "Recent lead activity ordered by last update.")}
-        </p>
+        <h2 className="text-xl font-bold">{t("leads.timeline.title")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("leads.timeline.subtitle")}</p>
       </div>
       <div className="space-y-3">
         {rows.map((row) => (
@@ -33,7 +31,7 @@ export function LeadsTimelinePage() {
           </div>
         ))}
         {rows.length === 0 && (
-          <div className="py-10 text-center text-muted-foreground">{t("leads.timeline.empty", "No activity yet.")}</div>
+          <div className="py-10 text-center text-muted-foreground">{t("leads.timeline.empty")}</div>
         )}
       </div>
     </div>

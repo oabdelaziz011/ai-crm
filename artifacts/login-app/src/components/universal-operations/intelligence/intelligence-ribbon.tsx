@@ -9,6 +9,7 @@ export const IntelligenceContextRibbon = memo(function IntelligenceContextRibbon
 }: {
   steps: JourneyStepState[];
 }) {
+  const { t } = useTranslation("common");
   return (
     <div className="overflow-x-auto rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 scrollbar-none">
       <div className="flex min-w-max items-center gap-1">
@@ -22,7 +23,7 @@ export const IntelligenceContextRibbon = memo(function IntelligenceContextRibbon
                 step.status === "upcoming" && "bg-muted/50 text-muted-foreground",
               )}
             >
-              {step.label}
+              {t(`intelligence.journey.${step.id}`, step.label)}
             </span>
             {i < steps.length - 1 && <ChevronRight className="size-3 shrink-0 text-muted-foreground/50" />}
           </div>

@@ -6,6 +6,7 @@ import { OperationsWorkspacePanel } from "@/components/universal-operations/pane
 import { WorkspaceMetric } from "@/components/customer-workspace/workspace-ui";
 import { useUniversalOperationsQueue } from "@/hooks/universal-operations";
 import { useWorkspacePlatformOptional } from "@/context/workspace-platform-context";
+import { translateOperationsWorkspaceName } from "@/lib/i18n/workspace-mock-labels";
 import {
   Select,
   SelectContent,
@@ -48,7 +49,11 @@ export function OperationsQueuePage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold">{config?.workspaceName ?? t("universalOperations.queue.title")}</h2>
+          <h2 className="text-xl font-bold">
+            {config?.workspaceName
+              ? translateOperationsWorkspaceName(t, templateKey, config.workspaceName)
+              : t("universalOperations.queue.title")}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("universalOperations.queue.subtitle")}</p>
         </div>
         <Select value={templateKey} onValueChange={setTemplateKey}>

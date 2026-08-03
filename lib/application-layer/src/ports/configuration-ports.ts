@@ -28,3 +28,8 @@ export type ConfigurationCachePort = {
 };
 
 export type { ConfigurationRecord, ConfigurationVersionRecord };
+export type {
+  ConfigurationSaveDraftInput,
+  ConfigurationPublishInput,
+  ConfigurationRollbackInput,
+} from "@workspace/configuration-platform";

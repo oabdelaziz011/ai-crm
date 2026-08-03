@@ -48,7 +48,7 @@ export async function handleUpsertFeatureFlag(
   const eventId = await deps.infra.events.publishFeatureFlagUpdated({
     featureKey: request.featureKey,
     scopeType: request.scopeType,
-    scopeId: request.scopeId,
+    scopeId: request.scopeId ?? undefined,
     enabled: request.enabled,
     context: {
       tenantId: context.tenantId,

@@ -42,7 +42,7 @@ export function useRuntimeChatConfig(
       aiChatFlag.isEnabled,
       knowledgeFlag.isEnabled,
     ],
-    enabled: Boolean(companyId) && aiChatFlag.isFetched,
+    enabled: Boolean(companyId) && !aiChatFlag.isLoading,
     staleTime: 60_000,
     queryFn: async (): Promise<RuntimeChatExecutionConfig> => {
       if (!companyId) {

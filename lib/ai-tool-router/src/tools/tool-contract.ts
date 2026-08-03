@@ -5,6 +5,7 @@ export type ToolExecutionContext = {
   conversationId: string;
   conversationState: ConversationState;
   userId: string | null;
+  aiAssistantId?: string | null;
 };
 
 export interface Tool {

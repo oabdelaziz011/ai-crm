@@ -13,7 +13,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
     "@workspace/automation-platform": "workspace:*",
-    "@workspace/platform-cache": "workspace:*"
+    "@workspace/platform-cache": "workspace:*",
+    "@workspace/ticket-platform": "workspace:*",
+    "@workspace/lead-platform": "workspace:*",
+    "@workspace/appointment-platform": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

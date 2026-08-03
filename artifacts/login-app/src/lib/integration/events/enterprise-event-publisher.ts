@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WebhookEventType } from "@/lib/integration/types";
 import { createModulePublisher, type PlatformEventType } from "@workspace/platform-events";
-import { getLoginAppPlatformEventBus } from "./platform-event-bus-factory.js";
+import { getLoginAppPlatformEventBus } from "@/lib/application-layer/platform-event-bus-factory";
 
 const WEBHOOK_TO_PLATFORM: Readonly<Partial<Record<WebhookEventType, PlatformEventType>>> = Object.freeze({
   "lead.created": "LeadCreated",

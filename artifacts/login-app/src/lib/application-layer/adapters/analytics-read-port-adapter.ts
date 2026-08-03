@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AnalyticsReadPort, AnalyticsMetricModel } from "@workspace/application-layer";
-import type { LoginAppPortContext } from "./adapters/customer-read-port-adapter.js";
-import { ExecutiveAnalyticsDataLoader } from "./executive-analytics-data-loader.js";
+import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
+import { ExecutiveAnalyticsDataLoader } from "../executive-analytics-data-loader.js";
 
 function canReadAnalytics(ctx: LoginAppPortContext): boolean {
   return ctx.isSuperAdmin || ctx.hasPermission("analytics.read") || ctx.hasPermission("dashboard.read") || ctx.hasPermission("executive.view");

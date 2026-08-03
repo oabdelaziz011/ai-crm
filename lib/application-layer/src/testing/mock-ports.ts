@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { ApplicationPorts, CustomerReadModel, BookingReadModel, TimelineReadModel, NotificationReadModel, AnalyticsMetricModel, EmployeeWorkloadModel, RevenueSummaryModel, LeadReadModel, PaymentReadModel, InvoiceReadModel, TaskReadModel, FileReadModel, WorkflowExecutionModel } from "../ports/repository-ports.js";
 import type { EntityContactReadModel, EntityTagReadModel, EntityActivityReadModel, EntityFileReadModel, EntityCustomFieldValueReadModel } from "../entity/entity-models.js";
 import { createCustomerEntityFacadePorts } from "../entity/customer-entity-facade.js";
@@ -14,7 +13,7 @@ import {
 } from "@workspace/configuration-platform";
 
 const now = () => new Date().toISOString();
-const randomId = () => randomUUID();
+const randomId = () => crypto.randomUUID();
 const mockConfigurations = new Map<string, ConfigurationRecord>();
 const mockFeatureFlags = new Map<string, FeatureFlagRecord>();
 const mockCompanyLicenses = new Map<string, CompanyLicenseState>();
@@ -112,7 +111,7 @@ function seedCustomer(overrides?: Partial<CustomerReadModel>): CustomerReadModel
 
 function seedBooking(overrides?: Partial<BookingReadModel>): BookingReadModel {
   return Object.freeze({
-    id: overrides?.id ?? randomUUID(),
+    id: overrides?.id ?? randomId(),
     tenantId: overrides?.tenantId ?? "tenant_1",
     customerId: overrides?.customerId ?? "cust_1",
     customerName: overrides?.customerName ?? "Sara Hassan",
@@ -205,7 +204,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     customerWrite: {
       async create(input) {
         const c = seedCustomer({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           displayName: input.displayName,
           email: input.email,
@@ -275,7 +274,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     leadWrite: {
       async create(input) {
         const lead = Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           title: input.title,
           contactName: input.contactName ?? input.title,
@@ -346,7 +345,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
       async convert(tenantId, leadId) {
         const l = leads.get(leadId);
         if (!l || l.tenantId !== tenantId) throw new Error("not found");
-        const customerId = randomUUID();
+        const customerId = randomId();
         const updated = Object.freeze({ ...l, lifecycleStatus: "converted", customerId, convertedAt: now() });
         leads.set(leadId, updated);
         return Object.freeze({ lead: updated, customerId });
@@ -378,7 +377,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     bookingWrite: {
       async create(input) {
         const b = seedBooking({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           customerId: input.customerId,
           scheduledAt: input.scheduledAt,
@@ -438,7 +437,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     paymentWrite: {
       async collect(input) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           customerId: input.customerId,
           amountCents: input.amountCents,
@@ -466,7 +465,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     invoiceWrite: {
       async generate(input) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           customerId: input.customerId,
           amountCents: input.amountCents,
@@ -551,7 +550,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     notificationWrite: {
       async create(input) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           recipientUserId: input.recipientUserId,
           title: input.title,
@@ -575,7 +574,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     taskWrite: {
       async create(input) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           title: input.title,
           assigneeId: input.assigneeId,
           createdAt: now(),
@@ -665,7 +664,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     fileWrite: {
       async upload(input) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           fileName: input.fileName,
           uploadedAt: now(),
           mimeType: input.mimeType,
@@ -676,7 +675,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     workflowWrite: {
       async execute(_tenantId, workflowId) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           workflowId,
           status: "success" as const,
           executedAt: now(),
@@ -684,7 +683,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
       },
       async start(_tenantId, workflowId) {
         return Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           workflowId,
           status: "running" as const,
           executedAt: now(),
@@ -798,7 +797,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         });
       },
       async search() {
-        return Object.freeze({ tickets: Object.freeze([]), total: 0 });
+        return { tickets: [], total: 0 };
       },
     },
     ticketWrite: {
@@ -959,7 +958,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         const key = `${input.tenantId}:${input.domain}:${input.scopeKey}`;
         const existing = mockConfigurations.get(key);
         const record = Object.freeze({
-          id: existing?.id ?? randomUUID(),
+          id: existing?.id ?? randomId(),
           tenantId: input.tenantId,
           domain: input.domain,
           scopeKey: input.scopeKey,
@@ -980,7 +979,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         const existing = mockConfigurations.get(key);
         const config = existing?.draftConfig ?? existing?.publishedConfig ?? {};
         const record = Object.freeze({
-          id: existing?.id ?? randomUUID(),
+          id: existing?.id ?? randomId(),
           tenantId: input.tenantId,
           domain: input.domain,
           scopeKey: input.scopeKey,
@@ -1028,7 +1027,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     featureFlagWrite: {
       async upsert(input) {
         const record = Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           featureKey: input.featureKey,
           scopeType: input.scopeType,
           scopeId: input.scopeId ?? null,
@@ -1169,7 +1168,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     entityContactWrite: {
       async create(input) {
         const contact = Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           entityType: input.entityType,
           entityId: input.entityId,
@@ -1213,7 +1212,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     entityFileWrite: {
       async create(input) {
         const file = Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           entityType: input.entityType,
           entityId: input.entityId,
@@ -1259,7 +1258,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     entityTagWrite: {
       async createDefinition(input) {
         const tag = Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           name: input.name,
           color: input.color ?? null,
@@ -1272,7 +1271,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         return tag;
       },
       async assign(tenantId, entityType, entityId, tagId) {
-        entityTagAssignments.set(randomUUID(), { tenantId, entityType, entityId, tagId });
+        entityTagAssignments.set(randomId(), { tenantId, entityType, entityId, tagId });
       },
       async unassign(tenantId, entityType, entityId, tagId) {
         for (const [key, value] of entityTagAssignments.entries()) {
@@ -1319,7 +1318,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     entityActivityWrite: {
       async create(input) {
         const activity = Object.freeze({
-          id: randomUUID(),
+          id: randomId(),
           tenantId: input.tenantId,
           entityType: input.entityType,
           entityId: input.entityId,

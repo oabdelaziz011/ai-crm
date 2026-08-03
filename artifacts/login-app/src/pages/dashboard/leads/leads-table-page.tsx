@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 
 function ScoreBadge({ band }: { band: LeadWorkspaceRow["scoreBand"] }) {
+  const { t } = useTranslation("common");
   const variant = band === "hot" ? "destructive" : band === "warm" ? "default" : "secondary";
-  return <Badge variant={variant}>{band}</Badge>;
+  return <Badge variant={variant}>{t(`leads.scoreBand.${band}`)}</Badge>;
 }
 
 export function LeadsTablePage() {
@@ -25,14 +26,12 @@ export function LeadsTablePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-bold">{t("leads.table.title", "Leads")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("leads.table.subtitle", "Manage your sales pipeline with live lead data.")}
-        </p>
+        <h2 className="text-xl font-bold">{t("leads.table.title")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("leads.table.subtitle")}</p>
       </div>
 
       <Input
-        placeholder={t("leads.table.search", "Search leads...")}
+        placeholder={t("leads.table.search")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="max-w-md"
@@ -42,11 +41,11 @@ export function LeadsTablePage() {
         <table className="min-w-full text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
-              <th className="px-4 py-3 font-medium">Lead</th>
-              <th className="px-4 py-3 font-medium">Stage</th>
-              <th className="px-4 py-3 font-medium">Score</th>
-              <th className="px-4 py-3 font-medium">Value</th>
-              <th className="px-4 py-3 font-medium">Owner</th>
+              <th className="px-4 py-3 font-medium">{t("leads.columns.lead")}</th>
+              <th className="px-4 py-3 font-medium">{t("leads.columns.stage")}</th>
+              <th className="px-4 py-3 font-medium">{t("leads.columns.score")}</th>
+              <th className="px-4 py-3 font-medium">{t("leads.columns.value")}</th>
+              <th className="px-4 py-3 font-medium">{t("leads.columns.owner")}</th>
             </tr>
           </thead>
           <tbody>
@@ -76,11 +75,13 @@ export function LeadsTablePage() {
           </tbody>
         </table>
         {rows.length === 0 && (
-          <div className="px-4 py-10 text-center text-muted-foreground">{t("leads.table.empty", "No leads found.")}</div>
+          <div className="px-4 py-10 text-center text-muted-foreground">{t("leads.table.empty")}</div>
         )}
       </div>
 
-      <div className="text-xs text-muted-foreground">{rows.length} / {data?.total ?? 0} leads</div>
+      <div className="text-xs text-muted-foreground">
+        {t("leads.table.count", { shown: rows.length, total: data?.total ?? 0 })}
+      </div>
 
       <Lead360Workspace leadId={selectedLead?.id ?? null} open={Boolean(selectedLead)} onClose={() => setSelectedLead(null)} />
     </div>

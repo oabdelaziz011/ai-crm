@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ export function Lead360Workspace({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("common");
   const { data, isLoading, sections } = useLead360Workspace(leadId);
   const commands = useLeadCommands();
 
@@ -34,13 +36,13 @@ export function Lead360Workspace({
                   <p className="text-sm text-muted-foreground">{data.identity.contactName}</p>
                 </div>
                 <Badge variant={data.profile.scoreBand === "hot" ? "destructive" : "secondary"}>
-                  {data.profile.scoreBand}
+                  {t(`leads.scoreBand.${data.profile.scoreBand}`)}
                 </Badge>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span className="capitalize">{data.profile.stageName ?? data.profile.lifecycleStatus}</span>
                 <span>·</span>
-                <span>{data.profile.score} score</span>
+                <span>{t("leads360.scoreLabel", { score: data.profile.score })}</span>
                 {data.profile.estimatedValue != null && (
                   <>
                     <span>·</span>
@@ -57,7 +59,7 @@ export function Lead360Workspace({
                   disabled={commands.convert.isPending}
                   onClick={() => leadId && commands.convert.mutate({ leadId })}
                 >
-                  Convert to customer
+                  {t("leads360.convert")}
                 </Button>
               )}
             </div>
@@ -83,16 +85,16 @@ function Lead360Section({
   data: NonNullable<ReturnType<typeof useLead360Workspace>["data"]>;
   titleKey: string;
 }) {
-  const title = titleKey.split(".").pop()?.replace(/([A-Z])/g, " $1") ?? sectionId;
+  const { t } = useTranslation("common");
 
   return (
     <section className="rounded-xl border border-border/60 p-4">
-      <h3 className="mb-3 text-sm font-semibold capitalize">{title}</h3>
+      <h3 className="mb-3 text-sm font-semibold">{t(titleKey)}</h3>
       {sectionId === "overview" && (
         <div className="space-y-2 text-sm">
-          <div>{data.profile.companyName ?? "No company"}</div>
-          <div>{data.profile.email ?? "No email"}</div>
-          <div>{data.profile.phone ?? "No phone"}</div>
+          <div>{data.profile.companyName ?? t("leads360.empty.company")}</div>
+          <div>{data.profile.email ?? t("leads360.empty.email")}</div>
+          <div>{data.profile.phone ?? t("leads360.empty.phone")}</div>
           <div className="text-muted-foreground">{data.intelligence.summary}</div>
         </div>
       )}
@@ -104,7 +106,9 @@ function Lead360Section({
               <div className="text-muted-foreground">{c.email ?? c.phone}</div>
             </div>
           ))}
-          {data.contacts.length === 0 && <div className="text-sm text-muted-foreground">No contacts</div>}
+          {data.contacts.length === 0 && (
+            <div className="text-sm text-muted-foreground">{t("leads360.empty.contacts")}</div>
+          )}
         </div>
       )}
       {sectionId === "tags" && (
@@ -114,7 +118,9 @@ function Lead360Section({
               {tag.label}
             </Badge>
           ))}
-          {data.tags.length === 0 && <div className="text-sm text-muted-foreground">No tags</div>}
+          {data.tags.length === 0 && (
+            <div className="text-sm text-muted-foreground">{t("leads360.empty.tags")}</div>
+          )}
         </div>
       )}
       {sectionId === "activities" && (
@@ -144,7 +150,9 @@ function Lead360Section({
               {file.fileName}
             </div>
           ))}
-          {data.files.length === 0 && <div className="text-sm text-muted-foreground">No files</div>}
+          {data.files.length === 0 && (
+            <div className="text-sm text-muted-foreground">{t("leads360.empty.files")}</div>
+          )}
         </div>
       )}
       {sectionId === "custom_fields" && (
@@ -160,11 +168,11 @@ function Lead360Section({
       {sectionId === "ai_assistant" && (
         <div className="space-y-2 text-sm">
           <div>
-            <span className="font-medium">Next action: </span>
+            <span className="font-medium">{t("leads360.ai.nextAction")} </span>
             {data.intelligence.nextBestAction}
           </div>
           <div>
-            <span className="font-medium">Follow-up: </span>
+            <span className="font-medium">{t("leads360.ai.followUp")} </span>
             {data.intelligence.suggestedFollowUp}
           </div>
           <div className="text-muted-foreground">{data.intelligence.scoreExplanation}</div>
@@ -177,7 +185,9 @@ function Lead360Section({
               {task.title} — {task.status}
             </div>
           ))}
-          {data.tasks.length === 0 && <div className="text-sm text-muted-foreground">No tasks</div>}
+          {data.tasks.length === 0 && (
+            <div className="text-sm text-muted-foreground">{t("leads360.empty.tasks")}</div>
+          )}
         </div>
       )}
       {sectionId === "related_entities" && (
@@ -188,7 +198,7 @@ function Lead360Section({
             </div>
           ))}
           {data.relatedEntities.length === 0 && (
-            <div className="text-sm text-muted-foreground">No related entities configured yet</div>
+            <div className="text-sm text-muted-foreground">{t("leads360.empty.relatedEntities")}</div>
           )}
         </div>
       )}

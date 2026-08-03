@@ -2,6 +2,11 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ActivityGroup } from "@workspace/universal-workspace-platform";
 import { Activity } from "lucide-react";
+import {
+  translateActivityActor,
+  translateActivityDescription,
+  translateActivityTitle,
+} from "@/lib/i18n/workspace-mock-labels";
 
 export const WorkspaceActivityStream = memo(function WorkspaceActivityStream({
   groups,
@@ -41,13 +46,17 @@ export const WorkspaceActivityStream = memo(function WorkspaceActivityStream({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold">{event.title}</p>
+                    <p className="text-sm font-semibold">{translateActivityTitle(t, event.id, event.title)}</p>
                     <span className="shrink-0 text-[10px] text-muted-foreground">
                       {new Date(event.occurredAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{event.description}</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{event.actor}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {translateActivityDescription(t, event.id, event.description)}
+                  </p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {translateActivityActor(t, event.id, event.actor)}
+                  </p>
                 </div>
               </div>
             ))}

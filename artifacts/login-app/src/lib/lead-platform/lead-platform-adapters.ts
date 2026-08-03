@@ -64,14 +64,20 @@ export function createLoginAppLeadAssigneeResolverPort(client: SupabaseClient): 
 export function createLeadNotificationBridge(): LeadNotificationPort {
   return {
     async notify(input) {
-      await getNotificationServices().createNotification({
+      await getNotificationServices().notifications.createNotification({
         companyId: input.companyId,
-        event: `lead.${input.kind}`,
-        title: `Lead ${input.kind.replace("_", " ")}`,
-        body: `Lead ${input.leadId}`,
-        recipients: input.recipientUserId ? [input.recipientUserId] : [],
+        event: "generic_system",
+        userId: input.recipientUserId ?? null,
+        recipients: input.recipientUserId
+          ? [{ userId: input.recipientUserId, companyId: input.companyId }]
+          : [],
         channels: ["in_app"],
-        metadata: { leadId: input.leadId, ...input.metadata },
+        params: {
+          title: `Lead ${input.kind.replace("_", " ")}`,
+          body: `Lead ${input.leadId}`,
+          leadId: input.leadId,
+          ...(input.metadata ?? {}),
+        },
       });
     },
   };

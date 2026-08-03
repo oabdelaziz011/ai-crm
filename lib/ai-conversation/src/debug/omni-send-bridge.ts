@@ -20,11 +20,45 @@ type OmniSendAsyncTracer = <T>(input: {
 declare global {
   interface Window {
     __traceOmniSendAsync__?: OmniSendAsyncTracer;
+    __traceOmniSendEnter__?: (input: {
+      layer: number;
+      stage: string;
+      file: string;
+      function: string;
+      line: number;
+      conversationId?: string | null;
+      messageId?: string | null;
+      statusBefore?: string | null;
+    }) => void;
+    __traceOmniSendExit__?: (input: {
+      layer: number;
+      stage: string;
+      success: boolean;
+      conversationId?: string | null;
+      messageId?: string | null;
+      statusAfter?: string | null;
+    }) => void;
   }
 }
 
+export function readBrowserWindow(): Window | undefined {
+  if (typeof globalThis === "undefined") return undefined;
+  return (globalThis as typeof globalThis & { window?: Window }).window;
+}
+
 export function traceOmniSendBridgeAsync<T>(
-  input: Parameters<NonNullable<OmniSendAsyncTracer>>[0],
+  meta: {
+    runId?: string | null;
+    layer: number;
+    stage: string;
+    file: string;
+    function: string;
+    line: number;
+    conversationId?: string | null;
+    messageId?: string | null;
+    statusBefore?: string | null;
+    extra?: Record<string, unknown>;
+  },
   fallback: () => Promise<T>,
   mapSuccess: (result: T) => {
     messageId?: string | null;
@@ -32,12 +66,10 @@ export function traceOmniSendBridgeAsync<T>(
     extra?: Record<string, unknown>;
   },
 ): Promise<T> {
-  const tracer = typeof globalThis !== "undefined"
-    ? globalThis.window?.__traceOmniSendAsync__
-    : undefined;
+  const tracer = readBrowserWindow()?.__traceOmniSendAsync__;
   if (!tracer) return fallback().then((result) => {
     mapSuccess(result);
     return result;
   });
-  return tracer({ ...input, run: fallback, success: mapSuccess });
+  return tracer({ ...meta, run: fallback, success: mapSuccess });
 }

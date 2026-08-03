@@ -169,6 +169,7 @@
     "calendar": "Calendar",
     "scheduling": "Scheduling",
     "universalOperations": "Operations",
+    "leads": "Leads",
     "communication": "Communication Center",
     "invoices": "Invoices",
     "financial": "Financial Billing",
@@ -1263,35 +1264,93 @@
             "title": "Customer created",
             "description": "Profile added to CRM"
           },
-          "whatsapp_message_received": { "title": "WhatsApp message received" },
-          "whatsapp_message_sent": { "title": "WhatsApp message sent" },
-          "template_sent": { "title": "WhatsApp template sent" },
-          "interactive_reply": { "title": "Interactive reply" },
-          "facebook_message": { "title": "Facebook message" },
-          "instagram_message": { "title": "Instagram message" },
-          "booking_created": { "title": "Booking created" },
-          "booking_confirmed": { "title": "Booking confirmed" },
-          "booking_rescheduled": { "title": "Booking rescheduled" },
-          "booking_completed": { "title": "Booking completed" },
-          "booking_cancelled": { "title": "Booking cancelled" },
-          "invoice_created": { "title": "Invoice created" },
-          "invoice_paid": { "title": "Invoice paid" },
-          "invoice_overdue": { "title": "Invoice overdue" },
-          "payment_received": { "title": "Payment received" },
-          "note_added": { "title": "Note added" },
-          "customer_updated": { "title": "Customer updated" },
-          "conversation_closed": { "title": "Conversation closed" },
-          "conversation_reopened": { "title": "Conversation reopened" },
-          "call_started": { "title": "Call started" },
-          "call_finished": { "title": "Call finished" },
-          "email_received": { "title": "Email received" },
-          "email_sent": { "title": "Email sent" },
-          "notification_delivered": { "title": "Notification delivered" },
-          "calendar_event": { "title": "Calendar event" },
-          "manual_activity": { "title": "Manual activity" },
-          "automation_started": { "title": "Automation started" },
-          "automation_finished": { "title": "Automation finished" },
-          "ai_summary_updated": { "title": "AI summary updated" }
+          "whatsapp_message_received": {
+            "title": "WhatsApp message received"
+          },
+          "whatsapp_message_sent": {
+            "title": "WhatsApp message sent"
+          },
+          "template_sent": {
+            "title": "WhatsApp template sent"
+          },
+          "interactive_reply": {
+            "title": "Interactive reply"
+          },
+          "facebook_message": {
+            "title": "Facebook message"
+          },
+          "instagram_message": {
+            "title": "Instagram message"
+          },
+          "booking_created": {
+            "title": "Booking created"
+          },
+          "booking_confirmed": {
+            "title": "Booking confirmed"
+          },
+          "booking_rescheduled": {
+            "title": "Booking rescheduled"
+          },
+          "booking_completed": {
+            "title": "Booking completed"
+          },
+          "booking_cancelled": {
+            "title": "Booking cancelled"
+          },
+          "invoice_created": {
+            "title": "Invoice created"
+          },
+          "invoice_paid": {
+            "title": "Invoice paid"
+          },
+          "invoice_overdue": {
+            "title": "Invoice overdue"
+          },
+          "payment_received": {
+            "title": "Payment received"
+          },
+          "note_added": {
+            "title": "Note added"
+          },
+          "customer_updated": {
+            "title": "Customer updated"
+          },
+          "conversation_closed": {
+            "title": "Conversation closed"
+          },
+          "conversation_reopened": {
+            "title": "Conversation reopened"
+          },
+          "call_started": {
+            "title": "Call started"
+          },
+          "call_finished": {
+            "title": "Call finished"
+          },
+          "email_received": {
+            "title": "Email received"
+          },
+          "email_sent": {
+            "title": "Email sent"
+          },
+          "notification_delivered": {
+            "title": "Notification delivered"
+          },
+          "calendar_event": {
+            "title": "Calendar event"
+          },
+          "manual_activity": {
+            "title": "Manual activity"
+          },
+          "automation_started": {
+            "title": "Automation started"
+          },
+          "automation_finished": {
+            "title": "Automation finished"
+          },
+          "ai_summary_updated": {
+            "title": "AI summary updated"
+          }
         }
       }
     },
@@ -3135,21 +3194,6 @@
       "distributeHorizontal": "Distribute horizontally",
       "distributeVertical": "Distribute vertically"
     },
-    "actions": {
-      "back": "Back",
-      "save": "Save now",
-      "saveDraft": "Save draft",
-      "publish": "Publish",
-      "align": "Align",
-      "autoLayout": "Auto layout",
-      "undo": "Undo",
-      "redo": "Redo",
-      "cancel": "Cancel",
-      "continue": "Continue",
-      "done": "Done",
-      "compareSelected": "Compare selected",
-      "rollback": "Rollback"
-    },
     "ai": {
       "promptTemplate": "Prompt template",
       "providerConnection": "Provider connection",
@@ -4667,13 +4711,13 @@
         "reason": "Reason",
         "signalsUsed": "Signals used",
         "intent": "Intent",
-        "mood": "Mood",
-        "journey": "Journey",
-        "knowledgeSource": "Knowledge source",
-        "confidence": "Confidence",
-        "explainSuggestion": "Explain suggestion",
-        "none": "—",
-        "reasonTemplate": "Aligned with {{intent}} using {{signalCount}} contextual signals (mood: {{mood}}, journey: {{journey}}).",
+        "mood": {
+          "neutral": "Neutral",
+          "happy": "Happy",
+          "angry": "Angry",
+          "urgent": "Urgent",
+          "confused": "Confused"
+        },
         "journey": {
           "unknown": "Unknown",
           "discovery": "Discovery",
@@ -4682,13 +4726,11 @@
           "waiting": "Awaiting customer",
           "resolution": "Resolution"
         },
-        "mood": {
-          "neutral": "Neutral",
-          "happy": "Happy",
-          "angry": "Angry",
-          "urgent": "Urgent",
-          "confused": "Confused"
-        },
+        "knowledgeSource": "Knowledge source",
+        "confidence": "Confidence",
+        "explainSuggestion": "Explain suggestion",
+        "none": "—",
+        "reasonTemplate": "Aligned with {{intent}} using {{signalCount}} contextual signals (mood: {{mood}}, journey: {{journey}}).",
         "moodLabels": {
           "neutral": "Neutral",
           "happy": "Happy",
@@ -5434,19 +5476,58 @@
       "retry": "Retry"
     },
     "templates": {
-      "bookingCreated": { "title": "Booking Created", "body": "Your appointment is confirmed." },
-      "bookingReminder": { "title": "Appointment Reminder", "body": "Reminder for your upcoming appointment." },
-      "bookingCancelled": { "title": "Booking Cancelled", "body": "Your appointment was cancelled." },
-      "bookingRescheduled": { "title": "Booking Rescheduled", "body": "Your appointment was rescheduled." },
-      "bookingCheckedIn": { "title": "Checked In", "body": "You have been checked in." },
-      "bookingCompleted": { "title": "Visit Completed", "body": "Thank you for your visit." },
-      "invoiceCreated": { "title": "Invoice Created", "body": "A new invoice is available." },
-      "invoicePaid": { "title": "Payment Received", "body": "Your payment was received." },
-      "paymentFailed": { "title": "Payment Failed", "body": "We could not process your payment." },
-      "birthdayGreeting": { "title": "Happy Birthday", "body": "Wishing you a wonderful birthday!" },
-      "followUpReminder": { "title": "Follow-up Reminder", "body": "Time for your follow-up appointment." },
-      "marketingCampaign": { "title": "Campaign", "body": "A message from our team." },
-      "customerCreated": { "title": "Welcome", "body": "Welcome to our clinic." }
+      "bookingCreated": {
+        "title": "Booking Created",
+        "body": "Your appointment is confirmed."
+      },
+      "bookingReminder": {
+        "title": "Appointment Reminder",
+        "body": "Reminder for your upcoming appointment."
+      },
+      "bookingCancelled": {
+        "title": "Booking Cancelled",
+        "body": "Your appointment was cancelled."
+      },
+      "bookingRescheduled": {
+        "title": "Booking Rescheduled",
+        "body": "Your appointment was rescheduled."
+      },
+      "bookingCheckedIn": {
+        "title": "Checked In",
+        "body": "You have been checked in."
+      },
+      "bookingCompleted": {
+        "title": "Visit Completed",
+        "body": "Thank you for your visit."
+      },
+      "invoiceCreated": {
+        "title": "Invoice Created",
+        "body": "A new invoice is available."
+      },
+      "invoicePaid": {
+        "title": "Payment Received",
+        "body": "Your payment was received."
+      },
+      "paymentFailed": {
+        "title": "Payment Failed",
+        "body": "We could not process your payment."
+      },
+      "birthdayGreeting": {
+        "title": "Happy Birthday",
+        "body": "Wishing you a wonderful birthday!"
+      },
+      "followUpReminder": {
+        "title": "Follow-up Reminder",
+        "body": "Time for your follow-up appointment."
+      },
+      "marketingCampaign": {
+        "title": "Campaign",
+        "body": "A message from our team."
+      },
+      "customerCreated": {
+        "title": "Welcome",
+        "body": "Welcome to our clinic."
+      }
     }
   },
   "scheduling": {
@@ -6560,7 +6641,7 @@
       "classifierSelected": "{{actor}} selected classifier {{target}} for intent matching.",
       "intentEnabled": "{{actor}} enabled intent {{target}}.",
       "intentDisabled": "{{actor}} disabled intent {{target}}.",
-      "providerConnected": "{{actor}} connected AI provider {{provider}} as {{target}}.",
+      "providerConnected": "{{actor}} connected vector store provider {{target}}.",
       "providerEnabled": "{{actor}} enabled AI provider connection {{target}}.",
       "providerDisabled": "{{actor}} disabled AI provider connection {{target}}.",
       "providerUpdated": "{{actor}} updated AI provider connection {{target}}.",
@@ -6591,7 +6672,6 @@
       "embeddingFailed": "{{actor}} failed to generate embedding for {{target}}.",
       "embeddingRegenerated": "{{actor}} regenerated embedding for {{target}}.",
       "embeddingActivated": "{{actor}} activated embedding {{target}}.",
-      "providerConnected": "{{actor}} connected vector store provider {{target}}.",
       "providerDisconnected": "{{actor}} disconnected vector store provider {{target}}.",
       "vectorCollectionCreated": "{{actor}} created vector collection {{target}}.",
       "vectorCollectionDeleted": "{{actor}} deleted vector collection {{target}}.",
@@ -7766,6 +7846,13 @@
       "title": "Workspace Configuration",
       "subtitle": "Configure columns, statuses, services, and permissions without code changes.",
       "save": "Save Configuration",
+      "saveDraft": "Save Draft",
+      "saveSuccess": "Configuration draft saved.",
+      "saveError": "Failed to save configuration.",
+      "publishSuccess": "Configuration published.",
+      "publishError": "Failed to publish configuration.",
+      "publishNote": "Published from operations configuration UI",
+      "domainHint": "Configure this domain through the Enterprise Configuration Platform.",
       "placeholder": "This configuration section uses mock metadata. Live persistence connects in a future sprint.",
       "tabs": {
         "general": "General",
@@ -7787,10 +7874,13 @@
         "workspaceName": "Workspace Name",
         "moduleName": "Module Name",
         "rowEntity": "Row Entity Name",
-        "customerLabel": "Customer Label"
+        "customerLabel": "Customer Label",
+        "defaultCustomerLabel": "Customer"
       },
       "columns": {
-        "title": "Column Definitions"
+        "title": "Column Definitions",
+        "visible": "Visible",
+        "hidden": "Hidden"
       },
       "statuses": {
         "title": "Status Workflow",
@@ -7808,10 +7898,17 @@
       "completionRate": "Completion Rate",
       "avgServiceTime": "Average Service Time",
       "mockNote": "Metrics will connect to platform read ports in a future integration sprint."
+    },
+    "workspaceNames": {
+      "clinic": "Front Desk Operations",
+      "training_center": "Training Operations",
+      "automotive": "Service Bay Operations"
     }
   },
   "customer360": {
-    "badges": { "vip": "VIP" },
+    "badges": {
+      "vip": "VIP"
+    },
     "rolePreview": "Preview role layout",
     "roles": {
       "receptionist": "Receptionist",
@@ -8014,6 +8111,54 @@
       "room": "Room",
       "priority": "Priority",
       "risk": "Risk"
+    },
+    "action": "Action",
+    "workflowStages": {
+      "booked": "Booked",
+      "confirmed": "Confirmed",
+      "checked_in": "Checked In",
+      "doctor": "Doctor",
+      "cashier": "Cashier",
+      "completed": "Completed"
+    },
+    "alertRules": {
+      "vip": {
+        "title": "VIP Customer",
+        "message": "This customer has VIP status — prioritize service."
+      },
+      "outstanding": {
+        "title": "Outstanding Balance",
+        "message": "Payment balance remains on account."
+      },
+      "waiting_long": {
+        "title": "Extended Wait",
+        "message": "Customer has been waiting longer than the target threshold."
+      },
+      "payment_delay": {
+        "title": "Payment Delay",
+        "message": "Partial payment outstanding beyond expected window."
+      },
+      "medical": {
+        "title": "Medical Alert",
+        "message": "Allergic to penicillin — review before treatment."
+      },
+      "no_show_history": {
+        "title": "No-Show History",
+        "message": "Customer has previous no-show records."
+      },
+      "low_satisfaction": {
+        "title": "Low Satisfaction",
+        "message": "Recent satisfaction score below team average."
+      }
+    },
+    "recReasons": {
+      "rec_collect": "Outstanding balance before checkout.",
+      "rec_followup": "Patient due for follow-up based on last completed visit pattern.",
+      "rec_upgrade": "VIP customer — premium service package has high acceptance rate.",
+      "rec_reassign": "Wait time exceeds target — alternate resource available.",
+      "rec_whatsapp": "Customer prefers WhatsApp — recent interactions were via messaging.",
+      "rec_task": "Lab results pending — create follow-up task for nursing team.",
+      "rec_escalate": "Elevated churn risk detected from engagement patterns."
     }
   },
   "workspacePlatform": {
@@ -8079,11 +8224,51 @@
     },
     "notifications": {
       "title": "Notifications",
-      "markAll": "Mark all read"
+      "markAll": "Mark all read",
+      "mock": {
+        "n1": {
+          "title": "VIP Arrived",
+          "message": "Sara Hassan checked in — Room 3"
+        },
+        "n2": {
+          "title": "Payment Received",
+          "message": "$80.00 partial payment from Ahmed Al-Rashid"
+        },
+        "n3": {
+          "title": "Invoice Overdue",
+          "message": "INV-2026-0831 is 5 days overdue ($340)"
+        },
+        "n4": {
+          "title": "Employee Late",
+          "message": "Dr. Khalid is 12 minutes late for shift"
+        },
+        "n5": {
+          "title": "Task Completed",
+          "message": "Lab results uploaded for Sara Hassan"
+        },
+        "n6": {
+          "title": "Room Available",
+          "message": "Room 5 is now available"
+        },
+        "n7": {
+          "title": "AI Recommendation",
+          "message": "Collect remaining $45 from Sara Hassan (94% confidence)"
+        },
+        "n8": {
+          "title": "Workflow Blocked",
+          "message": "Insurance verification pending for BK-9912"
+        }
+      }
     },
     "favorites": {
       "title": "Favorites",
-      "unpin": "Unpin"
+      "unpin": "Unpin",
+      "items": {
+        "waitingRoomQueue": "Waiting Room Queue",
+        "dailyRevenueReport": "Daily Revenue Report",
+        "clinicWorkspace": "Clinic Workspace",
+        "customerName": "Sara Hassan"
+      }
     },
     "widgets": {
       "revenueToday": "Today's Revenue",
@@ -8093,7 +8278,22 @@
       "aiRecommendations": "AI Recommendations",
       "tasks": "Tasks",
       "leaderboard": "Leaderboard",
-      "noData": "No data yet"
+      "noData": "No data yet",
+      "points": {
+        "today": "Today",
+        "target": "Target",
+        "next2h": "Next 2h",
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "onDuty": "On duty",
+        "late": "Late",
+        "pending": "Pending",
+        "highConfidence": "High confidence",
+        "open": "Open",
+        "dueToday": "Due today",
+        "topPerformer": "Top performer",
+        "revenue": "Revenue"
+      }
     },
     "activity": {
       "search": "Search activity…",
@@ -8102,6 +8302,63 @@
         "yesterday": "Yesterday",
         "thisWeek": "This Week",
         "older": "Older"
+      },
+      "mock": {
+        "customerCreated": {
+          "title": "Customer Created",
+          "description": "New customer Ahmed Al-Rashid registered",
+          "actor": "Reception · Layla"
+        },
+        "leadConverted": {
+          "title": "Lead Converted",
+          "description": "Fatima Noor converted to customer",
+          "actor": "Sales · Omar"
+        },
+        "paymentCollected": {
+          "title": "Payment Collected",
+          "description": "$80.00 partial payment received",
+          "actor": "Cashier · Nadia"
+        },
+        "whatsappSent": {
+          "title": "WhatsApp Sent",
+          "description": "Appointment reminder sent to Sara Hassan",
+          "actor": "System"
+        },
+        "employeeAssigned": {
+          "title": "Employee Assigned",
+          "description": "Dr. Amira assigned to Sara Hassan",
+          "actor": "Manager · Khalid"
+        },
+        "invoiceGenerated": {
+          "title": "Invoice Generated",
+          "description": "INV-2026-0847 created ($245.00)",
+          "actor": "Billing · System"
+        },
+        "taskCompleted": {
+          "title": "Task Completed",
+          "description": "Lab results uploaded for Sara Hassan",
+          "actor": "Nurse · Hana"
+        },
+        "aiSummary": {
+          "title": "AI Summary Generated",
+          "description": "Customer health summary for Sara Hassan",
+          "actor": "AI Copilot"
+        },
+        "workflowTriggered": {
+          "title": "Workflow Triggered",
+          "description": "Insurance verification started for BK-9912",
+          "actor": "Automation"
+        },
+        "paymentCollected2": {
+          "title": "Payment Collected",
+          "description": "$120.00 full payment received",
+          "actor": "Cashier · Nadia"
+        },
+        "customerCreated2": {
+          "title": "Customer Created",
+          "description": "New customer Layla Mansour registered",
+          "actor": "Reception"
+        }
       }
     },
     "hub": {
@@ -8199,6 +8456,114 @@
       "education": "Education",
       "hr": "HR & Recruitment",
       "realEstate": "Real Estate"
+    }
+  },
+  "leads": {
+    "nav": {
+      "table": "Table",
+      "kanban": "Kanban",
+      "pipeline": "Pipeline",
+      "timeline": "Timeline",
+      "dashboard": "Dashboard"
+    },
+    "table": {
+      "title": "Leads",
+      "subtitle": "Manage your sales pipeline with live lead data.",
+      "search": "Search leads...",
+      "empty": "No leads found.",
+      "count": "{{shown}} / {{total}} leads"
+    },
+    "columns": {
+      "lead": "Lead",
+      "stage": "Stage",
+      "score": "Score",
+      "value": "Value",
+      "owner": "Owner"
+    },
+    "scoreBand": {
+      "hot": "Hot",
+      "warm": "Warm",
+      "cold": "Cold"
+    },
+    "scorePoints": "{{score}} pts",
+    "scoreLabel": "{{score}} score",
+    "kanban": {
+      "title": "Kanban",
+      "subtitle": "Drag leads across pipeline stages with realtime updates.",
+      "pipeline": "Pipeline"
+    },
+    "pipeline": {
+      "title": "Pipeline",
+      "subtitle": "Configurable stages from the pipeline configuration engine.",
+      "select": "Pipeline",
+      "totalLeads": "Total leads",
+      "pipelineValue": "Pipeline value",
+      "stages": "Stages",
+      "pipeline": "Pipeline",
+      "stageLeads": "{{count}} leads",
+      "probability": "{{percent}}% probability"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "subtitle": "Recent lead activity ordered by last update.",
+      "empty": "No activity yet."
+    },
+    "dashboard": {
+      "title": "Lead Dashboard",
+      "subtitle": "Realtime KPIs for conversion, pipeline value, and lead sources.",
+      "forecast": "Forecast value",
+      "byStatus": "Leads by status",
+      "pipelines": "Pipeline performance",
+      "pipelineRow": "{{count}} leads · {{value}}"
+    },
+    "kpi": {
+      "total": "Total leads",
+      "conversionRate": "Conversion rate",
+      "created": "Created (period)",
+      "converted": "Converted (period)"
+    },
+    "lifecycle": {
+      "new": "New",
+      "qualified": "Qualified",
+      "converted": "Converted",
+      "lost": "Lost",
+      "archived": "Archived",
+      "nurturing": "Nurturing"
+    }
+  },
+  "leads360": {
+    "convert": "Convert to customer",
+    "scoreLabel": "{{score}} score",
+    "sections": {
+      "overview": "Overview",
+      "company": "Company",
+      "contacts": "Contacts",
+      "activities": "Activities",
+      "timeline": "Timeline",
+      "tags": "Tags",
+      "files": "Files",
+      "customFields": "Custom Fields",
+      "tasks": "Tasks",
+      "bookings": "Bookings",
+      "invoices": "Invoices",
+      "communication": "Communication",
+      "relatedEntities": "Related Entities",
+      "aiAssistant": "AI Assistant",
+      "audit": "Audit"
+    },
+    "empty": {
+      "company": "No company",
+      "email": "No email",
+      "phone": "No phone",
+      "contacts": "No contacts",
+      "tags": "No tags",
+      "files": "No files",
+      "tasks": "No tasks",
+      "relatedEntities": "No related entities configured yet"
+    },
+    "ai": {
+      "nextAction": "Next action:",
+      "followUp": "Follow-up:"
     }
   }
 }

@@ -46,14 +46,12 @@ export function LeadsKanbanPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold">{t("leads.kanban.title", "Kanban")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("leads.kanban.subtitle", "Drag leads across pipeline stages with realtime updates.")}
-          </p>
+          <h2 className="text-xl font-bold">{t("leads.kanban.title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("leads.kanban.subtitle")}</p>
         </div>
         <Select value={pipelineId ?? undefined} onValueChange={setPipelineId}>
           <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder={t("leads.kanban.pipeline", "Pipeline")} />
+            <SelectValue placeholder={t("leads.kanban.pipeline")} />
           </SelectTrigger>
           <SelectContent>
             {(pipelines ?? []).map((pipeline) => (
@@ -96,8 +94,10 @@ export function LeadsKanbanPage() {
                   <div className="font-medium">{lead.title}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{lead.companyName ?? lead.contactName}</div>
                   <div className="mt-2 flex items-center justify-between text-xs">
-                    <span>{lead.score} pts</span>
-                    <Badge variant={lead.scoreBand === "hot" ? "destructive" : "secondary"}>{lead.scoreBand}</Badge>
+                    <span>{t("leads.scorePoints", { score: lead.score })}</span>
+                    <Badge variant={lead.scoreBand === "hot" ? "destructive" : "secondary"}>
+                      {t(`leads.scoreBand.${lead.scoreBand}`)}
+                    </Badge>
                   </div>
                 </button>
               ))}

@@ -65,7 +65,7 @@
 
 | Migration | Changes |
 |-----------|---------|
-| `219_appointment_platform_promotion_sprint6_12.sql` | Add `lead_id`, `conversation_id` to `scheduling_bookings`; metrics RPC; indexes |
+| `227_appointment_platform_promotion_sprint6_12.sql` | Add `lead_id`, `conversation_id` to `scheduling_bookings`; metrics RPC; indexes |
 
 No changes to existing booking permissions — reuses `bookings.view/create/edit/delete`.
 

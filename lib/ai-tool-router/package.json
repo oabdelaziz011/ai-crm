@@ -18,7 +18,10 @@
     "@workspace/automation-platform": "workspace:*",
     "@workspace/platform-crypto": "workspace:*",
     "@workspace/runtime-integration": "workspace:*",
-    "@workspace/scheduling-engine": "workspace:*"
+    "@workspace/scheduling-engine": "workspace:*",
+    "@workspace/human-handoff-platform": "workspace:*",
+    "@workspace/lead-platform": "workspace:*",
+    "@workspace/ticket-platform": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

@@ -8,6 +8,7 @@ import type { TicketPlatformServices, TicketServiceContext } from "@workspace/ti
 import { TICKET_PERMISSIONS } from "@workspace/ticket-platform";
 import { getLoginAppHandoffPlatformServices } from "@/lib/human-handoff-platform/handoff-read-port-adapter";
 import type { HandoffPlatformServices, HandoffServiceContext } from "@workspace/human-handoff-platform";
+import { HANDOFF_PERMISSIONS } from "@workspace/human-handoff-platform";
 import { getLoginAppLeadPlatformServices } from "@/lib/lead-platform/lead-read-port-adapter";
 import type { LeadPlatformServices, LeadServiceContext } from "@workspace/lead-platform";
 import { LEAD_PERMISSIONS } from "@workspace/lead-platform";
@@ -291,9 +292,9 @@ export class IntegrationApiGatewayService {
 
   private handoffContext(ctx: ApiAuthContext): HandoffServiceContext {
     return {
-      userId: ctx.userId,
+      userId: ctx.userId ?? null,
       companyId: ctx.companyId,
-      isSuperAdmin: ctx.isSuperAdmin,
+      isSuperAdmin: ctx.isSuperAdmin ?? false,
       hasPermission: (code) => this.hasMappedPermission(ctx, code),
     };
   }
@@ -445,9 +446,9 @@ export class IntegrationApiGatewayService {
 
   private leadContext(ctx: ApiAuthContext): LeadServiceContext {
     return {
-      userId: ctx.userId,
+      userId: ctx.userId ?? null,
       companyId: ctx.companyId,
-      isSuperAdmin: ctx.isSuperAdmin,
+      isSuperAdmin: ctx.isSuperAdmin ?? false,
       hasPermission: (code) => this.hasLeadMappedPermission(ctx, code),
     };
   }
@@ -587,9 +588,9 @@ export class IntegrationApiGatewayService {
 
   private appointmentContext(ctx: ApiAuthContext): AppointmentServiceContext {
     return {
-      userId: ctx.userId,
+      userId: ctx.userId ?? null,
       companyId: ctx.companyId,
-      isSuperAdmin: ctx.isSuperAdmin,
+      isSuperAdmin: ctx.isSuperAdmin ?? false,
       hasPermission: (code) => this.hasAppointmentMappedPermission(ctx, code),
     };
   }
@@ -600,7 +601,6 @@ export class IntegrationApiGatewayService {
       [APPOINTMENT_PERMISSIONS.create]: ["bookings.write"],
       [APPOINTMENT_PERMISSIONS.edit]: ["bookings.write"],
       [APPOINTMENT_PERMISSIONS.delete]: ["bookings.write"],
-      [APPOINTMENT_PERMISSIONS.manage]: ["bookings.write"],
     };
     const scopes = scopeMap[code] ?? [];
     return scopes.some((scope) => ctx.scopes.includes(scope));

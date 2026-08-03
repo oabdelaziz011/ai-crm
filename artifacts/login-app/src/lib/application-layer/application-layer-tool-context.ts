@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
   createContext,
   createApplicationLayerRegistry,
@@ -20,7 +19,7 @@ export function buildToolApplicationContext(
     actorId: actorUserId,
     actorType: "ai",
     permissions: permissionCodes(portContext.hasPermission, portContext.isSuperAdmin),
-    correlationId: randomUUID(),
+    correlationId: crypto.randomUUID(),
     locale: "en",
   });
 }

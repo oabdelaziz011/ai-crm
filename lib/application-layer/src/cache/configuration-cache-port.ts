@@ -1,5 +1,5 @@
 import { MemoryPlatformCache } from "@workspace/platform-cache";
-import type { ConfigurationCachePort } from "./configuration-ports.js";
+import type { ConfigurationCachePort } from "../ports/configuration-ports.js";
 
 export function createConfigurationCachePort(): ConfigurationCachePort {
   const cache = new MemoryPlatformCache();
@@ -11,7 +11,7 @@ export function createConfigurationCachePort(): ConfigurationCachePort {
     async get<T>(key: string) {
       return cache.get<T>(key);
     },
-    async set<T>(key, value, ttlSeconds = 120) {
+    async set<T>(key: string, value: T, ttlSeconds = 120) {
       await cache.set(key, value, ttlSeconds);
     },
     async invalidate(key) {

@@ -39,11 +39,22 @@ export function mapExecutiveProjectionToDashboardSnapshot(input: {
 
   const trends: Record<string, DashboardKpiAnalytics> = {};
   for (const kpi of input.dashboard.kpis) {
+    const numeric = Number(String(kpi.value).replace(/[^0-9.-]/g, ""));
     trends[kpi.id] = {
-      trendDirection: kpi.trend?.startsWith("+") ? "up" : kpi.trend?.startsWith("-") ? "down" : "flat",
+      metricKey: kpi.id,
+      category: "system",
+      currentValue: Number.isFinite(numeric) ? numeric : 0,
+      previousValue: 0,
+      absoluteDifference: 0,
       percentageDifference: parseTrendPercent(kpi.trend),
-      comparisonLabel: "vs previous period",
-      strength: "moderate",
+      trendDirection: kpi.trend?.startsWith("+") ? "up" : kpi.trend?.startsWith("-") ? "down" : "flat",
+      trendStrength: "moderate",
+      comparisonPeriod: {
+        key: "this_month",
+        label: "vs previous period",
+        startAt: capturedAt,
+        endAt: capturedAt,
+      },
     };
   }
 

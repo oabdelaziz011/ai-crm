@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLeadKanbanBoard, useLeadPipelines } from "@/hooks/leads/use-leads-workspace";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { WorkspaceMetric } from "@/components/customer-workspace/workspace-ui";
+import { translateLeadLifecycleStatus } from "@/lib/i18n/workspace-mock-labels";
 import {
   Select,
   SelectContent,
@@ -33,14 +34,12 @@ export function LeadsPipelinePage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold">{t("leads.pipeline.title", "Pipeline")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("leads.pipeline.subtitle", "Configurable stages from the pipeline configuration engine.")}
-          </p>
+          <h2 className="text-xl font-bold">{t("leads.pipeline.title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("leads.pipeline.subtitle")}</p>
         </div>
         <Select value={pipelineId ?? undefined} onValueChange={setPipelineId}>
           <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder={t("leads.pipeline.select", "Pipeline")} />
+            <SelectValue placeholder={t("leads.pipeline.select")} />
           </SelectTrigger>
           <SelectContent>
             {(pipelines ?? []).map((pipeline) => (
@@ -53,10 +52,10 @@ export function LeadsPipelinePage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <WorkspaceMetric label={t("leads.pipeline.totalLeads", "Total leads")} value={totalLeads} compact />
-        <WorkspaceMetric label={t("leads.pipeline.pipelineValue", "Pipeline value")} value={totalValue} compact accent="success" />
-        <WorkspaceMetric label={t("leads.pipeline.stages", "Stages")} value={board?.stages.length ?? 0} compact />
-        <WorkspaceMetric label={t("leads.pipeline.pipeline", "Pipeline")} value={board?.pipeline.name ?? "—"} compact />
+        <WorkspaceMetric label={t("leads.pipeline.totalLeads")} value={totalLeads} compact />
+        <WorkspaceMetric label={t("leads.pipeline.pipelineValue")} value={totalValue} compact accent="success" />
+        <WorkspaceMetric label={t("leads.pipeline.stages")} value={board?.stages.length ?? 0} compact />
+        <WorkspaceMetric label={t("leads.pipeline.pipeline")} value={board?.pipeline.name ?? "—"} compact />
       </div>
 
       <div className="space-y-3">
@@ -65,11 +64,15 @@ export function LeadsPipelinePage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="font-medium">{stage.name}</div>
-                <div className="text-xs text-muted-foreground capitalize">{stage.lifecycleStatus}</div>
+                <div className="text-xs text-muted-foreground capitalize">
+                  {translateLeadLifecycleStatus(t, stage.lifecycleStatus)}
+                </div>
               </div>
               <div className="text-right text-sm">
-                <div>{stage.leadCount ?? 0} leads</div>
-                <div className="text-muted-foreground">{stage.probabilityPercent}% probability</div>
+                <div>{t("leads.pipeline.stageLeads", { count: stage.leadCount ?? 0 })}</div>
+                <div className="text-muted-foreground">
+                  {t("leads.pipeline.probability", { percent: stage.probabilityPercent })}
+                </div>
               </div>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">

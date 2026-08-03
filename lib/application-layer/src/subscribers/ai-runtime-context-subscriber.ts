@@ -28,7 +28,7 @@ export function createAIRuntimeContextSubscriber(
     subscriberId: "ai-runtime-context-refresh",
     subscribedEvents: CONTEXT_REFRESH_EVENTS,
     async handle(event: PlatformEvent): Promise<void> {
-      const tenantId = event.context.tenantId;
+      const tenantId = event.tenantId;
       await deps.contextCache.invalidateTenant(tenantId);
       if (deps.invalidateRuntime) {
         const entityId =

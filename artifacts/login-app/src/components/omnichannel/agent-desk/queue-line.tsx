@@ -118,7 +118,6 @@ export const QueueCard = memo(function QueueCard({
     window.__OMNI_VIRT_PROOF__ = {
       ...window.__OMNI_VIRT_PROOF__,
       queueCardMounted: true,
-      queueCardMountedAt: new Date().toISOString(),
     };
     const node = ref.current;
     const style = node ? window.getComputedStyle(node) : null;

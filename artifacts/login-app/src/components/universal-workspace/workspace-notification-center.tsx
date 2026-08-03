@@ -2,6 +2,10 @@ import { memo } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePlatform } from "@/context/workspace-platform-context";
+import {
+  translateNotificationMessage,
+  translateNotificationTitle,
+} from "@/lib/i18n/workspace-mock-labels";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -61,10 +65,12 @@ export const WorkspaceNotificationCenter = memo(function WorkspaceNotificationCe
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-semibold">{n.title}</p>
+                <p className="text-xs font-semibold">{translateNotificationTitle(t, n.id, n.title)}</p>
                 {!n.read && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
               </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{n.message}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {translateNotificationMessage(t, n.id, n.message)}
+              </p>
             </button>
           ))}
         </div>

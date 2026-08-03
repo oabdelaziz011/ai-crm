@@ -100,7 +100,7 @@ export function createActivityReadPortFromEntity(
           channel: activity.channel,
           subject: activity.subject,
           occurredAt: activity.occurredAt,
-          preview: activity.preview,
+          preview: activity.preview ?? undefined,
           actor: activity.actorName ?? undefined,
         }),
       );

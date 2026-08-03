@@ -23,9 +23,9 @@ export function createLoginAppKnowledgeWritePort(client: SupabaseClient, ctx: Lo
       }
       const doc = await knowledge.publishing.publishDocument(buildKnowledgeContext(ctx), input.documentId);
       return Object.freeze({
-        id: doc.id,
-        title: doc.title,
-        updatedAt: doc.updated_at,
+        id: doc.document.id,
+        title: doc.document.title,
+        updatedAt: doc.document.updated_at,
       });
     },
   };

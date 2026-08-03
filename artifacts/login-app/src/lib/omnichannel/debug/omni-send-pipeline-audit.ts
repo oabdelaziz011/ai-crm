@@ -118,6 +118,7 @@ export function traceOmniSendEnter(input: {
   conversationId?: string | null;
   messageId?: string | null;
   statusBefore?: string | null;
+  statusAfter?: string | null;
   extra?: Record<string, unknown>;
 }): OmniSendPipelineStage {
   const state = ensureState();
@@ -139,7 +140,7 @@ export function traceOmniSendEnter(input: {
     messageId: input.messageId ?? null,
     conversationId: input.conversationId ?? null,
     statusBefore: input.statusBefore ?? null,
-    statusAfter: null,
+    statusAfter: input.statusAfter ?? null,
     extra: input.extra,
   };
 

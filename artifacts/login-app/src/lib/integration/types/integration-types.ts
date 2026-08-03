@@ -133,6 +133,8 @@ export type ApiAuthContext = {
   authId: string;
   scopes: ApiScope[];
   ipAddress?: string;
+  userId?: string | null;
+  isSuperAdmin?: boolean;
 };
 
 export type PaginatedResult<T> = {

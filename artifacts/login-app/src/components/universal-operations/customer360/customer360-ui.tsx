@@ -90,7 +90,7 @@ export function Customer360Badge({
         tone === "default" && "bg-muted/60 text-muted-foreground",
       )}
     >
-      {label === "VIP" ? t("customer360.badges.vip") : label}
+      {tone === "vip" ? t("customer360.badges.vip") : label}
     </span>
   );
 }

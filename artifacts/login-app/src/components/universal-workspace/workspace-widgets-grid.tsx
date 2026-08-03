@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WorkspaceWidgetSnapshot } from "@workspace/universal-workspace-platform";
+import { translateWidgetPointLabel } from "@/lib/i18n/workspace-mock-labels";
 import { cn } from "@/lib/utils";
 
 function WidgetCard({ widget }: { widget: WorkspaceWidgetSnapshot }) {
@@ -16,7 +17,9 @@ function WidgetCard({ widget }: { widget: WorkspaceWidgetSnapshot }) {
       <div className="mt-3 space-y-2">
         {data.map((point) => (
           <div key={point.id} className="flex items-baseline justify-between gap-2">
-            <span className="text-xs text-muted-foreground">{point.label}</span>
+            <span className="text-xs text-muted-foreground">
+              {translateWidgetPointLabel(t, widget.type, point.id, point.label)}
+            </span>
             <div className="flex items-baseline gap-1.5">
               <span
                 className={cn(

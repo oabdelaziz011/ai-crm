@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { ApplicationPorts } from "../../ports/repository-ports.js";
 import type { InfrastructurePorts } from "../../ports/infrastructure-ports.js";
 import type { ApplicationContext } from "../../contracts/application-context.js";
@@ -250,6 +249,14 @@ export async function handleAssignEmployee(
   };
 }
 
+function mapWorkflowExecutionStatus(
+  status: string,
+): ExecuteWorkflowResponseDto["status"] {
+  if (status === "failed") return "failed";
+  if (status === "skipped" || status === "cancelled") return "skipped";
+  return "success";
+}
+
 export async function handleExecuteWorkflow(
   deps: CommandHandlerDeps,
   request: ExecuteWorkflowRequestDto,
@@ -266,18 +273,19 @@ export async function handleExecuteWorkflow(
     triggerEventType: "ManualExecute",
     context: eventContext(context),
   });
+  const mappedStatus = mapWorkflowExecutionStatus(execution.status);
   const eventId = await deps.infra.events.publishWorkflowExecuted({
     workflowId: execution.workflowId,
     workflowName: execution.workflowId,
     triggerEventType: "ManualExecute",
-    status: execution.status,
+    status: mappedStatus,
     context: eventContext(context),
   });
   return {
     response: Object.freeze({
       executionId: execution.id,
       workflowId: execution.workflowId,
-      status: execution.status,
+      status: mappedStatus,
       executedAt: execution.executedAt,
     }),
     eventIds: [startedEventId, eventId],
@@ -494,7 +502,7 @@ export async function handleGenerateAISummary(
   request: GenerateAISummaryRequestDto,
   context: ApplicationContext,
 ): Promise<{ response: GenerateAISummaryResponseDto; eventIds: string[] }> {
-  const summaryId = randomUUID();
+  const summaryId = crypto.randomUUID();
   const generatedAt = new Date().toISOString();
   const eventId = await deps.infra.events.publishAISummaryGenerated({
     summaryId,

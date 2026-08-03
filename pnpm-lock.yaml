@@ -849,6 +849,12 @@ importers:
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../automation-platform
+      '@workspace/human-handoff-platform':
+        specifier: workspace:*
+        version: link:../human-handoff-platform
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../lead-platform
       '@workspace/platform-crypto':
         specifier: workspace:*
         version: link:../platform-crypto
@@ -858,6 +864,9 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../scheduling-engine
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../ticket-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -996,12 +1005,21 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/appointment-platform':
+        specifier: workspace:*
+        version: link:../appointment-platform
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../automation-platform
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../lead-platform
       '@workspace/platform-cache':
         specifier: workspace:*
         version: link:../platform-cache
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../ticket-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3

@@ -16,8 +16,8 @@ export function createLoginAppAutomationDispatchPort(): AutomationDispatchPort {
         params: {
           eventType: envelope.eventType,
           correlationId: envelope.correlationId,
-          entityType: envelope.entityType,
-          entityId: envelope.entityId,
+          entityType: envelope.entityType ?? "",
+          entityId: envelope.entityId ?? "",
           ...payload,
         },
         userId: envelope.actorId,

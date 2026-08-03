@@ -39,7 +39,7 @@ export async function handleCreateLead(
   const eventId = await deps.infra.events.publishLeadCreated({
     leadId: lead.id,
     title: lead.title ?? request.title,
-    source: request.source,
+    source: request.sourceId,
     context: eventContext(context),
   });
   return { response: lead, eventIds: [eventId] };

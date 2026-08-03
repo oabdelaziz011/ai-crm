@@ -5,6 +5,7 @@
   "compilerOptions": {
     "noEmit": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
   }
 }

@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Star, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePlatform } from "@/context/workspace-platform-context";
+import { translateFavoriteLabel } from "@/lib/i18n/workspace-mock-labels";
 import { cn } from "@/lib/utils";
 
 export const WorkspaceFavoritesBar = memo(function WorkspaceFavoritesBar() {
@@ -25,7 +26,7 @@ export const WorkspaceFavoritesBar = memo(function WorkspaceFavoritesBar() {
             "transition-colors hover:border-primary/40 hover:bg-primary/5",
           )}
         >
-          {fav.label}
+          {translateFavoriteLabel(t, fav.id, fav.label)}
           <button
             type="button"
             onClick={() => unpinFavorite(fav.id)}

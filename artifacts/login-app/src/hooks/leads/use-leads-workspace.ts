@@ -7,6 +7,7 @@ import {
   permissionCodes,
 } from "@/lib/application-layer/application-layer-bootstrap";
 import { mapLeadReadModelToWorkspaceRow } from "@/lib/application-layer/lead-workspace-row-mapper";
+import type { ApplicationPorts } from "@workspace/application-layer";
 import type { LeadWorkspaceRow } from "@workspace/universal-operations-engine";
 
 export function useLeadsQueue(filter?: {
@@ -61,7 +62,7 @@ export function useLeadPipelines() {
         isSuperAdmin,
         hasPermission,
       });
-      const ports = registry.resolve("ports");
+      const ports = registry.resolve<ApplicationPorts>("ports");
       return ports.leadRead.listPipelines(company!.id);
     },
     staleTime: 60_000,

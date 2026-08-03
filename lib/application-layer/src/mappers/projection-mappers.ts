@@ -111,6 +111,14 @@ export function mapDashboardWidgets(metrics: AnalyticsMetricModel[]): DashboardP
   return Object.freeze({
     period: "today",
     widgets: Object.freeze([widget]),
+    kpis: Object.freeze(metrics.map((m) => mapSummaryCard(m.id, m.label, m.value, m.trend))),
+    charts: Object.freeze({}),
+    rankings: Object.freeze({
+      customers: Object.freeze([]),
+      employees: Object.freeze([]),
+      services: Object.freeze([]),
+      branches: Object.freeze([]),
+    }),
   });
 }
 

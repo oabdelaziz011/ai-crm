@@ -51,7 +51,7 @@ export interface HandoffReadPort {
 
   listAgentPresence(
     access: HandoffReadAccessContext,
-    input: { companyId: string; states?: string[] },
+    input: { companyId: string; states?: AgentPresenceRecord["state"][] },
   ): Promise<{ agents: AgentPresenceRecord[] }>;
 
   listEscalationRules(

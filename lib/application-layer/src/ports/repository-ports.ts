@@ -609,17 +609,9 @@ export type OperationsWorkspaceConfigModel = Readonly<{
   updatedAt: string;
 }>;
 
-export type AnalyticsTimePeriod =
-  | "today"
-  | "yesterday"
-  | "week"
-  | "month"
-  | "quarter"
-  | "year"
-  | "7d"
-  | "30d"
-  | "90d"
-  | "custom";
+import type { AnalyticsTimePeriod } from "../dto/query-dtos.js";
+
+export type { AnalyticsTimePeriod };
 
 export type AnalyticsFilter = Readonly<{
   period?: AnalyticsTimePeriod;

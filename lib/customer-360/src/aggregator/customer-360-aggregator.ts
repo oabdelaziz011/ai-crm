@@ -65,9 +65,8 @@ export class Customer360Aggregator {
       appointments: {
         upcoming: bundle.bookings.upcoming.map((booking) => ({
           id: booking.id,
-          scheduledAt: booking.scheduledAt,
-          status: booking.status,
-          serviceId: booking.service,
+          status: "future_ready" as const,
+          label: booking.service ?? booking.id,
         })),
       },
       timeline: this.timelineBuilder.build({

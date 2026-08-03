@@ -33,7 +33,7 @@ export function createApplicationLayerSchedulingToolPorts(
         },
         ctx,
       );
-      return unwrapQuery(result);
+      return unwrapQuery(result) as Awaited<ReturnType<SchedulingToolPorts["searchAvailability"]>>;
     },
 
     async findNextAvailable(input) {

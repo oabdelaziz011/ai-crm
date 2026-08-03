@@ -1,4 +1,5 @@
 import type { HandoffAgentToolPorts } from "@workspace/ai-tool-router";
+import type { HandoffEscalationTrigger } from "@workspace/application-layer";
 import type { LoginAppPortContext } from "./adapters/customer-read-port-adapter.js";
 import {
   buildToolApplicationContext,
@@ -16,7 +17,7 @@ export function createApplicationLayerHandoffToolPorts(portContext: LoginAppPort
       const result = await services.handoff.escalateToHuman(
         {
           conversationId: input.conversationId,
-          triggerCode: input.triggerCode,
+          triggerCode: input.triggerCode as HandoffEscalationTrigger,
           reason: input.reason,
           targetQueueId: input.targetQueueId,
           aiAssistantId: input.aiAssistantId,
@@ -25,7 +26,10 @@ export function createApplicationLayerHandoffToolPorts(portContext: LoginAppPort
       );
       const payload = unwrapCommand(result);
       return {
-        ownership: payload.ownership,
+        ownership: {
+          ownerType: payload.ownership.ownerType,
+          ownerLabel: payload.ownership.ownerLabel ?? "",
+        },
         requestId: payload.requestId,
       };
     },

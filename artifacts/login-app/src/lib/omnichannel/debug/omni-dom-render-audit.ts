@@ -71,7 +71,7 @@ export function traceDomRenderStage(input: {
     line: input.line,
     present,
     count: input.rows.length,
-    targetIndex: targetIndex >= 0 ? targetIndex : null,
+    targetIndex: targetIndex !== null && targetIndex >= 0 ? targetIndex : null,
     first10Ids: idsOf(input.rows).slice(0, 10),
     removedHere,
     removalReason: removedHere

@@ -191,7 +191,7 @@ export type DashboardProjectionDto = Readonly<{
   widgets: readonly WidgetProjectionDto[];
   period: string;
   kpis: readonly SummaryCardDto[];
-  charts: Readonly<Record<string, readonly AnalyticsChartPointDto>>;
+  charts: Readonly<Record<string, ReadonlyArray<AnalyticsChartPointDto>>>;
   rankings: Readonly<{
     customers: readonly AnalyticsRankedItemDto[];
     employees: readonly AnalyticsRankedItemDto[];

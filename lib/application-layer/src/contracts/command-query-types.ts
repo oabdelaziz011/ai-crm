@@ -36,6 +36,17 @@ export const COMMAND_TYPES = [
   "PublishConfiguration",
   "RollbackConfiguration",
   "UpsertFeatureFlag",
+  "CreateTicket",
+  "UpdateTicket",
+  "CloseTicket",
+  "AssignTicket",
+  "AddTicketComment",
+  "ChangeTicketPriority",
+  "ChangeTicketStatus",
+  "EscalateToHuman",
+  "QueueForHuman",
+  "ReturnToAi",
+  "PublishKnowledgeDocument",
 ] as const;
 
 export type CommandType = (typeof COMMAND_TYPES)[number];

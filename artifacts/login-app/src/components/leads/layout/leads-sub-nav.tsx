@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { leadsNavItems } from "@/config/leads-route-registry";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { isNestedSectionActive, nestedSectionHref } from "@/lib/routing";
+import { translateRouteTitle } from "@/lib/i18n/translate-route-title";
 import { cn } from "@/lib/utils";
 
 export function LeadsSubNav() {
@@ -31,7 +32,7 @@ export function LeadsSubNav() {
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
             )}
           >
-            {t(item.titleKey, item.titleKey)}
+            {translateRouteTitle(t, item.titleKey)}
           </Link>
         );
       })}

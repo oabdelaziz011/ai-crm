@@ -22,11 +22,11 @@ export function createToolCustomerServicePort(
         supabase,
       );
 
-      const byPhone = input.phone
-        ? await ports.customerRead.search(tenantId, input.phone, 5)
+      const byPhone = input.lookupBy === "phone"
+        ? await ports.customerRead.search(tenantId, input.lookupValue, 5)
         : [];
-      const byEmail = input.email
-        ? await ports.customerRead.search(tenantId, input.email, 5)
+      const byEmail = input.lookupBy === "email"
+        ? await ports.customerRead.search(tenantId, input.lookupValue, 5)
         : [];
       const matches = [...byPhone, ...byEmail].filter(
         (c, i, arr) => arr.findIndex((x) => x.id === c.id) === i,
@@ -67,7 +67,7 @@ export function createToolCustomerServicePort(
       const created = await ports.customerWrite.create({
         tenantId,
         displayName: input.name,
-        email: input.email,
+        email: input.email ?? undefined,
         phone: input.phone,
       });
 

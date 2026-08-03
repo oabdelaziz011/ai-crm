@@ -7,7 +7,7 @@ export function mapLeadRecordToReadModel(record: LeadRecord | LeadSummary, tenan
     id: record.id,
     tenantId,
     title: record.title,
-    contactName: "contactName" in record ? record.contactName : record.title,
+    contactName: record.contactName ?? record.title,
     email: "email" in full ? (full.email ?? null) : null,
     phone: "phone" in full ? (full.phone ?? null) : null,
     companyName: "companyName" in full ? (full.companyName ?? null) : null,

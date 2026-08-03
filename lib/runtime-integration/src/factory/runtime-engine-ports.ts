@@ -5,7 +5,7 @@ import type { AIProviderServices } from "@workspace/ai-provider-layer";
 import type { PromptOrchestratorServices } from "@workspace/ai-prompt-orchestrator";
 import type { RetrievalServices } from "@workspace/retrieval-engine";
 import type { VectorQueryServices } from "@workspace/vector-query";
-import type { Customer360Loader } from "@workspace/customer-360";
+import type { Customer360Dto, Customer360Loader } from "@workspace/customer-360";
 import type { KnowledgeRuntimeProvider } from "@workspace/knowledge-runtime";
 import type { RuntimeEnginePorts } from "../ports/runtime-ports.js";
 import type { ServiceContext } from "../types.js";
@@ -406,7 +406,7 @@ export function createRuntimeEnginePortsWithContext(
         );
         const senderHint = readSenderHint(conversationRecord.metadata ?? {}, input.pageContext);
 
-        let customer360 = null;
+        let customer360: Customer360Dto | null = null;
         if (options.customer360Loader) {
           const actorUserId =
             promptCtx.userId ??
@@ -469,7 +469,11 @@ export function createRuntimeEnginePortsWithContext(
             pageContext: input.pageContext,
             assembledContext: input.pageContext?.assembledContext,
             memorySnapshot: input.pageContext?.memorySnapshot,
-            customer360: customer360 ?? input.pageContext?.assembledContext?.customer360 ?? undefined,
+            customer360:
+              customer360 ??
+              (input.pageContext?.assembledContext as { customer360?: Customer360Dto } | undefined)
+                ?.customer360 ??
+              undefined,
           },
           recentMessages: input.recentMessages.map((message) => ({
             role: message.role,

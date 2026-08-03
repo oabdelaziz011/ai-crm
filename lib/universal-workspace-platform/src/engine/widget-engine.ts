@@ -19,7 +19,7 @@ export class WidgetEngine {
       widgetId: w.id,
       type: w.type,
       title: w.labelKey,
-      data: MOCK_WIDGET_DATA[w.type] ?? [],
+      data: (MOCK_WIDGET_DATA[w.type] ?? []) as WorkspaceWidgetSnapshot["data"],
       updatedAt: new Date().toISOString(),
     }));
   }

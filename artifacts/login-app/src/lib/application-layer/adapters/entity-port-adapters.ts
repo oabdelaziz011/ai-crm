@@ -12,7 +12,7 @@ import type {
   EntityActivityWritePort,
 } from "@workspace/application-layer";
 import type { LoginAppPortContext } from "@/lib/application-layer/adapters/customer-read-port-adapter";
-import { createEntityRepository } from "../entity-repository.js";
+import { createEntityRepository } from "@/lib/entity-platform/entity-repository";
 
 type EntityResource = "contacts" | "tags" | "files" | "activities" | "custom_fields";
 

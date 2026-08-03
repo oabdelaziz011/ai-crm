@@ -20,15 +20,15 @@ export function OperationsConfigurationPage() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [moduleName, setModuleName] = useState("");
   const [rowEntityName, setRowEntityName] = useState("");
-  const [customerLabel, setCustomerLabel] = useState("Customer");
+  const [customerLabel, setCustomerLabel] = useState(() => t("universalOperations.configuration.general.defaultCustomerLabel"));
 
   useEffect(() => {
     if (!config) return;
     setWorkspaceName(config.workspaceName);
     setModuleName(config.moduleName);
     setRowEntityName(config.rowEntityName);
-    setCustomerLabel(config.terminology.customer ?? "Customer");
-  }, [config]);
+    setCustomerLabel(config.terminology.customer ?? t("universalOperations.configuration.general.defaultCustomerLabel"));
+  }, [config, t]);
 
   const buildPatch = () => {
     if (!config) return null;
@@ -50,9 +50,9 @@ export function OperationsConfigurationPage() {
     if (!patch) return;
     try {
       await saveDraft.mutateAsync(patch);
-      toast.success(t("universalOperations.configuration.saveSuccess", "Configuration draft saved."));
+      toast.success(t("universalOperations.configuration.saveSuccess"));
     } catch {
-      toast.error(t("universalOperations.configuration.saveError", "Failed to save configuration."));
+      toast.error(t("universalOperations.configuration.saveError"));
     }
   };
 
@@ -61,10 +61,10 @@ export function OperationsConfigurationPage() {
     if (!patch) return;
     try {
       await saveDraft.mutateAsync(patch);
-      await publish.mutateAsync("Published from operations configuration UI");
-      toast.success(t("universalOperations.configuration.publishSuccess", "Configuration published."));
+      await publish.mutateAsync(t("universalOperations.configuration.publishNote"));
+      toast.success(t("universalOperations.configuration.publishSuccess"));
     } catch {
-      toast.error(t("universalOperations.configuration.publishError", "Failed to publish configuration."));
+      toast.error(t("universalOperations.configuration.publishError"));
     }
   };
 
@@ -119,7 +119,7 @@ export function OperationsConfigurationPage() {
               disabled={!isReady || saveDraft.isPending}
               variant="outline"
             >
-              {t("universalOperations.configuration.saveDraft", "Save Draft")}
+              {t("universalOperations.configuration.saveDraft")}
             </Button>
             <Button
               onClick={() => void handlePublish()}
@@ -140,7 +140,11 @@ export function OperationsConfigurationPage() {
                   <p className="text-sm font-medium">{col.displayName}</p>
                   <p className="text-[10px] text-muted-foreground">{col.internalName} · {col.type}</p>
                 </div>
-                <span className="text-[10px] uppercase text-muted-foreground">{col.visible ? "Visible" : "Hidden"}</span>
+                <span className="text-[10px] uppercase text-muted-foreground">
+                  {col.visible
+                    ? t("universalOperations.configuration.columns.visible")
+                    : t("universalOperations.configuration.columns.hidden")}
+                </span>
               </div>
             ))}
           </div>
@@ -167,7 +171,7 @@ export function OperationsConfigurationPage() {
       {!["general", "columns", "statuses"].includes(activeTab) && (
         <WorkspacePanel title={t(`universalOperations.configuration.tabs.${activeTab}`)}>
           <p className="text-sm text-muted-foreground">
-            {t("universalOperations.configuration.domainHint", "Configure this domain through the Enterprise Configuration Platform.")}
+            {t("universalOperations.configuration.domainHint")}
           </p>
         </WorkspacePanel>
       )}

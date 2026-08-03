@@ -55,6 +55,8 @@
     "bookings": "الحجوزات",
     "calendar": "التقويم",
     "scheduling": "الجدولة",
+    "universalOperations": "العمليات",
+    "leads": "العملاء المحتملون",
     "communication": "مركز الاتصالات",
     "invoices": "الفواتير",
     "financial": "الفوترة المالية",
@@ -64,6 +66,7 @@
     "marketplace": "السوق",
     "profiles": "الملفات الشخصية",
     "companies": "الشركات",
+    "platformAiAdmin": "مزودو الذكاء الاصطناعي للمنصة",
     "platformAiSettings": "إعدادات الذكاء الاصطناعي للمنصة",
     "platformAiOperations": "مركز عمليات الذكاء الاصطناعي",
     "subscriptions": "الاشتراكات",
@@ -80,10 +83,12 @@
     "channels": "القنوات",
     "aiUsage": "استخدام وتكلفة الذكاء الاصطناعي",
     "aiAnalytics": "تحليلات الذكاء الاصطناعي",
+    "aiRuntime": "تشغيل الذكاء الاصطناعي",
     "aiAssistant": "المساعد الذكي",
     "aiEmployees": "موظفو الذكاء الاصطناعي",
     "aiChat": "مساحة الذكاء الاصطناعي",
     "knowledge": "المعرفة",
+    "prompts": "المطالبات",
     "reports": "التقارير",
     "settings": "الإعدادات",
     "demoScenarios": "سيناريوهات العرض",
@@ -1146,35 +1151,93 @@
             "title": "تم إنشاء العميل",
             "description": "تمت إضافة الملف إلى CRM"
           },
-          "whatsapp_message_received": { "title": "رسالة واتساب واردة" },
-          "whatsapp_message_sent": { "title": "رسالة واتساب صادرة" },
-          "template_sent": { "title": "قالب واتساب مُرسل" },
-          "interactive_reply": { "title": "رد تفاعلي" },
-          "facebook_message": { "title": "رسالة فيسبوك" },
-          "instagram_message": { "title": "رسالة إنستغرام" },
-          "booking_created": { "title": "تم إنشاء حجز" },
-          "booking_confirmed": { "title": "تم تأكيد الحجز" },
-          "booking_rescheduled": { "title": "تم إعادة جدولة الحجز" },
-          "booking_completed": { "title": "اكتمل الحجز" },
-          "booking_cancelled": { "title": "تم إلغاء الحجز" },
-          "invoice_created": { "title": "تم إنشاء فاتورة" },
-          "invoice_paid": { "title": "تم دفع الفاتورة" },
-          "invoice_overdue": { "title": "فاتورة متأخرة" },
-          "payment_received": { "title": "تم استلام الدفع" },
-          "note_added": { "title": "تمت إضافة ملاحظة" },
-          "customer_updated": { "title": "تم تحديث العميل" },
-          "conversation_closed": { "title": "تم إغلاق المحادثة" },
-          "conversation_reopened": { "title": "تم إعادة فتح المحادثة" },
-          "call_started": { "title": "بدء مكالمة" },
-          "call_finished": { "title": "انتهاء مكالمة" },
-          "email_received": { "title": "بريد وارد" },
-          "email_sent": { "title": "بريد صادر" },
-          "notification_delivered": { "title": "تم تسليم إشعار" },
-          "calendar_event": { "title": "حدث تقويم" },
-          "manual_activity": { "title": "نشاط يدوي" },
-          "automation_started": { "title": "بدء الأتمتة" },
-          "automation_finished": { "title": "انتهاء الأتمتة" },
-          "ai_summary_updated": { "title": "تحديث ملخص الذكاء الاصطناعي" }
+          "whatsapp_message_received": {
+            "title": "رسالة واتساب واردة"
+          },
+          "whatsapp_message_sent": {
+            "title": "رسالة واتساب صادرة"
+          },
+          "template_sent": {
+            "title": "قالب واتساب مُرسل"
+          },
+          "interactive_reply": {
+            "title": "رد تفاعلي"
+          },
+          "facebook_message": {
+            "title": "رسالة فيسبوك"
+          },
+          "instagram_message": {
+            "title": "رسالة إنستغرام"
+          },
+          "booking_created": {
+            "title": "تم إنشاء حجز"
+          },
+          "booking_confirmed": {
+            "title": "تم تأكيد الحجز"
+          },
+          "booking_rescheduled": {
+            "title": "تم إعادة جدولة الحجز"
+          },
+          "booking_completed": {
+            "title": "اكتمل الحجز"
+          },
+          "booking_cancelled": {
+            "title": "تم إلغاء الحجز"
+          },
+          "invoice_created": {
+            "title": "تم إنشاء فاتورة"
+          },
+          "invoice_paid": {
+            "title": "تم دفع الفاتورة"
+          },
+          "invoice_overdue": {
+            "title": "فاتورة متأخرة"
+          },
+          "payment_received": {
+            "title": "تم استلام الدفع"
+          },
+          "note_added": {
+            "title": "تمت إضافة ملاحظة"
+          },
+          "customer_updated": {
+            "title": "تم تحديث العميل"
+          },
+          "conversation_closed": {
+            "title": "تم إغلاق المحادثة"
+          },
+          "conversation_reopened": {
+            "title": "تم إعادة فتح المحادثة"
+          },
+          "call_started": {
+            "title": "بدء مكالمة"
+          },
+          "call_finished": {
+            "title": "انتهاء مكالمة"
+          },
+          "email_received": {
+            "title": "بريد وارد"
+          },
+          "email_sent": {
+            "title": "بريد صادر"
+          },
+          "notification_delivered": {
+            "title": "تم تسليم إشعار"
+          },
+          "calendar_event": {
+            "title": "حدث تقويم"
+          },
+          "manual_activity": {
+            "title": "نشاط يدوي"
+          },
+          "automation_started": {
+            "title": "بدء الأتمتة"
+          },
+          "automation_finished": {
+            "title": "انتهاء الأتمتة"
+          },
+          "ai_summary_updated": {
+            "title": "تحديث ملخص الذكاء الاصطناعي"
+          }
         }
       }
     },
@@ -1192,7 +1255,15 @@
       "assignedStaff": "الموظف المسؤول",
       "unassigned": "غير معيّن",
       "outstanding": "الرصيد المستحق",
-      "header": { "message": "رسالة", "newBooking": "حجز جديد", "newInvoice": "فاتورة جديدة", "more": "المزيد", "export": "تصدير", "print": "طباعة", "share": "مشاركة" },
+      "header": {
+        "message": "رسالة",
+        "newBooking": "حجز جديد",
+        "newInvoice": "فاتورة جديدة",
+        "more": "المزيد",
+        "export": "تصدير",
+        "print": "طباعة",
+        "share": "مشاركة"
+      },
       "profile": {
         "address": "العنوان",
         "customerSince": "عميل منذ",
@@ -1209,10 +1280,33 @@
         "pin": "تثبيت",
         "favorite": "مفضلة"
       },
-      "tags": { "email": "بريد", "phone": "هاتف", "notes": "ملاحظات", "vip": "VIP" },
-      "tabs": { "overview": "نظرة عامة", "activity": "النشاط", "commerce": "التجارة", "communication": "التواصل", "files": "الملفات", "ai": "الذكاء", "history": "السجل" },
-      "commerce": { "navLabel": "أقسام التجارة", "bookings": "الحجوزات", "invoices": "الفواتير", "payments": "المدفوعات" },
-      "health": { "title": "صحة العميل", "strong": "علاقة قوية", "moderate": "يحتاج متابعة", "atRisk": "معرض للخطر" },
+      "tags": {
+        "email": "بريد",
+        "phone": "هاتف",
+        "notes": "ملاحظات",
+        "vip": "VIP"
+      },
+      "tabs": {
+        "overview": "نظرة عامة",
+        "activity": "النشاط",
+        "commerce": "التجارة",
+        "communication": "التواصل",
+        "files": "الملفات",
+        "ai": "الذكاء",
+        "history": "السجل"
+      },
+      "commerce": {
+        "navLabel": "أقسام التجارة",
+        "bookings": "الحجوزات",
+        "invoices": "الفواتير",
+        "payments": "المدفوعات"
+      },
+      "health": {
+        "title": "صحة العميل",
+        "strong": "علاقة قوية",
+        "moderate": "يحتاج متابعة",
+        "atRisk": "معرض للخطر"
+      },
       "aiInsights": {
         "label": "رؤى الذكاء",
         "cancelled": "ألغى العميل {{count}} مواعيد — متابعة لتقليل التسرب.",
@@ -1313,7 +1407,12 @@
         "mentionsHint": "ستظهر @mentions من فريقك هنا.",
         "emptyHint": "أضف سياقاً عن التفضيلات أو المتابعات."
       },
-      "files": { "upload": "رفع ملف", "preview": "معاينة", "download": "تنزيل", "emptyTitle": "لا ملفات" },
+      "files": {
+        "upload": "رفع ملف",
+        "preview": "معاينة",
+        "download": "تنزيل",
+        "emptyTitle": "لا ملفات"
+      },
       "ai": {
         "label": "ملخص الذكاء",
         "summary": "{{name}} · LTV {{ltv}} عبر {{bookings}} حجز.",
@@ -1328,7 +1427,11 @@
         "actionReengage": "أعد التفاعل بعرض حجز — إلغاءات حديثة.",
         "actionBook": "احجز الموعد التالي while التفاعل جيد.",
         "riskLabel": "مستوى المخاطر",
-        "risk": { "low": "منخفض", "medium": "متوسط", "high": "مرتفع" },
+        "risk": {
+          "low": "منخفض",
+          "medium": "متوسط",
+          "high": "مرتفع"
+        },
         "applyAction": "عرض الخطوة التالية"
       },
       "history": {
@@ -4254,13 +4357,13 @@
         "reason": "السبب",
         "signalsUsed": "الإشارات المستخدمة",
         "intent": "النية",
-        "mood": "المزاج",
-        "journey": "رحلة العميل",
-        "knowledgeSource": "مصدر المعرفة",
-        "confidence": "الثقة",
-        "explainSuggestion": "شرح الاقتراح",
-        "none": "—",
-        "reasonTemplate": "متوافق مع {{intent}} باستخدام {{signalCount}} إشارات سياقية (المزاج: {{mood}}، الرحلة: {{journey}}).",
+        "mood": {
+          "neutral": "محايد",
+          "happy": "سعيد",
+          "angry": "غاضب",
+          "urgent": "عاجل",
+          "confused": "محتار"
+        },
         "journey": {
           "unknown": "غير معروف",
           "discovery": "اكتشاف",
@@ -4269,13 +4372,11 @@
           "waiting": "بانتظار العميل",
           "resolution": "إغلاق/حل"
         },
-        "mood": {
-          "neutral": "محايد",
-          "happy": "سعيد",
-          "angry": "غاضب",
-          "urgent": "عاجل",
-          "confused": "محتار"
-        },
+        "knowledgeSource": "مصدر المعرفة",
+        "confidence": "الثقة",
+        "explainSuggestion": "شرح الاقتراح",
+        "none": "—",
+        "reasonTemplate": "متوافق مع {{intent}} باستخدام {{signalCount}} إشارات سياقية (المزاج: {{mood}}، الرحلة: {{journey}}).",
         "moodLabels": {
           "neutral": "محايد",
           "happy": "سعيد",
@@ -5075,19 +5176,58 @@
       "retry": "إعادة"
     },
     "templates": {
-      "bookingCreated": { "title": "تم إنشاء الحجز", "body": "تم تأكيد موعدك." },
-      "bookingReminder": { "title": "تذكير بالموعد", "body": "تذكير بموعدك القادم." },
-      "bookingCancelled": { "title": "تم إلغاء الحجز", "body": "تم إلغاء موعدك." },
-      "bookingRescheduled": { "title": "إعادة جدولة", "body": "تمت إعادة جدولة موعدك." },
-      "bookingCheckedIn": { "title": "تسجيل حضور", "body": "تم تسجيل حضورك." },
-      "bookingCompleted": { "title": "اكتملت الزيارة", "body": "شكراً لزيارتك." },
-      "invoiceCreated": { "title": "فاتورة جديدة", "body": "فاتورة جديدة متاحة." },
-      "invoicePaid": { "title": "تم استلام الدفع", "body": "تم استلام دفعتك." },
-      "paymentFailed": { "title": "فشل الدفع", "body": "تعذر معالجة الدفع." },
-      "birthdayGreeting": { "title": "عيد ميلاد سعيد", "body": "نتمنى لك عيد ميلاداً سعيداً!" },
-      "followUpReminder": { "title": "تذكير متابعة", "body": "حان وقت موعد المتابعة." },
-      "marketingCampaign": { "title": "حملة", "body": "رسالة من فريقنا." },
-      "customerCreated": { "title": "مرحباً", "body": "مرحباً بك في عيادتنا." }
+      "bookingCreated": {
+        "title": "تم إنشاء الحجز",
+        "body": "تم تأكيد موعدك."
+      },
+      "bookingReminder": {
+        "title": "تذكير بالموعد",
+        "body": "تذكير بموعدك القادم."
+      },
+      "bookingCancelled": {
+        "title": "تم إلغاء الحجز",
+        "body": "تم إلغاء موعدك."
+      },
+      "bookingRescheduled": {
+        "title": "إعادة جدولة",
+        "body": "تمت إعادة جدولة موعدك."
+      },
+      "bookingCheckedIn": {
+        "title": "تسجيل حضور",
+        "body": "تم تسجيل حضورك."
+      },
+      "bookingCompleted": {
+        "title": "اكتملت الزيارة",
+        "body": "شكراً لزيارتك."
+      },
+      "invoiceCreated": {
+        "title": "فاتورة جديدة",
+        "body": "فاتورة جديدة متاحة."
+      },
+      "invoicePaid": {
+        "title": "تم استلام الدفع",
+        "body": "تم استلام دفعتك."
+      },
+      "paymentFailed": {
+        "title": "فشل الدفع",
+        "body": "تعذر معالجة الدفع."
+      },
+      "birthdayGreeting": {
+        "title": "عيد ميلاد سعيد",
+        "body": "نتمنى لك عيد ميلاداً سعيداً!"
+      },
+      "followUpReminder": {
+        "title": "تذكير متابعة",
+        "body": "حان وقت موعد المتابعة."
+      },
+      "marketingCampaign": {
+        "title": "حملة",
+        "body": "رسالة من فريقنا."
+      },
+      "customerCreated": {
+        "title": "مرحباً",
+        "body": "مرحباً بك في عيادتنا."
+      }
     }
   },
   "scheduling": {
@@ -6191,7 +6331,7 @@
       "classifierSelected": "اختار {{actor}} المصنّف {{target}} لمطابقة النية.",
       "intentEnabled": "فعّل {{actor}} النية {{target}}.",
       "intentDisabled": "عطّل {{actor}} النية {{target}}.",
-      "providerConnected": "ربط {{actor}} مزود الذكاء الاصطناعي {{provider}} كـ {{target}}.",
+      "providerConnected": "ربط {{actor}} موفر مخزن المتجهات {{target}}.",
       "providerEnabled": "فعّل {{actor}} اتصال مزود الذكاء الاصطناعي {{target}}.",
       "providerDisabled": "عطّل {{actor}} اتصال مزود الذكاء الاصطناعي {{target}}.",
       "providerUpdated": "حدّث {{actor}} اتصال مزود الذكاء الاصطناعي {{target}}.",
@@ -6222,7 +6362,6 @@
       "embeddingFailed": "فشل {{actor}} في إنشاء تضمين لـ {{target}}.",
       "embeddingRegenerated": "أعاد {{actor}} إنشاء تضمين لـ {{target}}.",
       "embeddingActivated": "فعّل {{actor}} التضمين {{target}}.",
-      "providerConnected": "ربط {{actor}} موفر مخزن المتجهات {{target}}.",
       "providerDisconnected": "فصل {{actor}} موفر مخزن المتجهات {{target}}.",
       "vectorCollectionCreated": "أنشأ {{actor}} مجموعة متجهات {{target}}.",
       "vectorCollectionDeleted": "حذف {{actor}} مجموعة متجهات {{target}}.",
@@ -7069,6 +7208,833 @@
           "description": "تشغيل وتنسيق الأتمتة المدعومة بالذكاء الاصطناعي عبر المنصة."
         }
       }
+    }
+  },
+  "universalOperations": {
+    "noPermission": "ليس لديك صلاحية للوصول إلى هذا القسم.",
+    "loading": "جاري التحميل…",
+    "nav": {
+      "hub": "مركز القيادة",
+      "queue": "قائمة الانتظار",
+      "calendar": "التقويم",
+      "kanban": "كانبان",
+      "timeline": "الخط الزمني",
+      "configuration": "الإعدادات",
+      "analytics": "التحليلات",
+      "designer": "المصمم"
+    },
+    "templates": {
+      "clinic": "عيادة / طبي",
+      "training": "مركز تدريب",
+      "automotive": "خدمة سيارات"
+    },
+    "queue": {
+      "title": "قائمة العمليات",
+      "subtitle": "عمليات يومية مبنية على البيانات الوصفية — اختر أي صف لفتح مساحة عمل العميل.",
+      "template": "قالب الأعمال"
+    },
+    "kpi": {
+      "total": "عناصر اليوم",
+      "waiting": "في الانتظار",
+      "paid": "مدفوع",
+      "completed": "مكتمل"
+    },
+    "grid": {
+      "searchPlaceholder": "بحث عام…",
+      "aiSearch": "بحث بالذكاء الاصطناعي",
+      "savedViews": "العروض المحفوظة",
+      "viewToday": "اليوم",
+      "viewWaiting": "في الانتظار",
+      "viewUnpaid": "غير مدفوع",
+      "bulkActions": "إجراءات جماعية",
+      "export": "تصدير",
+      "import": "استيراد",
+      "columnSettings": "إعدادات الأعمدة",
+      "sort": "ترتيب",
+      "filter": "تصفية",
+      "pin": "تثبيت",
+      "hide": "إخفاء",
+      "selectAll": "تحديد كل الصفوف",
+      "rowCount": "{{count}} صف",
+      "selectedCount": "{{count}} محدد"
+    },
+    "panel": {
+      "title": "مساحة عمل العميل",
+      "tabs": {
+        "overview": "نظرة عامة",
+        "crm": "إدارة العلاقات",
+        "timeline": "الخط الزمني",
+        "bookings": "الحجوزات",
+        "invoices": "الفواتير",
+        "payments": "المدفوعات",
+        "activities": "الأنشطة",
+        "files": "الملفات",
+        "notes": "الملاحظات",
+        "tasks": "المهام",
+        "ai_assistant": "المساعد الذكي"
+      },
+      "overview": {
+        "customerCard": "العميل",
+        "status": "الحالة",
+        "payment": "الدفع",
+        "resource": "المُعيَّن",
+        "priority": "الأولوية",
+        "quickActions": "إجراءات سريعة"
+      },
+      "actions": {
+        "call": "اتصال",
+        "checkIn": "تسجيل حضور",
+        "collect": "تحصيل دفعة",
+        "note": "إضافة ملاحظة"
+      },
+      "crm": {
+        "profile": "الملف الشخصي",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "company": "الشركة",
+        "address": "العنوان",
+        "birthday": "تاريخ الميلاد",
+        "leadOrigin": "مصدر العميل المحتمل",
+        "leadSource": "المصدر",
+        "campaign": "الحملة",
+        "owner": "المسؤول",
+        "leadScore": "درجة العميل المحتمل"
+      }
+    },
+    "calendar": {
+      "title": "عرض التقويم",
+      "description": "سيتم عرض العناصر التشغيلية من البيانات الوصفية في التقويم. قريباً في sprint لاحق."
+    },
+    "kanban": {
+      "title": "عرض كانبان",
+      "description": "لوحات كانبان المبنية على الحالة تُعد في محرك الحالات. قريباً في sprint لاحق."
+    },
+    "timeline": {
+      "title": "عرض الخط الزمني",
+      "description": "خط زمني تشغيلي زمني لجميع عناصر العمل. قريباً في sprint لاحق."
+    },
+    "configuration": {
+      "title": "إعدادات مساحة العمل",
+      "subtitle": "اضبط الأعمدة والحالات والخدمات والصلاحيات دون تغيير الكود.",
+      "save": "حفظ الإعدادات",
+      "saveDraft": "حفظ مسودة",
+      "saveSuccess": "تم حفظ مسودة الإعدادات.",
+      "saveError": "تعذّر حفظ الإعدادات.",
+      "publishSuccess": "تم نشر الإعدادات.",
+      "publishError": "تعذّر نشر الإعدادات.",
+      "publishNote": "تم النشر من واجهة إعدادات العمليات",
+      "domainHint": "اضبط هذا المجال عبر منصة الإعدادات المؤسسية.",
+      "placeholder": "يستخدم هذا القسم بيانات وصفية تجريبية. سيتصل الحفظ المباشر في sprint لاحق.",
+      "tabs": {
+        "general": "عام",
+        "columns": "الأعمدة",
+        "statuses": "الحالات",
+        "payment_status": "حالة الدفع",
+        "services": "الخدمات",
+        "resources": "الموارد",
+        "automation": "الأتمتة",
+        "permissions": "الصلاحيات",
+        "views": "العروض",
+        "notifications": "الإشعارات",
+        "integrations": "التكاملات",
+        "ai": "الذكاء الاصطناعي",
+        "advanced": "متقدم"
+      },
+      "general": {
+        "title": "الإعدادات العامة",
+        "workspaceName": "اسم مساحة العمل",
+        "moduleName": "اسم الوحدة",
+        "rowEntity": "اسم كيان الصف",
+        "customerLabel": "تسمية العميل",
+        "defaultCustomerLabel": "عميل"
+      },
+      "columns": {
+        "title": "تعريفات الأعمدة",
+        "visible": "ظاهر",
+        "hidden": "مخفي"
+      },
+      "statuses": {
+        "title": "سير الحالات",
+        "flowHint": "تُتحقق الانتقالات عبر محرك الحالات. لا يمكن التقدم من الحالات النهائية."
+      }
+    },
+    "analytics": {
+      "title": "تحليلات العمليات",
+      "subtitle": "مؤشرات تشغيلية فورية (بيانات تجريبية لـ Sprint OP1).",
+      "todayOps": "عمليات اليوم",
+      "revenue": "الإيرادات",
+      "pendingPayments": "مدفوعات معلّقة",
+      "upcoming": "قادمة",
+      "noShows": "عدم حضور",
+      "completionRate": "معدل الإكمال",
+      "avgServiceTime": "متوسط وقت الخدمة",
+      "mockNote": "ستتصل المقاييس بمنافذ القراءة في المنصة في sprint تكامل لاحق."
+    },
+    "workspaceNames": {
+      "clinic": "عمليات مكتب الاستقبال",
+      "training_center": "عمليات التدريب",
+      "automotive": "عمليات ورشة الخدمة"
+    }
+  },
+  "customer360": {
+    "badges": {
+      "vip": "VIP"
+    },
+    "rolePreview": "معاينة تخطيط الدور",
+    "roles": {
+      "receptionist": "موظف استقبال",
+      "cashier": "أمين صندوق",
+      "nurse": "ممرض/ة",
+      "manager": "مدير"
+    },
+    "header": {
+      "customerSince": "منذ",
+      "quickSearch": "بحث في مساحة العمل…",
+      "collapse": "طي الرأس"
+    },
+    "actions": {
+      "call": "اتصال",
+      "whatsapp": "واتساب",
+      "email": "بريد",
+      "sms": "رسالة نصية",
+      "bookAgain": "حجز مجدداً",
+      "reschedule": "إعادة جدولة",
+      "collectPayment": "تحصيل دفعة",
+      "createInvoice": "إنشاء فاتورة",
+      "print": "طباعة",
+      "share": "مشاركة",
+      "openCrm": "فتح CRM",
+      "assignEmployee": "تعيين",
+      "addNote": "إضافة ملاحظة",
+      "uploadFile": "رفع",
+      "aiAssistant": "ذكاء",
+      "more": "المزيد"
+    },
+    "sections": {
+      "todays_operation": "عملية اليوم",
+      "customer_summary": "ملخص العميل",
+      "communication": "الاتصالات",
+      "timeline": "الخط الزمني",
+      "notes": "الملاحظات",
+      "invoices_payments": "الفواتير والمدفوعات",
+      "bookings": "الحجوزات",
+      "files": "الملفات",
+      "tasks": "المهام",
+      "ai_assistant": "المساعد الذكي"
+    },
+    "todaysOperation": {
+      "today": "اليوم",
+      "employee": "المُعيَّن",
+      "branch": "الفرع",
+      "room": "الغرفة",
+      "duration": "المدة",
+      "scheduled": "مجدول",
+      "countdown": "العد التنازلي",
+      "arrival": "الوصول",
+      "payment": "الدفع",
+      "checkIn": "تسجيل حضور",
+      "checkOut": "تسجيل مغادرة",
+      "noShow": "عدم حضور",
+      "cancel": "إلغاء",
+      "reschedule": "إعادة جدولة",
+      "collect": "تحصيل"
+    },
+    "summary": {
+      "leadSource": "مصدر العميل المحتمل",
+      "campaign": "الحملة",
+      "owner": "المسؤول",
+      "customerSince": "عميل منذ",
+      "lastVisit": "آخر زيارة",
+      "totalVisits": "إجمالي الزيارات",
+      "totalRevenue": "إجمالي الإيرادات",
+      "ltv": "القيمة الدائمة",
+      "preferredEmployee": "الموظف المفضل",
+      "preferredTime": "الوقت المفضل",
+      "preferredService": "الخدمة المفضلة",
+      "risk": "مستوى المخاطر",
+      "satisfaction": "الرضا",
+      "aiHealth": "درجة صحة الذكاء الاصطناعي"
+    },
+    "notes": {
+      "placeholder": "اكتب ملاحظة… استخدم @ لذكر الزملاء.",
+      "pin": "تثبيت",
+      "template": "قالب",
+      "aiRewrite": "إعادة صياغة بالذكاء",
+      "pinned": "مثبت",
+      "private": "خاص"
+    },
+    "finance": {
+      "balance": "الرصيد المستحق",
+      "collect": "تحصيل دفعة",
+      "generateInvoice": "إنشاء فاتورة"
+    },
+    "bookings": {
+      "current": "الحالي",
+      "upcoming": "القادم",
+      "completed": "مكتمل",
+      "cancelled": "ملغى",
+      "noShow": "عدم حضور",
+      "bookAgain": "حجز مجدداً"
+    },
+    "files": {
+      "dropzone": "أسقط الملفات هنا",
+      "dropzoneHint": "PDF، صور، عقود، ملفات طبية"
+    },
+    "tasks": {
+      "create": "إنشاء مهمة",
+      "assign": "تعيين مهمة"
+    },
+    "ai": {
+      "title": "المساعد الذكي",
+      "disclaimer": "اقتراحات الذكاء الاصطناعي تتطلب تأكيدك قبل أي إجراء.",
+      "actions": {
+        "summarize": "تلخيص العميل",
+        "nextAction": "اقتراح الإجراء التالي",
+        "predictCancel": "توقع الإلغاء",
+        "upsell": "فرصة بيع إضافي",
+        "health": "صحة العميل",
+        "paymentRisk": "مخاطر الدفع",
+        "conversationSummary": "ملخص المحادثة",
+        "followUp": "إنشاء متابعة",
+        "generateWhatsapp": "إنشاء رسالة واتساب",
+        "generateEmail": "إنشاء بريد"
+      }
+    }
+  },
+  "intelligence": {
+    "operationalHealth": "الصحة التشغيلية",
+    "alerts": "تنبيهات ذكية",
+    "workflow": "متتبع سير العمل",
+    "miniKpis": "مؤشرات مصغرة",
+    "recommendations": "توصيات الذكاء الاصطناعي",
+    "confirmAction": "تأكيد الإجراء",
+    "businessContext": "سياق الأعمال",
+    "health": {
+      "waiting": "عملاء في الانتظار",
+      "avgWait": "متوسط الانتظار",
+      "delayed": "عمليات متأخرة",
+      "overload": "ضغط على الموارد",
+      "pendingPayments": "مدفوعات معلّقة",
+      "noShows": "عدم حضور",
+      "completion": "إكمال يومي"
+    },
+    "kpi": {
+      "visits": "الزيارات",
+      "revenue": "الإيرادات",
+      "ltv": "القيمة الدائمة",
+      "cancelRate": "نسبة الإلغاء",
+      "avgSpend": "متوسط الإنفاق",
+      "aiHealth": "درجة صحة الذكاء",
+      "satisfaction": "الرضا",
+      "customerScore": "درجة العميل"
+    },
+    "copilot": {
+      "title": "مساعد Copilot",
+      "confirm": "تأكيد",
+      "discard": "تجاهل",
+      "preview": "معاينة المسودة"
+    },
+    "copilot.summarize": "تلخيص العميل",
+    "copilot.explainTimeline": "شرح الخط الزمني",
+    "copilot.answer": "الإجابة على الأسئلة",
+    "copilot.followUp": "إنشاء متابعة",
+    "copilot.whatsapp": "إنشاء واتساب",
+    "copilot.email": "إنشاء بريد",
+    "copilot.note": "إنشاء ملاحظة",
+    "copilot.risk": "توقع المخاطر",
+    "copilot.nextAction": "اقتراح الإجراء التالي",
+    "journey.ad": "إعلان فيسبوك",
+    "journey.lead": "عميل محتمل",
+    "journey.qualified": "مؤهل",
+    "journey.customer": "عميل",
+    "journey.appointment": "موعد",
+    "journey.deposit": "عربون مدفوع",
+    "journey.waiting": "في الانتظار",
+    "journey.doctor": "طبيب",
+    "journey.completed": "مكتمل",
+    "journey.website": "موقع إلكتروني",
+    "journey.candidate": "مرشح",
+    "journey.interview": "مقابلة",
+    "journey.offer": "عرض",
+    "journey.hired": "تم التوظيف",
+    "journey.inquiry": "استفسار",
+    "journey.student": "طالب",
+    "journey.enrolled": "مسجل",
+    "journey.session": "جلسة",
+    "workflow.booked": "محجوز",
+    "workflow.confirmed": "مؤكد",
+    "workflow.checkedIn": "تم تسجيل الحضور",
+    "workflow.doctor": "طبيب",
+    "workflow.cashier": "أمين صندوق",
+    "workflow.completed": "مكتمل",
+    "rec.collectPayment": "تحصيل المبلغ المتبقي",
+    "rec.bookFollowup": "حجز متابعة",
+    "rec.upgradeService": "ترقية الخدمة",
+    "rec.reassign": "تعيين موظف آخر",
+    "rec.sendWhatsapp": "إرسال واتساب",
+    "rec.createTask": "إنشاء مهمة",
+    "rec.escalate": "تصعيد للمدير",
+    "communicationSearch": "بحث في الاتصالات…",
+    "quickDecision": {
+      "status": "الحالة",
+      "outstanding": "المستحق",
+      "employee": "الموظف",
+      "room": "الغرفة",
+      "priority": "الأولوية",
+      "risk": "المخاطر"
+    },
+    "action": "إجراء",
+    "workflowStages": {
+      "booked": "محجوز",
+      "confirmed": "مؤكد",
+      "checked_in": "تم تسجيل الحضور",
+      "doctor": "الطبيب",
+      "cashier": "الصندوق",
+      "completed": "مكتمل"
+    },
+    "alertRules": {
+      "vip": {
+        "title": "عميل VIP",
+        "message": "هذا العميل من فئة VIP — أعطِ الأولوية للخدمة."
+      },
+      "outstanding": {
+        "title": "رصيد مستحق",
+        "message": "يوجد رصيد دفع متبقٍ على الحساب."
+      },
+      "waiting_long": {
+        "title": "انتظار طويل",
+        "message": "انتظر العميل أطول من الحد المستهدف."
+      },
+      "payment_delay": {
+        "title": "تأخر الدفع",
+        "message": "دفعة جزئية متأخرة عن الإطار المتوقع."
+      },
+      "medical": {
+        "title": "تنبيه طبي",
+        "message": "حساسية من البenicillin — راجع قبل العلاج."
+      },
+      "no_show_history": {
+        "title": "سجل عدم الحضور",
+        "message": "لدى العميل سجلات عدم حضور سابقة."
+      },
+      "low_satisfaction": {
+        "title": "رضا منخفض",
+        "message": "درجة الرضا الأخيرة أقل من متوسط الفريق."
+      }
+    },
+    "recReasons": {
+      "rec_collect": "رصيد مستحق قبل إنهاء الزيارة.",
+      "rec_followup": "المريض مستحق للمتابعة بناءً على نمط آخر زيارة مكتملة.",
+      "rec_upgrade": "عميل VIP — باقة الخدمة المميزة لها معدل قبول مرتفع.",
+      "rec_reassign": "وقت الانتظار يتجاوز الهدف — مورد بديل متاح.",
+      "rec_whatsapp": "يفضل العميل واتساب — آخر التفاعلات كانت عبر الرسائل.",
+      "rec_task": "نتائج المختبر معلقة — أنشئ مهمة متابعة لفريق التمريض.",
+      "rec_escalate": "تم رصد مخاطر انقطاع مرتفعة من أنماط التفاعل."
+    }
+  },
+  "workspacePlatform": {
+    "toolbar": {
+      "title": "مساحة العمل الموحدة",
+      "search": "بحث",
+      "commands": "أوامر"
+    },
+    "commandCenter": {
+      "placeholder": "بحث في الأوامر…",
+      "empty": "لم يُعثر على أوامر.",
+      "hint": "Ctrl+K للفتح · / للبحث العام · G ثم O/H/T للتنقل"
+    },
+    "commandCategories": {
+      "create": "إنشاء",
+      "action": "إجراءات",
+      "navigate": "تنقل",
+      "search": "بحث",
+      "ai": "ذكاء",
+      "workspace": "مساحة العمل"
+    },
+    "commands": {
+      "createCustomer": "إنشاء عميل",
+      "createBooking": "إنشاء حجز",
+      "collectPayment": "تحصيل دفعة",
+      "generateInvoice": "إنشاء فاتورة",
+      "openCrm": "فتح CRM",
+      "openTimeline": "فتح الخط الزمني",
+      "searchCustomer": "بحث عن عميل",
+      "assignEmployee": "تعيين موظف",
+      "createTask": "إنشاء مهمة",
+      "aiSummary": "تشغيل ملخص الذكاء",
+      "switchWorkspace": "تبديل مساحة العمل",
+      "navQueue": "الانتقال إلى القائمة",
+      "navHub": "الانتقال إلى مركز القيادة",
+      "navDesigner": "فتح مصمم مساحة العمل"
+    },
+    "globalSearch": {
+      "placeholder": "بحث في كل شيء…",
+      "empty": "لم يُعثر على نتائج.",
+      "preview": "معاينة"
+    },
+    "search": {
+      "groups": {
+        "customers": "العملاء",
+        "leads": "العملاء المحتملون",
+        "companies": "الشركات",
+        "employees": "الموظفون",
+        "invoices": "الفواتير",
+        "payments": "المدفوعات",
+        "bookings": "الحجوزات",
+        "tasks": "المهام",
+        "projects": "المشاريع",
+        "tickets": "التذاكر",
+        "assets": "الأصول",
+        "files": "الملفات",
+        "emails": "رسائل البريد",
+        "whatsapp": "واتساب",
+        "notes": "الملاحظات",
+        "commands": "الأوامر",
+        "settings": "الإعدادات"
+      }
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "markAll": "تحديد الكل كمقروء",
+      "mock": {
+        "n1": {
+          "title": "وصول VIP",
+          "message": "سارة حسن سجلت حضورها — الغرفة 3"
+        },
+        "n2": {
+          "title": "تم استلام الدفع",
+          "message": "دفعة جزئية 80.00$ من أحمد الرashid"
+        },
+        "n3": {
+          "title": "فاتورة متأخرة",
+          "message": "INV-2026-0831 متأخرة 5 أيام (340$)"
+        },
+        "n4": {
+          "title": "تأخر موظف",
+          "message": "د. خالد متأخر 12 دقيقة عن ورديته"
+        },
+        "n5": {
+          "title": "اكتملت المهمة",
+          "message": "تم رفع نتائج المختبر لسارة حسن"
+        },
+        "n6": {
+          "title": "غرفة متاحة",
+          "message": "الغرفة 5 متاحة الآن"
+        },
+        "n7": {
+          "title": "توصية الذكاء الاصطناعي",
+          "message": "تحصيل 45$ المتبقية من سارة حسن (ثقة 94%)"
+        },
+        "n8": {
+          "title": "سير العمل متوقف",
+          "message": "التحقق من التأمين معلق لـ BK-9912"
+        }
+      }
+    },
+    "favorites": {
+      "title": "المفضلة",
+      "unpin": "إلغاء التثبيت",
+      "items": {
+        "waitingRoomQueue": "قائمة انتظار غرفة الانتظار",
+        "dailyRevenueReport": "تقرير الإيرادات اليومي",
+        "clinicWorkspace": "مساحة عمل العيادة",
+        "customerName": "سارة حسن"
+      }
+    },
+    "widgets": {
+      "revenueToday": "إيرادات اليوم",
+      "upcomingBookings": "حجوزات قادمة",
+      "pendingPayments": "مدفوعات معلّقة",
+      "employeeStatus": "حالة الموظفين",
+      "aiRecommendations": "توصيات الذكاء",
+      "tasks": "المهام",
+      "leaderboard": "لوحة المتصدرين",
+      "noData": "لا توجد بيانات بعد",
+      "points": {
+        "today": "اليوم",
+        "target": "الهدف",
+        "next2h": "الساعتان القادمتان",
+        "outstanding": "المستحق",
+        "overdue": "متأخر",
+        "onDuty": "في الخدمة",
+        "late": "متأخر",
+        "pending": "معلق",
+        "highConfidence": "ثقة عالية",
+        "open": "مفتوح",
+        "dueToday": "مستحق اليوم",
+        "topPerformer": "الأفضل أداءً",
+        "revenue": "الإيرادات"
+      }
+    },
+    "activity": {
+      "search": "بحث في النشاط…",
+      "periods": {
+        "today": "اليوم",
+        "yesterday": "أمس",
+        "thisWeek": "هذا الأسبوع",
+        "older": "أقدم"
+      },
+      "mock": {
+        "customerCreated": {
+          "title": "تم إنشاء عميل",
+          "description": "تم تسجيل العميل الجديد أحمد الرashid",
+          "actor": "الاستقبال · ليلى"
+        },
+        "leadConverted": {
+          "title": "تم تحويل عميل محتمل",
+          "description": "تم تحويل فاطمة نور إلى عميل",
+          "actor": "المبيعات · عمر"
+        },
+        "paymentCollected": {
+          "title": "تم تحصيل الدفع",
+          "description": "تم استلام دفعة جزئية 80.00$",
+          "actor": "أمين الصندوق · نادya"
+        },
+        "whatsappSent": {
+          "title": "تم إرسال واتساب",
+          "description": "تم إرسال تذكير بالموعد إلى سارة حسن",
+          "actor": "النظام"
+        },
+        "employeeAssigned": {
+          "title": "تم تعيين موظف",
+          "description": "تم تعيين د. أميرة لسارة حسن",
+          "actor": "المدير · خالد"
+        },
+        "invoiceGenerated": {
+          "title": "تم إنشاء فاتورة",
+          "description": "تم إنشاء INV-2026-0847 (245.00$)",
+          "actor": "الفوترة · النظام"
+        },
+        "taskCompleted": {
+          "title": "اكتملت المهمة",
+          "description": "تم رفع نتائج المختبر لسارة حسن",
+          "actor": "الممرضة · هana"
+        },
+        "aiSummary": {
+          "title": "تم إنشاء ملخص ذكاء",
+          "description": "ملخص صحة العميل لسارة حسن",
+          "actor": "مساعد الذكاء الاصطناعي"
+        },
+        "workflowTriggered": {
+          "title": "تم تشغيل سير العمل",
+          "description": "بدأ التحقق من التأمين لـ BK-9912",
+          "actor": "الأتمتة"
+        },
+        "paymentCollected2": {
+          "title": "تم تحصيل الدفع",
+          "description": "تم استلام دفعة كاملة 120.00$",
+          "actor": "أمين الصندوق · نادya"
+        },
+        "customerCreated2": {
+          "title": "تم إنشاء عميل",
+          "description": "تم تسجيل العميل الجديد ليلى منsur",
+          "actor": "الاستقبال"
+        }
+      }
+    },
+    "hub": {
+      "title": "مركز القيادة",
+      "subtitle": "نظرة تشغيلية — عناصر واجهة ونشاط وذكاء في لمحة.",
+      "widgets": "عناصر مساحة العمل",
+      "activity": "نشاط الشركة"
+    },
+    "designer": {
+      "title": "مصمم مساحة العمل",
+      "subtitle": "اسحب وأفلت الكتل لإعداد مساحات العمل — دون كود.",
+      "palette": "لوحة الكتل",
+      "canvasHint": "اسحب الكتل من اللوحة أو انقر للإضافة",
+      "save": "حفظ التخطيط",
+      "emptyCanvas": "أضف كتل من اللوحة لبناء مساحة العمل",
+      "defaultName": "مساحة عمل جديدة",
+      "palette.card": "بطاقة",
+      "palette.widget": "عنصر",
+      "palette.section": "قسم",
+      "palette.kpi": "مؤشر",
+      "palette.list": "قائمة",
+      "palette.chart": "مخطط",
+      "palette.timeline": "خط زمني",
+      "palette.form": "نموذج",
+      "palette.aiCard": "بطاقة ذكاء",
+      "palette.report": "تقرير",
+      "palette.communication": "اتصالات",
+      "palette.tasks": "مهام",
+      "palette.files": "ملفات",
+      "palette.invoices": "فواتير",
+      "palette.bookings": "حجوزات"
+    },
+    "personalization": {
+      "title": "تفضيلات مساحة العمل",
+      "density": "الكثافة",
+      "theme": "السمة",
+      "densities": {
+        "compact": "مضغوط",
+        "comfortable": "مريح",
+        "spacious": "واسع"
+      },
+      "themes": {
+        "system": "النظام",
+        "light": "فاتح",
+        "dark": "داكن"
+      },
+      "savedFilters": "الفلاتر المحفوظة",
+      "noSavedFilters": "لا توجد فلاتر محفوظة بعد",
+      "filtersCount": "فلاتر محفوظة"
+    },
+    "copilot": {
+      "title": "مساعد مساحة العمل الذكي",
+      "context": "مساحة العمل الحالية",
+      "summarize": "تلخيص السجل الحالي",
+      "explain": "شرح الخط الزمني",
+      "email": "إنشاء بريد",
+      "whatsapp": "إنشاء واتساب",
+      "overdue": "البحث عن المتأخرات",
+      "nextAction": "اقتراح الإجراء التالي",
+      "confirm": "تأكيد",
+      "discard": "تجاهل",
+      "preview": "معاينة المسودة",
+      "disclaimer": "اقتراحات الذكاء الاصطناعي تتطلب التأكيد قبل أي إجراء."
+    },
+    "entities": {
+      "customer": "عميل",
+      "lead": "عميل محتمل",
+      "employee": "موظف",
+      "invoice": "فاتورة",
+      "order": "طلب",
+      "ticket": "تذكرة",
+      "project": "مشروع",
+      "asset": "أصل",
+      "company": "شركة",
+      "contract": "عقد"
+    },
+    "blocks": {
+      "summary": "ملخص",
+      "timeline": "خط زمني",
+      "tasks": "مهام",
+      "files": "ملفات",
+      "aiAssistant": "مساعد ذكي"
+    },
+    "templates": {
+      "clinic": "عيادة",
+      "hospital": "مستشفى",
+      "training": "مركز تدريب",
+      "automotive": "سيارات",
+      "legal": "قانوني",
+      "manufacturing": "تصنيع",
+      "construction": "إنشاءات",
+      "consulting": "استشارات",
+      "beauty": "تجميل وسبا",
+      "gym": "نادي رياضي",
+      "education": "تعليم",
+      "hr": "موارد بشرية",
+      "realEstate": "عقارات"
+    }
+  },
+  "leads": {
+    "nav": {
+      "table": "جدول",
+      "kanban": "كانبان",
+      "pipeline": "خط الأنابيب",
+      "timeline": "الخط الزمني",
+      "dashboard": "لوحة التحكم"
+    },
+    "table": {
+      "title": "العملاء المحتملون",
+      "subtitle": "إدارة خط المبيعات ببيانات العملاء المحتملين المباشرة.",
+      "search": "بحث في العملاء المحتملين...",
+      "empty": "لم يُعثر على عملاء محتملين.",
+      "count": "{{shown}} / {{total}} عميل محتمل"
+    },
+    "columns": {
+      "lead": "العميل المحتمل",
+      "stage": "المرحلة",
+      "score": "الدرجة",
+      "value": "القيمة",
+      "owner": "المسؤول"
+    },
+    "scoreBand": {
+      "hot": "ساخن",
+      "warm": "دافئ",
+      "cold": "بارد"
+    },
+    "scorePoints": "{{score}} نقطة",
+    "scoreLabel": "{{score}} درجة",
+    "kanban": {
+      "title": "كانبان",
+      "subtitle": "اسحب العملاء المحتملين عبر مراحل خط الأنابيب مع تحديثات فورية.",
+      "pipeline": "خط الأنابيب"
+    },
+    "pipeline": {
+      "title": "خط الأنابيب",
+      "subtitle": "مراحل قابلة للتكوين من محرك إعداد خط الأنابيب.",
+      "select": "خط الأنابيب",
+      "totalLeads": "إجمالي العملاء المحتملين",
+      "pipelineValue": "قيمة خط الأنابيب",
+      "stages": "المراحل",
+      "pipeline": "خط الأنابيب",
+      "stageLeads": "{{count}} عميل محتمل",
+      "probability": "{{percent}}% احتمال"
+    },
+    "timeline": {
+      "title": "الخط الزمني",
+      "subtitle": "نشاط العملاء المحتملين الأخير مرتب حسب آخر تحديث.",
+      "empty": "لا يوجد نشاط بعد."
+    },
+    "dashboard": {
+      "title": "لوحة العملاء المحتملين",
+      "subtitle": "مؤشرات أداء فورية للتحويل وقيمة خط الأنابيب ومصادر العملاء المحتملين.",
+      "forecast": "قيمة التوقعات",
+      "byStatus": "العملاء المحتملون حسب الحالة",
+      "pipelines": "أداء خطوط الأنابيب",
+      "pipelineRow": "{{count}} عميل محتمل · {{value}}"
+    },
+    "kpi": {
+      "total": "إجمالي العملاء المحتملين",
+      "conversionRate": "معدل التحويل",
+      "created": "تم الإنشاء (الفترة)",
+      "converted": "تم التحويل (الفترة)"
+    },
+    "lifecycle": {
+      "new": "جديد",
+      "qualified": "مؤهل",
+      "converted": "تم التحويل",
+      "lost": "مفقود",
+      "archived": "مؤرشف",
+      "nurturing": "قيد الرعاية"
+    }
+  },
+  "leads360": {
+    "convert": "تحويل إلى عميل",
+    "scoreLabel": "{{score}} درجة",
+    "sections": {
+      "overview": "نظرة عامة",
+      "company": "الشركة",
+      "contacts": "جهات الاتصال",
+      "activities": "الأنشطة",
+      "timeline": "الخط الزمني",
+      "tags": "الوسوم",
+      "files": "الملفات",
+      "customFields": "حقول مخصصة",
+      "tasks": "المهام",
+      "bookings": "الحجوزات",
+      "invoices": "الفواتير",
+      "communication": "التواصل",
+      "relatedEntities": "الكيانات المرتبطة",
+      "aiAssistant": "مساعد الذكاء الاصطناعي",
+      "audit": "التدقيق"
+    },
+    "empty": {
+      "company": "لا توجد شركة",
+      "email": "لا يوجد بريد إلكتروني",
+      "phone": "لا يوجد هاتف",
+      "contacts": "لا توجد جهات اتصال",
+      "tags": "لا توجد وسوم",
+      "files": "لا توجد ملفات",
+      "tasks": "لا توجد مهام",
+      "relatedEntities": "لم يتم إعداد كيانات مرتبطة بعد"
+    },
+    "ai": {
+      "nextAction": "الإجراء التالي:",
+      "followUp": "المتابعة:"
     }
   }
 }

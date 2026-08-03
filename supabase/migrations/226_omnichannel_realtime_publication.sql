@@ -27,4 +27,4 @@ begin
 end $$;
 
 comment on table public.conversations is
-  'Omnichannel conversations; included in supabase_realtime (migration 214) for inbox live updates.';
+  'Omnichannel conversations; included in supabase_realtime (migration 226) for inbox live updates.';

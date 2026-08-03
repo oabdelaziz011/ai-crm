@@ -18,10 +18,15 @@ declare global {
   }
 }
 
+function readBrowserWindow(): Window | undefined {
+  if (typeof globalThis === "undefined") return undefined;
+  return (globalThis as typeof globalThis & { window?: Window }).window;
+}
+
 export function traceTranscriptMessageStageBridge(
   input: Parameters<NonNullable<TranscriptAuditTracer>>[0],
 ): void {
   if (typeof globalThis !== "undefined") {
-    globalThis.window?.__traceTranscriptMessageStage__?.(input);
+  readBrowserWindow()?.__traceTranscriptMessageStage__?.(input);
   }
 }

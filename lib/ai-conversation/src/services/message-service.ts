@@ -20,7 +20,7 @@ import type {
   ListMessagesFilter,
   ServiceContext,
 } from "../types.js";
-import { traceOmniSendBridgeAsync } from "../debug/omni-send-bridge.js";
+import { readBrowserWindow, traceOmniSendBridgeAsync } from "../debug/omni-send-bridge.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -109,18 +109,17 @@ export class MessageService {
     );
 
     await (async () => {
-      if (typeof globalThis !== "undefined" && globalThis.window?.__traceOmniSendEnter__) {
-        globalThis.window.__traceOmniSendEnter__({
-          layer: 10,
-          stage: "Database.conversation.applyMessageCache",
-          file: "message-service.ts",
-          function: "applyMessageCache",
-          line: 111,
-          conversationId: input.conversationId,
-          messageId: message.id,
-          statusBefore: message.status,
-        });
-      }
+      const browserWindow = readBrowserWindow();
+      browserWindow?.__traceOmniSendEnter__?.({
+        layer: 10,
+        stage: "Database.conversation.applyMessageCache",
+        file: "message-service.ts",
+        function: "applyMessageCache",
+        line: 111,
+        conversationId: input.conversationId,
+        messageId: message.id,
+        statusBefore: message.status,
+      });
       await this.conversationRepository.applyMessageCache({
         conversationId: input.conversationId,
         messageAt: message.created_at,
@@ -132,16 +131,14 @@ export class MessageService {
         currentUnreadEmployee: conversation.unread_count_employee,
         currentUnreadCustomer: conversation.unread_count_customer,
       });
-      if (typeof globalThis !== "undefined" && globalThis.window?.__traceOmniSendExit__) {
-        globalThis.window.__traceOmniSendExit__({
-          layer: 10,
-          stage: "Database.conversation.applyMessageCache",
-          success: true,
-          conversationId: input.conversationId,
-          messageId: message.id,
-          statusAfter: message.status,
-        });
-      }
+      browserWindow?.__traceOmniSendExit__?.({
+        layer: 10,
+        stage: "Database.conversation.applyMessageCache",
+        success: true,
+        conversationId: input.conversationId,
+        messageId: message.id,
+        statusAfter: message.status,
+      });
     })();
 
     return message;

@@ -13,7 +13,15 @@ export type ApiScope =
   | "communication.read"
   | "organization.read"
   | "executive.read"
-  | "portal.read";
+  | "portal.read"
+  | "tickets.read"
+  | "tickets.write"
+  | "handoff.read"
+  | "handoff.write"
+  | "handoff.manage"
+  | "leads.read"
+  | "leads.write"
+  | "leads.manage";
 
 export type WebhookEventType =
   | "booking.created"
@@ -29,7 +37,36 @@ export type WebhookEventType =
   | "communication.sent"
   | "portal.login"
   | "organization.transfer"
-  | "executive.alert";
+  | "executive.alert"
+  | "ticket.created"
+  | "ticket.updated"
+  | "ticket.closed"
+  | "ticket.reopened"
+  | "ticket.assigned"
+  | "ticket.comment_added"
+  | "ticket.priority_changed"
+  | "ticket.deleted"
+  | "ticket.status_changed"
+  | "conversation.transferred"
+  | "conversation.accepted"
+  | "conversation.rejected"
+  | "conversation.escalated"
+  | "conversation.returned_to_ai"
+  | "conversation.queue_joined"
+  | "conversation.queue_left"
+  | "conversation.owner_changed"
+  | "lead.created"
+  | "lead.updated"
+  | "lead.deleted"
+  | "lead.assigned"
+  | "lead.reassigned"
+  | "lead.qualified"
+  | "lead.disqualified"
+  | "lead.converted"
+  | "lead.archived"
+  | "lead.restored"
+  | "lead.stage_changed"
+  | "lead.pipeline_changed";
 
 export type WebhookDeliveryStatus = "pending" | "delivered" | "failed" | "dead_letter";
 
@@ -56,6 +93,7 @@ export type EventSourcePlatform =
   | "organization"
   | "executive"
   | "portal"
-  | "crm";
+  | "crm"
+  | "support";
 
 export type IntegrationHealthStatus = "healthy" | "degraded" | "unhealthy" | "unknown";

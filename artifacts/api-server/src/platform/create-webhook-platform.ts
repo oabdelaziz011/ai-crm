@@ -44,6 +44,8 @@ import {
 import { createChannelAutomationPortFromClient, createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
+import { createTicketPlatformServices } from "@workspace/ticket-platform";
+import { createLeadPlatformServices } from "@workspace/lead-platform";
 import { createKnowledgeRuntimeProvider } from "@workspace/knowledge-runtime";
 import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-engine";
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
@@ -189,6 +191,8 @@ export function getWebhookPlatform(): WebhookPlatform {
     {
       customer360Loader: createCustomer360Loader(createSupabaseCustomer360DataPort(client, {
         resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
+        ticketReads: createTicketPlatformServices(client).reads,
+        leadReads: createLeadPlatformServices(client).reads,
       })),
       knowledgeRuntimeProvider,
       resolveActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),

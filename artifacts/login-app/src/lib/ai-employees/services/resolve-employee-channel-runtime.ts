@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAIProviderServices } from "@workspace/ai-provider-layer";
 import { createEmbeddingPlatformServices } from "@workspace/embedding-platform";
-import { createPlatformAIProviderServices, PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
+import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
+import { resolveFeatureEnabledViaApplicationLayer } from "@/lib/application-layer/resolve-feature-flag";
 import { createVectorStoreServices } from "@workspace/vector-store";
 import type { AgentRuntimeChannelBinding } from "@/lib/ai-employees/adapters/ai-employee-runtime-types";
 import { resolveProviderCapabilities } from "@/lib/ai-employees/adapters/model-capabilities-catalog";
@@ -17,8 +18,9 @@ function createCompanyServiceContext(companyId: string) {
   return {
     userId: null,
     companyId,
+    actorUserId: "system",
     isSuperAdmin: false,
-    hasPermission: () => false,
+    hasPermission: () => true,
   };
 }
 
@@ -27,16 +29,16 @@ async function loadRuntimeChatConfig(
   companyId: string,
   knowledgeEnabled: boolean,
 ): Promise<RuntimeChatExecutionConfig> {
-  const context = createCompanyServiceContext(companyId);
+  const portContext = createCompanyServiceContext(companyId);
+  const providerContext = { userId: null, companyId, isSuperAdmin: false, hasPermission: () => true };
   const providerServices = createAIProviderServices(client);
-  const platformServices = createPlatformAIProviderServices(client);
   const embeddingServices = createEmbeddingPlatformServices(client);
   const vectorStoreServices = createVectorStoreServices(client);
 
   const missing: RuntimeChatExecutionConfig["missing"] = [];
 
-  const aiChatEnabled = await platformServices.platform.isFeatureEnabled(
-    companyId,
+  const aiChatEnabled = await resolveFeatureEnabledViaApplicationLayer(
+    portContext,
     PLATFORM_AI_FEATURE_KEY.AI_CHAT,
   );
   if (!aiChatEnabled) {
@@ -49,7 +51,7 @@ async function loadRuntimeChatConfig(
     };
   }
 
-  const providerConnections = await providerServices.registry.listConnections(context, {
+  const providerConnections = await providerServices.registry.listConnections(providerContext, {
     companyId,
     isEnabled: true,
   });
@@ -59,8 +61,8 @@ async function loadRuntimeChatConfig(
   }
 
   let knowledgeRetrieval: RuntimeChatExecutionConfig["knowledgeRetrieval"] = null;
-  const knowledgeFeatureEnabled = await platformServices.platform.isFeatureEnabled(
-    companyId,
+  const knowledgeFeatureEnabled = await resolveFeatureEnabledViaApplicationLayer(
+    portContext,
     PLATFORM_AI_FEATURE_KEY.KNOWLEDGE,
   );
 
@@ -71,20 +73,20 @@ async function loadRuntimeChatConfig(
       assistantKnowledgeEnabled: knowledgeEnabled,
     })
   ) {
-    const embeddingConnections = await embeddingServices.registry.listConnections(context, {
+    const embeddingConnections = await embeddingServices.registry.listConnections(providerContext, {
       companyId,
       isEnabled: true,
     });
     const embeddingConnection = pickDefaultConnection(embeddingConnections);
 
-    const vectorConnections = await vectorStoreServices.registry.listConnections(context, {
+    const vectorConnections = await vectorStoreServices.registry.listConnections(providerContext, {
       companyId,
       isEnabled: true,
     });
     const vectorConnection = pickDefaultConnection(vectorConnections);
 
     const collections = vectorConnection
-      ? await vectorStoreServices.collections.listCollections(context, {
+      ? await vectorStoreServices.collections.listCollections(providerContext, {
           companyId,
           connectionId: vectorConnection.id,
         })

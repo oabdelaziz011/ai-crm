@@ -80,6 +80,9 @@ importers:
       '@workspace/tenant-ai-bootstrap':
         specifier: workspace:*
         version: link:../../lib/tenant-ai-bootstrap
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../../lib/ticket-platform
       '@workspace/vector-query':
         specifier: workspace:*
         version: link:../../lib/vector-query
@@ -204,6 +207,9 @@ importers:
       '@workspace/ai-workflow-platform':
         specifier: workspace:*
         version: link:../../lib/ai-workflow-platform
+      '@workspace/appointment-platform':
+        specifier: workspace:*
+        version: link:../../lib/appointment-platform
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../../lib/automation-platform
@@ -225,6 +231,9 @@ importers:
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../../lib/embedding-platform
+      '@workspace/human-handoff-platform':
+        specifier: workspace:*
+        version: link:../../lib/human-handoff-platform
       '@workspace/identity-platform':
         specifier: workspace:*
         version: link:../../lib/identity-platform
@@ -255,6 +264,9 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../../lib/scheduling-engine
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../../lib/ticket-platform
       '@workspace/universal-operations-engine':
         specifier: workspace:*
         version: link:../../lib/universal-operations-engine

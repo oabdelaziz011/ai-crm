@@ -47,6 +47,21 @@ function createStubSchedulingPorts(
     async createBooking() {
       return { success: false, message: "not configured" };
     },
+    async searchBookings() {
+      return { success: true, bookings: [], total: 0 };
+    },
+    async rescheduleBooking() {
+      return { success: false, message: "not configured" };
+    },
+    async cancelBooking() {
+      return { success: false, message: "not configured" };
+    },
+    async checkInBooking() {
+      return { success: false, message: "not configured" };
+    },
+    async checkOutBooking() {
+      return { success: false, message: "not configured" };
+    },
     ...overrides,
   };
 }

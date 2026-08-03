@@ -18,7 +18,7 @@ describe("search_availability engine integration", () => {
           calls.push("resolveAvailability");
           return {
             available: true,
-            date: "2026-08-01",
+            date: "2026-08-10",
             resourceId: "resource-1",
             serviceId: "service-1",
           };
@@ -29,7 +29,7 @@ describe("search_availability engine integration", () => {
           calls.push("getAvailableSlots");
           return {
             available: true,
-            date: "2026-08-01",
+            date: "2026-08-10",
             timezone: "UTC",
             resourceId: "resource-1",
             serviceId: "service-1",
@@ -94,12 +94,12 @@ describe("search_availability engine integration", () => {
       userId: "user-1",
       serviceId: "service-1",
       resourceId: "resource-1",
-      date: "2026-08-01",
+      date: "2026-08-10",
     });
 
     assert.equal(result.resources[0]?.resourceName, "Dr. Ada");
     assert.equal(result.resources[0]?.capacity, 2);
-    assert.deepEqual(result.resources[0]?.slots, [{ date: "2026-08-01", start: "09:00", end: "09:30" }]);
+    assert.deepEqual(result.resources[0]?.slots, [{ date: "2026-08-10", start: "09:00", end: "09:30" }]);
     assert.ok(calls.includes("resolveAvailability"));
     assert.ok(calls.includes("getAvailableSlots"));
     assert.equal(calls.includes("appointment_lookup"), false);

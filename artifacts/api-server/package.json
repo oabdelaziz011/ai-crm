@@ -31,6 +31,7 @@
     "@workspace/retrieval-engine": "workspace:*",
     "@workspace/runtime-integration": "workspace:*",
     "@workspace/scheduling-engine": "workspace:*",
+    "@workspace/ticket-platform": "workspace:*",
     "@workspace/tenant-ai-bootstrap": "workspace:*",
     "@workspace/vector-query": "workspace:*",
     "@workspace/vector-store": "workspace:*",

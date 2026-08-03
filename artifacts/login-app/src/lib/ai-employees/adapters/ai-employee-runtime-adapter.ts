@@ -11,6 +11,11 @@ import {
   resolveProviderCapabilities,
 } from "./model-capabilities-catalog";
 import { summarizeToolPermissions } from "./tool-metadata-adapter";
+import {
+  buildTicketToolPromptHint,
+  isTicketToolKey,
+  resolveTicketToolKeysForEmployee,
+} from "@/lib/ai-employees/utilities/ticket-tool-scope";
 
 export function buildAgentRuntimeConfiguration(
   input: AiEmployeeRuntimeAdapterInput,
@@ -25,9 +30,14 @@ export function buildAgentRuntimeConfiguration(
       tenantRuntime.providerConnectionId,
   );
 
-  const allowedKeys = employee.allowedToolKeys;
+  const allowedKeys = resolveTicketToolKeysForEmployee({
+    tags: employee.tags ?? [],
+    allowedToolKeys: employee.allowedToolKeys,
+  });
   const disabledKeys = employee.runtimeConfiguration.disabledToolKeys;
   const enabledKeys = allowedKeys.filter((key) => !disabledKeys.includes(key));
+  const enabledTicketTools = enabledKeys.filter(isTicketToolKey);
+  const ticketToolPromptHint = buildTicketToolPromptHint(enabledTicketTools);
 
   const toolEntries = toolCatalog
     .filter((tool) => allowedKeys.includes(tool.key))
@@ -92,6 +102,7 @@ export function buildAgentRuntimeConfiguration(
             aiEmployeeName: employee.displayName,
             allowedToolKeys: enabledKeys,
             systemPrompt: employee.systemPrompt,
+            ...(ticketToolPromptHint ? { ticketToolPromptHint } : {}),
           },
         }
       : null;

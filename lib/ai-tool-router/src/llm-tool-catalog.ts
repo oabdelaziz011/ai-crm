@@ -1,4 +1,26 @@
 import { CREATE_CUSTOMER_LLM_TOOL_DEFINITION, CREATE_CUSTOMER_TOOL_KEY } from "./tools/create-customer-tool.js";
+import {
+  ADD_TICKET_COMMENT_LLM,
+  ASSIGN_TICKET_LLM,
+  CHANGE_TICKET_PRIORITY_LLM,
+  CHANGE_TICKET_STATUS_LLM,
+  CLOSE_TICKET_LLM,
+  CREATE_TICKET_LLM,
+  SEARCH_TICKET_LLM,
+  UPDATE_TICKET_LLM,
+} from "./tools/ticket-tool-definitions.js";
+import {
+  ASSIGN_LEAD_LLM,
+  CONVERT_LEAD_LLM,
+  CREATE_LEAD_LLM,
+  CREATE_LEAD_TOOL_KEY,
+  MERGE_LEAD_LLM,
+  QUALIFY_LEAD_LLM,
+  SCORE_LEAD_LLM,
+  SEARCH_LEAD_LLM,
+  SUGGEST_NEXT_ACTION_LLM,
+  UPDATE_LEAD_LLM,
+} from "./tools/lead-tool-definitions.js";
 
 export type ToolClassification =
   | "production_ready"
@@ -20,7 +42,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;
@@ -197,6 +219,142 @@ const CREATE_BOOKING_LLM: LlmFunctionToolDefinition = {
   },
 };
 
+const SEARCH_BOOKINGS_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "search_bookings",
+    description: "Search recent bookings for a customer or company queue. Read-only.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerId: { type: "string", description: "Optional CRM customer UUID filter" },
+        daysBack: { type: "number", description: "Days of history to include (default 30)" },
+      },
+      additionalProperties: false,
+    },
+  },
+};
+
+const RESCHEDULE_BOOKING_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "reschedule_booking",
+    description: "Reschedule an existing booking to a new date and time slot.",
+    parameters: {
+      type: "object",
+      properties: {
+        bookingId: { type: "string", description: "Booking UUID" },
+        date: { type: "string", description: "New appointment date YYYY-MM-DD" },
+        slotStart: { type: "string", description: "New local start time HH:mm" },
+        reason: { type: "string", description: "Optional reschedule reason" },
+      },
+      required: ["bookingId", "date", "slotStart"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CANCEL_BOOKING_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "cancel_booking",
+    description: "Cancel an existing booking.",
+    parameters: {
+      type: "object",
+      properties: {
+        bookingId: { type: "string", description: "Booking UUID" },
+        reason: { type: "string", description: "Optional cancellation reason" },
+      },
+      required: ["bookingId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CHECK_IN_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "check_in",
+    description: "Check in a customer for their scheduled booking.",
+    parameters: {
+      type: "object",
+      properties: {
+        bookingId: { type: "string", description: "Booking UUID" },
+        roomId: { type: "string", description: "Optional room UUID" },
+      },
+      required: ["bookingId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const CHECK_OUT_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "check_out",
+    description: "Check out a customer after their appointment is complete.",
+    parameters: {
+      type: "object",
+      properties: {
+        bookingId: { type: "string", description: "Booking UUID" },
+      },
+      required: ["bookingId"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const RETURN_TO_AI_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "return_to_ai",
+    description: "Return a human-handled conversation back to the AI employee after resolution.",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: { type: "string", description: "Why the conversation is returning to AI" },
+      },
+      required: ["reason"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const ESCALATE_TO_HUMAN_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "escalate_to_human",
+    description: "Escalate the active conversation to a human agent using the handoff platform.",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: { type: "string" },
+        triggerCode: { type: "string" },
+        targetQueueId: { type: "string" },
+      },
+      required: ["reason"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const QUEUE_HANDOFF_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "queue_handoff",
+    description: "Place the active conversation into a human handoff queue.",
+    parameters: {
+      type: "object",
+      properties: {
+        queueId: { type: "string" },
+        reason: { type: "string" },
+      },
+      required: ["queueId", "reason"],
+      additionalProperties: false,
+    },
+  },
+};
+
 const FIND_DUPLICATES_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
@@ -283,6 +441,56 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     llmDefinition: CREATE_BOOKING_LLM,
   },
   {
+    key: "search_bookings",
+    displayName: "Search Bookings",
+    category: "scheduling",
+    classification: "read_only",
+    handlerSource: "scheduling_agent",
+    description: "Search recent bookings via BookingApplicationService.",
+    requiredPermissions: ["tools.execute", "bookings.view"],
+    llmDefinition: SEARCH_BOOKINGS_LLM,
+  },
+  {
+    key: "reschedule_booking",
+    displayName: "Reschedule Booking",
+    category: "scheduling",
+    classification: "production_ready",
+    handlerSource: "scheduling_agent",
+    description: "Reschedule an existing booking via BookingApplicationService.",
+    requiredPermissions: ["tools.execute", "bookings.edit"],
+    llmDefinition: RESCHEDULE_BOOKING_LLM,
+  },
+  {
+    key: "cancel_booking",
+    displayName: "Cancel Booking",
+    category: "scheduling",
+    classification: "production_ready",
+    handlerSource: "scheduling_agent",
+    description: "Cancel a booking via BookingApplicationService.",
+    requiredPermissions: ["tools.execute", "bookings.edit"],
+    llmDefinition: CANCEL_BOOKING_LLM,
+  },
+  {
+    key: "check_in",
+    displayName: "Check In",
+    category: "scheduling",
+    classification: "production_ready",
+    handlerSource: "scheduling_agent",
+    description: "Check in a booking via BookingApplicationService.",
+    requiredPermissions: ["tools.execute", "bookings.edit"],
+    llmDefinition: CHECK_IN_LLM,
+  },
+  {
+    key: "check_out",
+    displayName: "Check Out",
+    category: "scheduling",
+    classification: "production_ready",
+    handlerSource: "scheduling_agent",
+    description: "Check out a booking via BookingApplicationService.",
+    requiredPermissions: ["tools.execute", "bookings.edit"],
+    llmDefinition: CHECK_OUT_LLM,
+  },
+  {
     key: "booking",
     displayName: "Booking",
     category: "scheduling",
@@ -318,9 +526,39 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     category: "control",
     classification: "mock",
     handlerSource: "builtin_mock",
-    description: "Sets escalated=true without routing to humans.",
+    description: "Deprecated mock escalation handler.",
     requiredPermissions: ["tools.execute"],
-    exclusionReason: "Mock handler — use runtime escalation path instead",
+    exclusionReason: "Mock handler — use escalate_to_human instead",
+  },
+  {
+    key: "escalate_to_human",
+    displayName: "Escalate To Human",
+    category: "handoff",
+    classification: "production_ready",
+    handlerSource: "handoff_agent",
+    description: "Production human handoff escalation via Human Handoff Platform.",
+    requiredPermissions: ["tools.execute", "handoff.escalate"],
+    llmDefinition: ESCALATE_TO_HUMAN_LLM,
+  },
+  {
+    key: "queue_handoff",
+    displayName: "Queue Handoff",
+    category: "handoff",
+    classification: "production_ready",
+    handlerSource: "handoff_agent",
+    description: "Queue conversation for human pickup.",
+    requiredPermissions: ["tools.execute", "handoff.queue"],
+    llmDefinition: QUEUE_HANDOFF_LLM,
+  },
+  {
+    key: "return_to_ai",
+    displayName: "Return To AI",
+    category: "handoff",
+    classification: "production_ready",
+    handlerSource: "handoff_agent",
+    description: "Return a human-handled conversation to the AI employee.",
+    requiredPermissions: ["tools.execute", "handoff.return_to_ai"],
+    llmDefinition: RETURN_TO_AI_LLM,
   },
   {
     key: CREATE_CUSTOMER_TOOL_KEY,
@@ -411,6 +649,176 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     description: "Groups duplicate CRM profiles by phone/email.",
     requiredPermissions: ["tools.execute", "customers.view"],
     llmDefinition: FIND_DUPLICATES_LLM,
+  },
+  {
+    key: "create_ticket",
+    displayName: "Create Ticket",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Creates a support ticket with subject, description, and priority.",
+    requiredPermissions: ["tools.execute", "tickets.create"],
+    llmDefinition: CREATE_TICKET_LLM,
+  },
+  {
+    key: "update_ticket",
+    displayName: "Update Ticket",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Updates subject or description on an existing support ticket.",
+    requiredPermissions: ["tools.execute", "tickets.edit"],
+    llmDefinition: UPDATE_TICKET_LLM,
+  },
+  {
+    key: "close_ticket",
+    displayName: "Close Ticket",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Closes or resolves a support ticket.",
+    requiredPermissions: ["tools.execute", "tickets.close"],
+    llmDefinition: CLOSE_TICKET_LLM,
+  },
+  {
+    key: "assign_ticket",
+    displayName: "Assign Ticket",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Assigns a support ticket to a human agent.",
+    requiredPermissions: ["tools.execute", "tickets.assign"],
+    llmDefinition: ASSIGN_TICKET_LLM,
+  },
+  {
+    key: "add_ticket_comment",
+    displayName: "Add Ticket Comment",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Adds a public or internal comment to a support ticket.",
+    requiredPermissions: ["tools.execute", "tickets.comment"],
+    llmDefinition: ADD_TICKET_COMMENT_LLM,
+  },
+  {
+    key: "change_ticket_priority",
+    displayName: "Change Ticket Priority",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Changes support ticket priority.",
+    requiredPermissions: ["tools.execute", "tickets.edit"],
+    llmDefinition: CHANGE_TICKET_PRIORITY_LLM,
+  },
+  {
+    key: "change_ticket_status",
+    displayName: "Change Ticket Status",
+    category: "support",
+    classification: "production_ready",
+    handlerSource: "ticket_agent",
+    description: "Changes support ticket workflow status.",
+    requiredPermissions: ["tools.execute", "tickets.edit"],
+    llmDefinition: CHANGE_TICKET_STATUS_LLM,
+  },
+  {
+    key: "search_ticket",
+    displayName: "Search Tickets",
+    category: "support",
+    classification: "read_only",
+    handlerSource: "ticket_agent",
+    description: "Searches support tickets by keyword, status, priority, or assignee.",
+    requiredPermissions: ["tools.execute", "tickets.view"],
+    llmDefinition: SEARCH_TICKET_LLM,
+  },
+  {
+    key: CREATE_LEAD_TOOL_KEY,
+    displayName: "Create Lead",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Creates a sales lead for unknown or prospective contacts.",
+    requiredPermissions: ["tools.execute", "leads.create"],
+    llmDefinition: CREATE_LEAD_LLM,
+  },
+  {
+    key: "update_lead",
+    displayName: "Update Lead",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Updates lead contact fields or score.",
+    requiredPermissions: ["tools.execute", "leads.edit"],
+    llmDefinition: UPDATE_LEAD_LLM,
+  },
+  {
+    key: "qualify_lead",
+    displayName: "Qualify Lead",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Qualifies a lead for the sales pipeline.",
+    requiredPermissions: ["tools.execute", "leads.qualify"],
+    llmDefinition: QUALIFY_LEAD_LLM,
+  },
+  {
+    key: "convert_lead",
+    displayName: "Convert Lead",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Converts a lead into a CRM customer.",
+    requiredPermissions: ["tools.execute", "leads.convert"],
+    llmDefinition: CONVERT_LEAD_LLM,
+  },
+  {
+    key: "assign_lead",
+    displayName: "Assign Lead",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Assigns a lead to a sales agent.",
+    requiredPermissions: ["tools.execute", "leads.assign"],
+    llmDefinition: ASSIGN_LEAD_LLM,
+  },
+  {
+    key: "search_lead",
+    displayName: "Search Leads",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "lead_agent",
+    description: "Searches leads by contact details or lifecycle status.",
+    requiredPermissions: ["tools.execute", "leads.view"],
+    llmDefinition: SEARCH_LEAD_LLM,
+  },
+  {
+    key: "merge_lead",
+    displayName: "Merge Leads",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Merges duplicate leads into a primary lead.",
+    requiredPermissions: ["tools.execute", "leads.merge"],
+    llmDefinition: MERGE_LEAD_LLM,
+  },
+  {
+    key: "score_lead",
+    displayName: "Score Lead",
+    category: "sales",
+    classification: "production_ready",
+    handlerSource: "lead_agent",
+    description: "Updates lead score.",
+    requiredPermissions: ["tools.execute", "leads.edit"],
+    llmDefinition: SCORE_LEAD_LLM,
+  },
+  {
+    key: "suggest_next_action",
+    displayName: "Suggest Next Action",
+    category: "sales",
+    classification: "read_only",
+    handlerSource: "lead_agent",
+    description: "Suggests the next best sales action for a lead.",
+    requiredPermissions: ["tools.execute", "leads.view"],
+    llmDefinition: SUGGEST_NEXT_ACTION_LLM,
   },
 ];
 

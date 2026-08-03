@@ -10,15 +10,25 @@ import { createChannelRuntimePort } from "./channel-platform-ports.js";
 import type { RuntimeIntegrationServices } from "@workspace/runtime-integration";
 
 const FULLY_WIRED_LLM_TOOLS = [
+  "add_ticket_comment",
+  "assign_ticket",
   "booking_search",
+  "change_ticket_priority",
+  "change_ticket_status",
+  "close_ticket",
   "create_booking",
   "create_customer",
+  "create_ticket",
   "find_duplicate_customers",
+  "find_next_available",
   "invoice_search",
   "knowledge_search",
+  "recommend_appointment",
   "search_availability",
   "search_customer",
+  "search_ticket",
   "update_customer",
+  "update_ticket",
 ];
 
 describe("api-server webhook Tool Router wiring", () => {
@@ -43,7 +53,7 @@ describe("api-server webhook Tool Router wiring", () => {
     assert.ok(toolRouterServices.router);
     assert.deepEqual(tools.allowedToolKeys().sort(), FULLY_WIRED_LLM_TOOLS);
     assert.equal(tools.listLlmTools().length, FULLY_WIRED_LLM_TOOLS.length);
-    assert.equal(listRegisteredToolHandlerKeys(createOptions).length, 17);
+    assert.equal(listRegisteredToolHandlerKeys(createOptions).length, 25);
   });
 
   it("passes tools into createEnterpriseRuntimeIntegrations for webhook runtime", () => {
@@ -63,6 +73,7 @@ describe("api-server webhook Tool Router wiring", () => {
         customerService: {} as never,
         crmAgentPorts: {} as never,
         schedulingToolPorts: {} as never,
+        ticketAgentPorts: {} as never,
       },
     );
 

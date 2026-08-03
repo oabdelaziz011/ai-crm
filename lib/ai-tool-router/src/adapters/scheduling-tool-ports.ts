@@ -516,6 +516,21 @@ export function createSchedulingToolPorts(
       }
       return executeCreateBooking(bookingDomain, input);
     },
+    searchBookings() {
+      throw new Error("searchBookings requires Application Layer scheduling ports.");
+    },
+    rescheduleBooking() {
+      throw new Error("rescheduleBooking requires Application Layer scheduling ports.");
+    },
+    cancelBooking() {
+      throw new Error("cancelBooking requires Application Layer scheduling ports.");
+    },
+    checkInBooking() {
+      throw new Error("checkInBooking requires Application Layer scheduling ports.");
+    },
+    checkOutBooking() {
+      throw new Error("checkOutBooking requires Application Layer scheduling ports.");
+    },
   };
 }
 

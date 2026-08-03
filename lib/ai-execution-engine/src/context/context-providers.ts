@@ -1,4 +1,5 @@
 import { KnowledgeContextProvider } from "./knowledge-context-provider.js";
+import { AssembledContextProvider } from "./assembled-context-provider.js";
 import { Customer360ContextProvider } from "@workspace/customer-360";
 
 export type RuntimeContextSource = Record<string, unknown>;
@@ -86,6 +87,7 @@ export class SystemContextProvider implements RuntimeContextProvider {
 
 export function createDefaultRuntimeContextProviders(): RuntimeContextProvider[] {
   return [
+    new AssembledContextProvider(),
     new CustomerContextProvider(),
     new ConversationContextProvider(),
     new WorkflowContextProvider(),

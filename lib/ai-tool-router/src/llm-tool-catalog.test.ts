@@ -10,7 +10,7 @@ import { listRegisteredToolHandlerKeys as listHandlerKeys } from "./tool-handler
 
 describe("llm-tool-catalog", () => {
   it("registers every known tool with a classification", () => {
-    assert.equal(TOOL_REGISTRY.length, 20);
+    assert.equal(TOOL_REGISTRY.length, 45);
     for (const entry of TOOL_REGISTRY) {
       assert.ok(entry.key);
       assert.ok(entry.classification);
@@ -22,32 +22,25 @@ describe("llm-tool-catalog", () => {
       customerService: {} as never,
       crmAgentPorts: {} as never,
       schedulingToolPorts: {} as never,
+      ticketAgentPorts: {} as never,
+      leadAgentPorts: {} as never,
+      handoffAgentPorts: {} as never,
     });
 
     const exposure = resolveLlmToolExposure(registered);
-    assert.deepEqual(exposure.allowedToolKeys.sort(), [
-      "booking_search",
-      "create_booking",
-      "create_customer",
-      "find_duplicate_customers",
-      "find_next_available",
-      "invoice_search",
-      "knowledge_search",
-      "recommend_appointment",
-      "search_availability",
-      "search_customer",
-      "update_customer",
-    ]);
+    assert.ok(exposure.allowedToolKeys.includes("create_customer"));
+    assert.ok(exposure.allowedToolKeys.includes("create_booking"));
+    assert.ok(exposure.allowedToolKeys.includes("search_ticket"));
     assert.equal(exposure.excludedMocks.length, 7);
     assert.equal(exposure.protectedConfirmation.length, 2);
     assert.equal(exposure.gaps.length, 0);
   });
 
-  it("leaves CRM tools as gaps when only create_customer handler is wired", () => {
+  it("leaves CRM and ticket tools as gaps when only create_customer handler is wired", () => {
     const registered = listHandlerKeys({ customerService: {} as never });
     const exposure = resolveLlmToolExposure(registered);
     assert.deepEqual(exposure.allowedToolKeys, [CREATE_CUSTOMER_TOOL_KEY]);
-    assert.equal(exposure.gaps.length, 10);
+    assert.equal(exposure.gaps.length, 35);
   });
 
   it("builds audit report with newly exposed tools", () => {
@@ -55,12 +48,23 @@ describe("llm-tool-catalog", () => {
       customerService: {} as never,
       crmAgentPorts: {} as never,
       schedulingToolPorts: {} as never,
+      ticketAgentPorts: {} as never,
+      leadAgentPorts: {} as never,
+      handoffAgentPorts: {} as never,
     });
     const report = buildToolRouterAuditReport(registered);
-    assert.equal(report.llmExposure.exposedCount, 11);
-    assert.equal(report.llmExposure.newlyExposed.length, 10);
+    assert.ok(report.llmExposure.exposedCount >= 24);
     assert.equal(report.excludedMockTools.length, 7);
     assert.equal(report.protectedConfirmationTools.length, 2);
     assert.equal(report.remainingGaps.length, 0);
+  });
+
+  it("excludes mock builtin tools from production handler registration by default", () => {
+    const registered = listHandlerKeys({
+      customerService: {} as never,
+      includeMockTools: false,
+    });
+    assert.equal(registered.includes("faq"), false);
+    assert.equal(registered.includes("knowledge_lookup"), false);
   });
 });

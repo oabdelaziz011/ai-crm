@@ -21,6 +21,9 @@ const RISK_OVERRIDES: Record<string, ToolMetadataEntry["riskLevel"]> = {
   import_customers: "high",
   refund_payment: "critical",
   create_booking: "medium",
+  create_ticket: "medium",
+  assign_ticket: "medium",
+  close_ticket: "medium",
 };
 
 export function buildToolMetadataCatalog(

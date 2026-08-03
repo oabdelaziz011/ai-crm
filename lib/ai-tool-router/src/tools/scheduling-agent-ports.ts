@@ -123,6 +123,94 @@ export type CreateBookingResult = {
   message?: string;
 };
 
+export type SearchBookingsInput = {
+  companyId: string;
+  userId: string;
+  customerId?: string;
+  daysBack?: number;
+};
+
+export type SearchBookingsResult = {
+  success: boolean;
+  bookings: Array<{
+    bookingId: string;
+    customerId: string;
+    customerName: string;
+    reference: string;
+    scheduledAt: string;
+    status: string;
+    employeeName?: string;
+    serviceName?: string;
+  }>;
+  total: number;
+  message?: string;
+};
+
+export type RescheduleBookingInput = {
+  companyId: string;
+  userId: string;
+  bookingId: string;
+  date: string;
+  slotStart: string;
+  reason?: string;
+};
+
+export type RescheduleBookingResult = {
+  success: boolean;
+  bookingId?: string;
+  scheduledAt?: string;
+  rescheduledAt?: string;
+  errors?: string[];
+  message?: string;
+};
+
+export type CancelBookingInput = {
+  companyId: string;
+  userId: string;
+  bookingId: string;
+  reason?: string;
+};
+
+export type CancelBookingResult = {
+  success: boolean;
+  bookingId?: string;
+  cancelledAt?: string;
+  status?: string;
+  errors?: string[];
+  message?: string;
+};
+
+export type CheckInBookingInput = {
+  companyId: string;
+  userId: string;
+  bookingId: string;
+  roomId?: string;
+};
+
+export type CheckInBookingResult = {
+  success: boolean;
+  bookingId?: string;
+  checkedInAt?: string;
+  status?: string;
+  errors?: string[];
+  message?: string;
+};
+
+export type CheckOutBookingInput = {
+  companyId: string;
+  userId: string;
+  bookingId: string;
+};
+
+export type CheckOutBookingResult = {
+  success: boolean;
+  bookingId?: string;
+  checkedOutAt?: string;
+  status?: string;
+  errors?: string[];
+  message?: string;
+};
+
 export type BookingDomainServicePort = {
   createBooking(input: {
     companyId: string;
@@ -153,4 +241,9 @@ export type SchedulingToolPorts = {
   findNextAvailable(input: FindNextAvailableInput): Promise<FindNextAvailableResult>;
   recommendAppointment(input: RecommendAppointmentInput): Promise<RecommendAppointmentResult>;
   createBooking(input: CreateBookingInput): Promise<CreateBookingResult>;
+  searchBookings(input: SearchBookingsInput): Promise<SearchBookingsResult>;
+  rescheduleBooking(input: RescheduleBookingInput): Promise<RescheduleBookingResult>;
+  cancelBooking(input: CancelBookingInput): Promise<CancelBookingResult>;
+  checkInBooking(input: CheckInBookingInput): Promise<CheckInBookingResult>;
+  checkOutBooking(input: CheckOutBookingInput): Promise<CheckOutBookingResult>;
 };

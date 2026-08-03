@@ -1,4 +1,5 @@
 import type { ServiceContext } from "../types.js";
+import { getAlignedTicketToolRequirements, findMissingTicketAlignedPermission } from "./ticket-tool-permissions.js";
 
 /**
  * CRM agent tool permissions aligned with CRM table RLS (167/170).
@@ -62,6 +63,11 @@ export function findMissingAlignedPermission(
 
   if (toolKey && CRM_MERGE_TOOL_KEYS.has(toolKey) && ctx.hasPermission("customers.merge")) {
     return null;
+  }
+
+  const ticketRequirements = toolKey ? getAlignedTicketToolRequirements(toolKey) : null;
+  if (ticketRequirements) {
+    return findMissingTicketAlignedPermission(ctx, ticketRequirements);
   }
 
   for (const permission of requiredPermissions) {

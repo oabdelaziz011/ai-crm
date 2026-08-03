@@ -1,21 +1,15 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  createSupabaseCrmAgentToolPorts,
-  type CrmKnowledgeRetriever,
-} from "@workspace/ai-tool-router";
+import type { CrmKnowledgeRetriever } from "@workspace/ai-tool-router";
+import type { LoginAppPortContext } from "@/lib/application-layer/adapters/customer-read-port-adapter";
+import { createApplicationLayerCrmAgentToolPorts } from "@/lib/application-layer/application-layer-crm-agent-tool-ports.js";
 
 export type { CrmKnowledgeRetriever };
 
 export type CreateCrmAgentToolPortsOptions = {
-  client: SupabaseClient;
-  getActorUserId: () => string | null;
+  portContext: LoginAppPortContext;
   retrieveKnowledge?: CrmKnowledgeRetriever;
 };
 
+/** CRM agent tool ports — Application Layer only for domain reads/writes. */
 export function createCrmAgentToolPorts(options: CreateCrmAgentToolPortsOptions) {
-  const { client, getActorUserId, retrieveKnowledge } = options;
-  return createSupabaseCrmAgentToolPorts(client, {
-    getActorUserId,
-    retrieveKnowledge,
-  });
+  return createApplicationLayerCrmAgentToolPorts(options);
 }

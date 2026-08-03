@@ -4,13 +4,15 @@ import {
   createSchedulingToolPorts,
   type SchedulingToolPorts,
 } from "@workspace/ai-tool-router";
-import { BookingFactory } from "@/lib/scheduling/booking-domain/booking-factory";
+import { getLoginAppAppointmentPlatformServices } from "@/lib/appointment-platform/appointment-read-port-adapter";
+import { createAppointmentBookingDomainAdapter } from "@/lib/appointment-platform/appointment-booking-domain-adapter";
 
 export function createLoginAppSchedulingToolPorts(client: SupabaseClient): SchedulingToolPorts {
-  const services = BookingFactory.create(client);
+  const platform = getLoginAppAppointmentPlatformServices(client);
   const engines = createSchedulingEnginePortFromAdapters({
-    slotGenerationEngine: services.slotGenerationEngine,
-    availabilityEngine: services.availabilityEngine,
+    slotGenerationEngine: platform.scheduling.slotGenerationEngine,
+    availabilityEngine: platform.scheduling.availabilityEngine,
   });
-  return createSchedulingToolPorts(client, engines, services.bookingDomain);
+  const bookingDomain = createAppointmentBookingDomainAdapter(platform.commands);
+  return createSchedulingToolPorts(client, engines, bookingDomain);
 }

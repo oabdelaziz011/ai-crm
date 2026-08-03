@@ -15,6 +15,15 @@ export const WEBHOOK_EVENT_TYPES: WebhookEventType[] = [
   "portal.login",
   "organization.transfer",
   "executive.alert",
+  "ticket.created",
+  "ticket.updated",
+  "ticket.closed",
+  "ticket.reopened",
+  "ticket.assigned",
+  "ticket.comment_added",
+  "ticket.priority_changed",
+  "ticket.deleted",
+  "ticket.status_changed",
 ];
 
 export const EVENT_SOURCE_MAP: Record<WebhookEventType, EventSourcePlatform> = {
@@ -32,6 +41,15 @@ export const EVENT_SOURCE_MAP: Record<WebhookEventType, EventSourcePlatform> = {
   "portal.login": "portal",
   "organization.transfer": "organization",
   "executive.alert": "executive",
+  "ticket.created": "support",
+  "ticket.updated": "support",
+  "ticket.closed": "support",
+  "ticket.reopened": "support",
+  "ticket.assigned": "support",
+  "ticket.comment_added": "support",
+  "ticket.priority_changed": "support",
+  "ticket.deleted": "support",
+  "ticket.status_changed": "support",
 };
 
 export function isRegisteredEventType(type: string): type is WebhookEventType {

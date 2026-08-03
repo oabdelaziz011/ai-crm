@@ -3,6 +3,7 @@ import {
   createToolRouterServices,
   createRuntimeToolPort,
   createSupabaseCrmAgentToolPorts,
+  createSupabaseTicketAgentToolPorts,
   type CreateToolRouterServicesOptions,
   type ToolRouterServices,
 } from "@workspace/ai-tool-router";
@@ -23,10 +24,14 @@ export function createWebhookToolRouterIntegrations(client: SupabaseClient): Web
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });
   const schedulingToolPorts = createWebhookSchedulingToolPorts(client);
+  const ticketAgentPorts = createSupabaseTicketAgentToolPorts(client, {
+    resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
+  });
   const createOptions: CreateToolRouterServicesOptions = {
     customerService,
     crmAgentPorts,
     schedulingToolPorts,
+    ticketAgentPorts,
   };
   const toolRouterServices = createToolRouterServices(client, createOptions);
 

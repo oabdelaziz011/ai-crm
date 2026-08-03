@@ -80,6 +80,9 @@ importers:
       '@workspace/tenant-ai-bootstrap':
         specifier: workspace:*
         version: link:../../lib/tenant-ai-bootstrap
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../../lib/ticket-platform
       '@workspace/vector-query':
         specifier: workspace:*
         version: link:../../lib/vector-query
@@ -204,6 +207,12 @@ importers:
       '@workspace/ai-workflow-platform':
         specifier: workspace:*
         version: link:../../lib/ai-workflow-platform
+      '@workspace/application-layer':
+        specifier: workspace:*
+        version: link:../../lib/application-layer
+      '@workspace/appointment-platform':
+        specifier: workspace:*
+        version: link:../../lib/appointment-platform
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../../lib/automation-platform
@@ -213,6 +222,9 @@ importers:
       '@workspace/channel-registry':
         specifier: workspace:*
         version: link:../../lib/channel-registry
+      '@workspace/configuration-platform':
+        specifier: workspace:*
+        version: link:../../lib/configuration-platform
       '@workspace/customer-360':
         specifier: workspace:*
         version: link:../../lib/customer-360
@@ -222,18 +234,30 @@ importers:
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../../lib/embedding-platform
+      '@workspace/human-handoff-platform':
+        specifier: workspace:*
+        version: link:../../lib/human-handoff-platform
+      '@workspace/identity-platform':
+        specifier: workspace:*
+        version: link:../../lib/identity-platform
       '@workspace/knowledge-platform':
         specifier: workspace:*
         version: link:../../lib/knowledge-platform
       '@workspace/knowledge-runtime':
         specifier: workspace:*
         version: link:../../lib/knowledge-runtime
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../../lib/lead-platform
       '@workspace/platform-ai-provider':
         specifier: workspace:*
         version: link:../../lib/platform-ai-provider
       '@workspace/platform-crypto':
         specifier: workspace:*
         version: link:../../lib/platform-crypto
+      '@workspace/platform-events':
+        specifier: workspace:*
+        version: link:../../lib/platform-events
       '@workspace/retrieval-engine':
         specifier: workspace:*
         version: link:../../lib/retrieval-engine
@@ -243,6 +267,15 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../../lib/scheduling-engine
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../../lib/ticket-platform
+      '@workspace/universal-operations-engine':
+        specifier: workspace:*
+        version: link:../../lib/universal-operations-engine
+      '@workspace/universal-workspace-platform':
+        specifier: workspace:*
+        version: link:../../lib/universal-workspace-platform
       '@workspace/vector-query':
         specifier: workspace:*
         version: link:../../lib/vector-query
@@ -816,6 +849,12 @@ importers:
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../automation-platform
+      '@workspace/human-handoff-platform':
+        specifier: workspace:*
+        version: link:../human-handoff-platform
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../lead-platform
       '@workspace/platform-crypto':
         specifier: workspace:*
         version: link:../platform-crypto
@@ -825,6 +864,9 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../scheduling-engine
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../ticket-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -859,6 +901,41 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+
+  lib/application-layer:
+    dependencies:
+      '@workspace/configuration-platform':
+        specifier: workspace:*
+        version: link:../configuration-platform
+      '@workspace/platform-cache':
+        specifier: workspace:*
+        version: link:../platform-cache
+      '@workspace/platform-events':
+        specifier: workspace:*
+        version: link:../platform-events
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/appointment-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+      '@workspace/scheduling-engine':
+        specifier: workspace:*
+        version: link:../scheduling-engine
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
 
   lib/automation-platform:
     dependencies:
@@ -914,17 +991,35 @@ importers:
         specifier: ^25.3.3
         version: 25.9.4
 
+  lib/configuration-platform:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
   lib/customer-360:
     dependencies:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/appointment-platform':
+        specifier: workspace:*
+        version: link:../appointment-platform
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../automation-platform
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../lead-platform
       '@workspace/platform-cache':
         specifier: workspace:*
         version: link:../platform-cache
+      '@workspace/ticket-platform':
+        specifier: workspace:*
+        version: link:../ticket-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -989,6 +1084,35 @@ importers:
         specifier: ^4.21.0
         version: 4.23.0
 
+  lib/human-handoff-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/identity-platform:
+    dependencies:
+      '@workspace/automation-platform':
+        specifier: workspace:*
+        version: link:../automation-platform
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../lead-platform
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
   lib/knowledge-platform:
     dependencies:
       '@supabase/supabase-js':
@@ -1024,6 +1148,21 @@ importers:
         specifier: ^4.21.0
         version: 4.23.0
 
+  lib/lead-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/operations-workspace: {}
+
   lib/platform-ai-provider:
     dependencies:
       '@supabase/supabase-js':
@@ -1048,6 +1187,15 @@ importers:
         version: 5.11.1
 
   lib/platform-crypto:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/platform-events:
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1151,6 +1299,41 @@ importers:
       '@workspace/vector-store':
         specifier: workspace:*
         version: link:../vector-store
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/ticket-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/universal-operations-engine:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/universal-workspace-platform:
+    dependencies:
+      '@workspace/universal-operations-engine':
+        specifier: workspace:*
+        version: link:../universal-operations-engine
     devDependencies:
       '@types/node':
         specifier: ^25.3.3

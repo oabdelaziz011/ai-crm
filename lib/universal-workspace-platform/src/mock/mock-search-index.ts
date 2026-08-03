@@ -1,0 +1,25 @@
+import type { GlobalSearchResult } from "../types/search-types.js";
+
+export const MOCK_SEARCH_INDEX: GlobalSearchResult[] = [
+  { id: "c1", type: "customer", title: "Sara Hassan", subtitle: "VIP · Checked In", preview: "Room 3 · Dr. Amira · Balance $45", icon: "User", href: "/operations/queue", score: 0.95 },
+  { id: "c2", type: "customer", title: "Ahmed Al-Rashid", subtitle: "Waiting", preview: "Appointment 10:30 · Dermatology", icon: "User", score: 0.88 },
+  { id: "l1", type: "lead", title: "Fatima Noor", subtitle: "Qualified Lead", preview: "Facebook Ad · Training Course", icon: "UserPlus", score: 0.82 },
+  { id: "l2", type: "lead", title: "Omar Khalil", subtitle: "New Lead", preview: "Website inquiry · Automotive", icon: "UserPlus", score: 0.75 },
+  { id: "co1", type: "company", title: "Gulf Medical Group", subtitle: "Enterprise", preview: "12 active contracts", icon: "Building2", score: 0.7 },
+  { id: "e1", type: "employee", title: "Dr. Amira Hassan", subtitle: "Doctor · Room 3", preview: "On duty · 4 patients today", icon: "BadgeCheck", score: 0.85 },
+  { id: "e2", type: "employee", title: "Layla Mansour", subtitle: "Receptionist", preview: "Front desk · Shift A", icon: "BadgeCheck", score: 0.6 },
+  { id: "i1", type: "invoice", title: "INV-2026-0847", subtitle: "Outstanding", preview: "$245.00 · Sara Hassan", icon: "FileText", score: 0.9 },
+  { id: "i2", type: "invoice", title: "INV-2026-0842", subtitle: "Paid", preview: "$120.00 · Ahmed Al-Rashid", icon: "FileText", score: 0.65 },
+  { id: "p1", type: "payment", title: "Payment #PAY-4412", subtitle: "Partial", preview: "$80.00 received today", icon: "CreditCard", score: 0.78 },
+  { id: "b1", type: "booking", title: "Booking #BK-9912", subtitle: "Confirmed", preview: "Today 11:00 · Consultation", icon: "Calendar", score: 0.8 },
+  { id: "t1", type: "task", title: "Follow up lab results", subtitle: "Due today", preview: "Assigned to nursing team", icon: "CheckSquare", score: 0.72 },
+  { id: "t2", type: "ticket", title: "Ticket #TK-2201", subtitle: "Open", preview: "Billing inquiry · Priority high", icon: "Ticket", score: 0.68 },
+  { id: "pr1", type: "project", title: "Clinic Expansion Q2", subtitle: "In Progress", preview: "3 milestones remaining", icon: "FolderKanban", score: 0.55 },
+  { id: "a1", type: "asset", title: "MRI Scanner Unit 2", subtitle: "Maintenance", preview: "Scheduled service next week", icon: "Package", score: 0.5 },
+  { id: "f1", type: "file", title: "Consent Form - Sara Hassan.pdf", subtitle: "Uploaded today", preview: "Medical consent · 245 KB", icon: "File", score: 0.45 },
+  { id: "em1", type: "email", title: "Re: Appointment confirmation", subtitle: "Sara Hassan", preview: "Thank you for confirming…", icon: "Mail", score: 0.62 },
+  { id: "w1", type: "whatsapp", title: "WhatsApp — Ahmed Al-Rashid", subtitle: "2 hours ago", preview: "Can I reschedule to 2pm?", icon: "MessageCircle", score: 0.77 },
+  { id: "n1", type: "note", title: "Allergic to penicillin", subtitle: "Medical note", preview: "Added by Dr. Amira", icon: "StickyNote", score: 0.83 },
+  { id: "cmd1", type: "command", title: "Collect Payment", subtitle: "Action", preview: "Collect remaining balance", icon: "Zap", actionKey: "collect_payment", score: 0.5 },
+  { id: "set1", type: "setting", title: "Workspace Configuration", subtitle: "Settings", preview: "Columns, statuses, templates", icon: "Settings", href: "/operations/configuration", score: 0.4 },
+];

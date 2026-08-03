@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/universal-workspace-platform",
+  "name": "@workspace/universal-operations-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,6 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx/esm --test src/**/*.test.ts"
-  },
-  "dependencies": {
-    "@workspace/universal-operations-engine": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

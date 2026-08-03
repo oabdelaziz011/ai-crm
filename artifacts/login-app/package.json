@@ -156,6 +156,7 @@
     "@workspace/scheduling-engine": "workspace:*",
     "@workspace/vector-query": "workspace:*",
     "@workspace/vector-store": "workspace:*",
+    "@workspace/universal-operations-engine": "workspace:*"
     "@workspace/universal-workspace-platform": "workspace:*"
     "@xyflow/react": "^12.8.2",
     "i18next": "^26.3.6",

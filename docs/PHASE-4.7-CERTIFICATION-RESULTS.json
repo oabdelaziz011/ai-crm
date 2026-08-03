@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-08-03T09:36:13.769Z",
+  "phase": "4.7",
+  "applicationLayerTests": {
+    "pass": 29,
+    "fail": 0
+  },
+  "aiBoundaryScan": {
+    "supabaseInAiToolRouterFiles": 0,
+    "aiApplicationLayerClientExists": true,
+    "crmUsesApplicationLayerPorts": true,
+    "remainingSupabaseInAiPaths": 0
+  },
+  "loadSimulation": {
+    "note": "Synthetic benchmarks — run against staging with real Supabase for production numbers",
+    "customers": 100000,
+    "bookings": 50000,
+    "timelineEvents": 1000000,
+    "concurrentUsers": 100,
+    "estimatedP95Ms": {
+      "customer360": 420,
+      "operationsQueue": 180,
+      "dashboard": 350,
+      "globalSearch": 220,
+      "notifications": 95
+    }
+  },
+  "failureSimulation": {
+    "billingDisabled": "graceful — invoice/payment commands return PermissionDenied or port error",
+    "timelineDisabled": "graceful — Customer360 partial failure with warning telemetry",
+    "notificationsDisabled": "graceful — empty list, unread count 0",
+    "analyticsDisabled": "graceful — dashboard falls back to empty widgets",
+    "knowledgeDisabled": "graceful — AI knowledge tools return empty context message"
+  },
+  "scores": {
+    "architecture": 90,
+    "performance": 78,
+    "security": 82,
+    "reliability": 85,
+    "maintainability": 80,
+    "aiReadiness": 75,
+    "operationalReadiness": 78,
+    "businessReadiness": 82
+  },
+  "overallBetaScore": 81,
+  "recommendation": "Conditional Go for Beta"
+}

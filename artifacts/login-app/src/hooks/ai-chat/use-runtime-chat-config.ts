@@ -8,7 +8,10 @@ import type { AiAssistantProvider } from "@/lib/types";
 import { useAIProviderServices } from "@/lib/ai-provider-layer";
 import { useEmbeddingPlatformServices } from "@/lib/embedding-platform";
 import { useVectorStoreServices } from "@/lib/vector-store";
-import { usePlatformAIProviderServices } from "@/hooks/use-platform-ai-provider";
+import { useAuth } from "@/context/auth-context";
+import { usePermissions } from "@/hooks/use-rbac";
+import { useFeatureFlag } from "@/hooks/use-feature-flag";
+import { LEGACY_AI_FEATURE_KEY_MAP } from "@workspace/configuration-platform";
 
 export function runtimeChatConfigQueryKey(
   companyId: string | null,
@@ -20,7 +23,7 @@ export function runtimeChatConfigQueryKey(
 
 /**
  * Resolves provider and knowledge connection IDs for the Runtime Coordinator.
- * Uses platform registries for configuration lookup only — never executes retrieval.
+ * Feature flags resolve through FeatureFlagApplicationService only.
  */
 export function useRuntimeChatConfig(
   companyId: string | null,
@@ -28,13 +31,18 @@ export function useRuntimeChatConfig(
   assistantProvider?: AiAssistantProvider | null,
 ) {
   const { services: providerServices, context: providerContext } = useAIProviderServices();
-  const { services: platformServices } = usePlatformAIProviderServices();
   const { services: embeddingServices, context: embeddingContext } = useEmbeddingPlatformServices();
   const { services: vectorStoreServices, context: vectorStoreContext } = useVectorStoreServices();
+  const aiChatFlag = useFeatureFlag(LEGACY_AI_FEATURE_KEY_MAP[PLATFORM_AI_FEATURE_KEY.AI_CHAT] ?? PLATFORM_AI_FEATURE_KEY.AI_CHAT);
+  const knowledgeFlag = useFeatureFlag(LEGACY_AI_FEATURE_KEY_MAP[PLATFORM_AI_FEATURE_KEY.KNOWLEDGE] ?? PLATFORM_AI_FEATURE_KEY.KNOWLEDGE);
 
   return useQuery({
-    queryKey: runtimeChatConfigQueryKey(companyId, knowledgeEnabled, assistantProvider),
-    enabled: Boolean(companyId),
+    queryKey: [
+      ...runtimeChatConfigQueryKey(companyId, knowledgeEnabled, assistantProvider),
+      aiChatFlag.isEnabled,
+      knowledgeFlag.isEnabled,
+    ],
+    enabled: Boolean(companyId) && aiChatFlag.isFetched,
     staleTime: 60_000,
     queryFn: async (): Promise<RuntimeChatExecutionConfig> => {
       if (!companyId) {
@@ -43,11 +51,7 @@ export function useRuntimeChatConfig(
 
       const missing: RuntimeChatExecutionConfig["missing"] = [];
 
-      const aiChatEnabled = await platformServices.platform.isFeatureEnabled(
-        companyId,
-        PLATFORM_AI_FEATURE_KEY.AI_CHAT,
-      );
-      if (!aiChatEnabled) {
+      if (!aiChatFlag.isEnabled) {
         missing.push("provider");
         return {
           providerConnectionId: null,
@@ -81,15 +85,10 @@ export function useRuntimeChatConfig(
 
       let knowledgeRetrieval: RuntimeChatExecutionConfig["knowledgeRetrieval"] = null;
 
-      const knowledgeFeatureEnabled = await platformServices.platform.isFeatureEnabled(
-        companyId,
-        PLATFORM_AI_FEATURE_KEY.KNOWLEDGE,
-      );
-
       if (
         isKnowledgeRetrievalEligible({
           aiChatEnabled: true,
-          knowledgeFeatureEnabled,
+          knowledgeFeatureEnabled: knowledgeFlag.isEnabled,
           assistantKnowledgeEnabled: knowledgeEnabled,
         })
       ) {

@@ -1,8 +1,8 @@
 import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 import { CheckCircle2, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { usePlatformAIProviderServices } from "@/hooks/use-platform-ai-provider";
+import { useFeatureFlag } from "@/hooks/use-feature-flag";
+import { LEGACY_AI_FEATURE_KEY_MAP } from "@workspace/configuration-platform";
 
 type PlatformManagedProviderStatusProps = {
   companyId: string | null;
@@ -10,16 +10,11 @@ type PlatformManagedProviderStatusProps = {
 
 export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProviderStatusProps) {
   const { t } = useTranslation("common");
-  const { services } = usePlatformAIProviderServices();
+  const { isEnabled: enabled, isLoading } = useFeatureFlag(
+    LEGACY_AI_FEATURE_KEY_MAP[PLATFORM_AI_FEATURE_KEY.AI_CHAT] ?? PLATFORM_AI_FEATURE_KEY.AI_CHAT,
+  );
 
-  const { data: enabled = true, isLoading } = useQuery({
-    queryKey: ["platform-ai-feature", companyId, PLATFORM_AI_FEATURE_KEY.AI_CHAT],
-    enabled: Boolean(companyId),
-    queryFn: async () => {
-      if (!companyId) return false;
-      return services.platform.isFeatureEnabled(companyId, PLATFORM_AI_FEATURE_KEY.AI_CHAT);
-    },
-  });
+  void companyId;
 
   return (
     <div id="provider-setup" className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">

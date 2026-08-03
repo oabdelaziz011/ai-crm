@@ -80,9 +80,6 @@ importers:
       '@workspace/tenant-ai-bootstrap':
         specifier: workspace:*
         version: link:../../lib/tenant-ai-bootstrap
-      '@workspace/ticket-platform':
-        specifier: workspace:*
-        version: link:../../lib/ticket-platform
       '@workspace/vector-query':
         specifier: workspace:*
         version: link:../../lib/vector-query
@@ -207,12 +204,6 @@ importers:
       '@workspace/ai-workflow-platform':
         specifier: workspace:*
         version: link:../../lib/ai-workflow-platform
-      '@workspace/application-layer':
-        specifier: workspace:*
-        version: link:../../lib/application-layer
-      '@workspace/appointment-platform':
-        specifier: workspace:*
-        version: link:../../lib/appointment-platform
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../../lib/automation-platform
@@ -234,21 +225,12 @@ importers:
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../../lib/embedding-platform
-      '@workspace/human-handoff-platform':
-        specifier: workspace:*
-        version: link:../../lib/human-handoff-platform
-      '@workspace/identity-platform':
-        specifier: workspace:*
-        version: link:../../lib/identity-platform
       '@workspace/knowledge-platform':
         specifier: workspace:*
         version: link:../../lib/knowledge-platform
       '@workspace/knowledge-runtime':
         specifier: workspace:*
         version: link:../../lib/knowledge-runtime
-      '@workspace/lead-platform':
-        specifier: workspace:*
-        version: link:../../lib/lead-platform
       '@workspace/platform-ai-provider':
         specifier: workspace:*
         version: link:../../lib/platform-ai-provider
@@ -267,9 +249,6 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../../lib/scheduling-engine
-      '@workspace/ticket-platform':
-        specifier: workspace:*
-        version: link:../../lib/ticket-platform
       '@workspace/universal-operations-engine':
         specifier: workspace:*
         version: link:../../lib/universal-operations-engine
@@ -849,12 +828,6 @@ importers:
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../automation-platform
-      '@workspace/human-handoff-platform':
-        specifier: workspace:*
-        version: link:../human-handoff-platform
-      '@workspace/lead-platform':
-        specifier: workspace:*
-        version: link:../lead-platform
       '@workspace/platform-crypto':
         specifier: workspace:*
         version: link:../platform-crypto
@@ -864,9 +837,6 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../scheduling-engine
-      '@workspace/ticket-platform':
-        specifier: workspace:*
-        version: link:../ticket-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1005,21 +975,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
-      '@workspace/appointment-platform':
-        specifier: workspace:*
-        version: link:../appointment-platform
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../automation-platform
-      '@workspace/lead-platform':
-        specifier: workspace:*
-        version: link:../lead-platform
       '@workspace/platform-cache':
         specifier: workspace:*
         version: link:../platform-cache
-      '@workspace/ticket-platform':
-        specifier: workspace:*
-        version: link:../ticket-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3

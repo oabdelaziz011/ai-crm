@@ -8,6 +8,7 @@ type AuthProfileSeed = {
   full_name: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
+  preferred_theme: string | null;
   timezone: string | null;
   avatar_url: string | null;
 };
@@ -38,6 +39,7 @@ export function seedMyProfileFromAuth(
     avatar_url: profile.avatar_url ?? existing?.avatar_url ?? null,
     job_title: existing?.job_title ?? null,
     preferred_language: profile.preferred_language ?? existing?.preferred_language ?? null,
+    preferred_theme: profile.preferred_theme ?? existing?.preferred_theme ?? "system",
     timezone: profile.timezone ?? existing?.timezone ?? "UTC",
     is_super_admin: profile.is_super_admin,
     is_active: true,

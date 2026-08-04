@@ -12,7 +12,7 @@ export function WorkspacePanel({
   className,
   dense,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   action?: ReactNode;
   children: ReactNode;
@@ -21,13 +21,15 @@ export function WorkspacePanel({
 }) {
   return (
     <section className={cn("rounded-xl border border-border/70 bg-card/85 shadow-sm", dense ? "p-4" : "p-5 lg:p-6", className)}>
+      {(title || subtitle || action) ? (
       <div className={cn("flex items-start justify-between gap-3", dense ? "mb-3" : "mb-4")}>
         <div>
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+          {title ? <h3 className="text-sm font-semibold tracking-tight">{title}</h3> : null}
+          {subtitle && <p className={cn("text-[11px] text-muted-foreground", title && "mt-0.5")}>{subtitle}</p>}
         </div>
         {action}
       </div>
+      ) : null}
       {children}
     </section>
   );

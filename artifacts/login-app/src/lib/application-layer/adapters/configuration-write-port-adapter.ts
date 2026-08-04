@@ -19,7 +19,10 @@ function canWrite(ctx: LoginAppPortContext, domain: string): boolean {
 }
 
 function canPublish(ctx: LoginAppPortContext): boolean {
-  return ctx.isSuperAdmin || ctx.hasPermission("configuration.publish");
+  if (ctx.isSuperAdmin) return true;
+  if (ctx.hasPermission("configuration.publish")) return true;
+  if (ctx.hasPermission("operations.universal.configure")) return true;
+  return ctx.hasPermission("operations.configuration.manage");
 }
 
 async function insertVersion(

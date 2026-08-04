@@ -20,6 +20,7 @@ export type Profile = {
   avatar_url?: string | null;
   job_title?: string | null;
   preferred_language?: string | null;
+  preferred_theme?: string | null;
   timezone?: string | null;
   is_super_admin: boolean;
   is_active?: boolean;
@@ -36,6 +37,7 @@ export type MyProfile = {
   avatar_url: string | null;
   job_title: string | null;
   preferred_language: string | null;
+  preferred_theme: string | null;
   timezone: string | null;
   is_super_admin: boolean;
   is_active: boolean;
@@ -44,7 +46,9 @@ export type MyProfile = {
   company: { id: string; name: string | null } | null;
 };
 
-export type MyProfileUpdate = Partial<Pick<MyProfile, "full_name" | "avatar_url" | "preferred_language" | "timezone">>;
+export type MyProfileUpdate = Partial<
+  Pick<MyProfile, "full_name" | "avatar_url" | "preferred_language" | "preferred_theme" | "timezone">
+>;
 
 export type CompanyStatus = "Active" | "Suspended" | "Trial";
 export type PlanTier = "Basic" | "Pro" | "Enterprise";

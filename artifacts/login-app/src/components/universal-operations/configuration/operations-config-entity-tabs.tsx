@@ -50,7 +50,7 @@ export function GeneralConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
   const terminologyKeys = ["customer", "resource", "service", "queue", "payment", "appointment", "employee", "branch"] as const;
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.general.title")}>
+    <WorkspacePanel>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>{t("universalOperations.configuration.general.workspaceName")}</Label>
@@ -148,7 +148,7 @@ export function ColumnsConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
   };
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.columns.title")}>
+    <WorkspacePanel>
       <div className="mb-3 flex justify-end">
         <Button type="button" size="sm" variant="outline" onClick={addColumn}>
           <Plus className="me-1 size-3.5" />
@@ -160,16 +160,22 @@ export function ColumnsConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
           <div key={col.id} className="rounded-lg border border-border/50 p-3">
             <div className="flex flex-wrap items-start gap-3">
               <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
-                <Input
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.columns.displayName")}</Label>
+                  <Input
                   value={col.displayName}
-                  placeholder={t("universalOperations.configuration.columns.displayName")}
                   onChange={(e) => patchColumns(columns.map((c) => (c.id === col.id ? { ...c, displayName: e.target.value } : c)))}
                 />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.columns.internalName")}</Label>
                 <Input
                   value={col.internalName}
-                  placeholder={t("universalOperations.configuration.columns.internalName")}
                   onChange={(e) => patchColumns(columns.map((c) => (c.id === col.id ? { ...c, internalName: e.target.value } : c)))}
                 />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.columns.fieldType")}</Label>
                 <select
                   value={col.type}
                   className="h-9 rounded-md border border-input bg-background px-2 text-xs"
@@ -181,15 +187,20 @@ export function ColumnsConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
                     </option>
                   ))}
                 </select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.columns.width")}</Label>
                 <Input
                   type="number"
                   value={col.width}
-                  placeholder={t("universalOperations.configuration.columns.width")}
                   onChange={(e) => patchColumns(columns.map((c) => (c.id === col.id ? { ...c, width: Number(e.target.value) } : c)))}
                 />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.columns.pinned")}</Label>
                 <select
                   value={col.pinned ?? ""}
-                  className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
                   onChange={(e) =>
                     patchColumns(
                       columns.map((c) =>
@@ -202,6 +213,7 @@ export function ColumnsConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
                   <option value="left">{t("universalOperations.configuration.columns.pinLeft")}</option>
                   <option value="right">{t("universalOperations.configuration.columns.pinRight")}</option>
                 </select>
+                </div>
               </div>
               <RowActions
                 index={index}
@@ -263,7 +275,8 @@ export function StatusesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
 
   return (
     <div className="space-y-4">
-      <WorkspacePanel title={t("universalOperations.configuration.statuses.title")}>
+      <WorkspacePanel>
+        <p className="mb-3 text-xs text-muted-foreground">{t("universalOperations.configuration.statuses.flowHint")}</p>
         <div className="mb-3 flex justify-end">
           <Button type="button" size="sm" variant="outline" onClick={addStatus}>
             <Plus className="me-1 size-3.5" />
@@ -272,29 +285,40 @@ export function StatusesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
         </div>
         <div className="space-y-2">
           {statuses.map((status, index) => (
-            <div key={status.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/50 p-3">
+            <div key={status.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-border/50 p-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.displayName")}</Label>
               <Input
                 value={status.displayName}
                 className="max-w-[160px]"
                 onChange={(e) => patchStatuses(statuses.map((s) => (s.id === status.id ? { ...s, displayName: e.target.value } : s)))}
               />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.internalName")}</Label>
               <Input
                 value={status.internalName}
                 className="max-w-[140px]"
                 onChange={(e) => patchStatuses(statuses.map((s) => (s.id === status.id ? { ...s, internalName: e.target.value } : s)))}
               />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.color")}</Label>
               <Input
                 type="color"
                 value={status.color}
                 className="h-9 w-14 p-1"
                 onChange={(e) => patchStatuses(statuses.map((s) => (s.id === status.id ? { ...s, color: e.target.value } : s)))}
               />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.statuses.icon")}</Label>
               <Input
                 value={status.icon ?? ""}
-                placeholder={t("universalOperations.configuration.statuses.icon")}
                 className="max-w-[100px]"
                 onChange={(e) => patchStatuses(statuses.map((s) => (s.id === status.id ? { ...s, icon: e.target.value } : s)))}
               />
+              </div>
               <label className="flex items-center gap-2 text-xs">
                 <Switch
                   checked={status.isTerminal}
@@ -323,6 +347,8 @@ export function StatusesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
         <div className="space-y-2">
           {transitions.map((tr, index) => (
             <div key={`${tr.fromStatusId}-${tr.toStatusId}-${index}`} className="flex flex-wrap items-center gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.statuses.fromStatus")}</Label>
               <select
                 value={tr.fromStatusId}
                 className="h-9 rounded-md border border-input bg-background px-2 text-xs"
@@ -338,7 +364,10 @@ export function StatusesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
                   </option>
                 ))}
               </select>
+              </div>
               <span className="text-xs text-muted-foreground">→</span>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.statuses.toStatus")}</Label>
               <select
                 value={tr.toStatusId}
                 className="h-9 rounded-md border border-input bg-background px-2 text-xs"
@@ -354,6 +383,7 @@ export function StatusesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
                   </option>
                 ))}
               </select>
+              </div>
               <Button
                 type="button"
                 size="icon"
@@ -378,7 +408,7 @@ export function PaymentStatusConfigTab({ draft, updateDraft }: ConfigTabEditorPr
   const patch = (next: OperationsPaymentStatusDefinition[]) => updateDraft({ paymentStatuses: next });
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.payment_status")}>
+    <WorkspacePanel>
       <div className="mb-3 flex justify-end">
         <Button
           type="button"
@@ -397,10 +427,19 @@ export function PaymentStatusConfigTab({ draft, updateDraft }: ConfigTabEditorPr
       </div>
       <div className="space-y-2">
         {items.map((item, index) => (
-          <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/50 p-3">
+          <div key={item.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-border/50 p-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.displayName")}</Label>
             <Input value={item.displayName} onChange={(e) => patch(items.map((p) => (p.id === item.id ? { ...p, displayName: e.target.value } : p)))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.internalName")}</Label>
             <Input value={item.internalName} onChange={(e) => patch(items.map((p) => (p.id === item.id ? { ...p, internalName: e.target.value } : p)))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.color")}</Label>
             <Input type="color" value={item.color} className="h-9 w-14 p-1" onChange={(e) => patch(items.map((p) => (p.id === item.id ? { ...p, color: e.target.value } : p)))} />
+            </div>
             <RowActions
               index={index}
               total={items.length}
@@ -421,7 +460,7 @@ export function ServicesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
   const patch = (next: OperationsServiceDefinition[]) => updateDraft({ services: next });
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.services")}>
+    <WorkspacePanel>
       <div className="mb-3 flex justify-end">
         <Button
           type="button"
@@ -454,19 +493,26 @@ export function ServicesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.id} className="grid gap-2 rounded-lg border border-border/50 p-3 sm:grid-cols-4">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.services.name")}</Label>
             <Input value={item.name} onChange={(e) => patch(items.map((s) => (s.id === item.id ? { ...s, name: e.target.value } : s)))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.services.priceCents")}</Label>
             <Input
               type="number"
               value={item.priceCents}
-              placeholder={t("universalOperations.configuration.services.priceCents")}
               onChange={(e) => patch(items.map((s) => (s.id === item.id ? { ...s, priceCents: Number(e.target.value) } : s)))}
             />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.services.duration")}</Label>
             <Input
               type="number"
               value={item.durationMinutes}
-              placeholder={t("universalOperations.configuration.services.duration")}
               onChange={(e) => patch(items.map((s) => (s.id === item.id ? { ...s, durationMinutes: Number(e.target.value) } : s)))}
             />
+            </div>
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-2 text-xs">
                 <Switch checked={item.active} onCheckedChange={(checked) => patch(items.map((s) => (s.id === item.id ? { ...s, active: checked } : s)))} />
@@ -489,7 +535,7 @@ export function ResourcesConfigTab({ draft, updateDraft }: ConfigTabEditorProps)
   const patch = (next: OperationsResourceDefinition[]) => updateDraft({ resources: next });
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.resources")}>
+    <WorkspacePanel>
       <div className="mb-3 flex justify-end">
         <Button
           type="button"
@@ -508,10 +554,19 @@ export function ResourcesConfigTab({ draft, updateDraft }: ConfigTabEditorProps)
       </div>
       <div className="space-y-2">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/50 p-3">
+          <div key={item.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-border/50 p-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.resources.name")}</Label>
             <Input value={item.name} onChange={(e) => patch(items.map((r) => (r.id === item.id ? { ...r, name: e.target.value } : r)))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.resources.type")}</Label>
             <Input value={item.type} onChange={(e) => patch(items.map((r) => (r.id === item.id ? { ...r, type: e.target.value } : r)))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{t("universalOperations.configuration.fields.color")}</Label>
             <Input type="color" value={item.color} className="h-9 w-14 p-1" onChange={(e) => patch(items.map((r) => (r.id === item.id ? { ...r, color: e.target.value } : r)))} />
+            </div>
             <label className="flex items-center gap-2 text-xs">
               <Switch checked={item.active} onCheckedChange={(checked) => patch(items.map((r) => (r.id === item.id ? { ...r, active: checked } : r)))} />
               {t("universalOperations.configuration.active")}

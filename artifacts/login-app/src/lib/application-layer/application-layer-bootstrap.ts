@@ -233,6 +233,8 @@ export function permissionCodes(hasPermission: (code: string) => boolean, isSupe
 
     "configuration.publish",
 
+    "configuration.operations.read",
+
     "configuration.operations.write",
 
     "operations.universal.configure",
@@ -257,6 +259,21 @@ export function permissionCodes(hasPermission: (code: string) => boolean, isSupe
 
     if (hasPermission(code)) codes.push(code);
 
+  }
+
+  if (
+    hasPermission("operations.universal.configure")
+    || hasPermission("operations.configuration.manage")
+  ) {
+    for (const implied of [
+      "configuration.read",
+      "configuration.write",
+      "configuration.publish",
+      "configuration.operations.read",
+      "configuration.operations.write",
+    ]) {
+      if (!codes.includes(implied)) codes.push(implied);
+    }
   }
 
   if (

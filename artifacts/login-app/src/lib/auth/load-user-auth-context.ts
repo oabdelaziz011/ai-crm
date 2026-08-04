@@ -9,6 +9,7 @@ export interface AuthBootstrapProfile {
   full_name: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
+  preferred_theme: string | null;
   timezone: string | null;
   avatar_url: string | null;
 }
@@ -90,7 +91,7 @@ function isMissingColumnError(message: string | undefined): boolean {
 
 async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null> {
   const profileColumnsFull =
-    "id, company_id, full_name, is_super_admin, preferred_language, timezone, avatar_url";
+    "id, company_id, full_name, is_super_admin, preferred_language, preferred_theme, timezone, avatar_url";
   const profileColumnsLegacy = "id, company_id, full_name, is_super_admin";
 
   const byId = await supabase.from("profiles").select(profileColumnsFull).eq("id", userId).maybeSingle();
@@ -117,6 +118,7 @@ async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null>
     return normalizeAuthBootstrapProfile({
       ...legacyById.data,
       preferred_language: null,
+      preferred_theme: null,
       timezone: "UTC",
       avatar_url: null,
     });
@@ -132,6 +134,7 @@ async function loadProfile(userId: string): Promise<AuthBootstrapProfile | null>
     ? normalizeAuthBootstrapProfile({
         ...legacyByUserId.data,
         preferred_language: null,
+        preferred_theme: null,
         timezone: "UTC",
         avatar_url: null,
       })

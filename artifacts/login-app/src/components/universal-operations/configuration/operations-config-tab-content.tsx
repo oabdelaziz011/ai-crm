@@ -20,12 +20,21 @@ import {
 import type { ConfigAdvancedTabProps, ConfigTabEditorProps } from "./operations-config-tab-types";
 
 type Props = ConfigTabEditorProps &
-  Pick<ConfigAdvancedTabProps, "versions" | "onRollback" | "onCompareVersion"> & {
+  Pick<ConfigAdvancedTabProps, "versions" | "onRollback" | "onCompareVersion" | "canPublish"> & {
     tab: OperationsConfigTab;
   };
 
-export function OperationsConfigTabContent({ tab, draft, updateDraft, versions, onRollback, onCompareVersion }: Props) {
-  const props = { draft, updateDraft };
+export function OperationsConfigTabContent({
+  tab,
+  draft,
+  updateDraft,
+  readOnly,
+  versions,
+  onRollback,
+  onCompareVersion,
+  canPublish,
+}: Props) {
+  const props = { draft, updateDraft, readOnly };
 
   switch (tab) {
     case "general":
@@ -59,6 +68,7 @@ export function OperationsConfigTabContent({ tab, draft, updateDraft, versions, 
           versions={versions ?? []}
           onRollback={onRollback ?? (() => {})}
           onCompareVersion={onCompareVersion}
+          canPublish={canPublish}
         />
       );
     default:

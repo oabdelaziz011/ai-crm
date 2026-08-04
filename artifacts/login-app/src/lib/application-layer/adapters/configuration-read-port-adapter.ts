@@ -67,10 +67,20 @@ function mapVersionRow(row: VersionRow): ConfigurationVersionRecord {
 function canRead(ctx: LoginAppPortContext, domain: string): boolean {
   if (ctx.isSuperAdmin) return true;
   if (ctx.hasPermission("configuration.read")) return true;
+  if (ctx.hasPermission("operations.universal.configure")) return true;
+  if (ctx.hasPermission("operations.configuration.manage")) return true;
   if (domain.startsWith("operations") && ctx.hasPermission("configuration.operations.read")) return true;
   if (domain.startsWith("workspace") && ctx.hasPermission("configuration.workspace.read")) return true;
   if (domain === "crm" && ctx.hasPermission("configuration.crm.read")) return true;
   return ctx.hasPermission("operations.read");
+}
+
+function canReadVersions(ctx: LoginAppPortContext): boolean {
+  return (
+    canRead(ctx, "operations.workspace")
+    || canRead(ctx, "workspace")
+    || canRead(ctx, "crm")
+  );
 }
 
 export function createLoginAppConfigurationReadPort(
@@ -100,7 +110,7 @@ export function createLoginAppConfigurationReadPort(
     },
 
     async listVersions(tenantId, configurationId, limit = 25) {
-      if (tenantId !== ctx.companyId || !canRead(ctx, "workspace")) return [];
+      if (tenantId !== ctx.companyId || !canReadVersions(ctx)) return [];
 
       const { data, error } = await client
         .from("platform_configuration_versions")
@@ -115,7 +125,7 @@ export function createLoginAppConfigurationReadPort(
     },
 
     async getVersion(tenantId, configurationId, version) {
-      if (tenantId !== ctx.companyId || !canRead(ctx, "workspace")) return null;
+      if (tenantId !== ctx.companyId || !canReadVersions(ctx)) return null;
 
       const { data, error } = await client
         .from("platform_configuration_versions")

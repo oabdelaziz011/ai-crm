@@ -5,6 +5,7 @@ export const SETTINGS_BASE_NESTED_PATH = "/settings";
 
 export type SettingsRouteId =
   | "personal-profile"
+  | "appearance"
   | "account-information"
   | "company-settings"
   | "security"
@@ -49,6 +50,16 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/personal-profile-page"),
       "SettingsPersonalProfilePage",
+    ),
+  },
+  {
+    id: "appearance",
+    nestedPath: "/appearance",
+    titleKey: "dashboard.settings.nav.appearance",
+    permission: "settings.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/appearance-page"),
+      "SettingsAppearancePage",
     ),
   },
   {

@@ -52,6 +52,25 @@ export function useOperationsConfigurationEditor(templateKeyOverride?: string) {
     });
   }, [company?.id, user?.id, isSuperAdmin, hasPermission]);
 
+  const canWrite =
+    isSuperAdmin
+    || hasPermission("configuration.write")
+    || hasPermission("configuration.operations.write")
+    || hasPermission("operations.universal.configure")
+    || hasPermission("operations.configuration.manage");
+  const canPublish =
+    isSuperAdmin
+    || hasPermission("configuration.publish")
+    || hasPermission("operations.universal.configure")
+    || hasPermission("operations.configuration.manage");
+  const canRead =
+    isSuperAdmin
+    || hasPermission("configuration.read")
+    || hasPermission("configuration.operations.read")
+    || hasPermission("operations.universal.configure")
+    || hasPermission("operations.configuration.manage")
+    || hasPermission("operations.read");
+
   const recordQuery = useQuery({
     queryKey: ["operations-config-record", company?.id, templateKey],
     enabled: Boolean(cmdContext),
@@ -181,6 +200,7 @@ export function useOperationsConfigurationEditor(templateKeyOverride?: string) {
 
   const updateDraft = useCallback(
     (patch: Partial<OperationsWorkspaceConfig> | ((prev: OperationsWorkspaceConfig) => OperationsWorkspaceConfig)) => {
+      if (!canWrite) return;
       setDraft((prev) => {
         if (!prev) return prev;
         const next =
@@ -191,7 +211,7 @@ export function useOperationsConfigurationEditor(templateKeyOverride?: string) {
         return next;
       });
     },
-    [pushHistory],
+    [pushHistory, canWrite],
   );
 
   const undo = useCallback(() => {
@@ -209,18 +229,20 @@ export function useOperationsConfigurationEditor(templateKeyOverride?: string) {
   }, [history, historyIndex]);
 
   const saveDraft = useCallback(async () => {
+    if (!canWrite) throw new Error("Permission denied");
     if (!draft) return;
     await saveDraftMutation.mutateAsync(draft);
-  }, [draft, saveDraftMutation]);
+  }, [canWrite, draft, saveDraftMutation]);
 
   const publish = useCallback(
     async (changeSummary?: string) => {
+      if (!canPublish) throw new Error("Permission denied");
       const report = draft ? validateOperationsConfiguration(draft) : null;
       setValidationReport(report);
       if (report && !report.valid) throw new Error("Configuration validation failed");
       await publishMutation.mutateAsync(changeSummary);
     },
-    [draft, publishMutation],
+    [canPublish, draft, publishMutation],
   );
 
   const resetToPublished = useCallback(() => {
@@ -292,6 +314,11 @@ export function useOperationsConfigurationEditor(templateKeyOverride?: string) {
     compareDiff,
     isDirty,
     isLoading: recordQuery.isLoading,
+    isError: recordQuery.isError,
+    error: recordQuery.error,
+    canRead,
+    canWrite,
+    canPublish,
     isReady: Boolean(cmdContext && draft),
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,

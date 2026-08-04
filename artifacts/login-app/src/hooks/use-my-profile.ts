@@ -4,6 +4,8 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { writeMyProfileCache } from "@/lib/react-query/seed-auth-cache";
 import type { AppLanguage } from "@/lib/i18n/resolve-app-language";
+import type { AppTheme } from "@/lib/theme/resolve-app-theme";
+import { resolveAppTheme } from "@/lib/theme/resolve-app-theme";
 import type { MyProfile, MyProfileUpdate } from "@/lib/types";
 
 export const MY_PROFILE_KEY = ["my-profile"] as const;
@@ -17,6 +19,7 @@ const PROFILE_COLUMNS_FULL = `
   avatar_url,
   job_title,
   preferred_language,
+  preferred_theme,
   timezone,
   is_super_admin,
   is_active,
@@ -132,6 +135,9 @@ function normalizeMyProfile(
     preferred_language: options.hasPreferenceColumns
       ? asNullableString(row.preferred_language)
       : null,
+    preferred_theme: options.hasPreferenceColumns
+      ? (asNullableString(row.preferred_theme) ?? "system")
+      : "system",
     timezone: options.hasPreferenceColumns
       ? (asNullableString(row.timezone) ?? "UTC")
       : "UTC",
@@ -231,6 +237,7 @@ export function useUpdateMyProfile() {
         p_avatar_url: avatarUrl,
         p_preferred_language: values.preferred_language ?? null,
         p_timezone: values.timezone ?? "UTC",
+        p_preferred_theme: values.preferred_theme ?? null,
       });
 
       if (error) {
@@ -270,12 +277,50 @@ export function useUpdatePreferredLanguage() {
         p_avatar_url: profile.avatar_url,
         p_preferred_language: preferredLanguage,
         p_timezone: profile.timezone ?? "UTC",
+        p_preferred_theme: resolveAppTheme(profile.preferred_theme),
       });
 
       if (error) {
         if (isMissingRpcError(error.message) || isMissingColumnError(error.message)) {
           throw new Error(
             "Profile updates are unavailable until database migration 029_profile_self_service_security.sql is applied.",
+          );
+        }
+        throw new Error(error.message);
+      }
+
+      const profileRow = Array.isArray(data) ? data[0] : data;
+      if (!profileRow) {
+        throw new Error("Profile update failed");
+      }
+
+      return fetchMyProfile();
+    },
+    onSuccess: (updatedProfile) => {
+      writeMyProfileCache(qc, updatedProfile);
+    },
+  });
+}
+
+export function useUpdatePreferredTheme() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (preferredTheme: AppTheme) => {
+      const profile = await fetchMyProfile();
+
+      const { data, error } = await supabase.rpc("update_my_profile", {
+        p_full_name: profile.full_name?.trim() ?? "",
+        p_avatar_url: profile.avatar_url,
+        p_preferred_language: profile.preferred_language,
+        p_timezone: profile.timezone ?? "UTC",
+        p_preferred_theme: preferredTheme,
+      });
+
+      if (error) {
+        if (isMissingRpcError(error.message) || isMissingColumnError(error.message)) {
+          throw new Error(
+            "Profile updates are unavailable until database migration 230_profile_preferred_theme.sql is applied.",
           );
         }
         throw new Error(error.message);

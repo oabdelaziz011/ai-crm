@@ -45,6 +45,7 @@ export interface ProfileRecord {
   full_name: string | null;
   is_super_admin: boolean;
   preferred_language: string | null;
+  preferred_theme: string | null;
   timezone: string | null;
   avatar_url: string | null;
 }

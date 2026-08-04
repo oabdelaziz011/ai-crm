@@ -20,6 +20,7 @@ export function normalizeAuthBootstrapProfile(raw: unknown): AuthBootstrapProfil
     full_name: asNullableString(record.full_name),
     is_super_admin: record.is_super_admin === true,
     preferred_language: asNullableString(record.preferred_language),
+    preferred_theme: asNullableString(record.preferred_theme),
     timezone: asNullableString(record.timezone) ?? "UTC",
     avatar_url: asNullableString(record.avatar_url),
   };
@@ -38,6 +39,7 @@ export function authBootstrapProfilesEqual(
     && left.full_name === right.full_name
     && left.is_super_admin === right.is_super_admin
     && left.preferred_language === right.preferred_language
+    && left.preferred_theme === right.preferred_theme
     && left.timezone === right.timezone
     && left.avatar_url === right.avatar_url
   );

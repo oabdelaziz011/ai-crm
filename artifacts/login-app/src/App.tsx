@@ -13,6 +13,7 @@ import ResetPassword from "@/pages/reset-password";
 import AccessDeniedPage from "@/pages/access-denied";
 import { PUBLIC_BOOKING_ROUTES } from "@/config/customer-portal-route-registry";
 import { AuthProvider, useAuth } from "@/context/auth-context";
+import { AppThemeProvider } from "@/components/theme/theme-provider";
 import {
   hasPendingPasswordSetupIntent,
   isPublicAuthPath,
@@ -60,7 +61,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 text-center">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card/40 p-6 text-center">
             <h1 className="text-xl font-semibold">Something went wrong</h1>
             <p className="mt-2 text-sm text-muted-foreground">Please refresh the page and try again.</p>
           </div>
@@ -157,12 +158,14 @@ function App() {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider queryClient={queryClient}>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-              <Toaster />
-            </WouterRouter>
-          </TooltipProvider>
+          <AppThemeProvider>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+                <Toaster />
+              </WouterRouter>
+            </TooltipProvider>
+          </AppThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </AppErrorBoundary>

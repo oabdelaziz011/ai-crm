@@ -116,6 +116,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         full_name: values.full_name.trim(),
         avatar_url: values.avatar_url.trim() || null,
         preferred_language: values.preferred_language,
+        preferred_theme: profile.preferred_theme ?? "system",
         timezone: values.timezone,
       });
 

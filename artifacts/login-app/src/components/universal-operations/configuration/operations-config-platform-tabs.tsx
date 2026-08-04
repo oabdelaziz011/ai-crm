@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 import type { OperationsSavedView } from "@workspace/universal-operations-engine";
 import { WorkspacePanel } from "@/components/customer-workspace/workspace-ui";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ export function AutomationConfigTab({ draft, updateDraft }: ConfigTabEditorProps
   const automation = draft.automation ?? { linkedWorkflowTemplateIds: [], enabledTriggerKeys: [] };
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.automation")}>
+    <WorkspacePanel>
       <p className="mb-4 text-sm text-muted-foreground">{t("universalOperations.configuration.automation.hint")}</p>
       <div className="space-y-2">
         <Label>{t("universalOperations.configuration.automation.triggers")}</Label>
@@ -68,9 +68,57 @@ export function AutomationConfigTab({ draft, updateDraft }: ConfigTabEditorProps
           {t("universalOperations.configuration.add")}
         </Button>
       </div>
+      <div className="mt-6 space-y-2">
+        <Label>{t("universalOperations.configuration.automation.workflowTemplates")}</Label>
+        {(automation.linkedWorkflowTemplateIds ?? []).map((templateId, index) => (
+          <div key={`${templateId}-${index}`} className="flex gap-2">
+            <Input
+              value={templateId}
+              placeholder={t("universalOperations.configuration.automation.workflowTemplateId")}
+              onChange={(e) => {
+                const next = [...(automation.linkedWorkflowTemplateIds ?? [])];
+                next[index] = e.target.value;
+                updateDraft({ automation: { ...automation, linkedWorkflowTemplateIds: next } });
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="text-destructive"
+              onClick={() =>
+                updateDraft({
+                  automation: {
+                    ...automation,
+                    linkedWorkflowTemplateIds: (automation.linkedWorkflowTemplateIds ?? []).filter((_, i) => i !== index),
+                  },
+                })
+              }
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            updateDraft({
+              automation: {
+                ...automation,
+                linkedWorkflowTemplateIds: [...(automation.linkedWorkflowTemplateIds ?? []), ""],
+              },
+            })
+          }
+        >
+          <Plus className="me-1 size-3.5" />
+          {t("universalOperations.configuration.automation.addWorkflowTemplate")}
+        </Button>
+      </div>
       <div className="mt-4">
         <Button asChild variant="outline" size="sm">
-          <Link to="/dashboard/workflows">{t("universalOperations.configuration.automation.openWorkflowBuilder")}</Link>
+          <Link href="/dashboard/workflows">{t("universalOperations.configuration.automation.openWorkflowBuilder")}</Link>
         </Button>
       </div>
     </WorkspacePanel>
@@ -88,7 +136,7 @@ export function PermissionsConfigTab({ draft, updateDraft }: ConfigTabEditorProp
   ];
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.permissions")}>
+    <WorkspacePanel>
       {sections.map(({ key, label }) => (
         <div key={key} className="mb-6">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -121,6 +169,19 @@ export function PermissionsConfigTab({ draft, updateDraft }: ConfigTabEditorProp
                   })
                 }
               />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => {
+                  const entries = { ...permissions[key] };
+                  delete entries[entityId];
+                  updateDraft({ permissions: { ...permissions, [key]: entries } });
+                }}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
             </div>
           ))}
           <Button
@@ -155,7 +216,7 @@ export function ViewsConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
   };
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.views")}>
+    <WorkspacePanel>
       <div className="mb-3 flex justify-end">
         <Button
           type="button"
@@ -259,7 +320,7 @@ export function NotificationsConfigTab({ draft, updateDraft }: ConfigTabEditorPr
   const channels = ["email", "sms", "whatsapp", "push"] as const;
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.notifications")}>
+    <WorkspacePanel>
       <div className="space-y-3">
         {channels.map((channel) => (
           <div key={channel} className="flex flex-wrap items-center gap-3 rounded-lg border border-border/50 p-3">
@@ -296,15 +357,39 @@ export function IntegrationsConfigTab({ draft, updateDraft }: ConfigTabEditorPro
     <div className="space-y-4">
       <WorkspacePanel title={t("universalOperations.configuration.integrations.featureFlags")}>
         {Object.entries(flags).map(([key, enabled]) => (
-          <label key={key} className="mb-2 flex items-center justify-between rounded-lg border border-border/50 px-3 py-2 text-sm">
-            <span>{key}</span>
+          <div key={key} className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm">
+            <Input
+              value={key}
+              className="max-w-[200px]"
+              onChange={(e) => {
+                const nextKey = e.target.value.trim();
+                if (!nextKey || nextKey === key) return;
+                const nextFlags = { ...flags };
+                nextFlags[nextKey] = nextFlags[key] ?? false;
+                delete nextFlags[key];
+                updateDraft({ featureFlags: { flags: nextFlags } });
+              }}
+            />
             <Switch
               checked={enabled}
               onCheckedChange={(checked) =>
                 updateDraft({ featureFlags: { flags: { ...flags, [key]: checked } } })
               }
             />
-          </label>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="text-destructive ms-auto"
+              onClick={() => {
+                const nextFlags = { ...flags };
+                delete nextFlags[key];
+                updateDraft({ featureFlags: { flags: nextFlags } });
+              }}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
         ))}
         <Button
           type="button"
@@ -356,7 +441,7 @@ export function AiConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
   const ai = draft.ai ?? { copilotEnabled: true, suggestionsEnabled: true, knowledgeSourceIds: [], allowedTools: [], safetyPolicies: {} };
 
   return (
-    <WorkspacePanel title={t("universalOperations.configuration.tabs.ai")}>
+    <WorkspacePanel>
       <div className="space-y-4">
         <label className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
           <span className="text-sm">{t("universalOperations.configuration.ai.copilot")}</span>
@@ -413,7 +498,7 @@ export function DashboardConfigTab({ draft, updateDraft }: ConfigTabEditorProps)
   );
 }
 
-export function AdvancedConfigTab({ draft, updateDraft, versions, onRollback, onCompareVersion }: ConfigAdvancedTabProps) {
+export function AdvancedConfigTab({ draft, updateDraft, versions, onRollback, onCompareVersion, canPublish }: ConfigAdvancedTabProps) {
   const { t } = useTranslation("common");
   const sla = draft.sla ?? { rules: [] };
   const queueRules = draft.queueRules ?? { defaultSort: [], defaultFilters: {}, pageSize: 50 };
@@ -434,7 +519,7 @@ export function AdvancedConfigTab({ draft, updateDraft, versions, onRollback, on
                 <Button type="button" size="sm" variant="outline" onClick={() => onCompareVersion?.(v.version)}>
                   {t("universalOperations.configuration.enterprise.diff")}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => onRollback(v.version)}>
+                <Button type="button" size="sm" variant="outline" disabled={!canPublish} onClick={() => onRollback(v.version)}>
                   {t("universalOperations.configuration.advanced.rollback")}
                 </Button>
               </div>

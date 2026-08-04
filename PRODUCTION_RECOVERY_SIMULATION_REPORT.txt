@@ -1,0 +1,153 @@
+﻿=== PRODUCTION RECOVERY LOCAL SIMULATION (v2) ===
+Started: 2026-08-05T00:06:48.7225495+03:00
+
+[0] db reset — fresh local baseline
+NOTICE (42P07): relation "idx_scheduling_bookings_company_conversation" already exists, skipping
+NOTICE (42P07): relation "idx_scheduling_bookings_company_status_start" already exists, skipping
+WARN: no files matched pattern: supabase/seed.sql
+Restarting containers...
+Finished supabase db reset on branch cursor/enterprise-workflow-analytics-platform.
+
+[1] Revert migration history 215-229
+Connecting to local database...
+Repaired migration history: [215 216 217 218 219 220 221 222 223 224 225 226 227 229] => reverted
+{"versions":["215","216","217","218","219","220","221","222","223","224","225","226","227","229"],"status":"reverted","repairAll":false,"message":"Migration history repaired"}
+
+[2] Drop production-missing objects
+DROP TABLE
+DROP TABLE
+DROP SEQUENCE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+psql:/tmp/simulate-production-divergence.sql:22: NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to constraint conversations_lead_id_fkey on table conversations
+drop cascades to constraint scheduling_bookings_lead_id_fkey on table scheduling_bookings
+DROP TABLE
+ALTER TABLE
+ALTER TABLE
+
+[2b] Pre-recovery check
+NULL|NULL|NULL|NULL
+
+[2c] Migration history 214+
+ version 
+---------
+ 214
+(1 row)
+
+
+[3] Execute 229 via psql
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+COMMENT
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+psql:/tmp/229_production_recovery.sql:3725: NOTICE:  relation "idx_scheduling_bookings_company_status_start" already exists, skipping
+CREATE FUNCTION
+GRANT
+COMMENT
+229 psql exit: 0
+
+[3b] Gate after 229
+ tickets_ok | leads_ok | licenses_ok | flags_ok 
+------------+----------+-------------+----------
+ t          | t        | t           | t
+(1 row)
+
+
+[4] migration repair 215-227
+Connecting to local database...
+Repaired migration history: [215 216 217 218 219 220 221 222 223 224 225 226 227] => applied
+{"versions":["215","216","217","218","219","220","221","222","223","224","225","226","227"],"status":"applied","repairAll":false,"message":"Migration history repaired"}
+
+[4b] dry-run
+DRY RUN: migrations will *not* be pushed to the database.
+Connecting to local database...
+Would push these migrations:
+ ΓÇó 229_production_recovery.sql
+Finished supabase db push.
+
+[5] db push --local
+NOTICE (42P07): relation "platform_event_idempotency" already exists, skipping
+NOTICE (42P07): relation "idx_platform_event_idempotency_expires" already exists, skipping
+NOTICE (42P07): relation "platform_reactive_signals" already exists, skipping
+NOTICE (42P07): relation "idx_platform_reactive_signals_tenant" already exists, skipping
+NOTICE (42701): column "lead_id" of relation "scheduling_bookings" already exists, skipping
+NOTICE (42701): column "conversation_id" of relation "scheduling_bookings" already exists, skipping
+NOTICE (42P07): relation "idx_scheduling_bookings_company_lead" already exists, skipping
+NOTICE (42P07): relation "idx_scheduling_bookings_company_conversation" already exists, skipping
+NOTICE (42P07): relation "idx_scheduling_bookings_company_status_start" already exists, skipping
+Finished supabase db push.
+db push exit: 0
+
+[6] Final validation
+ version 
+---------
+ 214
+ 215
+ 216
+ 217
+ 218
+ 219
+ 220
+ 221
+ 222
+ 223
+ 224
+ 225
+ 226
+ 227
+ 229
+(15 rows)
+
+ tickets_ok | leads_ok | licenses_ok | flags_ok | handoff_ok | entities_ok 
+------------+----------+-------------+----------+------------+-------------
+ t          | t        | t           | t        | t          | t
+(1 row)
+
+ fn_count 
+----------
+        4
+(1 row)
+
+     table_name      |   column_name   
+---------------------+-----------------
+ conversations       | lead_id
+ scheduling_bookings | conversation_id
+ scheduling_bookings | lead_id
+(3 rows)
+
+          relname          | relrowsecurity 
+---------------------------+----------------
+ leads                     | t
+ platform_company_licenses | t
+ platform_feature_flags    | t
+ support_tickets           | t
+(4 rows)
+
+
+[7] dry-run final
+DRY RUN: migrations will *not* be pushed to the database.
+Connecting to local database...
+Local database is up to date.
+
+Finished: 2026-08-05T00:16:00.4325209+03:00

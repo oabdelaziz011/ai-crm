@@ -1,24 +1,91 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { designerEngine, DEFAULT_DESIGNER_STATE } from "@workspace/universal-workspace-platform";
+import type { DesignerCanvasBlock } from "@workspace/universal-workspace-platform";
 import { useWorkspacePlatform } from "@/context/workspace-platform-context";
+import { useAuth } from "@/context/auth-context";
+import { useAuthUser } from "@/hooks/use-rbac";
+import { useUniversalOperationsConfig } from "@/hooks/universal-operations";
+import {
+  createOperationsConfigCommandContext,
+  saveOperationsConfigurationDraft,
+} from "@/lib/application-layer/operations-workspace-config-service";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function WorkspaceDesigner() {
   const { t } = useTranslation("common");
   const { designerState, setDesignerState, addDesignerBlock, removeDesignerBlock, templateKey } = useWorkspacePlatform();
+  const { user, company } = useAuth();
+  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { data: config, refetch } = useUniversalOperationsConfig(templateKey);
+  const [isSaving, setIsSaving] = useState(false);
   const palette = designerEngine.getPalette();
 
   useEffect(() => {
-    if (!designerState) {
+    if (!designerState && config) {
+      const savedLayout = config.designer?.layouts.find((l) => l.id === config.designer?.activeLayoutId);
+      if (savedLayout) {
+        setDesignerState({
+          ...designerEngine.createState(savedLayout.name, templateKey),
+          canvasBlocks: savedLayout.blocks.map(
+            (b, index): DesignerCanvasBlock => ({
+              id: b.id,
+              paletteItemId: b.id,
+              type: b.type as DesignerCanvasBlock["type"],
+              labelKey: b.label,
+              x: 0,
+              y: index,
+              w: 1,
+              h: 1,
+            }),
+          ),
+        });
+        return;
+      }
       setDesignerState({
         ...designerEngine.createState(t("workspacePlatform.designer.defaultName"), templateKey),
         canvasBlocks: [...DEFAULT_DESIGNER_STATE.canvasBlocks],
       });
     }
-  }, [designerState, setDesignerState, templateKey, t]);
+  }, [designerState, setDesignerState, templateKey, t, config]);
+
+  const handleSave = async () => {
+    if (!designerState || !config || !company?.id || !user?.id) return;
+    setIsSaving(true);
+    try {
+      const layoutId = config.designer?.activeLayoutId ?? `layout_${crypto.randomUUID().slice(0, 8)}`;
+      const layout = {
+        id: layoutId,
+        name: designerState.name,
+        blocks: designerState.canvasBlocks.map((block) => ({
+          id: block.id,
+          type: block.type,
+          label: block.labelKey,
+          config: {},
+        })),
+      };
+      const layouts = config.designer?.layouts.filter((l) => l.id !== layoutId) ?? [];
+      const cmd = createOperationsConfigCommandContext({
+        companyId: company.id,
+        actorUserId: user.id,
+        isSuperAdmin,
+        hasPermission,
+      });
+      await saveOperationsConfigurationDraft(cmd, templateKey, {
+        ...config,
+        designer: { layouts: [...layouts, layout], activeLayoutId: layoutId },
+      });
+      await refetch();
+      toast.success(t("workspacePlatform.designer.saveSuccess"));
+    } catch {
+      toast.error(t("workspacePlatform.designer.saveError"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!designerState) return null;
 
@@ -49,7 +116,7 @@ export function WorkspaceDesigner() {
             <h3 className="text-sm font-semibold">{designerState.name}</h3>
             <p className="text-xs text-muted-foreground">{t("workspacePlatform.designer.canvasHint")}</p>
           </div>
-          <Button size="sm" variant="outline" disabled className="text-xs">
+          <Button size="sm" variant="outline" disabled={isSaving || !config} className="text-xs" onClick={() => void handleSave()}>
             {t("workspacePlatform.designer.save")}
           </Button>
         </div>

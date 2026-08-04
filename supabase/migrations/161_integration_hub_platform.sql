@@ -192,28 +192,28 @@ alter table public.integration_connectors enable row level security;
 alter table public.integration_api_audit_log enable row level security;
 
 create policy integration_api_keys_tenant on public.integration_api_keys
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_oauth_clients_tenant on public.integration_oauth_clients
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_oauth_tokens_tenant on public.integration_oauth_tokens
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_webhook_subs_tenant on public.integration_webhook_subscriptions
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_webhook_deliveries_tenant on public.integration_webhook_deliveries
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_event_log_tenant on public.integration_event_log
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_connectors_tenant on public.integration_connectors
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy integration_api_audit_tenant on public.integration_api_audit_log
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 -- ── RPC: validate API key (service role) ─────────────────────
 

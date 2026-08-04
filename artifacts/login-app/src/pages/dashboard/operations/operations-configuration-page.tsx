@@ -1,72 +1,82 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { OPERATIONS_CONFIG_TABS } from "@workspace/universal-operations-engine";
 import type { OperationsConfigTab } from "@workspace/universal-operations-engine";
-import { useUniversalOperationsConfig } from "@/hooks/universal-operations";
-import { useConfigurationCommands } from "@/hooks/universal-operations/use-configuration-commands";
+import { useOperationsConfigurationEditor } from "@/hooks/universal-operations/use-operations-configuration-editor";
 import { WorkspacePanel } from "@/components/customer-workspace/workspace-ui";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { OperationsConfigStatusBar } from "@/components/universal-operations/configuration/operations-config-status-bar";
+import { OperationsConfigValidationReportPanel } from "@/components/universal-operations/configuration/operations-config-validation-report";
+import { OperationsConfigTabContent } from "@/components/universal-operations/configuration/operations-config-tab-content";
+import { OperationsConfigEnterpriseToolbar } from "@/components/universal-operations/configuration/operations-config-enterprise-toolbar";
 
 export function OperationsConfigurationPage() {
   const { t } = useTranslation("common");
   const [activeTab, setActiveTab] = useState<OperationsConfigTab>("general");
-  const { data: config } = useUniversalOperationsConfig("clinic");
-  const { saveDraft, publish, isReady } = useConfigurationCommands("clinic");
-
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [moduleName, setModuleName] = useState("");
-  const [rowEntityName, setRowEntityName] = useState("");
-  const [customerLabel, setCustomerLabel] = useState(() => t("universalOperations.configuration.general.defaultCustomerLabel"));
-
-  useEffect(() => {
-    if (!config) return;
-    setWorkspaceName(config.workspaceName);
-    setModuleName(config.moduleName);
-    setRowEntityName(config.rowEntityName);
-    setCustomerLabel(config.terminology.customer ?? t("universalOperations.configuration.general.defaultCustomerLabel"));
-  }, [config, t]);
-
-  const buildPatch = () => {
-    if (!config) return null;
-    return {
-      ...config,
-      workspaceName,
-      moduleName,
-      rowEntityName,
-      terminology: {
-        ...config.terminology,
-        customer: customerLabel,
-      },
-      updatedAt: new Date().toISOString(),
-    } as unknown as Record<string, unknown>;
-  };
+  const [publishSummary, setPublishSummary] = useState("");
+  const [rollbackVersion, setRollbackVersion] = useState<number | null>(null);
+  const editor = useOperationsConfigurationEditor();
 
   const handleSaveDraft = async () => {
-    const patch = buildPatch();
-    if (!patch) return;
     try {
-      await saveDraft.mutateAsync(patch);
+      await editor.saveDraft();
       toast.success(t("universalOperations.configuration.saveSuccess"));
     } catch {
       toast.error(t("universalOperations.configuration.saveError"));
     }
   };
 
-  const handlePublish = async () => {
-    const patch = buildPatch();
-    if (!patch) return;
+  const handleValidate = async () => {
     try {
-      await saveDraft.mutateAsync(patch);
-      await publish.mutateAsync(t("universalOperations.configuration.publishNote"));
+      const report = await editor.validate();
+      if (report.valid) {
+        toast.success(t("universalOperations.configuration.validationPassed"));
+      } else {
+        toast.error(t("universalOperations.configuration.validationFailed"));
+      }
+    } catch {
+      toast.error(t("universalOperations.configuration.validationFailed"));
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      await editor.publish(publishSummary || t("universalOperations.configuration.publishNote"));
       toast.success(t("universalOperations.configuration.publishSuccess"));
     } catch {
       toast.error(t("universalOperations.configuration.publishError"));
     }
   };
+
+  const handleRollback = async (version: number) => {
+    try {
+      await editor.rollback(version);
+      toast.success(t("universalOperations.configuration.advanced.rollbackSuccess"));
+    } catch {
+      toast.error(t("universalOperations.configuration.advanced.rollbackError"));
+    }
+  };
+
+  if (editor.isLoading || !editor.draft) {
+    return (
+      <WorkspacePanel title={t("universalOperations.configuration.title")}>
+        <p className="text-sm text-muted-foreground">{t("universalOperations.configuration.loading")}</p>
+      </WorkspacePanel>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -74,6 +84,35 @@ export function OperationsConfigurationPage() {
         <h2 className="text-xl font-bold">{t("universalOperations.configuration.title")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("universalOperations.configuration.subtitle")}</p>
       </div>
+
+      <OperationsConfigStatusBar
+        templateKey={editor.templateKey}
+        onTemplateKeyChange={editor.setTemplateKey}
+        status={editor.hasUnpublishedDraft ? "draft" : "published"}
+        hasUnpublishedDraft={editor.hasUnpublishedDraft}
+        publishedVersion={editor.publishedVersion}
+        isDirty={editor.isDirty}
+        isSaving={editor.isSaving}
+        isPublishing={editor.isPublishing}
+        isValidating={editor.isValidating}
+        onSaveDraft={() => void handleSaveDraft()}
+        onValidate={() => void handleValidate()}
+        onPublish={() => void handlePublish()}
+      />
+
+      <div className="grid gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
+        <Label className="text-xs">{t("universalOperations.configuration.enterprise.publishSummary")}</Label>
+        <Input
+          value={publishSummary}
+          onChange={(e) => setPublishSummary(e.target.value)}
+          placeholder={t("universalOperations.configuration.publishNote")}
+          className="h-8 text-xs"
+        />
+      </div>
+
+      <OperationsConfigEnterpriseToolbar editor={editor} activeTab={activeTab} />
+
+      <OperationsConfigValidationReportPanel report={editor.validationReport} />
 
       <nav className="flex flex-wrap gap-2 border-b border-border/60 pb-3">
         {OPERATIONS_CONFIG_TABS.map((tab) => (
@@ -83,9 +122,7 @@ export function OperationsConfigurationPage() {
             onClick={() => setActiveTab(tab)}
             className={cn(
               "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              activeTab === tab
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-muted/40",
+              activeTab === tab ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted/40",
             )}
           >
             {t(`universalOperations.configuration.tabs.${tab}`)}
@@ -93,88 +130,36 @@ export function OperationsConfigurationPage() {
         ))}
       </nav>
 
-      {activeTab === "general" && config && (
-        <WorkspacePanel title={t("universalOperations.configuration.general.title")}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("universalOperations.configuration.general.workspaceName")}</Label>
-              <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("universalOperations.configuration.general.moduleName")}</Label>
-              <Input value={moduleName} onChange={(e) => setModuleName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("universalOperations.configuration.general.rowEntity")}</Label>
-              <Input value={rowEntityName} onChange={(e) => setRowEntityName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("universalOperations.configuration.general.customerLabel")}</Label>
-              <Input value={customerLabel} onChange={(e) => setCustomerLabel(e.target.value)} />
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              onClick={() => void handleSaveDraft()}
-              disabled={!isReady || saveDraft.isPending}
-              variant="outline"
+      <OperationsConfigTabContent
+        tab={activeTab}
+        draft={editor.draft}
+        updateDraft={editor.updateDraft}
+        versions={editor.versions}
+        onRollback={(version) => setRollbackVersion(version)}
+        onCompareVersion={(version) => editor.compareWithVersion(version)}
+      />
+
+      <AlertDialog open={rollbackVersion !== null} onOpenChange={(open) => !open && setRollbackVersion(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("universalOperations.configuration.advanced.rollback")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("universalOperations.configuration.enterprise.rollbackConfirm", { version: rollbackVersion ?? 0 })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("buttons.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (rollbackVersion !== null) void handleRollback(rollbackVersion);
+                setRollbackVersion(null);
+              }}
             >
-              {t("universalOperations.configuration.saveDraft")}
-            </Button>
-            <Button
-              onClick={() => void handlePublish()}
-              disabled={!isReady || publish.isPending || saveDraft.isPending}
-            >
-              {t("universalOperations.configuration.save")}
-            </Button>
-          </div>
-        </WorkspacePanel>
-      )}
-
-      {activeTab === "columns" && config && (
-        <WorkspacePanel title={t("universalOperations.configuration.columns.title")}>
-          <div className="space-y-2">
-            {config.columns.map((col) => (
-              <div key={col.id} className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">{col.displayName}</p>
-                  <p className="text-[10px] text-muted-foreground">{col.internalName} · {col.type}</p>
-                </div>
-                <span className="text-[10px] uppercase text-muted-foreground">
-                  {col.visible
-                    ? t("universalOperations.configuration.columns.visible")
-                    : t("universalOperations.configuration.columns.hidden")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </WorkspacePanel>
-      )}
-
-      {activeTab === "statuses" && config && (
-        <WorkspacePanel title={t("universalOperations.configuration.statuses.title")}>
-          <div className="flex flex-wrap gap-2">
-            {config.statuses.map((s) => (
-              <span
-                key={s.id}
-                className="rounded-full px-3 py-1 text-xs font-semibold"
-                style={{ backgroundColor: `${s.color}22`, color: s.color }}
-              >
-                {s.displayName}
-              </span>
-            ))}
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">{t("universalOperations.configuration.statuses.flowHint")}</p>
-        </WorkspacePanel>
-      )}
-
-      {!["general", "columns", "statuses"].includes(activeTab) && (
-        <WorkspacePanel title={t(`universalOperations.configuration.tabs.${activeTab}`)}>
-          <p className="text-sm text-muted-foreground">
-            {t("universalOperations.configuration.domainHint")}
-          </p>
-        </WorkspacePanel>
-      )}
+              {t("universalOperations.configuration.advanced.rollback")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

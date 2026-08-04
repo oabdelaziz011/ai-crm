@@ -1,3 +1,5 @@
+import type { OperationsWorkspaceConfig } from "@workspace/universal-operations-engine";
+import { OperationsRuntimeConfigurationError } from "@workspace/universal-operations-engine";
 import type { WorkspaceContext } from "../types/workspace-types.js";
 import { workspaceEngine } from "./workspace-engine.js";
 import { personalizationEngine } from "./personalization-engine.js";
@@ -22,10 +24,16 @@ export type PlatformSnapshot = {
 };
 
 export class WorkspacePlatformOrchestrator {
-  buildSnapshot(context: WorkspaceContext, userId: string, role: string): PlatformSnapshot {
+  buildSnapshot(context: WorkspaceContext, userId: string, role: string, config: OperationsWorkspaceConfig): PlatformSnapshot {
+    if (!config) {
+      throw new OperationsRuntimeConfigurationError(
+        "Published operations configuration is required — workspace platform cannot resolve without configuration",
+      );
+    }
+
     return {
-      workspace: workspaceEngine.resolve(context.entityType, context.templateKey),
-      widgets: widgetEngine.buildSnapshots(role),
+      workspace: workspaceEngine.resolve(context.entityType, context.templateKey, config.customer360?.sections),
+      widgets: widgetEngine.buildSnapshots(config.dashboard?.widgets ?? []),
       commands: commandEngine.list(role),
       notifications: notificationEngine.list(),
       unreadCount: notificationEngine.unreadCount(),

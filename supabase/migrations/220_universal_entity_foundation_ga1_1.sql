@@ -304,23 +304,82 @@ create policy entity_tag_assignments_select on public.entity_tag_assignments for
 
 -- ── Permissions ────────────────────────────────────────────────────────────
 
-insert into public.permissions (code, name, description, category)
-select v.code, v.name, v.description, 'entity'
-from (values
-  ('entity.contacts.read', 'Read Entity Contacts', 'View contacts on any entity'),
-  ('entity.contacts.write', 'Write Entity Contacts', 'Create and update entity contacts'),
-  ('entity.contacts.delete', 'Delete Entity Contacts', 'Archive entity contacts'),
-  ('entity.files.read', 'Read Entity Files', 'View files on any entity'),
-  ('entity.files.write', 'Write Entity Files', 'Upload entity files'),
-  ('entity.files.delete', 'Delete Entity Files', 'Archive entity files'),
-  ('entity.tags.read', 'Read Entity Tags', 'View tags and assignments'),
-  ('entity.tags.write', 'Write Entity Tags', 'Manage tags and assignments'),
-  ('entity.activities.read', 'Read Entity Activities', 'View entity activity timeline'),
-  ('entity.activities.write', 'Write Entity Activities', 'Log entity activities'),
-  ('entity.custom_fields.read', 'Read Custom Fields', 'View custom field definitions and values'),
-  ('entity.custom_fields.write', 'Write Custom Fields', 'Manage custom field definitions and values')
-) as v(code, name, description)
-where not exists (select 1 from public.permissions p where p.code = v.code);
+insert into public.permissions (code, category, module, action, description)
+values
+  ('entity.contacts.read', 'Entity', 'Entity Contacts', 'Read', 'View contacts on any entity'),
+  ('entity.contacts.write', 'Entity', 'Entity Contacts', 'Write', 'Create and update entity contacts'),
+  ('entity.contacts.delete', 'Entity', 'Entity Contacts', 'Delete', 'Archive entity contacts'),
+  ('entity.files.read', 'Entity', 'Entity Files', 'Read', 'View files on any entity'),
+  ('entity.files.write', 'Entity', 'Entity Files', 'Write', 'Upload entity files'),
+  ('entity.files.delete', 'Entity', 'Entity Files', 'Delete', 'Archive entity files'),
+  ('entity.tags.read', 'Entity', 'Entity Tags', 'Read', 'View tags and assignments'),
+  ('entity.tags.write', 'Entity', 'Entity Tags', 'Write', 'Manage tags and assignments'),
+  ('entity.activities.read', 'Entity', 'Entity Activities', 'Read', 'View entity activity timeline'),
+  ('entity.activities.write', 'Entity', 'Entity Activities', 'Write', 'Log entity activities'),
+  ('entity.custom_fields.read', 'Entity', 'Custom Fields', 'Read', 'View custom field definitions and values'),
+  ('entity.custom_fields.write', 'Entity', 'Custom Fields', 'Write', 'Manage custom field definitions and values')
+on conflict (code) do update
+set
+  category = excluded.category,
+  module = excluded.module,
+  action = excluded.action,
+  description = excluded.description,
+  updated_at = now();
+
+insert into public.platform_role_template_permissions (template_key, permission_code)
+select seed.template_key, seed.permission_code
+from (
+  values
+    ('admin', 'entity.contacts.read'),
+    ('admin', 'entity.contacts.write'),
+    ('admin', 'entity.contacts.delete'),
+    ('admin', 'entity.files.read'),
+    ('admin', 'entity.files.write'),
+    ('admin', 'entity.files.delete'),
+    ('admin', 'entity.tags.read'),
+    ('admin', 'entity.tags.write'),
+    ('admin', 'entity.activities.read'),
+    ('admin', 'entity.activities.write'),
+    ('admin', 'entity.custom_fields.read'),
+    ('admin', 'entity.custom_fields.write'),
+    ('manager', 'entity.contacts.read'),
+    ('manager', 'entity.contacts.write'),
+    ('manager', 'entity.files.read'),
+    ('manager', 'entity.files.write'),
+    ('manager', 'entity.tags.read'),
+    ('manager', 'entity.tags.write'),
+    ('manager', 'entity.activities.read'),
+    ('manager', 'entity.activities.write'),
+    ('manager', 'entity.custom_fields.read'),
+    ('employee', 'entity.contacts.read'),
+    ('employee', 'entity.files.read'),
+    ('employee', 'entity.tags.read'),
+    ('employee', 'entity.activities.read'),
+    ('employee', 'entity.custom_fields.read')
+) as seed(template_key, permission_code)
+where not exists (
+  select 1
+  from public.platform_role_template_permissions existing
+  where existing.template_key = seed.template_key
+    and existing.permission_code = seed.permission_code
+);
+
+insert into public.role_permissions (role_id, permission_id)
+select distinct r.id, p.id
+from public.roles r
+inner join public.platform_role_template_permissions trp
+  on trp.template_key = r.template_key
+inner join public.permissions p
+  on p.code = trp.permission_code
+where r.role_type = 'DEFAULT'
+  and r.company_id is not null
+  and trp.permission_code like 'entity.%'
+  and not exists (
+    select 1
+    from public.role_permissions rp
+    where rp.role_id = r.id
+      and rp.permission_id = p.id
+  );
 
 -- ── Realtime publication ───────────────────────────────────────────────────
 

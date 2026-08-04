@@ -144,63 +144,105 @@ create policy platform_configuration_versions_insert on public.platform_configur
 
 -- ── Permissions ──────────────────────────────────────────────────────────────
 
-insert into public.permissions (code, name, description, category)
-select v.code, v.name, v.description, 'configuration'
-from (values
-  ('configuration.read', 'Read Configuration', 'View platform configuration', 'configuration'),
-  ('configuration.write', 'Write Configuration', 'Edit platform configuration drafts', 'configuration'),
-  ('configuration.publish', 'Publish Configuration', 'Publish configuration changes', 'configuration'),
-  ('configuration.workspace.read', 'Read Workspace Config', 'View workspace configuration', 'configuration'),
-  ('configuration.workspace.write', 'Write Workspace Config', 'Edit workspace configuration', 'configuration'),
-  ('configuration.crm.read', 'Read CRM Config', 'View CRM configuration', 'configuration'),
-  ('configuration.crm.write', 'Write CRM Config', 'Edit CRM configuration', 'configuration'),
-  ('configuration.operations.read', 'Read Operations Config', 'View operations configuration', 'configuration'),
-  ('configuration.operations.write', 'Write Operations Config', 'Edit operations configuration', 'configuration'),
-  ('configuration.billing.read', 'Read Billing Config', 'View billing configuration', 'configuration'),
-  ('configuration.billing.write', 'Write Billing Config', 'Edit billing configuration', 'configuration'),
-  ('configuration.ai.read', 'Read AI Config', 'View AI configuration', 'configuration'),
-  ('configuration.ai.write', 'Write AI Config', 'Edit AI configuration', 'configuration'),
-  ('configuration.dashboard.read', 'Read Dashboard Config', 'View dashboard configuration', 'configuration'),
-  ('configuration.dashboard.write', 'Write Dashboard Config', 'Edit dashboard configuration', 'configuration'),
-  ('operations.universal.configure', 'Configure Operations', 'Manage universal operations configuration', 'operations'),
-  ('operations.configuration.manage', 'Manage Operations Config', 'Legacy operations config permission', 'operations')
-) as v(code, name, description)
-where not exists (select 1 from public.permissions p where p.code = v.code);
+insert into public.permissions (code, category, module, action, description)
+values
+  ('configuration.read', 'Configuration', 'Configuration', 'Read', 'View platform configuration'),
+  ('configuration.write', 'Configuration', 'Configuration', 'Write', 'Edit platform configuration drafts'),
+  ('configuration.publish', 'Configuration', 'Configuration', 'Publish', 'Publish configuration changes'),
+  ('configuration.workspace.read', 'Configuration', 'Workspace', 'Read', 'View workspace configuration'),
+  ('configuration.workspace.write', 'Configuration', 'Workspace', 'Write', 'Edit workspace configuration'),
+  ('configuration.crm.read', 'Configuration', 'CRM', 'Read', 'View CRM configuration'),
+  ('configuration.crm.write', 'Configuration', 'CRM', 'Write', 'Edit CRM configuration'),
+  ('configuration.operations.read', 'Configuration', 'Operations', 'Read', 'View operations configuration'),
+  ('configuration.operations.write', 'Configuration', 'Operations', 'Write', 'Edit operations configuration'),
+  ('configuration.billing.read', 'Configuration', 'Billing', 'Read', 'View billing configuration'),
+  ('configuration.billing.write', 'Configuration', 'Billing', 'Write', 'Edit billing configuration'),
+  ('configuration.ai.read', 'Configuration', 'AI', 'Read', 'View AI configuration'),
+  ('configuration.ai.write', 'Configuration', 'AI', 'Write', 'Edit AI configuration'),
+  ('configuration.dashboard.read', 'Configuration', 'Dashboard', 'Read', 'View dashboard configuration'),
+  ('configuration.dashboard.write', 'Configuration', 'Dashboard', 'Write', 'Edit dashboard configuration'),
+  ('operations.universal.configure', 'Operations', 'Universal Operations', 'Configure', 'Manage universal operations configuration'),
+  ('operations.configuration.manage', 'Operations', 'Operations Config', 'Manage', 'Legacy operations config permission')
+on conflict (code) do update
+set
+  category = excluded.category,
+  module = excluded.module,
+  action = excluded.action,
+  description = excluded.description,
+  updated_at = now();
 
-insert into public.role_permissions (role_name, permission_code)
-select v.role_name, v.code
-from (values
-  ('admin', 'configuration.read'),
-  ('admin', 'configuration.write'),
-  ('admin', 'configuration.publish'),
-  ('admin', 'configuration.workspace.read'),
-  ('admin', 'configuration.workspace.write'),
-  ('admin', 'configuration.crm.read'),
-  ('admin', 'configuration.crm.write'),
-  ('admin', 'configuration.operations.read'),
-  ('admin', 'configuration.operations.write'),
-  ('admin', 'configuration.billing.read'),
-  ('admin', 'configuration.billing.write'),
-  ('admin', 'configuration.ai.read'),
-  ('admin', 'configuration.ai.write'),
-  ('admin', 'configuration.dashboard.read'),
-  ('admin', 'configuration.dashboard.write'),
-  ('admin', 'operations.universal.configure'),
-  ('admin', 'operations.configuration.manage'),
-  ('manager', 'configuration.read'),
-  ('manager', 'configuration.write'),
-  ('manager', 'configuration.publish'),
-  ('manager', 'configuration.workspace.read'),
-  ('manager', 'configuration.workspace.write'),
-  ('manager', 'configuration.operations.read'),
-  ('manager', 'configuration.operations.write'),
-  ('manager', 'operations.universal.configure'),
-  ('manager', 'operations.configuration.manage')
-) as v(role_name, code)
+insert into public.platform_role_template_permissions (template_key, permission_code)
+select seed.template_key, seed.permission_code
+from (
+  values
+    ('admin', 'configuration.read'),
+    ('admin', 'configuration.write'),
+    ('admin', 'configuration.publish'),
+    ('admin', 'configuration.workspace.read'),
+    ('admin', 'configuration.workspace.write'),
+    ('admin', 'configuration.crm.read'),
+    ('admin', 'configuration.crm.write'),
+    ('admin', 'configuration.operations.read'),
+    ('admin', 'configuration.operations.write'),
+    ('admin', 'configuration.billing.read'),
+    ('admin', 'configuration.billing.write'),
+    ('admin', 'configuration.ai.read'),
+    ('admin', 'configuration.ai.write'),
+    ('admin', 'configuration.dashboard.read'),
+    ('admin', 'configuration.dashboard.write'),
+    ('admin', 'operations.universal.configure'),
+    ('admin', 'operations.configuration.manage'),
+    ('manager', 'configuration.read'),
+    ('manager', 'configuration.write'),
+    ('manager', 'configuration.publish'),
+    ('manager', 'configuration.workspace.read'),
+    ('manager', 'configuration.workspace.write'),
+    ('manager', 'configuration.operations.read'),
+    ('manager', 'configuration.operations.write'),
+    ('manager', 'operations.universal.configure'),
+    ('manager', 'operations.configuration.manage')
+) as seed(template_key, permission_code)
 where not exists (
-  select 1 from public.role_permissions rp
-  where rp.role_name = v.role_name and rp.permission_code = v.code
+  select 1
+  from public.platform_role_template_permissions existing
+  where existing.template_key = seed.template_key
+    and existing.permission_code = seed.permission_code
 );
+
+insert into public.role_permissions (role_id, permission_id)
+select distinct r.id, p.id
+from public.roles r
+inner join public.platform_role_template_permissions trp
+  on trp.template_key = r.template_key
+inner join public.permissions p
+  on p.code = trp.permission_code
+where r.role_type = 'DEFAULT'
+  and r.company_id is not null
+  and trp.permission_code in (
+    'configuration.read',
+    'configuration.write',
+    'configuration.publish',
+    'configuration.workspace.read',
+    'configuration.workspace.write',
+    'configuration.crm.read',
+    'configuration.crm.write',
+    'configuration.operations.read',
+    'configuration.operations.write',
+    'configuration.billing.read',
+    'configuration.billing.write',
+    'configuration.ai.read',
+    'configuration.ai.write',
+    'configuration.dashboard.read',
+    'configuration.dashboard.write',
+    'operations.universal.configure',
+    'operations.configuration.manage'
+  )
+  and not exists (
+    select 1
+    from public.role_permissions rp
+    where rp.role_id = r.id
+      and rp.permission_id = p.id
+  );
 
 -- ── Realtime ─────────────────────────────────────────────────────────────────
 

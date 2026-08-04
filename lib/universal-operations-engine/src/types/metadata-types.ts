@@ -1,4 +1,24 @@
 import type { OperationsFieldType } from "../constants/field-types.js";
+import type {
+  OperationsAutomationConfig,
+  OperationsCustomer360Config,
+  OperationsDashboardConfig,
+  OperationsDesignerConfig,
+  OperationsFeatureFlagsConfig,
+  OperationsFormsConfig,
+  OperationsIntelligenceConfig,
+  OperationsKanbanConfig,
+  OperationsNotificationsConfig,
+  OperationsPermissionsConfig,
+  OperationsAiConfig,
+  OperationsBusinessContextConfig,
+  OperationsQueueRulesConfig,
+  OperationsRoutingConfig,
+  OperationsSlaConfig,
+  OperationsCalendarViewConfig,
+  OperationsTimelineConfig,
+  OperationsViewsConfig,
+} from "./extended-config-types.js";
 
 export type OperationsColumnAlignment = "start" | "center" | "end";
 
@@ -112,17 +132,25 @@ export type OperationsWorkspaceConfig = {
   paymentStatuses: OperationsPaymentStatusDefinition[];
   services: OperationsServiceDefinition[];
   resources: OperationsResourceDefinition[];
+  views: OperationsViewsConfig;
+  permissions: OperationsPermissionsConfig;
+  notifications: OperationsNotificationsConfig;
+  ai: OperationsAiConfig;
+  automation: OperationsAutomationConfig;
+  dashboard: OperationsDashboardConfig;
+  customer360: OperationsCustomer360Config;
+  intelligence: OperationsIntelligenceConfig;
+  businessContext: OperationsBusinessContextConfig;
+  queueRules: OperationsQueueRulesConfig;
+  sla: OperationsSlaConfig;
+  designer: OperationsDesignerConfig;
+  forms: OperationsFormsConfig;
+  featureFlags: OperationsFeatureFlagsConfig;
+  routing: OperationsRoutingConfig;
+  kanban: OperationsKanbanConfig;
+  calendar: OperationsCalendarViewConfig;
+  timeline: OperationsTimelineConfig;
   updatedAt: string;
-};
-
-export type OperationsSavedView = {
-  id: string;
-  name: string;
-  columnIds: string[];
-  filters: Record<string, unknown>;
-  sort: Array<{ columnId: string; direction: "asc" | "desc" }>;
-  isDefault: boolean;
-  isShared: boolean;
 };
 
 export type OperationsRoleLayout = {

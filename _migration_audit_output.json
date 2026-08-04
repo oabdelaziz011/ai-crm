@@ -1,0 +1,3154 @@
+{
+  "error": "DATABASE_URL not configured",
+  "repoCount": 176,
+  "dependencyGraph": [
+    {
+      "version": "001",
+      "file": "001_initial_schema.sql",
+      "creates": {
+        "tables": [
+          "customers",
+          "bookings",
+          "invoices"
+        ],
+        "types": [],
+        "functions": [
+          "set_updated_at"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "002",
+      "file": "002_profiles_and_rls.sql",
+      "creates": {
+        "tables": [
+          "profiles"
+        ],
+        "types": [],
+        "functions": [
+          "sync_profile_ids",
+          "handle_new_user",
+          "current_company_id",
+          "is_super_admin"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "003",
+      "file": "003_companies_management.sql",
+      "creates": {
+        "tables": [
+          "companies"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002"
+      ]
+    },
+    {
+      "version": "004",
+      "file": "004_rbac.sql",
+      "creates": {
+        "tables": [
+          "roles",
+          "permissions",
+          "user_roles",
+          "role_permissions",
+          "user_permissions"
+        ],
+        "types": [],
+        "functions": [
+          "is_company_admin"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003"
+      ]
+    },
+    {
+      "version": "005",
+      "file": "005_subscription_management.sql",
+      "creates": {
+        "tables": [
+          "plans"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "006",
+      "file": "006_audit_logs.sql",
+      "creates": {
+        "tables": [
+          "audit_logs"
+        ],
+        "types": [],
+        "functions": [
+          "request_ip_address",
+          "write_audit_log",
+          "write_audit_log_junction"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "007",
+      "file": "007_notifications_module.sql",
+      "creates": {
+        "tables": [
+          "notifications"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "008",
+      "file": "008_notifications_automation.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "company_id_for_user",
+          "insert_notification",
+          "notification_payload",
+          "notify_customer_created",
+          "notify_booking_changes",
+          "notify_invoice_changes",
+          "notify_subscription_events",
+          "notify_profile_events",
+          "notify_role_events",
+          "notify_audit_events",
+          "notify_external_event"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "007"
+      ]
+    },
+    {
+      "version": "009",
+      "file": "009_ai_assistant_settings.sql",
+      "creates": {
+        "tables": [
+          "ai_assistant_settings"
+        ],
+        "types": [],
+        "functions": [
+          "write_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "010",
+      "file": "010_ai_assistant_enterprise.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "bump_ai_assistant_settings_version",
+          "prevent_ai_assistant_settings_physical_delete",
+          "snapshot_ai_assistant_settings",
+          "ai_assistant_settings_changed_fields",
+          "write_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "009"
+      ]
+    },
+    {
+      "version": "011",
+      "file": "011_conversation_core.sql",
+      "creates": {
+        "tables": [
+          "conversations",
+          "conversation_participants",
+          "conversation_messages"
+        ],
+        "types": [],
+        "functions": [
+          "validate_conversation_company_integrity",
+          "prevent_conversation_physical_delete",
+          "prevent_conversation_participant_physical_delete",
+          "prevent_conversation_message_mutation",
+          "conversation_belongs_to_current_company",
+          "conversation_audit_company_id",
+          "conversation_audit_events",
+          "write_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "009"
+      ]
+    },
+    {
+      "version": "012",
+      "file": "012_conversation_hardening.sql",
+      "creates": {
+        "tables": [
+          "conversation_number_sequences"
+        ],
+        "types": [],
+        "functions": [
+          "assign_conversation_number",
+          "assign_conversation_message_sequence",
+          "conversation_audit_events",
+          "write_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "013",
+      "file": "013_channel_registry.sql",
+      "creates": {
+        "tables": [
+          "communication_channels",
+          "company_channels"
+        ],
+        "types": [],
+        "functions": [
+          "validate_conversation_company_integrity",
+          "prevent_company_channel_physical_delete",
+          "company_channel_audit_events",
+          "write_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "009",
+        "011"
+      ]
+    },
+    {
+      "version": "014",
+      "file": "014_conversation_state_engine.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "conversation_audit_events"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "015",
+      "file": "015_tool_router.sql",
+      "creates": {
+        "tables": [
+          "tool_definitions",
+          "tool_executions"
+        ],
+        "types": [],
+        "functions": [
+          "tool_definition_audit_events",
+          "tool_execution_audit_events",
+          "write_tool_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "016",
+      "file": "016_intent_engine.sql",
+      "creates": {
+        "tables": [
+          "intent_definitions",
+          "intent_matches"
+        ],
+        "types": [],
+        "functions": [
+          "intent_definition_audit_events",
+          "intent_match_audit_events",
+          "write_intent_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "017",
+      "file": "017_ai_provider_layer.sql",
+      "creates": {
+        "tables": [
+          "ai_provider_definitions",
+          "ai_provider_connections"
+        ],
+        "types": [],
+        "functions": [
+          "ai_provider_connection_audit_events",
+          "write_ai_provider_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "018",
+      "file": "018_prompt_orchestration.sql",
+      "creates": {
+        "tables": [
+          "prompt_templates",
+          "prompt_template_versions",
+          "prompt_builds"
+        ],
+        "types": [],
+        "functions": [
+          "prompt_template_audit_events",
+          "prompt_template_version_audit_events",
+          "write_prompt_orchestrator_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "019",
+      "file": "019_ai_execution_engine.sql",
+      "creates": {
+        "tables": [
+          "ai_executions",
+          "ai_execution_metrics"
+        ],
+        "types": [],
+        "functions": [
+          "ai_execution_audit_events",
+          "write_ai_execution_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011",
+        "017",
+        "018"
+      ]
+    },
+    {
+      "version": "020",
+      "file": "020_ai_observability_governance.sql",
+      "creates": {
+        "tables": [
+          "ai_traces",
+          "ai_trace_spans",
+          "ai_execution_analytics",
+          "ai_token_cost_records"
+        ],
+        "types": [],
+        "functions": [
+          "ai_trace_audit_events",
+          "write_ai_trace_audit_log",
+          "write_ai_token_cost_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011",
+        "018",
+        "019"
+      ]
+    },
+    {
+      "version": "021",
+      "file": "021_knowledge_foundation.sql",
+      "creates": {
+        "tables": [
+          "knowledge_sources",
+          "knowledge_documents",
+          "knowledge_chunks"
+        ],
+        "types": [],
+        "functions": [
+          "knowledge_source_audit_events",
+          "knowledge_document_audit_events",
+          "write_knowledge_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "022",
+      "file": "022_enterprise_knowledge_domain.sql",
+      "creates": {
+        "tables": [
+          "knowledge_document_versions",
+          "knowledge_sections",
+          "knowledge_tags"
+        ],
+        "types": [],
+        "functions": [
+          "knowledge_source_audit_events",
+          "knowledge_document_audit_events",
+          "knowledge_document_version_audit_events",
+          "write_knowledge_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "021"
+      ]
+    },
+    {
+      "version": "023",
+      "file": "023_embedding_platform.sql",
+      "creates": {
+        "tables": [
+          "embedding_provider_definitions",
+          "embedding_provider_connections",
+          "knowledge_embeddings",
+          "embedding_jobs"
+        ],
+        "types": [],
+        "functions": [
+          "embedding_job_audit_events",
+          "knowledge_embedding_audit_events",
+          "write_embedding_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "021"
+      ]
+    },
+    {
+      "version": "024",
+      "file": "024_vector_store_platform.sql",
+      "creates": {
+        "tables": [
+          "vector_store_definitions",
+          "vector_store_connections",
+          "vector_collections",
+          "indexed_vectors"
+        ],
+        "types": [],
+        "functions": [
+          "vector_store_connection_audit_events",
+          "vector_collection_audit_events",
+          "indexed_vector_audit_events",
+          "write_vector_store_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "023"
+      ]
+    },
+    {
+      "version": "025",
+      "file": "025_vector_query_engine.sql",
+      "creates": {
+        "tables": [
+          "vector_search_policies",
+          "vector_query_executions",
+          "vector_query_results"
+        ],
+        "types": [],
+        "functions": [
+          "vector_search_policy_audit_events",
+          "vector_query_execution_audit_events",
+          "write_vector_query_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "023",
+        "024"
+      ]
+    },
+    {
+      "version": "026",
+      "file": "026_retrieval_engine.sql",
+      "creates": {
+        "tables": [
+          "retrieval_policies",
+          "retrieval_executions",
+          "retrieval_contexts",
+          "retrieval_context_chunks",
+          "retrieval_metrics"
+        ],
+        "types": [],
+        "functions": [
+          "retrieval_policy_audit_events",
+          "retrieval_execution_audit_events",
+          "retrieval_context_audit_events",
+          "write_retrieval_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "021",
+        "024",
+        "025"
+      ]
+    },
+    {
+      "version": "027",
+      "file": "027_runtime_integration.sql",
+      "creates": {
+        "tables": [
+          "execution_policies",
+          "runtime_sessions",
+          "runtime_executions",
+          "runtime_execution_steps",
+          "runtime_execution_errors"
+        ],
+        "types": [],
+        "functions": [
+          "execution_policy_audit_events",
+          "runtime_execution_audit_events",
+          "runtime_execution_step_audit_events",
+          "write_runtime_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "028",
+      "file": "028_profile_preferences.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002"
+      ]
+    },
+    {
+      "version": "029",
+      "file": "029_profile_self_service_security.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "is_valid_avatar_url",
+          "update_my_profile",
+          "protect_profile_privileged_columns"
+        ]
+      },
+      "dependsOnVersions": [
+        "002"
+      ]
+    },
+    {
+      "version": "030",
+      "file": "030_billing_plans_extend.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "005"
+      ]
+    },
+    {
+      "version": "031",
+      "file": "031_billing_contacts_profiles.sql",
+      "creates": {
+        "tables": [
+          "company_billing_contacts",
+          "company_billing_profiles"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "032",
+      "file": "032_company_subscriptions.sql",
+      "creates": {
+        "tables": [
+          "company_subscriptions"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "005"
+      ]
+    },
+    {
+      "version": "033",
+      "file": "033_subscription_events.sql",
+      "creates": {
+        "tables": [
+          "subscription_events"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "032"
+      ]
+    },
+    {
+      "version": "034",
+      "file": "034_billing_invoices.sql",
+      "creates": {
+        "tables": [
+          "billing_invoices"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "032"
+      ]
+    },
+    {
+      "version": "035",
+      "file": "035_billing_receipts.sql",
+      "creates": {
+        "tables": [
+          "billing_receipts"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "032",
+        "034"
+      ]
+    },
+    {
+      "version": "036",
+      "file": "036_billing_payments.sql",
+      "creates": {
+        "tables": [
+          "billing_payments"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "032",
+        "034",
+        "035"
+      ]
+    },
+    {
+      "version": "037",
+      "file": "037_payment_method_prep.sql",
+      "creates": {
+        "tables": [
+          "payment_method_types",
+          "company_payment_methods",
+          "payment_providers",
+          "payment_intents",
+          "webhook_events"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "032",
+        "036"
+      ]
+    },
+    {
+      "version": "038",
+      "file": "038_billing_settings.sql",
+      "creates": {
+        "tables": [
+          "billing_setting_definitions",
+          "billing_settings",
+          "billing_email_templates"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "039",
+      "file": "039_billing_audit_logs.sql",
+      "creates": {
+        "tables": [
+          "billing_audit_event_types",
+          "billing_audit_logs"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "040",
+      "file": "040_billing_rpcs.sql",
+      "creates": {
+        "tables": [
+          "billing_document_sequences"
+        ],
+        "types": [],
+        "functions": [
+          "write_billing_audit_log",
+          "get_billing_setting",
+          "get_billing_settings_by_category",
+          "update_billing_settings",
+          "format_billing_document_number",
+          "sync_company_subscription_denormalized",
+          "emit_subscription_event",
+          "build_billing_company_snapshot",
+          "build_billing_contact_snapshot",
+          "renew_subscription_from_payment"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "005",
+        "031",
+        "032",
+        "037",
+        "038"
+      ]
+    },
+    {
+      "version": "041",
+      "file": "041_billing_permissions.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "user_has_permission"
+        ]
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "042",
+      "file": "042_feature_entitlements.sql",
+      "creates": {
+        "tables": [
+          "feature_definitions",
+          "plan_features",
+          "company_feature_overrides"
+        ],
+        "types": [],
+        "functions": [
+          "is_feature_enabled",
+          "get_company_entitlements",
+          "set_company_feature_override"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "005",
+        "032"
+      ]
+    },
+    {
+      "version": "043",
+      "file": "043_usage_metering.sql",
+      "creates": {
+        "tables": [
+          "usage_metric_definitions",
+          "usage_records",
+          "usage_aggregates",
+          "company_usage_snapshots"
+        ],
+        "types": [],
+        "functions": [
+          "ingest_usage_event",
+          "rollup_usage_aggregates",
+          "refresh_company_usage_snapshot"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "044",
+      "file": "044_billing_phase1_hardening.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "is_platform_billing_operator",
+          "can_view_own_billing",
+          "can_view_billing_company",
+          "can_view_billing_settings",
+          "can_edit_billing_settings",
+          "can_record_billing_payment",
+          "can_view_billing_audit",
+          "validate_billing_setting_value",
+          "write_billing_audit_log",
+          "emit_subscription_event",
+          "sync_company_subscription_denormalized",
+          "format_billing_document_number",
+          "resolve_billing_setting_value",
+          "get_billing_setting",
+          "get_billing_settings_by_category",
+          "update_billing_settings",
+          "renew_subscription_from_payment",
+          "get_company_entitlements",
+          "ingest_usage_event",
+          "rollup_usage_aggregates",
+          "refresh_company_usage_snapshot",
+          "set_company_feature_override",
+          "list_company_subscriptions_paged",
+          "list_billing_audit_logs_paged"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "005",
+        "032",
+        "034",
+        "035",
+        "036",
+        "037",
+        "038",
+        "039",
+        "042",
+        "043"
+      ]
+    },
+    {
+      "version": "045",
+      "file": "045_billing_phase_a_rpcs.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "can_edit_billing",
+          "can_export_billing_audit",
+          "list_company_subscriptions_paged",
+          "list_billing_audit_logs_paged",
+          "upsert_billing_contact",
+          "assign_subscription_plan",
+          "suspend_billing_subscription",
+          "restore_billing_subscription"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "005",
+        "031",
+        "032",
+        "039"
+      ]
+    },
+    {
+      "version": "046",
+      "file": "046_billing_phase_a_completion.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "get_billing_settings_by_category",
+          "list_billing_audit_logs_paged"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "038",
+        "039"
+      ]
+    },
+    {
+      "version": "047",
+      "file": "047_billing_phase_b_foundation.sql",
+      "creates": {
+        "tables": [
+          "feature_flags",
+          "billing_event_catalog",
+          "billing_notification_events",
+          "payment_provider_health_snapshots"
+        ],
+        "types": [
+          "profile_account_status"
+        ],
+        "functions": [
+          "can_access_workspace",
+          "can_manage_own_billing",
+          "is_feature_enabled",
+          "notification_bus_publish_v1",
+          "get_workspace_billing_summary_v1",
+          "list_billing_payments_paged_v1",
+          "list_billing_invoices_paged_v1",
+          "list_billing_receipts_paged_v1",
+          "list_billing_payment_failures_paged_v1",
+          "list_upcoming_renewals_paged_v1",
+          "list_expiring_subscriptions_paged_v1",
+          "get_billing_revenue_metrics_v1",
+          "get_payment_provider_health_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "005",
+        "031",
+        "032",
+        "034",
+        "035",
+        "036",
+        "037",
+        "042"
+      ]
+    },
+    {
+      "version": "048",
+      "file": "048_billing_phase_b_analytics.sql",
+      "creates": {
+        "tables": [
+          "financial_analytics_snapshots"
+        ],
+        "types": [],
+        "functions": [
+          "financial_compute_analytics_snapshot_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "005",
+        "032",
+        "036"
+      ]
+    },
+    {
+      "version": "049",
+      "file": "049_billing_in_app_notification_subscriber.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "billing_notification_in_app_subscriber"
+        ]
+      },
+      "dependsOnVersions": [
+        "047"
+      ]
+    },
+    {
+      "version": "050",
+      "file": "050_billing_phase_b1_finalization.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "notification_bus_emit_v1",
+          "notification_bus_publish_v1",
+          "renew_subscription_from_payment",
+          "assign_subscription_plan",
+          "suspend_billing_subscription",
+          "restore_billing_subscription"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "005",
+        "032",
+        "037",
+        "047"
+      ]
+    },
+    {
+      "version": "099",
+      "file": "099_billing_demo_environment.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "_billing_demo_seed_auth_user"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004",
+        "005",
+        "037",
+        "038",
+        "042"
+      ]
+    },
+    {
+      "version": "100",
+      "file": "100_billing_demo_seed_repair.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "_billing_demo_seed_auth_user"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004",
+        "005",
+        "037",
+        "042"
+      ]
+    },
+    {
+      "version": "101",
+      "file": "101_enterprise_demo_environment.sql",
+      "creates": {
+        "tables": [
+          "demo_environment_manifest",
+          "demo_environment_registry",
+          "demo_crm_scenarios",
+          "demo_api_credentials"
+        ],
+        "types": [],
+        "functions": [
+          "_demo_register",
+          "_demo_auth_user",
+          "teardown_enterprise_demo_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "003",
+        "004",
+        "006",
+        "007",
+        "009",
+        "011",
+        "018",
+        "019",
+        "020",
+        "021",
+        "031",
+        "032",
+        "033",
+        "034",
+        "035",
+        "036",
+        "037",
+        "039",
+        "042",
+        "043",
+        "047"
+      ]
+    },
+    {
+      "version": "102",
+      "file": "102_enterprise_demo_seed.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "seed_enterprise_demo_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "003",
+        "004",
+        "005",
+        "006",
+        "037",
+        "038",
+        "042"
+      ]
+    },
+    {
+      "version": "103",
+      "file": "103_demo_scenario_switcher.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "_demo_set_triggers",
+          "_demo_strip_company_workspace_data",
+          "_demo_seed_heavy_crm",
+          "_apply_demo_scenario_v1",
+          "list_enterprise_demo_scenarios_v1",
+          "get_enterprise_demo_status_v1",
+          "reset_enterprise_demo_v1",
+          "switch_enterprise_demo_scenario_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "003",
+        "004",
+        "006",
+        "007",
+        "011",
+        "043",
+        "101"
+      ]
+    },
+    {
+      "version": "104",
+      "file": "104_billing_settings_core_runtime.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "resolve_billing_setting_integer",
+          "resolve_billing_setting_boolean",
+          "resolve_supported_payment_method_codes",
+          "resolve_active_payment_provider_code",
+          "resolve_payment_method_type_id",
+          "create_company_subscription_v1",
+          "record_subscription_renewal_failure_v1",
+          "enforce_grace_period_expirations_v1",
+          "enforce_trial_expirations_v1",
+          "get_billing_payment_options_v1",
+          "renew_subscription_from_payment",
+          "get_payment_provider_health_v1",
+          "list_expiring_subscriptions_paged_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "005",
+        "032",
+        "037",
+        "047"
+      ]
+    },
+    {
+      "version": "105",
+      "file": "105_subscription_detail_production.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "list_billing_audit_logs_paged",
+          "repair_subscription_detail_demo_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "039"
+      ]
+    },
+    {
+      "version": "106",
+      "file": "106_pgvector_storage.sql",
+      "creates": {
+        "tables": [
+          "pgvector_store_collections",
+          "pgvector_store_vectors"
+        ],
+        "types": [],
+        "functions": [
+          "pgvector_pad_embedding",
+          "pgvector_create_collection",
+          "pgvector_delete_collection",
+          "pgvector_upsert_vector",
+          "pgvector_delete_vector",
+          "pgvector_collection_statistics",
+          "pgvector_similarity_search"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "107",
+      "file": "107_notification_payload_json_compat.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "notification_payload"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "108",
+      "file": "108_channel_platform.sql",
+      "creates": {
+        "tables": [
+          "channel_sessions",
+          "channel_inbound_events",
+          "channel_delivery_events"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "011",
+        "013",
+        "027"
+      ]
+    },
+    {
+      "version": "109",
+      "file": "109_companies_schema_reconciliation.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "005"
+      ]
+    },
+    {
+      "version": "110",
+      "file": "110_audit_company_delete_fix.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "write_audit_log"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "111",
+      "file": "111_rbac_enforcement.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "112",
+      "file": "112_rbac_company_admin_permissions.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "113",
+      "file": "113_rbac_rls_completion.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "resolve_permission_code",
+          "user_has_permission",
+          "company_has_permission",
+          "crm_same_company",
+          "is_company_admin"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "004",
+        "021"
+      ]
+    },
+    {
+      "version": "114",
+      "file": "114_rbac_ai_billing_rls_bulk.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "021"
+      ]
+    },
+    {
+      "version": "115",
+      "file": "115_rbac_policy_fixes.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "116",
+      "file": "116_rbac_permissions_select_fix.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "117",
+      "file": "117_user_roles_tenant_assignment.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002",
+        "004"
+      ]
+    },
+    {
+      "version": "118",
+      "file": "118_roles_tenant_unique_repair.sql",
+      "creates": {
+        "tables": [
+          "in"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "119",
+      "file": "119_company_role_provisioning.sql",
+      "creates": {
+        "tables": [
+          "platform_role_templates",
+          "platform_role_template_permissions"
+        ],
+        "types": [],
+        "functions": [
+          "notify_role_events",
+          "provision_company_default_roles",
+          "trg_companies_provision_default_roles",
+          "repair_companies_missing_roles",
+          "create_company_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004"
+      ]
+    },
+    {
+      "version": "121",
+      "file": "121_get_assignable_roles_rpc.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "get_assignable_roles"
+        ]
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "123",
+      "file": "123_enterprise_tenant_provisioning.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "provision_tenant_default_roles",
+          "execute_tenant_provisioning",
+          "retry_tenant_provisioning",
+          "provision_company_default_roles",
+          "trg_companies_execute_tenant_provisioning",
+          "create_company_v1",
+          "repair_companies_missing_roles",
+          "get_assignable_roles"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "124",
+      "file": "124_provisioning_security_hardening.sql",
+      "creates": {
+        "tables": [
+          "tenant_admin_role_audit"
+        ],
+        "types": [],
+        "functions": [
+          "assert_trusted_provisioning_caller",
+          "is_company_admin_role",
+          "count_active_company_admin_assignees",
+          "assert_tenant_retains_active_company_admin",
+          "trg_assert_tenant_company_admin",
+          "trg_profiles_assert_company_admin",
+          "provision_tenant_default_roles",
+          "execute_tenant_provisioning",
+          "provision_company_default_roles",
+          "retry_tenant_provisioning",
+          "repair_companies_missing_roles",
+          "audit_tenant_duplicate_admin_roles"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "125",
+      "file": "125_atomic_user_role_replacement.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "replace_user_role",
+          "replace_user_roles"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "004"
+      ]
+    },
+    {
+      "version": "126",
+      "file": "126_rbac_tenant_isolation_rls.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "127",
+      "file": "127_tenant_ai_bootstrap.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "provision_tenant_ai_bootstrap",
+          "repair_tenant_ai_bootstrap",
+          "execute_tenant_provisioning"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "009",
+        "017",
+        "018",
+        "023",
+        "024",
+        "025",
+        "026",
+        "027"
+      ]
+    },
+    {
+      "version": "128",
+      "file": "128_knowledge_publishing_lifecycle.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "knowledge_document_audit_events"
+        ]
+      },
+      "dependsOnVersions": [
+        "004",
+        "021",
+        "119"
+      ]
+    },
+    {
+      "version": "129",
+      "file": "129_knowledge_embedding_queue.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "knowledge_document_audit_events"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "130",
+      "file": "130_embedding_worker_locking.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "claim_embedding_jobs",
+          "recover_stale_embedding_jobs",
+          "embedding_job_audit_events",
+          "knowledge_document_audit_events"
+        ]
+      },
+      "dependsOnVersions": [
+        "023"
+      ]
+    },
+    {
+      "version": "131",
+      "file": "131_automation_platform_foundation.sql",
+      "creates": {
+        "tables": [
+          "automation_flows",
+          "automation_nodes",
+          "automation_edges",
+          "automation_runs",
+          "conversation_sessions",
+          "automation_session_messages"
+        ],
+        "types": [],
+        "functions": [
+          "automation_flow_audit_events",
+          "automation_run_audit_events",
+          "write_automation_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "132",
+      "file": "132_automation_execution_runtime.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "automation_run_audit_events"
+        ]
+      },
+      "dependsOnVersions": [
+        "131"
+      ]
+    },
+    {
+      "version": "133",
+      "file": "133_automation_workflow_versions.sql",
+      "creates": {
+        "tables": [
+          "automation_flow_versions"
+        ],
+        "types": [],
+        "functions": [
+          "automation_flow_audit_events"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "119",
+        "131"
+      ]
+    },
+    {
+      "version": "134",
+      "file": "134_enterprise_prompt_platform.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "018",
+        "119"
+      ]
+    },
+    {
+      "version": "135",
+      "file": "135_automation_workflow_versions_rbac_repair.sql",
+      "creates": {
+        "tables": [
+          "automation_flow_versions"
+        ],
+        "types": [],
+        "functions": [
+          "automation_flow_audit_events"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "119",
+        "131",
+        "133"
+      ]
+    },
+    {
+      "version": "136",
+      "file": "136_enterprise_prompt_platform_rbac_repair.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "018",
+        "119"
+      ]
+    },
+    {
+      "version": "137",
+      "file": "137_bookings_action_fields.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "001"
+      ]
+    },
+    {
+      "version": "138",
+      "file": "138_company_channel_automation_bindings.sql",
+      "creates": {
+        "tables": [
+          "company_channel_automation_bindings"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "013",
+        "131"
+      ]
+    },
+    {
+      "version": "139",
+      "file": "139_automation_version_graph.sql",
+      "creates": {
+        "tables": [
+          "automation_flow_version_nodes",
+          "automation_flow_version_edges"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "131",
+        "133"
+      ]
+    },
+    {
+      "version": "140",
+      "file": "140_automation_version_graph_hardening.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "prevent_automation_version_graph_mutation",
+          "publish_automation_workflow_version"
+        ]
+      },
+      "dependsOnVersions": [
+        "131",
+        "133",
+        "139"
+      ]
+    },
+    {
+      "version": "141",
+      "file": "141_customer_age_gender.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "001"
+      ]
+    },
+    {
+      "version": "142",
+      "file": "142_scheduling_foundation.sql",
+      "creates": {
+        "tables": [
+          "branches",
+          "scheduling_resources",
+          "scheduling_resource_weekly_hours",
+          "scheduling_resource_breaks",
+          "scheduling_availability_exceptions",
+          "scheduling_booking_rules",
+          "scheduling_holidays"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "004"
+      ]
+    },
+    {
+      "version": "143",
+      "file": "143_resource_capability_mapping.sql",
+      "creates": {
+        "tables": [
+          "scheduling_services",
+          "resource_services"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "142"
+      ]
+    },
+    {
+      "version": "144",
+      "file": "144_slot_interval_booking_rules.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "142"
+      ]
+    },
+    {
+      "version": "145",
+      "file": "145_scheduling_bookings.sql",
+      "creates": {
+        "tables": [
+          "scheduling_bookings"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "142",
+        "143"
+      ]
+    },
+    {
+      "version": "146",
+      "file": "146_booking_rules_cancellation_reschedule.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "142"
+      ]
+    },
+    {
+      "version": "147",
+      "file": "147_scheduling_production_hardening.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "143"
+      ]
+    },
+    {
+      "version": "148",
+      "file": "148_notification_platform_foundation.sql",
+      "creates": {
+        "tables": [
+          "notification_queue",
+          "notification_preferences"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "007"
+      ]
+    },
+    {
+      "version": "149",
+      "file": "149_email_platform.sql",
+      "creates": {
+        "tables": [
+          "company_email_settings",
+          "email_delivery_logs"
+        ],
+        "types": [],
+        "functions": [
+          "get_company_email_settings",
+          "upsert_company_email_settings"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "007",
+        "148"
+      ]
+    },
+    {
+      "version": "150",
+      "file": "150_whatsapp_platform.sql",
+      "creates": {
+        "tables": [
+          "company_whatsapp_settings",
+          "whatsapp_delivery_logs"
+        ],
+        "types": [],
+        "functions": [
+          "get_company_whatsapp_settings",
+          "upsert_company_whatsapp_settings"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "007",
+        "148"
+      ]
+    },
+    {
+      "version": "151",
+      "file": "151_enterprise_automation_engine.sql",
+      "creates": {
+        "tables": [
+          "automation_workflows",
+          "automation_executions",
+          "automation_execution_history",
+          "automation_schedules"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "152",
+      "file": "152_branch_management_platform.sql",
+      "creates": {
+        "tables": [
+          "user_branch_assignments"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "142"
+      ]
+    },
+    {
+      "version": "153",
+      "file": "153_scheduling_checked_in_status.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "145"
+      ]
+    },
+    {
+      "version": "154",
+      "file": "154_scheduling_no_show_rules.sql",
+      "creates": {
+        "tables": [
+          "scheduling_no_show_rules"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "142"
+      ]
+    },
+    {
+      "version": "155",
+      "file": "155_scheduling_bookings_audit.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "156",
+      "file": "156_communication_platform.sql",
+      "creates": {
+        "tables": [
+          "customer_communication_preferences",
+          "communication_reminder_schedules",
+          "communication_audit_log"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "001",
+        "003"
+      ]
+    },
+    {
+      "version": "157",
+      "file": "157_customer_experience_platform.sql",
+      "creates": {
+        "tables": [
+          "customer_portal_settings",
+          "customer_portal_profiles",
+          "customer_portal_identities",
+          "customer_portal_sessions",
+          "customer_portal_auth_challenges",
+          "customer_portal_check_in_tokens",
+          "portal_analytics_events"
+        ],
+        "types": [],
+        "functions": [
+          "portal_resolve_customer_by_phone",
+          "portal_upsert_customer",
+          "portal_start_auth_challenge",
+          "portal_verify_auth_challenge",
+          "portal_create_check_in_token",
+          "portal_consume_check_in_token",
+          "portal_get_document_signed_url"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "003",
+        "145"
+      ]
+    },
+    {
+      "version": "158",
+      "file": "158_enterprise_financial_platform.sql",
+      "creates": {
+        "tables": [
+          "customer_invoice_line_items",
+          "customer_invoice_versions",
+          "customer_payments",
+          "financial_ledger_entries",
+          "financial_refunds",
+          "pricing_rules",
+          "discount_codes",
+          "discount_redemptions",
+          "tax_configurations",
+          "company_financial_settings",
+          "financial_audit_log"
+        ],
+        "types": [],
+        "functions": [
+          "financial_next_invoice_number",
+          "financial_append_ledger"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "037",
+        "142",
+        "143",
+        "145"
+      ]
+    },
+    {
+      "version": "159",
+      "file": "159_executive_intelligence_platform.sql",
+      "creates": {
+        "tables": [
+          "executive_alerts",
+          "executive_alert_audit",
+          "executive_dashboard_access_log",
+          "executive_forecast_snapshots"
+        ],
+        "types": [],
+        "functions": [
+          "executive_record_access"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "142"
+      ]
+    },
+    {
+      "version": "160",
+      "file": "160_organization_hierarchy_platform.sql",
+      "creates": {
+        "tables": [
+          "organization_regions",
+          "organization_branch_groups",
+          "organization_departments",
+          "organization_resource_assignments",
+          "organization_policies",
+          "user_region_assignments",
+          "organization_transfers",
+          "organization_transfer_approvals",
+          "organization_audit_log"
+        ],
+        "types": [],
+        "functions": [
+          "organization_resolve_policy",
+          "organization_search"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "004",
+        "142"
+      ]
+    },
+    {
+      "version": "161",
+      "file": "161_integration_hub_platform.sql",
+      "creates": {
+        "tables": [
+          "integration_api_keys",
+          "integration_oauth_clients",
+          "integration_oauth_tokens",
+          "integration_webhook_subscriptions",
+          "integration_webhook_deliveries",
+          "integration_event_log",
+          "integration_connectors",
+          "integration_api_audit_log"
+        ],
+        "types": [],
+        "functions": [
+          "integration_validate_api_key",
+          "integration_record_api_key_usage"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "162",
+      "file": "162_plugin_marketplace_platform.sql",
+      "creates": {
+        "tables": [
+          "plugin_publishers",
+          "plugin_registry",
+          "plugin_versions",
+          "plugin_installations",
+          "plugin_health",
+          "plugin_audit_log"
+        ],
+        "types": [],
+        "functions": [
+          "plugin_list_enabled"
+        ]
+      },
+      "dependsOnVersions": [
+        "003"
+      ]
+    },
+    {
+      "version": "163",
+      "file": "163_production_hardening.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "portal_start_auth_challenge",
+          "portal_get_document_signed_url",
+          "platform_health_check_v1",
+          "integration_retry_dead_letter"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "161"
+      ]
+    },
+    {
+      "version": "164",
+      "file": "164_certification_rls_fix.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "get_user_company_id",
+          "platform_health_check_v1"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "165",
+      "file": "165_ai_provider_permissions_repair.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "166",
+      "file": "166_conversation_prompt_architecture_repair.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "018"
+      ]
+    },
+    {
+      "version": "167",
+      "file": "167_crm_tenant_isolation.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "trg_crm_set_company_id",
+          "crm_same_company"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "003"
+      ]
+    },
+    {
+      "version": "168",
+      "file": "168_tenant_scoped_permissions.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "user_has_permission",
+          "user_has_permission_in_company"
+        ]
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "169",
+      "file": "169_security_definer_and_billing_rls_hardening.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "portal_resolve_customer_by_phone",
+          "portal_upsert_customer",
+          "financial_next_invoice_number",
+          "financial_append_ledger"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "002",
+        "031"
+      ]
+    },
+    {
+      "version": "170",
+      "file": "170_crm_legacy_policy_purge.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "171",
+      "file": "171_platform_ai_provider.sql",
+      "creates": {
+        "tables": [
+          "platform_ai_providers",
+          "platform_ai_models",
+          "platform_ai_provider_keys",
+          "platform_ai_limits",
+          "platform_ai_usage",
+          "platform_ai_feature_flags"
+        ],
+        "types": [],
+        "functions": [
+          "platform_ai_crypto_secret",
+          "platform_ai_encrypt_key",
+          "platform_ai_decrypt_key",
+          "platform_ai_feature_enabled",
+          "platform_resolve_ai_runtime_config",
+          "sanitize_provider_connection_configuration"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "017"
+      ]
+    },
+    {
+      "version": "172",
+      "file": "172_platform_ai_crypto_settings.sql",
+      "creates": {
+        "tables": [
+          "platform_ai_settings"
+        ],
+        "types": [],
+        "functions": [
+          "platform_ai_crypto_secret",
+          "platform_ai_store_crypto_secret"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "173",
+      "file": "173_platform_ai_operations_center.sql",
+      "creates": {
+        "tables": [
+          "platform_ai_background_tasks",
+          "platform_ai_ops_alerts"
+        ],
+        "types": [],
+        "functions": [
+          "platform_ai_ops_assert_super_admin",
+          "platform_ai_ops_kpi_summary",
+          "platform_ai_ops_provider_health",
+          "platform_ai_ops_request_feed",
+          "platform_ai_ops_tool_stats",
+          "platform_ai_ops_error_groups",
+          "platform_ai_ops_cost_trends",
+          "platform_ai_ops_cost_by_company",
+          "platform_ai_ops_feature_matrix",
+          "platform_ai_ops_admin_audit",
+          "platform_ai_ops_evaluate_alerts"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "006",
+        "020",
+        "027",
+        "171"
+      ]
+    },
+    {
+      "version": "174",
+      "file": "174_agent_runtime_foundation.sql",
+      "creates": {
+        "tables": [
+          "agent_workflows",
+          "agent_workflow_checkpoints",
+          "agent_workflow_events"
+        ],
+        "types": [],
+        "functions": [
+          "platform_ai_ops_agent_workflows"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "175",
+      "file": "175_knowledge_platform_rag_production.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "knowledge_chunks_search_vector_update",
+          "knowledge_keyword_search",
+          "cancel_embedding_job",
+          "platform_ai_ops_knowledge_summary",
+          "platform_ai_ops_embedding_jobs",
+          "platform_ai_ops_knowledge_documents"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "021",
+        "022",
+        "023"
+      ]
+    },
+    {
+      "version": "176",
+      "file": "176_crm_agent_enterprise.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "platform_ai_ops_agent_workflows",
+          "platform_ai_ops_crm_agent_summary"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "174"
+      ]
+    },
+    {
+      "version": "177",
+      "file": "177_create_customer_tool.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "178",
+      "file": "178_performance_auth_and_indexes.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "load_user_auth_context"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004"
+      ]
+    },
+    {
+      "version": "179",
+      "file": "179_performance_scalability_indexes.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "180",
+      "file": "180_production_security_hardening.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002"
+      ]
+    },
+    {
+      "version": "181",
+      "file": "181_auth_context_profile_preferences.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "load_user_auth_context"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004"
+      ]
+    },
+    {
+      "version": "182",
+      "file": "182_whatsapp_settings_persistence.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "whatsapp_crypto_secret",
+          "whatsapp_secret_hint",
+          "whatsapp_mask_secret",
+          "whatsapp_is_unchanged_secret",
+          "whatsapp_encrypt_secret",
+          "whatsapp_decrypt_secret",
+          "whatsapp_settings_can_manage",
+          "whatsapp_settings_has_access_token",
+          "whatsapp_settings_has_webhook_token",
+          "whatsapp_settings_row_to_public",
+          "get_company_whatsapp_settings",
+          "get_company_whatsapp_settings_decrypted",
+          "upsert_company_whatsapp_settings"
+        ]
+      },
+      "dependsOnVersions": [
+        "150"
+      ]
+    },
+    {
+      "version": "183",
+      "file": "183_whatsapp_credentials_unification.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "whatsapp_settings_has_app_secret",
+          "whatsapp_verify_token_lookup_hash",
+          "whatsapp_settings_row_to_public",
+          "sync_whatsapp_channel_references",
+          "get_company_whatsapp_settings",
+          "get_company_whatsapp_settings_decrypted",
+          "upsert_company_whatsapp_settings"
+        ]
+      },
+      "dependsOnVersions": [
+        "013",
+        "150"
+      ]
+    },
+    {
+      "version": "185",
+      "file": "185_search_availability_tool.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "186",
+      "file": "186_create_booking_tool.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "187",
+      "file": "187_platform_ai_runtime_service_role.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "platform_resolve_ai_runtime_config"
+        ]
+      },
+      "dependsOnVersions": [
+        "171"
+      ]
+    },
+    {
+      "version": "188",
+      "file": "188_company_instagram_settings.sql",
+      "creates": {
+        "tables": [
+          "company_instagram_settings"
+        ],
+        "types": [],
+        "functions": [
+          "instagram_settings_has_access_token",
+          "instagram_settings_has_webhook_token",
+          "instagram_settings_has_app_secret",
+          "instagram_settings_row_to_public",
+          "sync_instagram_channel_references",
+          "get_company_instagram_settings",
+          "get_company_instagram_settings_decrypted",
+          "upsert_company_instagram_settings"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "013"
+      ]
+    },
+    {
+      "version": "189",
+      "file": "189_company_messenger_settings.sql",
+      "creates": {
+        "tables": [
+          "company_messenger_settings"
+        ],
+        "types": [],
+        "functions": [
+          "messenger_settings_has_access_token",
+          "messenger_settings_has_webhook_token",
+          "messenger_settings_has_app_secret",
+          "messenger_settings_row_to_public",
+          "sync_messenger_channel_references",
+          "get_company_messenger_settings",
+          "get_company_messenger_settings_decrypted",
+          "upsert_company_messenger_settings"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "013"
+      ]
+    },
+    {
+      "version": "190",
+      "file": "190_company_email_settings.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "email_settings_has_smtp_password",
+          "email_settings_has_imap_password",
+          "email_settings_row_to_public",
+          "sync_email_channel_references",
+          "get_company_email_settings",
+          "get_company_email_settings_decrypted",
+          "upsert_company_email_settings",
+          "verify_company_email_smtp",
+          "verify_company_email_imap",
+          "update_company_email_imap_cursor"
+        ]
+      },
+      "dependsOnVersions": [
+        "013",
+        "149"
+      ]
+    },
+    {
+      "version": "191",
+      "file": "191_availability_window_and_find_next_available.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "192",
+      "file": "192_recommend_appointment_tool.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "193",
+      "file": "193_platform_ai_analytics_feature_key.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "171"
+      ]
+    },
+    {
+      "version": "194",
+      "file": "194_ai_execution_analytics_rls_sprint5.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "195",
+      "file": "195_platform_ai_agents_feature_key.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "171"
+      ]
+    },
+    {
+      "version": "196",
+      "file": "196_agents_rbac_sprint6_2.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "197",
+      "file": "197_agents_manage_rls_sprint6_2_1.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "198",
+      "file": "198_agents_feature_rls_sprint6_2_4.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "company_has_agents_access"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "199",
+      "file": "199_crm_agent_permission_alignment_sprint6_3_4.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "200",
+      "file": "200_agent_workflow_execution_lease_sprint6_3_5.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "try_acquire_agent_workflow_execution_lease",
+          "release_agent_workflow_execution_lease",
+          "renew_agent_workflow_execution_lease"
+        ]
+      },
+      "dependsOnVersions": [
+        "174"
+      ]
+    },
+    {
+      "version": "201",
+      "file": "201_dashboard_view_sprint6_6_2.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "20260728222949",
+      "file": "20260728222949_whatsapp_verify_token_lookup_hash_search_path.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "whatsapp_verify_token_lookup_hash"
+        ]
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "203",
+      "file": "203_ai_employees_sprint6_8_1.sql",
+      "creates": {
+        "tables": [
+          "ai_employees"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "204",
+      "file": "204_ai_employee_runtime_config_sprint6_8_2.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "203"
+      ]
+    },
+    {
+      "version": "205",
+      "file": "205_ai_employee_lifecycle_sprint6_8_4.sql",
+      "creates": {
+        "tables": [
+          "ai_employee_versions",
+          "ai_employee_deployments",
+          "ai_employee_change_events"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "119",
+        "203"
+      ]
+    },
+    {
+      "version": "206",
+      "file": "206_ai_skills_sprint6_8_7.sql",
+      "creates": {
+        "tables": [
+          "ai_skills",
+          "ai_skill_dependencies",
+          "ai_skill_versions",
+          "ai_skill_deployments",
+          "ai_skill_change_events",
+          "ai_skill_favorites"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "119",
+        "203"
+      ]
+    },
+    {
+      "version": "207",
+      "file": "207_ai_collaboration_sprint6_8_8.sql",
+      "creates": {
+        "tables": [
+          "ai_employee_groups",
+          "ai_employee_group_members",
+          "ai_employee_handovers",
+          "ai_employee_collaboration_events",
+          "ai_employee_collaboration_policies"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "119",
+        "203"
+      ]
+    },
+    {
+      "version": "208",
+      "file": "208_ai_governance_sprint6_8_9.sql",
+      "creates": {
+        "tables": [
+          "ai_governance_policies",
+          "ai_governance_approvals",
+          "ai_governance_violations",
+          "ai_governance_audit_events"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "003",
+        "119",
+        "203"
+      ]
+    },
+    {
+      "version": "209",
+      "file": "209_automation_simulate_permission.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004",
+        "119"
+      ]
+    },
+    {
+      "version": "210",
+      "file": "210_conversation_lifecycle_permissions.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "211",
+      "file": "211_internal_notes_manage_permission.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "212",
+      "file": "212_ai_employee_publish_permission_backfill.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "213",
+      "file": "213_omnichannel_composer_attachments_storage.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002"
+      ]
+    },
+    {
+      "version": "214",
+      "file": "214_ai_employee_ticket_management_sprint6_9_1.sql",
+      "creates": {
+        "tables": [
+          "support_tickets",
+          "support_ticket_comments"
+        ],
+        "types": [],
+        "functions": [
+          "generate_support_ticket_number",
+          "write_support_ticket_audit_log"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "004",
+        "011",
+        "119"
+      ]
+    },
+    {
+      "version": "215",
+      "file": "215_ticket_platform_foundation_sprint6_9_2.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "214"
+      ]
+    },
+    {
+      "version": "216",
+      "file": "216_ticket_platform_metrics_aggregation_sprint6_9_2b.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "ticket_platform_company_metrics_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "002",
+        "214"
+      ]
+    },
+    {
+      "version": "217",
+      "file": "217_human_handoff_platform_sprint6_10.sql",
+      "creates": {
+        "tables": [
+          "handoff_queues",
+          "handoff_queue_members",
+          "handoff_conversation_ownership",
+          "handoff_ownership_history",
+          "handoff_requests",
+          "handoff_context_snapshots",
+          "agent_presence",
+          "handoff_escalation_rules"
+        ],
+        "types": [],
+        "functions": [
+          "handoff_platform_company_metrics_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "218",
+      "file": "218_lead_platform_foundation_sprint6_11b.sql",
+      "creates": {
+        "tables": [
+          "lead_pipelines",
+          "lead_stages",
+          "lead_sources",
+          "leads",
+          "lead_assignments",
+          "lead_scores",
+          "lead_tags",
+          "lead_notes",
+          "lead_activities",
+          "lead_history",
+          "lead_conversion_history",
+          "lead_custom_fields",
+          "lead_import_batches"
+        ],
+        "types": [],
+        "functions": [
+          "lead_platform_company_metrics_v1",
+          "lead_platform_ensure_default_pipeline"
+        ]
+      },
+      "dependsOnVersions": [
+        "001",
+        "003",
+        "011"
+      ]
+    },
+    {
+      "version": "219",
+      "file": "219_business_os_identity_integration_sprint6_11d.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "011",
+        "218"
+      ]
+    },
+    {
+      "version": "220",
+      "file": "220_universal_entity_foundation_ga1_1.sql",
+      "creates": {
+        "tables": [
+          "entity_type_registry",
+          "entity_contacts",
+          "entity_files",
+          "entity_tags",
+          "entity_tag_assignments",
+          "entity_custom_fields",
+          "entity_custom_field_values",
+          "entity_activities"
+        ],
+        "types": [],
+        "functions": [
+          "trg_entity_set_updated_at"
+        ]
+      },
+      "dependsOnVersions": [
+        "003",
+        "004"
+      ]
+    },
+    {
+      "version": "221",
+      "file": "221_lead_management_ga1_2.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "004"
+      ]
+    },
+    {
+      "version": "222",
+      "file": "222_tasks_and_operations_workspace_ga1_3.sql",
+      "creates": {
+        "tables": [
+          "tasks",
+          "operations_workspace_config"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004",
+        "220"
+      ]
+    },
+    {
+      "version": "223",
+      "file": "223_ga1_4_enterprise_configuration_platform.sql",
+      "creates": {
+        "tables": [
+          "configuration_domain_registry",
+          "platform_configurations",
+          "platform_configuration_versions"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004",
+        "222"
+      ]
+    },
+    {
+      "version": "224",
+      "file": "224_feature_flags_and_licensing_ga1_4.sql",
+      "creates": {
+        "tables": [
+          "platform_feature_flag_registry",
+          "platform_feature_flags",
+          "platform_feature_flag_versions",
+          "platform_plan_entitlements",
+          "platform_company_licenses"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002",
+        "003",
+        "004",
+        "005",
+        "171"
+      ]
+    },
+    {
+      "version": "225",
+      "file": "225_ga1_5_enterprise_reactive_platform.sql",
+      "creates": {
+        "tables": [
+          "platform_event_audit",
+          "platform_event_timeline",
+          "platform_event_dlq",
+          "platform_event_subscriber_telemetry",
+          "platform_event_correlations",
+          "platform_event_idempotency",
+          "platform_reactive_signals"
+        ],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": [
+        "002",
+        "003"
+      ]
+    },
+    {
+      "version": "226",
+      "file": "226_omnichannel_realtime_publication.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": []
+      },
+      "dependsOnVersions": []
+    },
+    {
+      "version": "227",
+      "file": "227_appointment_platform_promotion_sprint6_12.sql",
+      "creates": {
+        "tables": [],
+        "types": [],
+        "functions": [
+          "appointment_platform_company_metrics_v1"
+        ]
+      },
+      "dependsOnVersions": [
+        "011",
+        "145",
+        "218"
+      ]
+    }
+  ]
+}

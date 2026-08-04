@@ -7,6 +7,7 @@ import {
   personalizationEngine,
   workspacePlatformOrchestrator,
 } from "@workspace/universal-workspace-platform";
+import { useUniversalOperationsConfig } from "@/hooks/universal-operations/use-universal-operations-queue";
 
 export type WorkspacePlatformRole = "receptionist" | "cashier" | "nurse" | "manager";
 
@@ -63,15 +64,17 @@ export function WorkspacePlatformProvider({
   const [designerState, setDesignerState] = useState<WorkspaceDesignerState | null>(null);
   const [selectedSearchResult, setSelectedSearchResult] = useState<GlobalSearchResult | null>(null);
 
+  const configQuery = useUniversalOperationsConfig(templateKey);
+
   const workspaceContext: WorkspaceContext = useMemo(
     () => ({ entityType: "customer", entityId: "demo", entityLabel: "Workspace", templateKey }),
     [templateKey],
   );
 
-  const snapshot = useMemo(
-    () => workspacePlatformOrchestrator.buildSnapshot(workspaceContext, userId, role),
-    [workspaceContext, userId, role, notifTick],
-  );
+  const snapshot = useMemo(() => {
+    if (!configQuery.data) return null;
+    return workspacePlatformOrchestrator.buildSnapshot(workspaceContext, userId, role, configQuery.data);
+  }, [workspaceContext, userId, role, notifTick, configQuery.data]);
 
   const personalization = useMemo(() => personalizationEngine.get(userId), [userId]);
 

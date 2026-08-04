@@ -1,5 +1,4 @@
-import type { OperationsWorkspaceReadPort, OperationsWorkspaceConfigModel, ConfigurationReadPort } from "@workspace/application-layer";
-import { getMockWorkspaceConfig } from "@workspace/universal-operations-engine";
+import type { ConfigurationReadPort, OperationsWorkspaceConfigModel } from "@workspace/application-layer";
 import type { OperationsWorkspaceConfig } from "@workspace/universal-operations-engine";
 import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
 
@@ -20,36 +19,34 @@ function toConfigModel(
   });
 }
 
-/** Reads operations workspace config through the unified Configuration Platform. */
+/** Reads published operations workspace configuration — no silent mock fallback. */
 export function createLoginAppOperationsWorkspaceReadPort(
   configurationRead: ConfigurationReadPort,
   ctx: LoginAppPortContext,
-): OperationsWorkspaceReadPort {
+) {
   return {
-    async getConfig(tenantId, templateKey): Promise<OperationsWorkspaceConfigModel | null> {
+    async getConfig(tenantId: string, templateKey: string): Promise<OperationsWorkspaceConfigModel | null> {
       if (tenantId !== ctx.companyId || !(ctx.isSuperAdmin || ctx.hasPermission("operations.read"))) {
         return null;
       }
 
       const record = await configurationRead.getPublished(tenantId, OPERATIONS_WORKSPACE_DOMAIN, templateKey);
-      if (record?.publishedConfig && Object.keys(record.publishedConfig).length > 0) {
-        const stored = record.publishedConfig as OperationsWorkspaceConfig;
-        return toConfigModel(tenantId, templateKey, {
+      if (!record?.publishedConfig || Object.keys(record.publishedConfig).length === 0) {
+        return null;
+      }
+
+      const stored = record.publishedConfig as OperationsWorkspaceConfig;
+      return toConfigModel(
+        tenantId,
+        templateKey,
+        {
           ...stored,
           companyId: tenantId,
           templateKey,
           updatedAt: record.updatedAt,
-        }, record.id);
-      }
-
-      const seed = getMockWorkspaceConfig(templateKey);
-      return toConfigModel(tenantId, templateKey, {
-        ...seed,
-        id: `cfg_${templateKey}`,
-        companyId: tenantId,
-        templateKey,
-        updatedAt: new Date().toISOString(),
-      });
+        },
+        record.id,
+      );
     },
   };
 }

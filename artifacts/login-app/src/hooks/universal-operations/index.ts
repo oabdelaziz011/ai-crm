@@ -4,3 +4,4 @@ export { useOperationsCommands } from "./use-operations-commands";
 export { useConfigurationCommands } from "./use-configuration-commands";
 export { useCustomer360Workspace, useCustomer360Role } from "./use-customer360-workspace";
 export { useCustomer360Intelligence } from "./use-customer360-intelligence";
+export { useOperationsConfigurationEditor } from "./use-operations-configuration-editor";

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { buildDefaultOperationsWorkspaceConfig } from "@workspace/universal-operations-engine";
 import { workspaceEngine } from "../engine/workspace-engine.js";
 import { commandEngine } from "../engine/command-engine.js";
 import { searchEngine } from "../engine/search-engine.js";
@@ -10,12 +11,22 @@ import { personalizationEngine } from "../engine/personalization-engine.js";
 import { workspacePlatformOrchestrator } from "../engine/platform-orchestrator.js";
 import { WORKSPACE_TEMPLATES } from "../engine/template-registry.js";
 import { DESIGNER_PALETTE } from "../mock/mock-designer.js";
+import { OperationsRuntimeConfigurationError } from "@workspace/universal-operations-engine";
 
 describe("Universal Workspace Platform", () => {
-  it("resolves customer workspace from metadata", () => {
-    const ws = workspaceEngine.resolve("customer", "clinic");
+  const config = buildDefaultOperationsWorkspaceConfig("clinic", "test-company");
+
+  it("resolves customer workspace from published configuration", () => {
+    const ws = workspaceEngine.resolve("customer", "clinic", config.customer360.sections);
     assert.equal(ws.entityType, "customer");
     assert.ok(ws.blocks.length > 0);
+  });
+
+  it("throws when customer360 sections are missing", () => {
+    assert.throws(
+      () => workspaceEngine.resolve("customer", "clinic", []),
+      OperationsRuntimeConfigurationError,
+    );
   });
 
   it("resolves generic entity workspace", () => {
@@ -62,11 +73,12 @@ describe("Universal Workspace Platform", () => {
     assert.equal(personalizationEngine.get("user_1").density, "compact");
   });
 
-  it("orchestrator builds full platform snapshot", () => {
+  it("orchestrator builds full platform snapshot from configuration", () => {
     const snap = workspacePlatformOrchestrator.buildSnapshot(
       { entityType: "customer", entityId: "c1", entityLabel: "Sara", templateKey: "clinic" },
       "user_1",
       "manager",
+      config,
     );
     assert.ok(snap.widgets.length > 0);
     assert.ok(snap.commands.length > 0);

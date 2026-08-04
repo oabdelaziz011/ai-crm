@@ -7303,21 +7303,30 @@
     },
     "calendar": {
       "title": "عرض التقويم",
-      "description": "سيتم عرض العناصر التشغيلية من البيانات الوصفية في التقويم. قريباً في sprint لاحق."
+      "description": "إعدادات التقويم من إعدادات مساحة العمل المنشورة.",
+      "defaultView": "العرض الافتراضي: {{view}}",
+      "slotMinutes": "مدة الفترة: {{minutes}} د",
+      "weekendsOn": "عطلة نهاية الأسبوع ظاهرة",
+      "weekendsOff": "عطلة نهاية الأسبوع مخفية"
     },
     "kanban": {
       "title": "عرض كانبان",
-      "description": "لوحات كانبان المبنية على الحالة تُعد في محرك الحالات. قريباً في sprint لاحق."
+      "description": "كانبان مجمّع حسب {{groupBy}} من الإعدادات المنشورة.",
+      "wipLimit": "حد WIP: {{limit}}"
     },
     "timeline": {
       "title": "عرض الخط الزمني",
-      "description": "خط زمني تشغيلي زمني لجميع عناصر العمل. قريباً في sprint لاحق."
+      "description": "إعدادات الخط الزمني من إعدادات مساحة العمل المنشورة.",
+      "groupBy": "التجميع حسب: {{groupBy}}",
+      "aiEventsOn": "أحداث الذكاء ظاهرة",
+      "aiEventsOff": "أحداث الذكاء مخفية"
     },
     "configuration": {
       "title": "إعدادات مساحة العمل",
       "subtitle": "اضبط الأعمدة والحالات والخدمات والصلاحيات دون تغيير الكود.",
       "save": "حفظ الإعدادات",
       "saveDraft": "حفظ مسودة",
+      "publish": "نشر",
       "saveSuccess": "تم حفظ مسودة الإعدادات.",
       "saveError": "تعذّر حفظ الإعدادات.",
       "publishSuccess": "تم نشر الإعدادات.",
@@ -7348,14 +7357,140 @@
         "customerLabel": "تسمية العميل",
         "defaultCustomerLabel": "عميل"
       },
+      "statuses": {
+        "title": "سير الحالات",
+        "flowHint": "تُتحقق الانتقالات عبر محرك الحالات. لا يمكن التقدم من الحالات النهائية.",
+        "transitions": "انتقالات الحالة",
+        "icon": "أيقونة",
+        "terminal": "نهائي"
+      },
+      "statusDraft": "مسودة",
+      "statusPublished": "منشور",
+      "version": "الإصدار {{version}}",
+      "publishRequired": "النشر مطلوب — توجد تغييرات مسودة غير منشورة",
+      "validate": "التحقق من الإعدادات",
+      "validationPassed": "اجتازت الإعدادات التحقق",
+      "validationFailed": "فشل التحقق من الإعدادات",
+      "loading": "جاري تحميل الإعدادات…",
+      "add": "إضافة",
+      "active": "نشط",
+      "terminology": {
+        "title": "مصطلحات العمل",
+        "customer": "عميل",
+        "resource": "مورد",
+        "service": "خدمة",
+        "queue": "طابور",
+        "payment": "دفع",
+        "appointment": "موعد",
+        "employee": "موظف",
+        "branch": "فرع"
+      },
+      "branding": {
+        "accentColor": "لون التمييز",
+        "icon": "أيقونة مساحة العمل",
+        "moduleIcon": "أيقونة الوحدة"
+      },
       "columns": {
         "title": "تعريفات الأعمدة",
         "visible": "ظاهر",
-        "hidden": "مخفي"
+        "hidden": "مخفي",
+        "displayName": "الاسم المعروض",
+        "internalName": "الاسم الداخلي",
+        "width": "العرض",
+        "unpinned": "غير مثبت",
+        "pinLeft": "تثبيت يسار",
+        "pinRight": "تثبيت يمين",
+        "required": "مطلوب",
+        "searchable": "قابل للبحث",
+        "exportable": "قابل للتصدير"
       },
-      "statuses": {
-        "title": "سير الحالات",
-        "flowHint": "تُتحقق الانتقالات عبر محرك الحالات. لا يمكن التقدم من الحالات النهائية."
+      "services": {
+        "priceCents": "السعر (سنت)",
+        "duration": "المدة (دقيقة)"
+      },
+      "automation": {
+        "hint": "اربط محفزات الأتمتة بمنشئ سير العمل.",
+        "triggers": "المحفزات المفعّلة",
+        "openWorkflowBuilder": "فتح منشئ سير العمل"
+      },
+      "permissions": {
+        "columns": "صلاحيات الأعمدة",
+        "statuses": "صلاحيات الحالات",
+        "actions": "صلاحيات الإجراءات",
+        "rolesPlaceholder": "manager, receptionist"
+      },
+      "views": {
+        "default": "العرض الافتراضي",
+        "shared": "مشترك",
+        "gridPreferences": "تفضيلات الشبكة",
+        "density": "الكثافة"
+      },
+      "notifications": {
+        "templateId": "معرّف القالب"
+      },
+      "integrations": {
+        "featureFlags": "أعلام الميزات",
+        "routing": "قواعد التوجيه",
+        "condition": "الشرط",
+        "target": "الهدف"
+      },
+      "ai": {
+        "copilot": "المساعد",
+        "suggestions": "الاقتراحات",
+        "allowedTools": "الأدوات المسموحة",
+        "knowledgeSources": "مصادر المعرفة"
+      },
+      "dashboard": {
+        "title": "عناصر لوحة التحكم",
+        "hint": "تبديل ظهور عناصر لوحة التحكم التشغيلية."
+      },
+      "advanced": {
+        "versionHistory": "سجل الإصدارات",
+        "rollback": "تراجع",
+        "rollbackSuccess": "تم التراجع عن الإعدادات.",
+        "rollbackError": "تعذّر التراجع عن الإعدادات.",
+        "noVersions": "لا يوجد سجل إصدارات بعد.",
+        "sla": "قواعد SLA",
+        "queueRules": "قواعد الطابور",
+        "pageSize": "حجم الصفحة",
+        "maxWaiting": "أقصى انتظار (دقائق)",
+        "forms": "نماذج ديناميكية",
+        "layouts": "محررات التخطيط",
+        "layoutsHint": "تُضبط تخطيطات Customer360 والذكاء في blob مساحة العمل المنشور.",
+        "customer360Sections": "أقسام Customer360",
+        "intelligenceBlocks": "كتل الذكاء"
+      },
+      "enterprise": {
+        "undo": "تراجع",
+        "redo": "إعادة",
+        "export": "تصدير",
+        "import": "استيراد",
+        "clone": "نسخ",
+        "preview": "معاينة",
+        "diff": "مقارنة",
+        "discard": "تجاهل المسودة",
+        "resetSection": "إعادة تعيين القسم",
+        "resetPublished": "إعادة للمنشور",
+        "cloneTarget": "القالب الهدف",
+        "selectTemplate": "اختر القالب",
+        "publishSummary": "ملخص النشر",
+        "diffChanged": "تم تغيير القسم",
+        "diffEmpty": "لا فروق عن الإعداد المنشور",
+        "unsaved": "تغييرات غير محفوظة",
+        "rollbackConfirm": "التراجع إلى الإصدار {{version}}؟"
+      },
+      "layouts": {
+        "customer360": "تخطيط Customer360",
+        "intelligenceBlocks": "كتل الذكاء",
+        "workflow": "مراحل سير العمل",
+        "kanban": "لوحة كانبان",
+        "calendar": "التقويم",
+        "timeline": "الخط الزمني",
+        "groupBy": "التجميع حسب",
+        "defaultView": "العرض الافتراضي",
+        "slotMinutes": "دقائق الفترة",
+        "showWeekends": "إظهار عطلة نهاية الأسبوع",
+        "showAiEvents": "إظهار أحداث الذكاء"
       }
     },
     "analytics": {
@@ -7381,6 +7516,7 @@
       "vip": "VIP"
     },
     "rolePreview": "معاينة تخطيط الدور",
+    "noCustomerSelected": "لم يتم اختيار عميل",
     "roles": {
       "receptionist": "موظف استقبال",
       "cashier": "أمين صندوق",
@@ -7844,6 +7980,8 @@
       "palette": "لوحة الكتل",
       "canvasHint": "اسحب الكتل من اللوحة أو انقر للإضافة",
       "save": "حفظ التخطيط",
+      "saveSuccess": "تم حفظ التخطيط في إعدادات مساحة العمل.",
+      "saveError": "تعذّر حفظ التخطيط.",
       "emptyCanvas": "أضف كتل من اللوحة لبناء مساحة العمل",
       "defaultName": "مساحة عمل جديدة",
       "palette.card": "بطاقة",

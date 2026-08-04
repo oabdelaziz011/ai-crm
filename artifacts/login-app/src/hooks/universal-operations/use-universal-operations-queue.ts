@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -28,6 +28,10 @@ import { useAuth } from "@/context/auth-context";
 
 import { useAuthUser } from "@/hooks/use-rbac";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
+import {
+  createOperationsConfigCommandContext,
+  ensureOperationsWorkspaceSeed,
+} from "@/lib/application-layer/operations-workspace-config-service";
 
 import { mapBookingReadModelToRow } from "@/lib/application-layer/operations-queue-row-mapper";
 
@@ -130,6 +134,14 @@ export function useUniversalOperationsConfig(templateKey = "clinic") {
 
       });
 
+      const cmd = createOperationsConfigCommandContext({
+        companyId: company.id,
+        actorUserId: user.id,
+        isSuperAdmin,
+        hasPermission,
+      });
+      await ensureOperationsWorkspaceSeed(cmd, templateKey);
+
       const model = await ports.operationsWorkspaceRead.getConfig(company.id, templateKey);
 
       return (model?.config ?? {}) as OperationsWorkspaceConfig;
@@ -147,36 +159,85 @@ export function useUniversalOperationsConfig(templateKey = "clinic") {
 
 
 export function useUniversalOperationsQueue(templateKey = "clinic") {
-
   const { user, company } = useAuth();
-
   const { hasPermission, isSuperAdmin } = useAuthUser();
-
   const configQuery = useUniversalOperationsConfig(templateKey);
-
-
 
   useUniversalOperationsRealtime(company?.id ?? null);
 
-
-
   const [query, setQuery] = useState<OperationsQueueQuery>({
-
     companyId: company?.id ?? "",
-
     page: 1,
-
     pageSize: 50,
-
     search: "",
-
     sort: [{ columnId: "col_scheduled", direction: "asc" }],
-
     filters: {},
-
   });
 
-  const [preferences, setPreferences] = useState<OperationsGridPreferences>(DEFAULT_PREFERENCES);
+  const [preferences, setPreferencesState] = useState<OperationsGridPreferences>(DEFAULT_PREFERENCES);
+
+  useEffect(() => {
+    const config = configQuery.data;
+    if (!config) return;
+    const grid = config.views?.gridPreferences;
+    if (grid) {
+      setPreferencesState({
+        columnWidths: grid.columnWidths ?? {},
+        columnOrder: grid.columnOrder ?? [],
+        pinnedColumns: grid.pinnedColumns ?? {},
+        hiddenColumnIds: grid.hiddenColumnIds ?? [],
+        density: grid.density ?? "comfortable",
+      });
+    }
+    const queueRules = config.queueRules;
+    if (queueRules) {
+      setQuery((q) => ({
+        ...q,
+        pageSize: queueRules.pageSize ?? q.pageSize,
+        sort: queueRules.defaultSort?.length ? queueRules.defaultSort : q.sort,
+        filters: { ...queueRules.defaultFilters, ...q.filters },
+      }));
+    }
+  }, [configQuery.data]);
+
+  const persistGridPreferences = useCallback(
+    async (next: OperationsGridPreferences) => {
+      if (!company?.id || !user?.id || !configQuery.data) return;
+      const cmd = createOperationsConfigCommandContext({
+        companyId: company.id,
+        actorUserId: user.id,
+        isSuperAdmin,
+        hasPermission,
+      });
+      const { saveOperationsConfigurationDraft } = await import("@/lib/application-layer/operations-workspace-config-service");
+      await saveOperationsConfigurationDraft(cmd, templateKey, {
+        ...configQuery.data,
+        views: {
+          ...configQuery.data.views,
+          savedViews: configQuery.data.views?.savedViews ?? [],
+          gridPreferences: {
+            columnOrder: next.columnOrder,
+            hiddenColumnIds: next.hiddenColumnIds,
+            columnWidths: next.columnWidths,
+            pinnedColumns: next.pinnedColumns,
+            density: next.density,
+          },
+        },
+      });
+    },
+    [company?.id, user?.id, configQuery.data, templateKey, isSuperAdmin, hasPermission],
+  );
+
+  const setPreferences = useCallback(
+    (value: OperationsGridPreferences | ((prev: OperationsGridPreferences) => OperationsGridPreferences)) => {
+      setPreferencesState((prev) => {
+        const next = typeof value === "function" ? value(prev) : value;
+        void persistGridPreferences(next);
+        return next;
+      });
+    },
+    [persistGridPreferences],
+  );
 
 
 

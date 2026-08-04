@@ -8,6 +8,7 @@ import { Customer360Sections } from "@/components/universal-operations/customer3
 import { Customer360IntelligenceLayer } from "@/components/universal-operations/intelligence/customer360-intelligence-layer";
 import { useCustomer360Workspace } from "@/hooks/universal-operations/use-customer360-workspace";
 import { useCustomer360Intelligence } from "@/hooks/universal-operations/use-customer360-intelligence";
+import { useUniversalOperationsConfig } from "@/hooks/universal-operations";
 import { useOperationsCommands } from "@/hooks/universal-operations/use-operations-commands";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import {
@@ -35,8 +36,9 @@ export function Customer360Workspace({
   templateKey?: string;
 }) {
   const { t } = useTranslation("common");
-  const { data, isLoading, sections } = useCustomer360Workspace(row, role);
-  const { snapshot, blocks } = useCustomer360Intelligence(data, templateKey, role);
+  const { data, isLoading, sections, configError } = useCustomer360Workspace(row, role);
+  const { data: workspaceConfig } = useUniversalOperationsConfig(templateKey);
+  const { snapshot, blocks, configError: intelligenceConfigError } = useCustomer360Intelligence(data ?? undefined, role, workspaceConfig);
   const operations = useOperationsCommands(row?.customerId ?? data?.customer.id ?? null);
 
   const handleOperationAction = useCallback(
@@ -74,9 +76,17 @@ export function Customer360Workspace({
         className="relative flex w-full flex-col gap-0 p-0 sm:max-w-[580px] lg:max-w-[620px]"
         style={{ ["--c360-header-h" as string]: headerCollapsed ? "3.5rem" : "7rem" }}
       >
-        {isLoading || !data ? (
+        {isLoading ? (
           <div className="flex flex-1 items-center justify-center p-8">
             <DashboardPageFallback />
+          </div>
+        ) : configError || intelligenceConfigError ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-sm text-destructive">
+            {(configError ?? intelligenceConfigError)?.message}
+          </div>
+        ) : !data || ("isEmpty" in data && data.isEmpty) ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
+            {t("customer360.noCustomerSelected")}
           </div>
         ) : (
           <>

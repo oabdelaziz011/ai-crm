@@ -115,56 +115,92 @@ create policy operations_workspace_config_update on public.operations_workspace_
 
 -- ── Permissions ──────────────────────────────────────────────────────────────
 
-insert into public.permissions (code, name, description, category)
-select v.code, v.name, v.description, v.category
-from (values
-  ('operations.read', 'Read Operations', 'View operations queue and workspace', 'operations'),
-  ('operations.write', 'Write Operations', 'Execute operations commands', 'operations'),
-  ('operations.queue.checkin', 'Check In', 'Check in bookings from operations queue', 'operations'),
-  ('operations.queue.complete', 'Complete Booking', 'Complete bookings from operations queue', 'operations'),
-  ('tasks.read', 'Read Tasks', 'View tasks', 'tasks'),
-  ('tasks.write', 'Write Tasks', 'Create and manage tasks', 'tasks'),
-  ('tasks.assign', 'Assign Tasks', 'Assign tasks to users', 'tasks'),
-  ('workflow.read', 'Read Workflows', 'View workflow executions', 'workflow'),
-  ('workflow.execute', 'Execute Workflows', 'Start and manage workflows', 'workflow'),
-  ('knowledge.read', 'Read Knowledge', 'Query knowledge base', 'knowledge'),
-  ('knowledge.manage', 'Manage Knowledge', 'Manage knowledge documents', 'knowledge')
-) as v(code, name, description, category)
-where not exists (select 1 from public.permissions p where p.code = v.code);
+insert into public.permissions (code, category, module, action, description)
+values
+  ('operations.read', 'Operations', 'Operations', 'Read', 'View operations queue and workspace'),
+  ('operations.write', 'Operations', 'Operations', 'Write', 'Execute operations commands'),
+  ('operations.queue.checkin', 'Operations', 'Operations Queue', 'Check In', 'Check in bookings from operations queue'),
+  ('operations.queue.complete', 'Operations', 'Operations Queue', 'Complete', 'Complete bookings from operations queue'),
+  ('tasks.read', 'Tasks', 'Tasks', 'Read', 'View tasks'),
+  ('tasks.write', 'Tasks', 'Tasks', 'Write', 'Create and manage tasks'),
+  ('tasks.assign', 'Tasks', 'Tasks', 'Assign', 'Assign tasks to users'),
+  ('workflow.read', 'Workflow', 'Workflow', 'Read', 'View workflow executions'),
+  ('workflow.execute', 'Workflow', 'Workflow', 'Execute', 'Start and manage workflows'),
+  ('knowledge.read', 'Knowledge', 'Knowledge', 'Read', 'Query knowledge base'),
+  ('knowledge.manage', 'Knowledge', 'Knowledge', 'Manage', 'Manage knowledge documents')
+on conflict (code) do update
+set
+  category = excluded.category,
+  module = excluded.module,
+  action = excluded.action,
+  description = excluded.description,
+  updated_at = now();
 
-insert into public.role_permissions (role_name, permission_code)
-select v.role_name, v.code
-from (values
-  ('admin', 'operations.read'),
-  ('admin', 'operations.write'),
-  ('admin', 'operations.queue.checkin'),
-  ('admin', 'operations.queue.complete'),
-  ('admin', 'tasks.read'),
-  ('admin', 'tasks.write'),
-  ('admin', 'tasks.assign'),
-  ('admin', 'workflow.read'),
-  ('admin', 'workflow.execute'),
-  ('admin', 'knowledge.read'),
-  ('admin', 'knowledge.manage'),
-  ('manager', 'operations.read'),
-  ('manager', 'operations.write'),
-  ('manager', 'operations.queue.checkin'),
-  ('manager', 'operations.queue.complete'),
-  ('manager', 'tasks.read'),
-  ('manager', 'tasks.write'),
-  ('manager', 'tasks.assign'),
-  ('manager', 'workflow.read'),
-  ('manager', 'workflow.execute'),
-  ('manager', 'knowledge.read'),
-  ('staff', 'operations.read'),
-  ('staff', 'tasks.read'),
-  ('staff', 'tasks.write'),
-  ('staff', 'knowledge.read')
-) as v(role_name, code)
+insert into public.platform_role_template_permissions (template_key, permission_code)
+select seed.template_key, seed.permission_code
+from (
+  values
+    ('admin', 'operations.read'),
+    ('admin', 'operations.write'),
+    ('admin', 'operations.queue.checkin'),
+    ('admin', 'operations.queue.complete'),
+    ('admin', 'tasks.read'),
+    ('admin', 'tasks.write'),
+    ('admin', 'tasks.assign'),
+    ('admin', 'workflow.read'),
+    ('admin', 'workflow.execute'),
+    ('admin', 'knowledge.read'),
+    ('admin', 'knowledge.manage'),
+    ('manager', 'operations.read'),
+    ('manager', 'operations.write'),
+    ('manager', 'operations.queue.checkin'),
+    ('manager', 'operations.queue.complete'),
+    ('manager', 'tasks.read'),
+    ('manager', 'tasks.write'),
+    ('manager', 'tasks.assign'),
+    ('manager', 'workflow.read'),
+    ('manager', 'workflow.execute'),
+    ('manager', 'knowledge.read'),
+    ('employee', 'operations.read'),
+    ('employee', 'tasks.read'),
+    ('employee', 'tasks.write'),
+    ('employee', 'knowledge.read')
+) as seed(template_key, permission_code)
 where not exists (
-  select 1 from public.role_permissions rp
-  where rp.role_name = v.role_name and rp.permission_code = v.code
+  select 1
+  from public.platform_role_template_permissions existing
+  where existing.template_key = seed.template_key
+    and existing.permission_code = seed.permission_code
 );
+
+insert into public.role_permissions (role_id, permission_id)
+select distinct r.id, p.id
+from public.roles r
+inner join public.platform_role_template_permissions trp
+  on trp.template_key = r.template_key
+inner join public.permissions p
+  on p.code = trp.permission_code
+where r.role_type = 'DEFAULT'
+  and r.company_id is not null
+  and trp.permission_code in (
+    'operations.read',
+    'operations.write',
+    'operations.queue.checkin',
+    'operations.queue.complete',
+    'tasks.read',
+    'tasks.write',
+    'tasks.assign',
+    'workflow.read',
+    'workflow.execute',
+    'knowledge.read',
+    'knowledge.manage'
+  )
+  and not exists (
+    select 1
+    from public.role_permissions rp
+    where rp.role_id = r.id
+      and rp.permission_id = p.id
+  );
 
 -- ── Realtime ─────────────────────────────────────────────────────────────────
 

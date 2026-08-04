@@ -131,13 +131,13 @@ create policy plugin_registry_read on public.plugin_registry for select using (i
 create policy plugin_versions_read on public.plugin_versions for select using (is_published = true);
 
 create policy plugin_installations_tenant on public.plugin_installations
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy plugin_health_tenant on public.plugin_health
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 create policy plugin_audit_tenant on public.plugin_audit_log
-  for all using (company_id = public.get_user_company_id());
+  for all using (company_id = public.current_company_id());
 
 -- ── Seed official plugins ────────────────────────────────────
 

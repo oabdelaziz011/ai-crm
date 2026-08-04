@@ -7832,20 +7832,29 @@
     },
     "calendar": {
       "title": "Calendar View",
-      "description": "Calendar visualization will render operational items from metadata. Coming in a future sprint."
+      "description": "Calendar settings from published workspace configuration.",
+      "defaultView": "Default view: {{view}}",
+      "slotMinutes": "Slot duration: {{minutes}} min",
+      "weekendsOn": "Weekends visible",
+      "weekendsOff": "Weekends hidden"
     },
     "kanban": {
       "title": "Kanban View",
-      "description": "Status-driven kanban boards are configured in the Status Engine. Coming in a future sprint."
+      "description": "Kanban grouped by {{groupBy}} from published configuration.",
+      "wipLimit": "WIP limit: {{limit}}"
     },
     "timeline": {
       "title": "Timeline View",
-      "description": "Chronological operations timeline across all work items. Coming in a future sprint."
+      "description": "Timeline settings from published workspace configuration.",
+      "groupBy": "Group by: {{groupBy}}",
+      "aiEventsOn": "AI events visible",
+      "aiEventsOff": "AI events hidden"
     },
     "configuration": {
       "title": "Workspace Configuration",
       "subtitle": "Configure columns, statuses, services, and permissions without code changes.",
       "save": "Save Configuration",
+      "publish": "Publish",
       "saveDraft": "Save Draft",
       "saveSuccess": "Configuration draft saved.",
       "saveError": "Failed to save configuration.",
@@ -7877,14 +7886,140 @@
         "customerLabel": "Customer Label",
         "defaultCustomerLabel": "Customer"
       },
+      "statuses": {
+        "title": "Status Workflow",
+        "flowHint": "Transitions are validated by the Status Engine. Terminal statuses cannot advance further.",
+        "transitions": "Status Transitions",
+        "icon": "Icon",
+        "terminal": "Terminal"
+      },
+      "statusDraft": "Draft",
+      "statusPublished": "Published",
+      "version": "Version {{version}}",
+      "publishRequired": "Publish required — unpublished draft changes exist",
+      "validate": "Validate Configuration",
+      "validationPassed": "Configuration validation passed",
+      "validationFailed": "Configuration validation failed",
+      "loading": "Loading configuration…",
+      "add": "Add",
+      "active": "Active",
+      "terminology": {
+        "title": "Business Terminology",
+        "customer": "Customer",
+        "resource": "Resource",
+        "service": "Service",
+        "queue": "Queue",
+        "payment": "Payment",
+        "appointment": "Appointment",
+        "employee": "Employee",
+        "branch": "Branch"
+      },
+      "branding": {
+        "accentColor": "Accent Color",
+        "icon": "Workspace Icon",
+        "moduleIcon": "Module Icon"
+      },
       "columns": {
         "title": "Column Definitions",
         "visible": "Visible",
-        "hidden": "Hidden"
+        "hidden": "Hidden",
+        "displayName": "Display name",
+        "internalName": "Internal name",
+        "width": "Width",
+        "unpinned": "Unpinned",
+        "pinLeft": "Pin left",
+        "pinRight": "Pin right",
+        "required": "Required",
+        "searchable": "Searchable",
+        "exportable": "Exportable"
       },
-      "statuses": {
-        "title": "Status Workflow",
-        "flowHint": "Transitions are validated by the Status Engine. Terminal statuses cannot advance further."
+      "services": {
+        "priceCents": "Price (cents)",
+        "duration": "Duration (min)"
+      },
+      "automation": {
+        "hint": "Connect automation triggers to the Workflow Builder.",
+        "triggers": "Enabled Triggers",
+        "openWorkflowBuilder": "Open Workflow Builder"
+      },
+      "permissions": {
+        "columns": "Column Permissions",
+        "statuses": "Status Permissions",
+        "actions": "Action Permissions",
+        "rolesPlaceholder": "manager, receptionist"
+      },
+      "views": {
+        "default": "Default view",
+        "shared": "Shared",
+        "gridPreferences": "Grid preferences",
+        "density": "Density"
+      },
+      "notifications": {
+        "templateId": "Template ID"
+      },
+      "integrations": {
+        "featureFlags": "Feature Flags",
+        "routing": "Routing Rules",
+        "condition": "Condition",
+        "target": "Target"
+      },
+      "ai": {
+        "copilot": "Copilot",
+        "suggestions": "Suggestions",
+        "allowedTools": "Allowed Tools",
+        "knowledgeSources": "Knowledge Sources"
+      },
+      "dashboard": {
+        "title": "Dashboard Widgets",
+        "hint": "Toggle visibility of operational dashboard widgets."
+      },
+      "advanced": {
+        "versionHistory": "Version History",
+        "rollback": "Rollback",
+        "rollbackSuccess": "Configuration rolled back.",
+        "rollbackError": "Failed to roll back configuration.",
+        "noVersions": "No version history yet.",
+        "sla": "SLA Rules",
+        "queueRules": "Queue Rules",
+        "pageSize": "Page size",
+        "maxWaiting": "Max waiting (minutes)",
+        "forms": "Dynamic Forms",
+        "layouts": "Layout Editors",
+        "layoutsHint": "Customer360 and Intelligence layouts are configured in the published workspace blob.",
+        "customer360Sections": "Customer360 sections",
+        "intelligenceBlocks": "Intelligence blocks"
+      },
+      "enterprise": {
+        "undo": "Undo",
+        "redo": "Redo",
+        "export": "Export",
+        "import": "Import",
+        "clone": "Clone",
+        "preview": "Preview",
+        "diff": "Compare",
+        "discard": "Discard Draft",
+        "resetSection": "Reset Section",
+        "resetPublished": "Reset to Published",
+        "cloneTarget": "Target template",
+        "selectTemplate": "Select template",
+        "publishSummary": "Publish summary",
+        "diffChanged": "Section changed",
+        "diffEmpty": "No differences from published configuration",
+        "unsaved": "Unsaved changes",
+        "rollbackConfirm": "Rollback configuration to version {{version}}?"
+      },
+      "layouts": {
+        "customer360": "Customer360 Layout",
+        "intelligenceBlocks": "Intelligence Blocks",
+        "workflow": "Workflow Stages",
+        "kanban": "Kanban Board",
+        "calendar": "Calendar",
+        "timeline": "Timeline",
+        "groupBy": "Group by",
+        "defaultView": "Default view",
+        "slotMinutes": "Slot minutes",
+        "showWeekends": "Show weekends",
+        "showAiEvents": "Show AI events"
       }
     },
     "analytics": {
@@ -7910,6 +8045,7 @@
       "vip": "VIP"
     },
     "rolePreview": "Preview role layout",
+    "noCustomerSelected": "No customer selected",
     "roles": {
       "receptionist": "Receptionist",
       "cashier": "Cashier",
@@ -8373,6 +8509,8 @@
       "palette": "Block Palette",
       "canvasHint": "Drag blocks from the palette or click to add",
       "save": "Save Layout",
+      "saveSuccess": "Layout saved to workspace configuration.",
+      "saveError": "Failed to save layout.",
       "emptyCanvas": "Add blocks from the palette to build your workspace",
       "defaultName": "New Workspace",
       "palette.card": "Card",

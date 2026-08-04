@@ -20,18 +20,6 @@ export type IntelligenceBlockConfig = {
   permissions: string[];
 };
 
-export const DEFAULT_INTELLIGENCE_BLOCKS: IntelligenceBlockConfig[] = [
-  { id: "context_ribbon", visible: true, collapsed: false, sortOrder: 0, roles: ["receptionist", "nurse", "cashier", "manager"], permissions: [] },
-  { id: "quick_decision_bar", visible: true, collapsed: false, sortOrder: 1, roles: ["receptionist", "cashier", "nurse", "manager"], permissions: [] },
-  { id: "operational_intelligence", visible: true, collapsed: false, sortOrder: 2, roles: ["receptionist", "manager"], permissions: [] },
-  { id: "alerts", visible: true, collapsed: false, sortOrder: 3, roles: ["receptionist", "nurse", "cashier", "manager"], permissions: [] },
-  { id: "recommendations", visible: true, collapsed: false, sortOrder: 4, roles: ["receptionist", "nurse", "manager"], permissions: [] },
-  { id: "workflow_tracker", visible: true, collapsed: false, sortOrder: 5, roles: ["receptionist", "nurse", "manager"], permissions: [] },
-  { id: "mini_kpis", visible: true, collapsed: false, sortOrder: 6, roles: ["receptionist", "cashier", "manager"], permissions: [] },
-  { id: "business_context", visible: true, collapsed: false, sortOrder: 7, roles: ["nurse", "manager"], permissions: [] },
-  { id: "floating_copilot", visible: true, collapsed: false, sortOrder: 8, roles: ["receptionist", "cashier", "nurse", "manager"], permissions: [] },
-];
-
 export type JourneyStepDefinition = {
   id: string;
   labelKey: string;

@@ -1,28 +1,52 @@
 -- GA-1.2 — Enterprise Lead Management permissions
 
-insert into public.permissions (code, name, description, category)
-select v.code, v.name, v.description, 'leads'
-from (values
-  ('leads.delete', 'Delete Leads', 'Archive and delete leads'),
-  ('leads.export', 'Export Leads', 'Export lead data'),
-  ('leads.pipeline.manage', 'Manage Lead Pipeline', 'Configure pipeline stages and transitions')
-) as v(code, name, description)
-where not exists (select 1 from public.permissions p where p.code = v.code);
+insert into public.permissions (code, category, module, action, description)
+values
+  ('leads.delete', 'Leads', 'Leads', 'Delete', 'Archive and delete leads'),
+  ('leads.export', 'Leads', 'Leads', 'Export', 'Export lead data'),
+  ('leads.pipeline.manage', 'Leads', 'Lead Pipeline', 'Manage', 'Configure pipeline stages and transitions')
+on conflict (code) do update
+set
+  category = excluded.category,
+  module = excluded.module,
+  action = excluded.action,
+  description = excluded.description,
+  updated_at = now();
 
-insert into public.role_permissions (role_name, permission_code)
-select v.role_name, v.code
-from (values
-  ('admin', 'leads.delete'),
-  ('admin', 'leads.export'),
-  ('admin', 'leads.pipeline.manage'),
-  ('manager', 'leads.delete'),
-  ('manager', 'leads.export'),
-  ('manager', 'leads.pipeline.manage')
-) as v(role_name, code)
+insert into public.platform_role_template_permissions (template_key, permission_code)
+select seed.template_key, seed.permission_code
+from (
+  values
+    ('admin', 'leads.delete'),
+    ('admin', 'leads.export'),
+    ('admin', 'leads.pipeline.manage'),
+    ('manager', 'leads.delete'),
+    ('manager', 'leads.export'),
+    ('manager', 'leads.pipeline.manage')
+) as seed(template_key, permission_code)
 where not exists (
-  select 1 from public.role_permissions rp
-  where rp.role_name = v.role_name and rp.permission_code = v.code
+  select 1
+  from public.platform_role_template_permissions existing
+  where existing.template_key = seed.template_key
+    and existing.permission_code = seed.permission_code
 );
+
+insert into public.role_permissions (role_id, permission_id)
+select distinct r.id, p.id
+from public.roles r
+inner join public.platform_role_template_permissions trp
+  on trp.template_key = r.template_key
+inner join public.permissions p
+  on p.code = trp.permission_code
+where r.role_type = 'DEFAULT'
+  and r.company_id is not null
+  and trp.permission_code in ('leads.delete', 'leads.export', 'leads.pipeline.manage')
+  and not exists (
+    select 1
+    from public.role_permissions rp
+    where rp.role_id = r.id
+      and rp.permission_id = p.id
+  );
 
 do $$
 begin

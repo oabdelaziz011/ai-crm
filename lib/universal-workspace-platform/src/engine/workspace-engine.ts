@@ -1,5 +1,6 @@
+import type { Customer360SectionConfig } from "@workspace/universal-operations-engine";
+import { OperationsRuntimeConfigurationError } from "@workspace/universal-operations-engine";
 import type { WorkspaceDefinition, WorkspaceEntityType } from "../types/workspace-types.js";
-import { DEFAULT_CUSTOMER360_SECTIONS } from "@workspace/universal-operations-engine";
 
 const ENTITY_LABELS: Record<WorkspaceEntityType, string> = {
   customer: "entities.customer",
@@ -27,20 +28,26 @@ const ENTITY_ICONS: Record<WorkspaceEntityType, string> = {
   contract: "FileSignature",
 };
 
-function mapSectionsToBlocks(entityType: WorkspaceEntityType) {
-  if (entityType === "customer") {
-    return DEFAULT_CUSTOMER360_SECTIONS.map((s) => ({
-      id: s.id,
-      type: "section" as const,
-      labelKey: s.titleKey,
-      visible: s.visible,
-      collapsed: s.collapsed,
-      pinned: false,
-      sortOrder: s.sortOrder,
-      roles: s.roles,
-      permissions: s.permissions,
-    }));
+function mapCustomer360SectionsToBlocks(sections: Customer360SectionConfig[]) {
+  if (!sections.length) {
+    throw new OperationsRuntimeConfigurationError(
+      "configuration.customer360.sections is required — no runtime section fallback available",
+    );
   }
+  return sections.map((s) => ({
+    id: s.id,
+    type: "section" as const,
+    labelKey: s.titleKey,
+    visible: s.visible,
+    collapsed: s.collapsed,
+    pinned: false,
+    sortOrder: s.sortOrder,
+    roles: s.roles,
+    permissions: s.permissions,
+  }));
+}
+
+function mapGenericEntityBlocks(entityType: WorkspaceEntityType) {
   return [
     { id: "summary", type: "card" as const, labelKey: "blocks.summary", visible: true, collapsed: false, pinned: true, sortOrder: 0, roles: ["manager"], permissions: [] },
     { id: "timeline", type: "timeline" as const, labelKey: "blocks.timeline", visible: true, collapsed: false, pinned: false, sortOrder: 1, roles: ["manager"], permissions: [] },
@@ -51,14 +58,23 @@ function mapSectionsToBlocks(entityType: WorkspaceEntityType) {
 }
 
 export class WorkspaceEngine {
-  resolve(entityType: WorkspaceEntityType, templateKey: string): WorkspaceDefinition {
+  resolve(
+    entityType: WorkspaceEntityType,
+    templateKey: string,
+    customer360Sections?: Customer360SectionConfig[],
+  ): WorkspaceDefinition {
+    const blocks =
+      entityType === "customer"
+        ? mapCustomer360SectionsToBlocks(customer360Sections ?? [])
+        : mapGenericEntityBlocks(entityType);
+
     return {
       id: `${entityType}_${templateKey}`,
       entityType,
       templateKey,
       labelKey: ENTITY_LABELS[entityType],
       icon: ENTITY_ICONS[entityType],
-      blocks: mapSectionsToBlocks(entityType),
+      blocks,
     };
   }
 

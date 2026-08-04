@@ -454,7 +454,7 @@ begin
 
   if v_pipeline_id is not null then
     return v_pipeline_id;
-  end;
+  end if;
 
   insert into public.lead_pipelines (company_id, name, slug, is_default, is_active)
   values (p_company_id, 'Default Pipeline', 'default', true, true)

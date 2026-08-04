@@ -223,40 +223,73 @@ create policy platform_company_licenses_write on public.platform_company_license
 
 -- ── Permissions ──────────────────────────────────────────────────────────────
 
-insert into public.permissions (code, name, description, category)
-select v.code, v.name, v.description, 'feature_flags'
-from (values
-  ('feature_flags.read', 'Read Feature Flags', 'View feature flag state', 'feature_flags'),
-  ('feature_flags.write', 'Write Feature Flags', 'Manage feature flags', 'feature_flags'),
-  ('feature_flags.publish', 'Publish Feature Flags', 'Publish feature flag changes', 'feature_flags'),
-  ('licenses.read', 'Read Licenses', 'View license and entitlements', 'licenses'),
-  ('licenses.write', 'Write Licenses', 'Manage company licenses', 'licenses'),
-  ('licenses.assign', 'Assign Licenses', 'Assign plans and add-ons', 'licenses'),
-  ('configuration.notifications.read', 'Read Notification Config', 'View notification configuration', 'configuration'),
-  ('configuration.notifications.write', 'Write Notification Config', 'Edit notification configuration', 'configuration')
-) as v(code, name, description)
-where not exists (select 1 from public.permissions p where p.code = v.code);
+insert into public.permissions (code, category, module, action, description)
+values
+  ('feature_flags.read', 'Feature Flags', 'Feature Flags', 'Read', 'View feature flag state'),
+  ('feature_flags.write', 'Feature Flags', 'Feature Flags', 'Write', 'Manage feature flags'),
+  ('feature_flags.publish', 'Feature Flags', 'Feature Flags', 'Publish', 'Publish feature flag changes'),
+  ('licenses.read', 'Licenses', 'Licenses', 'Read', 'View license and entitlements'),
+  ('licenses.write', 'Licenses', 'Licenses', 'Write', 'Manage company licenses'),
+  ('licenses.assign', 'Licenses', 'Licenses', 'Assign', 'Assign plans and add-ons'),
+  ('configuration.notifications.read', 'Configuration', 'Notifications', 'Read', 'View notification configuration'),
+  ('configuration.notifications.write', 'Configuration', 'Notifications', 'Write', 'Edit notification configuration')
+on conflict (code) do update
+set
+  category = excluded.category,
+  module = excluded.module,
+  action = excluded.action,
+  description = excluded.description,
+  updated_at = now();
 
-insert into public.role_permissions (role_name, permission_code)
-select v.role_name, v.code
-from (values
-  ('admin', 'feature_flags.read'),
-  ('admin', 'feature_flags.write'),
-  ('admin', 'feature_flags.publish'),
-  ('admin', 'licenses.read'),
-  ('admin', 'licenses.write'),
-  ('admin', 'licenses.assign'),
-  ('admin', 'configuration.notifications.read'),
-  ('admin', 'configuration.notifications.write'),
-  ('manager', 'feature_flags.read'),
-  ('manager', 'licenses.read'),
-  ('staff', 'feature_flags.read'),
-  ('staff', 'licenses.read')
-) as v(role_name, code)
+insert into public.platform_role_template_permissions (template_key, permission_code)
+select seed.template_key, seed.permission_code
+from (
+  values
+    ('admin', 'feature_flags.read'),
+    ('admin', 'feature_flags.write'),
+    ('admin', 'feature_flags.publish'),
+    ('admin', 'licenses.read'),
+    ('admin', 'licenses.write'),
+    ('admin', 'licenses.assign'),
+    ('admin', 'configuration.notifications.read'),
+    ('admin', 'configuration.notifications.write'),
+    ('manager', 'feature_flags.read'),
+    ('manager', 'licenses.read'),
+    ('employee', 'feature_flags.read'),
+    ('employee', 'licenses.read')
+) as seed(template_key, permission_code)
 where not exists (
-  select 1 from public.role_permissions rp
-  where rp.role_name = v.role_name and rp.permission_code = v.code
+  select 1
+  from public.platform_role_template_permissions existing
+  where existing.template_key = seed.template_key
+    and existing.permission_code = seed.permission_code
 );
+
+insert into public.role_permissions (role_id, permission_id)
+select distinct r.id, p.id
+from public.roles r
+inner join public.platform_role_template_permissions trp
+  on trp.template_key = r.template_key
+inner join public.permissions p
+  on p.code = trp.permission_code
+where r.role_type = 'DEFAULT'
+  and r.company_id is not null
+  and trp.permission_code in (
+    'feature_flags.read',
+    'feature_flags.write',
+    'feature_flags.publish',
+    'licenses.read',
+    'licenses.write',
+    'licenses.assign',
+    'configuration.notifications.read',
+    'configuration.notifications.write'
+  )
+  and not exists (
+    select 1
+    from public.role_permissions rp
+    where rp.role_id = r.id
+      and rp.permission_id = p.id
+  );
 
 -- ── Realtime ─────────────────────────────────────────────────────────────────
 

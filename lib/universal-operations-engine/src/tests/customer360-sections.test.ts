@@ -1,26 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveVisibleSections, DEFAULT_CUSTOMER360_SECTIONS } from "../types/customer360-types.js";
+import { resolveVisibleSections } from "../types/customer360-types.js";
+import { SEED_CUSTOMER360_SECTIONS } from "../config/seed/operations-seed-data.js";
 
-describe("Customer360 section engine", () => {
-  it("shows receptionist sections", () => {
-    const sections = resolveVisibleSections(DEFAULT_CUSTOMER360_SECTIONS, "receptionist");
-    const ids = sections.map((s) => s.id);
-    assert.ok(ids.includes("todays_operation"));
-    assert.ok(ids.includes("invoices_payments"));
-    assert.ok(!ids.includes("files"));
+describe("Customer360 sections", () => {
+  it("filters sections by receptionist role", () => {
+    const sections = resolveVisibleSections(SEED_CUSTOMER360_SECTIONS, "receptionist");
+    assert.ok(sections.some((s) => s.id === "todays_operation"));
+    assert.ok(!sections.some((s) => s.id === "tasks"));
   });
 
-  it("shows all sections for manager", () => {
-    const sections = resolveVisibleSections(DEFAULT_CUSTOMER360_SECTIONS, "manager");
-    assert.equal(sections.length, DEFAULT_CUSTOMER360_SECTIONS.length);
+  it("includes all sections for manager", () => {
+    const sections = resolveVisibleSections(SEED_CUSTOMER360_SECTIONS, "manager");
+    assert.equal(sections.length, SEED_CUSTOMER360_SECTIONS.length);
   });
 
-  it("cashier sees payments not medical files", () => {
-    const sections = resolveVisibleSections(DEFAULT_CUSTOMER360_SECTIONS, "cashier");
-    const ids = sections.map((s) => s.id);
-    assert.ok(ids.includes("invoices_payments"));
-    assert.ok(!ids.includes("todays_operation"));
-    assert.ok(!ids.includes("files"));
+  it("excludes nurse-only sections for cashier", () => {
+    const sections = resolveVisibleSections(SEED_CUSTOMER360_SECTIONS, "cashier");
+    assert.ok(sections.some((s) => s.id === "customer_summary"));
+    assert.ok(!sections.some((s) => s.id === "files"));
   });
 });

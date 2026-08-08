@@ -5,6 +5,7 @@ import { usePermissions } from "@/hooks/use-rbac";
 import { supabase } from "@/lib/supabase";
 import { invalidateOmnichannelQueries } from "@/lib/omnichannel/cache/invalidate-omnichannel-queries";
 import { omniCompanyTrace } from "@/lib/omnichannel/debug/omni-company-audit";
+import { notifyDeskIncomingCustomerAlert } from "@/lib/omnichannel/presentation/desk-incoming-alerts";
 import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 const RT = "[OMNI_REALTIME]";
@@ -106,6 +107,14 @@ export function useConversationRealtime(companyId: string | null, conversationId
               messageId: row.id ?? null,
               statusAfter: row.status ?? null,
             });
+          }
+          // Presentation-only: sound + inbox flash for unfocused customer messages.
+          if (
+            payload.eventType === "INSERT"
+            && row?.message_type === "incoming"
+            && nextConversationId
+          ) {
+            notifyDeskIncomingCustomerAlert(nextConversationId, conversationId);
           }
           rtLog("postgres_changes", {
             schema: "public",

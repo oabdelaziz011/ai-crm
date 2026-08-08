@@ -20,11 +20,11 @@ export function NotificationBell({ companyId }: NotificationBellProps) {
     <>
       <button
         type="button"
-        className="relative p-2 rounded-lg hover:bg-white/5 transition-colors"
+        className="relative flex size-10 items-center justify-center rounded-lg transition-colors hover:bg-background/60"
         aria-label={t("notifications.title")}
         onClick={() => setOpen(true)}
       >
-        <Bell className="w-4 h-4 text-muted-foreground" />
+        <Bell className="size-4 text-muted-foreground" />
         {unreadCount > 0 && (
           <span className="absolute -end-1 -top-1 min-w-[16px] h-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center px-1">
             {unreadCount > 99 ? "99+" : unreadCount}

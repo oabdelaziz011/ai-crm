@@ -134,7 +134,7 @@ export const EscalationSheet = memo(function EscalationSheet({
                 <History className="size-3.5" />
                 History
               </Label>
-              <ul className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-white/[0.06] p-2 text-xs">
+              <ul className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-border p-2 text-xs">
                 {escalationHistory.map((record) => (
                   <li key={record.id} className="text-muted-foreground">
                     <span className="font-medium text-foreground">{record.level}</span>
@@ -149,7 +149,7 @@ export const EscalationSheet = memo(function EscalationSheet({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
+        <div className="flex flex-wrap gap-2 border-t border-border pt-4">
           {onReturn ? (
             <Button variant="outline" size="sm" onClick={onReturn}>
               <RotateCcw className="size-3.5" />

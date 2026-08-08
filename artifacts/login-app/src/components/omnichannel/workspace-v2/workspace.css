@@ -1,19 +1,19 @@
-/* Enterprise Agent Workspace V2 — Zendesk / Intercom / Linear */
+/* Enterprise Agent Workspace — consumes global next-themes / Brand Theme tokens only. */
 
 .agent-workspace {
-  --ws-bg: #090b10;
-  --ws-surface: #0f1218;
-  --ws-surface-2: #151922;
-  --ws-border: #1f2630;
-  --ws-border-subtle: #171c24;
-  --ws-text: #eceff4;
-  --ws-muted: #7b8798;
-  --ws-accent: #2dd4bf;
-  --ws-accent-dim: rgba(45, 212, 191, 0.12);
-  --ws-warn: #fbbf24;
-  --ws-danger: #f87171;
-  --ws-success: #4ade80;
-  --ws-violet: #a78bfa;
+  --ws-bg: hsl(var(--background));
+  --ws-surface: hsl(var(--card));
+  --ws-surface-2: hsl(var(--muted));
+  --ws-border: hsl(var(--border));
+  --ws-border-subtle: hsl(var(--border));
+  --ws-text: hsl(var(--foreground));
+  --ws-muted: hsl(var(--muted-foreground));
+  --ws-accent: hsl(var(--primary));
+  --ws-accent-dim: hsl(var(--primary) / 0.12);
+  --ws-warn: hsl(var(--warning));
+  --ws-danger: hsl(var(--destructive));
+  --ws-success: hsl(var(--success));
+  --ws-violet: hsl(var(--accent-foreground));
   --ws-nav-width: 3.25rem;
   --ws-list-width: 340px;
   --ws-intelligence-width: 320px;
@@ -24,10 +24,11 @@
   color: var(--ws-text);
   background: var(--ws-bg);
   font-feature-settings: "tnum" 1;
-  /* Map legacy transcript/composer tokens inside workspace */
+  /* Map agent-desk aliases to the same global theme tokens */
   --ad-bg: var(--ws-bg);
   --ad-surface: var(--ws-surface);
   --ad-surface-raised: var(--ws-surface-2);
+  --ad-surface-2: hsl(var(--secondary));
   --ad-border: var(--ws-border);
   --ad-border-subtle: var(--ws-border-subtle);
   --ad-text: var(--ws-text);
@@ -43,7 +44,7 @@
 
 .agent-workspace * {
   scrollbar-width: thin;
-  scrollbar-color: var(--ws-border) transparent;
+  scrollbar-color: hsl(var(--border)) transparent;
 }
 
 .ws-btn {
@@ -63,8 +64,8 @@
 }
 
 .ws-btn:hover:not(:disabled) {
-  background: #1c222d;
-  border-color: #2d3748;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--ring) / 0.45);
 }
 
 .ws-btn:disabled {
@@ -75,7 +76,7 @@
 .ws-btn--primary {
   background: var(--ws-accent);
   border-color: var(--ws-accent);
-  color: #042f2e;
+  color: hsl(var(--primary-foreground));
   font-weight: 600;
 }
 
@@ -88,8 +89,8 @@
   background: var(--ws-accent-dim);
 }
 
-.ws-btn--warn { color: var(--ws-warn); border-color: rgba(251, 191, 36, 0.3); }
-.ws-btn--success { color: var(--ws-success); border-color: rgba(74, 222, 128, 0.3); }
+.ws-btn--warn { color: var(--ws-warn); border-color: hsl(var(--warning) / 0.3); }
+.ws-btn--success { color: var(--ws-success); border-color: hsl(var(--success) / 0.3); }
 
 .ws-input {
   width: 100%;
@@ -116,7 +117,7 @@
 
 .ws-inbox-row:hover {
   background: var(--ws-surface-2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-sm);
 }
 
 .ws-inbox-row--active {
@@ -153,7 +154,7 @@
 
 .ci-journey-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--ws-border) transparent;
+  scrollbar-color: hsl(var(--border)) transparent;
 }
 
 .ci-journey-scroll::-webkit-scrollbar {
@@ -161,7 +162,7 @@
 }
 
 .ci-journey-scroll::-webkit-scrollbar-thumb {
-  background: var(--ws-border);
+  background: hsl(var(--border));
   border-radius: 999px;
 }
 
@@ -181,9 +182,115 @@
   padding-inline: 0.5rem;
 }
 
+.ws-workspace-body {
+  min-width: 0;
+  width: 100%;
+}
+
+.ws-workspace-body .ws-inbox-column,
+.ws-workspace-body .ws-conversation-pane {
+  transition: width var(--ws-dur) var(--ws-ease), flex-basis var(--ws-dur) var(--ws-ease);
+}
+
+.ws-workspace-body[data-inbox-resizing="true"] .ws-inbox-column,
+.ws-workspace-body[data-inbox-resizing="true"] .ws-conversation-pane,
+.ws-workspace-body[data-conversation-expanded="true"] .ws-inbox-column {
+  transition: none;
+}
+
+.ws-workspace-body[data-conversation-expanded="true"] .ws-conversation-pane {
+  transition: width 220ms var(--ws-ease);
+}
+
+.ws-inbox-resize-handle {
+  position: relative;
+  z-index: 20;
+  width: 4px;
+  flex-shrink: 0;
+  margin-inline: -1.5px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ws-inbox-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: transparent;
+  transition: background var(--ws-dur) var(--ws-ease);
+}
+
+.ws-inbox-resize-handle:hover::after,
+.ws-inbox-resize-handle:focus-visible::after,
+.ws-workspace-body[data-inbox-resizing="true"] .ws-inbox-resize-handle::after {
+  background: var(--ws-accent);
+}
+
+.ws-inbox-resize-handle--disabled {
+  width: 0;
+  margin: 0;
+  pointer-events: none;
+  cursor: default;
+}
+
+.ws-workspace-body[data-inbox-resizing="true"] {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.ws-workspace-body[data-inbox-resizing="true"] .ws-conversation-pane,
+.ws-workspace-body[data-inbox-resizing="true"] .ws-inbox-column,
+.ws-workspace-body[data-inbox-resizing="true"] .ws-intelligence-panel {
+  pointer-events: none;
+}
+
 .agent-workspace .ws-conversation-pane {
   background: var(--ws-bg);
   min-height: 0;
+  min-width: 0;
+}
+
+@media (min-width: 1400px) {
+  .agent-workspace .ws-conversation-pane {
+    min-width: 650px;
+  }
+
+  .ws-workspace-body[data-conversation-expanded="true"] .ws-conversation-pane {
+    min-width: 0;
+  }
+}
+
+/* Inbox panel — fixed to viewport via JS; flex column + scrolling list */
+.agent-workspace .ws-inbox-column {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-width: none;
+  min-height: 0;
+  /* position/top/left/width/bottom set inline — escapes overflow:hidden ancestors */
+}
+
+.agent-workspace .ws-inbox-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.agent-workspace .ws-inbox-spacer {
+  pointer-events: none;
+}
+
+.agent-workspace .agent-desk-queue-card--flash {
+  animation: agent-desk-queue-flash 800ms ease-in-out 2;
 }
 
 .agent-workspace .ws-conversation-pane .agent-desk__grid-bg {
@@ -191,7 +298,7 @@
 }
 
 .agent-workspace .agent-desk-compose {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-md);
 }
 
 @keyframes ws-typing-bounce {
@@ -206,4 +313,15 @@
 .agent-workspace .agent-desk-queue-card--active,
 .agent-workspace .ws-inbox-row--active {
   box-shadow: inset 3px 0 0 var(--ws-accent);
+}
+
+.agent-workspace .agent-desk-queue-card--new {
+  background: hsl(var(--primary) / 0.1);
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.14),
+    0 0 22px -6px hsl(var(--primary) / 0.45);
+}
+
+.agent-workspace .agent-desk-queue-card--unread {
+  background: hsl(var(--primary) / 0.06);
 }

@@ -6,6 +6,7 @@ import { isNestedSectionActive, nestedSectionHref } from "@/lib/routing";
 import { translateRouteTitle } from "@/lib/i18n/translate-route-title";
 import { cn } from "@/lib/utils";
 
+/** Slim view switcher — routing only; not part of the CRM table chrome. */
 export function LeadsSubNav() {
   const [location] = useLocation();
   const { t } = useTranslation("common");
@@ -17,7 +18,7 @@ export function LeadsSubNav() {
   });
 
   return (
-    <nav className="mb-6 flex flex-wrap gap-2 border-b border-border/60 pb-4">
+    <div className="flex items-center gap-6 border-b border-border/50 pb-0">
       {items.map((item) => {
         const href = nestedSectionHref(item.nestedPath);
         const active = isNestedSectionActive(location, item.nestedPath);
@@ -26,16 +27,16 @@ export function LeadsSubNav() {
             key={item.id}
             href={href}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition-colors",
+              "relative -mb-px pb-2.5 text-[13px] font-medium tracking-tight transition-colors",
               active
-                ? "bg-primary/15 text-primary border border-primary/20"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+                ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {translateRouteTitle(t, item.titleKey)}
           </Link>
         );
       })}
-    </nav>
+    </div>
   );
 }

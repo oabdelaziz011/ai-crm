@@ -9,7 +9,6 @@ import { WORKSPACE_ROUTE_REGISTRY } from "@/config/workspace-route-registry";
 import { KNOWLEDGE_ROUTE_REGISTRY } from "@/config/knowledge-route-registry";
 import { SCHEDULING_DASHBOARD_ROUTE_REGISTRY } from "@/config/scheduling-dashboard-route-registry";
 import { SCHEDULING_ROUTE_REGISTRY } from "@/config/scheduling-route-registry";
-import { COMPANY_ROUTE_REGISTRY } from "@/config/company-route-registry";
 import { isUuidSegment } from "@/lib/billing/subscription-status-display";
 import { isDashboardHomeNestedPath } from "@/lib/dashboard-home";
 
@@ -70,23 +69,8 @@ function resolveNestedSegments(
       }
     }
 
+    // Legacy /settings/company* redirects to Company Workspace — no settings crumbs.
     if (sub.startsWith("/company")) {
-      const companyRemainder = sub.replace(/^\/company/, "") || "/";
-      const parts = companyRemainder.split("/").filter(Boolean);
-      segments.push({ labelKey: "dashboard.settings.nav.companySettings", href: "/settings/company" });
-
-      if (parts[0] === "branches") {
-        segments.push({ labelKey: "branches.nav.title", href: "/settings/company/branches" });
-        if (parts[1] && isUuidSegment(parts[1])) {
-          segments.push({ label: parts[1].slice(0, 8).toUpperCase() });
-        }
-        return segments;
-      }
-
-      const companyMatch = findRegistryMatch(COMPANY_ROUTE_REGISTRY, companyRemainder);
-      if (companyMatch && normalizePath(companyMatch.nestedPath) !== "/") {
-        segments.push({ labelKey: companyMatch.titleKey });
-      }
       return segments;
     }
 

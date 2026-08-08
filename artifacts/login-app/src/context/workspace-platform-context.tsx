@@ -9,7 +9,7 @@ import {
 } from "@workspace/universal-workspace-platform";
 import { useUniversalOperationsConfig } from "@/hooks/universal-operations/use-universal-operations-queue";
 
-export type WorkspacePlatformRole = "receptionist" | "cashier" | "nurse" | "manager";
+export type WorkspacePlatformRole = "receptionist" | "cashier" | "nurse" | "doctor" | "manager";
 
 type WorkspacePlatformContextValue = {
   role: WorkspacePlatformRole;

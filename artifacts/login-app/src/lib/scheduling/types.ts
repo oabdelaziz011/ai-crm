@@ -46,6 +46,8 @@ export type Branch = {
   phone: string | null;
   email: string | null;
   is_primary: boolean;
+  manager_user_id: string | null;
+  settings?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -262,7 +264,10 @@ export type SchedulingService = {
   company_id: string;
   name: string;
   description: string | null;
+  category?: string | null;
   duration_minutes: number;
+  price_cents: number;
+  currency: string;
   status: SchedulingServiceStatus;
   created_at: string;
   updated_at: string;
@@ -271,11 +276,50 @@ export type SchedulingService = {
   deleted_at: string | null;
 };
 
+/** Supported pricing currencies + company-default sentinel. */
+export const SERVICE_PRICING_CURRENCIES = ["EGP", "SAR", "AED", "USD", "EUR"] as const;
+export type ServicePricingCurrency = (typeof SERVICE_PRICING_CURRENCIES)[number];
+/** Sentinel meaning "use company default currency" in the UI. */
+export const COMPANY_DEFAULT_CURRENCY = "__COMPANY_DEFAULT__" as const;
+
+export type SchedulingPricingRuleType = {
+  id: string;
+  company_id: string;
+  code: string;
+  label: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SchedulingServicePricingRule = {
+  id: string;
+  company_id: string;
+  service_id: string;
+  type_id: string;
+  price_cents: number;
+  currency: string;
+  duration_minutes: number;
+  is_default: boolean;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: string | null;
+  /** Joined type catalog row when selected. */
+  type?: Pick<SchedulingPricingRuleType, "id" | "code" | "label"> | null;
+};
+
 export type ServiceInsert = {
   company_id: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   duration_minutes?: number;
+  price_cents?: number;
+  currency?: string;
   status?: SchedulingServiceStatus;
   created_by?: string | null;
   updated_by?: string | null;

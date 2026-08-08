@@ -64,7 +64,34 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
           .eq("company_id", input.companyId);
       }
 
-      return { customerId: created.customer.id, opportunityId: null };
+      // Sprint 4.0 — create Opportunity from converted lead (no conversation duplication).
+      let opportunityId: string | null = null;
+      try {
+        const { createLoginAppOpportunityPlatformServices } = await import(
+          "@/lib/opportunity-platform/opportunity-platform-factory.js"
+        );
+        const opportunityPlatform = createLoginAppOpportunityPlatformServices(client);
+        const ctx = {
+          userId: ownerUserId,
+          companyId: input.companyId,
+          isSuperAdmin: true,
+          hasPermission: () => true,
+        };
+        await client
+          .from("leads")
+          .update({ customer_id: created.customer.id, is_qualified: true })
+          .eq("id", input.leadId)
+          .eq("company_id", input.companyId);
+        const { opportunity } = await opportunityPlatform.commands.createFromLead(ctx, {
+          companyId: input.companyId,
+          leadId: input.leadId,
+        });
+        opportunityId = opportunity.id;
+      } catch {
+        opportunityId = null;
+      }
+
+      return { customerId: created.customer.id, opportunityId };
     },
   };
 }

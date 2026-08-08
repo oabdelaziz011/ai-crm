@@ -184,7 +184,7 @@ export class BranchRepository {
 
     const branchIds = branches.map((b) => b.id);
 
-    const [assignments, resources] = await Promise.all([
+    const [assignments, resources, bookings] = await Promise.all([
       this.client
         .from("user_branch_assignments")
         .select("branch_id")
@@ -196,10 +196,17 @@ export class BranchRepository {
         .eq("company_id", companyId)
         .in("branch_id", branchIds)
         .is("deleted_at", null),
+      this.client
+        .from("scheduling_bookings")
+        .select("branch_id, customer_id")
+        .eq("company_id", companyId)
+        .in("branch_id", branchIds)
+        .is("deleted_at", null),
     ]);
 
     if (assignments.error) throw new Error(assignments.error.message);
     if (resources.error) throw new Error(resources.error.message);
+    if (bookings.error) throw new Error(bookings.error.message);
 
     const resourceRows = resources.data ?? [];
     const resourceIds = resourceRows.map((row) => row.id as string);
@@ -249,11 +256,26 @@ export class BranchRepository {
       resourcesByBranch.set(branchId, (resourcesByBranch.get(branchId) ?? 0) + 1);
     }
 
+    const operationsByBranch = new Map<string, number>();
+    const customersByBranch = new Map<string, Set<string>>();
+    for (const row of bookings.data ?? []) {
+      const branchId = row.branch_id as string | null;
+      if (!branchId) continue;
+      operationsByBranch.set(branchId, (operationsByBranch.get(branchId) ?? 0) + 1);
+      const customerId = row.customer_id as string | null;
+      if (!customerId) continue;
+      const set = customersByBranch.get(branchId) ?? new Set<string>();
+      set.add(customerId);
+      customersByBranch.set(branchId, set);
+    }
+
     return branches.map((branch) => ({
       ...branch,
       users_count: usersByBranch.get(branch.id) ?? 0,
       resources_count: resourcesByBranch.get(branch.id) ?? 0,
       services_count: serviceCounts.get(branch.id) ?? 0,
+      operations_count: operationsByBranch.get(branch.id) ?? 0,
+      customers_count: customersByBranch.get(branch.id)?.size ?? 0,
     }));
   }
 

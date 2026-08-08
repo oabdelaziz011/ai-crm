@@ -97,14 +97,94 @@ export class BookingsTimelineProvider implements TimelineEventProvider {
         });
       }
 
-      if (booking.status === "completed") {
+      // Workflow-aligned timeline markers (Clinic pack event types / copy).
+      if (booking.status === "checked_in" || booking.status === "with_nurse" || booking.status === "in_progress" || booking.status === "completed" || booking.status === "archived") {
+        events.push({
+          id: `${this.providerId}:checked_in:${booking.id}`,
+          type: "booking_confirmed",
+          occurredAt: booking.updated_at,
+          source: this.providerId,
+          payload: { bookingId: booking.id, service: resolvedServiceName, status: "checked_in" },
+          metadata: {
+            ...baseMetadata,
+            detail: "Patient checked in.",
+            searchText: `${baseMetadata.searchText} checked_in patient_checked_in`,
+          },
+        });
+      }
+
+      if (booking.status === "with_nurse" || booking.status === "in_progress" || booking.status === "completed" || booking.status === "archived") {
+        events.push({
+          id: `${this.providerId}:with_nurse:${booking.id}`,
+          type: "booking_confirmed",
+          occurredAt: booking.updated_at,
+          source: this.providerId,
+          payload: { bookingId: booking.id, service: resolvedServiceName, status: "with_nurse" },
+          metadata: {
+            ...baseMetadata,
+            detail: "Patient sent to nurse.",
+            searchText: `${baseMetadata.searchText} with_nurse patient_sent_to_nurse`,
+          },
+        });
+      }
+
+      if (booking.status === "in_progress" || booking.status === "completed" || booking.status === "archived") {
+        events.push({
+          id: `${this.providerId}:with_doctor:${booking.id}`,
+          type: "booking_confirmed",
+          occurredAt: booking.updated_at,
+          source: this.providerId,
+          payload: { bookingId: booking.id, service: resolvedServiceName, status: "in_progress" },
+          metadata: {
+            ...baseMetadata,
+            detail: "Patient sent to doctor.",
+            searchText: `${baseMetadata.searchText} with_doctor patient_sent_to_doctor`,
+          },
+        });
+      }
+
+      if (booking.status === "completed" || booking.status === "archived") {
         events.push({
           id: `${this.providerId}:completed:${booking.id}`,
           type: "booking_completed",
           occurredAt: booking.end_at,
           source: this.providerId,
           payload: { bookingId: booking.id, service: resolvedServiceName },
-          metadata: baseMetadata,
+          metadata: {
+            ...baseMetadata,
+            detail: "Visit completed.",
+            searchText: `${baseMetadata.searchText} visit_completed`,
+          },
+        });
+      }
+
+      if (booking.status === "archived") {
+        events.push({
+          id: `${this.providerId}:archived:${booking.id}`,
+          type: "booking_completed",
+          occurredAt: booking.updated_at,
+          source: this.providerId,
+          payload: { bookingId: booking.id, service: resolvedServiceName, status: "archived" },
+          metadata: {
+            ...baseMetadata,
+            detail: "Operation archived.",
+            searchText: `${baseMetadata.searchText} archived operation_archived`,
+          },
+        });
+      }
+
+      if (booking.notes?.includes("[clinic:triage_complete]")) {
+        events.push({
+          id: `${this.providerId}:triage:${booking.id}`,
+          type: "booking_confirmed",
+          occurredAt: booking.updated_at,
+          source: this.providerId,
+          payload: { bookingId: booking.id, service: resolvedServiceName, status: "triage_complete" },
+          metadata: {
+            ...baseMetadata,
+            detail: "Triage completed.",
+            searchText: `${baseMetadata.searchText} triage triage_completed`,
+          },
         });
       }
 

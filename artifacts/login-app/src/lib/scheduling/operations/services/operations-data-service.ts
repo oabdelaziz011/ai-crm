@@ -33,11 +33,12 @@ export class OperationsDataService {
     filters: OperationsFilters,
     timezone: string,
   ): Promise<OperationsDayData> {
-    const date = resolveOperationsDate(filters.datePreset, filters.date);
+    const date = resolveOperationsDate(filters.datePreset, filters.date, timezone);
 
     const records = await this.repository.listBookingsForDay({
       companyId,
       date,
+      timezone,
       branchId: filters.branchId,
       resourceIds: filters.resourceIds.length ? filters.resourceIds : undefined,
       serviceIds: filters.serviceIds.length ? filters.serviceIds : undefined,

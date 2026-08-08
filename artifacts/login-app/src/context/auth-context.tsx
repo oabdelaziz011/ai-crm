@@ -108,7 +108,11 @@ export type PermissionsContextValue = {
 
 export type AuthActionsContextValue = {
   signIn: (email: string, password: string) => Promise<{ error: AuthErrorLike | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthErrorLike | null; needsEmailConfirmation: boolean }>;
+  signUp: (
+    email: string,
+    password: string,
+    options?: { fullName?: string; jobTitle?: string },
+  ) => Promise<{ error: AuthErrorLike | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   refreshAuthContext: () => Promise<void>;
 };
@@ -407,20 +411,33 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     };
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
-      },
-    });
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      options?: { fullName?: string; jobTitle?: string },
+    ) => {
+      const fullName = options?.fullName?.trim() || undefined;
+      const jobTitle = options?.jobTitle?.trim() || "Owner";
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
+          data: {
+            ...(fullName ? { full_name: fullName } : {}),
+            job_title: jobTitle,
+          },
+        },
+      });
 
-    return {
-      error: error ? { message: error.message, code: error.code, status: error.status } : null,
-      needsEmailConfirmation: Boolean(data.user && !data.session),
-    };
-  }, []);
+      return {
+        error: error ? { message: error.message, code: error.code, status: error.status } : null,
+        needsEmailConfirmation: Boolean(data.user && !data.session),
+      };
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

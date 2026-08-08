@@ -180,7 +180,7 @@ export const AssignmentSheet = memo(function AssignmentSheet({
         </Tabs>
 
         {history.length > 0 ? (
-          <div className="mt-4 border-t border-white/[0.06] pt-4">
+          <div className="mt-4 border-t border-border pt-4">
             <Label className="mb-2 flex items-center gap-1.5 text-xs">
               <History className="size-3.5" />
               {t("omnichannel.assignment.history")}
@@ -201,7 +201,7 @@ export const AssignmentSheet = memo(function AssignmentSheet({
 
 function EmptyTargets({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-muted-foreground">
+    <div className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
       {message}
     </div>
   );
@@ -223,14 +223,14 @@ function TargetCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-start transition-colors hover:bg-white/[0.04]",
-        tone === "ai" ? "border-violet-400/20 bg-violet-400/5" : "border-white/[0.06]",
+        "flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-start transition-colors hover:bg-accent",
+        tone === "ai" ? "border-primary/20 bg-primary/5" : "border-border",
       )}
     >
       <div
         className={cn(
           "flex size-9 items-center justify-center rounded-lg",
-          tone === "ai" ? "bg-violet-400/15 text-violet-200" : "bg-white/[0.06]",
+          tone === "ai" ? "bg-primary/15 text-primary" : "bg-muted",
         )}
       >
         <Icon className="size-4" />

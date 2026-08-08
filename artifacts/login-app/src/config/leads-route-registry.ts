@@ -28,7 +28,7 @@ export const LEADS_ROUTE_REGISTRY: readonly LeadsRouteDefinition[] = [
     id: "table",
     nestedPath: "/table",
     titleKey: "leads.nav.table",
-    Page: lazyNamed(() => import("@/pages/dashboard/leads/leads-table-page"), "LeadsTablePage"),
+    Page: lazy(() => import("@/pages/dashboard/leads/leads-table-page")),
   },
   {
     id: "kanban",

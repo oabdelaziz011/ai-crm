@@ -18,6 +18,10 @@ const PROFILE_COLUMNS_FULL = `
   full_name,
   avatar_url,
   job_title,
+  department,
+  phone,
+  bio,
+  extension_number,
   preferred_language,
   preferred_theme,
   timezone,
@@ -132,6 +136,18 @@ function normalizeMyProfile(
     job_title: options.hasPreferenceColumns
       ? asNullableString(row.job_title)
       : null,
+    department: options.hasPreferenceColumns
+      ? asNullableString(row.department)
+      : null,
+    phone: options.hasPreferenceColumns
+      ? asNullableString(row.phone)
+      : null,
+    bio: options.hasPreferenceColumns
+      ? asNullableString(row.bio)
+      : null,
+    extension_number: options.hasPreferenceColumns
+      ? asNullableString(row.extension_number)
+      : null,
     preferred_language: options.hasPreferenceColumns
       ? asNullableString(row.preferred_language)
       : null,
@@ -238,6 +254,9 @@ export function useUpdateMyProfile() {
         p_preferred_language: values.preferred_language ?? null,
         p_timezone: values.timezone ?? "UTC",
         p_preferred_theme: values.preferred_theme ?? null,
+        p_job_title: values.job_title ?? null,
+        p_department: values.department ?? null,
+        p_phone: values.phone ?? null,
       });
 
       if (error) {
@@ -261,6 +280,7 @@ export function useUpdateMyProfile() {
     },
     onSuccess: (updatedProfile) => {
       writeMyProfileCache(qc, updatedProfile);
+      void qc.invalidateQueries({ queryKey: ["employee-identity"] });
     },
   });
 }
@@ -278,6 +298,9 @@ export function useUpdatePreferredLanguage() {
         p_preferred_language: preferredLanguage,
         p_timezone: profile.timezone ?? "UTC",
         p_preferred_theme: resolveAppTheme(profile.preferred_theme),
+        p_job_title: profile.job_title,
+        p_department: profile.department,
+        p_phone: profile.phone,
       });
 
       if (error) {
@@ -315,6 +338,9 @@ export function useUpdatePreferredTheme() {
         p_preferred_language: profile.preferred_language,
         p_timezone: profile.timezone ?? "UTC",
         p_preferred_theme: preferredTheme,
+        p_job_title: profile.job_title,
+        p_department: profile.department,
+        p_phone: profile.phone,
       });
 
       if (error) {

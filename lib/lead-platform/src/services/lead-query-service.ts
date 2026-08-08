@@ -94,6 +94,13 @@ export class LeadQueryService {
     return { pipelines };
   }
 
+  async listSources(ctx: LeadServiceContext, input: { companyId: string }) {
+    assertLeadCompanyAccess(ctx, input.companyId);
+    assertLeadPermission(ctx, LEAD_PERMISSIONS.view);
+    const sources = await this.deps.leads.ensureDefaultSources(input.companyId);
+    return { sources };
+  }
+
   async listLeadActivities(
     ctx: LeadServiceContext,
     input: { companyId: string; leadId: string; limit?: number },

@@ -1,11 +1,11 @@
 import express, { type Express } from "express";
-import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import router from "./routes/index.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 import { applySecurityMiddleware } from "./middleware/security.js";
+import { apiCorsMiddleware } from "./middleware/cors.js";
 import { globalRateLimiter } from "./middleware/rate-limit.js";
 import { requestContextMiddleware } from "./middleware/request-context.js";
 import { metricsMiddleware } from "./middleware/metrics.js";
@@ -17,6 +17,8 @@ const env = loadPlatformEnv();
 const app: Express = express();
 
 app.set("trust proxy", 1);
+// CORS first so preflight always gets ACAO headers even if later middleware fails.
+app.use(apiCorsMiddleware);
 applySecurityMiddleware(app);
 app.use(requestContextMiddleware);
 app.use(metricsMiddleware);
@@ -46,7 +48,6 @@ app.use(
   }),
 );
 
-app.use(cors({ origin: true, credentials: true }));
 app.use(globalRateLimiter);
 
 // Webhook routes require raw body for signature validation.

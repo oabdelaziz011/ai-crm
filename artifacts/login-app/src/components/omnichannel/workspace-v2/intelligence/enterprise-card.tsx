@@ -10,9 +10,9 @@ type EnterpriseCardProps = {
 
 const accentBorder: Record<NonNullable<EnterpriseCardProps["accent"]>, string> = {
   default: "border-[var(--ws-border-subtle)]",
-  violet: "border-violet-500/20 bg-gradient-to-b from-violet-950/25 to-[var(--ws-surface-2)]",
-  accent: "border-[var(--ws-accent)]/20 bg-gradient-to-b from-teal-950/20 to-[var(--ws-surface-2)]",
-  warn: "border-[var(--ws-warn)]/20 bg-gradient-to-b from-amber-950/15 to-[var(--ws-surface-2)]",
+  violet: "border-primary/20 bg-gradient-to-b from-primary/10 to-[var(--ws-surface-2)]",
+  accent: "border-[var(--ws-accent)]/20 bg-gradient-to-b from-primary/10 to-[var(--ws-surface-2)]",
+  warn: "border-[var(--ws-warn)]/20 bg-gradient-to-b from-[hsl(var(--warning)/0.12)] to-[var(--ws-surface-2)]",
 };
 
 export function EnterpriseCard({
@@ -24,7 +24,7 @@ export function EnterpriseCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-[var(--ws-surface-2)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        "rounded-xl border bg-[var(--ws-surface-2)] p-2.5 shadow-sm",
         accentBorder[accent],
         hover && "transition-colors hover:border-[var(--ws-accent)]/30",
         className,

@@ -1,4 +1,4 @@
-export type Customer360WorkspaceRole = "receptionist" | "cashier" | "nurse" | "manager";
+export type Customer360WorkspaceRole = "receptionist" | "cashier" | "nurse" | "doctor" | "manager";
 
 export type Customer360SectionId =
   | "todays_operation"

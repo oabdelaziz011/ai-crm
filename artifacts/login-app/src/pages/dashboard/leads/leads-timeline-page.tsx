@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useLeadsQueue } from "@/hooks/leads/use-leads-workspace";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
-
 export function LeadsTimelinePage() {
   const { t } = useTranslation("common");
   const { data, isLoading } = useLeadsQueue({ limit: 50 });
@@ -23,8 +22,8 @@ export function LeadsTimelinePage() {
           <div key={row.id} className="rounded-xl border border-border/60 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="font-medium">{row.title}</div>
-                <div className="text-sm text-muted-foreground capitalize">{row.stageName}</div>
+                <div className="font-medium">{row.name}</div>
+                <div className="text-sm text-muted-foreground capitalize">{row.stage}</div>
               </div>
               <div className="text-xs text-muted-foreground">{new Date(row.updatedAt).toLocaleString()}</div>
             </div>

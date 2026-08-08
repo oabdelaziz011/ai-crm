@@ -39,9 +39,18 @@ export function useUpdateBillingSettings() {
       if (error) throw new Error(error.message);
       return data as Record<string, unknown>;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["billing", "settings"] });
-      qc.invalidateQueries({ queryKey: ["billing", "audit-log"] });
+    onSuccess: (_data, variables) => {
+      // Category lists + single-code setting readers (default_currency, etc.)
+      void qc.invalidateQueries({ queryKey: ["billing", "settings"] });
+      void qc.invalidateQueries({ queryKey: ["billing", "setting"] });
+      void qc.invalidateQueries({ queryKey: ["billing", "health"] });
+      void qc.invalidateQueries({ queryKey: ["billing", "audit-log"] });
+      void qc.invalidateQueries({ queryKey: ["workspace", "billing"] });
+      if (variables.companyId) {
+        void qc.invalidateQueries({
+          queryKey: ["billing", "entitlements", variables.companyId],
+        });
+      }
     },
   });
 }

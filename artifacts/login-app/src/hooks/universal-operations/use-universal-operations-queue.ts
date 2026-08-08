@@ -34,6 +34,8 @@ import {
 } from "@/lib/application-layer/operations-workspace-config-service";
 
 import { mapBookingReadModelToRow } from "@/lib/application-layer/operations-queue-row-mapper";
+import { resolveQueueTimezone } from "@/lib/scheduling/operations/utilities/calendar-day-range";
+import { resolveQueueDateRange } from "@/lib/universal-operations/operations-queue-date-range";
 
 import { useUniversalOperationsRealtime } from "./use-universal-operations-realtime";
 
@@ -71,6 +73,8 @@ async function loadLiveOperationsQueuePage(
 
     hasPermission: (code: string) => boolean;
 
+    timezone: string;
+
   },
 
 ): Promise<OperationsQueuePage> {
@@ -92,10 +96,24 @@ async function loadLiveOperationsQueuePage(
 
 
 
+  const filters = query.filters ?? {};
+  const timezone = resolveQueueTimezone(
+    typeof filters.timezone === "string" ? filters.timezone : null,
+    input.timezone,
+  );
+  const dateFrom =
+    typeof filters.dateFrom === "string" && filters.dateFrom.trim()
+      ? filters.dateFrom.trim().slice(0, 10)
+      : undefined;
+  const dateTo =
+    typeof filters.dateTo === "string" && filters.dateTo.trim()
+      ? filters.dateTo.trim().slice(0, 10)
+      : dateFrom;
+
   const bookings = await ports.bookingRead.listQueue(input.companyId, {
-
     search: query.search,
-
+    timezone,
+    ...(dateFrom ? { dateFrom, dateTo: dateTo ?? dateFrom } : {}),
   });
 
 
@@ -159,11 +177,14 @@ export function useUniversalOperationsConfig(templateKey = "clinic") {
 
 
 export function useUniversalOperationsQueue(templateKey = "clinic") {
-  const { user, company } = useAuth();
+  const { user, company, profile } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const configQuery = useUniversalOperationsConfig(templateKey);
 
   useUniversalOperationsRealtime(company?.id ?? null);
+
+  const queueTimezone = resolveQueueTimezone(profile?.timezone ?? null);
+  const initialToday = resolveQueueDateRange("today", null, null, queueTimezone);
 
   const [query, setQuery] = useState<OperationsQueueQuery>({
     companyId: company?.id ?? "",
@@ -171,7 +192,12 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
     pageSize: 50,
     search: "",
     sort: [{ columnId: "col_scheduled", direction: "asc" }],
-    filters: {},
+    filters: {
+      datePreset: initialToday.datePreset,
+      dateFrom: initialToday.dateFrom,
+      dateTo: initialToday.dateTo,
+      timezone: queueTimezone,
+    },
   });
 
   const [preferences, setPreferencesState] = useState<OperationsGridPreferences>(DEFAULT_PREFERENCES);
@@ -263,6 +289,11 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
         hasPermission,
 
+        timezone: resolveQueueTimezone(
+          typeof query.filters?.timezone === "string" ? query.filters.timezone : null,
+          queueTimezone,
+        ),
+
       }),
 
     staleTime: 15_000,
@@ -316,6 +347,8 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
     loading: dataQuery.isLoading,
 
     isFetching: dataQuery.isFetching,
+
+    refetch: dataQuery.refetch,
 
   };
 

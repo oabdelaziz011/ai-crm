@@ -6,14 +6,14 @@ export function aiCostAggregateQueryKey(companyId: string | null, billingPeriod?
   return ["ai-cost-aggregate", companyId, billingPeriod] as const;
 }
 
-export function useAiCostAggregate(billingPeriod?: string) {
+export function useAiCostAggregate(billingPeriod?: string, enabled = true) {
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { services, context } = useAIObservabilityServices();
 
   return useQuery({
     queryKey: aiCostAggregateQueryKey(companyId, billingPeriod),
-    enabled: Boolean(companyId),
+    enabled: Boolean(enabled && companyId),
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId) return null;
@@ -22,14 +22,14 @@ export function useAiCostAggregate(billingPeriod?: string) {
   });
 }
 
-export function useAiCostRecords(limit = 50) {
+export function useAiCostRecords(limit = 50, enabled = true) {
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { services, context } = useAIObservabilityServices();
 
   return useQuery({
     queryKey: ["ai-cost-records", companyId, limit],
-    enabled: Boolean(companyId),
+    enabled: Boolean(enabled && companyId),
     staleTime: 30_000,
     queryFn: async () => {
       if (!companyId) return [];

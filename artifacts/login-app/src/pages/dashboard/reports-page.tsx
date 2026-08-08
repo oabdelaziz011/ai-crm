@@ -28,6 +28,7 @@ import {
   DashboardStatCard,
 } from "@/components/dashboard/ui";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import { BranchSelector } from "@/lib/company/branches/components";
 import { useBranches } from "@/lib/company/branches/hooks";
 import { useAnalyticsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
@@ -38,6 +39,7 @@ export default function ReportsPage() {
   const [, setLocation] = useLocation();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const { formatCurrency } = useCompanyLocaleContext();
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
   const { data: branches = [] } = useBranches(companyId);
   const canViewReports = useHasPermission("reports.view");
@@ -71,8 +73,7 @@ export default function ReportsPage() {
 
   const totalRevenue  = invoices.filter((invoice: Invoice) => invoice.status === "Paid").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
   const totalBilled   = invoices.reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
-  const fmt = (n: number) =>
-    n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const fmt = (n: number) => formatCurrency(n);
 
   const paid    = invoices.filter((invoice: Invoice) => invoice.status === "Paid").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);
   const unpaid  = invoices.filter((invoice: Invoice) => invoice.status === "Unpaid").reduce<number>((sum: number, invoice: Invoice) => sum + Number(invoice.amount), 0);

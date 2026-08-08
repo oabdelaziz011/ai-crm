@@ -216,12 +216,12 @@ export class Customer360Aggregator {
       lead: lead
         ? Object.freeze({
             id: lead.id,
-            source: lead.source ?? "Unknown",
-            campaign: lead.campaign ?? null,
-            owner: lead.owner ?? "Unassigned",
-            score: lead.score ?? 0,
-            customFields: Object.freeze(lead.customFields ?? {}),
-            convertedAt: lead.convertedAt ?? null,
+            source: lead.source,
+            campaign: null,
+            owner: lead.owner,
+            score: lead.score,
+            customFields: Object.freeze({}),
+            convertedAt: null,
           })
         : null,
       summary: Object.freeze({

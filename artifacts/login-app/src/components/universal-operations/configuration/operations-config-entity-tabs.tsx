@@ -14,8 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { DEFAULT_BRAND_COLORS } from "@/lib/company-workspace/brand-center/defaults";
 import { moveItem, newId } from "./config-editor-shared";
 import type { ConfigTabEditorProps } from "./operations-config-tab-types";
+
+const DEFAULT_ENTITY_ACCENT = DEFAULT_BRAND_COLORS.primary;
 
 function RowActions({
   index,
@@ -68,7 +71,7 @@ export function GeneralConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
           <Label>{t("universalOperations.configuration.branding.accentColor")}</Label>
           <Input
             type="color"
-            value={draft.branding?.accentColor ?? "#6366f1"}
+            value={draft.branding?.accentColor ?? DEFAULT_ENTITY_ACCENT}
             onChange={(e) =>
               updateDraft({ branding: { ...draft.branding, accentColor: e.target.value, icon: draft.branding?.icon ?? "LayoutGrid", moduleIcon: draft.branding?.moduleIcon ?? "Stethoscope" } })
             }
@@ -79,7 +82,7 @@ export function GeneralConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
           <Input
             value={draft.branding?.icon ?? ""}
             onChange={(e) =>
-              updateDraft({ branding: { ...draft.branding, icon: e.target.value, accentColor: draft.branding?.accentColor ?? "#6366f1", moduleIcon: draft.branding?.moduleIcon ?? "Stethoscope" } })
+              updateDraft({ branding: { ...draft.branding, icon: e.target.value, accentColor: draft.branding?.accentColor ?? DEFAULT_ENTITY_ACCENT, moduleIcon: draft.branding?.moduleIcon ?? "Stethoscope" } })
             }
           />
         </div>
@@ -88,7 +91,7 @@ export function GeneralConfigTab({ draft, updateDraft }: ConfigTabEditorProps) {
           <Input
             value={draft.branding?.moduleIcon ?? ""}
             onChange={(e) =>
-              updateDraft({ branding: { ...draft.branding, moduleIcon: e.target.value, accentColor: draft.branding?.accentColor ?? "#6366f1", icon: draft.branding?.icon ?? "LayoutGrid" } })
+              updateDraft({ branding: { ...draft.branding, moduleIcon: e.target.value, accentColor: draft.branding?.accentColor ?? DEFAULT_ENTITY_ACCENT, icon: draft.branding?.icon ?? "LayoutGrid" } })
             }
           />
         </div>
@@ -257,7 +260,7 @@ export function StatusesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
         id: newId("st"),
         internalName: "new_status",
         displayName: "New Status",
-        color: "#6366f1",
+        color: DEFAULT_ENTITY_ACCENT,
         icon: "Circle",
         isTerminal: false,
         sortOrder: statuses.length,
@@ -417,7 +420,7 @@ export function PaymentStatusConfigTab({ draft, updateDraft }: ConfigTabEditorPr
           onClick={() =>
             patch([
               ...items,
-              { id: newId("pay"), internalName: "new", displayName: "New", color: "#6366f1", sortOrder: items.length },
+              { id: newId("pay"), internalName: "new", displayName: "New", color: DEFAULT_ENTITY_ACCENT, sortOrder: items.length },
             ])
           }
         >
@@ -476,7 +479,7 @@ export function ServicesConfigTab({ draft, updateDraft }: ConfigTabEditorProps) 
                 durationMinutes: 30,
                 vatPercent: 15,
                 resourceIds: [],
-                color: "#6366f1",
+                color: DEFAULT_ENTITY_ACCENT,
                 capacity: 1,
                 onlineBooking: true,
                 cancellationPolicy: "",
@@ -544,7 +547,7 @@ export function ResourcesConfigTab({ draft, updateDraft }: ConfigTabEditorProps)
           onClick={() =>
             patch([
               ...items,
-              { id: newId("res"), name: "New Resource", type: "room", branchId: null, color: "#6366f1", active: true },
+              { id: newId("res"), name: "New Resource", type: "room", branchId: null, color: DEFAULT_ENTITY_ACCENT, active: true },
             ])
           }
         >

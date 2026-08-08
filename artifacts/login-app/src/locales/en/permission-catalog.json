@@ -55,6 +55,11 @@
       "order": 100,
       "label": "Settings"
     },
+    "company": {
+      "icon": "🏢",
+      "order": 95,
+      "label": "Company Workspace"
+    },
     "audit": {
       "icon": "📋",
       "order": 110,
@@ -396,6 +401,41 @@
       "name": "Edit Settings",
       "description": "Allows modifying company and application settings.",
       "group": "settings"
+    },
+    "company.view": {
+      "name": "View Company Workspace",
+      "description": "Allows viewing the company workspace.",
+      "group": "company"
+    },
+    "company.update": {
+      "name": "Update Company",
+      "description": "Allows updating company profile details.",
+      "group": "company"
+    },
+    "company.branding": {
+      "name": "Manage Company Branding",
+      "description": "Allows managing company branding assets.",
+      "group": "company"
+    },
+    "company.subscription": {
+      "name": "Manage Company Subscription",
+      "description": "Allows viewing and managing the company subscription.",
+      "group": "company"
+    },
+    "employees.manage": {
+      "name": "Manage Employees",
+      "description": "Allows inviting and managing company employees.",
+      "group": "company"
+    },
+    "branches.manage": {
+      "name": "Manage Branches",
+      "description": "Allows creating and managing company branches.",
+      "group": "company"
+    },
+    "departments.manage": {
+      "name": "Manage Departments",
+      "description": "Allows creating and managing company departments.",
+      "group": "company"
     },
     "scheduling.view": {
       "name": "View Scheduling",

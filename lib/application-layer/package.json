@@ -12,6 +12,10 @@
   },
   "dependencies": {
     "@workspace/configuration-platform": "workspace:*",
+    "@workspace/lead-platform": "workspace:*",
+    "@workspace/opportunity-platform": "workspace:*",
+    "@workspace/product-platform": "workspace:*",
+    "@workspace/quote-platform": "workspace:*",
     "@workspace/platform-cache": "workspace:*",
     "@workspace/platform-events": "workspace:*"
   },

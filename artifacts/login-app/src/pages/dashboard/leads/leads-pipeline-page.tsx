@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLeadKanbanBoard, useLeadPipelines } from "@/hooks/leads/use-leads-workspace";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { WorkspaceMetric } from "@/components/customer-workspace/workspace-ui";
-import { translateLeadLifecycleStatus } from "@/lib/i18n/workspace-mock-labels";
+import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
 import {
   Select,
   SelectContent,
@@ -11,9 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 export function LeadsPipelinePage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { data: pipelines } = useLeadPipelines();
   const [pipelineId, setPipelineId] = useState<string | null>(null);
   const { data: board, isLoading } = useLeadKanbanBoard(pipelineId);
@@ -31,7 +30,7 @@ export function LeadsPipelinePage() {
   const totalLeads = (board?.stages ?? []).reduce((sum, stage) => sum + (stage.leadCount ?? 0), 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir={i18n.dir()}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold">{t("leads.pipeline.title")}</h2>
@@ -63,12 +62,9 @@ export function LeadsPipelinePage() {
           <div key={stage.id} className="rounded-xl border border-border/60 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="font-medium">{stage.name}</div>
-                <div className="text-xs text-muted-foreground capitalize">
-                  {translateLeadLifecycleStatus(t, stage.lifecycleStatus)}
-                </div>
+                <div className="font-medium">{translateLeadStageLabel(t, stage)}</div>
               </div>
-              <div className="text-right text-sm">
+              <div className="text-end text-sm">
                 <div>{t("leads.pipeline.stageLeads", { count: stage.leadCount ?? 0 })}</div>
                 <div className="text-muted-foreground">
                   {t("leads.pipeline.probability", { percent: stage.probabilityPercent })}

@@ -2,6 +2,7 @@ import { Building2, Briefcase, GitBranch, Layers, Users } from "lucide-react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { safeDisplayText } from "@/lib/profile/display-safe";
 import { DashboardCard, DashboardStatCard } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ export function CompanyOverviewPage() {
   const { t } = useTranslation("common");
   const { company } = useAuth();
   const companyId = company?.id ?? null;
+  const { identity } = useCompanyIdentity(Boolean(companyId));
   const empty = t("common.none");
 
   const { data: stats, isLoading: statsLoading } = useCompanyBranchStats(companyId);
@@ -20,7 +22,7 @@ export function CompanyOverviewPage() {
   const fields = [
     {
       label: t("profiles.fields.company"),
-      value: safeDisplayText(company?.name) ?? empty,
+      value: safeDisplayText(identity?.name ?? company?.name) ?? empty,
     },
     {
       label: t("common.status"),

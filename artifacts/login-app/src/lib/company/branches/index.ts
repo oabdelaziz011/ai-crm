@@ -9,20 +9,28 @@ import {
   ServiceBranchAvailabilityService,
   UserBranchAssignmentService,
 } from "@/lib/company/branches/services";
+import {
+  memoizeSchedulingFactory,
+  WA_REQUEST_CACHE_NS,
+} from "@/lib/scheduling/request-scoped-memo";
+import { wxRecordDependencyConstruction } from "@workspace/automation-platform";
 
 export function createBranchServices(client: SupabaseClient = supabase) {
-  const branchRepo = new BranchRepository(client);
-  const assignmentRepo = new UserBranchAssignmentRepository(client);
+  return memoizeSchedulingFactory(WA_REQUEST_CACHE_NS.branchServices, client, () => {
+    wxRecordDependencyConstruction("createBranchServices");
+    const branchRepo = new BranchRepository(client);
+    const assignmentRepo = new UserBranchAssignmentRepository(client);
 
-  return {
-    branches: new BranchManagementService(branchRepo),
-    userAssignments: new UserBranchAssignmentService(assignmentRepo, branchRepo),
-    serviceAvailability: new ServiceBranchAvailabilityService(client),
-    repositories: {
-      branches: branchRepo,
-      assignments: assignmentRepo,
-    },
-  };
+    return {
+      branches: new BranchManagementService(branchRepo),
+      userAssignments: new UserBranchAssignmentService(assignmentRepo, branchRepo),
+      serviceAvailability: new ServiceBranchAvailabilityService(client),
+      repositories: {
+        branches: branchRepo,
+        assignments: assignmentRepo,
+      },
+    };
+  });
 }
 
 let cached: ReturnType<typeof createBranchServices> | null = null;

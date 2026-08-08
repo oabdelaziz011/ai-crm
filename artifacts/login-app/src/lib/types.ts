@@ -19,6 +19,10 @@ export type Profile = {
   full_name: string | null;
   avatar_url?: string | null;
   job_title?: string | null;
+  department?: string | null;
+  phone?: string | null;
+  bio?: string | null;
+  extension_number?: string | null;
   preferred_language?: string | null;
   preferred_theme?: string | null;
   timezone?: string | null;
@@ -36,6 +40,10 @@ export type MyProfile = {
   full_name: string | null;
   avatar_url: string | null;
   job_title: string | null;
+  department: string | null;
+  phone: string | null;
+  bio: string | null;
+  extension_number: string | null;
   preferred_language: string | null;
   preferred_theme: string | null;
   timezone: string | null;
@@ -47,7 +55,17 @@ export type MyProfile = {
 };
 
 export type MyProfileUpdate = Partial<
-  Pick<MyProfile, "full_name" | "avatar_url" | "preferred_language" | "preferred_theme" | "timezone">
+  Pick<
+    MyProfile,
+    | "full_name"
+    | "avatar_url"
+    | "preferred_language"
+    | "preferred_theme"
+    | "timezone"
+    | "job_title"
+    | "department"
+    | "phone"
+  >
 >;
 
 export type CompanyStatus = "Active" | "Suspended" | "Trial";
@@ -90,6 +108,9 @@ export type AuditLog = {
     id: string;
     full_name: string | null;
     email?: string | null;
+    avatar_url?: string | null;
+    job_title?: string | null;
+    department?: string | null;
   } | null;
   company?: {
     id: string;
@@ -102,6 +123,9 @@ export type EnrichedAuditLog = AuditLog & {
     id: string;
     full_name: string | null;
     email: string | null;
+    avatar_url?: string | null;
+    job_title?: string | null;
+    department?: string | null;
   } | null;
   company: {
     id: string;

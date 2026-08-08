@@ -126,12 +126,14 @@ export function SchedulingResourcesPage() {
           </h3>
           <p className="text-xs text-muted-foreground mt-1">{t("scheduling.resources.subtitle")}</p>
         </div>
-        {canEdit && (
-          <Button size="sm" onClick={openCreate} className="gap-2">
-            <Plus className="w-4 h-4" />
-            {t("scheduling.resources.add")}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {canEdit && (
+            <Button size="sm" onClick={openCreate} className="gap-2">
+              <Plus className="w-4 h-4" />
+              {t("scheduling.resources.add")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (

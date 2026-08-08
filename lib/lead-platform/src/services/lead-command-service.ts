@@ -57,9 +57,15 @@ export class LeadCommandService {
       phone?: string;
       companyName?: string;
       sourceId?: string;
+      stageId?: string;
+      assignedUserId?: string;
       conversationId?: string;
       priority?: LeadRecord["priority"];
       estimatedValue?: number;
+      expectedCloseDate?: string | null;
+      temperature?: LeadRecord["temperature"];
+      notes?: string;
+      tags?: string[];
       pipelineId?: string;
       territory?: string;
       department?: string;
@@ -67,6 +73,7 @@ export class LeadCommandService {
       isVip?: boolean;
       aiSummary?: string;
       metadata?: Record<string, unknown>;
+      currency?: string;
     },
   ): Promise<{ lead: LeadRecord }> {
     const actorUserId = assertLeadActor(ctx);
@@ -74,15 +81,25 @@ export class LeadCommandService {
     assertLeadPermission(ctx, LEAD_PERMISSIONS.create);
 
     const pipelineId = input.pipelineId ?? (await this.deps.leads.ensureDefaultPipeline(input.companyId));
-    const stage = await this.deps.leads.getDefaultStage(input.companyId, pipelineId);
-    if (!stage) throw new LeadValidationError("Default pipeline stage not found.");
+    const defaultStage = await this.deps.leads.getDefaultStage(input.companyId, pipelineId);
+    if (!defaultStage) throw new LeadValidationError("Default pipeline stage not found.");
 
+    let stageId = input.stageId ?? defaultStage.id;
+    let lifecycleStatus: LeadRecord["lifecycleStatus"] = defaultStage.lifecycleStatus;
+    if (input.stageId) {
+      const stage = await this.deps.leads.getStage(input.companyId, input.stageId);
+      if (!stage) throw new LeadValidationError("Stage not found.");
+      stageId = stage.id;
+      lifecycleStatus = stage.lifecycleStatus;
+    }
+
+    const nowIso = new Date().toISOString();
     const record = await this.deps.leads.createLead({
       companyId: input.companyId,
       pipelineId,
-      stageId: stage.id,
+      stageId,
       sourceId: input.sourceId ?? null,
-      lifecycleStatus: "new",
+      lifecycleStatus,
       title: readRequiredString(input.title, "Title"),
       contactName: readOptionalString(input.contactName),
       email: readOptionalString(input.email) ?? null,
@@ -94,11 +111,49 @@ export class LeadCommandService {
       territory: input.territory ?? null,
       department: input.department ?? null,
       language: input.language ?? null,
+      assignedUserId: input.assignedUserId ?? null,
+      expectedCloseDate: input.expectedCloseDate ?? null,
+      temperature: input.temperature ?? null,
+      notes: input.notes ?? "",
+      tags: input.tags ?? [],
+      lastActivityAt: nowIso,
       isVip: input.isVip ?? false,
       aiSummary: input.aiSummary ?? "",
       metadata: input.metadata ?? {},
+      currency: input.currency?.trim().toUpperCase() || null,
       createdBy: actorUserId,
     });
+
+    if (input.assignedUserId) {
+      await this.deps.leads.createAssignment({
+        companyId: input.companyId,
+        leadId: record.id,
+        assignedUserId: input.assignedUserId,
+        assignmentMethod: "manual",
+        assignedBy: actorUserId,
+      });
+    }
+
+    if (input.notes?.trim()) {
+      await this.deps.leads.addNote({
+        companyId: input.companyId,
+        leadId: record.id,
+        body: input.notes.trim(),
+        isInternal: false,
+        createdBy: actorUserId,
+      });
+    }
+
+    for (const tag of input.tags ?? []) {
+      const cleaned = tag.trim();
+      if (!cleaned) continue;
+      await this.deps.leads.addTag({
+        companyId: input.companyId,
+        leadId: record.id,
+        tag: cleaned,
+        createdBy: actorUserId,
+      });
+    }
 
     await this.recordActivity(input.companyId, record.id, "created", "Lead created", actorUserId);
     await this.deps.events.publish(createLeadCreatedEvent(record, actorUserId));
@@ -120,6 +175,13 @@ export class LeadCommandService {
       priority?: LeadRecord["priority"];
       estimatedValue?: number;
       score?: number;
+      sourceId?: string | null;
+      stageId?: string;
+      assignedUserId?: string | null;
+      expectedCloseDate?: string | null;
+      temperature?: LeadRecord["temperature"];
+      notes?: string;
+      tags?: string[];
       aiSummary?: string;
       metadata?: Record<string, unknown>;
     },
@@ -128,6 +190,13 @@ export class LeadCommandService {
     assertLeadCompanyAccess(ctx, input.companyId);
     assertLeadPermission(ctx, LEAD_PERMISSIONS.edit);
     await this.requireLead(input.companyId, input.leadId);
+
+    let lifecycleStatus: LeadRecord["lifecycleStatus"] | undefined;
+    if (input.stageId) {
+      const stage = await this.deps.leads.getStage(input.companyId, input.stageId);
+      if (!stage) throw new LeadValidationError("Stage not found.");
+      lifecycleStatus = stage.lifecycleStatus;
+    }
 
     const record = await this.deps.leads.updateLead({
       companyId: input.companyId,
@@ -141,9 +210,56 @@ export class LeadCommandService {
       priority: input.priority,
       estimatedValue: input.estimatedValue,
       score: input.score,
+      sourceId: input.sourceId,
+      stageId: input.stageId,
+      lifecycleStatus,
+      assignedUserId: input.assignedUserId,
+      expectedCloseDate: input.expectedCloseDate,
+      temperature: input.temperature,
+      notes: input.notes,
+      tags: input.tags,
+      lastActivityAt: new Date().toISOString(),
       aiSummary: input.aiSummary,
       metadata: input.metadata,
     });
+
+    if (input.assignedUserId) {
+      await this.deps.leads.deactivateAssignments(input.companyId, input.leadId);
+      await this.deps.leads.createAssignment({
+        companyId: input.companyId,
+        leadId: input.leadId,
+        assignedUserId: input.assignedUserId,
+        assignmentMethod: "manual",
+        assignedBy: actorUserId,
+      });
+    }
+
+    if (input.notes != null && input.notes.trim()) {
+      await this.deps.leads.addNote({
+        companyId: input.companyId,
+        leadId: input.leadId,
+        body: input.notes.trim(),
+        isInternal: false,
+        createdBy: actorUserId,
+      });
+    }
+
+    if (input.tags) {
+      const existing = await this.deps.leads.listTags(input.companyId, input.leadId);
+      for (const tag of existing) {
+        await this.deps.leads.removeTag(input.companyId, input.leadId, tag.tag);
+      }
+      for (const tag of input.tags) {
+        const cleaned = tag.trim();
+        if (!cleaned) continue;
+        await this.deps.leads.addTag({
+          companyId: input.companyId,
+          leadId: input.leadId,
+          tag: cleaned,
+          createdBy: actorUserId,
+        });
+      }
+    }
 
     await this.deps.events.publish(createLeadUpdatedEvent(record, actorUserId, input));
     await this.writeAudit(input.companyId, actorUserId, "UPDATE", "lead", input.leadId, { patch: input });
@@ -501,7 +617,14 @@ export class LeadCommandService {
     const stage = await this.deps.leads.getStage(input.companyId, input.stageId);
     if (!stage) throw new LeadNotFoundError("Stage", input.stageId);
 
-    assertStageTransition(existing.lifecycleStatus, stage.lifecycleStatus);
+    if (stage.pipelineId !== existing.pipelineId) {
+      throw new LeadValidationError("Stage does not belong to the lead pipeline.");
+    }
+
+    const pipeline = await this.deps.leads.getPipeline(input.companyId, existing.pipelineId);
+    assertStageTransition(existing.lifecycleStatus, stage.lifecycleStatus, {
+      allowBackward: pipeline?.allowBackwardStageMovement ?? true,
+    });
 
     const record = await this.deps.leads.updateLead({
       companyId: input.companyId,

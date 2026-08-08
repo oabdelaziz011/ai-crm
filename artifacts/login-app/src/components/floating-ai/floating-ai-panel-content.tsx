@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AiChatMessageList } from "@/components/ai-chat/ai-chat-message-list";
+import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useAuthUser, useHasPermission } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { shouldShowAgentsNavigation } from "@/lib/platform-ai/agents-access";
@@ -44,6 +46,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { company } = useAuth();
+  const { identity } = useCompanyIdentity(Boolean(company?.id));
   const { isSuperAdmin, hasPermission } = useAuthUser();
   const canUseAi = useHasPermission("ai_chat.use");
   const canExecuteRuntime = useHasPermission("runtime.execute");
@@ -147,16 +150,19 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
         aria-label={t("floatingAi.panel.label")}
         aria-modal={layout !== "floating"}
       >
-        <header className="relative flex shrink-0 items-center justify-between border-b border-border px-3 py-2.5">
+        <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-border px-3">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15">
-              <Sparkles className="size-4 text-primary" aria-hidden="true" />
+            <div className="relative shrink-0">
+              <UserAvatar className="size-9 border border-primary/20" />
+              <span className="absolute -bottom-0.5 -end-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                <Sparkles className="size-2.5" aria-hidden="true" />
+              </span>
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{assistantName}</p>
               <p className="truncate text-[10px] text-muted-foreground">
-                {company?.name ?? runtimeMetadata.company.name} · {runtimeMetadata.moduleLabel ?? pageContext.page}
+                {identity?.name ?? runtimeMetadata.company.name} · {runtimeMetadata.moduleLabel ?? pageContext.page}
               </p>
             </div>
           </div>

@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BookingServicePort } from "@workspace/automation-platform";
 import { createSupabaseBookingServicePort } from "@/lib/crm/supabase-booking-service-adapter";
-import { getBookingDomainServices } from "@/lib/scheduling/booking-domain";
-import { getSchedulingServices } from "@/lib/scheduling";
+import { BookingFactory } from "@/lib/scheduling/booking-domain";
 import { BookingDomainError } from "@/lib/scheduling/booking-domain";
 import type { CreateBookingInput as DomainCreateInput } from "@/lib/scheduling/booking-domain";
+import { SchedulingServiceCatalogRepository } from "@/lib/scheduling/repositories/service-catalog-repository";
 import type { CreateBookingInput, CreateBookingResult } from "@workspace/automation-platform";
 import type { SupabaseBookingServicePortOptions } from "@workspace/automation-platform";
+import { wxRecordDependencyConstruction, wxRecordServiceResolution } from "@workspace/automation-platform";
 
 import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
 
@@ -33,8 +34,10 @@ function resolveServiceId(
   const normalized = serviceRef.trim();
   if (!normalized) return null;
 
-  const byId = services.find((item) => item.id === normalized);
-  if (byId) return byId.id;
+  if (UUID_PATTERN.test(normalized)) {
+    const byId = services.find((item) => item.id === normalized);
+    if (byId) return byId.id;
+  }
 
   const byName = services.find((item) => item.name.toLowerCase() === normalized.toLowerCase());
   return byName?.id ?? null;
@@ -74,18 +77,39 @@ function resolveDomainSlotInput(input: CreateBookingInput): {
   if (!input.appointmentTime.includes("T")) {
     return {
       resourceId: doctorId,
-      serviceId: "",
+      serviceId: UUID_PATTERN.test(input.service.trim()) ? input.service.trim() : "",
       date: input.appointmentDate.trim(),
       slotStart: input.appointmentTime.slice(0, 5),
+    };
+  }
+
+  // Instant appointment times without structured slot still map onto the domain path.
+  if (input.appointmentTime.includes("T") && UUID_PATTERN.test(doctorId)) {
+    const timezone = "UTC";
+    const { date, slotStart } = resolveLocalSlotFromInstant(input.appointmentTime, timezone);
+    return {
+      resourceId: doctorId,
+      serviceId: UUID_PATTERN.test(input.service.trim()) ? input.service.trim() : "",
+      date,
+      slotStart,
     };
   }
 
   return null;
 }
 
+function isSchedulingCapableInput(input: CreateBookingInput): boolean {
+  if (input.schedulingSlot?.serviceId && input.schedulingSlot?.resourceId) return true;
+  if (UUID_PATTERN.test(input.doctorId?.trim() ?? "") && UUID_PATTERN.test(input.customerId?.trim() ?? "")) {
+    return true;
+  }
+  return false;
+}
+
 /**
- * Automation adapter: routes scheduling-capable creates through BookingDomainService,
- * falls back to legacy CRM booking port otherwise.
+ * Automation adapter: routes clinic/scheduling creates through BookingDomainService
+ * using the injected Supabase client (service role on webhooks).
+ * Legacy CRM `bookings` is only used for non-scheduling inputs.
  */
 export function createSchedulingAwareBookingServicePort(
   client: SupabaseClient,
@@ -93,46 +117,70 @@ export function createSchedulingAwareBookingServicePort(
 ): BookingServicePort {
   const portOptions: SupabaseBookingServicePortOptions =
     typeof options === "function" ? { getActorUserId: options } : options;
+  wxRecordDependencyConstruction("createSupabaseBookingServicePort");
   const legacyPort = createSupabaseBookingServicePort(client, portOptions);
-  const domain = getBookingDomainServices().bookingDomain;
-  const scheduling = getSchedulingServices();
+  // CRITICAL: use the injected client — never the browser singleton (RLS would block lookups).
+  const domain = BookingFactory.create(client).bookingDomain;
+  wxRecordDependencyConstruction("SchedulingServiceCatalogRepository");
+  const serviceCatalog = new SchedulingServiceCatalogRepository(client);
 
   return {
     ...legacyPort,
     async createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
+      wxRecordServiceResolution("bookingService.createBooking");
       const companyId = input.companyId?.trim();
       if (!companyId) {
+        if (isSchedulingCapableInput(input)) {
+          throw new Error("Create booking requires companyId for clinic scheduling bookings.");
+        }
         return legacyPort.createBooking(input);
       }
 
       const userId = await resolveActorUserId(input, portOptions);
       if (!userId) {
+        if (isSchedulingCapableInput(input)) {
+          throw new Error("Create booking requires an actor userId for clinic scheduling bookings.");
+        }
         return legacyPort.createBooking(input);
       }
 
       const slotInput = resolveDomainSlotInput(input);
       if (!slotInput) {
+        if (isSchedulingCapableInput(input)) {
+          throw new Error(
+            "Create booking could not resolve a scheduling slot (resource/service/date/time).",
+          );
+        }
         return legacyPort.createBooking(input);
       }
 
-      let serviceId = slotInput.serviceId;
-      if (!serviceId) {
-        const services = await scheduling.serviceCatalog.list(companyId);
+      let serviceId = slotInput.serviceId.trim();
+      if (!serviceId || !UUID_PATTERN.test(serviceId)) {
+        const services = await serviceCatalog.listByCompany(companyId);
         const matched = resolveServiceId(services, input.service?.trim() ?? "");
         if (!matched) {
-          return legacyPort.createBooking(input);
+          throw new Error(
+            `Create booking could not resolve service "${input.service ?? ""}" in the scheduling catalog.`,
+          );
         }
         serviceId = matched;
       }
 
+      if (!UUID_PATTERN.test(input.customerId?.trim() ?? "")) {
+        throw new Error("Create booking requires a valid customer UUID.");
+      }
+      if (!UUID_PATTERN.test(slotInput.resourceId)) {
+        throw new Error("Create booking requires a valid resource/doctor UUID.");
+      }
+
       const domainInput: DomainCreateInput = {
         companyId,
-        customerId: input.customerId,
+        customerId: input.customerId.trim(),
         resourceId: slotInput.resourceId,
         serviceId,
         date: slotInput.date,
         slotStart: slotInput.slotStart,
-        source: "api",
+        source: "whatsapp",
         notes: input.notes ?? null,
         createdBy: userId,
       };
@@ -147,7 +195,9 @@ export function createSchedulingAwareBookingServicePort(
         if (error instanceof BookingDomainError) {
           throw new Error(error.message);
         }
-        return legacyPort.createBooking(input);
+        throw error instanceof Error
+          ? error
+          : new Error("Clinic scheduling booking creation failed.");
       }
     },
   };

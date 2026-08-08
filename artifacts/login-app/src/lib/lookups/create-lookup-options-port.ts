@@ -1,4 +1,5 @@
 import type { LookupOptionsPort } from "@workspace/automation-platform";
+import { wxRecordServiceResolution } from "@workspace/automation-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchLookupOptions } from "./lookup-options-service";
 import type { ListLookupConfig } from "./types";
@@ -6,6 +7,7 @@ import type { ListLookupConfig } from "./types";
 export function createLookupOptionsPort(client?: SupabaseClient): LookupOptionsPort {
   return {
     async fetchListOptions(companyId, config) {
+      wxRecordServiceResolution(`lookupOptions.fetchListOptions:${String((config as ListLookupConfig).lookup)}`);
       const rows = await fetchLookupOptions(
         companyId,
         config as ListLookupConfig,

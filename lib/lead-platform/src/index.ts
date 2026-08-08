@@ -74,3 +74,10 @@ export {
   createNoopLeadNotificationPort,
   createSupabaseLeadAuditPort,
 } from "./ports/noop-ports.js";
+export * from "./smart-capture/capture-types.js";
+export {
+  createSupabaseLeadSmartCapture,
+  type LeadSmartCapture,
+  type LeadSmartCaptureServices,
+} from "./smart-capture/supabase-smart-capture.js";
+export * from "./intelligence/index.js";

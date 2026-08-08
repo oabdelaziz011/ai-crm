@@ -1,3 +1,11 @@
+/** Self-service pages every authenticated user can open (Settings → Profile, etc.). */
+const SELF_SERVICE_SETTINGS_IDS = new Set([
+  "personal-profile",
+  "appearance",
+  "account-information",
+  "security",
+]);
+
 export function canViewSettings(
   hasPermission: (code: string) => boolean,
   isSuperAdmin: boolean,
@@ -12,13 +20,21 @@ export function canEditSettings(
   return isSuperAdmin || hasPermission("settings.edit");
 }
 
+export function isSelfServiceSettingsRoute(routeId: string | undefined): boolean {
+  return Boolean(routeId && SELF_SERVICE_SETTINGS_IDS.has(routeId));
+}
+
 export function isSettingsRoutePermitted(
-  route: { permission?: string; superAdminOnly?: boolean },
+  route: { id?: string; permission?: string; superAdminOnly?: boolean },
   hasPermission: (code: string) => boolean,
   isSuperAdmin: boolean,
 ): boolean {
   if (route.superAdminOnly && !isSuperAdmin) {
     return false;
+  }
+  // Personal profile / appearance / account / security — no settings.view gate.
+  if (isSelfServiceSettingsRoute(route.id)) {
+    return true;
   }
   if (!canViewSettings(hasPermission, isSuperAdmin)) {
     return false;

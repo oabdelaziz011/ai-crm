@@ -57,6 +57,36 @@ export class MetadataEngine {
   }
 }
 
+const SORT_COLUMN_ALIASES: Record<string, string> = {
+  col_scheduled: "scheduled_at",
+  col_appointment_time: "scheduled_at",
+  col_waiting: "waiting_minutes",
+  col_ref: "reference",
+  col_customer: "customer",
+  col_phone: "phone",
+  col_service: "service",
+  col_resource: "resource",
+  col_status: "status",
+  col_payment: "payment_status",
+  col_amount: "amount",
+  col_branch: "branch",
+  col_duration: "duration_minutes",
+  col_queue_number: "queue_number",
+  col_visit_type: "visit_type",
+};
+
+function resolveSortValueKey(columnId: string): string {
+  return SORT_COLUMN_ALIASES[columnId] ?? columnId.replace(/^col_/, "");
+}
+
+function matchesFilterValue(rowValue: unknown, expected: unknown): boolean {
+  if (expected == null || expected === "" || expected === "all") return true;
+  if (Array.isArray(expected)) {
+    return expected.some((item) => matchesFilterValue(rowValue, item));
+  }
+  return String(rowValue ?? "").toLowerCase() === String(expected).toLowerCase();
+}
+
 export class QueueDataEngine {
   filterRows(rows: OperationsRow[], query: OperationsQueueQuery): OperationsRow[] {
     let result = [...rows];
@@ -67,12 +97,56 @@ export class QueueDataEngine {
       );
     }
 
+    const filters = query.filters ?? {};
+    const statusId = filters.statusId ?? filters.status;
+    if (statusId != null && statusId !== "" && statusId !== "all") {
+      result = result.filter((row) =>
+        matchesFilterValue(row.statusId, statusId) || matchesFilterValue(row.values.status, statusId),
+      );
+    }
+
+    const resource = filters.resource ?? filters.doctor ?? filters.assignedResourceId;
+    if (resource != null && resource !== "" && resource !== "all") {
+      result = result.filter(
+        (row) =>
+          matchesFilterValue(row.values.resource, resource) ||
+          matchesFilterValue(row.assignedResourceId, resource),
+      );
+    }
+
+    const service = filters.service;
+    if (service != null && service !== "" && service !== "all") {
+      result = result.filter((row) => matchesFilterValue(row.values.service, service));
+    }
+
+    const branch = filters.branch;
+    if (branch != null && branch !== "" && branch !== "all") {
+      result = result.filter((row) => matchesFilterValue(row.values.branch, branch));
+    }
+
+    const paymentStatusId = filters.paymentStatusId;
+    if (paymentStatusId != null && paymentStatusId !== "" && paymentStatusId !== "all") {
+      result = result.filter((row) => matchesFilterValue(row.paymentStatusId, paymentStatusId));
+    }
+
     if (query.sort?.length) {
       const [{ columnId, direction }] = query.sort;
-      const columnKey = columnId.replace(/^col_/, "").replace(/_/g, "_");
+      const columnKey = resolveSortValueKey(columnId);
       result.sort((a, b) => {
         const av = a.values[columnKey] ?? a.values[columnId] ?? "";
         const bv = b.values[columnKey] ?? b.values[columnId] ?? "";
+        if (columnKey === "scheduled_at" || columnKey === "appointment_time") {
+          const at = new Date(String(av)).getTime();
+          const bt = new Date(String(bv)).getTime();
+          if (!Number.isNaN(at) && !Number.isNaN(bt)) {
+            return direction === "asc" ? at - bt : bt - at;
+          }
+        }
+        if (columnKey === "waiting_minutes" || columnKey === "duration_minutes" || columnKey === "amount") {
+          const an = Number(av) || 0;
+          const bn = Number(bv) || 0;
+          return direction === "asc" ? an - bn : bn - an;
+        }
         const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
         return direction === "asc" ? cmp : -cmp;
       });
@@ -84,7 +158,13 @@ export class QueueDataEngine {
   paginate(rows: OperationsRow[], query: OperationsQueueQuery): OperationsQueuePage {
     const filtered = this.filterRows(rows, query);
     const start = (query.page - 1) * query.pageSize;
-    const pageRows = filtered.slice(start, start + query.pageSize);
+    const pageRows = filtered.slice(start, start + query.pageSize).map((row, index) => ({
+      ...row,
+      values: {
+        ...row.values,
+        queue_number: start + index + 1,
+      },
+    }));
     return {
       rows: pageRows,
       total: filtered.length,

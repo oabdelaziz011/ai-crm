@@ -3,7 +3,6 @@ import { useHasPermission } from "@/hooks/use-rbac";
 import { useAiPanel } from "@/hooks/floating-ai/use-ai-panel";
 import { useAiTasks } from "@/context/ai-task-context";
 import { useFloatingAi } from "@/context/floating-ai-context";
-import { FloatingAiButton } from "./floating-ai-button";
 
 const FloatingAiPanel = lazy(() =>
   import("./floating-ai-panel").then((m) => ({ default: m.FloatingAiPanel })),
@@ -25,7 +24,6 @@ function FloatingAiAssistantInner() {
 
   return (
     <>
-      <FloatingAiButton visible={!isPanelVisible || minimized} onBeforeOpen={() => preloadFloatingAiAssistant()} />
       {isPanelVisible && (
         <Suspense fallback={null}>
           <FloatingAiPanel />

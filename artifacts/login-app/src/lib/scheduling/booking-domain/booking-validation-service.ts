@@ -22,6 +22,8 @@ import type {
   RescheduleBookingInput,
   SchedulingBooking,
 } from "@/lib/scheduling/booking-domain/types";
+import { ServicePricingRepository } from "@/lib/scheduling/repositories/service-pricing-repository";
+import { ServicePricingService } from "@/lib/scheduling/services/service-pricing-service";
 
 export type ValidateBookingParams = {
   companyId: string;
@@ -32,6 +34,8 @@ export type ValidateBookingParams = {
   slotStart: string;
   referenceNow?: Date;
   excludeBookingId?: string;
+  pricingRuleId?: string | null;
+  visitType?: string | null;
 };
 
 export class BookingValidationService {
@@ -40,6 +44,7 @@ export class BookingValidationService {
   private readonly mappingRepo: ResourceServiceMappingRepository;
   private readonly rulesRepo: SchedulingBookingRulesRepository;
   private readonly bookingRepo: BookingRepository;
+  private readonly pricingService: ServicePricingService;
 
   constructor(
     private readonly client: SupabaseClient,
@@ -50,6 +55,27 @@ export class BookingValidationService {
     this.mappingRepo = new ResourceServiceMappingRepository(client);
     this.rulesRepo = new SchedulingBookingRulesRepository(client);
     this.bookingRepo = new BookingRepository(client);
+    this.pricingService = new ServicePricingService(
+      new ServicePricingRepository(client),
+      this.serviceRepo,
+    );
+  }
+
+  /** Load service for booking price snapshot (create-time copy). */
+  getServiceForSnapshot(serviceId: string, companyId: string) {
+    return this.serviceRepo.getById(serviceId, companyId);
+  }
+
+  /** Resolve pricing rule snapshot for booking create (immutable copy). */
+  resolvePricingSnapshot(
+    companyId: string,
+    serviceId: string,
+    options?: { pricingRuleId?: string | null; visitType?: string | null },
+  ) {
+    return this.pricingService.resolveSnapshot(companyId, serviceId, {
+      pricingRuleId: options?.pricingRuleId,
+      typeCode: options?.visitType,
+    });
   }
 
   async validateBooking(params: ValidateBookingParams): Promise<BookingValidationResult> {
@@ -112,7 +138,16 @@ export class BookingValidationService {
       rules.timezone,
     );
 
-    const durationMinutes = service!.duration_minutes;
+    // Prefer selected/default pricing rule duration; fall back to service duration.
+    const pricingSnapshot = await this.pricingService.resolveSnapshot(
+      params.companyId,
+      params.serviceId,
+      {
+        pricingRuleId: params.pricingRuleId,
+        typeCode: params.visitType,
+      },
+    );
+    const durationMinutes = pricingSnapshot.durationMinutes || service!.duration_minutes;
     const startAt = localDateTimeToInstantIso(params.date, params.slotStart, timezone);
     const endAt = addMinutesToInstantIso(startAt, durationMinutes);
 

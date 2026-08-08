@@ -11,6 +11,8 @@ type ExperienceStore = {
   starredMessages: Record<string, string[]>;
   reactions: Record<string, Record<string, string>>;
   conversationFlags: Record<string, ConversationFlags>;
+  /** Conversations the agent has opened at least once (presentation-only; not unread state). */
+  openedConversations?: Record<string, true>;
 };
 
 function readStore(): ExperienceStore {
@@ -75,4 +77,21 @@ export function toggleConversationFlag(
   store.conversationFlags[conversationId] = current;
   writeStore(store);
   return current;
+}
+
+export function isConversationOpened(conversationId: string): boolean {
+  return Boolean(readStore().openedConversations?.[conversationId]);
+}
+
+export function getOpenedConversationIds(): Set<string> {
+  return new Set(Object.keys(readStore().openedConversations ?? {}));
+}
+
+/** Marks a conversation as opened by the agent. Idempotent. */
+export function markConversationOpened(conversationId: string): boolean {
+  const store = readStore();
+  if (store.openedConversations?.[conversationId]) return false;
+  store.openedConversations = { ...(store.openedConversations ?? {}), [conversationId]: true };
+  writeStore(store);
+  return true;
 }

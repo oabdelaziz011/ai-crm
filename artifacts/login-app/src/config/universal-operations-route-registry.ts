@@ -11,13 +11,16 @@ export type UniversalOperationsRouteId =
   | "timeline"
   | "configuration"
   | "analytics"
-  | "designer";
+  | "designer"
+  | "entity-workspace";
 
 export type UniversalOperationsRouteDefinition = {
   id: UniversalOperationsRouteId;
   nestedPath: string;
   titleKey: string;
   permission?: string;
+  /** Hidden from Operations sub-nav (deep-link / action hosts). */
+  hideFromNav?: boolean;
   Page: LazyExoticComponent<ComponentType>;
 };
 
@@ -85,10 +88,20 @@ export const UNIVERSAL_OPERATIONS_ROUTE_REGISTRY: readonly UniversalOperationsRo
     permission: "operations.universal.configure",
     Page: lazyNamed(() => import("@/pages/dashboard/operations/workspace-designer-page"), "WorkspaceDesignerPage"),
   },
+  {
+    id: "entity-workspace",
+    nestedPath: "/entity/:entityType/:entityId/:tab?",
+    titleKey: "entityWorkspace.layouts.operations",
+    hideFromNav: true,
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/operations/entity-workspace-page"),
+      "OperationsEntityWorkspacePage",
+    ),
+  },
 ];
 
 export const UNIVERSAL_OPERATIONS_DEFAULT_NESTED_PATH = "/queue";
 
 export function universalOperationsNavItems() {
-  return UNIVERSAL_OPERATIONS_ROUTE_REGISTRY;
+  return UNIVERSAL_OPERATIONS_ROUTE_REGISTRY.filter((route) => !route.hideFromNav);
 }

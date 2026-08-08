@@ -149,6 +149,114 @@ describe("interactive list pagination engine integration", () => {
     assert.equal(outbound?.sections?.[0]?.rows.some((row) => row.id === INTERACTIVE_LIST_NEXT_PAGE_ROW_ID), false);
   });
 
+  it("persists catalog and restores full slot record for non-paginated lists", async () => {
+    const smallLookup = {
+      async fetchListOptions() {
+        return [
+          {
+            id: "2026-08-05T09:00:00.000Z",
+            title: "9:00 AM",
+            value: "2026-08-05T09:00:00.000Z",
+            record: {
+              start_at: "2026-08-05T09:00:00.000Z",
+              display_time: "9:00 AM",
+              service_id: "svc-1",
+              resource_id: "res-1",
+              timezone: "UTC",
+            },
+          },
+          {
+            id: "2026-08-05T10:00:00.000Z",
+            title: "10:00 AM",
+            value: "2026-08-05T10:00:00.000Z",
+            record: {
+              start_at: "2026-08-05T10:00:00.000Z",
+              display_time: "10:00 AM",
+              service_id: "svc-1",
+              resource_id: "res-1",
+              timezone: "UTC",
+            },
+          },
+        ];
+      },
+    };
+    const handlers = createBuiltInAutomationNodeHandlers({ lookupOptions: smallLookup });
+    const handler = handlers.find((entry) => entry.type === "action");
+    assert.ok(handler);
+
+    const waiting = await handler!.execute(makeContext({ node: listNode }));
+    assert.equal(waiting.outcome, "waiting_input");
+    const catalog = readInteractiveListPaginationState(waiting.variables ?? {}, listNode.id);
+    assert.ok(catalog);
+    assert.equal(catalog?.totalPages, 1);
+    assert.equal(catalog?.rows.length, 2);
+    assert.ok(catalog?.rows[0]?.record);
+
+    const selected = await handler!.execute(
+      makeContext({
+        node: listNode,
+        variables: waiting.variables,
+        resume: {
+          kind: "interactive_reply",
+          replyId: "2026-08-05T10:00:00.000Z",
+          title: "10:00 AM",
+          interactionType: "list_reply",
+        },
+      }),
+    );
+
+    assert.equal(selected.outcome, "continue");
+    assert.deepEqual(selected.variables?.selected_slot, {
+      start_at: "2026-08-05T10:00:00.000Z",
+      display_time: "10:00 AM",
+      service_id: "svc-1",
+      resource_id: "res-1",
+      timezone: "UTC",
+    });
+  });
+
+  it("rejects unknown reply ids with a user-friendly wait instead of a bare string", async () => {
+    const smallLookup = {
+      async fetchListOptions() {
+        return [
+          {
+            id: "2026-08-05T09:00:00.000Z",
+            title: "9:00 AM",
+            value: "2026-08-05T09:00:00.000Z",
+            record: {
+              start_at: "2026-08-05T09:00:00.000Z",
+              display_time: "9:00 AM",
+              service_id: "svc-1",
+              resource_id: "res-1",
+              timezone: "UTC",
+            },
+          },
+        ];
+      },
+    };
+    const handlers = createBuiltInAutomationNodeHandlers({ lookupOptions: smallLookup });
+    const handler = handlers.find((entry) => entry.type === "action");
+    assert.ok(handler);
+
+    const waiting = await handler!.execute(makeContext({ node: listNode }));
+    const rejected = await handler!.execute(
+      makeContext({
+        node: listNode,
+        variables: waiting.variables,
+        resume: {
+          kind: "interactive_reply",
+          replyId: "2026-08-05",
+          title: "Wed, Aug 5, 2026",
+          interactionType: "list_reply",
+        },
+      }),
+    );
+
+    assert.equal(rejected.outcome, "waiting_input");
+    assert.notEqual(typeof rejected.variables?.selected_slot, "string");
+    assert.match(String(rejected.variables?.__prompt ?? ""), /no longer available/i);
+  });
+
   it("stores the selected row from a later page using cached pagination rows", async () => {
     const firstPage = await listHandler!.execute(makeContext({ node: listNode }));
     const secondPage = await listHandler!.execute(

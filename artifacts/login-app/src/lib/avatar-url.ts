@@ -1,5 +1,5 @@
 /**
- * Avatar URL helpers — supports legacy data URLs, HTTPS URLs, and future Storage paths.
+ * Avatar URL helpers — supports legacy data URLs, HTTPS URLs, and Storage paths.
  */
 
 export const AVATAR_STORAGE_BUCKET = "avatars" as const;
@@ -20,6 +20,17 @@ export function buildStorageAvatarPath(userId: string, filename: string): string
   return `${AVATAR_STORAGE_PATH_PREFIX}${userId}/${safeName}`;
 }
 
+function defaultPublicStorageUrl(storagePath: string): string {
+  const objectPath = storagePath.startsWith(AVATAR_STORAGE_PATH_PREFIX)
+    ? storagePath.slice(AVATAR_STORAGE_PATH_PREFIX.length)
+    : storagePath;
+  const base = String(import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/$/, "");
+  if (!base) {
+    return storagePath;
+  }
+  return `${base}/storage/v1/object/public/${AVATAR_STORAGE_BUCKET}/${objectPath}`;
+}
+
 export function resolveAvatarDisplayUrl(
   avatarUrl: string | null | undefined,
   getPublicStorageUrl?: (path: string) => string,
@@ -29,8 +40,8 @@ export function resolveAvatarDisplayUrl(
     return undefined;
   }
 
-  if (isStorageAvatarPath(trimmed) && getPublicStorageUrl) {
-    return getPublicStorageUrl(trimmed);
+  if (isStorageAvatarPath(trimmed)) {
+    return (getPublicStorageUrl ?? defaultPublicStorageUrl)(trimmed);
   }
 
   return trimmed;

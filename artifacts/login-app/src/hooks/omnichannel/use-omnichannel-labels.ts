@@ -599,6 +599,10 @@ export function useAgentDeskLabels() {
       backToConversation: t("omnichannel.navigation.backToConversation"),
       resizeQueue: t("omnichannel.desk.resizeQueue"),
       maximizeConversation: t("omnichannel.desk.maximizeConversation"),
+      soundOn: t("omnichannel.desk.soundOn"),
+      soundOff: t("omnichannel.desk.soundOff"),
+      expandConversation: t("omnichannel.desk.expandConversation"),
+      collapseConversation: t("omnichannel.desk.collapseConversation"),
       channelSection: t("omnichannel.filters.channel"),
       tagSection: t("omnichannel.filters.tag"),
       lifecycle: (state: string) =>

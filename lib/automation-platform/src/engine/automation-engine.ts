@@ -38,10 +38,14 @@ import { createAutomationRuntimeStore, runLifecycle } from "./runtime-store.js";
 import { assertWorkflowExecutionAllowed } from "../utils/workflow-guards.js";
 import { STALE_WAITING_RUN_REASON, isTerminalRunStatus, ABANDONED_ACTIVE_RUN_REASON } from "../orchestrator/session-policy.js";
 import { validateInteractiveResumeInput } from "../orchestrator/interactive-resume-validation.js";
+import { waPerfMeasure } from "../debug/whatsapp-pipeline-perf.js";
+import { wxBeginNode, wxEndNode } from "../debug/workflow-xray-bridge.js";
 import {
   abandonAllActiveExecutionsForUser,
   listActiveExecutions,
 } from "../orchestrator/active-execution-manager.js";
+import { validateNodeVariableContract } from "./workflow-variable-contracts.js";
+import { appendOutboundQueueEntry } from "../runtime/outbound-queue.js";
 import { resetOutboundQueue } from "../runtime/outbound-queue.js";
 import { findPrimaryMenuNode } from "../runtime/main-menu.js";
 import {
@@ -363,10 +367,31 @@ export class AutomationEngine {
     });
 
     let nodeResult: NodeExecutionResult;
+    const resumeNodeToken = wxBeginNode({
+      id: currentNode.id,
+      name:
+        typeof currentNode.config?.label === "string"
+          ? currentNode.config.label
+          : currentNode.type,
+      type: currentNode.type,
+    });
     try {
-      nodeResult = await handler.execute(executionContext);
-    } catch (error) {
+      nodeResult = await waPerfMeasure(
+        `Workflow node: ${currentNode.type} (${currentNode.id})`,
+        () => handler.execute(executionContext),
+        { path: "resume" },
+      );
+      } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[AUTOMATION] node execution failed", {
+        path: "resume",
+        runId: claimedRun.id,
+        nodeId: currentNode.id,
+        nodeType: currentNode.type,
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage,
+        stack: error instanceof Error ? error.stack ?? null : null,
+      });
       return this.finalize(claimedRun, session, {
         lifecycle: "failed",
         flowVersionId: pinnedVersionId,
@@ -374,6 +399,8 @@ export class AutomationEngine {
         variables: resumeVariables,
         errorMessage,
       });
+    } finally {
+      wxEndNode(resumeNodeToken);
     }
     let variables = mergeVariables(resumeVariables, nodeResult.variables);
 
@@ -620,11 +647,54 @@ export class AutomationEngine {
       });
 
       handler.validate(executionContext);
+
+      const contract = validateNodeVariableContract({
+        nodeType: currentNode.type,
+        config: currentNode.config,
+        variables,
+      });
+      if (!contract.ok) {
+        const outbound = { kind: "text" as const, text: contract.userMessage };
+        const patchedVariables = mergeVariables(variables, {
+          ...appendOutboundQueueEntry(variables, outbound),
+          __waitingFor: "workflow_validation",
+          __prompt: contract.userMessage,
+        });
+        return this.finalize(input.run, input.session, {
+          lifecycle: "waiting_input",
+          flowVersionId: input.flowVersionId,
+          currentNodeId: currentNode.id,
+          variables: patchedVariables,
+          errorMessage: contract.violations.map((violation) => violation.message).join("; "),
+        });
+      }
+
       let nodeResult: NodeExecutionResult;
+      const nodeToken = wxBeginNode({
+        id: currentNode.id,
+        name:
+          typeof currentNode.config?.label === "string"
+            ? currentNode.config.label
+            : currentNode.type,
+        type: currentNode.type,
+      });
       try {
-        nodeResult = await handler.execute(executionContext);
+        nodeResult = await waPerfMeasure(
+          `Workflow node: ${currentNode.type} (${currentNode.id})`,
+          () => handler.execute(executionContext),
+          { path: "executeFromNode" },
+        );
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[AUTOMATION] node execution failed", {
+          path: "executeFromNode",
+          runId: input.run.id,
+          nodeId: currentNode.id,
+          nodeType: currentNode.type,
+          errorName: error instanceof Error ? error.name : typeof error,
+          errorMessage,
+          stack: error instanceof Error ? error.stack ?? null : null,
+        });
         return this.finalize(input.run, input.session, {
           lifecycle: "failed",
           flowVersionId: input.flowVersionId,
@@ -632,6 +702,8 @@ export class AutomationEngine {
           variables,
           errorMessage,
         });
+      } finally {
+        wxEndNode(nodeToken);
       }
       variables = mergeVariables(variables, nodeResult.variables);
 
@@ -726,6 +798,15 @@ export class AutomationEngine {
       currentNode = findNodeById(nextNodeId, input.nodes);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[AUTOMATION] node execution failed", {
+          path: "executeFromNode.loop",
+          runId: input.run.id,
+          nodeId: currentNode.id,
+          nodeType: currentNode.type,
+          errorName: error instanceof Error ? error.name : typeof error,
+          errorMessage,
+          stack: error instanceof Error ? error.stack ?? null : null,
+        });
         return this.finalize(input.run, input.session, {
           lifecycle: "failed",
           flowVersionId: input.flowVersionId,

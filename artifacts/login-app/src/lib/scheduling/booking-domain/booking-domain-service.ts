@@ -10,6 +10,7 @@ import {
   createBookingRescheduledEvent,
   createBookingCheckedInEvent,
   createBookingNoShowEvent,
+  createBookingStatusChangedEvent,
   type BookingEventPublisher,
   NoOpBookingEventPublisher,
 } from "@/lib/scheduling/booking-domain/events";
@@ -25,6 +26,8 @@ import type {
   RescheduleBookingInput,
   RescheduleBookingResult,
   BookingValidationResult,
+  SchedulingBookingStatus,
+  TransitionBookingResult,
 } from "@/lib/scheduling/booking-domain/types";
 
 export class BookingDomainService {
@@ -77,6 +80,8 @@ export class BookingDomainService {
       date: input.date,
       slotStart: input.slotStart,
       referenceNow: input.referenceNow,
+      pricingRuleId: input.pricingRuleId,
+      visitType: input.visitType,
     });
 
     if (!validation.valid || !validation.context) {
@@ -93,6 +98,14 @@ export class BookingDomainService {
       throw new BookingDomainError(["booking_conflict"]);
     }
 
+    // Booking never calculates price — copy immutable snapshot from pricing rule.
+    const snapshot = await this.validationService.resolvePricingSnapshot(
+      input.companyId,
+      input.serviceId,
+      { pricingRuleId: input.pricingRuleId, visitType: input.visitType },
+    );
+    const visitType = String(input.visitType ?? snapshot.typeCode ?? "New").trim() || "New";
+
     const booking = await this.bookingRepo.create({
       company_id: input.companyId,
       branch_id: input.branchId ?? validation.context.branchId,
@@ -107,6 +120,12 @@ export class BookingDomainService {
       notes: input.notes ?? null,
       created_by: input.createdBy ?? null,
       updated_by: input.createdBy ?? null,
+      amount_cents: snapshot.priceCents,
+      currency: snapshot.currency,
+      visit_type: visitType,
+      payment_status: "pending",
+      discount_cents: 0,
+      tax_cents: 0,
     });
 
     await this.eventPublisher.publish(createBookingCreatedEvent(booking));
@@ -188,6 +207,66 @@ export class BookingDomainService {
     );
 
     await this.eventPublisher.publish(createBookingCompletedEvent(updated));
+    return { booking: updated };
+  }
+
+  async transitionBookingStatus(
+    input: BookingMutationContext & { toStatus: SchedulingBookingStatus; note?: string | null },
+  ): Promise<TransitionBookingResult> {
+    const booking = await this.requireBooking(input.companyId, input.bookingId);
+    BookingLifecycleService.assertTransition(booking.status, input.toStatus);
+    const fromStatus = booking.status;
+
+    const note = input.note
+      ? [booking.notes, input.note].filter(Boolean).join("\n")
+      : booking.notes;
+
+    const updated = await this.bookingRepo.updateStatus(
+      booking.id,
+      input.companyId,
+      input.toStatus,
+      input.updatedBy ?? null,
+      note,
+    );
+
+    await this.eventPublisher.publish(
+      createBookingStatusChangedEvent(updated, fromStatus, input.toStatus),
+    );
+    return { booking: updated };
+  }
+
+  async sendToNurse(input: BookingMutationContext): Promise<TransitionBookingResult> {
+    return this.transitionBookingStatus({ ...input, toStatus: "with_nurse" });
+  }
+
+  async sendToDoctor(input: BookingMutationContext): Promise<TransitionBookingResult> {
+    return this.transitionBookingStatus({ ...input, toStatus: "in_progress" });
+  }
+
+  async archiveBooking(input: BookingMutationContext): Promise<TransitionBookingResult> {
+    return this.transitionBookingStatus({ ...input, toStatus: "archived" });
+  }
+
+  async completeTriage(input: BookingMutationContext): Promise<TransitionBookingResult> {
+    const booking = await this.requireBooking(input.companyId, input.bookingId);
+    if (booking.status !== "with_nurse") {
+      throw new Error(`INVALID_STATUS_TRANSITION:${booking.status}->triage_complete`);
+    }
+    const marker = "[clinic:triage_complete]";
+    if (booking.notes?.includes(marker)) {
+      return { booking };
+    }
+    const note = [booking.notes, marker].filter(Boolean).join("\n");
+    const updated = await this.bookingRepo.updateStatus(
+      booking.id,
+      input.companyId,
+      "with_nurse",
+      input.updatedBy ?? null,
+      note,
+    );
+    await this.eventPublisher.publish(
+      createBookingStatusChangedEvent(updated, "with_nurse", "with_nurse"),
+    );
     return { booking: updated };
   }
 

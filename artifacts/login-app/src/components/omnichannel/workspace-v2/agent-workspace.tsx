@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLocation } from "wouter";
 
@@ -17,6 +17,8 @@ import { WorkspaceNavRail } from "@/components/omnichannel/workspace-v2/workspac
 
 import { InboxColumn } from "@/components/omnichannel/workspace-v2/inbox-column";
 
+import { InboxResizeHandle } from "@/components/omnichannel/workspace-v2/inbox-resize-handle";
+
 import { ConversationPane } from "@/components/omnichannel/workspace-v2/conversation-pane";
 
 import {
@@ -30,6 +32,16 @@ import {
 import type { ConversationIntelligenceSidebarLabels } from "@/components/omnichannel/workspace-v2/conversation-intelligence-sidebar";
 
 import { useWorkspaceLayout } from "@/components/omnichannel/workspace-v2/use-workspace-layout";
+
+import { useInboxPanelWidth } from "@/components/omnichannel/workspace-v2/use-inbox-panel-width";
+
+import { useConversationExpand } from "@/components/omnichannel/workspace-v2/use-conversation-expand";
+
+import {
+  isDeskSoundEnabled,
+  subscribeDeskPreferences,
+  toggleDeskSoundEnabled,
+} from "@/lib/omnichannel/presentation/desk-notification-sound";
 
 import { type WorkspaceNavId } from "@/components/omnichannel/workspace-v2/workspace-nav";
 import { omniRenderTrace } from "@/lib/omnichannel/debug/omni-render-audit";
@@ -123,6 +135,8 @@ export type AgentWorkspaceProps = {
     unassigned: string;
 
     open: string;
+
+    newBadge?: string;
 
     pin?: string;
 
@@ -257,6 +271,52 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
   const intelligenceScrollRef = useRef<HTMLDivElement>(null);
 
   const { layout, setIntelligenceOpen, toggleIntelligence, setMobileView } = useWorkspaceLayout();
+
+  const {
+    resizeEnabled: inboxResizeEnabled,
+    startResize: startInboxResize,
+    bodyRef: workspaceBodyRef,
+    getBody: getWorkspaceBody,
+  } = useInboxPanelWidth();
+
+  const { conversationExpanded, toggleConversationExpanded } = useConversationExpand(getWorkspaceBody);
+
+  const [soundEnabled, setSoundEnabled] = useState(isDeskSoundEnabled);
+
+  useEffect(() => subscribeDeskPreferences(() => setSoundEnabled(isDeskSoundEnabled())), []);
+
+  const handleToggleSound = useCallback(() => {
+    setSoundEnabled(toggleDeskSoundEnabled());
+  }, []);
+
+  const handleToggleExpand = useCallback(() => {
+    toggleConversationExpanded();
+    // Re-sync inbox resize enablement after expand attribute changes.
+    window.dispatchEvent(new Event("resize"));
+  }, [toggleConversationExpanded]);
+
+  const deskChrome = useMemo(
+    () => ({
+      soundEnabled,
+      soundOnLabel: props.deskLabels.soundOn,
+      soundOffLabel: props.deskLabels.soundOff,
+      onToggleSound: handleToggleSound,
+      conversationExpanded,
+      expandLabel: props.deskLabels.expandConversation,
+      collapseLabel: props.deskLabels.collapseConversation,
+      onToggleExpand: handleToggleExpand,
+    }),
+    [
+      soundEnabled,
+      conversationExpanded,
+      handleToggleSound,
+      handleToggleExpand,
+      props.deskLabels.soundOn,
+      props.deskLabels.soundOff,
+      props.deskLabels.expandConversation,
+      props.deskLabels.collapseConversation,
+    ],
+  );
 
   const [intelligenceFocusTab, setIntelligenceFocusTab] = useState<IntelligenceSidebarTab | null>(null);
 
@@ -409,7 +469,7 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
   return (
 
-    <div className={`agent-workspace flex h-full min-h-0 flex-col ${mobileClass}`}>
+    <div className={`agent-workspace flex h-full min-h-0 flex-col overflow-hidden ${mobileClass}`}>
 
       <WorkspaceTopBar
 
@@ -425,6 +485,8 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
         tenant={props.tenantContext}
 
+        deskChrome={deskChrome}
+
       />
 
       {props.tenantBannerMessage ? (
@@ -433,7 +495,8 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
 
 
-      <div className="flex min-h-0 flex-1">
+      {/* Physical LTR shell: CRM | Conversation | Inbox — never stack on desktop */}
+      <div ref={workspaceBodyRef} className="ws-workspace-body flex min-h-0 flex-1 overflow-hidden" dir="ltr">
 
         <WorkspaceNavRail
 
@@ -451,33 +514,73 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
 
 
-        <InboxColumn
+        <div ref={intelligenceScrollRef} className="contents">
 
-          title={props.inboxTitle}
+          <ConversationIntelligenceSidebar
 
-          conversations={props.conversations}
+            open={layout.intelligenceOpen}
 
-          selectedId={props.selectedId}
+            onToggle={toggleIntelligence}
 
-          isLoading={props.listLoading}
+            conversation={props.conversation}
 
-          hasMore={props.hasMore}
+            messages={props.messages}
 
-          emptyTitle={props.inboxEmptyTitle}
+            lifecycleSnapshot={props.lifecycleSnapshot}
 
-          emptyHint={props.inboxEmptyHint}
+            customerContext={props.customerContext}
 
-          loadingLabel={props.loadingLabel}
+            aiAssist={props.aiAssist}
 
-          onSelect={handleSelectConversation}
+            agentsById={props.agentsById}
 
-          onLoadMore={props.onLoadMore}
+            profilesByUserId={props.profilesByUserId}
 
-          rowLabels={props.rowLabels}
+            smartTimeLabels={
 
-          unreadOverflowLabel={props.unreadOverflowLabel}
+              props.smartTimeLabels ?? {
 
-        />
+                justNow: "Just now",
+
+                minutesAgo: (count) => `${count}m ago`,
+
+                yesterday: "Yesterday",
+
+              }
+
+            }
+
+            labels={props.intelligenceLabels}
+
+            supportAgentFallback={props.deskLabels.notAvailable}
+
+            slaLabels={{
+
+              remainingMinutes: props.viewLabels.slaRemainingMinutes,
+
+              remainingHours: props.viewLabels.slaRemainingHours,
+
+              breached: props.viewLabels.slaBreached,
+
+              notSet: props.viewLabels.noSla,
+
+            }}
+
+            focusTab={intelligenceFocusTab}
+
+            onFocusTabHandled={() => setIntelligenceFocusTab(null)}
+
+            onNavigateToAssignee={handleNavigateToAssignee}
+
+            onNavigateToAiEmployee={handleNavigateToAiEmployee}
+
+            onLinkCustomer={props.sessionActions.onLinkCustomer}
+
+            onCreateCustomer={props.sessionActions.onCreateCustomer}
+
+          />
+
+        </div>
 
 
 
@@ -563,77 +666,51 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
           crmPanelLabel={props.intelligenceLabels.tabs.crm}
 
+          deskChrome={deskChrome}
+
         />
 
 
 
-        <div ref={intelligenceScrollRef} className="contents">
+        <InboxResizeHandle
 
-          <ConversationIntelligenceSidebar
+          enabled={inboxResizeEnabled && !conversationExpanded}
 
-            open={layout.intelligenceOpen}
+          ariaLabel={props.deskLabels.resizeQueue}
 
-            onToggle={toggleIntelligence}
+          onResizeStart={startInboxResize}
 
-            conversation={props.conversation}
+        />
 
-            messages={props.messages}
 
-            lifecycleSnapshot={props.lifecycleSnapshot}
 
-            customerContext={props.customerContext}
+        <InboxColumn
 
-            aiAssist={props.aiAssist}
+          title={props.inboxTitle}
 
-            agentsById={props.agentsById}
+          conversations={props.conversations}
 
-            profilesByUserId={props.profilesByUserId}
+          selectedId={props.selectedId}
 
-            smartTimeLabels={
+          isLoading={props.listLoading}
 
-              props.smartTimeLabels ?? {
+          hasMore={props.hasMore}
 
-                justNow: "Just now",
+          emptyTitle={props.inboxEmptyTitle}
 
-                minutesAgo: (count) => `${count}m ago`,
+          emptyHint={props.inboxEmptyHint}
 
-                yesterday: "Yesterday",
+          loadingLabel={props.loadingLabel}
 
-              }
+          onSelect={handleSelectConversation}
 
-            }
+          onLoadMore={props.onLoadMore}
 
-            labels={props.intelligenceLabels}
+          rowLabels={props.rowLabels}
 
-            supportAgentFallback={props.deskLabels.notAvailable}
+          unreadOverflowLabel={props.unreadOverflowLabel}
 
-            slaLabels={{
-
-              remainingMinutes: props.viewLabels.slaRemainingMinutes,
-
-              remainingHours: props.viewLabels.slaRemainingHours,
-
-              breached: props.viewLabels.slaBreached,
-
-              notSet: props.viewLabels.noSla,
-
-            }}
-
-            focusTab={intelligenceFocusTab}
-
-            onFocusTabHandled={() => setIntelligenceFocusTab(null)}
-
-            onNavigateToAssignee={handleNavigateToAssignee}
-
-            onNavigateToAiEmployee={handleNavigateToAiEmployee}
-
-            onLinkCustomer={props.sessionActions.onLinkCustomer}
-
-            onCreateCustomer={props.sessionActions.onCreateCustomer}
-
-          />
-
-        </div>
+        />
 
       </div>
 

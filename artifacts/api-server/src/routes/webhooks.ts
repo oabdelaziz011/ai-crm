@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   createWebhookDiagnosticLogger,
@@ -11,6 +13,18 @@ import {
   summarizeWhatsAppWebhookPayload,
   verifyWhatsAppWebhookSignature,
 } from "@workspace/channel-platform";
+import {
+  installWhatsAppConversationTraceApi,
+  runWithWhatsAppConversationTrace,
+  runWithWhatsAppPipelineProfiler,
+  runWithWhatsAppRequestCache,
+  setWhatsAppConversationTrace,
+  setWhatsAppPipelineProfiler,
+  setWhatsAppRequestCache,
+  WhatsAppConversationTrace,
+  WhatsAppPipelineProfiler,
+  WhatsAppRequestCache,
+} from "@workspace/channel-platform/server";
 import { logger } from "../lib/logger.js";
 import { webhookRateLimiter } from "../middleware/rate-limit.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
@@ -18,6 +32,26 @@ import { loadPlatformEnv } from "../config/env.js";
 import { processInstagramWebhookPost } from "./instagram-webhook-post.js";
 import { processMessengerWebhookPost } from "./messenger-webhook-post.js";
 import { processEmailWebhookPost } from "./email-channel-webhook-post.js";
+
+/** Sprint 2.3 A/B measurement: project-root `.workflow-request-memo` → WORKFLOW_REQUEST_MEMO. */
+function syncWorkflowRequestMemoFlag(): void {
+  try {
+    const candidates = [
+      resolve(process.cwd(), ".workflow-request-memo"),
+      resolve(process.cwd(), "../../.workflow-request-memo"),
+    ];
+    for (const path of candidates) {
+      if (!existsSync(path)) continue;
+      const raw = readFileSync(path, "utf8").trim();
+      if (raw === "0" || raw === "1") {
+        process.env.WORKFLOW_REQUEST_MEMO = raw;
+      }
+      return;
+    }
+  } catch {
+    // ignore
+  }
+}
 
 const router: IRouter = Router();
 const env = loadPlatformEnv();
@@ -62,25 +96,53 @@ router.use((req, _res, next) => {
 });
 
 router.get("/whatsapp", async (req: Request, res: Response) => {
+  console.log("[WHATSAPP] Verification request", {
+    path: req.path,
+    mode: req.query["hub.mode"] ?? null,
+    hasVerifyToken: Boolean(req.query["hub.verify_token"]),
+    hasChallenge: Boolean(req.query["hub.challenge"]),
+  });
   try {
     const platform = getWebhookPlatform();
     const result = await platform.whatsAppHandler.verifyGetByVerifyToken(req.query);
+    console.log("[WHATSAPP] Verification request", {
+      path: req.path,
+      status: result.status,
+      ok: result.status === 200,
+    });
     res.status(result.status).send(result.body);
   } catch (error) {
+    console.error("[ERROR] WhatsApp verification failed", error);
+    if (error instanceof Error && error.stack) console.error(error.stack);
     logger.error({ err: error }, "WhatsApp production webhook verification failed");
     res.status(403).send("Forbidden");
   }
 });
 
 router.get("/whatsapp/:companyChannelId", async (req: Request, res: Response) => {
+  console.log("[WHATSAPP] Verification request", {
+    path: req.path,
+    companyChannelId: routeParam(req.params.companyChannelId),
+    mode: req.query["hub.mode"] ?? null,
+    hasVerifyToken: Boolean(req.query["hub.verify_token"]),
+    hasChallenge: Boolean(req.query["hub.challenge"]),
+  });
   try {
     const platform = getWebhookPlatform();
     const result = await platform.whatsAppHandler.verifyGet({
       companyChannelId: routeParam(req.params.companyChannelId),
       ...req.query,
     });
+    console.log("[WHATSAPP] Verification request", {
+      path: req.path,
+      companyChannelId: routeParam(req.params.companyChannelId),
+      status: result.status,
+      ok: result.status === 200,
+    });
     res.status(result.status).send(result.body);
   } catch (error) {
+    console.error("[ERROR] WhatsApp verification failed", error);
+    if (error instanceof Error && error.stack) console.error(error.stack);
     logger.error({ err: error }, "WhatsApp webhook verification failed");
     res.status(403).send("Forbidden");
   }
@@ -91,7 +153,24 @@ async function processWhatsAppWebhookPost(
   res: Response,
   urlCompanyChannelId?: string,
 ): Promise<void> {
+  syncWorkflowRequestMemoFlag();
+  installWhatsAppConversationTraceApi();
   const requestId = String(req.id ?? "");
+  const pipelineStartedAt = Date.now();
+  // Profiler is armed only for inbound user messages (not delivery/read status).
+  let perf: WhatsAppPipelineProfiler | null = null;
+  // Request-scoped dedupe for company/channel/credentials/runtime/session/conversation.
+  let requestCache: WhatsAppRequestCache | null = null;
+  // Sprint 2.4: one TRACE per inbound WhatsApp message (not for status-only callbacks).
+  let conversationTrace: WhatsAppConversationTrace | null = null;
+  console.log("[WHATSAPP] Incoming webhook received", {
+    requestId,
+    path: req.path,
+    method: req.method,
+    urlCompanyChannelId: urlCompanyChannelId ?? null,
+    contentType: req.header("content-type") ?? null,
+    hasSignatureHeader: Boolean(req.header("x-hub-signature-256")),
+  });
   const diag = (stage: string, detail: Record<string, unknown> = {}) =>
     logDiag(stage, { requestId, ...detail });
 
@@ -105,6 +184,7 @@ async function processWhatsAppWebhookPost(
     },
   );
 
+  try {
   diag("post.process_started", {
     path: req.path,
     urlCompanyChannelId: urlCompanyChannelId ?? null,
@@ -148,14 +228,35 @@ async function processWhatsAppWebhookPost(
   diag("post.payload_parsed", payloadSummary);
   trace.step("webhook.payload_parsed", payloadSummary);
 
-  if (payloadSummary.messageCount === 0 && payloadSummary.statusCount > 0) {
+  const inboundMessageCount = Number(payloadSummary.messageCount ?? 0);
+  const statusCount = Number(payloadSummary.statusCount ?? 0);
+  const isInboundUserMessage = inboundMessageCount > 0;
+  const isStatusOnly = !isInboundUserMessage && statusCount > 0;
+
+  if (isStatusOnly) {
     trace.step("webhook.diag", {
       stage: "status_only_callback",
-      note: "Payload contains delivery/read status updates only — no inbound user message or workflow execution.",
-      statusCount: payloadSummary.statusCount,
+      note: "Payload contains delivery/read status updates only — no inbound user message or workflow execution. Perf profiling skipped.",
+      statusCount,
     });
   }
 
+  // Arm profiler only for inbound user messages (AI/workflow path).
+  if (isInboundUserMessage) {
+    perf = new WhatsAppPipelineProfiler(requestId);
+    setWhatsAppPipelineProfiler(perf);
+    perf.mark("Webhook receive", Date.now() - pipelineStartedAt, {
+      rawBodyLength: rawBody.length,
+      messageCount: inboundMessageCount,
+    });
+    perf.start("Webhook validation");
+    conversationTrace = new WhatsAppConversationTrace(requestId || `wa-trace-${Date.now()}`);
+  }
+
+  // Dedupe company/channel/credentials/runtime/session loads for this webhook only.
+  requestCache = new WhatsAppRequestCache(requestId);
+  const runCachedWebhook = () =>
+    runWithWhatsAppRequestCache(requestCache!, async () => {
   const phoneNumberId = extractWhatsAppPhoneNumberId(payload);
   diag("post.phone_number_id_extracted", {
     phoneNumberId,
@@ -169,6 +270,7 @@ async function processWhatsAppWebhookPost(
       logger.info({ ...detail, event: "whatsapp.credentials" }, "WhatsApp credentials load"),
   });
 
+  perf?.start("Company lookup");
   const routing = await resolveWhatsAppWebhookCompanyChannelId({
     phoneNumberId,
     urlCompanyChannelId,
@@ -279,6 +381,8 @@ async function processWhatsAppWebhookPost(
         },
         "Duplicate WhatsApp phone number configuration rejected inbound webhook",
       );
+      perf?.end("Company lookup", { error: "duplicate_phone_number" });
+      perf?.end("Webhook validation", { error: "duplicate_phone_number" });
       res.status(409).json({
         error: "duplicate_phone_number_configuration",
         phoneNumberId: routing.phoneNumberId,
@@ -304,6 +408,8 @@ async function processWhatsAppWebhookPost(
       { phoneNumberId, urlCompanyChannelId, message: routing.message },
       "WhatsApp webhook could not be routed to a company channel",
     );
+    perf?.end("Company lookup", { error: "channel_not_found" });
+    perf?.end("Webhook validation", { error: "channel_not_found" });
     res.status(404).json({ error: "channel_not_found", message: routing.message });
     return;
   }
@@ -347,11 +453,37 @@ async function processWhatsAppWebhookPost(
       reason: "channel_not_found",
       stage: "channel_lookup_after_routing",
     });
+    console.error("[ERROR] WhatsApp company channel lookup failed after routing", {
+      requestId,
+      companyChannelId,
+      phoneNumberId,
+      executionTimeMs: Date.now() - pipelineStartedAt,
+    });
+    perf?.end("Company lookup", { error: "channel_not_found_after_routing" });
+    perf?.end("Webhook validation", { error: "channel_not_found_after_routing" });
     res.status(404).json({ error: "channel_not_found" });
     return;
   }
 
+  console.log("[WHATSAPP] Company resolved", {
+    requestId,
+    companyId: channel.companyId,
+    companyChannelId,
+    phoneNumberId,
+    routingSource: routing.source,
+    isEnabled: channel.isEnabled,
+  });
+  perf?.end("Company lookup", {
+    companyId: channel.companyId,
+    companyChannelId,
+    routingSource: routing.source,
+  });
+
+  const credentialsStartedAt = Date.now();
   const channelCredentials = await credentialsLoader.loadByCompanyId(channel.companyId);
+  perf?.mark("Database writes: load WhatsApp credentials", Date.now() - credentialsStartedAt, {
+    companyId: channel.companyId,
+  });
   const appSecretForSignature = resolveWebhookAppSecret(channelCredentials);
 
   diag("post.channel_lookup", {
@@ -402,10 +534,12 @@ async function processWhatsAppWebhookPost(
     });
     trace.step("webhook.signature_rejected", { companyChannelId });
     trace.step("webhook.diag_early_return", { httpStatus: 401, reason: "invalid_signature" });
+    perf?.end("Webhook validation", { error: "invalid_signature" });
     res.status(401).json({ error: "invalid_signature" });
     return;
   }
 
+  perf?.end("Webhook validation", { signatureValid: true });
   trace.step("webhook.signature_verified", { companyChannelId });
 
   try {
@@ -415,13 +549,18 @@ async function processWhatsAppWebhookPost(
     });
     trace.step("webhook.handler_started", { companyChannelId, executeAi: env.webhookExecuteAi });
 
-    const response = await platform.whatsAppHandler.handlePost({
-      companyChannelId,
-      rawPayload: payload,
-      executeAi: env.webhookExecuteAi,
-      requestId,
-      trace,
-    });
+    // Keep profiler request-scoped across concurrent delivery-status webhooks.
+    const invokeHandler = () =>
+      platform.whatsAppHandler.handlePost({
+        companyChannelId,
+        rawPayload: payload,
+        executeAi: env.webhookExecuteAi,
+        requestId,
+        trace,
+      });
+    const response = perf
+      ? await runWithWhatsAppPipelineProfiler(perf, invokeHandler)
+      : await invokeHandler();
 
     diag("post.handler_invoke.completed", {
       companyChannelId,
@@ -443,9 +582,32 @@ async function processWhatsAppWebhookPost(
         response.kind === "inbound" ? response.result.outboundDeliveryId ?? null : null,
     });
 
+    console.log("[WHATSAPP] Reply completed", {
+      requestId,
+      companyId: channel.companyId,
+      companyChannelId,
+      conversationId: response.kind === "inbound" ? response.result.conversationId ?? null : null,
+      runtimeExecutionId:
+        response.kind === "inbound" ? response.result.runtimeExecutionId ?? null : null,
+      outboundDeliveryId:
+        response.kind === "inbound" ? response.result.outboundDeliveryId ?? null : null,
+      responseKind: response.kind,
+      executionTimeMs: Date.now() - pipelineStartedAt,
+    });
+
+    if (
+      response.kind === "inbound" &&
+      (response.result.automationRunId || response.result.runtimeExecutionId)
+    ) {
+      perf?.markInboundExecution(
+        response.result.automationRunId ? "workflow" : "ai_runtime",
+      );
+    }
+
     res.status(200).json({ ok: true, response });
   } catch (error) {
     const handlerError = error instanceof Error ? error.message : "webhook_processing_failed";
+    conversationTrace?.noteError(handlerError);
     diag("post.early_return", {
       httpStatus: 500,
       reason: "webhook_processing_failed",
@@ -463,11 +625,61 @@ async function processWhatsAppWebhookPost(
       reason: "webhook_processing_failed",
       stage: "handler",
     });
+    console.error("[ERROR] WhatsApp webhook processing failed", {
+      requestId,
+      companyId: channel.companyId,
+      companyChannelId,
+      phoneNumberId,
+      executionTimeMs: Date.now() - pipelineStartedAt,
+      error: handlerError,
+    });
+    if (error instanceof Error && error.stack) console.error(error.stack);
     logger.error(
       { err: error, companyChannelId, routingSource: routing.source },
       "WhatsApp webhook processing failed",
     );
     res.status(500).json({ error: "webhook_processing_failed" });
+  }
+  }); // runWithWhatsAppRequestCache
+
+  if (conversationTrace) {
+    await runWithWhatsAppConversationTrace(conversationTrace, runCachedWebhook);
+  } else {
+    await runCachedWebhook();
+  }
+  } finally {
+    // Status/read/delivery webhooks never arm `perf`. Inbound reports print only when
+    // AI/workflow execution actually ran (see markInboundExecution / stage prefixes).
+    perf?.printInboundReport({
+      path: req.path,
+      urlCompanyChannelId: urlCompanyChannelId ?? null,
+    });
+    if (perf?.hasInboundExecution() && requestCache) {
+      requestCache.printOptimizationReport(
+        Date.now() - pipelineStartedAt,
+        perf.getMetaSendTotalMs(),
+      );
+    }
+    // Sprint 2.4: one final TRACE summary per inbound message.
+    if (conversationTrace) {
+      try {
+        if (requestCache) {
+          conversationTrace.setCacheStats(
+            requestCache.totalHits(),
+            requestCache.totalMisses(),
+          );
+        }
+        if (perf && conversationTrace.metaTimeMs === 0) {
+          conversationTrace.setMetaTime(perf.getMetaSendTotalMs());
+        }
+        conversationTrace.printSummary();
+      } catch {
+        // Observability only — never fail the webhook because the TRACE printer threw.
+      }
+      setWhatsAppConversationTrace(null);
+    }
+    if (perf) setWhatsAppPipelineProfiler(null);
+    if (requestCache) setWhatsAppRequestCache(null);
   }
 }
 

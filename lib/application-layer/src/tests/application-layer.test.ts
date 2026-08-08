@@ -15,8 +15,8 @@ import type { PlatformEventBus } from "@workspace/platform-events";
 
 describe("Application Layer — contracts", () => {
   it("registers all command and query types", () => {
-    assert.equal(COMMAND_TYPES.length, 37);
-    assert.equal(QUERY_TYPES.length, 37);
+    assert.equal(COMMAND_TYPES.length, 74);
+    assert.equal(QUERY_TYPES.length, 56);
   });
 
   it("validates CreateCustomer command", () => {

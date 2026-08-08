@@ -189,7 +189,7 @@ export const AiAssistantSheet = memo(function AiAssistantSheet({
                   />
                 ))
               ) : (
-                <p className="rounded-lg border border-dashed border-white/10 px-3 py-3 text-xs leading-relaxed text-muted-foreground" dir="auto">
+                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs leading-relaxed text-muted-foreground" dir="auto">
                   {emptyMessage}
                 </p>
               )}
@@ -244,7 +244,7 @@ export const AiAssistantSheet = memo(function AiAssistantSheet({
             </div>
           </section>
 
-          <section className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+          <section className="rounded-lg border border-border bg-muted/30 p-3">
             <h3 className="mb-1 text-xs font-semibold text-muted-foreground" dir="auto">
               {labels.conversationSummary}
             </h3>

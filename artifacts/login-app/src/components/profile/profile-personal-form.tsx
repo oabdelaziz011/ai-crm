@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { useUpdateMyProfile } from "@/hooks/use-my-profile";
@@ -15,33 +14,20 @@ import type { MyProfile } from "@/lib/types";
 import { DashboardCard } from "@/components/dashboard/ui";
 import { PROFILE_TIMEZONE_OPTIONS } from "@/lib/profile-timezones";
 import { isAppLanguage, resolveAppLanguage } from "@/lib/i18n/resolve-app-language";
-import {
-  AVATAR_MAX_INLINE_BYTES,
-  estimateDataUrlBytes,
-  isValidAvatarUrl,
-} from "@/lib/avatar-url";
-import { safeDisplayText } from "@/lib/profile/display-safe";
+import { isValidAvatarUrl } from "@/lib/avatar-url";
+import { uploadProfileAvatar } from "@/lib/profile/avatar-upload";
+import { ProfileCurrencyField } from "@/components/profile/profile-currency-field";
+import { UserAvatar } from "@/components/profile/user-avatar";
 
 type ProfileFormValues = {
   full_name: string;
   avatar_url: string;
   preferred_language: string;
   timezone: string;
+  job_title: string;
+  department: string;
+  phone: string;
 };
-
-function getInitials(name: string | null | undefined, email: string | null | undefined) {
-  const source = safeDisplayText(name) || safeDisplayText(email) || "U";
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    const first = parts[0]?.charAt(0) ?? "";
-    const second = parts[1]?.charAt(0) ?? "";
-    const initials = `${first}${second}`.trim();
-    if (initials) {
-      return initials.toUpperCase();
-    }
-  }
-  return (source.charAt(0) || "U").toUpperCase();
-}
 
 type ProfilePersonalFormProps = {
   profile: MyProfile;
@@ -53,6 +39,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
   const { user, refreshAuthContext } = useAuth();
   const updateProfile = useUpdateMyProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const profileId = profile?.id ?? "";
 
   const schema = useMemo(
@@ -64,6 +51,9 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
           .refine((value) => isValidAvatarUrl(value), t("profiles.avatar.invalidUrl")),
         preferred_language: z.enum(["en", "ar"]),
         timezone: z.string().min(1),
+        job_title: z.string().max(120).optional(),
+        department: z.string().max(120).optional(),
+        phone: z.string().max(40).optional(),
       }),
     [t],
   );
@@ -75,6 +65,9 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
       avatar_url: "",
       preferred_language: "en",
       timezone: "UTC",
+      job_title: "",
+      department: "",
+      phone: "",
     },
   });
 
@@ -92,23 +85,44 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         ? (profile?.preferred_language ?? "en")
         : resolveAppLanguage(profile?.preferred_language),
       timezone: profile?.timezone?.trim() || "UTC",
+      job_title: profile?.job_title ?? "",
+      department: profile?.department ?? "",
+      phone: profile?.phone ?? "",
     });
   }, [
     profileId,
     profile?.updated_at,
     profile?.full_name,
     profile?.avatar_url,
+    profile?.job_title,
+    profile?.department,
+    profile?.phone,
     profile?.preferred_language,
     profile?.timezone,
     reset,
   ]);
 
   const avatarPreview = form.watch("avatar_url") ?? "";
-  const displayEmail = safeDisplayText(profile?.email ?? user?.email ?? null);
 
   if (!profileId) {
     return null;
   }
+
+  const persistAvatar = async (avatarUrl: string | null) => {
+    const values = form.getValues();
+    await updateProfile.mutateAsync({
+      full_name: values.full_name.trim() || profile.full_name || "User",
+      avatar_url: avatarUrl,
+      preferred_language: values.preferred_language,
+      preferred_theme: profile.preferred_theme ?? "system",
+      timezone: values.timezone,
+      job_title: values.job_title.trim() || null,
+      department: values.department.trim() || null,
+      phone: values.phone.trim() || null,
+    });
+    form.setValue("avatar_url", avatarUrl ?? "", { shouldDirty: false });
+    await refreshAuthContext?.();
+  };
 
   const onSubmit = async (values: ProfileFormValues) => {
     try {
@@ -118,6 +132,9 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         preferred_language: values.preferred_language,
         preferred_theme: profile.preferred_theme ?? "system",
         timezone: values.timezone,
+        job_title: values.job_title.trim() || null,
+        department: values.department.trim() || null,
+        phone: values.phone.trim() || null,
       });
 
       await refreshAuthContext?.();
@@ -152,40 +169,59 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
       return;
     }
 
-    if (file.size > AVATAR_MAX_INLINE_BYTES) {
+    const userId = user?.id;
+    if (!userId) {
       toast({
-        title: t("profiles.avatar.tooLargeTitle"),
-        description: t("profiles.avatar.tooLargeDescription"),
+        title: t("profiles.saveFailedTitle"),
+        description: t("profiles.saveFailedDescription"),
         variant: "destructive",
       });
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        if (estimateDataUrlBytes(reader.result) > AVATAR_MAX_INLINE_BYTES) {
-          toast({
-            title: t("profiles.avatar.tooLargeTitle"),
-            description: t("profiles.avatar.tooLargeDescription"),
-            variant: "destructive",
-          });
-          return;
-        }
+    setAvatarUploading(true);
+    try {
+      // Storage → profiles.avatar_url → writeMyProfileCache → employee-identity invalidate
+      const storagePath = await uploadProfileAvatar(file, userId);
+      await persistAvatar(storagePath);
+      toast({
+        title: t("profiles.avatar.uploadSuccessTitle"),
+        description: t("profiles.avatar.uploadSuccessDescription"),
+      });
+    } catch (uploadError) {
+      toast({
+        title: t("profiles.avatar.uploadFailedTitle"),
+        description:
+          uploadError instanceof Error && uploadError.message === "too_large"
+            ? t("profiles.avatar.tooLargeDescription")
+            : uploadError instanceof Error
+              ? uploadError.message
+              : t("profiles.avatar.uploadFailedDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
-        if (!isValidAvatarUrl(reader.result)) {
-          toast({
-            title: t("profiles.avatar.invalidTypeTitle"),
-            description: t("profiles.avatar.invalidUrl"),
-            variant: "destructive",
-          });
-          return;
-        }
-
-        form.setValue("avatar_url", reader.result, { shouldDirty: true });
-      }
-    };
-    reader.readAsDataURL(file);
+  const handleRemoveAvatar = async () => {
+    setAvatarUploading(true);
+    try {
+      await persistAvatar(null);
+      toast({
+        title: t("profiles.avatar.removeSuccessTitle"),
+        description: t("profiles.avatar.removeSuccessDescription"),
+      });
+    } catch (removeError) {
+      toast({
+        title: t("profiles.saveFailedTitle"),
+        description:
+          removeError instanceof Error ? removeError.message : t("profiles.saveFailedDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   return (
@@ -197,15 +233,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-          <Avatar className="w-20 h-20 border border-primary/20 bg-primary/10">
-            <AvatarImage
-              src={avatarPreview || undefined}
-              alt={safeDisplayText(profile?.full_name) ?? displayEmail ?? ""}
-            />
-            <AvatarFallback className="bg-primary/20 text-primary text-xl font-bold">
-              {getInitials(profile?.full_name, displayEmail)}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar className="size-20 border border-primary/20" fallbackClassName="text-xl" />
 
           <div className="space-y-3 flex-1">
             <div>
@@ -218,9 +246,14 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
                 variant="outline"
                 size="sm"
                 className="border-white/10 gap-2"
+                disabled={avatarUploading || updateProfile.isPending}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Camera className="w-4 h-4" />
+                {avatarUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
                 {t("profiles.avatar.upload")}
               </Button>
               {avatarPreview && (
@@ -229,7 +262,8 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
                   variant="outline"
                   size="sm"
                   className="border-white/10"
-                  onClick={() => form.setValue("avatar_url", "", { shouldDirty: true })}
+                  disabled={avatarUploading || updateProfile.isPending}
+                  onClick={() => void handleRemoveAvatar()}
                 >
                   {t("profiles.avatar.remove")}
                 </Button>
@@ -238,9 +272,9 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp,image/gif"
               className="hidden"
-              onChange={handleAvatarFileChange}
+              onChange={(event) => void handleAvatarFileChange(event)}
             />
           </div>
         </div>
@@ -256,6 +290,37 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
             {form.formState.errors.full_name && (
               <p className="text-xs text-destructive">{form.formState.errors.full_name.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="profile-job-title">{t("profiles.fields.jobTitle")}</Label>
+            <Input
+              id="profile-job-title"
+              className="bg-background/50 border-white/10"
+              placeholder={t("profiles.fields.jobTitlePlaceholder")}
+              {...form.register("job_title")}
+            />
+            <p className="text-[11px] text-muted-foreground">{t("profiles.fields.jobTitleHint")}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="profile-department">{t("profiles.fields.department")}</Label>
+            <Input
+              id="profile-department"
+              className="bg-background/50 border-white/10"
+              placeholder={t("profiles.fields.departmentPlaceholder")}
+              {...form.register("department")}
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="profile-phone">{t("profiles.fields.phone")}</Label>
+            <Input
+              id="profile-phone"
+              className="bg-background/50 border-white/10"
+              placeholder={t("profiles.fields.phonePlaceholder")}
+              {...form.register("phone")}
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -296,13 +361,17 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
               ))}
             </select>
           </div>
+
+          <div className="md:col-span-2">
+            <ProfileCurrencyField />
+          </div>
         </div>
 
         <div className="flex justify-end">
           <Button
             type="submit"
             className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary"
-            disabled={updateProfile.isPending || !form.formState.isDirty}
+            disabled={updateProfile.isPending || avatarUploading || !form.formState.isDirty}
           >
             {updateProfile.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

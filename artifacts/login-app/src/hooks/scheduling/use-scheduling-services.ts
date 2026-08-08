@@ -1,14 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { getSchedulingServices } from "@/lib/scheduling";
-import type { ServiceFormValues } from "@/lib/scheduling/validation/service-schemas";
+import type {
+  PricingRuleFormValues,
+  ServiceFormValues,
+  ServiceGeneralFormValues,
+} from "@/lib/scheduling/validation/service-schemas";
 import {
   SCHEDULING_CAPABILITIES_KEY,
   schedulingServiceKey,
+  schedulingServicePricingRulesKey,
   schedulingServicesKey,
 } from "@/hooks/scheduling/keys";
 
 const services = getSchedulingServices();
+
+export type CreateSchedulingServiceInput = ServiceGeneralFormValues & {
+  pricingRules?: PricingRuleFormValues[];
+  duration_minutes?: number;
+  price?: number;
+  currency?: string;
+};
 
 async function requireUserId(): Promise<string> {
   const {
@@ -37,13 +49,16 @@ export function useSchedulingService(companyId: string | null, serviceId: string
 export function useCreateSchedulingService(companyId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (values: ServiceFormValues) => {
+    mutationFn: async (values: CreateSchedulingServiceInput | ServiceFormValues) => {
       if (!companyId) throw new Error("Company required");
       const userId = await requireUserId();
       return services.serviceCatalog.create(companyId, userId, values);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       void qc.invalidateQueries({ queryKey: schedulingServicesKey(companyId) });
+      void qc.invalidateQueries({
+        queryKey: schedulingServicePricingRulesKey(companyId, created.id),
+      });
     },
   });
 }
@@ -51,7 +66,13 @@ export function useCreateSchedulingService(companyId: string | null) {
 export function useUpdateSchedulingService(companyId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: ServiceFormValues }) => {
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: ServiceGeneralFormValues | ServiceFormValues;
+    }) => {
       if (!companyId) throw new Error("Company required");
       const userId = await requireUserId();
       return services.serviceCatalog.update(id, companyId, userId, values);

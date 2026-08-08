@@ -67,6 +67,38 @@ export class BookingRepository {
     return data as SchedulingBooking;
   }
 
+  async updatePaymentState(
+    id: string,
+    companyId: string,
+    input: {
+      invoiceId?: string | null;
+      paymentStatus: string;
+      discountCents?: number;
+      taxCents?: number;
+      updatedBy?: string | null;
+    },
+  ): Promise<SchedulingBooking> {
+    const payload: Record<string, unknown> = {
+      payment_status: input.paymentStatus,
+      updated_by: input.updatedBy ?? null,
+    };
+    if (input.invoiceId !== undefined) payload.invoice_id = input.invoiceId;
+    if (input.discountCents !== undefined) payload.discount_cents = input.discountCents;
+    if (input.taxCents !== undefined) payload.tax_cents = input.taxCents;
+
+    const { data, error } = await this.client
+      .from("scheduling_bookings")
+      .update(payload)
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .select("*")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as SchedulingBooking;
+  }
+
   async findOverlapping(
     companyId: string,
     resourceId: string,

@@ -27,6 +27,7 @@ import {
   type SessionPolicyConfig,
 } from "./session-policy.js";
 import { TriggerDispatcher } from "./trigger-dispatcher.js";
+import { waPerfMeasure } from "../debug/whatsapp-pipeline-perf.js";
 import {
   outboundEntryDisplayText,
   readLatestOutbound,
@@ -95,10 +96,12 @@ export class ConversationOrchestrator {
       resolution.run &&
       canResumeWaitingRun(resolution.session, resolution.run, this.deps.policy ?? DEFAULT_SESSION_POLICY)
     ) {
-      execution = await this.deps.engine.resume(ctx, {
-        runId: resolution.run.id,
-        input: buildResumeInput(resolution.run, inbound.text, inbound.payload),
-      });
+      execution = await waPerfMeasure("engine.resume()", () =>
+        this.deps.engine.resume(ctx, {
+          runId: resolution.run.id,
+          input: buildResumeInput(resolution.run, inbound.text, inbound.payload),
+        }),
+      );
       outboundMessages.push(...this.buildOutboundMessages(execution, inbound));
       return { inbound, resolution, execution, outboundMessages };
     }

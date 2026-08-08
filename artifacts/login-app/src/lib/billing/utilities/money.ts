@@ -1,5 +1,10 @@
 /** Money utilities — all financial math in cents to avoid float errors. */
 
+import {
+  getCompanyCurrency,
+  getCompanyIntlLocale,
+} from "@/lib/company-locale/runtime";
+
 export function centsFromDecimal(amount: number): number {
   return Math.round(amount * 100);
 }
@@ -8,12 +13,26 @@ export function decimalFromCents(cents: number): number {
   return cents / 100;
 }
 
-export function formatMoney(cents: number, currency = "USD", locale = "en"): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(decimalFromCents(cents));
+/**
+ * Format cents using company billing currency when `currency` is omitted.
+ * Synced by CompanyLocaleProvider from billing `default_currency`.
+ */
+export function formatMoney(
+  cents: number,
+  currency?: string,
+  locale?: string,
+): string {
+  const code = currency || getCompanyCurrency();
+  const intlLocale = locale || getCompanyIntlLocale();
+  try {
+    return new Intl.NumberFormat(intlLocale, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+    }).format(decimalFromCents(cents));
+  } catch {
+    return `${decimalFromCents(cents).toFixed(2)} ${code}`;
+  }
 }
 
 export function sumCents(values: number[]): number {

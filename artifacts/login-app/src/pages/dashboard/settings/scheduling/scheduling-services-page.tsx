@@ -28,6 +28,7 @@ import {
   useSchedulingServices,
   useUpdateSchedulingService,
 } from "@/hooks/scheduling/use-scheduling-services";
+import { useSaveServicePricingRules } from "@/hooks/scheduling/use-service-pricing";
 import { schedulingServiceProfileHref } from "@/config/scheduling-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
 import type { SchedulingService } from "@/lib/scheduling/types";
@@ -45,13 +46,14 @@ export function SchedulingServicesPage() {
   const createService = useCreateSchedulingService(companyId);
   const updateService = useUpdateSchedulingService(companyId);
   const deleteService = useDeleteSchedulingService(companyId);
+  const savePricingRules = useSaveServicePricingRules(companyId);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SchedulingService | null>(null);
   const [deleting, setDeleting] = useState<SchedulingService | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async ({ values, resourceIds }: ServiceFormSubmitPayload) => {
+  const handleSubmit = async ({ values, resourceIds, pricingRules }: ServiceFormSubmitPayload) => {
     if (!companyId) return;
 
     const onError = (message: string) =>
@@ -61,7 +63,17 @@ export function SchedulingServicesPage() {
     try {
       const serviceId = editing
         ? (await updateService.mutateAsync({ id: editing.id, values })).id
-        : (await createService.mutateAsync(values)).id;
+        : (
+            await createService.mutateAsync({
+              ...values,
+              pricingRules,
+            })
+          ).id;
+
+      // Create already persists rules via the catalog; edit re-syncs here.
+      if (editing) {
+        await savePricingRules.mutateAsync({ serviceId, rules: pricingRules });
+      }
 
       await syncServiceResourcesFor(companyId, serviceId, resourceIds);
       invalidateCapabilityQueries(qc, companyId);
@@ -87,19 +99,21 @@ export function SchedulingServicesPage() {
           </h3>
           <p className="text-xs text-muted-foreground mt-1">{t("scheduling.services.subtitle")}</p>
         </div>
-        {canEdit && (
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null);
-              setModalOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {t("scheduling.services.add")}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {canEdit && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              {t("scheduling.services.add")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -130,6 +144,11 @@ export function SchedulingServicesPage() {
                 </Link>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {t("scheduling.services.durationLabel", { minutes: service.duration_minutes })}
+                  {" · "}
+                  {t("scheduling.services.priceLabel", {
+                    amount: ((service.price_cents ?? 0) / 100).toFixed(2),
+                    currency: service.currency ?? "USD",
+                  })}
                   {" · "}
                   {t(`scheduling.services.statuses.${service.status}`)}
                   {(serviceBranchMap[service.id]?.length ?? 0) > 0 && (

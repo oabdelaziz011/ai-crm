@@ -11,12 +11,6 @@ import {
   mergeConversationVariables,
 } from "../runtime/conversation-variables.js";
 import {
-  readInteractiveListInputKey,
-  readInteractiveListOutputVariable,
-  resolveInteractiveListStoredRecord,
-  resolveInteractiveListStoredValue,
-} from "../runtime/interactive-list-variable.js";
-import {
   buildInteractiveMenuOutbound,
   findPrimaryMenuNode,
 } from "../runtime/main-menu.js";
@@ -59,9 +53,10 @@ import {
   INTERACTIVE_LIST_PAGINATION_VARIABLE,
   isInteractiveListNextPageReply,
   readInteractiveListPaginationState,
-  resolveInteractiveListRowByReplyId,
   type InteractiveListSection,
 } from "../runtime/interactive-list-pagination.js";
+import { resolveInteractiveListSelection } from "../runtime/interactive-list-selection.js";
+import { validateNodeVariableContract } from "./workflow-variable-contracts.js";
 
 export type AutomationActionDeps = {
   bookingService?: BookingServicePort;
@@ -256,62 +251,103 @@ async function executeInteractiveMessageAction(
       };
     }
 
-    const selectionVariablePatch: Record<string, unknown> = {};
-    if (action === "send_list") {
-      const inputKey = readInteractiveListInputKey(context.currentNode.config);
-      const outputVariable = readInteractiveListOutputVariable(context.currentNode.config);
-      if (replyId) {
-        let lookupSections: InteractiveListSection[] | null = null;
-        if (isListLookupMode(context.currentNode.config)) {
-          const paginationState = readInteractiveListPaginationState(context.variables, context.currentNode.id);
-          if (!paginationState) {
-            lookupSections = await resolveListNodeSections(
-              context.currentNode,
-              context.company.id,
-              deps?.lookupOptions,
-              context.variables,
-              { runId: context.run.id, sessionId: context.session.id },
-            );
-          }
-        }
-
-        const listConfig = resolveListConfigForSelection(
-          context.currentNode.config,
-          context.currentNode.id,
+    if (action === "send_list" && replyId) {
+      let lookupSections: InteractiveListSection[] | null = null;
+      const paginationState = readInteractiveListPaginationState(
+        context.variables,
+        context.currentNode.id,
+      );
+      if (isListLookupMode(context.currentNode.config) && !paginationState) {
+        lookupSections = await resolveListNodeSections(
+          context.currentNode,
+          context.company.id,
+          deps?.lookupOptions,
           context.variables,
-          lookupSections,
+          { runId: context.run.id, sessionId: context.session.id },
         );
-        const paginationState = readInteractiveListPaginationState(context.variables, context.currentNode.id);
-        const matchedRow = paginationState
-          ? resolveInteractiveListRowByReplyId(paginationState.rows, replyId)
-          : null;
-
-        const storedRecord = matchedRow?.record ?? resolveInteractiveListStoredRecord(listConfig, replyId);
-        if (storedRecord && outputVariable) {
-          selectionVariablePatch[outputVariable] = storedRecord;
-        } else if (outputVariable) {
-          const storedValue =
-            matchedRow?.value ??
-            matchedRow?.id ??
-            resolveInteractiveListStoredValue(listConfig, replyId);
-          if (storedValue !== null) {
-            selectionVariablePatch[outputVariable] = storedValue;
-          }
-        } else if (inputKey) {
-          const storedValue =
-            matchedRow?.value ??
-            matchedRow?.id ??
-            resolveInteractiveListStoredValue(listConfig, replyId);
-          if (storedValue !== null) {
-            selectionVariablePatch[inputKey] = storedValue;
-          }
-        }
       }
+
+      const listConfig = resolveListConfigForSelection(
+        context.currentNode.config,
+        context.currentNode.id,
+        context.variables,
+        lookupSections,
+      );
+
+      const resolved = resolveInteractiveListSelection({
+        config: listConfig,
+        nodeId: context.currentNode.id,
+        variables: context.variables,
+        replyId,
+        lookupSections,
+      });
+
+      if (!resolved.ok) {
+        // Re-offer the list from the persisted catalog when possible.
+        const catalogState = readInteractiveListPaginationState(
+          context.variables,
+          context.currentNode.id,
+        );
+        let reofferOutbound: OutboundQueueEntry | undefined;
+        let reofferPrompt = resolved.userMessage;
+        if (catalogState) {
+          const sections = buildPaginatedInteractiveListSections(
+            catalogState.rows,
+            catalogState.pageIndex,
+            listLimits,
+            catalogState.sectionTitle,
+          );
+          const menuNode = {
+            ...context.currentNode,
+            config: buildListConfigWithSections(context.currentNode.config, sections),
+          };
+          const rebuilt = buildInteractiveMenuOutbound(menuNode);
+          reofferOutbound = rebuilt.outbound;
+          reofferPrompt = `${resolved.userMessage}\n\n${rebuilt.prompt ?? ""}`.trim();
+        } else {
+          reofferOutbound = { kind: "text", text: resolved.userMessage };
+        }
+
+        const queuePatch = appendOutboundQueueEntry(context.variables, reofferOutbound);
+        return {
+          outcome: "waiting_input",
+          variables: mergeVariables(context.variables, {
+            ...mergeConversationVariables(context.variables, selection),
+            ...queuePatch,
+            __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+            __prompt: reofferPrompt,
+            [INTERACTIVE_SELECTION_INPUT_KEY]: replyId,
+          }),
+          errorMessage: resolved.errorMessage,
+          output: { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, selectionRestoreFailed: true },
+        };
+      }
+
+      const nextVariables = mergeVariables(context.variables, {
+        ...mergeConversationVariables(context.variables, selection),
+        ...resolved.variablePatch,
+        [INTERACTIVE_SELECTION_INPUT_KEY]:
+          selection.last_button_id ?? selection.last_button_title ?? null,
+        __waitingFor: null,
+        __prompt: null,
+        ...clearLatestOutboundSlot(),
+        ...clearInteractiveListPaginationState(),
+      });
+      traceListSelectionApplied({
+        runId: context.run.id,
+        sessionId: context.session.id,
+        nodeId: context.currentNode.id,
+        selection,
+        variables: nextVariables,
+      });
+      return {
+        outcome: "continue",
+        variables: nextVariables,
+      };
     }
 
     const nextVariables = mergeVariables(context.variables, {
       ...mergeConversationVariables(context.variables, selection),
-      ...selectionVariablePatch,
       [INTERACTIVE_SELECTION_INPUT_KEY]: selection.last_button_id ?? selection.last_button_title ?? null,
       __waitingFor: null,
       __prompt: null,
@@ -466,7 +502,7 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
       const action = readString(context.currentNode.config.action);
       if (!action) throw new ValidationError("Action node requires config.action.");
     },
-    execute(context): NodeExecutionResult | Promise<NodeExecutionResult> {
+    async execute(context): Promise<NodeExecutionResult> {
       const action = readString(context.currentNode.config.action)!;
       if (action === "set_variable") {
         const key = readString(context.currentNode.config.key);
@@ -538,7 +574,48 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
         if (!deps?.bookingService) {
           throw new ValidationError("Create booking action requires a booking service.");
         }
-        return executeCreateBookingAction(context, context.currentNode.config, deps.bookingService);
+        const contract = validateNodeVariableContract({
+          nodeType: "action",
+          config: context.currentNode.config,
+          variables: context.variables,
+        });
+        if (!contract.ok) {
+          const outbound: OutboundQueueEntry = { kind: "text", text: contract.userMessage };
+          return {
+            outcome: "waiting_input",
+            variables: mergeVariables(context.variables, {
+              ...appendOutboundQueueEntry(context.variables, outbound),
+              __waitingFor: "workflow_validation",
+              __prompt: contract.userMessage,
+            }),
+            errorMessage: contract.violations.map((violation) => violation.message).join("; "),
+            output: { workflowValidationFailed: true },
+          };
+        }
+        try {
+          return await executeCreateBookingAction(
+            context,
+            context.currentNode.config,
+            deps.bookingService,
+          );
+        } catch (error) {
+          if (error instanceof ValidationError) {
+            const userMessage =
+              "Some required booking details are incomplete. Please choose your options from the list again.";
+            const outbound: OutboundQueueEntry = { kind: "text", text: userMessage };
+            return {
+              outcome: "waiting_input",
+              variables: mergeVariables(context.variables, {
+                ...appendOutboundQueueEntry(context.variables, outbound),
+                __waitingFor: "workflow_validation",
+                __prompt: userMessage,
+              }),
+              errorMessage: error.message,
+              output: { workflowValidationFailed: true },
+            };
+          }
+          throw error;
+        }
       }
       if (action === "find_booking") {
         if (!deps?.bookingService) {

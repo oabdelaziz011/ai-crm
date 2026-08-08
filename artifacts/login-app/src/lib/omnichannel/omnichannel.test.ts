@@ -70,6 +70,58 @@ describe("inbox view state", () => {
     const updated = { ...conversation, unreadCount: 4 };
     assert.equal(effectiveInboxUnreadCount(updated, acknowledged), 1);
   });
+
+  it("classifies new, unread, and read attention with new taking priority", async () => {
+    const { resolveConversationAttention, sortConversationsByAttention } = await import(
+      "./presentation/inbox-view-state.js"
+    );
+    assert.equal(
+      resolveConversationAttention({ unreadCount: 2, hasBeenOpened: false }),
+      "new",
+    );
+    assert.equal(
+      resolveConversationAttention({ unreadCount: 2, hasBeenOpened: true }),
+      "unread",
+    );
+    assert.equal(
+      resolveConversationAttention({ unreadCount: 0, hasBeenOpened: false }),
+      "read",
+    );
+    assert.equal(
+      resolveConversationAttention({ unreadCount: 2, hasBeenOpened: false, active: true }),
+      "read",
+    );
+
+    const conversations = [
+      { id: "read", unreadCount: 0, isPinned: false },
+      { id: "unread", unreadCount: 1, isPinned: false },
+      { id: "new", unreadCount: 3, isPinned: false },
+    ] as import("./types/unified-conversation.js").UnifiedConversation[];
+    const sorted = sortConversationsByAttention(conversations, new Set(["unread"]));
+    assert.deepEqual(
+      sorted.map((item) => item.id),
+      ["new", "unread", "read"],
+    );
+  });
+
+  it("does not reorder when attention sort is disabled (open/read stays put)", async () => {
+    const { applyInboxViewState } = await import("./presentation/inbox-view-state.js");
+    const conversations = [
+      { id: "a", unreadCount: 0, isPinned: false },
+      { id: "b", unreadCount: 2, isPinned: false },
+    ] as import("./types/unified-conversation.js").UnifiedConversation[];
+    const acknowledged = new Map([["b", 2]]);
+    const result = applyInboxViewState(conversations, acknowledged, {
+      openedIds: new Set(["b"]),
+      activeId: "b",
+      sortByAttention: false,
+    });
+    assert.deepEqual(
+      result.map((item) => item.id),
+      ["a", "b"],
+    );
+    assert.equal(result[1]?.unreadCount, 0);
+  });
 });
 
 describe("inbox assignee display", () => {

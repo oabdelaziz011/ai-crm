@@ -28,9 +28,9 @@ export const HandlerModeBadge = memo(function HandlerModeBadge({
     <span
       className={cn(
         "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-        mode === "human" && "border-sky-500/35 bg-sky-500/10 text-sky-300",
-        mode === "ai" && "border-violet-500/35 bg-violet-500/10 text-violet-300",
-        mode === "mixed" && "border-amber-500/35 bg-amber-500/10 text-amber-300",
+        mode === "human" && "border-primary/35 bg-primary/10 text-primary",
+        mode === "ai" && "border-accent-foreground/35 bg-accent text-accent-foreground",
+        mode === "mixed" && "border-[hsl(var(--warning)/0.35)] bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]",
       )}
     >
       {mode === "human" ? humanLabel : mode === "ai" ? aiLabel : "AI + Human"}

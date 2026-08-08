@@ -35,11 +35,11 @@ export function useOperationsCommands(customerId?: string | null) {
   const qc = useQueryClient();
   const cmdContext = useOperationsCommandContext();
 
-  const invalidate = (bookingId?: string) => {
+  const invalidate = (bookingId?: string, overrideCustomerId?: string | null) => {
     if (!cmdContext) return;
     invalidateOperationsPlatformQueries(qc, {
       companyId: cmdContext.companyId,
-      customerId,
+      customerId: overrideCustomerId ?? customerId,
       bookingId,
     });
   };
@@ -105,9 +105,52 @@ export function useOperationsCommands(customerId?: string | null) {
       currency: string;
       method: string;
       invoiceId?: string;
+      bookingId?: string;
+      discountCents?: number;
+      taxCents?: number;
+      serviceDescription?: string;
+      servicePriceCents?: number;
     }) => {
       if (!cmdContext) throw new Error("Not authenticated");
       const result = await cmdContext.registry.getServices().payment.collectPayment(input, cmdContext.context);
+      return result.data;
+    },
+    onSuccess: (_data, input) => invalidate(input.bookingId, input.customerId),
+  });
+
+  const transitionClinicStatus = useMutation({
+    mutationFn: async (input: {
+      bookingId: string;
+      status: "with_nurse" | "in_progress" | "archived";
+    }) => {
+      if (!cmdContext) throw new Error("Not authenticated");
+      const result = await cmdContext.registry
+        .getServices()
+        .operations.transitionClinicStatus(input, cmdContext.context);
+      return result.data;
+    },
+    onSuccess: (_data, input) => invalidate(input.bookingId),
+  });
+
+  const completeTriage = useMutation({
+    mutationFn: async (input: { bookingId: string }) => {
+      if (!cmdContext) throw new Error("Not authenticated");
+      const result = await cmdContext.registry
+        .getServices()
+        .operations.completeTriage(input, cmdContext.context);
+      return result.data;
+    },
+    onSuccess: (_data, input) => invalidate(input.bookingId),
+  });
+
+  const generateInvoice = useMutation({
+    mutationFn: async (input: {
+      customerId: string;
+      amountCents: number;
+      currency: string;
+    }) => {
+      if (!cmdContext) throw new Error("Not authenticated");
+      const result = await cmdContext.registry.getServices().invoice.generateInvoice(input, cmdContext.context);
       return result.data;
     },
     onSuccess: () => invalidate(),
@@ -121,6 +164,9 @@ export function useOperationsCommands(customerId?: string | null) {
     assignEmployee,
     markNoShow,
     collectPayment,
+    transitionClinicStatus,
+    completeTriage,
+    generateInvoice,
     isReady: Boolean(cmdContext),
   };
 }

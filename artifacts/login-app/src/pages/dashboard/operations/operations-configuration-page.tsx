@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import type { OperationsConfigTab } from "@workspace/universal-operations-engine";
 import { useOperationsConfigurationEditor } from "@/hooks/universal-operations/use-operations-configuration-editor";
 import { WorkspacePanel } from "@/components/customer-workspace/workspace-ui";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
@@ -17,22 +16,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { OperationsConfigStatusBar } from "@/components/universal-operations/configuration/operations-config-status-bar";
 import { OperationsConfigValidationReportPanel } from "@/components/universal-operations/configuration/operations-config-validation-report";
-import { OperationsConfigTabContent } from "@/components/universal-operations/configuration/operations-config-tab-content";
 import { OperationsConfigEnterpriseToolbar } from "@/components/universal-operations/configuration/operations-config-enterprise-toolbar";
 import { OperationsConfigDiffDialog } from "@/components/universal-operations/configuration/operations-config-diff-dialog";
-import { OperationsConfigWorkflowGuide } from "@/components/universal-operations/configuration/operations-config-workflow-guide";
-import { OperationsConfigNav } from "@/components/universal-operations/configuration/operations-config-nav";
-import { OperationsConfigTabIntro } from "@/components/universal-operations/configuration/operations-config-tab-intro";
+import { OperationsConfigTaskHub } from "@/components/universal-operations/configuration/operations-config-task-hub";
+import { OperationsConfigScreenContent } from "@/components/universal-operations/configuration/operations-config-screen-content";
+import type { OperationsConfigScreen } from "@/components/universal-operations/configuration/operations-config-screens";
+import type { OperationsConfigTab } from "@workspace/universal-operations-engine";
 
 export function OperationsConfigurationPage() {
   const { t } = useTranslation("common");
-  const [activeTab, setActiveTab] = useState<OperationsConfigTab>("general");
+  const [screen, setScreen] = useState<OperationsConfigScreen>("home");
   const [publishSummary, setPublishSummary] = useState("");
   const [rollbackVersion, setRollbackVersion] = useState<number | null>(null);
   const [diffOpen, setDiffOpen] = useState(false);
   const editor = useOperationsConfigurationEditor();
   const readOnly = !editor.canWrite;
-  const isLive = !editor.hasUnpublishedDraft && editor.status === "published";
 
   const handleSaveDraft = async () => {
     try {
@@ -105,18 +103,17 @@ export function OperationsConfigurationPage() {
     publishedAt: version.createdAt,
   }));
 
+  const legacyTab = (screen === "home" ? "general" : screen) as OperationsConfigTab;
+
   return (
     <div className="space-y-5">
-      <header className="space-y-2">
+      <header className="space-y-1">
         <h2 className="text-xl font-bold">{t("universalOperations.configuration.title")}</h2>
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{t("universalOperations.configuration.subtitle")}</p>
-        <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">{t("universalOperations.configuration.audienceHint")}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t("universalOperations.configuration.tasks.homeSubtitle")}</p>
         {readOnly ? (
           <p className="text-xs text-amber-600 dark:text-amber-400">{t("universalOperations.configuration.readOnlyHint")}</p>
         ) : null}
       </header>
-
-      <OperationsConfigWorkflowGuide hasUnsavedDraft={editor.hasUnpublishedDraft || editor.isDirty} isPublished={isLive} />
 
       <OperationsConfigStatusBar
         templateKey={editor.templateKey}
@@ -139,24 +136,25 @@ export function OperationsConfigurationPage() {
 
       <OperationsConfigValidationReportPanel report={editor.validationReport} />
 
-      <OperationsConfigNav activeTab={activeTab} onTabChange={setActiveTab} />
-
-      <OperationsConfigTabIntro tab={activeTab} />
-
-      <OperationsConfigTabContent
-        tab={activeTab}
-        draft={editor.draft}
-        updateDraft={editor.updateDraft}
-        readOnly={readOnly}
-        versions={versionSummaries}
-        onRollback={(version) => setRollbackVersion(version)}
-        onCompareVersion={handleCompareVersion}
-        canPublish={editor.canPublish}
-      />
+      {screen === "home" ? (
+        <OperationsConfigTaskHub draft={editor.draft} onSelectTask={setScreen} />
+      ) : (
+        <OperationsConfigScreenContent
+          screen={screen}
+          onBack={() => setScreen("home")}
+          draft={editor.draft}
+          updateDraft={editor.updateDraft}
+          readOnly={readOnly}
+          versions={versionSummaries}
+          onRollback={(version) => setRollbackVersion(version)}
+          onCompareVersion={handleCompareVersion}
+          canPublish={editor.canPublish}
+        />
+      )}
 
       <OperationsConfigEnterpriseToolbar
         editor={editor}
-        activeTab={activeTab}
+        activeTab={legacyTab}
         readOnly={readOnly}
         canPublish={editor.canPublish}
         onOpenDiff={() => {

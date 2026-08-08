@@ -1,28 +1,32 @@
-/** Lead workspace row — shared between table, kanban, and pipeline views. */
+/** Canonical CRM Lead workspace row — one model for table, kanban, Lead360 list context. */
 export type LeadWorkspaceRow = {
   id: string;
   tenantId: string;
-  title: string;
-  contactName: string;
+  name: string;
+  contactPerson: string;
   email: string | null;
   phone: string | null;
   companyName: string | null;
-  lifecycleStatus: string;
+  ownerId: string | null;
+  owner: string | null;
   stageId: string;
-  stageName: string;
-  pipelineId: string;
+  stage: string;
+  sourceId: string | null;
+  source: string | null;
+  expectedValue: number | null;
+  expectedCloseDate: string | null;
   priority: "low" | "normal" | "high" | "urgent";
+  temperature: "hot" | "warm" | "cold" | null;
+  tags: string[];
+  notes: string;
+  lastActivityAt: string | null;
+  lifecycleStatus: string;
+  pipelineId: string;
+  currency: string;
   score: number;
   scoreBand: "cold" | "warm" | "hot";
-  estimatedValue: number | null;
-  currency: string;
-  assignedUserId: string | null;
-  ownerName: string | null;
-  sourceName: string | null;
-  tags: string[];
   isQualified: boolean;
   customerId: string | null;
-  lastActivityAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -42,7 +46,7 @@ export type LeadWorkspaceQuery = {
   search?: string;
   stageId?: string;
   pipelineId?: string;
-  assignedUserId?: string;
+  ownerId?: string;
   lifecycleStatus?: string;
   priority?: string;
   scoreBand?: "cold" | "warm" | "hot";

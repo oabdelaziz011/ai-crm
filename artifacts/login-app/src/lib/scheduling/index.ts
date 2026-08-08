@@ -19,6 +19,8 @@ import { BookingRulesService } from "@/lib/scheduling/services/booking-rules-ser
 import { HolidayService } from "@/lib/scheduling/services/holiday-service";
 import { BranchService } from "@/lib/scheduling/services/branch-service";
 import { ServiceCatalogService } from "@/lib/scheduling/services/service-catalog-service";
+import { ServicePricingService } from "@/lib/scheduling/services/service-pricing-service";
+import { ServicePricingRepository } from "@/lib/scheduling/repositories/service-pricing-repository";
 import { ResourceCapabilityService } from "@/lib/scheduling/services/resource-capability-service";
 import {
   AvailabilityEngine,
@@ -35,32 +37,44 @@ import {
   BookingDomainService,
   BookingRepository,
 } from "@/lib/scheduling/booking-domain";
+import {
+  memoizeSchedulingFactory,
+  WA_REQUEST_CACHE_NS,
+} from "@/lib/scheduling/request-scoped-memo";
+import { wxRecordDependencyConstruction, wxRecordServiceResolution } from "@workspace/automation-platform";
 
 export function createSchedulingServices(client: SupabaseClient = supabase) {
-  const branchRepo = new SchedulingBranchRepository(client);
-  const resourceRepo = new SchedulingResourceRepository(client);
-  const availabilityRepo = new SchedulingAvailabilityRepository(client);
-  const rulesRepo = new SchedulingBookingRulesRepository(client);
-  const holidayRepo = new SchedulingHolidayRepository(client);
-  const serviceCatalogRepo = new SchedulingServiceCatalogRepository(client);
-  const mappingRepo = new ResourceServiceMappingRepository(client);
-  const bookingDomain = BookingFactory.create(client);
+  wxRecordServiceResolution("createSchedulingServices.call");
+  return memoizeSchedulingFactory(WA_REQUEST_CACHE_NS.schedulingServices, client, () => {
+    wxRecordDependencyConstruction("createSchedulingServices");
+    const branchRepo = new SchedulingBranchRepository(client);
+    const resourceRepo = new SchedulingResourceRepository(client);
+    const availabilityRepo = new SchedulingAvailabilityRepository(client);
+    const rulesRepo = new SchedulingBookingRulesRepository(client);
+    const holidayRepo = new SchedulingHolidayRepository(client);
+    const serviceCatalogRepo = new SchedulingServiceCatalogRepository(client);
+    const servicePricingRepo = new ServicePricingRepository(client);
+    const servicePricing = new ServicePricingService(servicePricingRepo, serviceCatalogRepo);
+    const mappingRepo = new ResourceServiceMappingRepository(client);
+    const bookingDomain = BookingFactory.create(client);
 
-  return {
-    branches: new BranchService(branchRepo),
-    resources: new ResourceService(resourceRepo, availabilityRepo),
-    availability: new AvailabilityService(availabilityRepo, resourceRepo),
-    bookingRules: new BookingRulesService(rulesRepo),
-    holidays: new HolidayService(holidayRepo),
-    serviceCatalog: new ServiceCatalogService(serviceCatalogRepo),
-    capabilities: new ResourceCapabilityService(mappingRepo, resourceRepo, serviceCatalogRepo),
-    availabilityEngine: bookingDomain.availabilityEngine,
-    slotGenerationEngine: bookingDomain.slotGenerationEngine,
-    schedulingBookings: new SchedulingBookingRepository(client),
-    bookingDomain: bookingDomain.bookingDomain,
-    bookingRepository: bookingDomain.bookingRepository,
-    bookingValidation: bookingDomain.bookingValidation,
-  };
+    return {
+      branches: new BranchService(branchRepo),
+      resources: new ResourceService(resourceRepo, availabilityRepo),
+      availability: new AvailabilityService(availabilityRepo, resourceRepo),
+      bookingRules: new BookingRulesService(rulesRepo),
+      holidays: new HolidayService(holidayRepo),
+      serviceCatalog: new ServiceCatalogService(serviceCatalogRepo, servicePricing),
+      servicePricing,
+      capabilities: new ResourceCapabilityService(mappingRepo, resourceRepo, serviceCatalogRepo),
+      availabilityEngine: bookingDomain.availabilityEngine,
+      slotGenerationEngine: bookingDomain.slotGenerationEngine,
+      schedulingBookings: new SchedulingBookingRepository(client),
+      bookingDomain: bookingDomain.bookingDomain,
+      bookingRepository: bookingDomain.bookingRepository,
+      bookingValidation: bookingDomain.bookingValidation,
+    };
+  });
 }
 
 export type SchedulingServices = ReturnType<typeof createSchedulingServices>;

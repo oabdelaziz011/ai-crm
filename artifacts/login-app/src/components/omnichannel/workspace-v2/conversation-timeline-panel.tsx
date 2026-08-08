@@ -69,7 +69,7 @@ function badgeClass(tone: "default" | "accent" | "warn" | "danger" | "violet"): 
     case "danger":
       return "bg-[var(--ws-danger)]/15 text-[var(--ws-danger)]";
     case "violet":
-      return "bg-violet-500/15 text-[var(--ws-violet)]";
+      return "bg-primary/15 text-primary";
     default:
       return "bg-[var(--ws-surface-2)] text-[var(--ws-muted)]";
   }

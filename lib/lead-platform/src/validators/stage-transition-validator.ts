@@ -2,8 +2,21 @@ import { DEFAULT_STAGE_TRANSITIONS } from "../constants.js";
 import { LeadStageTransitionError } from "../errors.js";
 import type { LeadLifecycleStatus } from "../types/lead-types.js";
 
-export function assertStageTransition(from: LeadLifecycleStatus, to: LeadLifecycleStatus): void {
+export type StageTransitionOptions = {
+  /**
+   * When true (pipeline default), any lifecycle change is allowed so Kanban
+   * can move leads backward. When false, DEFAULT_STAGE_TRANSITIONS applies.
+   */
+  allowBackward?: boolean;
+};
+
+export function assertStageTransition(
+  from: LeadLifecycleStatus,
+  to: LeadLifecycleStatus,
+  options?: StageTransitionOptions,
+): void {
   if (from === to) return;
+  if (options?.allowBackward) return;
   const allowed = DEFAULT_STAGE_TRANSITIONS[from] ?? [];
   if (!allowed.includes(to)) {
     throw new LeadStageTransitionError(from, to);

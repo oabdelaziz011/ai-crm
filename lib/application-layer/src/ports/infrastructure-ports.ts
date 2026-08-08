@@ -214,6 +214,51 @@ export type EventPublisherPort = {
     triggerEventType?: string;
     context: PublishEventContext;
   }): Promise<string>;
+
+  publishOpportunityCreated(input: {
+    opportunityId: string;
+    name: string;
+    leadId?: string | null;
+    companyId: string;
+    context: PublishEventContext;
+  }): Promise<string>;
+
+  publishOpportunityStageChanged(input: {
+    opportunityId: string;
+    fromStageId: string;
+    toStageId: string;
+    stageKey: string;
+    companyId: string;
+    context: PublishEventContext;
+  }): Promise<string>;
+
+  publishOpportunityProbabilityChanged(input: {
+    opportunityId: string;
+    previousPercent: number;
+    nextPercent: number;
+    source: string;
+    companyId: string;
+    context: PublishEventContext;
+  }): Promise<string>;
+
+  publishOpportunityNegotiationStarted(input: {
+    opportunityId: string;
+    companyId: string;
+    context: PublishEventContext;
+  }): Promise<string>;
+
+  publishOpportunityWon(input: {
+    opportunityId: string;
+    companyId: string;
+    context: PublishEventContext;
+  }): Promise<string>;
+
+  publishOpportunityLost(input: {
+    opportunityId: string;
+    companyId: string;
+    reason?: string | null;
+    context: PublishEventContext;
+  }): Promise<string>;
 };
 
 export type PublishEventContext = Readonly<{

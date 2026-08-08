@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
 import {
+  getOpenedConversationIds,
+  markConversationOpened,
+} from "@/lib/omnichannel/presentation/conversation-experience-storage";
+import {
   acknowledgeConversationUnread,
   applyInboxViewState,
   syncAcknowledgedUnreadBaselines,
@@ -9,7 +13,17 @@ import {
 export function useInboxViewState(
   trackedConversations: UnifiedConversation[],
   initialSelectedId: string | null,
+  activeId?: string | null,
 ) {
+  const [openedIds, setOpenedIds] = useState<Set<string>>(() => {
+    const initial = getOpenedConversationIds();
+    if (initialSelectedId) {
+      markConversationOpened(initialSelectedId);
+      initial.add(initialSelectedId);
+    }
+    return initial;
+  });
+
   const [acknowledgedUnread, setAcknowledgedUnread] = useState<Map<string, number>>(() => {
     const initial = new Map<string, number>();
     if (initialSelectedId) {
@@ -24,12 +38,25 @@ export function useInboxViewState(
   }, [trackedConversations]);
 
   const applyViewState = useCallback(
-    (conversations: UnifiedConversation[]) => applyInboxViewState(conversations, acknowledgedUnread),
-    [acknowledgedUnread],
+    (conversations: UnifiedConversation[]) =>
+      // Keep list order stable on open/read — aggregator reorders only on activity.
+      applyInboxViewState(conversations, acknowledgedUnread, {
+        openedIds,
+        activeId: activeId ?? null,
+        sortByAttention: false,
+      }),
+    [acknowledgedUnread, openedIds, activeId],
   );
 
   const markConversationViewed = useCallback((conversation: UnifiedConversation | null | undefined) => {
     if (!conversation) return;
+    markConversationOpened(conversation.id);
+    setOpenedIds((current) => {
+      if (current.has(conversation.id)) return current;
+      const next = new Set(current);
+      next.add(conversation.id);
+      return next;
+    });
     setAcknowledgedUnread((current) => acknowledgeConversationUnread(current, conversation));
   }, []);
 
@@ -45,5 +72,6 @@ export function useInboxViewState(
     applyViewState,
     markConversationViewed,
     markConversationViewedById,
+    openedIds,
   };
 }

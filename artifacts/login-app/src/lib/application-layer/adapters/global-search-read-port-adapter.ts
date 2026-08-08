@@ -144,13 +144,13 @@ export function createLoginAppGlobalSearchReadPort(
 
             type: "lead",
 
-            title: lead.title,
+            title: lead.name,
 
             subtitle: lead.lifecycleStatus,
 
             preview: lead.source ?? "",
 
-            score: scoreMatch(lead.title, q),
+            score: scoreMatch(lead.name, q),
 
           }),
 

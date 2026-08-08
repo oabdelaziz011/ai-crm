@@ -147,19 +147,29 @@ export function applyInteractiveListPaginationToSections(
   paginationState: InteractiveListPaginationState | null;
 } {
   const { sectionTitle, rows } = flattenInteractiveListSections(sections);
-  const plan = computeInteractiveListPagePlan(rows.length, input.limits);
-  if (!plan.requiresPagination || !input.limits.supportsListPagination) {
+  if (rows.length === 0) {
     return { sections, paginationState: null };
   }
 
-  const pageIndex = input.pageIndex ?? readInteractiveListPaginationState(input.variables, input.nodeId)?.pageIndex ?? 0;
+  const plan = computeInteractiveListPagePlan(rows.length, input.limits);
+  const pageIndex =
+    input.pageIndex ??
+    readInteractiveListPaginationState(input.variables, input.nodeId)?.pageIndex ??
+    0;
+
+  // Always persist the full option catalog (including row.record) so interactive
+  // resume can restore complete objects — not only when WhatsApp pagination is required.
   const paginationState = createInteractiveListPaginationState({
     nodeId: input.nodeId,
     sectionTitle,
     rows,
     limits: input.limits,
-    pageIndex,
+    pageIndex: plan.requiresPagination && input.limits.supportsListPagination ? pageIndex : 0,
   });
+
+  if (!plan.requiresPagination || !input.limits.supportsListPagination) {
+    return { sections, paginationState };
+  }
 
   return {
     sections: buildPaginatedInteractiveListSections(rows, pageIndex, input.limits, sectionTitle),

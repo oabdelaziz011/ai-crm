@@ -2,40 +2,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CompanyWhatsAppSettings,
   WhatsAppProviderKind,
+  WhatsAppTokenStatus,
 } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
 
-type SettingsRow = {
-  company_id: string;
-  enabled: boolean;
-  provider: WhatsAppProviderKind;
-  access_token: string;
-  phone_number_id: string;
-  business_account_id: string;
-  webhook_verify_token: string;
-  api_version: string;
-  default_language: string;
-  max_retry_count: number;
-  updated_at: string;
-};
-
-function mapSettings(row: SettingsRow, maskSecrets = true): CompanyWhatsAppSettings {
-  return {
-    companyId: row.company_id,
-    enabled: row.enabled,
-    provider: row.provider,
-    accessToken: maskSecrets && row.access_token ? "********" : row.access_token,
-    phoneNumberId: row.phone_number_id,
-    businessAccountId: row.business_account_id,
-    webhookVerifyToken: maskSecrets && row.webhook_verify_token ? "********" : row.webhook_verify_token,
-    apiVersion: row.api_version || "v21.0",
-    appSecret: "",
-    defaultLanguage: row.default_language,
-    maxRetryCount: row.max_retry_count,
-    hasAccessToken: Boolean(row.access_token),
-    hasWebhookVerifyToken: Boolean(row.webhook_verify_token),
-    hasAppSecret: false,
-    updatedAt: row.updated_at,
-  };
+function mapTokenStatus(value: unknown): WhatsAppTokenStatus {
+  const status = String(value ?? "unknown");
+  if (
+    status === "valid" ||
+    status === "expired" ||
+    status === "invalid" ||
+    status === "unknown" ||
+    status === "missing"
+  ) {
+    return status;
+  }
+  return "unknown";
 }
 
 function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettings {
@@ -54,9 +35,37 @@ function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettin
     hasAccessToken: Boolean(record.has_access_token),
     hasWebhookVerifyToken: Boolean(record.has_webhook_verify_token),
     hasAppSecret: Boolean(record.has_app_secret),
+    tokenStatus: mapTokenStatus(record.token_status),
+    tokenExpiresAt: record.token_expires_at ? String(record.token_expires_at) : null,
+    tokenCheckedAt: record.token_checked_at ? String(record.token_checked_at) : null,
+    lastSuccessfulSendAt: record.last_successful_send_at
+      ? String(record.last_successful_send_at)
+      : null,
+    lastAuthError: record.last_auth_error ? String(record.last_auth_error) : null,
+    lastAuthErrorAt: record.last_auth_error_at ? String(record.last_auth_error_at) : null,
+    lastAuthErrorCode:
+      record.last_auth_error_code == null || record.last_auth_error_code === ""
+        ? null
+        : Number(record.last_auth_error_code),
     updatedAt: record.updated_at ? String(record.updated_at) : undefined,
   };
 }
+
+export type WhatsAppSettingsDraft = Omit<
+  CompanyWhatsAppSettings,
+  | "companyId"
+  | "hasAccessToken"
+  | "hasWebhookVerifyToken"
+  | "hasAppSecret"
+  | "updatedAt"
+  | "tokenStatus"
+  | "tokenExpiresAt"
+  | "tokenCheckedAt"
+  | "lastSuccessfulSendAt"
+  | "lastAuthError"
+  | "lastAuthErrorAt"
+  | "lastAuthErrorCode"
+>;
 
 export class WhatsAppSettingsRepository {
   constructor(private readonly client: SupabaseClient) {}
@@ -69,26 +78,38 @@ export class WhatsAppSettingsRepository {
     return mapPublicRecord(data as Record<string, unknown>);
   }
 
-  /** Server-side only — includes plaintext secrets. */
+  /** Server-side only — includes plaintext secrets via decrypt RPC. */
   async getSecure(companyId: string): Promise<CompanyWhatsAppSettings | null> {
-    const { data, error } = await this.client
-      .from("company_whatsapp_settings")
-      .select("*")
-      .eq("company_id", companyId)
-      .maybeSingle();
-
+    const { data, error } = await this.client.rpc("get_company_whatsapp_settings_decrypted", {
+      p_company_id: companyId,
+    });
     if (error) throw new Error(error.message);
-    if (!data) return null;
-    return mapSettings(data as SettingsRow, false);
+    if (!data || typeof data !== "object") return null;
+
+    const decrypted = data as Record<string, unknown>;
+    const publicSettings = await this.getPublic(companyId);
+    return {
+      ...publicSettings,
+      accessToken: String(decrypted.access_token ?? ""),
+      webhookVerifyToken: String(decrypted.webhook_verify_token ?? ""),
+      appSecret: String(decrypted.app_secret ?? ""),
+      phoneNumberId: String(decrypted.phone_number_id ?? publicSettings.phoneNumberId),
+      businessAccountId: String(decrypted.business_account_id ?? publicSettings.businessAccountId),
+      apiVersion: String(decrypted.api_version ?? publicSettings.apiVersion),
+      hasAccessToken: Boolean(
+        decrypted.has_access_token ?? String(decrypted.access_token ?? "").trim(),
+      ),
+      hasWebhookVerifyToken: Boolean(
+        decrypted.has_webhook_verify_token ??
+          String(decrypted.webhook_verify_token ?? "").trim(),
+      ),
+      hasAppSecret: Boolean(
+        decrypted.has_app_secret ?? String(decrypted.app_secret ?? "").trim(),
+      ),
+    };
   }
 
-  async upsert(
-    companyId: string,
-    settings: Omit<
-      CompanyWhatsAppSettings,
-      "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "hasAppSecret" | "updatedAt"
-    >,
-  ): Promise<CompanyWhatsAppSettings> {
+  async upsert(companyId: string, settings: WhatsAppSettingsDraft): Promise<CompanyWhatsAppSettings> {
     const { data, error } = await this.client.rpc("upsert_company_whatsapp_settings", {
       p_company_id: companyId,
       p_enabled: settings.enabled,

@@ -10,7 +10,14 @@ export type OperationsTimelineSlotKind =
   | "completed"
   | "cancelled";
 
-export type OperationsPaymentStatus = "unpaid" | "paid" | "partial" | "unknown";
+export type OperationsPaymentStatus =
+  | "unpaid"
+  | "pending"
+  | "paid"
+  | "partial"
+  | "refunded"
+  | "cancelled"
+  | "unknown";
 
 export type OperationsBookingView = {
   id: string;
@@ -28,10 +35,23 @@ export type OperationsBookingView = {
   createdAt: string;
   updatedAt: string;
   customer: { id: string; name: string; phone: string | null; email: string | null } | null;
-  service: { id: string; name: string; durationMinutes: number; priceCents: number } | null;
+  service: {
+    id: string;
+    name: string;
+    durationMinutes: number;
+    priceCents: number;
+    currency?: string;
+  } | null;
   resource: { id: string; name: string; type: string } | null;
   branch: { id: string; name: string } | null;
   paymentStatus: OperationsPaymentStatus;
+  /** Booking-owned service price snapshot (never recomputed in the table). */
+  amountCents: number;
+  currency: string;
+  visitType: string;
+  discountCents: number;
+  taxCents: number;
+  invoiceId?: string | null;
   displayStart: string;
   displayEnd: string;
   durationMinutes: number;

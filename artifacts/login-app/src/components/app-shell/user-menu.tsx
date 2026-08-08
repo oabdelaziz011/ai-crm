@@ -2,6 +2,8 @@ import { ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
+import { UserAvatar } from "@/components/profile/user-avatar";
+import { useCurrentUserAvatar } from "@/hooks/use-current-user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 type UserMenuProps = {
@@ -20,9 +21,8 @@ type UserMenuProps = {
 export function UserMenu({ onSignOut }: UserMenuProps) {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
-  const { displayName, user } = useAuth();
-
-  const initial = displayName.charAt(0).toUpperCase();
+  const { user } = useAuth();
+  const { name, email } = useCurrentUserAvatar();
 
   return (
     <DropdownMenu>
@@ -30,24 +30,23 @@ export function UserMenu({ onSignOut }: UserMenuProps) {
         <button
           type="button"
           className={cn(
-            "flex items-center gap-1.5 rounded-lg px-1.5 py-1 outline-none transition-colors",
+            "flex h-10 items-center gap-1.5 rounded-lg px-1.5 outline-none transition-colors",
             "hover:bg-background/60 focus-visible:ring-2 focus-visible:ring-ring",
           )}
           aria-label={t("appShell.userMenu.label")}
         >
-          <Avatar className="size-8 border-2 border-primary/20 shadow-sm">
-            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-xs font-bold text-primary">
-              {initial}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar className="size-9 border-2 border-primary/20 shadow-sm" />
           <ChevronDown className="hidden size-3 text-muted-foreground lg:block" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="truncate text-sm font-semibold">{displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+          <div className="flex items-center gap-3">
+            <UserAvatar className="size-10 border border-border" />
+            <div className="flex min-w-0 flex-col space-y-1">
+              <p className="truncate text-sm font-semibold">{name}</p>
+              <p className="truncate text-xs text-muted-foreground">{email ?? user?.email}</p>
+            </div>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

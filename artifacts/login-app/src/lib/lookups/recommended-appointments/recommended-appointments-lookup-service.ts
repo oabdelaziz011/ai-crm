@@ -5,6 +5,7 @@ import {
   TimezoneResolver,
   type AvailabilityScanEnginePort,
 } from "@workspace/scheduling-engine";
+import { wxRecordServiceResolution } from "@workspace/automation-platform";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import type { LookupOptionRow } from "../types";
@@ -56,6 +57,7 @@ export async function fetchRecommendedAppointmentsLookupOptions(
   const context = readContext(filters);
   if (!context) return [];
 
+  wxRecordServiceResolution("recommendedAppointments.lookup");
   const scheduling = createSchedulingServices(client);
   const referenceNow = new Date();
   const rules = await scheduling.bookingRules.get(companyId);

@@ -21,6 +21,7 @@ declare global {
   interface Window {
     __traceOmniSendAsync__?: OmniSendAsyncTracer;
     __traceOmniSendEnter__?: (input: {
+      runId?: string | null;
       layer: number;
       stage: string;
       file: string;
@@ -29,15 +30,39 @@ declare global {
       conversationId?: string | null;
       messageId?: string | null;
       statusBefore?: string | null;
+      statusAfter?: string | null;
+      extra?: Record<string, unknown>;
     }) => void;
     __traceOmniSendExit__?: (input: {
+      runId?: string | null;
       layer: number;
       stage: string;
       success: boolean;
+      error?: string | null;
       conversationId?: string | null;
       messageId?: string | null;
+      statusBefore?: string | null;
       statusAfter?: string | null;
+      extra?: Record<string, unknown>;
     }) => void;
+    __traceOmniSendSync__?: <T>(input: {
+      runId?: string | null;
+      layer: number;
+      stage: string;
+      file: string;
+      function: string;
+      line: number;
+      conversationId?: string | null;
+      messageId?: string | null;
+      statusBefore?: string | null;
+      extra?: Record<string, unknown>;
+      run: () => T;
+      success: (result: T) => {
+        messageId?: string | null;
+        statusAfter?: string | null;
+        extra?: Record<string, unknown>;
+      };
+    }) => T;
   }
 }
 

@@ -16,6 +16,8 @@ export type BranchInsert = {
   phone?: string | null;
   email?: string | null;
   is_primary?: boolean;
+  manager_user_id?: string | null;
+  settings?: Record<string, unknown> | null;
   created_by?: string | null;
   updated_by?: string | null;
 };
@@ -37,6 +39,7 @@ export type BranchFormValues = {
   timezone: string;
   is_primary: boolean;
   status: BranchStatus;
+  manager_user_id: string | null;
 };
 
 export type BranchStats = {
@@ -50,6 +53,10 @@ export type BranchWithStats = BranchRecord & {
   users_count: number;
   resources_count: number;
   services_count: number;
+  /** Active scheduling bookings for this branch (operations). */
+  operations_count: number;
+  /** Distinct customers linked via branch bookings. */
+  customers_count: number;
 };
 
 export type BranchDependencyCounts = {

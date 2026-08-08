@@ -1,207 +1,470 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CheckCircle2, BriefcaseBusiness, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLead360Workspace } from "@/hooks/leads/use-lead360-workspace";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
-import type { Lead360SectionId } from "@workspace/universal-operations-engine";
+import { useOpportunityCommands } from "@/hooks/opportunities/use-opportunity-commands";
+import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
+import { useAuthUser } from "@/hooks/use-rbac";
+import { useToast } from "@/hooks/use-toast";
+import { FileText, ListTodo, Paperclip } from "lucide-react";
+import { EnterpriseEmptyState } from "@/components/enterprise";
+import { cn } from "@/lib/utils";
+import { Lead360Header } from "./lead360-header";
+import { Lead360SmartRail } from "./lead360-smart-rail";
+import { Lead360AiWorkspace } from "./lead360-ai-workspace";
+import { Lead360ConversationTab } from "./lead360-conversation-tab";
+import { Lead360TimelineTab } from "./lead360-timeline-tab";
+import { Lead360Skeleton } from "./lead360-ui";
+import { useCompanyLocaleContext } from "@/context/company-locale-context";
+import { formatBillingCurrency } from "@/lib/billing/format";
+import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
+
+type Lead360Tab =
+  | "overview"
+  | "conversation"
+  | "activity"
+  | "tasks"
+  | "timeline"
+  | "ai"
+  | "files"
+  | "audit";
+
+function formatDate(value: string | null | undefined, locale: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
+}
+
+function formatDateTime(value: string | null | undefined, locale: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+function Property({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-1 border-b border-border/40 py-3 sm:grid-cols-[160px_1fr] sm:gap-4">
+      <div className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-[13px] font-medium text-foreground">{value || "—"}</div>
+    </div>
+  );
+}
 
 export function Lead360Workspace({
   leadId,
   open,
   onClose,
+  initialTab,
 }: {
   leadId: string | null;
   open: boolean;
   onClose: () => void;
+  initialTab?: Lead360Tab;
 }) {
-  const { t } = useTranslation("common");
-  const { data, isLoading, sections } = useLead360Workspace(leadId);
+  const { t, i18n } = useTranslation("common");
+  const { toast } = useToast();
+  const { currency: companyCurrency } = useCompanyLocaleContext();
+  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { data, isLoading } = useLead360Workspace(leadId);
   const commands = useLeadCommands();
+  const opportunityCommands = useOpportunityCommands();
+  const [createdOpportunityId, setCreatedOpportunityId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Lead360Tab>(initialTab ?? "ai");
+
+  useEffect(() => {
+    if (!open) return;
+    setTab(initialTab ?? "ai");
+  }, [open, leadId, initialTab]);
+
+  const lead = data?.lead;
+
+  const activities = data?.activities ?? [];
+  const tasks = data?.tasks ?? [];
+  const files = data?.files ?? [];
+  const timeline = data?.timeline ?? [];
+  const aiStatus = data?.aiStatus ?? lead?.aiStatus;
+  const conversationFeed = useMemo(
+    () =>
+      [...activities].sort(
+        (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+      ),
+    [activities],
+  );
+
+  const tabs: Array<[Lead360Tab, string]> = [
+    ["overview", t("leads360.sections.overview")],
+    ["conversation", t("leads360.tabs.conversation", { defaultValue: "Conversation" })],
+    ["activity", t("leads360.tabs.activity")],
+    ["tasks", t("leads360.sections.tasks")],
+    ["timeline", t("leads360.tabs.timeline", { defaultValue: "Timeline" })],
+    ["ai", t("leads360.tabs.ai", { defaultValue: "AI" })],
+    ["files", t("leads360.sections.files")],
+    ["audit", t("leads360.tabs.audit", { defaultValue: "Audit" })],
+  ];
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-[620px]">
-        {isLoading || !data ? (
-          <div className="flex flex-1 items-center justify-center p-8">
-            <DashboardPageFallback />
-          </div>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          setTab("ai");
+          onClose();
+        }
+      }}
+    >
+      <DialogContent
+        className={cn(
+          "flex h-[min(92vh,960px)] w-[calc(100vw-1rem)] max-w-[1280px] flex-col gap-0 overflow-hidden rounded-2xl p-0",
+          "sm:max-w-[1280px] [&>button]:hidden",
+        )}
+      >
+        <DialogTitle className="sr-only">{t("leads.workspace.panelTitle")}</DialogTitle>
+
+        {isLoading || !lead ? (
+          <Lead360Skeleton />
         ) : (
           <>
-            <div className="border-b border-border/60 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold">{data.identity.title}</h2>
-                  <p className="text-sm text-muted-foreground">{data.identity.contactName}</p>
+            <Lead360Header lead={lead} panel={data?.aiPanel} onClose={onClose} />
+
+            <Tabs
+              value={tab}
+              onValueChange={(value) => setTab(value as Lead360Tab)}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <TabsList className="h-auto w-full shrink-0 justify-start gap-0 overflow-x-auto rounded-none border-b border-border/60 bg-transparent p-0 px-4 sm:px-6">
+                {tabs.map(([id, label]) => (
+                  <TabsTrigger
+                    key={id}
+                    value={id}
+                    className={cn(
+                      "rounded-none border-b-2 border-transparent px-3 py-3 text-[13px]",
+                      "data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                      id === "ai" && "font-semibold",
+                    )}
+                  >
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              <div className="flex min-h-0 flex-1 gap-0 overflow-hidden">
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+                  <TabsContent value="overview" className="mt-0 space-y-1">
+                    {tab === "overview" ? (
+                      <>
+                        <Property label={t("leads.workspace.fields.leadName")} value={lead.name} />
+                        <Property
+                          label={t("leads.workspace.fields.contactPerson")}
+                          value={lead.contactPerson}
+                        />
+                        <Property label={t("leads.workspace.fields.company")} value={lead.companyName} />
+                        <Property label={t("leads.workspace.fields.email")} value={lead.email} />
+                        <Property label={t("leads.workspace.fields.phone")} value={lead.phone} />
+                        <Property label={t("leads.columns.owner")} value={lead.owner} />
+                        <Property
+                          label={t("leads.columns.stage")}
+                          value={translateLeadStageLabel(t, {
+                            name: lead.stage,
+                            lifecycleStatus: lead.lifecycleStatus,
+                            slug: lead.stage,
+                          })}
+                        />
+                        <Property label={t("leads.columns.source")} value={lead.source} />
+                        <Property
+                          label={t("leads.columns.priority")}
+                          value={t(`leads.workspace.priority.${lead.priority}`)}
+                        />
+                        <Property
+                          label={t("leads.workspace.fields.temperature")}
+                          value={
+                            lead.temperature ? t(`leads.scoreBand.${lead.temperature}`) : null
+                          }
+                        />
+                        <Property
+                          label={t("leads.columns.expectedValue")}
+                          value={
+                            lead.expectedValue != null
+                              ? formatBillingCurrency(lead.expectedValue, companyCurrency)
+                              : null
+                          }
+                        />
+                        <Property
+                          label={t("leads.workspace.fields.expectedCloseDate")}
+                          value={formatDate(lead.expectedCloseDate, i18n.language)}
+                        />
+                        <Property
+                          label={t("leads.workspace.fields.tags")}
+                          value={
+                            lead.tags.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {lead.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="rounded-sm bg-muted px-2 py-1 text-[12px] font-medium"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null
+                          }
+                        />
+                        <Property
+                          label={t("leads.workspace.fields.lastActivity")}
+                          value={formatDateTime(lead.lastActivityAt, i18n.language)}
+                        />
+                        <Property
+                          label={t("leads.workspace.fields.created")}
+                          value={formatDateTime(lead.createdAt, i18n.language)}
+                        />
+                        <Property
+                          label={t("leads.workspace.panel.notes")}
+                          value={lead.notes.trim() || null}
+                        />
+                      </>
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="conversation" className="mt-0">
+                    {tab === "conversation" ? (
+                      <Lead360ConversationTab
+                        activities={conversationFeed}
+                        panel={data?.aiPanel}
+                      />
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="activity" className="mt-0 space-y-3">
+                    {tab === "activity" ? (
+                      activities.length === 0 ? (
+                        <EnterpriseEmptyState
+                          compact
+                          icon={<ListTodo className="size-6" aria-hidden />}
+                          title={t("leads360.empty.activityTitle", {
+                            defaultValue: "No activities yet",
+                          })}
+                          description={t("leads360.empty.activity", {
+                            defaultValue:
+                              "Calls, emails, and WhatsApp touches will appear here as the team engages this lead.",
+                          })}
+                        />
+                      ) : (
+                        activities.map((item) => (
+                          <div
+                            key={item.id}
+                            className="rounded-lg border border-border/50 px-4 py-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-[13px] font-medium">{item.subject}</div>
+                              <div className="text-[11px] text-muted-foreground">
+                                {formatDateTime(item.occurredAt, i18n.language)}
+                              </div>
+                            </div>
+                            <div className="mt-1 text-[12px] text-muted-foreground">
+                              {item.channel}
+                              {item.actor ? ` · ${item.actor}` : ""}
+                            </div>
+                            {item.preview ? (
+                              <p className="mt-2 text-[13px] text-foreground/85">{item.preview}</p>
+                            ) : null}
+                          </div>
+                        ))
+                      )
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="tasks" className="mt-0 space-y-3">
+                    {tab === "tasks" ? (
+                      tasks.length === 0 ? (
+                        <EnterpriseEmptyState
+                          compact
+                          icon={<FileText className="size-6" aria-hidden />}
+                          title={t("leads360.empty.tasksTitle", {
+                            defaultValue: "No tasks yet",
+                          })}
+                          description={t("leads360.empty.tasks", {
+                            defaultValue:
+                              "Create follow-ups from recommendations or assign the next sales step to keep this deal moving.",
+                          })}
+                        />
+                      ) : (
+                        tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="rounded-lg border border-border/50 px-4 py-3"
+                          >
+                            <div className="text-[13px] font-medium">{task.title}</div>
+                            <div className="mt-1 text-[12px] text-muted-foreground">
+                              {task.status} · {task.assignee}
+                              {task.dueAt
+                                ? ` · ${formatDateTime(task.dueAt, i18n.language)}`
+                                : ""}
+                            </div>
+                          </div>
+                        ))
+                      )
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="timeline" className="mt-0">
+                    {tab === "timeline" ? (
+                      <Lead360TimelineTab
+                        timeline={timeline}
+                        aiAudit={data?.aiAudit}
+                        panel={data?.aiPanel}
+                      />
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="mt-0">
+                    {tab === "ai" && leadId ? (
+                      <Lead360AiWorkspace
+                        leadId={leadId}
+                        aiStatus={aiStatus}
+                        aiAudit={data?.aiAudit}
+                        panel={data?.aiPanel}
+                      />
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="files" className="mt-0 space-y-3">
+                    {tab === "files" ? (
+                      files.length === 0 ? (
+                        <EnterpriseEmptyState
+                          compact
+                          icon={<Paperclip className="size-6" aria-hidden />}
+                          title={t("leads360.empty.filesTitle", {
+                            defaultValue: "No files attached",
+                          })}
+                          description={t("leads360.empty.files", {
+                            defaultValue:
+                              "Upload proposals, contracts, or discovery notes so the team can find them in one place.",
+                          })}
+                        />
+                      ) : (
+                        files.map((file) => (
+                          <div
+                            key={file.id}
+                            className="rounded-lg border border-border/50 px-4 py-3"
+                          >
+                            <div className="text-[13px] font-medium">{file.fileName}</div>
+                            <div className="mt-1 text-[11px] text-muted-foreground">
+                              {file.mimeType} · {formatDateTime(file.uploadedAt, i18n.language)}
+                            </div>
+                          </div>
+                        ))
+                      )
+                    ) : null}
+                  </TabsContent>
+
+                  <TabsContent value="audit" className="mt-0">
+                    {tab === "audit" ? (
+                      <Lead360TimelineTab
+                        timeline={[]}
+                        aiAudit={data?.aiAudit}
+                        panel={null}
+                      />
+                    ) : null}
+                  </TabsContent>
                 </div>
-                <Badge variant={data.profile.scoreBand === "hot" ? "destructive" : "secondary"}>
-                  {t(`leads.scoreBand.${data.profile.scoreBand}`)}
-                </Badge>
+
+                <div className="hidden shrink-0 border-s border-border/50 bg-muted/10 p-4 lg:block lg:w-[304px]">
+                  <Lead360SmartRail lead={lead} panel={data?.aiPanel} />
+                </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <span className="capitalize">{data.profile.stageName ?? data.profile.lifecycleStatus}</span>
-                <span>·</span>
-                <span>{t("leads360.scoreLabel", { score: data.profile.score })}</span>
-                {data.profile.estimatedValue != null && (
-                  <>
-                    <span>·</span>
-                    <span>
-                      {data.profile.currency} {data.profile.estimatedValue.toLocaleString()}
-                    </span>
-                  </>
-                )}
-              </div>
-              {!data.profile.customerId && (
+            </Tabs>
+
+            <div className="shrink-0 space-y-2 border-t border-border/60 px-6 py-3 sm:px-7">
+              {(isSuperAdmin || hasPermission("opportunities.convert")) &&
+              lead.isQualified &&
+              !lead.customerId ? (
                 <Button
-                  size="sm"
-                  className="mt-4"
-                  disabled={commands.convert.isPending}
-                  onClick={() => leadId && commands.convert.mutate({ leadId })}
+                  type="button"
+                  variant="secondary"
+                  className="h-11 w-full gap-2 rounded-md text-[13px] font-semibold"
+                  disabled={opportunityCommands.createFromLead.isPending || !leadId}
+                  onClick={() => {
+                    if (!leadId) return;
+                    opportunityCommands.createFromLead.mutate(
+                      { leadId },
+                      {
+                        onSuccess: (opp) => {
+                          toast({
+                            title: t("opportunities.created", {
+                              defaultValue: "Opportunity created",
+                            }),
+                          });
+                          setCreatedOpportunityId(opp.id);
+                        },
+                        onError: (err) => {
+                          toast({
+                            title: t("opportunities.createFailed", {
+                              defaultValue: "Could not create opportunity",
+                            }),
+                            description: err instanceof Error ? err.message : String(err),
+                            variant: "destructive",
+                          });
+                        },
+                      },
+                    );
+                  }}
                 >
+                  {opportunityCommands.createFromLead.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <BriefcaseBusiness className="size-4" />
+                  )}
+                  {t("leads360.createOpportunity", { defaultValue: "Create Opportunity" })}
+                </Button>
+              ) : null}
+              {!lead.customerId ? (
+                <Button
+                  type="button"
+                  className="h-11 w-full gap-2 rounded-md text-[13px] font-semibold"
+                  disabled={commands.convert.isPending || !leadId}
+                  onClick={() => {
+                    if (!leadId) return;
+                    void commands.convert
+                      .mutateAsync({ leadId })
+                      .then(() => {
+                        toast({ title: t("leads.kanban.actions.converted") });
+                      })
+                      .catch((error: Error) => {
+                        toast({
+                          title: t("leads.kanban.actions.convertFailed"),
+                          description: error.message,
+                          variant: "destructive",
+                        });
+                      });
+                  }}
+                >
+                  {commands.convert.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="size-4" />
+                  )}
                   {t("leads360.convert")}
                 </Button>
-              )}
+              ) : null}
             </div>
-
-            <div className="flex-1 space-y-4 overflow-y-auto p-5">
-              {sections.map((section) => (
-                <Lead360Section key={section.id} sectionId={section.id} data={data} titleKey={section.titleKey} />
-              ))}
-            </div>
+            <Opportunity360Workspace
+              opportunityId={createdOpportunityId}
+              open={Boolean(createdOpportunityId)}
+              onOpenChange={(next) => {
+                if (!next) setCreatedOpportunityId(null);
+              }}
+            />
           </>
         )}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function Lead360Section({
-  sectionId,
-  data,
-  titleKey,
-}: {
-  sectionId: Lead360SectionId;
-  data: NonNullable<ReturnType<typeof useLead360Workspace>["data"]>;
-  titleKey: string;
-}) {
-  const { t } = useTranslation("common");
-
-  return (
-    <section className="rounded-xl border border-border/60 p-4">
-      <h3 className="mb-3 text-sm font-semibold">{t(titleKey)}</h3>
-      {sectionId === "overview" && (
-        <div className="space-y-2 text-sm">
-          <div>{data.profile.companyName ?? t("leads360.empty.company")}</div>
-          <div>{data.profile.email ?? t("leads360.empty.email")}</div>
-          <div>{data.profile.phone ?? t("leads360.empty.phone")}</div>
-          <div className="text-muted-foreground">{data.intelligence.summary}</div>
-        </div>
-      )}
-      {sectionId === "contacts" && (
-        <div className="space-y-2">
-          {data.contacts.map((c) => (
-            <div key={c.id} className="text-sm">
-              <div className="font-medium">{c.name}</div>
-              <div className="text-muted-foreground">{c.email ?? c.phone}</div>
-            </div>
-          ))}
-          {data.contacts.length === 0 && (
-            <div className="text-sm text-muted-foreground">{t("leads360.empty.contacts")}</div>
-          )}
-        </div>
-      )}
-      {sectionId === "tags" && (
-        <div className="flex flex-wrap gap-2">
-          {data.tags.map((tag) => (
-            <Badge key={tag.id} variant="outline">
-              {tag.label}
-            </Badge>
-          ))}
-          {data.tags.length === 0 && (
-            <div className="text-sm text-muted-foreground">{t("leads360.empty.tags")}</div>
-          )}
-        </div>
-      )}
-      {sectionId === "activities" && (
-        <div className="space-y-2">
-          {data.activities.recent.map((activity) => (
-            <div key={activity.id} className="text-sm">
-              <div className="font-medium">{activity.subject}</div>
-              <div className="text-xs text-muted-foreground">{activity.channel}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {sectionId === "timeline" && (
-        <div className="space-y-2">
-          {data.timeline.recent.slice(0, 8).map((item) => (
-            <div key={item.id} className="text-sm">
-              <div className="font-medium">{item.title}</div>
-              <div className="text-xs text-muted-foreground">{item.occurredAt}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {sectionId === "files" && (
-        <div className="space-y-2">
-          {data.files.map((file) => (
-            <div key={file.id} className="text-sm">
-              {file.fileName}
-            </div>
-          ))}
-          {data.files.length === 0 && (
-            <div className="text-sm text-muted-foreground">{t("leads360.empty.files")}</div>
-          )}
-        </div>
-      )}
-      {sectionId === "custom_fields" && (
-        <div className="space-y-2">
-          {data.customFields.map((field) => (
-            <div key={field.key} className="flex justify-between text-sm">
-              <span>{field.label}</span>
-              <span className="text-muted-foreground">{field.value}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {sectionId === "ai_assistant" && (
-        <div className="space-y-2 text-sm">
-          <div>
-            <span className="font-medium">{t("leads360.ai.nextAction")} </span>
-            {data.intelligence.nextBestAction}
-          </div>
-          <div>
-            <span className="font-medium">{t("leads360.ai.followUp")} </span>
-            {data.intelligence.suggestedFollowUp}
-          </div>
-          <div className="text-muted-foreground">{data.intelligence.scoreExplanation}</div>
-        </div>
-      )}
-      {sectionId === "tasks" && (
-        <div className="space-y-2">
-          {data.tasks.map((task) => (
-            <div key={task.id} className="text-sm">
-              {task.title} — {task.status}
-            </div>
-          ))}
-          {data.tasks.length === 0 && (
-            <div className="text-sm text-muted-foreground">{t("leads360.empty.tasks")}</div>
-          )}
-        </div>
-      )}
-      {sectionId === "related_entities" && (
-        <div className="space-y-2">
-          {data.relatedEntities.map((rel) => (
-            <div key={rel.id} className="text-sm">
-              {rel.label} ({rel.relationType})
-            </div>
-          ))}
-          {data.relatedEntities.length === 0 && (
-            <div className="text-sm text-muted-foreground">{t("leads360.empty.relatedEntities")}</div>
-          )}
-        </div>
-      )}
-    </section>
+      </DialogContent>
+    </Dialog>
   );
 }

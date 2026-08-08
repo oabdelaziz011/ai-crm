@@ -25,6 +25,7 @@ const BOOKING_EVENT_MAP: Record<BookingDomainEvent["type"], DomainEventName> = {
   BookingCheckedIn: "booking.checked_in",
   BookingCompleted: "booking.completed",
   BookingNoShow: "booking.cancelled",
+  BookingStatusChanged: "booking.checked_in",
 };
 
 function formatAppointmentVars(booking: {

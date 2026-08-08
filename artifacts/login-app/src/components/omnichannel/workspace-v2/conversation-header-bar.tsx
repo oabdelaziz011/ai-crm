@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Bell, Link2, Pin, Star, UserPlus, Wifi, WifiOff } from "lucide-react";
+import { Bell, BellOff, Link2, Pin, Star, UserPlus, Wifi, WifiOff } from "lucide-react";
 import { ChannelBadge } from "@/components/omnichannel/channel-badge";
 import { BiDirText } from "@/components/omnichannel/presentation/bidir-text";
 import type { ConversationHeader } from "@/lib/conversation-lifecycle/types/lifecycle-types";
@@ -84,6 +84,16 @@ type ConversationHeaderBarProps = {
     follow: string;
   };
   onToggleBookmark?: (flag: "pinned" | "starred" | "following" | "markedUnread") => void;
+  deskChrome?: {
+    soundEnabled: boolean;
+    soundOnLabel: string;
+    soundOffLabel: string;
+    onToggleSound: () => void;
+    conversationExpanded: boolean;
+    expandLabel: string;
+    collapseLabel: string;
+    onToggleExpand: () => void;
+  };
 };
 
 function initials(name: string): string {
@@ -119,6 +129,7 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
   conversationFlags,
   bookmarkLabels,
   onToggleBookmark,
+  deskChrome,
 }: ConversationHeaderBarProps) {
   const displayName = resolveContactDisplayName(
     buildContactDisplayInput(conversation ?? null, header.customer, visitorLabel),
@@ -224,8 +235,6 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
 
   const showPinned = conversation?.isPinned || conversationFlags?.pinned;
   const showStarred = conversationFlags?.starred;
-  const showFollowing = conversationFlags?.following;
-  const showMarkedUnread = conversationFlags?.markedUnread;
 
   const avatarTitle = hasCustomer ? labels.openProfile : customer360Label ?? labels.openCustomer360;
 
@@ -313,48 +322,62 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1">
-          {bookmarkLabels && onToggleBookmark ? (
+          {(bookmarkLabels && onToggleBookmark) || deskChrome ? (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                className={`ws-btn ws-btn--ghost p-1.5 ${showPinned ? "text-[var(--ws-accent)]" : ""}`}
-                aria-label={bookmarkLabels.pin}
-                title={bookmarkLabels.pin}
-                aria-pressed={showPinned}
-                onClick={() => onToggleBookmark("pinned")}
-              >
-                <Pin className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                className={`ws-btn ws-btn--ghost p-1.5 ${showStarred ? "text-amber-400" : ""}`}
-                aria-label={bookmarkLabels.star}
-                title={bookmarkLabels.star}
-                aria-pressed={showStarred}
-                onClick={() => onToggleBookmark("starred")}
-              >
-                <Star className={`size-3.5 ${showStarred ? "fill-current" : ""}`} />
-              </button>
-              <button
-                type="button"
-                className={`ws-btn ws-btn--ghost p-1.5 ${showMarkedUnread ? "text-[var(--ws-accent)]" : ""}`}
-                aria-label={bookmarkLabels.markUnread}
-                title={bookmarkLabels.markUnread}
-                aria-pressed={showMarkedUnread}
-                onClick={() => onToggleBookmark("markedUnread")}
-              >
-                <Bell className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                className={`ws-btn ws-btn--ghost p-1.5 ${showFollowing ? "text-sky-300" : ""}`}
-                aria-label={bookmarkLabels.follow}
-                title={bookmarkLabels.follow}
-                aria-pressed={showFollowing}
-                onClick={() => onToggleBookmark("following")}
-              >
-                <span className="text-xs leading-none">●</span>
-              </button>
+              {bookmarkLabels && onToggleBookmark ? (
+                <>
+                  <button
+                    type="button"
+                    className={`ws-btn ws-btn--ghost p-1.5 ${showPinned ? "text-[var(--ws-accent)]" : ""}`}
+                    aria-label={bookmarkLabels.pin}
+                    title={bookmarkLabels.pin}
+                    aria-pressed={showPinned}
+                    onClick={() => onToggleBookmark("pinned")}
+                  >
+                    <Pin className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    className={`ws-btn ws-btn--ghost p-1.5 ${showStarred ? "text-amber-400" : ""}`}
+                    aria-label={bookmarkLabels.star}
+                    title={bookmarkLabels.star}
+                    aria-pressed={showStarred}
+                    onClick={() => onToggleBookmark("starred")}
+                  >
+                    <Star className={`size-3.5 ${showStarred ? "fill-current" : ""}`} />
+                  </button>
+                </>
+              ) : null}
+              {deskChrome ? (
+                <>
+                  <button
+                    type="button"
+                    className={`ws-btn ws-btn--ghost p-1.5 ${deskChrome.soundEnabled ? "text-[var(--ws-accent)]" : "text-[var(--ws-muted)] opacity-70"}`}
+                    aria-label={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
+                    title={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
+                    aria-pressed={deskChrome.soundEnabled}
+                    onClick={deskChrome.onToggleSound}
+                  >
+                    {deskChrome.soundEnabled ? <Bell className="size-3.5" /> : <BellOff className="size-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    className={`ws-btn ws-btn--ghost p-1.5 ${deskChrome.conversationExpanded ? "text-[var(--ws-accent)]" : ""}`}
+                    aria-label={
+                      deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel
+                    }
+                    title={
+                      deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel
+                    }
+                    aria-pressed={deskChrome.conversationExpanded}
+                    onClick={deskChrome.onToggleExpand}
+                  >
+                    <span className="text-xs leading-none" aria-hidden>
+                      ●
+                    </span>
+                  </button>
+                </>
+              ) : null}
             </div>
           ) : null}
           {!hasCustomer && (canLinkCustomer || canCreateCustomer) ? (

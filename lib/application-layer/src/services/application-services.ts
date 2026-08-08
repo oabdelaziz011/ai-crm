@@ -17,6 +17,10 @@ import type {
   CheckOutCustomerResponseDto,
   CheckInCustomerRequestDto,
   CheckInCustomerResponseDto,
+  TransitionClinicStatusRequestDto,
+  TransitionClinicStatusResponseDto,
+  CompleteTriageRequestDto,
+  CompleteTriageResponseDto,
   AssignEmployeeRequestDto,
   AssignEmployeeResponseDto,
   ExecuteWorkflowRequestDto,
@@ -80,6 +84,9 @@ import * as QueryHandlers from "../handlers/queries/query-handlers.js";
 import { ResourceNotFoundError } from "../errors/application-errors.js";
 import { EntityApplicationService } from "./entity-application-service.js";
 import { LeadApplicationService } from "./lead-application-service.js";
+import { OpportunityApplicationService } from "./opportunity-application-service.js";
+import { ProductApplicationService } from "./product-application-service.js";
+import { QuoteApplicationService } from "./quote-application-service.js";
 import { TicketApplicationService } from "./ticket-application-service.js";
 import { HandoffApplicationService } from "./handoff-application-service.js";
 import { ContextAssemblyService } from "./context-assembly-service.js";
@@ -196,6 +203,46 @@ export class OperationsApplicationService {
       requiredPermissions: ["operations.write"],
       handler: async (req, ctx) => {
         const { response } = await CommandHandlers.handleCheckInCustomer(
+          { ports: this.deps.ports, infra: this.deps.infra },
+          req,
+          ctx,
+        );
+        return response;
+      },
+    });
+  }
+
+  transitionClinicStatus(
+    request: TransitionClinicStatusRequestDto,
+    context: ApplicationContext,
+  ): Promise<CommandResult<TransitionClinicStatusResponseDto>> {
+    return this.commandPipeline.execute({
+      commandType: "TransitionClinicStatus",
+      request,
+      context,
+      requiredPermissions: ["operations.write"],
+      handler: async (req, ctx) => {
+        const { response } = await CommandHandlers.handleTransitionClinicStatus(
+          { ports: this.deps.ports, infra: this.deps.infra },
+          req,
+          ctx,
+        );
+        return response;
+      },
+    });
+  }
+
+  completeTriage(
+    request: CompleteTriageRequestDto,
+    context: ApplicationContext,
+  ): Promise<CommandResult<CompleteTriageResponseDto>> {
+    return this.commandPipeline.execute({
+      commandType: "CompleteTriage",
+      request,
+      context,
+      requiredPermissions: ["operations.write"],
+      handler: async (req, ctx) => {
+        const { response } = await CommandHandlers.handleCompleteTriage(
           { ports: this.deps.ports, infra: this.deps.infra },
           req,
           ctx,
@@ -438,7 +485,7 @@ export class PaymentApplicationService {
       commandType: "CollectPayment",
       request,
       context,
-      requiredPermissions: ["payment.write"],
+      requiredPermissions: ["invoices.create", "operations.write"],
       handler: async (req, ctx) => {
         const { response } = await CommandHandlers.handleCollectPayment({ ports: this.deps.ports, infra: this.deps.infra }, req, ctx);
         return response;
@@ -456,7 +503,7 @@ export class InvoiceApplicationService {
       commandType: "GenerateInvoice",
       request,
       context,
-      requiredPermissions: ["invoice.write"],
+      requiredPermissions: ["invoices.create", "operations.write"],
       handler: async (req, ctx) => {
         const { response } = await CommandHandlers.handleGenerateInvoice({ ports: this.deps.ports, infra: this.deps.infra }, req, ctx);
         return response;
@@ -941,6 +988,9 @@ export type ApplicationServices = Readonly<{
   knowledge: KnowledgeApplicationService;
   entity: EntityApplicationService;
   lead: LeadApplicationService;
+  opportunity: OpportunityApplicationService;
+  product: ProductApplicationService;
+  quote: QuoteApplicationService;
   ticket: TicketApplicationService;
   handoff: HandoffApplicationService;
   context: ContextAssemblyService;
@@ -969,6 +1019,9 @@ export function createApplicationServices(deps: ApplicationLayerDeps): Applicati
     knowledge: new KnowledgeApplicationService(deps),
     entity: new EntityApplicationService(deps),
     lead: new LeadApplicationService(deps),
+    opportunity: new OpportunityApplicationService(deps),
+    product: new ProductApplicationService(deps),
+    quote: new QuoteApplicationService(deps),
     ticket: new TicketApplicationService(deps),
     handoff: new HandoffApplicationService(deps),
     context: new ContextAssemblyService(deps),

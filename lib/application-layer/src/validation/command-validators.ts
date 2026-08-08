@@ -51,6 +51,14 @@ export const commandValidators: Record<string, (request: unknown) => void> = {
   CheckOutCustomer: (request) => {
     requireString(asRecord(request).bookingId, "bookingId");
   },
+  TransitionClinicStatus: (request) => {
+    const req = asRecord(request);
+    requireString(req.bookingId, "bookingId");
+    requireString(req.status, "status");
+  },
+  CompleteTriage: (request) => {
+    requireString(asRecord(request).bookingId, "bookingId");
+  },
   CollectPayment: (request) => {
     const req = asRecord(request);
     requireString(req.customerId, "customerId");
@@ -142,7 +150,7 @@ export const commandValidators: Record<string, (request: unknown) => void> = {
     requireString(req.fieldId, "fieldId");
   },
   CreateLead: (request) => {
-    requireString(asRecord(request).title, "title");
+    requireString(asRecord(request).name, "name");
   },
   UpdateLead: (request) => {
     requireString(asRecord(request).leadId, "leadId");

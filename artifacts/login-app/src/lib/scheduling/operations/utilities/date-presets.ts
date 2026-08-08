@@ -1,33 +1,44 @@
-import { addDays, format, startOfWeek } from "date-fns";
 import type { OperationsDatePreset } from "@/lib/scheduling/operations/types";
+import {
+  addCalendarDays,
+  getCalendarDayRange,
+  getCalendarToday,
+} from "@/lib/scheduling/operations/utilities/calendar-day-range";
+import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
+import { formatMoney } from "@/lib/billing/utilities/money";
 
-export function resolveOperationsDate(preset: OperationsDatePreset, customDate: string): string {
-  const today = new Date();
+export function resolveOperationsDate(
+  preset: OperationsDatePreset,
+  customDate: string,
+  timezone = "UTC",
+): string {
+  const todayKey = getCalendarToday(timezone);
   switch (preset) {
     case "today":
-      return format(today, "yyyy-MM-dd");
+      return todayKey;
     case "tomorrow":
-      return format(addDays(today, 1), "yyyy-MM-dd");
-    case "this_week":
-      return format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+      return addCalendarDays(todayKey, 1);
+    case "this_week": {
+      // Monday-start week for the company calendar day.
+      const weekday = TimezoneResolver.weekdayForDate(todayKey, timezone); // 0=Sun
+      const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+      return addCalendarDays(todayKey, mondayOffset);
+    }
     case "custom":
     default:
       return customDate;
   }
 }
 
-export function operationsDayRange(date: string): { rangeStart: string; rangeEnd: string } {
-  const start = `${date}T00:00:00.000Z`;
-  const endDate = new Date(`${date}T12:00:00.000Z`);
-  endDate.setUTCDate(endDate.getUTCDate() + 1);
-  return { rangeStart: start, rangeEnd: endDate.toISOString() };
+/** @deprecated Prefer getCalendarDayRange(date, timezone). Kept for callers expecting rangeStart/rangeEnd. */
+export function operationsDayRange(
+  date: string,
+  timezone = "UTC",
+): { rangeStart: string; rangeEnd: string } {
+  const { startUtc, endUtc } = getCalendarDayRange(date, timezone);
+  return { rangeStart: startUtc, rangeEnd: endUtc };
 }
 
-export function formatOperationsCurrency(cents: number, currency = "USD"): string {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(cents / 100);
+export function formatOperationsCurrency(cents: number, currency?: string): string {
+  return formatMoney(cents, currency);
 }

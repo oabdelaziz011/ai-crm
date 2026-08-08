@@ -22,7 +22,7 @@ const ENTITY_CONTACT_COLUMNS =
   "id, tenant_id, entity_type, entity_id, contact_type, display_name, emails, phones, whatsapp, preferred_language, preferred_channel, notes, avatar_url, status, is_primary, created_at, updated_at";
 
 const ENTITY_FILE_COLUMNS =
-  "id, tenant_id, entity_type, entity_id, file_name, mime_type, size_bytes, category, storage_provider, storage_path, preview_metadata, version, created_at";
+  "id, tenant_id, entity_type, entity_id, activity_id, file_name, mime_type, size_bytes, category, storage_provider, storage_path, preview_metadata, version, created_at";
 
 const ENTITY_TAG_COLUMNS = "id, tenant_id, name, color, icon, category, description, is_system";
 
@@ -149,13 +149,36 @@ export function createEntityRepository(client: SupabaseClient) {
       const { data, error } = await query;
       if (error) throw error;
 
-      return (data ?? []).map((row) => {
-        const previewUrl =
-          row.storage_provider === "supabase" && row.storage_path
-            ? client.storage.from("entity-files").getPublicUrl(String(row.storage_path)).data.publicUrl
-            : null;
-        return mapFileRow(row, previewUrl);
-      });
+      const rows = (data ?? []) as unknown as Array<{
+        id: string;
+        tenant_id: string;
+        entity_type: string;
+        entity_id: string;
+        activity_id?: string | null;
+        file_name: string;
+        mime_type: string;
+        size_bytes: number;
+        category: string | null;
+        storage_provider: string;
+        storage_path: string;
+        preview_metadata: unknown;
+        version: number;
+        created_at: string;
+      }>;
+
+      const signed = await Promise.all(
+        rows.map(async (row) => {
+          if (row.storage_provider !== "supabase" || !row.storage_path) {
+            return mapFileRow(row, null);
+          }
+          const { data: signedUrl } = await client.storage
+            .from("entity-files")
+            .createSignedUrl(String(row.storage_path), 60 * 60 * 24 * 7);
+          // Private bucket — signed URL only.
+          return mapFileRow(row, signedUrl?.signedUrl ?? null);
+        }),
+      );
+      return signed;
     },
 
     async searchFiles(tenantId: string, search: string, limit = 20) {
@@ -172,29 +195,45 @@ export function createEntityRepository(client: SupabaseClient) {
     },
 
     async createFile(input: EntityFileCreateInput) {
-      const { data, error } = await client
+      const payload = {
+        tenant_id: input.tenantId,
+        entity_type: input.entityType,
+        entity_id: input.entityId,
+        activity_id: input.activityId ?? null,
+        file_name: input.fileName,
+        mime_type: input.mimeType,
+        size_bytes: input.sizeBytes,
+        category: input.category ?? null,
+        storage_provider: input.storageProvider ?? "supabase",
+        storage_path: input.storagePath,
+        preview_metadata: input.previewMetadata ?? {},
+        permissions: input.permissions ?? {},
+        uploaded_by: input.actorUserId,
+        created_by: input.actorUserId,
+        updated_by: input.actorUserId,
+      };
+
+      let { data, error } = await client
         .from("entity_files")
-        .insert({
-          tenant_id: input.tenantId,
-          entity_type: input.entityType,
-          entity_id: input.entityId,
-          file_name: input.fileName,
-          mime_type: input.mimeType,
-          size_bytes: input.sizeBytes,
-          category: input.category ?? null,
-          storage_provider: input.storageProvider ?? "supabase",
-          storage_path: input.storagePath,
-          preview_metadata: input.previewMetadata ?? {},
-          permissions: input.permissions ?? {},
-          uploaded_by: input.actorUserId,
-          created_by: input.actorUserId,
-          updated_by: input.actorUserId,
-        })
+        .insert(payload)
         .select(ENTITY_FILE_COLUMNS)
         .single();
 
+      // Pre-migration: persist link in preview_metadata only.
+      if (error?.message?.includes("activity_id")) {
+        const { activity_id: _activityId, ...legacyPayload } = payload;
+        ({ data, error } = await client
+          .from("entity_files")
+          .insert(legacyPayload)
+          .select(
+            "id, tenant_id, entity_type, entity_id, file_name, mime_type, size_bytes, category, storage_provider, storage_path, preview_metadata, version, created_at",
+          )
+          .single());
+      }
+
       if (error) throw error;
-      return mapFileRow(data, null);
+      if (!data) throw new Error("Failed to create entity file");
+      return mapFileRow(data as unknown as Parameters<typeof mapFileRow>[0], null);
     },
 
     async archiveFile(tenantId: string, fileId: string, actorUserId: string) {

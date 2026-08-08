@@ -55,6 +55,11 @@
       "order": 100,
       "label": "الإعدادات"
     },
+    "company": {
+      "icon": "🏢",
+      "order": 95,
+      "label": "مساحة عمل الشركة"
+    },
     "audit": {
       "icon": "📋",
       "order": 110,
@@ -396,6 +401,41 @@
       "name": "تعديل الإعدادات",
       "description": "يسمح بتعديل إعدادات الشركة والتطبيق.",
       "group": "settings"
+    },
+    "company.view": {
+      "name": "عرض مساحة عمل الشركة",
+      "description": "يسمح بعرض مساحة عمل الشركة.",
+      "group": "company"
+    },
+    "company.update": {
+      "name": "تحديث الشركة",
+      "description": "يسمح بتحديث بيانات ملف الشركة.",
+      "group": "company"
+    },
+    "company.branding": {
+      "name": "إدارة هوية الشركة",
+      "description": "يسمح بإدارة أصول الهوية البصرية للشركة.",
+      "group": "company"
+    },
+    "company.subscription": {
+      "name": "إدارة اشتراك الشركة",
+      "description": "يسمح بعرض وإدارة اشتراك الشركة.",
+      "group": "company"
+    },
+    "employees.manage": {
+      "name": "إدارة الموظفين",
+      "description": "يسمح بدعوة وإدارة موظفي الشركة.",
+      "group": "company"
+    },
+    "branches.manage": {
+      "name": "إدارة الفروع",
+      "description": "يسمح بإنشاء وإدارة فروع الشركة.",
+      "group": "company"
+    },
+    "departments.manage": {
+      "name": "إدارة الأقسام",
+      "description": "يسمح بإنشاء وإدارة أقسام الشركة.",
+      "group": "company"
     },
     "scheduling.view": {
       "name": "عرض الجدولة",

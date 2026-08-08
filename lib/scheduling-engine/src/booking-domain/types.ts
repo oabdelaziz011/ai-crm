@@ -4,7 +4,10 @@ export const SCHEDULING_BOOKING_STATUSES = [
   "pending",
   "confirmed",
   "checked_in",
+  "with_nurse",
+  "in_progress",
   "completed",
+  "archived",
   "cancelled",
   "no_show",
   "rescheduled",
@@ -28,6 +31,8 @@ export const ACTIVE_BOOKING_STATUSES: SchedulingBookingStatus[] = [
   "pending",
   "confirmed",
   "checked_in",
+  "with_nurse",
+  "in_progress",
 ];
 
 export type SchedulingBooking = {
@@ -153,6 +158,10 @@ export type CancelBookingResult = {
 };
 
 export type CompleteBookingResult = {
+  booking: SchedulingBooking;
+};
+
+export type TransitionBookingResult = {
   booking: SchedulingBooking;
 };
 

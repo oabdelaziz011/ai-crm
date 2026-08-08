@@ -224,6 +224,157 @@ const PAYLOAD_VALIDATORS: Record<PlatformEventType, (payload: Record<string, unk
     requireString(p, "toOwnerType", "ConversationTransferred");
     requireString(p, "reason", "ConversationTransferred");
   },
+  ConversationStarted: (p) => {
+    requireString(p, "companyId", "ConversationStarted");
+    requireString(p, "conversationId", "ConversationStarted");
+    requireString(p, "channelType", "ConversationStarted");
+    requireString(p, "createdAt", "ConversationStarted");
+  },
+  ConversationMessageReceived: (p) => {
+    requireString(p, "companyId", "ConversationMessageReceived");
+    requireString(p, "conversationId", "ConversationMessageReceived");
+    requireString(p, "messageId", "ConversationMessageReceived");
+    requireString(p, "receivedAt", "ConversationMessageReceived");
+  },
+  LeadIntelligenceUpdated: (p) => {
+    requireString(p, "companyId", "LeadIntelligenceUpdated");
+    requireString(p, "leadId", "LeadIntelligenceUpdated");
+    requireString(p, "conversationId", "LeadIntelligenceUpdated");
+    requireString(p, "captureState", "LeadIntelligenceUpdated");
+    requireString(p, "identityStatus", "LeadIntelligenceUpdated");
+    if (typeof p.created !== "boolean") {
+      throw new EventValidationError("LeadIntelligenceUpdated.created must be a boolean");
+    }
+    if (typeof p.contextReady !== "boolean") {
+      throw new EventValidationError("LeadIntelligenceUpdated.contextReady must be a boolean");
+    }
+    if (p.confidence !== null && typeof p.confidence !== "number") {
+      throw new EventValidationError("LeadIntelligenceUpdated.confidence must be a number or null");
+    }
+  },
+  LeadAnalysisRequested: (p) => {
+    requireString(p, "companyId", "LeadAnalysisRequested");
+    requireString(p, "leadId", "LeadAnalysisRequested");
+    requireString(p, "conversationId", "LeadAnalysisRequested");
+    requireString(p, "reason", "LeadAnalysisRequested");
+    requireNumber(p, "messageCount", "LeadAnalysisRequested");
+    if (!Array.isArray(p.contextSignals)) {
+      throw new EventValidationError("LeadAnalysisRequested.contextSignals must be an array");
+    }
+    if (p.confidence !== null && typeof p.confidence !== "number") {
+      throw new EventValidationError("LeadAnalysisRequested.confidence must be a number or null");
+    }
+  },
+  OpportunityCreated: (p) => {
+    requireString(p, "opportunityId", "OpportunityCreated");
+    requireString(p, "name", "OpportunityCreated");
+    requireString(p, "companyId", "OpportunityCreated");
+  },
+  OpportunityStageChanged: (p) => {
+    requireString(p, "opportunityId", "OpportunityStageChanged");
+    requireString(p, "fromStageId", "OpportunityStageChanged");
+    requireString(p, "toStageId", "OpportunityStageChanged");
+    requireString(p, "stageKey", "OpportunityStageChanged");
+    requireString(p, "companyId", "OpportunityStageChanged");
+  },
+  OpportunityProbabilityChanged: (p) => {
+    requireString(p, "opportunityId", "OpportunityProbabilityChanged");
+    requireNumber(p, "previousPercent", "OpportunityProbabilityChanged");
+    requireNumber(p, "nextPercent", "OpportunityProbabilityChanged");
+    requireString(p, "source", "OpportunityProbabilityChanged");
+    requireString(p, "companyId", "OpportunityProbabilityChanged");
+  },
+  OpportunityProductsAdded: (p) => {
+    requireString(p, "opportunityId", "OpportunityProductsAdded");
+    requireString(p, "companyId", "OpportunityProductsAdded");
+    if (!Array.isArray(p.productIds)) {
+      throw new EventValidationError("OpportunityProductsAdded.productIds must be an array");
+    }
+  },
+  OpportunityQuoteCreated: (p) => {
+    requireString(p, "opportunityId", "OpportunityQuoteCreated");
+    requireString(p, "quoteId", "OpportunityQuoteCreated");
+    requireString(p, "companyId", "OpportunityQuoteCreated");
+  },
+  OpportunityNegotiationStarted: (p) => {
+    requireString(p, "opportunityId", "OpportunityNegotiationStarted");
+    requireString(p, "companyId", "OpportunityNegotiationStarted");
+  },
+  OpportunityWon: (p) => {
+    requireString(p, "opportunityId", "OpportunityWon");
+    requireString(p, "companyId", "OpportunityWon");
+  },
+  OpportunityLost: (p) => {
+    requireString(p, "opportunityId", "OpportunityLost");
+    requireString(p, "companyId", "OpportunityLost");
+  },
+  ProductCreated: (p) => {
+    requireString(p, "productId", "ProductCreated");
+    requireString(p, "name", "ProductCreated");
+    requireString(p, "sku", "ProductCreated");
+    requireString(p, "productType", "ProductCreated");
+    requireString(p, "companyId", "ProductCreated");
+  },
+  ProductUpdated: (p) => {
+    requireString(p, "productId", "ProductUpdated");
+    requireString(p, "companyId", "ProductUpdated");
+    if (!Array.isArray(p.changedFields)) {
+      throw new EventValidationError("ProductUpdated.changedFields must be an array");
+    }
+  },
+  ProductArchived: (p) => {
+    requireString(p, "productId", "ProductArchived");
+    requireString(p, "companyId", "ProductArchived");
+  },
+  PriceChanged: (p) => {
+    requireString(p, "productId", "PriceChanged");
+    requireNumber(p, "previousPrice", "PriceChanged");
+    requireNumber(p, "nextPrice", "PriceChanged");
+    requireString(p, "currency", "PriceChanged");
+    requireString(p, "companyId", "PriceChanged");
+  },
+  CategoryChanged: (p) => {
+    requireString(p, "productId", "CategoryChanged");
+    requireString(p, "companyId", "CategoryChanged");
+  },
+  QuoteCreated: (p) => {
+    requireString(p, "quoteId", "QuoteCreated");
+    requireString(p, "quoteNumber", "QuoteCreated");
+    requireString(p, "companyId", "QuoteCreated");
+  },
+  QuoteUpdated: (p) => {
+    requireString(p, "quoteId", "QuoteUpdated");
+    requireString(p, "companyId", "QuoteUpdated");
+    if (!Array.isArray(p.changedFields)) {
+      throw new EventValidationError("QuoteUpdated.changedFields must be an array");
+    }
+  },
+  QuoteSent: (p) => {
+    requireString(p, "quoteId", "QuoteSent");
+    requireString(p, "companyId", "QuoteSent");
+  },
+  QuoteViewed: (p) => {
+    requireString(p, "quoteId", "QuoteViewed");
+    requireString(p, "companyId", "QuoteViewed");
+  },
+  QuoteAccepted: (p) => {
+    requireString(p, "quoteId", "QuoteAccepted");
+    requireString(p, "companyId", "QuoteAccepted");
+  },
+  QuoteRejected: (p) => {
+    requireString(p, "quoteId", "QuoteRejected");
+    requireString(p, "companyId", "QuoteRejected");
+  },
+  QuoteExpired: (p) => {
+    requireString(p, "quoteId", "QuoteExpired");
+    requireString(p, "companyId", "QuoteExpired");
+  },
+  QuoteVersionCreated: (p) => {
+    requireString(p, "quoteId", "QuoteVersionCreated");
+    requireString(p, "previousQuoteId", "QuoteVersionCreated");
+    requireNumber(p, "versionNumber", "QuoteVersionCreated");
+    requireString(p, "companyId", "QuoteVersionCreated");
+  },
 };
 
 export function validatePlatformEventEnvelope(

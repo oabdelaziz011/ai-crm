@@ -4,6 +4,10 @@ import { SupabaseCustomerRepository } from "./supabase-customer-repository.js";
 import type { FindCustomerInput, FindCustomerResult } from "../types/find-customer-input.js";
 import type { CreateCustomerInput, CreateCustomerResult, UpdateCustomerInput, UpdateCustomerResult } from "../types/customer-mutation-input.js";
 import type { CustomerServicePort } from "../../ports/customer-service-port.js";
+import {
+  AUTOMATION_REQUEST_CACHE_NS,
+  automationRequestGetOrLoad,
+} from "../../debug/request-scope-memo-bridge.js";
 
 export type SupabaseCustomerServicePortOptions = {
   getActorUserId?: () => string | null;
@@ -48,17 +52,23 @@ export function createSupabaseCustomerServicePort(
 }
 
 export async function resolveCompanyActorUserId(client: SupabaseClient, companyId: string): Promise<string | null> {
-  const { data, error } = await client
-    .from("profiles")
-    .select("id, user_id")
-    .eq("company_id", companyId)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  return automationRequestGetOrLoad(
+    AUTOMATION_REQUEST_CACHE_NS.companyActorUserId,
+    companyId,
+    async () => {
+      const { data, error } = await client
+        .from("profiles")
+        .select("id, user_id")
+        .eq("company_id", companyId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (!data) return null;
-  const row = data as { id?: string; user_id?: string | null };
-  return row.user_id?.trim() || row.id?.trim() || null;
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+      const row = data as { id?: string; user_id?: string | null };
+      return row.user_id?.trim() || row.id?.trim() || null;
+    },
+  );
 }

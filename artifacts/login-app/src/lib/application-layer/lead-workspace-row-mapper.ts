@@ -2,34 +2,36 @@ import type { LeadReadModel } from "@workspace/application-layer";
 import type { LeadWorkspaceRow } from "@workspace/universal-operations-engine";
 import { resolveScoreBand } from "@workspace/universal-operations-engine";
 
-export function mapLeadReadModelToWorkspaceRow(
-  lead: LeadReadModel,
-  stageName?: string | null,
-): LeadWorkspaceRow {
+/** Canonical CRM LeadReadModel → workspace row. No dual-field coalescing. */
+export function mapLeadReadModelToWorkspaceRow(lead: LeadReadModel): LeadWorkspaceRow {
   return Object.freeze({
     id: lead.id,
     tenantId: lead.tenantId,
-    title: lead.title,
-    contactName: lead.contactName,
+    name: lead.name,
+    contactPerson: lead.contactPerson,
     email: lead.email,
     phone: lead.phone,
     companyName: lead.companyName,
-    lifecycleStatus: lead.lifecycleStatus,
+    ownerId: lead.ownerId,
+    owner: lead.owner,
     stageId: lead.stageId,
-    stageName: stageName ?? lead.lifecycleStatus,
+    stage: lead.stage,
+    sourceId: lead.sourceId,
+    source: lead.source,
+    expectedValue: lead.expectedValue,
+    expectedCloseDate: lead.expectedCloseDate,
+    priority: lead.priority as LeadWorkspaceRow["priority"],
+    temperature: lead.temperature,
+    tags: [...lead.tags],
+    notes: lead.notes,
+    lastActivityAt: lead.lastActivityAt,
+    lifecycleStatus: lead.lifecycleStatus,
     pipelineId: lead.pipelineId,
-    priority: (lead.priority as LeadWorkspaceRow["priority"]) ?? "normal",
+    currency: lead.currency,
     score: lead.score,
     scoreBand: resolveScoreBand(lead.score),
-    estimatedValue: lead.estimatedValue,
-    currency: lead.currency,
-    assignedUserId: lead.assignedUserId,
-    ownerName: lead.owner ?? null,
-    sourceName: lead.source ?? null,
-    tags: [],
     isQualified: lead.isQualified,
     customerId: lead.customerId,
-    lastActivityAt: lead.updatedAt,
     createdAt: lead.createdAt,
     updatedAt: lead.updatedAt,
   });

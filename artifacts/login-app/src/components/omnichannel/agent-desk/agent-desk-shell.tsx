@@ -68,6 +68,7 @@ export type AgentDeskShellProps = {
     aiEmployee: string;
     unassigned: string;
     open: string;
+    newBadge?: string;
     emptyHint?: string;
     pin?: string;
     star?: string;

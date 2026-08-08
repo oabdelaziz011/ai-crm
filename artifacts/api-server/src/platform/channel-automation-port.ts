@@ -15,8 +15,14 @@ import {
   traceInboundRoutingLookup,
   traceParsedInboundMessage,
 } from "@workspace/automation-platform";
+import {
+  runWithWorkflowXRay,
+  setWorkflowXRay,
+  WorkflowXRay,
+} from "@workspace/automation-platform/server";
 import type { ChannelAutomationPort } from "@workspace/channel-platform";
 import { extractAutomationOutboundMessages, extractAutomationResponseContent } from "@workspace/channel-platform";
+import { getWhatsAppRequestCache, getWhatsAppConversationTrace } from "@workspace/channel-platform/server";
 import { logger } from "../lib/logger.js";
 
 const CHANNEL_KEY_MAP: Record<string, AutomationChannel> = {
@@ -52,8 +58,7 @@ export function createChannelAutomationPort(
     runs: ReturnType<typeof createSupabaseAutomationRunRepository>;
   },
 ): ChannelAutomationPort {
-  return {
-    async startWorkflow(input) {
+  const startWorkflowImpl = async (input: Parameters<ChannelAutomationPort["startWorkflow"]>[0]) => {
       const channel = mapChannelKey(input.channelKey);
       const resumePayload = {
         ...(input.metadata ?? {}),
@@ -330,6 +335,54 @@ export function createChannelAutomationPort(
         flowVersionId: result.run.flow_version_id ?? undefined,
         resumed: false,
       };
+  };
+
+  return {
+    async startWorkflow(input) {
+      const xray = new WorkflowXRay(
+        typeof input.externalMessageId === "string" && input.externalMessageId.trim()
+          ? input.externalMessageId
+          : `workflow-${input.companyId}-${Date.now()}`,
+      );
+      return runWithWorkflowXRay(xray, async () => {
+        xray.beginWorkflow({
+          companyId: input.companyId,
+          flowId: input.flowId,
+          channelKey: input.channelKey,
+          externalUserId: input.externalUserId,
+        });
+        let result: Awaited<ReturnType<typeof startWorkflowImpl>> | undefined;
+        try {
+          result = await startWorkflowImpl(input);
+          return result;
+        } finally {
+          xray.endWorkflow();
+          const cache = getWhatsAppRequestCache();
+          // Observability only: fold X-Ray timings into the inbound conversation TRACE.
+          try {
+            const snap = xray.getValidationSnapshot();
+            const conv = getWhatsAppConversationTrace();
+            if (conv) {
+              conv.setWorkflowTime(snap.totalWorkflowMs);
+              conv.bindWorkflow(input.flowId);
+              if (result?.runId) conv.bindAutomationRun(result.runId);
+            }
+          } catch {
+            // never fail the workflow for observability
+          }
+          xray.printSprint23Validation({
+            label: "measured",
+            cacheHits: cache?.totalHits() ?? 0,
+            cacheMisses: cache?.totalMisses() ?? 0,
+          });
+          try {
+            xray.printReport();
+          } catch {
+            // Measurement-only: never fail the workflow because the report printer threw.
+          }
+          setWorkflowXRay(null);
+        }
+      });
     },
   };
 }

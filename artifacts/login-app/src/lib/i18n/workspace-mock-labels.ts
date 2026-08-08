@@ -163,9 +163,22 @@ export function translateOperationsWorkspaceName(
 }
 
 export function translateLeadLifecycleStatus(t: TFunction, status: string): string {
-  const key = `leads.lifecycle.${status}`;
+  const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases: Record<string, string> = {
+    proposal: "proposal_sent",
+    proposal_sent: "proposal_sent",
+    demo: "demo_scheduled",
+    demoscheduled: "demo_scheduled",
+    demo_scheduled: "demo_scheduled",
+  };
+  const key = `leads.lifecycle.${aliases[normalized] ?? normalized}`;
   const translated = t(key);
-  return translated === key ? status.replace(/_/g, " ") : translated;
+  if (translated !== key) return translated;
+  const stageKey = `leads.stages.${aliases[normalized] ?? normalized}`;
+  const stageTranslated = t(stageKey);
+  if (stageTranslated !== stageKey) return stageTranslated;
+  // Never surface raw English lifecycle tokens in UI
+  return t("leads.stages.unknown", { defaultValue: "—" });
 }
 
 export function translateIntelligenceAlertTitle(t: TFunction, alertType: string, fallback: string): string {

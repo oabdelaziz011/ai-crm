@@ -33,6 +33,7 @@ export type ChannelPlatformServicesOptions = {
   telemetry?: ChannelTelemetryPort;
   whatsAppFetchFn?: typeof fetch;
   whatsAppCredentialsLoader?: import("./adapters/whatsapp/whatsapp-canonical-credentials.js").WhatsAppCredentialsLoader;
+  whatsAppCredentialLifecycle?: import("./adapters/whatsapp/whatsapp-credential-lifecycle.js").WhatsAppCredentialLifecyclePort;
   whatsAppOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
   whatsAppDirectOutboundBypass?: WhatsAppDirectOutboundBypassOptions;
   instagramFetchFn?: typeof fetch;
@@ -69,6 +70,7 @@ export function createChannelPlatformServices(
         createWhatsAppCloudAdapter({
           fetchFn: options.whatsAppFetchFn,
           credentialsLoader: options.whatsAppCredentialsLoader,
+          credentialLifecycle: options.whatsAppCredentialLifecycle,
           onOutboundDiagnostic: options.whatsAppOutboundDiagnostic,
         }),
         createInstagramCloudAdapter({

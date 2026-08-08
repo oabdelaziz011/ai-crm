@@ -61,6 +61,11 @@ export interface LeadReadPort {
     input: { companyId: string },
   ): Promise<{ pipelines: LeadPipelineRecord[] }>;
 
+  listSources(
+    access: LeadReadAccessContext,
+    input: { companyId: string },
+  ): Promise<{ sources: LeadSourceRecord[] }>;
+
   listLeadActivities(
     access: LeadReadAccessContext,
     input: { companyId: string; leadId: string; limit?: number },

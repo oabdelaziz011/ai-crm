@@ -37,6 +37,18 @@ import { createLoginAppGlobalSearchReadPort } from "./adapters/global-search-rea
 import { createLoginAppPaymentWritePort } from "./adapters/payment-write-port-adapter.js";
 import { createLoginAppInvoiceWritePort } from "./adapters/invoice-write-port-adapter.js";
 import { createLoginAppLeadWritePort } from "./adapters/lead-write-port-adapter.js";
+import {
+  createLoginAppOpportunityReadPort,
+  createLoginAppOpportunityWritePort,
+} from "@/lib/opportunity-platform/opportunity-port-adapters.js";
+import {
+  createLoginAppProductReadPort,
+  createLoginAppProductWritePort,
+} from "@/lib/product-platform/product-port-adapters.js";
+import {
+  createLoginAppQuoteReadPort,
+  createLoginAppQuoteWritePort,
+} from "@/lib/quote-platform/quote-port-adapters.js";
 import { createLoginAppTaskWritePort } from "./adapters/task-write-port-adapter.js";
 import { createLoginAppFileWritePort } from "./adapters/file-write-port-adapter.js";
 import { createLoginAppWorkflowWritePort } from "./adapters/workflow-write-port-adapter.js";
@@ -95,6 +107,13 @@ export function createLoginAppApplicationPorts(
     customerRead: createLoginAppCustomerReadPort(client, ctx),
     customerWrite: createLoginAppCustomerWritePort(client, ctx),
     leadRead: createLoginAppLeadReadPortAdapter(client, ctx),
+    leadWrite: createLoginAppLeadWritePort(client, ctx),
+    opportunityRead: createLoginAppOpportunityReadPort(client, ctx),
+    opportunityWrite: createLoginAppOpportunityWritePort(client, ctx),
+    productRead: createLoginAppProductReadPort(client, ctx),
+    productWrite: createLoginAppProductWritePort(client, ctx),
+    quoteRead: createLoginAppQuoteReadPort(client, ctx),
+    quoteWrite: createLoginAppQuoteWritePort(client, ctx),
     timelineRead: createLoginAppTimelineReadPort(client, ctx),
     customerTagRead: createCustomerTagReadPortFromEntity(entityTagRead),
     customerAddressRead: createLoginAppCustomerAddressReadPort(client, ctx),
@@ -109,7 +128,6 @@ export function createLoginAppApplicationPorts(
     paymentRead: createLoginAppPaymentReadPort(client, ctx),
     paymentWrite: createLoginAppPaymentWritePort(client, ctx),
     invoiceWrite: createLoginAppInvoiceWritePort(client, ctx),
-    leadWrite: createLoginAppLeadWritePort(client, ctx),
     analyticsRead: createLoginAppAnalyticsReadPort(client, ctx),
     revenueRead: createLoginAppRevenueReadPort(client, ctx),
     employeeRead: createLoginAppEmployeeReadPort(client, ctx),

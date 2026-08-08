@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ValidationError } from "../../errors.js";
+import { WA_REQUEST_CACHE_NS, waRequestGetOrLoad } from "../../debug/whatsapp-request-scope.js";
 import type { WhatsAppChannelConfiguration, WhatsAppChannelReferences } from "./whatsapp-config.js";
 
 export const WHATSAPP_CREDENTIALS_SOURCE = "company_whatsapp_settings" as const;
@@ -52,6 +53,16 @@ type SettingsTableRow = {
 };
 
 export async function loadCompanyWhatsAppCredentialsDecrypted(
+  client: SupabaseClient,
+  companyId: string,
+  options: WhatsAppCredentialsLoaderOptions = {},
+): Promise<WhatsAppCanonicalCredentials | null> {
+  return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.whatsappCredentials, companyId, () =>
+    loadCompanyWhatsAppCredentialsDecryptedUncached(client, companyId, options),
+  );
+}
+
+async function loadCompanyWhatsAppCredentialsDecryptedUncached(
   client: SupabaseClient,
   companyId: string,
   options: WhatsAppCredentialsLoaderOptions = {},
@@ -193,6 +204,23 @@ export function createSupabaseWhatsAppCredentialsLoader(
 }
 
 export async function resolveWhatsAppRuntimeConfiguration(
+  companyId: string,
+  channelReferences: WhatsAppChannelReferences,
+  loader: WhatsAppCredentialsLoader,
+  options: WhatsAppCredentialsLoaderOptions = {},
+): Promise<WhatsAppChannelConfiguration> {
+  const cacheKey = [
+    companyId,
+    channelReferences.phoneNumberId?.trim() ?? "",
+    channelReferences.credentialsSource ?? "",
+  ].join(":");
+
+  return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.whatsappRuntimeConfig, cacheKey, () =>
+    resolveWhatsAppRuntimeConfigurationUncached(companyId, channelReferences, loader, options),
+  );
+}
+
+async function resolveWhatsAppRuntimeConfigurationUncached(
   companyId: string,
   channelReferences: WhatsAppChannelReferences,
   loader: WhatsAppCredentialsLoader,

@@ -12,7 +12,13 @@ import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContex
 import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext, runWithEmployeeToolScope } from "./employee-runtime-bridge.js";
 import { createChannelAutomationPort, createChannelAutomationPortFromClient } from "./channel-automation-port.js";
-import type { ResolvedCompanyChannel } from "@workspace/channel-platform";
+import {
+  WA_REQUEST_CACHE_NS,
+  waRequestCacheDelete,
+  waRequestCacheSet,
+  waRequestGetOrLoad,
+  type ResolvedCompanyChannel,
+} from "@workspace/channel-platform";
 
 function mapCompanyChannelRecord(record: {
   id: string;
@@ -37,24 +43,47 @@ function mapCompanyChannelRecord(record: {
   };
 }
 
+function rememberCompanyChannel(channel: ResolvedCompanyChannel | null): void {
+  if (!channel) return;
+  waRequestCacheSet(WA_REQUEST_CACHE_NS.companyChannel, channel.id, channel);
+  waRequestCacheSet(WA_REQUEST_CACHE_NS.company, channel.companyId, {
+    companyId: channel.companyId,
+  });
+}
+
 export function createChannelRegistryPort(
   services: ChannelRegistryServices,
   ctx: RegistryServiceContext,
 ): ChannelRegistryPort {
   return {
     async getCompanyChannel(companyChannelId) {
-      const record = await services.companyChannels.getCompanyChannel(ctx, companyChannelId);
-      return mapCompanyChannelRecord(record);
+      return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.companyChannel, companyChannelId, async () => {
+        const record = await services.companyChannels.getCompanyChannel(ctx, companyChannelId);
+        const channel = mapCompanyChannelRecord(record);
+        if (channel) {
+          // One company identity load per request (derived from channel; no second DB round-trip).
+          await waRequestGetOrLoad(WA_REQUEST_CACHE_NS.company, channel.companyId, async () => ({
+            companyId: channel.companyId,
+          }));
+        }
+        return channel;
+      });
     },
 
     async findCompanyChannelByPhoneNumberId(phoneNumberId) {
-      const records = await services.companyChannels.findCompanyChannelByPhoneNumberId(
-        ctx,
-        phoneNumberId,
-      );
-      return records
-        .map((record) => mapCompanyChannelRecord(record))
-        .filter((record): record is ResolvedCompanyChannel => record != null);
+      return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.companyChannelByPhone, phoneNumberId, async () => {
+        const records = await services.companyChannels.findCompanyChannelByPhoneNumberId(
+          ctx,
+          phoneNumberId,
+        );
+        const channels = records
+          .map((record) => mapCompanyChannelRecord(record))
+          .filter((record): record is ResolvedCompanyChannel => record != null);
+        for (const channel of channels) {
+          rememberCompanyChannel(channel);
+        }
+        return channels;
+      });
     },
 
     async findCompanyChannelsByWhatsAppVerifyToken(verifyToken) {
@@ -76,6 +105,8 @@ export function createChannelRegistryPort(
 
     async syncWhatsAppPhoneNumberId(companyChannelId, phoneNumberId) {
       await services.companyChannels.syncWhatsAppPhoneNumberId(ctx, companyChannelId, phoneNumberId);
+      waRequestCacheDelete(WA_REQUEST_CACHE_NS.companyChannel, companyChannelId);
+      waRequestCacheDelete(WA_REQUEST_CACHE_NS.companyChannelByPhone, phoneNumberId);
     },
 
     async findCompanyChannelByInstagramBusinessAccountId(instagramBusinessAccountId) {
@@ -179,6 +210,28 @@ export function createChannelConversationPort(
         channelType: input.channelType as ConversationChannelType,
         metadata: input.metadata,
       });
+
+      const meta = (input.metadata ?? {}) as Record<string, unknown>;
+      void import("./lead-intelligence-bus.js")
+        .then(({ publishConversationStarted }) =>
+          publishConversationStarted({
+            companyId: input.companyId,
+            conversationId: created.id,
+            channelType: String(input.channelType ?? created.channel_type ?? "unknown"),
+            externalUserId:
+              typeof meta.senderExternalId === "string" ? meta.senderExternalId : null,
+            externalThreadId:
+              typeof meta.externalThreadId === "string" ? meta.externalThreadId : null,
+            phone: typeof meta.phone === "string" ? meta.phone : null,
+            email: typeof meta.email === "string" ? meta.email : null,
+            actorUserId: ctx.userId ?? null,
+            createdAt: created.created_at ?? new Date().toISOString(),
+          }),
+        )
+        .catch((error) => {
+          console.error("[ConversationStarted] publish failed", error);
+        });
+
       return { id: created.id };
     },
 
@@ -194,6 +247,26 @@ export function createChannelConversationPort(
           ...(input.metadata ?? {}),
         },
       });
+
+      if (!reused) {
+        const conversation = await services.conversations.getConversation(ctx, input.conversationId);
+        void import("./lead-intelligence-bus.js")
+          .then(({ publishConversationMessageReceived }) =>
+            publishConversationMessageReceived({
+              companyId: conversation.company_id,
+              conversationId: input.conversationId,
+              messageId: message.id,
+              channelType: conversation.channel_type ?? null,
+              contentPreview: String(input.content ?? "").slice(0, 280),
+              messageCount: null,
+              actorUserId: ctx.userId ?? null,
+              receivedAt: message.created_at ?? new Date().toISOString(),
+            }),
+          )
+          .catch((error) => {
+            console.error("[ConversationMessageReceived] publish failed", error);
+          });
+      }
 
       return {
         id: message.id,
@@ -228,11 +301,18 @@ export function createChannelConversationPort(
         conversationId: input.conversationId,
         metadata: input.metadata,
       });
+      waRequestCacheDelete(WA_REQUEST_CACHE_NS.conversation, `meta:${input.conversationId}`);
     },
 
     async getConversationMetadata(conversationId) {
-      const conversation = await services.conversations.getConversation(ctx, conversationId);
-      return conversation.metadata ?? null;
+      return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.conversation, `meta:${conversationId}`, async () => {
+        const conversation = await services.conversations.getConversation(ctx, conversationId);
+        waRequestCacheSet(WA_REQUEST_CACHE_NS.conversation, conversationId, {
+          id: conversationId,
+          companyId: conversation.company_id,
+        });
+        return conversation.metadata ?? null;
+      });
     },
   };
 }

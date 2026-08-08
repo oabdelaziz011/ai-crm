@@ -264,6 +264,10 @@ export type AgentDeskLabels = {
   tagSection: string;
   resizeQueue: string;
   maximizeConversation: string;
+  soundOn: string;
+  soundOff: string;
+  expandConversation: string;
+  collapseConversation: string;
   lifecycle: (state: string) => string;
   channel: (key: string) => string;
   priority: (key: string) => string;

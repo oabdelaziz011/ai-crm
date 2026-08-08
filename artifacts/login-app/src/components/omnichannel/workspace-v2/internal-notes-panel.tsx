@@ -390,7 +390,7 @@ export const InternalNotesPanel = memo(function InternalNotesPanel({
 
                 <div className="mt-2 flex items-center gap-2">
 
-                  <p className="flex-1 text-[10px] text-red-300">{labels.deleteConfirm}</p>
+                  <p className="flex-1 text-[10px] text-destructive">{labels.deleteConfirm}</p>
 
                   <button
 
@@ -412,7 +412,7 @@ export const InternalNotesPanel = memo(function InternalNotesPanel({
 
                     type="button"
 
-                    className="ws-btn px-2 py-1 text-[10px] text-red-300"
+                    className="ws-btn px-2 py-1 text-[10px] text-destructive"
 
                     disabled={isManaging}
 

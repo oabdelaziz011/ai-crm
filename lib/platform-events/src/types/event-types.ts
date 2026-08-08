@@ -28,6 +28,10 @@ import type {
   LicenseChangedPayload,
   EmployeeAssignedPayload,
   ConversationTransferredPayload,
+  ConversationStartedPayload,
+  ConversationMessageReceivedPayload,
+  LeadIntelligenceUpdatedPayload,
+  LeadAnalysisRequestedPayload,
   NotificationCreatedPayload,
   PaymentCollectedPayload,
   PermissionChangedPayload,
@@ -35,6 +39,27 @@ import type {
   TaskCompletedPayload,
   WhatsAppSentPayload,
   WorkflowExecutedPayload,
+  OpportunityCreatedPayload,
+  OpportunityStageChangedPayload,
+  OpportunityProbabilityChangedPayload,
+  OpportunityProductsAddedPayload,
+  OpportunityQuoteCreatedPayload,
+  OpportunityNegotiationStartedPayload,
+  OpportunityWonPayload,
+  OpportunityLostPayload,
+  ProductCreatedPayload,
+  ProductUpdatedPayload,
+  ProductArchivedPayload,
+  PriceChangedPayload,
+  CategoryChangedPayload,
+  QuoteCreatedPayload,
+  QuoteUpdatedPayload,
+  QuoteSentPayload,
+  QuoteViewedPayload,
+  QuoteAcceptedPayload,
+  QuoteRejectedPayload,
+  QuoteExpiredPayload,
+  QuoteVersionCreatedPayload,
 } from "./payloads.js";
 
 export const PLATFORM_EVENT_TYPES = [
@@ -73,6 +98,31 @@ export const PLATFORM_EVENT_TYPES = [
   "LicenseChanged",
   "EmployeeAssigned",
   "ConversationTransferred",
+  "ConversationStarted",
+  "ConversationMessageReceived",
+  "LeadIntelligenceUpdated",
+  "LeadAnalysisRequested",
+  "OpportunityCreated",
+  "OpportunityStageChanged",
+  "OpportunityProbabilityChanged",
+  "OpportunityProductsAdded",
+  "OpportunityQuoteCreated",
+  "OpportunityNegotiationStarted",
+  "OpportunityWon",
+  "OpportunityLost",
+  "ProductCreated",
+  "ProductUpdated",
+  "ProductArchived",
+  "PriceChanged",
+  "CategoryChanged",
+  "QuoteCreated",
+  "QuoteUpdated",
+  "QuoteSent",
+  "QuoteViewed",
+  "QuoteAccepted",
+  "QuoteRejected",
+  "QuoteExpired",
+  "QuoteVersionCreated",
 ] as const;
 
 export type PlatformEventType = (typeof PLATFORM_EVENT_TYPES)[number];
@@ -113,6 +163,31 @@ export type PlatformEventMap = {
   LicenseChanged: LicenseChangedPayload;
   EmployeeAssigned: EmployeeAssignedPayload;
   ConversationTransferred: ConversationTransferredPayload;
+  ConversationStarted: ConversationStartedPayload;
+  ConversationMessageReceived: ConversationMessageReceivedPayload;
+  LeadIntelligenceUpdated: LeadIntelligenceUpdatedPayload;
+  LeadAnalysisRequested: LeadAnalysisRequestedPayload;
+  OpportunityCreated: OpportunityCreatedPayload;
+  OpportunityStageChanged: OpportunityStageChangedPayload;
+  OpportunityProbabilityChanged: OpportunityProbabilityChangedPayload;
+  OpportunityProductsAdded: OpportunityProductsAddedPayload;
+  OpportunityQuoteCreated: OpportunityQuoteCreatedPayload;
+  OpportunityNegotiationStarted: OpportunityNegotiationStartedPayload;
+  OpportunityWon: OpportunityWonPayload;
+  OpportunityLost: OpportunityLostPayload;
+  ProductCreated: ProductCreatedPayload;
+  ProductUpdated: ProductUpdatedPayload;
+  ProductArchived: ProductArchivedPayload;
+  PriceChanged: PriceChangedPayload;
+  CategoryChanged: CategoryChangedPayload;
+  QuoteCreated: QuoteCreatedPayload;
+  QuoteUpdated: QuoteUpdatedPayload;
+  QuoteSent: QuoteSentPayload;
+  QuoteViewed: QuoteViewedPayload;
+  QuoteAccepted: QuoteAcceptedPayload;
+  QuoteRejected: QuoteRejectedPayload;
+  QuoteExpired: QuoteExpiredPayload;
+  QuoteVersionCreated: QuoteVersionCreatedPayload;
 };
 
 export type PlatformEvent = {

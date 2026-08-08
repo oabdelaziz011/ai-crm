@@ -49,7 +49,7 @@ export const MessageAttachmentDisplay = memo(function MessageAttachmentDisplay({
                     alt={attachment.name ?? "attachment"}
                     className="max-h-56 w-full object-cover"
                   />
-                  <span className="absolute end-2 top-2 rounded-full bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="absolute end-2 top-2 rounded-full bg-foreground/50 p-1 text-background opacity-0 transition-opacity group-hover:opacity-100">
                     <Expand className="size-3.5" />
                   </span>
                 </button>
@@ -93,10 +93,10 @@ export const MessageAttachmentDisplay = memo(function MessageAttachmentDisplay({
       </div>
 
       {fullscreenUrl ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/80 p-4">
           <button
             type="button"
-            className="absolute end-4 top-4 rounded-full bg-black/60 p-2 text-white"
+            className="absolute end-4 top-4 rounded-full bg-foreground/60 p-2 text-background"
             onClick={() => setFullscreenUrl(null)}
             aria-label={labels.closeFullscreen}
           >

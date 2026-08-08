@@ -8,7 +8,10 @@ import { createWhatsAppProvider } from "@login-app/lib/notifications/providers/w
 import {
   parseWhatsAppChannelReferences,
   performWhatsAppOutboundHealthCheck,
+  performWhatsAppConnectionTest,
+  persistConnectionTestResult,
   createSupabaseWhatsAppCredentialsLoader,
+  createSupabaseWhatsAppCredentialLifecycle,
   resolveWhatsAppRuntimeConfiguration,
 } from "@workspace/channel-platform";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
@@ -116,6 +119,52 @@ router.post("/whatsapp/channel-outbound-health", async (req, res, next) => {
     const report = await performWhatsAppOutboundHealthCheck({
       companyId,
       runtimeConfig,
+    });
+
+    res.json(report);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/whatsapp/test-connection", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "");
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+
+    const client = getServiceClient();
+    const credentialsLoader = createSupabaseWhatsAppCredentialsLoader(client);
+    const lifecycle = createSupabaseWhatsAppCredentialLifecycle(client);
+    const credentials = await credentialsLoader.loadByCompanyId(companyId);
+
+    if (!credentials) {
+      res.status(400).json({
+        ok: false,
+        error: "WhatsApp credentials are not configured.",
+        tokenStatus: "missing",
+      });
+      return;
+    }
+
+    const report = await performWhatsAppConnectionTest({
+      runtimeConfig: {
+        phoneNumberId: credentials.phoneNumberId,
+        accessToken: credentials.accessToken,
+        verifyToken: credentials.verifyToken,
+        appSecret: credentials.appSecret,
+        apiVersion: credentials.apiVersion,
+        businessAccountId: credentials.businessAccountId,
+      },
+      appSecret: credentials.appSecret,
+    });
+
+    await persistConnectionTestResult({
+      companyId,
+      lifecycle,
+      report,
     });
 
     res.json(report);

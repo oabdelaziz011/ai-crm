@@ -21,11 +21,13 @@ import {
   DashboardErrorBanner,
   DashboardTableSkeleton,
 } from "@/components/dashboard/ui";
+import { useCompanyLocaleContext } from "@/context/company-locale-context";
 
 export default function InvoicesPage() {
   const { t } = useTranslation("common");
   const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
+  const { formatCurrency } = useCompanyLocaleContext();
   const { openCustomerProfile } = useCustomerProfile();
   const { data: invoices = [], isLoading, error } = useInvoices();
   const { data: customers = [] } = useCustomersEnrichment();
@@ -69,8 +71,7 @@ export default function InvoicesPage() {
 
   useRegisterFloatingAiContext(floatingAiContext);
 
-  const fmt = (n: number) =>
-    n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const fmt = (n: number) => formatCurrency(n);
 
   return (
     <div className="space-y-6">

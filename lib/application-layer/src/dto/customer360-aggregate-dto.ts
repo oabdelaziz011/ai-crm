@@ -51,9 +51,9 @@ export type Customer360CustomFieldDto = Readonly<{
 
 export type Customer360LeadDto = Readonly<{
   id: string;
-  source: string;
+  source: string | null;
   campaign: string | null;
-  owner: string;
+  owner: string | null;
   score: number;
   customFields: Readonly<Record<string, string>>;
   convertedAt: string | null;

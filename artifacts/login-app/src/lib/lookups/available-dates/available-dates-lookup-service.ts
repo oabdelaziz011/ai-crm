@@ -8,6 +8,7 @@ import {
 } from "@workspace/scheduling-engine";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
+import { wxRecordServiceResolution } from "@workspace/automation-platform";
 import type { LookupOptionRow } from "../types";
 import type { AvailableDateRecord, AvailableDatesLookupContext } from "./available-date-types";
 import {
@@ -47,6 +48,7 @@ export async function fetchAvailableDatesLookupOptions(
   const context = readRequiredContext(filters);
   if (!context) return [];
 
+  wxRecordServiceResolution("availableDates.lookup");
   const scheduling = createSchedulingServices(client);
   const referenceNow = new Date();
   const rules = await scheduling.bookingRules.get(companyId);

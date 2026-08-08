@@ -18,21 +18,20 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useProcessWhatsAppQueue,
   useUpdateWhatsAppSettings,
+  useWhatsAppConnectionTest,
   useWhatsAppDeliverySummary,
   useWhatsAppHealth,
   useWhatsAppSettings,
   useWhatsAppTestMessage,
 } from "@/hooks/notifications/use-whatsapp-health";
 import { isWhatsAppApiConfigured } from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
+import type { WhatsAppSettingsDraft } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
 import type {
-  CompanyWhatsAppSettings,
   WhatsAppProviderKind,
+  WhatsAppTokenStatus,
 } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
 
-const EMPTY_SETTINGS: Omit<
-  CompanyWhatsAppSettings,
-  "companyId" | "hasAccessToken" | "hasWebhookVerifyToken" | "hasAppSecret" | "updatedAt"
-> = {
+const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   enabled: false,
   provider: "meta_cloud",
   accessToken: "",
@@ -45,8 +44,31 @@ const EMPTY_SETTINGS: Omit<
   maxRetryCount: 3,
 };
 
+function formatDateTime(value: string | null | undefined, locale: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function tokenStatusTone(status: WhatsAppTokenStatus | undefined): string {
+  switch (status) {
+    case "valid":
+      return "bg-emerald-400";
+    case "expired":
+    case "invalid":
+    case "missing":
+      return "bg-rose-400";
+    default:
+      return "bg-amber-400";
+  }
+}
+
 export function SettingsWhatsAppPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
@@ -55,11 +77,19 @@ export function SettingsWhatsAppPage() {
   const { data: health, isFetching: healthLoading, refetch: refetchHealth } = useWhatsAppHealth(companyId);
   const { data: deliverySummary } = useWhatsAppDeliverySummary(companyId);
   const updateSettings = useUpdateWhatsAppSettings(companyId);
+  const connectionTest = useWhatsAppConnectionTest(companyId);
   const testMessage = useWhatsAppTestMessage(companyId);
   const processQueue = useProcessWhatsAppQueue(companyId);
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
   const [testRecipient, setTestRecipient] = useState("");
+  /** Latest Test Connection outcome — Provider Health card source of truth after a test. */
+  const [latestConnectionTest, setLatestConnectionTest] = useState<{
+    ok: boolean;
+    latencyMs: number;
+    error: string | null;
+    tokenStatus: WhatsAppTokenStatus;
+  } | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -90,6 +120,49 @@ export function SettingsWhatsAppPage() {
     });
   };
 
+  const onConnectionTest = () => {
+    setLatestConnectionTest(null);
+    connectionTest.mutate(undefined, {
+      onSuccess: (report) => {
+        if (report.ok) {
+          setLatestConnectionTest({
+            ok: true,
+            latencyMs: report.latencyMs,
+            error: null,
+            tokenStatus: report.tokenStatus === "unknown" ? "valid" : report.tokenStatus,
+          });
+          toast({ title: t("notifications.whatsapp.settings.connectionTestSuccess") });
+          return;
+        }
+        const detail = report.error ?? t("notifications.whatsapp.settings.connectionTestFailed");
+        setLatestConnectionTest({
+          ok: false,
+          latencyMs: report.latencyMs,
+          error: detail,
+          tokenStatus: report.tokenStatus,
+        });
+        toast({
+          title: t("notifications.whatsapp.settings.connectionTestFailed"),
+          description: detail,
+          variant: "destructive",
+        });
+      },
+      onError: (error) => {
+        setLatestConnectionTest({
+          ok: false,
+          latencyMs: 0,
+          error: error.message,
+          tokenStatus: "unknown",
+        });
+        toast({
+          title: t("notifications.whatsapp.settings.connectionTestFailed"),
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
   const onTest = () => {
     if (!testRecipient.trim()) return;
     testMessage.mutate(testRecipient.trim(), {
@@ -102,6 +175,24 @@ export function SettingsWhatsAppPage() {
         }),
     });
   };
+
+  const tokenStatus = latestConnectionTest?.tokenStatus ?? settings?.tokenStatus ?? "unknown";
+  const lastAuthError =
+    latestConnectionTest?.ok === true
+      ? null
+      : (latestConnectionTest?.error ?? settings?.lastAuthError ?? null);
+  const showCredentialWarning =
+    latestConnectionTest?.ok !== true &&
+    (tokenStatus === "expired" || tokenStatus === "invalid" || tokenStatus === "missing");
+
+  const healthOk = latestConnectionTest ? latestConnectionTest.ok : Boolean(health?.ok);
+  const healthLatencyMs = latestConnectionTest?.latencyMs ?? health?.latencyMs ?? 0;
+  const healthError =
+    latestConnectionTest?.ok === false
+      ? latestConnectionTest.error
+      : latestConnectionTest?.ok === true
+        ? null
+        : (health?.error ?? null);
 
   if (!companyId) {
     return (
@@ -256,19 +347,90 @@ export function SettingsWhatsAppPage() {
           <p className="text-sm text-muted-foreground">{t("notifications.whatsapp.settings.apiMissing")}</p>
         ) : (
           <>
+            {showCredentialWarning ? (
+              <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                {t("notifications.whatsapp.settings.credentialWarning", {
+                  status: t(`notifications.whatsapp.settings.tokenStatus.${tokenStatus}`),
+                })}
+                {lastAuthError ? (
+                  <p className="mt-1 text-xs text-rose-300/90">{lastAuthError}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.tokenStatusLabel")}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex h-2.5 w-2.5 rounded-full ${tokenStatusTone(tokenStatus)}`} />
+                  <span>{t(`notifications.whatsapp.settings.tokenStatus.${tokenStatus}`)}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.tokenExpiresAt")}
+                </p>
+                <p>{formatDateTime(settings?.tokenExpiresAt, i18n.language)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.lastSuccessfulSend")}
+                </p>
+                <p>{formatDateTime(settings?.lastSuccessfulSendAt, i18n.language)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.lastAuthError")}
+                </p>
+                <p className={lastAuthError ? "text-rose-300" : undefined}>
+                  {lastAuthError?.trim() || "—"}
+                </p>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 text-sm">
               <span
-                className={`inline-flex h-2.5 w-2.5 rounded-full ${health?.ok ? "bg-emerald-400" : "bg-rose-400"}`}
+                className={`inline-flex h-2.5 w-2.5 rounded-full ${healthOk ? "bg-emerald-400" : "bg-rose-400"}`}
               />
-              <span>
-                {health?.ok
-                  ? t("notifications.whatsapp.settings.healthOk", { ms: health.latencyMs })
-                  : t("notifications.whatsapp.settings.healthFailed", { error: health?.error ?? "—" })}
+              <span className={healthOk ? "text-emerald-300" : "text-rose-300"}>
+                {healthOk
+                  ? t("notifications.whatsapp.settings.healthOk", { ms: healthLatencyMs })
+                  : t("notifications.whatsapp.settings.healthFailed", {
+                      error: healthError?.trim() || "—",
+                    })}
               </span>
-              <Button variant="ghost" size="sm" onClick={() => void refetchHealth()} disabled={healthLoading}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setLatestConnectionTest(null);
+                  void refetchHealth();
+                }}
+                disabled={healthLoading}
+              >
                 <RefreshCw className={`w-3.5 h-3.5 ${healthLoading ? "animate-spin" : ""}`} />
               </Button>
             </div>
+
+            <Button
+              variant="outline"
+              onClick={onConnectionTest}
+              disabled={connectionTest.isPending}
+            >
+              {connectionTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {t("notifications.whatsapp.settings.connectionTest")}
+            </Button>
+
+            {latestConnectionTest?.ok === false && latestConnectionTest.error ? (
+              <p className="text-xs text-rose-400 whitespace-pre-wrap">{latestConnectionTest.error}</p>
+            ) : null}
+            {latestConnectionTest?.ok === true ? (
+              <p className="text-xs text-emerald-400">
+                {t("notifications.whatsapp.settings.connectionTestSuccess")}
+              </p>
+            ) : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">

@@ -4,7 +4,7 @@ import { getFinancialPlatformServices } from "@/lib/billing/services/financial-p
 import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
 
 function canGenerateInvoice(ctx: LoginAppPortContext): boolean {
-  return ctx.isSuperAdmin || ctx.hasPermission("invoices.create");
+  return ctx.isSuperAdmin || ctx.hasPermission("invoices.create") || ctx.hasPermission("operations.write");
 }
 
 export function createLoginAppInvoiceWritePort(

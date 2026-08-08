@@ -8,8 +8,13 @@ import { BookingValidationService } from "@/lib/scheduling/booking-domain/bookin
 import type { BookingEventPublisher } from "@/lib/scheduling/booking-domain/events";
 import { SupabaseCommunicationBookingEventPublisher } from "@/lib/communication/events/supabase-booking-event-publisher";
 import { BookingBillingBridge } from "@/lib/billing/events/booking-billing-bridge";
-import { getFinancialPlatformServices } from "@/lib/billing/services/financial-platform-service";
+import { createFinancialPlatformServices } from "@/lib/billing/services/financial-platform-service";
 import { IntegrationBookingEventPublisher } from "@/lib/integration/events/enterprise-event-publisher";
+import {
+  memoizeSchedulingFactory,
+  WA_REQUEST_CACHE_NS,
+} from "@/lib/scheduling/request-scoped-memo";
+import { wxRecordDependencyConstruction } from "@workspace/automation-platform";
 
 export type BookingDomainServices = {
   bookingDomain: BookingDomainService;
@@ -24,8 +29,23 @@ export class BookingFactory {
     client: SupabaseClient = supabase,
     eventPublisher?: BookingEventPublisher,
   ): BookingDomainServices {
+    // Custom publishers are rare (tests); skip request memo so identity is preserved.
+    if (eventPublisher) {
+      return BookingFactory.build(client, eventPublisher);
+    }
+    return memoizeSchedulingFactory(WA_REQUEST_CACHE_NS.bookingDomainServices, client, () =>
+      BookingFactory.build(client),
+    );
+  }
+
+  private static build(
+    client: SupabaseClient,
+    eventPublisher?: BookingEventPublisher,
+  ): BookingDomainServices {
+    wxRecordDependencyConstruction("BookingFactory.create");
     const communicationPublisher = new SupabaseCommunicationBookingEventPublisher(client);
-    const financial = getFinancialPlatformServices();
+    // Use the same client so webhook/service-role creates do not hit the browser singleton.
+    const financial = createFinancialPlatformServices(client);
     const billingBridge = new BookingBillingBridge(client, financial.invoices, communicationPublisher);
     const publisher =
       eventPublisher ?? new IntegrationBookingEventPublisher(billingBridge);

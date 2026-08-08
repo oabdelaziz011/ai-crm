@@ -41,6 +41,9 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
+      '@workspace/application-layer':
+        specifier: workspace:*
+        version: link:../../lib/application-layer
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../../lib/automation-platform
@@ -62,9 +65,15 @@ importers:
       '@workspace/knowledge-runtime':
         specifier: workspace:*
         version: link:../../lib/knowledge-runtime
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../../lib/lead-platform
       '@workspace/platform-ai-provider':
         specifier: workspace:*
         version: link:../../lib/platform-ai-provider
+      '@workspace/platform-events':
+        specifier: workspace:*
+        version: link:../../lib/platform-events
       '@workspace/platform-observability':
         specifier: workspace:*
         version: link:../../lib/platform-observability
@@ -249,6 +258,9 @@ importers:
       '@workspace/lead-platform':
         specifier: workspace:*
         version: link:../../lib/lead-platform
+      '@workspace/opportunity-platform':
+        specifier: workspace:*
+        version: link:../../lib/opportunity-platform
       '@workspace/platform-ai-provider':
         specifier: workspace:*
         version: link:../../lib/platform-ai-provider
@@ -258,6 +270,12 @@ importers:
       '@workspace/platform-events':
         specifier: workspace:*
         version: link:../../lib/platform-events
+      '@workspace/product-platform':
+        specifier: workspace:*
+        version: link:../../lib/product-platform
+      '@workspace/quote-platform':
+        specifier: workspace:*
+        version: link:../../lib/quote-platform
       '@workspace/retrieval-engine':
         specifier: workspace:*
         version: link:../../lib/retrieval-engine
@@ -907,12 +925,24 @@ importers:
       '@workspace/configuration-platform':
         specifier: workspace:*
         version: link:../configuration-platform
+      '@workspace/lead-platform':
+        specifier: workspace:*
+        version: link:../lead-platform
+      '@workspace/opportunity-platform':
+        specifier: workspace:*
+        version: link:../opportunity-platform
       '@workspace/platform-cache':
         specifier: workspace:*
         version: link:../platform-cache
       '@workspace/platform-events':
         specifier: workspace:*
         version: link:../platform-events
+      '@workspace/product-platform':
+        specifier: workspace:*
+        version: link:../product-platform
+      '@workspace/quote-platform':
+        specifier: workspace:*
+        version: link:../quote-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1163,6 +1193,19 @@ importers:
 
   lib/operations-workspace: {}
 
+  lib/opportunity-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
   lib/platform-ai-provider:
     dependencies:
       '@supabase/supabase-js':
@@ -1209,6 +1252,35 @@ importers:
       '@types/node':
         specifier: ^25.3.3
         version: 25.9.4
+
+  lib/product-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+
+  lib/quote-platform:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+      '@workspace/product-platform':
+        specifier: workspace:*
+        version: link:../product-platform
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
 
   lib/retrieval-engine:
     dependencies:

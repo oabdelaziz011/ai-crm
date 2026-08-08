@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useRbacDeveloperMode } from "@/hooks/use-rbac-developer-mode";
 import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
 import {
@@ -27,17 +28,18 @@ export function useOmnichannelTenantGuard(input: {
   selectedConversation: UnifiedConversation | null;
 }) {
   const { user, profile, company } = useAuth();
+  const { identity } = useCompanyIdentity(Boolean(profile?.company_id ?? company?.id));
   const { developerMode } = useRbacDeveloperMode();
   const { data: companyChannels = [] } = useCompanyChannelsAdmin();
 
   const tenant = useMemo<OmnichannelTenantContext>(
     () => ({
       companyId: profile?.company_id ?? null,
-      companyName: company?.name ?? null,
+      companyName: identity?.name ?? null,
       userEmail: user?.email ?? null,
       developerMode,
     }),
-    [profile?.company_id, company?.name, user?.email, developerMode],
+    [profile?.company_id, identity?.name, user?.email, developerMode],
   );
 
   const whatsAppChannels = useMemo(

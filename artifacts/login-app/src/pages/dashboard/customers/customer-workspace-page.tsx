@@ -257,7 +257,7 @@ export function CustomerWorkspacePage({
               isActionPending={isActionPending}
             />
           )}
-          {activeTab === "files" && <FilesTab />}
+          {activeTab === "files" && <FilesTab customerId={customer.id} />}
           {activeTab === "ai-summary" && (
             <AiSummaryTab customer={customer} bookings={allBookings} invoices={allInvoices} />
           )}

@@ -19,6 +19,16 @@ import type {
 import { toLeadSummary } from "../types/lead-types.js";
 
 function mapLead(row: Record<string, unknown>): LeadRecord {
+  const temperatureRaw = row.temperature != null ? String(row.temperature) : null;
+  const temperature =
+    temperatureRaw === "hot" || temperatureRaw === "warm" || temperatureRaw === "cold"
+      ? temperatureRaw
+      : null;
+  const tagsRaw = row.tags;
+  const tags = Array.isArray(tagsRaw)
+    ? tagsRaw.map((tag) => String(tag)).filter(Boolean)
+    : [];
+
   return {
     id: String(row.id),
     companyId: String(row.company_id),
@@ -32,7 +42,10 @@ function mapLead(row: Record<string, unknown>): LeadRecord {
     phone: row.phone ? String(row.phone) : null,
     companyName: row.company_name ? String(row.company_name) : null,
     priority: String(row.priority) as LeadPriority,
-    estimatedValue: row.estimated_value != null ? Number(row.estimated_value) : null,
+    estimatedValue:
+      row.estimated_value != null && String(row.estimated_value).trim() !== ""
+        ? Number(row.estimated_value)
+        : null,
     currency: String(row.currency ?? "USD"),
     score: Number(row.score ?? 0),
     isQualified: Boolean(row.is_qualified),
@@ -46,6 +59,15 @@ function mapLead(row: Record<string, unknown>): LeadRecord {
     qualifiedAt: row.qualified_at ? String(row.qualified_at) : null,
     convertedAt: row.converted_at ? String(row.converted_at) : null,
     archivedAt: row.archived_at ? String(row.archived_at) : null,
+    expectedCloseDate: row.expected_close_date ? String(row.expected_close_date) : null,
+    temperature,
+    notes: String(row.notes ?? ""),
+    tags,
+    lastActivityAt: row.last_activity_at
+      ? String(row.last_activity_at)
+      : row.updated_at
+        ? String(row.updated_at)
+        : null,
     aiSummary: String(row.ai_summary ?? ""),
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     createdBy: row.created_by ? String(row.created_by) : null,
@@ -64,6 +86,8 @@ function mapPipeline(row: Record<string, unknown>): LeadPipelineRecord {
     description: String(row.description ?? ""),
     isDefault: Boolean(row.is_default),
     isActive: Boolean(row.is_active),
+    // Pre-migration rows / missing column → allow backward (sprint default).
+    allowBackwardStageMovement: row.allow_backward_stage_movement !== false,
   };
 }
 
@@ -78,6 +102,17 @@ function mapStage(row: Record<string, unknown>): LeadStageRecord {
     sortOrder: Number(row.sort_order ?? 0),
     probabilityPercent: Number(row.probability_percent ?? 0),
     isTerminal: Boolean(row.is_terminal),
+  };
+}
+
+function mapSource(row: Record<string, unknown>): LeadSourceRecord {
+  return {
+    id: String(row.id),
+    companyId: String(row.company_id),
+    name: String(row.name),
+    slug: String(row.slug),
+    channelType: row.channel_type ? String(row.channel_type) : null,
+    isActive: Boolean(row.is_active ?? true),
   };
 }
 
@@ -105,6 +140,7 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
     },
 
     async createLead(input) {
+      const nowIso = new Date().toISOString();
       const { data, error } = await client
         .from("leads")
         .insert({
@@ -124,9 +160,16 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
           language: input.language ?? null,
           territory: input.territory ?? null,
           department: input.department ?? null,
+          assigned_user_id: input.assignedUserId ?? null,
+          expected_close_date: input.expectedCloseDate ?? null,
+          temperature: input.temperature ?? null,
+          notes: input.notes ?? "",
+          tags: input.tags ?? [],
+          last_activity_at: input.lastActivityAt ?? nowIso,
           is_vip: input.isVip ?? false,
           ai_summary: input.aiSummary ?? "",
           metadata: input.metadata ?? {},
+          ...(input.currency ? { currency: input.currency } : {}),
           created_by: input.createdBy,
           updated_by: input.createdBy,
         })
@@ -156,6 +199,11 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
       if (input.qualifiedAt !== undefined) patch.qualified_at = input.qualifiedAt;
       if (input.convertedAt !== undefined) patch.converted_at = input.convertedAt;
       if (input.archivedAt !== undefined) patch.archived_at = input.archivedAt;
+      if (input.expectedCloseDate !== undefined) patch.expected_close_date = input.expectedCloseDate;
+      if (input.temperature !== undefined) patch.temperature = input.temperature;
+      if (input.notes !== undefined) patch.notes = input.notes;
+      if (input.tags !== undefined) patch.tags = input.tags;
+      if (input.lastActivityAt !== undefined) patch.last_activity_at = input.lastActivityAt;
       if (input.aiSummary !== undefined) patch.ai_summary = input.aiSummary;
       if (input.metadata !== undefined) patch.metadata = input.metadata;
 
@@ -289,6 +337,44 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
         .maybeSingle();
       if (error) throw new Error(error.message);
       return data ? mapStage(data) : null;
+    },
+
+    async listSources(companyId) {
+      const { data, error } = await client
+        .from("lead_sources")
+        .select("*")
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw new Error(error.message);
+      return (data ?? []).map(mapSource);
+    },
+
+    async ensureDefaultSources(companyId) {
+      const existing = await this.listSources(companyId);
+      if (existing.length > 0) return existing;
+
+      const defaults = [
+        { name: "Website", slug: "website", channel_type: "web" },
+        { name: "Referral", slug: "referral", channel_type: "referral" },
+        { name: "Email", slug: "email", channel_type: "email" },
+        { name: "Phone", slug: "phone", channel_type: "phone" },
+        { name: "WhatsApp", slug: "whatsapp", channel_type: "whatsapp" },
+      ];
+      const { error } = await client.from("lead_sources").insert(
+        defaults.map((source) => ({
+          company_id: companyId,
+          name: source.name,
+          slug: source.slug,
+          channel_type: source.channel_type,
+          is_active: true,
+        })),
+      );
+      if (error && !/duplicate|unique/i.test(error.message)) {
+        throw new Error(error.message);
+      }
+      return this.listSources(companyId);
     },
 
     async createAssignment(input) {

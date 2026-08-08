@@ -10,6 +10,7 @@ export function createLeadReadPort(queries: LeadQueryService): LeadReadPort {
     listPipeline: (access, input) => queries.listPipeline(access, input),
     listStages: (access, input) => queries.listStages(access, input),
     listPipelines: (access, input) => queries.listPipelines(access, input),
+    listSources: (access, input) => queries.listSources(access, input),
     listLeadActivities: (access, input) => queries.listLeadActivities(access, input),
     listLeadHistory: (access, input) => queries.listLeadHistory(access, input),
     listLeadNotes: (access, input) => queries.listLeadNotes(access, input),

@@ -3,8 +3,11 @@ import { format, formatDistanceToNow, isToday } from "date-fns";
 import { Bot, Circle, FolderOpen, Pin, Star, User } from "lucide-react";
 import {
   getConversationFlags,
+  isConversationOpened,
   toggleConversationFlag,
 } from "@/lib/omnichannel/presentation/conversation-experience-storage";
+import { subscribeDeskIncomingFlash } from "@/lib/omnichannel/presentation/desk-incoming-alerts";
+import { resolveConversationAttention } from "@/lib/omnichannel/presentation/inbox-view-state";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -35,6 +38,7 @@ type QueueCardProps = {
     aiEmployee: string;
     unassigned: string;
     open: string;
+    newBadge?: string;
     pin?: string;
     star?: string;
     markUnread?: string;
@@ -50,11 +54,11 @@ function AssigneeLine({ tier, label }: { tier: OwnershipTier; label: string }) {
     tier === "human" ? User : tier === "ai" ? Bot : tier === "queue" ? FolderOpen : Circle;
   const tone =
     tier === "human"
-      ? "text-sky-300"
+      ? "text-primary"
       : tier === "ai"
-        ? "text-violet-300"
+        ? "text-[var(--ad-accent)]"
         : tier === "queue"
-          ? "text-amber-300"
+          ? "text-[var(--ad-warn)]"
           : "text-[var(--ad-text-muted)]";
 
   return (
@@ -102,8 +106,16 @@ export const QueueCard = memo(function QueueCard({
   const showPinned = conversation.isPinned || flags.pinned;
   const showStar = flags.starred;
   const showFollow = flags.following;
-  const showUnread =
-    !active && (flags.markedUnread || conversation.unreadCount > 0);
+  const hasBeenOpened = active || isConversationOpened(conversation.id);
+  const attention = resolveConversationAttention({
+    unreadCount: conversation.unreadCount,
+    hasBeenOpened,
+    active,
+    markedUnread: flags.markedUnread,
+  });
+  const showUnreadBadge =
+    attention !== "read" && (flags.markedUnread || conversation.unreadCount > 0);
+  const [flashing, setFlashing] = useState(false);
 
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: "nearest" });
@@ -112,6 +124,18 @@ export const QueueCard = memo(function QueueCard({
   useEffect(() => {
     setFlags(getConversationFlags(conversation.id));
   }, [conversation.id]);
+
+  useEffect(() => {
+    return subscribeDeskIncomingFlash((conversationId) => {
+      if (conversationId !== conversation.id || active) return;
+      setFlashing(true);
+      window.setTimeout(() => setFlashing(false), 1700);
+    });
+  }, [conversation.id, active]);
+
+  useEffect(() => {
+    if (active) setFlashing(false);
+  }, [active]);
 
   useEffect(() => {
     if (conversation.id !== OMNI_RENDER_TARGET_ID) return;
@@ -168,16 +192,23 @@ export const QueueCard = memo(function QueueCard({
           className={cn(
             "agent-desk-queue-card ws-inbox-row group relative flex h-[76px] cursor-pointer items-center gap-2.5 border-b border-[var(--ad-border-subtle)]/50 px-3 py-2",
             active && "agent-desk-queue-card--active ws-inbox-row--active",
-            showUnread && !active && "agent-desk-queue-card--unread",
+            !active && attention === "new" && "agent-desk-queue-card--new",
+            !active && attention === "unread" && "agent-desk-queue-card--unread",
+            !active && flashing && "agent-desk-queue-card--flash",
           )}
+          data-attention={attention}
         >
           <div className="relative shrink-0 self-start pt-0.5">
             <div className="flex size-9 items-center justify-center rounded-full bg-[var(--ad-surface-raised)] text-xs font-semibold">
               {initials(name)}
             </div>
-            {showUnread ? (
-              <span className="absolute -end-1 -top-1 flex min-w-[1.125rem] items-center justify-center rounded-full bg-[var(--ad-accent)] px-1 text-[14px] font-bold leading-none text-[#042f2e]">
-                {flags.markedUnread ? "•" : conversation.unreadCount > 9 ? unreadOverflowLabel : conversation.unreadCount || "•"}
+            {showUnreadBadge ? (
+              <span className="absolute -end-1 -top-1 flex min-w-[1.125rem] items-center justify-center rounded-full bg-[var(--ad-accent)] px-1 text-[14px] font-bold leading-none text-primary-foreground">
+                {flags.markedUnread && conversation.unreadCount <= 0
+                  ? "•"
+                  : conversation.unreadCount > 9
+                    ? unreadOverflowLabel
+                    : conversation.unreadCount || "•"}
               </span>
             ) : null}
           </div>
@@ -186,14 +217,32 @@ export const QueueCard = memo(function QueueCard({
             <div className="flex items-center gap-1.5">
               {showPinned ? <Pin className="size-3 shrink-0 text-[var(--ad-accent)]" aria-hidden /> : null}
               {showStar ? <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" aria-hidden /> : null}
-              {showFollow ? <span className="text-[10px] text-sky-300" aria-hidden>●</span> : null}
-              <p className="truncate text-base font-semibold leading-tight">{name}</p>
+              {showFollow ? <span className="text-[10px] text-primary" aria-hidden>●</span> : null}
+              <p
+                className={cn(
+                  "agent-desk-queue-card__name truncate text-base leading-tight",
+                  attention === "read" ? "font-medium" : "font-bold",
+                )}
+              >
+                {name}
+              </p>
+              {attention === "new" && labels.newBadge ? (
+                <span className="agent-desk-queue-card__new-badge shrink-0">{labels.newBadge}</span>
+              ) : null}
               <span className="ms-auto shrink-0 text-[12px] tabular-nums text-[var(--ad-text-muted)]">
                 {formatTime(conversation.lastActivityAt)}
               </span>
             </div>
 
-            <p className="truncate text-sm leading-snug text-[var(--ad-text-muted)]" dir="auto">
+            <p
+              className={cn(
+                "agent-desk-queue-card__preview truncate text-sm leading-snug",
+                attention === "new"
+                  ? "font-bold text-[var(--ad-text)]"
+                  : "font-normal text-[var(--ad-text-muted)]",
+              )}
+              dir="auto"
+            >
               {preview}
             </p>
 

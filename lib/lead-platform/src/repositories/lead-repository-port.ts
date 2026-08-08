@@ -37,9 +37,17 @@ export interface LeadRepository {
     language?: string | null;
     territory?: string | null;
     department?: string | null;
+    assignedUserId?: string | null;
+    expectedCloseDate?: string | null;
+    temperature?: "hot" | "warm" | "cold" | null;
+    notes?: string;
+    tags?: string[];
+    lastActivityAt?: string | null;
     isVip?: boolean;
     aiSummary?: string;
     metadata?: Record<string, unknown>;
+    /** ISO currency code from company billing settings when provided. */
+    currency?: string | null;
     createdBy: string | null;
   }): Promise<LeadRecord>;
 
@@ -65,6 +73,11 @@ export interface LeadRepository {
     qualifiedAt?: string | null;
     convertedAt?: string | null;
     archivedAt?: string | null;
+    expectedCloseDate?: string | null;
+    temperature?: "hot" | "warm" | "cold" | null;
+    notes?: string;
+    tags?: string[];
+    lastActivityAt?: string | null;
     aiSummary?: string;
     metadata?: Record<string, unknown>;
   }): Promise<LeadRecord>;
@@ -90,6 +103,8 @@ export interface LeadRepository {
   getPipeline(companyId: string, pipelineId: string): Promise<LeadPipelineRecord | null>;
   listStages(companyId: string, pipelineId: string): Promise<LeadStageRecord[]>;
   getStage(companyId: string, stageId: string): Promise<LeadStageRecord | null>;
+  listSources(companyId: string): Promise<LeadSourceRecord[]>;
+  ensureDefaultSources(companyId: string): Promise<LeadSourceRecord[]>;
 
   createAssignment(input: {
     companyId: string;

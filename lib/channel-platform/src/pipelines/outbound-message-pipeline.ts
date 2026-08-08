@@ -8,6 +8,12 @@ import type { ServiceContext } from "../types.js";
 import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
 import { traceOutboundValidationEnter, traceOutboundValidationFail, traceOutboundValidationPass } from "../debug/omni-outbound-400-bridge.js";
 import { traceMetaGraphOutboundStage } from "../debug/meta-graph-outbound-audit.js";
+import { waPerfEnd, waPerfMeasure, waPerfStart } from "../debug/whatsapp-pipeline-perf.js";
+import {
+  waTraceIncrementOutbound,
+  waTraceNoteError,
+  waTraceRegisterOutboundExternalId,
+} from "../debug/whatsapp-conversation-trace-bridge.js";
 
 export class OutboundMessagePipeline {
   constructor(
@@ -121,6 +127,7 @@ export class OutboundMessagePipeline {
       },
     });
 
+    waPerfStart("Message formatting", { channelKey: request.channelKey });
     const formatted = adapter.formatOutbound(
       { companyChannel },
       {
@@ -136,6 +143,7 @@ export class OutboundMessagePipeline {
         },
       },
     );
+    waPerfEnd("Message formatting", { channelKey: request.channelKey });
 
     try {
       traceOutboundValidationEnter({
@@ -150,13 +158,23 @@ export class OutboundMessagePipeline {
       traceOutboundValidationPass("WhatsAppCloudAdapter.sendOutbound", {
         externalMessageId: sendResult.externalMessageId ?? null,
       });
-      const updated = await this.deliveryEngine.markSent(
-        delivery.id,
-        sendResult.externalMessageId,
-        sendResult.providerResponse,
+      const updated = await waPerfMeasure("Database writes: mark delivery sent", () =>
+        this.deliveryEngine.markSent(
+          delivery.id,
+          sendResult.externalMessageId,
+          sendResult.providerResponse,
+        ),
       );
 
-      await this.sessionRepository.touchOutbound(request.channelSessionId);
+      // Observability only: count outbound + correlate later delivery/read status.
+      waTraceIncrementOutbound(1);
+      waTraceRegisterOutboundExternalId(
+        updated.external_message_id ?? sendResult.externalMessageId ?? null,
+      );
+
+      await waPerfMeasure("Database writes: touch outbound session", () =>
+        this.sessionRepository.touchOutbound(request.channelSessionId),
+      );
 
       traceOutboundValidationPass("OutboundMessagePipeline.process", {
         deliveryStatus: updated.delivery_status,
@@ -168,6 +186,9 @@ export class OutboundMessagePipeline {
         externalMessageId: updated.external_message_id ?? undefined,
       };
     } catch (error) {
+      waTraceNoteError(
+        error instanceof Error ? error.message : "Outbound delivery failed",
+      );
       await this.deliveryEngine.markFailed(
         delivery.id,
         error instanceof Error ? error.message : "Outbound delivery failed",

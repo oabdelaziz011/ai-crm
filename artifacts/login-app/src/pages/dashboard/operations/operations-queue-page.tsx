@@ -1,93 +1,307 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { OperationsRow } from "@workspace/universal-operations-engine";
+import {
+  CLINIC_COLUMNS,
+  type OperationsColumnDefinition,
+  type OperationsRow,
+} from "@workspace/universal-operations-engine";
 import { OperationsDataGrid } from "@/components/universal-operations/queue/operations-data-grid";
 import { OperationsWorkspacePanel } from "@/components/universal-operations/panel/operations-workspace-panel";
-import { WorkspaceMetric } from "@/components/customer-workspace/workspace-ui";
-import { useUniversalOperationsQueue } from "@/hooks/universal-operations";
+import { OperationsRowActionsMenu } from "@/components/universal-operations/action-registry/operations-row-actions-menu";
+import { ActionConfirmationDialog } from "@/components/universal-operations/action-registry/action-confirmation-dialog";
+import { CollectPaymentDialog } from "@/components/universal-operations/action-registry/collect-payment-dialog";
+import { BookingModal } from "@/components/dashboard/booking-modal";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
+import { useCompanyLocaleContext } from "@/context/company-locale-context";
+import { useOperationsActionEngine, useUniversalOperationsQueue } from "@/hooks/universal-operations";
+import { useCustomer360Role } from "@/hooks/universal-operations/use-customer360-workspace";
 import { useWorkspacePlatformOptional } from "@/context/workspace-platform-context";
-import { translateOperationsWorkspaceName } from "@/lib/i18n/workspace-mock-labels";
+import { useCustomersEnrichment } from "@/hooks/use-customers";
+import { translateOperationsQueueColumnHeader } from "@/lib/i18n/operations-queue-labels";
+import { resolveQueueKpis, type ResolvedQueueKpi } from "@/lib/universal-operations/operations-queue-kpis";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  resolveQueueDateRange,
+  type QueueDatePreset,
+} from "@/lib/universal-operations/operations-queue-date-range";
+import { resolveQueueTimezone } from "@/lib/scheduling/operations/utilities/calendar-day-range";
+import { cn } from "@/lib/utils";
+import type { TFunction } from "i18next";
+
+/** Operator-facing column order — Queue 2.1 / 2.2. */
+const OPERATOR_COLUMN_ORDER = [
+  "queue_number",
+  "appointment_time",
+  "customer",
+  "visit_type",
+  "service",
+  "amount",
+  "phone",
+  "status",
+  "payment_status",
+  "waiting_minutes",
+  "actions",
+] as const;
+
+const ACTIONS_COLUMN: OperationsColumnDefinition = {
+  id: "col_actions",
+  internalName: "actions",
+  displayName: "Actions",
+  icon: "MoreHorizontal",
+  type: "text",
+  visible: true,
+  required: false,
+  sortable: false,
+  filterable: false,
+  searchable: false,
+  exportable: false,
+  reportable: false,
+  aiIndexed: false,
+  width: 56,
+  alignment: "center",
+  defaultValue: null,
+  validation: null,
+  permissions: [],
+  position: 999,
+  pinned: "right",
+};
+
+function withOperatorColumns(
+  columns: OperationsColumnDefinition[],
+  t: TFunction,
+  templateKey: string,
+  hiddenColumnIds: string[],
+): OperationsColumnDefinition[] {
+  const byName = new Map<string, OperationsColumnDefinition>();
+  for (const column of CLINIC_COLUMNS) byName.set(column.internalName, column);
+  for (const column of columns) byName.set(column.internalName, column);
+  if (!byName.has("actions")) {
+    byName.set("actions", ACTIONS_COLUMN);
+  }
+
+  const hidden = new Set(hiddenColumnIds);
+  const next: OperationsColumnDefinition[] = [];
+  for (const internalName of OPERATOR_COLUMN_ORDER) {
+    const column = byName.get(internalName);
+    if (!column) continue;
+    if (internalName !== "actions" && hidden.has(column.id)) continue;
+    const displayName = translateOperationsQueueColumnHeader(
+      t,
+      internalName,
+      templateKey,
+      column.displayName,
+    );
+    if (internalName === "queue_number" || internalName === "customer") {
+      next.push({ ...column, displayName, pinned: "left", visible: true });
+      continue;
+    }
+    if (internalName === "actions") {
+      next.push({ ...column, displayName, pinned: "right", visible: true });
+      continue;
+    }
+    next.push({
+      ...column,
+      displayName,
+      visible: true,
+      pinned: null,
+    });
+  }
+  return next;
+}
+
+function QueueKpiStrip({ kpis }: { kpis: ResolvedQueueKpi[] }) {
+  return (
+    <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-md border border-border/60 bg-card sm:grid-cols-3 lg:grid-cols-9">
+      {kpis.map((kpi, index) => (
+        <div
+          key={kpi.id}
+          className={cn(
+            "flex flex-col justify-center px-2 py-1.5",
+            index > 0 && "border-s border-border/50",
+          )}
+        >
+          <span className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {kpi.label}
+          </span>
+          <span
+            className={cn(
+              "font-mono text-sm font-semibold tabular-nums leading-tight sm:text-base",
+              kpi.accent === "warning" && "text-warning",
+              kpi.accent === "success" && "text-success",
+              kpi.accent === "danger" && "text-destructive",
+            )}
+          >
+            {kpi.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function OperationsQueuePage() {
   const { t } = useTranslation("common");
+  const { profile } = useAuth();
   const platform = useWorkspacePlatformOptional();
-  const [localTemplate, setLocalTemplate] = useState("clinic");
+  const [localTemplate] = useState("clinic");
   const templateKey = platform?.templateKey ?? localTemplate;
-  const setTemplateKey = platform?.setTemplateKey ?? setLocalTemplate;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedRow, setSelectedRow] = useState<OperationsRow | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const { data: customers = [] } = useCustomersEnrichment();
+  const { currency: companyCurrency } = useCompanyLocaleContext();
 
   const {
     config,
     columns,
     page,
     loading,
+    isFetching,
     query,
+    setQuery,
     updateSearch,
     updateSort,
     loadMore,
+    preferences,
+    setPreferences,
+    refetch,
   } = useUniversalOperationsQueue(templateKey);
 
-  const kpis = useMemo(() => {
-    const rows = page?.rows ?? [];
+  const { role: workspaceRole } = useCustomer360Role();
+
+  const openAppointmentDrawer = useCallback((row: OperationsRow) => {
+    setSelectedRow(row);
+  }, []);
+
+  const actionEngine = useOperationsActionEngine({
+    config,
+    workspaceRole,
+    templateKey,
+  });
+
+  const drawerActions = useMemo(
+    () => ({
+      getAvailableActions: actionEngine.getAvailableActions,
+      requestAction: actionEngine.requestAction,
+      executingId: actionEngine.executingId,
+    }),
+    [actionEngine.getAvailableActions, actionEngine.requestAction, actionEngine.executingId],
+  );
+
+  const chooserColumns = useMemo(() => {
+    const byName = new Map<string, OperationsColumnDefinition>();
+    for (const column of CLINIC_COLUMNS) byName.set(column.internalName, column);
+    for (const column of columns) byName.set(column.internalName, column);
+    return OPERATOR_COLUMN_ORDER.filter((name) => name !== "actions")
+      .map((name) => byName.get(name))
+      .filter(Boolean) as OperationsColumnDefinition[];
+  }, [columns]);
+
+  const gridColumns = useMemo(() => {
+    const source = config?.columns?.length ? config.columns : columns;
+    return withOperatorColumns(source, t, templateKey, preferences.hiddenColumnIds ?? []);
+  }, [columns, config?.columns, preferences.hiddenColumnIds, t, templateKey]);
+
+  const rows = page?.rows ?? [];
+
+  // Keep drawer sticky: refresh selected row from latest page data when queue updates.
+  const activeRow = useMemo(() => {
+    if (!selectedRow) return null;
+    return rows.find((row) => row.id === selectedRow.id) ?? selectedRow;
+  }, [rows, selectedRow]);
+
+  const kpis = useMemo(
+    () => resolveQueueKpis(config, rows, page?.total ?? rows.length, t, templateKey, companyCurrency),
+    [companyCurrency, config, page?.total, rows, t, templateKey],
+  );
+
+  const datePreset = (String(query.filters?.datePreset ?? "today") as QueueDatePreset) || "today";
+  const dateFrom = String(query.filters?.dateFrom ?? "");
+  const dateTo = String(query.filters?.dateTo ?? "");
+  const queueTimezone = resolveQueueTimezone(
+    typeof query.filters?.timezone === "string" ? query.filters.timezone : null,
+    profile?.timezone ?? null,
+  );
+
+  const updateFilters = useCallback(
+    (patch: Record<string, unknown>) => {
+      setQuery((prev) => ({
+        ...prev,
+        page: 1,
+        filters: {
+          ...(prev.filters ?? {}),
+          ...patch,
+        },
+      }));
+    },
+    [setQuery],
+  );
+
+  const applyDatePreset = useCallback(
+    (preset: QueueDatePreset, customFrom?: string, customTo?: string) => {
+      const range = resolveQueueDateRange(preset, customFrom, customTo, queueTimezone);
+      updateFilters({ ...range, timezone: queueTimezone });
+    },
+    [queueTimezone, updateFilters],
+  );
+
+  const toggleColumn = useCallback(
+    (columnId: string) => {
+      setPreferences((prev) => {
+        const hidden = new Set(prev.hiddenColumnIds ?? []);
+        if (hidden.has(columnId)) hidden.delete(columnId);
+        else hidden.add(columnId);
+        return { ...prev, hiddenColumnIds: [...hidden] };
+      });
+    },
+    [setPreferences],
+  );
+
+  const filterOptions = useMemo(() => {
+    const doctors = new Set<string>();
+    const services = new Set<string>();
+    const branches = new Set<string>();
+    for (const row of rows) {
+      const doctor = String(row.values.resource ?? "").trim();
+      const service = String(row.values.service ?? "").trim();
+      const branch = String(row.values.branch ?? "").trim();
+      if (doctor && doctor !== "—") doctors.add(doctor);
+      if (service && service !== "—") services.add(service);
+      if (branch && branch !== "—") branches.add(branch);
+    }
+    for (const resource of config?.resources ?? []) {
+      if (resource.active !== false && resource.name) doctors.add(resource.name);
+    }
+    for (const service of config?.services ?? []) {
+      if (service.active !== false && service.name) services.add(service.name);
+    }
     return {
-      total: page?.total ?? 0,
-      waiting: rows.filter((r) => r.statusId === "st_checked_in").length,
-      paid: rows.filter((r) => r.paymentStatusId === "pay_paid").length,
-      completed: rows.filter((r) => r.statusId === "st_completed").length,
+      doctors: [...doctors].sort((a, b) => a.localeCompare(b)),
+      services: [...services].sort((a, b) => a.localeCompare(b)),
+      branches: [...branches].sort((a, b) => a.localeCompare(b)),
+      statuses: (config?.statuses ?? []).filter((status) => status.internalName !== "archived"),
     };
-  }, [page]);
+  }, [config?.resources, config?.services, config?.statuses, rows]);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold">
-            {config?.workspaceName
-              ? translateOperationsWorkspaceName(t, templateKey, config.workspaceName)
-              : t("universalOperations.queue.title")}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("universalOperations.queue.subtitle")}</p>
+    <div className="flex h-[calc(100vh-5.5rem)] min-h-[32rem] flex-col gap-2 overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-base font-semibold tracking-tight">{t("universalOperations.queue.title")}</h1>
+          <p className="text-xs text-muted-foreground">{t("universalOperations.queue.subtitleEnterprise")}</p>
         </div>
-        <Select value={templateKey} onValueChange={setTemplateKey}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder={t("universalOperations.queue.template")} />
-          </SelectTrigger>
-          <SelectContent>
-            {(platform?.snapshot?.templates ?? []).length > 0
-              ? platform!.snapshot!.templates.map((tpl) => (
-                  <SelectItem key={tpl.key} value={tpl.key}>
-                    {t(`workspacePlatform.${tpl.labelKey}`)}
-                  </SelectItem>
-                ))
-              : (
-                <>
-                  <SelectItem value="clinic">{t("universalOperations.templates.clinic")}</SelectItem>
-                  <SelectItem value="training_center">{t("universalOperations.templates.training")}</SelectItem>
-                  <SelectItem value="automotive">{t("universalOperations.templates.automotive")}</SelectItem>
-                </>
-              )}
-          </SelectContent>
-        </Select>
-      </div>
+        <Button size="sm" className="h-8 shrink-0 gap-1.5" onClick={() => setBookingModalOpen(true)}>
+          <Plus className="size-3.5" />
+          {t("universalOperations.queue.newOperation")}
+        </Button>
+      </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <WorkspaceMetric label={t("universalOperations.kpi.total")} value={kpis.total} compact />
-        <WorkspaceMetric label={t("universalOperations.kpi.waiting")} value={kpis.waiting} compact accent="warning" />
-        <WorkspaceMetric label={t("universalOperations.kpi.paid")} value={kpis.paid} compact accent="success" />
-        <WorkspaceMetric label={t("universalOperations.kpi.completed")} value={kpis.completed} compact accent="success" />
-      </div>
+      <QueueKpiStrip kpis={kpis} />
 
       <OperationsDataGrid
-        columns={columns}
-        rows={page?.rows ?? []}
+        columns={gridColumns}
+        rows={rows}
         loading={loading}
         search={query.search ?? ""}
         onSearchChange={updateSearch}
@@ -95,16 +309,107 @@ export function OperationsQueuePage() {
         onSortChange={updateSort}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
-        onRowClick={setSelectedRow}
+        activeRowId={activeRow?.id ?? null}
+        onRowClick={openAppointmentDrawer}
+        onRowDoubleClick={openAppointmentDrawer}
         onLoadMore={loadMore}
         hasMore={page?.hasMore}
+        density={preferences.density === "spacious" ? "comfortable" : preferences.density}
+        onDensityChange={(density) => setPreferences((prev) => ({ ...prev, density }))}
+        className="min-h-0 flex-1"
+        templateKey={templateKey}
+        config={config}
+        currencyCode={companyCurrency}
+        datePreset={datePreset}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDatePresetChange={applyDatePreset}
+        filters={{
+          doctor: String(query.filters?.resource ?? "all"),
+          service: String(query.filters?.service ?? "all"),
+          status: String(query.filters?.statusId ?? "all"),
+          branch: String(query.filters?.branch ?? "all"),
+        }}
+        filterOptions={filterOptions}
+        onFiltersChange={(next) =>
+          updateFilters({
+            resource: next.doctor === "all" ? undefined : next.doctor,
+            service: next.service === "all" ? undefined : next.service,
+            statusId: next.status === "all" ? undefined : next.status,
+            branch: next.branch === "all" ? undefined : next.branch,
+          })
+        }
+        onApplySavedView={(view) => {
+          if (view === "today") {
+            const range = resolveQueueDateRange("today", null, null, queueTimezone);
+            updateFilters({
+              ...range,
+              timezone: queueTimezone,
+              statusId: undefined,
+              paymentStatusId: undefined,
+              resource: undefined,
+              service: undefined,
+              branch: undefined,
+            });
+            return;
+          }
+          if (view === "waiting") {
+            updateFilters({ statusId: "st_waiting", paymentStatusId: undefined });
+            return;
+          }
+          if (view === "unpaid") {
+            updateFilters({ paymentStatusId: "pay_pending", statusId: undefined });
+          }
+        }}
+        onRefresh={() => {
+          void refetch();
+        }}
+        isRefreshing={isFetching}
+        columnChooserColumns={chooserColumns}
+        hiddenColumnIds={preferences.hiddenColumnIds ?? []}
+        onToggleColumn={toggleColumn}
+        renderRowActions={(row) => (
+          <OperationsRowActionsMenu
+            row={row}
+            groups={actionEngine.getAvailableActionGroups(row)}
+            executingId={actionEngine.executingId}
+            onSelect={actionEngine.requestAction}
+          />
+        )}
       />
 
       <OperationsWorkspacePanel
-        row={selectedRow}
+        row={activeRow}
+        rows={rows}
         open={Boolean(selectedRow)}
         onClose={() => setSelectedRow(null)}
+        onSelectRow={openAppointmentDrawer}
         templateKey={templateKey}
+        config={config}
+        actions={drawerActions}
+      />
+
+      <ActionConfirmationDialog
+        open={Boolean(actionEngine.pendingConfirmation)}
+        action={actionEngine.pendingConfirmation?.action ?? null}
+        busy={Boolean(actionEngine.executingId)}
+        onConfirm={actionEngine.confirmPendingAction}
+        onCancel={actionEngine.cancelPendingAction}
+      />
+
+      <CollectPaymentDialog
+        open={Boolean(actionEngine.pendingPaymentRow)}
+        row={actionEngine.pendingPaymentRow}
+        busy={actionEngine.executingId === "billing.collect_payment"}
+        onConfirm={actionEngine.confirmCollectPayment}
+        onCancel={actionEngine.cancelCollectPayment}
+      />
+
+      <BookingModal
+        open={bookingModalOpen}
+        onClose={() => setBookingModalOpen(false)}
+        customers={customers}
+        companyId={profile?.company_id ?? null}
       />
     </div>
   );

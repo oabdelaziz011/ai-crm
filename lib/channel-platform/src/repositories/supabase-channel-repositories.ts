@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  WA_REQUEST_CACHE_NS,
+  waRequestCacheSet,
+  waRequestGetOrLoad,
+} from "../debug/whatsapp-request-scope.js";
 import type {
   ChannelDeliveryEventRepository,
   ChannelInboundEventRepository,
@@ -15,6 +20,25 @@ import type {
   ChannelSessionRecord,
 } from "../types.js";
 
+function sessionCacheKey(companyChannelId: string, externalThreadId: string): string {
+  return `${companyChannelId}:${externalThreadId}`;
+}
+
+function rememberSession(session: ChannelSessionRecord): void {
+  waRequestCacheSet(
+    WA_REQUEST_CACHE_NS.session,
+    sessionCacheKey(session.company_channel_id, session.external_thread_id),
+    session,
+  );
+  waRequestCacheSet(WA_REQUEST_CACHE_NS.conversation, session.conversation_id, {
+    id: session.conversation_id,
+    companyId: session.company_id,
+  });
+  waRequestCacheSet(WA_REQUEST_CACHE_NS.company, session.company_id, {
+    companyId: session.company_id,
+  });
+}
+
 function mapSession(row: Record<string, unknown>): ChannelSessionRecord {
   return row as unknown as ChannelSessionRecord;
 }
@@ -30,15 +54,32 @@ function mapDelivery(row: Record<string, unknown>): ChannelDeliveryEventRecord {
 export function createSupabaseChannelSessionRepository(client: SupabaseClient): ChannelSessionRepository {
   return {
     async findByExternalThread(companyChannelId, externalThreadId) {
-      const { data, error } = await client
-        .from("channel_sessions")
-        .select("*")
-        .eq("company_channel_id", companyChannelId)
-        .eq("external_thread_id", externalThreadId)
-        .maybeSingle();
+      return waRequestGetOrLoad(
+        WA_REQUEST_CACHE_NS.session,
+        sessionCacheKey(companyChannelId, externalThreadId),
+        async () => {
+          const { data, error } = await client
+            .from("channel_sessions")
+            .select("*")
+            .eq("company_channel_id", companyChannelId)
+            .eq("external_thread_id", externalThreadId)
+            .maybeSingle();
 
-      if (error) throw error;
-      return data ? mapSession(data) : null;
+          if (error) throw error;
+          const session = data ? mapSession(data) : null;
+          if (session) {
+            // Seed conversation/company keys without counting as extra loads.
+            waRequestCacheSet(WA_REQUEST_CACHE_NS.conversation, session.conversation_id, {
+              id: session.conversation_id,
+              companyId: session.company_id,
+            });
+            waRequestCacheSet(WA_REQUEST_CACHE_NS.company, session.company_id, {
+              companyId: session.company_id,
+            });
+          }
+          return session;
+        },
+      );
     },
 
     async createSession(input: ResolveSessionInput & { conversationId: string }) {
@@ -57,7 +98,9 @@ export function createSupabaseChannelSessionRepository(client: SupabaseClient): 
         .single();
 
       if (error) throw error;
-      return mapSession(data);
+      const session = mapSession(data);
+      rememberSession(session);
+      return session;
     },
 
     async touchInbound(sessionId) {
@@ -69,7 +112,9 @@ export function createSupabaseChannelSessionRepository(client: SupabaseClient): 
         .single();
 
       if (error) throw error;
-      return mapSession(data);
+      const session = mapSession(data);
+      rememberSession(session);
+      return session;
     },
 
     async touchOutbound(sessionId) {
@@ -81,7 +126,9 @@ export function createSupabaseChannelSessionRepository(client: SupabaseClient): 
         .single();
 
       if (error) throw error;
-      return mapSession(data);
+      const session = mapSession(data);
+      rememberSession(session);
+      return session;
     },
   };
 }

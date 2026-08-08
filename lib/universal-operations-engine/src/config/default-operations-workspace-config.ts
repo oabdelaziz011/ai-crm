@@ -3,27 +3,32 @@ import type { OperationsWorkspaceConfig } from "../types/metadata-types.js";
 import { AUTOMOTIVE_COLUMNS, CLINIC_COLUMNS, TRAINING_COLUMNS } from "../mock/mock-columns.js";
 
 const CLINIC_STATUSES: OperationsWorkspaceConfig["statuses"] = [
-  { id: "st_booked", internalName: "booked", displayName: "Booked", color: "#6366f1", icon: "Calendar", isTerminal: false, sortOrder: 0, permissions: [] },
+  { id: "st_waiting", internalName: "waiting", displayName: "Waiting", color: "#6366f1", icon: "Clock", isTerminal: false, sortOrder: 0, permissions: [] },
   { id: "st_confirmed", internalName: "confirmed", displayName: "Confirmed", color: "#3b82f6", icon: "CheckCircle", isTerminal: false, sortOrder: 1, permissions: [] },
   { id: "st_checked_in", internalName: "checked_in", displayName: "Checked In", color: "#0ea5e9", icon: "LogIn", isTerminal: false, sortOrder: 2, permissions: ["operations.queue.checkin"] },
-  { id: "st_in_progress", internalName: "in_progress", displayName: "In Progress", color: "#f59e0b", icon: "Activity", isTerminal: false, sortOrder: 3, permissions: [] },
-  { id: "st_completed", internalName: "completed", displayName: "Completed", color: "#22c55e", icon: "CheckCheck", isTerminal: true, sortOrder: 4, permissions: ["operations.queue.complete"] },
-  { id: "st_archived", internalName: "archived", displayName: "Archived", color: "#64748b", icon: "Archive", isTerminal: true, sortOrder: 5, permissions: [] },
+  { id: "st_with_nurse", internalName: "with_nurse", displayName: "With Nurse", color: "#14b8a6", icon: "HeartPulse", isTerminal: false, sortOrder: 3, permissions: [] },
+  { id: "st_with_doctor", internalName: "in_progress", displayName: "With Doctor", color: "#f59e0b", icon: "Stethoscope", isTerminal: false, sortOrder: 4, permissions: [] },
+  { id: "st_completed", internalName: "completed", displayName: "Completed", color: "#22c55e", icon: "CheckCheck", isTerminal: true, sortOrder: 5, permissions: ["operations.queue.complete"] },
+  { id: "st_archived", internalName: "archived", displayName: "Archived", color: "#64748b", icon: "Archive", isTerminal: true, sortOrder: 6, permissions: [] },
 ];
 
 const CLINIC_TRANSITIONS: OperationsWorkspaceConfig["statusTransitions"] = [
-  { fromStatusId: "st_booked", toStatusId: "st_confirmed" },
+  { fromStatusId: "st_waiting", toStatusId: "st_confirmed" },
   { fromStatusId: "st_confirmed", toStatusId: "st_checked_in" },
-  { fromStatusId: "st_checked_in", toStatusId: "st_in_progress" },
-  { fromStatusId: "st_in_progress", toStatusId: "st_completed" },
+  { fromStatusId: "st_waiting", toStatusId: "st_checked_in" },
+  { fromStatusId: "st_checked_in", toStatusId: "st_with_nurse" },
+  { fromStatusId: "st_with_nurse", toStatusId: "st_with_doctor" },
+  { fromStatusId: "st_with_doctor", toStatusId: "st_completed" },
   { fromStatusId: "st_completed", toStatusId: "st_archived" },
 ];
 
 const PAYMENT_STATUSES: OperationsWorkspaceConfig["paymentStatuses"] = [
-  { id: "pay_unpaid", internalName: "unpaid", displayName: "Unpaid", color: "#ef4444", sortOrder: 0 },
+  { id: "pay_pending", internalName: "pending", displayName: "Pending", color: "#ef4444", sortOrder: 0 },
   { id: "pay_partial", internalName: "partial", displayName: "Partial", color: "#f59e0b", sortOrder: 1 },
   { id: "pay_paid", internalName: "paid", displayName: "Paid", color: "#22c55e", sortOrder: 2 },
   { id: "pay_refunded", internalName: "refunded", displayName: "Refunded", color: "#64748b", sortOrder: 3 },
+  { id: "pay_cancelled", internalName: "cancelled", displayName: "Cancelled", color: "#94a3b8", sortOrder: 4 },
+  { id: "pay_unpaid", internalName: "unpaid", displayName: "Pending", color: "#ef4444", sortOrder: 5 },
 ];
 
 const SERVICES: OperationsWorkspaceConfig["services"] = [
@@ -38,12 +43,13 @@ const RESOURCES: OperationsWorkspaceConfig["resources"] = [
 ];
 
 const WORKFLOW_STAGES = [
-  { id: "booked", labelKey: "workflow.booked", sortOrder: 0 },
+  { id: "booked", labelKey: "workflow.waiting", sortOrder: 0 },
   { id: "confirmed", labelKey: "workflow.confirmed", sortOrder: 1 },
   { id: "checked_in", labelKey: "workflow.checkedIn", sortOrder: 2 },
-  { id: "doctor", labelKey: "workflow.doctor", sortOrder: 3 },
-  { id: "cashier", labelKey: "workflow.cashier", sortOrder: 4 },
+  { id: "with_nurse", labelKey: "workflow.withNurse", sortOrder: 3 },
+  { id: "doctor", labelKey: "workflow.doctor", sortOrder: 4 },
   { id: "completed", labelKey: "workflow.completed", sortOrder: 5 },
+  { id: "archived", labelKey: "workflow.archived", sortOrder: 6 },
 ];
 
 const ALERT_RULES: OperationsWorkspaceConfig["intelligence"]["alertRules"] = [
@@ -172,10 +178,12 @@ function buildExtendedDefaults(
     dashboard: {
       widgets: DASHBOARD_WIDGETS,
       kpis: [
-        { id: "kpi_total", label: "Total Items", metricKey: "total", visible: true },
+        { id: "kpi_today_operations", label: "Today's Operations", metricKey: "today_operations", visible: true },
         { id: "kpi_waiting", label: "Waiting", metricKey: "waiting", visible: true },
-        { id: "kpi_paid", label: "Paid", metricKey: "paid", visible: true },
+        { id: "kpi_in_progress", label: "In Progress", metricKey: "in_progress", visible: true },
         { id: "kpi_completed", label: "Completed", metricKey: "completed", visible: true },
+        { id: "kpi_revenue", label: "Revenue", metricKey: "revenue", visible: true },
+        { id: "kpi_outstanding", label: "Outstanding Payments", metricKey: "outstanding_payments", visible: true },
       ],
       charts: [],
     },

@@ -7,6 +7,7 @@ import { DashboardCard, DashboardErrorBanner } from "@/components/dashboard/ui";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { useAuth } from "@/context/auth-context";
 import { useBillingContact } from "@/hooks/billing/use-billing-contact";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useWorkspaceBillingSummary } from "@/hooks/workspace/use-workspace-billing-summary";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { billingNotAvailable, translateBillingCycle, translateWorkspaceHealth } from "@/lib/billing/billing-display-i18n";
@@ -18,6 +19,7 @@ export function WorkspaceBillingPage() {
   const { t } = useTranslation("common");
   const { company } = useAuth();
   const companyId = company?.id ?? null;
+  const { identity, displayName } = useCompanyIdentity(Boolean(companyId));
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const canView = canViewWorkspaceBilling(hasPermission, isSuperAdmin, Boolean(companyId));
 
@@ -59,8 +61,8 @@ export function WorkspaceBillingPage() {
 
       <CompanyIdentityHeader
         companyId={companyId}
-        name={data?.company?.name ?? company?.name ?? billingNotAvailable(t)}
-        logoUrl={data?.company?.logo_url ?? company?.logo_url}
+        name={data?.company?.name ?? displayName ?? billingNotAvailable(t)}
+        logoUrl={data?.company?.logo_url ?? identity?.logoUrl ?? company?.logo_url}
         billingContact={billingContact}
       />
 

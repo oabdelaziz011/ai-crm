@@ -12,7 +12,10 @@ describe("MetadataEngine", () => {
   it("returns visible columns in order", () => {
     const columns = metadataEngine.visibleColumns(MOCK_CLINIC_CONFIG);
     assert.ok(columns.length > 0);
-    assert.equal(columns[0]?.internalName, "reference");
+    assert.equal(columns[0]?.internalName, "queue_number");
+    assert.ok(columns.some((column) => column.internalName === "reference"));
+    assert.ok(columns.some((column) => column.internalName === "appointment_time"));
+    assert.ok(columns.some((column) => column.internalName === "visit_type"));
   });
 
   it("applies column rename without changing internal name", () => {
@@ -44,5 +47,16 @@ describe("QueueDataEngine", () => {
       search: firstName.split(" ")[0],
     });
     assert.ok(page.total >= 1);
+  });
+
+  it("assigns sequential queue numbers after sort", () => {
+    const page = queueDataEngine.paginate(MOCK_QUEUE_ROWS, {
+      companyId: "mock-company",
+      page: 1,
+      pageSize: 10,
+      sort: [{ columnId: "col_scheduled", direction: "asc" }],
+    });
+    assert.equal(page.rows[0]?.values.queue_number, 1);
+    assert.equal(page.rows[1]?.values.queue_number, 2);
   });
 });

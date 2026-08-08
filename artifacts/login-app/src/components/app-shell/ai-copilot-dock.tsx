@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { UserAvatar } from "@/components/profile/user-avatar";
 import { useAppShell } from "@/context/app-shell-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,8 +25,11 @@ export const AiCopilotDock = memo(function AiCopilotDock() {
           <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-border px-5">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
             <div className="flex items-center gap-2.5">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/15">
-                <Sparkles className="size-4 text-primary" aria-hidden="true" />
+              <div className="relative">
+                <UserAvatar className="size-9 border border-primary/20" />
+                <span className="absolute -bottom-0.5 -end-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <Sparkles className="size-2.5" aria-hidden="true" />
+                </span>
               </div>
               <div>
                 <span className="text-sm font-semibold">{t("appShell.copilot.title")}</span>

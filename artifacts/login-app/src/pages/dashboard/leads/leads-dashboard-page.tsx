@@ -3,7 +3,6 @@ import { useLeadDashboardMetrics } from "@/hooks/leads/use-leads-workspace";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { WorkspaceMetric } from "@/components/customer-workspace/workspace-ui";
 import { translateLeadLifecycleStatus } from "@/lib/i18n/workspace-mock-labels";
-
 export function LeadsDashboardPage() {
   const { t } = useTranslation("common");
   const { data: metrics, isLoading } = useLeadDashboardMetrics();

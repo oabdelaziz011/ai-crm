@@ -155,6 +155,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
   const { applyViewState, markConversationViewedById } = useInboxViewState(
     consoleState.inboxConversations,
     initialSession.selectedId,
+    selectedId,
   );
 
   const displayConversations = useMemo(
@@ -600,6 +601,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
           aiEmployee: t("omnichannel.assignment.aiEmployee"),
           unassigned: t("omnichannel.customer.unassigned"),
           open: t("omnichannel.actions.open"),
+          newBadge: t("omnichannel.desk.newBadge"),
           pin: t("omnichannel.experience.pinConversation"),
           star: t("omnichannel.experience.starConversation"),
           markUnread: t("omnichannel.experience.markUnread"),

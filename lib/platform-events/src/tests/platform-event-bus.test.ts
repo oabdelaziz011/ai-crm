@@ -25,7 +25,7 @@ import {
 
 describe("Platform Event Contracts", () => {
   it("registers all platform event types", () => {
-    assert.equal(PLATFORM_EVENT_TYPES.length, 34);
+    assert.equal(PLATFORM_EVENT_TYPES.length, 60);
   });
 
   it("rejects invalid BookingCompleted payload", () => {

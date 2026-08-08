@@ -15,6 +15,8 @@ export type LeadServiceContext = {
   hasPermission: (code: string) => boolean;
 };
 
+export type LeadTemperature = "hot" | "warm" | "cold";
+
 export type LeadRecord = {
   id: string;
   companyId: string;
@@ -22,12 +24,15 @@ export type LeadRecord = {
   stageId: string;
   sourceId: string | null;
   lifecycleStatus: LeadLifecycleStatus;
+  /** CRM "Lead Name" — persisted as title */
   title: string;
+  /** CRM "Contact Person" — persisted as contact_name */
   contactName: string;
   email: string | null;
   phone: string | null;
   companyName: string | null;
   priority: LeadPriority;
+  /** CRM "Expected Value" — persisted as estimated_value */
   estimatedValue: number | null;
   currency: string;
   score: number;
@@ -36,12 +41,18 @@ export type LeadRecord = {
   language: string | null;
   territory: string | null;
   department: string | null;
+  /** CRM ownerId — persisted as assigned_user_id */
   assignedUserId: string | null;
   customerId: string | null;
   conversationId: string | null;
   qualifiedAt: string | null;
   convertedAt: string | null;
   archivedAt: string | null;
+  expectedCloseDate: string | null;
+  temperature: LeadTemperature | null;
+  notes: string;
+  tags: string[];
+  lastActivityAt: string | null;
   aiSummary: string;
   metadata: Record<string, unknown>;
   createdBy: string | null;
@@ -50,6 +61,82 @@ export type LeadRecord = {
   updatedAt: string;
 };
 
+/**
+ * Unified CRM Lead contract (database → API → UI).
+ * Prefer this shape at application and presentation boundaries.
+ */
+export type Lead = {
+  id: string;
+  name: string;
+  companyName: string | null;
+  contactPerson: string;
+  email: string | null;
+  phone: string | null;
+  ownerId: string | null;
+  owner: string | null;
+  stageId: string;
+  stage: string;
+  sourceId: string | null;
+  source: string | null;
+  expectedValue: number | null;
+  expectedCloseDate: string | null;
+  priority: LeadPriority;
+  temperature: LeadTemperature | null;
+  tags: string[];
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  lastActivityAt: string | null;
+  tenantId: string;
+  pipelineId: string;
+  lifecycleStatus: LeadLifecycleStatus;
+  currency: string;
+  score: number;
+  isQualified: boolean;
+  customerId: string | null;
+};
+
+export function toLead(
+  record: LeadRecord,
+  opts?: {
+    tenantId?: string;
+    owner?: string | null;
+    stage?: string | null;
+    source?: string | null;
+  },
+): Lead {
+  return {
+    id: record.id,
+    name: record.title,
+    companyName: record.companyName,
+    contactPerson: record.contactName,
+    email: record.email,
+    phone: record.phone,
+    ownerId: record.assignedUserId,
+    owner: opts?.owner ?? null,
+    stageId: record.stageId,
+    stage: opts?.stage ?? record.lifecycleStatus,
+    sourceId: record.sourceId,
+    source: opts?.source ?? null,
+    expectedValue: record.estimatedValue,
+    expectedCloseDate: record.expectedCloseDate,
+    priority: record.priority,
+    temperature: record.temperature,
+    tags: record.tags ?? [],
+    notes: record.notes ?? "",
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    lastActivityAt: record.lastActivityAt ?? record.updatedAt,
+    tenantId: opts?.tenantId ?? record.companyId,
+    pipelineId: record.pipelineId,
+    lifecycleStatus: record.lifecycleStatus,
+    currency: record.currency,
+    score: record.score,
+    isQualified: record.isQualified,
+    customerId: record.customerId,
+  };
+}
+
 export type LeadSummary = Pick<
   LeadRecord,
   | "id"
@@ -57,14 +144,22 @@ export type LeadSummary = Pick<
   | "contactName"
   | "email"
   | "phone"
+  | "companyName"
   | "lifecycleStatus"
   | "priority"
   | "score"
   | "estimatedValue"
+  | "currency"
   | "assignedUserId"
   | "pipelineId"
   | "stageId"
+  | "sourceId"
   | "isQualified"
+  | "expectedCloseDate"
+  | "temperature"
+  | "notes"
+  | "tags"
+  | "lastActivityAt"
   | "createdAt"
   | "updatedAt"
 >;
@@ -77,6 +172,8 @@ export type LeadPipelineRecord = {
   description: string;
   isDefault: boolean;
   isActive: boolean;
+  /** Sprint 4.3 — when true, Kanban may move leads to earlier stages. Default true. */
+  allowBackwardStageMovement: boolean;
 };
 
 export type LeadStageRecord = {
@@ -197,14 +294,22 @@ export function toLeadSummary(record: LeadRecord): LeadSummary {
     contactName: record.contactName,
     email: record.email,
     phone: record.phone,
+    companyName: record.companyName,
     lifecycleStatus: record.lifecycleStatus,
     priority: record.priority,
     score: record.score,
     estimatedValue: record.estimatedValue,
+    currency: record.currency,
     assignedUserId: record.assignedUserId,
     pipelineId: record.pipelineId,
     stageId: record.stageId,
+    sourceId: record.sourceId,
     isQualified: record.isQualified,
+    expectedCloseDate: record.expectedCloseDate,
+    temperature: record.temperature,
+    notes: record.notes,
+    tags: record.tags,
+    lastActivityAt: record.lastActivityAt,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };

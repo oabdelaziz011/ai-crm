@@ -87,8 +87,8 @@ export class ContextAssemblyService {
       if (lead) {
         assembled.lead = {
           id: lead.id,
-          title: lead.title,
-          contactName: lead.contactName,
+          title: lead.name,
+          contactName: lead.contactPerson,
           lifecycleStatus: lead.lifecycleStatus,
           score: lead.score,
         };

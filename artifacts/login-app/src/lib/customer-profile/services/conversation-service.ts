@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { CustomerProfileContext } from "@/components/customer-profile/types";
 import {
-  getTeamInboxNestedPath,
+  getTeamInboxDashboardHref,
   queueTeamInboxConversationFocus,
   requestTeamInboxConversationFocus,
 } from "./inbox-navigation";
@@ -65,7 +65,8 @@ export class ConversationService {
     const focused = requestTeamInboxConversationFocus(conversationId);
     if (!focused) {
       queueTeamInboxConversationFocus(conversationId);
-      input.navigate(getTeamInboxNestedPath());
+      // Absolute escape — never nest-relative (breaks under /dashboard/operations).
+      input.navigate(getTeamInboxDashboardHref());
     }
 
     input.onCloseProfile?.();

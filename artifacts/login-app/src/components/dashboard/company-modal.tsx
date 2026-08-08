@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Company, CompanyStatus } from "@/lib/types";
 import { useCreateCompany, useUpdateCompany } from "@/hooks/use-companies";
+import { useCreateManagedUser } from "@/hooks/use-users-management";
+import { fetchAssignableRolesForCompany } from "@/lib/users/fetch-assignable-roles";
 import { useTranslation } from "react-i18next";
 
 type FormValues = {
@@ -29,6 +31,9 @@ type FormValues = {
   status: CompanyStatus;
   subscription_plan: string;
   subscription_expires_at?: string;
+  ownerFullName: string;
+  ownerEmail: string;
+  ownerJobTitle: string;
 };
 
 interface Props {
@@ -44,13 +49,21 @@ export function CompanyModal({ open, onClose, company }: Props) {
   const isEdit = !!company;
   const create = useCreateCompany();
   const update = useUpdateCompany();
-  const isPending = create.isPending || update.isPending;
+  const inviteOwner = useCreateManagedUser();
+  const isPending = create.isPending || update.isPending || inviteOwner.isPending;
 
   const schema = z.object({
     name: z.string().min(1, t("forms.company.nameRequired")),
     status: z.enum(["Active", "Suspended", "Trial"]),
     subscription_plan: z.string().min(1, t("forms.company.planRequired")),
     subscription_expires_at: z.string().optional(),
+    ownerFullName: isEdit
+      ? z.string().optional()
+      : z.string().min(1, t("forms.company.ownerNameRequired", { defaultValue: "Owner name is required" })),
+    ownerEmail: isEdit
+      ? z.string().optional()
+      : z.string().email(t("forms.company.ownerEmailRequired", { defaultValue: "Owner email is required" })),
+    ownerJobTitle: z.string().optional(),
   });
 
   const form = useForm<FormValues>({
@@ -60,6 +73,9 @@ export function CompanyModal({ open, onClose, company }: Props) {
       status: "Trial",
       subscription_plan: "",
       subscription_expires_at: "",
+      ownerFullName: "",
+      ownerEmail: "",
+      ownerJobTitle: "Owner",
     },
   });
 
@@ -72,6 +88,9 @@ export function CompanyModal({ open, onClose, company }: Props) {
       subscription_expires_at: company?.subscription_expires_at
         ? company.subscription_expires_at.slice(0, 10)
         : "",
+      ownerFullName: "",
+      ownerEmail: "",
+      ownerJobTitle: "Owner",
     });
   }, [open, company, form]);
 
@@ -98,9 +117,38 @@ export function CompanyModal({ open, onClose, company }: Props) {
     }
 
     create.mutate(payload, {
-      onSuccess: () => {
-        onClose();
-        form.reset();
+      onSuccess: async (created) => {
+        try {
+          const roles = await fetchAssignableRolesForCompany(created.id);
+          const adminRole =
+            roles.find((role) => /admin/i.test(role.name ?? "")) ?? roles[0];
+          if (!adminRole) {
+            throw new Error(
+              t("forms.company.ownerInviteNoRole", {
+                defaultValue: "Company created, but no role is available to invite the owner.",
+              }),
+            );
+          }
+          await inviteOwner.mutateAsync({
+            email: values.ownerEmail,
+            fullName: values.ownerFullName,
+            companyId: created.id,
+            roleId: adminRole.id,
+            isActive: true,
+            jobTitle: values.ownerJobTitle?.trim() || "Owner",
+          });
+          onClose();
+          form.reset();
+        } catch (error) {
+          form.setError("root", {
+            message:
+              error instanceof Error
+                ? error.message
+                : t("forms.company.ownerInviteFailed", {
+                    defaultValue: "Company created, but owner invitation failed.",
+                  }),
+          });
+        }
       },
       onError: (error) => form.setError("root", { message: error.message }),
     });
@@ -108,7 +156,7 @@ export function CompanyModal({ open, onClose, company }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="bg-card border-white/10 text-foreground max-w-md">
+      <DialogContent className="bg-card border-white/10 text-foreground max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? t("forms.company.editTitle") : t("forms.company.newTitle")}
@@ -201,6 +249,82 @@ export function CompanyModal({ open, onClose, company }: Props) {
                 </FormItem>
               )}
             />
+
+            {!isEdit ? (
+              <>
+                <div className="border-t border-white/10 pt-3">
+                  <p className="text-sm font-medium">
+                    {t("forms.company.ownerSection", { defaultValue: "Owner information" })}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t("forms.company.ownerHint", {
+                      defaultValue: "Job title is display-only. Permissions come from the admin role.",
+                    })}
+                  </p>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="ownerFullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t("forms.company.ownerFullName", { defaultValue: "Owner full name" })}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t("users.form.fullNamePlaceholder")}
+                          className="bg-background/50 border-white/10"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ownerEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t("forms.company.ownerEmail", { defaultValue: "Owner email" })}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder={t("users.form.emailPlaceholder")}
+                          className="bg-background/50 border-white/10"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ownerJobTitle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t("forms.company.ownerJobTitle", { defaultValue: "Owner job title" })}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Owner"
+                          className="bg-background/50 border-white/10"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            ) : null}
 
             <DialogFooter className="pt-2">
               <Button

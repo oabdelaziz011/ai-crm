@@ -15,6 +15,7 @@ import {
   buildWebhookAdapterClassificationLog,
   logWebhookAdapterClassification,
 } from "../debug/webhook-adapter-classification.js";
+import { waTraceOnDeliveryStatus } from "../debug/whatsapp-conversation-trace-bridge.js";
 import { assertWebhookCompanyChannel } from "../webhooks/webhook-channel-guards.js";
 
 export type WebhookRouteSingleResponse =
@@ -151,6 +152,9 @@ export class ChannelRouter {
             typeof envelope.payload.errorMessage === "string" ? envelope.payload.errorMessage : undefined,
         });
 
+        // Observability only: correlate delivery/read back to the inbound TRACE.
+        waTraceOnDeliveryStatus(envelope.externalMessageId, status);
+
         await this.telemetry.recordOutboundDispatched({
           kind: "delivery_status",
           companyId: request.companyId,
@@ -191,6 +195,7 @@ export class ChannelRouter {
         aiEmployeeId: request.aiEmployeeId,
         employeeConversationMetadata: request.employeeConversationMetadata,
         trace: request.trace,
+        requestId: request.requestId ?? null,
       });
 
       primaryInbound = result;

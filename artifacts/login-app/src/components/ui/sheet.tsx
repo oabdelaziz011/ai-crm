@@ -3,6 +3,10 @@
 import * as React from 'react';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import {
+  isAnyNestedOverlayOpen,
+  preventDialogDismissForNestedOverlay,
+} from '@/lib/ui/prevent-dialog-dismiss-for-nested-overlay';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 
@@ -55,22 +59,60 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      <SheetPrimitive.Close className="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-      {children}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-));
+>(
+  (
+    {
+      side = 'right',
+      className,
+      children,
+      onPointerDownOutside,
+      onInteractOutside,
+      onFocusOutside,
+      onEscapeKeyDown,
+      ...props
+    },
+    ref,
+  ) => (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), className)}
+        {...props}
+        onPointerDownOutside={(event) => {
+          onPointerDownOutside?.(event);
+          if (!event.defaultPrevented) {
+            preventDialogDismissForNestedOverlay(event);
+          }
+        }}
+        onInteractOutside={(event) => {
+          onInteractOutside?.(event);
+          if (!event.defaultPrevented) {
+            preventDialogDismissForNestedOverlay(event);
+          }
+        }}
+        onFocusOutside={(event) => {
+          onFocusOutside?.(event);
+          if (!event.defaultPrevented) {
+            preventDialogDismissForNestedOverlay(event);
+          }
+        }}
+        onEscapeKeyDown={(event) => {
+          onEscapeKeyDown?.(event);
+          if (!event.defaultPrevented && isAnyNestedOverlayOpen()) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <SheetPrimitive.Close className="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+        {children}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  ),
+);
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({

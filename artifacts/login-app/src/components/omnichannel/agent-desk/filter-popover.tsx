@@ -33,7 +33,7 @@ export const FilterPopover = memo(function FilterPopover({
 
   return (
     <>
-      <button type="button" className="fixed inset-0 z-50 bg-black/30" aria-label={closeLabel} onClick={onClose} />
+      <button type="button" className="fixed inset-0 z-50 bg-foreground/30" aria-label={closeLabel} onClick={onClose} />
       <div className="fixed start-1/2 top-20 z-50 w-[min(100vw-2rem,22rem)] -translate-x-1/2 rounded-xl border border-[var(--ad-border)] bg-[var(--ad-surface-raised)] p-4 shadow-2xl lg:start-auto lg:end-4 lg:translate-x-0">
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--ad-text-muted)]">{labels.filters}</p>
         <div className="space-y-2 text-xs">
@@ -75,7 +75,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   return (
     <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-[var(--ad-accent-dim)]">
       <span>{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-teal-500" />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-primary" />
     </label>
   );
 }

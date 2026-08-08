@@ -21,6 +21,8 @@ import {
   recordMetaGraphOutboundFailure,
   traceMetaGraphOutboundStage,
 } from "../../debug/meta-graph-outbound-audit.js";
+import { waPerfMeasure } from "../../debug/whatsapp-pipeline-perf.js";
+import { waTraceAddMetaTime } from "../../debug/whatsapp-conversation-trace-bridge.js";
 
 export type WhatsAppApiClientOptions = {
   fetchFn?: typeof fetch;
@@ -92,26 +94,54 @@ export class WhatsAppApiClient {
       },
     });
 
-    const response = await this.fetchFn(endpoint, {
+    const requestBodyJson = JSON.stringify(payload);
+    console.log("[WHATSAPP_OUTBOUND_TRACE] before Meta POST", {
+      companyId: options?.companyId ?? null,
+      companyChannelId: options?.companyChannelId ?? null,
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      path: `/${config.phoneNumberId}/messages`,
+      endpoint,
+      graphApiVersion,
+      phoneNumberId: config.phoneNumberId,
+      recipient: payload.to,
+      messageType: payload.type,
+      accessTokenPresent,
+      requestBody: payload,
     });
 
-    const body = (await response.json()) as WhatsAppSendMessageResponse & {
-      error?: {
-        message?: string;
-        error_user_msg?: string;
-        code?: number;
-        type?: string;
-        error_subcode?: number;
-        fbtrace_id?: string;
-        [key: string]: unknown;
-      };
-    };
+    const metaStartedAt = Date.now();
+    const { response, body } = await waPerfMeasure(
+      "Meta send API",
+      async () => {
+        const response = await this.fetchFn(endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: requestBodyJson,
+        });
+
+        const body = (await response.json()) as WhatsAppSendMessageResponse & {
+          error?: {
+            message?: string;
+            error_user_msg?: string;
+            code?: number;
+            type?: string;
+            error_subcode?: number;
+            fbtrace_id?: string;
+            [key: string]: unknown;
+          };
+        };
+        return { response, body };
+      },
+      {
+        phoneNumberId: config.phoneNumberId,
+        recipient: payload.to,
+        messageType: payload.type,
+      },
+    );
+    waTraceAddMetaTime(Date.now() - metaStartedAt);
 
     this.options.onOutboundRequest?.({
       endpoint,
@@ -126,9 +156,49 @@ export class WhatsAppApiClient {
       metaErrorMessage: body.error?.error_user_msg ?? body.error?.message,
     });
 
+    console.log("[WHATSAPP_OUTBOUND_TRACE] Meta HTTP response", {
+      companyId: options?.companyId ?? null,
+      companyChannelId: options?.companyChannelId ?? null,
+      path: `/${config.phoneNumberId}/messages`,
+      endpoint,
+      phoneNumberId: config.phoneNumberId,
+      recipient: payload.to,
+      httpStatus: response.status,
+      ok: response.ok,
+      responseBody: body,
+      externalMessageId: body.messages?.[0]?.id ?? null,
+      metaErrorCode: body.error?.code ?? null,
+      metaErrorMessage: body.error?.error_user_msg ?? body.error?.message ?? null,
+    });
+
+    console.log("[WHATSAPP] Meta response", {
+      companyId: options?.companyId ?? null,
+      companyChannelId: options?.companyChannelId ?? null,
+      phoneNumberId: config.phoneNumberId,
+      recipient: payload.to,
+      httpStatus: response.status,
+      ok: response.ok,
+      externalMessageId: body.messages?.[0]?.id ?? null,
+      metaErrorCode: body.error?.code ?? null,
+      metaErrorMessage: body.error?.error_user_msg ?? body.error?.message ?? null,
+    });
+
     if (!response.ok) {
       const errorMessage =
         body.error?.error_user_msg ?? body.error?.message ?? `WhatsApp API error (${response.status})`;
+      console.error("[ERROR] WhatsApp Meta API send failed", {
+        companyId: options?.companyId ?? null,
+        companyChannelId: options?.companyChannelId ?? null,
+        phoneNumberId: config.phoneNumberId,
+        recipient: payload.to,
+        httpStatus: response.status,
+        metaErrorCode: body.error?.code ?? null,
+        metaErrorSubcode: body.error?.error_subcode ?? null,
+        metaErrorType: body.error?.type ?? null,
+        metaFbTraceId: body.error?.fbtrace_id ?? null,
+        metaErrorMessage: errorMessage,
+        responseBody: body,
+      });
 
       recordMetaGraphOutboundFailure({
         file: "whatsapp-api-client.ts",
@@ -155,7 +225,10 @@ export class WhatsAppApiClient {
         responseBody: body,
         rootCause: `Meta Graph API raw response HTTP ${response.status}`,
       });
-      throw new ValidationError(errorMessage);
+      throw new ValidationError(errorMessage, {
+        metaErrorCode: body.error?.code,
+        metaErrorSubcode: body.error?.error_subcode,
+      });
     }
 
     traceOutboundValidationPass("WhatsAppApiClient.sendMessage.responseOk", {

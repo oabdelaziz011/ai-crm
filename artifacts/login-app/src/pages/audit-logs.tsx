@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { AuditLogDetailsDialog } from "@/components/audit-logs/audit-log-details-dialog";
 import { AuditOperationBadge } from "@/components/audit-logs/audit-operation-badge";
 import { AuditStatusBadge } from "@/components/audit-logs/audit-status-badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { EmployeeIdentityCard } from "@/components/employee-identity/employee-identity-card";
 import {
   Table,
   TableBody,
@@ -314,19 +314,13 @@ export function AuditLogsPage() {
                           <p className="text-sm leading-relaxed">{row.description}</p>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Avatar className="w-9 h-9 border border-white/10">
-                              <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-                                {row.userName.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{row.userName}</p>
-                              {row.userEmail && (
-                                <p className="text-xs text-muted-foreground truncate">{row.userEmail}</p>
-                              )}
-                            </div>
-                          </div>
+                          <EmployeeIdentityCard
+                            userId={row.userId ?? row.log.profile?.id}
+                            fallbackName={row.userName}
+                            fallbackEmail={row.userEmail}
+                            showEmail
+                            showJobTitle
+                          />
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex text-xs px-2.5 py-1 rounded-full border border-white/10 bg-white/5">

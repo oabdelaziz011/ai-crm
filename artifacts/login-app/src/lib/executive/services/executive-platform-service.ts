@@ -61,5 +61,5 @@ export const EXECUTIVE_QUICK_ACTIONS: QuickAction[] = [
   { id: "operations", labelKey: "executive.actions.operations", path: "/dashboard/scheduling/operations", icon: "activity" },
   { id: "communication", labelKey: "executive.actions.communication", path: "/dashboard/communication", icon: "send" },
   { id: "customers", labelKey: "executive.actions.customers", path: "/dashboard/customers", icon: "users" },
-  { id: "branches", labelKey: "executive.actions.branches", path: "/dashboard/settings/company/branches", icon: "building" },
+  { id: "branches", labelKey: "executive.actions.branches", path: "/dashboard/company?tab=branches", icon: "building" },
 ];

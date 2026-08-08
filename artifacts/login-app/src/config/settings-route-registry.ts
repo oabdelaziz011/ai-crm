@@ -7,7 +7,6 @@ export type SettingsRouteId =
   | "personal-profile"
   | "appearance"
   | "account-information"
-  | "company-settings"
   | "security"
   | "notifications"
   | "email"
@@ -70,16 +69,6 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/account-information-page"),
       "SettingsAccountInformationPage",
-    ),
-  },
-  {
-    id: "company-settings",
-    nestedPath: "/company",
-    titleKey: "dashboard.settings.nav.companySettings",
-    permission: "settings.edit",
-    Page: lazyNamed(
-      () => import("@/pages/dashboard/settings/company-settings-page"),
-      "SettingsCompanySettingsPage",
     ),
   },
   {

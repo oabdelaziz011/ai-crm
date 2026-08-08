@@ -57,6 +57,9 @@
     "scheduling": "الجدولة",
     "universalOperations": "العمليات",
     "leads": "العملاء المحتملون",
+    "opportunities": "الفرص",
+    "products": "المنتجات",
+    "quotes": "عروض الأسعار",
     "communication": "مركز الاتصالات",
     "invoices": "الفواتير",
     "financial": "الفوترة المالية",
@@ -92,7 +95,8 @@
     "reports": "التقارير",
     "settings": "الإعدادات",
     "demoScenarios": "سيناريوهات العرض",
-    "automation": "سير العمل"
+    "automation": "سير العمل",
+    "company": "الشركة"
   },
   "demo": {
     "scenarios": {
@@ -369,6 +373,21 @@
         "healthTitle": "صحة المزود",
         "healthOk": "اتصال واتساب سليم ({{ms}} مللي ثانية)",
         "healthFailed": "فشل فحص واتساب: {{error}}",
+        "credentialWarning": "بيانات اعتماد واتساب تحتاج إلى مراجعة ({{status}}). يتم إيقاف الإرسال الصادر حتى يتم تحديث الرمز.",
+        "tokenStatusLabel": "حالة الرمز",
+        "tokenStatus": {
+          "valid": "صالح",
+          "expired": "منتهي",
+          "invalid": "غير صالح",
+          "unknown": "غير معروف",
+          "missing": "مفقود"
+        },
+        "tokenExpiresAt": "تاريخ الانتهاء",
+        "lastSuccessfulSend": "آخر إرسال ناجح",
+        "lastAuthError": "آخر خطأ مصادقة",
+        "connectionTest": "اختبار الاتصال",
+        "connectionTestSuccess": "نجح اختبار اتصال واتساب",
+        "connectionTestFailed": "فشل اختبار اتصال واتساب",
         "testMessage": "إرسال رسالة تجريبية",
         "testRecipient": "رقم الهاتف التجريبي (E.164)",
         "testSuccess": "تم إرسال الرسالة التجريبية",
@@ -549,6 +568,9 @@
       "title": "إنشاء هوية",
       "subtitle": "أنشئ بيانات اعتمادك للدخول إلى النظام.",
       "identity": "البريد الإلكتروني",
+      "fullName": "الاسم الكامل",
+      "ownerJobTitle": "المسمى الوظيفي للمالك",
+      "jobTitleHint": "للعرض فقط — الصلاحيات تأتي من الأدوار.",
       "passkey": "كلمة مرور آمنة",
       "submit": "إنشاء الحساب",
       "already": "لديك حساب بالفعل؟",
@@ -3959,7 +3981,9 @@
     },
     "users": {
       "assignmentLabel": "تعيين الفروع",
-      "noBranchesAvailable": "لا توجد فروع متاحة لهذه الشركة."
+      "noBranchesAvailable": "لا توجد فروع متاحة",
+      "createBranch": "إنشاء فرع",
+      "searchPlaceholder": "البحث في الفروع…"
     },
     "services": {
       "availableAt": "متاح في: {{branches}}"
@@ -4631,9 +4655,14 @@
       "transcriptInternalNote": "ملاحظة داخلية",
       "voice": "صوت",
       "unreadOverflow": "+9",
+      "newBadge": "جديدة",
       "notAvailable": "—",
       "resizeQueue": "تغيير حجم قائمة الانتظار",
-      "maximizeConversation": "تكبير المحادثة"
+      "maximizeConversation": "تكبير المحادثة",
+      "soundOn": "صوت الإشعارات مفعّل",
+      "soundOff": "صوت الإشعارات مكتوم",
+      "expandConversation": "توسيع المحادثة",
+      "collapseConversation": "استعادة عرض المحادثة"
     },
     "navigation": {
       "backToConversation": "العودة إلى المحادثة"
@@ -5541,12 +5570,52 @@
       "backToList": "العودة إلى الخدمات",
       "editDetails": "تعديل التفاصيل",
       "durationLabel": "{{minutes}} د",
+      "tabs": {
+        "general": "عام",
+        "pricing": "التسعير",
+        "resources": "الموارد"
+      },
       "fields": {
         "name": "الاسم",
+        "category": "التصنيف",
         "description": "الوصف",
         "duration": "المدة (دقائق)",
+        "price": "السعر",
+        "currency": "العملة",
         "status": "الحالة"
       },
+      "pricing": {
+        "title": "قواعد التسعير",
+        "subtitle": "أسعار متعددة لكل خدمة. الحجز ينسخ القاعدة المحددة أو الافتراضية.",
+        "add": "إضافة قاعدة تسعير",
+        "empty": "لا توجد قواعد تسعير بعد.",
+        "typesLoading": "جارٍ تحميل أنواع قواعد التسعير…",
+        "typesEmpty": "لا تتوفر أنواع قواعد تسعير. قم بتهيئة الأنواع (جديد، متابعة، استشارة، طوارئ، VIP) أو أضفها من الإعدادات.",
+        "typePlaceholder": "اختر النوع",
+        "descriptionOptional": "الوصف (اختياري)",
+        "companyDefaultCurrency": "عملة الشركة الافتراضية ({{currency}})",
+        "columns": {
+          "type": "النوع",
+          "price": "السعر",
+          "currency": "العملة",
+          "duration": "المدة",
+          "default": "افتراضي",
+          "actions": "إجراءات"
+        },
+        "validation": {
+          "typeRequired": "النوع مطلوب",
+          "priceRequired": "السعر مطلوب",
+          "pricePositive": "يجب أن يكون السعر أكبر من 0",
+          "currencyRequired": "العملة مطلوبة",
+          "durationRequired": "المدة مطلوبة",
+          "durationPositive": "يجب أن تكون المدة أكبر من 0",
+          "atLeastOne": "أضف قاعدة تسعير واحدة على الأقل",
+          "oneDefault": "يجب أن تكون قاعدة واحدة فقط افتراضية",
+          "uniqueTypes": "لا يمكن تكرار نفس النوع"
+        }
+      },
+      "priceLabel": "{{amount}} {{currency}}",
+      "openOperationsQueue": "فتح طابور العمليات",
       "statuses": {
         "active": "نشط",
         "inactive": "غير نشط",
@@ -6623,6 +6692,27 @@
       "email": "البريد الإلكتروني",
       "emailPlaceholder": "user@company.com",
       "emailRequired": "البريد الإلكتروني مطلوب",
+      "phone": "الهاتف",
+      "phonePlaceholder": "+966…",
+      "jobTitle": "المسمى الوظيفي",
+      "jobTitlePlaceholder": "مهندس ضمان جودة أول",
+      "jobTitleSearchPlaceholder": "اكتب أو ابحث عن مسمى وظيفي…",
+      "jobTitleNoSuggestions": "لا توجد مسميات مطابقة. تابع الكتابة لاستخدام مسمى مخصص.",
+      "jobTitleUseCustom": "استخدم «{{title}}»",
+      "jobTitleHint": "المسمى الوظيفي للعرض فقط. الصلاحيات تأتي من الأدوار فقط.",
+      "department": "القسم",
+      "departmentPlaceholder": "ضمان الجودة",
+      "departmentSelectPlaceholder": "اختر قسماً",
+      "departmentSearchPlaceholder": "البحث في الأقسام…",
+      "departmentNone": "غير معيّن",
+      "noDepartmentsAvailable": "لا توجد أقسام متاحة.",
+      "noDepartmentsFound": "لا توجد أقسام.",
+      "noBranchesFound": "لا توجد فروع.",
+      "createDepartment": "إنشاء قسم",
+      "createBranch": "إنشاء فرع",
+      "setupRequiresBranchAndDepartment": "يرجى إنشاء فرع واحد وقسم واحد على الأقل أولاً.",
+      "language": "اللغة",
+      "timezone": "المنطقة الزمنية",
       "company": "الشركة",
       "companyRequired": "الشركة مطلوبة",
       "selectCompany": "اختر شركة",
@@ -6791,13 +6881,29 @@
     "fields": {
       "fullName": "الاسم الكامل",
       "jobTitle": "المسمى الوظيفي",
+      "jobTitlePlaceholder": "مهندس ضمان جودة أول",
+      "jobTitleHint": "للعرض فقط — لا يمنح صلاحيات.",
+      "department": "القسم",
+      "departmentPlaceholder": "ضمان الجودة",
+      "branch": "الفرع",
+      "directManager": "المدير المباشر",
+      "phone": "الهاتف",
+      "phonePlaceholder": "+966…",
       "company": "الشركة",
       "role": "الدور",
       "accountStatus": "حالة الحساب",
       "language": "اللغة",
       "timezone": "المنطقة الزمنية",
+      "currency": "العملة",
       "createdDate": "تاريخ الإنشاء",
       "lastLogin": "آخر تسجيل دخول"
+    },
+    "currency": {
+      "hint": "عملة الشركة الافتراضية للفواتير والفوترة والتقارير واستخدام الذكاء الاصطناعي.",
+      "saveSuccessTitle": "تم تحديث العملة",
+      "saveSuccessDescription": "يتم الآن تنسيق المبالغ بـ {{currency}}.",
+      "saveFailedTitle": "تعذر تحديث العملة",
+      "saveFailedDescription": "يرجى المحاولة مرة أخرى."
     },
     "status": {
       "active": "نشط",
@@ -6814,7 +6920,13 @@
       "invalidTypeDescription": "يرجى اختيار ملف صورة.",
       "tooLargeTitle": "الصورة كبيرة جداً",
       "tooLargeDescription": "يجب ألا تتجاوز صورة الملف الشخصي 512 كيلوبايت.",
-      "invalidUrl": "أدخل رابط HTTPS صالحاً، أو ارفع صورة، أو مسار تخزين صالح."
+      "invalidUrl": "أدخل رابط HTTPS صالحاً، أو ارفع صورة، أو مسار تخزين صالح.",
+      "uploadSuccessTitle": "تم تحديث الصورة",
+      "uploadSuccessDescription": "صورة ملفك الشخصي ظاهرة الآن في كل أنحاء التطبيق.",
+      "uploadFailedTitle": "تعذر رفع الصورة",
+      "uploadFailedDescription": "جرّب صورة أصغر أو حاول مرة أخرى.",
+      "removeSuccessTitle": "تمت إزالة الصورة",
+      "removeSuccessDescription": "تم مسح صورة ملفك الشخصي."
     },
     "validation": {
       "fullNameRequired": "الاسم الكامل مطلوب."
@@ -7243,26 +7355,179 @@
       "automotive": "خدمة سيارات"
     },
     "queue": {
-      "title": "قائمة العمليات",
-      "subtitle": "عمليات يومية مبنية على البيانات الوصفية — اختر أي صف لفتح مساحة عمل العميل.",
-      "template": "قالب الأعمال"
+      "title": "العمليات",
+      "subtitle": "عمليات اليوم",
+      "subtitleEnterprise": "مساحة جدولة تشغيلية للمؤسسات",
+      "template": "قالب الأعمال",
+      "newOperation": "عملية جديدة",
+      "empty": {
+        "title": "لا توجد عمليات لهذا التاريخ",
+        "description": "ستظهر العمليات هنا عند وجود حجوزات ضمن نطاق التاريخ المحدد."
+      }
+    },
+    "statuses": {
+      "scheduled": "مجدول",
+      "waiting": "في الانتظار",
+      "checked_in": "تم الاستقبال",
+      "with_nurse": "قيد التنفيذ",
+      "with_doctor": "قيد التنفيذ",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتملة",
+      "archived": "ملغاة",
+      "cancelled": "ملغاة",
+      "no_show": "ملغاة",
+      "confirmed": "مجدول",
+      "pending": "في الانتظار"
+    },
+    "payments": {
+      "unpaid": "قيد الانتظار",
+      "pending": "قيد الانتظار",
+      "partially_paid": "جزئي",
+      "partial": "جزئي",
+      "paid": "مدفوع",
+      "refunded": "مسترد",
+      "cancelled": "ملغى",
+      "failed": "فشل الدفع"
+    },
+    "visitTypes": {
+      "New": "جديد",
+      "FollowUp": "متابعة",
+      "Consultation": "استشارة",
+      "Emergency": "طوارئ",
+      "VIP": "VIP",
+      "Unknown": "غير معروف"
+    },
+    "payment": {
+      "collectTitle": "تحصيل الدفع",
+      "collectDescription": "أكد تفاصيل الدفع لهذا الموعد.",
+      "service": "الخدمة",
+      "price": "السعر",
+      "discount": "الخصم",
+      "tax": "الضريبة",
+      "finalAmount": "المبلغ النهائي",
+      "method": "طريقة الدفع",
+      "confirm": "تأكيد الدفع",
+      "confirming": "جاري التأكيد…",
+      "methods": {
+        "cash": "نقداً",
+        "card": "بطاقة",
+        "transfer": "تحويل",
+        "wallet": "محفظة",
+        "other": "أخرى"
+      }
+    },
+    "currency": {
+      "SAR": "ر.س",
+      "EGP": "ج.م",
+      "USD": "$",
+      "AED": "د.إ",
+      "EUR": "€",
+      "GBP": "£"
     },
     "kpi": {
-      "total": "عناصر اليوم",
+      "total": "مواعيد اليوم",
+      "todayOperations": "مواعيد اليوم",
+      "todaysAppointments": "مواعيد اليوم",
+      "appointmentsToday": "مواعيد اليوم",
       "waiting": "في الانتظار",
+      "checkedIn": "تم الاستقبال",
+      "inProgress": "قيد التنفيذ",
+      "late": "متأخر",
       "paid": "مدفوع",
-      "completed": "مكتمل"
+      "completed": "مكتمل",
+      "cancelled": "ملغاة",
+      "revenue": "إيرادات اليوم",
+      "revenueToday": "إيرادات اليوم",
+      "outstanding": "مدفوعات معلقة",
+      "outstandingPayments": "مدفوعات معلقة",
+      "pendingPayments": "مدفوعات معلقة"
+    },
+    "appointment": {
+      "empty": "اختر موعداً",
+      "previous": "السابق",
+      "next": "التالي",
+      "lateMinutes": "متأخر {{minutes}} د",
+      "startingSoon": "يبدأ قريباً",
+      "durationMinutes": "{{minutes}} د",
+      "priority": {
+        "high": "مرتفع",
+        "medium": "متوسط",
+        "normal": "عادي",
+        "low": "منخفض"
+      },
+      "customerType": {
+        "vip": "VIP",
+        "standard": "عادي"
+      },
+      "sections": {
+        "patient": "المريض",
+        "appointment": "الموعد",
+        "payment": "الدفع",
+        "timeline": "الجدول الزمني",
+        "notes": "الملاحظات",
+        "quickActions": "إجراءات سريعة"
+      },
+      "fields": {
+        "name": "الاسم",
+        "phone": "الهاتف",
+        "email": "البريد",
+        "customerType": "نوع العميل",
+        "visitCount": "عدد الزيارات",
+        "lastVisit": "آخر زيارة",
+        "queueNumber": "رقم الدور",
+        "appointmentTime": "وقت الموعد",
+        "visitType": "نوع الزيارة",
+        "service": "الخدمة",
+        "duration": "المدة",
+        "status": "الحالة",
+        "waitingTime": "مدة الانتظار",
+        "amount": "المبلغ",
+        "paid": "المدفوع",
+        "remaining": "المتبقي",
+        "invoiceStatus": "حالة الفاتورة",
+        "paymentStatus": "حالة الدفع",
+        "internalNotes": "ملاحظات داخلية",
+        "customerNotes": "ملاحظات العميل"
+      },
+      "timeline": {
+        "created": "تم إنشاء الموعد",
+        "checkedIn": "تم الاستقبال",
+        "started": "بدأ",
+        "completed": "مكتمل"
+      },
+      "notes": {
+        "empty": "لا توجد ملاحظات داخلية",
+        "emptyCustomer": "لا توجد ملاحظات للعميل"
+      },
+      "invoice": {
+        "paid": "مدفوعة",
+        "partial": "مدفوعة جزئياً",
+        "open": "مفتوحة"
+      },
+      "actions": {
+        "checkIn": "تسجيل حضور",
+        "start": "بدء",
+        "complete": "إكمال",
+        "cancel": "إلغاء",
+        "collectPayment": "تحصيل الدفع",
+        "customer360": "ملف العميل 360",
+        "whatsapp": "واتساب",
+        "call": "اتصال",
+        "print": "طباعة"
+      }
     },
     "grid": {
-      "searchPlaceholder": "بحث عام…",
+      "searchPlaceholder": "بحث في العمليات…",
       "aiSearch": "بحث بالذكاء الاصطناعي",
       "savedViews": "العروض المحفوظة",
       "viewToday": "اليوم",
       "viewWaiting": "في الانتظار",
       "viewUnpaid": "غير مدفوع",
       "bulkActions": "إجراءات جماعية",
+      "refresh": "تحديث",
       "export": "تصدير",
       "import": "استيراد",
+      "columnChooser": "الأعمدة",
       "columnSettings": "إعدادات الأعمدة",
       "sort": "ترتيب",
       "filter": "تصفية",
@@ -7270,7 +7535,248 @@
       "hide": "إخفاء",
       "selectAll": "تحديد كل الصفوف",
       "rowCount": "{{count}} صف",
-      "selectedCount": "{{count}} محدد"
+      "selectedCount": "{{count}} محدد",
+      "rowActions": "إجراءات الصف",
+      "openWorkspace": "فتح مساحة العمل",
+      "density": "كثافة الصفوف",
+      "densityCompact": "مضغوط",
+      "densityComfortable": "مريح",
+      "dateFilter": "التاريخ",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ",
+      "datePresets": {
+        "today": "اليوم",
+        "tomorrow": "غداً",
+        "yesterday": "أمس",
+        "thisWeek": "هذا الأسبوع",
+        "thisMonth": "هذا الشهر",
+        "custom": "تاريخ مخصص"
+      },
+      "filters": {
+        "doctor": "الطبيب",
+        "service": "الخدمة",
+        "status": "الحالة",
+        "branch": "الفرع",
+        "allDoctors": "كل الأطباء",
+        "allServices": "كل الخدمات",
+        "allStatuses": "كل الحالات",
+        "allBranches": "كل الفروع"
+      },
+      "columns": {
+        "queueNumber": "#",
+        "reference": "رقم العملية",
+        "appointmentTime": "وقت الموعد",
+        "customer": "العميل",
+        "visitType": "نوع الزيارة",
+        "phone": "رقم الجوال",
+        "service": "الخدمة",
+        "assignee": "الطبيب",
+        "doctor": "الطبيب",
+        "status": "الحالة",
+        "paymentStatus": "حالة الدفع",
+        "waiting": "مدة الانتظار",
+        "waitingTime": "مدة الانتظار",
+        "duration": "المدة",
+        "amount": "المبلغ",
+        "branch": "الفرع",
+        "actions": "الإجراءات"
+      },
+      "tooltips": {
+        "search": "البحث في العمليات",
+        "filter": "تصفية القائمة",
+        "savedViews": "فتح العروض المحفوظة",
+        "refresh": "تحديث القائمة",
+        "export": "تصدير القائمة الحالية",
+        "columns": "اختيار الأعمدة الظاهرة",
+        "density": "تغيير كثافة الصفوف",
+        "selectRow": "تحديد الصف",
+        "openRow": "فتح الموعد"
+      }
+    },
+    "terminologyByTemplate": {
+      "clinic": {
+        "customer": "المريض"
+      },
+      "training_center": {
+        "customer": "الطالب"
+      },
+      "automotive": {
+        "customer": "العميل"
+      },
+      "hotel": {
+        "customer": "النزيل"
+      }
+    },
+    "workspace": {
+      "title": "مساحة عمل العملية",
+      "close": "إغلاق مساحة العمل",
+      "comingSoon": "قريبًا",
+      "header": {
+        "reference": "رقم العملية",
+        "title": "العنوان",
+        "status": "الحالة",
+        "priority": "الأولوية",
+        "assigned": "المسؤول",
+        "customer": "العميل",
+        "created": "تاريخ الإنشاء",
+        "updated": "آخر تحديث"
+      },
+      "tabs": {
+        "overview": "نظرة عامة",
+        "timeline": "الخط الزمني",
+        "customer": "العميل",
+        "payments": "المدفوعات",
+        "notes": "الملاحظات",
+        "files": "الملفات",
+        "ai": "الذكاء الاصطناعي",
+        "history": "السجل",
+        "related": "ذات الصلة"
+      },
+      "workflow": {
+        "waiting": "في الانتظار",
+        "checkedIn": "تم الاستقبال",
+        "withNurse": "مع الممرض",
+        "withDoctor": "مع الطبيب",
+        "completed": "مكتملة",
+        "archived": "مؤرشفة",
+        "planning": "التخطيط",
+        "assigned": "مُعيَّن",
+        "inProgress": "مع الطبيب"
+      },
+      "widgets": {
+        "operationSummary": "ملخص العملية",
+        "currentWorkflow": "سير العمل الحالي",
+        "importantDates": "تواريخ مهمة",
+        "ownerPriority": "المالك والأولوية",
+        "tags": "الوسوم",
+        "warnings": "تحذيرات",
+        "appointment": "الموعد",
+        "aiSummary": "ملخص الذكاء الاصطناعي",
+        "timeline": "الخط الزمني",
+        "customer": "ملف العميل 360",
+        "payments": "المدفوعات",
+        "paymentSummary": "ملخص الدفع",
+        "outstanding": "المستحق",
+        "paid": "المدفوع",
+        "invoices": "الفواتير",
+        "receipts": "الإيصالات",
+        "refunds": "المستردات",
+        "notes": "الملاحظات",
+        "files": "الملفات",
+        "ai": "المساعد الذكي",
+        "suggestedActions": "إجراءات مقترحة",
+        "related": "سجلات ذات صلة",
+        "service": "الخدمة",
+        "scheduled": "الموعد"
+      },
+      "related": {
+        "appointment": "موعد",
+        "customer": "عميل",
+        "lead": "عميل محتمل",
+        "invoice": "فاتورة",
+        "conversation": "محادثة",
+        "project": "مشروع",
+        "ticket": "تذكرة"
+      },
+      "warnings": {
+        "longWait": "انتظار {{minutes}} دقيقة",
+        "unpaid": "دفعة مستحقة",
+        "highPriority": "الأولوية: {{priority}}"
+      },
+      "empty": {
+        "selection": "اختر عملية لفتح مساحة العمل.",
+        "widgets": "لا توجد ودجات لهذا التبويب.",
+        "tags": "لا توجد وسوم"
+      }
+    },
+    "workflows": {
+      "clinic": {
+        "label": "رحلة مريض العيادة"
+      },
+      "construction": {
+        "label": "دورة عمل البناء (مثال)"
+      }
+    },
+    "timeline": {
+      "title": "عرض الخط الزمني",
+      "description": "إعدادات الخط الزمني من إعدادات مساحة العمل المنشورة.",
+      "groupBy": "التجميع حسب: {{groupBy}}",
+      "aiEventsOn": "أحداث الذكاء ظاهرة",
+      "aiEventsOff": "أحداث الذكاء مخفية"
+    },
+    "actions": {
+      "empty": "لا توجد إجراءات متاحة",
+      "noPermission": "لا توجد صلاحية",
+      "comingSoon": "قريبًا",
+      "comingSoonShort": "قريبًا",
+      "unavailable": "غير متاح",
+      "groups": {
+        "general": "عام",
+        "workflow": "سير العمل",
+        "billing": "الفوترة",
+        "communication": "التواصل",
+        "assignment": "التعيين",
+        "ai": "الذكاء الاصطناعي",
+        "history": "السجل",
+        "danger": "منطقة الخطر"
+      },
+      "items": {
+        "openCustomer360": "فتح ملف العميل 360",
+        "viewCustomer": "عرض العميل",
+        "checkIn": "تسجيل الحضور",
+        "sendToNurse": "إرسال إلى الممرض",
+        "completeTriage": "إكمال الفرز",
+        "sendToDoctor": "إرسال إلى الطبيب",
+        "completeVisit": "إكمال الزيارة",
+        "archive": "أرشفة",
+        "markNoShow": "لم يحضر",
+        "cancelAppointment": "إلغاء",
+        "collectPayment": "تحصيل دفعة",
+        "generateInvoice": "فاتورة",
+        "refund": "استرداد",
+        "viewInvoice": "عرض الفاتورة",
+        "printReceipt": "طباعة الإيصال",
+        "whatsapp": "واتساب",
+        "sms": "رسالة نصية",
+        "email": "بريد إلكتروني",
+        "call": "اتصال",
+        "assignUser": "تعيين مستخدم",
+        "transfer": "تحويل",
+        "changePriority": "تغيير الأولوية",
+        "summarize": "تلخيص",
+        "suggestedNextStep": "الخطوة التالية المقترحة",
+        "timeline": "الخط الزمني",
+        "attachments": "المرفقات",
+        "auditLog": "سجل التدقيق"
+      },
+      "confirm": {
+        "confirm": "تأكيد",
+        "cancel": "إلغاء",
+        "checkInTitle": "تسجيل حضور هذه العملية؟",
+        "checkInDescription": "سيتم تعليم العميل كحاضر.",
+        "sendToNurseTitle": "إرسال المريض إلى الممرضة؟",
+        "sendToNurseDescription": "ستتغير الحالة إلى مع الممرضة.",
+        "completeTriageTitle": "إكمال الفرز؟",
+        "completeTriageDescription": "سيتم تسجيل إكمال الفرز في الخط الزمني.",
+        "sendToDoctorTitle": "إرسال المريض إلى الطبيب؟",
+        "sendToDoctorDescription": "ستتغير الحالة إلى مع الطبيب.",
+        "completeTitle": "إكمال هذه الزيارة؟",
+        "completeDescription": "سيتم تعليم العملية كمكتملة.",
+        "archiveTitle": "أرشفة هذه العملية؟",
+        "archiveDescription": "ستنقل الزيارة المكتملة إلى المؤرشف.",
+        "noShowTitle": "تسجيل عدم حضور؟",
+        "noShowDescription": "سيتم أرشفة العملية كعدم حضور.",
+        "cancelTitle": "إلغاء هذا الموعد؟",
+        "cancelDescription": "لا يمكن التراجع عن هذا من قائمة الانتظار.",
+        "collectTitle": "تحصيل الدفعة؟",
+        "collectDescription": "تسجيل دفعة نقدية للمبلغ المستحق.",
+        "invoiceTitle": "إنشاء فاتورة؟",
+        "invoiceDescription": "إنشاء فاتورة لهذه الزيارة المكتملة."
+      },
+      "toast": {
+        "success": "تم تنفيذ {{action}}",
+        "error": "فشل تنفيذ الإجراء"
+      }
     },
     "panel": {
       "title": "مساحة عمل العميل",
@@ -7328,13 +7834,6 @@
       "description": "كانبان مجمّع حسب {{groupBy}} من الإعدادات المنشورة.",
       "wipLimit": "حد WIP: {{limit}}"
     },
-    "timeline": {
-      "title": "عرض الخط الزمني",
-      "description": "إعدادات الخط الزمني من إعدادات مساحة العمل المنشورة.",
-      "groupBy": "التجميع حسب: {{groupBy}}",
-      "aiEventsOn": "أحداث الذكاء ظاهرة",
-      "aiEventsOff": "أحداث الذكاء مخفية"
-    },
     "configuration": {
       "title": "إعداد مساحة العمليات",
       "subtitle": "خصّص ما يراه فريقك في قائمة العمليات اليومية — التسميات والأعمدة والخدمات والقواعد — دون مهارات تقنية.",
@@ -7367,6 +7866,48 @@
         "edit": "عدّل الإعدادات في أي قسم",
         "save": "احفظ مسودة (تبقى التغييرات خاصة)",
         "publish": "انشر للفريق (تصبح فعّالة)"
+      },
+      "tasks": {
+        "homeSubtitle": "اختر ما تريد إدارته. كل مهمة تفتح قائمة بسيطة لإضافة العناصر أو تعديلها أو حذفها.",
+        "primaryTitle": "ماذا تريد أن تدير؟",
+        "primaryHint": "ابدأ هنا — هذه الإعدادات التي يغيّرها الفريق في أغلب الأحيان.",
+        "moreTitle": "إعدادات إضافية",
+        "moreHint": "إعدادات اختيارية للتسميات والتنبيهات والأتمتة والسجل.",
+        "backToHome": "العودة إلى جميع المهام",
+        "manageColumns": "إدارة أعمدة القائمة",
+        "manageColumnsDesc": "أضف وعدّل الأعمدة التي يراها فريقك في قائمة العمليات اليومية.",
+        "manageStatuses": "إدارة حالات الزيارة",
+        "manageStatusesDesc": "عرّف مراحل مثل الانتظار وقيد الخدمة والمكتمل.",
+        "manageServices": "إدارة الخدمات",
+        "manageServicesDesc": "أدرج الخدمات المقدّمة مع السعر والمدة.",
+        "manageResources": "إدارة الغرف والموظفين",
+        "manageResourcesDesc": "عرّف الغرف أو الكراسي أو مواعيد الموظفين للتعيين.",
+        "managePermissions": "إدارة الصلاحيات",
+        "managePermissionsDesc": "تحكّم في الأدوار التي ترى الأعمدة أو تغيّر الحالات أو تنفّذ الإجراءات.",
+        "addColumn": "إضافة عمود",
+        "addStatus": "إضافة حالة",
+        "addService": "إضافة خدمة",
+        "addResource": "إضافة مورد",
+        "addPermission": "إضافة قاعدة صلاحية",
+        "addPaymentStatus": "إضافة حالة دفع",
+        "addTransition": "إضافة تغيير مسموح",
+        "itemCount": "{{count}} عنصر",
+        "open": "فتح",
+        "emptyColumns": "لا توجد أعمدة بعد. انقر إضافة عمود لإنشاء أول عمود في القائمة.",
+        "emptyStatuses": "لا توجد حالات بعد. انقر إضافة حالة لتعريف أول مرحلة زيارة.",
+        "emptyTransitions": "لا توجد تغييرات حالة مسموحة بعد.",
+        "emptyServices": "لا توجد خدمات بعد. انقر إضافة خدمة لإدراج أول عرض.",
+        "emptyResources": "لا توجد موارد بعد. انقر إضافة مورد لتعريف غرفة أو موعد موظف.",
+        "emptyPermissions": "لا توجد قواعد صلاحيات بعد. انقر إضافة قاعدة صلاحية لتقييد الوصول حسب الدور.",
+        "emptyPaymentStatuses": "لا توجد حالات دفع بعد."
+      },
+      "table": {
+        "order": "الترتيب",
+        "actions": "إجراءات",
+        "delete": "حذف",
+        "type": "النوع",
+        "item": "العنصر",
+        "allowedRoles": "الأدوار المسموحة"
       },
       "tabs": {
         "general": "الأسماء والتسميات",
@@ -7609,6 +8150,7 @@
       "receptionist": "موظف استقبال",
       "cashier": "أمين صندوق",
       "nurse": "ممرض/ة",
+      "doctor": "طبيب",
       "manager": "مدير"
     },
     "header": {
@@ -7786,11 +8328,14 @@
     "journey.enrolled": "مسجل",
     "journey.session": "جلسة",
     "workflow.booked": "محجوز",
+    "workflow.waiting": "انتظار",
     "workflow.confirmed": "مؤكد",
     "workflow.checkedIn": "تم تسجيل الحضور",
+    "workflow.withNurse": "مع الممرض/ة",
     "workflow.doctor": "طبيب",
     "workflow.cashier": "أمين صندوق",
     "workflow.completed": "مكتمل",
+    "workflow.archived": "مؤرشف",
     "rec.collectPayment": "تحصيل المبلغ المتبقي",
     "rec.bookFollowup": "حجز متابعة",
     "rec.upgradeService": "ترقية الخدمة",
@@ -8163,31 +8708,319 @@
       "timeline": "الخط الزمني",
       "dashboard": "لوحة التحكم"
     },
+    "workspace": {
+      "title": "العملاء المحتملون",
+      "subtitle": "إدارة وتحويل عملائك المحتملين.",
+      "import": "استيراد",
+      "export": "تصدير",
+      "exportDone": "تم تصدير {{count}} عميل محتمل",
+      "importHint": "استخدم عميل محتمل جديد للإضافة، أو الاستيراد عبر تكامل العملاء المحتملين الحالي.",
+      "newLead": "عميل محتمل جديد",
+      "filterAll": "الكل",
+      "emptyTitle": "لا يوجد عملاء محتملون بعد",
+      "emptySubtitle": "أنشئ أول عميل محتمل أو استورد العملاء الحاليين.",
+      "openPanel": "فتح العميل المحتمل",
+      "panelTitle": "تفاصيل العميل المحتمل",
+      "createTitle": "إنشاء عميل محتمل",
+      "createSubtitle": "سجّل فرصة جديدة بالتفاصيل التي يحتاجها فريقك للمتابعة.",
+      "createSubmit": "إنشاء عميل محتمل",
+      "createSuccess": "تم إنشاء العميل المحتمل",
+      "createFailed": "تعذّر إنشاء العميل المحتمل",
+      "editTitle": "تعديل العميل المحتمل",
+      "editSubtitle": "حدّث تفاصيل العميل المحتمل. تُحدَّث القائمة ولوحة كانبان وLead360 تلقائياً.",
+      "editSubmit": "حفظ التغييرات",
+      "editSuccess": "تم تحديث العميل المحتمل",
+      "editFailed": "تعذّر تحديث العميل المحتمل",
+      "sections": {
+        "basic": "المعلومات الأساسية",
+        "sales": "معلومات المبيعات",
+        "classification": "التصنيف",
+        "notes": "ملاحظات"
+      },
+      "fields": {
+        "leadName": "اسم العميل المحتمل",
+        "title": "عنوان العميل المحتمل",
+        "contactName": "اسم جهة الاتصال",
+        "contactPerson": "جهة الاتصال",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "company": "الشركة",
+        "expectedValue": "القيمة المتوقعة",
+        "expectedCloseDate": "تاريخ الإغلاق المتوقع",
+        "priority": "الأولوية",
+        "temperature": "درجة الاهتمام",
+        "tags": "الوسوم",
+        "notes": "ملاحظات",
+        "website": "الموقع",
+        "country": "الدولة",
+        "probability": "الاحتمال",
+        "updated": "آخر تحديث",
+        "created": "تاريخ الإنشاء",
+        "lastActivity": "آخر نشاط"
+      },
+      "placeholders": {
+        "leadName": "مثال: فرصة توسع أكمي",
+        "select": "اختر…",
+        "tags": "اكتب وسماً ثم اضغط Enter",
+        "notes": "معلومات إضافية عن هذا العميل المحتمل..."
+      },
+      "priority": {
+        "low": "منخفضة",
+        "normal": "عادية",
+        "medium": "متوسطة",
+        "high": "مرتفعة",
+        "urgent": "عاجلة"
+      },
+      "tags": {
+        "add": "إضافة",
+        "remove": "إزالة {{tag}}"
+      },
+      "validation": {
+        "required": "هذا الحقل مطلوب",
+        "email": "أدخل بريداً إلكترونياً صالحاً",
+        "phone": "أدخل رقم هاتف صالحاً",
+        "number": "أدخل رقماً صالحاً",
+        "date": "أدخل تاريخاً صالحاً"
+      },
+      "panel": {
+        "contact": "التواصل",
+        "leadInfo": "معلومات العميل المحتمل",
+        "notes": "الملاحظات",
+        "notesEmpty": "لا توجد ملاحظات بعد.",
+        "quickActions": "إجراءات سريعة"
+      },
+      "actions": {
+        "call": "اتصال",
+        "whatsapp": "واتساب",
+        "email": "بريد",
+        "meeting": "اجتماع",
+        "task": "مهمة"
+      }
+    },
     "table": {
       "title": "العملاء المحتملون",
-      "subtitle": "إدارة خط المبيعات ببيانات العملاء المحتملين المباشرة.",
-      "search": "بحث في العملاء المحتملين...",
+      "subtitle": "إدارة وتحويل عملائك المحتملين.",
+      "search": "ابحث بالاسم أو البريد أو الجوال...",
       "empty": "لم يُعثر على عملاء محتملين.",
-      "count": "{{shown}} / {{total}} عميل محتمل"
+      "count": "{{shown}} / {{total}} عميل محتمل",
+      "openOwnerWorkspace": "فتح Employee360 لـ {{name}}",
+      "openCompany360": "فتح Company360 لـ {{name}}",
+      "assignOwnerHint": "اختر مسؤولاً لـ {{name}}.",
+      "createActivityHint": "سجّل ملاحظة نشاط لـ {{name}}.",
+      "activityCreated": "تم حفظ النشاط",
+      "deleteConfirmTitle": "حذف هذا العميل المحتمل؟",
+      "deleteConfirmBody": "سيُزال {{name}} من خط الأنابيب النشط. سيتم أرشفة العميل المحتمل.",
+      "columnSearch": {
+        "customerName": "تصفية الاسم",
+        "email": "تصفية البريد",
+        "mobile": "تصفية الجوال"
+      },
+      "errors": {
+        "missingPhone": "لا يوجد رقم هاتف لهذا العميل المحتمل.",
+        "missingEmail": "لا يوجد بريد إلكتروني لهذا العميل المحتمل.",
+        "assignFailed": "تعذّر تعيين المسؤول",
+        "activityFailed": "تعذّر حفظ النشاط",
+        "archiveFailed": "تعذّرت أرشفة العميل المحتمل",
+        "deleteFailed": "تعذّر حذف العميل المحتمل",
+        "actionUnsupported": "هذا الإجراء غير متاح",
+        "whatsappPlatformFailed": "تم فتح واتساب الخارجي — مركز المحادثات غير متاح"
+      },
+      "rowActions": {
+        "menuAriaLabel": "إجراءات العميل المحتمل",
+        "openLead360": "فتح Lead360",
+        "openLead360Named": "فتح Lead360 لـ {{name}}",
+        "edit": "تعديل",
+        "createActivity": "إنشاء نشاط",
+        "createOpportunity": "إنشاء فرصة",
+        "call": "اتصال",
+        "whatsapp": "واتساب",
+        "email": "بريد",
+        "assign": "تعيين مسؤول",
+        "convert": "تحويل",
+        "archive": "أرشفة",
+        "delete": "حذف",
+        "archived": "تم أرشفة العميل المحتمل",
+        "deleted": "تم حذف العميل المحتمل",
+        "groups": {
+          "navigation": "التنقل",
+          "editing": "التحرير",
+          "communication": "التواصل",
+          "assignment": "التعيين",
+          "conversion": "التحويل",
+          "dangerous": "إجراءات خطرة"
+        }
+      }
     },
     "columns": {
       "lead": "العميل المحتمل",
+      "avatar": "الصورة",
+      "leadName": "اسم العميل المحتمل",
+      "customerName": "اسم العميل",
+      "email": "البريد الإلكتروني",
+      "mobile": "الجوال",
+      "company": "الشركة",
       "stage": "المرحلة",
       "score": "الدرجة",
+      "priority": "الأولوية",
       "value": "القيمة",
-      "owner": "المسؤول"
+      "expectedValue": "القيمة المتوقعة",
+      "owner": "المسؤول",
+      "source": "مصدر العميل المحتمل",
+      "lastActivity": "آخر نشاط",
+      "created": "تاريخ الإنشاء",
+      "actions": "الإجراءات"
     },
     "scoreBand": {
       "hot": "ساخن",
       "warm": "دافئ",
-      "cold": "بارد"
+      "cold": "بارد",
+      "urgent": "عاجل"
     },
     "scorePoints": "{{score}} نقطة",
     "scoreLabel": "{{score}} درجة",
+    "stages": {
+      "new": "جديد",
+      "contacted": "تم التواصل",
+      "qualified": "مؤهل",
+      "demo_scheduled": "عرض توضيحي",
+      "proposal_sent": "تم إرسال عرض السعر",
+      "proposal": "تم إرسال عرض السعر",
+      "negotiation": "تفاوض",
+      "won": "تم الفوز",
+      "closed": "تم الإغلاق",
+      "converted": "تم التحويل",
+      "lost": "مفقود",
+      "nurturing": "قيد الرعاية",
+      "archived": "مؤرشف",
+      "unknown": "مرحلة"
+    },
+    "pipelines": {
+      "default": "خط الأنابيب الافتراضي"
+    },
+    "sources": {
+      "website": "الموقع الإلكتروني",
+      "referral": "إحالة",
+      "facebook": "فيسبوك",
+      "instagram": "إنستغرام",
+      "whatsapp": "واتساب",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "manual": "يدوي",
+      "other": "أخرى"
+    },
     "kanban": {
-      "title": "كانبان",
-      "subtitle": "اسحب العملاء المحتملين عبر مراحل خط الأنابيب مع تحديثات فورية.",
-      "pipeline": "خط الأنابيب"
+      "title": "العملاء المحتملون",
+      "subtitle": "مساحة عمل مبيعات مؤسسية.",
+      "pipeline": "خط الأنابيب",
+      "searchPlaceholder": "ابحث عن عميل...",
+      "filters": "عوامل التصفية",
+      "customizeColumns": "تخصيص الأعمدة",
+      "emptyColumn": "لا توجد عملاء",
+      "addInColumn": "إضافة عميل",
+      "dropHere": "أفلت هنا",
+      "moveSuccess": "تم تحديث مرحلة العميل المحتمل",
+      "moveFailed": "تعذّر تحديث مرحلة العميل المحتمل",
+      "moveDenied": "ليس لديك صلاحية لنقل العملاء المحتملين",
+      "more": "المزيد",
+      "openDrawer": "فتح التفاصيل",
+      "metricsGroup": "مؤشرات العملاء المحتملين",
+      "applyFilters": "تطبيق التصفية",
+      "resetFilters": "إعادة تعيين",
+      "customizeHiddenTerminal": "تم إخفاء المراحل النهائية.",
+      "customizeShownAll": "كل المراحل ظاهرة.",
+      "columnCount": "{{count}} فرصة",
+      "kpi": {
+        "totalLeads": "عدد العملاء المحتملين",
+        "totalValue": "إجمالي قيمة الفرص",
+        "conversionRate": "معدل التحويل",
+        "openOpportunities": "الفرص المفتوحة"
+      },
+      "card": {
+        "owner": "المسؤول · {{name}}",
+        "ownerUnassigned": "المسؤول · غير معيّن",
+        "nextActivity": "التالي · {{when}}",
+        "lastActivity": "آخر نشاط · {{when}}",
+        "lastActivityNone": "آخر نشاط · لا يوجد",
+        "source": "المصدر · {{source}}"
+      },
+      "relative": {
+        "today": "اليوم",
+        "tomorrow": "غداً",
+        "yesterday": "أمس",
+        "inDays": "خلال {{count}} أيام",
+        "daysAgo": "منذ {{count}} أيام"
+      },
+      "counters": {
+        "notes": "ملاحظات",
+        "tags": "وسوم",
+        "tasks": "مهام",
+        "files": "ملفات",
+        "meetings": "اجتماعات",
+        "messages": "رسائل"
+      },
+      "filter": {
+        "city": "المدينة",
+        "valueMin": "الحد الأدنى للقيمة",
+        "valueMax": "الحد الأعلى للقيمة",
+        "createdFrom": "تاريخ الإنشاء من",
+        "createdTo": "تاريخ الإنشاء إلى",
+        "lastActivityFrom": "آخر نشاط من",
+        "lastActivityTo": "آخر نشاط إلى"
+      },
+      "actions": {
+        "createActivity": "إنشاء نشاط",
+        "createOpportunity": "إنشاء فرصة",
+        "createQuote": "إنشاء عرض سعر",
+        "activityHint": "افتح مساحة العميل المحتمل لتسجيل نشاط كامل.",
+        "opportunityHint": "تُفتح مساحة الفرصة بعد التحويل.",
+        "opportunityCreated": "تم إنشاء فرصة من العميل المحتمل",
+        "opportunityFailed": "تعذّر إنشاء الفرصة",
+        "quoteHint": "أنشئ عرض السعر من الفرصة المرتبطة.",
+        "unsupportedQuote": "تُنشأ عروض الأسعار من الفرصة وليس مباشرة من اللوحة.",
+        "unsupportedOpportunity360": "تُفتح مساحة الفرصة بعد إنشاء فرصة مرتبطة.",
+        "converted": "تم تحويل العميل المحتمل",
+        "convertFailed": "تعذّر تحويل العميل المحتمل"
+      },
+      "context": {
+        "openCustomer": "فتح التفاصيل",
+        "editLead": "تعديل العميل المحتمل",
+        "assignOwner": "تعييني مسؤولاً",
+        "assigned": "تم تعيين المسؤول",
+        "delete": "أرشفة",
+        "deleted": "تم أرشفة العميل المحتمل"
+      },
+      "drawer": {
+        "openLead360": "فتح مساحة العميل المحتمل",
+        "openOpportunity360": "فتح مساحة الفرصة",
+        "createQuote": "إنشاء عرض سعر",
+        "sendWhatsApp": "إرسال واتساب",
+        "createActivity": "إنشاء نشاط",
+        "emptyActivities": "لا توجد أنشطة بعد.",
+        "emptyFiles": "لا توجد ملفات بعد.",
+        "emptyQuotes": "لا توجد عروض أسعار بعد.",
+        "emptyTasks": "لا توجد مهام بعد.",
+        "timelineHint": "آخر تحديث · {{updated}}",
+        "tabs": {
+          "summary": "ملخص العميل",
+          "activities": "الأنشطة",
+          "timeline": "الخط الزمني",
+          "files": "الملفات",
+          "ai": "الذكاء الاصطناعي",
+          "quotes": "عروض الأسعار",
+          "tasks": "المهام"
+        }
+      },
+      "ai": {
+        "disabled": "موظف الذكاء الاصطناعي غير مفعّل في مساحة العمل هذه.",
+        "winProbability": "احتمال الفوز · {{percent}}%",
+        "winProbabilityLabel": "احتمال الفوز",
+        "summaryLabel": "ملخص الذكاء الاصطناعي",
+        "summaryFallback": "درجة العميل {{score}} — أعطِ الأولوية للمتابعة حسب إشارات التفاعل.",
+        "nextBestAction": "جدولة مكالمة اكتشاف",
+        "nextBestActionLabel": "أفضل إجراء تالٍ",
+        "suggestedFollowUp": "متابعة خلال 24 ساعة",
+        "suggestedFollowUpLabel": "متابعة مقترحة"
+      }
     },
     "pipeline": {
       "title": "خط الأنابيب",
@@ -8221,8 +9054,15 @@
     },
     "lifecycle": {
       "new": "جديد",
+      "contacted": "تم التواصل",
       "qualified": "مؤهل",
+      "demo_scheduled": "عرض توضيحي",
+      "proposal": "تم إرسال عرض السعر",
+      "proposal_sent": "تم إرسال عرض السعر",
+      "negotiation": "تفاوض",
       "converted": "تم التحويل",
+      "won": "تم الفوز",
+      "closed": "تم الإغلاق",
       "lost": "مفقود",
       "archived": "مؤرشف",
       "nurturing": "قيد الرعاية"
@@ -8230,7 +9070,12 @@
   },
   "leads360": {
     "convert": "تحويل إلى عميل",
+    "createOpportunity": "إنشاء فرصة",
     "scoreLabel": "{{score}} درجة",
+    "aiScore": "درجة الذكاء الاصطناعي: {{score}} / 100",
+    "smartRail": "رؤى ذكية",
+    "summary": "الملخص",
+    "loading": "جارٍ تحميل مساحة العميل المحتمل",
     "sections": {
       "overview": "نظرة عامة",
       "company": "الشركة",
@@ -8246,7 +9091,7 @@
       "communication": "التواصل",
       "relatedEntities": "الكيانات المرتبطة",
       "aiAssistant": "مساعد الذكاء الاصطناعي",
-      "audit": "التدقيق"
+      "audit": "سجل التدقيق"
     },
     "empty": {
       "company": "لا توجد شركة",
@@ -8254,13 +9099,1119 @@
       "phone": "لا يوجد هاتف",
       "contacts": "لا توجد جهات اتصال",
       "tags": "لا توجد وسوم",
+      "emails": "لا توجد رسائل بريد",
+      "whatsapp": "لا توجد رسائل واتساب",
       "files": "لا توجد ملفات",
+      "filesTitle": "لا توجد ملفات مرفقة",
       "tasks": "لا توجد مهام",
+      "tasksTitle": "لا توجد مهام بعد",
+      "activity": "ستظهر هنا المكالمات والبريد وواتساب عند تواصل الفريق مع هذا العميل المحتمل.",
+      "activityTitle": "لا توجد أنشطة بعد",
       "relatedEntities": "لم يتم إعداد كيانات مرتبطة بعد"
     },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "conversation": "المحادثات",
+      "activity": "النشاط",
+      "tasks": "المهام",
+      "timeline": "الخط الزمني",
+      "ai": "الذكاء الاصطناعي",
+      "files": "الملفات",
+      "audit": "سجل التدقيق",
+      "emails": "البريد",
+      "whatsapp": "واتساب"
+    },
+    "scoreBand": {
+      "excellent": "ممتاز",
+      "strong": "قوي",
+      "moderate": "متوسط",
+      "developing": "قيد التطوير"
+    },
+    "provenance": {
+      "value": "القيمة",
+      "confidence": "الثقة",
+      "source": "المصدر",
+      "updated": "آخر تحديث"
+    },
+    "conversation": {
+      "customer": "العميل",
+      "team": "الفريق",
+      "aiAnalysis": "تحليل الذكاء الاصطناعي"
+    },
     "ai": {
-      "nextAction": "الإجراء التالي:",
-      "followUp": "المتابعة:"
+      "score": "درجة العميل المحتمل",
+      "aiScore": "درجة الذكاء الاصطناعي",
+      "temperature": "درجة الاهتمام",
+      "confidence": "مستوى الثقة",
+      "country": "الدولة",
+      "market": "السوق",
+      "company": "الشركة",
+      "intent": "النية",
+      "industry": "القطاع",
+      "overallConfidence": "الإجمالي",
+      "nextAction": "الإجراء التالي",
+      "followUp": "المتابعة",
+      "summary": "ملخص الذكاء الاصطناعي",
+      "recommendation": "الإجراء التالي الموصى به",
+      "interestedModules": "الوحدات المهتم بها",
+      "countryIntelligence": "ذكاء الدولة",
+      "emptyTitle": "مساحة الذكاء الاصطناعي جاهزة",
+      "emptyBody": "تظهر الرؤى بعد تجهيز السياق وتشغيل التحليل.",
+      "viewFullAudit": "عرض سجل التدقيق الكامل",
+      "fullAudit": "سجل تدقيق الذكاء الاصطناعي",
+      "sections": {
+        "buyingSignals": "إشارات الشراء",
+        "riskSignals": "إشارات المخاطر",
+        "memory": "ذاكرة العميل",
+        "suggestions": "اقتراحات الذكاء الاصطناعي",
+        "audit": "تدقيق الذكاء الاصطناعي"
+      }
+    }
+  },
+  "entityWorkspace": {
+    "layouts": {
+      "crm": "مساحة عمل CRM",
+      "operations": "مساحة عمل العمليات",
+      "support": "مساحة عمل الدعم",
+      "hr": "مساحة عمل الموارد البشرية",
+      "sales": "مساحة عمل المبيعات"
+    },
+    "panels": {
+      "overview": "نظرة عامة",
+      "currentOperation": "العملية الحالية",
+      "operationStatus": "حالة العملية",
+      "assignedResource": "المورد المعيّن",
+      "notes": "الملاحظات",
+      "attachments": "المرفقات",
+      "timeline": "الجدول الزمني",
+      "activities": "الأنشطة",
+      "communication": "التواصل",
+      "bookings": "الحجوزات",
+      "invoices": "الفواتير",
+      "payments": "المدفوعات",
+      "tasks": "المهام",
+      "forms": "النماذج",
+      "relatedRecords": "السجلات المرتبطة",
+      "tags": "الوسوم",
+      "customFields": "حقول مخصصة",
+      "leadScore": "درجة العميل المحتمل",
+      "deals": "الصفقات",
+      "campaigns": "الحملات",
+      "customerValue": "قيمة العميل",
+      "aiSummary": "ملخص الذكاء الاصطناعي",
+      "history": "السجل"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "notes": "الملاحظات والنشاط",
+      "files": "الملفات",
+      "attachments": "كل المرفقات",
+      "timeline": "الجدول الزمني",
+      "communication": "التواصل",
+      "related": "مرتبط",
+      "tasks": "المهام",
+      "history": "السجل"
+    },
+    "notes": {
+      "activityTitle": "الملاحظات والنشاط",
+      "sharedHint": "الملاحظات والمرفقات مشتركة بين CRM والعمليات",
+      "placeholder": "اكتب رسالة… استخدم @ للإشارة إلى شخص",
+      "mentionHint": "",
+      "mentionEmpty": "لا يوجد أشخاص مطابقون",
+      "titlePlaceholder": "العنوان (اختياري)",
+      "add": "إضافة ملاحظة",
+      "save": "حفظ",
+      "saved": "تم حفظ الملاحظة",
+      "saveError": "تعذر حفظ الملاحظة",
+      "emptyTitle": "لا توجد ملاحظات بعد",
+      "emptyDescription": "أضف ملاحظة مع مرفقات اختيارية. تظهر فوراً في CRM والعمليات.",
+      "unknownAuthor": "غير معروف",
+      "upload": "رفع",
+      "uploading": "جارٍ الرفع…",
+      "uploadDone": "جاهز",
+      "uploadFailed": "فشل الرفع",
+      "stagedReady": "جاهز — يُرفع عند الحفظ",
+      "dropTitle": "أسقط الملفات هنا",
+      "dropHint": "PDF، DOCX، XLSX، JPG، PNG، WEBP — يدعم التحديد المتعدد",
+      "visibilityLabel": "الظهور",
+      "pin": "تثبيت",
+      "unpin": "إلغاء التثبيت",
+      "pinnedBadge": "مثبّت",
+      "filters": {
+        "all": "الكل",
+        "mine": "ملاحظاتي",
+        "pinned": "مثبّتة",
+        "attachments": "بمرفقات",
+        "today": "اليوم",
+        "week": "هذا الأسبوع"
+      },
+      "visibility": {
+        "operations": "العمليات",
+        "crm": "CRM",
+        "both": "كلاهما"
+      },
+      "attachError": {
+        "too_many": "عدد المرفقات كبير جداً",
+        "unsupported_type": "نوع ملف غير مدعوم. استخدم PDF أو DOCX أو XLSX أو JPG أو PNG أو WEBP.",
+        "too_large": "الملف كبير جداً (الحد 25 ميجابايت)",
+        "executable": "الملفات التنفيذية غير مسموحة",
+        "empty": "أحد الملفات المحددة فارغ"
+      }
+    },
+    "attachments": {
+      "browserTitle": "كل المرفقات",
+      "browserHint": "تصفح وتنزيل الملفات المرتبطة بالملاحظات. الرفع من الملاحظات والنشاط فقط.",
+      "sharedHint": "مشتركة بين CRM والعمليات",
+      "emptyTitle": "لا توجد مرفقات",
+      "emptyDescription": "الملفات المرفوعة لهذا الكيان تظهر في CRM والعمليات.",
+      "emptyBrowserDescription": "تظهر المرفقات هنا بعد إضافتها إلى ملاحظة.",
+      "preview": "معاينة",
+      "download": "تنزيل",
+      "downloadFailed": "فشل التنزيل",
+      "open": "فتح",
+      "filters": {
+        "all": "الكل",
+        "pdf": "PDF",
+        "image": "صور",
+        "office": "Office"
+      }
+    },
+    "timeline": {
+      "sharedHint": "سجل نشاط مشترك لهذا الكيان",
+      "emptyTitle": "لا أحداث بعد",
+      "emptyDescription": "ستظهر الملاحظات والملفات والأنشطة هنا.",
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "source": "المصدر: {{module}}",
+      "noteCreated": "تم إنشاء ملاحظة",
+      "createdBy": "بواسطة {{name}}",
+      "attachmentCount": "{{count}} مرفقات",
+      "noteOnly": "{{name}} أضاف ملاحظة",
+      "noteWithAttachments": "{{name}} · {{count}} مرفقات",
+      "filesOnly": "{{name}} رفع {{count}} ملفات"
+    },
+    "header": {
+      "branch": "الفرع",
+      "lastActivity": "آخر نشاط",
+      "owner": "المالك"
+    },
+    "sidebar": {
+      "status": "الحالة الحالية",
+      "upcoming": "العمل القادم",
+      "pinned": "معلومات مثبتة",
+      "recentActivity": "النشاط الأخير"
+    },
+    "overview": {
+      "visitType": "نوع الزيارة",
+      "amount": "المبلغ",
+      "paymentStatus": "حالة الدفع",
+      "createdDate": "تاريخ الإنشاء",
+      "lastUpdated": "آخر تحديث"
+    },
+    "error": {
+      "title": "تعذر تحميل مساحة العمل"
+    },
+    "operation": {
+      "status": "الحالة: {{status}}",
+      "noContext": "لا يوجد سياق عملية",
+      "assigned": "المورد {{name}}",
+      "unknownStatus": "غير معروف",
+      "untitled": "عملية بدون عنوان",
+      "noSchedule": "لا يوجد موعد",
+      "unassigned": "غير معيّن",
+      "number": "رقم العملية",
+      "startTime": "وقت البدء"
+    },
+    "related": {
+      "hint": "ستظهر السجلات المرتبطة بهذا الكيان هنا.",
+      "operationId": "العملية المرتبطة: {{id}}",
+      "liveHint": "أعداد حية من السجلات الحالية",
+      "operations": "العمليات",
+      "bookings": "الحجوزات",
+      "invoices": "الفواتير",
+      "files": "الملفات",
+      "notes": "الملاحظات",
+      "messages": "الرسائل",
+      "tasks": "المهام"
+    },
+    "backToQueue": "العودة إلى القائمة",
+    "untitledEntity": "كيان",
+    "entityTitle": "{{type}} {{id}}",
+    "actions": {
+      "addNote": "إضافة ملاحظة",
+      "sendMessage": "إرسال رسالة",
+      "collectPayment": "تحصيل دفعة",
+      "call": "اتصال",
+      "whatsapp": "واتساب",
+      "copyLink": "نسخ الرابط",
+      "linkCopied": "تم نسخ الرابط"
+    },
+    "search": {
+      "placeholder": "ابحث في الملاحظات والملفات والجدول الزمني…"
+    },
+    "communication": {
+      "hint": "قنوات التواصل المرتبطة بهذا الكيان",
+      "whatsappMissing": "لا توجد محادثة واتساب لهذا العميل",
+      "openExisting": "يفتح محادثة واتساب الحالية."
+    },
+    "tasks": {
+      "emptyTitle": "لا توجد مهام",
+      "emptyDescription": "ستظهر المهام المرتبطة بهذا الكيان هنا."
+    }
+  },
+  "companyWorkspace": {
+    "title": "الشركة",
+    "noPermission": "ليس لديك صلاحية لعرض مساحة عمل الشركة.",
+    "empty": "بيانات مساحة عمل الشركة غير متاحة.",
+    "header": {
+      "employees": "{{count}} موظف",
+      "branches": "{{count}} فرع",
+      "departments": "{{count}} قسم"
+    },
+    "actions": {
+      "editCompany": "تعديل الشركة",
+      "inviteEmployee": "دعوة موظف",
+      "manageSubscription": "إدارة الاشتراك",
+      "export": "تصدير",
+      "addBranch": "إضافة فرع",
+      "addDepartment": "إضافة قسم"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "employees": "الموظفون",
+      "branches": "الفروع",
+      "departments": "الأقسام",
+      "branding": "مركز الهوية",
+      "subscription": "الاشتراك"
+    },
+    "overview": {
+      "setup": {
+        "title": "إعداد الشركة",
+        "subtitle": "{{completed}} من {{total}} مكتمل",
+        "percentLabel": "التقدم",
+        "completed": "مكتمل",
+        "remaining": "المتبقي",
+        "noneCompleted": "لم تُكمل أي خطوة بعد.",
+        "allDone": "اكتملت جميع خطوات الإعداد.",
+        "items": {
+          "companyProfile": "ملف الشركة",
+          "branding": "الهوية البصرية",
+          "subscription": "الاشتراك",
+          "branches": "الفروع",
+          "departments": "الأقسام",
+          "employees": "الموظفون",
+          "aiProvider": "مزوّد الذكاء الاصطناعي",
+          "channels": "قنوات التواصل"
+        }
+      },
+      "profileTitle": "ملف الشركة",
+      "identityTitle": "هوية الشركة",
+      "contactTitle": "الدعم والتواصل",
+      "legalTitle": "القانوني والفوترة",
+      "planTitle": "الخطة والاستخدام",
+      "subscriptionTitle": "الاشتراك",
+      "companyName": "اسم الشركة",
+      "shortName": "الاسم المختصر",
+      "industry": "القطاع",
+      "status": "الحالة",
+      "phone": "الهاتف",
+      "email": "البريد الإلكتروني",
+      "supportEmail": "بريد الدعم",
+      "supportPhone": "هاتف الدعم",
+      "website": "الموقع الإلكتروني",
+      "taxNumber": "الرقم الضريبي",
+      "address": "العنوان",
+      "language": "اللغة",
+      "timezone": "المنطقة الزمنية",
+      "currency": "العملة",
+      "workingHours": "ساعات العمل",
+      "description": "الوصف",
+      "legalName": "الاسم القانوني",
+      "contactPerson": "جهة الاتصال",
+      "employeesCount": "الموظفون",
+      "branchesCount": "الفروع",
+      "departmentsCount": "الأقسام",
+      "currentPlan": "الخطة الحالية",
+      "billingCycle": "دورة الفوترة",
+      "seatUsage": "استخدام المقاعد",
+      "storageUsage": "استخدام التخزين",
+      "storageCapacity": "سعة التخزين",
+      "storageCapacityValue": "{{gb}} جيجابايت",
+      "renewalDate": "تاريخ التجديد",
+      "modulesEnabled": "الوحدات المفعلة",
+      "seatsOf": "{{used}} / {{limit}}",
+      "emptyPlan": "لا تتوفر تفاصيل للخطة.",
+      "kpi": {
+        "statusHint": "حالة حساب الشركة",
+        "employeesHint": "حجم القوى العاملة",
+        "branchesHint": "مواقع التشغيل",
+        "departmentsHint": "الوحدات التنظيمية"
+      },
+      "aiUsage": {
+        "title": "استخدام الذكاء الاصطناعي",
+        "subtitle": "استهلاك حي من محاسبة التكلفة والتحليلات",
+        "notConnected": "استخدام الذكاء الاصطناعي غير متصل بعد",
+        "notConnectedHint": "فعّل صلاحية تكاليف الذكاء الاصطناعي أو أنشئ استخداماً لملء لوحة التحكم.",
+        "noUsageYet": "لم يُسجَّل استخدام للذكاء الاصطناعي بعد",
+        "noUsageYetHint": "يظهر الاستخدام هنا بعد تسجيل طلبات الذكاء الاصطناعي في الإنتاج.",
+        "provider": "المزوّد",
+        "model": "النموذج الحالي",
+        "requests": "الطلبات",
+        "tokens": "الرموز",
+        "quotaUsed": "الحصة المستخدمة",
+        "remaining": "المتبقي",
+        "totalQuota": "إجمالي الحصة",
+        "extraCost": "تكلفة الاستخدام الإضافي",
+        "estimatedEom": "التقدير لنهاية الشهر",
+        "monthlyQuota": "الحصة الشهرية",
+        "used": "المستخدم",
+        "costThisMonth": "التكلفة هذا الشهر",
+        "estimatedCost": "التكلفة المقدّرة لنهاية الشهر",
+        "averageDaily": "المتوسط اليومي",
+        "averageTokens": "المتوسط لكل طلب",
+        "responseTime": "زمن الاستجابة",
+        "successPct": "معدل النجاح",
+        "errorPct": "نسبة الأخطاء",
+        "quota": "الحصة",
+        "tokensOf": "{{used}} / {{limit}} رمز",
+        "dailyUsage": "الاستخدام اليومي (30 يوماً)",
+        "noDailySeries": "لا يوجد سجل يومي في سجلات التكلفة الحالية.",
+        "overQuota": "تجاوز الحصة",
+        "extraUsage": "استخدام إضافي",
+        "extraTokens": "رموز التجاوز",
+        "estimatedCharge": "الرسوم الإضافية المقدّرة",
+        "ms": "{{value}} مللي ثانية"
+      },
+      "connectedServices": {
+        "title": "الخدمات المتصلة",
+        "whatsapp": "واتساب",
+        "facebook": "فيسبوك",
+        "instagram": "إنستغرام",
+        "email": "البريد",
+        "sms": "الرسائل النصية",
+        "voice": "الصوت",
+        "calendar": "التقويم",
+        "payment": "بوابة الدفع",
+        "states": {
+          "connected": "متصل",
+          "disconnected": "غير متصل",
+          "pending": "قيد الانتظار"
+        },
+        "openai": "OpenAI",
+        "account": "الحساب",
+        "lastSync": "آخر مزامنة",
+        "webhook": "Webhook",
+        "lastSuccess": "آخر نجاح"
+      },
+      "resources": {
+        "title": "الموارد",
+        "employees": "الموظفون",
+        "branches": "الفروع",
+        "departments": "الأقسام",
+        "customers": "عملاء CRM",
+        "resources": "موارد الجدولة",
+        "queues": "الطوابير",
+        "bookingsPending": "حجوزات معلّقة",
+        "invoicesOpen": "فواتير مفتوحة",
+        "knowledge": "مستندات المعرفة",
+        "storage": "التخزين المستخدم",
+        "workspaces": "مساحات العمل",
+        "files": "الملفات"
+      },
+      "license": {
+        "title": "استخدام الترخيص",
+        "employees": "الموظفون",
+        "storage": "التخزين",
+        "aiCredits": "رصيد الذكاء الاصطناعي",
+        "email": "البريد",
+        "sms": "الرسائل النصية"
+      },
+      "health": {
+        "title": "صحة الشركة",
+        "checksPassed": "{{passed}} من {{total}} فحوصات ناجحة",
+        "pass": "جاهز",
+        "fail": "ناقص",
+        "levels": {
+          "excellent": "ممتاز",
+          "good": "جيد",
+          "needsAttention": "يحتاج اهتماماً"
+        },
+        "checks": {
+          "companyName": "اسم الشركة موجود",
+          "legalName": "الاسم القانوني موجود",
+          "supportEmail": "بريد الدعم موجود",
+          "logo": "الشعار موجود",
+          "employees": "الموظفون",
+          "branch": "يوجد فرع",
+          "subscriptionActive": "الاشتراك نشط",
+          "brandComplete": "الهوية مكتملة",
+          "identity": "الهوية",
+          "branding": "الهوية البصرية",
+          "billing": "الفوترة",
+          "branches": "الفروع",
+          "departments": "الأقسام",
+          "ai": "الذكاء الاصطناعي",
+          "integrations": "التكاملات",
+          "brand": "الهوية البصرية",
+          "channels": "القنوات",
+          "knowledge": "المعرفة",
+          "security": "الأمان"
+        },
+        "score": "الدرجة",
+        "states": {
+          "healthy": "سليم",
+          "warning": "تحذير",
+          "missing": "ناقص"
+        }
+      },
+      "modules": {
+        "title": "الوحدات المفعّلة",
+        "items": {
+          "crm": "إدارة العملاء",
+          "operations": "العمليات",
+          "ai": "الذكاء الاصطناعي",
+          "omnichannel": "القنوات الموحدة",
+          "knowledge": "المعرفة",
+          "portal": "البوابة",
+          "automation": "الأتمتة",
+          "billing": "الفوترة",
+          "aiEmployee": "موظف الذكاء الاصطناعي",
+          "marketplace": "السوق",
+          "reports": "التقارير"
+        },
+        "states": {
+          "active": "نشط",
+          "trial": "تجريبي",
+          "disabled": "معطّل"
+        }
+      },
+      "quickActions": {
+        "title": "إجراءات ذكية",
+        "openBilling": "الفوترة",
+        "brandCenter": "مركز الهوية",
+        "manageAi": "إدارة الذكاء الاصطناعي",
+        "security": "الأمان",
+        "channels": "القنوات",
+        "knowledge": "المعرفة"
+      },
+      "owner": "المالك",
+      "commercialRegistration": "السجل التجاري",
+      "paymentStatus": "حالة الدفع",
+      "invoiceStatus": "حالة الفاتورة",
+      "seats": "المقاعد",
+      "usedSeats": "المقاعد المستخدمة",
+      "storageUsed": "التخزين المستخدم",
+      "createdDate": "تاريخ الإنشاء",
+      "aiCommand": {
+        "title": "مركز قيادة الذكاء الاصطناعي",
+        "subtitle": "استهلاك مؤسسي للذكاء الاصطناعي من بيانات الإنتاج",
+        "estimatedFinish": "التقدير للنفاد",
+        "estimatedFinishDate": "تاريخ نفاد الحصة المتوقع",
+        "remainingDays": "الأيام المتبقية",
+        "days": "{{count}} يوم",
+        "monthlyCost": "تكلفة الشهر الحالي",
+        "todayCost": "تكلفة اليوم",
+        "projectedCost": "التكلفة المتوقعة",
+        "overageCost": "تكلفة التجاوز",
+        "requestsToday": "طلبات اليوم",
+        "requestsMonth": "طلبات هذا الشهر",
+        "tokensToday": "استخدام اليوم",
+        "tokensYesterday": "أمس",
+        "average7Day": "متوسط 7 أيام",
+        "average30Day": "متوسط 30 يوماً",
+        "estimatedMonthEndUsage": "الاستخدام المتوقع لنهاية الشهر",
+        "consumption": "الاستهلاك",
+        "forecast": "التوقعات",
+        "health": "صحة الذكاء الاصطناعي",
+        "billingSummary": "ملخص الفوترة",
+        "failures": "الإخفاقات",
+        "usagePct": "{{pct}}% استخدام",
+        "costPct": "{{pct}}% تكلفة",
+        "topModels": "أهم النماذج",
+        "topFeatures": "أهم ميزات الذكاء الاصطناعي",
+        "noModels": "لا يوجد استخدام نماذج في نافذة التكلفة الحالية.",
+        "noFeatures": "لا توجد تنفيذات موسومة بالميزات في نافذة التحليلات الحالية.",
+        "retries": "إعادة المحاولات",
+        "warnings": {
+          "remainingLow": "متبقي من حصة الذكاء الاصطناعي {{pct}}% — الاستخدام مرتفع",
+          "remainingCritical": "متبقي من حصة الذكاء الاصطناعي {{pct}}% — قرب الحد",
+          "quotaExceeded": "تم تجاوز الحصة",
+          "extraCharge": "الرسوم الإضافية المقدّرة: {{amount}}"
+        }
+      },
+      "insights": {
+        "title": "رؤى الأعمال",
+        "items": {
+          "aiUsageUp": "ارتفع استخدام الذكاء الاصطناعي بنسبة {{pct}}% مقابل آخر 15 يوماً",
+          "aiUsageDown": "انخفض استخدام الذكاء الاصطناعي بنسبة {{pct}}% مقابل آخر 15 يوماً",
+          "storageAlmostFull": "التخزين ممتلئ بنسبة {{pct}}%",
+          "storageHigh": "استخدام التخزين مرتفع عند {{pct}}%",
+          "renewalSoon": "تجديد الاشتراك خلال {{days}} يوم",
+          "seatsAtLimit": "وصل الموظفون لحد المقاعد ({{used}}/{{limit}})",
+          "seatsNearLimit": "الموظفون قريبون من حد المقاعد ({{used}}/{{limit}})",
+          "knowledgeInactive": "قاعدة المعرفة بلا مستندات بعد",
+          "openInvoices": "{{count}} فواتير مفتوحة تحتاج متابعة",
+          "noChannels": "لا توجد قنوات رسائل متصلة",
+          "aiQuotaHigh": "حصة الذكاء الاصطناعي عند {{pct}}%",
+          "aiQuotaExceeded": "تم تجاوز حصة الذكاء الاصطناعي ({{pct}}%)"
+        }
+      }
+    },
+    "employees": {
+      "searchPlaceholder": "البحث عن الموظفين…",
+      "empty": "لا يوجد موظفون مطابقون لعوامل التصفية.",
+      "manage": "إدارة",
+      "notAssigned": "غير معيّن",
+      "neverSignedIn": "لم يسجّل الدخول مطلقاً",
+      "invitationPending": "الدعوة معلّقة",
+      "moreBranches": "+{{count}}",
+      "columns": {
+        "name": "الاسم الكامل",
+        "jobTitle": "المسمى الوظيفي",
+        "department": "القسم",
+        "role": "الدور",
+        "status": "الحالة",
+        "phone": "الهاتف",
+        "email": "البريد الإلكتروني",
+        "lastLogin": "آخر تسجيل دخول",
+        "actions": "إجراءات",
+        "branch": "الفرع"
+      },
+      "filters": {
+        "department": "القسم",
+        "role": "الدور",
+        "status": "الحالة",
+        "allDepartments": "كل الأقسام",
+        "unassigned": "غير معيّن",
+        "allRoles": "كل الأدوار",
+        "allStatuses": "كل الحالات",
+        "branch": "الفرع",
+        "allBranches": "كل الفروع",
+        "countLabel": "{{label}} ({{count}})"
+      },
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط"
+      },
+      "stats": {
+        "total": "الموظفون",
+        "active": "نشط",
+        "invited": "مدعوون",
+        "suspended": "معلّقون",
+        "branchManagers": "مديرو الفروع",
+        "departmentManagers": "مديرو الأقسام"
+      },
+      "density": {
+        "label": "كثافة الجدول",
+        "comfortable": "مريح",
+        "compact": "مدمج"
+      },
+      "badges": {
+        "branchManager": "مدير فرع",
+        "departmentManager": "مدير قسم"
+      },
+      "quickProfile": {
+        "title": "الملف — {{name}}",
+        "description": "ملف الموظف السريع",
+        "openAria": "فتح الملف السريع لـ {{name}}"
+      },
+      "activity": {
+        "title": "النشاط الأخير",
+        "profileUpdated": "تم تحديث الملف",
+        "roleChanged": "تم تغيير الدور",
+        "branchChanged": "تم تغيير الفرع",
+        "passwordReset": "إعادة تعيين كلمة المرور",
+        "invitationSent": "تم إرسال الدعوة",
+        "generic": "نشاط"
+      },
+      "bulk": {
+        "toolbarLabel": "إجراءات جماعية للموظفين",
+        "selected": "{{count}} محدّد",
+        "clear": "مسح التحديد",
+        "selectAllPage": "تحديد كل الموظفين في هذه الصفحة",
+        "selectRow": "تحديد {{name}}",
+        "assignBranch": "تعيين فرع",
+        "assignDepartment": "تعيين قسم",
+        "changeRole": "تغيير الدور",
+        "suspend": "تعليق",
+        "activate": "تفعيل",
+        "assignBranchTitle": "تعيين فرع",
+        "assignDepartmentTitle": "تعيين قسم",
+        "changeRoleTitle": "تغيير الدور",
+        "applyToSelected": "تطبيق على {{count}} موظفين محددين",
+        "branchRequired": "اختر فرعاً واحداً على الأقل.",
+        "roleRequired": "اختر دوراً."
+      },
+      "inviteTitle": "دعوة موظف",
+      "editTitle": "تعديل الموظف",
+      "neverLoggedIn": "لم يسجل الدخول",
+      "actions": {
+        "edit": "تعديل",
+        "editEmployee": "تعديل الموظف",
+        "viewProfile": "عرض الملف",
+        "resetPassword": "إعادة تعيين كلمة المرور",
+        "resendInvitation": "إعادة إرسال الدعوة",
+        "suspend": "تعليق",
+        "activate": "تفعيل",
+        "delete": "حذف"
+      },
+      "confirm": {
+        "suspendTitle": "تعليق {{user}}؟",
+        "suspendDescription": "سيفقد هذا الموظف الوصول حتى يتم تفعيله مجدداً.",
+        "deleteTitle": "حذف {{user}}؟",
+        "deleteDescription": "ستتم إزالة الموظف من الشركة وإلغاء أدواره وتعيينات الفروع.",
+        "bulkSuspendTitle": "تعليق {{count}} موظفين؟",
+        "bulkSuspendDescription": "سيفقد الموظفون المحددون الوصول حتى يتم تفعيلهم مجدداً.",
+        "bulkActivateTitle": "تفعيل {{count}} موظفين؟",
+        "bulkActivateDescription": "سيستعيد الموظفون المحددون الوصول إلى مساحة عمل الشركة.",
+        "bulkDeleteTitle": "حذف {{count}} موظفين؟",
+        "bulkDeleteDescription": "ستتم إزالة الموظفين المحددين من الشركة وإلغاء أدوارهم وتعيينات الفروع."
+      },
+      "toasts": {
+        "errorTitle": "تعذر إكمال العملية",
+        "resetPasswordTitle": "تم إرسال رابط إعادة التعيين",
+        "resetPasswordDescription": "تم إرسال بريد إلكتروني لإعادة تعيين كلمة المرور.",
+        "resendTitle": "أُعيد إرسال الدعوة",
+        "resendDescription": "تم إرسال بريد الدعوة / إعداد الحساب.",
+        "suspendTitle": "تم تعليق الموظف",
+        "activateTitle": "تم تفعيل الموظف",
+        "deleteTitle": "تم حذف الموظف",
+        "updateTitle": "تم تحديث الموظف",
+        "bulkUpdateTitle": "تم تحديث الموظفين",
+        "bulkSuspendTitle": "تم تعليق الموظفين",
+        "bulkActivateTitle": "تم تفعيل الموظفين",
+        "bulkDeleteTitle": "تم حذف الموظفين"
+      }
+    },
+    "branches": {
+      "subtitle": "{{count}} فرع",
+      "empty": "لا توجد فروع.",
+      "employeesCount": "{{count}} موظف",
+      "timezone": "المنطقة الزمنية",
+      "open": "فتح الفرع",
+      "searchPlaceholder": "البحث في الفروع…",
+      "manager": "مدير الفرع",
+      "noManager": "بدون مدير",
+      "managerPlaceholder": "اختر المدير",
+      "workingHours": "ساعات العمل",
+      "filters": {
+        "status": "الحالة",
+        "allStatuses": "كل الحالات"
+      },
+      "stats": {
+        "employees": "الموظفون",
+        "customers": "العملاء",
+        "operations": "العمليات",
+        "resources": "الموارد"
+      },
+      "actions": {
+        "edit": "تعديل",
+        "workingHours": "ساعات العمل",
+        "holidays": "العطل",
+        "disable": "تعطيل",
+        "enable": "تفعيل",
+        "delete": "حذف"
+      },
+      "confirm": {
+        "disableTitle": "تعطيل {{name}}؟",
+        "disableDescription": "سيصبح الفرع غير نشط ولن يظهر كخيار أساسي.",
+        "deleteTitle": "حذف {{name}}؟",
+        "deleteDescription": "سيتم أرشفة الفرع إذا لم تكن له تبعيات.",
+        "hasDependencies": "لا يمكن الحذف لوجود موظفين أو موارد أو حجوزات. يمكنك التعطيل بدلاً من ذلك."
+      },
+      "hours": {
+        "title": "ساعات عمل {{name}}",
+        "open": "مفتوح",
+        "closed": "مغلق",
+        "validationRequired": "حدد وقت الفتح والإغلاق للأيام المفتوحة.",
+        "validationOrder": "يجب أن يكون وقت الإغلاق بعد الفتح.",
+        "saveFailed": "تعذر حفظ ساعات العمل."
+      },
+      "holidays": {
+        "title": "عطل {{name}}",
+        "add": "إضافة عطلة",
+        "empty": "لا توجد عطل لهذا الفرع.",
+        "addTitle": "عطلة جديدة",
+        "editTitle": "تعديل العطلة",
+        "validation": "العنوان والتاريخ مطلوبان.",
+        "deleteTitle": "حذف {{title}}؟",
+        "deleteDescription": "ستُزال هذه العطلة من تقويم الفرع."
+      },
+      "toasts": {
+        "enabled": "تم تفعيل الفرع",
+        "hoursSaved": "تم حفظ ساعات العمل"
+      }
+    },
+    "departments": {
+      "subtitle": "{{count}} قسم",
+      "empty": "لا توجد أقسام.",
+      "code": "الرمز",
+      "type": "النوع",
+      "employeesCount": "{{count}} موظف",
+      "searchPlaceholder": "البحث في الأقسام…",
+      "parent": "القسم الأب",
+      "filters": {
+        "status": "الحالة",
+        "allStatuses": "كل الحالات",
+        "branch": "الفرع",
+        "allBranches": "كل الفروع"
+      },
+      "stats": {
+        "employees": "الموظفون",
+        "operations": "العمليات",
+        "resources": "الموارد"
+      },
+      "types": {
+        "general": "عام",
+        "clinical": "سريري",
+        "administrative": "إداري",
+        "support": "دعم"
+      },
+      "actions": {
+        "edit": "تعديل",
+        "merge": "دمج",
+        "disable": "تعطيل",
+        "enable": "تفعيل",
+        "delete": "حذف"
+      },
+      "form": {
+        "createTitle": "إضافة قسم",
+        "editTitle": "تعديل القسم",
+        "name": "اسم القسم",
+        "nameRequired": "اسم القسم مطلوب.",
+        "description": "الوصف",
+        "branch": "الفرع",
+        "branchRequired": "الفرع مطلوب.",
+        "branchPlaceholder": "اختر الفرع",
+        "parent": "القسم الأب",
+        "parentPlaceholder": "اختر القسم الأب",
+        "noParent": "بدون قسم أب",
+        "manager": "مدير القسم",
+        "managerPlaceholder": "اختر المدير",
+        "noManager": "بدون مدير",
+        "active": "نشط",
+        "saveFailed": "تعذر حفظ القسم."
+      },
+      "merge": {
+        "title": "دمج {{name}}",
+        "description": "سيتم نقل الموظفين والموارد والأقسام الفرعية إلى القسم الهدف، ثم تعطيل المصدر.",
+        "targetRequired": "اختر قسم الهدف.",
+        "targetPlaceholder": "القسم الهدف",
+        "failed": "تعذر دمج الأقسام."
+      },
+      "confirm": {
+        "disableTitle": "تعطيل {{name}}؟",
+        "disableDescription": "سيصبح القسم غير نشط ولن يظهر في القوائم الافتراضية.",
+        "enableTitle": "تفعيل {{name}}؟",
+        "enableDescription": "سيصبح القسم نشطاً ومتاحاً مجدداً.",
+        "deleteTitle": "حذف {{name}}؟",
+        "deleteDescription": "سيتم حذف القسم نهائياً إذا لم تكن له تبعيات.",
+        "hasDependencies": "لا يمكن الحذف لوجود موظفين أو موارد أو أقسام فرعية. يمكنك التعطيل أو الدمج بدلاً من ذلك."
+      },
+      "toasts": {
+        "errorTitle": "تعذر إكمال العملية",
+        "created": "تم إنشاء القسم",
+        "updated": "تم تحديث القسم",
+        "deleted": "تم حذف القسم",
+        "disabled": "تم تعطيل القسم",
+        "enabled": "تم تفعيل القسم",
+        "merged": "تم دمج القسم"
+      }
+    },
+    "branding": {
+      "title": "الهوية البصرية",
+      "manage": "إدارة الهوية",
+      "empty": "لم يتم إعداد الهوية البصرية بعد.",
+      "companyLogo": "شعار الشركة",
+      "primaryColor": "اللون الأساسي",
+      "secondaryColor": "اللون الثانوي",
+      "invoiceLogo": "شعار الفاتورة",
+      "emailLogo": "شعار البريد",
+      "watermark": "العلامة المائية",
+      "preview": "معاينة",
+      "previewHint": "معاينة العلامة التجارية"
+    },
+    "brandCenter": {
+      "title": "مركز الهوية",
+      "subtitle": "المصدر الموحد لهوية الشركة عبر المنصة.",
+      "readOnly": "يمكنك عرض الهوية فقط. تواصل مع المسؤول لإجراء تعديلات.",
+      "save": "حفظ الهوية",
+      "loadFailed": "تعذر تحميل إعدادات الهوية.",
+      "uploadFailed": "فشل الرفع.",
+      "uploadImage": "رفع",
+      "replaceImage": "استبدال",
+      "deleteImage": "حذف الصورة",
+      "noImage": "لا توجد صورة",
+      "formatsHint": "PNG أو SVG أو JPEG أو WEBP · بحد أقصى 5 ميجابايت",
+      "companyName": "اسم الشركة",
+      "legalName": "الاسم القانوني",
+      "shortName": "الاسم المختصر",
+      "website": "الموقع الإلكتروني",
+      "supportEmail": "بريد الدعم",
+      "supportPhone": "هاتف الدعم",
+      "description": "وصف الشركة",
+      "logoMain": "الشعار الرئيسي",
+      "logoDark": "شعار الوضع الداكن",
+      "logoLight": "شعار الوضع الفاتح",
+      "logoSquare": "شعار مربع",
+      "logoInvoice": "شعار الفاتورة",
+      "logoEmail": "شعار البريد",
+      "logoFavicon": "أيقونة الموقع",
+      "colorPrimary": "أساسي",
+      "colorSecondary": "ثانوي",
+      "colorAccent": "تمييز",
+      "colorSuccess": "نجاح",
+      "colorWarning": "تحذير",
+      "colorDanger": "خطر",
+      "colorBackground": "خلفية",
+      "colorSurface": "سطح",
+      "invoiceFooter": "تذييل الفاتورة",
+      "quotationFooter": "تذييل عرض السعر",
+      "terms": "الشروط والأحكام",
+      "watermark": "العلامة المائية",
+      "signature": "التوقيع",
+      "emailHeader": "ترويسة البريد",
+      "emailFooter": "تذييل البريد",
+      "replyEmail": "بريد الرد (Reply-To)",
+      "emailSignature": "توقيع البريد",
+      "livePreview": "معاينة مباشرة",
+      "livePreviewHint": "تتحدث فوراً أثناء التعديل — دون الحاجة لتحديث الصفحة.",
+      "previewPaid": "مدفوعة",
+      "previewLineItem": "بند الخدمة",
+      "previewTotal": "الإجمالي",
+      "previewFooterFallback": "شكراً لتعاملكم معنا.",
+      "previewPortalHint": "احجز الخدمات عبر الإنترنت بهوية شركتك.",
+      "previewBook": "احجز الآن",
+      "previewEmailBody": "تم تأكيد موعدك. يمكنك الرد على هذه الرسالة إذا احتجت مساعدة.",
+      "previewSignIn": "تسجيل الدخول",
+      "previewCardTitle": "بطاقة",
+      "previewCardBody": "تم تطبيق ألوان السطح والتمييز.",
+      "previewChartTitle": "الأداء",
+      "sections": {
+        "general": "عام",
+        "logos": "أصول الهوية",
+        "colors": "الألوان",
+        "documents": "المستندات",
+        "email": "هوية البريد"
+      },
+      "assets": {
+        "title": "أصول الهوية",
+        "subtitle": "مصدر رفع واحد لكل الأسطح في ValueOR.",
+        "required": "مطلوب",
+        "primaryHint": "يُستخدم في الشريط الجانبي والترويسة وإدارة العملاء والعمليات ومساحة الشركة.",
+        "advanced": "أصول متقدمة",
+        "usingPrimary": "باستخدام الشعار الرئيسي",
+        "primaryUses": {
+          "sidebar": "الشريط الجانبي",
+          "header": "الترويسة",
+          "crm": "إدارة العملاء",
+          "operations": "العمليات",
+          "company": "مساحة عمل الشركة"
+        },
+        "slotHints": {
+          "dark": "يُستخدم عند تفعيل الوضع الداكن.",
+          "light": "يُستخدم على الخلفيات الفاتحة وتسجيل الدخول.",
+          "square": "للتنقل المدمج والجوال والصورة الرمزية.",
+          "invoice": "للفاتورة وعرض السعر والإيصال فقط.",
+          "email": "للبريد الصادر إن اختلف عن الشعار الرئيسي."
+        }
+      },
+      "health": {
+        "title": "صحة الهوية",
+        "subtitle": "تغطية الأصول المطلوبة والاختيارية.",
+        "score": "الدرجة",
+        "scoreDetailsAria": "صحة الهوية {{score}} بالمئة — فتح التفاصيل",
+        "completedCount": "مكتمل {{done}} / {{total}}",
+        "groups": {
+          "missing": "ناقص",
+          "optional": "اختياري",
+          "fallback": "باستخدام بديل",
+          "noneMissing": "لا عناصر مطلوبة ناقصة.",
+          "noneOptional": "لا فجوات اختيارية.",
+          "noneFallback": "لا بدائل قيد الاستخدام."
+        },
+        "status": {
+          "ready": "مكتمل",
+          "optional_missing": "اختياري",
+          "required_missing": "ناقص",
+          "fallback": "بديل"
+        },
+        "fallbacks": {
+          "usingPrimaryLogo": "باستخدام الشعار الرئيسي"
+        },
+        "items": {
+          "primaryLogo": "الشعار الرئيسي",
+          "darkLogo": "شعار الوضع الداكن",
+          "invoiceLogo": "شعار الفاتورة",
+          "emailLogo": "شعار البريد",
+          "squareLogo": "الشعار المربع",
+          "primaryColor": "اللون الأساسي",
+          "secondaryColor": "اللون الثانوي",
+          "emailFooter": "تذييل البريد",
+          "senderIdentity": "هوية المرسل"
+        }
+      },
+      "usage": {
+        "title": "أين تُستخدم هذه الهوية",
+        "subtitle": "افتح معاينة السطح دون مغادرة مركز الهوية.",
+        "items": {
+          "crm": "إدارة العملاء",
+          "operations": "العمليات",
+          "company": "الشركة",
+          "portal": "بوابة العملاء",
+          "login": "تسجيل الدخول",
+          "email": "البريد",
+          "invoice": "فاتورة",
+          "quote": "عرض سعر",
+          "receipt": "إيصال",
+          "sidebar": "الشريط الجانبي",
+          "header": "الترويسة"
+        }
+      },
+      "previewAll": {
+        "button": "معاينة الكل",
+        "title": "معاينات الهوية",
+        "subtitle": "كل الأسطح الرئيسية باستخدام مسودة الهوية الحالية."
+      },
+      "lastUpdated": {
+        "title": "آخر تحديث",
+        "by": "بواسطة",
+        "updated": "تم تحديث"
+      },
+      "emptyStates": {
+        "primaryLogo": "الشعار الرئيسي ناقص. ستبدو الأسطح غير مكتملة.",
+        "emailFooter": "تذييل البريد ناقص.",
+        "senderIdentity": "هوية المرسل غير مكتملة.",
+        "invoiceLogoFallback": "شعار الفاتورة ناقص — يُستخدم الشعار الرئيسي.",
+        "addNow": "أضف الآن",
+        "openEmail": "فتح هوية البريد"
+      },
+      "emailStudio": {
+        "contactTitle": "معلومات اتصال الشركة",
+        "contactHint": "للقراءة فقط من نظرة عامة على الشركة. هوية البريد لا تكرر هذه الحقول.",
+        "editCompany": "تعديل معلومات الشركة",
+        "senderTitle": "هوية المرسل",
+        "senderHint": "كيف يظهر فريقك في سطر المرسل وكتلة التوقيع.",
+        "senderName": "اسم المرسل",
+        "senderNamePlaceholder": "مثال: فريق نجاح العملاء",
+        "senderDisplayName": "اسم العرض للمرسل",
+        "senderDisplayPlaceholder": "مثال: دعم ValueOR",
+        "replyFallbackHint": "إذا كان فارغاً يُستخدم بريد الشركة من النظرة العامة.",
+        "logoTitle": "شعار البريد",
+        "logoHint": "الشعار الأساسي في الرسائل الصادرة. يعود لشعار الشركة الرئيسي عند الغياب.",
+        "logoFromAssets": "للقراءة فقط من أصول الهوية. غيّر الشعار هناك — دون رفع مكرر.",
+        "currentEmailLogo": "شعار البريد الحالي",
+        "changeLogo": "تغيير الشعار",
+        "primaryEmailLogo": "شعار البريد الأساسي",
+        "logoFallback": "الاحتياطي: شعار البريد ← الشعار الرئيسي",
+        "advancedLogos": "متقدم",
+        "ctaTitle": "دعوة لاتخاذ إجراء",
+        "ctaHint": "زر اختياري يظهر في نص البريد.",
+        "ctaEnable": "تفعيل الزر",
+        "ctaEnableHint": "إظهار زر في المعاينة وقوالب البريد.",
+        "ctaText": "نص الزر",
+        "ctaTextPlaceholder": "عرض الطلب",
+        "ctaUrl": "رابط الزر",
+        "ctaColor": "لون الزر",
+        "signatureHint": "تنسيق غني فقط — بدون تحرير HTML.",
+        "signatureToolbar": "تنسيق التوقيع",
+        "signaturePlaceholder": "أضف خاتمة قصيرة…",
+        "bold": "عريض",
+        "italic": "مائل",
+        "link": "رابط",
+        "linkPrompt": "أدخل عنوان الرابط",
+        "bulletList": "قائمة نقطية",
+        "numberedList": "قائمة مرقّمة",
+        "textColor": "لون النص",
+        "socialTitle": "وسائل التواصل",
+        "socialHint": "تُخفى الروابط الفارغة في المعاينة.",
+        "social": {
+          "linkedin": "LinkedIn",
+          "facebook": "Facebook",
+          "instagram": "Instagram",
+          "x": "X",
+          "youtube": "YouTube",
+          "tiktok": "TikTok"
+        },
+        "legalTitle": "تذييل قانوني",
+        "legalHint": "إخلاء مسؤولية اختياري أسفل كتلة التوقيع.",
+        "showLegal": "إظهار التذييل القانوني",
+        "legalText": "إخلاء مسؤولية الشركة",
+        "legalPlaceholder": "إشعار السرية أو نص إلغاء الاشتراك…",
+        "layoutTitle": "تخطيط البريد",
+        "layoutHint": "تغيير التخطيط يحدّث المعاينة فوراً.",
+        "layouts": {
+          "professional": "احترافي",
+          "modern": "حديث",
+          "minimal": "مبسط",
+          "executive": "تنفيذي"
+        },
+        "layoutDescriptions": {
+          "professional": "تباعد متوازن وتسلسل واضح.",
+          "modern": "زوايا دائرية وتحية بارزة.",
+          "minimal": "حدود هادئة وكثافة مدمجة.",
+          "executive": "شريط تمييز وخط رسمي."
+        },
+        "livePreview": "معاينة البريد المباشرة",
+        "livePreviewHint": "رسالة واقعية تستخدم بيانات الاتصال من النظرة العامة.",
+        "replyToPreview": "الرد إلى: {{email}}",
+        "previewGreeting": "مرحباً عمر،",
+        "previewBody": "شكراً لتواصلك معنا.",
+        "previewBody2": "تم استلام طلبك."
+      },
+      "surfaces": {
+        "invoice": "فاتورة",
+        "quotation": "عرض سعر",
+        "receipt": "إيصال",
+        "portal": "بوابة العملاء",
+        "email": "بريد",
+        "login": "تسجيل الدخول",
+        "crm": "إدارة العملاء",
+        "operations": "العمليات",
+        "company": "الشركة",
+        "sidebar": "الشريط الجانبي",
+        "header": "الترويسة",
+        "buttons": "أزرار",
+        "cards": "بطاقات",
+        "charts": "مخططات"
+      },
+      "validation": {
+        "title": "صحّح بيانات الهوية قبل الحفظ",
+        "nameRequired": "اسم الشركة مطلوب.",
+        "logoRequired": "الشعار الرئيسي مطلوب.",
+        "websiteInvalid": "أدخل رابط موقع صالحاً.",
+        "emailInvalid": "أدخل بريداً إلكترونياً صالحاً للدعم.",
+        "phoneInvalid": "أدخل رقم هاتف دعم صالحاً.",
+        "legalNameInvalid": "الاسم القانوني قصير جداً.",
+        "taxInvalid": "أدخل رقماً ضريبياً صالحاً.",
+        "commercialRegistrationUnavailable": "السجل التجاري غير متاح في المخطط الحالي."
+      },
+      "toasts": {
+        "savedTitle": "تم حفظ الهوية",
+        "savedDescription": "أصول الهوية متاحة الآن عبر المنصة.",
+        "errorTitle": "تعذر حفظ الهوية",
+        "errorDescription": "حاول مرة أخرى أو تواصل مع الدعم."
+      },
+      "uploadErrors": {
+        "empty": "الملف فارغ.",
+        "unsupported_type": "استخدم PNG أو SVG أو JPEG أو WEBP.",
+        "too_large": "الصورة تتجاوز حد 5 ميجابايت.",
+        "unauthenticated": "يجب تسجيل الدخول للرفع.",
+        "missing_key": "التخزين غير مُعد.",
+        "bucket_missing": "تخزين الهوية غير مُعد. تواصل مع المسؤول.",
+        "forbidden": "ليس لديك صلاحية لرفع أصول الهوية.",
+        "payload_too_large": "الملف كبير جداً للتخزين.",
+        "mime_rejected": "نوع الملف غير مسموح.",
+        "network": "فشل الرفع — تحقق من الاتصال وحاول مرة أخرى.",
+        "unknown": "فشل الرفع."
+      }
+    },
+    "subscription": {
+      "ownerOnly": "يمكن لمالكي الشركة فقط عرض تفاصيل الاشتراك.",
+      "currentPlan": "الاشتراك",
+      "paymentMethod": "طريقة الدفع",
+      "upgrade": "ترقية",
+      "billingHistory": "سجل الفوترة"
     }
   }
 }

@@ -51,22 +51,23 @@ export function WorkspaceCommandCenter() {
     setQuery("");
     switch (cmd.actionKey) {
       case "nav_queue":
-        setLocation("/operations/queue");
+        // Nest-relative: shell is mounted under /dashboard/operations
+        setLocation("/queue");
         break;
       case "nav_hub":
-        setLocation("/operations/hub");
+        setLocation("/hub");
         break;
       case "nav_designer":
-        setLocation("/operations/designer");
+        setLocation("/designer");
         break;
       case "open_crm":
-        setLocation("/customers");
+        setLocation("~/dashboard/customers");
         break;
       case "open_timeline":
-        setLocation("/operations/timeline");
+        setLocation("/timeline");
         break;
       case "switch_workspace":
-        setLocation("/operations/hub");
+        setLocation("/hub");
         break;
       default:
         break;

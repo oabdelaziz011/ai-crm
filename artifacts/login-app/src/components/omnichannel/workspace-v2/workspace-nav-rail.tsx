@@ -39,7 +39,7 @@ export const WorkspaceNavRail = memo(function WorkspaceNavRail({
 }: WorkspaceNavRailProps) {
   return (
     <nav
-      className="flex w-[var(--ws-nav-width)] shrink-0 flex-col items-center gap-0.5 border-e border-[var(--ws-border)] bg-[var(--ws-surface)] py-2"
+      className="ws-nav-rail flex h-full min-h-0 w-[var(--ws-nav-width)] shrink-0 flex-col items-center gap-0.5 border-e border-[var(--ws-border)] bg-[var(--ws-surface)] py-2"
       aria-label={ariaLabel}
     >
       {WORKSPACE_NAV_ORDER.map((navId) => {
@@ -61,7 +61,7 @@ export const WorkspaceNavRail = memo(function WorkspaceNavRail({
           >
             <Icon className="size-4" />
             {count > 0 ? (
-              <span className="absolute -end-0.5 -top-0.5 flex min-w-[0.875rem] items-center justify-center rounded-full bg-[var(--ws-accent)] px-0.5 text-[7px] font-bold text-[#042f2e]">
+              <span className="absolute -end-0.5 -top-0.5 flex min-w-[0.875rem] items-center justify-center rounded-full bg-[var(--ws-accent)] px-0.5 text-[7px] font-bold text-primary-foreground">
                 {count > 99 ? "99+" : count}
               </span>
             ) : null}

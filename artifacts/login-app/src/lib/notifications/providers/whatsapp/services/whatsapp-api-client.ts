@@ -42,8 +42,48 @@ export type WhatsAppHealthResponse = {
   error?: string;
 };
 
+export type WhatsAppConnectionTestResponse = {
+  ok: boolean;
+  latencyMs: number;
+  error?: string;
+  metaErrorCode?: number;
+  metaErrorSubcode?: number;
+  tokenStatus: "valid" | "expired" | "invalid" | "unknown" | "missing";
+  tokenExpiresAt: string | null;
+  accessToken: { ok: boolean; error?: string; ownerId?: string; ownerName?: string };
+  phoneNumber: {
+    ok: boolean;
+    error?: string;
+    id?: string;
+    displayPhoneNumber?: string;
+    verifiedName?: string;
+    owningWabaId?: string | null;
+  };
+  businessAccount: {
+    ok: boolean;
+    error?: string;
+    id?: string;
+    name?: string;
+    phoneNumberBelongsToWaba?: boolean;
+  };
+  mismatch?: {
+    configuredPhoneNumberId: string;
+    configuredWabaId: string | null;
+    actualWabaIdFromMeta: string | null;
+    incorrectValue: "phone_number_id" | "waba_id" | "access_token" | "unknown";
+    wabaPhoneNumberIds?: string[];
+    detail: string;
+  };
+};
+
 export function fetchWhatsAppHealth(companyId: string): Promise<WhatsAppHealthResponse> {
   return postWhatsAppApi<WhatsAppHealthResponse>("/whatsapp/health", { companyId });
+}
+
+export function testWhatsAppConnection(companyId: string): Promise<WhatsAppConnectionTestResponse> {
+  return postWhatsAppApi<WhatsAppConnectionTestResponse>("/whatsapp/test-connection", {
+    companyId,
+  });
 }
 
 export function sendWhatsAppTestMessage(companyId: string, recipientPhone: string) {

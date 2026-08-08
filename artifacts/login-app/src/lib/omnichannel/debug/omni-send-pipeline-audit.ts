@@ -414,17 +414,6 @@ export function detectOmniSendStall(runId?: string | null): OmniSendFirstStop | 
   return state.firstStop;
 }
 
-type OmniSendAsyncTracer = typeof traceOmniSendAsync;
-
-declare global {
-  interface Window {
-    __traceOmniSendAsync__?: OmniSendAsyncTracer;
-    __traceOmniSendEnter__?: typeof traceOmniSendEnter;
-    __traceOmniSendExit__?: typeof traceOmniSendExit;
-    __traceOmniSendSync__?: typeof traceOmniSendSync;
-  }
-}
-
 if (typeof window !== "undefined") {
   window.__traceOmniSendAsync__ = traceOmniSendAsync;
   window.__traceOmniSendEnter__ = traceOmniSendEnter;

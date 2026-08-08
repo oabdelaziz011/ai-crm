@@ -36,6 +36,11 @@ function createMemoryRepo(): LeadRepository {
     qualifiedAt: null,
     convertedAt: null,
     archivedAt: null,
+    expectedCloseDate: null,
+    temperature: null,
+    notes: "",
+    tags: [],
+    lastActivityAt: new Date().toISOString(),
     aiSummary: "",
     metadata: {},
     createdBy: "user-1",
@@ -76,22 +81,81 @@ function createMemoryRepo(): LeadRepository {
       [...leads.values()].find((lead) => lead.customerId === customerId) ?? null,
     searchLeads: async () => ({ leads: [], total: 0 }),
     listPipelines: async () => [],
-    getPipeline: async () => null,
+    getPipeline: async () => ({
+      id: pipelineId,
+      companyId: "company-1",
+      name: "Default",
+      slug: "default",
+      description: "",
+      isDefault: true,
+      isActive: true,
+      allowBackwardStageMovement: true,
+    }),
     listStages: async () => [],
-    getStage: async (_c, id) =>
-      id === "stage-qualified"
-        ? {
-            id: "stage-qualified",
-            companyId: "company-1",
-            pipelineId,
-            name: "Qualified",
-            slug: "qualified",
-            lifecycleStatus: "qualified",
-            sortOrder: 1,
-            probabilityPercent: 20,
-            isTerminal: false,
-          }
-        : null,
+    getStage: async (_c, id) => {
+      const stages: Record<
+        string,
+        {
+          id: string;
+          companyId: string;
+          pipelineId: string;
+          name: string;
+          slug: string;
+          lifecycleStatus: LeadRecord["lifecycleStatus"];
+          sortOrder: number;
+          probabilityPercent: number;
+          isTerminal: boolean;
+        }
+      > = {
+        "stage-new": {
+          id: "stage-new",
+          companyId: "company-1",
+          pipelineId,
+          name: "New",
+          slug: "new",
+          lifecycleStatus: "new",
+          sortOrder: 0,
+          probabilityPercent: 5,
+          isTerminal: false,
+        },
+        "stage-qualified": {
+          id: "stage-qualified",
+          companyId: "company-1",
+          pipelineId,
+          name: "Qualified",
+          slug: "qualified",
+          lifecycleStatus: "qualified",
+          sortOrder: 1,
+          probabilityPercent: 20,
+          isTerminal: false,
+        },
+        "stage-contacted": {
+          id: "stage-contacted",
+          companyId: "company-1",
+          pipelineId,
+          name: "Contacted",
+          slug: "contacted",
+          lifecycleStatus: "contacted",
+          sortOrder: 2,
+          probabilityPercent: 35,
+          isTerminal: false,
+        },
+        "stage-proposal": {
+          id: "stage-proposal",
+          companyId: "company-1",
+          pipelineId,
+          name: "Proposal Sent",
+          slug: "proposal_sent",
+          lifecycleStatus: "proposal_sent",
+          sortOrder: 4,
+          probabilityPercent: 60,
+          isTerminal: false,
+        },
+      };
+      return stages[id] ?? null;
+    },
+    listSources: async () => [],
+    ensureDefaultSources: async () => [],
     createAssignment: async (input) => ({
       id: "assign-1",
       companyId: input.companyId,
@@ -213,5 +277,81 @@ describe("LeadCommandService", () => {
     const result = await service.qualifyLead(ctx, { companyId: "company-1", leadId: "lead-1", score: 80 });
     assert.equal(result.lead.isQualified, true);
     assert.equal(result.lead.lifecycleStatus, "qualified");
+  });
+
+  function buildService(repo = createMemoryRepo()) {
+    return {
+      repo,
+      service: new LeadCommandService({
+        leads: repo,
+        assignees: {
+          resolveAssigneeLabel: async (id) => id,
+          loadAssigneeLabels: async (ids) => new Map(ids.map((id) => [id, id])),
+          listAssigneeCandidates: async () => [],
+        },
+        conversion: { convertLead: async () => ({ customerId: "cust-1" }) },
+        events: { publish: async () => {} },
+        notifications: { notify: async () => {} },
+        audit: { write: async () => {} },
+      }),
+    };
+  }
+
+  it("moves a lead forward between stages and persists stage id", async () => {
+    const { service, repo } = buildService();
+    await service.createLead(ctx, { companyId: "company-1", title: "Forward" });
+    const moved = await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-qualified",
+    });
+    assert.equal(moved.lead.stageId, "stage-qualified");
+    assert.equal(moved.lead.lifecycleStatus, "qualified");
+    const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.stageId, "stage-qualified");
+  });
+
+  it("allows backward stage movement when pipeline allows it", async () => {
+    const { service, repo } = buildService();
+    await service.createLead(ctx, { companyId: "company-1", title: "Backward" });
+    await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-proposal",
+    });
+    const back = await service.changeLeadStage(ctx, {
+      companyId: "company-1",
+      leadId: "lead-1",
+      stageId: "stage-contacted",
+    });
+    assert.equal(back.lead.stageId, "stage-contacted");
+    assert.equal(back.lead.lifecycleStatus, "contacted");
+    const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.stageId, "stage-contacted");
+  });
+
+  it("rejects stage movement without leads.edit permission", async () => {
+    const { service } = buildService();
+    await service.createLead(ctx, { companyId: "company-1", title: "Denied" });
+    await assert.rejects(
+      () =>
+        service.changeLeadStage(
+          { ...ctx, hasPermission: () => false },
+          { companyId: "company-1", leadId: "lead-1", stageId: "stage-qualified" },
+        ),
+      /permission|Permission|denied|Forbidden/i,
+    );
+  });
+
+  it("persists company currency on create when provided", async () => {
+    const { service, repo } = buildService();
+    const result = await service.createLead(ctx, {
+      companyId: "company-1",
+      title: "Currency Lead",
+      currency: "EGP",
+    });
+    assert.equal(result.lead.currency, "EGP");
+    const persisted = await repo.getLead("company-1", "lead-1");
+    assert.equal(persisted?.currency, "EGP");
   });
 });

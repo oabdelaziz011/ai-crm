@@ -5,6 +5,7 @@ import { CustomerFieldEditor } from "@/components/customer-profile/fields/custom
 import { CustomerTimelinePanel } from "@/lib/customer-timeline/components/customer-timeline";
 import type { CustomerProfileQuickAction } from "@/components/customer-profile/types";
 import { WorkspaceSection } from "@/components/customer-workspace/workspace-ui";
+import { EntityNotesPanel } from "@/components/entity-workspace/panels/entity-notes-panel";
 import type { Customer } from "@/lib/types";
 
 type Props = {
@@ -36,7 +37,9 @@ export function WorkspaceCommunicationTab({
         </div>
       </WorkspaceSection>
 
-      <WorkspaceSection title={t("dashboard.customerWorkspace.notes.internalTitle")} dense>
+      <EntityNotesPanel entityType="customer" entityId={customer.id} sourceModule="crm" dense />
+
+      <WorkspaceSection title={t("dashboard.customerWorkspace.notes.pinnedTitle")} dense>
         <CustomerFieldEditor
           label={t("forms.customer.notes")}
           field="notes"

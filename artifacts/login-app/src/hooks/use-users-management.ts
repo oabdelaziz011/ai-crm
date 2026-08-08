@@ -24,6 +24,12 @@ export type ManagedUser = {
   id: string;
   email: string;
   full_name: string | null;
+  avatar_url: string | null;
+  job_title: string | null;
+  department: string | null;
+  phone: string | null;
+  preferred_language: string | null;
+  timezone: string | null;
   company_id: string | null;
   is_active: boolean;
   is_super_admin: boolean;
@@ -39,7 +45,7 @@ export const USERS_MANAGEMENT_KEY = ["users-management"] as const;
 export const USERS_LIST_MAX_ROWS = USERS_LIST_PAGE_SIZE * 20;
 
 const PROFILE_LIST_COLUMNS =
-  "id, email, full_name, company_id, is_active, is_super_admin, created_at" as const;
+  "id, email, full_name, avatar_url, job_title, department, phone, preferred_language, timezone, company_id, is_active, is_super_admin, created_at" as const;
 
 export type ManagedUsersScope = {
   companyId?: string | null;
@@ -176,7 +182,59 @@ type CreateUserInput = {
   roleId: string;
   isActive: boolean;
   branchIds?: string[];
+  jobTitle?: string | null;
+  department?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  preferredLanguage?: string | null;
+  timezone?: string | null;
 };
+
+function invalidateManagedUserCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  companyId?: string | null,
+) {
+  void qc.invalidateQueries({ queryKey: USERS_MANAGEMENT_KEY });
+  void qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
+  void qc.invalidateQueries({ queryKey: ["employee-identity"] });
+  void qc.invalidateQueries({ queryKey: ["company-workspace"] });
+  void qc.invalidateQueries({ queryKey: ["company-employee-auth-meta"] });
+  // Settings → Account Information reads the same employee profile row.
+  void qc.invalidateQueries({ queryKey: ["my-profile"] });
+  if (companyId) {
+    invalidateBranchQueries(qc, companyId);
+  }
+}
+
+export type CompanyEmployeeAuthMeta = {
+  userId: string;
+  lastSignInAt: string | null;
+  emailConfirmedAt: string | null;
+};
+
+export function useCompanyEmployeeAuthMeta(companyId: string | null) {
+  return useQuery({
+    queryKey: ["company-employee-auth-meta", companyId] as const,
+    enabled: Boolean(companyId),
+    staleTime: APP_QUERY_STALE_MS,
+    queryFn: async (): Promise<Record<string, CompanyEmployeeAuthMeta>> => {
+      const { data, error } = await supabase.rpc("list_company_employee_auth_meta", {
+        p_company_id: companyId,
+      });
+      if (error) throw new Error(error.message);
+      const map: Record<string, CompanyEmployeeAuthMeta> = {};
+      for (const row of data ?? []) {
+        const userId = String(row.user_id);
+        map[userId] = {
+          userId,
+          lastSignInAt: row.last_sign_in_at ? String(row.last_sign_in_at) : null,
+          emailConfirmedAt: row.email_confirmed_at ? String(row.email_confirmed_at) : null,
+        };
+      }
+      return map;
+    },
+  });
+}
 
 export function useCreateManagedUser() {
   const qc = useQueryClient();
@@ -209,6 +267,12 @@ export function useCreateManagedUser() {
           companyId: input.companyId,
           roleId: input.roleId,
           isActive: input.isActive,
+          jobTitle: input.jobTitle ?? null,
+          department: input.department ?? null,
+          phone: input.phone ?? null,
+          avatarUrl: input.avatarUrl ?? null,
+          preferredLanguage: input.preferredLanguage ?? null,
+          timezone: input.timezone ?? null,
           redirectTo: getPasswordSetupCallbackUrl(),
         },
       });
@@ -235,9 +299,7 @@ export function useCreateManagedUser() {
       }
     },
     onSuccess: async (_data, variables) => {
-      await qc.invalidateQueries({ queryKey: USERS_MANAGEMENT_KEY });
-      await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
-      invalidateBranchQueries(qc, variables.companyId);
+      invalidateManagedUserCaches(qc, variables.companyId);
     },
   });
 }
@@ -249,6 +311,12 @@ type UpdateUserInput = {
   is_active?: boolean;
   roleId?: string;
   branchIds?: string[];
+  job_title?: string | null;
+  department?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  preferred_language?: string | null;
+  timezone?: string | null;
 };
 
 export function useUpdateManagedUser() {
@@ -257,18 +325,17 @@ export function useUpdateManagedUser() {
 
   return useMutation({
     mutationFn: async (input: UpdateUserInput) => {
-      const { id, roleId, ...values } = input;
+      // branchIds / roleId are NOT profile columns — never send them to profiles.update.
+      const { id, roleId, branchIds, ...profileValues } = input;
 
-      if (Object.keys(values).length > 0) {
-        const { error } = await supabase.from("profiles").update(values).eq("id", id);
+      if (Object.keys(profileValues).length > 0) {
+        const { error } = await supabase.from("profiles").update(profileValues).eq("id", id);
         if (error) throw new Error(error.message);
       }
 
       if (roleId) {
         const targetCompanyId =
-          values.company_id !== undefined
-            ? values.company_id
-            : undefined;
+          profileValues.company_id !== undefined ? profileValues.company_id : undefined;
         try {
           await assignUserRole(id, roleId, targetCompanyId);
         } catch (error) {
@@ -276,22 +343,18 @@ export function useUpdateManagedUser() {
         }
       }
 
-      if (input.branchIds !== undefined) {
+      if (branchIds !== undefined) {
         const targetCompanyId =
-          values.company_id ??
+          profileValues.company_id ??
           (await supabase.from("profiles").select("company_id").eq("id", id).maybeSingle()).data
             ?.company_id;
         if (targetCompanyId) {
-          await syncUserBranchAssignments(id, targetCompanyId, input.branchIds);
+          await syncUserBranchAssignments(id, targetCompanyId, branchIds);
         }
       }
     },
     onSuccess: async (_data, variables) => {
-      await qc.invalidateQueries({ queryKey: USERS_MANAGEMENT_KEY });
-      await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
-      if (variables.company_id) {
-        invalidateBranchQueries(qc, variables.company_id);
-      }
+      invalidateManagedUserCaches(qc, variables.company_id);
       if (variables.roleId && user?.id === variables.id) {
         await refreshAuthContext();
       }
@@ -306,6 +369,46 @@ export function useResetManagedUserPassword() {
         redirectTo: getPasswordSetupCallbackUrl(),
       });
       if (error) throw new Error(translateAuthErrorMessage(error));
+    },
+  });
+}
+
+/** Resend invite / account-setup email for an employee. */
+export function useResendManagedUserInvitation() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const normalized = email.trim().toLowerCase();
+      const redirectTo = getPasswordSetupCallbackUrl();
+
+      const signupResend = await supabase.auth.resend({
+        type: "signup",
+        email: normalized,
+        options: { emailRedirectTo: redirectTo },
+      });
+
+      if (!signupResend.error) return;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
+        redirectTo,
+      });
+      if (error) throw new Error(translateAuthErrorMessage(error));
+    },
+  });
+}
+
+/** Removes employee from company (roles, branches, company link) and deactivates. */
+export function useRemoveManagedUser() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("remove_company_employee", {
+        p_user_id: userId,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      invalidateManagedUserCaches(qc);
     },
   });
 }

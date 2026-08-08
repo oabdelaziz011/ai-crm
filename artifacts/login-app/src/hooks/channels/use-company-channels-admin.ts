@@ -12,14 +12,14 @@ export function channelTypesQueryKey() {
   return ["communication-channel-types"] as const;
 }
 
-export function useCompanyChannelsAdmin() {
+export function useCompanyChannelsAdmin(enabled = true) {
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { services, context } = useChannelRegistryServices();
 
   return useQuery({
     queryKey: companyChannelsQueryKey(companyId),
-    enabled: Boolean(companyId),
+    enabled: Boolean(enabled && companyId),
     staleTime: 30_000,
     queryFn: async () => {
       if (!companyId) return [];

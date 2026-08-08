@@ -70,6 +70,16 @@ type ConversationPaneProps = {
   agentsById?: ReadonlyMap<string, OmnichannelAgentRef>;
   profilesByUserId?: ReadonlyMap<string, Profile>;
   composeRef?: React.RefObject<ComposePanelHandle | null>;
+  deskChrome?: {
+    soundEnabled: boolean;
+    soundOnLabel: string;
+    soundOffLabel: string;
+    onToggleSound: () => void;
+    conversationExpanded: boolean;
+    expandLabel: string;
+    collapseLabel: string;
+    onToggleExpand: () => void;
+  };
 };
 
 export const ConversationPane = memo(function ConversationPane({
@@ -113,6 +123,7 @@ export const ConversationPane = memo(function ConversationPane({
   agentsById,
   profilesByUserId,
   composeRef: externalComposeRef,
+  deskChrome,
 }: ConversationPaneProps) {
   const { i18n } = useTranslation();
   const internalRef = useRef<ComposePanelHandle>(null);
@@ -179,7 +190,7 @@ export const ConversationPane = memo(function ConversationPane({
 
   if (!conversation) {
     return (
-      <div className="ws-conversation-pane flex min-w-0 flex-1 flex-col items-center justify-center bg-[var(--ws-bg)] px-6 text-center">
+      <div className="ws-conversation-pane flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden bg-[var(--ws-bg)] px-6 text-center">
         <p className="text-sm font-medium">{emptyTitle}</p>
         <p className="mt-1 max-w-sm text-xs text-[var(--ws-muted)]">{emptyHint}</p>
       </div>
@@ -195,7 +206,7 @@ export const ConversationPane = memo(function ConversationPane({
   const customerMessages = messages.filter((message) => !message.isInternalNote);
 
   return (
-    <div className="ws-conversation-pane flex min-w-0 flex-1 flex-col bg-[var(--ws-bg)]">
+    <div className="ws-conversation-pane flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--ws-bg)]">
       {header ? (
         <ConversationHeaderBar
           header={header}
@@ -245,6 +256,7 @@ export const ConversationPane = memo(function ConversationPane({
           conversationFlags={experience.conversationFlags}
           bookmarkLabels={labels.conversationBookmarks}
           onToggleBookmark={experience.toggleConversationBookmark}
+          deskChrome={deskChrome}
         />
       ) : null}
 
@@ -300,7 +312,7 @@ export const ConversationPane = memo(function ConversationPane({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {isLoading ? (
           <p className="p-3 text-xs text-[var(--ws-muted)]">{labels.loading}</p>
         ) : (

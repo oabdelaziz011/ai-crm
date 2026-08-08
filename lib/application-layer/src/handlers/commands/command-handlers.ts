@@ -194,6 +194,36 @@ export async function handleCheckInCustomer(
   };
 }
 
+export async function handleTransitionClinicStatus(
+  deps: CommandHandlerDeps,
+  request: { bookingId: string; status: "with_nurse" | "in_progress" | "archived" },
+  context: ApplicationContext,
+): Promise<{ response: { bookingId: string; status: string; transitionedAt: string }; eventIds: string[] }> {
+  const booking = await deps.ports.bookingWrite.transitionClinicStatus(
+    context.tenantId,
+    request.bookingId,
+    request.status,
+  );
+  const transitionedAt = new Date().toISOString();
+  return {
+    response: Object.freeze({ bookingId: booking.id, status: booking.status, transitionedAt }),
+    eventIds: [],
+  };
+}
+
+export async function handleCompleteTriage(
+  deps: CommandHandlerDeps,
+  request: { bookingId: string },
+  context: ApplicationContext,
+): Promise<{ response: { bookingId: string; status: string; completedAt: string }; eventIds: string[] }> {
+  const booking = await deps.ports.bookingWrite.completeTriage(context.tenantId, request.bookingId);
+  const completedAt = new Date().toISOString();
+  return {
+    response: Object.freeze({ bookingId: booking.id, status: booking.status, completedAt }),
+    eventIds: [],
+  };
+}
+
 export async function handleRescheduleBooking(
   deps: CommandHandlerDeps,
   request: RescheduleBookingRequestDto,
@@ -304,6 +334,11 @@ export async function handleCollectPayment(
     currency: request.currency,
     method: request.method,
     invoiceId: request.invoiceId,
+    bookingId: request.bookingId,
+    discountCents: request.discountCents,
+    taxCents: request.taxCents,
+    serviceDescription: request.serviceDescription,
+    servicePriceCents: request.servicePriceCents,
   });
   const eventId = await deps.infra.events.publishPaymentCollected({
     paymentId: payment.id,
@@ -315,9 +350,10 @@ export async function handleCollectPayment(
     context: eventContext(context),
   });
   const eventIds = [eventId];
-  if (request.invoiceId) {
+  const invoiceIdForEvent = request.invoiceId ?? payment.invoiceId;
+  if (invoiceIdForEvent) {
     const invoicePaidId = await deps.infra.events.publishInvoicePaid({
-      invoiceId: request.invoiceId,
+      invoiceId: invoiceIdForEvent,
       customerId: payment.customerId,
       paidAt: payment.collectedAt,
       amountCents: payment.amountCents,
@@ -377,7 +413,7 @@ export async function handleConvertLead(
 
   const customer = await deps.ports.customerWrite.create({
     tenantId: context.tenantId,
-    displayName: request.customerDisplayName ?? lead.title,
+    displayName: request.customerDisplayName ?? lead.name,
   });
   await deps.ports.leadWrite.convert(context.tenantId, request.leadId, customer.id);
   const convertedAt = new Date().toISOString();

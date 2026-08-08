@@ -3,6 +3,7 @@
 import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { cn } from '@/lib/utils';
+import { withNestedOverlayGuard } from '@/lib/ui/prevent-dialog-dismiss-for-nested-overlay';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Select = SelectPrimitive.Root;
@@ -80,7 +81,10 @@ const SelectContent = React.forwardRef<
         className,
       )}
       position={position}
-      {...props}
+      {...withNestedOverlayGuard({
+        ...props,
+        'data-radix-select-content': '',
+      })}
     >
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport

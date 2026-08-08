@@ -23,9 +23,10 @@ describe("Lead Platform — Lead360", () => {
     }));
 
     assert.ok(aggregate);
-    assert.equal(aggregate!.identity.leadId, "lead_1");
-    assert.equal(aggregate!.profile.scoreBand, "hot");
-    assert.ok(aggregate!.intelligence.nextBestAction);
+    assert.equal(aggregate!.lead.id, "lead_1");
+    assert.equal(aggregate!.lead.name, "Fatima Noor");
+    assert.equal(aggregate!.lead.owner, "Admin");
+    assert.ok(Array.isArray(aggregate!.activities));
   });
 });
 

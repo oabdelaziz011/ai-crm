@@ -1,4 +1,4 @@
-import type { ApplicationPorts, CustomerReadModel, BookingReadModel, TimelineReadModel, NotificationReadModel, AnalyticsMetricModel, EmployeeWorkloadModel, RevenueSummaryModel, LeadReadModel, PaymentReadModel, InvoiceReadModel, TaskReadModel, FileReadModel, WorkflowExecutionModel } from "../ports/repository-ports.js";
+import type { ApplicationPorts, CustomerReadModel, BookingReadModel, TimelineReadModel, NotificationReadModel, AnalyticsMetricModel, EmployeeWorkloadModel, RevenueSummaryModel, LeadReadModel, OpportunityReadModel, CatalogProductReadModel, OpportunityLineItemReadModel, ProductCategoryReadModel, QuoteReadModel, QuoteLineItemReadModel, QuoteApprovalReadModel, QuoteHistoryReadModel, QuoteTemplateReadModel, PaymentReadModel, InvoiceReadModel, TaskReadModel, FileReadModel, WorkflowExecutionModel } from "../ports/repository-ports.js";
 import type { EntityContactReadModel, EntityTagReadModel, EntityActivityReadModel, EntityFileReadModel, EntityCustomFieldValueReadModel } from "../entity/entity-models.js";
 import { createCustomerEntityFacadePorts } from "../entity/customer-entity-facade.js";
 import { createConfigurationCachePort } from "../cache/configuration-cache-port.js";
@@ -143,29 +143,83 @@ export function createMockApplicationPorts(): ApplicationPorts & {
       Object.freeze({
         id: "lead_1",
         tenantId: "tenant_1",
-        title: "Fatima Noor",
-        contactName: "Fatima Noor",
+        name: "Fatima Noor",
+        contactPerson: "Fatima Noor",
         email: "fatima@example.com",
         phone: "+1-555-0101",
         companyName: "Acme Corp",
         lifecycleStatus: "qualified",
         priority: "high",
         score: 72,
-        estimatedValue: 15000,
+        expectedValue: 15000,
         currency: "USD",
         pipelineId: "pipe_1",
         stageId: "stage_qualified",
-        assignedUserId: "user_admin",
+        stage: "Qualified",
+        ownerId: "user_admin",
+        owner: "Admin",
         customerId: null,
         conversationId: null,
         isQualified: true,
+        sourceId: "source_website",
+        source: "Website",
+        expectedCloseDate: null,
+        temperature: "hot",
+        tags: ["enterprise"],
+        notes: "",
+        lastActivityAt: now(),
         createdAt: now(),
         updatedAt: now(),
       }),
     ],
   ]);
+  const opportunities = new Map<string, OpportunityReadModel>();
+  const products = new Map<string, CatalogProductReadModel>();
+  const categories: ProductCategoryReadModel[] = [];
+  const lineItems: OpportunityLineItemReadModel[] = [];
+  const quotes = new Map<string, QuoteReadModel>();
+  const quoteLines: QuoteLineItemReadModel[] = [];
+  const quoteApprovals: QuoteApprovalReadModel[] = [];
+  const quoteHistory: QuoteHistoryReadModel[] = [];
+  const quoteTemplates: QuoteTemplateReadModel[] = [
+    Object.freeze({
+      id: "qt_crm",
+      tenantId: "tenant_1",
+      name: "CRM Implementation",
+      slug: "crm-implementation",
+      description: "Default CRM implementation quote",
+      defaultLanguage: "en",
+      defaultCurrency: "USD",
+      validityDays: 30,
+      isActive: true,
+    }),
+  ];
+  const mockOppStages = [
+    Object.freeze({
+      id: "opp_stage_qualification",
+      tenantId: "tenant_1",
+      pipelineId: "opp_pipe_1",
+      name: "Qualification",
+      slug: "qualification",
+      stageKey: "qualification",
+      sortOrder: 0,
+      defaultProbabilityPercent: 10,
+      isTerminal: false,
+    }),
+    Object.freeze({
+      id: "opp_stage_discovery",
+      tenantId: "tenant_1",
+      pipelineId: "opp_pipe_1",
+      name: "Discovery",
+      slug: "discovery",
+      stageKey: "discovery",
+      sortOrder: 1,
+      defaultProbabilityPercent: 25,
+      isTerminal: false,
+    }),
+  ];
   const mockPipelines = [
-    Object.freeze({ id: "pipe_1", tenantId: "tenant_1", name: "Default Pipeline", slug: "default", isDefault: true, isActive: true }),
+    Object.freeze({ id: "pipe_1", tenantId: "tenant_1", name: "Default Pipeline", slug: "default", isDefault: true, isActive: true, allowBackwardStageMovement: true }),
   ];
   const mockStages = [
     Object.freeze({ id: "stage_new", tenantId: "tenant_1", pipelineId: "pipe_1", name: "New", slug: "new", lifecycleStatus: "new", sortOrder: 0, probabilityPercent: 10, isTerminal: false }),
@@ -232,7 +286,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
       },
       async search(tenantId, query, limit = 10) {
         return [...leads.values()]
-          .filter((l) => l.tenantId === tenantId && l.title.toLowerCase().includes(query.toLowerCase()))
+          .filter((l) => l.tenantId === tenantId && l.name.toLowerCase().includes(query.toLowerCase()))
           .slice(0, limit);
       },
       async list(tenantId, filter) {
@@ -244,6 +298,18 @@ export function createMockApplicationPorts(): ApplicationPorts & {
       },
       async listStages(tenantId, pipelineId) {
         return mockStages.filter((s) => s.tenantId === tenantId && s.pipelineId === pipelineId);
+      },
+      async listSources(tenantId) {
+        return [
+          Object.freeze({
+            id: "source_website",
+            tenantId,
+            name: "Website",
+            slug: "website",
+            channelType: "web",
+            isActive: true,
+          }),
+        ];
       },
       async getPipelineBoard(tenantId, pipelineId) {
         const pipeline = mockPipelines.find((p) => p.id === pipelineId && p.tenantId === tenantId);
@@ -265,7 +331,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
           leadsByStatus: Object.freeze(Object.fromEntries(items.map((l) => [l.lifecycleStatus, 1]))),
           conversionsInPeriod: 0,
           createdInPeriod: items.length,
-          forecastValue: items.reduce((s, l) => s + (l.estimatedValue ?? 0), 0),
+          forecastValue: items.reduce((s, l) => s + (l.expectedValue ?? 0), 0),
           conversionRate: 0.12,
           pipelineMetrics: Object.freeze([]),
         });
@@ -273,25 +339,39 @@ export function createMockApplicationPorts(): ApplicationPorts & {
     },
     leadWrite: {
       async create(input) {
+        const name = input.name;
+        const contactPerson = input.contactPerson ?? input.name;
+        const expectedValue = input.expectedValue ?? null;
+        const ownerId = input.ownerId ?? null;
+        const stage = mockStages.find((s) => s.id === (input.stageId ?? "stage_new"));
         const lead = Object.freeze({
           id: randomId(),
           tenantId: input.tenantId,
-          title: input.title,
-          contactName: input.contactName ?? input.title,
+          name,
+          contactPerson,
           email: input.email ?? null,
           phone: input.phone ?? null,
           companyName: input.companyName ?? null,
-          lifecycleStatus: "new",
+          lifecycleStatus: stage?.lifecycleStatus ?? "new",
           priority: input.priority ?? "normal",
           score: 0,
-          estimatedValue: input.estimatedValue ?? null,
+          expectedValue,
           currency: "USD",
           pipelineId: input.pipelineId ?? "pipe_1",
-          stageId: "stage_new",
-          assignedUserId: null,
+          stageId: input.stageId ?? stage?.id ?? "stage_new",
+          stage: stage?.name ?? "New",
+          ownerId,
+          owner: ownerId ? "Owner" : null,
           customerId: null,
           conversationId: null,
           isQualified: false,
+          sourceId: input.sourceId ?? null,
+          source: input.sourceId ? "Source" : null,
+          expectedCloseDate: input.expectedCloseDate ?? null,
+          temperature: input.temperature ?? null,
+          tags: input.tags ? [...input.tags] : [],
+          notes: input.notes ?? "",
+          lastActivityAt: now(),
           createdAt: now(),
           updatedAt: now(),
         });
@@ -301,14 +381,20 @@ export function createMockApplicationPorts(): ApplicationPorts & {
       async update(tenantId, leadId, patch) {
         const existing = leads.get(leadId);
         if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
-        const updated = Object.freeze({ ...existing, ...patch, updatedAt: now() });
+        const { actorUserId: _actor, ...crmPatch } = patch;
+        const updated = Object.freeze({
+          ...existing,
+          ...crmPatch,
+          tags: crmPatch.tags ? [...crmPatch.tags] : existing.tags,
+          updatedAt: now(),
+        });
         leads.set(leadId, updated);
         return updated;
       },
       async assign(tenantId, leadId, assigneeUserId) {
         const existing = leads.get(leadId);
         if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
-        const updated = Object.freeze({ ...existing, assignedUserId: assigneeUserId, updatedAt: now() });
+        const updated = Object.freeze({ ...existing, ownerId: assigneeUserId, owner: "Owner", updatedAt: now() });
         leads.set(leadId, updated);
         return updated;
       },
@@ -319,6 +405,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         const updated = Object.freeze({
           ...existing,
           stageId,
+          stage: stage?.name ?? existing.stage,
           lifecycleStatus: stage?.lifecycleStatus ?? existing.lifecycleStatus,
           updatedAt: now(),
         });
@@ -335,6 +422,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
               Object.freeze({
                 ...existing,
                 stageId,
+                stage: stage?.name ?? existing.stage,
                 lifecycleStatus: stage?.lifecycleStatus ?? existing.lifecycleStatus,
                 updatedAt: now(),
               }),
@@ -346,13 +434,579 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         const l = leads.get(leadId);
         if (!l || l.tenantId !== tenantId) throw new Error("not found");
         const customerId = randomId();
-        const updated = Object.freeze({ ...l, lifecycleStatus: "converted", customerId, convertedAt: now() });
+        const updated = Object.freeze({ ...l, lifecycleStatus: "converted", customerId });
         leads.set(leadId, updated);
         return Object.freeze({ lead: updated, customerId });
       },
       async archive(tenantId, leadId) {
         leads.delete(leadId);
         void tenantId;
+      },
+    },
+    opportunityRead: {
+      async getById(tenantId, opportunityId) {
+        const o = opportunities.get(opportunityId);
+        return o && o.tenantId === tenantId ? o : null;
+      },
+      async list(tenantId, filter) {
+        const items = [...opportunities.values()].filter((o) => o.tenantId === tenantId);
+        return Object.freeze({
+          items: Object.freeze(items.slice(0, filter?.limit ?? 50)),
+          total: items.length,
+        });
+      },
+      async listPipelines(tenantId) {
+        return [
+          Object.freeze({
+            id: "opp_pipe_1",
+            tenantId,
+            name: "Sales Execution",
+            slug: "sales-execution",
+            isDefault: true,
+            isActive: true,
+          }),
+        ];
+      },
+      async listStages(tenantId, pipelineId) {
+        return mockOppStages.filter((s) => s.tenantId === tenantId && s.pipelineId === pipelineId);
+      },
+      async getPipelineBoard(tenantId, pipelineId) {
+        const stages = mockOppStages.filter((s) => s.tenantId === tenantId && s.pipelineId === pipelineId);
+        return Object.freeze({
+          pipelineId,
+          stages: Object.freeze(
+            stages.map((stage) =>
+              Object.freeze({
+                ...stage,
+                opportunities: Object.freeze(
+                  [...opportunities.values()].filter(
+                    (o) => o.tenantId === tenantId && o.stageId === stage.id,
+                  ),
+                ),
+              }),
+            ),
+          ),
+        });
+      },
+      async listHistory() {
+        return [];
+      },
+    },
+    opportunityWrite: {
+      async create(input) {
+        const stage = mockOppStages.find((s) => s.id === (input.stageId ?? "opp_stage_qualification"));
+        const opp = Object.freeze({
+          id: randomId(),
+          tenantId: input.tenantId,
+          name: input.name,
+          leadId: input.leadId ?? null,
+          customerId: input.customerId ?? null,
+          companyName: input.companyName ?? null,
+          primaryContact: input.primaryContactName ?? "",
+          ownerId: input.ownerUserId ?? null,
+          owner: null,
+          stageId: stage?.id ?? "opp_stage_qualification",
+          stage: stage?.name ?? "Qualification",
+          stageKey: stage?.stageKey ?? "qualification",
+          pipelineId: input.pipelineId ?? "opp_pipe_1",
+          expectedRevenue: input.expectedRevenue ?? null,
+          weightedRevenue:
+            input.expectedRevenue != null
+              ? Math.round(input.expectedRevenue * ((stage?.defaultProbabilityPercent ?? 10) / 100) * 100) /
+                100
+              : null,
+          currency: input.currency ?? "USD",
+          probabilityPercent: stage?.defaultProbabilityPercent ?? 10,
+          probabilityConfidence: null,
+          probabilitySource: "manual",
+          probabilityReason: "stage default",
+          expectedCloseDate: input.expectedCloseDate ?? null,
+          country: input.country ?? null,
+          market: input.market ?? null,
+          language: input.language ?? null,
+          createdFromLead: Boolean(input.leadId),
+          aiScoreSnapshot: null,
+          aiContextSnapshot: Object.freeze({}),
+          currentQuoteId: null,
+          createdAt: now(),
+          updatedAt: now(),
+        }) satisfies OpportunityReadModel;
+        opportunities.set(opp.id, opp);
+        return opp;
+      },
+      async createFromLead(input) {
+        const lead = leads.get(input.leadId);
+        if (!lead || lead.tenantId !== input.tenantId) throw new Error("lead not found");
+        return this.create({
+          tenantId: input.tenantId,
+          name: input.name ?? lead.name,
+          leadId: lead.id,
+          customerId: lead.customerId ?? undefined,
+          companyName: lead.companyName ?? undefined,
+          primaryContactName: lead.contactPerson,
+          ownerUserId: lead.ownerId ?? undefined,
+          expectedRevenue: lead.expectedValue ?? undefined,
+          currency: lead.currency,
+          expectedCloseDate: lead.expectedCloseDate,
+          actorUserId: input.actorUserId,
+        });
+      },
+      async update(tenantId, opportunityId, patch) {
+        const existing = opportunities.get(opportunityId);
+        if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
+        const {
+          actorUserId: _a,
+          primaryContactName,
+          ownerUserId,
+          ...rest
+        } = patch;
+        const updated = Object.freeze({
+          ...existing,
+          ...rest,
+          primaryContact: primaryContactName ?? existing.primaryContact,
+          ownerId: ownerUserId !== undefined ? ownerUserId : existing.ownerId,
+          updatedAt: now(),
+        });
+        opportunities.set(opportunityId, updated);
+        return updated;
+      },
+      async changeStage(tenantId, opportunityId, stageId) {
+        const existing = opportunities.get(opportunityId);
+        if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
+        const stage = mockOppStages.find((s) => s.id === stageId);
+        const updated = Object.freeze({
+          ...existing,
+          stageId,
+          stage: stage?.name ?? existing.stage,
+          stageKey: stage?.stageKey ?? existing.stageKey,
+          probabilityPercent: stage?.defaultProbabilityPercent ?? existing.probabilityPercent,
+          updatedAt: now(),
+        });
+        opportunities.set(opportunityId, updated);
+        return updated;
+      },
+      async updateProbability(tenantId, opportunityId, input) {
+        const existing = opportunities.get(opportunityId);
+        if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
+        const updated = Object.freeze({
+          ...existing,
+          probabilityPercent: input.percent,
+          probabilityConfidence: input.confidence ?? null,
+          probabilitySource: input.source ?? "manual",
+          probabilityReason: input.reason ?? "",
+          weightedRevenue:
+            existing.expectedRevenue != null
+              ? Math.round(existing.expectedRevenue * (input.percent / 100) * 100) / 100
+              : null,
+          updatedAt: now(),
+        });
+        opportunities.set(opportunityId, updated);
+        return updated;
+      },
+      async archive(tenantId, opportunityId) {
+        opportunities.delete(opportunityId);
+        void tenantId;
+      },
+    },
+    productRead: {
+      async getById(tenantId, productId) {
+        const p = products.get(productId);
+        return p && p.tenantId === tenantId ? p : null;
+      },
+      async list(tenantId, filter) {
+        const items = [...products.values()].filter((p) => p.tenantId === tenantId);
+        return Object.freeze({
+          items: Object.freeze(items.slice(0, filter?.limit ?? 50)),
+          total: items.length,
+        });
+      },
+      async listCategories(tenantId) {
+        return categories.filter((c) => c.tenantId === tenantId);
+      },
+      async listRegionalPrices() {
+        return [];
+      },
+      async listHistory() {
+        return [];
+      },
+      async listOpportunityLines(tenantId, opportunityId) {
+        return lineItems.filter((l) => l.opportunityId === opportunityId);
+      },
+    },
+    productWrite: {
+      async create(input) {
+        const product = Object.freeze({
+          id: randomId(),
+          tenantId: input.tenantId,
+          categoryId: input.categoryId ?? null,
+          productType: input.productType ?? "product",
+          name: input.name,
+          sku: input.sku,
+          brand: input.brand ?? "",
+          description: input.description ?? "",
+          basePrice: input.basePrice ?? 0,
+          currency: input.currency ?? "USD",
+          taxClass: input.taxClass ?? "standard",
+          cost: input.cost ?? null,
+          marginPercent: null,
+          isActive: true,
+          subscriptionInterval: null,
+          subscriptionPrice: null,
+          trackInventory: false,
+          stockQuantity: null,
+          unit: "each",
+          tags: input.tags ? [...input.tags] : [],
+          imageUrls: [],
+          documentUrls: [],
+          createdAt: now(),
+          updatedAt: now(),
+        }) satisfies CatalogProductReadModel;
+        products.set(product.id, product);
+        return product;
+      },
+      async update(tenantId, productId, patch) {
+        const existing = products.get(productId);
+        if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
+        const { actorUserId: _a, ...rest } = patch;
+        const updated = Object.freeze({ ...existing, ...rest, updatedAt: now() });
+        products.set(productId, updated);
+        return updated;
+      },
+      async archive(tenantId, productId) {
+        products.delete(productId);
+        void tenantId;
+      },
+      async createCategory(input) {
+        const category = Object.freeze({
+          id: randomId(),
+          tenantId: input.tenantId,
+          parentId: input.parentId ?? null,
+          name: input.name,
+          slug: input.name.toLowerCase().replace(/\s+/g, "-"),
+          description: input.description ?? "",
+          sortOrder: 0,
+          isActive: true,
+        }) satisfies ProductCategoryReadModel;
+        categories.push(category);
+        return category;
+      },
+      async upsertRegionalPrice(input) {
+        return Object.freeze({
+          id: input.id ?? randomId(),
+          productId: input.productId,
+          country: input.country ?? null,
+          market: input.market ?? null,
+          region: input.region ?? null,
+          localPrice: input.localPrice,
+          currencyOverride: input.currencyOverride ?? null,
+          isActive: true,
+        });
+      },
+      async attachToOpportunity(input) {
+        const product = products.get(input.productId);
+        if (!product) throw new Error("product not found");
+        const qty = input.quantity ?? 1;
+        const unitPrice = input.unitPriceOverride ?? product.basePrice;
+        const discount = input.discountPercent ?? 0;
+        const tax = input.taxPercent ?? 0;
+        const subtotal = Math.round(qty * unitPrice * (1 - discount / 100) * 100) / 100;
+        const taxAmount = Math.round(subtotal * (tax / 100) * 100) / 100;
+        const line = Object.freeze({
+          id: randomId(),
+          opportunityId: input.opportunityId,
+          productId: product.id,
+          productName: product.name,
+          sku: product.sku,
+          quantity: qty,
+          unitPrice,
+          discountPercent: discount,
+          taxPercent: tax,
+          currency: product.currency,
+          subtotal,
+          taxAmount,
+          total: subtotal + taxAmount,
+        }) satisfies OpportunityLineItemReadModel;
+        lineItems.push(line);
+        return line;
+      },
+      async updateOpportunityLine(input) {
+        const idx = lineItems.findIndex((l) => l.id === input.lineId);
+        if (idx < 0) throw new Error("line not found");
+        const existing = lineItems[idx]!;
+        const qty = input.quantity ?? existing.quantity;
+        const unitPrice = input.unitPrice ?? existing.unitPrice;
+        const discount = input.discountPercent ?? existing.discountPercent;
+        const tax = input.taxPercent ?? existing.taxPercent;
+        const subtotal = Math.round(qty * unitPrice * (1 - discount / 100) * 100) / 100;
+        const taxAmount = Math.round(subtotal * (tax / 100) * 100) / 100;
+        const updated = Object.freeze({
+          ...existing,
+          quantity: qty,
+          unitPrice,
+          discountPercent: discount,
+          taxPercent: tax,
+          subtotal,
+          taxAmount,
+          total: subtotal + taxAmount,
+        });
+        lineItems[idx] = updated;
+        return updated;
+      },
+      async removeOpportunityLine(_tenantId, lineId) {
+        const idx = lineItems.findIndex((l) => l.id === lineId);
+        if (idx >= 0) lineItems.splice(idx, 1);
+      },
+    },
+    quoteRead: {
+      async getById(tenantId, quoteId) {
+        const q = quotes.get(quoteId);
+        return q && q.tenantId === tenantId ? q : null;
+      },
+      async list(tenantId, filter) {
+        let items = [...quotes.values()].filter((q) => q.tenantId === tenantId);
+        if (filter?.opportunityId) items = items.filter((q) => q.opportunityId === filter.opportunityId);
+        if (filter?.status) items = items.filter((q) => q.status === filter.status);
+        if (filter?.currentOnly) items = items.filter((q) => q.isCurrent);
+        return Object.freeze({
+          items: Object.freeze(items.slice(0, filter?.limit ?? 50)),
+          total: items.length,
+        });
+      },
+      async listLines(_tenantId, quoteId) {
+        return quoteLines.filter((l) => l.quoteId === quoteId);
+      },
+      async listVersions(_tenantId, quoteFamilyId) {
+        return [...quotes.values()].filter((q) => q.quoteFamilyId === quoteFamilyId);
+      },
+      async listTemplates(tenantId) {
+        return quoteTemplates.filter((t) => t.tenantId === tenantId);
+      },
+      async listApprovals(_tenantId, quoteId) {
+        return quoteApprovals.filter((a) => a.quoteId === quoteId);
+      },
+      async listHistory(_tenantId, quoteId) {
+        return quoteHistory.filter((h) => h.quoteId === quoteId);
+      },
+    },
+    quoteWrite: {
+      async createFromOpportunity(input) {
+        const quote = Object.freeze({
+          id: randomId(),
+          tenantId: input.tenantId,
+          quoteFamilyId: randomId(),
+          versionNumber: 1,
+          quoteNumber: `Q-${String(quotes.size + 1).padStart(4, "0")}`,
+          opportunityId: input.opportunityId,
+          customerId: null,
+          templateId: input.templateId ?? null,
+          status: "draft",
+          title: input.title ?? "Quote",
+          contactName: "",
+          currency: "USD",
+          language: "en",
+          country: null,
+          market: null,
+          validUntil: null,
+          ownerUserId: input.actorUserId,
+          subtotal: 0,
+          discountTotal: 0,
+          taxTotal: 0,
+          shippingTotal: 0,
+          grandTotal: 0,
+          weightedRevenue: null,
+          opportunityProbabilityPercent: null,
+          notes: "",
+          isCurrent: true,
+          supersededByQuoteId: null,
+          sentAt: null,
+          viewedAt: null,
+          acceptedAt: null,
+          rejectedAt: null,
+          expiredAt: null,
+          convertedAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+        }) satisfies QuoteReadModel;
+        quotes.set(quote.id, quote);
+        const opp = opportunities.get(input.opportunityId);
+        if (opp) {
+          opportunities.set(input.opportunityId, Object.freeze({ ...opp, currentQuoteId: quote.id }));
+        }
+        return { quote, lines: [] };
+      },
+      async createManual(input) {
+        const quote = Object.freeze({
+          id: randomId(),
+          tenantId: input.tenantId,
+          quoteFamilyId: randomId(),
+          versionNumber: 1,
+          quoteNumber: `Q-${String(quotes.size + 1).padStart(4, "0")}`,
+          opportunityId: input.opportunityId ?? null,
+          customerId: null,
+          templateId: input.templateId ?? null,
+          status: "draft",
+          title: input.title,
+          contactName: input.contactName ?? "",
+          currency: input.currency ?? "USD",
+          language: "en",
+          country: null,
+          market: null,
+          validUntil: null,
+          ownerUserId: input.actorUserId,
+          subtotal: 0,
+          discountTotal: 0,
+          taxTotal: 0,
+          shippingTotal: 0,
+          grandTotal: 0,
+          weightedRevenue: null,
+          opportunityProbabilityPercent: null,
+          notes: "",
+          isCurrent: true,
+          supersededByQuoteId: null,
+          sentAt: null,
+          viewedAt: null,
+          acceptedAt: null,
+          rejectedAt: null,
+          expiredAt: null,
+          convertedAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+        }) satisfies QuoteReadModel;
+        quotes.set(quote.id, quote);
+        return quote;
+      },
+      async createVersion(input) {
+        const existing = quotes.get(input.quoteId);
+        if (!existing) throw new Error("quote not found");
+        const next = Object.freeze({
+          ...existing,
+          id: randomId(),
+          versionNumber: existing.versionNumber + 1,
+          status: "draft",
+          isCurrent: true,
+          supersededByQuoteId: null,
+          createdAt: now(),
+          updatedAt: now(),
+        });
+        quotes.set(existing.id, Object.freeze({ ...existing, isCurrent: false, supersededByQuoteId: next.id }));
+        quotes.set(next.id, next);
+        return next;
+      },
+      async addCatalogProduct(input) {
+        const quote = quotes.get(input.quoteId);
+        if (!quote) throw new Error("quote not found");
+        const product = products.get(input.productId);
+        if (!product) throw new Error("product not found");
+        const qty = input.quantity ?? 1;
+        const line = Object.freeze({
+          id: randomId(),
+          quoteId: input.quoteId,
+          lineKind: "product",
+          productId: product.id,
+          productName: product.name,
+          sku: product.sku,
+          sectionTitle: null,
+          notes: "",
+          isOptional: false,
+          quantity: qty,
+          unitPrice: product.basePrice,
+          discountPercent: input.discountPercent ?? 0,
+          discountAmount: 0,
+          taxPercent: input.taxPercent ?? 0,
+          currency: product.currency,
+          subtotal: qty * product.basePrice,
+          taxAmount: 0,
+          total: qty * product.basePrice,
+          sortOrder: quoteLines.length,
+        }) satisfies QuoteLineItemReadModel;
+        quoteLines.push(line);
+        const updated = Object.freeze({
+          ...quote,
+          subtotal: quote.subtotal + line.subtotal,
+          grandTotal: quote.grandTotal + line.total,
+          updatedAt: now(),
+        });
+        quotes.set(quote.id, updated);
+        return { line, quote: updated };
+      },
+      async updateLine(input) {
+        const idx = quoteLines.findIndex((l) => l.id === input.lineId);
+        if (idx < 0) throw new Error("line not found");
+        const existing = quoteLines[idx]!;
+        const qty = input.quantity ?? existing.quantity;
+        const unitPrice = input.unitPrice ?? existing.unitPrice;
+        const updatedLine = Object.freeze({
+          ...existing,
+          quantity: qty,
+          unitPrice,
+          discountPercent: input.discountPercent ?? existing.discountPercent,
+          discountAmount: input.discountAmount ?? existing.discountAmount,
+          taxPercent: input.taxPercent ?? existing.taxPercent,
+          subtotal: qty * unitPrice,
+          total: qty * unitPrice,
+        });
+        quoteLines[idx] = updatedLine;
+        const quote = quotes.get(input.quoteId);
+        if (!quote) throw new Error("quote not found");
+        return { line: updatedLine, quote };
+      },
+      async removeLine(input) {
+        const idx = quoteLines.findIndex((l) => l.id === input.lineId);
+        if (idx >= 0) quoteLines.splice(idx, 1);
+        const quote = quotes.get(input.quoteId);
+        if (!quote) throw new Error("quote not found");
+        return quote;
+      },
+      async changeStatus(input) {
+        const existing = quotes.get(input.quoteId);
+        if (!existing) throw new Error("quote not found");
+        const updated = Object.freeze({ ...existing, status: input.status, updatedAt: now() });
+        quotes.set(input.quoteId, updated);
+        return updated;
+      },
+      async requestApproval(input) {
+        const existing = quotes.get(input.quoteId);
+        if (!existing) throw new Error("quote not found");
+        quoteApprovals.push(
+          Object.freeze({
+            id: randomId(),
+            quoteId: input.quoteId,
+            status: "pending",
+            requestedBy: input.actorUserId,
+            decidedBy: null,
+            decisionNote: "",
+            requestedAt: now(),
+            decidedAt: null,
+          }),
+        );
+        const updated = Object.freeze({ ...existing, status: "internal_review", updatedAt: now() });
+        quotes.set(input.quoteId, updated);
+        return updated;
+      },
+      async decideApproval(input) {
+        const approval = quoteApprovals.find((a) => a.id === input.approvalId);
+        if (approval) {
+          const idx = quoteApprovals.indexOf(approval);
+          quoteApprovals[idx] = Object.freeze({
+            ...approval,
+            status: input.status,
+            decidedBy: input.actorUserId,
+            decisionNote: input.decisionNote ?? "",
+            decidedAt: now(),
+          });
+        }
+        const existing = quotes.get(input.quoteId);
+        if (!existing) throw new Error("quote not found");
+        const updated = Object.freeze({
+          ...existing,
+          status: input.status === "approved" ? "draft" : "rejected",
+          updatedAt: now(),
+        });
+        quotes.set(input.quoteId, updated);
+        return updated;
+      },
+      async archive(input) {
+        quotes.delete(input.quoteId);
       },
     },
     bookingRead: {
@@ -426,6 +1080,22 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         const b = bookings.get(bookingId);
         if (!b || b.tenantId !== tenantId) throw new Error("not found");
         const updated = seedBooking({ ...b, status: "no_show" });
+        bookings.set(bookingId, updated);
+        return updated;
+      },
+      async transitionClinicStatus(tenantId, bookingId, status) {
+        const b = bookings.get(bookingId);
+        if (!b || b.tenantId !== tenantId) throw new Error("not found");
+        const display =
+          status === "with_nurse" ? "With Nurse" : status === "in_progress" ? "In Progress" : "Archived";
+        const updated = seedBooking({ ...b, status: display });
+        bookings.set(bookingId, updated);
+        return updated;
+      },
+      async completeTriage(tenantId, bookingId) {
+        const b = bookings.get(bookingId);
+        if (!b || b.tenantId !== tenantId) throw new Error("not found");
+        const updated = seedBooking({ ...b, status: "With Nurse" });
         bookings.set(bookingId, updated);
         return updated;
       },
@@ -1216,6 +1886,7 @@ export function createMockApplicationPorts(): ApplicationPorts & {
           tenantId: input.tenantId,
           entityType: input.entityType,
           entityId: input.entityId,
+          activityId: input.activityId ?? null,
           fileName: input.fileName,
           mimeType: input.mimeType,
           sizeBytes: input.sizeBytes,

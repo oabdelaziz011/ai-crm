@@ -8,26 +8,26 @@ import type { OperationsBusinessContextConfig } from "../../types/extended-confi
 import type { OperationsCopilotCapabilityConfig } from "../../types/extended-config-types.js";
 
 export const SEED_CUSTOMER360_SECTIONS: Customer360SectionConfig[] = [
-  { id: "todays_operation", titleKey: "sections.todaysOperation", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "manager"], sortOrder: 0 },
-  { id: "customer_summary", titleKey: "sections.customerSummary", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "cashier", "nurse", "manager"], sortOrder: 1 },
-  { id: "communication", titleKey: "sections.communication", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "manager"], sortOrder: 2 },
-  { id: "timeline", titleKey: "sections.timeline", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "manager"], sortOrder: 3 },
-  { id: "notes", titleKey: "sections.notes", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "manager"], sortOrder: 4 },
+  { id: "todays_operation", titleKey: "sections.todaysOperation", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 0 },
+  { id: "customer_summary", titleKey: "sections.customerSummary", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "cashier", "nurse", "doctor", "manager"], sortOrder: 1 },
+  { id: "communication", titleKey: "sections.communication", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 2 },
+  { id: "timeline", titleKey: "sections.timeline", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 3 },
+  { id: "notes", titleKey: "sections.notes", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 4 },
   { id: "invoices_payments", titleKey: "sections.invoicesPayments", visible: true, collapsed: false, permissions: [], roles: ["cashier", "manager"], sortOrder: 5 },
   { id: "bookings", titleKey: "sections.bookings", visible: true, collapsed: false, permissions: [], roles: ["receptionist", "manager"], sortOrder: 6 },
-  { id: "files", titleKey: "sections.files", visible: true, collapsed: false, permissions: [], roles: ["nurse", "manager"], sortOrder: 7 },
+  { id: "files", titleKey: "sections.files", visible: true, collapsed: false, permissions: [], roles: ["nurse", "doctor", "manager"], sortOrder: 7 },
   { id: "tasks", titleKey: "sections.tasks", visible: true, collapsed: false, permissions: [], roles: ["manager"], sortOrder: 8 },
   { id: "ai_assistant", titleKey: "sections.aiAssistant", visible: true, collapsed: false, permissions: [], roles: ["manager"], sortOrder: 9 },
 ];
 
 export const SEED_INTELLIGENCE_BLOCKS: IntelligenceBlockConfig[] = [
-  { id: "context_ribbon", visible: true, collapsed: false, roles: ["receptionist", "nurse", "manager"], sortOrder: 0, permissions: [] },
-  { id: "workflow_tracker", visible: true, collapsed: false, roles: ["receptionist", "nurse", "manager"], sortOrder: 1, permissions: [] },
-  { id: "alerts", visible: true, collapsed: false, roles: ["receptionist", "nurse", "manager"], sortOrder: 2, permissions: [] },
+  { id: "context_ribbon", visible: true, collapsed: false, roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 0, permissions: [] },
+  { id: "workflow_tracker", visible: true, collapsed: false, roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 1, permissions: [] },
+  { id: "alerts", visible: true, collapsed: false, roles: ["receptionist", "nurse", "doctor", "manager"], sortOrder: 2, permissions: [] },
   { id: "recommendations", visible: true, collapsed: false, roles: ["manager"], sortOrder: 3, permissions: [] },
   { id: "operational_intelligence", visible: true, collapsed: false, roles: ["manager"], sortOrder: 4, permissions: [] },
   { id: "quick_decision_bar", visible: true, collapsed: false, roles: ["manager"], sortOrder: 5, permissions: [] },
-  { id: "business_context", visible: true, collapsed: false, roles: ["nurse", "manager"], sortOrder: 6, permissions: [] },
+  { id: "business_context", visible: true, collapsed: false, roles: ["nurse", "doctor", "manager"], sortOrder: 6, permissions: [] },
   { id: "mini_kpis", visible: true, collapsed: false, roles: ["manager"], sortOrder: 7, permissions: [] },
   { id: "floating_copilot", visible: true, collapsed: false, roles: ["manager"], sortOrder: 8, permissions: [] },
 ];

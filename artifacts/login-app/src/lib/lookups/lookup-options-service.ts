@@ -3,6 +3,7 @@ import { deriveCustomerTags } from "@/lib/customer-workspace/customer-workspace-
 import { CUSTOMER_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
 import { CRM_LIST_MAX_ROWS } from "@/lib/crm/crm-list-config";
 import { createBranchServices } from "@/lib/company/branches";
+import { wxRecordServiceResolution } from "@workspace/automation-platform";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import { fetchAvailableDatesLookupOptions } from "./available-dates/available-dates-lookup-service";
@@ -78,6 +79,7 @@ async function fetchEntityRecords(
   client: SupabaseClient,
   cachedCustomers?: Record<string, unknown>[],
 ): Promise<Record<string, unknown>[]> {
+  wxRecordServiceResolution(`lookupEntityRecords:${lookup}`);
   const scheduling = createSchedulingServices(client);
   const branches = createBranchServices(client);
 

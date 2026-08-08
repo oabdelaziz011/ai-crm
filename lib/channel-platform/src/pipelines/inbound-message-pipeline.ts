@@ -31,6 +31,20 @@ import {
   sendWhatsAppDirectOutboundBypass,
   WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD,
 } from "../adapters/whatsapp/whatsapp-direct-outbound-bypass.js";
+import { logWhatsApp, logWhatsAppError } from "../debug/whatsapp-ai-pipeline-log.js";
+import {
+  waPerfMarkInboundExecution,
+  waPerfMeasure,
+  waPerfNoteSkipped,
+} from "../debug/whatsapp-pipeline-perf.js";
+import {
+  waTraceBindAutomationRun,
+  waTraceBindConversation,
+  waTraceBindInboundExternalMessageId,
+  waTraceBindSession,
+  waTraceBindWorkflow,
+  waTraceNoteError,
+} from "../debug/whatsapp-conversation-trace-bridge.js";
 
 export class InboundMessagePipeline {
   constructor(
@@ -71,29 +85,51 @@ export class InboundMessagePipeline {
 
     const inboundEvent = duplicate
       ? duplicate
-      : await this.inboundRepository.createEvent({
-          companyId: request.companyId,
-          companyChannelId: request.companyChannelId,
-          channelKey: request.channelKey,
-          idempotencyKey,
-          externalThreadId: request.externalThreadId,
-          externalMessageId: request.externalMessageId,
-          senderExternalId: request.senderExternalId,
-          payload: request.payload,
-        });
+      : await waPerfMeasure("Database writes: create inbound event", () =>
+          this.inboundRepository.createEvent({
+            companyId: request.companyId,
+            companyChannelId: request.companyChannelId,
+            channelKey: request.channelKey,
+            idempotencyKey,
+            externalThreadId: request.externalThreadId,
+            externalMessageId: request.externalMessageId,
+            senderExternalId: request.senderExternalId,
+            payload: request.payload,
+          }),
+        );
 
     request.trace?.step("webhook.inbound_event_created", {
       inboundEventId: inboundEvent.id,
       duplicate: Boolean(duplicate),
     });
 
-    await this.inboundRepository.updateEvent({
-      inboundEventId: inboundEvent.id,
-      processingStatus: "processing",
-    });
+    await waPerfMeasure("Database writes: mark inbound processing", () =>
+      this.inboundRepository.updateEvent({
+        inboundEventId: inboundEvent.id,
+        processingStatus: "processing",
+      }),
+    );
 
+    const pipelineStartedAt = Date.now();
     try {
       const normalized = adapter.normalizeInbound({ companyChannel }, request.payload);
+
+      if (request.channelKey === "whatsapp") {
+        logWhatsApp("Parsed message", {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          phoneNumber: normalized.senderExternalId,
+          externalThreadId: normalized.externalThreadId,
+          externalMessageId: normalized.externalMessageId,
+          textPreview: String(normalized.text ?? "").slice(0, 160),
+          messageType: normalized.metadata?.messageType ?? null,
+        });
+        logWhatsApp("Company resolved", {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          phoneNumber: normalized.senderExternalId,
+        });
+      }
 
       const validationBefore = buildPipelineValidationBeforePayload({
         channelKey: request.channelKey,
@@ -146,8 +182,13 @@ export class InboundMessagePipeline {
       });
 
       const workflowResolution = this.workflowResolver
-        ? await this.workflowResolver.resolveDetail(request.companyChannelId)
-        : { status: "skipped" as const, reason: "no_binding" as const };
+        ? await waPerfMeasure("Workflow lookup", () =>
+            this.workflowResolver!.resolveDetail(request.companyChannelId),
+          )
+        : (() => {
+            waPerfNoteSkipped("Workflow lookup", "no_workflow_resolver");
+            return { status: "skipped" as const, reason: "no_binding" as const };
+          })();
       const resolvedWorkflow =
         workflowResolution.status === "resolved" ? workflowResolution.workflow : null;
       const useWorkflow = Boolean(resolvedWorkflow && this.ports.automation);
@@ -189,7 +230,31 @@ export class InboundMessagePipeline {
             companyChannelId: request.companyChannelId,
             channelKey: request.channelKey,
           });
+          if (request.channelKey === "whatsapp") {
+            logWhatsApp("AI Employee selected", {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              aiEmployeeId,
+              phoneNumber: normalized.senderExternalId,
+            });
+          }
+        } else if (request.channelKey === "whatsapp") {
+          logWhatsApp("AI Employee selected", {
+            companyId: request.companyId,
+            companyChannelId: request.companyChannelId,
+            aiEmployeeId: null,
+            phoneNumber: normalized.senderExternalId,
+            note: "no_employee_resolved",
+          });
         }
+      } else if (request.channelKey === "whatsapp" && request.executeAi && !useWorkflow) {
+        logWhatsApp("AI Employee selected", {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          aiEmployeeId: aiEmployeeId ?? null,
+          phoneNumber: normalized.senderExternalId,
+          note: aiEmployeeId ? "preselected_on_request" : "skipped_resolution",
+        });
       }
 
       let legacyAssistantId = request.aiAssistantId;
@@ -204,40 +269,65 @@ export class InboundMessagePipeline {
         );
       }
 
-      const session = await this.sessionEngine.resolveSession(ctx, {
-        companyId: request.companyId,
-        companyChannelId: request.companyChannelId,
-        channelKey: request.channelKey,
-        externalThreadId: normalized.externalThreadId,
-        senderExternalId: normalized.senderExternalId,
-        conversationId: request.conversationId,
-        aiAssistantId: legacyAssistantId,
-        requireAiAssistant: !useWorkflow,
-        employeeConversationMetadata,
-        metadata: normalized.metadata,
-      });
+      const session = await waPerfMeasure("Conversation lookup", () =>
+        this.sessionEngine.resolveSession(ctx, {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          channelKey: request.channelKey,
+          externalThreadId: normalized.externalThreadId,
+          senderExternalId: normalized.senderExternalId,
+          conversationId: request.conversationId,
+          aiAssistantId: legacyAssistantId,
+          requireAiAssistant: !useWorkflow,
+          employeeConversationMetadata,
+          metadata: normalized.metadata,
+        }),
+      );
 
-      await this.sessionRepository.touchInbound(session.id);
+      waTraceBindInboundExternalMessageId(normalized.externalMessageId);
+      waTraceBindConversation(session.conversation_id);
+      waTraceBindSession(session.id);
+      if (resolvedWorkflow) {
+        waTraceBindWorkflow(
+          resolvedWorkflow.executionMetadata?.workflowId ?? resolvedWorkflow.automationFlowId,
+        );
+      }
+
+      await waPerfMeasure("Database writes: touch inbound session", () =>
+        this.sessionRepository.touchInbound(session.id),
+      );
       request.trace?.step("webhook.session_resolved", {
         channelSessionId: session.id,
         conversationId: session.conversation_id,
         requireAiAssistant: !useWorkflow,
       });
+      if (request.channelKey === "whatsapp") {
+        logWhatsApp("Conversation resolved", {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          phoneNumber: normalized.senderExternalId,
+          aiEmployeeId: aiEmployeeId ?? null,
+        });
+      }
 
       let incomingMessageId: string | undefined = inboundEvent.incoming_message_id ?? undefined;
 
       if (!incomingMessageId && (!request.executeAi || useWorkflow)) {
-        const incomingMessage = await this.ports.conversation.addIncomingMessage({
-          conversationId: session.conversation_id,
-          content: inboundText,
-          externalMessageId: normalized.externalMessageId,
-          metadata: {
-            channelKey: request.channelKey,
-            source: request.source,
-            attachments: normalized.attachments,
-            ...(normalized.metadata ?? {}),
-          },
-        });
+        const incomingMessage = await waPerfMeasure("Database writes: add incoming message", () =>
+          this.ports.conversation.addIncomingMessage({
+            conversationId: session.conversation_id,
+            content: inboundText,
+            externalMessageId: normalized.externalMessageId,
+            metadata: {
+              channelKey: request.channelKey,
+              source: request.source,
+              attachments: normalized.attachments,
+              ...(normalized.metadata ?? {}),
+            },
+          }),
+        );
         incomingMessageId = incomingMessage.id;
         if (incomingMessage.reused) {
           request.trace?.step("webhook.inbound_message_reused", {
@@ -313,27 +403,32 @@ export class InboundMessagePipeline {
           flowId: resolvedWorkflow.automationFlowId,
         });
 
-        const automationResult = await automation.startWorkflow({
-          companyId: request.companyId,
-          flowId: resolvedWorkflow.automationFlowId,
-          channelKey: request.channelKey,
-          externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
-          messageText: inboundText,
-          externalMessageId: normalized.externalMessageId,
-          initialVariables: {
-            lastMessage: inboundText,
-            companyChannelId: request.companyChannelId,
-            conversationId: session.conversation_id,
-            channelSessionId: session.id,
-          },
-          metadata: {
-            inboundEventId: inboundEvent.id,
-            companyChannelId: request.companyChannelId,
-            ...(normalized.metadata ?? {}),
-          },
-        });
+        waPerfMarkInboundExecution("workflow");
+        const automationResult = await waPerfMeasure("Workflow resume", () =>
+          automation.startWorkflow({
+            companyId: request.companyId,
+            flowId: resolvedWorkflow.automationFlowId,
+            channelKey: request.channelKey,
+            externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
+            messageText: inboundText,
+            externalMessageId: normalized.externalMessageId,
+            initialVariables: {
+              lastMessage: inboundText,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+            },
+            metadata: {
+              inboundEventId: inboundEvent.id,
+              companyChannelId: request.companyChannelId,
+              requestId: request.requestId ?? null,
+              ...(normalized.metadata ?? {}),
+            },
+          }),
+        );
 
         automationRunId = automationResult.runId;
+        waTraceBindAutomationRun(automationRunId);
         responseContent = automationResult.responseContent;
         const outboundMessages = automationResult.outboundMessages ?? [];
 
@@ -370,9 +465,20 @@ export class InboundMessagePipeline {
               outboundMessageCount: outboundMessages.length,
             });
           } catch (error) {
+            const outboundError =
+              error instanceof Error ? error.message : "outbound_dispatch_failed";
+            waTraceNoteError(outboundError);
+            console.error("[WHATSAPP_OUTBOUND_TRACE] workflow outbound dispatch failed (message may already be in Omnichannel)", {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              automationRunId,
+              channelKey: request.channelKey,
+              error: outboundError,
+            });
             request.trace?.step("webhook.outbound_failed", {
               automationRunId,
-              error: error instanceof Error ? error.message : "outbound_dispatch_failed",
+              error: outboundError,
             });
           }
         } else if (responseContent?.trim()) {
@@ -397,9 +503,20 @@ export class InboundMessagePipeline {
             outboundDeliveryIds = dispatched.deliveryEventIds;
             request.trace?.step("webhook.outbound_dispatched", { outboundDeliveryId });
           } catch (error) {
+            const outboundError =
+              error instanceof Error ? error.message : "outbound_dispatch_failed";
+            waTraceNoteError(outboundError);
+            console.error("[WHATSAPP_OUTBOUND_TRACE] workflow responseContent outbound failed (message may already be in Omnichannel)", {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              automationRunId,
+              channelKey: request.channelKey,
+              error: outboundError,
+            });
             request.trace?.step("webhook.outbound_failed", {
               automationRunId,
-              error: error instanceof Error ? error.message : "outbound_dispatch_failed",
+              error: outboundError,
             });
           }
         }
@@ -477,15 +594,18 @@ export class InboundMessagePipeline {
           aiEmployeeId: aiEmployeeId ?? null,
         });
 
-        const runtimeResult = await this.ports.runtime.execute({
-          companyId: request.companyId,
-          conversationId: session.conversation_id,
-          messageText: inboundText,
-          runtimeConfig,
-          correlationId: inboundEvent.id,
-          onStreamChunk: request.onStreamChunk,
-          abortSignal: request.abortSignal,
-        });
+        waPerfMarkInboundExecution("ai_runtime");
+        const runtimeResult = await waPerfMeasure("OpenAI request", () =>
+          this.ports.runtime.execute({
+            companyId: request.companyId,
+            conversationId: session.conversation_id,
+            messageText: inboundText,
+            runtimeConfig,
+            correlationId: inboundEvent.id,
+            onStreamChunk: request.onStreamChunk,
+            abortSignal: request.abortSignal,
+          }),
+        );
 
         runtimeExecutionId = runtimeResult.executionId;
         responseContent = runtimeResult.responseContent;
@@ -516,6 +636,19 @@ export class InboundMessagePipeline {
                 }
               : {};
 
+          if (request.channelKey === "whatsapp") {
+            logWhatsApp("Sending reply", {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              phoneNumber: normalized.senderExternalId,
+              aiEmployeeId: aiEmployeeId ?? null,
+              runtimeExecutionId,
+              replyPreview: String(responseContent ?? "").slice(0, 160),
+              executionTimeMs: Date.now() - pipelineStartedAt,
+            });
+          }
+
           const outbound = await this.dispatcher.dispatch(ctx, {
             companyId: request.companyId,
             companyChannelId: request.companyChannelId,
@@ -533,12 +666,36 @@ export class InboundMessagePipeline {
           });
 
           outboundDeliveryId = outbound.deliveryEventId;
+
+          if (request.channelKey === "whatsapp") {
+            logWhatsApp("Reply completed", {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              phoneNumber: normalized.senderExternalId,
+              aiEmployeeId: aiEmployeeId ?? null,
+              runtimeExecutionId,
+              outboundDeliveryId,
+              executionTimeMs: Date.now() - pipelineStartedAt,
+            });
+          }
         } catch (error) {
           outboundError = error instanceof Error ? error.message : "outbound_dispatch_failed";
           request.trace?.step("webhook.outbound_failed", {
             runtimeExecutionId,
             error: outboundError,
           });
+          if (request.channelKey === "whatsapp") {
+            logWhatsAppError("WhatsApp sending reply failed", error, {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              phoneNumber: normalized.senderExternalId,
+              aiEmployeeId: aiEmployeeId ?? null,
+              runtimeExecutionId,
+              executionTimeMs: Date.now() - pipelineStartedAt,
+            });
+          }
         }
 
         return {
@@ -573,15 +730,28 @@ export class InboundMessagePipeline {
         responseContent,
       };
     } catch (error) {
+      const pipelineError =
+        error instanceof Error ? error.message : "Inbound pipeline failed";
+      waTraceNoteError(pipelineError);
       request.trace?.step("webhook.processing_failed", {
         inboundEventId: inboundEvent.id,
-        error: error instanceof Error ? error.message : "Inbound pipeline failed",
+        error: pipelineError,
       });
+
+      if (request.channelKey === "whatsapp") {
+        logWhatsAppError("WhatsApp inbound pipeline failed", error, {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          inboundEventId: inboundEvent.id,
+          conversationId: request.conversationId ?? null,
+          executionTimeMs: Date.now() - pipelineStartedAt,
+        });
+      }
 
       await this.inboundRepository.updateEvent({
         inboundEventId: inboundEvent.id,
         processingStatus: "failed",
-        errorMessage: error instanceof Error ? error.message : "Inbound pipeline failed",
+        errorMessage: pipelineError,
         processedAt: new Date().toISOString(),
       });
       throw error;

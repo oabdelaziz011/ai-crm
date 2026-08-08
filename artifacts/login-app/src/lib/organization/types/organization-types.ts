@@ -40,6 +40,34 @@ export type OrganizationDepartment = {
   code: string | null;
   departmentType: DepartmentType;
   isActive: boolean;
+  managerUserId: string | null;
+  parentId: string | null;
+  description: string | null;
+};
+
+export type OrganizationDepartmentInput = {
+  branchId: string;
+  name: string;
+  code?: string | null;
+  departmentType?: DepartmentType;
+  isActive?: boolean;
+  managerUserId?: string | null;
+  parentId?: string | null;
+  description?: string | null;
+};
+
+export type OrganizationDepartmentStats = {
+  employees: number;
+  resources: number;
+  operations: number;
+};
+
+export type OrganizationDepartmentWithStats = OrganizationDepartment & OrganizationDepartmentStats;
+
+export type OrganizationDepartmentDependencies = {
+  employees: number;
+  resources: number;
+  children: number;
 };
 
 export type HierarchyNode = {

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 import { InboxRow } from "@/components/omnichannel/workspace-v2/inbox-row";
 
@@ -89,6 +89,8 @@ type InboxColumnProps = {
 
     open: string;
 
+    newBadge?: string;
+
     pin?: string;
 
     star?: string;
@@ -132,8 +134,49 @@ export const InboxColumn = memo(function InboxColumn({
   unreadOverflowLabel,
 
 }: InboxColumnProps) {
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const columnRef = useRef<HTMLSectionElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevConversationsRef = useRef(conversations);
+
+  /**
+   * REAL fix: workspace-body uses overflow:hidden, so in-flow height can never
+   * paint past the Conversation stretch box. Pin the Inbox panel to the viewport
+   * with position:fixed (spacer keeps the flex slot / width). Conversation untouched.
+   */
+  useLayoutEffect(() => {
+    const spacer = spacerRef.current;
+    const panel = columnRef.current;
+    if (!spacer || !panel) return;
+
+    const sync = () => {
+      const rect = spacer.getBoundingClientRect();
+      const top = Math.max(0, Math.round(rect.top));
+      const left = Math.round(rect.left);
+      const width = Math.round(rect.width);
+      panel.style.position = "fixed";
+      panel.style.top = `${top}px`;
+      panel.style.left = `${left}px`;
+      panel.style.width = `${width}px`;
+      panel.style.bottom = "0px";
+      panel.style.height = "auto";
+      panel.style.zIndex = "25";
+      panel.style.right = "auto";
+    };
+
+    sync();
+    window.addEventListener("resize", sync);
+    window.addEventListener("scroll", sync, true);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(sync) : null;
+    ro?.observe(spacer);
+    const body = spacer.parentElement;
+    if (body) ro?.observe(body);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("scroll", sync, true);
+      ro?.disconnect();
+    };
+  }, []);
 
 
 
@@ -280,10 +323,19 @@ export const InboxColumn = memo(function InboxColumn({
 
 
   return (
+    <>
+    {/* In-flow width slot only — does not control Inbox paint height */}
+    <div
+      ref={spacerRef}
+      className="ws-inbox-spacer w-[var(--ws-list-width)] shrink-0 self-stretch"
+      aria-hidden
+    />
 
     <section
 
-      className="ws-inbox-column flex w-[var(--ws-list-width)] shrink-0 flex-col border-e border-[var(--ws-border)] bg-[var(--ws-surface)]"
+      ref={columnRef}
+
+      className="ws-inbox-column overflow-hidden border-s border-[var(--ws-border)] bg-[var(--ws-surface)]"
 
       aria-label={title}
 
@@ -303,7 +355,7 @@ export const InboxColumn = memo(function InboxColumn({
 
         ref={scrollRef}
 
-        className="min-h-0 flex-1 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ws-accent)]/40"
+        className="ws-inbox-list focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ws-accent)]/40"
 
         onScroll={handleScroll}
 
@@ -370,7 +422,7 @@ export const InboxColumn = memo(function InboxColumn({
       </div>
 
     </section>
-
+    </>
   );
 
 });

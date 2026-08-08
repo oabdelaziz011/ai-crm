@@ -50,17 +50,18 @@ export function useWorkspaceKeyboard() {
 
       if (event.key === "g" && !isEditable) {
         const handler = (e: KeyboardEvent) => {
+          // Nest-relative paths — WorkspacePlatformShell lives under /dashboard/operations
           if (e.key.toLowerCase() === "o") {
             e.preventDefault();
-            setLocation("/operations/queue");
+            setLocation("/queue");
           }
           if (e.key.toLowerCase() === "h") {
             e.preventDefault();
-            setLocation("/operations/hub");
+            setLocation("/hub");
           }
           if (e.key.toLowerCase() === "t") {
             e.preventDefault();
-            setLocation("/operations/timeline");
+            setLocation("/timeline");
           }
           window.removeEventListener("keydown", handler);
         };

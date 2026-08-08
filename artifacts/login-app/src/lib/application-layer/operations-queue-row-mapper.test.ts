@@ -5,7 +5,7 @@ import { mapOperationsBookingToRow } from "./operations-queue-row-mapper.js";
 import type { OperationsBookingView } from "@/lib/scheduling/operations/types";
 
 describe("operations queue row mapper", () => {
-  it("maps live booking to OperationsRow with status and payment ids", () => {
+  it("maps live booking to OperationsRow with snapshot amount and visit type", () => {
     const config = getMockWorkspaceConfig("clinic");
     const booking: OperationsBookingView = {
       id: "bk_12345678",
@@ -23,10 +23,15 @@ describe("operations queue row mapper", () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       customer: { id: "cust_1", name: "Sara Hassan", phone: "+971501234567", email: "sara@example.com" },
-      service: { id: "svc_1", name: "Consultation", durationMinutes: 30, priceCents: 15000 },
+      service: { id: "svc_1", name: "Consultation", durationMinutes: 30, priceCents: 99999, currency: "USD" },
       resource: { id: "res_1", name: "Dr. Amira", type: "doctor" },
       branch: { id: "br_1", name: "Main Branch" },
       paymentStatus: "partial",
+      amountCents: 30000,
+      currency: "EGP",
+      visitType: "FollowUp",
+      discountCents: 0,
+      taxCents: 0,
       displayStart: "10:00",
       displayEnd: "10:30",
       durationMinutes: 30,
@@ -38,5 +43,9 @@ describe("operations queue row mapper", () => {
     assert.equal(row.statusId, "st_checked_in");
     assert.equal(row.values.customer, "Sara Hassan");
     assert.equal(row.values.service, "Consultation");
+    assert.equal(row.values.amount, 30000);
+    assert.equal(row.values.currency, "EGP");
+    assert.equal(row.values.visit_type, "FollowUp");
+    assert.notEqual(row.values.amount, booking.service?.priceCents);
   });
 });

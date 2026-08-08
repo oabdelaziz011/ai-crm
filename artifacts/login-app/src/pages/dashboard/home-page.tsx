@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useCustomers } from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
@@ -81,6 +82,7 @@ export function DashboardHomePage() {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { displayName, company, profile } = useAuth();
+  const { identity } = useCompanyIdentity(Boolean(company?.id ?? profile?.company_id));
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const { setCopilotOpen } = useAppShell();
   const companyId = profile?.company_id ?? null;
@@ -324,10 +326,10 @@ export function DashboardHomePage() {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
             <span>{format(now, "EEEE, MMM d, yyyy")}</span>
-            {company?.name && (
+            {identity?.name && (
               <>
                 <span className="text-border">·</span>
-                <span className="text-foreground/80">{company.name}</span>
+                <span className="text-foreground/80">{identity.name}</span>
               </>
             )}
             <span className="text-border">·</span>

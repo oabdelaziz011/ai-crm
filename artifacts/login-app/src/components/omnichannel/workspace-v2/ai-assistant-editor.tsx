@@ -67,7 +67,7 @@ export const AiAssistantEditor = memo(function AiAssistantEditor({
   const spellCheckLang = language === "ar" ? "ar" : "en";
 
   return (
-    <section className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+    <section className="rounded-lg border border-border bg-muted/30 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" dir="auto">
           {labels.editorTitle}
@@ -86,7 +86,7 @@ export const AiAssistantEditor = memo(function AiAssistantEditor({
         lang={spellCheckLang}
         dir={textDir}
         rows={3}
-        className="mb-2 w-full resize-none rounded-md border border-white/10 bg-background/40 px-3 py-2 text-sm leading-relaxed outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/40"
+        className="mb-2 w-full resize-none rounded-md border border-border bg-background/40 px-3 py-2 text-sm leading-relaxed outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/40"
         style={{ minHeight: "4.5rem" }}
       />
 
@@ -127,7 +127,7 @@ function EditorTool({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+      className="rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
     >
       <span dir="auto">{label}</span>
     </button>

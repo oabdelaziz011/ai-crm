@@ -24,6 +24,7 @@ import {
   useSchedulingService,
   useUpdateSchedulingService,
 } from "@/hooks/scheduling/use-scheduling-services";
+import { useSaveServicePricingRules } from "@/hooks/scheduling/use-service-pricing";
 import { nestedSectionHref } from "@/lib/routing";
 
 export function SchedulingServiceProfilePage() {
@@ -43,6 +44,7 @@ export function SchedulingServiceProfilePage() {
     serviceId,
   );
   const updateService = useUpdateSchedulingService(companyId);
+  const savePricingRules = useSaveServicePricingRules(companyId);
   const syncResources = useSyncServiceResources(companyId, serviceId);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -72,10 +74,11 @@ export function SchedulingServiceProfilePage() {
     );
   }
 
-  const handleSaveDetails = async ({ values, resourceIds }: ServiceFormSubmitPayload) => {
+  const handleSaveDetails = async ({ values, resourceIds, pricingRules }: ServiceFormSubmitPayload) => {
     if (!companyId) return;
     try {
       await updateService.mutateAsync({ id: service.id, values });
+      await savePricingRules.mutateAsync({ serviceId: service.id, rules: pricingRules });
       await syncServiceResourcesFor(companyId, service.id, resourceIds);
       invalidateCapabilityQueries(qc, companyId);
       setEditOpen(false);
@@ -147,7 +150,7 @@ export function SchedulingServiceProfilePage() {
         companyId={companyId}
         service={service}
         canEdit={canEdit}
-        isPending={updateService.isPending}
+        isPending={updateService.isPending || savePricingRules.isPending}
         onSubmit={handleSaveDetails}
       />
     </div>

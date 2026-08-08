@@ -4,6 +4,7 @@ type RoutePreloader = () => Promise<unknown>;
 
 /** Dynamic import loaders for dashboard sections — used for hover/intent preloading only. */
 export const DASHBOARD_ROUTE_PRELOADERS: Partial<Record<DashboardSectionId, RoutePreloader>> = {
+  company: () => import("@/pages/dashboard/company/company-workspace-page"),
   customers: () => import("@/pages/dashboard/customers/customers-layout"),
   bookings: () => import("@/pages/dashboard/bookings-page"),
   calendar: () => import("@/pages/dashboard/calendar/calendar-page"),

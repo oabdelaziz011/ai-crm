@@ -27,6 +27,7 @@ export const branchFormSchema = z.object({
   timezone: z.string().trim().min(1, "Timezone is required"),
   is_primary: z.boolean().default(false),
   status: branchStatusSchema.default("active"),
+  manager_user_id: z.string().uuid().nullable().optional().default(null),
 });
 
 export type BranchFormSchema = z.infer<typeof branchFormSchema>;
@@ -54,6 +55,7 @@ export function formValuesToInsert(
     timezone: values.timezone,
     is_primary: values.is_primary,
     status: values.status,
+    manager_user_id: values.manager_user_id || null,
     created_by: actorId ?? null,
     updated_by: actorId ?? null,
   };
@@ -73,6 +75,7 @@ export function formValuesToUpdate(values: BranchFormSchema, actorId?: string | 
     timezone: values.timezone,
     is_primary: values.is_primary,
     status: values.status,
+    manager_user_id: values.manager_user_id || null,
     updated_by: actorId ?? null,
   };
 }
@@ -90,6 +93,7 @@ export function branchToFormValues(branch: {
   timezone: string;
   is_primary: boolean;
   status: "active" | "inactive" | "archived";
+  manager_user_id?: string | null;
 }): BranchFormSchema {
   return {
     name: branch.name,
@@ -104,5 +108,6 @@ export function branchToFormValues(branch: {
     timezone: branch.timezone,
     is_primary: branch.is_primary,
     status: branch.status,
+    manager_user_id: branch.manager_user_id ?? null,
   };
 }

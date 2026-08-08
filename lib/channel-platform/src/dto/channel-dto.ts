@@ -70,6 +70,8 @@ export type InboundRouteRequestDto = {
   onStreamChunk?: (chunk: string) => void;
   abortSignal?: AbortSignal;
   trace?: WebhookProcessingTrace;
+  /** HTTP / webhook request id — used as Sprint 2.4 conversation TRACE id. */
+  requestId?: string | null;
 };
 
 export type InboundRouteResponseDto = {

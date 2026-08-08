@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getCompanyCurrency } from "@/lib/company-locale/runtime";
 import type { PortalResourceView, PortalServiceView } from "@/lib/customer-portal/types";
 
 export class PortalCatalogRepository {
@@ -7,7 +8,7 @@ export class PortalCatalogRepository {
   async listServices(companyId: string): Promise<PortalServiceView[]> {
     const { data, error } = await this.client
       .from("scheduling_services")
-      .select("id, name, description, duration_minutes")
+      .select("id, name, description, duration_minutes, price_cents, currency")
       .eq("company_id", companyId)
       .eq("status", "active")
       .is("deleted_at", null)
@@ -19,8 +20,8 @@ export class PortalCatalogRepository {
       name: row.name,
       description: row.description,
       durationMinutes: row.duration_minutes,
-      priceCents: 0,
-      currency: "USD",
+      priceCents: Number(row.price_cents) || 0,
+      currency: row.currency || getCompanyCurrency(),
     }));
   }
 

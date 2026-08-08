@@ -56,6 +56,7 @@ export class WhatsAppProvider {
     if (!settings?.enabled) {
       throw new Error("WhatsApp provider is disabled");
     }
+    this.assertCredentialsSendable(settings);
 
     const rendered = this.renderer.renderEvent(
       "generic_system",
@@ -159,6 +160,8 @@ export class WhatsAppProvider {
     await this.queueConsumer.markProcessing(item.companyId, item.id);
 
     try {
+      this.assertCredentialsSendable(settings);
+
       const recipient = await resolveRecipientPhone(this.client, params);
       if (!recipient.phone) {
         const reason = recipient.validation.error ?? recipient.optIn.reason ?? "no_recipient";
@@ -238,6 +241,37 @@ export class WhatsAppProvider {
     return Object.fromEntries(
       Object.entries(raw as Record<string, unknown>).map(([key, value]) => [key, String(value ?? "")]),
     );
+  }
+
+  private assertCredentialsSendable(settings: CompanyWhatsAppSettings): void {
+    if (settings.tokenStatus === "missing" || !settings.hasAccessToken) {
+      throw new Error(
+        "WhatsApp access token is missing. Update Settings → WhatsApp credentials.",
+      );
+    }
+    if (settings.tokenStatus === "expired") {
+      const when = settings.tokenExpiresAt ? ` Token expired at ${settings.tokenExpiresAt}.` : "";
+      const last = settings.lastAuthError?.trim()
+        ? ` Last Meta error: ${settings.lastAuthError.trim()}`
+        : "";
+      throw new Error(
+        `WhatsApp access token is expired.${when}${last} Update Settings → WhatsApp credentials and run Test Connection.`.trim(),
+      );
+    }
+    if (settings.tokenStatus === "invalid") {
+      throw new Error(
+        settings.lastAuthError?.trim() ||
+          "WhatsApp access token is invalid. Update Settings → WhatsApp credentials.",
+      );
+    }
+    if (settings.tokenExpiresAt) {
+      const expiresAt = Date.parse(settings.tokenExpiresAt);
+      if (!Number.isNaN(expiresAt) && expiresAt <= Date.now()) {
+        throw new Error(
+          `WhatsApp access token is expired. Token expired at ${settings.tokenExpiresAt}. Update Settings → WhatsApp credentials and run Test Connection.`,
+        );
+      }
+    }
   }
 
   private toMetaConfig(settings: CompanyWhatsAppSettings): MetaWhatsAppConfig {

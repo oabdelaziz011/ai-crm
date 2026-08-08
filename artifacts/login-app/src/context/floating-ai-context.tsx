@@ -12,6 +12,7 @@ import {
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useUser } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import {
   DASHBOARD_ROUTE_REGISTRY,
   getDashboardRouteByNestedPath,
@@ -80,7 +81,8 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation("common");
   const { profile, company } = useUser();
   const companyId = profile?.company_id ?? company?.id ?? null;
-  const companyName = company?.name ?? null;
+  const { identity } = useCompanyIdentity(Boolean(companyId));
+  const companyName = identity?.name ?? null;
   const userId = profile?.id ?? null;
   const userName = profile?.full_name ?? null;
 

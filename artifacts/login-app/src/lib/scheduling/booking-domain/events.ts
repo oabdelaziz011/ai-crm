@@ -53,13 +53,24 @@ export type BookingNoShowEvent = {
   };
 };
 
+export type BookingStatusChangedEvent = {
+  type: "BookingStatusChanged";
+  occurredAt: string;
+  payload: {
+    booking: SchedulingBooking;
+    fromStatus: string;
+    toStatus: string;
+  };
+};
+
 export type BookingDomainEvent =
   | BookingCreatedEvent
   | BookingCancelledEvent
   | BookingCompletedEvent
   | BookingRescheduledEvent
   | BookingCheckedInEvent
-  | BookingNoShowEvent;
+  | BookingNoShowEvent
+  | BookingStatusChangedEvent;
 
 export interface BookingEventPublisher {
   publish(event: BookingDomainEvent): void | Promise<void>;
@@ -138,5 +149,17 @@ export function createBookingNoShowEvent(
     type: "BookingNoShow",
     occurredAt: new Date().toISOString(),
     payload: { booking, gracePeriodMinutes },
+  };
+}
+
+export function createBookingStatusChangedEvent(
+  booking: SchedulingBooking,
+  fromStatus: string,
+  toStatus: string,
+): BookingStatusChangedEvent {
+  return {
+    type: "BookingStatusChanged",
+    occurredAt: new Date().toISOString(),
+    payload: { booking, fromStatus, toStatus },
   };
 }

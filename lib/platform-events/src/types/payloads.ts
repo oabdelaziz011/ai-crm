@@ -240,3 +240,188 @@ export type ConversationTransferredPayload = {
   toOwnerType: string;
   reason: string;
 };
+
+/** Published once when a brand-new conversation row is created. */
+export type ConversationStartedPayload = {
+  companyId: string;
+  conversationId: string;
+  channelType: string;
+  externalUserId?: string | null;
+  externalThreadId?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  actorUserId?: string | null;
+  createdAt: string;
+};
+
+/** Published for each new inbound message (not reused/idempotent duplicates). */
+export type ConversationMessageReceivedPayload = {
+  companyId: string;
+  conversationId: string;
+  messageId: string;
+  channelType?: string | null;
+  contentPreview?: string | null;
+  messageCount?: number | null;
+  actorUserId?: string | null;
+  receivedAt: string;
+};
+
+/** Published after Smart Lead Capture resolves/links a prospect or lead. */
+export type LeadIntelligenceUpdatedPayload = {
+  companyId: string;
+  leadId: string;
+  conversationId: string;
+  captureState: string;
+  identityStatus: string;
+  created: boolean;
+  contextReady: boolean;
+  /** null during capture-only updates; number after 3.12.2 analysis. */
+  confidence: number | null;
+};
+
+/**
+ * Published when context threshold is met.
+ * AI analysis consumers belong to Sprint 3.12.2 — no analysis in 3.12.1.
+ */
+export type LeadAnalysisRequestedPayload = {
+  companyId: string;
+  leadId: string;
+  conversationId: string;
+  reason: "context_threshold";
+  messageCount: number;
+  contextSignals: string[];
+  confidence: null;
+};
+
+/** Sprint 4.0 — Sales Execution Platform */
+export type OpportunityCreatedPayload = {
+  opportunityId: string;
+  name: string;
+  leadId?: string | null;
+  companyId: string;
+};
+
+export type OpportunityStageChangedPayload = {
+  opportunityId: string;
+  fromStageId: string;
+  toStageId: string;
+  stageKey: string;
+  companyId: string;
+};
+
+export type OpportunityProbabilityChangedPayload = {
+  opportunityId: string;
+  previousPercent: number;
+  nextPercent: number;
+  source: string;
+  companyId: string;
+};
+
+export type OpportunityProductsAddedPayload = {
+  opportunityId: string;
+  productIds: string[];
+  companyId: string;
+};
+
+export type OpportunityQuoteCreatedPayload = {
+  opportunityId: string;
+  quoteId: string;
+  companyId: string;
+};
+
+export type OpportunityNegotiationStartedPayload = {
+  opportunityId: string;
+  companyId: string;
+};
+
+export type OpportunityWonPayload = {
+  opportunityId: string;
+  companyId: string;
+};
+
+export type OpportunityLostPayload = {
+  opportunityId: string;
+  companyId: string;
+  reason?: string | null;
+};
+
+/** Sprint 4.1 — Product & Service Catalog */
+export type ProductCreatedPayload = {
+  productId: string;
+  name: string;
+  sku: string;
+  productType: string;
+  companyId: string;
+};
+
+export type ProductUpdatedPayload = {
+  productId: string;
+  changedFields: string[];
+  companyId: string;
+};
+
+export type ProductArchivedPayload = {
+  productId: string;
+  companyId: string;
+};
+
+export type PriceChangedPayload = {
+  productId: string;
+  previousPrice: number;
+  nextPrice: number;
+  currency: string;
+  companyId: string;
+};
+
+export type CategoryChangedPayload = {
+  productId: string;
+  previousCategoryId?: string | null;
+  nextCategoryId?: string | null;
+  companyId: string;
+};
+
+/** Sprint 4.2 — Enterprise Quote Builder */
+export type QuoteCreatedPayload = {
+  quoteId: string;
+  quoteNumber: string;
+  opportunityId?: string | null;
+  companyId: string;
+};
+
+export type QuoteUpdatedPayload = {
+  quoteId: string;
+  changedFields: string[];
+  companyId: string;
+};
+
+export type QuoteSentPayload = {
+  quoteId: string;
+  companyId: string;
+};
+
+export type QuoteViewedPayload = {
+  quoteId: string;
+  companyId: string;
+};
+
+export type QuoteAcceptedPayload = {
+  quoteId: string;
+  companyId: string;
+};
+
+export type QuoteRejectedPayload = {
+  quoteId: string;
+  companyId: string;
+};
+
+export type QuoteExpiredPayload = {
+  quoteId: string;
+  companyId: string;
+};
+
+export type QuoteVersionCreatedPayload = {
+  quoteId: string;
+  previousQuoteId: string;
+  versionNumber: number;
+  companyId: string;
+};

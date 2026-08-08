@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getCompanyCurrency } from "@/lib/company-locale/runtime";
 import type { PortalDocumentView, PortalInvoiceView } from "@/lib/customer-portal/types";
 
 /** Secure document access for customer portal. */
@@ -18,7 +19,7 @@ export class PortalDocumentsService {
       id: row.id,
       number: row.id.slice(0, 8).toUpperCase(),
       amountCents: Math.round(Number(row.amount ?? 0) * 100),
-      currency: "USD",
+      currency: getCompanyCurrency(),
       status: row.status ?? "Unpaid",
       issuedAt: row.invoice_date ?? row.created_at,
       paidAt: row.status === "Paid" ? row.created_at : null,

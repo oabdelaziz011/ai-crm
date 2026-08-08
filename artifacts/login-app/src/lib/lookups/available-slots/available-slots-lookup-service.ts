@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { wxRecordServiceResolution } from "@workspace/automation-platform";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import type { LookupOptionRow } from "../types";
@@ -29,6 +30,7 @@ export async function fetchAvailableSlotsLookupOptions(
   const context = readRequiredContext(filters);
   if (!context) return [];
 
+  wxRecordServiceResolution("availableSlots.lookup");
   const scheduling = createSchedulingServices(client);
   const resolved = await scheduling.slotGenerationEngine.getAvailableSlots(
     companyId,

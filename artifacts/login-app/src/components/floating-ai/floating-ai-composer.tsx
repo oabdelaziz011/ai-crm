@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Paperclip, Send, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { UserAvatar } from "@/components/profile/user-avatar";
 import { Button } from "@/components/ui/button";
 import { useFloatingAi } from "@/context/floating-ai-context";
 import { filterSlashCommands } from "@/lib/floating-ai/slash-commands";
@@ -83,6 +84,7 @@ export function FloatingAiComposer({
       )}
 
       <div className="flex items-end gap-2">
+        <UserAvatar className="mb-0.5 size-9 shrink-0 border border-border" />
         <div className="flex shrink-0 gap-1">
           {!hideExtras && (
             <>

@@ -21,6 +21,8 @@ import type { AIProvider } from "./provider-contract.js";
 import { fetchWithRetry } from "./http/retry-client.js";
 import { createAIProviderLogEvent, logAIProviderEvent } from "../utils/ai-provider-logger.js";
 import { resolveProviderApiKey } from "../utils/resolve-api-key.js";
+import { logOpenAI, logOpenAIError } from "../debug/openai-pipeline-log.js";
+import { waPerfMeasure } from "../debug/whatsapp-pipeline-perf.js";
 
 const OPENAI_CONFIGURATION_SCHEMA = {
   type: "object",
@@ -174,6 +176,17 @@ export class OpenAIChatAdapter implements AIProvider {
       }),
     );
 
+    logOpenAI("Request started", {
+      companyId: companyId ?? null,
+      conversationId: conversationId ?? null,
+      executionId: executionId ?? null,
+      model: config.model,
+      providerKey: this.key,
+      promptLength: input.prompt.length,
+      messageCount: messages.length,
+      streaming,
+    });
+
     const body = buildChatCompletionBody(config.model, messages, metadata, streaming);
 
     const headers: Record<string, string> = {
@@ -185,77 +198,118 @@ export class OpenAIChatAdapter implements AIProvider {
     }
 
     try {
-      const response = await fetchWithRetry(
-        `${config.baseUrl}/chat/completions`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify(body),
-        },
-        {
-          timeoutMs: config.timeoutMs,
-          maxRetries: config.maxRetries,
-          fetchFn: this.options?.fetchFn,
-          label: "OpenAI chat completion",
-        },
-      );
+      return await waPerfMeasure(
+        "OpenAI request",
+        async () => {
+          const response = await fetchWithRetry(
+            `${config.baseUrl}/chat/completions`,
+            {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+            },
+            {
+              timeoutMs: config.timeoutMs,
+              maxRetries: config.maxRetries,
+              fetchFn: this.options?.fetchFn,
+              label: "OpenAI chat completion",
+            },
+          );
 
-      if (streaming) {
-        const result = await this.consumeStream(response, config.model, metadata);
-        logAIProviderEvent(
-          createAIProviderLogEvent("ai_response_completed", {
-            correlationId,
-            companyId,
-            conversationId,
-            executionId,
+          if (streaming) {
+            const result = await this.consumeStream(response, config.model, metadata);
+            logAIProviderEvent(
+              createAIProviderLogEvent("ai_response_completed", {
+                correlationId,
+                companyId,
+                conversationId,
+                executionId,
+                providerKey: this.key,
+                model: result.model,
+                inputTokens: result.tokenUsage?.prompt_tokens,
+                outputTokens: result.tokenUsage?.completion_tokens,
+                totalTokens: result.tokenUsage?.total_tokens,
+                latencyMs: Date.now() - started,
+                streaming: true,
+                mock: false,
+              }),
+            );
+            logOpenAI("Response received", {
+              companyId: companyId ?? null,
+              conversationId: conversationId ?? null,
+              executionId: executionId ?? null,
+              model: result.model,
+              streaming: true,
+              executionTimeMs: Date.now() - started,
+              responsePreview: String(result.text ?? "").slice(0, 200),
+            });
+            return result;
+          }
+
+          const payload = (await response.json()) as OpenAIChatCompletionResponse;
+          const message = payload.choices?.[0]?.message;
+          const text = message?.content ?? "";
+          const finishReason = payload.choices?.[0]?.finish_reason ?? "stop";
+          const tokenUsage = normalizeUsage(payload.usage);
+          const toolCalls = parseToolCalls(message?.tool_calls);
+
+          logAIProviderEvent(
+            createAIProviderLogEvent("ai_response_completed", {
+              correlationId,
+              companyId,
+              conversationId,
+              executionId,
+              providerKey: this.key,
+              model: payload.model ?? config.model,
+              inputTokens: tokenUsage?.prompt_tokens,
+              outputTokens: tokenUsage?.completion_tokens,
+              totalTokens: tokenUsage?.total_tokens,
+              latencyMs: Date.now() - started,
+              streaming: false,
+              mock: false,
+            }),
+          );
+
+          logOpenAI("Response received", {
+            companyId: companyId ?? null,
+            conversationId: conversationId ?? null,
+            executionId: executionId ?? null,
+            model: payload.model ?? config.model,
+            streaming: false,
+            finishReason,
+            executionTimeMs: Date.now() - started,
+            responsePreview: String(text).slice(0, 200),
+            totalTokens: tokenUsage?.total_tokens ?? null,
+          });
+
+          return {
+            text,
+            model: payload.model ?? config.model,
             providerKey: this.key,
-            model: result.model,
-            inputTokens: result.tokenUsage?.prompt_tokens,
-            outputTokens: result.tokenUsage?.completion_tokens,
-            totalTokens: result.tokenUsage?.total_tokens,
-            latencyMs: Date.now() - started,
-            streaming: true,
             mock: false,
-          }),
-        );
-        return result;
-      }
-
-      const payload = (await response.json()) as OpenAIChatCompletionResponse;
-      const message = payload.choices?.[0]?.message;
-      const text = message?.content ?? "";
-      const finishReason = payload.choices?.[0]?.finish_reason ?? "stop";
-      const tokenUsage = normalizeUsage(payload.usage);
-      const toolCalls = parseToolCalls(message?.tool_calls);
-
-      logAIProviderEvent(
-        createAIProviderLogEvent("ai_response_completed", {
-          correlationId,
-          companyId,
-          conversationId,
-          executionId,
-          providerKey: this.key,
-          model: payload.model ?? config.model,
-          inputTokens: tokenUsage?.prompt_tokens,
-          outputTokens: tokenUsage?.completion_tokens,
-          totalTokens: tokenUsage?.total_tokens,
-          latencyMs: Date.now() - started,
-          streaming: false,
-          mock: false,
-        }),
+            tokenUsage,
+            finishReason,
+            toolCalls,
+            rawAssistantMessage: message ? { ...message } : undefined,
+          };
+        },
+        { model: config.model, streaming },
       );
-
-      return {
-        text,
-        model: payload.model ?? config.model,
-        providerKey: this.key,
-        mock: false,
-        tokenUsage,
-        finishReason,
-        toolCalls,
-        rawAssistantMessage: message ? { ...message } : undefined,
-      };
     } catch (error) {
+      logOpenAI("Error", {
+        companyId: companyId ?? null,
+        conversationId: conversationId ?? null,
+        executionId: executionId ?? null,
+        model: config.model,
+        executionTimeMs: Date.now() - started,
+      });
+      logOpenAIError("OpenAI chat completion failed", error, {
+        companyId: companyId ?? null,
+        conversationId: conversationId ?? null,
+        executionId: executionId ?? null,
+        model: config.model,
+        executionTimeMs: Date.now() - started,
+      });
       logAIProviderEvent(
         createAIProviderLogEvent("ai_request_failed", {
           correlationId,

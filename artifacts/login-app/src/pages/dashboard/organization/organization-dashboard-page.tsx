@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatMoney } from "@/lib/billing/utilities/money";
+import { companyWorkspaceHref } from "@/lib/company-workspace/company-workspace-routes";
 import type { HierarchyNode, OrganizationTransfer } from "@/lib/organization/types";
 import {
   useOrganizationOverview,
@@ -106,7 +107,7 @@ export function OrganizationDashboardPage(_props: OrganizationDashboardPageProps
           <h1 className="text-2xl font-bold">{t("organization.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("organization.subtitle")}</p>
         </div>
-        <Button variant="outline" onClick={() => setLocation("/settings/company/branches")}>
+        <Button variant="outline" onClick={() => setLocation(companyWorkspaceHref("branches"))}>
           <Building2 className="mr-2 h-4 w-4" aria-hidden />
           {t("organization.manageBranches")}
         </Button>
@@ -203,7 +204,7 @@ export function OrganizationDashboardPage(_props: OrganizationDashboardPageProps
             </CardHeader>
             <CardContent>
               <p className="mb-4 text-sm text-muted-foreground">{t("organization.branchExplorerHint")}</p>
-              <Button variant="outline" onClick={() => setLocation("/settings/company/branches")}>
+              <Button variant="outline" onClick={() => setLocation(companyWorkspaceHref("branches"))}>
                 {t("organization.openBranchSettings")}
               </Button>
             </CardContent>

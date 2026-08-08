@@ -13,9 +13,17 @@ export class PermissionDeniedError extends ChannelPlatformError {
 }
 
 export class ValidationError extends ChannelPlatformError {
-  constructor(message: string) {
+  readonly metaErrorCode?: number;
+  readonly metaErrorSubcode?: number;
+
+  constructor(
+    message: string,
+    options?: { metaErrorCode?: number; metaErrorSubcode?: number },
+  ) {
     super(message);
     this.name = "ValidationError";
+    this.metaErrorCode = options?.metaErrorCode;
+    this.metaErrorSubcode = options?.metaErrorSubcode;
   }
 }
 

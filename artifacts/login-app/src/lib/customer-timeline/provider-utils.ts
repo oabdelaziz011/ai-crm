@@ -27,22 +27,20 @@ export async function fetchCustomerConversationIds(
 }
 
 export async function fetchActorNames(userIds: string[]): Promise<Map<string, string>> {
-  const unique = [...new Set(userIds.filter(Boolean))];
-  if (unique.length === 0) return new Map();
+  const { EmployeeIdentityService } = await import("@/lib/employee-identity/employee-identity-service");
+  const identities = await EmployeeIdentityService.getManyByIds(userIds);
+  const map = new Map<string, string>();
+  for (const id of userIds) {
+    const identity = identities.get(id);
+    if (identity) map.set(id, identity.fullName);
+  }
+  return map;
+}
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("user_id, full_name, email")
-    .in("user_id", unique);
-
-  if (error || !data) return new Map();
-
-  return new Map(
-    data.map((profile) => [
-      profile.user_id,
-      profile.full_name?.trim() || profile.email?.trim() || profile.user_id,
-    ]),
-  );
+/** Prefer this over fetchActorNames when avatar / job title are needed. */
+export async function fetchActorIdentities(userIds: string[]) {
+  const { EmployeeIdentityService } = await import("@/lib/employee-identity/employee-identity-service");
+  return EmployeeIdentityService.getManyByIds(userIds);
 }
 
 export async function fetchCustomerDisplayName(customerId: string): Promise<string | null> {

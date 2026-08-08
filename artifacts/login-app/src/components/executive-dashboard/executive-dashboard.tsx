@@ -23,6 +23,7 @@ import {
   type ExecutiveQuickActionModel,
 } from "@/lib/dashboard";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useAuthUser } from "@/hooks/use-rbac";
 
 type ExecutiveDashboardProps = {
@@ -238,7 +239,8 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
 export function ExecutiveDashboardPageContainer() {
   const { t } = useTranslation("common");
   const { company, profile } = useAuth();
-  const companyName = company?.name ?? t("executiveDashboard.defaultCompany");
+  const { identity } = useCompanyIdentity(Boolean(company?.id ?? profile?.company_id));
+  const companyName = identity?.name ?? t("executiveDashboard.defaultCompany");
 
   if (!profile?.company_id) {
     return (

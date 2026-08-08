@@ -9,8 +9,6 @@ import type { OperationsBookingRecord } from "@/lib/scheduling/operations/reposi
 import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
 import { statusToTimelineKind } from "@/lib/scheduling/operations/utilities";
 
-const DEFAULT_SERVICE_PRICE_CENTS = 0;
-
 export function mapRecordToOperationsBooking(
   record: OperationsBookingRecord,
   displayTimezone = record.timezone,
@@ -18,6 +16,25 @@ export function mapRecordToOperationsBooking(
   const start = TimezoneResolver.parseInstant(record.start_at);
   const end = TimezoneResolver.parseInstant(record.end_at);
   const durationMinutes = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60_000));
+
+  const servicePriceCents = Number(record.scheduling_services?.price_cents) || 0;
+  const serviceCurrency =
+    String(record.scheduling_services?.currency ?? "USD")
+      .trim()
+      .toUpperCase() || "USD";
+  // Amount / currency for queue & payment: booking snapshot only — never recalculate from Service.
+  const amountCents = record.amount_cents != null ? Number(record.amount_cents) : 0;
+  const paymentRaw = String(record.payment_status ?? "").toLowerCase();
+  const paymentStatus =
+    paymentRaw === "paid" ||
+    paymentRaw === "partial" ||
+    paymentRaw === "pending" ||
+    paymentRaw === "refunded" ||
+    paymentRaw === "cancelled"
+      ? (paymentRaw as OperationsBookingView["paymentStatus"])
+      : record.status === "completed"
+        ? "paid"
+        : "pending";
 
   return {
     id: record.id,
@@ -47,7 +64,8 @@ export function mapRecordToOperationsBooking(
           id: record.scheduling_services.id,
           name: record.scheduling_services.name,
           durationMinutes: record.scheduling_services.duration_minutes,
-          priceCents: DEFAULT_SERVICE_PRICE_CENTS,
+          priceCents: servicePriceCents,
+          currency: serviceCurrency,
         }
       : null,
     resource: record.scheduling_resources
@@ -58,7 +76,13 @@ export function mapRecordToOperationsBooking(
         }
       : null,
     branch: record.branches ? { id: record.branches.id, name: record.branches.name } : null,
-    paymentStatus: record.status === "completed" ? "paid" : "unpaid",
+    paymentStatus,
+    amountCents,
+    currency: String(record.currency ?? "USD").trim().toUpperCase() || "USD",
+    visitType: String(record.visit_type ?? "Unknown").trim() || "Unknown",
+    discountCents: Number(record.discount_cents) || 0,
+    taxCents: Number(record.tax_cents) || 0,
+    invoiceId: record.invoice_id ?? null,
     displayStart: TimezoneResolver.localTimeForInstant(start, displayTimezone),
     displayEnd: TimezoneResolver.localTimeForInstant(end, displayTimezone),
     durationMinutes,
@@ -100,11 +124,11 @@ export function computeOperationsKpis(
 
   const expectedRevenueCents = activeBookings
     .filter((b) => ["pending", "confirmed", "checked_in"].includes(b.status))
-    .reduce((sum, b) => sum + (b.service?.priceCents ?? 0), 0);
+    .reduce((sum, b) => sum + (b.amountCents ?? b.service?.priceCents ?? 0), 0);
 
   const actualRevenueCents = bookings
-    .filter((b) => b.status === "completed")
-    .reduce((sum, b) => sum + (b.service?.priceCents ?? 0), 0);
+    .filter((b) => b.paymentStatus === "paid" || b.status === "completed")
+    .reduce((sum, b) => sum + (b.amountCents ?? b.service?.priceCents ?? 0), 0);
 
   return {
     bookings: activeBookings.length,

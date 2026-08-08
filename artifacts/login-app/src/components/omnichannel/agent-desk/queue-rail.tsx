@@ -123,7 +123,7 @@ export const QueueRail = memo(function QueueRail({
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tabular-nums",
-                    active ? "bg-[var(--ad-accent)] text-[#042f2e]" : "bg-[var(--ad-surface-raised)]",
+                    active ? "bg-[var(--ad-accent)] text-primary-foreground" : "bg-[var(--ad-surface-raised)]",
                   )}
                 >
                   {count > 99 ? "99+" : count}

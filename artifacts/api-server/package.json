@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ./scripts/start-with-env.mjs",
+    "dev": "node ./scripts/dev-watch.mjs",
     "build": "node ./build.mjs",
     "start": "node ./scripts/start-with-env.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -24,6 +24,9 @@
     "@workspace/channel-registry": "workspace:*",
     "@workspace/customer-360": "workspace:*",
     "@workspace/knowledge-runtime": "workspace:*",
+    "@workspace/lead-platform": "workspace:*",
+    "@workspace/application-layer": "workspace:*",
+    "@workspace/platform-events": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/platform-observability": "workspace:*",
     "@workspace/platform-ai-provider": "workspace:*",

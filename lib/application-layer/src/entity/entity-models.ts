@@ -68,6 +68,8 @@ export type EntityFileReadModel = Readonly<{
   tenantId: string;
   entityType: string;
   entityId: string;
+  /** Parent note/activity when the file was uploaded via Notes & Activity. */
+  activityId: string | null;
   fileName: string;
   mimeType: string;
   sizeBytes: number;
@@ -92,6 +94,8 @@ export type EntityFileCreateInput = Readonly<{
   storagePath: string;
   previewMetadata?: Record<string, unknown>;
   permissions?: Record<string, unknown>;
+  /** Links file to entity_activities.id (note/activity). */
+  activityId?: string | null;
   actorUserId: string;
 }>;
 

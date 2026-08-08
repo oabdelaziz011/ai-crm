@@ -22,6 +22,13 @@ function canReadEntity(ctx: LoginAppPortContext, resource: EntityResource, entit
   if (entityType === "customer" && ctx.hasPermission("customers.view")) return true;
   if (entityType === "lead" && ctx.hasPermission("leads.view")) return true;
   if (entityType === "company" && ctx.hasPermission("companies.view")) return true;
+  // Shared Entity Workspace notes/files/timeline from Operations.
+  if (
+    (resource === "activities" || resource === "files") &&
+    (ctx.hasPermission("operations.read") || ctx.hasPermission("operations.notes.manage"))
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -31,6 +38,15 @@ function canWriteEntity(ctx: LoginAppPortContext, resource: EntityResource, enti
   if (entityType === "customer" && ctx.hasPermission("customers.edit")) return true;
   if (entityType === "lead" && ctx.hasPermission("leads.edit")) return true;
   if (entityType === "company" && ctx.hasPermission("companies.edit")) return true;
+  if (
+    (resource === "activities" || resource === "files") &&
+    (ctx.hasPermission("operations.notes.manage") ||
+      ctx.hasPermission("operations.read") ||
+      ctx.hasPermission("operations.write") ||
+      ctx.hasPermission("operations.payment.collect"))
+  ) {
+    return true;
+  }
   return false;
 }
 

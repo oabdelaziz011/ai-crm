@@ -62,6 +62,11 @@ type CreateUserForm = {
   roleId: string;
   isActive: boolean;
   branchIds: string[];
+  jobTitle: string;
+  department: string;
+  phone: string;
+  preferredLanguage: string;
+  timezone: string;
 };
 
 type EditUserForm = {
@@ -72,6 +77,19 @@ type EditUserForm = {
   roleId: string;
   isActive: boolean;
   branchIds: string[];
+  jobTitle: string;
+  department: string;
+  phone: string;
+  preferredLanguage: string;
+  timezone: string;
+};
+
+const emptyIdentityFields = {
+  jobTitle: "",
+  department: "",
+  phone: "",
+  preferredLanguage: "en",
+  timezone: "UTC",
 };
 
 export function UsersPage() {
@@ -112,6 +130,7 @@ export function UsersPage() {
     roleId: "",
     isActive: true,
     branchIds: [],
+    ...emptyIdentityFields,
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -253,6 +272,11 @@ export function UsersPage() {
       roleId: assignedRole?.roleId ?? "",
       isActive: user.is_active,
       branchIds: branchAssignmentMap[user.id] ?? [],
+      jobTitle: user.job_title ?? "",
+      department: user.department ?? "",
+      phone: user.phone ?? "",
+      preferredLanguage: user.preferred_language ?? "en",
+      timezone: user.timezone ?? "UTC",
     });
     setEditOpen(true);
   };
@@ -291,6 +315,11 @@ export function UsersPage() {
         roleId: createForm.roleId,
         isActive: createForm.isActive,
         branchIds: createForm.branchIds,
+        jobTitle: createForm.jobTitle.trim() || null,
+        department: createForm.department.trim() || null,
+        phone: createForm.phone.trim() || null,
+        preferredLanguage: createForm.preferredLanguage || "en",
+        timezone: createForm.timezone || "UTC",
       },
       {
         onSuccess: () => {
@@ -306,6 +335,7 @@ export function UsersPage() {
             roleId: "",
             isActive: true,
             branchIds: [],
+            ...emptyIdentityFields,
           });
         },
         onError: (mutationError) => setCreateError(mutationError.message),
@@ -344,6 +374,11 @@ export function UsersPage() {
         is_active: editForm.isActive,
         roleId: editForm.roleId,
         branchIds: editForm.branchIds,
+        job_title: editForm.jobTitle.trim() || null,
+        department: editForm.department.trim() || null,
+        phone: editForm.phone.trim() || null,
+        preferred_language: editForm.preferredLanguage || "en",
+        timezone: editForm.timezone || "UTC",
       },
       {
         onSuccess: () => {
@@ -628,7 +663,7 @@ export function UsersPage() {
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-card border-white/10 text-foreground max-w-md">
+        <DialogContent className="bg-card border-white/10 text-foreground max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("users.createTitle")}</DialogTitle>
           </DialogHeader>
@@ -664,6 +699,75 @@ export function UsersPage() {
                 className="bg-background/50 border-white/10"
               />
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">{t("users.form.jobTitle")}</label>
+                <Input
+                  value={createForm.jobTitle}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({ ...current, jobTitle: event.target.value }))
+                  }
+                  placeholder={t("users.form.jobTitlePlaceholder")}
+                  className="bg-background/50 border-white/10"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">{t("users.form.department")}</label>
+                <Input
+                  value={createForm.department}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({ ...current, department: event.target.value }))
+                  }
+                  placeholder={t("users.form.departmentPlaceholder")}
+                  className="bg-background/50 border-white/10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">{t("users.form.phone")}</label>
+              <Input
+                value={createForm.phone}
+                onChange={(event) =>
+                  setCreateForm((current) => ({ ...current, phone: event.target.value }))
+                }
+                placeholder={t("users.form.phonePlaceholder")}
+                className="bg-background/50 border-white/10"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">{t("users.form.language")}</label>
+                <select
+                  value={createForm.preferredLanguage}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      preferredLanguage: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40"
+                >
+                  <option value="en">{t("languages.english")}</option>
+                  <option value="ar">{t("languages.arabic")}</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">{t("users.form.timezone")}</label>
+                <Input
+                  value={createForm.timezone}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({ ...current, timezone: event.target.value }))
+                  }
+                  placeholder="UTC"
+                  className="bg-background/50 border-white/10"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">{t("users.form.jobTitleHint")}</p>
 
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">{t("users.form.company")}</label>
@@ -767,7 +871,7 @@ export function UsersPage() {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="bg-card border-white/10 text-foreground max-w-md">
+        <DialogContent className="bg-card border-white/10 text-foreground max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("users.editTitle")}</DialogTitle>
           </DialogHeader>
@@ -803,6 +907,84 @@ export function UsersPage() {
                   className="bg-background/50 border-white/10 opacity-70"
                 />
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">{t("users.form.jobTitle")}</label>
+                  <Input
+                    value={editForm.jobTitle}
+                    onChange={(event) =>
+                      setEditForm((current) =>
+                        current ? { ...current, jobTitle: event.target.value } : current,
+                      )
+                    }
+                    placeholder={t("users.form.jobTitlePlaceholder")}
+                    className="bg-background/50 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">{t("users.form.department")}</label>
+                  <Input
+                    value={editForm.department}
+                    onChange={(event) =>
+                      setEditForm((current) =>
+                        current ? { ...current, department: event.target.value } : current,
+                      )
+                    }
+                    placeholder={t("users.form.departmentPlaceholder")}
+                    className="bg-background/50 border-white/10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">{t("users.form.phone")}</label>
+                <Input
+                  value={editForm.phone}
+                  onChange={(event) =>
+                    setEditForm((current) =>
+                      current ? { ...current, phone: event.target.value } : current,
+                    )
+                  }
+                  placeholder={t("users.form.phonePlaceholder")}
+                  className="bg-background/50 border-white/10"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">{t("users.form.language")}</label>
+                  <select
+                    value={editForm.preferredLanguage}
+                    onChange={(event) =>
+                      setEditForm((current) =>
+                        current
+                          ? { ...current, preferredLanguage: event.target.value }
+                          : current,
+                      )
+                    }
+                    className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40"
+                  >
+                    <option value="en">{t("languages.english")}</option>
+                    <option value="ar">{t("languages.arabic")}</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">{t("users.form.timezone")}</label>
+                  <Input
+                    value={editForm.timezone}
+                    onChange={(event) =>
+                      setEditForm((current) =>
+                        current ? { ...current, timezone: event.target.value } : current,
+                      )
+                    }
+                    placeholder="UTC"
+                    className="bg-background/50 border-white/10"
+                  />
+                </div>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">{t("users.form.jobTitleHint")}</p>
 
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">{t("users.form.company")}</label>

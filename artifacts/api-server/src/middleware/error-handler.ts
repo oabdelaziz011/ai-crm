@@ -1,6 +1,18 @@
 import type { NextFunction, Request, Response } from "express";
 import { logger } from "../lib/logger.js";
+import { API_CORS_ALLOWED_ORIGINS } from "./cors.js";
 import { isOutboundDispatchPath, logOutbound400Response } from "../debug/omni-outbound-dispatch-audit.js";
+
+function applyCorsHeaders(req: Request, res: Response): void {
+  const path = req.path || "";
+  if (!path.startsWith("/api") && !req.originalUrl?.startsWith("/api")) return;
+  const origin = req.header("origin");
+  if (origin && (API_CORS_ALLOWED_ORIGINS as readonly string[]).includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Vary", "Origin");
+  }
+}
 
 export class HttpError extends Error {
   constructor(
@@ -14,6 +26,7 @@ export class HttpError extends Error {
 }
 
 export function notFoundHandler(req: Request, res: Response): void {
+  applyCorsHeaders(req, res);
   res.status(404).json({
     error: "not_found",
     message: "The requested resource was not found.",
@@ -55,6 +68,8 @@ export function errorHandler(
   if (res.headersSent) {
     return;
   }
+
+  applyCorsHeaders(req, res);
 
   const responseBody = {
     error: code,

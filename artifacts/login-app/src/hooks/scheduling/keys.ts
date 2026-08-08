@@ -9,6 +9,18 @@ export function schedulingServiceKey(companyId: string | null, serviceId: string
   return [...SCHEDULING_SERVICES_KEY, companyId, serviceId] as const;
 }
 
+/** Nested under existing services key family — does not change legacy key shapes. */
+export function schedulingPricingRuleTypesKey(companyId: string | null) {
+  return [...SCHEDULING_SERVICES_KEY, "pricing-rule-types", companyId] as const;
+}
+
+export function schedulingServicePricingRulesKey(
+  companyId: string | null,
+  serviceId: string | null,
+) {
+  return [...SCHEDULING_SERVICES_KEY, "pricing-rules", companyId, serviceId] as const;
+}
+
 export function schedulingResourceCapabilitiesKey(
   companyId: string | null,
   resourceId: string | null,

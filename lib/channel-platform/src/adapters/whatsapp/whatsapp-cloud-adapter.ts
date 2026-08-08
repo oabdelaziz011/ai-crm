@@ -20,10 +20,18 @@ import { resolveWhatsAppRuntimeConfiguration } from "./whatsapp-canonical-creden
 import type { WhatsAppSendMessagePayload, WhatsAppWebhookMessage } from "./whatsapp-types.js";
 import { validateWhatsAppInteractiveListPayload } from "./whatsapp-interactive-list-validation.js";
 import { traceWhatsAppRawWebhookPayload } from "../../debug/interactive-if-trace-debug.js";
+import { waPerfMeasure } from "../../debug/whatsapp-pipeline-perf.js";
+import type { WhatsAppCredentialLifecyclePort } from "./whatsapp-credential-lifecycle.js";
+import {
+  assertWhatsAppCredentialsSendable,
+  recordWhatsAppOutboundAuthFailure,
+  recordWhatsAppOutboundSendSuccess,
+} from "./whatsapp-credential-lifecycle.js";
 
 export type WhatsAppCloudAdapterOptions = {
   fetchFn?: typeof fetch;
   credentialsLoader?: WhatsAppCredentialsLoader;
+  credentialLifecycle?: WhatsAppCredentialLifecyclePort;
   onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
 };
 
@@ -33,10 +41,12 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
   private readonly apiClient: WhatsAppApiClient;
   private readonly attachmentEngine = new AttachmentEngine();
   private readonly credentialsLoader?: WhatsAppCredentialsLoader;
+  private readonly credentialLifecycle?: WhatsAppCredentialLifecyclePort;
   private readonly onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
 
   constructor(options: WhatsAppCloudAdapterOptions = {}) {
     this.credentialsLoader = options.credentialsLoader;
+    this.credentialLifecycle = options.credentialLifecycle;
     this.onOutboundDiagnostic = options.onOutboundDiagnostic;
     this.apiClient = new WhatsAppApiClient({
       fetchFn: options.fetchFn,
@@ -243,10 +253,15 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
     }
 
     const channelReferences = parseWhatsAppChannelReferences(ctx.companyChannel.configuration);
-    const runtimeConfig = await resolveWhatsAppRuntimeConfiguration(
-      ctx.companyChannel.companyId,
-      channelReferences,
-      this.credentialsLoader,
+    const runtimeConfig = await waPerfMeasure(
+      "Supabase query: resolve WhatsApp runtime credentials",
+      () =>
+        resolveWhatsAppRuntimeConfiguration(
+          ctx.companyChannel.companyId,
+          channelReferences,
+          this.credentialsLoader!,
+        ),
+      { companyId: ctx.companyChannel.companyId },
     );
 
     this.onOutboundDiagnostic?.({
@@ -256,6 +271,13 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
       phoneNumberId: runtimeConfig.phoneNumberId,
       credentialSource: "company_whatsapp_settings",
     });
+
+    if (this.credentialLifecycle) {
+      await assertWhatsAppCredentialsSendable({
+        companyId: ctx.companyChannel.companyId,
+        lifecycle: this.credentialLifecycle,
+      });
+    }
 
     traceMetaGraphOutboundStage({
       stage: "WhatsAppCloudAdapter.sendOutbound.credentialsResolved",
@@ -273,15 +295,74 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
     });
 
     const payload = formattedPayload.payload as WhatsAppSendMessagePayload;
-    const response = await this.apiClient.sendMessage(runtimeConfig, payload, {
-      accessTokenSource: "company_whatsapp_settings",
+    const channelPhoneNumberId = channelReferences.phoneNumberId?.trim() || null;
+    const runtimePhoneNumberId = runtimeConfig.phoneNumberId?.trim() || "";
+    if (channelPhoneNumberId && runtimePhoneNumberId && channelPhoneNumberId !== runtimePhoneNumberId) {
+      console.error("[WHATSAPP_OUTBOUND_TRACE] phoneNumberId mismatch — inbound channel vs send credentials", {
+        companyId: ctx.companyChannel.companyId,
+        companyChannelId: ctx.companyChannel.id,
+        inboundChannelPhoneNumberId: channelPhoneNumberId,
+        outboundCredentialsPhoneNumberId: runtimePhoneNumberId,
+        recipient: payload.to,
+        note:
+          "Meta may accept the send, but the customer chat is on a different WhatsApp Business number than the one used for POST /{phone_number_id}/messages.",
+      });
+    }
+
+    console.log("[WHATSAPP] Sending reply", {
       companyId: ctx.companyChannel.companyId,
       companyChannelId: ctx.companyChannel.id,
+      phoneNumber: payload.to,
+      phoneNumberId: runtimeConfig.phoneNumberId,
+      inboundChannelPhoneNumberId: channelPhoneNumberId,
+      messageType: payload.type,
     });
+    console.log("[WHATSAPP_OUTBOUND_TRACE] calling Meta sendMessage", {
+      companyId: ctx.companyChannel.companyId,
+      companyChannelId: ctx.companyChannel.id,
+      path: `/${runtimePhoneNumberId}/messages`,
+      phoneNumberId: runtimePhoneNumberId,
+      recipient: payload.to,
+      messageType: payload.type,
+    });
+
+    let response;
+    try {
+      response = await this.apiClient.sendMessage(runtimeConfig, payload, {
+        accessTokenSource: "company_whatsapp_settings",
+        companyId: ctx.companyChannel.companyId,
+        companyChannelId: ctx.companyChannel.id,
+      });
+    } catch (error) {
+      if (this.credentialLifecycle && error instanceof ValidationError) {
+        await recordWhatsAppOutboundAuthFailure({
+          companyId: ctx.companyChannel.companyId,
+          lifecycle: this.credentialLifecycle,
+          message: error.message,
+          code: error.metaErrorCode,
+          subcode: error.metaErrorSubcode,
+        }).catch(() => undefined);
+      }
+      throw error;
+    }
+
     const externalMessageId = response.messages?.[0]?.id;
+    console.log("[WHATSAPP] Meta response", {
+      companyId: ctx.companyChannel.companyId,
+      companyChannelId: ctx.companyChannel.id,
+      phoneNumber: payload.to,
+      externalMessageId: externalMessageId ?? null,
+    });
 
     if (!externalMessageId) {
       throw new ValidationError("WhatsApp API did not return an outbound message id.");
+    }
+
+    if (this.credentialLifecycle) {
+      await recordWhatsAppOutboundSendSuccess({
+        companyId: ctx.companyChannel.companyId,
+        lifecycle: this.credentialLifecycle,
+      }).catch(() => undefined);
     }
 
     return {

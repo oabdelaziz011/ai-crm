@@ -35,6 +35,7 @@ import { resolveGatewayMessages } from "../utils/build-gateway-messages.js";
 import { normalizeConversationResponse } from "../utils/normalize-conversation-response.js";
 import { logOpenAIRequest } from "../utils/log-openai-request.js";
 import { createAIRuntimeLogEvent, logAIRuntimeEvent } from "../utils/ai-runtime-logger.js";
+import { logWhatsApp } from "../debug/whatsapp-ai-pipeline-log.js";
 
 export class EnterpriseAIRuntimeService {
   private readonly contextBuilder: ContextBuilder;
@@ -199,6 +200,21 @@ export class EnterpriseAIRuntimeService {
         metadata: rendered.metadata,
       };
     }
+    // Temporary WhatsApp AI pipeline diagnosis (safe for all channels; prefix is WHATSAPP by request).
+    logWhatsApp("Prompt generated", {
+      companyId: input.companyId,
+      conversationId: input.conversationId ?? null,
+      aiEmployeeId:
+        typeof input.promptContext.aiEmployeeId === "string" ? input.promptContext.aiEmployeeId : null,
+      executionId,
+      model: input.model ?? null,
+      templateKey: builtPrompt.templateKey,
+      buildId: builtPrompt.buildId,
+      gatewayMessageCount: builtPrompt.gatewayMessages.length,
+      promptPreview: String(builtPrompt.finalPrompt ?? "").slice(0, 200),
+      estimatedTokens: builtPrompt.metadata?.estimatedTokens ?? null,
+      executionTimeMs: Date.now() - started,
+    });
     if (builtPrompt.gatewayMessages.length === 0) {
       throw new PromptRenderError("Prompt runtime returned empty gateway messages.");
     }

@@ -1,6 +1,8 @@
 import { format, isAfter, parseISO, startOfDay, differenceInDays } from "date-fns";
 import type { CustomerProfileTab } from "@/components/customer-profile/types";
+import { formatBillingCurrency } from "@/lib/billing/format";
 import { workspaceRouteSegment } from "@/lib/customer-workspace/workspace-navigation";
+import { toDashboardAbsolutePath } from "@/lib/routing";
 import type { Booking, Customer, Invoice } from "@/lib/types";
 
 export function customerInitials(name: string): string {
@@ -234,11 +236,7 @@ export function nextUpcomingBooking(bookings: Booking[]): Booking | null {
 }
 
 export function fmtCurrency(amount: number): string {
-  return amount.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+  return formatBillingCurrency(amount);
 }
 
 export function fmtDate(value: string): string {
@@ -254,9 +252,13 @@ export function customerWorkspaceHref(customerId: string, tab?: string): string 
   return `/${customerId}/${segment}`;
 }
 
-/** Dashboard-level href for cross-section navigation (bookings, calendar, inbox). */
+/**
+ * Absolute Customer Workspace URL for cross-nest navigation (e.g. from Operations Queue).
+ * Uses Wouter `~/` root escape so nested routers never resolve under `/operations`.
+ * Browser path: `/dashboard/customers/:id` or `/dashboard/customers/:id/:tab`.
+ */
 export function customerWorkspaceDashboardHref(customerId: string, tab?: string): string {
-  return `/customers${customerWorkspaceHref(customerId, tab)}`;
+  return `~${toDashboardAbsolutePath(`/customers${customerWorkspaceHref(customerId, tab)}`)}`;
 }
 
 export type AiCustomerSummary = {

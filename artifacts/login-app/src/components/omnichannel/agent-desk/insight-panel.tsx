@@ -75,7 +75,7 @@ export const InsightPanel = memo(function InsightPanel({
       {open ? (
         <button
           type="button"
-          className="absolute inset-0 z-30 bg-black/10 lg:bg-black/5"
+          className="absolute inset-0 z-30 bg-foreground/10 lg:bg-foreground/5"
           aria-label={deskLabels.closeCustomer360}
           onClick={onClose}
         />
@@ -84,7 +84,7 @@ export const InsightPanel = memo(function InsightPanel({
       <aside
         aria-label={deskLabels.customer360}
         aria-hidden={!open}
-        className={`agent-desk-insight-panel absolute inset-y-0 end-0 z-40 flex max-w-[22rem] flex-col border-s border-[var(--ad-border)] bg-[#0a0e13]/97 shadow-2xl backdrop-blur-sm ${
+        className={`agent-desk-insight-panel absolute inset-y-0 end-0 z-40 flex max-w-[22rem] flex-col border-s border-[var(--ad-border)] bg-[var(--ad-surface)]/97 shadow-2xl backdrop-blur-sm ${
           open ? "agent-desk-insight-panel--open pointer-events-auto" : "pointer-events-none"
         }`}
         style={{ width: "var(--ad-insight-max)" }}
@@ -146,12 +146,12 @@ export const InsightPanel = memo(function InsightPanel({
               </InsightSection>
 
               <InsightSection title={labels.aiSummary} defaultOpen>
-                <div className="rounded-lg border border-violet-500/15 bg-violet-950/25 p-2.5">
-                  <p className="mb-1 flex items-center gap-1 text-[10px] text-[var(--ad-violet)]">
+                <div className="rounded-lg border border-primary/15 bg-primary/5 p-2.5">
+                  <p className="mb-1 flex items-center gap-1 text-[10px] text-[var(--ad-accent)]">
                     <Sparkles className="size-3" /> {labels.aiSummary}
                   </p>
                   <p className="leading-relaxed text-[var(--ad-text-muted)]">{aiAssist.summary}</p>
-                  <div className="mt-2 space-y-1 border-t border-violet-500/10 pt-2 text-[10px]">
+                  <div className="mt-2 space-y-1 border-t border-primary/10 pt-2 text-[10px]">
                     <MetricRow label={labels.intent} value={aiAssist.intent} />
                     <MetricRow label={labels.sentiment} value={aiAssist.sentiment} />
                     <MetricRow label={labels.currentOwner} value={lifecycleSnapshot?.owner.label ?? deskLabels.notAvailable} />

@@ -140,16 +140,16 @@ export function WorkspaceMetric({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("rounded-xl border border-border/70 bg-card/85", compact ? "p-3" : "p-4")}>
+    <div className={cn("rounded-lg border border-border/70 bg-card", compact ? "px-2.5 py-2" : "p-4")}>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+        <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
         {Icon && (
           <div className="flex size-7 items-center justify-center rounded-md bg-muted/35">
             <Icon className="size-3.5 text-primary" />
           </div>
         )}
       </div>
-      <p className={cn("mt-1 font-mono font-bold tabular-nums tracking-tight", compact ? "text-xl" : "text-2xl", accent === "warning" && "text-warning", accent === "success" && "text-success")}>
+      <p className={cn("mt-0.5 font-mono font-bold tabular-nums tracking-tight", compact ? "text-lg" : "text-2xl", accent === "warning" && "text-warning", accent === "success" && "text-success")}>
         {value}
       </p>
       {hint && <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p>}

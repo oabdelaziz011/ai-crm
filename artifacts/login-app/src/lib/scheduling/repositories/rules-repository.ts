@@ -6,19 +6,30 @@ import type {
   SchedulingBookingRules,
   SchedulingHoliday,
 } from "@/lib/scheduling/types";
+import {
+  invalidateSchedulingRead,
+  memoizeSchedulingRead,
+  WA_REQUEST_CACHE_NS,
+} from "@/lib/scheduling/request-scoped-memo";
 
 export class SchedulingBookingRulesRepository {
   constructor(private readonly client: SupabaseClient) {}
 
   async getByCompany(companyId: string): Promise<SchedulingBookingRules | null> {
-    const { data, error } = await this.client
-      .from("scheduling_booking_rules")
-      .select("*")
-      .eq("company_id", companyId)
-      .maybeSingle();
+    return memoizeSchedulingRead(
+      WA_REQUEST_CACHE_NS.schedulingBookingRules,
+      companyId,
+      async () => {
+        const { data, error } = await this.client
+          .from("scheduling_booking_rules")
+          .select("*")
+          .eq("company_id", companyId)
+          .maybeSingle();
 
-    if (error) throw new Error(error.message);
-    return (data as SchedulingBookingRules | null) ?? null;
+        if (error) throw new Error(error.message);
+        return (data as SchedulingBookingRules | null) ?? null;
+      },
+    );
   }
 
   async upsert(values: BookingRulesUpsert): Promise<SchedulingBookingRules> {
@@ -29,6 +40,7 @@ export class SchedulingBookingRulesRepository {
       .single();
 
     if (error) throw new Error(error.message);
+    invalidateSchedulingRead(WA_REQUEST_CACHE_NS.schedulingBookingRules, values.company_id);
     return data as SchedulingBookingRules;
   }
 }
@@ -37,15 +49,17 @@ export class SchedulingHolidayRepository {
   constructor(private readonly client: SupabaseClient) {}
 
   async listByCompany(companyId: string): Promise<SchedulingHoliday[]> {
-    const { data, error } = await this.client
-      .from("scheduling_holidays")
-      .select("*, branches(id, name)")
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .order("holiday_date", { ascending: true });
+    return memoizeSchedulingRead(WA_REQUEST_CACHE_NS.schedulingHolidays, companyId, async () => {
+      const { data, error } = await this.client
+        .from("scheduling_holidays")
+        .select("*, branches(id, name)")
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .order("holiday_date", { ascending: true });
 
-    if (error) throw new Error(error.message);
-    return (data ?? []) as SchedulingHoliday[];
+      if (error) throw new Error(error.message);
+      return (data ?? []) as SchedulingHoliday[];
+    });
   }
 
   async create(values: HolidayInsert): Promise<SchedulingHoliday> {
@@ -56,6 +70,7 @@ export class SchedulingHolidayRepository {
       .single();
 
     if (error) throw new Error(error.message);
+    invalidateSchedulingRead(WA_REQUEST_CACHE_NS.schedulingHolidays, values.company_id);
     return data as SchedulingHoliday;
   }
 
@@ -74,6 +89,7 @@ export class SchedulingHolidayRepository {
       .single();
 
     if (error) throw new Error(error.message);
+    invalidateSchedulingRead(WA_REQUEST_CACHE_NS.schedulingHolidays, companyId);
     return data as SchedulingHoliday;
   }
 
@@ -86,5 +102,6 @@ export class SchedulingHolidayRepository {
       .is("deleted_at", null);
 
     if (error) throw new Error(error.message);
+    invalidateSchedulingRead(WA_REQUEST_CACHE_NS.schedulingHolidays, companyId);
   }
 }

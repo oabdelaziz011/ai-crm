@@ -72,7 +72,7 @@ export const ConversationQueues = memo(function ConversationQueues({
       </nav>
 
       {tagLabels.length > 0 && onTagChange ? (
-        <div className="shrink-0 border-t border-white/[0.06] px-2 py-3">
+        <div className="shrink-0 border-t border-border px-2 py-3">
           <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {tagsTitle}
           </p>
@@ -116,13 +116,13 @@ function QueueButton({
         "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-xs transition-all duration-150",
         active
           ? "bg-primary/12 text-primary shadow-sm ring-1 ring-primary/20"
-          : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
       {Icon ? <Icon className="size-3.5 shrink-0 opacity-80" /> : null}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {typeof count === "number" ? (
-        <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
           {count}
         </span>
       ) : null}

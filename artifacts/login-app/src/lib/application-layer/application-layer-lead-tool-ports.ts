@@ -12,8 +12,8 @@ import { nextActionForStatus } from "@workspace/ai-tool-router";
 function mapLead(lead: LeadReadModel) {
   return {
     id: lead.id,
-    title: lead.title,
-    contactName: lead.contactName,
+    title: lead.name,
+    contactName: lead.contactPerson,
     email: lead.email,
     phone: lead.phone,
     lifecycleStatus: lead.lifecycleStatus,
@@ -33,8 +33,8 @@ export function createApplicationLayerLeadToolPorts(portContext: LoginAppPortCon
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.lead.createLead(
         {
-          title: input.title,
-          contactName: input.contactName,
+          name: input.title,
+          contactPerson: input.contactName,
           email: input.email,
           phone: input.phone,
           companyName: input.companyName,
@@ -49,10 +49,11 @@ export function createApplicationLayerLeadToolPorts(portContext: LoginAppPortCon
         {
           leadId: input.leadId,
           patch: {
-            title: input.title,
-            contactName: input.contactName,
+            name: input.title,
+            contactPerson: input.contactName,
             email: input.email,
             phone: input.phone,
+            companyName: input.companyName,
             score: input.score,
           },
         },

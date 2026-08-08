@@ -38,7 +38,7 @@ export async function handleCreateLead(
   });
   const eventId = await deps.infra.events.publishLeadCreated({
     leadId: lead.id,
-    title: lead.title ?? request.title,
+    title: lead.name ?? request.name,
     source: request.sourceId,
     context: eventContext(context),
   });
@@ -120,7 +120,7 @@ export async function handleConvertLead(
     response: Object.freeze({
       leadId: request.leadId,
       customerId: result.customerId,
-      convertedAt: result.lead.convertedAt ?? new Date().toISOString(),
+      convertedAt: new Date().toISOString(),
     }),
     eventIds: [eventId],
   };

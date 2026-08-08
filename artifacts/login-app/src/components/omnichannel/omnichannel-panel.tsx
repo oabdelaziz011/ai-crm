@@ -15,7 +15,7 @@ export const OmnichannelPanel = memo(function OmnichannelPanel({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-card/30 shadow-sm ring-1 ring-white/[0.06] backdrop-blur-sm transition-shadow duration-150",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-card/30 shadow-sm ring-1 ring-border backdrop-blur-sm transition-shadow duration-150",
         embedded && "rounded-none shadow-none ring-0",
         className,
       )}

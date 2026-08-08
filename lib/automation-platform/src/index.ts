@@ -112,6 +112,7 @@ export * from "./orchestrator/inbound-automation-context.js";
 export * from "./orchestrator/active-execution-manager.js";
 export * from "./orchestrator/interactive-resume-validation.js";
 export * from "./debug/list-node-lifecycle-debug.js";
+export * from "./debug/workflow-xray-bridge.js";
 export {
   traceIfNodeEvaluation as traceInteractiveIfNodeEvaluation,
   isInteractiveIfTraceEnabled,
@@ -200,3 +201,5 @@ export * from "./ports/business-calendar-port.js";
 export * from "./runtime/list-lookup-resolver.js";
 export * from "./runtime/lookup-filter-resolver.js";
 export * from "./runtime/date-picker-validation.js";
+export * from "./runtime/interactive-list-selection.js";
+export * from "./engine/workflow-variable-contracts.js";

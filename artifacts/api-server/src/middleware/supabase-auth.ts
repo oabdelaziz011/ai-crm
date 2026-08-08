@@ -57,6 +57,12 @@ export async function requireSupabaseAuth(
   _res: Response,
   next: NextFunction,
 ): Promise<void> {
+  // Preflight must never require a bearer token (CORS handles OPTIONS globally too).
+  if (req.method === "OPTIONS") {
+    next();
+    return;
+  }
+
   try {
     if (isInternalApiAuthorized(req)) {
       next();

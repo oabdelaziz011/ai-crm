@@ -41,7 +41,7 @@ export const AttachmentPreviewStrip = memo(function AttachmentPreviewStrip({
               </div>
             )}
             {attachment.status === "uploading" ? (
-              <div className="absolute inset-x-0 bottom-0 overflow-hidden rounded-b-lg bg-black/40">
+              <div className="absolute inset-x-0 bottom-0 overflow-hidden rounded-b-lg bg-foreground/40">
                 <div className="h-1 bg-[var(--ad-accent)] transition-all" style={{ width: `${progress}%` }} />
               </div>
             ) : null}

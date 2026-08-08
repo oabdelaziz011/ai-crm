@@ -82,7 +82,9 @@ export function Customer360Sections({
   communicationGroups?: Array<{ dateLabel: string; items: Array<{ id: string; channel: string; preview: string; occurredAt: string; actor: string }> }>;
   communicationSearch?: string;
   onCommunicationSearchChange?: (v: string) => void;
-  onOperationAction?: (action: "checkIn" | "checkOut" | "noShow" | "cancel" | "reschedule" | "collect") => void;
+  onOperationAction?: (
+    action: "checkIn" | "checkOut" | "noShow" | "cancel" | "reschedule" | "collect" | "invoice",
+  ) => void;
   operationsReady?: boolean;
 }) {
   const { t } = useTranslation("common");
@@ -120,7 +122,7 @@ export function Customer360Sections({
                     variant="outline"
                     size="sm"
                     className="h-8 text-xs"
-                    disabled={!operationsReady || !onOperationAction || action === "noShow" || action === "reschedule"}
+                    disabled={!operationsReady || !onOperationAction || action === "reschedule"}
                     onClick={() => onOperationAction?.(action)}
                   >
                     {t(`customer360.todaysOperation.${action}`)}
@@ -249,8 +251,21 @@ export function Customer360Sections({
                   <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{fmtMoney(data.outstandingBalanceCents)}</p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Button size="sm" disabled>{t("customer360.finance.collect")}</Button>
-                  <Button size="sm" variant="outline" disabled>{t("customer360.finance.generateInvoice")}</Button>
+                  <Button
+                    size="sm"
+                    disabled={!operationsReady || !onOperationAction || data.outstandingBalanceCents <= 0}
+                    onClick={() => onOperationAction?.("collect")}
+                  >
+                    {t("customer360.finance.collect")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!operationsReady || !onOperationAction}
+                    onClick={() => onOperationAction?.("invoice")}
+                  >
+                    {t("customer360.finance.generateInvoice")}
+                  </Button>
                 </div>
               </Customer360Card>
               {data.invoices.map((inv) => (

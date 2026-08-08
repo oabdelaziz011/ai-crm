@@ -223,7 +223,7 @@ export const TranscriptLine = memo(function TranscriptLine({
   const bubbleClass = isCustomer
     ? "bg-[var(--ad-surface-raised)] text-[var(--ad-text)]"
     : isAssistant
-      ? "bg-violet-600/15 text-[var(--ad-text)]"
+      ? "bg-[var(--ad-accent)]/15 text-[var(--ad-text)]"
       : "bg-[var(--ad-accent)]/12 text-[var(--ad-text)]";
 
   return (
@@ -238,7 +238,7 @@ export const TranscriptLine = memo(function TranscriptLine({
               isCustomer
                 ? "bg-[var(--ad-surface-2)] text-[var(--ad-text-muted)]"
                 : isAssistant
-                  ? "bg-violet-500/20 text-violet-200"
+                  ? "bg-[var(--ad-accent)]/20 text-[var(--ad-accent)]"
                   : "bg-[var(--ad-accent)]/20 text-[var(--ad-accent)]"
             }`}
             aria-hidden
@@ -269,7 +269,7 @@ export const TranscriptLine = memo(function TranscriptLine({
                 {smartTime.display}
               </time>
               {isAssistant ? (
-                <span className="inline-flex items-center gap-0.5 text-[10px] text-violet-300">
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--ad-accent)]">
                   <Sparkles className="size-2.5" /> <span dir="auto">{aiLabel}</span>
                 </span>
               ) : null}

@@ -25,11 +25,16 @@ export function useIntelligencePanelWidth() {
     localStorage.setItem(STORAGE_KEY, String(width));
   }, [width]);
 
-  const startResize = useCallback((clientX: number, panelRight: number) => {
+  /**
+   * `trailing` — drag the end edge (CRM on the left of the shell).
+   * `leading` — drag the start edge (legacy right-docked panel).
+   */
+  const startResize = useCallback((clientX: number, panelRect: DOMRect, edge: "trailing" | "leading" = "trailing") => {
     setIsResizing(true);
 
     const onMove = (event: PointerEvent) => {
-      const next = panelRight - event.clientX;
+      const next =
+        edge === "trailing" ? event.clientX - panelRect.left : panelRect.right - event.clientX;
       setWidth(Math.min(INTELLIGENCE_PANEL_MAX, Math.max(INTELLIGENCE_PANEL_MIN, next)));
     };
 

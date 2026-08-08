@@ -7,15 +7,14 @@ import { useAppShell } from "@/context/app-shell-context";
 import { sectionIdFromNestedPath } from "@/config/dashboard-route-registry";
 import { isAiDashboardSection } from "@/lib/bundle/is-ai-dashboard-route";
 import { preloadFloatingAiAssistant } from "./floating-ai-assistant";
-import { FloatingAiButton } from "./floating-ai-button";
 
 type FloatingAiLauncherProps = {
   onActivate: () => void;
 };
 
 /**
- * Lightweight shell control — renders the FAB and keyboard shortcut without
- * loading the full floating AI panel chunk until the user opts in.
+ * Keyboard shortcuts + route-based AI preload.
+ * The floating FAB is removed — AI opens from the sticky header.
  */
 export const FloatingAiLauncher = memo(function FloatingAiLauncher({
   onActivate,
@@ -80,15 +79,5 @@ export const FloatingAiLauncher = memo(function FloatingAiLauncher({
     setPendingFocusOnOpen,
   ]);
 
-  if (!canViewAi) return null;
-
-  return (
-    <FloatingAiButton
-      visible={!isPanelVisible}
-      onBeforeOpen={() => {
-        onActivate();
-        preloadFloatingAiAssistant();
-      }}
-    />
-  );
+  return null;
 });

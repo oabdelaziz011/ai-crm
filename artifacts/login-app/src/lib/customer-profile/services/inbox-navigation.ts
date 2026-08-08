@@ -1,4 +1,5 @@
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
+import { toDashboardAbsolutePath } from "@/lib/routing";
 
 export const TEAM_INBOX_FOCUS_STORAGE_KEY = "customer-profile:inbox-focus-conversation";
 
@@ -33,6 +34,15 @@ export function consumeQueuedTeamInboxConversationFocus(): string | null {
   return conversationId;
 }
 
+/** Nest-relative path — only safe when already under the dashboard router root. */
 export function getTeamInboxNestedPath(): string {
   return getDashboardRouteById("omnichannel").nestedPath;
+}
+
+/**
+ * Root-escaped dashboard path for Team Inbox.
+ * Safe from nested routers (e.g. `/dashboard/operations/...`).
+ */
+export function getTeamInboxDashboardHref(): string {
+  return `~${toDashboardAbsolutePath(getTeamInboxNestedPath())}`;
 }

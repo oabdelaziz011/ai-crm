@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { DashboardCard } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { nestedSectionHref } from "@/lib/routing";
 import { canAccessWorkspace } from "@/lib/workspace/workspace-permissions";
 import { useAuthUser } from "@/hooks/use-rbac";
@@ -10,6 +11,7 @@ import { useAuthUser } from "@/hooks/use-rbac";
 export function WorkspaceOverviewPage() {
   const { t } = useTranslation("common");
   const { company } = useAuth();
+  const { displayName } = useCompanyIdentity(Boolean(company?.id));
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const canView = canAccessWorkspace(hasPermission, isSuperAdmin, Boolean(company?.id));
 
@@ -25,7 +27,7 @@ export function WorkspaceOverviewPage() {
       </div>
 
       <DashboardCard className="space-y-4 p-5">
-        <h2 className="font-semibold">{company?.name ?? t("workspace.overview.company")}</h2>
+        <h2 className="font-semibold">{displayName || t("workspace.overview.company")}</h2>
         <p className="text-sm text-muted-foreground">{t("workspace.overview.hint")}</p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" asChild>

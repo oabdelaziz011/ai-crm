@@ -93,6 +93,27 @@ export type CheckOutCustomerResponseDto = Readonly<{
   status: string;
 }>;
 
+export type TransitionClinicStatusRequestDto = Readonly<{
+  bookingId: string;
+  status: "with_nurse" | "in_progress" | "archived";
+}>;
+
+export type TransitionClinicStatusResponseDto = Readonly<{
+  bookingId: string;
+  status: string;
+  transitionedAt: string;
+}>;
+
+export type CompleteTriageRequestDto = Readonly<{
+  bookingId: string;
+}>;
+
+export type CompleteTriageResponseDto = Readonly<{
+  bookingId: string;
+  status: string;
+  completedAt: string;
+}>;
+
 // ── Payment / Invoice ─────────────────────────────────────────────────────
 export type CollectPaymentRequestDto = Readonly<{
   customerId: string;
@@ -100,6 +121,11 @@ export type CollectPaymentRequestDto = Readonly<{
   currency: string;
   method: string;
   invoiceId?: string;
+  bookingId?: string;
+  discountCents?: number;
+  taxCents?: number;
+  serviceDescription?: string;
+  servicePriceCents?: number;
 }>;
 
 export type CollectPaymentResponseDto = Readonly<{

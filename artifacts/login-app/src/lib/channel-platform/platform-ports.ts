@@ -178,6 +178,28 @@ export function createChannelConversationPort(
         channelType: input.channelType as ConversationChannelType,
         metadata: input.metadata,
       });
+
+      const meta = (input.metadata ?? {}) as Record<string, unknown>;
+      void import("@/lib/lead-intelligence/conversation-event-publisher.js")
+        .then(({ publishConversationStarted }) =>
+          publishConversationStarted({
+            companyId: input.companyId,
+            conversationId: created.id,
+            channelType: String(input.channelType ?? created.channel_type ?? "unknown"),
+            externalUserId:
+              typeof meta.senderExternalId === "string" ? meta.senderExternalId : null,
+            externalThreadId:
+              typeof meta.externalThreadId === "string" ? meta.externalThreadId : null,
+            phone: typeof meta.phone === "string" ? meta.phone : null,
+            email: typeof meta.email === "string" ? meta.email : null,
+            actorUserId: ctx.userId ?? null,
+            createdAt: created.created_at ?? new Date().toISOString(),
+          }),
+        )
+        .catch((error) => {
+          console.error("[ConversationStarted] publish failed", error);
+        });
+
       return { id: created.id };
     },
 
@@ -193,6 +215,26 @@ export function createChannelConversationPort(
           ...(input.metadata ?? {}),
         },
       });
+
+      if (!reused) {
+        const conversation = await services.conversations.getConversation(ctx, input.conversationId);
+        void import("@/lib/lead-intelligence/conversation-event-publisher.js")
+          .then(({ publishConversationMessageReceived }) =>
+            publishConversationMessageReceived({
+              companyId: conversation.company_id,
+              conversationId: input.conversationId,
+              messageId: message.id,
+              channelType: conversation.channel_type ?? null,
+              contentPreview: String(input.content ?? "").slice(0, 280),
+              messageCount: null,
+              actorUserId: ctx.userId ?? null,
+              receivedAt: message.created_at ?? new Date().toISOString(),
+            }),
+          )
+          .catch((error) => {
+            console.error("[ConversationMessageReceived] publish failed", error);
+          });
+      }
 
       return {
         id: message.id,

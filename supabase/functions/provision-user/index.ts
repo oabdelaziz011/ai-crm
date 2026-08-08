@@ -18,6 +18,12 @@ type ProvisionUserPayload = {
   roleId?: string;
   isActive?: boolean;
   redirectTo?: string;
+  jobTitle?: string | null;
+  department?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  preferredLanguage?: string | null;
+  timezone?: string | null;
 };
 
 type CallerProfile = {
@@ -248,9 +254,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "User already exists", code: "email_exists" }, 409);
     }
 
+    const jobTitle = payload.jobTitle?.trim() || null;
+    const department = payload.department?.trim() || null;
+    const phone = payload.phone?.trim() || null;
+    const avatarUrl = payload.avatarUrl?.trim() || null;
+    const preferredLanguage = payload.preferredLanguage?.trim() || null;
+    const timezone = payload.timezone?.trim() || null;
+
     const inviteResult = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       redirectTo,
-      data: { full_name: fullName },
+      data: {
+        full_name: fullName,
+        ...(jobTitle ? { job_title: jobTitle } : {}),
+      },
     });
 
     if (inviteResult.error || !inviteResult.data.user) {
@@ -269,6 +285,12 @@ Deno.serve(async (req) => {
         company_id: effectiveCompanyId,
         is_active: isActive,
         is_super_admin: false,
+        job_title: jobTitle,
+        department,
+        phone,
+        avatar_url: avatarUrl,
+        preferred_language: preferredLanguage,
+        timezone,
       })
       .eq("id", userId);
 

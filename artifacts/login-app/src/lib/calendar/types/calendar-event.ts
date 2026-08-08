@@ -80,11 +80,20 @@ export type CalendarEventRecord = {
   notes: string | null;
   version: number;
   created_by: string | null;
+  amount_cents?: number | null;
+  currency?: string | null;
+  visit_type?: string | null;
+  payment_status?: string | null;
+  discount_cents?: number | null;
+  tax_cents?: number | null;
+  invoice_id?: string | null;
   customers?: { id: string; name: string } | null;
   scheduling_services?: {
     id: string;
     name: string;
     duration_minutes: number;
+    price_cents?: number | null;
+    currency?: string | null;
   } | null;
   scheduling_resources?: {
     id: string;

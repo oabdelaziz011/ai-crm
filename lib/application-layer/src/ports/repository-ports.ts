@@ -18,6 +18,7 @@ import type {
   EntityActivityReadPort,
   EntityActivityWritePort,
 } from "../entity/entity-models.js";
+import type { LeadAiStatusDto } from "../lead-intelligence/capture-types.js";
 
 /** Read-only customer projection port — no implementation in this phase. */
 export type CustomerReadPort = {
@@ -56,7 +57,7 @@ export type LeadQueueFilter = Readonly<{
   search?: string;
   stageId?: string;
   pipelineId?: string;
-  assignedUserId?: string;
+  ownerId?: string;
   lifecycleStatus?: string;
   priority?: string;
   limit?: number;
@@ -70,6 +71,7 @@ export type LeadReadPort = {
   list(tenantId: string, filter?: LeadQueueFilter): Promise<LeadListResult>;
   listPipelines(tenantId: string): Promise<LeadPipelineReadModel[]>;
   listStages(tenantId: string, pipelineId: string): Promise<LeadStageReadModel[]>;
+  listSources(tenantId: string): Promise<LeadSourceReadModel[]>;
   getPipelineBoard(tenantId: string, pipelineId: string): Promise<LeadPipelineBoardModel>;
   getDashboardMetrics(tenantId: string, periodStartIso?: string): Promise<LeadDashboardMetricsModel>;
 };
@@ -91,59 +93,83 @@ export type LeadWritePort = {
 
 export type LeadCreateInput = Readonly<{
   tenantId: string;
-  title: string;
-  contactName?: string;
+  /** CRM lead name */
+  name: string;
+  contactPerson?: string;
   email?: string;
   phone?: string;
   companyName?: string;
   sourceId?: string;
+  stageId?: string;
+  ownerId?: string;
   priority?: string;
-  estimatedValue?: number;
+  expectedValue?: number;
+  expectedCloseDate?: string | null;
+  temperature?: "hot" | "warm" | "cold" | null;
+  notes?: string;
+  tags?: string[];
   pipelineId?: string;
+  /** Company billing currency code when creating the lead. */
+  currency?: string;
   actorUserId: string;
 }>;
 
 export type LeadUpdateInput = Readonly<{
-  title?: string;
-  contactName?: string;
+  name?: string;
+  contactPerson?: string;
   email?: string | null;
   phone?: string | null;
   companyName?: string | null;
   priority?: string;
-  estimatedValue?: number | null;
+  expectedValue?: number | null;
   score?: number;
+  sourceId?: string | null;
+  stageId?: string;
+  ownerId?: string | null;
+  expectedCloseDate?: string | null;
+  temperature?: "hot" | "warm" | "cold" | null;
+  notes?: string;
+  tags?: string[];
   actorUserId: string;
 }>;
 
 export type LeadConvertResult = Readonly<{
   lead: LeadReadModel;
   customerId: string;
+  opportunityId?: string | null;
 }>;
 
+/** Canonical CRM Lead read model — one shape for API, table, kanban, Lead360. */
 export type LeadReadModel = Readonly<{
   id: string;
   tenantId: string;
-  title: string;
-  contactName: string;
+  name: string;
+  contactPerson: string;
   email: string | null;
   phone: string | null;
   companyName: string | null;
-  lifecycleStatus: string;
-  priority: string;
-  score: number;
-  estimatedValue: number | null;
-  currency: string;
-  pipelineId: string;
+  ownerId: string | null;
+  owner: string | null;
   stageId: string;
-  assignedUserId: string | null;
+  stage: string;
+  sourceId: string | null;
+  source: string | null;
+  expectedValue: number | null;
+  expectedCloseDate: string | null;
+  priority: string;
+  temperature: "hot" | "warm" | "cold" | null;
+  tags: readonly string[];
+  notes: string;
+  lastActivityAt: string | null;
+  lifecycleStatus: string;
+  pipelineId: string;
+  currency: string;
+  score: number;
+  isQualified: boolean;
   customerId: string | null;
   conversationId: string | null;
-  isQualified: boolean;
-  source?: string;
-  campaign?: string;
-  owner?: string;
-  customFields?: Readonly<Record<string, string>>;
-  convertedAt?: string;
+  /** Sprint 3.12.1 — derived from metadata.aiCapture when present. */
+  aiStatus?: LeadAiStatusDto;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -154,6 +180,17 @@ export type LeadPipelineReadModel = Readonly<{
   name: string;
   slug: string;
   isDefault: boolean;
+  isActive: boolean;
+  /** Sprint 4.3 — Kanban may move leads to earlier stages when true (default). */
+  allowBackwardStageMovement: boolean;
+}>;
+
+export type LeadSourceReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  channelType: string | null;
   isActive: boolean;
 }>;
 
@@ -199,6 +236,8 @@ export type BookingReadPort = {
   listForCustomer(tenantId: string, customerId: string): Promise<BookingReadModel[]>;
 };
 
+export type ClinicWorkflowStatus = "with_nurse" | "in_progress" | "archived";
+
 export type BookingWritePort = {
   create(input: BookingCreateInput): Promise<BookingReadModel>;
   reschedule(tenantId: string, bookingId: string, scheduledAt: string): Promise<BookingReadModel>;
@@ -207,6 +246,13 @@ export type BookingWritePort = {
   checkIn(tenantId: string, bookingId: string, roomId?: string): Promise<BookingReadModel>;
   checkOut(tenantId: string, bookingId: string): Promise<BookingReadModel>;
   assignEmployee(tenantId: string, bookingId: string, employeeId: string): Promise<BookingReadModel>;
+  /** Clinic workflow transitions (with_nurse / in_progress / archived). */
+  transitionClinicStatus(
+    tenantId: string,
+    bookingId: string,
+    status: ClinicWorkflowStatus,
+  ): Promise<BookingReadModel>;
+  completeTriage(tenantId: string, bookingId: string): Promise<BookingReadModel>;
 };
 
 export type BookingCreateInput = Readonly<{
@@ -222,6 +268,12 @@ export type BookingQueueFilter = Readonly<{
   page?: number;
   pageSize?: number;
   statusFilter?: string;
+  /** Inclusive calendar day YYYY-MM-DD. When omitted, adapter keeps legacy today-only load. */
+  dateFrom?: string;
+  /** Inclusive calendar day YYYY-MM-DD. Defaults to dateFrom when omitted. */
+  dateTo?: string;
+  /** IANA timezone for calendar-day UTC bounds. Defaults to company/UTC in the adapter. */
+  timezone?: string;
 }>;
 
 export type BookingReadModel = Readonly<{
@@ -231,12 +283,22 @@ export type BookingReadModel = Readonly<{
   customerName: string;
   reference: string;
   scheduledAt: string;
+  /** Raw scheduling status (e.g. checked_in) — not display label. */
   status: string;
   paymentStatus: string;
   employeeId?: string;
   employeeName?: string;
   roomId?: string;
   serviceName?: string;
+  amountCents?: number;
+  currency?: string;
+  phone?: string | null;
+  /** Optional enrichment for queue UI (minutes). */
+  durationMinutes?: number;
+  branchName?: string;
+  visitType?: string;
+  discountCents?: number;
+  taxCents?: number;
 }>;
 
 export type PaymentReadPort = {
@@ -256,6 +318,12 @@ export type PaymentCollectInput = Readonly<{
   currency: string;
   method: string;
   invoiceId?: string;
+  bookingId?: string;
+  discountCents?: number;
+  taxCents?: number;
+  serviceDescription?: string;
+  /** Pre-discount / pre-tax service price snapshot (minor units). */
+  servicePriceCents?: number;
 }>;
 
 export type PaymentReadModel = Readonly<{
@@ -266,6 +334,8 @@ export type PaymentReadModel = Readonly<{
   currency: string;
   method: string;
   collectedAt: string;
+  invoiceId?: string;
+  bookingId?: string;
 }>;
 
 export type InvoiceReadPort = {
@@ -710,12 +780,552 @@ import type { HandoffWritePort } from "./handoff-ports.js";
 import type { SchedulingQueryPort } from "./scheduling-query-port.js";
 import type { TicketReadPort, TicketWritePort } from "./ticket-ports.js";
 
+/** Sprint 4.0 — Sales Execution Opportunity read model */
+export type OpportunityReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  name: string;
+  leadId: string | null;
+  customerId: string | null;
+  companyName: string | null;
+  primaryContact: string;
+  ownerId: string | null;
+  owner: string | null;
+  stageId: string;
+  stage: string;
+  stageKey: string | null;
+  pipelineId: string;
+  expectedRevenue: number | null;
+  weightedRevenue: number | null;
+  currency: string;
+  probabilityPercent: number;
+  probabilityConfidence: number | null;
+  probabilitySource: string;
+  probabilityReason: string;
+  expectedCloseDate: string | null;
+  country: string | null;
+  market: string | null;
+  language: string | null;
+  createdFromLead: boolean;
+  aiScoreSnapshot: number | null;
+  aiContextSnapshot: Readonly<Record<string, unknown>>;
+  currentQuoteId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type OpportunityStageReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  pipelineId: string;
+  name: string;
+  slug: string;
+  stageKey: string;
+  sortOrder: number;
+  defaultProbabilityPercent: number;
+  isTerminal: boolean;
+}>;
+
+export type OpportunityPipelineReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  isDefault: boolean;
+  isActive: boolean;
+}>;
+
+export type OpportunityHistoryReadModel = Readonly<{
+  id: string;
+  opportunityId: string;
+  eventType: string;
+  fieldName: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  summary: string;
+  actorUserId: string | null;
+  createdAt: string;
+}>;
+
+export type OpportunityPipelineBoardModel = Readonly<{
+  pipelineId: string;
+  stages: readonly (OpportunityStageReadModel & {
+    opportunities: readonly OpportunityReadModel[];
+  })[];
+}>;
+
+export type OpportunityListFilter = Readonly<{
+  pipelineId?: string;
+  stageId?: string;
+  ownerUserId?: string;
+  leadId?: string;
+  query?: string;
+  limit?: number;
+  offset?: number;
+}>;
+
+export type OpportunityReadPort = {
+  getById(tenantId: string, opportunityId: string): Promise<OpportunityReadModel | null>;
+  list(
+    tenantId: string,
+    filter?: OpportunityListFilter,
+  ): Promise<{ items: readonly OpportunityReadModel[]; total: number }>;
+  listPipelines(tenantId: string): Promise<OpportunityPipelineReadModel[]>;
+  listStages(tenantId: string, pipelineId: string): Promise<OpportunityStageReadModel[]>;
+  getPipelineBoard(tenantId: string, pipelineId: string): Promise<OpportunityPipelineBoardModel>;
+  listHistory(tenantId: string, opportunityId: string): Promise<OpportunityHistoryReadModel[]>;
+};
+
+export type OpportunityWritePort = {
+  create(input: OpportunityCreateInput): Promise<OpportunityReadModel>;
+  createFromLead(input: OpportunityCreateFromLeadInput): Promise<OpportunityReadModel>;
+  update(tenantId: string, opportunityId: string, patch: OpportunityUpdateInput): Promise<OpportunityReadModel>;
+  changeStage(
+    tenantId: string,
+    opportunityId: string,
+    stageId: string,
+    actorUserId: string,
+  ): Promise<OpportunityReadModel>;
+  updateProbability(
+    tenantId: string,
+    opportunityId: string,
+    input: OpportunityProbabilityInput,
+  ): Promise<OpportunityReadModel>;
+  archive(tenantId: string, opportunityId: string, actorUserId: string): Promise<void>;
+};
+
+export type OpportunityCreateInput = Readonly<{
+  tenantId: string;
+  name: string;
+  companyName?: string;
+  primaryContactName?: string;
+  ownerUserId?: string;
+  expectedRevenue?: number;
+  currency?: string;
+  expectedCloseDate?: string | null;
+  stageId?: string;
+  pipelineId?: string;
+  country?: string;
+  market?: string;
+  language?: string;
+  leadId?: string;
+  customerId?: string;
+  actorUserId: string;
+}>;
+
+export type OpportunityCreateFromLeadInput = Readonly<{
+  tenantId: string;
+  leadId: string;
+  name?: string;
+  actorUserId: string;
+}>;
+
+export type OpportunityUpdateInput = Readonly<{
+  name?: string;
+  expectedRevenue?: number | null;
+  currency?: string;
+  expectedCloseDate?: string | null;
+  ownerUserId?: string | null;
+  companyName?: string | null;
+  primaryContactName?: string;
+  country?: string | null;
+  market?: string | null;
+  actorUserId: string;
+}>;
+
+export type OpportunityProbabilityInput = Readonly<{
+  percent: number;
+  confidence?: number | null;
+  source?: string;
+  reason?: string;
+  actorUserId: string;
+}>;
+
+/** Sprint 4.1 — Catalog product read model */
+export type CatalogProductReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  categoryId: string | null;
+  productType: string;
+  name: string;
+  sku: string;
+  brand: string;
+  description: string;
+  basePrice: number;
+  currency: string;
+  taxClass: string;
+  cost: number | null;
+  marginPercent: number | null;
+  isActive: boolean;
+  subscriptionInterval: string | null;
+  subscriptionPrice: number | null;
+  trackInventory: boolean;
+  stockQuantity: number | null;
+  unit: string;
+  tags: readonly string[];
+  imageUrls: readonly string[];
+  documentUrls: readonly string[];
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type ProductCategoryReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  parentId: string | null;
+  name: string;
+  slug: string;
+  description: string;
+  sortOrder: number;
+  isActive: boolean;
+}>;
+
+export type ProductRegionalPriceReadModel = Readonly<{
+  id: string;
+  productId: string;
+  country: string | null;
+  market: string | null;
+  region: string | null;
+  localPrice: number;
+  currencyOverride: string | null;
+  isActive: boolean;
+}>;
+
+export type OpportunityLineItemReadModel = Readonly<{
+  id: string;
+  opportunityId: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  discountPercent: number;
+  taxPercent: number;
+  currency: string;
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+}>;
+
+export type ProductHistoryReadModel = Readonly<{
+  id: string;
+  productId: string;
+  eventType: string;
+  summary: string;
+  fieldName: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+}>;
+
+export type ProductListFilter = Readonly<{
+  categoryId?: string;
+  productType?: string;
+  query?: string;
+  activeOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}>;
+
+export type ProductReadPort = {
+  getById(tenantId: string, productId: string): Promise<CatalogProductReadModel | null>;
+  list(
+    tenantId: string,
+    filter?: ProductListFilter,
+  ): Promise<{ items: readonly CatalogProductReadModel[]; total: number }>;
+  listCategories(tenantId: string): Promise<ProductCategoryReadModel[]>;
+  listRegionalPrices(tenantId: string, productId: string): Promise<ProductRegionalPriceReadModel[]>;
+  listHistory(tenantId: string, productId: string): Promise<ProductHistoryReadModel[]>;
+  listOpportunityLines(tenantId: string, opportunityId: string): Promise<OpportunityLineItemReadModel[]>;
+};
+
+export type ProductWritePort = {
+  create(input: ProductCreateInput): Promise<CatalogProductReadModel>;
+  update(tenantId: string, productId: string, patch: ProductUpdateInput): Promise<CatalogProductReadModel>;
+  archive(tenantId: string, productId: string, actorUserId: string): Promise<void>;
+  createCategory(input: ProductCategoryCreateInput): Promise<ProductCategoryReadModel>;
+  upsertRegionalPrice(input: ProductRegionalPriceInput): Promise<ProductRegionalPriceReadModel>;
+  attachToOpportunity(input: AttachProductToOpportunityInput): Promise<OpportunityLineItemReadModel>;
+  updateOpportunityLine(input: UpdateOpportunityLineInput): Promise<OpportunityLineItemReadModel>;
+  removeOpportunityLine(tenantId: string, lineId: string, actorUserId: string): Promise<void>;
+};
+
+export type ProductCreateInput = Readonly<{
+  tenantId: string;
+  name: string;
+  sku: string;
+  productType?: string;
+  categoryId?: string | null;
+  brand?: string;
+  description?: string;
+  basePrice?: number;
+  currency?: string;
+  taxClass?: string;
+  cost?: number | null;
+  tags?: string[];
+  actorUserId: string;
+}>;
+
+export type ProductUpdateInput = Readonly<{
+  name?: string;
+  sku?: string;
+  categoryId?: string | null;
+  brand?: string;
+  description?: string;
+  basePrice?: number;
+  currency?: string;
+  taxClass?: string;
+  cost?: number | null;
+  isActive?: boolean;
+  productType?: string;
+  tags?: string[];
+  documentUrls?: string[];
+  imageUrls?: string[];
+  actorUserId: string;
+}>;
+
+export type ProductCategoryCreateInput = Readonly<{
+  tenantId: string;
+  name: string;
+  parentId?: string | null;
+  description?: string;
+  actorUserId: string;
+}>;
+
+export type ProductRegionalPriceInput = Readonly<{
+  tenantId: string;
+  productId: string;
+  id?: string;
+  country?: string | null;
+  market?: string | null;
+  region?: string | null;
+  localPrice: number;
+  currencyOverride?: string | null;
+  actorUserId: string;
+}>;
+
+export type AttachProductToOpportunityInput = Readonly<{
+  tenantId: string;
+  opportunityId: string;
+  productId: string;
+  quantity?: number;
+  discountPercent?: number;
+  taxPercent?: number;
+  country?: string | null;
+  market?: string | null;
+  unitPriceOverride?: number;
+  actorUserId: string;
+}>;
+
+export type UpdateOpportunityLineInput = Readonly<{
+  tenantId: string;
+  opportunityId: string;
+  lineId: string;
+  quantity?: number;
+  unitPrice?: number;
+  discountPercent?: number;
+  taxPercent?: number;
+  actorUserId: string;
+}>;
+
+/** Sprint 4.2 — Quote Builder read models */
+export type QuoteReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  quoteFamilyId: string;
+  versionNumber: number;
+  quoteNumber: string;
+  opportunityId: string | null;
+  customerId: string | null;
+  templateId: string | null;
+  status: string;
+  title: string;
+  contactName: string;
+  currency: string;
+  language: string;
+  country: string | null;
+  market: string | null;
+  validUntil: string | null;
+  ownerUserId: string | null;
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  shippingTotal: number;
+  grandTotal: number;
+  weightedRevenue: number | null;
+  opportunityProbabilityPercent: number | null;
+  notes: string;
+  isCurrent: boolean;
+  supersededByQuoteId: string | null;
+  sentAt: string | null;
+  viewedAt: string | null;
+  acceptedAt: string | null;
+  rejectedAt: string | null;
+  expiredAt: string | null;
+  convertedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type QuoteLineItemReadModel = Readonly<{
+  id: string;
+  quoteId: string;
+  lineKind: string;
+  productId: string | null;
+  productName: string;
+  sku: string;
+  sectionTitle: string | null;
+  notes: string;
+  isOptional: boolean;
+  quantity: number;
+  unitPrice: number;
+  discountPercent: number;
+  discountAmount: number;
+  taxPercent: number;
+  currency: string;
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  sortOrder: number;
+}>;
+
+export type QuoteTemplateReadModel = Readonly<{
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  description: string;
+  defaultLanguage: string;
+  defaultCurrency: string;
+  validityDays: number;
+  isActive: boolean;
+}>;
+
+export type QuoteApprovalReadModel = Readonly<{
+  id: string;
+  quoteId: string;
+  status: string;
+  requestedBy: string | null;
+  decidedBy: string | null;
+  decisionNote: string;
+  requestedAt: string;
+  decidedAt: string | null;
+}>;
+
+export type QuoteHistoryReadModel = Readonly<{
+  id: string;
+  quoteId: string;
+  eventType: string;
+  summary: string;
+  fieldName: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+}>;
+
+export type QuoteListFilter = Readonly<{
+  opportunityId?: string;
+  status?: string;
+  currentOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}>;
+
+export type QuoteReadPort = {
+  getById(tenantId: string, quoteId: string): Promise<QuoteReadModel | null>;
+  list(
+    tenantId: string,
+    filter?: QuoteListFilter,
+  ): Promise<{ items: readonly QuoteReadModel[]; total: number }>;
+  listLines(tenantId: string, quoteId: string): Promise<QuoteLineItemReadModel[]>;
+  listVersions(tenantId: string, quoteFamilyId: string): Promise<QuoteReadModel[]>;
+  listTemplates(tenantId: string): Promise<QuoteTemplateReadModel[]>;
+  listApprovals(tenantId: string, quoteId: string): Promise<QuoteApprovalReadModel[]>;
+  listHistory(tenantId: string, quoteId: string): Promise<QuoteHistoryReadModel[]>;
+};
+
+export type QuoteWritePort = {
+  createFromOpportunity(input: {
+    tenantId: string;
+    opportunityId: string;
+    templateId?: string | null;
+    title?: string;
+    actorUserId: string;
+  }): Promise<{ quote: QuoteReadModel; lines: QuoteLineItemReadModel[] }>;
+  createManual(input: {
+    tenantId: string;
+    title: string;
+    opportunityId?: string;
+    templateId?: string | null;
+    currency?: string;
+    contactName?: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  createVersion(input: {
+    tenantId: string;
+    quoteId: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  addCatalogProduct(input: {
+    tenantId: string;
+    quoteId: string;
+    productId: string;
+    quantity?: number;
+    discountPercent?: number;
+    taxPercent?: number;
+    actorUserId: string;
+  }): Promise<{ line: QuoteLineItemReadModel; quote: QuoteReadModel }>;
+  updateLine(input: {
+    tenantId: string;
+    quoteId: string;
+    lineId: string;
+    quantity?: number;
+    unitPrice?: number;
+    discountPercent?: number;
+    discountAmount?: number;
+    taxPercent?: number;
+    actorUserId: string;
+  }): Promise<{ line: QuoteLineItemReadModel; quote: QuoteReadModel }>;
+  removeLine(input: {
+    tenantId: string;
+    quoteId: string;
+    lineId: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  changeStatus(input: {
+    tenantId: string;
+    quoteId: string;
+    status: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  requestApproval(input: {
+    tenantId: string;
+    quoteId: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  decideApproval(input: {
+    tenantId: string;
+    quoteId: string;
+    approvalId: string;
+    status: "approved" | "rejected";
+    decisionNote?: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  archive(input: { tenantId: string; quoteId: string; actorUserId: string }): Promise<void>;
+};
+
 /** Aggregates all repository ports for DI. */
 export type ApplicationPorts = Readonly<{
   customerRead: CustomerReadPort;
   customerWrite: CustomerWritePort;
   leadRead: LeadReadPort;
   leadWrite: LeadWritePort;
+  opportunityRead: OpportunityReadPort;
+  opportunityWrite: OpportunityWritePort;
+  productRead: ProductReadPort;
+  productWrite: ProductWritePort;
+  quoteRead: QuoteReadPort;
+  quoteWrite: QuoteWritePort;
   bookingRead: BookingReadPort;
   bookingWrite: BookingWritePort;
   paymentRead: PaymentReadPort;

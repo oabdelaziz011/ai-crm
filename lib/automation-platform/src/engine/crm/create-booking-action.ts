@@ -10,6 +10,7 @@ import type { CreateBookingSchedulingSlot } from "../../crm/types/create-booking
 import type { BookingServicePort } from "../../ports/booking-service-port.js";
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
+import { waPerfMeasure } from "../../debug/whatsapp-pipeline-perf.js";
 
 function readOptionalDurationMinutes(binding: unknown, scope: Record<string, unknown>): number | null {
   if (binding == null) return null;
@@ -44,23 +45,38 @@ function resolveActorUserId(context: ExecutionContext): string {
   return "";
 }
 
-function resolveCustomerId(scope: Record<string, unknown>, binding: unknown): string {
-  const resolved = resolveRequiredFieldBindingAsString(binding, scope, "customer");
-  if (/^[0-9a-f-]{36}$/i.test(resolved)) return resolved;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  const customer = scope.customer;
-  if (customer && typeof customer === "object" && !Array.isArray(customer)) {
-    const id = (customer as { id?: unknown }).id;
+function readEntityId(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const id = (value as { id?: unknown }).id;
     if (typeof id === "string" && id.trim()) return id.trim();
   }
+  return null;
+}
 
-  return resolved;
+function resolveCustomerId(scope: Record<string, unknown>, binding: unknown): string {
+  const fromCustomer = readEntityId(scope.customer);
+  if (fromCustomer) return fromCustomer;
+
+  const resolved = resolveRequiredFieldBindingAsString(binding, scope, "customer");
+  if (resolved) return resolved;
+
+  throw new ValidationError("Create booking requires a valid customer id.");
 }
 
 function resolveCreateBookingService(
   scope: Record<string, unknown>,
   binding: unknown,
 ): string {
+  const fromSlot = readSelectedSlotScheduling(scope)?.serviceId;
+  if (fromSlot) return fromSlot;
+
+  const fromSelected = readEntityId(scope.selected_service);
+  if (fromSelected) return fromSelected;
+
   const resolved = resolveFieldBindingAsString(binding, scope);
   if (resolved) return resolved;
 
@@ -68,6 +84,23 @@ function resolveCreateBookingService(
   if (selectedService) return selectedService;
 
   throw new ValidationError("Create booking requires service.");
+}
+
+function resolveCreateBookingDoctorId(
+  scope: Record<string, unknown>,
+  binding: unknown,
+): string {
+  const fromSlot = readSelectedSlotScheduling(scope)?.resourceId;
+  if (fromSlot) return fromSlot;
+
+  const fromSelected = readEntityId(scope.selected_resource);
+  if (fromSelected) return fromSelected;
+
+  const resolved = resolveFieldBindingAsString(binding, scope);
+  // Allow legacy "unspecified" when no scheduling resource/slot is available.
+  if (resolved) return resolved;
+
+  throw new ValidationError("Create booking requires doctor.");
 }
 
 function readSelectedSlotStartAt(scope: Record<string, unknown>): string | null {
@@ -120,32 +153,59 @@ export async function executeCreateBookingAction(
   config: Record<string, unknown>,
   bookingService: BookingServicePort,
 ): Promise<NodeExecutionResult> {
-  const normalized = normalizeCreateBookingConfig(config);
-  const scope = buildActionVariableScope(context.variables, context.customer.id);
+  return waPerfMeasure("Booking creation", async () => {
+    const normalized = normalizeCreateBookingConfig(config);
+    const scope = buildActionVariableScope(context.variables, context.customer.id);
 
-  const result = await bookingService.createBooking({
-    companyId: context.company.id,
-    userId: resolveActorUserId(context),
-    service: resolveCreateBookingService(scope, normalized.service),
-    doctorId: resolveRequiredFieldBindingAsString(normalized.doctor, scope, "doctor"),
-    locationId: resolveRequiredFieldBindingAsString(normalized.location, scope, "location"),
-    appointmentDate: resolveCreateBookingAppointmentDate(scope, normalized.appointmentDate),
-    appointmentTime: resolveCreateBookingAppointmentTime(scope, normalized.appointmentTime),
-    customerId: resolveCustomerId(scope, normalized.customer),
-    durationMinutes: readOptionalDurationMinutes(normalized.duration, scope),
-    notes: readOptionalBindingString(normalized.notes, scope),
-    schedulingSlot: readSelectedSlotScheduling(scope),
+    const schedulingSlot = readSelectedSlotScheduling(scope);
+    const service = resolveCreateBookingService(scope, normalized.service);
+    const doctorId = resolveCreateBookingDoctorId(scope, normalized.doctor);
+    const customerId = resolveCustomerId(scope, normalized.customer);
+
+    const result = await bookingService.createBooking({
+      companyId: context.company.id,
+      userId: resolveActorUserId(context),
+      service,
+      doctorId,
+      locationId: resolveRequiredFieldBindingAsString(normalized.location, scope, "location"),
+      appointmentDate: resolveCreateBookingAppointmentDate(scope, normalized.appointmentDate),
+      appointmentTime: resolveCreateBookingAppointmentTime(scope, normalized.appointmentTime),
+      customerId,
+      durationMinutes: readOptionalDurationMinutes(normalized.duration, scope),
+      notes: readOptionalBindingString(normalized.notes, scope),
+      schedulingSlot: schedulingSlot
+        ? {
+            ...schedulingSlot,
+            serviceId: schedulingSlot.serviceId || service,
+            resourceId: schedulingSlot.resourceId || doctorId,
+          }
+        : UUID_PATTERN.test(service) && UUID_PATTERN.test(doctorId)
+          ? {
+              startAt: resolveCreateBookingAppointmentTime(scope, normalized.appointmentTime),
+              timezone:
+                typeof (scope.selected_date as { timezone?: unknown } | undefined)?.timezone ===
+                "string"
+                  ? String((scope.selected_date as { timezone: string }).timezone)
+                  : typeof (scope.selected_slot as { timezone?: unknown } | undefined)?.timezone ===
+                      "string"
+                    ? String((scope.selected_slot as { timezone: string }).timezone)
+                    : "UTC",
+              serviceId: service,
+              resourceId: doctorId,
+            }
+          : null,
+    });
+
+    return {
+      outcome: "continue" as const,
+      variables: mergeVariables(context.variables, {
+        booking_id: result.bookingId,
+        booking_date: result.bookingDate,
+      }),
+      output: {
+        bookingId: result.bookingId,
+        bookingDate: result.bookingDate,
+      },
+    };
   });
-
-  return {
-    outcome: "continue",
-    variables: mergeVariables(context.variables, {
-      booking_id: result.bookingId,
-      booking_date: result.bookingDate,
-    }),
-    output: {
-      bookingId: result.bookingId,
-      bookingDate: result.bookingDate,
-    },
-  };
 }

@@ -35,6 +35,12 @@ import {
   type BranchFormSchema,
 } from "@/lib/company/branches/validators";
 import type { BranchRecord } from "@/lib/company/branches/types";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+
+type ManagerOption = {
+  id: string;
+  label: string;
+};
 
 type Props = {
   open: boolean;
@@ -42,9 +48,17 @@ type Props = {
   branch?: BranchRecord | null;
   onSubmit: (values: BranchFormSchema) => Promise<void>;
   isSaving?: boolean;
+  managerOptions?: ManagerOption[];
 };
 
-export function BranchFormDialog({ open, onClose, branch, onSubmit, isSaving }: Props) {
+export function BranchFormDialog({
+  open,
+  onClose,
+  branch,
+  onSubmit,
+  isSaving,
+  managerOptions = [],
+}: Props) {
   const { t } = useTranslation("common");
   const isEdit = Boolean(branch);
 
@@ -63,6 +77,7 @@ export function BranchFormDialog({ open, onClose, branch, onSubmit, isSaving }: 
       timezone: "UTC",
       is_primary: false,
       status: "active",
+      manager_user_id: null,
     }),
   });
 
@@ -84,6 +99,7 @@ export function BranchFormDialog({ open, onClose, branch, onSubmit, isSaving }: 
             timezone: "UTC",
             is_primary: false,
             status: "active",
+            manager_user_id: null,
           }),
     );
   }, [open, branch, form]);
@@ -286,6 +302,38 @@ export function BranchFormDialog({ open, onClose, branch, onSubmit, isSaving }: 
                   </FormItem>
                 )}
               />
+
+              {managerOptions.length > 0 ? (
+                <FormField
+                  control={form.control}
+                  name="manager_user_id"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>{t("companyWorkspace.branches.manager")}</FormLabel>
+                      <SearchableSelect
+                        value={field.value ?? "__none__"}
+                        onValueChange={(value) =>
+                          field.onChange(value === "__none__" ? null : value)
+                        }
+                        options={[
+                          {
+                            value: "__none__",
+                            label: t("companyWorkspace.branches.noManager"),
+                          },
+                          ...managerOptions.map((option) => ({
+                            value: option.id,
+                            label: option.label,
+                          })),
+                        ]}
+                        placeholder={t("companyWorkspace.branches.managerPlaceholder")}
+                        searchPlaceholder={t("companyWorkspace.employees.searchPlaceholder")}
+                        emptyLabel={t("companyWorkspace.employees.empty")}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
 
               <FormField
                 control={form.control}

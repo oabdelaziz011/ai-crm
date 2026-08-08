@@ -50,6 +50,7 @@ type FileRow = {
   tenant_id: string;
   entity_type: string;
   entity_id: string;
+  activity_id?: string | null;
   file_name: string;
   mime_type: string;
   size_bytes: number;
@@ -147,16 +148,26 @@ export function mapContactRow(row: ContactRow): EntityContactReadModel {
 }
 
 export function mapFileRow(row: FileRow, previewUrl: string | null = null): EntityFileReadModel {
-  const previewMetadata =
+  const previewMetadata: Readonly<Record<string, unknown>> =
     row.preview_metadata && typeof row.preview_metadata === "object"
       ? Object.freeze({ ...(row.preview_metadata as Record<string, unknown>) })
       : Object.freeze({});
+  const attachmentMeta = previewMetadata.entity_attachment_meta;
+  const metaActivityId =
+    attachmentMeta && typeof attachmentMeta === "object"
+      ? (attachmentMeta as Record<string, unknown>).activityId
+      : null;
 
   return Object.freeze({
     id: String(row.id),
     tenantId: String(row.tenant_id),
     entityType: String(row.entity_type),
     entityId: String(row.entity_id),
+    activityId: row.activity_id
+      ? String(row.activity_id)
+      : metaActivityId == null
+        ? null
+        : String(metaActivityId),
     fileName: String(row.file_name),
     mimeType: String(row.mime_type),
     sizeBytes: Number(row.size_bytes ?? 0),

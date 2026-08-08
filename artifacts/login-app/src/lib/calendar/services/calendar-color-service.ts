@@ -21,6 +21,18 @@ const STATUS_COLORS: Record<SchedulingBookingStatus, CalendarEventColor> = {
     textClass: "text-amber-100",
     accentClass: "border-l-amber-400",
   },
+  with_nurse: {
+    bgClass: "bg-teal-500/15",
+    borderClass: "border-teal-500/40",
+    textClass: "text-teal-100",
+    accentClass: "border-l-teal-400",
+  },
+  in_progress: {
+    bgClass: "bg-sky-500/15",
+    borderClass: "border-sky-500/40",
+    textClass: "text-sky-100",
+    accentClass: "border-l-sky-400",
+  },
   pending: {
     bgClass: "bg-amber-500/15",
     borderClass: "border-amber-500/40",
@@ -32,6 +44,12 @@ const STATUS_COLORS: Record<SchedulingBookingStatus, CalendarEventColor> = {
     borderClass: "border-slate-500/40",
     textClass: "text-slate-200",
     accentClass: "border-l-slate-400",
+  },
+  archived: {
+    bgClass: "bg-slate-500/10",
+    borderClass: "border-slate-500/30",
+    textClass: "text-slate-300",
+    accentClass: "border-l-slate-500",
   },
   cancelled: {
     bgClass: "bg-rose-500/10",

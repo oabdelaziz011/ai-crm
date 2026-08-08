@@ -110,6 +110,20 @@ describe("interactive-list-pagination", () => {
     assert.equal(result.sections[0]?.rows.at(-1)?.id, INTERACTIVE_LIST_NEXT_PAGE_ROW_ID);
   });
 
+  it("always persists a full option catalog even when pagination is not required", () => {
+    const sections = [{ title: "Options", rows: makeRows(3) }];
+    const result = applyInteractiveListPaginationToSections(sections, {
+      nodeId: "node_times",
+      limits: whatsappLimits,
+      variables: {},
+    });
+
+    assert.equal(result.paginationState?.totalPages, 1);
+    assert.equal(result.paginationState?.rows.length, 3);
+    assert.deepEqual(result.paginationState?.rows[1]?.record, { index: 2 });
+    assert.equal(result.sections[0]?.rows.length, 3);
+  });
+
   it("preserves full row catalog in pagination state for later selection resolution", () => {
     const sections = [{ title: "Options", rows: makeRows(11) }];
     const { paginationState } = applyInteractiveListPaginationToSections(sections, {

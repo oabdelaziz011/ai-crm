@@ -14,7 +14,7 @@ export function useLeadsQueue(filter?: {
   search?: string;
   stageId?: string;
   pipelineId?: string;
-  assignedUserId?: string;
+  ownerId?: string;
   lifecycleStatus?: string;
   limit?: number;
   offset?: number;
@@ -120,5 +120,49 @@ export function useLeadDashboardMetrics() {
       return result.data;
     },
     staleTime: 30_000,
+  });
+}
+
+export function useLeadStages(pipelineId: string | null) {
+  const { user, company } = useAuth();
+  const { hasPermission, isSuperAdmin } = useAuthUser();
+
+  return useQuery({
+    queryKey: ["leads-workspace", "stages", company?.id, pipelineId],
+    enabled: Boolean(
+      company?.id && user?.id && pipelineId && (isSuperAdmin || hasPermission("leads.view")),
+    ),
+    queryFn: async () => {
+      const registry = createLoginAppApplicationLayerRegistry({
+        companyId: company!.id,
+        actorUserId: user!.id,
+        isSuperAdmin,
+        hasPermission,
+      });
+      const ports = registry.resolve<ApplicationPorts>("ports");
+      return ports.leadRead.listStages(company!.id, pipelineId!);
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useLeadSources() {
+  const { user, company } = useAuth();
+  const { hasPermission, isSuperAdmin } = useAuthUser();
+
+  return useQuery({
+    queryKey: ["leads-workspace", "sources", company?.id],
+    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasPermission("leads.view"))),
+    queryFn: async () => {
+      const registry = createLoginAppApplicationLayerRegistry({
+        companyId: company!.id,
+        actorUserId: user!.id,
+        isSuperAdmin,
+        hasPermission,
+      });
+      const ports = registry.resolve<ApplicationPorts>("ports");
+      return ports.leadRead.listSources(company!.id);
+    },
+    staleTime: 60_000,
   });
 }

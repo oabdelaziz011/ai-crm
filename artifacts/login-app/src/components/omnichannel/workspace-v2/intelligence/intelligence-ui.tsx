@@ -56,7 +56,7 @@ export function ConfidenceBar({ value, className }: { value: number; className?:
   return (
     <div className={cn("h-1.5 overflow-hidden rounded-full bg-[var(--ws-surface)]", className)}>
       <div
-        className="h-full rounded-full bg-gradient-to-r from-[var(--ws-accent)] to-violet-400 transition-[width] duration-500 ease-out"
+        className="h-full rounded-full bg-gradient-to-r from-[var(--ws-accent)] to-[hsl(var(--ring))] transition-[width] duration-500 ease-out"
         style={{ width: `${clamp(value)}%` }}
       />
     </div>
@@ -100,27 +100,27 @@ export function statusToneClass(
 ): string {
   switch (tone) {
     case "healthy":
-      return "border-emerald-400/40 bg-emerald-500/10 text-emerald-300";
+      return "border-[hsl(var(--success)/0.4)] bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]";
     case "warning":
-      return "border-orange-400/40 bg-orange-500/10 text-orange-300";
+      return "border-[hsl(var(--warning)/0.4)] bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]";
     case "critical":
-      return "border-red-400/40 bg-red-500/10 text-red-300";
+      return "border-destructive/40 bg-destructive/10 text-destructive";
     case "resolved":
-      return "border-sky-400/40 bg-sky-500/10 text-sky-300";
+      return "border-primary/40 bg-primary/10 text-primary";
     case "closed":
       return "border-[var(--ws-muted)]/40 bg-[var(--ws-surface)] text-[var(--ws-muted)]";
     case "escalated":
-      return "border-violet-400/40 bg-violet-500/10 text-violet-300";
+      return "border-primary/40 bg-primary/10 text-primary";
     default:
       return "border-[var(--ws-border-subtle)] bg-[var(--ws-surface)] text-[var(--ws-muted)]";
   }
 }
 
 export function scoreColorClass(score: number): string {
-  if (score >= 85) return "text-emerald-400";
+  if (score >= 85) return "text-[hsl(var(--success))]";
   if (score >= 70) return "text-[var(--ws-accent)]";
-  if (score >= 50) return "text-orange-400";
-  return "text-red-400";
+  if (score >= 50) return "text-[hsl(var(--warning))]";
+  return "text-destructive";
 }
 
 export function TimelineRail({
@@ -134,18 +134,18 @@ export function TimelineRail({
 }) {
   const dotClass =
     tone === "healthy"
-      ? "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.2)]"
+      ? "bg-[hsl(var(--success))] ring-[3px] ring-[hsl(var(--success)/0.2)]"
       : tone === "warning"
-        ? "bg-orange-400 shadow-[0_0_0_3px_rgba(251,146,60,0.2)]"
+        ? "bg-[hsl(var(--warning))] ring-[3px] ring-[hsl(var(--warning)/0.2)]"
         : tone === "critical"
-          ? "bg-red-400 shadow-[0_0_0_3px_rgba(248,113,113,0.2)]"
+          ? "bg-destructive ring-[3px] ring-destructive/20"
           : tone === "resolved"
-            ? "bg-sky-400 shadow-[0_0_0_3px_rgba(56,189,248,0.2)]"
+            ? "bg-primary ring-[3px] ring-primary/20"
             : tone === "closed"
               ? "bg-[var(--ws-muted)]"
               : tone === "escalated"
-                ? "bg-violet-400 shadow-[0_0_0_3px_rgba(167,139,250,0.2)]"
-                : "bg-[var(--ws-accent)] shadow-[0_0_0_3px_rgba(45,212,191,0.15)]";
+                ? "bg-primary ring-[3px] ring-primary/20"
+                : "bg-[var(--ws-accent)] ring-[3px] ring-primary/15";
 
   return (
     <div className="flex w-5 shrink-0 flex-col items-center">

@@ -17,7 +17,7 @@ export function UniversalOperationsSubNav() {
   });
 
   return (
-    <nav key={i18n.language} className="mb-6 flex flex-wrap gap-2 border-b border-border/60 pb-4">
+    <nav key={i18n.language} className="mb-0 flex flex-wrap gap-1.5 border-b border-border/60 pb-2">
       {items.map((item) => {
         const href = nestedSectionHref(item.nestedPath);
         const active = isNestedSectionActive(location, item.nestedPath);
@@ -26,7 +26,7 @@ export function UniversalOperationsSubNav() {
             key={`${item.id}-${i18n.language}`}
             href={href}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition-colors",
+              "rounded-md px-2.5 py-1 text-sm transition-colors",
               active
                 ? "bg-primary/15 text-primary border border-primary/20"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/40",

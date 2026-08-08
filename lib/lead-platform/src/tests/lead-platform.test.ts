@@ -4,13 +4,29 @@ import { assertStageTransition, selectAssignmentCandidate } from "../validators/
 import { LeadStageTransitionError } from "../errors.js";
 
 describe("stage transition validator", () => {
-  it("allows valid transitions", () => {
+  it("allows valid forward transitions", () => {
     assert.doesNotThrow(() => assertStageTransition("new", "qualified"));
     assert.doesNotThrow(() => assertStageTransition("qualified", "contacted"));
   });
 
-  it("rejects invalid transitions", () => {
+  it("rejects backward transitions when allowBackward is false", () => {
+    assert.throws(
+      () => assertStageTransition("proposal_sent", "contacted", { allowBackward: false }),
+      LeadStageTransitionError,
+    );
     assert.throws(() => assertStageTransition("new", "won"), LeadStageTransitionError);
+  });
+
+  it("allows backward transitions when allowBackward is true", () => {
+    assert.doesNotThrow(() =>
+      assertStageTransition("proposal_sent", "contacted", { allowBackward: true }),
+    );
+    assert.doesNotThrow(() =>
+      assertStageTransition("proposal_sent", "new", { allowBackward: true }),
+    );
+    assert.doesNotThrow(() =>
+      assertStageTransition("proposal_sent", "qualified", { allowBackward: true }),
+    );
   });
 });
 

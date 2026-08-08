@@ -127,7 +127,7 @@ export function CustomerWorkspaceShell({
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(ellipse 65% 45% at 12% 0%, hsl(187 85% 53% / 0.09), transparent 55%), radial-gradient(ellipse 45% 40% at 100% 10%, hsl(222 40% 16% / 0.6), transparent 50%)",
+            "radial-gradient(ellipse 65% 45% at 12% 0%, hsl(var(--primary) / 0.09), transparent 55%), radial-gradient(ellipse 45% 40% at 100% 10%, hsl(222 40% 16% / 0.6), transparent 50%)",
         }}
       />
 

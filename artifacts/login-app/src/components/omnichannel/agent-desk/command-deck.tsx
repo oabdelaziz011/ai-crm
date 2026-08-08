@@ -85,7 +85,7 @@ export const CommandDeck = memo(
           >
             <Filter className="size-3.5" />
             {filterActiveCount > 0 ? (
-              <span className="absolute -end-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[var(--ad-accent)] text-[9px] font-bold text-[#042f2e]">
+              <span className="absolute -end-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[var(--ad-accent)] text-[9px] font-bold text-primary-foreground">
                 {filterActiveCount}
               </span>
             ) : null}

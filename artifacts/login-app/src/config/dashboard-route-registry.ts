@@ -25,6 +25,7 @@ import {
   GitBranch,
   Plug,
   Store,
+  Package,
   UserCog,
   Users,
   FlaskConical,
@@ -42,12 +43,16 @@ export type DashboardSectionId =
   | "ai-usage"
   | "ai-analytics"
   | "ai-runtime"
+  | "company"
   | "customers"
   | "bookings"
   | "calendar"
   | "scheduling"
   | "universal-operations"
   | "leads"
+  | "opportunities"
+  | "products"
+  | "quotes"
   | "communication"
   | "invoices"
   | "financial"
@@ -126,6 +131,18 @@ const lazyNamed = <T extends ComponentType>(
   );
 
 export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
+  {
+    id: "company",
+    path: "/dashboard/company",
+    nestedPath: "/company",
+    titleKey: "navigation.company",
+    icon: Building2,
+    permission: "company.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/company/company-workspace-page"),
+      "CompanyWorkspacePage",
+    ),
+  },
   {
     id: "omnichannel",
     path: "/dashboard/omnichannel",
@@ -229,6 +246,36 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: Target,
     permission: "leads.view",
     Page: lazyNamed(() => import("@/pages/dashboard/leads-page"), "LeadsPage"),
+  },
+  {
+    id: "opportunities",
+    path: "/dashboard/opportunities",
+    nestedPath: "/opportunities",
+    titleKey: "navigation.opportunities",
+    icon: Briefcase,
+    permission: "opportunities.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/opportunities-page"),
+      "OpportunitiesPage",
+    ),
+  },
+  {
+    id: "products",
+    path: "/dashboard/products",
+    nestedPath: "/products",
+    titleKey: "navigation.products",
+    icon: Package,
+    permission: "products.view",
+    Page: lazyNamed(() => import("@/pages/dashboard/products-page"), "ProductsPage"),
+  },
+  {
+    id: "quotes",
+    path: "/dashboard/quotes",
+    nestedPath: "/quotes",
+    titleKey: "navigation.quotes",
+    icon: FileText,
+    permission: "quotes.view",
+    Page: lazyNamed(() => import("@/pages/dashboard/quotes-page"), "QuotesPage"),
   },
   {
     id: "communication",
@@ -496,6 +543,7 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   | { type: "route"; id: DashboardSectionId }
   | { type: "group"; id: DashboardSidebarGroupId }
 )[] = [
+  { type: "route", id: "company" },
   { type: "group", id: "ai-platform" },
   { type: "route", id: "customers" },
   { type: "route", id: "bookings" },
@@ -503,6 +551,9 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "scheduling" },
   { type: "route", id: "universal-operations" },
   { type: "route", id: "leads" },
+  { type: "route", id: "opportunities" },
+  { type: "route", id: "products" },
+  { type: "route", id: "quotes" },
   { type: "route", id: "communication" },
   { type: "route", id: "invoices" },
   { type: "route", id: "financial" },
@@ -592,6 +643,17 @@ export function isDashboardRoutePermitted(
       ) {
         return false;
       }
+    } else if (route.id === "company") {
+      if (
+        !hasPermission("company.view") &&
+        !hasPermission("settings.view") &&
+        !hasPermission("settings.edit")
+      ) {
+        return false;
+      }
+    } else if (route.id === "settings") {
+      // Settings shell is always reachable so self-service Profile remains available.
+      // Individual settings pages enforce their own permissions.
     } else if (!hasPermission(route.permission)) {
       return false;
     }

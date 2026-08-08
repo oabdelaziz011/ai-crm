@@ -14,6 +14,7 @@ import {
   createMessengerWebhookHandler,
   createEmailWebhookHandler,
   createSupabaseWhatsAppCredentialsLoader,
+  createSupabaseWhatsAppCredentialLifecycle,
   createSupabaseInstagramCredentialsLoader,
   createSupabaseMessengerCredentialsLoader,
   createSupabaseEmailCredentialsLoader,
@@ -56,6 +57,8 @@ import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
 import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
+import { instrumentSupabaseClientForWhatsAppPerf } from "@workspace/channel-platform/server";
+import { WA_REQUEST_CACHE_NS, waRequestGetOrLoad } from "@workspace/channel-platform";
 
 export type SystemServiceContext = {
   userId: null;
@@ -102,9 +105,11 @@ export function createSupabaseServiceClient(): SupabaseClient {
     throw new Error("Service role key must not use the publishable Supabase key in production.");
   }
 
-  return createClient(url, key, {
+  const client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  // Emit Supabase query stages when an inbound WhatsApp profiler is active.
+  return instrumentSupabaseClientForWhatsAppPerf(client);
 }
 
 export function getWebhookPlatform(): WebhookPlatform {
@@ -230,6 +235,7 @@ export function getWebhookPlatform(): WebhookPlatform {
     onDiagnostic: (detail) =>
       logger.info({ ...detail, event: "whatsapp.credentials" }, "WhatsApp credentials load"),
   });
+  const whatsAppCredentialLifecycle = createSupabaseWhatsAppCredentialLifecycle(client);
 
   const instagramCredentialsLoader = createSupabaseInstagramCredentialsLoader(client);
 
@@ -242,6 +248,7 @@ export function getWebhookPlatform(): WebhookPlatform {
     ports,
     workflowResolver,
     whatsAppCredentialsLoader,
+    whatsAppCredentialLifecycle,
     whatsAppOutboundDiagnostic: (detail) => logger.info({ ...detail, event: "whatsapp.outbound" }, "WhatsApp outbound diagnostic"),
     whatsAppDirectOutboundBypass:
       process.env.WHATSAPP_DIRECT_OUTBOUND_BYPASS === "true"
@@ -335,16 +342,18 @@ async function resolveRuntimeConfig(
   tenantRuntimeConfig: ReturnType<typeof createTenantRuntimeConfigService>,
   companyId: string,
 ): Promise<TenantRuntimeConfig | null> {
-  if (process.env.WEBHOOK_EXECUTE_AI === "false") {
-    return null;
-  }
+  return waRequestGetOrLoad(WA_REQUEST_CACHE_NS.tenantRuntimeConfig, companyId, async () => {
+    if (process.env.WEBHOOK_EXECUTE_AI === "false") {
+      return null;
+    }
 
-  const config = await tenantRuntimeConfig.ensureReady(companyId);
-  if (!config.ready) {
-    return null;
-  }
+    const config = await tenantRuntimeConfig.ensureReady(companyId);
+    if (!config.ready) {
+      return null;
+    }
 
-  return config;
+    return config;
+  });
 }
 
 export { SYSTEM_CONTEXT, createChannelRegistryPort, createChannelConversationPort, createChannelRuntimePort };

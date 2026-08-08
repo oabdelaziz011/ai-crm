@@ -181,16 +181,16 @@ function badgeClass(tone: ConversationHistoryEvent["badgeTone"]): string {
     case "danger":
       return "bg-[var(--ws-danger)]/15 text-[var(--ws-danger)]";
     case "violet":
-      return "bg-violet-500/15 text-[var(--ws-violet)]";
+      return "bg-primary/15 text-primary";
     case "success":
-      return "bg-emerald-500/15 text-emerald-400";
+      return "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]";
     default:
       return "bg-[var(--ws-surface-2)] text-[var(--ws-muted)]";
   }
 }
 
 function healthStatusClass(status: "healthy" | "warning" | "critical"): string {
-  if (status === "healthy") return "text-emerald-400";
+  if (status === "healthy") return "text-[hsl(var(--success))]";
   if (status === "warning") return "text-[var(--ws-warn)]";
   return "text-[var(--ws-danger)]";
 }
@@ -279,7 +279,7 @@ export const ConversationHistoryPanel = memo(function ConversationHistoryPanel({
 
   return (
     <div className="space-y-4" dir={dir}>
-      <section className="rounded-lg border border-violet-500/15 bg-violet-950/15 p-3">
+      <section className="rounded-lg border border-primary/15 bg-primary/5 p-3">
         <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--ws-violet)]">
           <Sparkles className="size-3.5" />
           {labels.aiAnalysisTitle}
@@ -292,7 +292,7 @@ export const ConversationHistoryPanel = memo(function ConversationHistoryPanel({
           {insight.moods.map((mood) => (
             <span
               key={mood.id}
-              className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-200"
+              className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
             >
               {mood.label}{" "}
               <span className="text-[var(--ws-muted)]">

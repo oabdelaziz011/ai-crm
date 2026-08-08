@@ -263,6 +263,111 @@ export function createEventPublisherPort(bus: PlatformEventBus): EventPublisherP
       }, { ...ctx(input.context), sourceModule: "workflow", entityType: "workflow", entityId: input.workflowId });
       return result.eventId;
     },
+    async publishOpportunityCreated(input) {
+      const result = await publisher.publish(
+        "OpportunityCreated",
+        {
+          opportunityId: input.opportunityId,
+          name: input.name,
+          leadId: input.leadId,
+          companyId: input.companyId,
+        },
+        {
+          ...ctx(input.context),
+          sourceModule: "opportunities",
+          entityType: "opportunity",
+          entityId: input.opportunityId,
+        },
+      );
+      return result.eventId;
+    },
+    async publishOpportunityStageChanged(input) {
+      const result = await publisher.publish(
+        "OpportunityStageChanged",
+        {
+          opportunityId: input.opportunityId,
+          fromStageId: input.fromStageId,
+          toStageId: input.toStageId,
+          stageKey: input.stageKey,
+          companyId: input.companyId,
+        },
+        {
+          ...ctx(input.context),
+          sourceModule: "opportunities",
+          entityType: "opportunity",
+          entityId: input.opportunityId,
+        },
+      );
+      return result.eventId;
+    },
+    async publishOpportunityProbabilityChanged(input) {
+      const result = await publisher.publish(
+        "OpportunityProbabilityChanged",
+        {
+          opportunityId: input.opportunityId,
+          previousPercent: input.previousPercent,
+          nextPercent: input.nextPercent,
+          source: input.source,
+          companyId: input.companyId,
+        },
+        {
+          ...ctx(input.context),
+          sourceModule: "opportunities",
+          entityType: "opportunity",
+          entityId: input.opportunityId,
+        },
+      );
+      return result.eventId;
+    },
+    async publishOpportunityNegotiationStarted(input) {
+      const result = await publisher.publish(
+        "OpportunityNegotiationStarted",
+        {
+          opportunityId: input.opportunityId,
+          companyId: input.companyId,
+        },
+        {
+          ...ctx(input.context),
+          sourceModule: "opportunities",
+          entityType: "opportunity",
+          entityId: input.opportunityId,
+        },
+      );
+      return result.eventId;
+    },
+    async publishOpportunityWon(input) {
+      const result = await publisher.publish(
+        "OpportunityWon",
+        {
+          opportunityId: input.opportunityId,
+          companyId: input.companyId,
+        },
+        {
+          ...ctx(input.context),
+          sourceModule: "opportunities",
+          entityType: "opportunity",
+          entityId: input.opportunityId,
+        },
+      );
+      return result.eventId;
+    },
+    async publishOpportunityLost(input) {
+      const result = await publisher.publish(
+        "OpportunityLost",
+        {
+          opportunityId: input.opportunityId,
+          companyId: input.companyId,
+          reason: input.reason,
+        },
+        {
+          ...ctx(input.context),
+          sourceModule: "opportunities",
+          entityType: "opportunity",
+          entityId: input.opportunityId,
+        },
+      );
+      return result.eventId;
+    },
   };
 }
 

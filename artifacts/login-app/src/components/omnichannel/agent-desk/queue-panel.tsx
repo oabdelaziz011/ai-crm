@@ -29,6 +29,7 @@ type QueuePanelProps = {
     aiEmployee: string;
     unassigned: string;
     open: string;
+    newBadge?: string;
     pin?: string;
     star?: string;
     markUnread?: string;

@@ -26,7 +26,7 @@ export function WorkspacePlatformShell({
   return (
     <WorkspacePlatformProvider templateKey={templateKey}>
       <WorkspaceKeyboardLayer />
-      <div className="space-y-3 animate-in fade-in duration-300">
+      <div className="space-y-2 animate-in fade-in duration-300">
         {showToolbar && <WorkspacePlatformToolbar />}
         {showFavorites && <WorkspaceFavoritesBar />}
         {children}

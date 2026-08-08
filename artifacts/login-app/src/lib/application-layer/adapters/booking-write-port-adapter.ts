@@ -138,5 +138,42 @@ export function createLoginAppBookingWritePort(
       if (error) throw new Error(error.message);
       return mapDomainBooking(data, tenantId, { employeeId });
     },
+
+    async transitionClinicStatus(tenantId, bookingId, status) {
+      if (tenantId !== ctx.companyId || !ctx.hasPermission("bookings.edit")) {
+        throw new Error("Permission denied");
+      }
+      const result =
+        status === "with_nurse"
+          ? await bookingDomain.sendToNurse({
+              companyId: tenantId,
+              bookingId,
+              updatedBy: ctx.actorUserId,
+            })
+          : status === "in_progress"
+            ? await bookingDomain.sendToDoctor({
+                companyId: tenantId,
+                bookingId,
+                updatedBy: ctx.actorUserId,
+              })
+            : await bookingDomain.archiveBooking({
+                companyId: tenantId,
+                bookingId,
+                updatedBy: ctx.actorUserId,
+              });
+      return mapDomainBooking(result.booking, tenantId);
+    },
+
+    async completeTriage(tenantId, bookingId) {
+      if (tenantId !== ctx.companyId || !ctx.hasPermission("bookings.edit")) {
+        throw new Error("Permission denied");
+      }
+      const result = await bookingDomain.completeTriage({
+        companyId: tenantId,
+        bookingId,
+        updatedBy: ctx.actorUserId,
+      });
+      return mapDomainBooking(result.booking, tenantId);
+    },
   };
 }

@@ -378,7 +378,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
     return (
 
-      <aside className="ws-intelligence-rail hidden w-10 shrink-0 flex-col items-center border-s border-[var(--ws-border)] bg-[var(--ws-surface)] py-2 xl:flex">
+      <aside className="ws-intelligence-rail hidden h-full min-h-0 w-10 shrink-0 flex-col items-center border-e border-[var(--ws-border)] bg-[var(--ws-surface)] py-2 xl:flex">
 
         <button
 
@@ -410,7 +410,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
       ref={panelRef}
 
-      className={`ws-intelligence-panel relative hidden shrink-0 flex-col border-s border-[var(--ws-border)] bg-[var(--ws-surface)] xl:flex ${
+      className={`ws-intelligence-panel relative hidden h-full min-h-0 shrink-0 flex-col border-e border-[var(--ws-border)] bg-[var(--ws-surface)] xl:flex ${
 
         isResizing ? "select-none" : ""
 
@@ -428,7 +428,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
         aria-label={labels.expandLabel}
 
-        className="absolute start-0 top-0 z-10 flex h-full w-1.5 cursor-col-resize items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--ws-accent)]/20"
+        className="absolute end-0 top-0 z-10 flex h-full w-1 cursor-col-resize items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--ws-accent)]/20"
 
         onPointerDown={(event) => {
 
@@ -436,7 +436,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
           if (!rect) return;
 
-          startResize(event.clientX, rect.right);
+          startResize(event.clientX, rect, "trailing");
 
         }}
 
@@ -514,7 +514,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
                 activeTab === tab
 
-                  ? "bg-violet-500/15 text-[var(--ws-violet)]"
+                  ? "bg-primary/15 text-primary"
 
                   : "text-[var(--ws-muted)] hover:bg-[var(--ws-surface-2)]"
 

@@ -4,10 +4,15 @@ import {
   createContext,
   createProductionSubscribers,
   createAIRuntimeContextSubscriber,
+  createLeadIntelligenceSubscriber,
   createRuntimeContextCache,
   type ProductionSubscriberDeps,
 } from "@workspace/application-layer";
-import { createConfiguredPlatformEventBus, type PlatformEventBus } from "@workspace/platform-events";
+import {
+  createConfiguredPlatformEventBus,
+  createModulePublisher,
+  type PlatformEventBus,
+} from "@workspace/platform-events";
 import { supabase } from "@/lib/supabase";
 import { createLoginAppApplicationPorts } from "./create-login-app-application-ports.js";
 import {
@@ -21,6 +26,7 @@ import {
 import { createLoginAppReactiveSignalPort } from "./adapters/reactive-signal-port-adapter.js";
 import { createLoginAppAutomationDispatchPort } from "./adapters/automation-dispatch-port-adapter.js";
 import { createIntegrationEventSubscriber } from "./adapters/integration-event-subscriber.js";
+import { createLoginAppLeadSmartCapturePort } from "@/lib/lead-intelligence/lead-smart-capture-port.js";
 
 let sharedBus: PlatformEventBus | null = null;
 
@@ -57,22 +63,29 @@ export function getLoginAppPlatformEventBus(client: SupabaseClient = supabase): 
   };
 
   const contextCache = createRuntimeContextCache();
+  const smartCapture = createLoginAppLeadSmartCapturePort(client);
 
   sharedBus = createConfiguredPlatformEventBus(
     [
       ...createProductionSubscribers(deps),
+      createLeadIntelligenceSubscriber({
+        ...deps,
+        smartCapture,
+        getPublisher: () => createModulePublisher(sharedBus!, "lead_intelligence"),
+      }),
       createIntegrationEventSubscriber(),
       createAIRuntimeContextSubscriber({ contextCache }),
     ],
     {
-    auditStore: createSupabaseAuditTrailStore(client),
-    timelineStore: createSupabaseTimelineStore(client),
-    correlationStore: createSupabaseCorrelationStore(client),
-    idempotencyStore: createSupabaseIdempotencyStore(client),
-    deadLetterQueue: createSupabaseDeadLetterQueue(client),
-    telemetry: createSupabaseEventTelemetry(client),
-    awaitSubscribers: false,
-  });
+      auditStore: createSupabaseAuditTrailStore(client),
+      timelineStore: createSupabaseTimelineStore(client),
+      correlationStore: createSupabaseCorrelationStore(client),
+      idempotencyStore: createSupabaseIdempotencyStore(client),
+      deadLetterQueue: createSupabaseDeadLetterQueue(client),
+      telemetry: createSupabaseEventTelemetry(client),
+      awaitSubscribers: false,
+    },
+  );
 
   return sharedBus;
 }

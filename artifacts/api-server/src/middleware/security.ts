@@ -17,7 +17,9 @@ export function applySecurityMiddleware(app: Express): void {
           baseUri: ["'self'"],
         },
       },
+      // API is called cross-origin from the Vite app / production hosts.
       crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     }),
   );

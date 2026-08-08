@@ -170,6 +170,9 @@
     "scheduling": "Scheduling",
     "universalOperations": "Operations",
     "leads": "Leads",
+    "opportunities": "Opportunities",
+    "products": "Products",
+    "quotes": "Quotes",
     "communication": "Communication Center",
     "invoices": "Invoices",
     "financial": "Financial Billing",
@@ -205,7 +208,8 @@
     "automation": "Workflows",
     "reports": "Reports",
     "settings": "Settings",
-    "demoScenarios": "Demo Scenarios"
+    "demoScenarios": "Demo Scenarios",
+    "company": "Company"
   },
   "demo": {
     "scenarios": {
@@ -482,6 +486,21 @@
         "healthTitle": "Provider health",
         "healthOk": "WhatsApp connection healthy ({{ms}} ms)",
         "healthFailed": "WhatsApp check failed: {{error}}",
+        "credentialWarning": "WhatsApp credentials need attention ({{status}}). Outbound sends are blocked until the token is refreshed.",
+        "tokenStatusLabel": "Token status",
+        "tokenStatus": {
+          "valid": "Valid",
+          "expired": "Expired",
+          "invalid": "Invalid",
+          "unknown": "Unknown",
+          "missing": "Missing"
+        },
+        "tokenExpiresAt": "Expiration date",
+        "lastSuccessfulSend": "Last successful send",
+        "lastAuthError": "Last authentication error",
+        "connectionTest": "Test Connection",
+        "connectionTestSuccess": "WhatsApp connection test passed",
+        "connectionTestFailed": "WhatsApp connection test failed",
         "testMessage": "Send test message",
         "testRecipient": "Test phone (E.164)",
         "testSuccess": "Test message sent",
@@ -662,6 +681,9 @@
       "title": "Initialize Identity",
       "subtitle": "Establish your credentials to enter the vault.",
       "identity": "Desired Identity",
+      "fullName": "Full name",
+      "ownerJobTitle": "Owner job title",
+      "jobTitleHint": "Descriptive only — permissions come from roles.",
       "passkey": "Secure Passkey",
       "submit": "Initialize Access",
       "already": "Already established?",
@@ -4257,7 +4279,9 @@
     },
     "users": {
       "assignmentLabel": "Branch Assignment",
-      "noBranchesAvailable": "No branches available for this company."
+      "noBranchesAvailable": "No branches available",
+      "createBranch": "Create Branch",
+      "searchPlaceholder": "Search branches…"
     },
     "services": {
       "availableAt": "Available at: {{branches}}"
@@ -4986,9 +5010,14 @@
       "transcriptInternalNote": "Internal note",
       "voice": "Voice",
       "unreadOverflow": "9+",
+      "newBadge": "New",
       "notAvailable": "—",
       "resizeQueue": "Resize queue panel",
-      "maximizeConversation": "Maximize conversation"
+      "maximizeConversation": "Maximize conversation",
+      "soundOn": "Notification sound on",
+      "soundOff": "Notification sound muted",
+      "expandConversation": "Expand conversation",
+      "collapseConversation": "Restore conversation width"
     },
     "navigation": {
       "backToConversation": "Back to conversation"
@@ -5851,12 +5880,52 @@
       "backToList": "Back to services",
       "editDetails": "Edit details",
       "durationLabel": "{{minutes}} min",
+      "tabs": {
+        "general": "General",
+        "pricing": "Pricing",
+        "resources": "Resources"
+      },
       "fields": {
         "name": "Name",
+        "category": "Category",
         "description": "Description",
         "duration": "Duration (minutes)",
+        "price": "Price",
+        "currency": "Currency",
         "status": "Status"
       },
+      "pricing": {
+        "title": "Pricing Rules",
+        "subtitle": "Multiple prices per service. Booking copies the selected or default rule.",
+        "add": "Add Pricing Rule",
+        "empty": "No pricing rules yet.",
+        "typesLoading": "Loading pricing rule types…",
+        "typesEmpty": "No pricing rule types available. Seed types (New, Follow Up, Consultation, Emergency, VIP) or add them in configuration.",
+        "typePlaceholder": "Select type",
+        "descriptionOptional": "Description (optional)",
+        "companyDefaultCurrency": "Company Default ({{currency}})",
+        "columns": {
+          "type": "Type",
+          "price": "Price",
+          "currency": "Currency",
+          "duration": "Duration",
+          "default": "Default",
+          "actions": "Actions"
+        },
+        "validation": {
+          "typeRequired": "Type is required",
+          "priceRequired": "Price is required",
+          "pricePositive": "Price must be greater than 0",
+          "currencyRequired": "Currency is required",
+          "durationRequired": "Duration is required",
+          "durationPositive": "Duration must be greater than 0",
+          "atLeastOne": "Add at least one pricing rule",
+          "oneDefault": "Exactly one pricing rule must be default",
+          "uniqueTypes": "Each type can only be used once"
+        }
+      },
+      "priceLabel": "{{amount}} {{currency}}",
+      "openOperationsQueue": "Open Operations Queue",
       "statuses": {
         "active": "Active",
         "inactive": "Inactive",
@@ -6933,6 +7002,27 @@
       "email": "Email",
       "emailPlaceholder": "user@company.com",
       "emailRequired": "Email is required",
+      "phone": "Phone",
+      "phonePlaceholder": "+966…",
+      "jobTitle": "Job Title",
+      "jobTitlePlaceholder": "Senior QA Engineer",
+      "jobTitleSearchPlaceholder": "Type or search job titles…",
+      "jobTitleNoSuggestions": "No matching titles. Keep typing to use a custom title.",
+      "jobTitleUseCustom": "Use “{{title}}”",
+      "jobTitleHint": "Job title is display-only. Permissions come only from Roles.",
+      "department": "Department",
+      "departmentPlaceholder": "Quality Assurance",
+      "departmentSelectPlaceholder": "Select a department",
+      "departmentSearchPlaceholder": "Search departments…",
+      "departmentNone": "Not assigned",
+      "noDepartmentsAvailable": "No departments available.",
+      "noDepartmentsFound": "No departments found.",
+      "noBranchesFound": "No branches found.",
+      "createDepartment": "Create Department",
+      "createBranch": "Create Branch",
+      "setupRequiresBranchAndDepartment": "Please create at least one Branch and one Department first.",
+      "language": "Language",
+      "timezone": "Timezone",
       "company": "Company",
       "companyRequired": "Company is required",
       "selectCompany": "Select a company",
@@ -7101,13 +7191,29 @@
     "fields": {
       "fullName": "Full Name",
       "jobTitle": "Job Title",
+      "jobTitlePlaceholder": "Senior QA Engineer",
+      "jobTitleHint": "Descriptive only — never grants permissions.",
+      "department": "Department",
+      "departmentPlaceholder": "Quality Assurance",
+      "branch": "Branch",
+      "directManager": "Direct Manager",
+      "phone": "Phone",
+      "phonePlaceholder": "+966…",
       "company": "Company",
       "role": "Role",
       "accountStatus": "Account Status",
       "language": "Language",
       "timezone": "Time Zone",
+      "currency": "Currency",
       "createdDate": "Created Date",
       "lastLogin": "Last Login"
+    },
+    "currency": {
+      "hint": "Company default currency for invoices, billing, reports, and AI usage.",
+      "saveSuccessTitle": "Currency updated",
+      "saveSuccessDescription": "Money values now format in {{currency}}.",
+      "saveFailedTitle": "Could not update currency",
+      "saveFailedDescription": "Please try again."
     },
     "status": {
       "active": "Active",
@@ -7124,7 +7230,13 @@
       "invalidTypeDescription": "Please choose an image file.",
       "tooLargeTitle": "Image too large",
       "tooLargeDescription": "Profile photos must be 512 KB or smaller.",
-      "invalidUrl": "Enter a valid HTTPS URL, image upload, or storage path."
+      "invalidUrl": "Enter a valid HTTPS URL, image upload, or storage path.",
+      "uploadSuccessTitle": "Photo updated",
+      "uploadSuccessDescription": "Your profile photo is now visible across the app.",
+      "uploadFailedTitle": "Could not upload photo",
+      "uploadFailedDescription": "Please try a smaller image or try again.",
+      "removeSuccessTitle": "Photo removed",
+      "removeSuccessDescription": "Your profile photo was cleared."
     },
     "validation": {
       "fullNameRequired": "Full name is required."
@@ -7772,26 +7884,179 @@
       "automotive": "Automotive Service"
     },
     "queue": {
-      "title": "Operations Queue",
-      "subtitle": "Metadata-driven daily operations — select any row to open the customer workspace.",
-      "template": "Business template"
+      "title": "Operations",
+      "subtitle": "Today's Operations",
+      "subtitleEnterprise": "Enterprise scheduling workspace",
+      "template": "Business template",
+      "newOperation": "New Operation",
+      "empty": {
+        "title": "No operations for this date",
+        "description": "Operations will appear here once bookings exist for the selected date range."
+      }
+    },
+    "statuses": {
+      "scheduled": "Scheduled",
+      "waiting": "Waiting",
+      "checked_in": "Checked In",
+      "with_nurse": "In Progress",
+      "with_doctor": "In Progress",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "archived": "Cancelled",
+      "cancelled": "Cancelled",
+      "no_show": "Cancelled",
+      "confirmed": "Scheduled",
+      "pending": "Waiting"
+    },
+    "payments": {
+      "unpaid": "Pending",
+      "pending": "Pending",
+      "partially_paid": "Partial",
+      "partial": "Partial",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "cancelled": "Cancelled",
+      "failed": "Payment failed"
+    },
+    "visitTypes": {
+      "New": "New",
+      "FollowUp": "Follow Up",
+      "Consultation": "Consultation",
+      "Emergency": "Emergency",
+      "VIP": "VIP",
+      "Unknown": "Unknown"
+    },
+    "payment": {
+      "collectTitle": "Collect Payment",
+      "collectDescription": "Confirm payment details for this booking.",
+      "service": "Service",
+      "price": "Price",
+      "discount": "Discount",
+      "tax": "Tax",
+      "finalAmount": "Final Amount",
+      "method": "Payment Method",
+      "confirm": "Confirm Payment",
+      "confirming": "Confirming…",
+      "methods": {
+        "cash": "Cash",
+        "card": "Card",
+        "transfer": "Transfer",
+        "wallet": "Wallet",
+        "other": "Other"
+      }
+    },
+    "currency": {
+      "SAR": "SAR",
+      "EGP": "EGP",
+      "USD": "$",
+      "AED": "AED",
+      "EUR": "€",
+      "GBP": "£"
     },
     "kpi": {
-      "total": "Today's Items",
+      "total": "Appointments Today",
+      "todayOperations": "Appointments Today",
+      "todaysAppointments": "Appointments Today",
+      "appointmentsToday": "Appointments Today",
       "waiting": "Waiting",
+      "checkedIn": "Checked In",
+      "inProgress": "In Progress",
+      "late": "Late",
       "paid": "Paid",
-      "completed": "Completed"
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "revenue": "Revenue Today",
+      "revenueToday": "Revenue Today",
+      "outstanding": "Pending Payments",
+      "outstandingPayments": "Pending Payments",
+      "pendingPayments": "Pending Payments"
+    },
+    "appointment": {
+      "empty": "Select an appointment",
+      "previous": "Previous",
+      "next": "Next",
+      "lateMinutes": "Late {{minutes}} min",
+      "startingSoon": "Starting Soon",
+      "durationMinutes": "{{minutes}} min",
+      "priority": {
+        "high": "High",
+        "medium": "Medium",
+        "normal": "Normal",
+        "low": "Low"
+      },
+      "customerType": {
+        "vip": "VIP",
+        "standard": "Standard"
+      },
+      "sections": {
+        "patient": "Patient",
+        "appointment": "Appointment",
+        "payment": "Payment",
+        "timeline": "Timeline",
+        "notes": "Notes",
+        "quickActions": "Quick Actions"
+      },
+      "fields": {
+        "name": "Name",
+        "phone": "Phone",
+        "email": "Email",
+        "customerType": "Customer Type",
+        "visitCount": "Visit Count",
+        "lastVisit": "Last Visit",
+        "queueNumber": "Queue Number",
+        "appointmentTime": "Appointment Time",
+        "visitType": "Visit Type",
+        "service": "Service",
+        "duration": "Duration",
+        "status": "Status",
+        "waitingTime": "Waiting Time",
+        "amount": "Amount",
+        "paid": "Paid",
+        "remaining": "Remaining",
+        "invoiceStatus": "Invoice Status",
+        "paymentStatus": "Payment Status",
+        "internalNotes": "Internal Notes",
+        "customerNotes": "Customer Notes"
+      },
+      "timeline": {
+        "created": "Appointment Created",
+        "checkedIn": "Checked In",
+        "started": "Started",
+        "completed": "Completed"
+      },
+      "notes": {
+        "empty": "No internal notes",
+        "emptyCustomer": "No customer notes"
+      },
+      "invoice": {
+        "paid": "Paid",
+        "partial": "Partially paid",
+        "open": "Open"
+      },
+      "actions": {
+        "checkIn": "Check In",
+        "start": "Start",
+        "complete": "Complete",
+        "cancel": "Cancel",
+        "collectPayment": "Collect Payment",
+        "customer360": "Customer 360",
+        "whatsapp": "WhatsApp",
+        "call": "Call",
+        "print": "Print"
+      }
     },
     "grid": {
-      "searchPlaceholder": "Global search…",
+      "searchPlaceholder": "Search operations…",
       "aiSearch": "AI Search",
       "savedViews": "Saved Views",
       "viewToday": "Today",
       "viewWaiting": "Waiting",
       "viewUnpaid": "Unpaid",
       "bulkActions": "Bulk Actions",
+      "refresh": "Refresh",
       "export": "Export",
       "import": "Import",
+      "columnChooser": "Columns",
       "columnSettings": "Column settings",
       "sort": "Sort",
       "filter": "Filter",
@@ -7799,7 +8064,248 @@
       "hide": "Hide",
       "selectAll": "Select all rows",
       "rowCount": "{{count}} rows",
-      "selectedCount": "{{count}} selected"
+      "selectedCount": "{{count}} selected",
+      "rowActions": "Row actions",
+      "openWorkspace": "Open workspace",
+      "density": "Row density",
+      "densityCompact": "Compact",
+      "densityComfortable": "Comfortable",
+      "dateFilter": "Date",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "datePresets": {
+        "today": "Today",
+        "tomorrow": "Tomorrow",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "thisMonth": "This Month",
+        "custom": "Custom Date"
+      },
+      "filters": {
+        "doctor": "Doctor",
+        "service": "Service",
+        "status": "Status",
+        "branch": "Branch",
+        "allDoctors": "All doctors",
+        "allServices": "All services",
+        "allStatuses": "All statuses",
+        "allBranches": "All branches"
+      },
+      "columns": {
+        "queueNumber": "#",
+        "reference": "Reference",
+        "appointmentTime": "Appointment Time",
+        "customer": "Customer",
+        "visitType": "Visit Type",
+        "phone": "Phone",
+        "service": "Service",
+        "assignee": "Doctor",
+        "doctor": "Doctor",
+        "status": "Status",
+        "paymentStatus": "Payment Status",
+        "waiting": "Waiting Time",
+        "waitingTime": "Waiting Time",
+        "duration": "Duration",
+        "amount": "Amount",
+        "branch": "Branch",
+        "actions": "Actions"
+      },
+      "tooltips": {
+        "search": "Search operations",
+        "filter": "Filter the queue",
+        "savedViews": "Open saved views",
+        "refresh": "Refresh the queue",
+        "export": "Export the current queue",
+        "columns": "Choose visible columns",
+        "density": "Change row density",
+        "selectRow": "Select row",
+        "openRow": "Open appointment"
+      }
+    },
+    "terminologyByTemplate": {
+      "clinic": {
+        "customer": "Patient"
+      },
+      "training_center": {
+        "customer": "Student"
+      },
+      "automotive": {
+        "customer": "Customer"
+      },
+      "hotel": {
+        "customer": "Guest"
+      }
+    },
+    "workspace": {
+      "title": "Operation Workspace",
+      "close": "Close workspace",
+      "comingSoon": "Coming Soon",
+      "header": {
+        "reference": "Reference",
+        "title": "Title",
+        "status": "Status",
+        "priority": "Priority",
+        "assigned": "Assignee",
+        "customer": "Customer",
+        "created": "Created",
+        "updated": "Updated"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "timeline": "Timeline",
+        "customer": "Customer",
+        "payments": "Payments",
+        "notes": "Notes",
+        "files": "Files",
+        "ai": "AI",
+        "history": "History",
+        "related": "Related"
+      },
+      "workflow": {
+        "waiting": "Waiting",
+        "checkedIn": "Checked in",
+        "withNurse": "With nurse",
+        "withDoctor": "With doctor",
+        "completed": "Completed",
+        "archived": "Archived",
+        "planning": "Planning",
+        "assigned": "Assigned",
+        "inProgress": "With doctor"
+      },
+      "widgets": {
+        "operationSummary": "Operation Summary",
+        "currentWorkflow": "Current Workflow",
+        "importantDates": "Important Dates",
+        "ownerPriority": "Owner & Priority",
+        "tags": "Tags",
+        "warnings": "Warnings",
+        "appointment": "Appointment",
+        "aiSummary": "AI Summary",
+        "timeline": "Timeline",
+        "customer": "Customer360",
+        "payments": "Payments",
+        "paymentSummary": "Payment Summary",
+        "outstanding": "Outstanding",
+        "paid": "Paid",
+        "invoices": "Invoices",
+        "receipts": "Receipts",
+        "refunds": "Refunds",
+        "notes": "Notes",
+        "files": "Files",
+        "ai": "AI Assistant",
+        "suggestedActions": "Suggested Actions",
+        "related": "Related Records",
+        "service": "Service",
+        "scheduled": "Scheduled"
+      },
+      "related": {
+        "appointment": "Appointment",
+        "customer": "Customer",
+        "lead": "Lead",
+        "invoice": "Invoice",
+        "conversation": "Conversation",
+        "project": "Project",
+        "ticket": "Ticket"
+      },
+      "warnings": {
+        "longWait": "Waiting {{minutes}} minutes",
+        "unpaid": "Outstanding payment",
+        "highPriority": "Priority: {{priority}}"
+      },
+      "empty": {
+        "selection": "Select an operation to open the workspace.",
+        "widgets": "No widgets available for this tab.",
+        "tags": "No tags"
+      }
+    },
+    "workflows": {
+      "clinic": {
+        "label": "Clinic patient journey"
+      },
+      "construction": {
+        "label": "Construction job lifecycle (example)"
+      }
+    },
+    "timeline": {
+      "title": "Timeline View",
+      "description": "Timeline settings from published workspace configuration.",
+      "groupBy": "Group by: {{groupBy}}",
+      "aiEventsOn": "AI events visible",
+      "aiEventsOff": "AI events hidden"
+    },
+    "actions": {
+      "empty": "No actions available",
+      "noPermission": "No permission",
+      "comingSoon": "Coming Soon",
+      "comingSoonShort": "Soon",
+      "unavailable": "Unavailable",
+      "groups": {
+        "general": "General",
+        "workflow": "Workflow",
+        "billing": "Billing",
+        "communication": "Communication",
+        "assignment": "Assignment",
+        "ai": "AI",
+        "history": "History",
+        "danger": "Danger Zone"
+      },
+      "items": {
+        "openCustomer360": "Open Customer360",
+        "viewCustomer": "View Customer",
+        "checkIn": "Check In",
+        "sendToNurse": "Send To Nurse",
+        "completeTriage": "Complete Triage",
+        "sendToDoctor": "Send To Doctor",
+        "completeVisit": "Complete Visit",
+        "archive": "Archive",
+        "markNoShow": "Mark No-Show",
+        "cancelAppointment": "Cancel",
+        "collectPayment": "Collect Payment",
+        "generateInvoice": "Invoice",
+        "refund": "Refund",
+        "viewInvoice": "View Invoice",
+        "printReceipt": "Print Receipt",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "email": "Email",
+        "call": "Call",
+        "assignUser": "Assign User",
+        "transfer": "Transfer",
+        "changePriority": "Change Priority",
+        "summarize": "Summarize",
+        "suggestedNextStep": "Suggested Next Step",
+        "timeline": "Timeline",
+        "attachments": "Attachments",
+        "auditLog": "Audit Log"
+      },
+      "confirm": {
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "checkInTitle": "Check in this operation?",
+        "checkInDescription": "The customer will be marked as checked in.",
+        "sendToNurseTitle": "Send patient to nurse?",
+        "sendToNurseDescription": "Status will change to With Nurse.",
+        "completeTriageTitle": "Complete triage?",
+        "completeTriageDescription": "Triage completion will be recorded on the timeline.",
+        "sendToDoctorTitle": "Send patient to doctor?",
+        "sendToDoctorDescription": "Status will change to With Doctor.",
+        "completeTitle": "Complete this visit?",
+        "completeDescription": "The operation will be marked completed.",
+        "archiveTitle": "Archive this operation?",
+        "archiveDescription": "The completed visit will move to Archived.",
+        "noShowTitle": "Mark as no-show?",
+        "noShowDescription": "This operation will be archived as a no-show.",
+        "cancelTitle": "Cancel this appointment?",
+        "cancelDescription": "This cannot be undone from the queue.",
+        "collectTitle": "Collect payment?",
+        "collectDescription": "Record a cash payment for the outstanding amount.",
+        "invoiceTitle": "Generate invoice?",
+        "invoiceDescription": "Create an invoice for this completed visit."
+      },
+      "toast": {
+        "success": "{{action}} completed",
+        "error": "Action failed"
+      }
     },
     "panel": {
       "title": "Customer Workspace",
@@ -7857,13 +8363,6 @@
       "description": "Kanban grouped by {{groupBy}} from published configuration.",
       "wipLimit": "WIP limit: {{limit}}"
     },
-    "timeline": {
-      "title": "Timeline View",
-      "description": "Timeline settings from published workspace configuration.",
-      "groupBy": "Group by: {{groupBy}}",
-      "aiEventsOn": "AI events visible",
-      "aiEventsOff": "AI events hidden"
-    },
     "configuration": {
       "title": "Operations Workspace Setup",
       "subtitle": "Customize how your team sees the daily operations queue — labels, columns, services, and rules — without technical skills.",
@@ -7896,6 +8395,48 @@
         "edit": "Adjust settings in any section",
         "save": "Save draft (keeps changes private)",
         "publish": "Publish for team (goes live)"
+      },
+      "tasks": {
+        "homeSubtitle": "Choose what to manage. Each task opens a simple list where you can add, edit, or remove items.",
+        "primaryTitle": "What do you want to manage?",
+        "primaryHint": "Start here — these are the settings teams change most often.",
+        "moreTitle": "More settings",
+        "moreHint": "Optional configuration for labels, alerts, automations, and history.",
+        "backToHome": "Back to all tasks",
+        "manageColumns": "Manage queue columns",
+        "manageColumnsDesc": "Add and edit the columns your team sees in the daily operations list.",
+        "manageStatuses": "Manage visit statuses",
+        "manageStatusesDesc": "Define stages like waiting, in service, and completed.",
+        "manageServices": "Manage services",
+        "manageServicesDesc": "List services offered, with price and duration.",
+        "manageResources": "Manage rooms and staff",
+        "manageResourcesDesc": "Define rooms, chairs, or staff slots for assignments.",
+        "managePermissions": "Manage permissions",
+        "managePermissionsDesc": "Control which roles can see columns, change statuses, or run actions.",
+        "addColumn": "Add column",
+        "addStatus": "Add status",
+        "addService": "Add service",
+        "addResource": "Add resource",
+        "addPermission": "Add permission rule",
+        "addPaymentStatus": "Add payment status",
+        "addTransition": "Add allowed change",
+        "itemCount": "{{count}} items",
+        "open": "Open",
+        "emptyColumns": "No columns yet. Click Add column to create your first queue column.",
+        "emptyStatuses": "No statuses yet. Click Add status to define your first visit stage.",
+        "emptyTransitions": "No allowed status changes yet.",
+        "emptyServices": "No services yet. Click Add service to list your first offering.",
+        "emptyResources": "No resources yet. Click Add resource to define a room or staff slot.",
+        "emptyPermissions": "No permission rules yet. Click Add permission rule to restrict access by role.",
+        "emptyPaymentStatuses": "No payment statuses yet."
+      },
+      "table": {
+        "order": "Order",
+        "actions": "Actions",
+        "delete": "Delete",
+        "type": "Type",
+        "item": "Item",
+        "allowedRoles": "Allowed roles"
       },
       "tabs": {
         "general": "Names & labels",
@@ -8138,6 +8679,7 @@
       "receptionist": "Receptionist",
       "cashier": "Cashier",
       "nurse": "Nurse",
+      "doctor": "Doctor",
       "manager": "Manager"
     },
     "header": {
@@ -8315,11 +8857,14 @@
     "journey.enrolled": "Enrolled",
     "journey.session": "Session",
     "workflow.booked": "Booked",
+    "workflow.waiting": "Waiting",
     "workflow.confirmed": "Confirmed",
     "workflow.checkedIn": "Checked In",
+    "workflow.withNurse": "With Nurse",
     "workflow.doctor": "Doctor",
     "workflow.cashier": "Cashier",
     "workflow.completed": "Completed",
+    "workflow.archived": "Archived",
     "rec.collectPayment": "Collect Remaining Payment",
     "rec.bookFollowup": "Book Follow-up",
     "rec.upgradeService": "Upgrade Service",
@@ -8692,31 +9237,319 @@
       "timeline": "Timeline",
       "dashboard": "Dashboard"
     },
+    "workspace": {
+      "title": "Leads",
+      "subtitle": "Manage and convert your potential customers.",
+      "import": "Import",
+      "export": "Export",
+      "exportDone": "Exported {{count}} leads",
+      "importHint": "Use New Lead to add records, or import via your existing lead integration.",
+      "newLead": "New Lead",
+      "filterAll": "All",
+      "emptyTitle": "No leads yet",
+      "emptySubtitle": "Create your first lead or import existing leads.",
+      "openPanel": "Open lead",
+      "panelTitle": "Lead details",
+      "createTitle": "Create lead",
+      "createSubtitle": "Capture a new opportunity with the details your team needs to follow up.",
+      "createSubmit": "Create Lead",
+      "createSuccess": "Lead created",
+      "createFailed": "Could not create lead",
+      "editTitle": "Edit lead",
+      "editSubtitle": "Update lead details. Changes refresh the Lead table, Kanban, and Lead360.",
+      "editSubmit": "Save changes",
+      "editSuccess": "Lead updated",
+      "editFailed": "Could not update lead",
+      "sections": {
+        "basic": "Basic information",
+        "sales": "Sales information",
+        "classification": "Classification",
+        "notes": "Notes"
+      },
+      "fields": {
+        "leadName": "Lead name",
+        "title": "Lead title",
+        "contactName": "Contact name",
+        "contactPerson": "Contact person",
+        "email": "Email",
+        "phone": "Phone",
+        "company": "Company",
+        "expectedValue": "Expected value",
+        "expectedCloseDate": "Expected close date",
+        "priority": "Priority",
+        "temperature": "Interest level",
+        "tags": "Tags",
+        "notes": "Notes",
+        "website": "Website",
+        "country": "Country",
+        "probability": "Probability",
+        "updated": "Updated",
+        "created": "Created",
+        "lastActivity": "Last activity"
+      },
+      "placeholders": {
+        "leadName": "e.g. Acme expansion opportunity",
+        "select": "Select…",
+        "tags": "Type a tag and press Enter",
+        "notes": "Additional information about this lead..."
+      },
+      "priority": {
+        "low": "Low",
+        "normal": "Normal",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "tags": {
+        "add": "Add",
+        "remove": "Remove {{tag}}"
+      },
+      "validation": {
+        "required": "This field is required",
+        "email": "Enter a valid email address",
+        "phone": "Enter a valid phone number",
+        "number": "Enter a valid number",
+        "date": "Enter a valid date"
+      },
+      "panel": {
+        "contact": "Contact",
+        "leadInfo": "Lead information",
+        "notes": "Notes",
+        "notesEmpty": "No notes yet.",
+        "quickActions": "Quick actions"
+      },
+      "actions": {
+        "call": "Call",
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "meeting": "Meeting",
+        "task": "Task"
+      }
+    },
     "table": {
       "title": "Leads",
-      "subtitle": "Manage your sales pipeline with live lead data.",
-      "search": "Search leads...",
+      "subtitle": "Manage and convert your potential customers.",
+      "search": "Search by name, email, or mobile...",
       "empty": "No leads found.",
-      "count": "{{shown}} / {{total}} leads"
+      "count": "{{shown}} / {{total}} leads",
+      "openOwnerWorkspace": "Open Employee360 for {{name}}",
+      "openCompany360": "Open Company360 for {{name}}",
+      "assignOwnerHint": "Choose an owner for {{name}}.",
+      "createActivityHint": "Log an activity note for {{name}}.",
+      "activityCreated": "Activity saved",
+      "deleteConfirmTitle": "Delete this lead?",
+      "deleteConfirmBody": "This will permanently remove {{name}} from the active pipeline. This action archives the lead.",
+      "columnSearch": {
+        "customerName": "Filter name",
+        "email": "Filter email",
+        "mobile": "Filter mobile"
+      },
+      "errors": {
+        "missingPhone": "This lead has no phone number.",
+        "missingEmail": "This lead has no email address.",
+        "assignFailed": "Could not assign owner",
+        "activityFailed": "Could not save activity",
+        "archiveFailed": "Could not archive lead",
+        "deleteFailed": "Could not delete lead",
+        "actionUnsupported": "This action is not available",
+        "whatsappPlatformFailed": "Opened external WhatsApp — Conversation Center unavailable"
+      },
+      "rowActions": {
+        "menuAriaLabel": "Lead actions",
+        "openLead360": "Open Lead360",
+        "openLead360Named": "Open Lead360 for {{name}}",
+        "edit": "Edit",
+        "createActivity": "Create activity",
+        "createOpportunity": "Create opportunity",
+        "call": "Call",
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "assign": "Assign owner",
+        "convert": "Convert",
+        "archive": "Archive",
+        "delete": "Delete",
+        "archived": "Lead archived",
+        "deleted": "Lead deleted",
+        "groups": {
+          "navigation": "Navigation",
+          "editing": "Editing",
+          "communication": "Communication",
+          "assignment": "Assignment",
+          "conversion": "Conversion",
+          "dangerous": "Dangerous"
+        }
+      }
     },
     "columns": {
       "lead": "Lead",
+      "avatar": "Avatar",
+      "leadName": "Lead name",
+      "customerName": "Customer name",
+      "email": "Email",
+      "mobile": "Mobile",
+      "company": "Company",
       "stage": "Stage",
       "score": "Score",
+      "priority": "Priority",
       "value": "Value",
-      "owner": "Owner"
+      "expectedValue": "Expected value",
+      "owner": "Owner",
+      "source": "Lead source",
+      "lastActivity": "Last activity",
+      "created": "Created",
+      "actions": "Actions"
     },
     "scoreBand": {
       "hot": "Hot",
       "warm": "Warm",
-      "cold": "Cold"
+      "cold": "Cold",
+      "urgent": "Urgent"
     },
     "scorePoints": "{{score}} pts",
     "scoreLabel": "{{score}} score",
+    "stages": {
+      "new": "New",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "demo_scheduled": "Demo scheduled",
+      "proposal_sent": "Proposal sent",
+      "proposal": "Proposal sent",
+      "negotiation": "Negotiation",
+      "won": "Won",
+      "closed": "Closed",
+      "converted": "Converted",
+      "lost": "Lost",
+      "nurturing": "Nurturing",
+      "archived": "Archived",
+      "unknown": "Stage"
+    },
+    "pipelines": {
+      "default": "Default Pipeline"
+    },
+    "sources": {
+      "website": "Website",
+      "referral": "Referral",
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "phone": "Phone",
+      "manual": "Manual",
+      "other": "Other"
+    },
     "kanban": {
-      "title": "Kanban",
-      "subtitle": "Drag leads across pipeline stages with realtime updates.",
-      "pipeline": "Pipeline"
+      "title": "Leads",
+      "subtitle": "Enterprise sales workspace.",
+      "pipeline": "Pipeline",
+      "searchPlaceholder": "Search for a lead...",
+      "filters": "Filters",
+      "customizeColumns": "Customize columns",
+      "emptyColumn": "No leads",
+      "addInColumn": "Add lead",
+      "dropHere": "Drop here",
+      "moveSuccess": "Lead stage updated",
+      "moveFailed": "Could not update lead stage",
+      "moveDenied": "You do not have permission to move leads",
+      "more": "More",
+      "openDrawer": "Open details",
+      "metricsGroup": "Lead metrics",
+      "applyFilters": "Apply filters",
+      "resetFilters": "Reset",
+      "customizeHiddenTerminal": "Terminal stages are hidden.",
+      "customizeShownAll": "All stages are visible.",
+      "columnCount": "{{count}} opportunities",
+      "kpi": {
+        "totalLeads": "Total leads",
+        "totalValue": "Total opportunity value",
+        "conversionRate": "Conversion rate",
+        "openOpportunities": "Open opportunities"
+      },
+      "card": {
+        "owner": "Owner · {{name}}",
+        "ownerUnassigned": "Owner · Unassigned",
+        "nextActivity": "Next · {{when}}",
+        "lastActivity": "Last · {{when}}",
+        "lastActivityNone": "Last · None",
+        "source": "Source · {{source}}"
+      },
+      "relative": {
+        "today": "Today",
+        "tomorrow": "Tomorrow",
+        "yesterday": "Yesterday",
+        "inDays": "In {{count}} days",
+        "daysAgo": "{{count}} days ago"
+      },
+      "counters": {
+        "notes": "Notes",
+        "tags": "Tags",
+        "tasks": "Tasks",
+        "files": "Files",
+        "meetings": "Meetings",
+        "messages": "Messages"
+      },
+      "filter": {
+        "city": "City",
+        "valueMin": "Min value",
+        "valueMax": "Max value",
+        "createdFrom": "Created from",
+        "createdTo": "Created to",
+        "lastActivityFrom": "Last activity from",
+        "lastActivityTo": "Last activity to"
+      },
+      "actions": {
+        "createActivity": "Create activity",
+        "createOpportunity": "Create opportunity",
+        "createQuote": "Create quote",
+        "activityHint": "Open Lead360 to log a full activity.",
+        "opportunityHint": "Opportunity workspace opens after conversion.",
+        "opportunityCreated": "Opportunity created from lead",
+        "opportunityFailed": "Could not create opportunity",
+        "quoteHint": "Create a quote from the linked opportunity.",
+        "unsupportedQuote": "Quotes are created from an opportunity, not directly from the Kanban.",
+        "unsupportedOpportunity360": "Opportunity360 opens from a linked opportunity after one is created.",
+        "converted": "Lead converted",
+        "convertFailed": "Could not convert lead"
+      },
+      "context": {
+        "openCustomer": "Open details",
+        "editLead": "Edit lead",
+        "assignOwner": "Assign to me",
+        "assigned": "Owner assigned",
+        "delete": "Archive",
+        "deleted": "Lead archived"
+      },
+      "drawer": {
+        "openLead360": "Open Lead360",
+        "openOpportunity360": "Open Opportunity360",
+        "createQuote": "Create quote",
+        "sendWhatsApp": "Send WhatsApp",
+        "createActivity": "Create activity",
+        "emptyActivities": "No activities yet.",
+        "emptyFiles": "No files yet.",
+        "emptyQuotes": "No quotes yet.",
+        "emptyTasks": "No tasks yet.",
+        "timelineHint": "Last update · {{updated}}",
+        "tabs": {
+          "summary": "Summary",
+          "activities": "Activities",
+          "timeline": "Timeline",
+          "files": "Files",
+          "ai": "AI",
+          "quotes": "Quotes",
+          "tasks": "Tasks"
+        }
+      },
+      "ai": {
+        "disabled": "AI Employee is not enabled for this workspace.",
+        "winProbability": "Win probability · {{percent}}%",
+        "winProbabilityLabel": "Win probability",
+        "summaryLabel": "AI summary",
+        "summaryFallback": "Lead score {{score}} — prioritize follow-up based on engagement signals.",
+        "nextBestAction": "Schedule a discovery call",
+        "nextBestActionLabel": "Next best action",
+        "suggestedFollowUp": "Follow up within 24 hours",
+        "suggestedFollowUpLabel": "Suggested follow-up"
+      }
     },
     "pipeline": {
       "title": "Pipeline",
@@ -8750,8 +9583,15 @@
     },
     "lifecycle": {
       "new": "New",
+      "contacted": "Contacted",
       "qualified": "Qualified",
+      "demo_scheduled": "Demo scheduled",
+      "proposal": "Proposal sent",
+      "proposal_sent": "Proposal sent",
+      "negotiation": "Negotiation",
       "converted": "Converted",
+      "won": "Won",
+      "closed": "Closed",
       "lost": "Lost",
       "archived": "Archived",
       "nurturing": "Nurturing"
@@ -8759,7 +9599,12 @@
   },
   "leads360": {
     "convert": "Convert to customer",
+    "createOpportunity": "Create Opportunity",
     "scoreLabel": "{{score}} score",
+    "aiScore": "AI Score: {{score}} / 100",
+    "smartRail": "Smart insights",
+    "summary": "Summary",
+    "loading": "Loading lead workspace",
     "sections": {
       "overview": "Overview",
       "company": "Company",
@@ -8783,13 +9628,1119 @@
       "phone": "No phone",
       "contacts": "No contacts",
       "tags": "No tags",
+      "emails": "No emails",
+      "whatsapp": "No WhatsApp messages",
       "files": "No files",
+      "filesTitle": "No files attached",
       "tasks": "No tasks",
+      "tasksTitle": "No tasks yet",
+      "activity": "Calls, emails, and WhatsApp touches will appear here as the team engages this lead.",
+      "activityTitle": "No activities yet",
       "relatedEntities": "No related entities configured yet"
     },
+    "tabs": {
+      "overview": "Overview",
+      "conversation": "Conversations",
+      "activity": "Activity",
+      "tasks": "Tasks",
+      "timeline": "Timeline",
+      "ai": "Artificial Intelligence",
+      "files": "Files",
+      "audit": "Audit log",
+      "emails": "Emails",
+      "whatsapp": "WhatsApp"
+    },
+    "scoreBand": {
+      "excellent": "Excellent",
+      "strong": "Strong",
+      "moderate": "Moderate",
+      "developing": "Developing"
+    },
+    "provenance": {
+      "value": "Value",
+      "confidence": "Confidence",
+      "source": "Source",
+      "updated": "Updated"
+    },
+    "conversation": {
+      "customer": "Customer",
+      "team": "Team",
+      "aiAnalysis": "AI Analysis"
+    },
     "ai": {
-      "nextAction": "Next action:",
-      "followUp": "Follow-up:"
+      "score": "Lead Score",
+      "aiScore": "AI Score",
+      "temperature": "Interest level",
+      "confidence": "Confidence",
+      "country": "Country",
+      "market": "Market",
+      "company": "Company",
+      "intent": "Intent",
+      "industry": "Industry",
+      "overallConfidence": "Overall",
+      "nextAction": "Next action",
+      "followUp": "Follow-up",
+      "summary": "AI Summary",
+      "recommendation": "Recommended next action",
+      "interestedModules": "Interested modules",
+      "countryIntelligence": "Country intelligence",
+      "emptyTitle": "AI workspace ready",
+      "emptyBody": "Insights appear after context is ready and analysis runs.",
+      "viewFullAudit": "View full audit",
+      "fullAudit": "AI audit trail",
+      "sections": {
+        "buyingSignals": "Buying signals",
+        "riskSignals": "Risk signals",
+        "memory": "Customer memory",
+        "suggestions": "AI suggestions",
+        "audit": "AI audit"
+      }
+    }
+  },
+  "entityWorkspace": {
+    "layouts": {
+      "crm": "CRM Workspace",
+      "operations": "Operations Workspace",
+      "support": "Support Workspace",
+      "hr": "HR Workspace",
+      "sales": "Sales Workspace"
+    },
+    "panels": {
+      "overview": "Overview",
+      "currentOperation": "Current Operation",
+      "operationStatus": "Operation Status",
+      "assignedResource": "Assigned Resource",
+      "notes": "Notes",
+      "attachments": "Attachments",
+      "timeline": "Timeline",
+      "activities": "Activities",
+      "communication": "Communication",
+      "bookings": "Bookings",
+      "invoices": "Invoices",
+      "payments": "Payments",
+      "tasks": "Tasks",
+      "forms": "Forms",
+      "relatedRecords": "Related Records",
+      "tags": "Tags",
+      "customFields": "Custom Fields",
+      "leadScore": "Lead Score",
+      "deals": "Deals",
+      "campaigns": "Campaigns",
+      "customerValue": "Customer Value",
+      "aiSummary": "AI Summary",
+      "history": "History"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "notes": "Notes & Activity",
+      "files": "Files",
+      "attachments": "All Attachments",
+      "timeline": "Timeline",
+      "communication": "Communication",
+      "related": "Related",
+      "tasks": "Tasks",
+      "history": "History"
+    },
+    "notes": {
+      "activityTitle": "Notes & Activity",
+      "sharedHint": "Notes and attachments are shared across CRM and Operations",
+      "placeholder": "Write a message… Use @ to mention someone",
+      "mentionHint": "",
+      "mentionEmpty": "No matching people",
+      "titlePlaceholder": "Title (optional)",
+      "add": "Add note",
+      "save": "Save",
+      "saved": "Note saved",
+      "saveError": "Could not save note",
+      "emptyTitle": "No notes yet",
+      "emptyDescription": "Add a note with optional attachments. They appear in CRM and Operations instantly.",
+      "unknownAuthor": "Unknown",
+      "upload": "Upload",
+      "uploading": "Uploading…",
+      "uploadDone": "Ready",
+      "uploadFailed": "Upload failed",
+      "stagedReady": "Ready — uploads when you save",
+      "dropTitle": "Drop files here",
+      "dropHint": "PDF, DOCX, XLSX, JPG, PNG, WEBP — multi-select supported",
+      "visibilityLabel": "Visibility",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "pinnedBadge": "Pinned",
+      "filters": {
+        "all": "All",
+        "mine": "My Notes",
+        "pinned": "Pinned",
+        "attachments": "With Attachments",
+        "today": "Today",
+        "week": "This Week"
+      },
+      "visibility": {
+        "operations": "Operations",
+        "crm": "CRM",
+        "both": "Both"
+      },
+      "attachError": {
+        "too_many": "Too many attachments",
+        "unsupported_type": "Unsupported file type. Use PDF, DOCX, XLSX, JPG, PNG, or WEBP.",
+        "too_large": "File is too large (max 25 MB)",
+        "executable": "Executable files are not allowed",
+        "empty": "One of the selected files is empty"
+      }
+    },
+    "attachments": {
+      "browserTitle": "All Attachments",
+      "browserHint": "Browse and download files linked to notes. Upload from Notes & Activity.",
+      "sharedHint": "Shared across CRM and Operations",
+      "emptyTitle": "No attachments",
+      "emptyDescription": "Files uploaded for this entity appear in CRM and Operations.",
+      "emptyBrowserDescription": "Attachments appear here after you add them to a note.",
+      "preview": "Preview",
+      "download": "Download",
+      "downloadFailed": "Download failed",
+      "open": "Open",
+      "filters": {
+        "all": "All",
+        "pdf": "PDF",
+        "image": "Images",
+        "office": "Office"
+      }
+    },
+    "timeline": {
+      "sharedHint": "Shared activity stream for this entity",
+      "emptyTitle": "No timeline events",
+      "emptyDescription": "Notes, files, and activity will appear here.",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "source": "Source: {{module}}",
+      "noteCreated": "Note created",
+      "createdBy": "Created by {{name}}",
+      "attachmentCount": "{{count}} attachments",
+      "noteOnly": "{{name}} added a note",
+      "noteWithAttachments": "{{name}} · {{count}} attachments",
+      "filesOnly": "{{name}} uploaded {{count}} files"
+    },
+    "header": {
+      "branch": "Branch",
+      "lastActivity": "Last activity",
+      "owner": "Owner"
+    },
+    "sidebar": {
+      "status": "Current status",
+      "upcoming": "Upcoming work",
+      "pinned": "Pinned information",
+      "recentActivity": "Recent activity"
+    },
+    "overview": {
+      "visitType": "Visit type",
+      "amount": "Amount",
+      "paymentStatus": "Payment status",
+      "createdDate": "Created date",
+      "lastUpdated": "Last updated"
+    },
+    "error": {
+      "title": "Workspace failed to load"
+    },
+    "operation": {
+      "status": "Status: {{status}}",
+      "noContext": "No operation context",
+      "assigned": "Resource {{name}}",
+      "unknownStatus": "Unknown",
+      "untitled": "Untitled operation",
+      "noSchedule": "No schedule",
+      "unassigned": "Unassigned",
+      "number": "Operation #",
+      "startTime": "Start time"
+    },
+    "related": {
+      "hint": "Related records for this entity will appear here.",
+      "operationId": "Linked operation: {{id}}",
+      "liveHint": "Live counts from existing records",
+      "operations": "Operations",
+      "bookings": "Bookings",
+      "invoices": "Invoices",
+      "files": "Files",
+      "notes": "Notes",
+      "messages": "Messages",
+      "tasks": "Tasks"
+    },
+    "backToQueue": "Back to Queue",
+    "untitledEntity": "Entity",
+    "entityTitle": "{{type}} {{id}}",
+    "actions": {
+      "addNote": "Add Note",
+      "sendMessage": "Send Message",
+      "collectPayment": "Collect Payment",
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "copyLink": "Copy Link",
+      "linkCopied": "Link copied"
+    },
+    "search": {
+      "placeholder": "Search notes, attachments, timeline…"
+    },
+    "communication": {
+      "hint": "Connected channels for this entity",
+      "whatsappMissing": "No WhatsApp conversation found for this customer",
+      "openExisting": "Opens the existing WhatsApp conversation."
+    },
+    "tasks": {
+      "emptyTitle": "No tasks",
+      "emptyDescription": "Tasks linked to this entity will appear here."
+    }
+  },
+  "companyWorkspace": {
+    "title": "Company",
+    "noPermission": "You do not have permission to view the company workspace.",
+    "empty": "Company workspace data is not available.",
+    "header": {
+      "employees": "{{count}} employees",
+      "branches": "{{count}} branches",
+      "departments": "{{count}} departments"
+    },
+    "actions": {
+      "editCompany": "Edit Company",
+      "inviteEmployee": "Invite Employee",
+      "manageSubscription": "Manage Subscription",
+      "export": "Export",
+      "addBranch": "Add Branch",
+      "addDepartment": "Add Department"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "employees": "Employees",
+      "branches": "Branches",
+      "departments": "Departments",
+      "branding": "Brand Center",
+      "subscription": "Subscription"
+    },
+    "overview": {
+      "setup": {
+        "title": "Company Setup",
+        "subtitle": "{{completed}} of {{total}} complete",
+        "percentLabel": "Progress",
+        "completed": "Completed",
+        "remaining": "Remaining",
+        "noneCompleted": "No steps completed yet.",
+        "allDone": "All setup steps are complete.",
+        "items": {
+          "companyProfile": "Company Profile",
+          "branding": "Branding",
+          "subscription": "Subscription",
+          "branches": "Branches",
+          "departments": "Departments",
+          "employees": "Employees",
+          "aiProvider": "AI Provider",
+          "channels": "Communication Channels"
+        }
+      },
+      "profileTitle": "Company Profile",
+      "identityTitle": "Company identity",
+      "contactTitle": "Support & contact",
+      "legalTitle": "Legal & billing",
+      "planTitle": "Plan & usage",
+      "subscriptionTitle": "Subscription",
+      "companyName": "Company name",
+      "shortName": "Short name",
+      "industry": "Industry",
+      "status": "Status",
+      "phone": "Phone",
+      "email": "Email",
+      "supportEmail": "Support email",
+      "supportPhone": "Support phone",
+      "website": "Website",
+      "taxNumber": "Tax ID",
+      "address": "Address",
+      "language": "Language",
+      "timezone": "Timezone",
+      "currency": "Currency",
+      "workingHours": "Working hours",
+      "description": "Description",
+      "legalName": "Legal name",
+      "contactPerson": "Contact person",
+      "employeesCount": "Employees",
+      "branchesCount": "Branches",
+      "departmentsCount": "Departments",
+      "currentPlan": "Current plan",
+      "billingCycle": "Billing cycle",
+      "seatUsage": "Seat usage",
+      "storageUsage": "Storage usage",
+      "storageCapacity": "Storage capacity",
+      "storageCapacityValue": "{{gb}} GB",
+      "renewalDate": "Renewal date",
+      "modulesEnabled": "Modules enabled",
+      "seatsOf": "{{used}} / {{limit}}",
+      "emptyPlan": "No plan details available.",
+      "kpi": {
+        "statusHint": "Company account status",
+        "employeesHint": "Active workforce size",
+        "branchesHint": "Operating locations",
+        "departmentsHint": "Organization units"
+      },
+      "aiUsage": {
+        "title": "AI Usage",
+        "subtitle": "Live consumption from cost accounting and analytics",
+        "notConnected": "AI usage not connected yet",
+        "notConnectedHint": "Grant AI cost visibility or generate usage to populate this dashboard.",
+        "noUsageYet": "No AI usage recorded yet",
+        "noUsageYetHint": "Usage appears here after production AI requests are recorded.",
+        "provider": "Provider",
+        "model": "Current model",
+        "requests": "Requests",
+        "tokens": "Tokens",
+        "quotaUsed": "Quota used",
+        "remaining": "Remaining",
+        "totalQuota": "Total quota",
+        "extraCost": "Extra usage cost",
+        "estimatedEom": "Estimated end of month",
+        "monthlyQuota": "Monthly quota",
+        "used": "Used",
+        "costThisMonth": "Cost this month",
+        "estimatedCost": "Estimated month-end cost",
+        "averageDaily": "Average per day",
+        "averageTokens": "Average per request",
+        "responseTime": "Latency",
+        "successPct": "Success rate",
+        "errorPct": "Error %",
+        "quota": "Quota",
+        "tokensOf": "{{used}} / {{limit}} Tokens",
+        "dailyUsage": "Daily usage (30 days)",
+        "noDailySeries": "No daily usage history in the current cost records.",
+        "overQuota": "Over quota",
+        "extraUsage": "Extra usage",
+        "extraTokens": "Overage tokens",
+        "estimatedCharge": "Extra estimated charge",
+        "ms": "{{value}} ms"
+      },
+      "connectedServices": {
+        "title": "Connected Services",
+        "whatsapp": "WhatsApp",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "email": "Email",
+        "sms": "SMS",
+        "voice": "Voice",
+        "calendar": "Calendar",
+        "payment": "Payment Gateway",
+        "states": {
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "pending": "Pending"
+        },
+        "openai": "OpenAI",
+        "account": "Account",
+        "lastSync": "Last sync",
+        "webhook": "Webhook",
+        "lastSuccess": "Last success"
+      },
+      "resources": {
+        "title": "Resources",
+        "employees": "Employees",
+        "branches": "Branches",
+        "departments": "Departments",
+        "customers": "CRM customers",
+        "resources": "Scheduling resources",
+        "queues": "Queues",
+        "bookingsPending": "Pending bookings",
+        "invoicesOpen": "Open invoices",
+        "knowledge": "Knowledge documents",
+        "storage": "Storage used",
+        "workspaces": "Workspaces",
+        "files": "Files"
+      },
+      "license": {
+        "title": "License Usage",
+        "employees": "Employees",
+        "storage": "Storage",
+        "aiCredits": "AI credits",
+        "email": "Email",
+        "sms": "SMS"
+      },
+      "health": {
+        "title": "Company Health",
+        "checksPassed": "{{passed}} of {{total}} checks passed",
+        "pass": "Ready",
+        "fail": "Missing",
+        "levels": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "needsAttention": "Needs Attention"
+        },
+        "checks": {
+          "companyName": "Company name exists",
+          "legalName": "Legal name exists",
+          "supportEmail": "Support email exists",
+          "logo": "Logo exists",
+          "employees": "Employees",
+          "branch": "Branch exists",
+          "subscriptionActive": "Subscription active",
+          "brandComplete": "Brand complete",
+          "identity": "Identity",
+          "branding": "Branding",
+          "billing": "Billing",
+          "branches": "Branches",
+          "departments": "Departments",
+          "ai": "AI",
+          "integrations": "Integrations",
+          "brand": "Brand",
+          "channels": "Channels",
+          "knowledge": "Knowledge",
+          "security": "Security"
+        },
+        "score": "Score",
+        "states": {
+          "healthy": "Healthy",
+          "warning": "Warning",
+          "missing": "Missing"
+        }
+      },
+      "modules": {
+        "title": "Enabled Modules",
+        "items": {
+          "crm": "CRM",
+          "operations": "Operations",
+          "ai": "AI",
+          "omnichannel": "Omnichannel",
+          "knowledge": "Knowledge",
+          "portal": "Portal",
+          "automation": "Automation",
+          "billing": "Billing",
+          "aiEmployee": "AI Employee",
+          "marketplace": "Marketplace",
+          "reports": "Reports"
+        },
+        "states": {
+          "active": "Active",
+          "trial": "Trial",
+          "disabled": "Disabled"
+        }
+      },
+      "quickActions": {
+        "title": "Smart Actions",
+        "openBilling": "Billing",
+        "brandCenter": "Brand Center",
+        "manageAi": "Manage AI",
+        "security": "Security",
+        "channels": "Channels",
+        "knowledge": "Knowledge"
+      },
+      "owner": "Owner",
+      "commercialRegistration": "Commercial registration",
+      "paymentStatus": "Payment status",
+      "invoiceStatus": "Invoice status",
+      "seats": "Seats",
+      "usedSeats": "Used seats",
+      "storageUsed": "Storage used",
+      "createdDate": "Created",
+      "aiCommand": {
+        "title": "AI Command Center",
+        "subtitle": "Enterprise AI consumption from production telemetry",
+        "estimatedFinish": "Estimated finish",
+        "estimatedFinishDate": "Estimated quota finish date",
+        "remainingDays": "Remaining days",
+        "days": "{{count}} days",
+        "monthlyCost": "Current month cost",
+        "todayCost": "Today's cost",
+        "projectedCost": "Projected cost",
+        "overageCost": "Overage cost",
+        "requestsToday": "Requests today",
+        "requestsMonth": "Requests this month",
+        "tokensToday": "Today's usage",
+        "tokensYesterday": "Yesterday",
+        "average7Day": "7-day average",
+        "average30Day": "30-day average",
+        "estimatedMonthEndUsage": "Estimated month-end usage",
+        "consumption": "Consumption",
+        "forecast": "Forecast",
+        "health": "AI Health",
+        "billingSummary": "Billing summary",
+        "failures": "Failures",
+        "usagePct": "{{pct}}% usage",
+        "costPct": "{{pct}}% cost",
+        "topModels": "Top models",
+        "topFeatures": "Top AI features",
+        "noModels": "No model usage recorded in the current cost window.",
+        "noFeatures": "No feature-tagged AI executions in the current analytics window.",
+        "retries": "Retries",
+        "warnings": {
+          "remainingLow": "AI quota remaining is {{pct}}% — usage is elevated",
+          "remainingCritical": "AI quota remaining is {{pct}}% — nearing limit",
+          "quotaExceeded": "Quota exceeded",
+          "extraCharge": "Estimated extra charge: {{amount}}"
+        }
+      },
+      "insights": {
+        "title": "Business Insights",
+        "items": {
+          "aiUsageUp": "AI usage increased {{pct}}% vs the prior 15 days",
+          "aiUsageDown": "AI usage decreased {{pct}}% vs the prior 15 days",
+          "storageAlmostFull": "Storage is {{pct}}% full",
+          "storageHigh": "Storage usage is elevated at {{pct}}%",
+          "renewalSoon": "Subscription renewal in {{days}} days",
+          "seatsAtLimit": "Employees reached the plan seat limit ({{used}}/{{limit}})",
+          "seatsNearLimit": "Employees near plan seat limit ({{used}}/{{limit}})",
+          "knowledgeInactive": "Knowledge base has no documents yet",
+          "openInvoices": "{{count}} open invoices need attention",
+          "noChannels": "No messaging channels connected",
+          "aiQuotaHigh": "AI quota is at {{pct}}%",
+          "aiQuotaExceeded": "AI quota exceeded ({{pct}}%)"
+        }
+      }
+    },
+    "employees": {
+      "searchPlaceholder": "Search employees…",
+      "empty": "No employees match your filters.",
+      "manage": "Manage",
+      "notAssigned": "Not assigned",
+      "neverSignedIn": "Never signed in",
+      "invitationPending": "Invitation pending",
+      "moreBranches": "+{{count}}",
+      "columns": {
+        "name": "Full name",
+        "jobTitle": "Job title",
+        "department": "Department",
+        "role": "Role",
+        "status": "Status",
+        "phone": "Phone",
+        "email": "Email",
+        "lastLogin": "Last login",
+        "actions": "Actions",
+        "branch": "Branch"
+      },
+      "filters": {
+        "department": "Department",
+        "role": "Role",
+        "status": "Status",
+        "allDepartments": "All departments",
+        "unassigned": "Not assigned",
+        "allRoles": "All roles",
+        "allStatuses": "All statuses",
+        "branch": "Branch",
+        "allBranches": "All branches",
+        "countLabel": "{{label}} ({{count}})"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "stats": {
+        "total": "Employees",
+        "active": "Active",
+        "invited": "Invited",
+        "suspended": "Suspended",
+        "branchManagers": "Branch managers",
+        "departmentManagers": "Dept. managers"
+      },
+      "density": {
+        "label": "Table density",
+        "comfortable": "Comfortable",
+        "compact": "Compact"
+      },
+      "badges": {
+        "branchManager": "Branch manager",
+        "departmentManager": "Department manager"
+      },
+      "quickProfile": {
+        "title": "Profile — {{name}}",
+        "description": "Employee quick profile",
+        "openAria": "Open quick profile for {{name}}"
+      },
+      "activity": {
+        "title": "Recent activity",
+        "profileUpdated": "Profile updated",
+        "roleChanged": "Role changed",
+        "branchChanged": "Branch changed",
+        "passwordReset": "Password reset",
+        "invitationSent": "Invitation sent",
+        "generic": "Activity"
+      },
+      "bulk": {
+        "toolbarLabel": "Bulk employee actions",
+        "selected": "{{count}} selected",
+        "clear": "Clear selection",
+        "selectAllPage": "Select all employees on this page",
+        "selectRow": "Select {{name}}",
+        "assignBranch": "Assign branch",
+        "assignDepartment": "Assign department",
+        "changeRole": "Change role",
+        "suspend": "Suspend",
+        "activate": "Activate",
+        "assignBranchTitle": "Assign branch",
+        "assignDepartmentTitle": "Assign department",
+        "changeRoleTitle": "Change role",
+        "applyToSelected": "Apply to {{count}} selected employees",
+        "branchRequired": "Select at least one branch.",
+        "roleRequired": "Select a role."
+      },
+      "inviteTitle": "Invite employee",
+      "editTitle": "Edit employee",
+      "neverLoggedIn": "Never",
+      "actions": {
+        "edit": "Edit",
+        "editEmployee": "Edit employee",
+        "viewProfile": "View profile",
+        "resetPassword": "Reset password",
+        "resendInvitation": "Resend invitation",
+        "suspend": "Suspend",
+        "activate": "Activate",
+        "delete": "Delete"
+      },
+      "confirm": {
+        "suspendTitle": "Suspend {{user}}?",
+        "suspendDescription": "This employee will lose access until reactivated.",
+        "deleteTitle": "Delete {{user}}?",
+        "deleteDescription": "The employee will be removed from the company, and their roles and branch assignments will be cleared.",
+        "bulkSuspendTitle": "Suspend {{count}} employees?",
+        "bulkSuspendDescription": "Selected employees will lose access until reactivated.",
+        "bulkActivateTitle": "Activate {{count}} employees?",
+        "bulkActivateDescription": "Selected employees will regain access to the company workspace.",
+        "bulkDeleteTitle": "Delete {{count}} employees?",
+        "bulkDeleteDescription": "Selected employees will be removed from the company, and their roles and branch assignments will be cleared."
+      },
+      "toasts": {
+        "errorTitle": "Action failed",
+        "resetPasswordTitle": "Password reset sent",
+        "resetPasswordDescription": "A password reset email was sent to the employee.",
+        "resendTitle": "Invitation resent",
+        "resendDescription": "An invitation or account-setup email was sent.",
+        "suspendTitle": "Employee suspended",
+        "activateTitle": "Employee activated",
+        "deleteTitle": "Employee removed",
+        "updateTitle": "Employee updated",
+        "bulkUpdateTitle": "Employees updated",
+        "bulkSuspendTitle": "Employees suspended",
+        "bulkActivateTitle": "Employees activated",
+        "bulkDeleteTitle": "Employees removed"
+      }
+    },
+    "branches": {
+      "subtitle": "{{count}} branches",
+      "empty": "No branches found.",
+      "employeesCount": "{{count}} employees",
+      "timezone": "Timezone",
+      "open": "Open branch",
+      "searchPlaceholder": "Search branches…",
+      "manager": "Branch manager",
+      "noManager": "No manager",
+      "managerPlaceholder": "Select manager",
+      "workingHours": "Working hours",
+      "filters": {
+        "status": "Status",
+        "allStatuses": "All statuses"
+      },
+      "stats": {
+        "employees": "Employees",
+        "customers": "Customers",
+        "operations": "Operations",
+        "resources": "Resources"
+      },
+      "actions": {
+        "edit": "Edit",
+        "workingHours": "Working hours",
+        "holidays": "Holidays",
+        "disable": "Disable",
+        "enable": "Enable",
+        "delete": "Delete"
+      },
+      "confirm": {
+        "disableTitle": "Disable {{name}}?",
+        "disableDescription": "The branch will become inactive and will no longer be primary.",
+        "deleteTitle": "Delete {{name}}?",
+        "deleteDescription": "The branch will be archived when it has no dependencies.",
+        "hasDependencies": "Cannot delete while employees, resources, or bookings are linked. Disable instead."
+      },
+      "hours": {
+        "title": "Working hours — {{name}}",
+        "open": "Open",
+        "closed": "Closed",
+        "validationRequired": "Set open and close times for open days.",
+        "validationOrder": "Close time must be after open time.",
+        "saveFailed": "Unable to save working hours."
+      },
+      "holidays": {
+        "title": "Holidays — {{name}}",
+        "add": "Add holiday",
+        "empty": "No holidays for this branch.",
+        "addTitle": "New holiday",
+        "editTitle": "Edit holiday",
+        "validation": "Title and date are required.",
+        "deleteTitle": "Delete {{title}}?",
+        "deleteDescription": "This holiday will be removed from the branch calendar."
+      },
+      "toasts": {
+        "enabled": "Branch enabled",
+        "hoursSaved": "Working hours saved"
+      }
+    },
+    "departments": {
+      "subtitle": "{{count}} departments",
+      "empty": "No departments found.",
+      "code": "Code",
+      "type": "Type",
+      "employeesCount": "{{count}} employees",
+      "searchPlaceholder": "Search departments…",
+      "parent": "Parent",
+      "filters": {
+        "status": "Status",
+        "allStatuses": "All statuses",
+        "branch": "Branch",
+        "allBranches": "All branches"
+      },
+      "stats": {
+        "employees": "Employees",
+        "operations": "Operations",
+        "resources": "Resources"
+      },
+      "types": {
+        "general": "General",
+        "clinical": "Clinical",
+        "administrative": "Administrative",
+        "support": "Support"
+      },
+      "actions": {
+        "edit": "Edit",
+        "merge": "Merge",
+        "disable": "Disable",
+        "enable": "Enable",
+        "delete": "Delete"
+      },
+      "form": {
+        "createTitle": "Add department",
+        "editTitle": "Edit department",
+        "name": "Department name",
+        "nameRequired": "Department name is required.",
+        "description": "Description",
+        "branch": "Branch",
+        "branchRequired": "Branch is required.",
+        "branchPlaceholder": "Select branch",
+        "parent": "Parent department",
+        "parentPlaceholder": "Select parent",
+        "noParent": "No parent",
+        "manager": "Department manager",
+        "managerPlaceholder": "Select manager",
+        "noManager": "No manager",
+        "active": "Active",
+        "saveFailed": "Unable to save department."
+      },
+      "merge": {
+        "title": "Merge {{name}}",
+        "description": "Employees, resources, and child departments move to the target; the source is disabled.",
+        "targetRequired": "Select a target department.",
+        "targetPlaceholder": "Target department",
+        "failed": "Unable to merge departments."
+      },
+      "confirm": {
+        "disableTitle": "Disable {{name}}?",
+        "disableDescription": "The department will become inactive and leave default lists.",
+        "enableTitle": "Enable {{name}}?",
+        "enableDescription": "The department will become active again.",
+        "deleteTitle": "Delete {{name}}?",
+        "deleteDescription": "The department will be permanently removed when it has no dependencies.",
+        "hasDependencies": "Cannot delete while employees, resources, or child departments exist. Disable or merge instead."
+      },
+      "toasts": {
+        "errorTitle": "Action failed",
+        "created": "Department created",
+        "updated": "Department updated",
+        "deleted": "Department deleted",
+        "disabled": "Department disabled",
+        "enabled": "Department enabled",
+        "merged": "Department merged"
+      }
+    },
+    "branding": {
+      "title": "Branding",
+      "manage": "Manage branding",
+      "empty": "No branding settings are configured yet.",
+      "companyLogo": "Company logo",
+      "primaryColor": "Primary color",
+      "secondaryColor": "Secondary color",
+      "invoiceLogo": "Invoice logo",
+      "emailLogo": "Email logo",
+      "watermark": "Watermark",
+      "preview": "Preview",
+      "previewHint": "Brand preview"
+    },
+    "brandCenter": {
+      "title": "Brand Center",
+      "subtitle": "Single source of truth for company branding across the platform.",
+      "readOnly": "You can view branding. Contact an admin to make changes.",
+      "save": "Save branding",
+      "loadFailed": "Could not load brand settings.",
+      "uploadFailed": "Upload failed.",
+      "uploadImage": "Upload",
+      "replaceImage": "Replace",
+      "deleteImage": "Delete image",
+      "noImage": "No image",
+      "formatsHint": "PNG, SVG, JPEG, or WEBP · max 5 MB",
+      "companyName": "Company name",
+      "legalName": "Legal name",
+      "shortName": "Short name",
+      "website": "Website",
+      "supportEmail": "Support email",
+      "supportPhone": "Support phone",
+      "description": "Company description",
+      "logoMain": "Main logo",
+      "logoDark": "Dark logo",
+      "logoLight": "Light logo",
+      "logoSquare": "Square logo",
+      "logoInvoice": "Invoice logo",
+      "logoEmail": "Email logo",
+      "logoFavicon": "Favicon",
+      "colorPrimary": "Primary",
+      "colorSecondary": "Secondary",
+      "colorAccent": "Accent",
+      "colorSuccess": "Success",
+      "colorWarning": "Warning",
+      "colorDanger": "Danger",
+      "colorBackground": "Background",
+      "colorSurface": "Surface",
+      "invoiceFooter": "Invoice footer",
+      "quotationFooter": "Quotation footer",
+      "terms": "Terms & conditions",
+      "watermark": "Watermark",
+      "signature": "Signature",
+      "emailHeader": "Email header",
+      "emailFooter": "Email footer",
+      "replyEmail": "Reply-to email",
+      "emailSignature": "Email signature",
+      "livePreview": "Live preview",
+      "livePreviewHint": "Updates instantly as you edit — no refresh needed.",
+      "previewPaid": "Paid",
+      "previewLineItem": "Service line",
+      "previewTotal": "Total",
+      "previewFooterFallback": "Thank you for your business.",
+      "previewPortalHint": "Book services online with your brand.",
+      "previewBook": "Book now",
+      "previewEmailBody": "Your appointment is confirmed. Reply to this message if you need help.",
+      "previewSignIn": "Sign in",
+      "previewCardTitle": "Card",
+      "previewCardBody": "Surface and accent colors applied.",
+      "previewChartTitle": "Performance",
+      "sections": {
+        "general": "General",
+        "logos": "Brand Assets",
+        "colors": "Colors",
+        "documents": "Documents",
+        "email": "Email Identity"
+      },
+      "assets": {
+        "title": "Brand assets",
+        "subtitle": "Single upload source for every surface in ValueOR.",
+        "required": "Required",
+        "primaryHint": "Used across sidebar, header, CRM, Operations, and Company Workspace.",
+        "advanced": "Advanced assets",
+        "usingPrimary": "Using Primary Logo",
+        "primaryUses": {
+          "sidebar": "Sidebar",
+          "header": "Header",
+          "crm": "CRM",
+          "operations": "Operations",
+          "company": "Company Workspace"
+        },
+        "slotHints": {
+          "dark": "Used when dark mode is active.",
+          "light": "Used on light backgrounds and login.",
+          "square": "Used for compact navigation, mobile, and avatar fallback.",
+          "invoice": "Used only by Invoice, Quote, and Receipt documents.",
+          "email": "Used for outgoing email when different from Primary Logo."
+        }
+      },
+      "health": {
+        "title": "Brand health",
+        "subtitle": "Coverage of required and optional brand assets.",
+        "score": "Score",
+        "scoreDetailsAria": "Brand health {{score}} percent — open details",
+        "completedCount": "Completed {{done}} / {{total}}",
+        "groups": {
+          "missing": "Missing",
+          "optional": "Optional",
+          "fallback": "Using fallback",
+          "noneMissing": "No required items missing.",
+          "noneOptional": "No optional gaps.",
+          "noneFallback": "No fallbacks in use."
+        },
+        "status": {
+          "ready": "Completed",
+          "optional_missing": "Optional",
+          "required_missing": "Missing",
+          "fallback": "Fallback"
+        },
+        "fallbacks": {
+          "usingPrimaryLogo": "Using Primary Logo"
+        },
+        "items": {
+          "primaryLogo": "Primary Logo",
+          "darkLogo": "Dark Logo",
+          "invoiceLogo": "Invoice Logo",
+          "emailLogo": "Email Logo",
+          "squareLogo": "Square Logo",
+          "primaryColor": "Primary Color",
+          "secondaryColor": "Secondary Color",
+          "emailFooter": "Email Footer",
+          "senderIdentity": "Sender Identity"
+        }
+      },
+      "usage": {
+        "title": "Where this brand is used",
+        "subtitle": "Open a surface preview without leaving Brand Center.",
+        "items": {
+          "crm": "CRM",
+          "operations": "Operations",
+          "company": "Company",
+          "portal": "Customer Portal",
+          "login": "Login",
+          "email": "Email",
+          "invoice": "Invoice",
+          "quote": "Quote",
+          "receipt": "Receipt",
+          "sidebar": "Sidebar",
+          "header": "Header"
+        }
+      },
+      "previewAll": {
+        "button": "Preview Everything",
+        "title": "Brand previews",
+        "subtitle": "Every major surface using your current draft branding."
+      },
+      "lastUpdated": {
+        "title": "Last Updated",
+        "by": "By",
+        "updated": "Updated"
+      },
+      "emptyStates": {
+        "primaryLogo": "Primary logo is missing. Surfaces will look incomplete.",
+        "emailFooter": "Email footer missing.",
+        "senderIdentity": "Sender identity is incomplete.",
+        "invoiceLogoFallback": "Invoice logo missing — Primary Logo is used.",
+        "addNow": "Add one now",
+        "openEmail": "Open Email Identity"
+      },
+      "emailStudio": {
+        "contactTitle": "Company contact information",
+        "contactHint": "Read-only from Company Overview. Email Identity never duplicates these fields.",
+        "editCompany": "Edit company information",
+        "senderTitle": "Sender identity",
+        "senderHint": "How your team appears in the From line and signature block.",
+        "senderName": "Sender name",
+        "senderNamePlaceholder": "e.g. Customer Success Team",
+        "senderDisplayName": "Sender display name",
+        "senderDisplayPlaceholder": "e.g. ValueOR Support",
+        "replyFallbackHint": "If empty, company email from Overview is used.",
+        "logoTitle": "Email logo",
+        "logoHint": "Primary logo used in outbound email. Falls back to the company primary logo.",
+        "logoFromAssets": "Read-only from Brand Assets. Change the logo there — never upload twice.",
+        "currentEmailLogo": "Current email logo",
+        "changeLogo": "Change logo",
+        "primaryEmailLogo": "Primary email logo",
+        "logoFallback": "Fallback: Email logo → Primary logo",
+        "advancedLogos": "Advanced",
+        "ctaTitle": "Call to action",
+        "ctaHint": "Optional button shown in the email body.",
+        "ctaEnable": "Enable CTA",
+        "ctaEnableHint": "Show a button in the live preview and email templates.",
+        "ctaText": "Button text",
+        "ctaTextPlaceholder": "View request",
+        "ctaUrl": "Button URL",
+        "ctaColor": "Button color",
+        "signatureHint": "Rich formatting only — no HTML editing.",
+        "signatureToolbar": "Signature formatting",
+        "signaturePlaceholder": "Add a short personal sign-off…",
+        "bold": "Bold",
+        "italic": "Italic",
+        "link": "Link",
+        "linkPrompt": "Enter link URL",
+        "bulletList": "Bullet list",
+        "numberedList": "Numbered list",
+        "textColor": "Text color",
+        "socialTitle": "Social media",
+        "socialHint": "Empty links are hidden in the preview.",
+        "social": {
+          "linkedin": "LinkedIn",
+          "facebook": "Facebook",
+          "instagram": "Instagram",
+          "x": "X",
+          "youtube": "YouTube",
+          "tiktok": "TikTok"
+        },
+        "legalTitle": "Legal footer",
+        "legalHint": "Optional disclaimer under the signature block.",
+        "showLegal": "Show legal footer",
+        "legalText": "Company disclaimer",
+        "legalPlaceholder": "Confidentiality notice or unsubscribe language…",
+        "layoutTitle": "Email layout",
+        "layoutHint": "Changing layout updates the preview immediately.",
+        "layouts": {
+          "professional": "Professional",
+          "modern": "Modern",
+          "minimal": "Minimal",
+          "executive": "Executive"
+        },
+        "layoutDescriptions": {
+          "professional": "Balanced spacing and clear hierarchy.",
+          "modern": "Rounded, bold greeting, soft dividers.",
+          "minimal": "Quiet borders and compact density.",
+          "executive": "Accent rail and formal typography."
+        },
+        "livePreview": "Live email preview",
+        "livePreviewHint": "Realistic message using company contact from Overview.",
+        "replyToPreview": "Reply-To: {{email}}",
+        "previewGreeting": "Hello Omar,",
+        "previewBody": "Thank you for contacting us.",
+        "previewBody2": "Your request has been received."
+      },
+      "surfaces": {
+        "invoice": "Invoice",
+        "quotation": "Quote",
+        "receipt": "Receipt",
+        "portal": "Customer Portal",
+        "email": "Email",
+        "login": "Login",
+        "crm": "CRM",
+        "operations": "Operations",
+        "company": "Company",
+        "sidebar": "Sidebar",
+        "header": "Header",
+        "buttons": "Buttons",
+        "cards": "Cards",
+        "charts": "Charts"
+      },
+      "validation": {
+        "title": "Fix identity details before saving",
+        "nameRequired": "Company name is required.",
+        "logoRequired": "Primary logo is required.",
+        "websiteInvalid": "Enter a valid website URL.",
+        "emailInvalid": "Enter a valid support email.",
+        "phoneInvalid": "Enter a valid support phone number.",
+        "legalNameInvalid": "Legal name is too short.",
+        "taxInvalid": "Enter a valid tax number.",
+        "commercialRegistrationUnavailable": "Commercial registration is not available in the current schema."
+      },
+      "toasts": {
+        "savedTitle": "Branding saved",
+        "savedDescription": "Brand assets are now available across the platform.",
+        "errorTitle": "Could not save branding",
+        "errorDescription": "Try again or contact support."
+      },
+      "uploadErrors": {
+        "empty": "File is empty.",
+        "unsupported_type": "Use PNG, SVG, JPEG, or WEBP.",
+        "too_large": "Image exceeds the 5 MB limit.",
+        "unauthenticated": "You must be signed in to upload.",
+        "missing_key": "Storage is not configured.",
+        "bucket_missing": "Brand storage is not configured. Contact an administrator.",
+        "forbidden": "You do not have permission to upload brand assets.",
+        "payload_too_large": "File is too large for storage.",
+        "mime_rejected": "This file type is not allowed.",
+        "network": "Upload failed — check your connection and try again.",
+        "unknown": "Upload failed."
+      }
+    },
+    "subscription": {
+      "ownerOnly": "Only company owners can view subscription details.",
+      "currentPlan": "Subscription",
+      "paymentMethod": "Payment method",
+      "upgrade": "Upgrade",
+      "billingHistory": "Billing history"
     }
   }
 }

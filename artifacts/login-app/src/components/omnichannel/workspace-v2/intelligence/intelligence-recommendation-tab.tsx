@@ -33,7 +33,7 @@ export const IntelligenceRecommendationTab = memo(function IntelligenceRecommend
                 <span
                   className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border ${
                     item.suggested
-                      ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
+                      ? "border-[hsl(var(--success)/0.5)] bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
                       : "border-[var(--ws-border-subtle)] text-[var(--ws-muted)]"
                   }`}
                 >

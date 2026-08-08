@@ -22,8 +22,25 @@ export class BranchManagementService {
   }
 
   async listWithStats(companyId: string, filter: BranchListFilter = {}): Promise<BranchWithStats[]> {
-    const { items } = await this.repository.listPage(companyId, filter);
-    return this.repository.attachStats(companyId, items);
+    let branches = await this.repository.listByCompany(companyId);
+    if (filter.status && filter.status !== "all") {
+      branches = branches.filter((branch) => branch.status === filter.status);
+    }
+    if (filter.search?.trim()) {
+      const term = filter.search.trim().toLowerCase();
+      branches = branches.filter((branch) => {
+        const haystack = [branch.name, branch.code, branch.city, branch.phone]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(term);
+      });
+    }
+    return this.repository.attachStats(companyId, branches);
+  }
+
+  countDependencies(id: string, companyId: string) {
+    return this.repository.countDependencies(id, companyId);
   }
 
   async listPage(companyId: string, filter: BranchListFilter = {}, cursor?: string | null): Promise<BranchListPage> {

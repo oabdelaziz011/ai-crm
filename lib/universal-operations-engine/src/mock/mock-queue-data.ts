@@ -7,7 +7,7 @@ const SERVICES = ["Consultation", "Follow-up", "Lab Review", "Physical Therapy",
 const RESOURCES = ["Dr. Amira Hassan", "Dr. Omar Khalil", "Room 1"];
 const BRANCHES = ["Main Branch", "North Clinic", "Downtown"];
 const STATUSES = ["st_booked", "st_confirmed", "st_checked_in", "st_in_progress", "st_completed"];
-const PAYMENTS = ["pay_unpaid", "pay_partial", "pay_paid"];
+const PAYMENTS = ["pay_pending", "pay_partial", "pay_paid", "pay_refunded"];
 
 function pick<T>(items: T[], index: number): T {
   return items[index % items.length]!;
@@ -48,9 +48,12 @@ export function generateMockRows(count = 120, companyId = "mock-company"): Opera
         resource: pick(RESOURCES, i),
         status: config.statuses.find((s) => s.id === statusId)?.displayName ?? statusId,
         payment_status: config.paymentStatuses.find((p) => p.id === paymentStatusId)?.displayName ?? paymentStatusId,
+        visit_type: pick(["New", "FollowUp", "Consultation", "Emergency", "VIP"], i),
         scheduled_at: scheduled.toISOString(),
+        appointment_time: scheduled.toISOString(),
         waiting_minutes: statusId === "st_checked_in" ? 5 + (i % 25) : 0,
         amount: 8000 + (i % 12) * 1500,
+        currency: "EGP",
         tags: i % 4 === 0 ? "VIP, Returning" : "",
         branch: pick(BRANCHES, i),
       },

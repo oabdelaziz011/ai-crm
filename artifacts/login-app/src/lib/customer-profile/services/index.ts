@@ -1,9 +1,14 @@
 export { CallService } from "./call-service";
-export { ConversationService } from "./conversation-service";
+export {
+  ConversationService,
+  type WhatsappConversationRef,
+  type OpenWhatsappConversationInput,
+} from "./conversation-service";
 export { BookingProfileService, type BookingModalPrefill } from "./booking-profile-service";
 export { InvoiceProfileService, type InvoiceModalPrefill } from "./invoice-profile-service";
 export {
   consumeQueuedTeamInboxConversationFocus,
+  getTeamInboxDashboardHref,
   getTeamInboxNestedPath,
   queueTeamInboxConversationFocus,
   requestTeamInboxConversationFocus,

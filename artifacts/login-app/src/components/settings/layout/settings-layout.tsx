@@ -1,5 +1,5 @@
-import { Suspense } from "react";
-import { Redirect, Route, Switch } from "wouter";
+import { Suspense, useEffect } from "react";
+import { Redirect, Route, Switch, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
   SETTINGS_DEFAULT_NESTED_PATH,
@@ -9,10 +9,27 @@ import { safeArray } from "@/lib/profile/display-safe";
 import { SettingsRouteGuard } from "@/components/settings/layout/settings-route-guard";
 import { SettingsSubNav } from "@/components/settings/layout/settings-sub-nav";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+import { companyWorkspaceHref } from "@/lib/company-workspace/company-workspace-routes";
+import type { CompanyWorkspaceTabId } from "@/lib/company-workspace/types";
 import { NEST_INDEX } from "@/lib/routing";
 
 function SettingsRoute({ route }: { route: (typeof SETTINGS_ROUTE_REGISTRY)[number] }) {
   return <SettingsRouteGuard route={route} Page={route.Page} />;
+}
+
+/** Legacy Settings → Company Settings routes now live in Company Workspace. */
+function RedirectLegacyCompanySettings({
+  tab = "overview",
+}: {
+  tab?: CompanyWorkspaceTabId;
+}) {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation(companyWorkspaceHref(tab));
+  }, [setLocation, tab]);
+
+  return <DashboardPageFallback />;
 }
 
 export function SettingsLayout() {
@@ -32,8 +49,20 @@ export function SettingsLayout() {
           <Route path={NEST_INDEX}>
             <Redirect to={SETTINGS_DEFAULT_NESTED_PATH} />
           </Route>
+
+          {/* Legacy company management under Settings → Company Workspace */}
+          <Route path="/company/branches/:branchId">
+            <RedirectLegacyCompanySettings tab="branches" />
+          </Route>
+          <Route path="/company/branches">
+            <RedirectLegacyCompanySettings tab="branches" />
+          </Route>
+          <Route path="/company">
+            <RedirectLegacyCompanySettings tab="overview" />
+          </Route>
+
           {safeArray([...SETTINGS_ROUTE_REGISTRY]).map((route) =>
-            route.id === "scheduling" || route.id === "company-settings" ? (
+            route.id === "scheduling" ? (
               <Route key={route.id} path={route.nestedPath} nest>
                 <SettingsRoute route={route} />
               </Route>

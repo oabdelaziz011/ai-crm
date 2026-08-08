@@ -17,6 +17,7 @@ export function invalidateBranchQueries(
 ) {
   void qc.invalidateQueries({ queryKey: BRANCHES_KEY });
   void qc.invalidateQueries({ queryKey: SCHEDULING_BRANCHES_KEY });
+  void qc.invalidateQueries({ queryKey: ["company-workspace"] });
   if (companyId) {
     void qc.invalidateQueries({ queryKey: branchesListKey(companyId) });
     void qc.invalidateQueries({ queryKey: branchStatsKey(companyId) });

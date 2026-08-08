@@ -5,8 +5,8 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
-  Zap,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Tooltip,
@@ -14,9 +14,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CompanyLogo } from "@/components/billing/identity/company-logo";
+import { UserAvatar } from "@/components/profile/user-avatar";
 import { usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { useResolvedCompanyLogos } from "@/hooks/company-workspace/use-company-brand-logos";
+import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
+import { useCurrentUserAvatar } from "@/hooks/use-current-user-avatar";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useSidebarBadgeCounts } from "@/hooks/use-sidebar-badge-counts";
+import { pickChromeLogo } from "@/lib/company-workspace/brand-center/resolve-brand-logos";
 import { useTranslation } from "react-i18next";
 import {
   DASHBOARD_SIDEBAR_GROUPS,
@@ -52,6 +58,18 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
   const { t, i18n } = useTranslation("common");
   const [location, setLocation] = useLocation();
   const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { displayName, identity } = useCompanyIdentity();
+  const { name: userName } = useCurrentUserAvatar();
+  const { resolvedTheme } = useTheme();
+  const brandLogos = useResolvedCompanyLogos();
+  const chromeLogo = pickChromeLogo(brandLogos, {
+    theme: resolvedTheme === "dark" ? "dark" : "light",
+    collapsed: false,
+  });
+  const compactLogo = pickChromeLogo(brandLogos, {
+    theme: resolvedTheme === "dark" ? "dark" : "light",
+    collapsed: true,
+  });
   const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
   const isRtl = i18n.dir() === "rtl";
   const {
@@ -307,14 +325,21 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
               className="flex min-w-0 items-center gap-3 text-start transition-opacity hover:opacity-90"
               aria-label={t("navigation.home")}
             >
-              <div className="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
-                <Zap className="size-[18px] text-primary-foreground" aria-hidden="true" />
-                <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20" />
-              </div>
+              <CompanyLogo
+                name={displayName}
+                logoUrl={sidebarCollapsed ? compactLogo : chromeLogo}
+                className="size-9 shrink-0 rounded-xl shadow-lg shadow-primary/20"
+              />
               {!sidebarCollapsed && (
                 <div className="min-w-0">
                   <p className="truncate text-[15px] font-bold tracking-tight leading-none">
-                    Value<span className="text-primary">OR</span>
+                    {identity?.name ? (
+                      identity.name
+                    ) : (
+                      <>
+                        Value<span className="text-primary">OR</span>
+                      </>
+                    )}
                   </p>
                   <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-sidebar-foreground/50">
                     {t("app.dashboard")}
@@ -354,18 +379,41 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
             })}
           </nav>
 
-          <div
-            className={cn(
-              "shrink-0 border-t border-sidebar-border p-2",
-              sidebarCollapsed && "flex justify-center",
+          <div className="shrink-0 space-y-1 border-t border-sidebar-border p-2">
+            {sidebarCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/settings/profile")}
+                    className="mx-auto flex size-9 items-center justify-center rounded-lg transition-colors hover:bg-sidebar-accent"
+                    aria-label={t("dashboard.settings.nav.personalProfile")}
+                  >
+                    <UserAvatar className="size-8 border border-sidebar-border" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8}>
+                  {userName}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate("/settings/profile")}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-start transition-colors hover:bg-sidebar-accent"
+              >
+                <UserAvatar className="size-8 shrink-0 border border-sidebar-border" />
+                <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-sidebar-foreground/80">
+                  {userName}
+                </span>
+              </button>
             )}
-          >
             <button
               type="button"
               onClick={toggleSidebarCollapsed}
               className={cn(
                 "flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-sidebar-foreground/50 transition-all duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                sidebarCollapsed && "size-9 p-0",
+                sidebarCollapsed && "mx-auto size-9 p-0",
               )}
               aria-label={
                 sidebarCollapsed ? t("appShell.sidebar.expand") : t("appShell.sidebar.collapse")

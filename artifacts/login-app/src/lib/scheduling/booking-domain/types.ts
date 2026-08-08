@@ -4,7 +4,10 @@ export const SCHEDULING_BOOKING_STATUSES = [
   "pending",
   "confirmed",
   "checked_in",
+  "with_nurse",
+  "in_progress",
   "completed",
+  "archived",
   "cancelled",
   "no_show",
   "rescheduled",
@@ -28,7 +31,30 @@ export const ACTIVE_BOOKING_STATUSES: SchedulingBookingStatus[] = [
   "pending",
   "confirmed",
   "checked_in",
+  "with_nurse",
+  "in_progress",
 ];
+
+export const BOOKING_VISIT_TYPES = [
+  "New",
+  "FollowUp",
+  "Consultation",
+  "Emergency",
+  "VIP",
+  "Unknown",
+] as const;
+
+export type BookingVisitType = (typeof BOOKING_VISIT_TYPES)[number];
+
+export const BOOKING_PAYMENT_STATUSES = [
+  "pending",
+  "partial",
+  "paid",
+  "refunded",
+  "cancelled",
+] as const;
+
+export type BookingPaymentStatus = (typeof BOOKING_PAYMENT_STATUSES)[number];
 
 export type SchedulingBooking = {
   id: string;
@@ -51,6 +77,13 @@ export type SchedulingBooking = {
   updated_at: string;
   deleted_at: string | null;
   invoice_id?: string | null;
+  /** Service price snapshot at create time (minor units). */
+  amount_cents?: number;
+  currency?: string;
+  visit_type?: BookingVisitType | string;
+  payment_status?: BookingPaymentStatus | string;
+  discount_cents?: number;
+  tax_cents?: number;
 };
 
 export type SchedulingBookingInsert = {
@@ -68,6 +101,12 @@ export type SchedulingBookingInsert = {
   rescheduled_from_id?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
+  amount_cents?: number;
+  currency?: string;
+  visit_type?: BookingVisitType | string;
+  payment_status?: BookingPaymentStatus | string;
+  discount_cents?: number;
+  tax_cents?: number;
 };
 
 export type CreateBookingInput = {
@@ -82,6 +121,10 @@ export type CreateBookingInput = {
   createdBy?: string | null;
   branchId?: string | null;
   referenceNow?: Date;
+  /** Booking-owned visit type (not customer/service). */
+  visitType?: BookingVisitType | string;
+  /** Optional pricing rule — when omitted, the service default rule is snapshotted. */
+  pricingRuleId?: string | null;
 };
 
 export type RescheduleBookingInput = {
@@ -153,6 +196,10 @@ export type CancelBookingResult = {
 };
 
 export type CompleteBookingResult = {
+  booking: SchedulingBooking;
+};
+
+export type TransitionBookingResult = {
   booking: SchedulingBooking;
 };
 

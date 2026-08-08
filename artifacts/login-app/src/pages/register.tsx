@@ -14,6 +14,8 @@ import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
 import { useTranslation } from "react-i18next";
 
 type RegisterFormValues = {
+  fullName: string;
+  jobTitle: string;
   email: string;
   password: string;
 };
@@ -26,6 +28,8 @@ export default function Register() {
   const authErrorMessage = useAuthErrorMessage();
 
   const registerSchema = z.object({
+    fullName: z.string().trim().min(1, t("auth.validation.fullName", { defaultValue: "Full name is required" })),
+    jobTitle: z.string().trim().min(1, t("auth.validation.jobTitle", { defaultValue: "Job title is required" })),
     email: z.string().email(t("auth.validation.email")),
     password: z.string().min(6, t("auth.validation.passwordMin")),
   });
@@ -36,11 +40,19 @@ export default function Register() {
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: {
+      fullName: "",
+      jobTitle: "Owner",
+      email: "",
+      password: "",
+    },
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
-    const { error, needsEmailConfirmation } = await signUp(values.email, values.password);
+    const { error, needsEmailConfirmation } = await signUp(values.email, values.password, {
+      fullName: values.fullName,
+      jobTitle: values.jobTitle.trim() || "Owner",
+    });
     if (error) {
       form.setError("root", { message: authErrorMessage(error) });
     } else if (needsEmailConfirmation) {
@@ -72,40 +84,91 @@ export default function Register() {
       subtitle={t("auth.register.subtitle")}
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           {form.formState.errors.root && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive text-center font-medium">
               {form.formState.errors.root.message}
             </div>
           )}
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-muted-foreground">{t("auth.register.identity")}</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  placeholder={t("auth.placeholders.email")}
-                  className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="password" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-muted-foreground">{t("auth.register.passkey")}</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  placeholder={t("auth.placeholders.password")}
-                  className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12 font-mono tracking-widest"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          <FormField
+            control={form.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-muted-foreground">
+                  {t("auth.register.fullName", { defaultValue: "Full name" })}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder={t("auth.placeholders.fullName", { defaultValue: "Ahmed Hassan" })}
+                    className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="jobTitle"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-muted-foreground">
+                  {t("auth.register.ownerJobTitle", { defaultValue: "Owner job title" })}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder={t("auth.placeholders.jobTitle", { defaultValue: "Owner" })}
+                    className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
+                    {...field}
+                  />
+                </FormControl>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("auth.register.jobTitleHint", {
+                    defaultValue: "Descriptive only — permissions come from roles.",
+                  })}
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-muted-foreground">{t("auth.register.identity")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder={t("auth.placeholders.email")}
+                    className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-muted-foreground">{t("auth.register.passkey")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    placeholder={t("auth.placeholders.password")}
+                    className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <Button
             type="submit"
             className="w-full h-12 text-base font-medium group transition-all"

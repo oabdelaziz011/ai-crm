@@ -61,6 +61,8 @@ export type WhatsAppDeliveryResult = {
   timestamp: string;
 };
 
+export type WhatsAppTokenStatus = "valid" | "expired" | "invalid" | "unknown" | "missing";
+
 export type CompanyWhatsAppSettings = {
   companyId: string;
   enabled: boolean;
@@ -76,6 +78,13 @@ export type CompanyWhatsAppSettings = {
   hasAccessToken: boolean;
   hasWebhookVerifyToken: boolean;
   hasAppSecret: boolean;
+  tokenStatus: WhatsAppTokenStatus;
+  tokenExpiresAt?: string | null;
+  tokenCheckedAt?: string | null;
+  lastSuccessfulSendAt?: string | null;
+  lastAuthError?: string | null;
+  lastAuthErrorAt?: string | null;
+  lastAuthErrorCode?: number | null;
   updatedAt?: string;
 };
 

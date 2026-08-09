@@ -70,7 +70,11 @@ const PAGE_SIZE = 10;
 
 type ConfirmKind = "suspend" | "activate" | "delete" | "bulk_suspend" | "bulk_activate" | "bulk_delete";
 
-export function CompanyEmployeesTab() {
+export function CompanyEmployeesTab({
+  initialEmployeeId = null,
+}: {
+  initialEmployeeId?: string | null;
+}) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -114,6 +118,13 @@ export function CompanyEmployeesTab() {
     kind: ConfirmKind;
     user: ManagedUser | null;
   }>({ open: false, kind: "suspend", user: null });
+
+  useEffect(() => {
+    const employeeId = initialEmployeeId?.trim();
+    if (!employeeId || isLoading || !employees.length) return;
+    const match = employees.find((user) => user.id === employeeId);
+    if (match) setProfileUser(match);
+  }, [initialEmployeeId, isLoading, employees]);
 
   const branchNameById = useMemo(() => {
     const map = new Map<string, string>();

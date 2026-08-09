@@ -4,6 +4,7 @@ import type { OperationsWorkspaceConfig } from "@workspace/universal-operations-
 const COLUMN_LABEL_KEYS: Record<string, string> = {
   queue_number: "universalOperations.grid.columns.queueNumber",
   reference: "universalOperations.grid.columns.reference",
+  scheduled_at: "universalOperations.grid.columns.bookingDate",
   appointment_time: "universalOperations.grid.columns.appointmentTime",
   customer: "universalOperations.grid.columns.customer",
   visit_type: "universalOperations.grid.columns.visitType",

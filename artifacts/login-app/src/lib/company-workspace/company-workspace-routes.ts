@@ -36,14 +36,16 @@ function asNestRelative(path: string): string {
  */
 export function companyWorkspaceNestPath(
   tab: CompanyWorkspaceTabId = "overview",
-  extras?: { invite?: boolean },
+  extras?: { invite?: boolean; employeeId?: string },
 ): string {
-  if (!extras?.invite) {
+  if (!extras?.invite && !extras?.employeeId) {
     return asNestRelative(COMPANY_ROUTES[tab]);
   }
   const params = new URLSearchParams();
-  if (tab !== "overview") params.set("tab", tab);
-  params.set("invite", "1");
+  const resolvedTab = extras?.employeeId ? "employees" : tab;
+  if (resolvedTab !== "overview") params.set("tab", resolvedTab);
+  if (extras?.invite) params.set("invite", "1");
+  if (extras?.employeeId) params.set("employee", extras.employeeId);
   return asNestRelative(`${COMPANY_WORKSPACE_BASE}?${params.toString()}`);
 }
 
@@ -54,7 +56,7 @@ export function companyWorkspaceNestPath(
  */
 export function companyWorkspaceHref(
   tab: CompanyWorkspaceTabId = "overview",
-  extras?: { invite?: boolean },
+  extras?: { invite?: boolean; employeeId?: string },
 ): string {
   const nest = companyWorkspaceNestPath(tab, extras);
   const qIndex = nest.indexOf("?");

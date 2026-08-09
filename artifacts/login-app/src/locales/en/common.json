@@ -173,7 +173,7 @@
     "opportunities": "Opportunities",
     "products": "Products",
     "quotes": "Quotes",
-    "communication": "Communication Center",
+    "communication": "Outbound Queue",
     "invoices": "Invoices",
     "financial": "Financial Billing",
     "executive": "Executive Intelligence",
@@ -237,7 +237,9 @@
   },
   "languages": {
     "english": "English",
-    "arabic": "العربية"
+    "arabic": "العربية",
+    "en": "English",
+    "ar": "العربية"
   },
   "alerts": {
     "title": "Alerts",
@@ -300,6 +302,7 @@
         "appointment_created": "Appointment created",
         "appointment_updated": "Appointment updated",
         "appointment_cancelled": "Appointment cancelled",
+        "appointment_reminder": "Appointment reminder",
         "customer_created": "Customer created",
         "invoice_created": "Invoice created",
         "payment_received": "Payment received",
@@ -995,6 +998,7 @@
         "whatsapp": "Manage WhatsApp automation flows.",
         "omnichannel": "Monitor and reply to customer conversations across channels.",
         "channels": "Connect and manage WhatsApp and other communication channels.",
+        "communication": "Monitor the outbound delivery queue — automated messages, retries, and failures. Not live chat.",
         "ai-usage": "Track AI token usage and estimated costs.",
         "ai-analytics": "Review AI execution performance and traces.",
         "workspace": "View your company workspace and subscription context.",
@@ -4417,7 +4421,7 @@
     "actions": {
       "financial": "Financial Dashboard",
       "operations": "Operations Center",
-      "communication": "Communication Center",
+      "communication": "Outbound Queue",
       "customers": "CRM",
       "branches": "Branches"
     }
@@ -5487,13 +5491,40 @@
     "noLogs": "No plugin activity logged yet."
   },
   "communication": {
-    "title": "Communication Center",
-    "subtitle": "Monitor outbound messages, delivery status, and queue health across all channels.",
+    "title": "Outbound Message Queue",
+    "subtitle": "Ops console for automated outbound delivery — queue health, retries, and failures across channels.",
     "processEmail": "Process Email Queue",
     "processWhatsapp": "Process WhatsApp Queue",
     "processed": "Processed {{count}} messages",
     "retrySuccess": "Message queued for retry.",
     "retryFailed": "Failed to retry message.",
+    "purpose": {
+      "title": "What this page is for",
+      "body": "This is the outbound delivery queue for system messages (notifications, reminders, transactional sends). It is not an inbox for talking to customers.",
+      "pointQueue": "Use it to see what is waiting, failed, or retrying, and to process email/WhatsApp queues.",
+      "pointNotChat": "For live customer conversations, open Omnichannel Console.",
+      "pointChannels": "To connect WhatsApp or other providers, open Channels.",
+      "openOmnichannel": "Open Omnichannel",
+      "openChannels": "Open Channels"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "sms": "SMS",
+      "push": "Push",
+      "inApp": "In-app notification",
+      "webhook": "Webhook",
+      "unknown": "Unknown channel"
+    },
+    "statuses": {
+      "queued": "Queued",
+      "processing": "Processing",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "retrying": "Retrying",
+      "cancelled": "Cancelled"
+    },
     "stats": {
       "sentToday": "Sent Today",
       "delivered": "Delivered",
@@ -5508,13 +5539,18 @@
       "allStatuses": "All statuses"
     },
     "history": {
-      "title": "Communication History",
-      "empty": "No messages match the selected filters.",
+      "title": "Delivery log",
+      "subtitle": "Recent outbound queue items for this company.",
+      "emptyTitle": "No outbound messages in this view",
+      "empty": "No messages match the selected filters. Queued system notifications will appear here when the delivery pipeline enqueues them.",
       "channel": "Channel",
       "recipient": "Recipient",
-      "template": "Template",
+      "recipientInternal": "Internal / system",
+      "template": "Template / event",
       "status": "Status",
+      "createdAt": "Created",
       "retries": "Retries",
+      "failureReason": "Failure reason",
       "actions": "Actions",
       "retry": "Retry"
     },
@@ -8094,6 +8130,7 @@
       "columns": {
         "queueNumber": "#",
         "reference": "Reference",
+        "bookingDate": "Booking Date",
         "appointmentTime": "Appointment Time",
         "customer": "Customer",
         "visitType": "Visit Type",
@@ -9365,7 +9402,7 @@
         "whatsapp": "WhatsApp",
         "email": "Email",
         "assign": "Assign owner",
-        "convert": "Convert",
+        "convert": "Convert to customer",
         "archive": "Archive",
         "delete": "Delete",
         "archived": "Lead archived",
@@ -9507,8 +9544,8 @@
         "quoteHint": "Create a quote from the linked opportunity.",
         "unsupportedQuote": "Quotes are created from an opportunity, not directly from the Kanban.",
         "unsupportedOpportunity360": "Opportunity360 opens from a linked opportunity after one is created.",
-        "converted": "Lead converted",
-        "convertFailed": "Could not convert lead"
+        "converted": "Converted to customer",
+        "convertFailed": "Could not convert to customer"
       },
       "context": {
         "openCustomer": "Open details",
@@ -9549,6 +9586,10 @@
         "nextBestActionLabel": "Next best action",
         "suggestedFollowUp": "Follow up within 24 hours",
         "suggestedFollowUpLabel": "Suggested follow-up"
+      },
+      "stageProbability": {
+        "title": "Stage probabilities",
+        "hint": "Win likelihood by pipeline stage"
       }
     },
     "pipeline": {
@@ -9564,16 +9605,33 @@
     },
     "timeline": {
       "title": "Timeline",
-      "subtitle": "Recent lead activity ordered by last update.",
-      "empty": "No activity yet."
+      "subtitle": "Recent lead updates in chronological order — open any row for Lead 360.",
+      "empty": "Create or update leads to see activity appear here.",
+      "emptyTitle": "No recent updates",
+      "noCompany": "No company",
+      "source": "Source · {{source}}"
     },
     "dashboard": {
       "title": "Lead Dashboard",
-      "subtitle": "Realtime KPIs for conversion, pipeline value, and lead sources.",
+      "subtitle": "Conversion health, forecast value, pipeline performance, and recent activity.",
       "forecast": "Forecast value",
+      "forecastHint": "Weighted pipeline value based on stage probabilities and open leads.",
       "byStatus": "Leads by status",
       "pipelines": "Pipeline performance",
-      "pipelineRow": "{{count}} leads · {{value}}"
+      "pipelineRow": "{{count}} leads · {{value}}",
+      "pipelineValue": "Value · {{value}}",
+      "recentActivity": "Recent activity",
+      "loadingRecent": "Loading recent leads…",
+      "emptyStatus": "No status distribution yet.",
+      "emptyPipelines": "No pipeline metrics yet.",
+      "emptyRecentTitle": "No recent leads",
+      "emptyRecent": "New and updated leads will appear here for quick follow-up.",
+      "kpiHints": {
+        "total": "All active leads in the workspace",
+        "conversion": "Leads converted to customers",
+        "created": "New leads in the current period",
+        "converted": "Conversions in the current period"
+      }
     },
     "kpi": {
       "total": "Total leads",
@@ -9600,6 +9658,7 @@
   "leads360": {
     "convert": "Convert to customer",
     "createOpportunity": "Create Opportunity",
+    "close": "Close",
     "scoreLabel": "{{score}} score",
     "aiScore": "AI Score: {{score}} / 100",
     "smartRail": "Smart insights",
@@ -9632,10 +9691,15 @@
       "whatsapp": "No WhatsApp messages",
       "files": "No files",
       "filesTitle": "No files attached",
-      "tasks": "No tasks",
+      "filesDescription": "Upload proposals, contracts, or discovery notes so the team can find them in one place.",
+      "tasks": "Create follow-ups from recommendations or assign the next sales step to keep this deal moving.",
       "tasksTitle": "No tasks yet",
       "activity": "Calls, emails, and WhatsApp touches will appear here as the team engages this lead.",
       "activityTitle": "No activities yet",
+      "conversationTitle": "No conversation yet",
+      "conversation": "When the customer messages on WhatsApp, email, or other channels, the thread will appear here with AI analysis.",
+      "timelineTitle": "Timeline is empty",
+      "timeline": "CRM updates, AI decisions, and automations will form a single storyline here as work progresses.",
       "relatedEntities": "No related entities configured yet"
     },
     "tabs": {
@@ -9649,6 +9713,33 @@
       "audit": "Audit log",
       "emails": "Emails",
       "whatsapp": "WhatsApp"
+    },
+    "channels": {
+      "call": "Call",
+      "email": "Email",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "meeting": "Meeting",
+      "note": "Note",
+      "system": "System",
+      "other": "Other"
+    },
+    "taskStatus": {
+      "open": "Open",
+      "pending": "Pending",
+      "inProgress": "In progress",
+      "done": "Done",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "intents": {
+      "pricingInquiry": "Pricing inquiry",
+      "demoRequest": "Demo request",
+      "integration": "Integration",
+      "support": "Support"
+    },
+    "timeline": {
+      "aiAnalyzed": "AI analysis completed"
     },
     "scoreBand": {
       "excellent": "Excellent",
@@ -9686,8 +9777,41 @@
       "countryIntelligence": "Country intelligence",
       "emptyTitle": "AI workspace ready",
       "emptyBody": "Insights appear after context is ready and analysis runs.",
+      "memoryHint": "Automatically updated over time.",
+      "saved": "Saved",
+      "error": "Error",
+      "accept": "Accept",
+      "reject": "Reject",
+      "edit": "Edit",
       "viewFullAudit": "View full audit",
       "fullAudit": "AI audit trail",
+      "scoreDimensions": {
+        "overall": "Overall",
+        "engagement": "Engagement",
+        "salesReadiness": "Sales readiness",
+        "businessFit": "Business fit"
+      },
+      "countryFields": {
+        "countryCode": "Country code",
+        "currency": "Currency",
+        "timezone": "Timezone",
+        "language": "Language",
+        "locale": "Locale",
+        "businessWeek": "Business week"
+      },
+      "auditMeta": {
+        "provider": "Provider",
+        "actor": "Actor",
+        "confidence": "Confidence",
+        "latency": "Latency",
+        "capture": "Capture",
+        "contextReady": "Context ready",
+        "collecting": "Collecting"
+      },
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next"
+      },
       "sections": {
         "buyingSignals": "Buying signals",
         "riskSignals": "Risk signals",
@@ -9696,6 +9820,471 @@
         "audit": "AI audit"
       }
     }
+  },
+  "opportunities360": {
+    "close": "Close",
+    "loading": "Loading opportunity workspace",
+    "smartRail": "Smart insights",
+    "summary": "Summary",
+    "emptyValue": "—",
+    "actions": {
+      "call": "Call",
+      "email": "Email",
+      "whatsapp": "WhatsApp",
+      "openLead": "Open Lead360",
+      "createActivity": "Create activity",
+      "createQuote": "Create quote",
+      "sendQuote": "Send quote",
+      "sendEmail": "Send via Email",
+      "sendWhatsapp": "Send via WhatsApp",
+      "archive": "Archive",
+      "more": "More actions"
+    },
+    "quoteTabs": {
+      "products": "1. Products",
+      "pricing": "2. Pricing",
+      "preview": "3. Preview",
+      "overview": "Details",
+      "history": "History",
+      "previewLabel": "Quotation",
+      "validUntil": "Valid until",
+      "validityNote": "Valid for 14 days from creation date",
+      "preparedFor": "Prepared for",
+      "unitPrice": "Unit price",
+      "productsHint": "Pick an existing catalog product, or create a new one with a name, then continue to pricing.",
+      "pricingHint": "Adjust quantity, unit price, and discount, then save to open the final quotation preview.",
+      "searchCatalog": "Search catalog…",
+      "noProducts": "No catalog products found.",
+      "pickExisting": "Choose existing product",
+      "createNew": "Or create a new product",
+      "productName": "Product name",
+      "saveProduct": "Save product",
+      "quoteLines": "Products on this quote",
+      "saveContinuePricing": "Save & continue to pricing",
+      "savePricing": "Save pricing & preview",
+      "continuePreview": "Continue to preview",
+      "productAdded": "Product added to quote",
+      "productSaved": "Product saved and added",
+      "pricingSaved": "Pricing saved",
+      "back": "Back",
+      "previewHint": "Choose quotation language, then send.",
+      "languageSaved": "Quote language updated",
+      "languageFailed": "Could not update quote language"
+    },
+    "sections": {
+      "opportunity": "Opportunity information",
+      "customer": "Customer / lead context",
+      "activity": "Activity & metadata"
+    },
+    "source": {
+      "manual": "Manual",
+      "fromLead": "From lead"
+    },
+    "stageChangeFailed": "Could not update stage",
+    "stageChangeSuccess": "Stage updated",
+    "updateFailed": "Could not update opportunity",
+    "updateSuccess": "Opportunity updated",
+    "probabilityUpdateFailed": "Could not update probability",
+    "probabilityUpdateSuccess": "Probability updated",
+    "scoreFormat": "{{score}} / {{max}}",
+    "probabilitySource": {
+      "manual": "Manual",
+      "auto": "Auto"
+    },
+    "probabilityReason": {
+      "seededFromStage": "Seeded from stage {{stage}} after qualification",
+      "stageDefault": "Default for stage {{stage}}"
+    },
+    "archive": {
+      "action": "Archive opportunity",
+      "title": "Archive opportunity?",
+      "description": "This will archive \"{{name}}\" and remove it from active pipeline views. This action cannot be undone from this screen.",
+      "success": "Opportunity archived",
+      "failed": "Could not archive opportunity"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "timeline": "Timeline",
+      "activities": "Activities",
+      "tasks": "Tasks",
+      "files": "Files",
+      "products": "Products",
+      "quotes": "Quotes",
+      "ai": "AI",
+      "audit": "Audit"
+    },
+    "fields": {
+      "customer": "Customer",
+      "company": "Company",
+      "primaryContact": "Primary contact",
+      "phone": "Phone",
+      "email": "Email",
+      "lead": "Lead",
+      "owner": "Owner",
+      "name": "Opportunity name",
+      "stage": "Stage",
+      "pipeline": "Pipeline",
+      "amount": "Expected revenue",
+      "currency": "Currency",
+      "weightedRevenue": "Weighted revenue",
+      "probability": "Probability",
+      "expectedCloseDate": "Expected close date",
+      "currentQuote": "Current quote",
+      "productsCount": "Products",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at",
+      "createdBy": "Created by",
+      "aiScore": "AI score",
+      "countryMarket": "Country / market",
+      "source": "Source",
+      "notes": "Notes",
+      "probabilityModel": "Probability model"
+    },
+    "associatedOpportunity": {
+      "title": "Associated opportunity",
+      "open": "Open opportunity"
+    },
+    "nav": {
+      "openCustomer": "Open Customer360 for {{name}}",
+      "openCompany": "Open Company360 for {{name}}",
+      "openLead": "Open Lead360 for {{name}}",
+      "openOwner": "Open Employee360 for {{name}}",
+      "openQuote": "Open Quote360 for {{name}}",
+      "productsCount": "{{count}} line items"
+    },
+    "loadError": "Could not load opportunity",
+    "loadErrorBody": "Check your connection and try again.",
+    "audit": {
+      "emptyTitle": "No audit events yet",
+      "emptyBody": "Field-level changes and actor history appear here.",
+      "columns": {
+        "actor": "Actor",
+        "action": "Action",
+        "timestamp": "Timestamp",
+        "field": "Changed field",
+        "oldValue": "Old value",
+        "newValue": "New value"
+      },
+      "events": {
+        "opportunity_created": "Opportunity created",
+        "stage_changed": "Stage changed",
+        "probability_changed": "Probability changed",
+        "amount_changed": "Amount changed",
+        "owner_changed": "Owner changed",
+        "product_attached": "Product attached",
+        "product_removed": "Product removed",
+        "quantity_changed": "Quantity changed",
+        "unit_price_changed": "Unit price changed",
+        "discount_changed": "Discount changed",
+        "tax_changed": "Tax changed",
+        "products_added": "Products added",
+        "products_removed": "Products removed",
+        "quote_created": "Quote created",
+        "quote_version_created": "Quote version created",
+        "quote_submitted": "Quote submitted",
+        "quote_approved": "Quote approved",
+        "quote_rejected": "Quote rejected",
+        "quote_status_changed": "Quote status changed",
+        "archived": "Archived",
+        "restored": "Restored",
+        "negotiation_started": "Negotiation started",
+        "won": "Opportunity won",
+        "lost": "Opportunity lost",
+        "unknown": "Record updated"
+      },
+      "fields": {
+        "stage_id": "Stage",
+        "probability_percent": "Probability",
+        "amount": "Amount",
+        "owner_id": "Owner",
+        "close_date": "Close date",
+        "currency": "Currency",
+        "name": "Name",
+        "company": "Company",
+        "contact": "Contact",
+        "weighted_revenue": "Weighted revenue",
+        "pipeline": "Pipeline",
+        "customer": "Customer",
+        "lead": "Lead",
+        "quantity": "Quantity",
+        "unit_price": "Unit price",
+        "discount_percent": "Discount %",
+        "tax_percent": "Tax %",
+        "unknown": "Field"
+      },
+      "valuePercent": "{{value}}%"
+    }
+  },
+  "opportunities": {
+    "subtitle": "Manage deals from qualification to close — products and quotes live on each opportunity.",
+    "nav": {
+      "pipeline": "Pipeline",
+      "table": "Table",
+      "timeline": "Timeline"
+    },
+    "permissionDenied": "You cannot view opportunities",
+    "permissionDeniedBody": "Ask an administrator for opportunities view permission.",
+    "create": "New opportunity",
+    "created": "Opportunity created",
+    "createFailed": "Could not create opportunity",
+    "createForm": {
+      "title": "Create opportunity",
+      "subtitle": "Capture deal details before opening the workspace.",
+      "checkingExisting": "Checking for an existing opportunity…",
+      "loadingForm": "Loading pipeline defaults…",
+      "existingBody": "This lead already has an opportunity: {{name}}",
+      "openExisting": "Open existing opportunity",
+      "createAnyway": "Create anyway",
+      "sections": {
+        "deal": "Deal",
+        "source": "Lead source",
+        "opportunity": "Opportunity",
+        "customer": "Customer",
+        "commercial": "Commercial",
+        "additional": "Additional"
+      },
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "probability": {
+        "auto": "Auto",
+        "manual": "Manual",
+        "autoValue": "{{value}}% (from stage)"
+      },
+      "fields": {
+        "name": "Opportunity name",
+        "namePlaceholder": "Acme — Enterprise rollout",
+        "company": "Company",
+        "companyPlaceholder": "Enter company name",
+        "customer": "Customer",
+        "lead": "Lead",
+        "leadTitle": "Lead title",
+        "leadStage": "Lead stage",
+        "leadEmail": "Lead email",
+        "contact": "Primary contact",
+        "contactPlaceholder": "Enter contact name",
+        "phone": "Phone",
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "leadSource": "Lead source",
+        "amount": "Expected revenue",
+        "amountPlaceholder": "Enter amount",
+        "currency": "Currency",
+        "closeDate": "Expected close date",
+        "pipeline": "Pipeline",
+        "pipelinePlaceholder": "Select pipeline",
+        "stage": "Stage",
+        "stagePlaceholder": "Select stage",
+        "owner": "Owner",
+        "ownerPlaceholder": "Select owner",
+        "priority": "Priority",
+        "priorityPlaceholder": "Select priority",
+        "probability": "Probability",
+        "probabilityPlaceholder": "Enter percentage",
+        "expectedProducts": "Expected products",
+        "expectedProductsPlaceholder": "Add catalog products",
+        "removeProduct": "Remove {{name}}",
+        "tags": "Tags",
+        "tagsPlaceholder": "Add tag and press Enter",
+        "removeTag": "Remove tag {{name}}",
+        "notes": "Notes",
+        "notesPlaceholder": "Capture context, next steps, or blockers…",
+        "attachments": "Attachments",
+        "attachmentsHint": "Attach PDF, DOCX, images, or ZIP (max 10 files)",
+        "aiRecommendation": "AI recommendation",
+        "aiScore": "AI score",
+        "winProbability": "Win probability",
+        "suggestedNextStep": "Suggested next step",
+        "suggestedStage": "Suggested stage",
+        "noAiRecommendation": "No AI recommendation yet"
+      },
+      "attachments": {
+        "defaultNote": "Attachments uploaded during opportunity creation"
+      },
+      "errors": {
+        "nameRequired": "Opportunity name is required",
+        "stageRequired": "Stage is required",
+        "pipelineRequired": "Pipeline is required",
+        "ownerRequired": "Owner is required",
+        "currencyRequired": "Currency is required",
+        "closeDateRequired": "Expected close date is required",
+        "priorityRequired": "Priority is required",
+        "amountInvalid": "Enter a valid amount",
+        "probabilityInvalid": "Enter a valid probability between 0 and 100",
+        "attachmentsInvalid": "One or more attachments are not supported"
+      }
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Acme — Enterprise deal"
+    },
+    "products": {
+      "title": "Products",
+      "add": "Add product",
+      "emptyTitle": "No products attached",
+      "emptyBody": "Select catalog products to build the commercial scope of this opportunity.",
+      "loadError": "Could not load products",
+      "loadErrorBody": "Check your connection and try again.",
+      "attachFailed": "Could not add product",
+      "attachSuccess": "Product added",
+      "removeFailed": "Could not remove product",
+      "removeSuccess": "Product removed",
+      "updateFailed": "Could not update product line",
+      "updateSuccess": "Product line updated",
+      "selectProduct": "Select product",
+      "noCatalog": "No active catalog products.",
+      "permissionDenied": "You cannot edit products",
+      "permissionDeniedBody": "Ask an administrator for opportunities edit permission.",
+      "columns": {
+        "product": "Product",
+        "qty": "Qty",
+        "unit": "Unit",
+        "disc": "Disc %",
+        "tax": "Tax %",
+        "subtotal": "Subtotal",
+        "total": "Total",
+        "remove": "Remove"
+      },
+      "totals": "Totals"
+    },
+    "quotes": {
+      "panelTitle": "Quotes",
+      "panelBody": "Create quotes from this opportunity using the product catalog.",
+      "create": "Create quote",
+      "emptyTitle": "No quotes yet",
+      "emptyBody": "Create a quote to capture commercial terms for this opportunity.",
+      "loadError": "Could not load quotes",
+      "loadErrorBody": "Check your connection and try again.",
+      "createFailed": "Could not create quote",
+      "createSuccess": "Quote created",
+      "permissionDenied": "You cannot view quotes",
+      "permissionDeniedBody": "Ask an administrator for quotes view permission.",
+      "createPermissionDenied": "You cannot create quotes",
+      "createPermissionDeniedBody": "Ask an administrator for quotes create permission."
+    },
+    "timeline": {
+      "subtitle": "Recent opportunity updates ordered by last change.",
+      "emptyTitle": "No timeline events yet",
+      "emptyBody": "Stage changes, probability updates, and wins appear here."
+    },
+    "activities": {
+      "emptyTitle": "No activities yet",
+      "emptyBody": "Coming in a later sales execution sprint."
+    },
+    "tasks": {
+      "emptyTitle": "No tasks yet",
+      "emptyBody": "Coming in a later sales execution sprint."
+    },
+    "files": {
+      "emptyTitle": "No files yet",
+      "emptyBody": "Coming in a later sales execution sprint."
+    },
+    "ai": {
+      "emptyTitle": "No AI context yet",
+      "emptyBody": "Create this opportunity from a qualified lead to carry Lead Intelligence.",
+      "leadSummary": "Lead Summary",
+      "buying": "Buying Signals",
+      "risk": "Risk Signals",
+      "recommendation": "AI Recommendation",
+      "readOnlyHint": "AI context is read-only from the source Lead. Conversations stay on Lead / Omnichannel."
+    },
+    "pipeline": {
+      "emptyTitle": "No opportunities yet",
+      "emptyBody": "Create an opportunity from a qualified lead to start the revenue pipeline."
+    },
+    "pipelines": {
+      "salesExecution": "Sales Execution"
+    },
+    "stages": {
+      "qualification": "Qualification",
+      "discovery": "Discovery",
+      "proposal": "Proposal",
+      "negotiation": "Negotiation",
+      "contract": "Contract",
+      "won": "Won",
+      "lost": "Lost",
+      "unknown": "Stage"
+    }
+  },
+  "products": {
+    "subtitle": "Reusable catalog of products and services for opportunities and quotes.",
+    "create": "New product",
+    "addCategory": "Add category",
+    "createAction": "Create",
+    "cancel": "Cancel",
+    "emptyTitle": "Catalog is empty",
+    "emptyBody": "Add products once, then attach them to opportunities and quotes.",
+    "loading": "Loading catalog…",
+    "searchPlaceholder": "Search products…",
+    "integrationHint": "Products feed Opportunity lines and Quote builder.",
+    "openOpportunities": "Open opportunities",
+    "columns": {
+      "name": "Name",
+      "sku": "SKU",
+      "type": "Type",
+      "price": "Price",
+      "status": "Status"
+    },
+    "fields": {
+      "name": "Name",
+      "sku": "SKU",
+      "type": "Type",
+      "basePrice": "Base price",
+      "categoryName": "Category name"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "types": {
+      "product": "Product",
+      "service": "Service",
+      "subscription": "Subscription",
+      "bundle": "Bundle",
+      "addon": "Add-on"
+    },
+    "filter": {
+      "allTypes": "All types",
+      "allStatus": "All statuses"
+    }
+  },
+  "quotes": {
+    "subtitle": "Commercial quotes linked to opportunities and the product catalog.",
+    "createFromOpportunity": "Create from opportunity",
+    "pickOpportunityTitle": "Choose an opportunity",
+    "pickOpportunityBody": "Quotes are created from an opportunity so pricing stays tied to the deal.",
+    "pickOpportunityEmpty": "No opportunities available. Create an opportunity first.",
+    "openOpportunities": "Open opportunities",
+    "openCatalog": "Open product catalog",
+    "emptyTitle": "No quotes yet",
+    "emptyBody": "Create a quote from an opportunity to capture commercial terms.",
+    "loading": "Loading quotes…",
+    "version": "v{{version}}",
+    "openOpportunity": "Open opportunity",
+    "integrationHint": "Lead → Opportunity → Quote → Products",
+    "columns": {
+      "quote": "Quote",
+      "contact": "Contact",
+      "status": "Status",
+      "total": "Total",
+      "updated": "Updated"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "inReview": "In review",
+      "sent": "Sent",
+      "viewed": "Viewed",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "superseded": "Superseded",
+      "converted": "Converted"
+    },
+    "createSuccess": "Quote created",
+    "createFailed": "Could not create quote"
   },
   "entityWorkspace": {
     "layouts": {

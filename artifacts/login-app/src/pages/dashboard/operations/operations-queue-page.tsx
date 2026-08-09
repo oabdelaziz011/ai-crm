@@ -32,6 +32,7 @@ import type { TFunction } from "i18next";
 /** Operator-facing column order — Queue 2.1 / 2.2. */
 const OPERATOR_COLUMN_ORDER = [
   "queue_number",
+  "scheduled_at",
   "appointment_time",
   "customer",
   "visit_type",
@@ -100,6 +101,16 @@ function withOperatorColumns(
       next.push({ ...column, displayName, pinned: "right", visible: true });
       continue;
     }
+    if (internalName === "scheduled_at") {
+      next.push({
+        ...column,
+        displayName,
+        visible: true,
+        pinned: null,
+        width: 128,
+      });
+      continue;
+    }
     next.push({
       ...column,
       displayName,
@@ -112,21 +123,21 @@ function withOperatorColumns(
 
 function QueueKpiStrip({ kpis }: { kpis: ResolvedQueueKpi[] }) {
   return (
-    <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-md border border-border/60 bg-card sm:grid-cols-3 lg:grid-cols-9">
+    <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-xl border border-border/60 bg-background sm:grid-cols-3 lg:grid-cols-9">
       {kpis.map((kpi, index) => (
         <div
           key={kpi.id}
           className={cn(
-            "flex flex-col justify-center px-2 py-1.5",
+            "flex min-h-[72px] flex-col justify-center px-3.5 py-3",
             index > 0 && "border-s border-border/50",
           )}
         >
-          <span className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="truncate text-[11px] font-medium text-muted-foreground">
             {kpi.label}
           </span>
           <span
             className={cn(
-              "font-mono text-sm font-semibold tabular-nums leading-tight sm:text-base",
+              "mt-1 text-[22px] font-semibold tabular-nums tracking-[-0.03em] leading-tight",
               kpi.accent === "warning" && "text-warning",
               kpi.accent === "success" && "text-success",
               kpi.accent === "danger" && "text-destructive",
@@ -285,14 +296,18 @@ export function OperationsQueuePage() {
   }, [config?.resources, config?.services, config?.statuses, rows]);
 
   return (
-    <div className="flex h-[calc(100vh-5.5rem)] min-h-[32rem] flex-col gap-2 overflow-hidden">
-      <header className="flex shrink-0 items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-base font-semibold tracking-tight">{t("universalOperations.queue.title")}</h1>
-          <p className="text-xs text-muted-foreground">{t("universalOperations.queue.subtitleEnterprise")}</p>
+    <div className="flex h-[calc(100vh-5.5rem)] min-h-[32rem] w-full flex-col gap-4 overflow-hidden">
+      <header className="flex shrink-0 items-end justify-between gap-3 border-b border-border/60 pb-4">
+        <div className="min-w-0 space-y-1">
+          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.02em] text-foreground">
+            {t("universalOperations.queue.title")}
+          </h1>
+          <p className="max-w-lg text-[13px] leading-5 text-muted-foreground">
+            {t("universalOperations.queue.subtitleEnterprise")}
+          </p>
         </div>
-        <Button size="sm" className="h-8 shrink-0 gap-1.5" onClick={() => setBookingModalOpen(true)}>
-          <Plus className="size-3.5" />
+        <Button size="sm" className="h-9 shrink-0 gap-1.5 rounded-lg px-3.5 text-[13px] font-semibold shadow-none" onClick={() => setBookingModalOpen(true)}>
+          <Plus className="size-3.5" strokeWidth={2.5} />
           {t("universalOperations.queue.newOperation")}
         </Button>
       </header>

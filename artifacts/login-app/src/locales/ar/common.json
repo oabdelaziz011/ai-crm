@@ -60,7 +60,7 @@
     "opportunities": "الفرص",
     "products": "المنتجات",
     "quotes": "عروض الأسعار",
-    "communication": "مركز الاتصالات",
+    "communication": "قائمة الإرسال",
     "invoices": "الفواتير",
     "financial": "الفوترة المالية",
     "executive": "الذكاء التنفيذي",
@@ -124,7 +124,9 @@
   },
   "languages": {
     "english": "English",
-    "arabic": "العربية"
+    "arabic": "العربية",
+    "en": "English",
+    "ar": "العربية"
   },
   "alerts": {
     "title": "التنبيهات",
@@ -187,6 +189,7 @@
         "appointment_created": "تم إنشاء موعد",
         "appointment_updated": "تم تحديث موعد",
         "appointment_cancelled": "تم إلغاء موعد",
+        "appointment_reminder": "تذكير بالموعد",
         "customer_created": "تم إنشاء عميل",
         "invoice_created": "تم إنشاء فاتورة",
         "payment_received": "تم استلام دفعة",
@@ -882,6 +885,7 @@
         "whatsapp": "إدارة تدفقات أتمتة واتساب.",
         "omnichannel": "مراقبة والرد على محادثات العملاء عبر القنوات.",
         "channels": "ربط وإدارة واتساب وقنوات التواصل الأخرى.",
+        "communication": "راقب قائمة إرسال الرسائل الآلية وحالة التسليم وإعادة المحاولة — وليست محادثات مباشرة.",
         "ai-usage": "تتبع استخدام الرموز وتكاليف الذكاء الاصطناعي.",
         "ai-analytics": "مراجعة أداء تنفيذ الذكاء الاصطناعي والتتبعات.",
         "workspace": "عرض مساحة عمل الشركة وسياق الاشتراك.",
@@ -4064,7 +4068,7 @@
     "actions": {
       "financial": "لوحة مالية",
       "operations": "مركز العمليات",
-      "communication": "مركز الاتصالات",
+      "communication": "قائمة الإرسال",
       "customers": "إدارة العملاء",
       "branches": "الفروع"
     }
@@ -5187,13 +5191,40 @@
     "cancelFailed": "تعذر إلغاء الموعد."
   },
   "communication": {
-    "title": "مركز الاتصالات",
-    "subtitle": "راقب الرسائل الصادرة وحالة التسليم وصحة قائمة الانتظار عبر جميع القنوات.",
+    "title": "قائمة إرسال الرسائل",
+    "subtitle": "لوحة تشغيل للرسائل الصادرة الآلية — صحة الطابور وإعادة المحاولة والفشل عبر كل القنوات.",
     "processEmail": "معالجة قائمة البريد",
     "processWhatsapp": "معالجة قائمة واتساب",
     "processed": "تمت معالجة {{count}} رسالة",
     "retrySuccess": "تمت إعادة الرسالة إلى قائمة الانتظار.",
     "retryFailed": "فشلت إعادة المحاولة.",
+    "purpose": {
+      "title": "ما وظيفة هذه الصفحة؟",
+      "body": "هذه قائمة إرسال الرسائل الصادرة من النظام (إشعارات، تذكيرات، رسائل معاملات). ليست صندوق وارد للمحادثة مع العملاء.",
+      "pointQueue": "استخدمها لمعرفة ما ينتظر الإرسال أو فشل أو قيد إعادة المحاولة، ولمعالجة طوابير البريد وواتساب.",
+      "pointNotChat": "للمحادثات المباشرة مع العملاء افتح وحدة التحكم متعددة القنوات.",
+      "pointChannels": "لربط واتساب أو مزودين آخرين افتح القنوات.",
+      "openOmnichannel": "فتح المحادثات",
+      "openChannels": "فتح القنوات"
+    },
+    "channels": {
+      "whatsapp": "واتساب",
+      "email": "البريد الإلكتروني",
+      "sms": "رسالة نصية",
+      "push": "إشعار دفع",
+      "inApp": "إشعار داخلي",
+      "webhook": "ويب هوك",
+      "unknown": "قناة غير معروفة"
+    },
+    "statuses": {
+      "queued": "في الانتظار",
+      "processing": "قيد المعالجة",
+      "sent": "مُرسلة",
+      "delivered": "تم التسليم",
+      "failed": "فاشلة",
+      "retrying": "إعادة محاولة",
+      "cancelled": "ملغاة"
+    },
     "stats": {
       "sentToday": "مرسلة اليوم",
       "delivered": "تم التسليم",
@@ -5208,13 +5239,18 @@
       "allStatuses": "كل الحالات"
     },
     "history": {
-      "title": "سجل الاتصالات",
-      "empty": "لا توجد رسائل مطابقة للتصفية.",
+      "title": "سجل التسليم",
+      "subtitle": "أحدث عناصر قائمة الإرسال لهذه الشركة.",
+      "emptyTitle": "لا توجد رسائل صادرة في هذا العرض",
+      "empty": "لا توجد رسائل مطابقة للتصفية. تظهر هنا إشعارات النظام عند إضافتها إلى مسار التسليم.",
       "channel": "القناة",
       "recipient": "المستلم",
-      "template": "القالب",
+      "recipientInternal": "داخلي / النظام",
+      "template": "القالب / الحدث",
       "status": "الحالة",
+      "createdAt": "تاريخ الإنشاء",
       "retries": "المحاولات",
+      "failureReason": "سبب الفشل",
       "actions": "إجراءات",
       "retry": "إعادة"
     },
@@ -7565,6 +7601,7 @@
       "columns": {
         "queueNumber": "#",
         "reference": "رقم العملية",
+        "bookingDate": "تاريخ الحجز",
         "appointmentTime": "وقت الموعد",
         "customer": "العميل",
         "visitType": "نوع الزيارة",
@@ -8836,7 +8873,7 @@
         "whatsapp": "واتساب",
         "email": "بريد",
         "assign": "تعيين مسؤول",
-        "convert": "تحويل",
+        "convert": "تحويل إلى عميل",
         "archive": "أرشفة",
         "delete": "حذف",
         "archived": "تم أرشفة العميل المحتمل",
@@ -8978,8 +9015,8 @@
         "quoteHint": "أنشئ عرض السعر من الفرصة المرتبطة.",
         "unsupportedQuote": "تُنشأ عروض الأسعار من الفرصة وليس مباشرة من اللوحة.",
         "unsupportedOpportunity360": "تُفتح مساحة الفرصة بعد إنشاء فرصة مرتبطة.",
-        "converted": "تم تحويل العميل المحتمل",
-        "convertFailed": "تعذّر تحويل العميل المحتمل"
+        "converted": "تم التحويل إلى عميل",
+        "convertFailed": "تعذّر التحويل إلى عميل"
       },
       "context": {
         "openCustomer": "فتح التفاصيل",
@@ -9020,6 +9057,10 @@
         "nextBestActionLabel": "أفضل إجراء تالٍ",
         "suggestedFollowUp": "متابعة خلال 24 ساعة",
         "suggestedFollowUpLabel": "متابعة مقترحة"
+      },
+      "stageProbability": {
+        "title": "احتمالات المراحل",
+        "hint": "احتمال الفوز حسب مرحلة خط الأنابيب"
       }
     },
     "pipeline": {
@@ -9035,16 +9076,33 @@
     },
     "timeline": {
       "title": "الخط الزمني",
-      "subtitle": "نشاط العملاء المحتملين الأخير مرتب حسب آخر تحديث.",
-      "empty": "لا يوجد نشاط بعد."
+      "subtitle": "آخر تحديثات العملاء المحتملين بالترتيب الزمني — اضغط لفتح ملف العميل المحتمل.",
+      "empty": "أنشئ أو حدّث عملاء محتملين لتظهر النشاطات هنا.",
+      "emptyTitle": "لا توجد تحديثات حديثة",
+      "noCompany": "لا توجد شركة",
+      "source": "المصدر · {{source}}"
     },
     "dashboard": {
       "title": "لوحة العملاء المحتملين",
-      "subtitle": "مؤشرات أداء فورية للتحويل وقيمة خط الأنابيب ومصادر العملاء المحتملين.",
+      "subtitle": "صحة التحويل وقيمة التوقعات وأداء خطوط الأنابيب والنشاط الأخير.",
       "forecast": "قيمة التوقعات",
+      "forecastHint": "قيمة مرجّحة لخط الأنابيب بناءً على احتمالات المراحل والعملاء المفتوحين.",
       "byStatus": "العملاء المحتملون حسب الحالة",
       "pipelines": "أداء خطوط الأنابيب",
-      "pipelineRow": "{{count}} عميل محتمل · {{value}}"
+      "pipelineRow": "{{count}} عميل محتمل · {{value}}",
+      "pipelineValue": "القيمة · {{value}}",
+      "recentActivity": "النشاط الأخير",
+      "loadingRecent": "جارٍ تحميل العملاء المحتملين…",
+      "emptyStatus": "لا يوجد توزيع حسب الحالة بعد.",
+      "emptyPipelines": "لا توجد مؤشرات خطوط أنابيب بعد.",
+      "emptyRecentTitle": "لا يوجد عملاء محتملون حديثون",
+      "emptyRecent": "ستظهر هنا العملاء المحتملون الجدد والمحدّثون للمتابعة السريعة.",
+      "kpiHints": {
+        "total": "كل العملاء المحتملين النشطين في مساحة العمل",
+        "conversion": "العملاء المحتملون المحوّلون إلى عملاء",
+        "created": "عملاء محتملون جدد في الفترة الحالية",
+        "converted": "تحويلات في الفترة الحالية"
+      }
     },
     "kpi": {
       "total": "إجمالي العملاء المحتملين",
@@ -9071,6 +9129,7 @@
   "leads360": {
     "convert": "تحويل إلى عميل",
     "createOpportunity": "إنشاء فرصة",
+    "close": "إغلاق",
     "scoreLabel": "{{score}} درجة",
     "aiScore": "درجة الذكاء الاصطناعي: {{score}} / 100",
     "smartRail": "رؤى ذكية",
@@ -9103,10 +9162,15 @@
       "whatsapp": "لا توجد رسائل واتساب",
       "files": "لا توجد ملفات",
       "filesTitle": "لا توجد ملفات مرفقة",
-      "tasks": "لا توجد مهام",
+      "filesDescription": "ارفع العروض والعقود وملاحظات الاكتشاف ليجدها الفريق في مكان واحد.",
+      "tasks": "أنشئ متابعات من التوصيات أو عيّن الخطوة التالية في المبيعات.",
       "tasksTitle": "لا توجد مهام بعد",
       "activity": "ستظهر هنا المكالمات والبريد وواتساب عند تواصل الفريق مع هذا العميل المحتمل.",
       "activityTitle": "لا توجد أنشطة بعد",
+      "conversationTitle": "لا توجد محادثة بعد",
+      "conversation": "عندما يراسل العميل عبر واتساب أو البريد أو قنوات أخرى، ستظهر المحادثة هنا مع تحليل الذكاء الاصطناعي.",
+      "timelineTitle": "الخط الزمني فارغ",
+      "timeline": "ستتكوّن هنا قصة موحّدة من تحديثات CRM وقرارات الذكاء الاصطناعي والأتمتة.",
       "relatedEntities": "لم يتم إعداد كيانات مرتبطة بعد"
     },
     "tabs": {
@@ -9120,6 +9184,33 @@
       "audit": "سجل التدقيق",
       "emails": "البريد",
       "whatsapp": "واتساب"
+    },
+    "channels": {
+      "call": "اتصال",
+      "email": "بريد إلكتروني",
+      "whatsapp": "واتساب",
+      "sms": "رسالة نصية",
+      "meeting": "اجتماع",
+      "note": "ملاحظة",
+      "system": "النظام",
+      "other": "أخرى"
+    },
+    "taskStatus": {
+      "open": "مفتوحة",
+      "pending": "قيد الانتظار",
+      "inProgress": "قيد التنفيذ",
+      "done": "منجزة",
+      "completed": "مكتملة",
+      "cancelled": "ملغاة"
+    },
+    "intents": {
+      "pricingInquiry": "استفسار عن السعر",
+      "demoRequest": "طلب عرض تجريبي",
+      "integration": "تكامل",
+      "support": "دعم"
+    },
+    "timeline": {
+      "aiAnalyzed": "اكتمل تحليل الذكاء الاصطناعي"
     },
     "scoreBand": {
       "excellent": "ممتاز",
@@ -9157,8 +9248,41 @@
       "countryIntelligence": "ذكاء الدولة",
       "emptyTitle": "مساحة الذكاء الاصطناعي جاهزة",
       "emptyBody": "تظهر الرؤى بعد تجهيز السياق وتشغيل التحليل.",
+      "memoryHint": "يتم التحديث تلقائياً مع مرور الوقت.",
+      "saved": "تم الحفظ",
+      "error": "خطأ",
+      "accept": "قبول",
+      "reject": "رفض",
+      "edit": "تعديل",
       "viewFullAudit": "عرض سجل التدقيق الكامل",
       "fullAudit": "سجل تدقيق الذكاء الاصطناعي",
+      "scoreDimensions": {
+        "overall": "الإجمالي",
+        "engagement": "التفاعل",
+        "salesReadiness": "جاهزية المبيعات",
+        "businessFit": "الملاءمة التجارية"
+      },
+      "countryFields": {
+        "countryCode": "رمز الدولة",
+        "currency": "العملة",
+        "timezone": "المنطقة الزمنية",
+        "language": "اللغة",
+        "locale": "الإعدادات المحلية",
+        "businessWeek": "أسبوع العمل"
+      },
+      "auditMeta": {
+        "provider": "المزود",
+        "actor": "المنفّذ",
+        "confidence": "الثقة",
+        "latency": "زمن الاستجابة",
+        "capture": "التقاط",
+        "contextReady": "السياق جاهز",
+        "collecting": "جمع البيانات"
+      },
+      "pagination": {
+        "previous": "السابق",
+        "next": "التالي"
+      },
       "sections": {
         "buyingSignals": "إشارات الشراء",
         "riskSignals": "إشارات المخاطر",
@@ -9167,6 +9291,471 @@
         "audit": "تدقيق الذكاء الاصطناعي"
       }
     }
+  },
+  "opportunities360": {
+    "close": "إغلاق",
+    "loading": "جاري تحميل مساحة الفرصة",
+    "smartRail": "رؤى ذكية",
+    "summary": "ملخص",
+    "emptyValue": "—",
+    "actions": {
+      "call": "اتصال",
+      "email": "بريد",
+      "whatsapp": "واتساب",
+      "openLead": "فتح Lead360",
+      "createActivity": "إنشاء نشاط",
+      "createQuote": "إنشاء عرض سعر",
+      "sendQuote": "إرسال العرض",
+      "sendEmail": "إرسال عبر البريد",
+      "sendWhatsapp": "إرسال عبر واتساب",
+      "archive": "أرشفة",
+      "more": "المزيد"
+    },
+    "quoteTabs": {
+      "products": "١. المنتجات",
+      "pricing": "٢. التسعير",
+      "preview": "٣. المعاينة",
+      "overview": "التفاصيل",
+      "history": "السجل",
+      "previewLabel": "عرض سعر",
+      "validUntil": "صالح حتى",
+      "validityNote": "العرض صالح لمدة ١٤ يومًا من تاريخ الإنشاء",
+      "preparedFor": "مُعدّ لـ",
+      "unitPrice": "سعر الوحدة",
+      "productsHint": "اختر منتجًا موجودًا من الكتالوج، أو أنشئ منتجًا جديدًا بالاسم، ثم انتقل للتسعير.",
+      "pricingHint": "عدّل الكمية وسعر الوحدة والخصم، ثم احفظ لفتح المعاينة النهائية للعرض.",
+      "searchCatalog": "ابحث في الكتالوج…",
+      "noProducts": "لا توجد منتجات في الكتالوج.",
+      "pickExisting": "اختر منتجًا موجودًا",
+      "createNew": "أو أنشئ منتجًا جديدًا",
+      "productName": "اسم المنتج",
+      "saveProduct": "حفظ المنتج",
+      "quoteLines": "منتجات هذا العرض",
+      "saveContinuePricing": "حفظ والمتابعة للتسعير",
+      "savePricing": "حفظ التسعير والمعاينة",
+      "continuePreview": "المتابعة للمعاينة",
+      "productAdded": "تمت إضافة المنتج للعرض",
+      "productSaved": "تم حفظ المنتج وإضافته",
+      "pricingSaved": "تم حفظ التسعير",
+      "back": "رجوع",
+      "previewHint": "اختر لغة العرض، ثم أرسل.",
+      "languageSaved": "تم تحديث لغة العرض",
+      "languageFailed": "تعذّر تحديث لغة العرض"
+    },
+    "sections": {
+      "opportunity": "معلومات الفرصة",
+      "customer": "سياق العميل / العميل المحتمل",
+      "activity": "النشاط والبيانات الوصفية"
+    },
+    "source": {
+      "manual": "يدوي",
+      "fromLead": "من عميل محتمل"
+    },
+    "stageChangeFailed": "تعذّر تحديث المرحلة",
+    "stageChangeSuccess": "تم تحديث المرحلة",
+    "updateFailed": "تعذّر تحديث الفرصة",
+    "updateSuccess": "تم تحديث الفرصة",
+    "probabilityUpdateFailed": "تعذّر تحديث الاحتمالية",
+    "probabilityUpdateSuccess": "تم تحديث الاحتمالية",
+    "scoreFormat": "{{score}} / {{max}}",
+    "probabilitySource": {
+      "manual": "يدوي",
+      "auto": "تلقائي"
+    },
+    "probabilityReason": {
+      "seededFromStage": "مشتق من مرحلة {{stage}} بعد التأهيل",
+      "stageDefault": "الافتراضي لمرحلة {{stage}}"
+    },
+    "archive": {
+      "action": "أرشفة الفرصة",
+      "title": "أرشفة الفرصة؟",
+      "description": "سيتم أرشفة \"{{name}}\" وإزالتها من عروض خط الأنابيب النشطة. لا يمكن التراجع عن هذا الإجراء من هذه الشاشة.",
+      "success": "تمت أرشفة الفرصة",
+      "failed": "تعذّر أرشفة الفرصة"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "timeline": "الجدول الزمني",
+      "activities": "الأنشطة",
+      "tasks": "المهام",
+      "files": "الملفات",
+      "products": "المنتجات",
+      "quotes": "عروض الأسعار",
+      "ai": "الذكاء الاصطناعي",
+      "audit": "التدقيق"
+    },
+    "fields": {
+      "customer": "العميل",
+      "company": "الشركة",
+      "primaryContact": "جهة الاتصال الرئيسية",
+      "phone": "الهاتف",
+      "email": "البريد الإلكتروني",
+      "lead": "العميل المحتمل",
+      "owner": "المالك",
+      "name": "اسم الفرصة",
+      "stage": "المرحلة",
+      "pipeline": "خط الأنابيب",
+      "amount": "الإيراد المتوقع",
+      "currency": "العملة",
+      "weightedRevenue": "الإيراد المرجّح",
+      "probability": "الاحتمالية",
+      "expectedCloseDate": "تاريخ الإغلاق المتوقع",
+      "currentQuote": "عرض السعر الحالي",
+      "productsCount": "المنتجات",
+      "createdAt": "تاريخ الإنشاء",
+      "updatedAt": "تاريخ التحديث",
+      "createdBy": "أنشأه",
+      "aiScore": "درجة الذكاء الاصطناعي",
+      "countryMarket": "الدولة / السوق",
+      "source": "المصدر",
+      "notes": "ملاحظات",
+      "probabilityModel": "نموذج الاحتمالية"
+    },
+    "associatedOpportunity": {
+      "title": "الفرصة المرتبطة",
+      "open": "فتح الفرصة"
+    },
+    "nav": {
+      "openCustomer": "فتح ملف العميل {{name}}",
+      "openCompany": "فتح ملف الشركة {{name}}",
+      "openLead": "فتح ملف العميل المحتمل {{name}}",
+      "openOwner": "فتح ملف الموظف {{name}}",
+      "openQuote": "فتح عرض السعر {{name}}",
+      "productsCount": "{{count}} بنود"
+    },
+    "loadError": "تعذّر تحميل الفرصة",
+    "loadErrorBody": "تحقق من الاتصال وحاول مرة أخرى.",
+    "audit": {
+      "emptyTitle": "لا توجد أحداث تدقيق بعد",
+      "emptyBody": "تظهر التغييرات على مستوى الحقول وسجل المستخدمين هنا.",
+      "columns": {
+        "actor": "المستخدم",
+        "action": "الإجراء",
+        "timestamp": "الوقت",
+        "field": "الحقل المتغير",
+        "oldValue": "القيمة السابقة",
+        "newValue": "القيمة الجديدة"
+      },
+      "events": {
+        "opportunity_created": "تم إنشاء الفرصة",
+        "stage_changed": "تم تغيير المرحلة",
+        "probability_changed": "تم تغيير الاحتمالية",
+        "amount_changed": "تم تغيير القيمة",
+        "owner_changed": "تم تغيير المسؤول",
+        "product_attached": "تم إرفاق منتج",
+        "product_removed": "تمت إزالة منتج",
+        "quantity_changed": "تم تغيير الكمية",
+        "unit_price_changed": "تم تغيير سعر الوحدة",
+        "discount_changed": "تم تغيير الخصم",
+        "tax_changed": "تم تغيير الضريبة",
+        "products_added": "تمت إضافة منتجات",
+        "products_removed": "تمت إزالة منتجات",
+        "quote_created": "تم إنشاء عرض سعر",
+        "quote_version_created": "تم إنشاء إصدار عرض سعر",
+        "quote_submitted": "تم تقديم عرض السعر",
+        "quote_approved": "تمت الموافقة على عرض السعر",
+        "quote_rejected": "تم رفض عرض السعر",
+        "quote_status_changed": "تم تغيير حالة عرض السعر",
+        "archived": "تمت الأرشفة",
+        "restored": "تمت الاستعادة",
+        "negotiation_started": "بدأ التفاوض",
+        "won": "فوز بالفرصة",
+        "lost": "خسارة الفرصة",
+        "unknown": "تم تحديث السجل"
+      },
+      "fields": {
+        "stage_id": "المرحلة",
+        "probability_percent": "الاحتمالية",
+        "amount": "القيمة",
+        "owner_id": "المسؤول",
+        "close_date": "تاريخ الإغلاق",
+        "currency": "العملة",
+        "name": "الاسم",
+        "company": "الشركة",
+        "contact": "جهة الاتصال",
+        "weighted_revenue": "الإيراد المرجّح",
+        "pipeline": "خط الأنابيب",
+        "customer": "العميل",
+        "lead": "العميل المحتمل",
+        "quantity": "الكمية",
+        "unit_price": "سعر الوحدة",
+        "discount_percent": "نسبة الخصم",
+        "tax_percent": "نسبة الضريبة",
+        "unknown": "حقل"
+      },
+      "valuePercent": "{{value}}%"
+    }
+  },
+  "opportunities": {
+    "subtitle": "إدارة الصفقات من التأهيل حتى الإغلاق — المنتجات وعروض الأسعار داخل كل فرصة.",
+    "nav": {
+      "pipeline": "خط الأنابيب",
+      "table": "جدول",
+      "timeline": "الجدول الزمني"
+    },
+    "permissionDenied": "لا يمكنك عرض الفرص",
+    "permissionDeniedBody": "اطلب من المسؤول صلاحية عرض الفرص.",
+    "create": "فرصة جديدة",
+    "created": "تم إنشاء الفرصة",
+    "createFailed": "تعذّر إنشاء الفرصة",
+    "createForm": {
+      "title": "إنشاء فرصة",
+      "subtitle": "أدخل تفاصيل الصفقة قبل فتح مساحة العمل.",
+      "checkingExisting": "جاري التحقق من وجود فرصة…",
+      "loadingForm": "جاري تحميل إعدادات خط الأنابيب…",
+      "existingBody": "يوجد بالفعل فرصة لهذا العميل المحتمل: {{name}}",
+      "openExisting": "فتح الفرصة الحالية",
+      "createAnyway": "إنشاء على أي حال",
+      "sections": {
+        "deal": "الصفقة",
+        "source": "مصدر العميل المحتمل",
+        "opportunity": "الفرصة",
+        "customer": "العميل",
+        "commercial": "التجاري",
+        "additional": "إضافي"
+      },
+      "priority": {
+        "low": "منخفض",
+        "medium": "متوسط",
+        "high": "مرتفع",
+        "critical": "حرج"
+      },
+      "probability": {
+        "auto": "تلقائي",
+        "manual": "يدوي",
+        "autoValue": "{{value}}٪ (من المرحلة)"
+      },
+      "fields": {
+        "name": "اسم الفرصة",
+        "namePlaceholder": "أكمي — توسعة مؤسسية",
+        "company": "الشركة",
+        "companyPlaceholder": "أدخل اسم الشركة",
+        "customer": "العميل",
+        "lead": "العميل المحتمل",
+        "leadTitle": "عنوان العميل المحتمل",
+        "leadStage": "مرحلة العميل المحتمل",
+        "leadEmail": "بريد العميل المحتمل",
+        "contact": "جهة الاتصال الرئيسية",
+        "contactPlaceholder": "أدخل اسم جهة الاتصال",
+        "phone": "الهاتف",
+        "whatsapp": "واتساب",
+        "email": "البريد الإلكتروني",
+        "leadSource": "مصدر العميل المحتمل",
+        "amount": "الإيراد المتوقع",
+        "amountPlaceholder": "أدخل المبلغ",
+        "currency": "العملة",
+        "closeDate": "تاريخ الإغلاق المتوقع",
+        "pipeline": "خط الأنابيب",
+        "pipelinePlaceholder": "اختر خط الأنابيب",
+        "stage": "المرحلة",
+        "stagePlaceholder": "اختر المرحلة",
+        "owner": "المالك",
+        "ownerPlaceholder": "اختر المالك",
+        "priority": "الأولوية",
+        "priorityPlaceholder": "اختر الأولوية",
+        "probability": "الاحتمالية",
+        "probabilityPlaceholder": "أدخل النسبة المئوية",
+        "expectedProducts": "المنتجات المتوقعة",
+        "expectedProductsPlaceholder": "أضف منتجات من الفهرس",
+        "removeProduct": "إزالة {{name}}",
+        "tags": "الوسوم",
+        "tagsPlaceholder": "أضف وسمًا واضغط Enter",
+        "removeTag": "إزالة الوسم {{name}}",
+        "notes": "ملاحظات",
+        "notesPlaceholder": "سجّل السياق أو الخطوات التالية أو العوائق…",
+        "attachments": "المرفقات",
+        "attachmentsHint": "أرفق PDF أو DOCX أو صورًا أو ZIP (حد أقصى 10 ملفات)",
+        "aiRecommendation": "توصية الذكاء الاصطناعي",
+        "aiScore": "درجة الذكاء الاصطناعي",
+        "winProbability": "احتمالية الفوز",
+        "suggestedNextStep": "الخطوة التالية المقترحة",
+        "suggestedStage": "المرحلة المقترحة",
+        "noAiRecommendation": "لا توجد توصية ذكاء اصطناعي بعد"
+      },
+      "attachments": {
+        "defaultNote": "مرفقات تم رفعها أثناء إنشاء الفرصة"
+      },
+      "errors": {
+        "nameRequired": "اسم الفرصة مطلوب",
+        "stageRequired": "المرحلة مطلوبة",
+        "pipelineRequired": "خط الأنابيب مطلوب",
+        "ownerRequired": "المالك مطلوب",
+        "currencyRequired": "العملة مطلوبة",
+        "closeDateRequired": "تاريخ الإغلاق المتوقع مطلوب",
+        "priorityRequired": "الأولوية مطلوبة",
+        "amountInvalid": "أدخل مبلغاً صالحاً",
+        "probabilityInvalid": "أدخل احتمالية صالحة بين 0 و 100",
+        "attachmentsInvalid": "ملف أو أكثر من المرفقات غير مدعوم"
+      }
+    },
+    "fields": {
+      "name": "الاسم",
+      "namePlaceholder": "مثال: صفقة مؤسسية — شركة أكمة"
+    },
+    "products": {
+      "title": "المنتجات",
+      "add": "إضافة منتج",
+      "emptyTitle": "لا توجد منتجات مرفقة",
+      "emptyBody": "اختر منتجات من فهرس المنتجات لبناء نطاق هذه الفرصة.",
+      "loadError": "تعذّر تحميل المنتجات",
+      "loadErrorBody": "تحقق من الاتصال وحاول مرة أخرى.",
+      "attachFailed": "تعذّر إضافة المنتج",
+      "attachSuccess": "تمت إضافة المنتج",
+      "removeFailed": "تعذّر إزالة المنتج",
+      "removeSuccess": "تمت إزالة المنتج",
+      "updateFailed": "تعذّر تحديث بند المنتج",
+      "updateSuccess": "تم تحديث بند المنتج",
+      "selectProduct": "اختر منتجاً",
+      "noCatalog": "لا توجد منتجات نشطة في فهرس المنتجات.",
+      "permissionDenied": "لا يمكنك تعديل المنتجات",
+      "permissionDeniedBody": "اطلب صلاحية تعديل الفرص من المسؤول.",
+      "columns": {
+        "product": "المنتج",
+        "qty": "الكمية",
+        "unit": "الوحدة",
+        "disc": "خصم %",
+        "tax": "ضريبة %",
+        "subtotal": "المجموع الفرعي",
+        "total": "الإجمالي",
+        "remove": "إزالة"
+      },
+      "totals": "الإجماليات"
+    },
+    "quotes": {
+      "panelTitle": "عروض الأسعار",
+      "panelBody": "أنشئ عروض أسعار من هذه الفرصة باستخدام فهرس المنتجات.",
+      "create": "إنشاء عرض سعر",
+      "emptyTitle": "لا توجد عروض أسعار بعد",
+      "emptyBody": "أنشئ عرض سعر لتوثيق الشروط التجارية لهذه الفرصة.",
+      "loadError": "تعذّر تحميل عروض الأسعار",
+      "loadErrorBody": "تحقق من الاتصال وحاول مرة أخرى.",
+      "createFailed": "تعذّر إنشاء عرض السعر",
+      "createSuccess": "تم إنشاء عرض السعر",
+      "permissionDenied": "لا يمكنك عرض عروض الأسعار",
+      "permissionDeniedBody": "اطلب صلاحية عرض عروض الأسعار من المسؤول.",
+      "createPermissionDenied": "لا يمكنك إنشاء عروض أسعار",
+      "createPermissionDeniedBody": "اطلب صلاحية إنشاء عروض الأسعار من المسؤول."
+    },
+    "timeline": {
+      "subtitle": "آخر تحديثات الفرص مرتبة حسب التغيير الأخير.",
+      "emptyTitle": "لا توجد أحداث في الجدول الزمني بعد",
+      "emptyBody": "تغييرات المرحلة وتحديثات الاحتمالية والفوز تظهر هنا."
+    },
+    "activities": {
+      "emptyTitle": "لا توجد أنشطة بعد",
+      "emptyBody": "قادمة في sprint تنفيذ المبيعات لاحقاً."
+    },
+    "tasks": {
+      "emptyTitle": "لا توجد مهام بعد",
+      "emptyBody": "قادمة في sprint تنفيذ المبيعات لاحقاً."
+    },
+    "files": {
+      "emptyTitle": "لا توجد ملفات بعد",
+      "emptyBody": "قادمة في sprint تنفيذ المبيعات لاحقاً."
+    },
+    "ai": {
+      "emptyTitle": "لا يوجد سياق ذكاء اصطناعي بعد",
+      "emptyBody": "أنشئ هذه الفرصة من عميل محتمل مؤهل لنقل ذكاء العميل المحتمل.",
+      "leadSummary": "ملخص العميل المحتمل",
+      "buying": "إشارات الشراء",
+      "risk": "إشارات المخاطر",
+      "recommendation": "توصية الذكاء الاصطناعي",
+      "readOnlyHint": "سياق الذكاء الاصطناعي للقراءة فقط من العميل المحتمل المصدر. المحادثات تبقى على العميل المحتمل / القنوات المتعددة."
+    },
+    "pipeline": {
+      "emptyTitle": "لا توجد فرص بعد",
+      "emptyBody": "أنشئ فرصة من عميل محتمل مؤهل لبدء خط أنابيب الإيرادات."
+    },
+    "pipelines": {
+      "salesExecution": "تنفيذ المبيعات"
+    },
+    "stages": {
+      "qualification": "التأهيل",
+      "discovery": "الاستكشاف",
+      "proposal": "العرض",
+      "negotiation": "التفاوض",
+      "contract": "العقد",
+      "won": "فوز",
+      "lost": "خسارة",
+      "unknown": "مرحلة"
+    }
+  },
+  "products": {
+    "subtitle": "كتالوج قابل لإعادة الاستخدام للمنتجات والخدمات للفرص وعروض الأسعار.",
+    "create": "منتج جديد",
+    "addCategory": "إضافة فئة",
+    "createAction": "إنشاء",
+    "cancel": "إلغاء",
+    "emptyTitle": "الكتالوج فارغ",
+    "emptyBody": "أضف المنتجات مرة واحدة، ثم اربطها بالفرص وعروض الأسعار.",
+    "loading": "جارٍ تحميل الكتالوج…",
+    "searchPlaceholder": "ابحث في المنتجات…",
+    "integrationHint": "المنتجات تغذي بنود الفرصة ومنشئ عرض السعر.",
+    "openOpportunities": "فتح الفرص",
+    "columns": {
+      "name": "الاسم",
+      "sku": "رمز المنتج",
+      "type": "النوع",
+      "price": "السعر",
+      "status": "الحالة"
+    },
+    "fields": {
+      "name": "الاسم",
+      "sku": "رمز المنتج",
+      "type": "النوع",
+      "basePrice": "السعر الأساسي",
+      "categoryName": "اسم الفئة"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "types": {
+      "product": "منتج",
+      "service": "خدمة",
+      "subscription": "اشتراك",
+      "bundle": "حزمة",
+      "addon": "إضافة"
+    },
+    "filter": {
+      "allTypes": "كل الأنواع",
+      "allStatus": "كل الحالات"
+    }
+  },
+  "quotes": {
+    "subtitle": "عروض أسعار تجارية مرتبطة بالفرص وكتالوج المنتجات.",
+    "createFromOpportunity": "إنشاء من فرصة",
+    "pickOpportunityTitle": "اختر فرصة",
+    "pickOpportunityBody": "يُنشأ عرض السعر من فرصة حتى يبقى التسعير مرتبطًا بالصفقة.",
+    "pickOpportunityEmpty": "لا توجد فرص متاحة. أنشئ فرصة أولًا.",
+    "openOpportunities": "فتح الفرص",
+    "openCatalog": "فتح كتالوج المنتجات",
+    "emptyTitle": "لا توجد عروض أسعار بعد",
+    "emptyBody": "أنشئ عرض سعر من فرصة لتوثيق الشروط التجارية.",
+    "loading": "جارٍ تحميل عروض الأسعار…",
+    "version": "ن{{version}}",
+    "openOpportunity": "فتح الفرصة",
+    "integrationHint": "عميل محتمل → فرصة → عرض سعر → منتجات",
+    "columns": {
+      "quote": "عرض السعر",
+      "contact": "جهة الاتصال",
+      "status": "الحالة",
+      "total": "الإجمالي",
+      "updated": "آخر تحديث"
+    },
+    "statuses": {
+      "draft": "مسودة",
+      "inReview": "قيد المراجعة",
+      "sent": "مُرسل",
+      "viewed": "تمت المشاهدة",
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "expired": "منتهي",
+      "superseded": "مستبدل",
+      "converted": "محوّل"
+    },
+    "createSuccess": "تم إنشاء عرض السعر",
+    "createFailed": "تعذّر إنشاء عرض السعر"
   },
   "entityWorkspace": {
     "layouts": {

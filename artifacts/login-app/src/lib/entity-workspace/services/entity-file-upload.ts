@@ -16,6 +16,8 @@ export const ENTITY_NOTE_ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "application/zip",
+  "application/x-zip-compressed",
 ]);
 
 const EXT_MIME: Record<string, string> = {
@@ -26,6 +28,7 @@ const EXT_MIME: Record<string, string> = {
   jpeg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
+  zip: "application/zip",
 };
 
 const BLOCKED_EXTENSIONS = new Set([

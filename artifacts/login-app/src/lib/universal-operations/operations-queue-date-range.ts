@@ -83,6 +83,18 @@ export function formatAppointmentTime(value: unknown): string {
   });
 }
 
+/** Date-only display for the booking/appointment timestamp (pairs with formatAppointmentTime). */
+export function formatAppointmentDate(value: unknown): string {
+  if (value == null || value === "") return "—";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function formatWaitingDuration(minutes: unknown): string {
   const total = Math.max(0, Math.floor(Number(minutes) || 0));
   if (total < 60) return `${total} min`;

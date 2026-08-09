@@ -58,6 +58,9 @@ function CompanyWorkspaceContent() {
   useEffect(() => {
     const params = new URLSearchParams(search);
     let fromUrl = parseTab(params.get("tab")) ?? "overview";
+    if (params.get("employee")?.trim()) {
+      fromUrl = "employees";
+    }
     if (fromUrl === "subscription" && !permissions.canSubscription) {
       fromUrl = "overview";
     }
@@ -139,7 +142,11 @@ function CompanyWorkspaceContent() {
         onManageSubscription={() => handleTabChange("subscription")}
       >
         {activeTab === "overview" ? <CompanyOverviewTab /> : null}
-        {activeTab === "employees" ? <CompanyEmployeesTab /> : null}
+        {activeTab === "employees" ? (
+          <CompanyEmployeesTab
+            initialEmployeeId={new URLSearchParams(search).get("employee")}
+          />
+        ) : null}
         {activeTab === "branches" ? <CompanyBranchesTab /> : null}
         {activeTab === "departments" ? <CompanyDepartmentsTab /> : null}
         {activeTab === "branding" ? (

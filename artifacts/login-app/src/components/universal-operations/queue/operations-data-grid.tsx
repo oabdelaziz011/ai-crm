@@ -43,6 +43,7 @@ import {
   translateOperationsVisitTypeLabel,
 } from "@/lib/i18n/operations-queue-labels";
 import {
+  formatAppointmentDate,
   formatAppointmentTime,
   formatDurationMinutes,
   formatWaitingDuration,
@@ -295,6 +296,7 @@ export function OperationsDataGrid({
           const raw = row.values[column.internalName];
           let text = formatCellValue(raw, column.type);
           if (column.internalName === "appointment_time") text = formatAppointmentTime(raw ?? row.values.scheduled_at);
+          if (column.internalName === "scheduled_at") text = formatAppointmentDate(raw ?? row.values.appointment_time);
           if (column.internalName === "waiting_minutes") text = formatWaitingDuration(raw);
           if (column.internalName === "duration_minutes") text = formatDurationMinutes(raw);
           if (column.internalName === "amount") {
@@ -323,7 +325,7 @@ export function OperationsDataGrid({
       <th
         key={column.id}
         className={cn(
-          "sticky top-0 z-20 border-b border-border/60 bg-card px-2.5 py-1.5 text-left text-[10px] font-bold tracking-wide text-muted-foreground",
+          "sticky top-0 z-20 border-b border-border/60 bg-background px-2.5 py-1.5 text-left text-[10px] font-bold tracking-wide text-muted-foreground",
           column.pinned === "left" && "z-30 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.25)]",
           column.pinned === "right" && "z-30 shadow-[-2px_0_6px_-2px_rgba(0,0,0,0.25)]",
           column.alignment === "center" && "text-center",
@@ -375,6 +377,8 @@ export function OperationsDataGrid({
 
     if (column.internalName === "queue_number") {
       text = String(raw ?? "—");
+    } else if (column.internalName === "scheduled_at") {
+      text = formatAppointmentDate(raw ?? row.values.appointment_time);
     } else if (column.internalName === "appointment_time") {
       text = formatAppointmentTime(raw ?? row.values.scheduled_at);
     } else if (column.internalName === "waiting_minutes") {
@@ -414,8 +418,8 @@ export function OperationsDataGrid({
         className={cn(
           "border-b border-border/40 px-2.5 align-middle text-sm",
           density === "compact" ? "py-0" : "py-1",
-          column.pinned === "left" && "sticky z-10 bg-card shadow-[2px_0_6px_-2px_rgba(0,0,0,0.15)]",
-          column.pinned === "right" && "sticky z-10 bg-card shadow-[-2px_0_6px_-2px_rgba(0,0,0,0.15)]",
+          column.pinned === "left" && "sticky z-10 bg-background shadow-[2px_0_6px_-2px_rgba(0,0,0,0.15)]",
+          column.pinned === "right" && "sticky z-10 bg-background shadow-[-2px_0_6px_-2px_rgba(0,0,0,0.15)]",
           column.alignment === "center" && "text-center",
           column.alignment === "end" && "text-end",
         )}
@@ -473,8 +477,8 @@ export function OperationsDataGrid({
 
   return (
     <TooltipProvider delayDuration={250}>
-      <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border/60 bg-card", className)}>
-        <div className="flex shrink-0 flex-col gap-1.5 border-b border-border/60 px-2 py-1.5">
+      <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-background", className)}>
+        <div className="flex shrink-0 flex-col gap-1.5 border-b border-border/60 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="relative min-w-[12rem] flex-1">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -706,7 +710,7 @@ export function OperationsDataGrid({
               <thead>
                 <tr>
                   <th
-                    className="sticky left-0 top-0 z-40 border-b border-border/60 bg-card px-2 py-1.5"
+                    className="sticky left-0 top-0 z-40 border-b border-border/60 bg-background px-2 py-1.5"
                     style={{ width: CHECKBOX_WIDTH, minWidth: CHECKBOX_WIDTH, maxWidth: CHECKBOX_WIDTH }}
                   >
                     <Checkbox
@@ -733,7 +737,7 @@ export function OperationsDataGrid({
                     onDoubleClick={() => onRowDoubleClick?.(row)}
                   >
                     <td
-                      className="sticky left-0 z-10 border-b border-border/40 bg-card px-2 align-middle"
+                      className="sticky left-0 z-10 border-b border-border/40 bg-background px-2 align-middle"
                       style={{ width: CHECKBOX_WIDTH, minWidth: CHECKBOX_WIDTH, maxWidth: CHECKBOX_WIDTH }}
                       onClick={(e) => e.stopPropagation()}
                     >

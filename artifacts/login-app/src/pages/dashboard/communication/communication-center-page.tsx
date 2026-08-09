@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Info, MessageSquare, Radio, Send } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
-import { DashboardPageFallback } from "@/components/dashboard/ui";
+import { DashboardCard, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { CommunicationStatsGrid } from "@/components/communication/communication-stats-grid";
 import { CommunicationHistoryTable } from "@/components/communication/communication-history-table";
@@ -13,7 +14,16 @@ import {
   useProcessCommunicationQueue,
   useRetryCommunicationMessage,
 } from "@/lib/communication/hooks";
-import type { CommunicationChannel, CommunicationQueueStatus } from "@/lib/communication/types";
+import {
+  COMMUNICATION_CHANNELS,
+  COMMUNICATION_QUEUE_STATUSES,
+  type CommunicationChannel,
+  type CommunicationQueueStatus,
+} from "@/lib/communication/types";
+import {
+  localizeCommunicationChannel,
+  localizeCommunicationStatus,
+} from "@/lib/communication/utilities/communication-localize";
 
 export function CommunicationCenterPage() {
   const { t } = useTranslation("common");
@@ -42,12 +52,12 @@ export function CommunicationCenterPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{t("communication.title")}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">{t("communication.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("communication.subtitle")}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             variant="outline"
@@ -79,6 +89,39 @@ export function CommunicationCenterPage() {
         </div>
       </div>
 
+      <DashboardCard className="border-primary/20 bg-primary/5 p-4">
+        <div className="flex gap-3">
+          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Info className="size-4" aria-hidden />
+          </div>
+          <div className="min-w-0 space-y-2">
+            <div>
+              <p className="text-sm font-semibold">{t("communication.purpose.title")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("communication.purpose.body")}</p>
+            </div>
+            <ul className="list-disc space-y-1 ps-5 text-xs text-muted-foreground">
+              <li>{t("communication.purpose.pointQueue")}</li>
+              <li>{t("communication.purpose.pointNotChat")}</li>
+              <li>{t("communication.purpose.pointChannels")}</li>
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button asChild type="button" size="sm" variant="secondary">
+                <Link href="/dashboard/omnichannel">
+                  <MessageSquare className="me-1 size-3.5" />
+                  {t("communication.purpose.openOmnichannel")}
+                </Link>
+              </Button>
+              <Button asChild type="button" size="sm" variant="outline">
+                <Link href="/dashboard/channels">
+                  <Radio className="me-1 size-3.5" />
+                  {t("communication.purpose.openChannels")}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DashboardCard>
+
       <CommunicationStatsGrid
         stats={stats ?? { sentToday: 0, delivered: 0, queued: 0, failed: 0, retrying: 0 }}
         loading={statsLoading}
@@ -86,28 +129,30 @@ export function CommunicationCenterPage() {
 
       <div className="flex flex-wrap gap-3">
         <select
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
           value={channelFilter}
           onChange={(e) => setChannelFilter(e.target.value as CommunicationChannel | "")}
           aria-label={t("communication.filters.channel")}
         >
           <option value="">{t("communication.filters.allChannels")}</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
-          <option value="push">Push</option>
+          {COMMUNICATION_CHANNELS.map((channel) => (
+            <option key={channel} value={channel}>
+              {localizeCommunicationChannel(t, channel)}
+            </option>
+          ))}
         </select>
         <select
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as CommunicationQueueStatus | "")}
           aria-label={t("communication.filters.status")}
         >
           <option value="">{t("communication.filters.allStatuses")}</option>
-          <option value="queued">{t("communication.stats.queued")}</option>
-          <option value="failed">{t("communication.stats.failed")}</option>
-          <option value="retrying">{t("communication.stats.retrying")}</option>
-          <option value="delivered">{t("communication.stats.delivered")}</option>
+          {COMMUNICATION_QUEUE_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {localizeCommunicationStatus(t, status)}
+            </option>
+          ))}
         </select>
       </div>
 

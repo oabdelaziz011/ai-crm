@@ -1,4 +1,11 @@
-export const COMMUNICATION_CHANNELS = ["whatsapp", "email", "sms", "push"] as const;
+export const COMMUNICATION_CHANNELS = [
+  "whatsapp",
+  "email",
+  "sms",
+  "push",
+  "in_app",
+  "webhook",
+] as const;
 export type CommunicationChannel = (typeof COMMUNICATION_CHANNELS)[number];
 
 export const COMMUNICATION_QUEUE_STATUSES = [

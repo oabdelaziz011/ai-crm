@@ -6,6 +6,7 @@ import {
   type ProductPlatformServices,
   type CatalogProductRecord,
 } from "@workspace/product-platform";
+import { createSupabaseOpportunityRepository } from "@workspace/opportunity-platform";
 import { createModulePublisher } from "@workspace/platform-events";
 import type { CatalogProductReadModel } from "@workspace/application-layer";
 import { getLoginAppPlatformEventBus } from "@/lib/application-layer/platform-event-bus-factory.js";
@@ -133,7 +134,15 @@ export function createProductEventBridge(): ProductEventPublisherPort {
 }
 
 export function createLoginAppProductPlatformServices(client: SupabaseClient): ProductPlatformServices {
-  return createProductPlatformServices(client, { events: createProductEventBridge() });
+  const opportunities = createSupabaseOpportunityRepository(client);
+  return createProductPlatformServices(client, {
+    events: createProductEventBridge(),
+    opportunityHistory: {
+      addHistory: async (input) => {
+        await opportunities.addHistory(input);
+      },
+    },
+  });
 }
 
 export function createLoginAppProductPlatformServicesSilent(

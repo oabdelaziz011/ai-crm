@@ -6,6 +6,10 @@ import {
   createLoginAppApplicationLayerRegistry,
   permissionCodes,
 } from "@/lib/application-layer/application-layer-bootstrap";
+import {
+  unwrapCommandResult,
+  unwrapQueryResult,
+} from "@/lib/application-layer/application-layer-result";
 
 function useProductServices() {
   const { user, company } = useAuth();
@@ -42,8 +46,7 @@ export function useProductCatalog(filter?: { query?: string; productType?: strin
     enabled: Boolean(companyId && canView),
     queryFn: async () => {
       const result = await servicesFactory().product.listProducts(filter ?? {}, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -57,8 +60,7 @@ export function useProductCategories() {
     enabled: Boolean(companyId && canView),
     queryFn: async () => {
       const result = await servicesFactory().product.listCategories(contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -77,10 +79,13 @@ export function useProduct360(productId: string | null) {
         servicesFactory().product.listHistory(productId, contextFactory()),
         servicesFactory().product.listRegionalPrices(productId, contextFactory()),
       ]);
-      if (!product.ok) throw new Error(product.error.message);
-      if (!history.ok) throw new Error(history.error.message);
-      if (!regional.ok) throw new Error(regional.error.message);
-      return { product: product.data, history: history.data, regional: regional.data };
+      const productData = unwrapQueryResult(product);
+      if (!productData) return null;
+      return {
+        product: productData,
+        history: unwrapQueryResult(history),
+        regional: unwrapQueryResult(regional),
+      };
     },
   });
 }
@@ -98,8 +103,7 @@ export function useOpportunityLineItems(opportunityId: string | null) {
         opportunityId,
         contextFactory(),
       );
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -125,8 +129,7 @@ export function useProductCommands() {
       description?: string;
     }) => {
       const result = await servicesFactory().product.createProduct(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -134,8 +137,7 @@ export function useProductCommands() {
   const createCategory = useMutation({
     mutationFn: async (input: { name: string; parentId?: string | null }) => {
       const result = await servicesFactory().product.createCategory(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -149,8 +151,7 @@ export function useProductCommands() {
       currencyOverride?: string | null;
     }) => {
       const result = await servicesFactory().product.upsertRegionalPrice(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -166,8 +167,7 @@ export function useProductCommands() {
       market?: string | null;
     }) => {
       const result = await servicesFactory().product.attachToOpportunity(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -182,8 +182,7 @@ export function useProductCommands() {
       taxPercent?: number;
     }) => {
       const result = await servicesFactory().product.updateOpportunityLine(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -191,7 +190,7 @@ export function useProductCommands() {
   const removeLine = useMutation({
     mutationFn: async (input: { lineId: string }) => {
       const result = await servicesFactory().product.removeOpportunityLine(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
+      unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });

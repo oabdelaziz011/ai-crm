@@ -198,6 +198,18 @@ export function createLoginAppQuoteWritePort(
       });
       return mapQuote(quote);
     },
+    async updateDetails(input) {
+      assertTenant(input.tenantId);
+      const { quote } = await platform.commands.updateDetails(buildContext(ctx, input.tenantId), {
+        companyId: input.tenantId,
+        quoteId: input.quoteId,
+        language: input.language,
+        title: input.title,
+        notes: input.notes,
+        contactName: input.contactName,
+      });
+      return mapQuote(quote);
+    },
     async changeStatus(input) {
       assertTenant(input.tenantId);
       const { quote } = await platform.commands.changeStatus(buildContext(ctx, input.tenantId), {

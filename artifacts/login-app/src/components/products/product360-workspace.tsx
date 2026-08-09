@@ -1,5 +1,5 @@
 import { Package, Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CatalogProductReadModel } from "@workspace/application-layer";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,74 @@ import {
   useProductCatalog,
   useProductCommands,
 } from "@/hooks/products/use-product-commands";
+import { useAuthUser } from "@/hooks/use-rbac";
+import { useToast } from "@/hooks/use-toast";
+import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
+import { formatOpportunityMoney } from "@/components/opportunities/opportunity360-ui";
 import { formatBillingCurrency } from "@/lib/billing/format";
 import { cn } from "@/lib/utils";
 
-/** Company Settings currency (not per-record hardcoded codes). */
-function money(value: number | null | undefined, _currency?: string) {
-  return formatBillingCurrency(value);
+/** Catalog product workspace — company default when no explicit currency. */
+function money(value: number | null | undefined, currency?: string | null) {
+  return formatBillingCurrency(value, currency ?? undefined);
+}
+
+/** Opportunity360 products tab — opportunity record currency only. */
+function opportunityMoney(value: number | null | undefined, currency?: string | null) {
+  return formatOpportunityMoney(value, currency);
+}
+
+function OpportunityLineEditableNumber({
+  value,
+  disabled,
+  min,
+  max,
+  step,
+  className,
+  onSave,
+}: {
+  value: number;
+  disabled?: boolean;
+  min?: number;
+  max?: number;
+  step?: string;
+  className?: string;
+  onSave: (next: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const next = Number(draft);
+    if (Number.isNaN(next) || next === value) return;
+    if (min != null && next < min) return;
+    if (max != null && next > max) return;
+    onSave(next);
+  };
+
+  return (
+    <Input
+      type="number"
+      className={className}
+      value={draft}
+      disabled={disabled}
+      min={min}
+      max={max}
+      step={step}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commit();
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
 }
 
 function ProductHeader({
@@ -341,20 +403,55 @@ export function Product360Workspace({
 
 export function OpportunityProductsPanel({
   opportunityId,
+  currency,
   country,
   market,
 }: {
   opportunityId: string;
+  currency?: string | null;
   country?: string | null;
   market?: string | null;
 }) {
   const { t } = useTranslation("common");
+  const { toast } = useToast();
+  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const canEdit = isSuperAdmin || hasPermission("opportunities.edit");
   const lines = useOpportunityLineItems(opportunityId);
   const catalog = useProductCatalog({ activeOnly: true });
   const commands = useProductCommands();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const loadErrorToasted = useRef(false);
 
-  const totals = (lines.data ?? []).reduce(
+  const failToast = useCallback(
+    (titleKey: string, error?: unknown) => {
+      toast({
+        variant: "destructive",
+        title: t(titleKey),
+        description: resolveApplicationErrorMessage(error),
+      });
+    },
+    [toast, t],
+  );
+
+  const successToast = useCallback(
+    (titleKey: string) => {
+      toast({ title: t(titleKey) });
+    },
+    [toast, t],
+  );
+
+  useEffect(() => {
+    if (lines.isError && !loadErrorToasted.current) {
+      loadErrorToasted.current = true;
+      failToast("opportunities.products.loadError", lines.error);
+    }
+    if (!lines.isError) {
+      loadErrorToasted.current = false;
+    }
+  }, [lines.isError, lines.error, failToast]);
+
+  const lineItems = lines.data ?? [];
+  const totals = lineItems.reduce(
     (acc, line) => ({
       subtotal: acc.subtotal + line.subtotal,
       tax: acc.tax + line.taxAmount,
@@ -363,126 +460,266 @@ export function OpportunityProductsPanel({
     { subtotal: 0, tax: 0, total: 0 },
   );
 
+  if (lines.isLoading) {
+    return <OpportunityProductsPanelSkeleton canEdit={canEdit} />;
+  }
+
+  if (lines.isError) {
+    return (
+      <EnterpriseEmptyState
+        compact
+        icon={<Package className="size-6" aria-hidden />}
+        title={t("opportunities.products.loadError")}
+        description={t("opportunities.products.loadErrorBody")}
+        primaryAction={{
+          label: t("buttons.refresh"),
+          onClick: () => void lines.refetch(),
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[14px] font-semibold">
-          {t("opportunities.products.title", { defaultValue: "Products" })}
-        </h3>
-        <Button type="button" size="sm" className="gap-1.5" onClick={() => setPickerOpen(true)}>
-          <Plus className="size-3.5" />
-          {t("opportunities.products.add", { defaultValue: "Add product" })}
-        </Button>
+    <div className="min-h-[220px] space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-[14px] font-semibold">{t("opportunities.products.title")}</h3>
+        {canEdit ? (
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1.5"
+            disabled={commands.attachToOpportunity.isPending}
+            onClick={() => setPickerOpen(true)}
+          >
+            <Plus className="size-3.5" />
+            {t("opportunities.products.add")}
+          </Button>
+        ) : null}
       </div>
 
-      {(lines.data ?? []).length === 0 ? (
+      {lineItems.length === 0 ? (
         <EnterpriseEmptyState
           compact
           icon={<Package className="size-6" aria-hidden />}
-          title={t("opportunities.products.emptyTitle", { defaultValue: "No products attached" })}
-          description={t("opportunities.products.emptyBody", {
-            defaultValue: "Select catalog products to build the commercial scope of this opportunity.",
-          })}
-          primaryAction={{
-            label: t("opportunities.products.add", { defaultValue: "Add product" }),
-            onClick: () => setPickerOpen(true),
-          }}
+          title={t("opportunities.products.emptyTitle")}
+          description={t("opportunities.products.emptyBody")}
+          primaryAction={
+            canEdit
+              ? {
+                  label: t("opportunities.products.add"),
+                  onClick: () => setPickerOpen(true),
+                }
+              : undefined
+          }
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[640px] text-start text-[13px]">
             <thead className="border-b border-border/60 bg-muted/30 text-[11px] uppercase text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 font-semibold">Product</th>
-                <th className="px-3 py-2 font-semibold">Qty</th>
-                <th className="px-3 py-2 font-semibold">Unit</th>
-                <th className="px-3 py-2 font-semibold">Disc %</th>
-                <th className="px-3 py-2 font-semibold">Tax %</th>
-                <th className="px-3 py-2 font-semibold">Subtotal</th>
-                <th className="px-3 py-2 font-semibold">Total</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.product")}</th>
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.qty")}</th>
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.unit")}</th>
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.disc")}</th>
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.tax")}</th>
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.subtotal")}</th>
+                <th className="px-3 py-2 font-semibold">{t("opportunities.products.columns.total")}</th>
+                {canEdit ? <th className="px-3 py-2" /> : null}
               </tr>
             </thead>
             <tbody>
-              {lines.data!.map((line) => (
+              {lineItems.map((line) => (
                 <tr key={line.id} className="border-b border-border/40">
                   <td className="px-3 py-2">
                     <div className="font-medium">{line.productName}</div>
                     <div className="text-[11px] text-muted-foreground">{line.sku}</div>
                   </td>
-                  <td className="px-3 py-2 tabular-nums">{line.quantity}</td>
-                  <td className="px-3 py-2 tabular-nums">{money(line.unitPrice, line.currency)}</td>
-                  <td className="px-3 py-2 tabular-nums">{line.discountPercent}</td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {canEdit ? (
+                      <OpportunityLineEditableNumber
+                        className="h-8 w-20"
+                        value={line.quantity}
+                        disabled={commands.updateLine.isPending}
+                        onSave={(qty) => {
+                          commands.updateLine.mutate(
+                            { opportunityId, lineId: line.id, quantity: qty },
+                            {
+                              onSuccess: () => successToast("opportunities.products.updateSuccess"),
+                              onError: (error) =>
+                                failToast("opportunities.products.updateFailed", error),
+                            },
+                          );
+                        }}
+                      />
+                    ) : (
+                      line.quantity
+                    )}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {canEdit ? (
+                      <OpportunityLineEditableNumber
+                        className="h-8 w-24"
+                        value={line.unitPrice}
+                        disabled={commands.updateLine.isPending}
+                        step="0.01"
+                        onSave={(unitPrice) => {
+                          commands.updateLine.mutate(
+                            { opportunityId, lineId: line.id, unitPrice },
+                            {
+                              onSuccess: () => successToast("opportunities.products.updateSuccess"),
+                              onError: (error) =>
+                                failToast("opportunities.products.updateFailed", error),
+                            },
+                          );
+                        }}
+                      />
+                    ) : (
+                      opportunityMoney(line.unitPrice, currency)
+                    )}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {canEdit ? (
+                      <OpportunityLineEditableNumber
+                        className="h-8 w-20"
+                        value={line.discountPercent}
+                        disabled={commands.updateLine.isPending}
+                        min={0}
+                        max={100}
+                        onSave={(discountPercent) => {
+                          commands.updateLine.mutate(
+                            { opportunityId, lineId: line.id, discountPercent },
+                            {
+                              onSuccess: () => successToast("opportunities.products.updateSuccess"),
+                              onError: (error) =>
+                                failToast("opportunities.products.updateFailed", error),
+                            },
+                          );
+                        }}
+                      />
+                    ) : (
+                      line.discountPercent
+                    )}
+                  </td>
                   <td className="px-3 py-2 tabular-nums">{line.taxPercent}</td>
-                  <td className="px-3 py-2 tabular-nums">{money(line.subtotal, line.currency)}</td>
-                  <td className="px-3 py-2 font-medium tabular-nums">
-                    {money(line.total, line.currency)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => commands.removeLine.mutate({ lineId: line.id })}
-                    >
-                      Remove
-                    </Button>
-                  </td>
+                  <td className="px-3 py-2 tabular-nums">{opportunityMoney(line.subtotal, currency)}</td>
+                  <td className="px-3 py-2 font-medium tabular-nums">{opportunityMoney(line.total, currency)}</td>
+                  {canEdit ? (
+                    <td className="px-3 py-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={commands.removeLine.isPending}
+                        onClick={() => {
+                          commands.removeLine.mutate(
+                            { lineId: line.id },
+                            {
+                              onSuccess: () => successToast("opportunities.products.removeSuccess"),
+                              onError: (error) =>
+                                failToast("opportunities.products.removeFailed", error),
+                            },
+                          );
+                        }}
+                      >
+                        {t("opportunities.products.columns.remove")}
+                      </Button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="bg-muted/20 text-[13px]">
-                <td colSpan={5} className="px-3 py-2 text-end font-medium">
-                  Totals
+                <td colSpan={canEdit ? 5 : 5} className="px-3 py-2 text-end font-medium">
+                  {t("opportunities.products.totals")}
                 </td>
-                <td className="px-3 py-2 tabular-nums">{money(totals.subtotal, "USD")}</td>
-                <td className="px-3 py-2 font-semibold tabular-nums">{money(totals.total, "USD")}</td>
-                <td />
+                <td className="px-3 py-2 tabular-nums">{opportunityMoney(totals.subtotal, currency)}</td>
+                <td className="px-3 py-2 font-semibold tabular-nums">{opportunityMoney(totals.total, currency)}</td>
+                {canEdit ? <td /> : null}
               </tr>
             </tfoot>
           </table>
         </div>
       )}
 
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-w-lg">
-          <h3 className="text-[16px] font-semibold">Select product</h3>
-          <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto">
-            {(catalog.data?.items ?? []).map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                className="flex w-full items-center justify-between rounded-md border border-border/50 px-3 py-2 text-start hover:bg-muted/40"
-                onClick={() => {
-                  commands.attachToOpportunity.mutate(
-                    {
-                      opportunityId,
-                      productId: product.id,
-                      country,
-                      market,
-                    },
-                    { onSuccess: () => setPickerOpen(false) },
-                  );
+      {canEdit ? (
+        <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+          <DialogContent className="max-w-lg">
+            <h3 className="text-[16px] font-semibold">{t("opportunities.products.selectProduct")}</h3>
+            {catalog.isLoading ? (
+              <div className="mt-3 space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-14 w-full rounded-md" />
+                ))}
+              </div>
+            ) : catalog.isError ? (
+              <EnterpriseEmptyState
+                compact
+                title={t("opportunities.products.loadError")}
+                description={t("opportunities.products.loadErrorBody")}
+                primaryAction={{
+                  label: t("buttons.refresh"),
+                  onClick: () => void catalog.refetch(),
                 }}
-              >
-                <span>
-                  <span className="block text-[13px] font-medium">{product.name}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {product.sku} · {product.productType}
-                  </span>
-                </span>
-                <span className="text-[13px] font-semibold tabular-nums">
-                  {money(product.basePrice, product.currency)}
-                </span>
-              </button>
-            ))}
-            {!catalog.data?.items.length ? (
-              <p className="text-[13px] text-muted-foreground">No active catalog products.</p>
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
+              />
+            ) : (
+              <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto">
+                {(catalog.data?.items ?? []).map((product) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-md border border-border/50 px-3 py-2 text-start hover:bg-muted/40"
+                    disabled={commands.attachToOpportunity.isPending}
+                    onClick={() => {
+                      commands.attachToOpportunity.mutate(
+                        {
+                          opportunityId,
+                          productId: product.id,
+                          country,
+                          market,
+                        },
+                        {
+                          onSuccess: () => {
+                            successToast("opportunities.products.attachSuccess");
+                            setPickerOpen(false);
+                          },
+                          onError: (error) =>
+                            failToast("opportunities.products.attachFailed", error),
+                        },
+                      );
+                    }}
+                  >
+                    <span>
+                      <span className="block text-[13px] font-medium">{product.name}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {product.sku} · {product.productType}
+                      </span>
+                    </span>
+                    <span className="text-[13px] font-semibold tabular-nums">
+                      {opportunityMoney(product.basePrice, currency)}
+                    </span>
+                  </button>
+                ))}
+                {!catalog.data?.items.length ? (
+                  <p className="text-[13px] text-muted-foreground">{t("opportunities.products.noCatalog")}</p>
+                ) : null}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </div>
+  );
+}
+
+function OpportunityProductsPanelSkeleton({ canEdit }: { canEdit: boolean }) {
+  return (
+    <div className="min-h-[220px] space-y-4" aria-busy="true">
+      <div className="flex items-center justify-between gap-3">
+        <Skeleton className="h-5 w-28" />
+        {canEdit ? <Skeleton className="h-8 w-28" /> : null}
+      </div>
+      <Skeleton className="h-[180px] w-full rounded-lg" />
     </div>
   );
 }

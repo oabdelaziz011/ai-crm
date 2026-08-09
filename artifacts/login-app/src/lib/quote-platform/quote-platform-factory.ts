@@ -7,6 +7,7 @@ import {
   type QuoteLineItemRecord,
   type QuoteRecord,
 } from "@workspace/quote-platform";
+import { createSupabaseOpportunityRepository } from "@workspace/opportunity-platform";
 import { createModulePublisher } from "@workspace/platform-events";
 import type {
   QuoteLineItemReadModel,
@@ -175,7 +176,15 @@ export function createQuoteEventBridge(): QuoteEventPublisherPort {
 }
 
 export function createLoginAppQuotePlatformServices(client: SupabaseClient): QuotePlatformServices {
-  return createQuotePlatformServices(client, { events: createQuoteEventBridge() });
+  const opportunities = createSupabaseOpportunityRepository(client);
+  return createQuotePlatformServices(client, {
+    events: createQuoteEventBridge(),
+    opportunityHistory: {
+      addHistory: async (input) => {
+        await opportunities.addHistory(input);
+      },
+    },
+  });
 }
 
 export function createLoginAppQuotePlatformServicesSilent(

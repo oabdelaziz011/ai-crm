@@ -6,6 +6,10 @@ import {
   createLoginAppApplicationLayerRegistry,
   permissionCodes,
 } from "@/lib/application-layer/application-layer-bootstrap";
+import {
+  unwrapCommandResult,
+  unwrapQueryResult,
+} from "@/lib/application-layer/application-layer-result";
 
 function useQuoteServices() {
   const { user, company } = useAuth();
@@ -47,8 +51,7 @@ export function useQuotesList(filter?: {
     enabled: Boolean(companyId && canView),
     queryFn: async () => {
       const result = await servicesFactory().quote.listQuotes(filter ?? {}, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -64,11 +67,10 @@ export function useOpportunityQuotes(opportunityId: string | null) {
     queryFn: async () => {
       if (!opportunityId) return { items: [], total: 0 };
       const result = await servicesFactory().quote.listQuotes(
-        { opportunityId, currentOnly: true },
+        { opportunityId },
         contextFactory(),
       );
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -85,31 +87,25 @@ export function useQuote360(quoteId: string | null) {
       if (!quoteId) return null;
       const svc = servicesFactory();
       const ctx = contextFactory();
-      const quote = await svc.quote.getQuote(quoteId, ctx);
-      if (!quote.ok) throw new Error(quote.error.message);
-      if (!quote.data) return null;
+      const quoteResult = await svc.quote.getQuote(quoteId, ctx);
+      const quote = unwrapQueryResult(quoteResult);
+      if (!quote) return null;
 
       const [lines, versions, history, approvals, templates] = await Promise.all([
         svc.quote.listLines(quoteId, ctx),
-        svc.quote.listVersions(quote.data.quoteFamilyId, ctx),
+        svc.quote.listVersions(quote.quoteFamilyId, ctx),
         svc.quote.listHistory(quoteId, ctx),
         svc.quote.listApprovals(quoteId, ctx),
         svc.quote.listTemplates(ctx),
       ]);
 
-      if (!lines.ok) throw new Error(lines.error.message);
-      if (!versions.ok) throw new Error(versions.error.message);
-      if (!history.ok) throw new Error(history.error.message);
-      if (!approvals.ok) throw new Error(approvals.error.message);
-      if (!templates.ok) throw new Error(templates.error.message);
-
       return {
-        quote: quote.data,
-        lines: lines.data,
-        versions: versions.data,
-        history: history.data,
-        approvals: approvals.data,
-        templates: templates.data,
+        quote,
+        lines: unwrapQueryResult(lines),
+        versions: unwrapQueryResult(versions),
+        history: unwrapQueryResult(history),
+        approvals: unwrapQueryResult(approvals),
+        templates: unwrapQueryResult(templates),
       };
     },
   });
@@ -133,16 +129,14 @@ export function useQuoteCommands() {
         title?: string;
       }) => {
         const result = await servicesFactory().quote.createFromOpportunity(input, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
     createVersion: useMutation({
       mutationFn: async (quoteId: string) => {
         const result = await servicesFactory().quote.createVersion({ quoteId }, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
@@ -155,8 +149,7 @@ export function useQuoteCommands() {
         taxPercent?: number;
       }) => {
         const result = await servicesFactory().quote.addCatalogProduct(input, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
@@ -170,32 +163,41 @@ export function useQuoteCommands() {
         taxPercent?: number;
       }) => {
         const result = await servicesFactory().quote.updateLine(input, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
     removeLine: useMutation({
       mutationFn: async (input: { quoteId: string; lineId: string }) => {
         const result = await servicesFactory().quote.removeLine(input, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
+      },
+      onSuccess: invalidate,
+    }),
+    updateDetails: useMutation({
+      mutationFn: async (input: {
+        quoteId: string;
+        language?: string;
+        title?: string;
+        notes?: string;
+        contactName?: string;
+      }) => {
+        const result = await servicesFactory().quote.updateDetails(input, contextFactory());
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
     changeStatus: useMutation({
       mutationFn: async (input: { quoteId: string; status: string }) => {
         const result = await servicesFactory().quote.changeStatus(input, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
     requestApproval: useMutation({
       mutationFn: async (quoteId: string) => {
         const result = await servicesFactory().quote.requestApproval({ quoteId }, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),
@@ -207,8 +209,7 @@ export function useQuoteCommands() {
         decisionNote?: string;
       }) => {
         const result = await servicesFactory().quote.decideApproval(input, contextFactory());
-        if (!result.ok) throw new Error(result.error.message);
-        return result.data;
+        return unwrapCommandResult(result);
       },
       onSuccess: invalidate,
     }),

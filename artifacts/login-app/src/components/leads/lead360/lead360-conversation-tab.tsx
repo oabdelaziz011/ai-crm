@@ -5,6 +5,7 @@ import type { Lead360ActivityItemDto } from "@workspace/application-layer";
 import type { Lead360AiPanelDto } from "@/lib/lead-intelligence/lead360-ai-types";
 import { EnterpriseEmptyState } from "@/components/enterprise";
 import { ProvenanceLine, humanizeSignal } from "./lead360-ui";
+import { localizeLeadChannel, localizeLeadIntent } from "./lead360-localize";
 import { cn } from "@/lib/utils";
 
 type EnrichedMessage = {
@@ -72,19 +73,14 @@ export function Lead360ConversationTab({
       <EnterpriseEmptyState
         compact
         icon={<MessageSquare className="size-6" aria-hidden />}
-        title={t("leads360.empty.conversationTitle", {
-          defaultValue: "No conversation yet",
-        })}
-        description={t("leads360.empty.conversation", {
-          defaultValue:
-            "When the customer messages on WhatsApp, email, or other channels, the thread will appear here with AI analysis.",
-        })}
+        title={t("leads360.empty.conversationTitle")}
+        description={t("leads360.empty.conversation")}
       />
     );
   }
 
   return (
-    <div className="space-y-3" role="log" aria-label={t("leads360.tabs.conversation", { defaultValue: "Conversation" })}>
+    <div className="space-y-3" role="log" aria-label={t("leads360.tabs.conversation")}>
       {messages.map((message) => {
         const isCustomer = !/agent|user|system/i.test(message.actor ?? "");
         return (
@@ -98,10 +94,10 @@ export function Lead360ConversationTab({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {isCustomer
-                  ? t("leads360.conversation.customer", { defaultValue: "Customer" })
-                  : t("leads360.conversation.team", { defaultValue: "Team" })}
+                  ? t("leads360.conversation.customer")
+                  : t("leads360.conversation.team")}
                 <span className="ms-2 font-normal normal-case text-muted-foreground/80">
-                  · {message.channel}
+                  · {localizeLeadChannel(t, message.channel)}
                 </span>
               </p>
               <time className="text-[11px] text-muted-foreground">
@@ -116,22 +112,24 @@ export function Lead360ConversationTab({
             {(message.intent || message.country) && (
               <div className="mt-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("leads360.conversation.aiAnalysis", { defaultValue: "AI Analysis" })}
+                  {t("leads360.conversation.aiAnalysis")}
                 </p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {message.intent ? (
                     <div>
                       <p className="text-[11px] text-muted-foreground">
-                        {t("leads360.ai.intent", { defaultValue: "Intent" })}
+                        {t("leads360.ai.intent")}
                       </p>
-                      <p className="text-[13px] font-medium">{message.intent}</p>
+                      <p className="text-[13px] font-medium">
+                        {localizeLeadIntent(t, message.intent)}
+                      </p>
                       <ProvenanceLine confidence={message.intentConfidence} source="conversation" />
                     </div>
                   ) : null}
                   {message.country ? (
                     <div>
                       <p className="text-[11px] text-muted-foreground">
-                        {t("leads360.ai.country", { defaultValue: "Country" })}
+                        {t("leads360.ai.country")}
                       </p>
                       <p className="text-[13px] font-medium">{message.country}</p>
                       <ProvenanceLine

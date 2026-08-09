@@ -2,19 +2,29 @@ import { useTranslation } from "react-i18next";
 import type { LeadReadModel } from "@workspace/application-layer";
 import type { Lead360AiPanelDto } from "@/lib/lead-intelligence/lead360-ai-types";
 import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
-import { AiCard, ScoreGauge, ProvenanceLine, pct } from "./lead360-ui";
+import {
+  AiCard,
+  ScoreGauge,
+  ProvenanceLine,
+  pct,
+  localizedScoreBandLabel,
+  normalizeLeadScore,
+} from "./lead360-ui";
 import { cn } from "@/lib/utils";
 
 export function Lead360SmartRail({
   lead,
   panel,
+  compact = false,
 }: {
   lead: LeadReadModel;
   panel?: Lead360AiPanelDto | null;
+  /** Horizontal summary strip for mobile — same data, no logic changes. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("common");
   const intel = panel?.intelligence;
-  const score = intel?.score.overall.value ?? lead.score;
+  const score = normalizeLeadScore(intel?.score.overall.value ?? lead.score);
   const temperature = intel?.temperature.value ?? lead.temperature;
   const confidence = intel?.overallConfidence;
   const country = intel?.country.country.value;
@@ -25,6 +35,55 @@ export function Lead360SmartRail({
     lifecycleStatus: lead.lifecycleStatus,
     slug: lead.stage,
   });
+
+  if (compact) {
+    return (
+      <div
+        className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label={t("leads360.summary")}
+      >
+        <div className="min-w-[140px] shrink-0 rounded-xl border border-border/50 bg-card/80 px-4 py-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {t("leads360.ai.score")}
+          </p>
+          <p className="mt-1 text-[20px] font-semibold tabular-nums">
+            {score ?? "—"}
+            <span className="ms-0.5 text-[12px] font-medium text-muted-foreground">/ 100</span>
+          </p>
+          <p className="text-[11px] text-muted-foreground">{localizedScoreBandLabel(t, score)}</p>
+        </div>
+        {temperature ? (
+          <div className="min-w-[120px] shrink-0 rounded-xl border border-border/50 bg-card/80 px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {t("leads360.ai.temperature")}
+            </p>
+            <p
+              className={cn(
+                "mt-1 text-[15px] font-semibold",
+                temperature === "hot" && "text-orange-600 dark:text-orange-300",
+                temperature === "warm" && "text-amber-600 dark:text-amber-300",
+                temperature === "cold" && "text-sky-600 dark:text-sky-300",
+              )}
+            >
+              {t(`leads.scoreBand.${temperature}`)}
+            </p>
+          </div>
+        ) : null}
+        <div className="min-w-[140px] shrink-0 rounded-xl border border-border/50 bg-card/80 px-4 py-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {t("leads.columns.owner")}
+          </p>
+          <p className="mt-1 truncate text-[14px] font-semibold">{lead.owner || "—"}</p>
+        </div>
+        <div className="min-w-[120px] shrink-0 rounded-xl border border-border/50 bg-card/80 px-4 py-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {t("leads.columns.stage")}
+          </p>
+          <p className="mt-1 text-[13px] font-semibold leading-snug">{stageLabel}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <aside className="space-y-3.5" aria-label={t("leads360.smartRail")}>

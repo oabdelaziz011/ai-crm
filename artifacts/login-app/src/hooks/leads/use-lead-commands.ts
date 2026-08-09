@@ -6,6 +6,7 @@ import {
   createLoginAppApplicationLayerRegistry,
   permissionCodes,
 } from "@/lib/application-layer/application-layer-bootstrap";
+import { unwrapCommandResult } from "@/lib/application-layer/application-layer-result";
 
 /** Canonical CRM create payload — maps 1:1 to LeadCreateInput (minus tenant/actor). */
 export type LeadCreateCommandInput = {
@@ -112,7 +113,8 @@ export function useLeadCommands() {
   const convert = useMutation({
     mutationFn: async ({ leadId }: { leadId: string }) => {
       const services = servicesFactory();
-      return assertOk(await services.lead.convertLead({ leadId }, contextFactory()));
+      const result = await services.lead.convertLead({ leadId }, contextFactory());
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });

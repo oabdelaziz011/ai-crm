@@ -42,13 +42,17 @@ export function KanbanToolbar({
 }) {
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-[1.35rem] font-semibold tracking-tight">
             {title ?? labels.pageTitle}
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/*
+          Same-row primary actions. In RTL, last flex item sits on the visual left (شمال):
+          New Lead leftmost, pipeline selector beside it.
+        */}
+        <div className="flex shrink-0 flex-nowrap items-center gap-2">
           <Select value={pipelineId ?? undefined} onValueChange={onPipelineChange}>
             <SelectTrigger className="h-10 w-[min(100%,220px)]" aria-label={labels.pipeline}>
               <SelectValue placeholder={labels.pipeline} />

@@ -7,6 +7,7 @@ import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-la
 import type { LeadReadModel } from "@workspace/application-layer";
 import type { Lead360AiPanelDto } from "@/lib/lead-intelligence/lead360-ai-types";
 import { cn } from "@/lib/utils";
+import { normalizeLeadScore } from "./lead360-ui";
 
 function formatRelative(value: string | null | undefined, locale: string): string {
   if (!value) return "—";
@@ -26,7 +27,7 @@ export function Lead360Header({
 }) {
   const { t, i18n } = useTranslation("common");
   const intel = panel?.intelligence;
-  const score = intel?.score.overall.value ?? lead.score;
+  const score = normalizeLeadScore(intel?.score.overall.value ?? lead.score);
   const temperature = intel?.temperature.value ?? lead.temperature;
   const country = intel?.country.country.value;
   const market = intel?.country.market.value;
@@ -66,7 +67,7 @@ export function Lead360Header({
                   </span>
                 ) : null}
                 <span className="text-[13px] font-semibold tabular-nums text-foreground/90">
-                  {t("leads360.aiScore", { score: Math.round(score) })}
+                  {t("leads360.aiScore", { score: score ?? 0 })}
                 </span>
               </div>
 
@@ -150,7 +151,7 @@ export function Lead360Header({
           size="icon"
           className="size-9 shrink-0 rounded-lg"
           onClick={onClose}
-          aria-label={t("common.close", { defaultValue: "Close" })}
+          aria-label={t("leads360.close")}
         >
           <X className="size-4" />
         </Button>

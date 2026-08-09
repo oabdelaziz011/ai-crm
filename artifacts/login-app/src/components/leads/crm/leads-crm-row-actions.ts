@@ -28,6 +28,7 @@ export type LeadTableActionPermissions = {
   canView: boolean;
   canEdit: boolean;
   canAssign: boolean;
+  canCreateOpportunity: boolean;
   canConvert: boolean;
   canArchive: boolean;
   canDelete: boolean;
@@ -67,12 +68,48 @@ const GROUP_LABEL_KEYS: Record<LeadTableActionGroupId, string> = {
   dangerous: "leads.table.rowActions.groups.dangerous",
 };
 
+/** Matches Lead360 — converted leads must not offer Convert again. */
+export function isLeadAlreadyConverted(input: {
+  customerId?: string | null;
+  lifecycleStatus?: string | null;
+}): boolean {
+  const status = (input.lifecycleStatus ?? "").trim().toLowerCase();
+  // Only terminal convert status hides the action. A linked customerId alone can mean a
+  // partial conversion that still needs Convert to finalize lifecycle status.
+  return status === "converted" || status === "won";
+}
+
+/** Matches backend createFromLead eligibility — qualified leads or converted accounts. */
+export function isLeadEligibleForOpportunityCreation(input: {
+  isQualified?: boolean;
+  customerId?: string | null;
+  lifecycleStatus?: string | null;
+}): boolean {
+  if (input.customerId?.trim()) return true;
+  if (input.isQualified) return true;
+  // Stage lifecycle can be qualified while the denormalized flag lags behind.
+  const status = (input.lifecycleStatus ?? "").trim().toLowerCase();
+  return status === "qualified";
+}
+
 export function resolveLeadTableActions(input: {
   permissions: LeadTableActionPermissions;
   hasPhone: boolean;
   hasEmail: boolean;
+  isConverted?: boolean;
+  isQualified?: boolean;
+  customerId?: string | null;
+  lifecycleStatus?: string | null;
 }): LeadTableActionDef[] {
-  const { permissions: p, hasPhone, hasEmail } = input;
+  const {
+    permissions: p,
+    hasPhone,
+    hasEmail,
+    isConverted = false,
+    isQualified = false,
+    customerId = null,
+    lifecycleStatus = null,
+  } = input;
   const actions: LeadTableActionDef[] = [];
 
   if (p.canView) {
@@ -114,14 +151,19 @@ export function resolveLeadTableActions(input: {
       group: "assignment",
     });
   }
-  if (p.canEdit) {
+  if (p.canCreateOpportunity) {
     actions.push({
       id: "createOpportunity",
       labelKey: "leads.table.rowActions.createOpportunity",
       group: "conversion",
+      disabled: !isLeadEligibleForOpportunityCreation({
+        isQualified,
+        customerId,
+        lifecycleStatus,
+      }),
     });
   }
-  if (p.canConvert) {
+  if (p.canConvert && !isConverted) {
     actions.push({
       id: "convert",
       labelKey: "leads.table.rowActions.convert",

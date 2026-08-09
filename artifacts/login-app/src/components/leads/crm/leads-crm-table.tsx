@@ -38,6 +38,7 @@ import type { EmployeeIdentity } from "@/lib/employee-identity/types";
 import { cn } from "@/lib/utils";
 import {
   groupLeadTableActions,
+  isLeadAlreadyConverted,
   resolveLeadTableActions,
   type LeadTableActionId,
   type LeadTableActionPermissions,
@@ -195,13 +196,20 @@ function LeadRowActionsMenu({
     permissions,
     hasPhone: Boolean(row.phone?.trim()),
     hasEmail: Boolean(row.email?.trim()),
+    isQualified: row.isQualified,
+    customerId: row.customerId,
+    lifecycleStatus: row.lifecycleStatus,
+    isConverted: isLeadAlreadyConverted({
+      customerId: row.customerId,
+      lifecycleStatus: row.lifecycleStatus,
+    }),
   });
   const sections = groupLeadTableActions(actions);
 
   if (sections.length === 0) return null;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -217,9 +225,11 @@ function LeadRowActionsMenu({
       <DropdownMenuContent
         align="end"
         side="bottom"
-        collisionPadding={16}
+        sideOffset={6}
+        collisionPadding={12}
         avoidCollisions
-        className="w-[240px] min-w-[220px] max-w-[260px] rounded-xl border-border/70 p-1.5 shadow-lg"
+        sticky="partial"
+        className="w-[240px] min-w-[220px] max-w-[260px] max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto rounded-xl border-border/70 p-1.5 shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
         {sections.map((section, index) => (
@@ -238,7 +248,11 @@ function LeadRowActionsMenu({
                     "gap-2 rounded-md px-2 py-1.5 focus:bg-accent",
                     action.destructive && "text-destructive focus:bg-destructive/10 focus:text-destructive",
                   )}
-                  onSelect={() => onAction(action.id, row)}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    if (action.disabled) return;
+                    onAction(action.id, row);
+                  }}
                 >
                   <Icon className="size-3.5 shrink-0 opacity-80" aria-hidden />
                   <span className="truncate">{t(action.labelKey)}</span>

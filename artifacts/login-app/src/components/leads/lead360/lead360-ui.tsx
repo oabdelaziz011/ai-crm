@@ -26,6 +26,15 @@ export function scoreLabel(score: number | null | undefined): string {
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
+export function localizedScoreBandLabel(
+  t: (key: string) => string,
+  score: number | null | undefined,
+): string {
+  const key = scoreBandKey(score);
+  if (!key) return "—";
+  return t(`leads360.scoreBand.${key}`);
+}
+
 export function AiCard({
   title,
   children,
@@ -45,13 +54,40 @@ export function AiCard({
       )}
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {title}
         </h3>
         {action}
       </div>
       {children}
     </section>
+  );
+}
+
+/** Enterprise overview cell — label on top, value below (RTL-friendly). */
+export function OverviewInfoCell({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border/50 bg-card/70 p-4 shadow-sm transition-colors hover:bg-card/90",
+        className,
+      )}
+    >
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-2 min-h-[1.25rem] text-[14px] font-medium leading-snug text-foreground">
+        {value ?? "—"}
+      </div>
+    </div>
   );
 }
 
@@ -64,6 +100,7 @@ export function ConfidenceBar({
   confidence: number;
   source?: string | null;
 }) {
+  const { t } = useTranslation("common");
   const width = Math.max(0, Math.min(100, confidence <= 1 ? confidence * 100 : confidence));
   return (
     <div className="space-y-1.5">
@@ -77,21 +114,35 @@ export function ConfidenceBar({
         aria-valuenow={Math.round(width)}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`${label} confidence`}
+        aria-label={label}
       >
         <div
           className="h-full rounded-full bg-foreground/80 transition-[width] duration-500 ease-out"
           style={{ width: `${width}%` }}
         />
       </div>
-      {source ? <p className="text-[11px] text-muted-foreground">Source · {source}</p> : null}
+      {source ? (
+        <p className="text-[11px] text-muted-foreground">
+          {t("leads360.provenance.source")} · {source}
+        </p>
+      ) : null}
     </div>
   );
 }
 
+/** Normalize lead/AI scores that may be 0–1 fractions or 0–100 points. */
+export function normalizeLeadScore(score: number | null | undefined): number | null {
+  if (score == null || Number.isNaN(score)) return null;
+  const scaled = score > 0 && score <= 1 ? score * 100 : score;
+  return Math.max(0, Math.min(100, Math.round(scaled)));
+}
+
 export function ScoreGauge({ score }: { score: number | null | undefined }) {
-  const value = score == null || Number.isNaN(score) ? null : Math.round(score);
-  const width = value == null ? 0 : Math.max(0, Math.min(100, value));
+  const { t } = useTranslation("common");
+  const value = normalizeLeadScore(score);
+  const width = value == null ? 0 : value;
+  const bandLabel = localizedScoreBandLabel(t, value);
+
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between gap-3">
@@ -100,7 +151,7 @@ export function ScoreGauge({ score }: { score: number | null | undefined }) {
             {value == null ? "—" : value}
             <span className="ms-1 text-[14px] font-medium text-muted-foreground">/ 100</span>
           </div>
-          <div className="mt-1 text-[12px] font-medium text-muted-foreground">{scoreLabel(value)}</div>
+          <div className="mt-1 text-[12px] font-medium text-muted-foreground">{bandLabel}</div>
         </div>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden>
@@ -145,16 +196,33 @@ export function ProvenanceLine({
   updatedAt?: string | null;
   valueLabel?: string | null;
 }) {
+  const { t } = useTranslation("common");
   if (confidence == null && !source && !updatedAt && !valueLabel) return null;
   const updatedLabel = formatUpdatedAt(updatedAt);
   return (
     <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-      {valueLabel ? <span className="me-2">Value · {valueLabel}</span> : null}
-      {confidence != null ? <span>Confidence {pct(confidence)}</span> : null}
+      {valueLabel ? (
+        <span className="me-2">
+          {t("leads360.provenance.value")} · {valueLabel}
+        </span>
+      ) : null}
+      {confidence != null ? (
+        <span>
+          {t("leads360.provenance.confidence")} {pct(confidence)}
+        </span>
+      ) : null}
       {confidence != null && source ? " · " : null}
-      {source ? <span>Source · {source}</span> : null}
+      {source ? (
+        <span>
+          {t("leads360.provenance.source")} · {source}
+        </span>
+      ) : null}
       {(confidence != null || source) && updatedLabel ? " · " : null}
-      {updatedLabel ? <span>Updated · {updatedLabel}</span> : null}
+      {updatedLabel ? (
+        <span>
+          {t("leads360.provenance.updated")} · {updatedLabel}
+        </span>
+      ) : null}
     </p>
   );
 }
@@ -170,8 +238,9 @@ function formatUpdatedAt(value?: string | null): string | null {
 }
 
 export function Lead360Skeleton() {
+  const { t } = useTranslation("common");
   return (
-    <div className="space-y-4 p-6" aria-busy="true" aria-label="Loading">
+    <div className="space-y-4 p-6" aria-busy="true" aria-label={t("leads360.loading")}>
       <div className="flex gap-4">
         <Skeleton className="size-14 rounded-full" />
         <div className="flex-1 space-y-2">
@@ -180,13 +249,11 @@ export function Lead360Skeleton() {
         </div>
       </div>
       <Skeleton className="h-10 w-full" />
-      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <div className="space-y-3">
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-        </div>
+      <div className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2">
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
       </div>
     </div>
   );

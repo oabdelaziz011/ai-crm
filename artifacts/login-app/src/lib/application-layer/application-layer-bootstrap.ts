@@ -253,6 +253,30 @@ export function permissionCodes(hasPermission: (code: string) => boolean, isSupe
 
     "licenses.assign",
 
+    "quotes.view",
+
+    "quotes.create",
+
+    "quotes.edit",
+
+    "quotes.send",
+
+    "quotes.approve",
+
+    "quotes.delete",
+
+    "opportunities.view",
+
+    "opportunities.create",
+
+    "opportunities.edit",
+
+    "products.view",
+
+    "products.create",
+
+    "products.edit",
+
   ];
 
   for (const code of map) {

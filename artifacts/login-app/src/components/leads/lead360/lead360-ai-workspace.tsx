@@ -89,11 +89,11 @@ export function Lead360AiWorkspace({
       setEditingId(null);
       void qc.invalidateQueries({ queryKey: ["lead360-workspace"] });
       void qc.invalidateQueries({ queryKey: ["leads-workspace"] });
-      toast({ title: t("common.saved", { defaultValue: "Saved" }) });
+      toast({ title: t("leads360.ai.saved") });
     },
     onError: (error) => {
       toast({
-        title: t("common.error", { defaultValue: "Error" }),
+        title: t("leads360.ai.error"),
         description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
@@ -103,27 +103,27 @@ export function Lead360AiWorkspace({
   const confidenceRows = intel
     ? [
         {
-          label: t("leads360.ai.country", { defaultValue: "Country" }),
+          label: t("leads360.ai.country"),
           confidence: intel.country.countryCode.confidence,
           source: intel.country.countryCode.source,
         },
         {
-          label: t("leads360.ai.company", { defaultValue: "Company" }),
+          label: t("leads360.ai.company"),
           confidence: intel.companyName.confidence,
           source: intel.companyName.source,
         },
         {
-          label: t("leads360.ai.intent", { defaultValue: "Intent" }),
+          label: t("leads360.ai.intent"),
           confidence: intel.fieldConfidence.intents ?? intel.intents[0]?.confidence ?? 0,
           source: intel.intents[0]?.source,
         },
         {
-          label: t("leads360.ai.industry", { defaultValue: "Industry" }),
+          label: t("leads360.ai.industry"),
           confidence: intel.industry.confidence,
           source: intel.industry.source,
         },
         {
-          label: t("leads360.ai.overallConfidence", { defaultValue: "Overall" }),
+          label: t("leads360.ai.overallConfidence"),
           confidence: intel.overallConfidence,
           source: "pipeline",
         },
@@ -134,17 +134,17 @@ export function Lead360AiWorkspace({
     return (
       <div className="rounded-xl border border-dashed border-border/60 px-6 py-16 text-center">
         <p className="text-[14px] font-medium text-foreground">
-          {t("leads360.ai.emptyTitle", { defaultValue: "AI workspace ready" })}
+          {t("leads360.ai.emptyTitle")}
         </p>
         <p className="mt-2 text-[13px] text-muted-foreground">
-          {t("leads360.ai.empty", {
-            defaultValue: "Insights appear after context is ready and analysis runs.",
-          })}
+          {t("leads360.ai.emptyBody")}
         </p>
         {aiStatus?.captureState ? (
           <p className="mt-4 text-[12px] text-muted-foreground">
-            Capture · {aiStatus.captureState}
-            {aiStatus.contextReady ? " · Context ready" : " · Collecting"}
+            {t("leads360.ai.auditMeta.capture")} · {aiStatus.captureState}
+            {aiStatus.contextReady
+              ? ` · ${t("leads360.ai.auditMeta.contextReady")}`
+              : ` · ${t("leads360.ai.auditMeta.collecting")}`}
           </p>
         ) : null}
       </div>
@@ -154,12 +154,12 @@ export function Lead360AiWorkspace({
   return (
     <div className="space-y-4">
       {intel?.summary.value ? (
-        <AiCard title={t("leads360.ai.summary", { defaultValue: "AI Summary" })}>
+        <AiCard title={t("leads360.ai.summary")}>
           <p className="text-[14px] leading-relaxed text-foreground/90">{intel.summary.value}</p>
           {interestBullets.length > 0 ? (
             <div className="mt-3">
               <p className="text-[12px] font-medium text-muted-foreground">
-                {t("leads360.ai.interestedModules", { defaultValue: "Interested modules" })}
+                {t("leads360.ai.interestedModules")}
               </p>
               <ul className="mt-2 space-y-1 text-[13px] text-foreground">
                 {interestBullets.map((item) => (
@@ -180,15 +180,15 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {intel ? (
-        <AiCard title={t("leads360.ai.score", { defaultValue: "Lead Score" })}>
+        <AiCard title={t("leads360.ai.score")}>
           <ScoreGauge score={intel.score.overall.value} />
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {(
               [
-                ["Overall", intel.score.overall],
-                ["Engagement", intel.score.engagement],
-                ["Sales Readiness", intel.score.salesReadiness],
-                ["Business Fit", intel.score.businessFit],
+                [t("leads360.ai.scoreDimensions.overall"), intel.score.overall],
+                [t("leads360.ai.scoreDimensions.engagement"), intel.score.engagement],
+                [t("leads360.ai.scoreDimensions.salesReadiness"), intel.score.salesReadiness],
+                [t("leads360.ai.scoreDimensions.businessFit"), intel.score.businessFit],
               ] as const
             ).map(([label, field]) => (
               <div key={label} className="rounded-lg border border-border/40 px-3 py-2">
@@ -204,7 +204,7 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {confidenceRows.length > 0 ? (
-        <AiCard title={t("leads360.ai.confidence", { defaultValue: "Confidence" })}>
+        <AiCard title={t("leads360.ai.confidence")}>
           <div className="space-y-3">
             {confidenceRows.map((row) => (
               <ConfidenceBar
@@ -219,17 +219,17 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {intel?.country.country.value || intel?.country.countryCode.value ? (
-        <AiCard title={t("leads360.ai.countryIntelligence", { defaultValue: "Country Intelligence" })}>
+        <AiCard title={t("leads360.ai.countryIntelligence")}>
           <dl className="grid gap-3 sm:grid-cols-2">
             {(
               [
-                ["Country", intel.country.country.value, intel.country.country],
-                ["Country Code", intel.country.countryCode.value, intel.country.countryCode],
-                ["Market", intel.country.market.value, intel.country.market],
-                ["Currency", intel.country.currency.value, intel.country.currency],
-                ["Timezone", intel.country.timezone.value, intel.country.timezone],
-                ["Language", intel.country.language.value, intel.country.language],
-                ["Locale", intel.country.locale.value, intel.country.locale],
+                [t("leads360.ai.country"), intel.country.country.value, intel.country.country],
+                [t("leads360.ai.countryFields.countryCode"), intel.country.countryCode.value, intel.country.countryCode],
+                [t("leads360.ai.market"), intel.country.market.value, intel.country.market],
+                [t("leads360.ai.countryFields.currency"), intel.country.currency.value, intel.country.currency],
+                [t("leads360.ai.countryFields.timezone"), intel.country.timezone.value, intel.country.timezone],
+                [t("leads360.ai.countryFields.language"), intel.country.language.value, intel.country.language],
+                [t("leads360.ai.countryFields.locale"), intel.country.locale.value, intel.country.locale],
               ] as const
             )
               .filter(([, value]) => Boolean(value))
@@ -243,7 +243,7 @@ export function Lead360AiWorkspace({
             {businessWeekForCountry(intel.country.countryCode.value) ? (
               <div>
                 <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Business Week
+                  {t("leads360.ai.countryFields.businessWeek")}
                 </dt>
                 <dd className="mt-0.5 text-[14px] font-semibold">
                   {businessWeekForCountry(intel.country.countryCode.value)}
@@ -255,7 +255,7 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {intel?.buyingSignals?.length ? (
-        <AiCard title={t("leads360.ai.sections.buyingSignals", { defaultValue: "Buying Signals" })}>
+        <AiCard title={t("leads360.ai.sections.buyingSignals")}>
           <div className="flex flex-wrap gap-2">
             {intel.buyingSignals.map((signal) => (
               <div key={`${signal.type}-${signal.timestamp}`} className="space-y-1">
@@ -272,7 +272,7 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {intel?.riskSignals?.length ? (
-        <AiCard title={t("leads360.ai.sections.riskSignals", { defaultValue: "Risk Signals" })}>
+        <AiCard title={t("leads360.ai.sections.riskSignals")}>
           <div className="flex flex-wrap gap-2">
             {intel.riskSignals.map((signal) => (
               <div key={`${signal.type}-${signal.timestamp}`} className="space-y-1">
@@ -289,7 +289,7 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {intel?.recommendations[0] ? (
-        <AiCard title={t("leads360.ai.recommendation", { defaultValue: "Recommended Next Action" })}>
+        <AiCard title={t("leads360.ai.recommendation")}>
           <p className="text-[16px] font-semibold tracking-tight">{intel.recommendations[0].action}</p>
           <p className="mt-2 text-[13px] text-muted-foreground">{intel.recommendations[0].reason}</p>
           <ProvenanceLine
@@ -301,7 +301,7 @@ export function Lead360AiWorkspace({
       ) : null}
 
       {memory.length > 0 ? (
-        <AiCard title={t("leads360.ai.sections.memory", { defaultValue: "Customer Memory" })}>
+        <AiCard title={t("leads360.ai.sections.memory")}>
           <ol className="relative space-y-3 border-s border-border/60 ps-4">
             {memory.slice(0, 12).map((fact) => (
               <li key={`${fact.factKey}-${fact.updatedAt}`} className="relative">
@@ -318,15 +318,13 @@ export function Lead360AiWorkspace({
             ))}
           </ol>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            {t("leads360.ai.memoryHint", {
-              defaultValue: "Automatically updated over time.",
-            })}
+            {t("leads360.ai.memoryHint")}
           </p>
         </AiCard>
       ) : null}
 
       {suggestions.length > 0 ? (
-        <AiCard title={t("leads360.ai.sections.suggestions", { defaultValue: "AI Suggestions" })}>
+        <AiCard title={t("leads360.ai.sections.suggestions")}>
           <div className="space-y-3">
             {suggestions.map((suggestion) => {
               const proposed =
@@ -351,7 +349,7 @@ export function Lead360AiWorkspace({
                         className="h-9 max-w-sm"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
-                        aria-label={t("common.edit", { defaultValue: "Edit" })}
+                        aria-label={t("leads360.ai.edit")}
                       />
                       <Button
                         type="button"
@@ -366,7 +364,7 @@ export function Lead360AiWorkspace({
                           })
                         }
                       >
-                        {t("common.save", { defaultValue: "Save" })}
+                        {t("buttons.save")}
                       </Button>
                       <Button
                         type="button"
@@ -375,7 +373,7 @@ export function Lead360AiWorkspace({
                         className="h-9"
                         onClick={() => setEditingId(null)}
                       >
-                        {t("common.cancel", { defaultValue: "Cancel" })}
+                        {t("buttons.cancel")}
                       </Button>
                     </div>
                   ) : (
@@ -392,7 +390,7 @@ export function Lead360AiWorkspace({
                           })
                         }
                       >
-                        {t("common.accept", { defaultValue: "Accept" })}
+                        {t("leads360.ai.accept")}
                       </Button>
                       <Button
                         type="button"
@@ -405,7 +403,7 @@ export function Lead360AiWorkspace({
                           setEditValue(proposed);
                         }}
                       >
-                        {t("common.edit", { defaultValue: "Edit" })}
+                        {t("leads360.ai.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -420,7 +418,7 @@ export function Lead360AiWorkspace({
                           })
                         }
                       >
-                        {t("common.reject", { defaultValue: "Reject" })}
+                        {t("leads360.ai.reject")}
                       </Button>
                     </div>
                   )}
@@ -433,10 +431,10 @@ export function Lead360AiWorkspace({
 
       {aiAudit && aiAudit.length > 0 ? (
         <AiCard
-          title={t("leads360.ai.sections.audit", { defaultValue: "AI Audit" })}
+          title={t("leads360.ai.sections.audit")}
           action={
             <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setAuditOpen(true)}>
-              {t("leads360.ai.viewFullAudit", { defaultValue: "View Full Audit" })}
+              {t("leads360.ai.viewFullAudit")}
             </Button>
           }
         >
@@ -449,10 +447,18 @@ export function Lead360AiWorkspace({
                 </div>
                 <p className="mt-1 text-[12px] text-muted-foreground">{entry.reason}</p>
                 <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                  <span>Provider · {(entry.metadata?.provider as string) || "ai"}</span>
-                  {entry.confidence != null ? <span>Confidence {pct(Number(entry.confidence))}</span> : null}
+                  <span>
+                    {t("leads360.ai.auditMeta.provider")} · {(entry.metadata?.provider as string) || "ai"}
+                  </span>
+                  {entry.confidence != null ? (
+                    <span>
+                      {t("leads360.ai.auditMeta.confidence")} {pct(Number(entry.confidence))}
+                    </span>
+                  ) : null}
                   {typeof entry.metadata?.latencyMs === "number" ? (
-                    <span>Latency · {entry.metadata.latencyMs}ms</span>
+                    <span>
+                      {t("leads360.ai.auditMeta.latency")} · {entry.metadata.latencyMs}ms
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -485,7 +491,7 @@ function Lead360AuditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-2xl overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{t("leads360.ai.fullAudit", { defaultValue: "AI Audit Trail" })}</DialogTitle>
+          <DialogTitle>{t("leads360.ai.fullAudit")}</DialogTitle>
         </DialogHeader>
         <div className="max-h-[55vh] space-y-2 overflow-y-auto pe-1">
           {slice.map((entry) => (
@@ -493,10 +499,20 @@ function Lead360AuditDialog({
               <div className="font-semibold">{entry.decision}</div>
               <p className="mt-1 text-muted-foreground">{entry.reason}</p>
               <div className="mt-2 grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
-                <span>Provider · {(entry.metadata?.provider as string) || "ai"}</span>
-                <span>Actor · {entry.actor}</span>
-                <span>Confidence · {entry.confidence != null ? pct(Number(entry.confidence)) : "—"}</span>
-                <span>Latency · {typeof entry.metadata?.latencyMs === "number" ? `${entry.metadata.latencyMs}ms` : "—"}</span>
+                <span>
+                  {t("leads360.ai.auditMeta.provider")} · {(entry.metadata?.provider as string) || "ai"}
+                </span>
+                <span>
+                  {t("leads360.ai.auditMeta.actor")} · {entry.actor}
+                </span>
+                <span>
+                  {t("leads360.ai.auditMeta.confidence")} ·{" "}
+                  {entry.confidence != null ? pct(Number(entry.confidence)) : "—"}
+                </span>
+                <span>
+                  {t("leads360.ai.auditMeta.latency")} ·{" "}
+                  {typeof entry.metadata?.latencyMs === "number" ? `${entry.metadata.latencyMs}ms` : "—"}
+                </span>
                 <span className="sm:col-span-2">{entry.createdAt}</span>
               </div>
             </div>
@@ -510,7 +526,7 @@ function Lead360AuditDialog({
             disabled={page <= 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
-            {t("common.previous", { defaultValue: "Previous" })}
+            {t("leads360.ai.pagination.previous")}
           </Button>
           <span className="text-[12px] text-muted-foreground">
             {page + 1} / {pages}
@@ -522,7 +538,7 @@ function Lead360AuditDialog({
             disabled={page >= pages - 1}
             onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
           >
-            {t("common.next", { defaultValue: "Next" })}
+            {t("leads360.ai.pagination.next")}
           </Button>
         </div>
       </DialogContent>

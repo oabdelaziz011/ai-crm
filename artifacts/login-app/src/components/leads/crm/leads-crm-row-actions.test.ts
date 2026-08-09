@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import { routeLeadTableAction } from "./leads-crm-action-routes.ts";
 import {
   groupLeadTableActions,
+  isLeadAlreadyConverted,
+  isLeadEligibleForOpportunityCreation,
   resolveLeadTableActions,
   type LeadTableActionId,
 } from "./leads-crm-row-actions.ts";
@@ -15,6 +17,7 @@ const fullPerms = {
   canView: true,
   canEdit: true,
   canAssign: true,
+  canCreateOpportunity: true,
   canConvert: true,
   canArchive: true,
   canDelete: true,
@@ -26,6 +29,7 @@ describe("resolveLeadTableActions", () => {
       permissions: fullPerms,
       hasPhone: true,
       hasEmail: true,
+      isQualified: true,
     });
     const ids = actions.map((a) => a.id);
     assert.deepEqual(ids, [
@@ -49,6 +53,7 @@ describe("resolveLeadTableActions", () => {
         canView: true,
         canEdit: false,
         canAssign: false,
+        canCreateOpportunity: false,
         canConvert: false,
         canArchive: false,
         canDelete: false,
@@ -93,6 +98,7 @@ describe("resolveLeadTableActions", () => {
         canView: false,
         canEdit: false,
         canAssign: false,
+        canCreateOpportunity: false,
         canConvert: false,
         canArchive: false,
         canDelete: false,
@@ -101,6 +107,157 @@ describe("resolveLeadTableActions", () => {
       hasEmail: true,
     });
     assert.equal(actions.length, 0);
+  });
+
+  it("shows createOpportunity disabled when lead is not qualified and has no customer", () => {
+    const actions = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: false,
+      customerId: null,
+    });
+    const action = actions.find((a) => a.id === "createOpportunity");
+    assert.ok(action);
+    assert.equal(action?.disabled, true);
+  });
+
+  it("includes createOpportunity for qualified leads", () => {
+    const actions = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: true,
+    });
+    assert.ok(actions.some((action) => action.id === "createOpportunity"));
+  });
+
+  it("includes createOpportunity for converted leads with customer id", () => {
+    const actions = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: false,
+      customerId: "cust-1",
+    });
+    assert.ok(actions.some((action) => action.id === "createOpportunity"));
+  });
+});
+
+describe("isLeadEligibleForOpportunityCreation", () => {
+  it("matches backend eligibility rules", () => {
+    assert.equal(isLeadEligibleForOpportunityCreation({ isQualified: true }), true);
+    assert.equal(isLeadEligibleForOpportunityCreation({ customerId: "cust-1" }), true);
+    assert.equal(isLeadEligibleForOpportunityCreation({ isQualified: false, customerId: null }), false);
+  });
+
+  it("treats lifecycleStatus qualified as eligible when the flag lags", () => {
+    assert.equal(
+      isLeadEligibleForOpportunityCreation({
+        isQualified: false,
+        customerId: null,
+        lifecycleStatus: "qualified",
+      }),
+      true,
+    );
+  });
+});
+
+describe("resolveLeadTableActions conversion rules", () => {
+  it("omits convert when the lead is already converted", () => {
+    assert.equal(
+      isLeadAlreadyConverted({ customerId: "cust-1", lifecycleStatus: "qualified" }),
+      false,
+    );
+    assert.equal(isLeadAlreadyConverted({ lifecycleStatus: "converted" }), true);
+    assert.equal(isLeadAlreadyConverted({ lifecycleStatus: "new" }), false);
+
+    const actions = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      isConverted: true,
+      customerId: "cust-1",
+    });
+    const ids = actions.map((a) => a.id);
+    assert.ok(!ids.includes("convert"));
+    assert.ok(ids.includes("createOpportunity"));
+  });
+
+  it("keeps convert for unconverted qualified leads (customerId null)", () => {
+    assert.equal(
+      isLeadAlreadyConverted({ customerId: null, lifecycleStatus: "qualified" }),
+      false,
+    );
+    const actions = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: true,
+      customerId: null,
+      lifecycleStatus: "qualified",
+      isConverted: isLeadAlreadyConverted({
+        customerId: null,
+        lifecycleStatus: "qualified",
+      }),
+    });
+    const ids = actions.map((a) => a.id);
+    assert.ok(ids.includes("convert"));
+    assert.ok(ids.includes("createOpportunity"));
+  });
+
+  it("keeps convert for customer-linked leads that are not yet finalized as converted", () => {
+    const isConverted = isLeadAlreadyConverted({
+      customerId: "cust-linked",
+      lifecycleStatus: "qualified",
+    });
+    assert.equal(isConverted, false);
+    const actions = resolveLeadTableActions({
+      permissions: fullPerms,
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: true,
+      customerId: "cust-linked",
+      lifecycleStatus: "qualified",
+      isConverted,
+    });
+    const ids = actions.map((a) => a.id);
+    assert.ok(ids.includes("convert"));
+    assert.ok(ids.includes("createOpportunity"));
+  });
+
+  it("Kanban Convert visibility uses the same isLeadAlreadyConverted rule", () => {
+    // Mirrors leads-kanban-page context-menu gating.
+    assert.equal(
+      isLeadAlreadyConverted({ customerId: "cust-1", lifecycleStatus: "qualified" }),
+      false,
+    );
+    assert.equal(
+      isLeadAlreadyConverted({ customerId: "cust-1", lifecycleStatus: "converted" }),
+      true,
+    );
+    assert.equal(
+      isLeadAlreadyConverted({ customerId: null, lifecycleStatus: "qualified" }),
+      false,
+    );
+  });
+
+  it("shows createOpportunity with opportunities.convert permission even without leads.edit", () => {
+    const actions = resolveLeadTableActions({
+      permissions: {
+        canView: true,
+        canEdit: false,
+        canAssign: false,
+        canCreateOpportunity: true,
+        canConvert: false,
+        canArchive: false,
+        canDelete: false,
+      },
+      hasPhone: false,
+      hasEmail: false,
+      isQualified: true,
+    });
+    assert.ok(actions.some((a) => a.id === "createOpportunity"));
   });
 });
 
@@ -111,6 +268,7 @@ describe("groupLeadTableActions", () => {
         permissions: fullPerms,
         hasPhone: true,
         hasEmail: true,
+        isQualified: true,
       }),
     );
     assert.deepEqual(
@@ -158,7 +316,7 @@ describe("routeLeadTableAction", () => {
     ["openLead360", { kind: "openLead360", tab: "overview" }],
     ["edit", { kind: "openDialog", dialog: "edit" }],
     ["createActivity", { kind: "openDialog", dialog: "activity" }],
-    ["createOpportunity", { kind: "openOpportunity360", after: "createFromLead" }],
+    ["createOpportunity", { kind: "openDialog", dialog: "createOpportunity" }],
     ["call", { kind: "external", channel: "call" }],
     ["whatsapp", { kind: "whatsapp", channel: "platform-or-external" }],
     ["email", { kind: "external", channel: "email" }],
@@ -181,10 +339,10 @@ describe("routeLeadTableAction", () => {
     });
   });
 
-  it("Create Opportunity uses createFromLead then Opportunity360", () => {
+  it("Create Opportunity opens create dialog before Opportunity360", () => {
     assert.deepEqual(routeLeadTableAction("createOpportunity"), {
-      kind: "openOpportunity360",
-      after: "createFromLead",
+      kind: "openDialog",
+      dialog: "createOpportunity",
     });
   });
 

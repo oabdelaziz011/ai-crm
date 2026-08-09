@@ -176,7 +176,7 @@ export function createLoginAppLeadWritePort(
 
     async convert(tenantId, leadId, _actorUserId): Promise<LeadConvertResult> {
       assertTenant(tenantId);
-      const { lead, customerId } = await platform.commands.convertLead(serviceContext(tenantId), {
+      const { lead, customerId, opportunityId } = await platform.commands.convertLead(serviceContext(tenantId), {
         companyId: tenantId,
         leadId,
       });
@@ -184,6 +184,7 @@ export function createLoginAppLeadWritePort(
       return Object.freeze({
         lead: mapLeadRecordToReadModel(lead, tenantId, labels),
         customerId,
+        opportunityId: opportunityId ?? null,
       });
     },
 

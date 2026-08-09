@@ -42,11 +42,15 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
       const preservedNotes = formatPreservedNotes(input.preservedPayload);
       const companyLine = input.companyName ? `Company: ${input.companyName}` : "";
       const notes = [companyLine, preservedNotes].filter(Boolean).join("\n\n");
+      const customerName =
+        (input.contactName || "").trim() ||
+        (input.companyName || "").trim() ||
+        "Customer";
 
-      const created = await customerService.createCustomer({
+      const { customer } = await customerService.resolveCustomerForLeadConversion({
         companyId: input.companyId,
         userId: ownerUserId,
-        name: input.contactName,
+        name: customerName,
         email: input.email ?? undefined,
         phone: input.phone ?? undefined,
         notes,
@@ -56,7 +60,7 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
         await client
           .from("conversations")
           .update({
-            customer_id: created.customer.id,
+            customer_id: customer.id,
             lead_id: input.leadId,
             updated_at: new Date().toISOString(),
           })
@@ -64,34 +68,15 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
           .eq("company_id", input.companyId);
       }
 
-      // Sprint 4.0 — create Opportunity from converted lead (no conversation duplication).
-      let opportunityId: string | null = null;
-      try {
-        const { createLoginAppOpportunityPlatformServices } = await import(
-          "@/lib/opportunity-platform/opportunity-platform-factory.js"
-        );
-        const opportunityPlatform = createLoginAppOpportunityPlatformServices(client);
-        const ctx = {
-          userId: ownerUserId,
-          companyId: input.companyId,
-          isSuperAdmin: true,
-          hasPermission: () => true,
-        };
-        await client
-          .from("leads")
-          .update({ customer_id: created.customer.id, is_qualified: true })
-          .eq("id", input.leadId)
-          .eq("company_id", input.companyId);
-        const { opportunity } = await opportunityPlatform.commands.createFromLead(ctx, {
-          companyId: input.companyId,
-          leadId: input.leadId,
-        });
-        opportunityId = opportunity.id;
-      } catch {
-        opportunityId = null;
-      }
+      await client
+        .from("leads")
+        .update({ customer_id: customer.id, is_qualified: true })
+        .eq("id", input.leadId)
+        .eq("company_id", input.companyId);
 
-      return { customerId: created.customer.id, opportunityId };
+      // Convert = customer only. Opportunity creation is a separate explicit action
+      // (Create Opportunity) so convert stays fast and never fails on pipeline/currency.
+      return { customerId: customer.id, opportunityId: null };
     },
   };
 }

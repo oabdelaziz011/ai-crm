@@ -3,7 +3,7 @@ import { lazy } from "react";
 
 export const LEADS_BASE_NESTED_PATH = "/leads";
 
-export type LeadsRouteId = "table" | "kanban" | "pipeline" | "timeline" | "dashboard";
+export type LeadsRouteId = "table" | "kanban" | "timeline";
 
 export type LeadsRouteDefinition = {
   id: LeadsRouteId;
@@ -37,22 +37,10 @@ export const LEADS_ROUTE_REGISTRY: readonly LeadsRouteDefinition[] = [
     Page: lazyNamed(() => import("@/pages/dashboard/leads/leads-kanban-page"), "LeadsKanbanPage"),
   },
   {
-    id: "pipeline",
-    nestedPath: "/pipeline",
-    titleKey: "leads.nav.pipeline",
-    Page: lazyNamed(() => import("@/pages/dashboard/leads/leads-pipeline-page"), "LeadsPipelinePage"),
-  },
-  {
     id: "timeline",
     nestedPath: "/timeline",
     titleKey: "leads.nav.timeline",
     Page: lazyNamed(() => import("@/pages/dashboard/leads/leads-timeline-page"), "LeadsTimelinePage"),
-  },
-  {
-    id: "dashboard",
-    nestedPath: "/dashboard",
-    titleKey: "leads.nav.dashboard",
-    Page: lazyNamed(() => import("@/pages/dashboard/leads/leads-dashboard-page"), "LeadsDashboardPage"),
   },
 ];
 

@@ -65,7 +65,10 @@ export function EnterpriseKanban<TData>({
   });
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)} data-enterprise-kanban>
+    <div
+      className={cn("flex min-h-0 w-full flex-1 flex-col gap-4", className)}
+      data-enterprise-kanban
+    >
       <KanbanToolbar
         labels={labels}
         pipelines={pipelines}
@@ -78,18 +81,21 @@ export function EnterpriseKanban<TData>({
         onCreate={onCreate}
         canCreate={canCreate}
         filtersActive={filtersActive}
+        className="shrink-0"
       />
 
-      <KanbanMetrics metrics={metrics} ariaLabel={labels.metricsGroup} />
+      {metrics.length > 0 ? (
+        <KanbanMetrics metrics={metrics} ariaLabel={labels.metricsGroup} className="shrink-0" />
+      ) : null}
 
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:thin]"
+        className="flex min-h-[calc(100dvh-22rem)] flex-1 items-stretch gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]"
         role="list"
         aria-label={labels.pageTitle}
       >
         {columns.map((column) => (
-          <div key={column.id} role="listitem">
+          <div key={column.id} className="flex min-h-full shrink-0" role="listitem">
             <KanbanColumn
               column={column}
               labels={labels}

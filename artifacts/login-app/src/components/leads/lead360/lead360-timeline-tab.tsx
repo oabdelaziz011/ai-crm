@@ -61,7 +61,7 @@ export function Lead360TimelineTab({
       rows.push({
         id: `intel-${panel.intelligence.analyzedAt}`,
         at: panel.intelligence.analyzedAt,
-        title: t("leads360.timeline.aiAnalyzed", { defaultValue: "AI analysis completed" }),
+        title: t("leads360.timeline.aiAnalyzed"),
         detail: panel.intelligence.summary.value,
         kind: "ai",
       });
@@ -75,13 +75,8 @@ export function Lead360TimelineTab({
       <EnterpriseEmptyState
         compact
         icon={<History className="size-6" aria-hidden />}
-        title={t("leads360.empty.timelineTitle", {
-          defaultValue: "Timeline is empty",
-        })}
-        description={t("leads360.empty.timeline", {
-          defaultValue:
-            "CRM updates, AI decisions, and automations will form a single storyline here as work progresses.",
-        })}
+        title={t("leads360.empty.timelineTitle")}
+        description={t("leads360.empty.timeline")}
       />
     );
   }

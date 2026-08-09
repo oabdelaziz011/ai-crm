@@ -7,6 +7,7 @@ import { NEST_INDEX } from "@/lib/routing";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useAuth } from "@/context/auth-context";
 import { useLeadsRealtime } from "@/hooks/leads/use-leads-realtime";
+import { useOpportunitiesRealtime } from "@/hooks/opportunities/use-opportunities-realtime";
 
 function GuardedLeadsRoute({ route }: { route: (typeof LEADS_ROUTE_REGISTRY)[number] }) {
   const { hasPermission, isSuperAdmin } = useAuthUser();
@@ -21,21 +22,31 @@ function GuardedLeadsRoute({ route }: { route: (typeof LEADS_ROUTE_REGISTRY)[num
 export function LeadsLayout() {
   const { company } = useAuth();
   useLeadsRealtime(company?.id ?? null);
+  useOpportunitiesRealtime(company?.id ?? null);
 
   return (
-    <div className="flex min-h-0 w-full flex-col gap-4">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
       <LeadsSubNav />
       <Suspense fallback={<DashboardPageFallback />}>
-        <Switch>
-          <Route path={NEST_INDEX}>
-            <Redirect to={LEADS_DEFAULT_NESTED_PATH} />
-          </Route>
-          {LEADS_ROUTE_REGISTRY.map((route) => (
-            <Route key={route.id} path={route.nestedPath}>
-              <GuardedLeadsRoute route={route} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Switch>
+            <Route path={NEST_INDEX}>
+              <Redirect to={LEADS_DEFAULT_NESTED_PATH} />
             </Route>
-          ))}
-        </Switch>
+            {/* Legacy Pipeline / Dashboard tabs → Kanban (metrics live there now). */}
+            <Route path="/pipeline">
+              <Redirect to="/kanban" />
+            </Route>
+            <Route path="/dashboard">
+              <Redirect to="/kanban" />
+            </Route>
+            {LEADS_ROUTE_REGISTRY.map((route) => (
+              <Route key={route.id} path={route.nestedPath}>
+                <GuardedLeadsRoute route={route} />
+              </Route>
+            ))}
+          </Switch>
+        </div>
       </Suspense>
     </div>
   );

@@ -11,7 +11,6 @@ import {
   type KanbanColumnModel,
   type KanbanContextAction,
   type KanbanFiltersState,
-  type KanbanMetric,
   type KanbanQuickAction,
 } from "@/components/enterprise/kanban";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
@@ -25,7 +24,11 @@ import {
   leadToFormDraft,
 } from "@/components/leads/workspace/leads-form-draft";
 import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
+import { OpportunityCreateDialog } from "@/components/opportunities/opportunity-create-dialog";
+import { leadWorkspaceRowToOpportunitySeed } from "@/components/opportunities/opportunity-form-draft";
+import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
 import { LeadKanbanDrawer } from "@/components/leads/kanban/lead-kanban-drawer";
+import { LeadPipelineStageCards } from "@/components/leads/kanban/lead-pipeline-stage-cards";
 import {
   formatLeadMoney,
   leadMatchesFilters,
@@ -33,13 +36,16 @@ import {
   mapLeadToKanbanCard,
   resolveLeadScoreTone,
 } from "@/components/leads/kanban/lead-kanban-mappers";
+import {
+  isLeadAlreadyConverted,
+  isLeadEligibleForOpportunityCreation,
+} from "@/components/leads/crm/leads-crm-row-actions";
 import { translateLeadPipelineLabel } from "@/components/leads/kanban/lead-pipeline-label";
 import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
 import { useAuth } from "@/context/auth-context";
 import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
 import {
-  useLeadDashboardMetrics,
   useLeadKanbanBoard,
   useLeadPipelines,
   useLeadSources,
@@ -73,12 +79,13 @@ export function LeadsKanbanPage() {
   const canCreate = isSuperAdmin || hasPermission("leads.create");
   const canEdit = isSuperAdmin || hasPermission("leads.edit");
   const canDelete = isSuperAdmin || hasPermission("leads.delete");
+  const canConvert = isSuperAdmin || hasPermission("leads.convert");
+  const canCreateOpportunity = isSuperAdmin || hasPermission("opportunities.convert");
   const { isEnabled: aiEnabled } = useAgentsFeatureEnabled();
 
   const { data: pipelines } = useLeadPipelines();
   const [pipelineId, setPipelineId] = useState<string | null>(null);
   const { data: board, isLoading } = useLeadKanbanBoard(pipelineId);
-  const { data: metrics } = useLeadDashboardMetrics();
   const { data: stages } = useLeadStages(pipelineId);
   const { data: sources } = useLeadSources();
   const commands = useLeadCommands();
@@ -94,6 +101,8 @@ export function LeadsKanbanPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editLead, setEditLead] = useState<LeadWorkspaceRow | null>(null);
   const [opportunityId, setOpportunityId] = useState<string | null>(null);
+  const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
+  const [createOpportunityLead, setCreateOpportunityLead] = useState<LeadWorkspaceRow | null>(null);
   const [drawerLead, setDrawerLead] = useState<LeadWorkspaceRow | null>(null);
   const [lead360Id, setLead360Id] = useState<string | null>(null);
   const [lead360Tab, setLead360Tab] = useState<"overview" | "activity" | "ai">("overview");
@@ -136,39 +145,6 @@ export function LeadsKanbanPage() {
     }),
     [t],
   );
-
-  const kpiMetrics = useMemo((): KanbanMetric[] => {
-    const allLeads = board
-      ? Object.values(board.leadsByStage).flatMap((rows) => rows)
-      : [];
-    const totalValue = allLeads.reduce((sum, lead) => sum + (lead.expectedValue ?? 0), 0);
-    const openLeads = allLeads.filter(
-      (lead) => !["won", "lost", "converted", "archived"].includes(lead.lifecycleStatus),
-    ).length;
-
-    return [
-      {
-        id: "total",
-        label: t("leads.kanban.kpi.totalLeads"),
-        value: String(metrics?.totalLeads ?? allLeads.length),
-      },
-      {
-        id: "value",
-        label: t("leads.kanban.kpi.totalValue"),
-        value: formatLeadMoney(metrics?.forecastValue ?? totalValue),
-      },
-      {
-        id: "conversion",
-        label: t("leads.kanban.kpi.conversionRate"),
-        value: `${Math.round((metrics?.conversionRate ?? 0) * 1000) / 10}%`,
-      },
-      {
-        id: "open",
-        label: t("leads.kanban.kpi.openOpportunities"),
-        value: String(openLeads),
-      },
-    ];
-  }, [board, companyCurrency, i18n.language, metrics, t]);
 
   const columns = useMemo((): KanbanColumnModel<LeadWorkspaceRow>[] => {
     if (!board) return [];
@@ -255,8 +231,13 @@ export function LeadsKanbanPage() {
     const emailLabel = t("leads.workspace.actions.email");
     const activityLabel = t("leads.kanban.actions.createActivity");
     const opportunityLabel = t("leads.kanban.actions.createOpportunity");
+    const opportunityEligible = isLeadEligibleForOpportunityCreation({
+      isQualified: lead.isQualified,
+      customerId: lead.customerId,
+      lifecycleStatus: lead.lifecycleStatus,
+    });
 
-    return [
+    const actions: KanbanQuickAction[] = [
       {
         id: "call",
         label: callLabel,
@@ -292,40 +273,32 @@ export function LeadsKanbanPage() {
         title: activityLabel,
         onSelect: () => openLead360(lead.id, "activity"),
       },
-      {
+    ];
+
+    if (canCreateOpportunity) {
+      actions.push({
         id: "opportunity",
         label: opportunityLabel,
         title: opportunityLabel,
-        disabled: !canEdit || opportunityCommands.createFromLead.isPending,
+        disabled: !opportunityEligible,
         onSelect: () => {
-          void opportunityCommands.createFromLead
-            .mutateAsync({ leadId: lead.id, name: lead.name || lead.contactPerson })
-            .then((opp) => {
-              if (!opp?.id) {
-                toast({
-                  title: t("leads.kanban.actions.opportunityFailed"),
-                  variant: "destructive",
-                });
-                return;
-              }
-              toast({ title: t("leads.kanban.actions.opportunityCreated") });
-              setOpportunityId(opp.id);
-            })
-            .catch((error: Error) => {
-              toast({
-                title: t("leads.kanban.actions.opportunityFailed"),
-                description: error.message,
-                variant: "destructive",
-              });
-            });
+          if (!opportunityEligible) return;
+          setCreateOpportunityLead(lead);
+          setCreateOpportunityOpen(true);
         },
-      },
-    ];
+      });
+    }
+
+    return actions;
   };
 
   const getContextActions = (card: KanbanCardModel<LeadWorkspaceRow>): KanbanContextAction[] => {
     const lead = card.data;
-    return [
+    const alreadyConverted = isLeadAlreadyConverted({
+      customerId: lead.customerId,
+      lifecycleStatus: lead.lifecycleStatus,
+    });
+    const actions: KanbanContextAction[] = [
       {
         id: "open",
         label: t("leads.kanban.openDrawer"),
@@ -345,25 +318,34 @@ export function LeadsKanbanPage() {
         label: t("leads.kanban.drawer.openLead360"),
         onSelect: () => openLead360(lead.id, "overview"),
       },
-      {
+    ];
+
+    if (!alreadyConverted && canConvert) {
+      actions.push({
         id: "convert",
-        label: t("leads360.convert"),
-        disabled: !canEdit,
+        label: t("leads.table.rowActions.convert"),
+        disabled: commands.convert.isPending,
         onSelect: () => {
           void commands.convert
             .mutateAsync({ leadId: lead.id })
-            .then(() => {
+            .then((result) => {
               toast({ title: t("leads.kanban.actions.converted") });
+              if (result.opportunityId) {
+                setOpportunityId(result.opportunityId);
+              }
             })
-            .catch((error: Error) => {
+            .catch((error: unknown) => {
               toast({
                 title: t("leads.kanban.actions.convertFailed"),
-                description: error.message,
+                description: resolveApplicationErrorMessage(error),
                 variant: "destructive",
               });
             });
         },
-      },
+      });
+    }
+
+    actions.push(
       {
         id: "assign",
         label: t("leads.kanban.context.assignOwner"),
@@ -387,7 +369,9 @@ export function LeadsKanbanPage() {
           });
         },
       },
-    ];
+    );
+
+    return actions;
   };
 
   if (isLoading && !board) return <DashboardPageFallback />;
@@ -395,10 +379,13 @@ export function LeadsKanbanPage() {
   const drawerStage = board?.stages.find((stage) => stage.id === drawerLead?.stageId);
 
   return (
-    <div className="flex w-full flex-col gap-1" dir={i18n.dir()}>
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-4" dir={i18n.dir()}>
+      <LeadPipelineStageCards stages={board?.stages ?? []} className="shrink-0" />
+
       <EnterpriseKanban
+        className="min-h-0 flex-1"
         labels={labels}
-        metrics={kpiMetrics}
+        metrics={[]}
         pipelines={(pipelines ?? []).map((pipeline) => ({
           id: pipeline.id,
           label: translateLeadPipelineLabel(t, pipeline),
@@ -606,6 +593,33 @@ export function LeadsKanbanPage() {
         open={Boolean(opportunityId)}
         onOpenChange={(next) => {
           if (!next) setOpportunityId(null);
+        }}
+        onOpenLead={(leadId, intent) => {
+          setOpportunityId(null);
+          openLead360(leadId, intent === "activity" ? "activity" : "overview");
+        }}
+      />
+
+      <OpportunityCreateDialog
+        open={createOpportunityOpen}
+        onOpenChange={(open) => {
+          setCreateOpportunityOpen(open);
+          if (!open) setCreateOpportunityLead(null);
+        }}
+        source={
+          createOpportunityLead
+            ? { mode: "fromLead", lead: leadWorkspaceRowToOpportunitySeed(createOpportunityLead) }
+            : { mode: "manual" }
+        }
+        onOpenExisting={(id) => {
+          setCreateOpportunityOpen(false);
+          setCreateOpportunityLead(null);
+          setOpportunityId(id);
+        }}
+        onCreated={(id) => {
+          toast({ title: t("leads.kanban.actions.opportunityCreated") });
+          setOpportunityId(id);
+          setCreateOpportunityLead(null);
         }}
       />
     </div>

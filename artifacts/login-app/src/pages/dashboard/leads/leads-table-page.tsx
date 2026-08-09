@@ -38,14 +38,17 @@ import {
 import type { LeadTableActionId } from "@/components/leads/crm/leads-crm-row-actions";
 import {
   externalWhatsAppUrl,
-  resolveLeadWhatsAppRoute,
 } from "@/components/leads/crm/leads-crm-whatsapp";
 import {
   LeadsAssignOwnerDialog,
   LeadsCreateActivityDialog,
   LeadsDeleteConfirmDialog,
 } from "@/components/leads/crm/leads-crm-action-dialogs";
+import { executeLeadTableAction } from "@/components/leads/crm/leads-crm-action-handler";
 import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
+import { OpportunityCreateDialog } from "@/components/opportunities/opportunity-create-dialog";
+import { leadWorkspaceRowToOpportunitySeed } from "@/components/opportunities/opportunity-form-draft";
+import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { useAuth } from "@/context/auth-context";
 import { useConversationServices } from "@/lib/ai-conversation";
@@ -131,6 +134,7 @@ export function LeadsTablePage() {
       canView: isSuperAdmin || hasPermission("leads.view"),
       canEdit: isSuperAdmin || hasPermission("leads.edit"),
       canAssign: isSuperAdmin || hasPermission("leads.assign"),
+      canCreateOpportunity: isSuperAdmin || hasPermission("opportunities.convert"),
       canConvert: isSuperAdmin || hasPermission("leads.convert"),
       canArchive: isSuperAdmin || hasPermission("leads.archive"),
       canDelete: isSuperAdmin || hasPermission("leads.delete"),
@@ -151,6 +155,8 @@ export function LeadsTablePage() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [opportunityId, setOpportunityId] = useState<string | null>(null);
+  const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
+  const [createOpportunityLead, setCreateOpportunityLead] = useState<LeadWorkspaceRow | null>(null);
   const [contactSort, setContactSort] = useState<LeadContactSortState>(null);
   const [contactFilters, setContactFilters] = useState<LeadContactColumnFilters>({
     customerName: "",
@@ -176,7 +182,7 @@ export function LeadsTablePage() {
   const failToast = (title: string, error?: unknown) => {
     toast({
       title,
-      description: error instanceof Error ? error.message : error ? String(error) : undefined,
+      description: error ? resolveApplicationErrorMessage(error) : undefined,
       variant: "destructive",
     });
   };
@@ -285,147 +291,82 @@ export function LeadsTablePage() {
   }, [companyOwners]);
 
   const handleRowAction = (action: LeadTableActionId, row: LeadWorkspaceRow) => {
-    switch (action) {
-      case "openLead360":
-        openLead360(row, "overview");
-        return;
-      case "edit":
-        setEditLead(row);
-        setEditOpen(true);
-        return;
-      case "createActivity":
-        setActionLead(row);
-        setActivityOpen(true);
-        return;
-      case "createOpportunity":
-        void opportunityCommands.createFromLead
-          .mutateAsync({ leadId: row.id, name: row.name || row.contactPerson })
-          .then((opp) => {
-            const id = opp?.id;
-            if (!id) {
-              failToast(t("leads.kanban.actions.opportunityFailed"));
+    void executeLeadTableAction(action, {
+      row,
+      t,
+      toast,
+      failToast,
+      commands,
+      openLead360,
+      setOpportunityId,
+      openCreateOpportunityDialog: (leadRow) => {
+        setCreateOpportunityLead(leadRow);
+        setCreateOpportunityOpen(true);
+      },
+      setEditLead,
+      setEditOpen,
+      setActionLead,
+      setAssignOpen,
+      setActivityOpen,
+      setDeleteOpen,
+      setSelectedLead,
+      whatsApp: {
+        hasIntegration: hasWhatsAppIntegration,
+        channelId: whatsAppChannelId,
+        companyId: company?.id,
+        openPlatform: async ({ customerId, phone, leadId }) => {
+          if (customerId) {
+            try {
+              await ConversationService.openWhatsappConversation({
+                customerId,
+                companyId: company?.id,
+                navigate: setLocation,
+              });
               return;
-            }
-            toast({ title: t("leads.kanban.actions.opportunityCreated") });
-            setOpportunityId(id);
-          })
-          .catch((error: Error) => failToast(t("leads.kanban.actions.opportunityFailed"), error));
-        return;
-      case "call":
-        if (!row.phone?.trim()) {
-          failToast(t("leads.table.errors.missingPhone"));
-          return;
-        }
-        window.open(`tel:${row.phone}`, "_self");
-        return;
-      case "whatsapp": {
-        const route = resolveLeadWhatsAppRoute({
-          hasWhatsAppIntegration,
-          phone: row.phone,
-          customerId: row.customerId,
-        });
-        if (!route) {
-          failToast(t("leads.table.errors.missingPhone"));
-          return;
-        }
-        if (route.kind === "external") {
-          window.open(externalWhatsAppUrl(route.phone), "_blank");
-          return;
-        }
-        void (async () => {
-          try {
-            if (route.customerId) {
-              try {
-                await ConversationService.openWhatsappConversation({
-                  customerId: route.customerId,
-                  companyId: company?.id,
-                  navigate: setLocation,
-                });
-                return;
-              } catch (error) {
-                if (!(error instanceof Error) || error.message !== "WHATSAPP_CONVERSATION_NOT_FOUND") {
-                  throw error;
-                }
+            } catch (error) {
+              if (!(error instanceof Error) || error.message !== "WHATSAPP_CONVERSATION_NOT_FOUND") {
+                throw error;
               }
             }
-
-            if (!company?.id || !whatsAppChannelId) {
-              window.open(externalWhatsAppUrl(route.phone), "_blank");
-              return;
-            }
-
-            const { data: assistant, error: assistantError } = await supabase
-              .from("ai_assistant_settings")
-              .select("id")
-              .eq("company_id", company.id)
-              .is("deleted_at", null)
-              .maybeSingle();
-            if (assistantError) throw new Error(assistantError.message);
-            if (!assistant?.id) {
-              window.open(externalWhatsAppUrl(route.phone), "_blank");
-              return;
-            }
-
-            const created = await conversationServices.conversations.createConversation(
-              conversationContext,
-              {
-                companyId: company.id,
-                aiAssistantId: assistant.id,
-                channelType: "whatsapp",
-                companyChannelId: whatsAppChannelId,
-                customerId: route.customerId,
-                metadata: {
-                  phone: route.phone,
-                  leadId: row.id,
-                  source: "leads_table",
-                },
-              },
-            );
-            queueTeamInboxConversationFocus(created.id);
-            setLocation(getTeamInboxDashboardHref());
-          } catch {
-            window.open(externalWhatsAppUrl(route.phone), "_blank");
-            toast({ title: t("leads.table.errors.whatsappPlatformFailed") });
           }
-        })();
-        return;
-      }
-      case "email":
-        if (!row.email?.trim()) {
-          failToast(t("leads.table.errors.missingEmail"));
-          return;
-        }
-        window.open(`mailto:${row.email}`, "_self");
-        return;
-      case "assign":
-        setActionLead(row);
-        setAssignOpen(true);
-        return;
-      case "convert":
-        void commands.convert
-          .mutateAsync({ leadId: row.id })
-          .then(() => {
-            toast({ title: t("leads.kanban.actions.converted") });
-          })
-          .catch((error: Error) => failToast(t("leads.kanban.actions.convertFailed"), error));
-        return;
-      case "archive":
-        void commands.archive
-          .mutateAsync({ leadId: row.id })
-          .then(() => {
-            toast({ title: t("leads.table.rowActions.archived") });
-            setSelectedLead((current) => (current?.id === row.id ? null : current));
-          })
-          .catch((error: Error) => failToast(t("leads.table.errors.archiveFailed"), error));
-        return;
-      case "delete":
-        setActionLead(row);
-        setDeleteOpen(true);
-        return;
-      default:
-        failToast(t("leads.table.errors.actionUnsupported"));
-        return;
-    }
+
+          if (!company?.id || !whatsAppChannelId) {
+            window.open(externalWhatsAppUrl(phone), "_blank");
+            return;
+          }
+
+          const { data: assistant, error: assistantError } = await supabase
+            .from("ai_assistant_settings")
+            .select("id")
+            .eq("company_id", company.id)
+            .is("deleted_at", null)
+            .maybeSingle();
+          if (assistantError) throw new Error(assistantError.message);
+          if (!assistant?.id) {
+            window.open(externalWhatsAppUrl(phone), "_blank");
+            return;
+          }
+
+          const created = await conversationServices.conversations.createConversation(
+            conversationContext,
+            {
+              companyId: company.id,
+              aiAssistantId: assistant.id,
+              channelType: "whatsapp",
+              companyChannelId: whatsAppChannelId,
+              customerId: customerId ?? undefined,
+              metadata: {
+                phone,
+                leadId,
+                source: "leads_table",
+              },
+            },
+          );
+          queueTeamInboxConversationFocus(created.id);
+          setLocation(getTeamInboxDashboardHref());
+        },
+      },
+    });
   };
 
   if (isLoading && !data) return <DashboardPageFallback />;
@@ -494,6 +435,34 @@ export function LeadsTablePage() {
         open={Boolean(opportunityId)}
         onOpenChange={(next) => {
           if (!next) setOpportunityId(null);
+        }}
+        onOpenLead={(leadId, intent) => {
+          setOpportunityId(null);
+          const row = rows.find((r) => r.id === leadId);
+          if (row) openLead360(row, intent === "activity" ? "activity" : "overview");
+        }}
+      />
+
+      <OpportunityCreateDialog
+        open={createOpportunityOpen}
+        onOpenChange={(open) => {
+          setCreateOpportunityOpen(open);
+          if (!open) setCreateOpportunityLead(null);
+        }}
+        source={
+          createOpportunityLead
+            ? { mode: "fromLead", lead: leadWorkspaceRowToOpportunitySeed(createOpportunityLead) }
+            : { mode: "manual" }
+        }
+        onOpenExisting={(id) => {
+          setCreateOpportunityOpen(false);
+          setCreateOpportunityLead(null);
+          setOpportunityId(id);
+        }}
+        onCreated={(id) => {
+          toast({ title: t("leads.kanban.actions.opportunityCreated") });
+          setOpportunityId(id);
+          setCreateOpportunityLead(null);
         }}
       />
 

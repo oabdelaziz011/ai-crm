@@ -48,7 +48,7 @@ export const KanbanColumn = memo(function KanbanColumn<TData>({
   return (
     <section
       className={cn(
-        "flex w-[min(100%,300px)] shrink-0 flex-col rounded-xl border border-border/60 bg-muted/15",
+        "flex h-full min-h-[calc(100dvh-22rem)] w-[min(100%,300px)] shrink-0 flex-col rounded-xl border border-border/60 bg-muted/15",
         "sm:w-[300px]",
         isDropTarget && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
       )}
@@ -73,8 +73,7 @@ export const KanbanColumn = memo(function KanbanColumn<TData>({
       </header>
 
       <div
-        className="min-h-[160px] flex-1 space-y-2 overflow-y-auto p-2.5"
-        style={{ maxHeight: "min(68vh, 720px)" }}
+        className="flex min-h-0 flex-1 flex-col space-y-2 overflow-y-auto p-2.5"
         onScroll={shouldVirtualize ? onScroll : undefined}
       >
         {isDropTarget ? <KanbanDragLayer active label={labels.dropHere} /> : null}

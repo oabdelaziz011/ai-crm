@@ -19,7 +19,13 @@ export function mapLeadRecordToReadModel(
   labels: LeadEnrichmentLabels,
 ): LeadReadModel {
   const full = record as LeadRecord;
-  const name = record.title;
+  const rawTitle = record.title?.trim();
+  const name =
+    rawTitle && rawTitle !== "undefined"
+      ? rawTitle
+      : record.contactName?.trim() ||
+        record.companyName?.trim() ||
+        "Untitled lead";
   const contactPerson = record.contactName;
   const expectedValue = record.estimatedValue;
   const ownerId = record.assignedUserId;
@@ -67,7 +73,7 @@ export function mapLeadRecordToReadModel(
     currency: "currency" in full && full.currency ? full.currency : "USD",
     score: record.score,
     isQualified: record.isQualified,
-    customerId: "customerId" in full ? (full.customerId ?? null) : null,
+    customerId: record.customerId ?? null,
     conversationId: "conversationId" in full ? (full.conversationId ?? null) : null,
     ...(aiStatus ? { aiStatus } : {}),
     createdAt: record.createdAt,

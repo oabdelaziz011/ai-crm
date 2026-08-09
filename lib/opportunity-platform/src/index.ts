@@ -34,6 +34,9 @@ export function createOpportunityPlatformServices(
   };
 }
 
+export * from "./currency-utils.js";
+export * from "./opportunity-name-utils.js";
+export * from "./opportunity-audit-utils.js";
 export * from "./constants.js";
 export * from "./errors.js";
 export * from "./types.js";

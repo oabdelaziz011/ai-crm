@@ -1,6 +1,13 @@
 import { resolveEffectivePrice } from "@workspace/product-platform";
-import { QUOTE_PERMISSIONS, QUOTE_STATUSES } from "../constants.js";
-import { QuoteNotFoundError, QuotePermissionError, QuoteValidationError } from "../errors.js";
+import {
+  formatQuoteApprovedSummary,
+  formatQuoteCreatedSummary,
+  formatQuoteRejectedSummary,
+  formatQuoteStatusChangedSummary,
+  formatQuoteSubmittedSummary,
+  formatQuoteVersionCreatedSummary,
+} from "@workspace/opportunity-platform";
+import { QUOTE_PERMISSIONS, QUOTE_STATUSES } from "../constants.js";import { QuoteNotFoundError, QuotePermissionError, QuoteValidationError } from "../errors.js";
 import type { QuoteRepository } from "../repositories/quote-repository-port.js";
 import {
   computeQuoteLineAmounts,
@@ -68,6 +75,20 @@ export type QuoteEventPublisherPort = {
   }): Promise<void>;
 };
 
+export type OpportunityHistoryRecorderPort = {
+  addHistory(input: {
+    companyId: string;
+    opportunityId: string;
+    eventType: string;
+    fieldName?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    summary: string;
+    payload?: Record<string, unknown>;
+    actorUserId: string | null;
+  }): Promise<void>;
+};
+
 function assertActor(ctx: QuoteServiceContext): string {
   if (!ctx.userId) throw new QuoteValidationError("Authenticated actor required.");
   return ctx.userId;
@@ -83,6 +104,9 @@ function assertPermission(ctx: QuoteServiceContext, code: string) {
   if (ctx.isSuperAdmin) return;
   if (!ctx.hasPermission(code)) throw new QuotePermissionError(code);
 }
+
+/** Default quote validity from creation date (business rule). */
+export const DEFAULT_QUOTE_VALIDITY_DAYS = 14;
 
 function addDays(days: number): string {
   const d = new Date();
@@ -121,8 +145,34 @@ export class QuoteCommandService {
     private readonly deps: {
       quotes: QuoteRepository;
       events: QuoteEventPublisherPort;
+      opportunityHistory?: OpportunityHistoryRecorderPort;
     },
   ) {}
+
+  private async recordOpportunityQuoteHistory(input: {
+    companyId: string;
+    opportunityId: string | null | undefined;
+    eventType: string;
+    fieldName?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    summary: string;
+    payload?: Record<string, unknown>;
+    actorUserId: string | null;
+  }): Promise<void> {
+    if (!input.opportunityId?.trim()) return;
+    await this.deps.opportunityHistory?.addHistory({
+      companyId: input.companyId,
+      opportunityId: input.opportunityId,
+      eventType: input.eventType,
+      fieldName: input.fieldName ?? null,
+      previousValue: input.previousValue ?? null,
+      newValue: input.newValue ?? null,
+      summary: input.summary,
+      payload: input.payload,
+      actorUserId: input.actorUserId,
+    });
+  }
 
   async createFromOpportunity(
     ctx: QuoteServiceContext,
@@ -142,6 +192,9 @@ export class QuoteCommandService {
       input.opportunityId,
     );
     if (!opportunity) throw new QuoteValidationError("Opportunity not found.");
+    if (!opportunity.currency?.trim()) {
+      throw new QuoteValidationError("Opportunity currency is required to create a quote.");
+    }
 
     await this.deps.quotes.ensureDefaultTemplates(input.companyId);
     let template: QuoteTemplateRecord | null = null;
@@ -151,7 +204,7 @@ export class QuoteCommandService {
 
     const quoteNumber = await this.deps.quotes.nextQuoteNumber(input.companyId);
     const familyId = crypto.randomUUID();
-    const validityDays = template?.validityDays ?? 30;
+    const validityDays = template?.validityDays ?? DEFAULT_QUOTE_VALIDITY_DAYS;
 
     const quote = await this.deps.quotes.createQuote({
       companyId: input.companyId,
@@ -164,7 +217,7 @@ export class QuoteCommandService {
       status: "draft",
       title: input.title?.trim() || opportunity.name,
       contactName: opportunity.primaryContactName,
-      currency: opportunity.currency || template?.defaultCurrency || "USD",
+      currency: opportunity.currency,
       language: opportunity.language || template?.defaultLanguage || "en",
       country: opportunity.country,
       market: opportunity.market,
@@ -198,7 +251,7 @@ export class QuoteCommandService {
           discountPercent: oppLine.discountPercent,
           discountAmount: amounts.discountAmount,
           taxPercent: oppLine.taxPercent,
-          currency: oppLine.currency,
+          currency: opportunity.currency,
           subtotal: amounts.subtotal,
           taxAmount: amounts.taxAmount,
           total: amounts.total,
@@ -220,6 +273,22 @@ export class QuoteCommandService {
       quoteId: withTotals.id,
       eventType: "quote_created",
       summary: `Quote ${withTotals.quoteNumber} created from opportunity`,
+      actorUserId: actor,
+    });
+
+    await this.recordOpportunityQuoteHistory({
+      companyId: input.companyId,
+      opportunityId: opportunity.id,
+      eventType: "quote_created",
+      summary: formatQuoteCreatedSummary({
+        quoteNumber: withTotals.quoteNumber,
+        versionNumber: withTotals.versionNumber,
+      }),
+      payload: {
+        quoteId: withTotals.id,
+        quoteNumber: withTotals.quoteNumber,
+        versionNumber: withTotals.versionNumber,
+      },
       actorUserId: actor,
     });
 
@@ -267,7 +336,7 @@ export class QuoteCommandService {
       title: input.title.trim(),
       contactName: input.contactName ?? "",
       currency: input.currency ?? "USD",
-      validUntil: addDays(30),
+      validUntil: addDays(DEFAULT_QUOTE_VALIDITY_DAYS),
       ownerUserId: actor,
       createdBy: actor,
     });
@@ -287,6 +356,25 @@ export class QuoteCommandService {
       summary: `Quote ${quote.quoteNumber} created`,
       actorUserId: actor,
     });
+
+    if (input.opportunityId) {
+      await this.recordOpportunityQuoteHistory({
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+        eventType: "quote_created",
+        summary: formatQuoteCreatedSummary({
+          quoteNumber: quote.quoteNumber,
+          versionNumber: quote.versionNumber,
+        }),
+        payload: {
+          quoteId: quote.id,
+          quoteNumber: quote.quoteNumber,
+          versionNumber: quote.versionNumber,
+        },
+        actorUserId: actor,
+      });
+    }
+
     await this.deps.events.publishCreated({
       quoteId: quote.id,
       quoteNumber: quote.quoteNumber,
@@ -376,6 +464,25 @@ export class QuoteCommandService {
       eventType: "quote_version_created",
       summary: `Version ${nextVersion} created from v${existing.versionNumber}`,
       payload: { previousQuoteId: existing.id },
+      actorUserId: actor,
+    });
+
+    await this.recordOpportunityQuoteHistory({
+      companyId: input.companyId,
+      opportunityId: withTotals.opportunityId,
+      eventType: "quote_version_created",
+      summary: formatQuoteVersionCreatedSummary({
+        quoteNumber: withTotals.quoteNumber,
+        previousVersion: existing.versionNumber,
+        nextVersion,
+      }),
+      payload: {
+        quoteId: withTotals.id,
+        previousQuoteId: existing.id,
+        quoteNumber: withTotals.quoteNumber,
+        previousVersion: existing.versionNumber,
+        nextVersion,
+      },
       actorUserId: actor,
     });
 
@@ -559,6 +666,62 @@ export class QuoteCommandService {
     return { quote };
   }
 
+  async updateDetails(
+    ctx: QuoteServiceContext,
+    input: {
+      companyId: string;
+      quoteId: string;
+      language?: string;
+      title?: string;
+      notes?: string;
+      contactName?: string;
+    },
+  ): Promise<{ quote: QuoteRecord }> {
+    const actor = assertActor(ctx);
+    assertCompany(ctx, input.companyId);
+    assertPermission(ctx, QUOTE_PERMISSIONS.edit);
+
+    const existing = await this.deps.quotes.getQuote(input.companyId, input.quoteId);
+    if (!existing) throw new QuoteNotFoundError(input.quoteId);
+    if (!["draft", "internal_review"].includes(existing.status)) {
+      throw new QuoteValidationError("Only draft quotes can be edited.");
+    }
+
+    const language = input.language?.trim().toLowerCase();
+    if (language !== undefined && !language) {
+      throw new QuoteValidationError("Language is required.");
+    }
+
+    const quote = await this.deps.quotes.updateQuote({
+      companyId: input.companyId,
+      quoteId: input.quoteId,
+      updatedBy: actor,
+      ...(language !== undefined ? { language } : {}),
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),
+    });
+
+    if (language !== undefined && language !== existing.language) {
+      try {
+        await this.deps.quotes.addHistory({
+          companyId: input.companyId,
+          quoteId: quote.id,
+          eventType: "quote_language_updated",
+          fieldName: "language",
+          previousValue: existing.language,
+          newValue: language,
+          summary: `Language set to ${language}`,
+          actorUserId: actor,
+        });
+      } catch {
+        // Language update must succeed even if history write fails.
+      }
+    }
+
+    return { quote };
+  }
+
   async changeStatus(
     ctx: QuoteServiceContext,
     input: { companyId: string; quoteId: string; status: QuoteStatus },
@@ -598,6 +761,25 @@ export class QuoteCommandService {
       previousValue: existing.status,
       newValue: input.status,
       summary: `Status changed to ${input.status}`,
+      actorUserId: actor,
+    });
+
+    await this.recordOpportunityQuoteHistory({
+      companyId: input.companyId,
+      opportunityId: quote.opportunityId,
+      eventType: "quote_status_changed",
+      fieldName: "status",
+      previousValue: existing.status,
+      newValue: input.status,
+      summary: formatQuoteStatusChangedSummary({
+        quoteNumber: quote.quoteNumber,
+        previousStatus: existing.status,
+        nextStatus: input.status,
+      }),
+      payload: {
+        quoteId: quote.id,
+        quoteNumber: quote.quoteNumber,
+      },
       actorUserId: actor,
     });
 
@@ -675,6 +857,20 @@ export class QuoteCommandService {
       actorUserId: actor,
     });
 
+    await this.recordOpportunityQuoteHistory({
+      companyId: input.companyId,
+      opportunityId: quote.opportunityId,
+      eventType: "quote_submitted",
+      summary: formatQuoteSubmittedSummary({
+        quoteNumber: quote.quoteNumber,
+      }),
+      payload: {
+        quoteId: quote.id,
+        quoteNumber: quote.quoteNumber,
+      },
+      actorUserId: actor,
+    });
+
     return { quote: updated };
   }
 
@@ -692,6 +888,9 @@ export class QuoteCommandService {
     assertCompany(ctx, input.companyId);
     assertPermission(ctx, QUOTE_PERMISSIONS.approve);
 
+    const quote = await this.deps.quotes.getQuote(input.companyId, input.quoteId);
+    if (!quote) throw new QuoteNotFoundError(input.quoteId);
+
     await this.deps.quotes.decideApproval({
       companyId: input.companyId,
       approvalId: input.approvalId,
@@ -701,7 +900,7 @@ export class QuoteCommandService {
     });
 
     const nextStatus: QuoteStatus = input.status === "approved" ? "draft" : "rejected";
-    const quote = await this.deps.quotes.updateQuote({
+    const updatedQuote = await this.deps.quotes.updateQuote({
       companyId: input.companyId,
       quoteId: input.quoteId,
       updatedBy: actor,
@@ -717,7 +916,58 @@ export class QuoteCommandService {
       actorUserId: actor,
     });
 
-    return { quote };
+    if (input.status === "approved") {
+      await this.recordOpportunityQuoteHistory({
+        companyId: input.companyId,
+        opportunityId: quote.opportunityId,
+        eventType: "quote_approved",
+        summary: formatQuoteApprovedSummary({
+          quoteNumber: quote.quoteNumber,
+        }),
+        payload: {
+          quoteId: quote.id,
+          quoteNumber: quote.quoteNumber,
+          approvalId: input.approvalId,
+        },
+        actorUserId: actor,
+      });
+    } else {
+      await this.recordOpportunityQuoteHistory({
+        companyId: input.companyId,
+        opportunityId: quote.opportunityId,
+        eventType: "quote_rejected",
+        summary: formatQuoteRejectedSummary({
+          quoteNumber: quote.quoteNumber,
+        }),
+        payload: {
+          quoteId: quote.id,
+          quoteNumber: quote.quoteNumber,
+          approvalId: input.approvalId,
+        },
+        actorUserId: actor,
+      });
+
+      await this.recordOpportunityQuoteHistory({
+        companyId: input.companyId,
+        opportunityId: updatedQuote.opportunityId,
+        eventType: "quote_status_changed",
+        fieldName: "status",
+        previousValue: quote.status,
+        newValue: nextStatus,
+        summary: formatQuoteStatusChangedSummary({
+          quoteNumber: updatedQuote.quoteNumber,
+          previousStatus: quote.status,
+          nextStatus,
+        }),
+        payload: {
+          quoteId: updatedQuote.id,
+          quoteNumber: updatedQuote.quoteNumber,
+        },
+        actorUserId: actor,
+      });
+    }
+
+    return { quote: updatedQuote };
   }
 
   async archive(

@@ -103,6 +103,8 @@ export interface ProductRepository {
   }): Promise<ProductBundleItemRecord[]>;
 
   listOpportunityLines(companyId: string, opportunityId: string): Promise<OpportunityLineItemRecord[]>;
+  getOpportunityLine(companyId: string, lineId: string): Promise<OpportunityLineItemRecord | null>;
+  getOpportunityCurrency(companyId: string, opportunityId: string): Promise<string | null>;
   upsertOpportunityLine(input: {
     companyId: string;
     opportunityId: string;

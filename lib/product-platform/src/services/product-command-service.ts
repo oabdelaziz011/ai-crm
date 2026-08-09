@@ -1,5 +1,10 @@
 import { PRODUCT_PERMISSIONS, PRODUCT_TYPES } from "../constants.js";
 import {
+  formatLineFieldChangeSummary,
+  formatProductAttachedSummary,
+  formatProductRemovedSummary,
+} from "@workspace/opportunity-platform";
+import {
   ProductNotFoundError,
   ProductPermissionError,
   ProductValidationError,
@@ -60,6 +65,20 @@ export type ProductEventPublisherPort = {
   }): Promise<void>;
 };
 
+export type OpportunityHistoryRecorderPort = {
+  addHistory(input: {
+    companyId: string;
+    opportunityId: string;
+    eventType: string;
+    fieldName?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    summary: string;
+    payload?: Record<string, unknown>;
+    actorUserId: string | null;
+  }): Promise<void>;
+};
+
 function assertActor(ctx: ProductServiceContext): string {
   if (!ctx.userId) throw new ProductValidationError("Authenticated actor required.");
   return ctx.userId;
@@ -81,6 +100,7 @@ export class ProductCommandService {
     private readonly deps: {
       products: ProductRepository;
       events: ProductEventPublisherPort;
+      opportunityHistory?: OpportunityHistoryRecorderPort;
     },
   ) {}
 
@@ -415,6 +435,12 @@ export class ProductCommandService {
     const product = await this.deps.products.getProduct(input.companyId, input.productId);
     if (!product || !product.isActive) throw new ProductNotFoundError(input.productId);
 
+    const opportunityCurrency = await this.deps.products.getOpportunityCurrency(
+      input.companyId,
+      input.opportunityId,
+    );
+    if (!opportunityCurrency) throw new ProductValidationError("Opportunity not found.");
+
     const regional = await this.deps.products.listRegionalPrices(input.companyId, product.id);
     const priced = resolveEffectivePrice({
       basePrice:
@@ -444,7 +470,7 @@ export class ProductCommandService {
       unitPrice,
       discountPercent,
       taxPercent,
-      currency: priced.currency,
+      currency: opportunityCurrency,
       ...amounts,
       actorUserId: actor,
     });
@@ -453,6 +479,28 @@ export class ProductCommandService {
       opportunityId: input.opportunityId,
       productIds: [product.id],
       companyId: input.companyId,
+      actorUserId: actor,
+    });
+
+    await this.deps.opportunityHistory?.addHistory({
+      companyId: input.companyId,
+      opportunityId: input.opportunityId,
+      eventType: "product_attached",
+      summary: formatProductAttachedSummary({
+        productName: product.name,
+        quantity,
+        unitPrice,
+        currency: opportunityCurrency,
+      }),
+      payload: {
+        lineId: line.id,
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku,
+        quantity,
+        unitPrice,
+        currency: opportunityCurrency,
+      },
       actorUserId: actor,
     });
 
@@ -504,6 +552,70 @@ export class ProductCommandService {
       actorUserId: actor,
     });
 
+    const linePayload = {
+      lineId: line.id,
+      productId: existing.productId,
+      productName: existing.productNameSnapshot,
+      sku: existing.skuSnapshot,
+      currency: existing.currency,
+    };
+
+    if (input.quantity !== undefined && input.quantity !== existing.quantity) {
+      await this.deps.opportunityHistory?.addHistory({
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+        eventType: "quantity_changed",
+        fieldName: "quantity",
+        previousValue: String(existing.quantity),
+        newValue: String(quantity),
+        summary: formatLineFieldChangeSummary("Quantity"),
+        payload: linePayload,
+        actorUserId: actor,
+      });
+    }
+
+    if (input.unitPrice !== undefined && input.unitPrice !== existing.unitPrice) {
+      await this.deps.opportunityHistory?.addHistory({
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+        eventType: "unit_price_changed",
+        fieldName: "unit_price",
+        previousValue: String(existing.unitPrice),
+        newValue: String(unitPrice),
+        summary: formatLineFieldChangeSummary("Unit price"),
+        payload: linePayload,
+        actorUserId: actor,
+      });
+    }
+
+    if (input.discountPercent !== undefined && input.discountPercent !== existing.discountPercent) {
+      await this.deps.opportunityHistory?.addHistory({
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+        eventType: "discount_changed",
+        fieldName: "discount_percent",
+        previousValue: String(existing.discountPercent),
+        newValue: String(discountPercent),
+        summary: formatLineFieldChangeSummary("Discount"),
+        payload: linePayload,
+        actorUserId: actor,
+      });
+    }
+
+    if (input.taxPercent !== undefined && input.taxPercent !== existing.taxPercent) {
+      await this.deps.opportunityHistory?.addHistory({
+        companyId: input.companyId,
+        opportunityId: input.opportunityId,
+        eventType: "tax_changed",
+        fieldName: "tax_percent",
+        previousValue: String(existing.taxPercent),
+        newValue: String(taxPercent),
+        summary: formatLineFieldChangeSummary("Tax"),
+        payload: linePayload,
+        actorUserId: actor,
+      });
+    }
+
     return { line };
   }
 
@@ -516,6 +628,32 @@ export class ProductCommandService {
     if (!ctx.isSuperAdmin && !ctx.hasPermission("opportunities.edit")) {
       throw new ProductPermissionError("opportunities.edit");
     }
+
+    const existing = await this.deps.products.getOpportunityLine(input.companyId, input.lineId);
+    if (!existing) throw new ProductValidationError("Line item not found.");
+
     await this.deps.products.removeOpportunityLine(input.companyId, input.lineId, actor);
+
+    await this.deps.opportunityHistory?.addHistory({
+      companyId: input.companyId,
+      opportunityId: existing.opportunityId,
+      eventType: "product_removed",
+      summary: formatProductRemovedSummary({
+        productName: existing.productNameSnapshot,
+        quantity: existing.quantity,
+        unitPrice: existing.unitPrice,
+        currency: existing.currency,
+      }),
+      payload: {
+        lineId: existing.id,
+        productId: existing.productId,
+        productName: existing.productNameSnapshot,
+        sku: existing.skuSnapshot,
+        quantity: existing.quantity,
+        unitPrice: existing.unitPrice,
+        currency: existing.currency,
+      },
+      actorUserId: actor,
+    });
   }
 }

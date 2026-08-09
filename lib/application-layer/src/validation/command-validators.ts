@@ -172,6 +172,103 @@ export const commandValidators: Record<string, (request: unknown) => void> = {
   ArchiveLead: (request) => {
     requireString(asRecord(request).leadId, "leadId");
   },
+  CreateOpportunity: (request) => {
+    requireString(asRecord(request).name, "name");
+  },
+  CreateOpportunityFromLead: (request) => {
+    requireString(asRecord(request).leadId, "leadId");
+  },
+  UpdateOpportunity: (request) => {
+    const req = asRecord(request);
+    requireString(req.opportunityId, "opportunityId");
+  },
+  ChangeOpportunityStage: (request) => {
+    const req = asRecord(request);
+    requireString(req.opportunityId, "opportunityId");
+    requireString(req.stageId, "stageId");
+  },
+  UpdateOpportunityProbability: (request) => {
+    requireString(asRecord(request).opportunityId, "opportunityId");
+  },
+  ArchiveOpportunity: (request) => {
+    requireString(asRecord(request).opportunityId, "opportunityId");
+  },
+  CreateProduct: (request) => {
+    const req = asRecord(request);
+    requireString(req.name, "name");
+    requireString(req.sku, "sku");
+  },
+  UpdateProduct: (request) => {
+    requireString(asRecord(request).productId, "productId");
+  },
+  ArchiveProduct: (request) => {
+    requireString(asRecord(request).productId, "productId");
+  },
+  CreateProductCategory: (request) => {
+    requireString(asRecord(request).name, "name");
+  },
+  UpsertRegionalPrice: (request) => {
+    const req = asRecord(request);
+    requireString(req.productId, "productId");
+    requirePositiveNumber(req.localPrice as number, "localPrice");
+  },
+  AttachOpportunityProduct: (request) => {
+    const req = asRecord(request);
+    requireString(req.opportunityId, "opportunityId");
+    requireString(req.productId, "productId");
+  },
+  UpdateOpportunityLine: (request) => {
+    const req = asRecord(request);
+    requireString(req.lineId, "lineId");
+    requireString(req.opportunityId, "opportunityId");
+  },
+  RemoveOpportunityLine: (request) => {
+    requireString(asRecord(request).lineId, "lineId");
+  },
+  CreateQuoteFromOpportunity: (request) => {
+    requireString(asRecord(request).opportunityId, "opportunityId");
+  },
+  CreateQuote: (request) => {
+    requireString(asRecord(request).title, "title");
+  },
+  CreateQuoteVersion: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
+  AddQuoteProduct: (request) => {
+    const req = asRecord(request);
+    requireString(req.quoteId, "quoteId");
+    requireString(req.productId, "productId");
+  },
+  UpdateQuoteLine: (request) => {
+    const req = asRecord(request);
+    requireString(req.quoteId, "quoteId");
+    requireString(req.lineId, "lineId");
+  },
+  RemoveQuoteLine: (request) => {
+    const req = asRecord(request);
+    requireString(req.quoteId, "quoteId");
+    requireString(req.lineId, "lineId");
+  },
+  UpdateQuoteDetails: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
+  ChangeQuoteStatus: (request) => {
+    const req = asRecord(request);
+    requireString(req.quoteId, "quoteId");
+    requireString(req.status, "status");
+  },
+  RequestQuoteApproval: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
+  DecideQuoteApproval: (request) => {
+    const req = asRecord(request);
+    requireString(req.quoteId, "quoteId");
+    requireString(req.approvalId, "approvalId");
+    requireString(req.status, "status");
+  },
+  ArchiveQuote: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
   SaveConfigurationDraft: (request) => {
     const req = asRecord(request);
     requireString(req.domain, "domain");
@@ -239,6 +336,51 @@ export const queryValidators: Record<string, (request: unknown) => void> = {
     requireString(asRecord(request).pipelineId, "pipelineId");
   },
   LeadDashboard: () => {},
+  OpportunityGet: (request) => {
+    requireString(asRecord(request).opportunityId, "opportunityId");
+  },
+  OpportunityList: () => {},
+  OpportunityPipelines: () => {},
+  OpportunityStages: (request) => {
+    requireString(asRecord(request).pipelineId, "pipelineId");
+  },
+  OpportunityPipelineBoard: (request) => {
+    requireString(asRecord(request).pipelineId, "pipelineId");
+  },
+  OpportunityHistory: (request) => {
+    requireString(asRecord(request).opportunityId, "opportunityId");
+  },
+  ProductGet: (request) => {
+    requireString(asRecord(request).productId, "productId");
+  },
+  ProductList: () => {},
+  ProductCategories: () => {},
+  ProductRegionalPrices: (request) => {
+    requireString(asRecord(request).productId, "productId");
+  },
+  ProductHistory: (request) => {
+    requireString(asRecord(request).productId, "productId");
+  },
+  OpportunityLineItems: (request) => {
+    requireString(asRecord(request).opportunityId, "opportunityId");
+  },
+  QuoteGet: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
+  QuoteList: () => {},
+  QuoteLines: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
+  QuoteVersions: (request) => {
+    requireString(asRecord(request).quoteFamilyId, "quoteFamilyId");
+  },
+  QuoteTemplates: () => {},
+  QuoteApprovals: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
+  QuoteHistory: (request) => {
+    requireString(asRecord(request).quoteId, "quoteId");
+  },
   Configuration: (request) => {
     requireString(asRecord(request).domain, "domain");
   },

@@ -22,14 +22,31 @@ export function createNoopProductEventPublisher(): ProductEventPublisherPort {
   };
 }
 
+export type OpportunityHistoryRecorderPort = {
+  addHistory(input: {
+    companyId: string;
+    opportunityId: string;
+    eventType: string;
+    fieldName?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    summary: string;
+    payload?: Record<string, unknown>;
+    actorUserId: string | null;
+  }): Promise<void>;
+};
+
 export function createProductPlatformServices(
   client: SupabaseClient,
-  options: { events?: ProductEventPublisherPort } = {},
+  options: {
+    events?: ProductEventPublisherPort;
+    opportunityHistory?: OpportunityHistoryRecorderPort;
+  } = {},
 ): ProductPlatformServices {
   const products = createSupabaseProductRepository(client);
   const events = options.events ?? createNoopProductEventPublisher();
   return {
-    commands: new ProductCommandService({ products, events }),
+    commands: new ProductCommandService({ products, events, opportunityHistory: options.opportunityHistory }),
     queries: new ProductQueryService({ products }),
   };
 }
@@ -41,4 +58,4 @@ export type { ProductRepository } from "./repositories/product-repository-port.j
 export { createSupabaseProductRepository } from "./repositories/supabase-product-repositories.js";
 export { ProductCommandService } from "./services/product-command-service.js";
 export { ProductQueryService } from "./services/product-query-service.js";
-export type { ProductEventPublisherPort } from "./services/product-command-service.js";
+export type { ProductEventPublisherPort, OpportunityHistoryRecorderPort } from "./services/product-command-service.js";

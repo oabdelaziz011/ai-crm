@@ -44,6 +44,10 @@ export function createSupabaseCustomerServicePort(
       const userId = await resolveUserId(input, options);
       return service.createCustomer({ ...input, userId });
     },
+    async resolveCustomerForLeadConversion(input: CreateCustomerInput) {
+      const userId = await resolveUserId(input, options);
+      return service.resolveCustomerForLeadConversion({ ...input, userId });
+    },
     async updateCustomer(input: UpdateCustomerInput): Promise<UpdateCustomerResult> {
       const userId = await resolveUserId(input, options);
       return service.updateCustomer({ ...input, userId });

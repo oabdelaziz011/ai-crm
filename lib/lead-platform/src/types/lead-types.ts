@@ -155,6 +155,7 @@ export type LeadSummary = Pick<
   | "stageId"
   | "sourceId"
   | "isQualified"
+  | "customerId"
   | "expectedCloseDate"
   | "temperature"
   | "notes"
@@ -305,6 +306,7 @@ export function toLeadSummary(record: LeadRecord): LeadSummary {
     stageId: record.stageId,
     sourceId: record.sourceId,
     isQualified: record.isQualified,
+    customerId: record.customerId,
     expectedCloseDate: record.expectedCloseDate,
     temperature: record.temperature,
     notes: record.notes,

@@ -36,7 +36,7 @@ function mapLead(row: Record<string, unknown>): LeadRecord {
     stageId: String(row.stage_id),
     sourceId: row.source_id ? String(row.source_id) : null,
     lifecycleStatus: String(row.lifecycle_status) as LeadLifecycleStatus,
-    title: String(row.title),
+    title: String(row.title ?? row.name ?? "").trim() || String(row.contact_name ?? "").trim() || "Untitled lead",
     contactName: String(row.contact_name ?? ""),
     email: row.email ? String(row.email) : null,
     phone: row.phone ? String(row.phone) : null,
@@ -48,7 +48,8 @@ function mapLead(row: Record<string, unknown>): LeadRecord {
         : null,
     currency: String(row.currency ?? "USD"),
     score: Number(row.score ?? 0),
-    isQualified: Boolean(row.is_qualified),
+    isQualified:
+      Boolean(row.is_qualified) || String(row.lifecycle_status ?? "").toLowerCase() === "qualified",
     isVip: Boolean(row.is_vip),
     language: row.language ? String(row.language) : null,
     territory: row.territory ? String(row.territory) : null,

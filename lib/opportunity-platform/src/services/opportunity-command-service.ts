@@ -1,10 +1,15 @@
+import {
+  resolveLeadOpportunityCurrency,
+  resolveManualOpportunityCurrency,
+} from "../currency-utils.js";
+import { resolveDefaultOpportunityNameFromLead } from "../opportunity-name-utils.js";
 import { OPPORTUNITY_PERMISSIONS } from "../constants.js";
 import {
   OpportunityNotFoundError,
   OpportunityPermissionError,
   OpportunityValidationError,
 } from "../errors.js";
-import type { OpportunityRepository } from "../repositories/opportunity-repository-port.js";
+import type { LeadCustomerEmailMatch, OpportunityRepository } from "../repositories/opportunity-repository-port.js";
 import {
   computeWeightedRevenue,
   type OpportunityRecord,
@@ -107,6 +112,28 @@ function extractAiContext(metadata: Record<string, unknown>, aiSummary: string) 
   };
 }
 
+async function resolveCustomerIdForLead(
+  opportunities: OpportunityRepository,
+  input: { companyId: string; leadId: string; customerId: string | null; email: string | null },
+): Promise<string | null> {
+  if (input.customerId) return input.customerId;
+  if (!input.email?.trim()) return null;
+
+  const match: LeadCustomerEmailMatch = await opportunities.findCustomerByEmail(
+    input.companyId,
+    input.email,
+  );
+  if (match.kind === "none") return null;
+  if (match.kind === "duplicate") {
+    throw new OpportunityValidationError(
+      "Multiple customers share this email. Resolve the duplicate before creating an opportunity.",
+    );
+  }
+
+  await opportunities.attachLeadToCustomer(input.companyId, input.leadId, match.customerId);
+  return match.customerId;
+}
+
 export class OpportunityCommandService {
   constructor(
     private readonly deps: {
@@ -125,6 +152,8 @@ export class OpportunityCommandService {
       ownerUserId?: string;
       expectedRevenue?: number;
       currency?: string;
+      /** Company billing default (e.g. from CompanyLocale runtime). */
+      companyDefaultCurrency?: string;
       expectedCloseDate?: string | null;
       stageId?: string;
       pipelineId?: string;
@@ -133,6 +162,10 @@ export class OpportunityCommandService {
       language?: string;
       leadId?: string;
       customerId?: string;
+      probabilityPercent?: number;
+      probabilitySource?: string;
+      probabilityReason?: string;
+      metadata?: Record<string, unknown>;
     },
   ): Promise<{ opportunity: OpportunityRecord }> {
     const actorUserId = assertActor(ctx);
@@ -151,9 +184,13 @@ export class OpportunityCommandService {
       stage = found;
     }
 
-    const probabilityPercent = stage.defaultProbabilityPercent;
+    const probabilityPercent = input.probabilityPercent ?? stage.defaultProbabilityPercent;
     const expectedRevenue = input.expectedRevenue ?? null;
     const weightedRevenue = computeWeightedRevenue(expectedRevenue, probabilityPercent);
+    const currency = resolveManualOpportunityCurrency(
+      input.currency,
+      input.companyDefaultCurrency,
+    );
 
     const opportunity = await this.deps.opportunities.createOpportunity({
       companyId: input.companyId,
@@ -168,15 +205,16 @@ export class OpportunityCommandService {
       country: input.country ?? null,
       market: input.market ?? null,
       language: input.language ?? null,
-      currency: input.currency ?? "USD",
+      currency,
       expectedRevenue,
       weightedRevenue,
       probabilityPercent,
       probabilityConfidence: null,
-      probabilitySource: "manual",
-      probabilityReason: `Default probability for ${stage.name}`,
+      probabilitySource: input.probabilitySource ?? "auto",
+      probabilityReason: input.probabilityReason ?? `Default probability for ${stage.name}`,
       expectedCloseDate: input.expectedCloseDate ?? null,
       createdFromLead: Boolean(input.leadId),
+      metadata: input.metadata ?? {},
       createdBy: actorUserId,
     });
 
@@ -205,7 +243,26 @@ export class OpportunityCommandService {
    */
   async createFromLead(
     ctx: OpportunityServiceContext,
-    input: { companyId: string; leadId: string; name?: string },
+    input: {
+      companyId: string;
+      leadId: string;
+      name?: string;
+      companyName?: string;
+      primaryContactName?: string;
+      ownerUserId?: string;
+      expectedRevenue?: number | null;
+      currency?: string;
+      expectedCloseDate?: string | null;
+      stageId?: string;
+      pipelineId?: string;
+      /** Company billing default (e.g. from CompanyLocale runtime). */
+      companyDefaultCurrency?: string;
+      forceCreate?: boolean;
+      probabilityPercent?: number;
+      probabilitySource?: string;
+      probabilityReason?: string;
+      metadata?: Record<string, unknown>;
+    },
   ): Promise<{ opportunity: OpportunityRecord }> {
     const actorUserId = assertActor(ctx);
     assertCompany(ctx, input.companyId);
@@ -217,27 +274,54 @@ export class OpportunityCommandService {
       throw new OpportunityValidationError("Lead must be qualified before creating an opportunity.");
     }
 
-    const existing = await this.deps.opportunities.listOpportunities({
-      companyId: input.companyId,
-      leadId: lead.id,
-      limit: 1,
-      offset: 0,
-    });
-    if (existing.total > 0) {
-      throw new OpportunityValidationError("An opportunity already exists for this lead.");
+    if (!input.forceCreate) {
+      const existing = await this.deps.opportunities.listOpportunities({
+        companyId: input.companyId,
+        leadId: lead.id,
+        limit: 1,
+        offset: 0,
+      });
+      if (existing.total > 0) {
+        const existingOpportunity = existing.items[0];
+        if (existingOpportunity) {
+          return { opportunity: existingOpportunity };
+        }
+      }
     }
 
     const aiContext = extractAiContext(lead.metadata, lead.aiSummary);
-    const pipelineId = await this.deps.opportunities.ensureDefaultPipeline(input.companyId);
-    const stage = await this.deps.opportunities.getDefaultStage(input.companyId, pipelineId);
-    if (!stage) throw new OpportunityValidationError("Default opportunity stage not found.");
+    const customerId = await resolveCustomerIdForLead(this.deps.opportunities, {
+      companyId: input.companyId,
+      leadId: lead.id,
+      customerId: lead.customerId,
+      email: lead.email,
+    });
+    const pipelineId =
+      input.pipelineId ?? (await this.deps.opportunities.ensureDefaultPipeline(input.companyId));
+    const defaultStage = await this.deps.opportunities.getDefaultStage(input.companyId, pipelineId);
+    if (!defaultStage) throw new OpportunityValidationError("Default opportunity stage not found.");
 
-    const probabilityPercent = stage.defaultProbabilityPercent;
-    const expectedRevenue = lead.estimatedValue;
+    let stage = defaultStage;
+    if (input.stageId) {
+      const found = await this.deps.opportunities.getStage(input.companyId, input.stageId);
+      if (!found) throw new OpportunityValidationError("Stage not found.");
+      stage = found;
+    }
+
+    const probabilityPercent = input.probabilityPercent ?? stage.defaultProbabilityPercent;
+    const expectedRevenue =
+      input.expectedRevenue !== undefined ? input.expectedRevenue : lead.estimatedValue;
     const weightedRevenue = computeWeightedRevenue(expectedRevenue, probabilityPercent);
     const name =
       input.name?.trim() ||
-      (lead.companyName ? `${lead.companyName} — ${lead.title}` : lead.title);
+      resolveDefaultOpportunityNameFromLead({
+        title: lead.title,
+        companyName: input.companyName ?? lead.companyName,
+      });
+
+    const currency = input.currency
+      ? resolveManualOpportunityCurrency(input.currency, input.companyDefaultCurrency)
+      : resolveLeadOpportunityCurrency(lead.currency, input.companyDefaultCurrency);
 
     const opportunity = await this.deps.opportunities.createOpportunity({
       companyId: input.companyId,
@@ -245,21 +329,23 @@ export class OpportunityCommandService {
       stageId: stage.id,
       name,
       leadId: lead.id,
-      customerId: lead.customerId,
-      primaryContactName: lead.contactName,
-      ownerUserId: lead.assignedUserId ?? actorUserId,
-      companyName: lead.companyName,
+      customerId,
+      primaryContactName: input.primaryContactName ?? lead.contactName,
+      ownerUserId: input.ownerUserId ?? lead.assignedUserId ?? actorUserId,
+      companyName: input.companyName ?? lead.companyName,
       country: aiContext.country ?? lead.territory,
       market: aiContext.market,
       language: lead.language,
-      currency: lead.currency,
+      currency,
       expectedRevenue,
       weightedRevenue,
       probabilityPercent,
       probabilityConfidence: null,
-      probabilitySource: "manual",
-      probabilityReason: `Seeded from stage ${stage.name} after lead qualification`,
-      expectedCloseDate: lead.expectedCloseDate,
+      probabilitySource: input.probabilitySource ?? "auto",
+      probabilityReason:
+        input.probabilityReason ?? `Seeded from stage ${stage.name} after lead qualification`,
+      expectedCloseDate:
+        input.expectedCloseDate !== undefined ? input.expectedCloseDate : lead.expectedCloseDate,
       createdFromLead: true,
       aiScoreSnapshot: aiContext.aiScore ?? lead.score,
       aiContextSnapshot: {
@@ -276,6 +362,7 @@ export class OpportunityCommandService {
       metadata: {
         sourceLeadId: lead.id,
         createdFrom: "lead",
+        ...(input.metadata ?? {}),
       },
       createdBy: actorUserId,
     });
@@ -521,6 +608,36 @@ export class OpportunityCommandService {
       market: input.market,
     });
 
+    if (
+      input.expectedRevenue !== undefined &&
+      input.expectedRevenue !== existing.expectedRevenue
+    ) {
+      await this.deps.opportunities.addHistory({
+        companyId: input.companyId,
+        opportunityId: opportunity.id,
+        eventType: "amount_changed",
+        fieldName: "expected_revenue",
+        previousValue:
+          existing.expectedRevenue == null ? null : String(existing.expectedRevenue),
+        newValue: input.expectedRevenue == null ? null : String(input.expectedRevenue),
+        summary: "Expected revenue updated",
+        actorUserId,
+      });
+    }
+
+    if (input.ownerUserId !== undefined && input.ownerUserId !== existing.ownerUserId) {
+      await this.deps.opportunities.addHistory({
+        companyId: input.companyId,
+        opportunityId: opportunity.id,
+        eventType: "owner_changed",
+        fieldName: "owner_user_id",
+        previousValue: existing.ownerUserId,
+        newValue: input.ownerUserId,
+        summary: "Owner changed",
+        actorUserId,
+      });
+    }
+
     return { opportunity };
   }
 
@@ -532,5 +649,12 @@ export class OpportunityCommandService {
     assertCompany(ctx, input.companyId);
     assertPermission(ctx, OPPORTUNITY_PERMISSIONS.delete);
     await this.deps.opportunities.softDeleteOpportunity(input.companyId, input.opportunityId, actorUserId);
+    await this.deps.opportunities.addHistory({
+      companyId: input.companyId,
+      opportunityId: input.opportunityId,
+      eventType: "archived",
+      summary: "Opportunity archived",
+      actorUserId,
+    });
   }
 }

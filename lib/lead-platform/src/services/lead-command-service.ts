@@ -10,7 +10,7 @@ import {
   createLeadStageChangedEvent,
   createLeadUpdatedEvent,
 } from "../events/lead-event-factory.js";
-import { LeadConflictError, LeadNotFoundError, LeadValidationError } from "../errors.js";
+import { LeadNotFoundError, LeadValidationError } from "../errors.js";
 import type {
   LeadAssigneeResolverPort,
   LeadAuditPort,
@@ -412,26 +412,55 @@ export class LeadCommandService {
   async convertLead(
     ctx: LeadServiceContext,
     input: { companyId: string; leadId: string },
-  ): Promise<{ lead: LeadRecord; customerId: string }> {
+  ): Promise<{ lead: LeadRecord; customerId: string; opportunityId: string | null }> {
     const actorUserId = assertLeadActor(ctx);
     assertLeadCompanyAccess(ctx, input.companyId);
     assertLeadPermission(ctx, LEAD_PERMISSIONS.convert);
     const existing = await this.requireLead(input.companyId, input.leadId);
 
-    if (existing.customerId) {
-      throw new LeadConflictError("Lead is already converted.");
+    // Idempotent: already-converted leads succeed without re-running conversion.
+    if (
+      existing.customerId &&
+      (existing.lifecycleStatus === "converted" || existing.lifecycleStatus === "won")
+    ) {
+      return {
+        lead: existing,
+        customerId: existing.customerId,
+        opportunityId: null,
+      };
     }
 
-    const [tags, notes, activities] = await Promise.all([
+    // Resume a partial conversion (customer linked, status not finalized yet).
+    if (existing.customerId) {
+      const stage = await this.resolveStageByStatus(input.companyId, existing.pipelineId, "converted");
+      const record = await this.deps.leads.updateLead({
+        companyId: input.companyId,
+        leadId: input.leadId,
+        updatedBy: actorUserId,
+        customerId: existing.customerId,
+        lifecycleStatus: "converted",
+        stageId: stage?.id ?? existing.stageId,
+        convertedAt: new Date().toISOString(),
+      });
+      await this.recordActivity(
+        input.companyId,
+        input.leadId,
+        "converted",
+        `Converted to customer ${existing.customerId}`,
+        actorUserId,
+      );
+      return { lead: record, customerId: existing.customerId, opportunityId: null };
+    }
+
+    // Keep convert fast — tags/notes only (skip activity history transfer).
+    const [tags, notes] = await Promise.all([
       this.deps.leads.listTags(input.companyId, input.leadId),
       this.deps.leads.listNotes(input.companyId, input.leadId),
-      this.deps.leads.listActivities(input.companyId, input.leadId, 50),
     ]);
 
     const preservedPayload = {
       tags: tags.map((t) => t.tag),
       notes: notes.map((n) => ({ body: n.body, createdAt: n.createdAt })),
-      activities,
       sourceId: existing.sourceId,
       conversationId: existing.conversationId,
       aiSummary: existing.aiSummary,
@@ -480,7 +509,7 @@ export class LeadCommandService {
       }),
     );
 
-    return { lead: record, customerId: converted.customerId };
+    return { lead: record, customerId: converted.customerId, opportunityId: converted.opportunityId ?? null };
   }
 
   async mergeLead(

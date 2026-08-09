@@ -8,14 +8,27 @@ import type {
 } from "../types.js";
 import type {
   CreateOpportunityInput,
+  LeadCustomerEmailMatch,
   OpportunityRepository,
   UpdateOpportunityInput,
 } from "./opportunity-repository-port.js";
+
+function normalizeLeadEmail(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase();
+}
 
 function num(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function mapOpportunityCurrency(row: Record<string, unknown>): string {
+  const raw = row.currency;
+  if (raw == null || raw === "") return "";
+  return String(raw).trim().toUpperCase();
 }
 
 function mapStage(row: Record<string, unknown>): OpportunityStageRecord {
@@ -58,7 +71,7 @@ function mapOpportunity(row: Record<string, unknown>): OpportunityRecord {
     country: row.country != null ? String(row.country) : null,
     market: row.market != null ? String(row.market) : null,
     language: row.language != null ? String(row.language) : null,
-    currency: String(row.currency ?? "USD"),
+    currency: mapOpportunityCurrency(row),
     expectedRevenue: num(row.expected_revenue),
     weightedRevenue: num(row.weighted_revenue),
     exchangeRate: num(row.exchange_rate),
@@ -159,6 +172,9 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
     },
 
     async createOpportunity(input) {
+      if (!input.currency?.trim()) {
+        throw new Error("Opportunity currency is required.");
+      }
       const { data, error } = await client
         .from("opportunities")
         .insert({
@@ -174,7 +190,7 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
           country: input.country ?? null,
           market: input.market ?? null,
           language: input.language ?? null,
-          currency: input.currency ?? "USD",
+          currency: input.currency.trim().toUpperCase(),
           expected_revenue: input.expectedRevenue ?? null,
           weighted_revenue: input.weightedRevenue ?? null,
           exchange_rate: input.exchangeRate ?? null,
@@ -324,7 +340,7 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
       const { data, error } = await client
         .from("leads")
         .select(
-          "id, title, contact_name, company_name, customer_id, assigned_user_id, estimated_value, currency, expected_close_date, language, territory, is_qualified, score, ai_summary, metadata",
+          "id, title, contact_name, company_name, email, customer_id, assigned_user_id, estimated_value, currency, expected_close_date, language, territory, is_qualified, lifecycle_status, score, ai_summary, metadata",
         )
         .eq("company_id", companyId)
         .eq("id", leadId)
@@ -332,23 +348,68 @@ export function createSupabaseOpportunityRepository(client: SupabaseClient): Opp
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+      const lifecycleStatus = data.lifecycle_status != null ? String(data.lifecycle_status) : "";
       return {
         id: String(data.id),
         title: String(data.title),
         contactName: String(data.contact_name ?? ""),
         companyName: data.company_name != null ? String(data.company_name) : null,
+        email: data.email != null ? String(data.email) : null,
         customerId: data.customer_id ? String(data.customer_id) : null,
         assignedUserId: data.assigned_user_id ? String(data.assigned_user_id) : null,
         estimatedValue: num(data.estimated_value),
-        currency: String(data.currency ?? "USD"),
+        currency: data.currency != null && String(data.currency).trim()
+          ? String(data.currency).trim().toUpperCase()
+          : "",
         expectedCloseDate: data.expected_close_date != null ? String(data.expected_close_date) : null,
         language: data.language != null ? String(data.language) : null,
         territory: data.territory != null ? String(data.territory) : null,
-        isQualified: Boolean(data.is_qualified),
+        isQualified:
+          Boolean(data.is_qualified) || lifecycleStatus.toLowerCase() === "qualified",
         score: Number(data.score ?? 0),
         aiSummary: String(data.ai_summary ?? ""),
         metadata: (data.metadata as Record<string, unknown>) ?? {},
       };
+    },
+
+    async findCustomerByEmail(companyId, email): Promise<LeadCustomerEmailMatch> {
+      const normalized = normalizeLeadEmail(email);
+      if (!normalized) return { kind: "none" };
+
+      const { count, error: countError } = await client
+        .from("customers")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("email", normalized);
+      if (countError) throw countError;
+
+      const matchCount = count ?? 0;
+      if (matchCount === 0) return { kind: "none" };
+      if (matchCount > 1) return { kind: "duplicate", count: matchCount };
+
+      const { data, error } = await client
+        .from("customers")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("email", normalized)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.id) return { kind: "none" };
+      return { kind: "found", customerId: String(data.id) };
+    },
+
+    async attachLeadToCustomer(companyId, leadId, customerId) {
+      const { error } = await client
+        .from("leads")
+        .update({
+          customer_id: customerId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("company_id", companyId)
+        .eq("id", leadId)
+        .is("deleted_at", null);
+      if (error) throw error;
     },
   };
 }

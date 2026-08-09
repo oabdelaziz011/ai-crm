@@ -260,6 +260,35 @@ export class QuoteApplicationService {
     });
   }
 
+  updateDetails(
+    request: {
+      quoteId: string;
+      language?: string;
+      title?: string;
+      notes?: string;
+      contactName?: string;
+    },
+    context: ApplicationContext,
+  ): Promise<CommandResult<QuoteReadModel>> {
+    const cmd = this.deps.commandPipeline ?? new CommandPipeline({ audit: this.deps.infra.audit });
+    return cmd.execute({
+      commandType: "UpdateQuoteDetails",
+      request,
+      context,
+      requiredPermissions: ["quotes.edit"],
+      handler: async (req, ctx) =>
+        this.deps.ports.quoteWrite.updateDetails({
+          tenantId: ctx.tenantId,
+          quoteId: req.quoteId,
+          language: req.language,
+          title: req.title,
+          notes: req.notes,
+          contactName: req.contactName,
+          actorUserId: ctx.actorId,
+        }),
+    });
+  }
+
   changeStatus(
     request: { quoteId: string; status: string },
     context: ApplicationContext,

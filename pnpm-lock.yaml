@@ -1258,6 +1258,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/opportunity-platform':
+        specifier: workspace:*
+        version: link:../opportunity-platform
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1271,6 +1274,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/opportunity-platform':
+        specifier: workspace:*
+        version: link:../opportunity-platform
       '@workspace/product-platform':
         specifier: workspace:*
         version: link:../product-platform

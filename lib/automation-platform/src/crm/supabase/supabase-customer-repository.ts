@@ -3,6 +3,7 @@ import type { CustomerLookupField } from "../lookup/types.js";
 import type { CustomerRecord } from "../types/find-customer-input.js";
 import type { CreateCustomerInput, UpdateCustomerInput } from "../types/customer-mutation-input.js";
 import type { CustomerRepositoryPort } from "../customer/customer-repository-port.js";
+import { normalizeCustomerEmail } from "../customer/customer-email-utils.js";
 
 const CUSTOMER_COLUMNS = "id, name, email, phone, age, gender, notes, created_at, updated_at";
 
@@ -70,7 +71,7 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
         user_id: input.userId,
         company_id: input.companyId,
         name: input.name.trim(),
-        email: input.email?.trim() || null,
+        email: normalizeCustomerEmail(input.email),
         phone: input.phone?.trim() || null,
         age: input.age ?? null,
         gender: normalizeGender(input.gender),

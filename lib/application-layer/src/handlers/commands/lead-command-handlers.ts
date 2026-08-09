@@ -120,6 +120,7 @@ export async function handleConvertLead(
     response: Object.freeze({
       leadId: request.leadId,
       customerId: result.customerId,
+      opportunityId: result.opportunityId ?? null,
       convertedAt: new Date().toISOString(),
     }),
     eventIds: [eventId],

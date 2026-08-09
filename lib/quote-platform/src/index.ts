@@ -27,12 +27,19 @@ export function createNoopQuoteEventPublisher(): QuoteEventPublisherPort {
 
 export function createQuotePlatformServices(
   client: SupabaseClient,
-  options: { events?: QuoteEventPublisherPort } = {},
+  options: {
+    events?: QuoteEventPublisherPort;
+    opportunityHistory?: import("./services/quote-command-service.js").OpportunityHistoryRecorderPort;
+  } = {},
 ): QuotePlatformServices {
   const quotes = createSupabaseQuoteRepository(client);
   const events = options.events ?? createNoopQuoteEventPublisher();
   return {
-    commands: new QuoteCommandService({ quotes, events }),
+    commands: new QuoteCommandService({
+      quotes,
+      events,
+      opportunityHistory: options.opportunityHistory,
+    }),
     queries: new QuoteQueryService({ quotes }),
   };
 }

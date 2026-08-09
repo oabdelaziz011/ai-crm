@@ -100,7 +100,7 @@ function mapTemplate(row: Record<string, unknown>): QuoteTemplateRecord {
     description: String(row.description ?? ""),
     defaultLanguage: String(row.default_language ?? "en"),
     defaultCurrency: String(row.default_currency ?? "USD"),
-    validityDays: Number(row.validity_days ?? 30),
+    validityDays: Number(row.validity_days ?? 14),
     bodyJson: (row.body_json as Record<string, unknown>) ?? {},
     isActive: Boolean(row.is_active),
   };

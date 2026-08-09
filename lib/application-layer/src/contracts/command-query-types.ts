@@ -69,6 +69,7 @@ export const COMMAND_TYPES = [
   "AddQuoteProduct",
   "UpdateQuoteLine",
   "RemoveQuoteLine",
+  "UpdateQuoteDetails",
   "ChangeQuoteStatus",
   "RequestQuoteApproval",
   "DecideQuoteApproval",

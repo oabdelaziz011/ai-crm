@@ -15,13 +15,25 @@ import type { PlatformEventBus } from "@workspace/platform-events";
 
 describe("Application Layer — contracts", () => {
   it("registers all command and query types", () => {
-    assert.equal(COMMAND_TYPES.length, 74);
+    assert.equal(COMMAND_TYPES.length, 75);
     assert.equal(QUERY_TYPES.length, 56);
   });
 
   it("validates CreateCustomer command", () => {
     assert.throws(() => validateCommand("CreateCustomer", { displayName: "" }), ValidationError);
     assert.doesNotThrow(() => validateCommand("CreateCustomer", { displayName: "Sara Hassan" }));
+  });
+
+  it("validates CreateOpportunityFromLead command", () => {
+    assert.throws(() => validateCommand("CreateOpportunityFromLead", {}), ValidationError);
+    assert.doesNotThrow(() => validateCommand("CreateOpportunityFromLead", { leadId: "lead-1" }));
+  });
+
+  it("validates UpdateQuoteDetails command", () => {
+    assert.throws(() => validateCommand("UpdateQuoteDetails", {}), ValidationError);
+    assert.doesNotThrow(() =>
+      validateCommand("UpdateQuoteDetails", { quoteId: "quote-1", language: "ar" }),
+    );
   });
 });
 

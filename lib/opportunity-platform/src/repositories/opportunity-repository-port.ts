@@ -64,6 +64,11 @@ export type UpdateOpportunityInput = {
   metadata?: Record<string, unknown>;
 };
 
+export type LeadCustomerEmailMatch =
+  | { kind: "none" }
+  | { kind: "found"; customerId: string }
+  | { kind: "duplicate"; count: number };
+
 export interface OpportunityRepository {
   ensureDefaultPipeline(companyId: string): Promise<string>;
   getDefaultStage(companyId: string, pipelineId: string): Promise<OpportunityStageRecord | null>;
@@ -109,6 +114,7 @@ export interface OpportunityRepository {
     title: string;
     contactName: string;
     companyName: string | null;
+    email: string | null;
     customerId: string | null;
     assignedUserId: string | null;
     estimatedValue: number | null;
@@ -121,6 +127,10 @@ export interface OpportunityRepository {
     aiSummary: string;
     metadata: Record<string, unknown>;
   } | null>;
+
+  findCustomerByEmail(companyId: string, email: string): Promise<LeadCustomerEmailMatch>;
+
+  attachLeadToCustomer(companyId: string, leadId: string, customerId: string): Promise<void>;
 }
 
 export type { OpportunityStageKey };

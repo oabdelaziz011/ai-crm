@@ -68,3 +68,84 @@ describe("CustomerService.findCustomer", () => {
     assert.equal(result.count, 2);
   });
 });
+
+describe("CustomerService.resolveCustomerForLeadConversion", () => {
+  it("reuses an existing customer by normalized email without inserting", async () => {
+    const repository = new InMemoryCustomerRepository();
+    repository.seed({
+      ...sampleCustomer,
+      email: "Jane@Example.com",
+    });
+    const service = new CustomerService(repository);
+
+    const result = await service.resolveCustomerForLeadConversion({
+      companyId: "company-1",
+      userId: "user-1",
+      name: "Jane Doe",
+      email: "jane@example.com",
+    });
+
+    assert.equal(result.created, false);
+    assert.equal(result.customer.id, "cust-1");
+    assert.equal(repository.list().length, 1);
+  });
+
+  it("creates a customer when no email match exists", async () => {
+    const repository = new InMemoryCustomerRepository();
+    const service = new CustomerService(repository);
+
+    const result = await service.resolveCustomerForLeadConversion({
+      companyId: "company-1",
+      userId: "user-1",
+      name: "New Lead",
+      email: "new@example.com",
+    });
+
+    assert.equal(result.created, true);
+    assert.equal(repository.list().length, 1);
+    assert.equal(repository.list()[0]?.email, "new@example.com");
+  });
+
+  it("maps unexpected duplicate email database errors to a friendly message", async () => {
+    const repository = new InMemoryCustomerRepository();
+    repository.seed(sampleCustomer);
+    const service = new CustomerService(repository);
+
+    await assert.rejects(
+      () =>
+        service.createCustomer({
+          companyId: "company-1",
+          userId: "user-1",
+          name: "Another Omar",
+          email: "omar@example.com",
+        }),
+      (error: Error) => {
+        assert.match(error.message, /already exists/i);
+        return true;
+      },
+    );
+    assert.equal(repository.list().length, 1);
+  });
+
+  it("rejects ambiguous duplicate email matches", async () => {
+    const repository = new InMemoryCustomerRepository();
+    repository.seed(sampleCustomer);
+    repository.seed({
+      ...sampleCustomer,
+      id: "cust-2",
+      name: "Omar Duplicate",
+    });
+    const service = new CustomerService(repository);
+
+    await assert.rejects(
+      () =>
+        service.resolveCustomerForLeadConversion({
+          companyId: "company-1",
+          userId: "user-1",
+          name: "Omar",
+          email: "omar@example.com",
+        }),
+      /Multiple customers share this email/,
+    );
+  });
+});

@@ -32,6 +32,7 @@ export type ConvertLeadResponseDto = Readonly<{
   leadId: string;
   customerId: string;
   convertedAt: string;
+  opportunityId?: string | null;
 }>;
 
 // ── Booking ───────────────────────────────────────────────────────────────

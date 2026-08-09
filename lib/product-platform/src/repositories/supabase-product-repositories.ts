@@ -437,6 +437,30 @@ export function createSupabaseProductRepository(client: SupabaseClient): Product
       return (data ?? []).map((r) => mapLine(r as Record<string, unknown>));
     },
 
+    async getOpportunityLine(companyId, lineId) {
+      const { data, error } = await client
+        .from("opportunity_line_items")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("id", lineId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapLine(data as Record<string, unknown>) : null;
+    },
+
+    async getOpportunityCurrency(companyId, opportunityId) {
+      const { data, error } = await client
+        .from("opportunities")
+        .select("currency")
+        .eq("company_id", companyId)
+        .eq("id", opportunityId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.currency != null ? String(data.currency).trim().toUpperCase() : null;
+    },
+
     async upsertOpportunityLine(input) {
       const row = {
         company_id: input.companyId,

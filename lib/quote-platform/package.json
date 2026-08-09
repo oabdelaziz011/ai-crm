@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
+    "@workspace/opportunity-platform": "workspace:*",
     "@workspace/product-platform": "workspace:*"
   },
   "devDependencies": {

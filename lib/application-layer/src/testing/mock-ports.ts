@@ -957,6 +957,20 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         if (!quote) throw new Error("quote not found");
         return quote;
       },
+      async updateDetails(input) {
+        const existing = quotes.get(input.quoteId);
+        if (!existing) throw new Error("quote not found");
+        const updated = Object.freeze({
+          ...existing,
+          ...(input.language !== undefined ? { language: input.language } : {}),
+          ...(input.title !== undefined ? { title: input.title } : {}),
+          ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),
+          updatedAt: now(),
+        });
+        quotes.set(input.quoteId, updated);
+        return updated;
+      },
       async changeStatus(input) {
         const existing = quotes.get(input.quoteId);
         if (!existing) throw new Error("quote not found");

@@ -62,11 +62,20 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
   }
 
   async createCustomer(input: CreateCustomerInput): Promise<CustomerRecord> {
+    const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
+    if (normalizedEmail) {
+      const existing = this.customers.filter(
+        (customer) => (customer.email ?? "").trim().toLowerCase() === normalizedEmail,
+      );
+      if (existing.length > 0) {
+        throw new Error('duplicate key value violates unique constraint "idx_customers_company_email_unique"');
+      }
+    }
     const now = new Date().toISOString();
     const record: CustomerRecord = {
       id: `cust-${this.customers.length + 1}`,
       name: input.name.trim(),
-      email: input.email ?? null,
+      email: normalizedEmail,
       phone: input.phone ?? null,
       age: input.age ?? null,
       gender: input.gender ?? null,

@@ -910,6 +910,10 @@ export type OpportunityCreateInput = Readonly<{
   language?: string;
   leadId?: string;
   customerId?: string;
+  probabilityPercent?: number;
+  probabilitySource?: string;
+  probabilityReason?: string;
+  metadata?: Readonly<Record<string, unknown>>;
   actorUserId: string;
 }>;
 
@@ -917,6 +921,19 @@ export type OpportunityCreateFromLeadInput = Readonly<{
   tenantId: string;
   leadId: string;
   name?: string;
+  companyName?: string;
+  primaryContactName?: string;
+  ownerUserId?: string;
+  expectedRevenue?: number | null;
+  currency?: string;
+  expectedCloseDate?: string | null;
+  stageId?: string;
+  pipelineId?: string;
+  forceCreate?: boolean;
+  probabilityPercent?: number;
+  probabilitySource?: string;
+  probabilityReason?: string;
+  metadata?: Readonly<Record<string, unknown>>;
   actorUserId: string;
 }>;
 
@@ -1290,6 +1307,15 @@ export type QuoteWritePort = {
     tenantId: string;
     quoteId: string;
     lineId: string;
+    actorUserId: string;
+  }): Promise<QuoteReadModel>;
+  updateDetails(input: {
+    tenantId: string;
+    quoteId: string;
+    language?: string;
+    title?: string;
+    notes?: string;
+    contactName?: string;
     actorUserId: string;
   }): Promise<QuoteReadModel>;
   changeStatus(input: {

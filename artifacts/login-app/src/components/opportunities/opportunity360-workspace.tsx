@@ -1,377 +1,399 @@
-import { Briefcase, Loader2, TrendingUp, X } from "lucide-react";
-import { useState } from "react";
+import { Briefcase, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { OpportunityHistoryReadModel, OpportunityReadModel } from "@workspace/application-layer";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useLocation } from "wouter";
+import type {
+  OpportunityReadModel,
+  QuoteReadModel,
+} from "@workspace/application-layer";
+import { DeleteDialog } from "@/components/dashboard/delete-dialog";
+import {
+  ENTITY_360_DIALOG_CONTENT_CLASS,
+  ENTITY_360_TAB_TRIGGER_CLASS,
+  ENTITY_360_TABS_LIST_CLASS,
+} from "@/components/entity-workspace/entity-360-dialog-shell";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EnterpriseEmptyState } from "@/components/enterprise";
 import { OpportunityProductsPanel } from "@/components/products/product360-workspace";
 import {
   OpportunityQuotesPanel,
   Quote360Workspace,
 } from "@/components/quotes/quote360-workspace";
+import { useCustomerProfile } from "@/context/customer-profile-context";
+import { useLead360Workspace } from "@/hooks/leads/use-lead360-workspace";
 import {
+  useOpportunityCommands,
+  useOpportunityPermissions,
   useOpportunityPipelineBoard,
-  useOpportunityPipelines,
   useOpportunityWorkspace,
 } from "@/hooks/opportunities/use-opportunity-commands";
-import { formatBillingCurrency } from "@/lib/billing/format";
+import {
+  getOpportunityStageDisplayName,
+  useActiveOpportunityPipelineId,
+  useOpportunityPipelineContext,
+} from "@/hooks/opportunities/use-opportunity-pipeline";
+import { useOpportunityLineItems } from "@/hooks/products/use-product-commands";
+import { useOpportunityQuotes, useQuoteCommands } from "@/hooks/quotes/use-quote-commands";
+import { useAuthUser } from "@/hooks/use-rbac";
+import { useToast } from "@/hooks/use-toast";
+import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
+import { companyWorkspaceHref } from "@/lib/company-workspace/company-workspace-routes";
+import { localizeOpportunityStageName } from "@/lib/sales/sales-localize";
 import { cn } from "@/lib/utils";
+import { Opportunity360Header } from "./opportunity360-header";
+import { Opportunity360Overview } from "./opportunity360-overview";
+import { Opportunity360Skeleton, formatOpportunityMoney } from "./opportunity360-ui";
+import { Opportunity360AuditPanel } from "./opportunity360-audit-panel";
+import { OpportunityPermissionDeniedState } from "./opportunity360-permission-denied";
+import { OPPORTUNITY360_TABS, type Opportunity360Tab } from "./opportunity360-tabs";
 
-/** Company Settings currency (not per-record hardcoded codes). */
-function money(value: number | null, _currency?: string) {
-  return formatBillingCurrency(value);
+export { OPPORTUNITY360_TABS } from "./opportunity360-tabs";
+
+function money(value: number | null, currency: string | null | undefined) {
+  return formatOpportunityMoney(value, currency);
 }
 
-function OpportunityHeader({
-  opportunity,
-  onClose,
-}: {
-  opportunity: OpportunityReadModel;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation("common");
-  return (
-    <header className="shrink-0 border-b border-border/60 bg-gradient-to-b from-muted/30 to-transparent px-5 py-4 sm:px-7">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h2 className="truncate text-[1.35rem] font-semibold tracking-[-0.03em]">
-              {opportunity.name}
-            </h2>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[12px] font-semibold">
-              {opportunity.stage}
-            </span>
-          </div>
-          <p className="mt-1.5 truncate text-[13px] text-muted-foreground">
-            {[opportunity.companyName, opportunity.primaryContact, opportunity.owner]
-              .filter(Boolean)
-              .join(" · ") || t("opportunities.empty.company", { defaultValue: "No company linked" })}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-3 text-[13px]">
-            <span className="font-semibold tabular-nums">
-              {money(opportunity.expectedRevenue, opportunity.currency)}
-            </span>
-            <span className="text-muted-foreground">
-              {t("opportunities.probability", { defaultValue: "Probability" })} ·{" "}
-              {opportunity.probabilityPercent}%
-            </span>
-            <span className="text-muted-foreground">
-              {t("opportunities.weighted", { defaultValue: "Weighted" })} ·{" "}
-              {money(opportunity.weightedRevenue, opportunity.currency)}
-            </span>
-          </div>
-        </div>
-        <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-          <X className="size-4" />
-        </Button>
-      </div>
-    </header>
-  );
-}
-
-function AiContextPanel({ opportunity }: { opportunity: OpportunityReadModel }) {
-  const { t } = useTranslation("common");
-  const snap = opportunity.aiContextSnapshot as Record<string, unknown>;
-  const summary = typeof snap.leadSummary === "string" ? snap.leadSummary : "";
-  const buying = Array.isArray(snap.buyingSignals) ? snap.buyingSignals : [];
-  const risk = Array.isArray(snap.riskSignals) ? snap.riskSignals : [];
-  const recommendations = Array.isArray(snap.recommendations) ? snap.recommendations : [];
-
-  if (!summary && buying.length === 0 && risk.length === 0 && !opportunity.leadId) {
-    return (
-      <EnterpriseEmptyState
-        icon={<TrendingUp className="size-6" aria-hidden />}
-        title={t("opportunities.ai.emptyTitle", { defaultValue: "No AI context yet" })}
-        description={t("opportunities.ai.emptyBody", {
-          defaultValue: "Create this opportunity from a qualified lead to carry Lead Intelligence.",
-        })}
-      />
-    );
+function resolveCurrentQuote(
+  opportunity: OpportunityReadModel,
+  quotes: readonly QuoteReadModel[],
+): QuoteReadModel | null {
+  if (!quotes.length) return null;
+  if (opportunity.currentQuoteId) {
+    const match = quotes.find((quote) => quote.id === opportunity.currentQuoteId);
+    if (match) return match;
   }
-
-  return (
-    <div className="space-y-4">
-      {summary ? (
-        <section className="rounded-lg border border-border/60 bg-muted/20 p-4">
-          <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("opportunities.ai.leadSummary", { defaultValue: "Lead Summary" })}
-          </h3>
-          <p className="mt-2 text-[14px] leading-relaxed">{summary}</p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Source · lead · Confidence · snapshot · Updated · creation
-          </p>
-        </section>
-      ) : null}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <section className="rounded-lg border border-border/60 p-4">
-          <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("opportunities.ai.buying", { defaultValue: "Buying Signals" })}
-          </h3>
-          <ul className="mt-2 space-y-1 text-[13px]">
-            {buying.length ? (
-              buying.slice(0, 8).map((s, i) => (
-                <li key={i}>{typeof s === "object" && s && "type" in s ? String((s as { type: unknown }).type) : String(s)}</li>
-              ))
-            ) : (
-              <li className="text-muted-foreground">—</li>
-            )}
-          </ul>
-        </section>
-        <section className="rounded-lg border border-border/60 p-4">
-          <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("opportunities.ai.risk", { defaultValue: "Risk Signals" })}
-          </h3>
-          <ul className="mt-2 space-y-1 text-[13px]">
-            {risk.length ? (
-              risk.slice(0, 8).map((s, i) => (
-                <li key={i}>{typeof s === "object" && s && "type" in s ? String((s as { type: unknown }).type) : String(s)}</li>
-              ))
-            ) : (
-              <li className="text-muted-foreground">—</li>
-            )}
-          </ul>
-        </section>
-      </div>
-
-      {recommendations[0] && typeof recommendations[0] === "object" ? (
-        <section className="rounded-lg border border-border/60 p-4">
-          <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("opportunities.ai.recommendation", { defaultValue: "AI Recommendation" })}
-          </h3>
-          <p className="mt-2 text-[14px] font-medium">
-            {String((recommendations[0] as { action?: unknown }).action ?? "")}
-          </p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            {String((recommendations[0] as { reason?: unknown }).reason ?? "")}
-          </p>
-        </section>
-      ) : null}
-
-      <p className="text-[11px] text-muted-foreground">
-        {t("opportunities.ai.readOnlyHint", {
-          defaultValue:
-            "AI context is read-only from the source Lead. Conversations stay on Lead / Omnichannel.",
-        })}
-        {opportunity.leadId ? ` · Lead ${opportunity.leadId.slice(0, 8)}` : null}
-      </p>
-    </div>
-  );
+  return quotes[0] ?? null;
 }
 
-function TimelinePanel({ history }: { history: readonly OpportunityHistoryReadModel[] }) {
-  const { t } = useTranslation("common");
-  if (!history.length) {
-    return (
-      <EnterpriseEmptyState
-        icon={<Briefcase className="size-6" aria-hidden />}
-        title={t("opportunities.timeline.emptyTitle", { defaultValue: "No timeline events yet" })}
-        description={t("opportunities.timeline.emptyBody", {
-          defaultValue: "Stage changes, probability updates, and wins appear here.",
-        })}
-      />
-    );
-  }
-  return (
-    <ol className="space-y-3 border-s border-border/60 ps-4">
-      {history.map((item) => (
-        <li key={item.id} className="relative">
-          <span className="absolute -start-[1.3rem] top-1.5 size-2 rounded-full bg-foreground/70" />
-          <div className="text-[13px] font-medium">{item.summary || item.eventType}</div>
-          <div className="text-[11px] text-muted-foreground">
-            {new Date(item.createdAt).toLocaleString()} · {item.eventType}
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
+/**
+ * Do not import Lead360Workspace here — Lead360 already imports this module
+ * (mutual workspace imports break the leads table lazy chunk). Pass `onOpenLead`.
+ */
 export function Opportunity360Workspace({
   opportunityId,
   open,
   onOpenChange,
+  onOpenLead,
 }: {
   opportunityId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenLead?: (leadId: string, intent?: "overview" | "activity") => void;
 }) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { canView, canArchive } = useOpportunityPermissions();
+  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const canCreateQuote =
+    isSuperAdmin ||
+    hasPermission("quotes.create") ||
+    hasPermission("opportunities.create") ||
+    hasPermission("opportunities.edit");
+  const { openCustomerProfile } = useCustomerProfile();
   const { data, isLoading, isError, refetch } = useOpportunityWorkspace(opportunityId);
   const opportunity = data?.opportunity ?? null;
+  const pipelineContext = useOpportunityPipelineContext(opportunity?.pipelineId);
+  const leadWorkspace = useLead360Workspace(open ? opportunity?.leadId ?? null : null);
+  const linesQuery = useOpportunityLineItems(opportunity?.id ?? null);
+  const quotesQuery = useOpportunityQuotes(opportunity?.id ?? null);
+  const commands = useOpportunityCommands();
+  const quoteCommands = useQuoteCommands();
+
+  const [tab, setTab] = useState<Opportunity360Tab>("overview");
+
+  useEffect(() => {
+    if (!OPPORTUNITY360_TABS.includes(tab)) {
+      setTab("overview");
+    }
+  }, [tab]);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [quoteOpen, setQuoteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const quoteOpenRef = useRef(false);
+  const quoteClosingGuardRef = useRef(false);
+
+  useEffect(() => {
+    quoteOpenRef.current = quoteOpen;
+  }, [quoteOpen]);
+
+  const setQuoteDialogOpen = useCallback((next: boolean) => {
+    if (!next) {
+      quoteClosingGuardRef.current = true;
+      setQuoteOpen(false);
+      window.setTimeout(() => {
+        quoteClosingGuardRef.current = false;
+      }, 400);
+      return;
+    }
+    setQuoteOpen(true);
+  }, []);
+
+  const updatePending = commands.archive.isPending;
+  const productsCount = linesQuery.isSuccess ? linesQuery.data.length : null;
+  const currentQuote = useMemo(
+    () => (opportunity ? resolveCurrentQuote(opportunity, quotesQuery.data?.items ?? []) : null),
+    [opportunity, quotesQuery.data?.items],
+  );
+  const { pipelines } = useActiveOpportunityPipelineId();
+  const pipelineName = useMemo(() => {
+    const id = opportunity?.pipelineId ?? pipelineContext.pipelineId;
+    if (!id) return null;
+    return pipelines.find((pipeline) => pipeline.id === id)?.name ?? null;
+  }, [opportunity?.pipelineId, pipelineContext.pipelineId, pipelines]);
+
+  const leadContext = useMemo(() => {
+    const lead = leadWorkspace.data?.lead;
+    if (!lead) return null;
+    return {
+      phone: lead.phone ?? null,
+      email: lead.email ?? null,
+    };
+  }, [leadWorkspace.data?.lead]);
+
+  const tabs = OPPORTUNITY360_TABS.map(
+    (id) => [id, t(`opportunities360.tabs.${id}`)] as const,
+  );
+
+  const navigation = {
+    onOpenCustomer: (customerId: string) => {
+      openCustomerProfile({ customerId, tab: "overview" });
+    },
+    onOpenCompany: () => {
+      setLocation(companyWorkspaceHref("overview"));
+    },
+    onOpenLead,
+    onOpenOwner: (ownerId: string) => {
+      setLocation(companyWorkspaceHref("employees", { employeeId: ownerId }));
+    },
+    onOpenQuote: (nextQuoteId: string) => {
+      setQuoteId(nextQuoteId);
+      setQuoteDialogOpen(true);
+    },
+  };
+
+  const failToast = useCallback(
+    (titleKey: string, error?: unknown) => {
+      toast({
+        variant: "destructive",
+        title: t(titleKey),
+        description: resolveApplicationErrorMessage(error),
+      });
+    },
+    [toast, t],
+  );
+
+  const handleCreateQuote = useCallback(() => {
+    if (!opportunity) return;
+    void quoteCommands.createFromOpportunity
+      .mutateAsync({ opportunityId: opportunity.id })
+      .then((result) => {
+        toast({ title: t("opportunities.quotes.createSuccess") });
+        setTab("quotes");
+        setQuoteId(result.quote.id);
+        setQuoteDialogOpen(true);
+      })
+      .catch((error: unknown) => failToast("opportunities.quotes.createFailed", error));
+  }, [opportunity, quoteCommands.createFromOpportunity, toast, t, failToast, setQuoteDialogOpen]);
+
+  const handleArchiveConfirm = () => {
+    if (!opportunity) return;
+    void commands.archive
+      .mutateAsync({ opportunityId: opportunity.id })
+      .then(() => {
+        toast({ title: t("opportunities360.archive.success") });
+        setArchiveOpen(false);
+        onOpenChange(false);
+      })
+      .catch((error: unknown) => failToast("opportunities360.archive.failed", error));
+  };
+
+  if (open && !canView) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle className="sr-only">{t("opportunities.permissionDenied")}</DialogTitle>
+          <OpportunityPermissionDeniedState />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn(
-          "flex h-[min(90vh,920px)] w-[min(1280px,96vw)] max-w-none flex-col gap-0 overflow-hidden p-0",
-        )}
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          // Nested Quote360: ignore dismiss while quote is open or just closing
+          // (Radix focus restore otherwise closes Opportunity and dumps to the list).
+          if (!next && (quoteOpenRef.current || quoteClosingGuardRef.current)) return;
+          onOpenChange(next);
+        }}
       >
-        {isLoading ? (
-          <div className="space-y-4 p-6" aria-busy="true">
-            <Skeleton className="h-8 w-1/3" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        ) : isError || !opportunity ? (
-          <div className="p-6">
-            <EnterpriseEmptyState
-              icon={<Briefcase className="size-6" aria-hidden />}
-              title={t("opportunities.loadError", { defaultValue: "Could not load opportunity" })}
-              description={t("opportunities.loadErrorBody", {
-                defaultValue: "Check your connection and try again.",
-              })}
-              primaryAction={{
-                label: t("common.retry", { defaultValue: "Retry" }),
-                onClick: () => void refetch(),
-              }}
-            />
-          </div>
-        ) : (
-          <>
-            <OpportunityHeader opportunity={opportunity} onClose={() => onOpenChange(false)} />
-            <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="mx-5 mt-3 h-auto w-auto flex-wrap justify-start gap-1 bg-transparent p-0 sm:mx-7">
-                {[
-                  ["overview", "Overview"],
-                  ["timeline", "Timeline"],
-                  ["activities", "Activities"],
-                  ["tasks", "Tasks"],
-                  ["files", "Files"],
-                  ["products", "Products"],
-                  ["quotes", "Quotes"],
-                  ["ai", "AI"],
-                  ["audit", "Audit"],
-                ].map(([value, label]) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="rounded-md px-3 py-1.5 text-[12px] data-[state=active]:bg-muted"
-                  >
-                    {label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+        <DialogContent
+          className={cn(ENTITY_360_DIALOG_CONTENT_CLASS)}
+          onInteractOutside={(event) => {
+            if (quoteOpenRef.current || quoteClosingGuardRef.current) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (quoteOpenRef.current || quoteClosingGuardRef.current) event.preventDefault();
+          }}
+          onFocusOutside={(event) => {
+            if (quoteOpenRef.current || quoteClosingGuardRef.current) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (quoteOpenRef.current || quoteClosingGuardRef.current) event.preventDefault();
+          }}
+        >
+          <DialogTitle className="sr-only">{opportunity?.name ?? t("navigation.opportunities")}</DialogTitle>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-7">
-                <TabsContent value="overview" className="mt-0 space-y-4">
-                  <dl className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-[11px] uppercase text-muted-foreground">Stage</dt>
-                      <dd className="text-[14px] font-medium">{opportunity.stage}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] uppercase text-muted-foreground">Owner</dt>
-                      <dd className="text-[14px] font-medium">{opportunity.owner ?? "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] uppercase text-muted-foreground">Country / Market</dt>
-                      <dd className="text-[14px] font-medium">
-                        {[opportunity.country, opportunity.market].filter(Boolean).join(" · ") || "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] uppercase text-muted-foreground">Close date</dt>
-                      <dd className="text-[14px] font-medium">{opportunity.expectedCloseDate ?? "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] uppercase text-muted-foreground">Probability model</dt>
-                      <dd className="text-[14px] font-medium">
-                        {opportunity.probabilityPercent}% · {opportunity.probabilitySource}
-                        {opportunity.probabilityReason ? ` · ${opportunity.probabilityReason}` : ""}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] uppercase text-muted-foreground">Source lead</dt>
-                      <dd className="text-[14px] font-medium">
-                        {opportunity.createdFromLead && opportunity.leadId
-                          ? opportunity.leadId.slice(0, 8)
-                          : "Manual"}
-                      </dd>
-                    </div>
-                  </dl>
-                </TabsContent>
+          {isLoading ? (
+            <Opportunity360Skeleton />
+          ) : isError || !opportunity ? (
+            <div className="p-6">
+              <EnterpriseEmptyState
+                icon={<Briefcase className="size-6" aria-hidden />}
+                title={t("opportunities360.loadError")}
+                description={t("opportunities360.loadErrorBody")}
+                primaryAction={{
+                  label: t("common.retry"),
+                  onClick: () => void refetch(),
+                }}
+              />
+            </div>
+          ) : (
+            <>
+              <Opportunity360Header
+                opportunity={opportunity}
+                leadContext={leadContext}
+                canArchive={canArchive}
+                canCreateQuote={canCreateQuote}
+                createQuotePending={quoteCommands.createFromOpportunity.isPending}
+                updatePending={updatePending}
+                onArchive={() => setArchiveOpen(true)}
+                onClose={() => onOpenChange(false)}
+                onOpenLead={onOpenLead ? (leadId) => onOpenLead(leadId, "overview") : undefined}
+                onCreateQuote={handleCreateQuote}
+                locale={i18n.language}
+              />
 
-                <TabsContent value="timeline" className="mt-0">
-                  <TimelinePanel history={data?.history ?? []} />
-                </TabsContent>
+              <Tabs
+                value={tab}
+                onValueChange={(value) => setTab(value as Opportunity360Tab)}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              >
+                <TabsList className={ENTITY_360_TABS_LIST_CLASS}>
+                  {tabs.map(([id, label]) => (
+                    <TabsTrigger key={id} value={id} className={ENTITY_360_TAB_TRIGGER_CLASS}>
+                      {label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-                {(["activities", "tasks", "files"] as const).map((tab) => (
-                  <TabsContent key={tab} value={tab} className="mt-0">
-                    <EnterpriseEmptyState
-                      icon={<Briefcase className="size-6" aria-hidden />}
-                      title={t(`opportunities.${tab}.emptyTitle`, {
-                        defaultValue: `No ${tab} yet`,
-                      })}
-                      description={t(`opportunities.${tab}.emptyBody`, {
-                        defaultValue: "Coming in a later sales execution sprint.",
-                      })}
-                    />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 lg:px-8">
+                  <TabsContent value="overview" className="mt-0">
+                    {tab === "overview" ? (
+                      <Opportunity360Overview
+                        opportunity={opportunity}
+                        locale={i18n.language}
+                        currentQuote={currentQuote}
+                        navigation={navigation}
+                        stageById={pipelineContext.stageById}
+                        pipelineName={pipelineName}
+                        leadContext={leadContext}
+                        productsCount={productsCount}
+                      />
+                    ) : null}
                   </TabsContent>
-                ))}
 
-                <TabsContent value="products" className="mt-0">
-                  <OpportunityProductsPanel
-                    opportunityId={opportunity.id}
-                    country={opportunity.country}
-                    market={opportunity.market}
-                  />
-                </TabsContent>
+                  <TabsContent value="products" className="mt-0">
+                    {tab === "products" ? (
+                      <OpportunityProductsPanel
+                        opportunityId={opportunity.id}
+                        currency={opportunity.currency}
+                        country={opportunity.country}
+                        market={opportunity.market}
+                      />
+                    ) : null}
+                  </TabsContent>
 
-                <TabsContent value="quotes" className="mt-0">
-                  <OpportunityQuotesPanel
-                    opportunityId={opportunity.id}
-                    onOpenQuote={(id) => {
-                      setQuoteId(id);
-                      setQuoteOpen(true);
-                    }}
-                  />
-                </TabsContent>
+                  <TabsContent value="quotes" className="mt-0">
+                    {tab === "quotes" ? (
+                      <OpportunityQuotesPanel
+                        opportunityId={opportunity.id}
+                        showCreateButton={false}
+                        onOpenQuote={(id) => {
+                          setQuoteId(id);
+                          setQuoteDialogOpen(true);
+                        }}
+                      />
+                    ) : null}
+                  </TabsContent>
 
-                <TabsContent value="ai" className="mt-0">
-                  <AiContextPanel opportunity={opportunity} />
-                </TabsContent>
+                  <TabsContent value="audit" className="mt-0">
+                    {tab === "audit" ? (
+                      <Opportunity360AuditPanel
+                        history={data?.history ?? []}
+                        locale={i18n.language}
+                        stageById={pipelineContext.stageById}
+                        opportunityCurrency={opportunity.currency}
+                      />
+                    ) : null}
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-                <TabsContent value="audit" className="mt-0">
-                  <TimelinePanel history={data?.history ?? []} />
-                </TabsContent>
-              </div>
-            </Tabs>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-    <Quote360Workspace
-      quoteId={quoteId}
-      open={quoteOpen}
-      onOpenChange={setQuoteOpen}
-      onVersionCreated={(id) => setQuoteId(id)}
-    />
+      <DeleteDialog
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={handleArchiveConfirm}
+        isPending={commands.archive.isPending}
+        title={t("opportunities360.archive.title")}
+        description={t("opportunities360.archive.description", { name: opportunity?.name ?? "" })}
+      />
+
+      <Quote360Workspace
+        quoteId={quoteId}
+        open={quoteOpen}
+        onOpenChange={setQuoteDialogOpen}
+        onVersionCreated={(id) => setQuoteId(id)}
+        initialTab="products"
+        contactPhone={leadContext?.phone ?? null}
+        contactEmail={leadContext?.email ?? null}
+      />
     </>
   );
 }
 
 export function OpportunityPipelineBoard({
   onSelect,
+  onCreate,
+  canCreate = false,
 }: {
   onSelect: (opportunityId: string) => void;
+  onCreate?: () => void;
+  canCreate?: boolean;
 }) {
   const { t } = useTranslation("common");
-  const pipelines = useOpportunityPipelines();
-  const defaultPipelineId = pipelines.data?.find((p) => p.isDefault)?.id ?? pipelines.data?.[0]?.id ?? null;
+  const { canView } = useOpportunityPermissions();
+  const { pipelineId: defaultPipelineId, isLoading: pipelinesLoading } =
+    useActiveOpportunityPipelineId();
   const board = useOpportunityPipelineBoard(defaultPipelineId);
 
-  if (pipelines.isLoading || board.isLoading) {
+  if (!canView) {
+    return <OpportunityPermissionDeniedState compact />;
+  }
+
+  if (pipelinesLoading || board.isLoading) {
     return (
       <div className="flex items-center gap-2 p-8 text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        {t("common.loading", { defaultValue: "Loading…" })}
+        {t("common.loading")}
       </div>
     );
   }
@@ -380,37 +402,48 @@ export function OpportunityPipelineBoard({
     return (
       <EnterpriseEmptyState
         icon={<Briefcase className="size-6" aria-hidden />}
-        title={t("opportunities.pipeline.emptyTitle", { defaultValue: "No opportunities yet" })}
-        description={t("opportunities.pipeline.emptyBody", {
-          defaultValue: "Create an opportunity from a qualified lead to start the revenue pipeline.",
-        })}
+        title={t("opportunities.pipeline.emptyTitle")}
+        description={t("opportunities.pipeline.emptyBody")}
+        primaryAction={
+          canCreate && onCreate
+            ? {
+                label: t("opportunities.create"),
+                onClick: onCreate,
+              }
+            : undefined
+        }
       />
     );
   }
 
   return (
-    <div className="flex min-h-[420px] gap-3 overflow-x-auto pb-2">
+    <div className="flex min-h-[calc(100dvh-18rem)] gap-3 overflow-x-auto pb-2">
       {board.data.stages.map((stage) => (
         <div
           key={stage.id}
-          className="flex w-[260px] shrink-0 flex-col rounded-lg border border-border/60 bg-muted/10"
+          className="flex w-[280px] shrink-0 flex-col rounded-2xl border border-border/50 bg-muted/10"
         >
-          <div className="border-b border-border/50 px-3 py-2">
-            <div className="text-[13px] font-semibold">{stage.name}</div>
-            <div className="text-[11px] text-muted-foreground">
+          <div className="border-b border-border/40 px-3.5 py-3">
+            <div className="text-[13px] font-semibold">
+              {localizeOpportunityStageName(t, getOpportunityStageDisplayName(stage))}
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
               {stage.opportunities.length} · {stage.defaultProbabilityPercent}%
             </div>
           </div>
-          <div className="flex flex-1 flex-col gap-2 p-2">
+          <div className="flex flex-1 flex-col gap-2 p-2.5">
             {stage.opportunities.map((opp) => (
               <button
                 key={opp.id}
                 type="button"
                 onClick={() => onSelect(opp.id)}
-                className="rounded-md border border-border/50 bg-background px-3 py-2 text-start transition hover:border-border"
+                className="rounded-xl border border-border/40 bg-background px-3 py-2.5 text-start transition hover:border-border hover:bg-card"
               >
                 <div className="truncate text-[13px] font-medium">{opp.name}</div>
-                <div className="mt-1 text-[11px] text-muted-foreground">
+                <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                  {opp.companyName || opp.primaryContact || "—"}
+                </div>
+                <div className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
                   {money(opp.expectedRevenue, opp.currency)} · {opp.probabilityPercent}%
                 </div>
               </button>

@@ -1,3 +1,4 @@
+import { getCompanyCurrency } from "@/lib/company-locale/runtime";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   OpportunityReadPort,
@@ -143,9 +144,12 @@ export function createLoginAppOpportunityWritePort(
   const map = (tenantId: string, record: Parameters<typeof mapOpportunityRecordToReadModel>[2]) =>
     mapOpportunityRecordToReadModel(client, tenantId, record);
 
+  const companyCurrency = () => getCompanyCurrency();
+
   return {
     async create(input) {
       assertTenant(input.tenantId);
+      const billingCurrency = companyCurrency();
       const { opportunity } = await platform.commands.createManual(buildContext(ctx, input.tenantId), {
         companyId: input.tenantId,
         name: input.name,
@@ -153,7 +157,8 @@ export function createLoginAppOpportunityWritePort(
         primaryContactName: input.primaryContactName,
         ownerUserId: input.ownerUserId,
         expectedRevenue: input.expectedRevenue,
-        currency: input.currency,
+        currency: input.currency || billingCurrency,
+        companyDefaultCurrency: billingCurrency,
         expectedCloseDate: input.expectedCloseDate,
         stageId: input.stageId,
         pipelineId: input.pipelineId,
@@ -162,15 +167,34 @@ export function createLoginAppOpportunityWritePort(
         language: input.language,
         leadId: input.leadId,
         customerId: input.customerId,
+        probabilityPercent: input.probabilityPercent,
+        probabilitySource: input.probabilitySource,
+        probabilityReason: input.probabilityReason,
+        metadata: input.metadata ? { ...input.metadata } : undefined,
       });
       return map(input.tenantId, opportunity);
     },
     async createFromLead(input) {
       assertTenant(input.tenantId);
+      const billingCurrency = companyCurrency();
       const { opportunity } = await platform.commands.createFromLead(buildContext(ctx, input.tenantId), {
         companyId: input.tenantId,
         leadId: input.leadId,
         name: input.name,
+        companyName: input.companyName,
+        primaryContactName: input.primaryContactName,
+        ownerUserId: input.ownerUserId,
+        expectedRevenue: input.expectedRevenue,
+        currency: input.currency || billingCurrency,
+        companyDefaultCurrency: billingCurrency,
+        expectedCloseDate: input.expectedCloseDate,
+        stageId: input.stageId,
+        pipelineId: input.pipelineId,
+        forceCreate: input.forceCreate,
+        probabilityPercent: input.probabilityPercent,
+        probabilitySource: input.probabilitySource,
+        probabilityReason: input.probabilityReason,
+        metadata: input.metadata ? { ...input.metadata } : undefined,
       });
       return map(input.tenantId, opportunity);
     },

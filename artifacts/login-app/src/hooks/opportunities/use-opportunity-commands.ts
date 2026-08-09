@@ -6,8 +6,12 @@ import {
   createLoginAppApplicationLayerRegistry,
   permissionCodes,
 } from "@/lib/application-layer/application-layer-bootstrap";
+import {
+  unwrapCommandResult,
+  unwrapQueryResult,
+} from "@/lib/application-layer/application-layer-result";
 
-function useOpportunityServices() {
+export function useOpportunityServices() {
   const { user, company } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
 
@@ -43,8 +47,27 @@ export function useOpportunityPipelines() {
     enabled: Boolean(companyId && canView),
     queryFn: async () => {
       const result = await servicesFactory().opportunity.listPipelines(contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
+    },
+  });
+}
+
+export function useOpportunityList(filter: { limit?: number; offset?: number } = {}) {
+  const { companyId, contextFactory, servicesFactory, hasPermission, isSuperAdmin } =
+    useOpportunityServices();
+  const canView = isSuperAdmin || hasPermission("opportunities.view");
+  const limit = filter.limit ?? 100;
+  const offset = filter.offset ?? 0;
+
+  return useQuery({
+    queryKey: ["opportunities-workspace", "list", companyId, limit, offset],
+    enabled: Boolean(companyId && canView),
+    queryFn: async () => {
+      const result = await servicesFactory().opportunity.listOpportunities(
+        { limit, offset },
+        contextFactory(),
+      );
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -63,8 +86,7 @@ export function useOpportunityPipelineBoard(pipelineId: string | null) {
         { pipelineId },
         contextFactory(),
       );
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapQueryResult(result);
     },
   });
 }
@@ -83,11 +105,23 @@ export function useOpportunityWorkspace(opportunityId: string | null) {
         servicesFactory().opportunity.getOpportunity(opportunityId, contextFactory()),
         servicesFactory().opportunity.listHistory(opportunityId, contextFactory()),
       ]);
-      if (!opp.ok) throw new Error(opp.error.message);
-      if (!history.ok) throw new Error(history.error.message);
-      return { opportunity: opp.data, history: history.data };
+      return {
+        opportunity: unwrapQueryResult(opp),
+        history: unwrapQueryResult(history),
+      };
     },
   });
+}
+
+export function useOpportunityPermissions() {
+  const { hasPermission, isSuperAdmin } = useOpportunityServices();
+  return {
+    canView: isSuperAdmin || hasPermission("opportunities.view"),
+    canEdit: isSuperAdmin || hasPermission("opportunities.edit"),
+    canCreate: isSuperAdmin || hasPermission("opportunities.create"),
+    canConvert: isSuperAdmin || hasPermission("opportunities.convert"),
+    canArchive: isSuperAdmin || hasPermission("opportunities.delete"),
+  };
 }
 
 export function useOpportunityCommands() {
@@ -97,15 +131,38 @@ export function useOpportunityCommands() {
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["opportunities-workspace"] });
     void qc.invalidateQueries({ queryKey: ["opportunity360-workspace"] });
+    void qc.invalidateQueries({ queryKey: ["quotes-workspace"] });
     void qc.invalidateQueries({ queryKey: ["lead360-workspace"] });
     void qc.invalidateQueries({ queryKey: ["leads-workspace"] });
+    void qc.invalidateQueries({ queryKey: ["leads"] });
+    void qc.invalidateQueries({ queryKey: ["lead"] });
+    void qc.invalidateQueries({ queryKey: ["leadMetrics"] });
+    void qc.invalidateQueries({ queryKey: ["kanban"] });
+    void qc.invalidateQueries({ queryKey: ["customers"] });
+    void qc.invalidateQueries({ queryKey: ["customer"] });
+    void qc.invalidateQueries({ queryKey: ["customer360-workspace"] });
   };
 
   const createFromLead = useMutation({
-    mutationFn: async (input: { leadId: string; name?: string }) => {
+    mutationFn: async (input: {
+      leadId: string;
+      name?: string;
+      companyName?: string;
+      primaryContactName?: string;
+      ownerUserId?: string;
+      expectedRevenue?: number | null;
+      currency?: string;
+      expectedCloseDate?: string | null;
+      stageId?: string;
+      pipelineId?: string;
+      forceCreate?: boolean;
+      probabilityPercent?: number;
+      probabilitySource?: string;
+      probabilityReason?: string;
+      metadata?: Record<string, unknown>;
+    }) => {
       const result = await servicesFactory().opportunity.createFromLead(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -115,13 +172,19 @@ export function useOpportunityCommands() {
       name: string;
       companyName?: string;
       primaryContactName?: string;
+      ownerUserId?: string;
       expectedRevenue?: number;
       currency?: string;
       expectedCloseDate?: string | null;
+      stageId?: string;
+      pipelineId?: string;
+      probabilityPercent?: number;
+      probabilitySource?: string;
+      probabilityReason?: string;
+      metadata?: Record<string, unknown>;
     }) => {
       const result = await servicesFactory().opportunity.createOpportunity(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -129,11 +192,53 @@ export function useOpportunityCommands() {
   const changeStage = useMutation({
     mutationFn: async (input: { opportunityId: string; stageId: string }) => {
       const result = await servicesFactory().opportunity.changeStage(input, contextFactory());
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      return unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
 
-  return { createFromLead, create, changeStage };
+  const update = useMutation({
+    mutationFn: async (input: {
+      opportunityId: string;
+      patch: {
+        name?: string;
+        expectedRevenue?: number | null;
+        currency?: string;
+        expectedCloseDate?: string | null;
+        ownerUserId?: string | null;
+        companyName?: string | null;
+        primaryContactName?: string;
+        country?: string | null;
+        market?: string | null;
+      };
+    }) => {
+      const result = await servicesFactory().opportunity.updateOpportunity(input, contextFactory());
+      return unwrapCommandResult(result);
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateProbability = useMutation({
+    mutationFn: async (input: {
+      opportunityId: string;
+      percent: number;
+      confidence?: number | null;
+      source?: string;
+      reason?: string;
+    }) => {
+      const result = await servicesFactory().opportunity.updateProbability(input, contextFactory());
+      return unwrapCommandResult(result);
+    },
+    onSuccess: invalidate,
+  });
+
+  const archive = useMutation({
+    mutationFn: async (input: { opportunityId: string }) => {
+      const result = await servicesFactory().opportunity.archiveOpportunity(input, contextFactory());
+      unwrapCommandResult(result);
+    },
+    onSuccess: invalidate,
+  });
+
+  return { createFromLead, create, changeStage, update, updateProbability, archive };
 }

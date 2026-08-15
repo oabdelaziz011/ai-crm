@@ -73,6 +73,7 @@ export * from "./builders/prompt-builders.js";
 export * from "./utils/compose-message-plan.js";
 export * from "./utils/compose-gateway-messages.js";
 export * from "./utils/compose-prompt.js";
+export * from "./utils/detect-reply-language.js";
 export * from "./rendering/variable-parser.js";
 export * from "./rendering/prompt-renderer.js";
 export * from "./validation/prompt-validator.js";

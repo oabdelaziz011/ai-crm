@@ -6,6 +6,11 @@ export type ChannelWorkflowBindingRecord = {
   isEnabled: boolean;
 };
 
+/** Binding row for list views, with optional resolved flow name. */
+export type ChannelWorkflowBindingListItem = ChannelWorkflowBindingRecord & {
+  flowName: string | null;
+};
+
 export type ActiveAutomationFlowOption = {
   id: string;
   name: string;

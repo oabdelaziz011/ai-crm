@@ -189,6 +189,14 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
           success: false,
           errors: result.errors ?? [],
           message: result.message ?? "Booking could not be created.",
+          customerFacingMessage:
+            result.message?.includes("already booked") ||
+            result.errors?.includes("booking_conflict") ||
+            result.errors?.includes("slot_unavailable")
+              ? "الموعد ده محجوز أو غير متاح. اختار معاد تاني."
+              : "ما قدرناش نكمّل الحجز. جرّب معاد أو بيانات تانية.",
+          instruction:
+            "Tell the customer the booking failed using customerFacingMessage. Do not claim the booking succeeded.",
         };
       }
 
@@ -198,6 +206,8 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
         status: result.status,
         startAt: result.startAt,
         endAt: result.endAt,
+        instruction:
+          "Confirm the booking to the customer only because create_booking succeeded. Include bookingId if helpful.",
       };
     },
   };

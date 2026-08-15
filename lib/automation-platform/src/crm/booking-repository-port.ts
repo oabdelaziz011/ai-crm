@@ -90,7 +90,12 @@ export class InMemoryBookingRepository implements BookingRepositoryPort {
       status: "Pending",
     };
     this.bookings.push(record);
-    return { bookingId: id, bookingDate: input.bookingDate };
+    const sequence = this.bookings.length;
+    return {
+      bookingId: id,
+      bookingDate: input.bookingDate,
+      confirmationNumber: `BK-${String(sequence).padStart(6, "0")}`,
+    };
   }
 
   async findBookingsByField(input: {

@@ -33,12 +33,29 @@ export class ConversationContextProvider implements RuntimeContextProvider {
 export class WorkflowContextProvider implements RuntimeContextProvider {
   readonly key = "workflow";
   resolve(source: RuntimeContextSource) {
+    const variables =
+      (source.workflowVariables as Record<string, unknown> | undefined) ??
+      (source.variables as Record<string, unknown> | undefined) ??
+      {};
+
+    // AI workflow templates use {{decision.*}} / {{extract.*}} / {{summary.*}} at the
+    // top level. Those objects live inside workflowVariables — hoist them so prompt
+    // rendering can resolve the documented template paths.
+    const hoisted: Record<string, unknown> = {};
+    for (const key of ["decision", "extract", "summary", "knowledgeSearch"] as const) {
+      const value = variables[key];
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        hoisted[key] = value;
+      }
+    }
+
     return {
+      ...hoisted,
       workflow: {
         id: source.workflowId ?? "",
         executionId: source.executionId ?? "",
         input: source.workflowInput ?? source.input ?? {},
-        variables: source.workflowVariables ?? source.variables ?? {},
+        variables,
       },
     };
   }

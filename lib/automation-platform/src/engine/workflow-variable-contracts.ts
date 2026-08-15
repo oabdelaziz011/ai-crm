@@ -42,7 +42,7 @@ function addRequirement(
   fields.add(rootField);
 }
 
-function collectFromString(map: Map<string, Set<string>>, value: string): void {
+function collectMustacheBindings(map: Map<string, Set<string>>, value: string): void {
   for (const match of value.matchAll(BINDING_PATH_RE)) {
     const path = match[1];
     if (!path) continue;
@@ -50,7 +50,14 @@ function collectFromString(map: Map<string, Set<string>>, value: string): void {
     if (!variable || rest.length === 0) continue;
     addRequirement(map, variable, rest.join("."));
   }
+}
 
+function collectFromBindingPath(map: Map<string, Set<string>>, value: string): void {
+  collectMustacheBindings(map, value);
+
+  // Bare dotted paths are only valid inside explicit variable bindings
+  // (mode: "variable"). Free-form config strings like nodeKey "ai.decision"
+  // must not be treated as workflow variable requirements.
   const dotted = value.match(DOT_PATH_RE);
   if (dotted?.[1] && dotted[2]) {
     addRequirement(map, dotted[1], dotted[2]);
@@ -60,7 +67,7 @@ function collectFromString(map: Map<string, Set<string>>, value: string): void {
 function walkConfigValue(map: Map<string, Set<string>>, value: unknown, depth = 0): void {
   if (depth > 8 || value == null) return;
   if (typeof value === "string") {
-    collectFromString(map, value);
+    collectMustacheBindings(map, value);
     return;
   }
   if (Array.isArray(value)) {
@@ -73,7 +80,7 @@ function walkConfigValue(map: Map<string, Set<string>>, value: unknown, depth = 
   const mode = readString(record.mode);
   if (mode === "variable") {
     const variablePath = readString(record.variable) ?? readString(record.path);
-    if (variablePath) collectFromString(map, variablePath.includes("{{") ? variablePath : variablePath);
+    if (variablePath) collectFromBindingPath(map, variablePath);
   }
 
   for (const nested of Object.values(record)) {
@@ -147,7 +154,7 @@ export function validateObjectFieldRequirements(
     ok: false,
     violations,
     userMessage:
-      "Some required booking details are incomplete. Please choose your options from the list again.",
+      "بعض بيانات الحجز ناقصة. من فضلك اختَر الخدمة/الوقت من القايمة مرة تانية.",
   };
 }
 
@@ -159,11 +166,80 @@ export function validateNodeVariableContract(input: {
   // Only enforce object-field contracts for action nodes that consume bindings.
   if (input.nodeType !== "action") return { ok: true };
   const action = readString(input.config.action) ?? readString(input.config.builderType);
-  // Interactive list nodes produce variables — they do not consume slot contracts.
-  if (action === "send_list" || action === "send_buttons" || action === "send_message") {
+  // Interactive / AI workflow nodes produce variables — they do not consume booking slot contracts.
+  // Their configs also contain dotted keys like "ai.decision" that must not be treated as bindings.
+  if (
+    action === "send_list" ||
+    action === "send_buttons" ||
+    action === "send_message" ||
+    action === "ai_workflow"
+  ) {
     return { ok: true };
   }
 
   const requirements = collectObjectFieldRequirements(input.config);
-  return validateObjectFieldRequirements(input.variables, requirements);
+  const variables =
+    action === "create_booking"
+      ? enrichVariablesForCreateBookingContract(input.variables)
+      : input.variables;
+  return validateObjectFieldRequirements(variables, requirements);
+}
+
+/**
+ * Booking wizards often store the chosen service/resource/slot under selected_* keys,
+ * while older node configs still bind {{booking.service}}. Map the live selections so
+ * validation matches what executeCreateBookingAction already resolves at runtime.
+ */
+export function enrichVariablesForCreateBookingContract(
+  variables: Record<string, unknown>,
+): Record<string, unknown> {
+  const selectedSlot =
+    variables.selected_slot && typeof variables.selected_slot === "object" && !Array.isArray(variables.selected_slot)
+      ? (variables.selected_slot as Record<string, unknown>)
+      : null;
+  const selectedService =
+    variables.selected_service &&
+    typeof variables.selected_service === "object" &&
+    !Array.isArray(variables.selected_service)
+      ? (variables.selected_service as Record<string, unknown>)
+      : null;
+  const selectedResource =
+    variables.selected_resource &&
+    typeof variables.selected_resource === "object" &&
+    !Array.isArray(variables.selected_resource)
+      ? (variables.selected_resource as Record<string, unknown>)
+      : null;
+  const selectedDate =
+    variables.selected_date && typeof variables.selected_date === "object" && !Array.isArray(variables.selected_date)
+      ? (variables.selected_date as Record<string, unknown>)
+      : null;
+
+  const serviceId =
+    (typeof selectedSlot?.service_id === "string" && selectedSlot.service_id.trim()) ||
+    (typeof selectedService?.id === "string" && selectedService.id.trim()) ||
+    null;
+  const resourceId =
+    (typeof selectedSlot?.resource_id === "string" && selectedSlot.resource_id.trim()) ||
+    (typeof selectedResource?.id === "string" && selectedResource.id.trim()) ||
+    null;
+
+  const existingBooking =
+    variables.booking && typeof variables.booking === "object" && !Array.isArray(variables.booking)
+      ? (variables.booking as Record<string, unknown>)
+      : {};
+
+  return {
+    ...variables,
+    booking: {
+      ...existingBooking,
+      ...(serviceId && existingBooking.service == null ? { service: serviceId } : {}),
+      ...(resourceId && existingBooking.doctor == null ? { doctor: resourceId } : {}),
+      ...(typeof selectedSlot?.start_at === "string" && existingBooking.appointmentTime == null
+        ? { appointmentTime: selectedSlot.start_at }
+        : {}),
+      ...(typeof selectedDate?.date === "string" && existingBooking.appointmentDate == null
+        ? { appointmentDate: selectedDate.date }
+        : {}),
+    },
+  };
 }

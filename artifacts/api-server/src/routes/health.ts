@@ -51,6 +51,7 @@ async function readinessPayload() {
   const workerFlags = {
     embeddingWorker: process.env.EMBEDDING_WORKER_ENABLED !== "false",
     notificationQueue: process.env.NOTIFICATION_WORKER_ENABLED !== "false",
+    billingLifecycle: process.env.BILLING_LIFECYCLE_WORKER_ENABLED === "true",
   };
   checks.workers =
     workerFlags.embeddingWorker || workerFlags.notificationQueue ? "ok" : "degraded";

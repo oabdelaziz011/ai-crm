@@ -217,6 +217,7 @@ describe("Prompt builders", () => {
     assert.ok(sections.recent_messages?.content.includes("What are your hours?"));
     assert.ok(sections.intent_decision?.content.includes("faq"));
     assert.ok(sections.tool_results?.content.includes("9am-5pm"));
+    assert.ok(sections.language?.content.includes("CRITICAL LANGUAGE RULE"));
     assert.ok(sections.language?.content.includes("English"));
   });
 });

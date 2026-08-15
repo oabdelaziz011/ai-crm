@@ -9,7 +9,10 @@ import {
 } from "@login-app/lib/ai-employees/services/resolve-inbound-channel-employee.js";
 import { resolveEmployeeChannelRuntime } from "@login-app/lib/ai-employees/services/resolve-employee-channel-runtime.js";
 import { prepareEmployeeChatRuntime } from "@login-app/lib/ai-employees/utilities/prepare-employee-chat-runtime.js";
-import { createAiEmployeeServices } from "@login-app/lib/ai-employees/index.js";
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
 export function createWebhookEmployeeRuntimePort(client: SupabaseClient): ChannelEmployeeRuntimePort {
   return {
@@ -35,6 +38,8 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
         aiEmployeeId: input.aiEmployeeId,
         basePageContext: input.basePageContext ?? {},
         conversationMetadata: input.conversationMetadata,
+        // Re-resolve only when the stored binding snapshot is incomplete.
+        preferFreshBinding: true,
         bindingResolver: (companyId, aiEmployeeId) =>
           resolveEmployeeChannelRuntime(companyId, aiEmployeeId, client),
       });
@@ -50,16 +55,18 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
         executionPolicy: prepared.runtimeConfigOverrides.executionPolicy ?? { streaming: false },
       };
 
-      let metadataPatch = prepared.metadataPatch;
-      if (metadataPatch) {
-        const employee = await createAiEmployeeServices(client).registry.getById(
-          input.aiEmployeeId,
-          input.companyId,
-        );
-        if (employee) {
-          metadataPatch = buildInboundEmployeeConversationMetadata(employee, metadataPatch);
-        }
-      }
+      // Avoid an extra ai_employees getById on every WhatsApp message — seed fields
+      // already live on conversation metadata / prepared pageContext.
+      const metadataPatch = prepared.metadataPatch
+        ? {
+            ...prepared.metadataPatch,
+            transferableFlowId:
+              readString(prepared.metadataPatch.transferableFlowId) ??
+              readString(prepared.pageContext.transferableFlowId) ??
+              readString(input.conversationMetadata?.transferableFlowId) ??
+              null,
+          }
+        : null;
 
       return {
         runtimeConfig,

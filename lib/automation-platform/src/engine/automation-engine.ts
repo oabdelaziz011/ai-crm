@@ -48,6 +48,8 @@ import { validateNodeVariableContract } from "./workflow-variable-contracts.js";
 import { appendOutboundQueueEntry } from "../runtime/outbound-queue.js";
 import { resetOutboundQueue } from "../runtime/outbound-queue.js";
 import { findPrimaryMenuNode } from "../runtime/main-menu.js";
+import { ensureConversationLanguage } from "../runtime/conversation-language.js";
+import { INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
 import {
   consumeActiveListVisit,
   logAfterPersistWaitingState,
@@ -301,7 +303,17 @@ export class AutomationEngine {
 
     recordExecutedNode(run.id, currentNode);
 
-    const resumeVariables = resetOutboundQueue(run.variables);
+    const resumeVariables = ensureConversationLanguage(resetOutboundQueue(run.variables), {
+      text:
+        (typeof input.input?.text === "string" && input.input.text) ||
+        (typeof input.input?.lastMessage === "string" && input.input.lastMessage) ||
+        (typeof input.input?.[INTERACTIVE_SELECTION_INPUT_KEY] === "string" &&
+          input.input[INTERACTIVE_SELECTION_INPUT_KEY]) ||
+        null,
+      selectionId:
+        (typeof input.input?.replyId === "string" && input.input.replyId) ||
+        null,
+    });
 
     try {
       validateInteractiveResumeInput({

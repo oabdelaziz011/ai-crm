@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { getIntegrationServices } from "../lib/integration-client.js";
+import { getIntegrationServices, getServiceClient } from "../lib/integration-client.js";
 
 type ApiAuthContext = {
   companyId: string;
@@ -25,6 +25,16 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
+async function isApiAccessEntitled(companyId: string): Promise<boolean> {
+  const client = getServiceClient();
+  const { data, error } = await client.rpc("is_feature_enabled", {
+    p_company_id: companyId,
+    p_feature_code: "api_access",
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
 export async function apiAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const token = extractToken(req);
   if (!token) {
@@ -38,6 +48,18 @@ export async function apiAuthMiddleware(req: Request, res: Response, next: NextF
     const ctx = await services.authenticateBearer(token, ip);
     if (!ctx) {
       res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Invalid or expired credentials" } });
+      return;
+    }
+
+    const entitled = await isApiAccessEntitled(ctx.companyId);
+    if (!entitled) {
+      res.status(403).json({
+        error: {
+          code: "FEATURE_NOT_ENTITLED",
+          message: "API access is not entitled for this company",
+          featureCode: "api_access",
+        },
+      });
       return;
     }
 

@@ -22,6 +22,7 @@ import {
   type SuggestedReplyExplainLabels,
 } from "@/components/omnichannel/agent-desk/suggested-reply-chip";
 import { useAuth } from "@/context/auth-context";
+import { useCompanyCapability } from "@/hooks/billing/use-company-feature";
 import { useComposerAttachments } from "@/hooks/omnichannel/use-composer-attachments";
 import { useComposerMentionTargets } from "@/hooks/omnichannel/use-composer-mention-targets";
 import {
@@ -151,8 +152,11 @@ export const ComposePanel = memo(
     },
     ref,
   ) {
-    const { company } = useAuth();
+    const { company, isSuperAdmin } = useAuth();
     const companyId = company?.id ?? null;
+    const { enabled: suggestedRepliesEntitled } = useCompanyCapability("ai_suggested_replies", {
+      enabled: Boolean(companyId) && !isSuperAdmin,
+    });
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const composingRef = useRef(false);
@@ -447,7 +451,8 @@ export const ComposePanel = memo(
     );
 
     const showSuggested =
-      isComposerFeatureVisible("suggestedReplies")
+      (isSuperAdmin || suggestedRepliesEntitled)
+      && isComposerFeatureVisible("suggestedReplies")
       && suggestedReplies.length > 0
       && suggestedReplyExplainLabels;
 

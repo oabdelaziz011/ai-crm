@@ -32,6 +32,8 @@ import { loadPlatformEnv } from "../config/env.js";
 import { processInstagramWebhookPost } from "./instagram-webhook-post.js";
 import { processMessengerWebhookPost } from "./messenger-webhook-post.js";
 import { processEmailWebhookPost } from "./email-channel-webhook-post.js";
+import { processSaasPaymentWebhook } from "../billing/saas/webhook-service.js";
+import { HttpError } from "../middleware/error-handler.js";
 
 /** Sprint 2.3 A/B measurement: project-root `.workflow-request-memo` → WORKFLOW_REQUEST_MEMO. */
 function syncWorkflowRequestMemoFlag(): void {
@@ -775,6 +777,44 @@ router.post("/email/:companyChannelId", async (req: Request, res: Response) => {
   const companyChannelId = routeParam(req.params.companyChannelId);
   logDiag("post.route.matched", { route: "POST /email/:companyChannelId", companyChannelId });
   await processEmailWebhookPost(req, res, companyChannelId);
+});
+
+/**
+ * POST /api/webhooks/payments/:provider
+ * SaaS subscription payment provider webhooks (not messaging channels).
+ * Signature verification is mandatory; company_id in payload is never authoritative.
+ */
+router.post("/payments/:provider", async (req: Request, res: Response) => {
+  const provider = routeParam(req.params.provider);
+  logDiag("post.route.matched", { route: "POST /payments/:provider", provider });
+
+  try {
+    const rawBody = readRawBody(req);
+    const signature =
+      req.header("stripe-signature") ||
+      req.header("x-valueor-signature") ||
+      req.header("x-paymob-hmac") ||
+      req.header("x-hmac") ||
+      null;
+
+    const result = await processSaasPaymentWebhook({
+      provider,
+      rawBody,
+      signatureHeader: signature,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof HttpError) {
+      res.status(error.statusCode).json({
+        error: error.code ?? "webhook_error",
+        message: error.message,
+      });
+      return;
+    }
+    logger.error({ err: error, provider }, "SaaS payment webhook failed");
+    res.status(500).json({ error: "webhook_error", message: "Payment webhook processing failed" });
+  }
 });
 
 export default router;

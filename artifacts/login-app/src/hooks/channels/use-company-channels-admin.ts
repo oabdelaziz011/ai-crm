@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { webChatCompanyChannelQueryKey } from "@/hooks/ai-chat/use-web-chat-company-channel";
 import { useChannelRegistryServices } from "@/lib/channel-registry";
-import type { CreateCompanyChannelInput, UpdateCompanyChannelConfigurationInput } from "@workspace/channel-registry";
+import { resolveChannelCommercialFeatureCode } from "@/lib/billing/feature-code-map";
+import { requireCompanyFeature } from "@/lib/billing/require-company-feature";
+import { supabase } from "@/lib/supabase";
+import type {
+  CreateCompanyChannelInput,
+  UpdateCompanyChannelConfigurationInput,
+} from "@workspace/channel-registry";
 
 export function companyChannelsQueryKey(companyId: string | null) {
   return ["company-channels", companyId] as const;
@@ -38,6 +44,15 @@ export function useCommunicationChannelTypes() {
   });
 }
 
+async function assertChannelFeatureForType(
+  companyId: string,
+  channelTypeKey: string | null | undefined,
+): Promise<void> {
+  const featureCode = resolveChannelCommercialFeatureCode(channelTypeKey);
+  if (!featureCode) return;
+  await requireCompanyFeature(supabase, companyId, featureCode);
+}
+
 export function useChannelAdminMutations(companyId: string | null) {
   const queryClient = useQueryClient();
   const { services, context } = useChannelRegistryServices();
@@ -48,40 +63,51 @@ export function useChannelAdminMutations(companyId: string | null) {
   };
 
   const create = useMutation({
-    mutationFn: (input: Omit<CreateCompanyChannelInput, "companyId">) => {
+    mutationFn: async (
+      input: Omit<CreateCompanyChannelInput, "companyId"> & { channelTypeKey?: string },
+    ) => {
       if (!companyId) throw new Error("Company required");
-      return services.companyChannels.createConnection(context, { ...input, companyId });
+      await assertChannelFeatureForType(companyId, input.channelTypeKey);
+      const { channelTypeKey: _channelTypeKey, ...createInput } = input;
+      return services.companyChannels.createConnection(context, { ...createInput, companyId });
     },
     onSuccess: invalidate,
   });
 
   const updateConfig = useMutation({
-    mutationFn: (input: UpdateCompanyChannelConfigurationInput) => {
-      console.log("[channel-save-debug] useChannelAdminMutations.updateConfig mutationFn", {
-        companyChannelId: input.companyChannelId,
-        configurationKeys: Object.keys(input.configuration ?? {}),
-      });
-      return services.companyChannels.updateConfiguration(context, input);
+    mutationFn: async (
+      input: UpdateCompanyChannelConfigurationInput & { channelTypeKey?: string },
+    ) => {
+      if (!companyId) throw new Error("Company required");
+      await assertChannelFeatureForType(companyId, input.channelTypeKey);
+      const { channelTypeKey: _channelTypeKey, ...updateInput } = input;
+      return services.companyChannels.updateConfiguration(context, updateInput);
     },
     onSuccess: invalidate,
   });
 
   const enable = useMutation({
-    mutationFn: (companyChannelId: string) =>
-      services.companyChannels.enable(context, companyChannelId),
+    mutationFn: async (input: { companyChannelId: string; channelTypeKey?: string }) => {
+      if (!companyId) throw new Error("Company required");
+      await assertChannelFeatureForType(companyId, input.channelTypeKey);
+      return services.companyChannels.enable(context, input.companyChannelId);
+    },
     onSuccess: invalidate,
   });
 
   const disable = useMutation({
-    mutationFn: (companyChannelId: string) =>
-      services.companyChannels.disable(context, companyChannelId),
+    mutationFn: async (input: { companyChannelId: string; channelTypeKey?: string }) => {
+      if (!companyId) throw new Error("Company required");
+      return services.companyChannels.disable(context, input.companyChannelId);
+    },
     onSuccess: invalidate,
   });
 
   const setDefault = useMutation({
-    mutationFn: (companyChannelId: string) => {
+    mutationFn: async (input: { companyChannelId: string; channelTypeKey?: string }) => {
       if (!companyId) throw new Error("Company required");
-      return services.companyChannels.setDefaultChannel(context, companyId, companyChannelId);
+      await assertChannelFeatureForType(companyId, input.channelTypeKey);
+      return services.companyChannels.setDefaultChannel(context, companyId, input.companyChannelId);
     },
     onSuccess: invalidate,
   });

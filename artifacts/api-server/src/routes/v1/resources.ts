@@ -116,11 +116,21 @@ router.get(
       priority: req.query.priority ? String(req.query.priority) : undefined,
       customerId: req.query.customerId ? String(req.query.customerId) : undefined,
       conversationId: req.query.conversationId ? String(req.query.conversationId) : undefined,
+      assignedUserId: req.query.assignedUserId ? String(req.query.assignedUserId) : undefined,
       assigneeName: req.query.assigneeName ? String(req.query.assigneeName) : undefined,
       limit: req.query.limit ? String(req.query.limit) : undefined,
       offset: req.query.offset ? String(req.query.offset) : undefined,
     });
     res.json(result);
+  }),
+);
+
+router.get(
+  "/tickets/metrics",
+  requireScopes("tickets.read"),
+  withAudit(async (req, res) => {
+    const metrics = await getIntegrationServices().gateway.getTicketMetrics(req.apiAuth!);
+    res.json(metrics);
   }),
 );
 
@@ -187,6 +197,15 @@ router.post(
   requireScopes("tickets.write"),
   withAudit(async (req, res) => {
     const result = await getIntegrationServices().gateway.assignTicket(req.apiAuth!, req.params.id, req.body ?? {});
+    res.json(result);
+  }),
+);
+
+router.post(
+  "/tickets/:id/unassign",
+  requireScopes("tickets.write"),
+  withAudit(async (req, res) => {
+    const result = await getIntegrationServices().gateway.unassignTicket(req.apiAuth!, req.params.id);
     res.json(result);
   }),
 );

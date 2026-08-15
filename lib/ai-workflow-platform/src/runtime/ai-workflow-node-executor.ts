@@ -202,7 +202,7 @@ export class AIWorkflowNodeExecutor {
         },
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "AI workflow node execution failed.";
+      const message = readUnknownErrorMessage(error, "AI workflow node execution failed.");
       this.record({
         type: "node_failed",
         nodeKey: config.nodeKey,
@@ -363,7 +363,8 @@ export class AIWorkflowNodeExecutor {
       companyId: context.company.id,
       workflowId: context.flow.id,
       executionId: context.run.id,
-      conversationId: context.session.id,
+      // prompt_builds.conversation_id FKs to public.conversations — never pass automation session ids.
+      conversationId: resolveChannelConversationId(context),
       correlationId: context.run.id,
       templateKey: config.promptTemplateKey ?? config.nodeKey,
       templateType: config.promptTemplateType ?? "workflow",
@@ -406,6 +407,24 @@ export class AIWorkflowNodeExecutor {
   private record(event: Parameters<AIWorkflowObservability["record"]>[0]): void {
     this.deps.observability?.record(event);
   }
+}
+
+function resolveChannelConversationId(context: AIWorkflowAutomationContext): string | null {
+  const fromVariables = context.variables.conversationId;
+  if (typeof fromVariables === "string" && fromVariables.trim()) {
+    return fromVariables.trim();
+  }
+  return null;
+}
+
+function readUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  if (typeof error === "string" && error.trim()) return error;
+  return fallback;
 }
 
 export function isAIWorkflowActionConfig(config: Record<string, unknown>): boolean {

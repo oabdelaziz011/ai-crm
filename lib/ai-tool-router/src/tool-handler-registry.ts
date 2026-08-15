@@ -5,12 +5,14 @@ import { createSchedulingAgentTools } from "./tools/scheduling-agent-tools.js";
 import { createTicketAgentTools } from "./tools/ticket-agent-tools.js";
 import { createLeadAgentTools } from "./tools/lead-agent-tools.js";
 import { createHandoffAgentTools } from "./tools/handoff-agent-tools.js";
+import { createWorkflowTransferTools } from "./tools/workflow-transfer-tools.js";
 import type { ToolCustomerServicePort } from "./tools/customer-service-port.js";
 import type { CrmAgentToolPorts } from "./tools/crm-agent-ports.js";
 import type { SchedulingToolPorts } from "./tools/scheduling-agent-ports.js";
 import type { TicketAgentToolPorts } from "./tools/ticket-agent-ports.js";
 import type { LeadAgentToolPorts } from "./tools/lead-agent-ports.js";
 import type { HandoffAgentToolPorts } from "./tools/handoff-agent-ports.js";
+import type { WorkflowTransferToolPorts } from "./tools/workflow-transfer-tools.js";
 import type { Tool } from "./tools/tool-contract.js";
 import { createToolHandlerRegistry } from "./tools/tool-contract.js";
 
@@ -21,6 +23,7 @@ export type CreateToolRouterServicesOptions = {
   ticketAgentPorts?: TicketAgentToolPorts;
   leadAgentPorts?: LeadAgentToolPorts;
   handoffAgentPorts?: HandoffAgentToolPorts;
+  workflowTransferPorts?: WorkflowTransferToolPorts;
   /** When false (default), mock builtin tools are excluded from production registration. */
   includeMockTools?: boolean;
 };
@@ -44,6 +47,9 @@ export function buildToolHandlers(options?: CreateToolRouterServicesOptions) {
   }
   if (options?.handoffAgentPorts) {
     Object.assign(handlers, createHandoffAgentTools(options.handoffAgentPorts));
+  }
+  if (options?.workflowTransferPorts) {
+    Object.assign(handlers, createWorkflowTransferTools(options.workflowTransferPorts));
   }
   return handlers;
 }

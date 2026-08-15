@@ -70,6 +70,71 @@ describe("Decision result validation", () => {
     assert.equal(result.usedFallback, true);
     assert.ok(result.warnings.length > 0);
   });
+
+  it("does not treat missing confidence as zero when label is valid", () => {
+    const config = patchDecisionMetadata(createDefaultDecisionNodeConfig(), {
+      fallbackOutcomeId: "intent-other",
+      confidencePolicy: {
+        minimumConfidence: 0.7,
+        fallbackOutcomeId: "intent-other",
+        retryOnce: false,
+        requireHumanReview: false,
+        emitWarning: true,
+        continueWorkflow: true,
+      },
+    });
+    const decision = config.metadata!.decision!;
+    const result = validateDecisionResult(
+      decision.outcomes,
+      decision.confidencePolicy,
+      decision.confidenceThreshold,
+      { label: "billing", reasoning: "Price question" },
+    );
+    assert.equal(result.value.label, "billing");
+    assert.equal(result.usedFallback, false);
+  });
+
+  it("matches outcomes by id and Arabic pricing examples", () => {
+    const config = patchDecisionMetadata(createDefaultDecisionNodeConfig(), {
+      outcomes: [
+        {
+          id: "pricing",
+          label: "pricing",
+          description: "Ask about prices or cost",
+          examples: ["كام السعر", "اسعار وتكلفة"],
+        },
+        { id: "other", label: "other", description: "Other" },
+      ],
+      fallbackOutcomeId: "other",
+      confidencePolicy: {
+        minimumConfidence: 0.5,
+        fallbackOutcomeId: "other",
+        retryOnce: false,
+        requireHumanReview: false,
+        emitWarning: true,
+        continueWorkflow: true,
+      },
+    });
+    const decision = config.metadata!.decision!;
+
+    const byId = validateDecisionResult(
+      decision.outcomes,
+      decision.confidencePolicy,
+      decision.confidenceThreshold,
+      { label: "pricing", confidence: 0.9 },
+    );
+    assert.equal(byId.value.label, "pricing");
+    assert.equal(byId.usedFallback, false);
+
+    const byExample = validateDecisionResult(
+      decision.outcomes,
+      decision.confidencePolicy,
+      decision.confidenceThreshold,
+      { label: "عايز اسعار وتكلفة", confidence: 0.88 },
+    );
+    assert.equal(byExample.value.label, "pricing");
+    assert.equal(byExample.usedFallback, false);
+  });
 });
 
 describe("AI Decision node execution", () => {

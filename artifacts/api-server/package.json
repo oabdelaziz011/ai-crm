@@ -19,6 +19,7 @@
     "@workspace/ai-provider-layer": "workspace:*",
     "@workspace/api-zod": "workspace:*",
     "@workspace/ai-tool-router": "workspace:*",
+    "@workspace/ai-workflow-platform": "workspace:*",
     "@workspace/automation-platform": "workspace:*",
     "@workspace/channel-platform": "workspace:*",
     "@workspace/channel-registry": "workspace:*",

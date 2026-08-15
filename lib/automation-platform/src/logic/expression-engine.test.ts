@@ -88,6 +88,37 @@ describe("expression engine", () => {
     assert.equal(switchCase, "support");
   });
 
+  it("matches decision Title-Case labels to lowercase switch values", () => {
+    const switchCase = evaluateSwitchCase(
+      {
+        mode: "switch",
+        field: "decision_result.value.label",
+        cases: [
+          { id: "support", label: "Support", value: "support" },
+          { id: "pricing", label: "Pricing", value: "pricing" },
+          { id: "booking", label: "Booking", value: "finance" },
+        ],
+        includeDefault: true,
+      },
+      { variables: { decision_result: { value: { label: "Pricing" } } } },
+    );
+    assert.equal(switchCase, "pricing");
+
+    const booking = evaluateSwitchCase(
+      {
+        mode: "switch",
+        field: "decision_result.value.label",
+        cases: [
+          { id: "pricing", label: "Pricing", value: "pricing" },
+          { id: "booking", label: "Booking", value: "finance" },
+        ],
+        includeDefault: true,
+      },
+      { variables: { decision_result: { value: { label: "Booking" } } } },
+    );
+    assert.equal(booking, "finance");
+  });
+
   it("evaluates conversation button runtime variables", () => {
     const ruleSet: CompiledRuleSet = {
       root: {

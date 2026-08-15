@@ -25,6 +25,17 @@ export function applyTemplateSectionOverrides(
     const prefix = config.content?.trim() ?? "";
     if (!existing && !prefix) continue;
 
+    // Runtime-detected language must win over the seeded tenant template
+    // ("Respond in English unless...") so WhatsApp Arabic messages stay Arabic.
+    if (key === "language" && existing?.content?.trim()) {
+      merged[key] = {
+        key,
+        title: config.title ?? existing.title ?? key,
+        content: existing.content,
+      };
+      continue;
+    }
+
     merged[key] = {
       key,
       title: config.title ?? existing?.title ?? key,

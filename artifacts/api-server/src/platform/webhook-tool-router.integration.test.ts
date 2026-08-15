@@ -13,8 +13,11 @@ const FULLY_WIRED_LLM_TOOLS = [
   "add_ticket_comment",
   "assign_ticket",
   "booking_search",
+  "cancel_booking",
   "change_ticket_priority",
   "change_ticket_status",
+  "check_in",
+  "check_out",
   "close_ticket",
   "create_booking",
   "create_customer",
@@ -24,7 +27,9 @@ const FULLY_WIRED_LLM_TOOLS = [
   "invoice_search",
   "knowledge_search",
   "recommend_appointment",
+  "reschedule_booking",
   "search_availability",
+  "search_bookings",
   "search_customer",
   "search_ticket",
   "update_customer",
@@ -53,7 +58,7 @@ describe("api-server webhook Tool Router wiring", () => {
     assert.ok(toolRouterServices.router);
     assert.deepEqual(tools.allowedToolKeys().sort(), FULLY_WIRED_LLM_TOOLS);
     assert.equal(tools.listLlmTools().length, FULLY_WIRED_LLM_TOOLS.length);
-    assert.equal(listRegisteredToolHandlerKeys(createOptions).length, 25);
+    assert.equal(listRegisteredToolHandlerKeys(createOptions).length, 26);
   });
 
   it("passes tools into createEnterpriseRuntimeIntegrations for webhook runtime", () => {

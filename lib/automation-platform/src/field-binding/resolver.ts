@@ -52,11 +52,18 @@ export function coerceBindingStringValue(value: unknown): string {
     const record = value as Record<string, unknown>;
     if (typeof record.date === "string") return record.date.trim();
     if (typeof record.name === "string") return record.name.trim();
+    if (typeof record.label === "string") return record.label.trim();
     if (typeof record.display_date === "string") return record.display_date.trim();
     if (typeof record.display_time === "string") return record.display_time.trim();
     if (typeof record.start_at === "string") return record.start_at.trim();
     if (typeof record.id === "string") return record.id.trim();
     if (typeof record.value === "string") return record.value.trim();
+    if (record.value && typeof record.value === "object" && !Array.isArray(record.value)) {
+      const nested = record.value as Record<string, unknown>;
+      if (typeof nested.label === "string") return nested.label.trim();
+      if (typeof nested.id === "string") return nested.id.trim();
+      if (typeof nested.value === "string") return nested.value.trim();
+    }
   }
   return String(value).trim();
 }

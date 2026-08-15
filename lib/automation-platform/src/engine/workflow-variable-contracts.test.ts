@@ -30,7 +30,7 @@ describe("workflow variable contracts", () => {
     assert.equal(result.ok, false);
     if (result.ok) return;
     assert.equal(result.violations[0]?.actualKind, "string");
-    assert.match(result.userMessage, /incomplete/i);
+    assert.match(result.userMessage, /ناقصة|incomplete/i);
   });
 
   it("passes when the slot object includes required fields", () => {
@@ -53,12 +53,45 @@ describe("workflow variable contracts", () => {
     assert.equal(result.ok, true);
   });
 
-  it("skips contracts for send_list producers", () => {
+  it("passes create_booking when selected_slot supplies service for legacy booking.service binding", () => {
     const result = validateNodeVariableContract({
       nodeType: "action",
       config: {
-        action: "send_list",
-        outputVariable: "selected_slot",
+        action: "create_booking",
+        service: { mode: "variable", variable: "{{booking.service}}" },
+        doctor: { mode: "variable", variable: "{{selected_slot.resource_id}}" },
+        appointmentTime: { mode: "variable", variable: "{{selected_slot.start_at}}" },
+      },
+      variables: {
+        selected_slot: {
+          start_at: "2026-08-10T13:30:00.000Z",
+          display_time: "1:30 PM",
+          resource_id: "res-1",
+          service_id: "svc-1",
+        },
+        selected_service: { id: "svc-1", name: "Clinic" },
+      },
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it("does not treat AI nodeKey strings like ai.decision as variable bindings", () => {
+    const requirements = collectObjectFieldRequirements({
+      action: "ai_workflow",
+      aiNodeKey: "ai.decision",
+      aiConfig: {
+        nodeKey: "ai.decision",
+        metadata: { decision: { inputVariable: "lastMessage" } },
+      },
+    });
+    assert.deepEqual(requirements, []);
+
+    const result = validateNodeVariableContract({
+      nodeType: "action",
+      config: {
+        action: "ai_workflow",
+        aiNodeKey: "ai.decision",
+        aiConfig: { nodeKey: "ai.extract" },
       },
       variables: {},
     });

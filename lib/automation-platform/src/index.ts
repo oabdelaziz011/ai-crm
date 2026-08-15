@@ -144,6 +144,9 @@ export * from "./transport/whatsapp/whatsapp-webhook-controller.js";
 export * from "./logic/index.js";
 export * from "./lifecycle/index.js";
 export * from "./runtime/conversation-variables.js";
+export * from "./runtime/conversation-language.js";
+export * from "./runtime/bilingual-selection-aliases.js";
+export * from "./runtime/localize-node-config.js";
 export {
   OUTBOUND_QUEUE_VARIABLE,
   OUTBOUND_LEGACY_VARIABLE,
@@ -161,6 +164,8 @@ export * from "./field-binding/normalize.js";
 export * from "./field-binding/validate.js";
 export * from "./field-binding/resolver.js";
 export * from "./crm/create-booking-config.js";
+export * from "./crm/create-ticket-config.js";
+export * from "./crm/find-ticket-config.js";
 export * from "./crm/types/create-booking-input.js";
 export * from "./crm/booking-repository-port.js";
 export * from "./crm/booking-service.js";
@@ -198,6 +203,7 @@ export {
 export * from "./ports/customer-service-port.js";
 export * from "./ports/lookup-options-port.js";
 export * from "./ports/business-calendar-port.js";
+export * from "./ports/ticket-service-port.js";
 export * from "./runtime/list-lookup-resolver.js";
 export * from "./runtime/lookup-filter-resolver.js";
 export * from "./runtime/date-picker-validation.js";

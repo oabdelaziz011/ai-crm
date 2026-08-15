@@ -485,10 +485,17 @@ export async function executeCreateBooking(
     };
   } catch (error) {
     if (isBookingDomainError(error)) {
+      const codes = error.codes;
+      const message = codes.includes("booking_conflict") || codes.includes("slot_unavailable")
+        ? "This time slot is already booked or unavailable. Offer another available slot — do not confirm a booking."
+        : codes.join(", ");
       return {
         success: false,
-        errors: error.codes,
-        message: error.codes.join(", "),
+        errors: codes,
+        message,
+        customerFacingMessage: codes.includes("booking_conflict") || codes.includes("slot_unavailable")
+          ? "الموعد ده محجوز أو غير متاح. اختار معاد تاني."
+          : "ما قدرناش نكمّل الحجز. جرّب معاد أو بيانات تانية.",
       };
     }
     throw error;

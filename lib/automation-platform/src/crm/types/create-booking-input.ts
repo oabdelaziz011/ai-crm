@@ -23,6 +23,8 @@ export type CreateBookingInput = {
 export type CreateBookingResult = {
   bookingId: string;
   bookingDate: string;
+  /** Company-scoped sequential reference when created via scheduling_bookings. */
+  confirmationNumber?: string | null;
 };
 
 export type BookingRecord = {

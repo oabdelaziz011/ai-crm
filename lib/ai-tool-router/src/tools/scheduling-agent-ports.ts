@@ -121,6 +121,7 @@ export type CreateBookingResult = {
   endAt?: string;
   errors?: string[];
   message?: string;
+  customerFacingMessage?: string;
 };
 
 export type SearchBookingsInput = {

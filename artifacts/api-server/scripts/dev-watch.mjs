@@ -20,6 +20,7 @@ const entryPoint = resolve(apiServerRoot, "dist/main.mjs");
 const watchRoots = [
   resolve(apiServerRoot, "src"),
   resolve(projectRoot, "lib"),
+  resolve(projectRoot, "artifacts/login-app/src"),
 ];
 
 const DEBOUNCE_MS = 200;

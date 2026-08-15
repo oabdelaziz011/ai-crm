@@ -52,6 +52,7 @@ import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-eng
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
+import { createWebhookWorkflowTransferPorts } from "./webhook-workflow-transfer-ports.js";
 import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
 import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
@@ -151,7 +152,30 @@ export function getWebhookPlatform(): WebhookPlatform {
     queryEmbeddingPort: retrievalPlatformPorts.queryEmbeddingPort,
     vectorQueryPort: retrievalPlatformPorts.vectorQueryPort,
   });
-  const { tools: baseTools } = createWebhookToolRouterIntegrations(client);
+
+  // Enterprise runtime without tools is enough for AI Extract / Decision on the webhook path.
+  // Tools need the automation engine (circular), so employee tooling uses a second runtime below.
+  const workflowAiExecution = createAIExecutionServices(
+    client,
+    createEnterpriseRuntimeIntegrations({
+      promptRuntime: prompt.runtime,
+      gateway: provider.gateway,
+      knowledge: retrieval.knowledge,
+      platformConfig,
+    }),
+  );
+  if (!workflowAiExecution.enterpriseRuntime) {
+    throw new Error("Enterprise AI runtime is required for webhook AI workflow nodes.");
+  }
+
+  const automationPlatform = createWebhookAutomationPlatformServices(client, {
+    enterpriseRuntime: workflowAiExecution.enterpriseRuntime,
+    knowledge: retrieval.knowledge,
+  });
+  const workflowTransferPorts = createWebhookWorkflowTransferPorts(client, automationPlatform.engine);
+  const { tools: baseTools } = createWebhookToolRouterIntegrations(client, {
+    workflowTransferPorts,
+  });
   const tools = createScopedRuntimeToolPort(baseTools);
   const execution = createAIExecutionServices(
     client,
@@ -210,7 +234,6 @@ export function getWebhookPlatform(): WebhookPlatform {
     telemetry: new NoopRuntimeTelemetryPort(),
   });
 
-  const automationPlatform = createWebhookAutomationPlatformServices(client);
   const workflowResolver = new ChannelWorkflowResolver({
     bindings: createSupabaseChannelWorkflowBindingRepository(client),
     flowValidator: createChannelWorkflowFlowValidator(client),

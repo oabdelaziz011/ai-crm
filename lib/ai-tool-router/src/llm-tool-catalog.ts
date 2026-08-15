@@ -42,7 +42,7 @@ export type ToolRegistryEntry = {
   displayName: string;
   category: string;
   classification: ToolClassification;
-  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent";
+  handlerSource: "builtin_mock" | "create_customer" | "crm_agent" | "scheduling_agent" | "ticket_agent" | "lead_agent" | "handoff_agent" | "workflow_transfer";
   description: string;
   requiredPermissions: string[];
   llmDefinition?: LlmFunctionToolDefinition;
@@ -355,6 +355,30 @@ const QUEUE_HANDOFF_LLM: LlmFunctionToolDefinition = {
   },
 };
 
+const TRANSFER_TO_WORKFLOW_LLM: LlmFunctionToolDefinition = {
+  type: "function",
+  function: {
+    name: "transfer_to_workflow",
+    description:
+      "Hand this messaging thread to the configured automation workflow (for example booking). Call when the customer asks for a structured flow such as booking, choosing from lists, or completing a multi-step process. After success, reply using customerFacingMessage from the tool result.",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          description: "Why the customer needs the workflow, in short form",
+        },
+        flowId: {
+          type: "string",
+          description: "Optional flow id; defaults to the employee transferable flow",
+        },
+      },
+      required: ["reason"],
+      additionalProperties: false,
+    },
+  },
+};
+
 const FIND_DUPLICATES_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
@@ -549,6 +573,17 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     description: "Queue conversation for human pickup.",
     requiredPermissions: ["tools.execute", "handoff.queue"],
     llmDefinition: QUEUE_HANDOFF_LLM,
+  },
+  {
+    key: "transfer_to_workflow",
+    displayName: "Transfer To Workflow",
+    category: "automation",
+    classification: "production_ready",
+    handlerSource: "workflow_transfer",
+    description:
+      "Hand the messaging thread to a configured automation workflow (AI-first → workflow).",
+    requiredPermissions: ["tools.execute"],
+    llmDefinition: TRANSFER_TO_WORKFLOW_LLM,
   },
   {
     key: "return_to_ai",

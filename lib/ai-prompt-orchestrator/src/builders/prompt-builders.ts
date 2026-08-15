@@ -119,9 +119,15 @@ export class Customer360Builder implements PromptBuilder {
     const opportunities = Array.isArray(sales?.opportunities) ? sales.opportunities : [];
     if (opportunities.length) lines.push(`Open opportunities: ${opportunities.length}`);
 
-    if (timeline.length) {
+    // Skip conversation-category rows: they duplicate recent_messages and often
+    // pollute channel replies with stale English automation/booking previews.
+    const promptTimeline = timeline.filter((entry) => {
+      const record = entry as Record<string, unknown>;
+      return String(record.category ?? "") !== "conversation";
+    });
+    if (promptTimeline.length) {
       lines.push("Recent timeline:");
-      for (const entry of timeline.slice(0, 8)) {
+      for (const entry of promptTimeline.slice(0, 6)) {
         const record = entry as Record<string, unknown>;
         lines.push(`- [${String(record.category ?? "activity")}] ${String(record.title ?? "Event")}: ${String(record.summary ?? "")}`);
       }
@@ -229,10 +235,25 @@ export class PolicyBuilder implements PromptBuilder {
     }
 
     if (context.language) {
+      const languageName = String(context.language).trim();
+      const isArabic = /^arabic$/i.test(languageName);
       sections.language = {
         key: "language",
         title: "Language",
-        content: `Respond in ${context.language}.`,
+        content: isArabic
+          ? [
+              "CRITICAL LANGUAGE RULE (overrides any earlier language guidance in this prompt):",
+              "Reply only in Arabic.",
+              "Match the customer's latest message language.",
+              "Use clear WhatsApp-friendly Arabic.",
+              "Do not continue prior English automation/booking phrasing unless the customer writes in English.",
+            ].join("\n")
+          : [
+              "CRITICAL LANGUAGE RULE (overrides any earlier language guidance in this prompt):",
+              `Reply only in ${languageName}.`,
+              "Match the customer's latest message language.",
+              "If the customer writes in Arabic, reply in Arabic.",
+            ].join("\n"),
       };
     }
 

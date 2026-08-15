@@ -158,8 +158,23 @@ export function resolveNextNodeId(
   if (currentNode.type === "condition") {
     if (currentNode.config.mode === "switch") {
       const switchCase = typeof variables.__switchCase === "string" ? variables.__switchCase : "default";
+      const cases = Array.isArray(currentNode.config.cases)
+        ? (currentNode.config.cases as Array<{ id?: string; value?: unknown }>)
+        : [];
       const matched =
         outgoing.find((edge) => edge.condition?.case === switchCase) ??
+        // Legacy: edges keyed by case.id while __switchCase is the matched value (or vice versa).
+        outgoing.find((edge) => {
+          const edgeCase = typeof edge.condition?.case === "string" ? edge.condition.case : "";
+          if (!edgeCase || edgeCase === "default") return false;
+          const byEdgeId = cases.find((item) => item.id === edgeCase);
+          if (byEdgeId != null && String(byEdgeId.value) === switchCase) return true;
+          const bySwitchId = cases.find((item) => item.id === switchCase);
+          return (
+            bySwitchId != null &&
+            (edgeCase === bySwitchId.id || edgeCase === String(bySwitchId.value ?? ""))
+          );
+        }) ??
         outgoing.find((edge) => edge.condition?.case === "default" || edge.condition?.branch === "default") ??
         outgoing.find((edge) => !edge.condition?.case && !edge.condition?.branch) ??
         outgoing[0];

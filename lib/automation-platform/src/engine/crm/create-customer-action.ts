@@ -18,7 +18,10 @@ function readString(value: unknown): string | null {
 function parseOptionalAge(value: string | null | undefined): number | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
-  const parsed = Number.parseInt(trimmed, 10);
+  const normalized = trimmed
+    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - "٠".charCodeAt(0)))
+    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - "۰".charCodeAt(0)));
+  const parsed = Number.parseInt(normalized, 10);
   if (Number.isNaN(parsed) || parsed < 0 || parsed > 150) return null;
   return parsed;
 }

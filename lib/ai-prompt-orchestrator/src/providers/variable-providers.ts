@@ -82,10 +82,24 @@ export class WorkflowVariableProvider implements PromptVariableProvider {
   readonly key = "workflow";
 
   resolve(context: VariableResolutionContext): Record<string, unknown> {
+    const variables =
+      (context.workflowVariables as Record<string, unknown> | undefined) ??
+      (context.variables as Record<string, unknown> | undefined) ??
+      {};
+
+    const hoisted: Record<string, unknown> = {};
+    for (const key of ["decision", "extract", "summary", "knowledgeSearch"] as const) {
+      const value = variables[key];
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        hoisted[key] = value;
+      }
+    }
+
     return {
+      ...hoisted,
       workflow: {
         input: context.workflowInput ?? context.input ?? {},
-        variables: context.workflowVariables ?? context.variables ?? {},
+        variables,
         id: context.workflowId ?? "",
         executionId: context.executionId ?? "",
       },

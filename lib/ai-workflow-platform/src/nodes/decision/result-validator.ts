@@ -28,8 +28,40 @@ function normalizeLabel(value: unknown): string {
 }
 
 function findOutcomeByLabel(outcomes: DecisionOutcome[], label: string): DecisionOutcome | undefined {
-  const normalized = label.toLowerCase();
-  return outcomes.find((outcome) => outcome.label.toLowerCase() === normalized);
+  const normalized = label.toLowerCase().trim();
+  if (!normalized) return undefined;
+
+  const exact =
+    outcomes.find((outcome) => outcome.label.toLowerCase() === normalized) ??
+    outcomes.find((outcome) => outcome.id.toLowerCase() === normalized);
+  if (exact) return exact;
+
+  // Match configured examples (exact) — e.g. "كام السعر" → pricing
+  for (const outcome of outcomes) {
+    for (const example of outcome.examples ?? []) {
+      if (String(example).toLowerCase().trim() === normalized) {
+        return outcome;
+      }
+    }
+  }
+
+  // Soft contains against label / id / examples / description for phrases like "اسعار وتكلفة"
+  for (const outcome of outcomes) {
+    const needles = [
+      outcome.label,
+      outcome.id,
+      ...(outcome.examples ?? []),
+      outcome.description ?? "",
+    ]
+      .map((value) => String(value).toLowerCase().trim())
+      .filter((value) => value.length >= 3);
+
+    if (needles.some((needle) => normalized.includes(needle) || needle.includes(normalized))) {
+      return outcome;
+    }
+  }
+
+  return undefined;
 }
 
 function resolveFallbackOutcome(
@@ -101,7 +133,13 @@ export function validateDecisionResult(
     }
   }
 
-  const confidence = clampConfidence(payload.confidence ?? payload.score);
+  const rawConfidence = payload.confidence ?? payload.score;
+  const confidenceProvided =
+    rawConfidence != null &&
+    !(typeof rawConfidence === "string" && rawConfidence.trim() === "");
+  // Missing confidence must not be treated as 0 — that incorrectly forces the
+  // low-confidence fallback (e.g. Other → "وضح طلبك") for valid labels.
+  const confidence = confidenceProvided ? clampConfidence(rawConfidence) : 1;
   const score =
     typeof payload.score === "number"
       ? payload.score
@@ -114,7 +152,7 @@ export function validateDecisionResult(
     confidenceThreshold ??
     null;
 
-  if (minimum != null && confidence < minimum) {
+  if (confidenceProvided && minimum != null && confidence < minimum) {
     const message = `Confidence ${confidence.toFixed(2)} is below threshold ${minimum.toFixed(2)}.`;
     if (confidencePolicy.emitWarning) warnings.push(message);
     if (confidencePolicy.requireHumanReview) requiresHumanReview = true;

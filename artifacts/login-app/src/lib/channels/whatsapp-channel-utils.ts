@@ -1,7 +1,14 @@
 export function resolveChannelWebhookBaseUrl(): string {
   const runtimeEnv = import.meta.env ?? {};
-  const configured =
+  // Prefer public webhook host (Cloudflare tunnel) over local API base —
+  // Meta cannot call localhost; VITE_API_SERVER_URL stays for browser → api-server.
+  const webhookBase =
+    typeof runtimeEnv.VITE_WEBHOOK_BASE_URL === "string"
+      ? runtimeEnv.VITE_WEBHOOK_BASE_URL.trim()
+      : "";
+  const apiBase =
     typeof runtimeEnv.VITE_API_SERVER_URL === "string" ? runtimeEnv.VITE_API_SERVER_URL.trim() : "";
+  const configured = webhookBase || apiBase;
   return configured.replace(/\/$/, "");
 }
 

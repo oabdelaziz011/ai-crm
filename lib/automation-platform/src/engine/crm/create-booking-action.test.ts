@@ -134,7 +134,7 @@ describe("executeCreateBookingAction", () => {
       },
       async createBooking(input: Record<string, unknown>) {
         capturedInput = input;
-        return { bookingId: "sched-booking-1", bookingDate: "2026-08-02T18:15:00.000Z" };
+        return { bookingId: "sched-booking-1", bookingDate: "2026-08-02T18:15:00.000Z", confirmationNumber: "BK-000042" };
       },
       async updateBooking() {
         return { bookingId: "sched-booking-1" };
@@ -156,8 +156,9 @@ describe("executeCreateBookingAction", () => {
           customer: variableBinding("customer.id"),
         },
         {
-          selected_resource: { id: "resource-1" },
-          selected_date: { date: "2026-08-02" },
+          selected_service: { id: "service-1", name: "Clinic Visit" },
+          selected_resource: { id: "resource-1", name: "Adam" },
+          selected_date: { date: "2026-08-02", display_date: "Sun, Aug 2" },
           selected_slot: {
             start_at: "2026-08-02T18:15:00.000Z",
             end_at: "2026-08-02T18:45:00.000Z",
@@ -168,7 +169,7 @@ describe("executeCreateBookingAction", () => {
             branch_id: null,
             timezone: "Africa/Cairo",
           },
-          customer: { id: "cust-1" },
+          customer: { id: "cust-1", name: "Omar" },
         },
       ),
       {
@@ -190,5 +191,12 @@ describe("executeCreateBookingAction", () => {
       serviceId: "service-1",
       resourceId: "resource-1",
     });
+    const booking = result.variables?.booking as Record<string, unknown>;
+    assert.equal(booking?.service_name, "Clinic Visit");
+    assert.equal(booking?.resource_name, "Adam");
+    assert.equal(booking?.display_date, "Sun, Aug 2");
+    assert.equal(booking?.display_time, "9:15 PM");
+    assert.equal(booking?.customer_name, "Omar");
+    assert.equal(booking?.confirmation_code, "BK-000042");
   });
 });

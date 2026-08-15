@@ -68,6 +68,7 @@ export class SupabaseBookingRepository implements BookingRepositoryPort {
     return {
       bookingId: String(data.id),
       bookingDate: String(data.booking_date),
+      confirmationNumber: null,
     };
   }
 

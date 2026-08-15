@@ -423,6 +423,18 @@ router.post("/omnichannel/outbound/dispatch", async (req, res, next) => {
 
     passOutboundValidation("routeHandler.readDispatchBody");
 
+    const channelFeatureCode = resolveChannelCommercialFeatureCode(input.channelKey);
+    if (channelFeatureCode) {
+      try {
+        await requireCompanyFeature(input.companyId, channelFeatureCode);
+      } catch (err) {
+        if (err instanceof FeatureNotEntitledError) {
+          throw new HttpError(403, err.message, "FEATURE_NOT_ENTITLED");
+        }
+        throw err;
+      }
+    }
+
 
 
     enterOutboundValidation({

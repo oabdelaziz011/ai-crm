@@ -15,6 +15,27 @@ export function resolveFieldValue(field: string, variables: Record<string, unkno
   return resolveViaRegistry(normalized.split("."), variables);
 }
 
+const TEMPLATE_TOKEN_PATTERN = /\{\{\s*([^}]+?)\s*\}\}/g;
+
+/**
+ * Substitute `{{path.to.value}}` tokens in outbound WhatsApp/workflow messages.
+ * Missing values become empty strings so customers never see raw tokens.
+ */
+export function interpolateTemplateString(
+  template: string,
+  variables: Record<string, unknown>,
+): string {
+  if (!template.includes("{{")) return template;
+  return template.replace(TEMPLATE_TOKEN_PATTERN, (_match, rawPath: string) => {
+    const value = resolveFieldValue(String(rawPath).trim(), variables);
+    if (value == null) return "";
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    return "";
+  });
+}
+
 function isRuleGroup(entry: RuleClause | RuleGroup): entry is RuleGroup {
   return "combinator" in entry && Array.isArray(entry.rules);
 }

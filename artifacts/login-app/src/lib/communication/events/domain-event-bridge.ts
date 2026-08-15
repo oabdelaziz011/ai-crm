@@ -104,18 +104,32 @@ export class CommunicationDomainEventBridge {
     });
 
     if (event.type === "BookingCreated" || event.type === "BookingRescheduled") {
-      await this.reminderScheduler.cancelBookingReminders(booking.company_id, booking.id);
-      await this.reminderScheduler.scheduleBookingReminders({
-        companyId: booking.company_id,
-        bookingId: booking.id,
-        appointmentStartIso: booking.start_at,
-        timezone: booking.timezone,
-        channels: ["whatsapp", "email"],
-      });
+      try {
+        await this.reminderScheduler.cancelBookingReminders(booking.company_id, booking.id);
+        await this.reminderScheduler.scheduleBookingReminders({
+          companyId: booking.company_id,
+          bookingId: booking.id,
+          appointmentStartIso: booking.start_at,
+          timezone: booking.timezone,
+          channels: ["whatsapp", "email"],
+        });
+      } catch (error) {
+        console.warn(
+          "[booking-reminders] schedule failed; booking create continues",
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
 
     if (event.type === "BookingCancelled") {
-      await this.reminderScheduler.cancelBookingReminders(booking.company_id, booking.id);
+      try {
+        await this.reminderScheduler.cancelBookingReminders(booking.company_id, booking.id);
+      } catch (error) {
+        console.warn(
+          "[booking-reminders] cancel failed; booking update continues",
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
   }
 }

@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 
 import { customerWorkspaceHref } from "@/lib/customer-workspace/customer-workspace-utils";
 
-import { agentDetailHref } from "@/config/agents-route-registry";
+import { agentDetailDashboardHref } from "@/config/agents-route-registry";
 
 import { nestedSectionHref } from "@/lib/routing";
 
@@ -384,7 +384,7 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
     (aiEmployeeId: string) => {
 
-      setLocation(nestedSectionHref(agentDetailHref(aiEmployeeId)));
+      setLocation(nestedSectionHref(agentDetailDashboardHref(aiEmployeeId)));
 
     },
 

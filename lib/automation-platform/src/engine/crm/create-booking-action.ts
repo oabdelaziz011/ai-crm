@@ -148,6 +148,93 @@ function resolveCreateBookingAppointmentTime(
   throw new ValidationError("Create booking requires appointment time.");
 }
 
+function readRecordString(value: unknown, key: string): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const field = (value as Record<string, unknown>)[key];
+  return typeof field === "string" && field.trim() ? field.trim() : null;
+}
+
+function readRecordNumber(value: unknown, key: string): number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const field = (value as Record<string, unknown>)[key];
+  if (typeof field === "number" && Number.isFinite(field)) return field;
+  if (typeof field === "string" && field.trim()) {
+    const parsed = Number(field);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function buildCreatedBookingVariablePatch(input: {
+  bookingId: string;
+  bookingDate: string;
+  confirmationNumber?: string | null;
+  customerId: string;
+  service: string;
+  resourceId: string;
+  locationId: string;
+  durationMinutes: number | null;
+  notes: string | null;
+  scope: Record<string, unknown>;
+}): Record<string, unknown> {
+  const serviceName =
+    readRecordString(input.scope.selected_service, "name") ??
+    (UUID_PATTERN.test(input.service) ? null : input.service);
+  const resourceName = readRecordString(input.scope.selected_resource, "name");
+  const customerName = readRecordString(input.scope.customer, "name");
+  const displayDate =
+    readRecordString(input.scope.selected_date, "display_date") ??
+    readRecordString(input.scope.selected_date, "date") ??
+    input.bookingDate.slice(0, 10);
+  const displayTime = readRecordString(input.scope.selected_slot, "display_time");
+  const durationMinutes =
+    input.durationMinutes ??
+    readRecordNumber(input.scope.selected_slot, "duration_minutes") ??
+    readRecordNumber(input.scope.selected_service, "duration_minutes");
+  const timezone =
+    readRecordString(input.scope.selected_slot, "timezone") ??
+    readRecordString(input.scope.selected_date, "timezone");
+  const confirmationNumber =
+    (typeof input.confirmationNumber === "string" && input.confirmationNumber.trim()
+      ? input.confirmationNumber.trim()
+      : null) ??
+    `BK-${input.bookingId.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+
+  const booking = {
+    exists: true,
+    id: input.bookingId,
+    booking_id: input.bookingId,
+    confirmation_code: confirmationNumber,
+    confirmation_number: confirmationNumber,
+    customer_id: input.customerId,
+    customer_name: customerName,
+    service: serviceName ?? input.service,
+    service_id: input.service,
+    service_name: serviceName,
+    // Legacy clinic-oriented alias — keep for existing flows.
+    doctor_id: input.resourceId,
+    doctor_name: resourceName,
+    resource_id: input.resourceId,
+    resource_name: resourceName,
+    location_id: input.locationId,
+    booking_date: input.bookingDate,
+    date: displayDate,
+    display_date: displayDate,
+    time: displayTime,
+    display_time: displayTime,
+    duration_minutes: durationMinutes,
+    timezone,
+    notes: input.notes,
+    status: "confirmed",
+  };
+
+  return {
+    booking_id: input.bookingId,
+    booking_date: input.bookingDate,
+    booking,
+  };
+}
+
 export async function executeCreateBookingAction(
   context: ExecutionContext,
   config: Record<string, unknown>,
@@ -161,18 +248,21 @@ export async function executeCreateBookingAction(
     const service = resolveCreateBookingService(scope, normalized.service);
     const doctorId = resolveCreateBookingDoctorId(scope, normalized.doctor);
     const customerId = resolveCustomerId(scope, normalized.customer);
+    const locationId = resolveRequiredFieldBindingAsString(normalized.location, scope, "location");
+    const durationMinutes = readOptionalDurationMinutes(normalized.duration, scope);
+    const notes = readOptionalBindingString(normalized.notes, scope);
 
     const result = await bookingService.createBooking({
       companyId: context.company.id,
       userId: resolveActorUserId(context),
       service,
       doctorId,
-      locationId: resolveRequiredFieldBindingAsString(normalized.location, scope, "location"),
+      locationId,
       appointmentDate: resolveCreateBookingAppointmentDate(scope, normalized.appointmentDate),
       appointmentTime: resolveCreateBookingAppointmentTime(scope, normalized.appointmentTime),
       customerId,
-      durationMinutes: readOptionalDurationMinutes(normalized.duration, scope),
-      notes: readOptionalBindingString(normalized.notes, scope),
+      durationMinutes,
+      notes,
       schedulingSlot: schedulingSlot
         ? {
             ...schedulingSlot,
@@ -196,15 +286,26 @@ export async function executeCreateBookingAction(
           : null,
     });
 
+    const bookingVariables = buildCreatedBookingVariablePatch({
+      bookingId: result.bookingId,
+      bookingDate: result.bookingDate,
+      confirmationNumber: result.confirmationNumber,
+      customerId,
+      service,
+      resourceId: doctorId,
+      locationId,
+      durationMinutes,
+      notes,
+      scope,
+    });
+
     return {
       outcome: "continue" as const,
-      variables: mergeVariables(context.variables, {
-        booking_id: result.bookingId,
-        booking_date: result.bookingDate,
-      }),
+      variables: mergeVariables(context.variables, bookingVariables),
       output: {
         bookingId: result.bookingId,
         bookingDate: result.bookingDate,
+        booking: bookingVariables.booking,
       },
     };
   });

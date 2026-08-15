@@ -314,6 +314,14 @@ export function createChannelAutomationPort(
         startSelectedBecause,
       });
 
+      // After a prior run finished/expired: don't replay welcome — feed the new
+      // message straight into customer_intent → AI Decision routing.
+      const inboundText = typeof input.messageText === "string" ? input.messageText.trim() : "";
+      const isIntentReentryStart =
+        Boolean(inboundText) &&
+        (route?.reason === "prior_session_terminal_or_missing_run" ||
+          route?.reason === "session_expired");
+
       const result = await engine.start(ctx, {
         companyId: input.companyId,
         flowId: input.flowId,
@@ -323,6 +331,14 @@ export function createChannelAutomationPort(
         initialVariables: {
           ...(input.initialVariables ?? {}),
           ...(input.metadata ?? {}),
+          ...(isIntentReentryStart
+            ? {
+                lastMessage: inboundText,
+                customer_intent: inboundText,
+                __reentrySkipWelcome: true,
+                __reentryConsumeIntent: true,
+              }
+            : {}),
         },
       });
 
@@ -338,6 +354,25 @@ export function createChannelAutomationPort(
   };
 
   return {
+    async hasWaitingRun(input) {
+      if (!deps) return false;
+      const channel = mapChannelKey(input.channelKey);
+      const context = await resolveInboundAutomationContext(deps, {
+        companyId: input.companyId,
+        channel,
+        externalUserId: input.externalUserId,
+        boundFlowId: input.flowId,
+      });
+      if (!context.session || !context.run) return false;
+      const route = resolveInboundAutomationRoute({
+        boundFlowId: input.flowId,
+        session: context.session,
+        run: context.run,
+        expired: context.expired,
+      });
+      return route.mode === "resume";
+    },
+
     async startWorkflow(input) {
       const xray = new WorkflowXRay(
         typeof input.externalMessageId === "string" && input.externalMessageId.trim()

@@ -2,6 +2,7 @@ import { ValidationError } from "../errors.js";
 import {
   evaluateSwitchCase,
   validateRuleSet,
+  interpolateTemplateString,
   type CompiledRuleSet,
   type SwitchNodeConfig,
 } from "../logic/index.js";
@@ -10,6 +11,11 @@ import {
   INTERACTIVE_SELECTION_INPUT_KEY,
   mergeConversationVariables,
 } from "../runtime/conversation-variables.js";
+import {
+  ensureConversationLanguage,
+  readConversationLanguage,
+} from "../runtime/conversation-language.js";
+import { localizeMessageText, localizeNodeConfigForLanguage } from "../runtime/localize-node-config.js";
 import {
   buildInteractiveMenuOutbound,
   findPrimaryMenuNode,
@@ -23,11 +29,14 @@ import {
 import type { BookingServicePort } from "../ports/booking-service-port.js";
 import type { CustomerServicePort } from "../ports/customer-service-port.js";
 import type { ConversationCustomerLinkPort } from "../ports/conversation-customer-link-port.js";
+import type { TicketServicePort } from "../ports/ticket-service-port.js";
 import { executeCreateBookingAction } from "./crm/create-booking-action.js";
 import { executeFindBookingAction } from "./crm/find-booking-action.js";
 import { executeCancelBookingAction, executeUpdateBookingAction } from "./crm/update-booking-action.js";
 import { executeCreateCustomerAction, executeUpdateCustomerAction } from "./crm/create-customer-action.js";
 import { executeFindCustomerAction } from "./crm/find-customer-action.js";
+import { executeAssignTicketAction, executeCreateTicketAction } from "./crm/create-ticket-action.js";
+import { executeFindTicketAction } from "./crm/find-ticket-action.js";
 import type { AutomationNodeHandler, ExecutionContext, NodeExecutionResult } from "./execution-context.js";
 import { mergeVariables } from "./execution-context.js";
 import { traceIfNodeEntered, traceLegacyIfNodeEvaluation, executeIfRuleSetWithTrace } from "../debug/if-node-trace-debug.js";
@@ -56,6 +65,7 @@ import {
   type InteractiveListSection,
 } from "../runtime/interactive-list-pagination.js";
 import { resolveInteractiveListSelection } from "../runtime/interactive-list-selection.js";
+import { readInteractiveListOutputVariable } from "../runtime/interactive-list-variable.js";
 import { validateNodeVariableContract } from "./workflow-variable-contracts.js";
 
 export type AutomationActionDeps = {
@@ -64,6 +74,7 @@ export type AutomationActionDeps = {
   conversationCustomerLink?: ConversationCustomerLinkPort;
   lookupOptions?: LookupOptionsPort;
   businessCalendar?: BusinessCalendarPort;
+  ticketService?: TicketServicePort;
 };
 
 function readString(value: unknown): string | null {
@@ -95,9 +106,24 @@ async function executeDatePickerAction(
   context: ExecutionContext,
   deps?: AutomationActionDeps,
 ): Promise<NodeExecutionResult> {
-  const inputKey = readString(context.currentNode.config.inputKey) ?? readString(context.currentNode.config.saveAs) ?? "selected_date";
-  const prompt = readString(context.currentNode.config.prompt) ?? readString(context.currentNode.config.question);
-  const pickerConfig = readDatePickerRuntimeConfig(context.currentNode.config);
+  context = {
+    ...context,
+    variables: ensureConversationLanguage(context.variables, {
+      text:
+        (typeof context.input?.text === "string" && context.input.text) ||
+        (typeof context.variables.lastMessage === "string" && context.variables.lastMessage) ||
+        null,
+    }),
+  };
+  const language = readConversationLanguage(context.variables);
+  const localizedConfig = localizeNodeConfigForLanguage(context.currentNode.config, language);
+  const inputKey =
+    readString(localizedConfig.inputKey) ?? readString(localizedConfig.saveAs) ?? "selected_date";
+  const prompt =
+    localizeMessageText(localizedConfig, language) ??
+    readString(localizedConfig.prompt) ??
+    readString(localizedConfig.question);
+  const pickerConfig = readDatePickerRuntimeConfig(localizedConfig);
 
   let constraints = null;
   if (deps?.businessCalendar) {
@@ -194,6 +220,23 @@ async function executeInteractiveMessageAction(
   const selection = context.input
     ? extractInteractiveSelection(context.input, { fallbackHint: action })
     : null;
+
+  const inboundText =
+    (typeof context.input?.text === "string" && context.input.text) ||
+    (typeof context.input?.lastMessage === "string" && context.input.lastMessage) ||
+    (typeof context.variables.lastMessage === "string" && context.variables.lastMessage) ||
+    selection?.last_message ||
+    null;
+
+  context = {
+    ...context,
+    variables: ensureConversationLanguage(context.variables, {
+      text: inboundText,
+      selectionId: selection?.last_button_id,
+    }),
+  };
+  const language = readConversationLanguage(context.variables);
+
   if (selection) {
     const replyId = selection.last_button_id ?? "";
 
@@ -230,7 +273,7 @@ async function executeInteractiveMessageAction(
         ...context.currentNode,
         config: buildListConfigWithSections(context.currentNode.config, sections),
       };
-      const { outbound, prompt } = buildInteractiveMenuOutbound(menuNode);
+      const { outbound, prompt } = buildInteractiveMenuOutbound(menuNode, { language });
       const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
       const nextVariables = mergeVariables(context.variables, {
         ...mergeConversationVariables(context.variables, selection),
@@ -284,6 +327,49 @@ async function executeInteractiveMessageAction(
 
       if (!resolved.ok) {
         // Re-offer the list from the persisted catalog when possible.
+        // When this replyId was already applied earlier in the run (duplicate Meta
+        // webhook with a new wamid), CONTINUE — do not re-park on waiting_input.
+        // Re-parking races the first delivery and rolls the run back onto the list
+        // node (booking appears stuck after service selection).
+        const alreadyApplied = Object.values(context.variables).some((value) => {
+          if (value == null) return false;
+          if (typeof value === "string") return value === replyId;
+          if (typeof value === "object" && !Array.isArray(value)) {
+            const record = value as Record<string, unknown>;
+            return (
+              record.id === replyId ||
+              record.service_id === replyId ||
+              record.resource_id === replyId ||
+              record.value === replyId
+            );
+          }
+          return false;
+        });
+        if (alreadyApplied) {
+          const nextVariables = mergeVariables(context.variables, {
+            ...mergeConversationVariables(context.variables, selection),
+            [INTERACTIVE_SELECTION_INPUT_KEY]:
+              selection.last_button_id ?? selection.last_button_title ?? replyId,
+            __waitingFor: null,
+            __prompt: null,
+            ...clearLatestOutboundSlot(),
+            ...clearInteractiveListPaginationState(),
+          });
+          traceListSelectionApplied({
+            runId: context.run.id,
+            sessionId: context.session.id,
+            nodeId: context.currentNode.id,
+            selection,
+            variables: nextVariables,
+          });
+          return {
+            outcome: "continue",
+            variables: nextVariables,
+            errorMessage: `Continued past duplicate interactive reply ${replyId} (already applied).`,
+            output: { staleInteractiveReplyContinued: true },
+          };
+        }
+
         const catalogState = readInteractiveListPaginationState(
           context.variables,
           context.currentNode.id,
@@ -301,7 +387,7 @@ async function executeInteractiveMessageAction(
             ...context.currentNode,
             config: buildListConfigWithSections(context.currentNode.config, sections),
           };
-          const rebuilt = buildInteractiveMenuOutbound(menuNode);
+          const rebuilt = buildInteractiveMenuOutbound(menuNode, { language });
           reofferOutbound = rebuilt.outbound;
           reofferPrompt = `${resolved.userMessage}\n\n${rebuilt.prompt ?? ""}`.trim();
         } else {
@@ -380,6 +466,7 @@ async function executeInteractiveMessageAction(
       : undefined;
 
   let emptyAvailableDates = false;
+  let emptyLookupCatalog = false;
   let paginationStatePatch: Record<string, unknown> | undefined;
 
   const sendListMessage = async () => {
@@ -400,6 +487,23 @@ async function executeInteractiveMessageAction(
         outbound = { kind: "text", text: emptyMessage };
         prompt = emptyMessage;
         emptyAvailableDates = true;
+        return;
+      }
+      if (
+        sections.length === 0 &&
+        (lookupConfig?.lookup === "services" ||
+          lookupConfig?.lookup === "resources" ||
+          lookupConfig?.lookup === "staff" ||
+          lookupConfig?.lookup === "branches")
+      ) {
+        const language = readConversationLanguage(context.variables);
+        const emptyMessage =
+          language === "en"
+            ? "No options are available right now. Please try again later or contact support."
+            : "لا توجد خيارات متاحة حالياً. من فضلك حاول لاحقاً أو تواصل مع الدعم.";
+        outbound = { kind: "text", text: emptyMessage };
+        prompt = emptyMessage;
+        emptyLookupCatalog = true;
         return;
       }
       if (sections.length > 0) {
@@ -423,7 +527,7 @@ async function executeInteractiveMessageAction(
       }
     }
 
-    ({ outbound, prompt } = buildInteractiveMenuOutbound(menuNode));
+    ({ outbound, prompt } = buildInteractiveMenuOutbound(menuNode, { language }));
   };
 
   if (action === "send_list") {
@@ -434,10 +538,20 @@ async function executeInteractiveMessageAction(
       );
     }
     const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
+    // Clear this list's prior selection when (re)offering options so a previous
+    // branch (e.g. pricing) cannot poison booking via the alreadyApplied path.
+    const listOutputVariable = readInteractiveListOutputVariable(context.currentNode.config);
+    const clearPriorSelection =
+      !emptyAvailableDates &&
+      !emptyLookupCatalog &&
+      listOutputVariable
+        ? { [listOutputVariable]: null }
+        : {};
     const nextVariables = mergeVariables(context.variables, {
       ...queuePatch,
       ...(paginationStatePatch ?? {}),
-      __waitingFor: emptyAvailableDates ? null : INTERACTIVE_SELECTION_INPUT_KEY,
+      ...clearPriorSelection,
+      __waitingFor: emptyAvailableDates || emptyLookupCatalog ? null : INTERACTIVE_SELECTION_INPUT_KEY,
       __prompt: prompt,
     });
 
@@ -454,15 +568,15 @@ async function executeInteractiveMessageAction(
     }
 
     return {
-      outcome: emptyAvailableDates ? "continue" : "waiting_input",
+      outcome: emptyAvailableDates || emptyLookupCatalog ? "continue" : "waiting_input",
       variables: nextVariables,
-      output: emptyAvailableDates
+      output: emptyAvailableDates || emptyLookupCatalog
         ? { sent: true, message: prompt, outbound: outbound! }
         : { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound: outbound! },
     };
   }
 
-  ({ outbound, prompt } = buildInteractiveMenuOutbound(context.currentNode));
+  ({ outbound, prompt } = buildInteractiveMenuOutbound(context.currentNode, { language }));
 
   const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
   const nextVariables = mergeVariables(context.variables, {
@@ -517,20 +631,59 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
       }
       if (action === "wait_for_input" || action === "wait_for_reply") {
         const inputKey = readString(context.currentNode.config.inputKey) ?? "input";
-        if (context.input && context.input[inputKey] !== undefined) {
+        const resumeValue =
+          context.input && context.input[inputKey] !== undefined
+            ? context.input[inputKey]
+            : null;
+        // After a completed session restart: consume the inbound message as intent
+        // without re-asking (and without replaying welcome).
+        const prefilled =
+          resumeValue === null &&
+          context.variables.__reentryConsumeIntent === true &&
+          context.variables[inputKey] !== undefined &&
+          context.variables[inputKey] !== null &&
+          String(context.variables[inputKey]).trim() !== ""
+            ? context.variables[inputKey]
+            : null;
+        const resolvedInput = resumeValue !== null ? resumeValue : prefilled;
+        if (resolvedInput !== null) {
           return {
             outcome: "continue",
-            variables: mergeVariables(context.variables, {
-              [inputKey]: context.input[inputKey],
-              __waitingFor: null,
-            }),
+            variables: mergeVariables(
+              ensureConversationLanguage(context.variables, {
+                text: String(resolvedInput ?? ""),
+              }),
+              {
+                [inputKey]: resolvedInput,
+                __waitingFor: null,
+                // Prevent stale ask prompts from being re-dispatched if a later node fails.
+                __prompt: null,
+                __reentryConsumeIntent: null,
+              },
+            ),
           };
         }
+        const language = readConversationLanguage(context.variables);
+        const localized = localizeNodeConfigForLanguage(context.currentNode.config, language);
+        const prompt =
+          localizeMessageText(localized, language) ??
+          localized.prompt ??
+          context.currentNode.config.prompt ??
+          null;
+        const promptText = typeof prompt === "string" ? prompt.trim() : "";
+        // Queue the ask text so it is sent together with any earlier send_message
+        // outbound (welcome → question) instead of being dropped by queue-only extract.
+        const queuePatch = promptText
+          ? appendOutboundQueueEntry(context.variables, { kind: "text", text: promptText })
+          : {};
         return {
           outcome: "waiting_input",
           variables: mergeVariables(context.variables, {
+            ...queuePatch,
+            // Must come after queuePatch — appendOutboundQueueEntry spreads prior vars
+            // (including a cleared __waitingFor) and would otherwise wipe these.
             __waitingFor: inputKey,
-            __prompt: context.currentNode.config.prompt ?? null,
+            __prompt: prompt,
           }),
           output: { waitingFor: inputKey },
         };
@@ -547,26 +700,56 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
         return executeInteractiveMessageAction(context, action, deps);
       }
       if (action === "send_message") {
-        const message =
-          readString(context.currentNode.config.message) ?? readString(context.currentNode.config.text);
-        if (!message) throw new ValidationError("send_message action requires config.message.");
-        const imageUrl = readString(context.currentNode.config.url) ?? readString(context.currentNode.config.imageUrl);
+        // Re-entry after a finished run: skip the welcome send_message once, then continue
+        // into intent ask / AI decision using the customer's new message.
+        if (context.variables.__reentrySkipWelcome === true) {
+          return {
+            outcome: "continue",
+            variables: mergeVariables(context.variables, {
+              __reentrySkipWelcome: null,
+            }),
+          };
+        }
+        const language = readConversationLanguage(
+          ensureConversationLanguage(context.variables, {
+            text:
+              (typeof context.input?.text === "string" && context.input.text) ||
+              (typeof context.variables.lastMessage === "string" && context.variables.lastMessage) ||
+              null,
+          }),
+        );
+        const localizedConfig = localizeNodeConfigForLanguage(context.currentNode.config, language);
+        const rawMessage =
+          localizeMessageText(localizedConfig, language) ??
+          readString(localizedConfig.message) ??
+          readString(localizedConfig.text);
+        if (!rawMessage) throw new ValidationError("send_message action requires config.message.");
+        const message = interpolateTemplateString(rawMessage, context.variables);
+        const imageUrl = readString(localizedConfig.url) ?? readString(localizedConfig.imageUrl);
         const outbound: OutboundQueueEntry = imageUrl
           ? {
               kind: "image",
               url: imageUrl,
               caption: message,
               text: message,
-              mediaType: readString(context.currentNode.config.mediaType) ?? "image",
-              mimeType: readString(context.currentNode.config.mimeType) ?? undefined,
+              mediaType: readString(localizedConfig.mediaType) ?? "image",
+              mimeType: readString(localizedConfig.mimeType) ?? undefined,
             }
           : { kind: "text", text: message };
         return {
           outcome: "continue",
-          variables: mergeVariables(context.variables, {
-            ...appendOutboundQueueEntry(context.variables, outbound),
-            __prompt: message,
-          }),
+          variables: mergeVariables(
+            ensureConversationLanguage(context.variables, {
+              text:
+                (typeof context.input?.text === "string" && context.input.text) ||
+                (typeof context.variables.lastMessage === "string" && context.variables.lastMessage) ||
+                null,
+            }),
+            {
+              ...appendOutboundQueueEntry(context.variables, outbound),
+              __prompt: message,
+            },
+          ),
           output: { sent: true, message },
         };
       }
@@ -601,7 +784,7 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
         } catch (error) {
           if (error instanceof ValidationError) {
             const userMessage =
-              "Some required booking details are incomplete. Please choose your options from the list again.";
+              "بعض بيانات الحجز ناقصة. من فضلك اختَر الخدمة/الوقت من القايمة مرة تانية.";
             const outbound: OutboundQueueEntry = { kind: "text", text: userMessage };
             return {
               outcome: "waiting_input",
@@ -657,6 +840,24 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           throw new ValidationError("Update customer action requires a customer service.");
         }
         return executeUpdateCustomerAction(context, context.currentNode.config, deps.customerService);
+      }
+      if (action === "create_ticket") {
+        if (!deps?.ticketService) {
+          throw new ValidationError("Create ticket action requires a ticket service.");
+        }
+        return executeCreateTicketAction(context, context.currentNode.config, deps.ticketService);
+      }
+      if (action === "find_ticket") {
+        if (!deps?.ticketService) {
+          throw new ValidationError("Find ticket action requires a ticket service.");
+        }
+        return executeFindTicketAction(context, context.currentNode.config, deps.ticketService);
+      }
+      if (action === "assign_ticket") {
+        if (!deps?.ticketService) {
+          throw new ValidationError("Assign ticket action requires a ticket service.");
+        }
+        return executeAssignTicketAction(context, context.currentNode.config, deps.ticketService);
       }
       if (action === "return_to_main_menu") {
         findPrimaryMenuNode(context.nodes);

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   fetchActiveAutomationFlows,
   fetchChannelWorkflowBinding,
+  listCompanyChannelWorkflowBindings,
   saveChannelWorkflowBinding,
 } from "@/lib/channel-workflow-binding/channel-workflow-binding-repository";
 import type { ChannelWorkflowBindingRecord } from "@/lib/channel-workflow-binding/types";
@@ -15,6 +16,79 @@ export function activeAutomationFlowsQueryKey(companyId: string | null) {
 
 export function channelWorkflowBindingQueryKey(companyChannelId: string | null) {
   return ["channel-workflow-binding", companyChannelId] as const;
+}
+
+export function companyChannelWorkflowBindingsQueryKey(companyId: string | null) {
+  return ["company-channel-workflow-bindings", companyId] as const;
+}
+
+export function useCompanyChannelWorkflowBindings(companyId: string | null) {
+  return useQuery({
+    queryKey: companyChannelWorkflowBindingsQueryKey(companyId),
+    enabled: Boolean(companyId),
+    staleTime: APP_QUERY_STALE_MS,
+    queryFn: async () => {
+      if (!companyId) return [];
+      return listCompanyChannelWorkflowBindings(supabase, companyId);
+    },
+  });
+}
+
+function invalidateWorkflowBindingQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  companyId: string | null,
+  companyChannelId: string,
+) {
+  queryClient.invalidateQueries({
+    queryKey: companyChannelWorkflowBindingsQueryKey(companyId),
+  });
+  queryClient.invalidateQueries({
+    queryKey: channelWorkflowBindingQueryKey(companyChannelId),
+  });
+}
+
+export function useDisableChannelWorkflowBinding(companyId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (binding: ChannelWorkflowBindingRecord) => {
+      if (!companyId) throw new Error("Company is required.");
+      return saveChannelWorkflowBinding(supabase, {
+        companyId,
+        companyChannelId: binding.companyChannelId,
+        workflowEnabled: false,
+        automationFlowId: binding.automationFlowId,
+        existingBinding: binding,
+      });
+    },
+    onSuccess: (_result, binding) => {
+      invalidateWorkflowBindingQueries(queryClient, companyId, binding.companyChannelId);
+    },
+  });
+}
+
+/** Re-enable an existing channel↔workflow binding in one click (no dialog). */
+export function useEnableChannelWorkflowBinding(companyId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (binding: ChannelWorkflowBindingRecord) => {
+      if (!companyId) throw new Error("Company is required.");
+      if (!binding.automationFlowId) {
+        throw new Error("Select a workflow before enabling automation.");
+      }
+      return saveChannelWorkflowBinding(supabase, {
+        companyId,
+        companyChannelId: binding.companyChannelId,
+        workflowEnabled: true,
+        automationFlowId: binding.automationFlowId,
+        existingBinding: binding,
+      });
+    },
+    onSuccess: (_result, binding) => {
+      invalidateWorkflowBindingQueries(queryClient, companyId, binding.companyChannelId);
+    },
+  });
 }
 
 export function useActiveAutomationFlows(companyId: string | null) {
@@ -94,6 +168,9 @@ export function useChannelWorkflowBindingForm(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: channelWorkflowBindingQueryKey(companyChannelId) });
+      queryClient.invalidateQueries({
+        queryKey: companyChannelWorkflowBindingsQueryKey(companyId),
+      });
     },
   });
 

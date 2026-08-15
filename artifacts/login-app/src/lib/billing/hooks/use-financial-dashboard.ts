@@ -19,19 +19,19 @@ export function useFinancialMetrics(companyId: string | null) {
   });
 }
 
-export function useFinancialInvoices(companyId: string | null) {
+export function useFinancialInvoices(companyId: string | null, limit = 200) {
   return useQuery({
-    queryKey: financialInvoicesKey(companyId ?? ""),
+    queryKey: [...financialInvoicesKey(companyId ?? ""), limit],
     enabled: Boolean(companyId),
-    queryFn: () => financial.invoices.list(companyId!),
+    queryFn: () => financial.invoices.list(companyId!, limit),
   });
 }
 
-export function useFinancialPayments(companyId: string | null) {
+export function useFinancialPayments(companyId: string | null, limit = 200) {
   return useQuery({
-    queryKey: financialPaymentsKey(companyId ?? ""),
+    queryKey: [...financialPaymentsKey(companyId ?? ""), limit],
     enabled: Boolean(companyId),
-    queryFn: () => financial.payments.listPayments(companyId!),
+    queryFn: () => financial.payments.listPayments(companyId!, limit),
   });
 }
 

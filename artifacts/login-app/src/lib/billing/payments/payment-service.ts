@@ -101,27 +101,53 @@ export class PaymentService {
 
     await this.audit(companyId, "payment.confirmed", "payment", payment.id);
 
+    const customerId = payment.customerId ?? invoice.customerId ?? null;
     const bus = getEnterpriseEventPublisher();
-    await bus.publish({
-      companyId,
-      eventType: "payment.completed",
-      eventId: `${payment.id}:payment.completed`,
-      payload: {
-        paymentId: payment.id,
-        invoiceId: invoice.id,
-        amountCents: payment.amountCents,
-        currency: payment.currency,
-      },
-    });
 
-    if (newPaidCents >= invoice.totalCents) {
-      await bus.publish({
-        companyId,
-        eventType: "invoice.paid",
-        eventId: `${invoice.id}:invoice.paid`,
-        payload: { invoiceId: invoice.id, customerId: invoice.customerId, totalCents: invoice.totalCents },
-      });
-      await this.notifyInvoicePaid(companyId, invoice.customerId, invoice.id);
+    // Financial mutation already committed — platform events must not roll back collection.
+    try {
+      if (customerId) {
+        await bus.publish({
+          companyId,
+          eventType: "payment.completed",
+          eventId: `${payment.id}:payment.completed`,
+          payload: {
+            paymentId: payment.id,
+            invoiceId: invoice.id,
+            customerId,
+            amountCents: payment.amountCents,
+            currency: payment.currency,
+            method: payment.paymentMethod,
+          },
+        });
+      } else {
+        console.warn(
+          "[payment-service] skipping PaymentCollected event: missing customerId",
+          { paymentId: payment.id, invoiceId: invoice.id },
+        );
+      }
+
+      if (newPaidCents >= invoice.totalCents) {
+        if (customerId) {
+          await bus.publish({
+            companyId,
+            eventType: "invoice.paid",
+            eventId: `${invoice.id}:invoice.paid`,
+            payload: {
+              invoiceId: invoice.id,
+              customerId,
+              paidAt: payment.paidAt ?? new Date().toISOString(),
+              amountCents: invoice.totalCents,
+            },
+          });
+        }
+        await this.notifyInvoicePaid(companyId, customerId, invoice.id);
+      }
+    } catch (error) {
+      console.warn(
+        "[payment-service] platform event publish failed after payment confirmation",
+        error instanceof Error ? error.message : error,
+      );
     }
   }
 

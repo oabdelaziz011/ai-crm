@@ -16,6 +16,12 @@ export type SupportMetricsData = {
   ticketsByPriority: Record<string, number>;
   ticketsByStatus: Record<string, number>;
   ticketsByAgent: Array<{ agentId: string; agentName: string; count: number }>;
+  totalTickets?: number;
+  unassignedTickets?: number;
+  highUrgentTickets?: number;
+  slaBreaches?: number;
+  slaBreachesOpen?: number;
+  slaAtRiskOpen?: number;
 };
 
 export type AiMetricsData = {

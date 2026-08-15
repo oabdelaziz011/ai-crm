@@ -233,11 +233,11 @@ const ANALYTICS_DEFINITIONS = [
 ] as const;
 
 export const EXECUTIVE_DASHBOARD_QUICK_ACTIONS: ExecutiveQuickActionModel[] = [
-  { id: "new-customer", labelKey: "executiveDashboard.actions.newCustomer", path: "/dashboard/customers", icon: "UserPlus", permission: "customers.create" },
-  { id: "new-booking", labelKey: "executiveDashboard.actions.newBooking", path: "/dashboard/bookings", icon: "CalendarPlus", permission: "bookings.create" },
-  { id: "create-invoice", labelKey: "executiveDashboard.actions.createInvoice", path: "/dashboard/invoices", icon: "FileText", permission: "invoices.create" },
-  { id: "launch-campaign", labelKey: "executiveDashboard.actions.launchCampaign", path: "/dashboard/channels", icon: "Megaphone", permission: "channels.view" },
-  { id: "open-ai", labelKey: "executiveDashboard.actions.openAi", path: "/dashboard/ai-chat", icon: "Sparkles", permission: "ai_chat.view" },
+  { id: "new-customer", labelKey: "executiveDashboard.actions.newCustomer", path: "/customers", icon: "UserPlus", permission: "customers.create" },
+  { id: "new-booking", labelKey: "executiveDashboard.actions.newBooking", path: "/operations", icon: "CalendarPlus", permission: "bookings.create" },
+  { id: "create-invoice", labelKey: "executiveDashboard.actions.createInvoice", path: "/invoices", icon: "FileText", permission: "invoices.create" },
+  { id: "launch-campaign", labelKey: "executiveDashboard.actions.launchCampaign", path: "/channels", icon: "Megaphone", permission: "channels.view" },
+  { id: "open-ai", labelKey: "executiveDashboard.actions.openAi", path: "/ai-chat", icon: "Sparkles", permission: "ai_chat.view" },
 ];
 
 export function buildExecutiveDashboardViewModel(

@@ -1,17 +1,25 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { formatExecutiveDate, DashboardHeader } from "@/components/executive-dashboard/dashboard-header";
+import { Coins, FileText, Radio, Sparkles, Users } from "lucide-react";
+import {
+  formatExecutiveDate,
+  DashboardHeader,
+  type ExecutiveKpiFilterId,
+} from "@/components/executive-dashboard/dashboard-header";
 import { KpiGrid } from "@/components/executive-dashboard/kpi-grid";
 import { AnalyticsGrid } from "@/components/executive-dashboard/analytics-grid";
 import { ActivityFeed } from "@/components/executive-dashboard/activity-feed";
 import { ExecutiveSummaryCard } from "@/components/executive-dashboard/executive-summary-card";
 import { QuickActions } from "@/components/executive-dashboard/quick-actions";
+import { ExecutiveIntelligencePanels } from "@/components/executive-dashboard/executive-intelligence-panels";
+import { ExecutiveAiBridgePanel } from "@/components/executive-dashboard/executive-ai-bridge-panel";
 import {
   DashboardEmpty,
   DashboardError,
   DashboardLoading,
 } from "@/components/executive-dashboard/dashboard-states";
+import { ModulePurposeBanner } from "@/components/dashboard/module-purpose-banner";
 import { Button } from "@/components/ui/button";
 import {
   useDashboardSnapshot,
@@ -21,10 +29,61 @@ import {
   type ExecutiveActivityItemModel,
   type ExecutiveKpiCardModel,
   type ExecutiveQuickActionModel,
+  type ExecutiveRecommendedActionModel,
 } from "@/lib/dashboard";
 import { useAuth } from "@/context/auth-context";
 import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useAuthUser } from "@/hooks/use-rbac";
+import { dashboardNestHref } from "@/lib/routing";
+
+const KPI_FILTER_BY_ID: Record<string, Exclude<ExecutiveKpiFilterId, "all">> = {
+  revenueToday: "finance",
+  revenue: "finance",
+  outstanding: "finance",
+  collectedToday: "finance",
+  pendingPayments: "finance",
+  customers: "customers",
+  newCustomers: "customers",
+  conversionRate: "customers",
+  bookingsToday: "operations",
+  completedOps: "operations",
+  utilization: "operations",
+  noShowRate: "operations",
+};
+
+const KPI_HREF_BY_ID: Record<string, string> = {
+  revenueToday: "/financial",
+  revenue: "/financial",
+  outstanding: "/invoices",
+  collectedToday: "/financial",
+  pendingPayments: "/invoices",
+  customers: "/customers",
+  newCustomers: "/customers",
+  conversionRate: "/leads",
+  bookingsToday: "/operations",
+  completedOps: "/operations",
+  utilization: "/operations",
+  noShowRate: "/operations",
+};
+
+const ANALYTICS_HREF_BY_ID: Record<string, string> = {
+  revenueTrend: "/financial",
+  customerGrowth: "/customers",
+  aiUsage: "/ai-analytics",
+  automationActivity: "/automation",
+  supportActivity: "/omnichannel",
+};
+
+function actionHref(action: ExecutiveRecommendedActionModel): string {
+  const haystack = `${action.category} ${action.label} ${action.description}`.toLowerCase();
+  if (/(invoice|billing|payment|revenue|finance|فاتور|مالي|إيراد)/i.test(haystack)) return "/invoices";
+  if (/(customer|crm|عميل)/i.test(haystack)) return "/customers";
+  if (/(booking|schedule|operation|حجز|جدولة|عمليات)/i.test(haystack)) return "/operations";
+  if (/(lead|opportunity|فرصة|عميل محتمل)/i.test(haystack)) return "/leads";
+  if (/(ai|assistant|ذكاء)/i.test(haystack)) return "/ai-chat";
+  if (/(channel|campaign|قناة|حملة)/i.test(haystack)) return "/channels";
+  return "/financial";
+}
 
 type ExecutiveDashboardProps = {
   companyName: string;
@@ -38,6 +97,7 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const [timeRange, setTimeRange] = useState<DashboardTimeRange>("30d");
   const [searchValue, setSearchValue] = useState("");
+  const [kpiFilter, setKpiFilter] = useState<ExecutiveKpiFilterId>("all");
 
   const {
     canView,
@@ -62,6 +122,13 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
     [t],
   );
 
+  const navigate = useCallback(
+    (path: string) => {
+      setLocation(dashboardNestHref(path));
+    },
+    [setLocation],
+  );
+
   const resolveKpiTitle = useCallback(
     (item: ExecutiveKpiCardModel) => t(item.titleKey),
     [t],
@@ -76,6 +143,13 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
   );
   const resolveHealthLabel = useCallback(
     (healthKey: string) => t(healthKey),
+    [t],
+  );
+  const resolveHealthStatus = useCallback(
+    (health: string) =>
+      t(`executiveDashboard.healthStatus.${health}`, {
+        defaultValue: health.replace(/_/g, " "),
+      }),
     [t],
   );
   const resolveActionLabel = useCallback(
@@ -94,6 +168,16 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
     [t],
   );
 
+  const resolveKpiHref = useCallback(
+    (item: ExecutiveKpiCardModel) => KPI_HREF_BY_ID[item.id] ?? null,
+    [],
+  );
+
+  const resolveAnalyticsHref = useCallback(
+    (item: ExecutiveAnalyticsCardModel) => ANALYTICS_HREF_BY_ID[item.id] ?? null,
+    [],
+  );
+
   const handleRefresh = useCallback(() => {
     void refetch();
     if (companyId) refreshDashboard(companyId, timeRange);
@@ -101,9 +185,77 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
 
   const filteredKpis = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
-    if (!query) return viewModel.kpis;
-    return viewModel.kpis.filter((item) => t(item.titleKey).toLowerCase().includes(query));
-  }, [searchValue, t, viewModel.kpis]);
+    return viewModel.kpis.filter((item) => {
+      if (kpiFilter !== "all" && KPI_FILTER_BY_ID[item.id] !== kpiFilter) return false;
+      if (!query) return true;
+      return t(item.titleKey).toLowerCase().includes(query);
+    });
+  }, [kpiFilter, searchValue, t, viewModel.kpis]);
+
+  const headerProps = {
+    companyName,
+    dateLabel: formatExecutiveDate(new Date()),
+    title: t("executiveDashboard.title"),
+    subtitle: t("executiveDashboard.subtitle"),
+    timeRange,
+    timeRangeLabel: t("executiveDashboard.timeRange.label"),
+    searchPlaceholder: t("executiveDashboard.searchPlaceholder"),
+    searchValue,
+    refreshLabel: t("executiveDashboard.refresh"),
+    filterLabel: t("executiveDashboard.filter"),
+    filterAllLabel: t("executiveDashboard.filterAll"),
+    filterFinanceLabel: t("executiveDashboard.filterFinance"),
+    filterCustomersLabel: t("executiveDashboard.filterCustomers"),
+    filterOperationsLabel: t("executiveDashboard.filterOperations"),
+    kpiFilter,
+    isRefreshing: isFetching,
+    onTimeRangeChange: setTimeRange,
+    onSearchChange: setSearchValue,
+    onKpiFilterChange: setKpiFilter,
+    onRefresh: handleRefresh,
+    timeRangeOptions,
+  };
+
+  const purposeBanner = (
+    <ModulePurposeBanner
+      title={t("executiveDashboard.purpose.title")}
+      body={t("executiveDashboard.purpose.body")}
+      points={[
+        t("executiveDashboard.purpose.pointPulse"),
+        t("executiveDashboard.purpose.pointAlerts"),
+        t("executiveDashboard.purpose.pointActions"),
+        t("executiveDashboard.purpose.pointAi"),
+      ]}
+      links={[
+        {
+          href: "/financial",
+          label: t("executiveDashboard.purpose.openFinancial"),
+          icon: Coins,
+          variant: "secondary",
+        },
+        {
+          href: "/invoices",
+          label: t("executiveDashboard.purpose.openInvoices"),
+          icon: FileText,
+        },
+        {
+          href: "/customers",
+          label: t("executiveDashboard.purpose.openCustomers"),
+          icon: Users,
+        },
+        {
+          href: "/communication",
+          label: t("executiveDashboard.purpose.openQueue"),
+          icon: Radio,
+        },
+        {
+          href: "/ai-analytics",
+          label: t("executiveDashboard.purpose.openAi"),
+          icon: Sparkles,
+        },
+      ]}
+    />
+  );
 
   if (!canView) {
     return (
@@ -115,12 +267,18 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
   }
 
   if (isLoading && !viewModel.hasMetrics) {
-    return <DashboardLoading label={t("executiveDashboard.loading")} />;
+    return (
+      <div className="space-y-6 p-6">
+        {purposeBanner}
+        <DashboardLoading label={t("executiveDashboard.loading")} />
+      </div>
+    );
   }
 
   if (isError) {
     return (
       <div className="space-y-4 p-6">
+        {purposeBanner}
         <DashboardError
           title={t("executiveDashboard.errorTitle")}
           description={error instanceof Error ? error.message : t("executiveDashboard.errorBody")}
@@ -137,23 +295,8 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
   if (!viewModel.hasMetrics && !isLoading) {
     return (
       <div className="space-y-4 p-6">
-        <DashboardHeader
-          companyName={companyName}
-          dateLabel={formatExecutiveDate(new Date())}
-          title={t("executiveDashboard.title")}
-          subtitle={t("executiveDashboard.subtitle")}
-          timeRange={timeRange}
-          timeRangeLabel={t("executiveDashboard.timeRange.label")}
-          searchPlaceholder={t("executiveDashboard.searchPlaceholder")}
-          searchValue={searchValue}
-          refreshLabel={t("executiveDashboard.refresh")}
-          filterLabel={t("executiveDashboard.filter")}
-          isRefreshing={isFetching}
-          onTimeRangeChange={setTimeRange}
-          onSearchChange={setSearchValue}
-          onRefresh={handleRefresh}
-          timeRangeOptions={timeRangeOptions}
-        />
+        {purposeBanner}
+        <DashboardHeader {...headerProps} />
         <DashboardEmpty
           title={t("executiveDashboard.emptyTitle")}
           description={t("executiveDashboard.emptyBody")}
@@ -163,29 +306,21 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
             </Button>
           }
         />
+        <ExecutiveAiBridgePanel
+          timeRange={timeRange}
+          kpis={viewModel.kpis}
+          resolveKpiTitle={resolveKpiTitle}
+        />
+        <ExecutiveIntelligencePanels />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader
-        companyName={companyName}
-        dateLabel={formatExecutiveDate(new Date())}
-        title={t("executiveDashboard.title")}
-        subtitle={t("executiveDashboard.subtitle")}
-        timeRange={timeRange}
-        timeRangeLabel={t("executiveDashboard.timeRange.label")}
-        searchPlaceholder={t("executiveDashboard.searchPlaceholder")}
-        searchValue={searchValue}
-        refreshLabel={t("executiveDashboard.refresh")}
-        filterLabel={t("executiveDashboard.filter")}
-        isRefreshing={isFetching}
-        onTimeRangeChange={setTimeRange}
-        onSearchChange={setSearchValue}
-        onRefresh={handleRefresh}
-        timeRangeOptions={timeRangeOptions}
-      />
+      <DashboardHeader {...headerProps} />
+
+      {purposeBanner}
 
       <KpiGrid
         items={filteredKpis}
@@ -193,6 +328,14 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
         comparisonLabel={t("executiveDashboard.vsPreviousPeriod")}
         emptyLabel={t("executiveDashboard.kpi.empty")}
         errorLabel={t("executiveDashboard.kpi.error")}
+        resolveHref={resolveKpiHref}
+        onNavigate={navigate}
+      />
+
+      <ExecutiveAiBridgePanel
+        timeRange={timeRange}
+        kpis={viewModel.kpis}
+        resolveKpiTitle={resolveKpiTitle}
       />
 
       <AnalyticsGrid
@@ -200,7 +343,11 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
         resolveTitle={resolveAnalyticsTitle}
         resolveSubtitle={resolveAnalyticsSubtitle}
         emptyLabel={t("executiveDashboard.analytics.noData")}
+        resolveHref={resolveAnalyticsHref}
+        onNavigate={navigate}
       />
+
+      <ExecutiveIntelligencePanels />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <ActivityFeed
@@ -208,7 +355,11 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
           title={t("executiveDashboard.activity.title")}
           emptyLabel={t("executiveDashboard.activity.empty")}
           loading={isLoading}
-          loadMoreLabel={t("executiveDashboard.activity.loadMore")}
+          refreshLabel={t("executiveDashboard.activity.refresh")}
+          openIntegrationsLabel={t("executiveDashboard.activity.openIntegrations")}
+          isRefreshing={isFetching}
+          onRefresh={handleRefresh}
+          onOpenIntegrations={() => navigate("/integrations")}
           resolveTitle={resolveActivityTitle}
         />
         <ExecutiveSummaryCard
@@ -217,11 +368,13 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
           insights={viewModel.insights}
           executiveSummary={viewModel.executiveSummary}
           resolveHealthLabel={resolveHealthLabel}
+          resolveHealthStatus={resolveHealthStatus}
           winsLabel={t("executiveDashboard.summary.topWins")}
           risksLabel={t("executiveDashboard.summary.topRisks")}
           immediateActionsLabel={t("executiveDashboard.summary.immediateActions")}
           longTermLabel={t("executiveDashboard.summary.longTermOpportunities")}
           aiPreparedLabel={t("executiveDashboard.summary.aiPrepared")}
+          onActionNavigate={(action) => navigate(actionHref(action))}
         />
       </div>
 
@@ -230,7 +383,7 @@ export const ExecutiveDashboard = memo(function ExecutiveDashboard({
         actions={viewModel.quickActions}
         resolveLabel={resolveActionLabel}
         canRun={canRunAction}
-        onAction={(action) => setLocation(action.path)}
+        onAction={(action) => navigate(action.path)}
       />
     </div>
   );

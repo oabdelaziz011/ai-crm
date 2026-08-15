@@ -42,6 +42,8 @@ type KpiCardProps = {
   comparisonLabel: string;
   emptyLabel: string;
   errorLabel: string;
+  href?: string | null;
+  onNavigate?: (href: string) => void;
 };
 
 function TrendBadge({
@@ -75,14 +77,14 @@ export const KpiCard = memo(function KpiCard({
   comparisonLabel,
   emptyLabel,
   errorLabel,
+  href,
+  onNavigate,
 }: KpiCardProps) {
   const Icon = ICONS[model.icon] ?? TrendingUp;
+  const interactive = Boolean(href && onNavigate);
 
-  return (
-    <article
-      className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow duration-150 hover:shadow-md"
-      aria-label={title}
-    >
+  const content = (
+    <>
       <div className="pointer-events-none absolute -end-6 -top-6 size-20 rounded-full bg-primary/5" />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -112,6 +114,28 @@ export const KpiCard = memo(function KpiCard({
           <Icon className="size-[18px] text-primary" aria-hidden />
         </div>
       </div>
+    </>
+  );
+
+  if (interactive && href) {
+    return (
+      <button
+        type="button"
+        className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 text-start shadow-sm transition-shadow duration-150 hover:border-primary/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={title}
+        onClick={() => onNavigate?.(href)}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <article
+      className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow duration-150 hover:shadow-md"
+      aria-label={title}
+    >
+      {content}
     </article>
   );
 });
@@ -122,6 +146,8 @@ type KpiGridProps = {
   comparisonLabel: string;
   emptyLabel: string;
   errorLabel: string;
+  resolveHref?: (item: ExecutiveKpiCardModel) => string | null;
+  onNavigate?: (href: string) => void;
 };
 
 export const KpiGrid = memo(function KpiGrid({
@@ -130,6 +156,8 @@ export const KpiGrid = memo(function KpiGrid({
   comparisonLabel,
   emptyLabel,
   errorLabel,
+  resolveHref,
+  onNavigate,
 }: KpiGridProps) {
   return (
     <section aria-label="Key performance indicators">
@@ -142,6 +170,8 @@ export const KpiGrid = memo(function KpiGrid({
             comparisonLabel={comparisonLabel}
             emptyLabel={emptyLabel}
             errorLabel={errorLabel}
+            href={resolveHref?.(item) ?? null}
+            onNavigate={onNavigate}
           />
         ))}
       </div>

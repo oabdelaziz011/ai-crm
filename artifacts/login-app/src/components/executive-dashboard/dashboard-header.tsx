@@ -1,8 +1,13 @@
 import { memo } from "react";
 import { format } from "date-fns";
-import { RefreshCw, Search } from "lucide-react";
+import { Filter, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -10,7 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { DashboardTimeRange } from "@/lib/dashboard";
+
+export type ExecutiveKpiFilterId = "all" | "finance" | "customers" | "operations";
 
 type DashboardHeaderProps = {
   companyName: string;
@@ -23,9 +31,15 @@ type DashboardHeaderProps = {
   searchValue: string;
   refreshLabel: string;
   filterLabel: string;
+  filterAllLabel: string;
+  filterFinanceLabel: string;
+  filterCustomersLabel: string;
+  filterOperationsLabel: string;
+  kpiFilter: ExecutiveKpiFilterId;
   isRefreshing?: boolean;
   onTimeRangeChange: (value: DashboardTimeRange) => void;
   onSearchChange: (value: string) => void;
+  onKpiFilterChange: (value: ExecutiveKpiFilterId) => void;
   onRefresh: () => void;
   timeRangeOptions: Array<{ value: DashboardTimeRange; label: string }>;
 };
@@ -41,12 +55,25 @@ export const DashboardHeader = memo(function DashboardHeader({
   searchValue,
   refreshLabel,
   filterLabel,
+  filterAllLabel,
+  filterFinanceLabel,
+  filterCustomersLabel,
+  filterOperationsLabel,
+  kpiFilter,
   isRefreshing,
   onTimeRangeChange,
   onSearchChange,
+  onKpiFilterChange,
   onRefresh,
   timeRangeOptions,
 }: DashboardHeaderProps) {
+  const filterOptions: Array<{ id: ExecutiveKpiFilterId; label: string }> = [
+    { id: "all", label: filterAllLabel },
+    { id: "finance", label: filterFinanceLabel },
+    { id: "customers", label: filterCustomersLabel },
+    { id: "operations", label: filterOperationsLabel },
+  ];
+
   return (
     <header className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -97,9 +124,43 @@ export const DashboardHeader = memo(function DashboardHeader({
             aria-label={searchPlaceholder}
           />
         </div>
-        <Button variant="secondary" type="button" className="shrink-0">
-          {filterLabel}
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={kpiFilter === "all" ? "secondary" : "default"}
+              type="button"
+              className="shrink-0"
+            >
+              <Filter className="me-2 size-4" aria-hidden />
+              {filterLabel}
+              {kpiFilter !== "all" ? (
+                <span className="ms-2 rounded-full bg-background/80 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
+                  1
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-56 p-2">
+            <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {filterLabel}
+            </p>
+            <div className="space-y-1">
+              {filterOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={cn(
+                    "flex w-full rounded-md px-2 py-1.5 text-start text-sm transition-colors hover:bg-muted",
+                    kpiFilter === option.id && "bg-primary/10 font-medium text-primary",
+                  )}
+                  onClick={() => onKpiFilterChange(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </header>
   );

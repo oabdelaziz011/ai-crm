@@ -15,6 +15,8 @@ type AnalyticsCardProps = {
   title: string;
   subtitle: string;
   emptyLabel: string;
+  href?: string | null;
+  onNavigate?: (href: string) => void;
 };
 
 export const AnalyticsCard = memo(function AnalyticsCard({
@@ -22,12 +24,15 @@ export const AnalyticsCard = memo(function AnalyticsCard({
   title,
   subtitle,
   emptyLabel,
+  href,
+  onNavigate,
 }: AnalyticsCardProps) {
   const deferredSeries = useDeferredValue(model.series);
   const hasData = deferredSeries.some((point) => point.value > 0);
+  const interactive = Boolean(href && onNavigate);
 
-  return (
-    <DashboardCard className="flex h-full flex-col p-5">
+  const body = (
+    <>
       <header className="mb-4">
         <h3 className="text-sm font-semibold">{title}</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
@@ -44,8 +49,22 @@ export const AnalyticsCard = memo(function AnalyticsCard({
           <LazyMiniChart chartId={model.id} data={deferredSeries} />
         </Suspense>
       )}
-    </DashboardCard>
+    </>
   );
+
+  if (interactive && href) {
+    return (
+      <button
+        type="button"
+        className="flex h-full w-full flex-col rounded-xl border border-border bg-card p-5 text-start shadow-sm transition hover:border-primary/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => onNavigate?.(href)}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return <DashboardCard className="flex h-full flex-col p-5">{body}</DashboardCard>;
 });
 
 type AnalyticsGridProps = {
@@ -53,6 +72,8 @@ type AnalyticsGridProps = {
   resolveTitle: (item: ExecutiveAnalyticsCardModel) => string;
   resolveSubtitle: (item: ExecutiveAnalyticsCardModel) => string;
   emptyLabel: string;
+  resolveHref?: (item: ExecutiveAnalyticsCardModel) => string | null;
+  onNavigate?: (href: string) => void;
 };
 
 export const AnalyticsGrid = memo(function AnalyticsGrid({
@@ -60,6 +81,8 @@ export const AnalyticsGrid = memo(function AnalyticsGrid({
   resolveTitle,
   resolveSubtitle,
   emptyLabel,
+  resolveHref,
+  onNavigate,
 }: AnalyticsGridProps) {
   const cards = useMemo(() => items, [items]);
 
@@ -73,6 +96,8 @@ export const AnalyticsGrid = memo(function AnalyticsGrid({
             title={resolveTitle(item)}
             subtitle={resolveSubtitle(item)}
             emptyLabel={emptyLabel}
+            href={resolveHref?.(item) ?? null}
+            onNavigate={onNavigate}
           />
         ))}
       </div>

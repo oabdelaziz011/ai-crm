@@ -10,6 +10,7 @@ export {
   type ExecutiveActivityItemModel,
   type ExecutiveInsightModel,
   type ExecutiveQuickActionModel,
+  type ExecutiveRecommendedActionModel,
   type ExecutiveSummaryViewModel,
   type ExecutiveChartPoint,
   type DashboardTimeRange,

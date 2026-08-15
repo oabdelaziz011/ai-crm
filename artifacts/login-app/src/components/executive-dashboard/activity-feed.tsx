@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Activity, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Info, Plug, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardCard } from "@/components/dashboard/ui";
 import { cn } from "@/lib/utils";
@@ -56,7 +57,11 @@ type ActivityFeedProps = {
   title: string;
   emptyLabel: string;
   loading?: boolean;
-  loadMoreLabel: string;
+  refreshLabel: string;
+  openIntegrationsLabel: string;
+  isRefreshing?: boolean;
+  onRefresh: () => void;
+  onOpenIntegrations: () => void;
   resolveTitle: (item: ExecutiveActivityItemModel) => string;
 };
 
@@ -65,7 +70,11 @@ export const ActivityFeed = memo(function ActivityFeed({
   title,
   emptyLabel,
   loading,
-  loadMoreLabel,
+  refreshLabel,
+  openIntegrationsLabel,
+  isRefreshing,
+  onRefresh,
+  onOpenIntegrations,
   resolveTitle,
 }: ActivityFeedProps) {
   return (
@@ -91,8 +100,21 @@ export const ActivityFeed = memo(function ActivityFeed({
         </ul>
       )}
 
-      <div className="mt-4 border-t border-border/60 pt-3">
-        <p className="text-center text-xs text-muted-foreground">{loadMoreLabel}</p>
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-3">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={isRefreshing}
+          onClick={onRefresh}
+        >
+          <RefreshCw className={cn("me-1.5 size-3.5", isRefreshing && "animate-spin")} aria-hidden />
+          {refreshLabel}
+        </Button>
+        <Button type="button" size="sm" variant="secondary" onClick={onOpenIntegrations}>
+          <Plug className="me-1.5 size-3.5" aria-hidden />
+          {openIntegrationsLabel}
+        </Button>
       </div>
     </DashboardCard>
   );

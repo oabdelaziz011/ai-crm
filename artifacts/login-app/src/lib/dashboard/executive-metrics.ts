@@ -293,7 +293,7 @@ export function buildActivityTimeline(
       title: b.customers?.name ?? b.service,
       subtitle: b.status,
       timestamp: b.created_at,
-      href: "/bookings",
+      href: "/operations",
     })),
     ...invoices.map((inv) => ({
       id: `invoice-${inv.id}`,

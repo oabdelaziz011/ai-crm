@@ -3,7 +3,11 @@ import { Lightbulb } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/dashboard/ui";
 import { cn } from "@/lib/utils";
-import type { ExecutiveInsightModel, ExecutiveSummaryViewModel } from "@/lib/dashboard";
+import type {
+  ExecutiveInsightModel,
+  ExecutiveRecommendedActionModel,
+  ExecutiveSummaryViewModel,
+} from "@/lib/dashboard";
 
 type ExecutiveSummaryCardProps = {
   title: string;
@@ -11,11 +15,13 @@ type ExecutiveSummaryCardProps = {
   insights: ExecutiveInsightModel[];
   executiveSummary: ExecutiveSummaryViewModel | null;
   resolveHealthLabel: (healthKey: string) => string;
+  resolveHealthStatus?: (health: string) => string;
   winsLabel: string;
   risksLabel: string;
   immediateActionsLabel: string;
   longTermLabel: string;
   aiPreparedLabel: string;
+  onActionNavigate?: (action: ExecutiveRecommendedActionModel) => void;
 };
 
 export const ExecutiveSummaryCard = memo(function ExecutiveSummaryCard({
@@ -24,11 +30,13 @@ export const ExecutiveSummaryCard = memo(function ExecutiveSummaryCard({
   insights,
   executiveSummary,
   resolveHealthLabel,
+  resolveHealthStatus,
   winsLabel,
   risksLabel,
   immediateActionsLabel,
   longTermLabel,
   aiPreparedLabel,
+  onActionNavigate,
 }: ExecutiveSummaryCardProps) {
   return (
     <DashboardCard className="flex h-full flex-col p-5">
@@ -61,7 +69,9 @@ export const ExecutiveSummaryCard = memo(function ExecutiveSummaryCard({
                 executiveSummary.health === "critical" && "border-rose-500/40 text-rose-600",
               )}
             >
-              {executiveSummary.health.replace("_", " ")}
+              {resolveHealthStatus
+                ? resolveHealthStatus(executiveSummary.health)
+                : executiveSummary.health.replace(/_/g, " ")}
             </Badge>
           </div>
 
@@ -93,9 +103,23 @@ export const ExecutiveSummaryCard = memo(function ExecutiveSummaryCard({
               <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
                 {executiveSummary.immediateActions.map((action) => (
                   <li key={action.id}>
-                    <span className="font-medium text-foreground">{action.label}</span>
-                    {" — "}
-                    {action.description}
+                    {onActionNavigate ? (
+                      <button
+                        type="button"
+                        className="text-start transition-colors hover:text-primary"
+                        onClick={() => onActionNavigate(action)}
+                      >
+                        <span className="font-medium text-foreground">{action.label}</span>
+                        {" — "}
+                        {action.description}
+                      </button>
+                    ) : (
+                      <>
+                        <span className="font-medium text-foreground">{action.label}</span>
+                        {" — "}
+                        {action.description}
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -108,9 +132,23 @@ export const ExecutiveSummaryCard = memo(function ExecutiveSummaryCard({
               <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
                 {executiveSummary.longTermOpportunities.map((action) => (
                   <li key={action.id}>
-                    <span className="font-medium text-foreground">{action.label}</span>
-                    {" — "}
-                    {action.description}
+                    {onActionNavigate ? (
+                      <button
+                        type="button"
+                        className="text-start transition-colors hover:text-primary"
+                        onClick={() => onActionNavigate(action)}
+                      >
+                        <span className="font-medium text-foreground">{action.label}</span>
+                        {" — "}
+                        {action.description}
+                      </button>
+                    ) : (
+                      <>
+                        <span className="font-medium text-foreground">{action.label}</span>
+                        {" — "}
+                        {action.description}
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

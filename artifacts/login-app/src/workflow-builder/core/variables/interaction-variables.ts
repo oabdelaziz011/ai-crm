@@ -10,6 +10,7 @@ export const INTERACTION_RUNTIME_FIELDS = {
   lastSelectionType: "conversation.last_selection_type",
   lastUserMessage: "conversation.last_message",
   lastChannel: "conversation.channel",
+  language: "conversation.language",
 } as const;
 
 export type InteractionRuntimeField =

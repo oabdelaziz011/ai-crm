@@ -1,6 +1,5 @@
 import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { motion } from "framer-motion";
 import {
   CalendarPlus,
   Flag,
@@ -10,15 +9,16 @@ import {
   MessageSquare,
   Play,
   Timer,
+  Ticket,
+  UserCheck,
   UserPen,
   UserPlus,
   UserSearch,
 } from "lucide-react";
 import { getWorkflowNodeDefinition } from "../../core/node-registry";
 import { getCategoryTokens, resolveVisualCategory } from "../../core/visual/category-tokens";
-import { createBuilderNode } from "../../core/persistence/workflow-mapper";
+import { switchCaseSourceHandleId } from "../../core/logic/branch-utils";
 import { useWorkflowBuilderI18n } from "../../hooks/use-workflow-builder-i18n";
-import { useLayoutAnimationEnabled } from "../../context/workflow-builder-context";
 import type { BuilderNodeType } from "../../core/types";
 import { QuickAddButton } from "../canvas/quick-add-button";
 
@@ -34,7 +34,14 @@ const ICONS = {
   UserPen,
   UserSearch,
   CalendarPlus,
+  Ticket,
+  UserCheck,
 } as const;
+
+export type WorkflowBranchPort = {
+  key: string;
+  label: string;
+};
 
 export type WorkflowNodeData = {
   label: string;
@@ -44,16 +51,26 @@ export type WorkflowNodeData = {
   executionStatus?: "ready" | "running" | "completed" | "failed";
   validationSeverity?: "error" | "warning";
   validationActive?: boolean;
+  /** Switch case source handles — one per value (+ default). */
+  branchPorts?: WorkflowBranchPort[];
 };
+
+function branchPortsSignature(ports: WorkflowBranchPort[] | undefined): string {
+  if (!ports?.length) return "";
+  return ports.map((port) => `${port.key}=${port.label}`).join("|");
+}
 
 function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
-  const layoutAnimationEnabled = useLayoutAnimationEnabled();
+  // Do not wrap RF nodes in Framer Motion `layout` — it fights React Flow's
+  // transform during drag and can hard-crash the builder.
   const { wb, categoryLabel, executionStatusLabel } = useWorkflowBuilderI18n();
   const definition = getWorkflowNodeDefinition(nodeData.nodeType);
   const tokens = getCategoryTokens(nodeData.nodeType);
   const visualCategory = resolveVisualCategory(nodeData.nodeType);
   const Icon = ICONS[definition.icon as keyof typeof ICONS] ?? MessageSquare;
+  const branchPorts = nodeData.branchPorts ?? [];
+  const hasBranchPorts = nodeData.nodeType === "switch" && branchPorts.length > 0;
 
   const handleQuickAdd = useCallback(
     (nodeType: BuilderNodeType) => {
@@ -64,7 +81,8 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
   );
 
   const statusLabel = executionStatusLabel(nodeData.executionStatus ?? "ready");
-  const stepName = nodeData.label;
+  const stepName = nodeData.label?.trim() || definition.displayName;
+  const subtitle = nodeData.subtitle?.trim() || definition.description;
   const validationRing =
     nodeData.validationActive && nodeData.validationSeverity === "error"
       ? "ring-2 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.35)]"
@@ -79,12 +97,7 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
               : "";
 
   return (
-    <motion.div
-      layout={layoutAnimationEnabled}
-      initial={layoutAnimationEnabled ? { opacity: 0, scale: 0.96 } : false}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={layoutAnimationEnabled ? { y: -2 } : undefined}
-      transition={layoutAnimationEnabled ? { type: "spring", stiffness: 420, damping: 28 } : { duration: 0 }}
+    <div
       className={`group relative min-w-[248px] rounded-3xl border bg-card/95 p-4 shadow-lg backdrop-blur transition-shadow ${
         validationRing || (selected ? `ring-2 ${tokens.ring} shadow-xl` : "shadow-black/10 hover:shadow-xl")
       } ${tokens.border} bg-gradient-to-br ${tokens.accent}`}
@@ -116,11 +129,37 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
         </div>
         <div className="min-w-0 flex-1 text-start">
           <p className="text-sm font-semibold text-foreground">{stepName}</p>
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{nodeData.subtitle}</p>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{subtitle}</p>
         </div>
       </div>
 
-      {definition.allowOutgoing && (
+      {definition.allowOutgoing && hasBranchPorts ? (
+        <>
+          {branchPorts.map((port, index) => {
+            const left = `${((index + 1) / (branchPorts.length + 1)) * 100}%`;
+            return (
+              <Handle
+                key={port.key}
+                id={switchCaseSourceHandleId(port.key)}
+                type="source"
+                position={Position.Bottom}
+                style={{ left, top: "auto", transform: "translate(-50%, 50%)" }}
+                className={`!h-3.5 !w-3.5 !border-2 !border-background ${tokens.handle}`}
+                title={port.label}
+                aria-label={port.label}
+                maxConnections={1}
+              />
+            );
+          })}
+          {nodeData.onQuickAdd ? (
+            <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              <QuickAddButton onSelect={handleQuickAdd} />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+
+      {definition.allowOutgoing && !hasBranchPorts ? (
         <>
           <Handle
             id="source"
@@ -135,8 +174,8 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
             </div>
           ) : null}
         </>
-      )}
-    </motion.div>
+      ) : null}
+    </div>
   );
 }
 
@@ -152,7 +191,8 @@ export const WorkflowNodeCard = memo(WorkflowNodeCardComponent, (prev, next) => 
     prevData.executionStatus === nextData.executionStatus &&
     prevData.validationSeverity === nextData.validationSeverity &&
     prevData.validationActive === nextData.validationActive &&
-    prevData.onQuickAdd === nextData.onQuickAdd
+    prevData.onQuickAdd === nextData.onQuickAdd &&
+    branchPortsSignature(prevData.branchPorts) === branchPortsSignature(nextData.branchPorts)
   );
 });
 

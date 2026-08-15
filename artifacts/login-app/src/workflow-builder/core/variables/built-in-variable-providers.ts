@@ -87,6 +87,13 @@ export function registerBuiltInVariableProviders(): void {
         "I need an appointment",
         INTERACTION_VARIABLE_SUBGROUP,
       ),
+      variable(
+        "conversation",
+        "language",
+        "Customer Language",
+        "ar",
+        INTERACTION_VARIABLE_SUBGROUP,
+      ),
       variable("conversation", "channel", "Last Channel", "WhatsApp", INTERACTION_VARIABLE_SUBGROUP),
     ],
   });
@@ -96,9 +103,19 @@ export function registerBuiltInVariableProviders(): void {
     category: "booking",
     label: "Booking",
     listVariables: () => [
-      variable("booking", "date", "Date", "Monday, 21 July"),
-      variable("booking", "time", "Time", "10:30 AM"),
-      variable("booking", "service", "Service", "Consultation"),
+      variable("booking", "id", "Booking ID", "a1b2c3d4-..."),
+      variable("booking", "confirmation_code", "Confirmation code", "BK-000123"),
+      variable("booking", "confirmation_number", "Confirmation number", "BK-000123"),
+      variable("booking", "service_name", "Service name", "Consultation"),
+      variable("booking", "resource_name", "Resource / person name", "Alex"),
+      variable("booking", "display_date", "Display date", "Mon, Aug 10"),
+      variable("booking", "display_time", "Display time", "10:30 AM"),
+      variable("booking", "customer_name", "Customer name", "Omar"),
+      variable("booking", "status", "Status", "confirmed"),
+      // Legacy aliases kept for existing flows
+      variable("booking", "date", "Date (alias)", "Monday, 21 July"),
+      variable("booking", "time", "Time (alias)", "10:30 AM"),
+      variable("booking", "service", "Service (alias)", "Consultation"),
     ],
   });
 
@@ -136,10 +153,34 @@ export function registerBuiltInVariableProviders(): void {
   registerVariableProvider({
     id: "ai",
     category: "ai",
-    label: "Future AI",
+    label: "AI",
     listVariables: () => [
-      variable("ai", "intent", "Detected intent", "pricing_request"),
-      variable("ai", "confidence", "Confidence score", "0.92"),
+      {
+        id: "workflow.decision_result",
+        category: "workflow",
+        label: "decision_result",
+        token: "{{decision_result}}",
+        previewValue: "object",
+        subgroup: "ai_outputs",
+      },
+      {
+        id: "workflow.decision_result.value.label",
+        category: "workflow",
+        label: "decision_result.value.label",
+        token: "{{decision_result.value.label}}",
+        previewValue: "complaints",
+        subgroup: "ai_outputs",
+      },
+      {
+        id: "workflow.decision_result.value.confidence",
+        category: "workflow",
+        label: "decision_result.value.confidence",
+        token: "{{decision_result.value.confidence}}",
+        previewValue: "0.92",
+        subgroup: "ai_outputs",
+      },
+      variable("ai", "intent", "Detected intent (legacy)", "pricing_request"),
+      variable("ai", "confidence", "Confidence score (legacy)", "0.92"),
     ],
   });
 }

@@ -1,5 +1,5 @@
 import { canConnect } from "../connection-rules";
-import { assignBranchForNewEdge } from "../logic/branch-utils";
+import { readSwitchCases, resolveBranchForConnection, syncSwitchOutgoingEdges } from "../logic/branch-utils";
 import { generateInteractiveRouting } from "../logic/interactive-routing-generator";
 import { createEdgeId, createNodeId, type BuilderAction, type BuilderEdge, type BuilderNode, type BuilderState, type BuilderViewport, type WorkflowDocument } from "../types";
 import { createBuilderClientKey } from "../persistence/builder-node-identity";
@@ -69,18 +69,33 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         saveStatus: "dirty",
         layoutAnimationEnabled: true,
       };
-    case "UPDATE_NODE_CONFIG":
+    case "UPDATE_NODE_CONFIG": {
+      const previousNode = state.document.nodes.find((node) => node.id === action.nodeId);
+      const nodes = state.document.nodes.map((node) =>
+        node.id === action.nodeId ? { ...node, config: { ...node.config, ...action.patch } } : node,
+      );
+      let edges = state.document.edges;
+      if (previousNode?.type === "switch" && Array.isArray(action.patch.cases)) {
+        const nextNode = nodes.find((node) => node.id === action.nodeId);
+        edges = syncSwitchOutgoingEdges(
+          action.nodeId,
+          readSwitchCases(previousNode.config),
+          readSwitchCases(nextNode?.config),
+          edges,
+          createEdgeId,
+        );
+      }
       return {
         ...state,
         document: {
           ...state.document,
-          nodes: state.document.nodes.map((node) =>
-            node.id === action.nodeId ? { ...node, config: { ...node.config, ...action.patch } } : node,
-          ),
+          nodes,
+          edges,
         },
         selectedNodeIds: state.selectedNodeIds,
         saveStatus: "dirty",
       };
+    }
     case "UPDATE_NODE_POSITIONS":
       return {
         ...state,
@@ -94,7 +109,9 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         selectedNodeIds: state.selectedNodeIds,
         selectedEdgeIds: state.selectedEdgeIds,
         saveStatus: "dirty",
-        layoutAnimationEnabled: action.transient ? state.layoutAnimationEnabled : true,
+        // Keep layout animation off after freeform drag — Framer layout on RF
+        // nodes fights transforms. Auto-layout paths can re-enable explicitly.
+        layoutAnimationEnabled: false,
       };
     case "DELETE_NODES":
       return { ...deleteNodes(state, action.nodeIds), layoutAnimationEnabled: true };
@@ -104,11 +121,20 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         targetId: action.edge.target,
         nodes: state.document.nodes,
         edges: state.document.edges,
+        requestedBranchKey: action.edge.branchKey,
       });
       if (!attempt.allowed) return state;
       const sourceNode = state.document.nodes.find((node) => node.id === action.edge.source);
-      const branch = assignBranchForNewEdge(sourceNode, state.document.edges);
-      const edge: BuilderEdge = { ...action.edge, ...branch };
+      const branch = resolveBranchForConnection(
+        sourceNode,
+        state.document.edges,
+        action.edge.branchKey,
+      );
+      const edge: BuilderEdge = {
+        ...action.edge,
+        ...branch,
+        id: createEdgeId(action.edge.source, action.edge.target, branch.branchKey ?? action.edge.branchKey),
+      };
       return {
         ...state,
         document: {
@@ -201,7 +227,7 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
       const duplicatedEdges = state.document.edges
         .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
         .map((edge) => ({
-          id: createEdgeId(idMap.get(edge.source)!, idMap.get(edge.target)!),
+          id: createEdgeId(idMap.get(edge.source)!, idMap.get(edge.target)!, edge.branchKey),
           source: idMap.get(edge.source)!,
           target: idMap.get(edge.target)!,
           branchKey: edge.branchKey,
@@ -302,9 +328,22 @@ export function createInitialBuilderState(document: WorkflowDocument): BuilderSt
   };
 }
 
-export function createEdgeFromNodes(source: string, target: string, nodes?: BuilderNode[], edges?: BuilderEdge[]) {
-  const base = { id: createEdgeId(source, target), source, target };
-  if (!nodes || !edges) return base;
+export function createEdgeFromNodes(
+  source: string,
+  target: string,
+  nodes?: BuilderNode[],
+  edges?: BuilderEdge[],
+  requestedBranchKey?: string,
+) {
+  if (!nodes || !edges) {
+    return { id: createEdgeId(source, target, requestedBranchKey), source, target, branchKey: requestedBranchKey };
+  }
   const sourceNode = nodes.find((node) => node.id === source);
-  return { ...base, ...assignBranchForNewEdge(sourceNode, edges) };
+  const branch = resolveBranchForConnection(sourceNode, edges, requestedBranchKey);
+  return {
+    id: createEdgeId(source, target, branch.branchKey),
+    source,
+    target,
+    ...branch,
+  };
 }

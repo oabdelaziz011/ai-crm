@@ -94,15 +94,19 @@ export function validateBranching(document: WorkflowDocument): ValidationIssue[]
       }
 
       for (const item of cases) {
-        const caseId = String((item as { id?: string }).id ?? "");
-        if (!caseId) continue;
-        if (!outgoing.some((edge) => edge.branchKey === caseId)) {
+        const valueKey = String((item as { value?: unknown }).value ?? "").trim();
+        const caseId = String((item as { id?: string }).id ?? "").trim();
+        const branchKey = valueKey || caseId;
+        if (!branchKey) continue;
+        if (!outgoing.some((edge) => edge.branchKey === branchKey || (caseId !== "" && edge.branchKey === caseId))) {
+          const rawLabel = typeof (item as { label?: string }).label === "string" ? (item as { label: string }).label.trim() : "";
+          const label = rawLabel || valueKey || "Case";
           issues.push({
-            id: `${node.id}-missing-case-${caseId}`,
+            id: `${node.id}-missing-case-${branchKey}`,
             nodeId: node.id,
-            message: `Connect the "${String((item as { label?: string }).label ?? "case")}" branch.`,
+            message: `Connect the "${label}" branch.`,
             severity: "error",
-            branchLabel: String((item as { label?: string }).label ?? "Case"),
+            branchLabel: label,
           });
         }
       }

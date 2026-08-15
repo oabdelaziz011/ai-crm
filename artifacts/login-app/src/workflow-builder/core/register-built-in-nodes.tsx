@@ -15,8 +15,9 @@ import {
   validateListVariableBinding,
 } from "./conversation/list-node-config";
 import { resolveLookupOutputVariableName } from "@/lib/lookups";
-import { MessageFieldEditor } from "../components/properties/rich-editors/message-field-editor";
-import { RichButtonListEditor } from "../components/properties/rich-editors/button-list-editor";
+import { MessageFieldEditor, hasBilingualOrLegacyMessage, bilingualMapPassthrough } from "../components/properties/rich-editors/message-field-editor";
+import { hasBilingualOrLegacyText } from "./conversation/bilingual-text";
+import { RichButtonListEditor, buttonHasAnyLabel } from "../components/properties/rich-editors/button-list-editor";
 import { QuestionFieldEditor } from "../components/properties/rich-editors/question-field-editor";
 import {
   EnhancedDelayEditor,
@@ -30,12 +31,24 @@ import { registerAIExtractWorkflowNode } from "./register-ai-extract-node";
 import { registerAIDecisionWorkflowNode } from "./register-ai-decision-node";
 import { registerAIKnowledgeSearchWorkflowNode } from "./register-ai-knowledge-search-node";
 import { CreateBookingPropertyEditor } from "../components/properties/crm/create-booking-property-editor";
+import { CreateTicketPropertyEditor } from "../components/properties/crm/create-ticket-property-editor";
+import { FindTicketPropertyEditor } from "../components/properties/crm/find-ticket-property-editor";
 import { FindCustomerPropertyEditor } from "../components/properties/crm/find-customer-property-editor";
 import {
   createDefaultCreateBookingConfig,
   normalizeCreateBookingNodeConfig,
   validateCreateBookingConfig,
 } from "./crm/create-booking-config";
+import {
+  createDefaultCreateTicketConfig,
+  normalizeCreateTicketNodeConfig,
+  validateCreateTicketConfig,
+} from "./crm/create-ticket-config";
+import {
+  createDefaultFindTicketConfig,
+  normalizeFindTicketNodeConfig,
+  validateFindTicketConfig,
+} from "./crm/find-ticket-config";
 import {
   createDefaultFindCustomerNodeConfig,
   normalizeFindCustomerNodeConfig,
@@ -103,13 +116,25 @@ export function registerBuiltInWorkflowNodes(): void {
     searchKeywords: ["message", "send", "welcome", "text"],
     defaultConfig: {
       message: "Hello 👋\nWelcome to our clinic.",
+      messages: {
+        ar: "أهلاً بك 👋\nمرحبًا بكم في عيادتنا.",
+        en: "Hello 👋\nWelcome to our clinic.",
+      },
     },
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => <MessageFieldEditor {...props} field="message" />,
-    validate: (config, nodeId) => requiredTextIssue("message", "message", nodeId, config),
+    validate: (config, nodeId) => {
+      if (hasBilingualOrLegacyMessage(config)) return [];
+      return requiredTextIssue("message", "message", nodeId, config);
+    },
     toEngineConfig: (config) =>
-      withBuilderType("send_message", { action: "send_message", message: config.message, channel: "whatsapp" }),
+      withBuilderType("send_message", {
+        action: "send_message",
+        message: config.message,
+        ...(config.messages && typeof config.messages === "object" ? { messages: config.messages } : {}),
+        channel: "whatsapp",
+      }),
     fromEngineConfig: matchBuilderType("send_message"),
   });
 
@@ -126,16 +151,25 @@ export function registerBuiltInWorkflowNodes(): void {
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => <QuestionFieldEditor {...props} />,
-    validate: (config, nodeId) => [
-      ...requiredTextIssue("question", "question", nodeId, config),
-      ...requiredTextIssue("saveAs", "saveAs", nodeId, config),
-    ],
+    validate: (config, nodeId) => {
+      const issues: ValidationIssue[] = [];
+      if (!hasBilingualOrLegacyText(config, "questions", "question", ["prompts", "messages"], ["prompt", "message"])) {
+        issues.push(...requiredTextIssue("question", "question", nodeId, config));
+      }
+      issues.push(...requiredTextIssue("saveAs", "saveAs", nodeId, config));
+      return issues;
+    },
     toEngineConfig: (config) => {
       const normalized = normalizeAskQuestionNodeConfig(config);
       return withBuilderType("ask_question", {
         action: "wait_for_input",
         prompt: normalized.question,
+        question: normalized.question,
         inputKey: normalized.saveAs,
+        ...bilingualMapPassthrough(normalized, "questions"),
+        ...(normalized.questions && typeof normalized.questions === "object"
+          ? { prompts: normalized.questions }
+          : {}),
       });
     },
     fromEngineConfig: (_engineType, config) =>
@@ -156,7 +190,17 @@ export function registerBuiltInWorkflowNodes(): void {
     allowOutgoing: true,
     PropertyEditor: (props) => (
       <div className="space-y-4">
-        <TextFieldEditor {...props} labelKey="prompt" field="prompt" multiline />
+        <MessageFieldEditor
+          {...props}
+          mapKey="prompts"
+          baseField="prompt"
+          alternateMapKeys={["questions", "messages"]}
+          alternateBaseFields={["question", "message"]}
+          arabicLabelKey="workflowBuilder.fields.promptArabic"
+          englishLabelKey="workflowBuilder.fields.promptEnglish"
+          arabicPlaceholderKey="workflowBuilder.fields.promptArabicPlaceholder"
+          englishPlaceholderKey="workflowBuilder.fields.promptEnglishPlaceholder"
+        />
         <DatePickerOptionsEditor {...props} />
       </div>
     ),
@@ -173,6 +217,7 @@ export function registerBuiltInWorkflowNodes(): void {
         holidayBehavior: normalized.holidayBehavior,
         disableClosedWeekdays: normalized.disableClosedWeekdays,
         branchId: normalized.branchId,
+        ...bilingualMapPassthrough(normalized, "prompts"),
       });
     },
     fromEngineConfig: (_engineType, config) =>
@@ -199,6 +244,7 @@ export function registerBuiltInWorkflowNodes(): void {
         action: "wait_for_reply",
         prompt: normalized.prompt,
         inputKey: normalized.saveAs,
+        ...bilingualMapPassthrough(normalized, "prompts"),
       });
     },
     fromEngineConfig: (_engineType, config) =>
@@ -215,24 +261,36 @@ export function registerBuiltInWorkflowNodes(): void {
     accentClass: "from-amber-500/20 to-amber-500/5 border-amber-500/30",
     searchKeywords: ["buttons", "choices", "menu", "message"],
     defaultConfig: {
-      buttons: [
-        { id: "book", label: "Book Appointment" },
-        { id: "pricing", label: "Pricing" },
-        { id: "support", label: "Talk to Support" },
-      ],
+      message: "",
+      messages: {
+        ar: "",
+        en: "",
+      },
+      buttons: [],
     },
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => <RichButtonListEditor {...props} />,
     validate: (config, nodeId) => {
-      const issues: ValidationIssue[] = requiredTextIssue("message", "message", nodeId, config);
+      const issues: ValidationIssue[] = [];
+      if (!hasBilingualOrLegacyMessage(config)) {
+        issues.push(...requiredTextIssue("message", "message", nodeId, config));
+      }
       const buttons = Array.isArray(config.buttons) ? config.buttons : [];
-      if (buttons.filter((button) => typeof button === "object" && String((button as { label?: string }).label ?? "").trim()).length === 0) {
+      if (buttons.filter((button) => buttonHasAnyLabel(button)).length === 0) {
         issues.push({
           id: `${nodeId}-buttons`,
           nodeId,
           message: "Add at least one button label before publishing.",
           severity: "error",
+        });
+      }
+      if (buttons.length > 3) {
+        issues.push({
+          id: `${nodeId}-buttons-whatsapp-limit`,
+          nodeId,
+          message: "WhatsApp only sends the first 3 buttons. Use a List node for more options.",
+          severity: "warning",
         });
       }
       return issues;
@@ -241,6 +299,7 @@ export function registerBuiltInWorkflowNodes(): void {
       withBuilderType("buttons", {
         action: "send_buttons",
         message: config.message,
+        ...(config.messages && typeof config.messages === "object" ? { messages: config.messages } : {}),
         buttons: config.buttons,
         ...(config.primaryMenu === true ? { primaryMenu: true } : {}),
       }),
@@ -256,30 +315,81 @@ export function registerBuiltInWorkflowNodes(): void {
     icon: "List",
     accentClass: "from-orange-500/20 to-orange-500/5 border-orange-500/30",
     defaultConfig: {
-      title: "Choose a service",
-      body: "Pick the option that fits you best.",
-      buttonLabel: "View options",
-      rows: [{ id: "1", title: "Option 1", description: "" }],
+      title: "اختر خدمة",
+      body: "اختَر الخيار الأنسب لك.",
+      buttonLabel: "عرض الخيارات",
+      titles: {
+        ar: "اختر خدمة",
+        en: "Choose a service",
+      },
+      bodies: {
+        ar: "اختَر الخيار الأنسب لك.",
+        en: "Pick the option that fits you best.",
+      },
+      buttonLabels: {
+        ar: "عرض الخيارات",
+        en: "View options",
+      },
+      rows: [
+        {
+          id: "1",
+          title: "الخيار 1",
+          titleAr: "الخيار 1",
+          titleEn: "Option 1",
+          description: "",
+        },
+      ],
     },
     allowIncoming: true,
     allowOutgoing: true,
     PropertyEditor: (props) => (
       <div className="space-y-4">
         <PrimaryMenuToggle {...props} />
-        <TextFieldEditor {...props} labelKey="menuTitle" field="title" />
-        <TextFieldEditor {...props} labelKey="menuMessage" field="body" multiline />
-        <TextFieldEditor {...props} labelKey="menuButtonLabel" field="buttonLabel" />
+        <MessageFieldEditor
+          {...props}
+          mapKey="titles"
+          baseField="title"
+          arabicLabelKey="workflowBuilder.fields.titleArabic"
+          englishLabelKey="workflowBuilder.fields.titleEnglish"
+          arabicPlaceholderKey="workflowBuilder.fields.titleArabicPlaceholder"
+          englishPlaceholderKey="workflowBuilder.fields.titleEnglishPlaceholder"
+          compact
+          showHint
+        />
+        <MessageFieldEditor
+          {...props}
+          mapKey="bodies"
+          baseField="body"
+          arabicLabelKey="workflowBuilder.fields.bodyArabic"
+          englishLabelKey="workflowBuilder.fields.bodyEnglish"
+          arabicPlaceholderKey="workflowBuilder.fields.bodyArabicPlaceholder"
+          englishPlaceholderKey="workflowBuilder.fields.bodyEnglishPlaceholder"
+          showHint={false}
+        />
+        <MessageFieldEditor
+          {...props}
+          mapKey="buttonLabels"
+          baseField="buttonLabel"
+          arabicLabelKey="workflowBuilder.fields.menuButtonArabic"
+          englishLabelKey="workflowBuilder.fields.menuButtonEnglish"
+          arabicPlaceholderKey="workflowBuilder.fields.menuButtonArabicPlaceholder"
+          englishPlaceholderKey="workflowBuilder.fields.menuButtonEnglishPlaceholder"
+          compact
+          showHint={false}
+        />
         <ListOptionsEditor {...props} />
         <ListVariableBindingEditor {...props} />
       </div>
     ),
     validate: (config, nodeId) => {
-      const issues: ValidationIssue[] = [
-        ...requiredTextIssue("title", "title", nodeId, config),
-        ...requiredTextIssue("body", "body", nodeId, config),
-        ...validateListVariableBinding(config, nodeId),
-        ...validateListNodeOptions(config, nodeId),
-      ];
+      const issues: ValidationIssue[] = [];
+      if (!hasBilingualOrLegacyText(config, "titles", "title")) {
+        issues.push(...requiredTextIssue("title", "title", nodeId, config));
+      }
+      if (!hasBilingualOrLegacyText(config, "bodies", "body")) {
+        issues.push(...requiredTextIssue("body", "body", nodeId, config));
+      }
+      issues.push(...validateListVariableBinding(config, nodeId), ...validateListNodeOptions(config, nodeId));
       return issues;
     },
     toEngineConfig: (config) => {
@@ -290,6 +400,9 @@ export function registerBuiltInWorkflowNodes(): void {
         title: config.title,
         body: config.body,
         buttonLabel: config.buttonLabel,
+        ...bilingualMapPassthrough(config, "titles"),
+        ...bilingualMapPassthrough(config, "bodies"),
+        ...bilingualMapPassthrough(config, "buttonLabels"),
         ...(config.primaryMenu === true ? { primaryMenu: true } : {}),
         ...(saveAs ? { inputKey: saveAs, saveAs } : {}),
       };
@@ -572,6 +685,84 @@ export function registerBuiltInWorkflowNodes(): void {
       config.builderType === "create_booking"
         ? normalizeCreateBookingNodeConfig({ ...config })
         : null,
+  });
+
+  registerWorkflowNode({
+    id: "create_ticket",
+    displayName: "Create Ticket",
+    description: "Open a support ticket from the conversation.",
+    category: "crm",
+    engineType: "action",
+    icon: "Ticket",
+    accentClass: "from-rose-500/20 to-rose-500/5 border-rose-500/30",
+    searchKeywords: ["ticket", "support", "create ticket", "issue"],
+    defaultConfig: createDefaultCreateTicketConfig(),
+    allowIncoming: true,
+    allowOutgoing: true,
+    PropertyEditor: CreateTicketPropertyEditor,
+    validate: validateCreateTicketConfig,
+    toEngineConfig: (config) =>
+      withBuilderType("create_ticket", { action: "create_ticket", ...normalizeCreateTicketNodeConfig(config) }),
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "create_ticket" || config.action === "create_ticket"
+        ? normalizeCreateTicketNodeConfig({ ...config })
+        : null,
+  });
+
+  registerWorkflowNode({
+    id: "find_ticket",
+    displayName: "Find Ticket",
+    description: "Look up a support ticket by number and expose its details.",
+    category: "crm",
+    engineType: "action",
+    icon: "UserSearch",
+    accentClass: "from-rose-500/20 to-rose-500/5 border-rose-500/30",
+    searchKeywords: ["ticket", "find ticket", "lookup ticket", "complaint number", "ticket number"],
+    defaultConfig: createDefaultFindTicketConfig(),
+    allowIncoming: true,
+    allowOutgoing: true,
+    PropertyEditor: FindTicketPropertyEditor,
+    validate: validateFindTicketConfig,
+    toEngineConfig: (config) =>
+      withBuilderType("find_ticket", { action: "find_ticket", ...normalizeFindTicketNodeConfig(config) }),
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "find_ticket" || config.action === "find_ticket"
+        ? normalizeFindTicketNodeConfig({ ...config })
+        : null,
+  });
+
+  registerWorkflowNode({
+    id: "assign_ticket",
+    displayName: "Assign Ticket",
+    description: "Assign a support ticket to a team member.",
+    category: "crm",
+    engineType: "action",
+    icon: "UserCheck",
+    accentClass: "from-fuchsia-500/20 to-fuchsia-500/5 border-fuchsia-500/30",
+    searchKeywords: ["assign ticket", "ticket", "assignee", "support"],
+    defaultConfig: {
+      ticketIdField: "ticket_id",
+      assigneeUserIdField: "",
+      assigneeNameField: "assignee_name",
+      ticketId: "",
+      assigneeUserId: "",
+      assigneeName: "",
+    },
+    allowIncoming: true,
+    allowOutgoing: true,
+    PropertyEditor: (props) => (
+      <div className="space-y-4">
+        <TextFieldEditor {...props} labelKey="ticketId" field="ticketId" placeholder="Optional static ticket id" />
+        <TextFieldEditor {...props} labelKey="ticketIdField" field="ticketIdField" placeholder="ticket_id" />
+        <TextFieldEditor {...props} labelKey="assigneeUserId" field="assigneeUserId" />
+        <TextFieldEditor {...props} labelKey="assigneeUserIdField" field="assigneeUserIdField" />
+        <TextFieldEditor {...props} labelKey="assigneeName" field="assigneeName" />
+        <TextFieldEditor {...props} labelKey="assigneeNameField" field="assigneeNameField" placeholder="assignee_name" />
+      </div>
+    ),
+    validate: () => [],
+    toEngineConfig: (config) => withBuilderType("assign_ticket", { action: "assign_ticket", ...config }),
+    fromEngineConfig: matchBuilderType("assign_ticket"),
   });
 
   registerAIWorkflowNodes();

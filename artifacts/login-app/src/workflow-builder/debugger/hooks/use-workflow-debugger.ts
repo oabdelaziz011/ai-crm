@@ -47,37 +47,53 @@ export function useWorkflowDebugger(
   }, []);
 
   const scope = useMemo(() => ({ companyId, flowId }), [companyId, flowId]);
+  const snapshot = simulation?.snapshot;
+  const documentRef = useRef(document);
+  documentRef.current = document;
+  const simulationRef = useRef(simulation);
+  simulationRef.current = simulation;
 
   useEffect(() => {
-    if (!enabled || !simulation) return;
+    if (!enabled || !snapshot) return;
 
-    const sessionId = simulation.snapshot.sessionId;
+    const sessionId = snapshot.sessionId;
+    let sessionChanged = false;
     if (sessionId !== lastSessionIdRef.current) {
       if (lastSessionIdRef.current !== null) {
         kernel.reset(scope);
       }
       lastSessionIdRef.current = sessionId;
+      sessionChanged = true;
     }
 
-    kernel.observeSnapshot(scope, simulation.snapshot, document);
-    bump();
-  }, [bump, document, enabled, kernel, scope, simulation, simulation?.snapshot]);
+    const countBefore = kernel.getReplayState(scope).count;
+    kernel.observeSnapshot(scope, snapshot, documentRef.current);
+    const countAfter = kernel.getReplayState(scope).count;
+
+    // Do not depend on the simulation controller object — it is a new literal every
+    // parent render. Always bumping here caused Maximum update depth crashes on canvas move.
+    if (sessionChanged || countAfter !== countBefore) {
+      bump();
+    }
+  }, [bump, enabled, kernel, scope, snapshot]);
 
   useEffect(() => {
     if (!enabled || !simulation) return;
 
     return kernel.subscribe(scope, (event) => {
+      const live = simulationRef.current;
+      if (!live) return;
       if (!isDebuggerEventType(event, "BreakpointHit") || !event.payload.live) return;
-      if (simulation.snapshot.status !== "running") {
+      if (live.snapshot.status !== "running") {
         pausedBreakpointRef.current = null;
         return;
       }
       const breakpointId = event.payload.hit.breakpointId;
       if (pausedBreakpointRef.current === breakpointId) return;
       pausedBreakpointRef.current = breakpointId;
-      simulation.pause();
+      live.pause();
     });
-  }, [enabled, kernel, scope, simulation]);
+  }, [enabled, kernel, scope, simulation?.enabled]);
 
   useEffect(() => {
     if (!enabled) return;

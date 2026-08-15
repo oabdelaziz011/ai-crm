@@ -13,6 +13,7 @@ import { VariablePicker } from "../../variables/variable-picker";
 import { InteractionValueField } from "./interaction-value-field";
 import { InteractiveClauseWarning, useInteractiveClauseWarnings } from "./interactive-clause-warning";
 import type { RuleClause } from "@workspace/automation-platform";
+import { MessageFieldEditor } from "../rich-editors/message-field-editor";
 
 type SwitchCase = {
   id: string;
@@ -40,7 +41,11 @@ export function SwitchEditor({ config, onChange, context }: NodePropertyEditorPr
         <Label className="text-sm font-medium">{t("workflowBuilder.logic.field")}</Label>
         <div className="flex items-center gap-2">
           <Input value={fieldLabel} readOnly className="rounded-xl bg-background/80" placeholder={t("workflowBuilder.logic.chooseField")} />
-          <VariablePicker onSelect={(variable) => onChange({ field: normalizeVariableField(variable.token) })} />
+          <VariablePicker
+            document={context?.document}
+            nodeId={context?.nodeId}
+            onSelect={(variable) => onChange({ field: normalizeVariableField(variable.token) })}
+          />
         </div>
         <p className="text-[11px] text-muted-foreground">{field}</p>
       </div>
@@ -170,17 +175,26 @@ export function MergeEditor({ config, onChange }: NodePropertyEditorProps) {
   );
 }
 
-export function WaitForReplyEditor({ config, onChange }: NodePropertyEditorProps) {
+export function WaitForReplyEditor({ config, onChange, context }: NodePropertyEditorProps) {
   const { t } = useTranslation("common");
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label className="text-sm font-medium">{t("workflowBuilder.logic.optionalPrompt")}</Label>
-        <Input
-          value={typeof config.prompt === "string" ? config.prompt : ""}
-          placeholder={t("workflowBuilder.logic.waitSilently")}
-          className="rounded-xl bg-background/80"
-          onChange={(event) => onChange({ prompt: event.target.value })}
+        <MessageFieldEditor
+          config={config}
+          onChange={onChange}
+          context={context}
+          mapKey="prompts"
+          baseField="prompt"
+          alternateMapKeys={["messages", "questions"]}
+          alternateBaseFields={["message", "question"]}
+          arabicLabelKey="workflowBuilder.fields.promptArabic"
+          englishLabelKey="workflowBuilder.fields.promptEnglish"
+          arabicPlaceholderKey="workflowBuilder.fields.promptArabicPlaceholder"
+          englishPlaceholderKey="workflowBuilder.fields.promptEnglishPlaceholder"
+          compact
+          showHint
         />
       </div>
       <div className="space-y-2">

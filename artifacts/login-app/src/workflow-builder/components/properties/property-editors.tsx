@@ -12,6 +12,8 @@ import { GenerateRoutingAction } from "./conversation/generate-routing-action";
 type ListRow = {
   id: string;
   title?: string;
+  titleAr?: string;
+  titleEn?: string;
   description?: string;
   value?: string;
 };
@@ -25,16 +27,36 @@ function readNumber(value: unknown, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function normalizeListRow(row: ListRow): ListRow {
+  const titleAr = row.titleAr ?? "";
+  const titleEn = row.titleEn ?? "";
+  return {
+    ...row,
+    titleAr,
+    titleEn,
+    title: titleAr.trim() || titleEn.trim() || row.title || "",
+  };
+}
+
 function readListRows(config: Record<string, unknown>): ListRow[] {
   if (!Array.isArray(config.rows)) {
-    return [{ id: crypto.randomUUID(), title: "Option 1", description: "" }];
+    return [{ id: crypto.randomUUID(), title: "Option 1", titleAr: "الخيار 1", titleEn: "Option 1", description: "" }];
   }
-  return (config.rows as ListRow[]).map((row, index) => ({
-    id: row.id ?? String(index + 1),
-    title: row.title ?? "",
-    description: row.description ?? "",
-    value: row.value ?? "",
-  }));
+  return (config.rows as ListRow[]).map((row, index) => {
+    const titleAr = typeof row.titleAr === "string" ? row.titleAr : "";
+    const titleEn = typeof row.titleEn === "string" ? row.titleEn : "";
+    const title = typeof row.title === "string" ? row.title : "";
+    const hasBilingual = Boolean(titleAr.trim() || titleEn.trim());
+    const looksArabic = /[\u0600-\u06FF]/.test(title);
+    return {
+      id: row.id ?? String(index + 1),
+      title: title || titleAr || titleEn,
+      titleAr: hasBilingual ? titleAr : looksArabic ? title : "",
+      titleEn: hasBilingual ? titleEn : looksArabic ? "" : title,
+      description: row.description ?? "",
+      value: row.value ?? "",
+    };
+  });
 }
 
 export function TextFieldEditor({
@@ -114,7 +136,7 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
   const { t } = useTranslation("common");
   const rows = readListRows(config);
 
-  const updateRows = (next: ListRow[]) => onChange({ rows: next });
+  const updateRows = (next: ListRow[]) => onChange({ rows: next.map((row) => normalizeListRow(row)) });
 
   const applyIdRefactor = (oldId: string, newId: string) => {
     if (!context || oldId === newId) return;
@@ -142,7 +164,7 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
           onClick={() =>
             updateRows([
               ...rows,
-              { id: crypto.randomUUID(), title: "", description: "" },
+              { id: crypto.randomUUID(), title: "", titleAr: "", titleEn: "", description: "" },
             ])
           }
         >
@@ -192,17 +214,33 @@ export function ListRowsEditor({ config, onChange, context }: NodePropertyEditor
               </Button>
             </div>
           </div>
-          <Input
-            value={readString(row.title)}
-            placeholder={t("workflowBuilder.fields.listDisplayLabel")}
-            onChange={(event) => {
-              const next = rows.map((entry) =>
-                entry.id === row.id ? { ...entry, title: event.target.value } : entry,
-              );
-              updateRows(next);
-            }}
-            className="rounded-xl bg-background/80"
-          />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input
+              dir="rtl"
+              value={readString(row.titleAr)}
+              placeholder={t("workflowBuilder.fields.listTitleArabic", { number: index + 1 })}
+              onChange={(event) => {
+                const next = rows.map((entry) =>
+                  entry.id === row.id ? { ...entry, titleAr: event.target.value } : entry,
+                );
+                updateRows(next);
+              }}
+              className="rounded-xl bg-background/80"
+            />
+            <Input
+              dir="ltr"
+              value={readString(row.titleEn)}
+              placeholder={t("workflowBuilder.fields.listTitleEnglish", { number: index + 1 })}
+              onChange={(event) => {
+                const next = rows.map((entry) =>
+                  entry.id === row.id ? { ...entry, titleEn: event.target.value } : entry,
+                );
+                updateRows(next);
+              }}
+              className="rounded-xl bg-background/80"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">{t("workflowBuilder.fields.bilingualListRowHint")}</p>
           <Input
             value={readString(row.value)}
             placeholder={t("workflowBuilder.fields.listStoredValue")}

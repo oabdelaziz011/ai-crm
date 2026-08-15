@@ -95,6 +95,8 @@ function RuleClauseEditor({
             placeholder={t("workflowBuilder.logic.chooseField")}
           />
           <VariablePicker
+            document={document}
+            nodeId={nodeId}
             onSelect={(variable) => onChange({ ...clause, field: normalizeVariableField(variable.token) })}
           />
         </div>

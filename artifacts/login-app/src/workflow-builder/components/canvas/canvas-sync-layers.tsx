@@ -68,10 +68,12 @@ export const CanvasPresentationSync = memo(function CanvasPresentationSync({
   presentationNodesRef.current = presentationNodes;
   const nodeTextRef = useRef(nodeText);
   nodeTextRef.current = nodeText;
+  // Include node count so presentation re-applies after structural seed populates RF nodes.
+  const nodeCount = presentationNodes.length;
 
   useLayoutEffect(() => {
     patchRef.current?.patchPresentation(presentationNodesRef.current, nodeTextRef.current);
-  }, [presentationSignature, patchRef]);
+  }, [presentationSignature, nodeCount, patchRef]);
 
   return null;
 });

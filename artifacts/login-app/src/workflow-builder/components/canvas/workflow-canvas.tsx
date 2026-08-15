@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type SetStateAction } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type MouseEvent, type SetStateAction } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -15,8 +15,8 @@ import {
   type Node,
   type NodeChange,
   type OnConnect,
+  type OnMove,
   type OnSelectionChangeParams,
-  type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { canConnect } from "../../core/connection-rules";
@@ -27,7 +27,7 @@ import {
 } from "../../core/canvas/canvas-selection-guard";
 import { canvasStructuralEdgeSignature, canvasStructuralNodeSignature } from "../../core/canvas/document-signatures";
 import { documentToFlowEdges, documentToFlowNodes } from "../../core/canvas/flow-document-bridge";
-import type { BuilderNode, ValidationIssue } from "../../core/types";
+import type { ValidationIssue } from "../../core/types";
 import { listNodeRenderers, registerDefaultNodeRenderers } from "../../core/registry/node-renderer-registry";
 import { createEdgeFromNodes } from "../../core/state/builder-reducer";
 import type { BuilderNodeType } from "../../core/types";
@@ -52,8 +52,7 @@ import {
 } from "./canvas-sync-layers";
 import {
   extractDragCommitPositions,
-  filterControlledMirrorNodeChanges,
-  filterRuntimeApplyNodeChanges,
+  filterSafeControlledMirrorNodeChanges,
   PALETTE_DROP_NODE_ANCHOR,
   seedControlledNodesFromDocument,
   type DragPositionChange,
@@ -61,8 +60,9 @@ import {
 import { useCanvasSyncTrace } from "../../debug/canvas-sync-trace-context";
 import { quickAddPosition, type WorkflowNodeData } from "../nodes/workflow-node-card";
 import { useCanvasContainerSize } from "../../hooks/use-canvas-container-size";
-import { useBuilderActions, useCanvasBuilderSlice } from "../../context/workflow-builder-context";
+import { useBuilderActions, useCanvasBuilderSlice, useDocumentBuilderSlice } from "../../context/workflow-builder-context";
 import { builderRenderPerf } from "../../debug/builder-render-perf";
+import { parseSwitchCaseSourceHandle } from "../../core/logic/branch-utils";
 
 registerDefaultNodeRenderers();
 
@@ -75,11 +75,14 @@ type WorkflowCanvasInnerProps = {
 
 export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, height }: WorkflowCanvasInnerProps) {
   const canvasSlice = useCanvasBuilderSlice();
+  const documentSlice = useDocumentBuilderSlice();
   const { dispatch, addNode, insertNodeAfter, registerCanvasFocusHandler } = useBuilderActions();
   const { fitView, getNodes, getViewport, screenToFlowPosition, setCenter } = useReactFlow();
   const syncTrace = useCanvasSyncTrace();
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
+  const documentNodesRef = useRef(documentSlice.document.nodes);
+  documentNodesRef.current = documentSlice.document.nodes;
 
   useEffect(() => {
     getLiveSelectedNodeIdsRef.current = () =>
@@ -106,6 +109,8 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
 
   const builderSelectedRef = useRef(canvasSlice.selectedNodeIds);
   builderSelectedRef.current = canvasSlice.selectedNodeIds;
+  const builderSelectedEdgesRef = useRef(canvasSlice.selectedEdgeIds);
+  builderSelectedEdgesRef.current = canvasSlice.selectedEdgeIds;
 
   const focusValidationIssue = useCallback(
     (issue: ValidationIssue) => {
@@ -152,15 +157,15 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
   }, [structuralNodes, canvasSlice.selectedNodeIds, onQuickAddStable]);
 
   const structuralEdgeSignature = useMemo(
-    () => canvasStructuralEdgeSignature(structuralNodes, canvasSlice.edges),
-    [structuralNodes, canvasSlice.edges],
+    () => canvasStructuralEdgeSignature(structuralNodes, canvasSlice.edges, canvasSlice.selectedEdgeIds),
+    [structuralNodes, canvasSlice.edges, canvasSlice.selectedEdgeIds],
   );
 
   const structuralFlowEdges = useMemo(() => {
     builderRenderPerf.structuralProjectionRuns += 1;
     builderRenderPerf.projectionRuns += 1;
-    return documentToFlowEdges(structuralNodes, canvasSlice.edges);
-  }, [structuralNodes, canvasSlice.edges]);
+    return documentToFlowEdges(structuralNodes, canvasSlice.edges, canvasSlice.selectedEdgeIds);
+  }, [structuralNodes, canvasSlice.edges, canvasSlice.selectedEdgeIds]);
 
   const [nodes, setNodesInternal] = useNodesState<Node<WorkflowNodeData>>(
     seedControlledNodesFromDocument([], flowNodes),
@@ -186,6 +191,7 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
           typeof updater === "function"
             ? (updater as (current: Node<WorkflowNodeData>[]) => Node<WorkflowNodeData>[])(current)
             : updater;
+        if (after === current) return current;
         syncTrace?.setNodes(meta.caller, meta.reason, current, after);
         return after;
       });
@@ -209,8 +215,13 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
   );
 
   const presentationPatchRef = useRef<CanvasNodePresentationPatcher | null>(null);
+  const latestPresentationRef = useRef<{
+    nodes: Parameters<CanvasNodePresentationPatcher["patchPresentation"]>[0];
+    nodeText: Parameters<CanvasNodePresentationPatcher["patchPresentation"]>[1];
+  } | null>(null);
   presentationPatchRef.current = {
     patchPresentation: (presentationNodes, presentationNodeText) => {
+      latestPresentationRef.current = { nodes: presentationNodes, nodeText: presentationNodeText };
       builderRenderPerf.presentationPatches += 1;
       builderRenderPerf.presentationPatchRuns += 1;
       callSetNodes("presentationSync", "label+subtitle patch", (current) =>
@@ -265,6 +276,14 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
   const structuralFlowEdgesRef = useRef(structuralFlowEdges);
   structuralFlowEdgesRef.current = structuralFlowEdges;
 
+  // Declared before seed effect — used to skip document re-seeds mid-drag.
+  const draggingNodeIdsRef = useRef(new Set<string>());
+  const callSetNodesRef = useRef(callSetNodes);
+  callSetNodesRef.current = callSetNodes;
+  const syncTraceRef = useRef(syncTrace);
+  syncTraceRef.current = syncTrace;
+  const documentViewportRef = useRef(canvasSlice.viewport);
+
   useLayoutEffect(() => {
     if (!syncTrace) return;
     syncTrace.nodesPropRender(renderCountRef.current, prevNodesPropRef.current, nodes);
@@ -275,24 +294,35 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
   });
 
   useLayoutEffect(() => {
-    syncTrace?.syncEffect("structuralNodeSignature changed", nodesRef.current.length, false, {
+    if (draggingNodeIdsRef.current.size > 0) return;
+    const trace = syncTraceRef.current;
+    trace?.syncEffect("structuralNodeSignature changed", nodesRef.current.length, false, {
       structuralNodeSignature,
     });
-    callSetNodes("syncEffect→seedControlledNodesFromDocument", "structuralNodeSignature changed", (current) => {
-      builderRenderPerf.canvasSeeds += 1;
-      builderRenderPerf.canvasSeedCommits += 1;
-      const seeded = seedControlledNodesFromDocument(current, flowNodesRef.current);
-      return syncTrace
-        ? syncTrace.seedControlledNodesFromDocument(
-            "syncEffect",
-            "seedControlledNodesFromDocument",
-            current,
-            flowNodesRef.current,
-            seeded,
-          )
-        : seeded;
-    });
-  }, [structuralNodeSignature, callSetNodes, syncTrace]);
+    callSetNodesRef.current(
+      "syncEffect→seedControlledNodesFromDocument",
+      "structuralNodeSignature changed",
+      (current) => {
+        builderRenderPerf.canvasSeeds += 1;
+        builderRenderPerf.canvasSeedCommits += 1;
+        let seeded = seedControlledNodesFromDocument(current, flowNodesRef.current);
+        const presentation = latestPresentationRef.current;
+        if (presentation) {
+          seeded = patchNodePresentationData(seeded, presentation.nodes, presentation.nodeText);
+        }
+        return trace
+          ? trace.seedControlledNodesFromDocument(
+              "syncEffect",
+              "seedControlledNodesFromDocument",
+              current,
+              flowNodesRef.current,
+              seeded,
+            )
+          : seeded;
+      },
+    );
+    // Only structural signature — callSetNodes/syncTrace must not re-trigger seeds every render.
+  }, [structuralNodeSignature]);
 
   useLayoutEffect(() => {
     setEdges((current) => {
@@ -303,61 +333,72 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
 
   const isEmpty = canvasSlice.nodes.length === 0;
 
-  const viewport = canvasSlice.viewport;
-  const viewportRef = useRef(viewport);
-  viewportRef.current = viewport;
-  const viewportReadyRef = useRef(false);
-
+  // Uncontrolled viewport: controlled `viewport` + `onViewportChange` re-renders every
+  // pan/zoom/autopan frame and loops into Maximum update depth / AppErrorBoundary crash.
   useLayoutEffect(() => {
-    viewportReadyRef.current = false;
-
-    const hasStoredViewport = viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1;
+    documentViewportRef.current = canvasSlice.viewport;
+    const stored = canvasSlice.viewport;
+    const hasStoredViewport = stored.x !== 0 || stored.y !== 0 || stored.zoom !== 1;
     if (!isEmpty && !hasStoredViewport && !fitViewAppliedFlowIds.has(canvasSlice.flowId)) {
       fitView({ padding: 0.18, duration: 0 });
       fitViewAppliedFlowIds.add(canvasSlice.flowId);
       requestAnimationFrame(() => {
-        dispatchRef.current({ type: "SET_VIEWPORT", viewport: getViewport() });
-        viewportReadyRef.current = true;
+        const next = getViewport();
+        documentViewportRef.current = next;
+        dispatchRef.current({ type: "SET_VIEWPORT", viewport: next });
       });
-      return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- remount via ReactFlow key=flowId
+  }, [canvasSlice.flowId, fitView, getViewport, isEmpty]);
 
-    const frame = requestAnimationFrame(() => {
-      viewportReadyRef.current = true;
+  const handleFitView = useCallback(() => {
+    fitView({ padding: 0.18, duration: 220 });
+    requestAnimationFrame(() => {
+      const next = getViewport();
+      documentViewportRef.current = next;
+      dispatchRef.current({ type: "SET_VIEWPORT", viewport: next });
     });
-    return () => cancelAnimationFrame(frame);
-  }, [canvasSlice.flowId, fitView, getViewport, isEmpty, viewport]);
+  }, [fitView, getViewport]);
+
+  const trackDraggingFromChanges = useCallback((changes: NodeChange[]) => {
+    for (const change of changes) {
+      if (change.type !== "position") continue;
+      if (change.dragging === true) draggingNodeIdsRef.current.add(change.id);
+      if (change.dragging === false) draggingNodeIdsRef.current.delete(change.id);
+    }
+  }, []);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       syncTrace?.handleNodesChange("ReactFlow→handleNodesChange entry", changes, nodesRef.current.length);
+      trackDraggingFromChanges(changes);
 
       const removedNodeIds = changes
         .filter((change) => change.type === "remove")
         .map((change) => change.id);
       if (removedNodeIds.length > 0) {
+        draggingNodeIdsRef.current.clear();
         dispatchRef.current({ type: "DELETE_NODES", nodeIds: removedNodeIds });
         return;
       }
 
+      const isDragging = draggingNodeIdsRef.current.size > 0;
+      const hasPositionChange = changes.some((change) => change.type === "position");
       const positionChanges = changes.filter((change) => change.type === "position");
-      const mirrorChanges = filterControlledMirrorNodeChanges(changes);
+
+      // Selection is document-owned (onSelectionChange → SELECT_NODES → seed).
+      // Mirroring select here + SELECT_NODES caused empty/select oscillation and
+      // nested Maximum update depth crashes while moving nodes/panning.
+      const mirrorChanges =
+        isDragging || hasPositionChange
+          ? positionChanges
+          : filterSafeControlledMirrorNodeChanges(changes, nodesRef.current);
+
       if (mirrorChanges.length > 0) {
         syncTrace?.handleNodesChange("mirrorChanges→onNodesChange", mirrorChanges, nodesRef.current.length, {
-          allowList: "select|dimensions|position",
+          allowList: isDragging || hasPositionChange ? "position" : "dimensions|position",
         });
         onNodesChange(mirrorChanges);
-
-        const selectChanges = filterRuntimeApplyNodeChanges(mirrorChanges);
-        if (selectChanges.length > 0) {
-          const runtimeSelectedIds = applyNodeChanges(selectChanges, nodesRef.current)
-            .filter((node) => node.selected)
-            .map((node) => node.id);
-          const builderSelectedIds = builderSelectedRef.current;
-          if (selectionKey(runtimeSelectedIds) !== selectionKey(builderSelectedIds)) {
-            dispatchRef.current({ type: "SELECT_NODES", nodeIds: runtimeSelectedIds });
-          }
-        }
       }
 
       const commitPositions = extractDragCommitPositions(positionChanges as DragPositionChange[]);
@@ -365,7 +406,7 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
         dispatchRef.current({ type: "UPDATE_NODE_POSITIONS", positions: commitPositions });
       }
     },
-    [onNodesChange, syncTrace],
+    [onNodesChange, syncTrace, trackDraggingFromChanges],
   );
 
   useEffect(() => {
@@ -375,7 +416,22 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
     });
   }, [getNodes, handleNodesChange, syncTrace]);
 
-  const onSelectionChange = useCallback(({ nodes: selectedNodes }: OnSelectionChangeParams) => {
+  const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }: OnSelectionChangeParams) => {
+    if (draggingNodeIdsRef.current.size > 0) return;
+
+    const rfSelectedEdgeIds = selectedEdges.map((edge) => edge.id);
+    if (rfSelectedEdgeIds.length > 0) {
+      if (selectionKey(rfSelectedEdgeIds) === selectionKey(builderSelectedEdgesRef.current)) {
+        return;
+      }
+      queueMicrotask(() => {
+        if (draggingNodeIdsRef.current.size > 0) return;
+        if (selectionKey(rfSelectedEdgeIds) === selectionKey(builderSelectedEdgesRef.current)) return;
+        dispatchRef.current({ type: "SELECT_EDGES", edgeIds: rfSelectedEdgeIds });
+      });
+      return;
+    }
+
     const rfSelectedIds = selectedNodes.map((node) => node.id);
     const builderSelectedIds = builderSelectedRef.current;
 
@@ -387,7 +443,12 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
       rememberCanvasSelection(builderSelectedIds);
     }
 
-    if (rfSelectedIds.length === 0 && builderSelectedIds.length > 0) {
+    // Ignore transient empty RF selection reports while builder still has a selection
+    // (nodes OR edges). Clearing here un-selects edges before Delete can run.
+    if (
+      rfSelectedIds.length === 0 &&
+      (builderSelectedIds.length > 0 || builderSelectedEdgesRef.current.length > 0)
+    ) {
       return;
     }
 
@@ -395,13 +456,19 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
       return;
     }
 
-    dispatchRef.current({ type: "SELECT_NODES", nodeIds: rfSelectedIds });
+    queueMicrotask(() => {
+      if (draggingNodeIdsRef.current.size > 0) return;
+      if (selectionKey(rfSelectedIds) === selectionKey(builderSelectedRef.current)) return;
+      dispatchRef.current({ type: "SELECT_NODES", nodeIds: rfSelectedIds });
+    });
   }, []);
 
-  const onViewportChange = useCallback((nextViewport: Viewport) => {
-    if (!viewportReadyRef.current) return;
+  const onEdgeClick = useCallback((_: MouseEvent, edge: { id: string }) => {
+    dispatchRef.current({ type: "SELECT_EDGES", edgeIds: [edge.id] });
+  }, []);
 
-    const current = viewportRef.current;
+  const onMoveEnd = useCallback<OnMove>((_event, nextViewport) => {
+    const current = documentViewportRef.current;
     const epsilon = 0.001;
     if (
       Math.abs(current.x - nextViewport.x) < epsilon &&
@@ -410,36 +477,60 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
     ) {
       return;
     }
-
+    documentViewportRef.current = nextViewport;
     dispatchRef.current({ type: "SET_VIEWPORT", viewport: nextViewport });
   }, []);
 
-  const onEdgesChange = useCallback((changes: Parameters<typeof applyEdgeChanges>[0]) => {
-    const removed = changes.filter((change) => change.type === "remove").map((change) => change.id);
-    if (removed.length > 0) dispatchRef.current({ type: "DELETE_EDGES", edgeIds: removed });
-  }, []);
+  const onEdgesChange = useCallback(
+    (changes: Parameters<typeof applyEdgeChanges>[0]) => {
+      const removed = changes.filter((change) => change.type === "remove").map((change) => change.id);
+      if (removed.length > 0) {
+        dispatchRef.current({ type: "DELETE_EDGES", edgeIds: removed });
+        setEdges((current) => current.filter((edge) => !removed.includes(edge.id)));
+        return;
+      }
+
+      const selectChanges = changes.filter((change) => change.type === "select");
+      if (selectChanges.length === 0) return;
+
+      setEdges((current) => {
+        const next = applyEdgeChanges(changes, current) as WorkflowFlowEdge[];
+        const selectedIds = next.filter((edge) => edge.selected).map((edge) => edge.id);
+        if (selectionKey(selectedIds) !== selectionKey(builderSelectedEdgesRef.current)) {
+          queueMicrotask(() => {
+            dispatchRef.current({ type: "SELECT_EDGES", edgeIds: selectedIds });
+          });
+        }
+        return next;
+      });
+    },
+    [setEdges],
+  );
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
-      if (connection.sourceHandle != null && connection.sourceHandle !== "source") return;
+      const sourceHandle = connection.sourceHandle;
+      const requestedBranchKey = parseSwitchCaseSourceHandle(sourceHandle);
+      if (sourceHandle != null && sourceHandle !== "source" && !requestedBranchKey) return;
       if (connection.targetHandle != null && connection.targetHandle !== "target") return;
 
-      const nodes = canvasSlice.nodes as BuilderNode[];
+      const nodes = documentNodesRef.current;
       const edgeList = canvasSlice.edges;
       const allowed = canConnect({
         sourceId: connection.source,
         targetId: connection.target,
         nodes,
         edges: edgeList,
+        requestedBranchKey,
       });
       if (!allowed.allowed) return;
       dispatchRef.current({
         type: "ADD_EDGE",
-        edge: createEdgeFromNodes(connection.source, connection.target, nodes, edgeList),
+        edge: createEdgeFromNodes(connection.source, connection.target, nodes, edgeList, requestedBranchKey),
       });
     },
-    [canvasSlice.edges, canvasSlice.nodes],
+    [canvasSlice.edges],
   );
 
   const onDrop = useCallback(
@@ -467,17 +558,22 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
       />
       <CanvasEdgeValidationSync patchRef={edgeValidationPatchRef} />
       <ReactFlow
+        key={canvasSlice.flowId}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        viewport={viewport}
+        defaultViewport={canvasSlice.viewport}
         style={{ width, height }}
-        onViewportChange={onViewportChange}
+        onMoveEnd={onMoveEnd}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
+        onEdgeClick={onEdgeClick}
         onPaneClick={() => dispatchRef.current({ type: "SELECT_NODES", nodeIds: [] })}
+        edgesFocusable
+        elementsSelectable
+        edgesReconnectable={false}
         onDrop={onDrop}
         onDragOver={(event) => {
           event.preventDefault();
@@ -485,19 +581,46 @@ export const WorkflowCanvasInner = memo(function WorkflowCanvasInner({ width, he
         }}
         nodesFocusable={false}
         autoPanOnNodeFocus={false}
+        autoPanOnNodeDrag={false}
+        minZoom={0.15}
+        maxZoom={2.5}
         snapToGrid
         snapGrid={[20, 20]}
-        selectionOnDrag
-        panOnDrag={[1, 2]}
-        selectionMode={SelectionMode.Partial}
+        panOnDrag
+        panOnScroll={false}
+        selectionOnDrag={false}
+        selectionKeyCode="Shift"
         multiSelectionKeyCode={["Meta", "Control"]}
-        deleteKeyCode={["Delete", "Backspace"]}
+        zoomOnScroll
+        zoomOnPinch
+        zoomOnDoubleClick
+        selectionMode={SelectionMode.Partial}
+        // Deletion is owned by useWorkflowBuilderKeyboard (edges + nodes).
+        deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
         className="bg-muted/20"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} color="hsl(var(--border))" />
-        <MiniMap pannable zoomable className="!rounded-xl !border !border-border/60 !bg-card/90" />
-        <Controls showInteractive={false} className="!rounded-xl !border !border-border/60 !bg-card/90 !shadow-lg" />
+        <MiniMap
+          pannable
+          zoomable
+          nodeStrokeWidth={3}
+          // Solid colors — CSS variables often fail as SVG fill on MiniMap nodes.
+          nodeColor="#2563eb"
+          nodeStrokeColor="#1e3a8a"
+          maskColor="rgba(15, 23, 42, 0.55)"
+          bgColor="#f1f5f9"
+          style={{ width: 180, height: 120 }}
+          className="!rounded-xl !border !border-slate-300 !bg-slate-100 !shadow-lg"
+          ariaLabel="Workflow overview map"
+        />
+        <Controls
+          showInteractive={false}
+          showFitView
+          showZoom
+          onFitView={handleFitView}
+          className="!rounded-xl !border !border-border/60 !bg-card/90 !shadow-lg"
+        />
       </ReactFlow>
       {isEmpty ? <CanvasEmptyState onAddStart={() => addNode("start", { x: 280, y: 120 })} /> : null}
     </div>

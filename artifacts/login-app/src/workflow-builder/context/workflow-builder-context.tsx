@@ -9,13 +9,19 @@ import {
 import type { BuilderEdge, BuilderNode, BuilderViewport, ValidationIssue, WorkflowDocument } from "../core/types";
 import type { WorkflowBuilderController } from "../hooks/use-workflow-builder";
 import { documentTopologySignature } from "../core/canvas/document-signatures";
+import { buildSwitchBranchPorts } from "../core/logic/branch-utils";
 
 export type CanvasBuilderSlice = {
   flowId: string;
-  nodes: Array<Pick<BuilderNode, "id" | "type" | "position">>;
+  nodes: Array<
+    Pick<BuilderNode, "id" | "type" | "position"> & {
+      branchPorts?: Array<{ key: string; label: string }>;
+    }
+  >;
   edges: BuilderEdge[];
   viewport: BuilderViewport;
   selectedNodeIds: string[];
+  selectedEdgeIds: string[];
   validationIssues: ValidationIssue[];
   activeValidationIssueId: string | null;
   layoutAnimationEnabled: boolean;
@@ -49,14 +55,26 @@ const HistorySliceContext = createContext<HistoryBuilderSlice | null>(null);
 const BuilderActionsContext = createContext<BuilderActionsContextValue | null>(null);
 
 function buildCanvasSlice(controller: WorkflowBuilderController): CanvasBuilderSlice {
-  const { document, selectedNodeIds, validationIssues, activeValidationIssueId, layoutAnimationEnabled } =
-    controller.state;
+  const {
+    document,
+    selectedNodeIds,
+    selectedEdgeIds,
+    validationIssues,
+    activeValidationIssueId,
+    layoutAnimationEnabled,
+  } = controller.state;
   return {
     flowId: document.flowId,
-    nodes: document.nodes.map((node) => ({ id: node.id, type: node.type, position: node.position })),
+    nodes: document.nodes.map((node) => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      ...(node.type === "switch" ? { branchPorts: buildSwitchBranchPorts(node.config) } : {}),
+    })),
     edges: document.edges,
     viewport: document.viewport,
     selectedNodeIds,
+    selectedEdgeIds,
     validationIssues,
     activeValidationIssueId,
     layoutAnimationEnabled,
@@ -67,8 +85,20 @@ function buildCanvasSlice(controller: WorkflowBuilderController): CanvasBuilderS
 function canvasSliceSignature(slice: CanvasBuilderSlice): string {
   const topology = documentTopologySignature({ nodes: slice.nodes as BuilderNode[], edges: slice.edges });
   const selection = slice.selectedNodeIds.join(",");
-  const viewport = `${slice.viewport.x},${slice.viewport.y},${slice.viewport.zoom}`;
-  return `${slice.flowId}|${topology}|${selection}|${viewport}|${slice.layoutAnimationEnabled ? 1 : 0}|${slice.readOnly ? 1 : 0}`;
+  const edgeSelection = slice.selectedEdgeIds.join(",");
+  const branchPorts = slice.nodes
+    .map((node) =>
+      node.branchPorts?.length
+        ? `${node.id}:${node.branchPorts.map((port) => `${port.key}=${port.label}`).join(",")}`
+        : "",
+    )
+    .filter(Boolean)
+    .join("|");
+  // Viewport is excluded: continuous pan/zoom must not rebuild the canvas slice
+  // (that remounts projections and can infinite-loop with controlled RF nodes).
+  // Keep layoutAnimationEnabled out of the canvas slice signature — toggling it on
+  // drag-end was rebuilding the slice and re-entering seed during RF updates.
+  return `${slice.flowId}|${topology}|${branchPorts}|${selection}|${edgeSelection}|${slice.readOnly ? 1 : 0}`;
 }
 
 function DocumentSliceProvider({

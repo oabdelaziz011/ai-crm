@@ -118,6 +118,7 @@ export type StructuralProjectionNode = {
   position: { x: number; y: number };
   selected: boolean;
   nodeType: string;
+  branchPorts?: string;
 };
 
 /** Topology + geometry + selection — drives structural canvas seed only. */
@@ -129,6 +130,7 @@ export function documentStructuralProjectionSignature(nodes: StructuralProjectio
         `${node.position.x},${node.position.y}`,
         node.selected ? "1" : "0",
         node.nodeType,
+        node.branchPorts ?? "",
       ].join(":"),
     )
     .join("|");
@@ -145,6 +147,7 @@ export function canvasStructuralNodeSignature(
       position: node.position,
       selected: selected.has(node.id),
       nodeType: node.type,
+      branchPorts: node.branchPorts?.map((port) => `${port.key}=${port.label}`).join(",") ?? "",
     })),
   );
 }
@@ -158,9 +161,11 @@ export function edgeTopologySignature(edges: BuilderEdge[]): string {
 export function canvasStructuralEdgeSignature(
   nodes: StructuralCanvasNode[],
   edges: BuilderEdge[],
+  selectedEdgeIds: readonly string[] = [],
 ): string {
   const nodesById = new Map(nodes.map((node) => [node.id, node.type]));
   const topology = edgeTopologySignature(edges);
   const sourceTypes = edges.map((edge) => `${edge.id}:${nodesById.get(edge.source) ?? ""}`).join("|");
-  return `${topology}::${sourceTypes}`;
+  const selection = selectedEdgeIds.join(",");
+  return `${topology}::${sourceTypes}::${selection}`;
 }

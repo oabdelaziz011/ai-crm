@@ -7,11 +7,13 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { WorkflowNodeData } from "../../components/nodes/workflow-node-card";
 import type { BuilderEdge, BuilderNode, BuilderNodeType } from "../types";
-import { resolveBranchEdgeStyle } from "../logic/branch-utils";
+import { resolveBranchEdgeStyle, switchCaseSourceHandleId } from "../logic/branch-utils";
 import { getWorkflowNodeDefinition } from "../node-registry";
 
 /** Canvas slice node — sufficient for structural graph projection. */
-export type StructuralCanvasNode = Pick<BuilderNode, "id" | "type" | "position">;
+export type StructuralCanvasNode = Pick<BuilderNode, "id" | "type" | "position"> & {
+  branchPorts?: Array<{ key: string; label: string }>;
+};
 
 export type WorkflowEdgeData = {
   branchKey?: string;
@@ -34,26 +36,33 @@ export function documentToFlowNodes(
   onQuickAdd: WorkflowNodeData["onQuickAdd"],
 ): Node<WorkflowNodeData>[] {
   const selectedIds = new Set(selectedNodeIds);
-  return nodes.map((node) => ({
-    id: node.id,
-    type: "workflowNode",
-    position: node.position,
-    selected: selectedIds.has(node.id),
-    data: {
-      label: "",
-      nodeType: node.type,
-      subtitle: "",
-      executionStatus: "ready",
-      onQuickAdd,
-    },
-  }));
+  return nodes.map((node) => {
+    const definition = getWorkflowNodeDefinition(node.type);
+    return {
+      id: node.id,
+      type: "workflowNode",
+      position: node.position,
+      selected: selectedIds.has(node.id),
+      data: {
+        // Seed a readable label immediately; presentation sync overwrites with i18n.
+        label: definition.displayName,
+        nodeType: node.type,
+        subtitle: "",
+        executionStatus: "ready" as const,
+        onQuickAdd,
+        branchPorts: node.branchPorts,
+      },
+    };
+  });
 }
 
 export function documentToFlowEdges(
   nodes: StructuralCanvasNode[],
   edges: BuilderEdge[],
+  selectedEdgeIds: readonly string[] = [],
 ): WorkflowFlowEdge[] {
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const selectedIds = new Set(selectedEdgeIds);
   return edges.flatMap((edge) => {
     const sourceNode = nodesById.get(edge.source);
     const targetNode = nodesById.get(edge.target);
@@ -64,19 +73,29 @@ export function documentToFlowEdges(
     if (!sourceDef.allowOutgoing || !targetDef.allowIncoming) return [];
 
     const branchStyle = resolveBranchEdgeStyle(sourceNode.type, edge);
+    const sourceHandle =
+      sourceNode.type === "switch" && edge.branchKey
+        ? switchCaseSourceHandleId(edge.branchKey)
+        : "source";
+    const selected = selectedIds.has(edge.id);
+    const stroke = selected ? "#0ea5e9" : branchStyle.stroke;
     return [
       {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        sourceHandle: "source",
+        sourceHandle,
         targetHandle: "target",
-        animated: true,
+        animated: !selected,
+        selectable: true,
+        focusable: true,
+        interactionWidth: 28,
+        selected,
         label: branchStyle.label ?? "",
-        labelStyle: { fill: branchStyle.stroke, fontWeight: 600 },
+        labelStyle: { fill: stroke, fontWeight: 600 },
         style: {
-          strokeWidth: 2.5,
-          stroke: branchStyle.stroke,
+          strokeWidth: selected ? 3.5 : 2.5,
+          stroke,
         },
         data: {
           branchKey: edge.branchKey,

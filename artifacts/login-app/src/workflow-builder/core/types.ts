@@ -16,6 +16,9 @@ export const BUILDER_NODE_TYPES = [
   "update_customer",
   "find_customer",
   "create_booking",
+  "create_ticket",
+  "find_ticket",
+  "assign_ticket",
   "ai_summarizer",
   "ai_extract",
   "ai_decision",
@@ -180,6 +183,7 @@ export function createNodeId(): string {
   return crypto.randomUUID();
 }
 
-export function createEdgeId(source: string, target: string): string {
-  return `${source}->${target}`;
+export function createEdgeId(source: string, target: string, branchKey?: string): string {
+  const branch = typeof branchKey === "string" && branchKey.trim() ? `:${branchKey.trim()}` : "";
+  return `${source}->${target}${branch}`;
 }

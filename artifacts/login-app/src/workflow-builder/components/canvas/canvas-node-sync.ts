@@ -140,6 +140,34 @@ export function filterControlledMirrorNodeChanges(changes: NodeChange[]): NodeCh
   return changes.filter(isControlledMirrorNodeChange);
 }
 
+/**
+ * Mirror changes that are safe to apply without re-entering document selection sync.
+ * - Drops `select` (document owns selection via onSelectionChange → seed).
+ * - Drops redundant `dimensions` that match the current node size (RF remount noise).
+ */
+export function filterSafeControlledMirrorNodeChanges(
+  changes: NodeChange[],
+  current: Array<Pick<Node, "id" | "width" | "height" | "measured">>,
+): NodeChange[] {
+  const currentById = new Map(current.map((node) => [node.id, node]));
+  return changes.filter((change) => {
+    if (change.type === "position") return true;
+    if (change.type === "select") return false;
+    if (change.type !== "dimensions" || !change.dimensions) return false;
+
+    const existing = currentById.get(change.id);
+    if (!existing) return true;
+
+    const nextWidth = change.dimensions.width;
+    const nextHeight = change.dimensions.height;
+    const widthUnchanged =
+      existing.width === nextWidth || existing.measured?.width === nextWidth;
+    const heightUnchanged =
+      existing.height === nextHeight || existing.measured?.height === nextHeight;
+    return !(widthUnchanged && heightUnchanged);
+  });
+}
+
 /** Legacy alias — select + dimensions only (excludes position). */
 export function filterRuntimeApplyNodeChanges(changes: NodeChange[]): NodeChange[] {
   return changes.filter(isRuntimeApplyNodeChange);
@@ -188,11 +216,13 @@ export function paletteDropFlowPosition(
 }
 
 export function extractDragCommitPositions(changes: DragPositionChange[]): Array<{ id: string; x: number; y: number }> {
-  if (changes.some((change) => change.type === "position" && change.dragging)) {
+  // Commit only on an explicit drag-end (`dragging === false`). A missing
+  // `dragging` flag must not commit mid-drag and fight the RF mirror.
+  if (changes.some((change) => change.type === "position" && change.dragging === true)) {
     return [];
   }
   return changes.flatMap((change) => {
-    if (change.type !== "position" || change.dragging) return [];
+    if (change.type !== "position" || change.dragging !== false || !change.position) return [];
     return [{ id: change.id, x: change.position.x, y: change.position.y }];
   });
 }
@@ -218,8 +248,17 @@ export function documentProjectionSignature(flowNodes: ProjectionNode[]): string
   );
 }
 
+function branchPortsSignature(ports: FlowNodeData["branchPorts"]): string {
+  if (!ports?.length) return "";
+  return ports.map((port) => `${port.key}=${port.label}`).join("|");
+}
+
 function flowNodeDataEqual(existing: FlowNodeData, next: FlowNodeData): boolean {
-  return existing.nodeType === next.nodeType && existing.executionStatus === next.executionStatus;
+  return (
+    existing.nodeType === next.nodeType &&
+    existing.executionStatus === next.executionStatus &&
+    branchPortsSignature(existing.branchPorts) === branchPortsSignature(next.branchPorts)
+  );
 }
 
 /**
@@ -243,22 +282,52 @@ export function seedControlledNodesFromDocument(current: FlowNode[], flowNodes: 
       return buildSeededNodes(current, flowNodes);
     }
 
-    const positionUnchanged =
-      existing.position.x === flowNode.position.x && existing.position.y === flowNode.position.y;
     const selectedUnchanged = existing.selected === flowNode.selected;
     const dataUnchanged = flowNodeDataEqual(existing.data, flowNode.data);
+    // While RF is dragging, keep the live mirror position — document seed would
+    // snap the node back and crash/fight the drag (selection often re-seeds).
+    const preserveDragPosition = existing.dragging === true;
+    const positionUnchanged =
+      preserveDragPosition ||
+      (existing.position.x === flowNode.position.x && existing.position.y === flowNode.position.y);
 
     if (positionUnchanged && selectedUnchanged && dataUnchanged) {
-      next.push(existing);
+      // Only backfill empty type labels from structural projection — never subtitles
+      // (config copy stays presentation-sync owned).
+      const needsLabelBackfill = !existing.data.label && Boolean(flowNode.data.label);
+      if (!needsLabelBackfill) {
+        next.push(existing);
+        continue;
+      }
+      changed = true;
+      next.push({
+        ...existing,
+        data: {
+          ...existing.data,
+          label: flowNode.data.label,
+        },
+      });
       continue;
     }
 
     changed = true;
     next.push({
       ...existing,
-      position: flowNode.position,
+      position: preserveDragPosition ? existing.position : flowNode.position,
       selected: flowNode.selected,
-      data: dataUnchanged ? existing.data : flowNode.data,
+      data: dataUnchanged
+        ? {
+            ...existing.data,
+            label: existing.data.label || flowNode.data.label,
+          }
+        : {
+            ...flowNode.data,
+            label: existing.data.label || flowNode.data.label,
+            subtitle: existing.data.subtitle,
+            validationSeverity: existing.data.validationSeverity,
+            validationActive: existing.data.validationActive,
+            executionStatus: existing.data.executionStatus ?? flowNode.data.executionStatus,
+          },
     });
   }
 
@@ -273,11 +342,24 @@ function buildSeededNodes(current: FlowNode[], flowNodes: FlowNode[]): FlowNode[
     if (!existing) return flowNode;
 
     const dataUnchanged = flowNodeDataEqual(existing.data, flowNode.data);
+    const preserveDragPosition = existing.dragging === true;
     return {
       ...existing,
-      position: flowNode.position,
+      position: preserveDragPosition ? existing.position : flowNode.position,
       selected: flowNode.selected,
-      data: dataUnchanged ? existing.data : flowNode.data,
+      data: dataUnchanged
+        ? {
+            ...existing.data,
+            label: existing.data.label || flowNode.data.label,
+          }
+        : {
+            ...flowNode.data,
+            label: existing.data.label || flowNode.data.label,
+            subtitle: existing.data.subtitle,
+            validationSeverity: existing.data.validationSeverity,
+            validationActive: existing.data.validationActive,
+            executionStatus: existing.data.executionStatus ?? flowNode.data.executionStatus,
+          },
     };
   });
 }

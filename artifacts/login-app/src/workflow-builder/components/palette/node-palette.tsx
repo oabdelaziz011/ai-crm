@@ -23,6 +23,8 @@ import {
   ScanSearch,
   Scale,
   BookOpen,
+  Ticket,
+  UserCheck,
 } from "lucide-react";
 import { listWorkflowNodeDefinitions, listWorkflowNodesByCategory } from "../../core/node-registry";
 import { searchWorkflowNodes } from "../../core/search/node-search";
@@ -51,6 +53,8 @@ const ICONS = {
   ScanSearch,
   Scale,
   BookOpen,
+  Ticket,
+  UserCheck,
 } as const;
 
 function PaletteItem({ type, onDragStart }: { type: BuilderNodeType; onDragStart: (type: BuilderNodeType) => void }) {

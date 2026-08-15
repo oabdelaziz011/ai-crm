@@ -1,4 +1,4 @@
-import { assignBranchForNewEdge } from "./logic/branch-utils";
+import { resolveBranchForConnection } from "./logic/branch-utils";
 import { getWorkflowNodeDefinition } from "./node-registry";
 import type { BuilderEdge, BuilderNode, ValidationIssue } from "./types";
 
@@ -7,9 +7,16 @@ export type ConnectionAttempt = {
   targetId: string;
   nodes: BuilderNode[];
   edges: BuilderEdge[];
+  requestedBranchKey?: string;
 };
 
-export function canConnect({ sourceId, targetId, nodes, edges }: ConnectionAttempt): { allowed: boolean; reason?: string } {
+export function canConnect({
+  sourceId,
+  targetId,
+  nodes,
+  edges,
+  requestedBranchKey,
+}: ConnectionAttempt): { allowed: boolean; reason?: string } {
   if (sourceId === targetId) {
     return { allowed: false, reason: "A step cannot connect to itself." };
   }
@@ -30,8 +37,24 @@ export function canConnect({ sourceId, targetId, nodes, edges }: ConnectionAttem
     return { allowed: false, reason: `Nothing can connect into ${targetDef.displayName}.` };
   }
 
-  if (edges.some((edge) => edge.source === sourceId && edge.target === targetId)) {
-    return { allowed: false, reason: "These steps are already connected." };
+  const nextBranch = resolveBranchForConnection(source, edges, requestedBranchKey);
+  const isBranchingSource = source.type === "switch" || source.type === "if_else";
+
+  // Branching nodes may send multiple cases/branches into the same merge target.
+  // Non-branching steps still allow only one edge between a pair of nodes.
+  if (!isBranchingSource) {
+    if (edges.some((edge) => edge.source === sourceId && edge.target === targetId)) {
+      return { allowed: false, reason: "These steps are already connected." };
+    }
+  } else if (
+    edges.some(
+      (edge) =>
+        edge.source === sourceId &&
+        edge.target === targetId &&
+        edge.branchKey === nextBranch.branchKey,
+    )
+  ) {
+    return { allowed: false, reason: "These steps are already connected on this branch." };
   }
 
   if (sourceDef.maxOutgoing != null) {
@@ -47,10 +70,14 @@ export function canConnect({ sourceId, targetId, nodes, edges }: ConnectionAttem
     }
   }
 
-  const nextBranch = assignBranchForNewEdge(source, edges);
   if (source.type === "switch") {
     if (!nextBranch.branchKey) {
-      return { allowed: false, reason: "All Switch branches are already connected." };
+      return {
+        allowed: false,
+        reason: requestedBranchKey
+          ? "This Switch branch is already connected."
+          : "All Switch branches are already connected.",
+      };
     }
     const duplicateBranch = edges.some(
       (edge) => edge.source === sourceId && edge.branchKey === nextBranch.branchKey,
@@ -61,7 +88,12 @@ export function canConnect({ sourceId, targetId, nodes, edges }: ConnectionAttem
   }
 
   if (source.type === "if_else" && !nextBranch.branchKey) {
-    return { allowed: false, reason: "If / Else already has YES and NO branches connected." };
+    return {
+      allowed: false,
+      reason: requestedBranchKey
+        ? "This If / Else branch is already connected."
+        : "If / Else already has YES and NO branches connected.",
+    };
   }
 
   return { allowed: true };

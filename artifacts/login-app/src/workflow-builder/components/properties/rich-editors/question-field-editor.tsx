@@ -1,11 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import type { NodePropertyEditorProps } from "../../../core/node-registry";
-import { renderVariablePreview } from "../../../core/variables/variable-preview";
-import { VariablePicker } from "../../variables/variable-picker";
+import { MessageFieldEditor } from "./message-field-editor";
 
 function readString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -15,32 +13,35 @@ function readBoolean(value: unknown, fallback = true): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
-export function QuestionFieldEditor({ config, onChange }: NodePropertyEditorProps) {
+export function QuestionFieldEditor({ config, onChange, context }: NodePropertyEditorProps) {
   const { t } = useTranslation("common");
-  const question = readString(config.question);
-  const preview = renderVariablePreview(question);
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/50 bg-background/50 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <Label className="text-sm font-semibold">{t("workflowBuilder.fields.question")}</Label>
-        <VariablePicker onSelect={(variable) => onChange({ question: `${question}${variable.token}` })} />
-      </div>
-      <Textarea
-        value={question}
-        rows={4}
-        onChange={(event) => onChange({ question: event.target.value })}
-        className="rounded-2xl border-border/60 bg-background/90"
-        placeholder={t("workflowBuilder.fields.questionPlaceholder")}
+    <div className="space-y-4">
+      <MessageFieldEditor
+        config={config}
+        onChange={onChange}
+        context={context}
+        mapKey="questions"
+        baseField="question"
+        alternateMapKeys={["prompts", "messages"]}
+        alternateBaseFields={["prompt", "message"]}
+        arabicLabelKey="workflowBuilder.fields.questionArabic"
+        englishLabelKey="workflowBuilder.fields.questionEnglish"
+        arabicPlaceholderKey="workflowBuilder.fields.questionArabicPlaceholder"
+        englishPlaceholderKey="workflowBuilder.fields.questionEnglishPlaceholder"
       />
-      <div className="grid gap-3">
+      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-4">
         <div className="space-y-2">
           <Label className="text-sm">{t("workflowBuilder.fields.saveAnswerAs")}</Label>
           <Input
-            value={readString(config.saveAs, "customer_name")}
+            value={readString(config.saveAs)}
             onChange={(event) => onChange({ saveAs: event.target.value })}
-            className="rounded-xl"
+            className="rounded-xl font-mono text-xs"
+            placeholder={t("workflowBuilder.fields.saveAnswerAsPlaceholder")}
+            dir="ltr"
           />
+          <p className="text-[11px] text-muted-foreground">{t("workflowBuilder.fields.saveAnswerAsHint")}</p>
         </div>
         <div className="space-y-2">
           <Label className="text-sm">{t("workflowBuilder.fields.placeholder")}</Label>
@@ -67,10 +68,6 @@ export function QuestionFieldEditor({ config, onChange }: NodePropertyEditorProp
           </div>
           <Switch checked={readBoolean(config.required, true)} onCheckedChange={(checked) => onChange({ required: checked })} />
         </div>
-      </div>
-      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("workflowBuilder.preview.title")}</p>
-        <p className="text-sm leading-relaxed">{preview || question}</p>
       </div>
     </div>
   );

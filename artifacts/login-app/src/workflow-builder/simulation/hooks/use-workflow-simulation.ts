@@ -71,10 +71,13 @@ export function useWorkflowSimulation(document: WorkflowDocument, options: UseWo
     return snapshotQuery.data ?? idleSnapshot;
   }, [canRun, idleSnapshot, snapshotQuery.data]);
 
-  const pendingBreakpoints =
-    canRun && snapshot.status === "idle"
-      ? service.getPendingBreakpoints(companyId, flowId)
-      : snapshot.breakpoints;
+  const pendingBreakpoints = useMemo(
+    () =>
+      canRun && snapshot.status === "idle"
+        ? service.getPendingBreakpoints(companyId, flowId)
+        : snapshot.breakpoints,
+    [canRun, companyId, flowId, service, snapshot.breakpoints, snapshot.status],
+  );
 
   const commitSnapshot = useCallback(
     (next: Readonly<SimulationSnapshot>) => {
@@ -217,24 +220,44 @@ export function useWorkflowSimulation(document: WorkflowDocument, options: UseWo
     [canRun, commitSnapshot, companyId, flowId, idleSnapshot, service],
   );
 
-  return {
-    enabled: canRun,
-    snapshot,
-    panelOpen,
-    setPanelOpen,
-    breakpoints: pendingBreakpoints,
-    documentDrift,
-    start,
-    pause,
-    resume,
-    restart,
-    stop,
-    step,
-    toggleBreakpoint,
-    refresh: () => (canRun ? invalidateSimulationQueries(queryClient, companyId, flowId) : undefined),
-    isActive: canRun && snapshot.status !== "idle" && snapshot.status !== "stopped",
-    isLoading: canRun && snapshotQuery.isLoading,
-  };
+  return useMemo(
+    () => ({
+      enabled: canRun,
+      snapshot,
+      panelOpen,
+      setPanelOpen,
+      breakpoints: pendingBreakpoints,
+      documentDrift,
+      start,
+      pause,
+      resume,
+      restart,
+      stop,
+      step,
+      toggleBreakpoint,
+      refresh: () => (canRun ? invalidateSimulationQueries(queryClient, companyId, flowId) : undefined),
+      isActive: canRun && snapshot.status !== "idle" && snapshot.status !== "stopped",
+      isLoading: canRun && snapshotQuery.isLoading,
+    }),
+    [
+      canRun,
+      snapshot,
+      panelOpen,
+      pendingBreakpoints,
+      documentDrift,
+      start,
+      pause,
+      resume,
+      restart,
+      stop,
+      step,
+      toggleBreakpoint,
+      queryClient,
+      companyId,
+      flowId,
+      snapshotQuery.isLoading,
+    ],
+  );
 }
 
 export type WorkflowSimulationController = ReturnType<typeof useWorkflowSimulation>;

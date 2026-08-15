@@ -365,15 +365,15 @@ assert.equal(resolveNodePresentationSubtitle(structuralSliceNodes[1]!), "");
 assert.doesNotThrow(() => documentPresentationSignature(structuralSliceNodes));
 console.log("  ✓ presentation helpers tolerate structural nodes without config");
 
-// P4 D1/D4 — structural projection never reads config; labels/subtitles are presentation-only.
+// P4 D1/D4 — structural projection seeds type displayName; config subtitles stay presentation-only.
 const structuralProjection = documentToFlowNodes(structuralSliceNodes, ["n2"], undefined);
 assert.equal(structuralProjection.find((node) => node.id === "n2")?.data.subtitle, "");
-assert.equal(structuralProjection.find((node) => node.id === "n2")?.data.label, "");
+assert.ok(structuralProjection.find((node) => node.id === "n2")?.data.label);
 const labelOnlyProjection = structuralProjection.map((node) =>
-  node.id === "n2" ? { ...node, data: { ...node.data, label: "Send Message" } } : node,
+  node.id === "n2" ? { ...node, data: { ...node.data, label: "Custom Label" } } : node,
 );
 assert.equal(seedControlledNodesFromDocument(structuralProjection, labelOnlyProjection), structuralProjection);
-console.log("  ✓ structural projection omits label/subtitle; seed ignores presentation-only label");
+console.log("  ✓ structural projection seeds type label; seed keeps existing presentation label");
 
 // P4 D3 — switch edge styling uses branchKey only, never sourceNode.config.cases.
 const switchStyleA = resolveBranchEdgeStyle("switch", {

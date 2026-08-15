@@ -1,5 +1,6 @@
 import type { HolidayBehavior } from "@/lib/scheduling/business-calendar";
 import type { ValidationIssue } from "../types";
+import { hasBilingualOrLegacyText, readBilingualMap } from "./bilingual-text";
 
 const WORKFLOW_VARIABLE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -9,7 +10,11 @@ function readString(value: unknown): string {
 
 export function createDefaultDatePickerConfig(): Record<string, unknown> {
   return {
-    prompt: "Please choose a date",
+    prompt: "من فضلك اختر تاريخاً",
+    prompts: {
+      ar: "من فضلك اختر تاريخاً",
+      en: "Please choose a date",
+    },
     saveAs: "selected_date",
     disablePastDates: true,
     disableCompanyHolidays: true,
@@ -31,10 +36,13 @@ export function readDatePickerConstraintOptions(config: Record<string, unknown>)
 
 export function normalizeDatePickerNodeConfig(config: Record<string, unknown>): Record<string, unknown> {
   const saveAs = readString(config.saveAs) || readString(config.inputKey) || "selected_date";
+  const { ar, en } = readBilingualMap(config, "prompts", "prompt", ["questions", "messages"], ["question", "message"]);
+  const prompt = ar.trim() || en.trim() || "Please choose a date";
   return {
     ...createDefaultDatePickerConfig(),
     ...config,
-    prompt: readString(config.prompt) || readString(config.question) || "Please choose a date",
+    prompt,
+    prompts: { ar, en },
     saveAs,
     inputKey: saveAs,
     disablePastDates: config.disablePastDates !== false,
@@ -50,8 +58,7 @@ export function validateDatePickerNodeConfig(
   nodeId: string,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const prompt = readString(config.prompt);
-  if (!prompt) {
+  if (!hasBilingualOrLegacyText(config, "prompts", "prompt", ["questions", "messages"], ["question", "message"])) {
     issues.push({
       id: `${nodeId}-prompt`,
       nodeId,

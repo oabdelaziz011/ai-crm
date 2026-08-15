@@ -6,7 +6,7 @@ import {
   isLegacyParallelIfInteractiveGraph,
   type InteractiveOption,
 } from "../validation/interactive-routing-validation";
-import type { BuilderEdge, BuilderNode, WorkflowDocument } from "../types";
+import { createEdgeId, type BuilderEdge, type BuilderNode, type WorkflowDocument } from "../types";
 import { readListDataSourceMode } from "../conversation/list-node-config";
 
 export type { InteractiveOption };
@@ -79,13 +79,23 @@ function replaceInteractiveOutgoingWithSwitch(
     const targetId = caseTargets.get(option.id);
     if (!targetId) continue;
     const branchEdge = createEdgeFromNodes(switchNode.id, targetId, nodes, edges);
-    edges.push({ ...branchEdge, branchKey: option.id, branchLabel: option.label });
+    edges.push({
+      ...branchEdge,
+      id: createEdgeId(switchNode.id, targetId, option.id),
+      branchKey: option.id,
+      branchLabel: option.label,
+    });
   }
 
   const defaultTarget = caseTargets.get("default");
   if (defaultTarget) {
     const defaultEdge = createEdgeFromNodes(switchNode.id, defaultTarget, nodes, edges);
-    edges.push({ ...defaultEdge, branchKey: "default", branchLabel: "Default" });
+    edges.push({
+      ...defaultEdge,
+      id: createEdgeId(switchNode.id, defaultTarget, "default"),
+      branchKey: "default",
+      branchLabel: "Default",
+    });
   }
 
   return {

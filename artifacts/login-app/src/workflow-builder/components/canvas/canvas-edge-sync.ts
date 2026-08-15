@@ -22,6 +22,9 @@ export function seedControlledEdgesFromDocument(
     const structuralUnchanged =
       existing.source === projectedEdge.source &&
       existing.target === projectedEdge.target &&
+      existing.sourceHandle === projectedEdge.sourceHandle &&
+      existing.targetHandle === projectedEdge.targetHandle &&
+      existing.selected === projectedEdge.selected &&
       existing.data?.branchKey === projectedEdge.data?.branchKey &&
       existing.data?.branchLabel === projectedEdge.data?.branchLabel &&
       existing.data?.sourceNodeType === projectedEdge.data?.sourceNodeType &&
@@ -37,6 +40,15 @@ export function seedControlledEdgesFromDocument(
       ...existing,
       source: projectedEdge.source,
       target: projectedEdge.target,
+      sourceHandle: projectedEdge.sourceHandle,
+      targetHandle: projectedEdge.targetHandle,
+      selected: projectedEdge.selected,
+      selectable: projectedEdge.selectable ?? true,
+      focusable: projectedEdge.focusable ?? true,
+      interactionWidth: projectedEdge.interactionWidth ?? 28,
+      animated: projectedEdge.animated,
+      labelStyle: projectedEdge.labelStyle,
+      style: projectedEdge.style,
       data: projectedEdge.data,
     });
   }
@@ -60,10 +72,23 @@ export function applyEdgeValidationPatch(
     const baseStroke = edge.data?.baseStroke ?? "hsl(var(--primary))";
     const isValidationEdge = highlight.edgeIds.has(edge.id);
     const isActiveValidationEdge = highlight.activeEdgeIds.has(edge.id);
-    const validationStroke = isActiveValidationEdge ? "#ef4444" : isValidationEdge ? "#f87171" : baseStroke;
-    const validationStrokeWidth = isActiveValidationEdge ? 3.5 : isValidationEdge ? 3 : 2.5;
+    const selectedStroke = "#0ea5e9";
+    const validationStroke = isActiveValidationEdge
+      ? "#ef4444"
+      : isValidationEdge
+        ? "#f87171"
+        : edge.selected
+          ? selectedStroke
+          : baseStroke;
+    const validationStrokeWidth = isActiveValidationEdge
+      ? 3.5
+      : isValidationEdge
+        ? 3
+        : edge.selected
+          ? 3.5
+          : 2.5;
     const validationStrokeDasharray = isValidationEdge ? "6 4" : undefined;
-    const animated = !isValidationEdge;
+    const animated = !isValidationEdge && !edge.selected;
 
     const nextStyle = {
       strokeWidth: validationStrokeWidth,

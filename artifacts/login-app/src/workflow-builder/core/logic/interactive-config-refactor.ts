@@ -60,9 +60,15 @@ function rewriteSwitchConfig(
   const cases = Array.isArray(config.cases) ? (config.cases as SwitchCase[]) : [];
   let changed = false;
   const nextCases = cases.map((item) => {
-    if (item.value !== oldId) return item;
+    const idMatches = item.id === oldId;
+    const valueMatches = item.value === oldId;
+    if (!idMatches && !valueMatches) return item;
     changed = true;
-    return { ...item, value: newId };
+    return {
+      ...item,
+      id: idMatches ? newId : item.id,
+      value: valueMatches ? newId : item.value,
+    };
   });
   if (!changed) return null;
   return { cases: nextCases };

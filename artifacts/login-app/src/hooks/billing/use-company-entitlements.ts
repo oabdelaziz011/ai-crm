@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import {
   bindCompanyFeatureEntitlementClient,
   getCompanyFeatureEntitlements,
+  syncCompanyPackageEntitlements,
 } from "@/lib/billing/company-feature-entitlement-service";
 import type { CompanyEntitlement, CompanyUsageSnapshot } from "@/lib/billing/types";
 
@@ -15,6 +16,17 @@ export function useCompanyEntitlements(companyId: string | null, enabled = true)
     queryFn: async (): Promise<CompanyEntitlement[]> => {
       if (!companyId) return [];
       return getCompanyFeatureEntitlements(companyId);
+    },
+  });
+}
+
+/** Re-provision source=package grants from the company subscription plan. */
+export function useSyncCompanyPackageEntitlements() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (companyId: string) => syncCompanyPackageEntitlements(companyId),
+    onSuccess: (_data, companyId) => {
+      qc.invalidateQueries({ queryKey: ["billing", "entitlements", companyId] });
     },
   });
 }

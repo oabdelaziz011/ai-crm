@@ -83,6 +83,34 @@ export async function getCompanyFeatureEntitlements(
   return (data ?? []) as CompanyEntitlement[];
 }
 
+/** Repair path: provision package grants from the current subscription plan. */
+export async function syncCompanyPackageEntitlements(
+  companyId: string,
+  client?: EntitlementRpcClient,
+): Promise<{
+  synced: boolean;
+  reason?: string;
+  provisioned: number;
+  revoked: number;
+  featureCodes: string[];
+}> {
+  const { data, error } = await resolveClient(client).rpc("sync_company_package_entitlements_v1", {
+    p_company_id: companyId,
+  });
+  if (error) throw new Error(error.message);
+  const row = (data ?? {}) as Record<string, unknown>;
+  const codes = Array.isArray(row.feature_codes)
+    ? row.feature_codes.map((c) => String(c))
+    : [];
+  return {
+    synced: Boolean(row.synced),
+    reason: row.reason ? String(row.reason) : undefined,
+    provisioned: Number(row.provisioned ?? 0),
+    revoked: Number(row.revoked ?? 0),
+    featureCodes: codes,
+  };
+}
+
 export async function getCompanyFeatureAccess(
   companyId: string,
   featureCode: string,
@@ -190,6 +218,7 @@ export const companyFeatureEntitlementService = Object.freeze({
   getCompanyAccessState,
   getCompanyFeatureEntitlements,
   getCompanyFeatureAccess,
+  syncCompanyPackageEntitlements,
   setCompanyFeatureGrant,
   revokeCompanyFeatureGrant,
   extendCompanyTrial,

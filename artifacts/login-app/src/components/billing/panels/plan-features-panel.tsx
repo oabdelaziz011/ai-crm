@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { RefreshCw, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BillingGrantCommercialFeatureDialog } from "@/components/billing/dialogs/billing-grant-commercial-feature-dialog";
 import { BillingRevokeFeatureGrantDialog } from "@/components/billing/dialogs/billing-revoke-feature-grant-dialog";
@@ -15,7 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCompanyEntitlements } from "@/hooks/billing/use-company-entitlements";
+import {
+  useCompanyEntitlements,
+  useSyncCompanyPackageEntitlements,
+} from "@/hooks/billing/use-company-entitlements";
 import { useToast } from "@/hooks/use-toast";
 import {
   canDirectRevokeEntitlementSource,
@@ -41,9 +44,22 @@ export function PlanFeaturesPanel({
 }: PlanFeaturesPanelProps) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
-  const { data: entitlements = [], isLoading, error } = useCompanyEntitlements(companyId, enabled);
+  const { data: entitlements = [], isLoading, error, refetch } = useCompanyEntitlements(
+    companyId,
+    enabled,
+  );
+  const syncPackage = useSyncCompanyPackageEntitlements();
+  const autoSyncAttempted = useRef<string | null>(null);
   const [grantOpen, setGrantOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<CompanyEntitlement | null>(null);
+
+  const commercialRows = useMemo(
+    () => entitlements.filter((row) => isCommercialEntitlement(row)),
+    [entitlements],
+  );
+  const allCommercialUnlinked =
+    commercialRows.length > 0 &&
+    commercialRows.every((row) => normalizeEntitlementSource(row.source) === "none");
 
   const showToastError = (message: string) => {
     toast({ variant: "destructive", title: t("billing.toast.errorTitle"), description: message });
@@ -56,6 +72,48 @@ export function PlanFeaturesPanel({
     const key = normalizeEntitlementSource(source);
     return t(`billing.detail.featureSources.${key}`, key);
   };
+
+  const runSync = async (silent = false) => {
+    try {
+      const result = await syncPackage.mutateAsync(companyId);
+      await refetch();
+      if (!silent) {
+        if (result.synced) {
+          showToastSuccess(
+            t("billing.entitlements.syncSuccess", {
+              count: result.provisioned,
+              defaultValue: "Synced {{count}} package entitlements from the assigned plan.",
+            }),
+          );
+        } else {
+          showToastError(
+            t(`billing.entitlements.syncReason.${result.reason ?? "unknown"}`, {
+              defaultValue:
+                result.reason === "no_plan"
+                  ? "No package assigned to this company yet. Assign a plan first."
+                  : result.reason === "empty_package_features"
+                    ? "Assigned package has no mapped features."
+                    : "Could not sync package entitlements.",
+            }),
+          );
+        }
+      }
+    } catch (err) {
+      if (!silent) {
+        showToastError(err instanceof Error ? err.message : String(err));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!enabled || !canManageCommercial || isLoading || error) return;
+    if (!allCommercialUnlinked) return;
+    if (autoSyncAttempted.current === companyId) return;
+    autoSyncAttempted.current = companyId;
+    void runSync(true);
+    // One-shot repair when commercial sources are all "none".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCommercialUnlinked, canManageCommercial, companyId, enabled, error, isLoading]);
 
   return (
     <DashboardCard className="overflow-hidden">
@@ -70,12 +128,34 @@ export function PlanFeaturesPanel({
               "Effective access from feature definitions and company grants (package, trial, manual, contract, system).",
             )}
           </p>
+          {allCommercialUnlinked ? (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              {t(
+                "billing.entitlements.unlinkedHint",
+                "Commercial features show “none” because package grants were never provisioned. Sync from the assigned package to connect them.",
+              )}
+            </p>
+          ) : null}
         </div>
-        {canManageCommercial ? (
-          <Button size="sm" onClick={() => setGrantOpen(true)}>
-            {t("billing.entitlements.grantAction", "Grant commercial access")}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {canManageCommercial ? (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={syncPackage.isPending}
+                onClick={() => void runSync(false)}
+              >
+                <RefreshCw className={syncPackage.isPending ? "size-3.5 animate-spin" : "size-3.5"} />
+                {t("billing.entitlements.syncFromPackage", "Sync from package")}
+              </Button>
+              <Button size="sm" onClick={() => setGrantOpen(true)}>
+                {t("billing.entitlements.grantAction", "Grant commercial access")}
+              </Button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {error ? (

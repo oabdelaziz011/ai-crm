@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useCompanyEntitlements } from "@/hooks/billing/use-company-entitlements";
+import { useCompanyEntitlements, useSyncCompanyPackageEntitlements } from "@/hooks/billing/use-company-entitlements";
 import { useCompanyAccessState } from "@/hooks/billing/use-company-feature";
 import {
   useExtendCompanyTrial,
@@ -22,6 +22,7 @@ import {
 } from "@/hooks/companies/use-company-approval";
 import type { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { isCommercialEntitlement, normalizeEntitlementSource } from "@/lib/billing/entitlement-display";
 
 type CompanyFeaturesAccessDialogProps = {
   company: Company | null;
@@ -37,14 +38,21 @@ export function CompanyFeaturesAccessDialog({
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const companyId = company?.id ?? null;
-  const { data: entitlements = [], isLoading } = useCompanyEntitlements(companyId, open);
+  const { data: entitlements = [], isLoading, refetch } = useCompanyEntitlements(companyId, open);
   const accessState = useCompanyAccessState(companyId, open);
   const setGrant = useSetCompanyFeatureGrant();
   const revokeGrant = useRevokeCompanyFeatureGrant();
   const extendTrial = useExtendCompanyTrial();
+  const syncPackage = useSyncCompanyPackageEntitlements();
   const [extendDays, setExtendDays] = useState("14");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [localTrialEndsAt, setLocalTrialEndsAt] = useState<string | null>(null);
+
+  const allCommercialUnlinked =
+    entitlements.filter((row) => isCommercialEntitlement(row)).length > 0 &&
+    entitlements
+      .filter((row) => isCommercialEntitlement(row))
+      .every((row) => normalizeEntitlementSource(row.source) === "none");
 
   useEffect(() => {
     setLocalTrialEndsAt(null);
@@ -155,6 +163,43 @@ export function CompanyFeaturesAccessDialog({
             </Button>
           </div>
         )}
+
+        {allCommercialUnlinked ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <p>{t("billing.entitlements.unlinkedHint")}</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 rounded-lg"
+              disabled={syncPackage.isPending || !companyId}
+              onClick={() => {
+                if (!companyId) return;
+                void syncPackage
+                  .mutateAsync(companyId)
+                  .then(async (result) => {
+                    await refetch();
+                    toast({
+                      title: result.synced
+                        ? t("billing.entitlements.syncSuccess", { count: result.provisioned })
+                        : t(`billing.entitlements.syncReason.${result.reason ?? "unknown"}`),
+                      variant: result.synced ? "default" : "destructive",
+                    });
+                  })
+                  .catch((error: unknown) => {
+                    toast({
+                      title: t("companies.features.saveFailed"),
+                      description: error instanceof Error ? error.message : undefined,
+                      variant: "destructive",
+                    });
+                  });
+              }}
+            >
+              <RefreshCw className={syncPackage.isPending ? "size-3.5 animate-spin" : "size-3.5"} />
+              {t("billing.entitlements.syncFromPackage")}
+            </Button>
+          </div>
+        ) : null}
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

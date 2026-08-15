@@ -7660,6 +7660,15 @@
       "notesOptional": "Notes (optional)",
       "indefinite": "No expiration",
       "grantAction": "Grant commercial access",
+      "syncFromPackage": "Sync from package",
+      "syncSuccess": "Synced {{count}} package entitlements from the assigned plan.",
+      "unlinkedHint": "Commercial features show “none” because package grants were never provisioned. Sync from the assigned package to connect them.",
+      "syncReason": {
+        "no_plan": "No package assigned to this company yet. Assign a plan first.",
+        "no_subscription": "No subscription row found for this company.",
+        "empty_package_features": "Assigned package has no mapped features.",
+        "unknown": "Could not sync package entitlements."
+      },
       "grantTitle": "Grant commercial feature",
       "grantDescription": "Creates a manual or contract grant. Does not assign a package, start a trial, or change subscription lifecycle.",
       "grantConfirm": "Grant commercial access",

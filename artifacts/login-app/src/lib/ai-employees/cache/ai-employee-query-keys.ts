@@ -77,19 +77,52 @@ export function invalidateAiEmployeeQueries(
   companyId: string | null,
   agentId?: string | null,
 ) {
-  queryClient.invalidateQueries({ queryKey: [...AI_EMPLOYEES_KEY, "list", companyId] });
-  if (agentId) {
-    queryClient.invalidateQueries({ queryKey: aiEmployeeDetailKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeRuntimePreviewKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeVersionsKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeDeploymentsKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeChangeEventsKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeLifecycleKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeOperationsKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeMemoryKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeSkillsKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeCollaborationKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeGovernanceKey(companyId, agentId) });
-    queryClient.invalidateQueries({ queryKey: aiEmployeeAdministrationKey(companyId, agentId) });
+  // Broad list invalidation — includes every filter variant for the company.
+  void queryClient.invalidateQueries({
+    queryKey: [...AI_EMPLOYEES_KEY, "list"],
+    refetchType: "active",
+  });
+  if (companyId) {
+    void queryClient.invalidateQueries({
+      queryKey: [...AI_EMPLOYEES_KEY, "list", companyId],
+      refetchType: "all",
+    });
   }
+  if (agentId) {
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeDetailKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeRuntimePreviewKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeVersionsKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeDeploymentsKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeChangeEventsKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeLifecycleKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeOperationsKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeMemoryKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeSkillsKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeCollaborationKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeGovernanceKey(companyId, agentId) });
+    void queryClient.invalidateQueries({ queryKey: aiEmployeeAdministrationKey(companyId, agentId) });
+  }
+}
+
+/** Keep list UIs in sync immediately after create/update (avoids missing draft rows). */
+export function upsertAiEmployeeInListCaches(
+  queryClient: QueryClient,
+  companyId: string | null,
+  employee: { id: string },
+) {
+  if (!companyId) return;
+  queryClient.setQueriesData<unknown>(
+    { queryKey: [...AI_EMPLOYEES_KEY, "list", companyId] },
+    (current) => {
+      if (!Array.isArray(current)) return current;
+      const list = current as Array<{ id: string }>;
+      const index = list.findIndex((row) => row.id === employee.id);
+      if (index === -1) {
+        return [employee, ...list];
+      }
+      const next = list.slice();
+      next[index] = { ...list[index], ...employee };
+      return next;
+    },
+  );
 }

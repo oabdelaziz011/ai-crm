@@ -4,6 +4,7 @@ import { DashboardCard, DashboardTableSkeleton } from "@/components/dashboard/ui
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { PlatformAiOpsBackgroundTask } from "@/lib/platform-ai-operations";
+import { opsStatusLabel } from "./ops-status-label";
 
 type OpsBackgroundTasksProps = {
   tasks: PlatformAiOpsBackgroundTask[];
@@ -28,8 +29,8 @@ export function OpsBackgroundTasks({ tasks, loading }: OpsBackgroundTasksProps) 
             <div key={task.id} className="space-y-2 px-5 py-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium">{task.label}</p>
-                <Badge variant="outline" className="text-[10px] capitalize">
-                  {task.status}
+                <Badge variant="outline" className="text-[10px]">
+                  {opsStatusLabel(t, task.status)}
                 </Badge>
               </div>
               <Progress value={Number(task.progress)} className="h-1.5" />

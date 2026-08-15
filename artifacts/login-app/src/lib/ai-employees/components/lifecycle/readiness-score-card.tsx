@@ -44,9 +44,21 @@ export const ReadinessScoreCard = memo(function ReadinessScoreCard({
                   <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 )}
                 <div>
-                  <span className="font-medium">{category.label}</span>
-                  {!category.ready && category.missing.length > 0 ? (
-                    <p className="text-xs text-muted-foreground">{category.missing.join(", ")}</p>
+                  <span className="font-medium">
+                    {t(`aiEmployees.lifecycle.readiness.categories.${category.id}`, {
+                      defaultValue: category.label,
+                    })}
+                  </span>
+                  {category.missing.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {category.missing
+                        .map((item) =>
+                          t(`aiEmployees.lifecycle.readiness.missing.${item}`, {
+                            defaultValue: item,
+                          }),
+                        )
+                        .join(" · ")}
+                    </p>
                   ) : null}
                 </div>
               </li>

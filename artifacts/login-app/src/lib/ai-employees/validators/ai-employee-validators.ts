@@ -6,12 +6,33 @@ import {
   summarizeTools,
 } from "@/lib/ai-employees/selectors";
 
+/** Slug for the technical internal name (ASCII first, unicode letters as fallback). */
 export function normalizeAiEmployeeName(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
+  const trimmed = name.trim().toLowerCase();
+  if (!trimmed) return "";
+
+  const ascii = trimmed
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  if (ascii) return ascii;
+
+  // Arabic / other scripts: keep letters & numbers so create is not blocked.
+  return trimmed
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Prefer typed internal name; otherwise derive a stable slug from the display name. */
+export function resolveAiEmployeeInternalName(
+  name: string | null | undefined,
+  displayName: string | null | undefined,
+): string {
+  const fromName = normalizeAiEmployeeName(name ?? "");
+  if (fromName) return fromName;
+  const fromDisplay = normalizeAiEmployeeName(displayName ?? "");
+  if (fromDisplay) return fromDisplay;
+  return `employee-${Date.now().toString(36)}`;
 }
 
 export function formValuesToInsert(
@@ -20,16 +41,17 @@ export function formValuesToInsert(
   knowledgeNames: string[],
   actorId?: string | null,
 ) {
-  const name = normalizeAiEmployeeName(values.name);
+  const name = resolveAiEmployeeInternalName(values.name, values.displayName);
   return {
     company_id: companyId,
     name,
     display_name: values.displayName.trim(),
     description: values.description.trim(),
-    avatar: values.avatar,
+    avatar: values.avatar?.trim() || null,
     department: values.department?.trim() || null,
     owner_id: values.ownerId,
-    status: values.status,
+    // Lifecycle Publish owns "published"; create always starts as draft.
+    status: "draft",
     provider: values.provider?.trim() || null,
     model: values.model?.trim() || null,
     temperature: values.temperature,
@@ -41,7 +63,7 @@ export function formValuesToInsert(
     allowed_tool_keys: values.allowedToolKeys,
     tool_summary: summarizeTools(values.allowedToolKeys),
     allowed_skill_ids: values.allowedSkillIds ?? [],
-    skills_summary: "No skills assigned",
+    skills_summary: "",
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
     prompt_version_label: "v1",
     runtime_configuration: DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
@@ -58,15 +80,14 @@ export function formValuesToUpdate(
   knowledgeNames: string[],
   actorId?: string | null,
 ) {
-  const name = normalizeAiEmployeeName(values.name);
-  return {
+  const name = resolveAiEmployeeInternalName(values.name, values.displayName);
+  const base = {
     name,
     display_name: values.displayName.trim(),
     description: values.description.trim(),
-    avatar: values.avatar,
+    avatar: values.avatar?.trim() || null,
     department: values.department?.trim() || null,
     owner_id: values.ownerId,
-    status: values.status,
     provider: values.provider?.trim() || null,
     model: values.model?.trim() || null,
     temperature: values.temperature,
@@ -78,9 +99,18 @@ export function formValuesToUpdate(
     allowed_tool_keys: values.allowedToolKeys,
     tool_summary: summarizeTools(values.allowedToolKeys),
     allowed_skill_ids: values.allowedSkillIds ?? [],
-    skills_summary: "No skills assigned",
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
     updated_by: actorId ?? null,
+  };
+
+  // Do not let the edit form shadow-publish or un-publish; lifecycle panel owns that.
+  if (values.status === "published" || values.status === "archived") {
+    return base;
+  }
+
+  return {
+    ...base,
+    status: values.status === "disabled" ? "disabled" : "draft",
   };
 }
 

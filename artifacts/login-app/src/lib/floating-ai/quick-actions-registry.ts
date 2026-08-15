@@ -20,12 +20,42 @@ const QUICK_ACTIONS_BY_PAGE: Record<string, FloatingAiQuickAction[]> = {
     { id: "book-appointment", labelKey: "floatingAi.actions.bookAppointment", prompt: "Help me book an appointment" },
     { id: "today-schedule", labelKey: "floatingAi.actions.todaySchedule", prompt: "What's on the schedule today?" },
   ],
+  operations: [
+    { id: "book-appointment", labelKey: "floatingAi.actions.bookAppointment", prompt: "Help me book an appointment" },
+    { id: "today-schedule", labelKey: "floatingAi.actions.todaySchedule", prompt: "What's on the schedule today?" },
+  ],
+  "universal-operations": [
+    { id: "book-appointment", labelKey: "floatingAi.actions.bookAppointment", prompt: "Help me book an appointment" },
+    { id: "today-schedule", labelKey: "floatingAi.actions.todaySchedule", prompt: "What's on the schedule today?" },
+  ],
   knowledge: [
     { id: "ask-documents", labelKey: "floatingAi.actions.askDocuments", prompt: "Answer using our company documents" },
     { id: "search-knowledge", labelKey: "floatingAi.actions.searchKnowledge", prompt: "Search our knowledge base" },
   ],
   reports: [
     { id: "business-summary", labelKey: "floatingAi.actions.businessSummary", prompt: "Summarize business performance" },
+  ],
+  executive: [
+    {
+      id: "exec-brief",
+      labelKey: "floatingAi.actions.executiveBrief",
+      prompt: "Summarize business health from the current Executive Intelligence dashboard and prioritize today.",
+    },
+    {
+      id: "exec-risks",
+      labelKey: "floatingAi.actions.executiveRisks",
+      prompt: "What are the top risks visible from the Executive Intelligence KPIs?",
+    },
+    {
+      id: "exec-actions",
+      labelKey: "floatingAi.actions.executiveActions",
+      prompt: "What immediate actions do you recommend based on the Executive Intelligence KPIs?",
+    },
+    {
+      id: "exec-finance",
+      labelKey: "floatingAi.actions.openFinancial",
+      navigateTo: "/financial",
+    },
   ],
   default: [
     { id: "help", labelKey: "floatingAi.actions.help", prompt: "What can you help me with on this page?" },

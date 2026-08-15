@@ -20,6 +20,7 @@ export type AiCapabilityDefinition = {
   icon: LucideIcon;
   availability: AiCapabilityAvailability;
   backendFeatureKey?: PlatformAIFeatureKey;
+  /** @deprecated Phase 7.3 — do not use package name as access control. Prefer null. */
   minimumPlan?: PlanTier | null;
   dependencies?: readonly string[];
   defaultEnabled?: boolean;

@@ -25,7 +25,13 @@ export function FloatingAiComposer({
   hideExtras = false,
 }: FloatingAiComposerProps) {
   const { t } = useTranslation("common");
-  const { composerFocusRef, pendingFocusOnOpen, consumePendingFocus } = useFloatingAi();
+  const {
+    composerFocusRef,
+    pendingFocusOnOpen,
+    consumePendingFocus,
+    pendingComposerDraft,
+    setPendingComposerDraft,
+  } = useFloatingAi();
   const [input, setInput] = useState("");
   const [showSlashHints, setShowSlashHints] = useState(false);
   const localRef = useRef<HTMLTextAreaElement | null>(null);
@@ -37,6 +43,16 @@ export function FloatingAiComposer({
     },
     [composerFocusRef],
   );
+
+  // Apply draft on layout so React Strict Mode remounts still see the pending value.
+  useEffect(() => {
+    if (!pendingComposerDraft) return;
+    setInput(pendingComposerDraft);
+    const handle = window.setTimeout(() => {
+      setPendingComposerDraft(null);
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, [pendingComposerDraft, setPendingComposerDraft]);
 
   useEffect(() => {
     if (pendingFocusOnOpen) {

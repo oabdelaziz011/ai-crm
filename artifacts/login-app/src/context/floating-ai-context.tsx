@@ -42,6 +42,9 @@ type FloatingAiUiContextValue = {
   pendingFocusOnOpen: boolean;
   consumePendingFocus: () => void;
   setPendingFocusOnOpen: (value: boolean) => void;
+  pendingComposerDraft: string | null;
+  setPendingComposerDraft: (value: string | null) => void;
+  consumePendingComposerDraft: () => string | null;
 };
 
 export type FloatingAiContextValue = FloatingAiPageContextValue & FloatingAiUiContextValue;
@@ -88,6 +91,8 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
 
   const composerFocusRef = useRef<HTMLTextAreaElement | null>(null);
   const [pendingFocusOnOpen, setPendingFocusOnOpen] = useState(false);
+  const [pendingComposerDraft, setPendingComposerDraftState] = useState<string | null>(null);
+  const pendingComposerDraftRef = useRef<string | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const prevPageRef = useRef<string>("");
 
@@ -203,6 +208,18 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
     requestComposerFocus();
   }, [requestComposerFocus]);
 
+  const setPendingComposerDraft = useCallback((value: string | null) => {
+    pendingComposerDraftRef.current = value;
+    setPendingComposerDraftState(value);
+  }, []);
+
+  const consumePendingComposerDraft = useCallback(() => {
+    const draft = pendingComposerDraftRef.current;
+    pendingComposerDraftRef.current = null;
+    setPendingComposerDraftState(null);
+    return draft;
+  }, []);
+
   const pageValue = useMemo<FloatingAiPageContextValue>(
     () => ({
       pageContext,
@@ -223,6 +240,9 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
       pendingFocusOnOpen,
       consumePendingFocus,
       setPendingFocusOnOpen,
+      pendingComposerDraft,
+      setPendingComposerDraft,
+      consumePendingComposerDraft,
     }),
     [
       notificationCount,
@@ -230,6 +250,9 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
       requestComposerFocus,
       pendingFocusOnOpen,
       consumePendingFocus,
+      pendingComposerDraft,
+      setPendingComposerDraft,
+      consumePendingComposerDraft,
     ],
   );
 

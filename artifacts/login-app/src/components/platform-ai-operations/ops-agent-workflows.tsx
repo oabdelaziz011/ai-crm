@@ -4,6 +4,7 @@ import { DashboardCard, DashboardTableSkeleton } from "@/components/dashboard/ui
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { PlatformAiOpsAgentWorkflow } from "@/lib/platform-ai-operations";
+import { opsStatusLabel } from "./ops-status-label";
 
 type OpsAgentWorkflowsProps = {
   workflows: PlatformAiOpsAgentWorkflow[];
@@ -34,14 +35,14 @@ export function OpsAgentWorkflows({ workflows, loading }: OpsAgentWorkflowsProps
                     {workflow.company_name} · {workflow.task_count} {t("platformAiOps.agentWorkflows.tasks")}
                   </p>
                 </div>
-                <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
-                  {workflow.status.replace("_", " ")}
+                <Badge variant="outline" className="shrink-0 text-[10px]">
+                  {opsStatusLabel(t, workflow.status)}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
                 {workflow.agent_type === "crm" && (
                   <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">
-                    CRM Agent
+                    {t("platformAiOps.agentWorkflows.crmAgent")}
                   </Badge>
                 )}
                 {workflow.tools_used?.slice(0, 3).map((tool) => (

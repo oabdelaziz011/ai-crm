@@ -8,6 +8,7 @@ import type {
   PlatformAiOpsKnowledgeDocument,
   PlatformAiOpsKnowledgeSummary,
 } from "@/lib/platform-ai-operations";
+import { opsStatusLabel } from "./ops-status-label";
 
 type OpsKnowledgeDashboardProps = {
   summary: PlatformAiOpsKnowledgeSummary | undefined;
@@ -52,13 +53,13 @@ export function OpsKnowledgeDashboard({ summary, documents, jobs, loading }: Ops
                 <div key={doc.id} className="space-y-1 px-5 py-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium">{doc.title}</p>
-                    <Badge variant="outline" className="text-[10px] capitalize">{doc.status}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{opsStatusLabel(t, doc.status)}</Badge>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
                     {doc.company_name} · {doc.chunk_count} {t("platformAiOps.knowledge.chunksLabel")} · {doc.mime_type}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {t("platformAiOps.knowledge.embeddingStatus")}: {doc.embedding_status}
+                    {t("platformAiOps.knowledge.embeddingStatus")}: {opsStatusLabel(t, doc.embedding_status)}
                   </p>
                 </div>
               ))}
@@ -86,7 +87,7 @@ export function OpsKnowledgeDashboard({ summary, documents, jobs, loading }: Ops
                 <div key={job.id} className="space-y-2 px-5 py-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium">{job.document_title}</p>
-                    <Badge variant="outline" className="shrink-0 text-[10px] capitalize">{job.status}</Badge>
+                    <Badge variant="outline" className="shrink-0 text-[10px]">{opsStatusLabel(t, job.status)}</Badge>
                   </div>
                   <Progress value={Number(job.progress_pct)} className="h-1.5" />
                   <div className="flex justify-between text-[10px] text-muted-foreground">

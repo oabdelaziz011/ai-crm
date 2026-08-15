@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, KeyRound, Plug, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Plug, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Can } from "@/components/rbac/permission-guard";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +22,7 @@ type AiProviderSetupPanelProps = {
   canEdit: boolean;
 };
 
+/** Creates a company provider connection that uses the platform encrypted API key. */
 export function AiProviderSetupPanel({
   companyId,
   assistantProvider,
@@ -38,7 +38,6 @@ export function AiProviderSetupPanel({
   const { data: providerTypes = [] } = useAiProviderTypes();
   const { create, setDefault } = useAiProviderConnectionMutations(companyId);
 
-  const [apiKey, setApiKey] = useState("");
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
 
   const providerDefinition = providerTypes.find((type) => type.key === registryKey);
@@ -79,7 +78,6 @@ export function AiProviderSetupPanel({
         }),
         configuration: {
           model: assistantModel.trim() || providerDefinition.default_configuration.model,
-          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         },
         isDefault: true,
         isEnabled: true,
@@ -87,7 +85,6 @@ export function AiProviderSetupPanel({
         healthStatus: "unknown",
       });
 
-      setApiKey("");
       toast({
         title: t("aiAssistant.providerSetup.saveSuccess"),
         description: t("aiAssistant.providerSetup.saveSuccessDetail"),
@@ -152,23 +149,23 @@ export function AiProviderSetupPanel({
         <li>{t("aiAssistant.providerSetup.stepDefault")}</li>
       </ol>
 
-      {hasMismatch && (
+      {hasMismatch ? (
         <p className="text-xs text-amber-400/90">{t("aiAssistant.providerSetup.providerMismatch")}</p>
-      )}
+      ) : null}
 
       {isLoading ? (
         <p className="text-xs text-muted-foreground">{t("aiAssistant.providerSetup.loading")}</p>
       ) : (
         <>
-          {matchingConnections.length > 0 && (
-            <div className="space-y-2">
+          {matchingConnections.length > 0 ? (
+            <div className="space-y-3">
               <Label htmlFor="provider-connection-select">{t("aiAssistant.providerSetup.selectConnection")}</Label>
               <select
                 id="provider-connection-select"
+                className="flex h-10 w-full rounded-md border border-white/10 bg-black/20 px-3 text-sm"
                 value={effectiveSelectedId}
+                disabled={!canEdit || setDefault.isPending}
                 onChange={(event) => setSelectedConnectionId(event.target.value)}
-                disabled={!canEdit}
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm outline-none focus:border-primary/40"
               >
                 {matchingConnections.map((connection) => (
                   <option key={connection.id} value={connection.id}>
@@ -177,25 +174,24 @@ export function AiProviderSetupPanel({
                   </option>
                 ))}
               </select>
-              <Can permission="ai.providers.manage">
+              {canEdit && effectiveSelectedId && effectiveSelectedId !== activeDefault?.id ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="border-white/10"
-                  disabled={!canEdit || !effectiveSelectedId || setDefault.isPending}
+                  disabled={setDefault.isPending}
                   onClick={() => void handleSetDefault()}
                 >
                   {t("aiAssistant.providerSetup.setDefault")}
                 </Button>
-              </Can>
+              ) : null}
             </div>
-          )}
+          ) : null}
 
           <Can permission="ai.providers.manage">
             <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="text-xs font-medium flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
                 {matchingConnections.length > 0
                   ? t("aiAssistant.providerSetup.createAnother")
                   : t("aiAssistant.providerSetup.createFirst")}
@@ -205,22 +201,9 @@ export function AiProviderSetupPanel({
                   provider: providerDefinition?.display_name ?? registryKey,
                 })}
               </p>
-              <div className="space-y-2">
-                <Label htmlFor="provider-api-key" className="flex items-center gap-2">
-                  <KeyRound className="w-3.5 h-3.5" />
-                  {t("aiAssistant.providerSetup.apiKey")}
-                </Label>
-                <Input
-                  id="provider-api-key"
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  disabled={!canEdit || create.isPending}
-                  placeholder={t("aiAssistant.providerSetup.apiKeyPlaceholder")}
-                  className="border-white/10 bg-black/20"
-                />
-                <p className="text-[10px] text-muted-foreground">{t("aiAssistant.providerSetup.apiKeyHint")}</p>
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("aiAssistant.providerSetup.platformKeyHint")}
+              </p>
               <Button
                 type="button"
                 size="sm"

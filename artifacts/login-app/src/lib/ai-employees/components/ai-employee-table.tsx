@@ -1,7 +1,8 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, ListRestart, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,11 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AiEmployeeStatusBadge } from "@/lib/ai-employees/components/ai-employee-status-badge";
 import type { AiEmployeeRecord } from "@/lib/ai-employees/types";
+import { agentContinueHref, agentDetailHref, agentEditHref } from "@/config/agents-route-registry";
 import {
-  AI_EMPLOYEE_LIST_ROW_HEIGHT,
-  computeAiEmployeeListWindow,
-} from "@/lib/ai-employees/virtualization/ai-employee-list-window";
-import { agentDetailHref, agentEditHref } from "@/config/agents-route-registry";
+  formatEmployeeDepartmentLabel,
+  formatEmployeeProviderLabel,
+} from "@/lib/ai-employees/utilities/format-employee-field-label";
+import { formatEmployeeTagLabel } from "@/lib/ai-employees/utilities/format-employee-tag-label";
 import { nestedSectionHref } from "@/lib/routing";
 import { cn } from "@/lib/utils";
 
@@ -35,27 +37,33 @@ function initials(name: string): string {
     .join("");
 }
 
+function channelTagsLabel(t: TFunction<"common">, tags: string[] | undefined): string {
+  const channelTags = (tags ?? []).filter(
+    (tag) => tag.startsWith("channel:") || tag === "capability:omnichannel",
+  );
+  if (channelTags.length === 0) return "—";
+  return channelTags
+    .slice(0, 2)
+    .map((tag) => formatEmployeeTagLabel(t, tag))
+    .join(" · ");
+}
+
 const AiEmployeeRow = memo(function AiEmployeeRow({
   employee,
   canEdit,
   canDelete,
   onDelete,
-  style,
 }: {
   employee: AiEmployeeRecord;
   canEdit: boolean;
   canDelete: boolean;
   onDelete: (employee: AiEmployeeRecord) => void;
-  style?: React.CSSProperties;
 }) {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
 
   return (
-    <div
-      className="grid grid-cols-[minmax(0,2fr)_repeat(7,minmax(0,1fr))_auto] items-center gap-3 border-b border-border/60 px-4"
-      style={{ ...style, height: AI_EMPLOYEE_LIST_ROW_HEIGHT }}
-    >
+    <div className="grid grid-cols-[minmax(0,2fr)_repeat(7,minmax(0,1fr))_auto] items-center gap-3 border-b border-border/40 px-4 py-3 last:border-b-0 hover:bg-primary/[0.03]">
       <button
         type="button"
         className="flex min-w-0 items-center gap-3 text-start"
@@ -74,45 +82,91 @@ const AiEmployeeRow = memo(function AiEmployeeRow({
       <div>
         <AiEmployeeStatusBadge status={employee.status} />
       </div>
-      <CellText value={employee.department} />
-      <CellText value={employee.provider} />
+      <CellText value={formatEmployeeDepartmentLabel(t, employee.department)} />
+      <CellText value={formatEmployeeProviderLabel(t, employee.provider)} />
       <CellText value={employee.model} />
+      <div
+        className="min-w-0 truncate text-xs text-muted-foreground"
+        title={(employee.tags ?? []).join(", ")}
+      >
+        {channelTagsLabel(t, employee.tags)}
+      </div>
       <CellText value={employee.owner} />
-      <CellText value={new Date(employee.createdAt).toLocaleDateString()} muted />
       <CellText value={new Date(employee.updatedAt).toLocaleDateString()} muted />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-8 shrink-0 rounded-lg">
-            <MoreHorizontal className="size-4" />
+      <div className="flex items-center justify-end gap-1">
+        {canEdit && employee.status === "draft" ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-lg px-2 text-xs"
+            onClick={() => setLocation(agentContinueHref(employee.id))}
+          >
+            <ListRestart className="me-1 size-3.5" />
+            {t("aiEmployees.actions.continue")}
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="rounded-xl">
-          <DropdownMenuItem onClick={() => setLocation(nestedSectionHref(agentDetailHref(employee.id)))}>
-            <Eye className="me-2 size-4" />
-            {t("aiEmployees.actions.view")}
-          </DropdownMenuItem>
-          {canEdit ? (
-            <DropdownMenuItem onClick={() => setLocation(nestedSectionHref(agentEditHref(employee.id)))}>
-              <Pencil className="me-2 size-4" />
-              {t("aiEmployees.actions.edit")}
+        ) : null}
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0 rounded-lg"
+              aria-label={t("aiEmployees.table.actions")}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="z-[80] rounded-xl" sideOffset={6}>
+            <DropdownMenuItem
+              onSelect={() => setLocation(nestedSectionHref(agentDetailHref(employee.id)))}
+            >
+              <Eye className="me-2 size-4" />
+              {t("aiEmployees.actions.view")}
             </DropdownMenuItem>
-          ) : null}
-          {canDelete ? (
-            <DropdownMenuItem className="text-destructive" onClick={() => onDelete(employee)}>
-              <Trash2 className="me-2 size-4" />
-              {t("aiEmployees.actions.delete")}
-            </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {canEdit && employee.status === "draft" ? (
+              <DropdownMenuItem onSelect={() => setLocation(agentContinueHref(employee.id))}>
+                <ListRestart className="me-2 size-4" />
+                {t("aiEmployees.actions.continue")}
+              </DropdownMenuItem>
+            ) : null}
+            {canEdit ? (
+              <DropdownMenuItem
+                onSelect={() => setLocation(nestedSectionHref(agentEditHref(employee.id)))}
+              >
+                <Pencil className="me-2 size-4" />
+                {t("aiEmployees.actions.edit")}
+              </DropdownMenuItem>
+            ) : null}
+            {canDelete ? (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => onDelete(employee)}
+              >
+                <Trash2 className="me-2 size-4" />
+                {t("aiEmployees.actions.delete")}
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 });
 
-const CellText = memo(function CellText({ value, muted }: { value: string | null | undefined; muted?: boolean }) {
+const CellText = memo(function CellText({
+  value,
+  muted,
+}: {
+  value: string | null | undefined;
+  muted?: boolean;
+}) {
   return (
-    <p className={cn("truncate text-sm", muted && "text-muted-foreground")}>{value?.trim() || "—"}</p>
+    <p className={cn("truncate text-sm", muted && "text-muted-foreground")}>
+      {value?.trim() || "—"}
+    </p>
   );
 });
 
@@ -123,68 +177,31 @@ export const AiEmployeeTable = memo(function AiEmployeeTable({
   onDelete,
 }: AiEmployeeTableProps) {
   const { t } = useTranslation("common");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(480);
-
-  const onScroll = useCallback(() => {
-    const node = containerRef.current;
-    if (!node) return;
-    setScrollTop(node.scrollTop);
-  }, []);
-
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-    const observer = new ResizeObserver(() => setViewportHeight(node.clientHeight));
-    observer.observe(node);
-    setViewportHeight(node.clientHeight);
-    return () => observer.disconnect();
-  }, []);
-
-  const window = useMemo(
-    () => computeAiEmployeeListWindow(employees.length, scrollTop, viewportHeight),
-    [employees.length, scrollTop, viewportHeight],
-  );
-
-  const visibleEmployees = useMemo(
-    () => employees.slice(window.startIndex, window.endIndex),
-    [employees, window.endIndex, window.startIndex],
-  );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60">
-      <div className="grid grid-cols-[minmax(0,2fr)_repeat(7,minmax(0,1fr))_auto] gap-3 border-b border-border bg-muted/30 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <span>{t("aiEmployees.table.employee")}</span>
-        <span>{t("aiEmployees.table.status")}</span>
-        <span>{t("aiEmployees.table.department")}</span>
-        <span>{t("aiEmployees.table.provider")}</span>
-        <span>{t("aiEmployees.table.model")}</span>
-        <span>{t("aiEmployees.table.owner")}</span>
-        <span>{t("aiEmployees.table.created")}</span>
-        <span>{t("aiEmployees.table.updated")}</span>
-        <span className="sr-only">{t("aiEmployees.table.actions")}</span>
-      </div>
-
-      <div ref={containerRef} className="max-h-[560px] overflow-auto" onScroll={onScroll}>
-        <div style={{ height: window.totalHeight, position: "relative" }}>
-          {visibleEmployees.map((employee, index) => (
-            <AiEmployeeRow
-              key={employee.id}
-              employee={employee}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              onDelete={onDelete}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                transform: `translateY(${(window.startIndex + index) * AI_EMPLOYEE_LIST_ROW_HEIGHT}px)`,
-              }}
-            />
-          ))}
+    <div className="overflow-x-auto rounded-xl border border-border/50 bg-transparent">
+      <div className="min-w-[960px]">
+        <div className="grid grid-cols-[minmax(0,2fr)_repeat(7,minmax(0,1fr))_auto] gap-3 border-b border-border/40 px-4 py-3 text-xs font-semibold text-muted-foreground">
+          <span>{t("aiEmployees.table.employee")}</span>
+          <span>{t("aiEmployees.table.status")}</span>
+          <span>{t("aiEmployees.table.department")}</span>
+          <span>{t("aiEmployees.table.provider")}</span>
+          <span>{t("aiEmployees.table.model")}</span>
+          <span>{t("aiEmployees.table.channels")}</span>
+          <span>{t("aiEmployees.table.owner")}</span>
+          <span>{t("aiEmployees.table.updated")}</span>
+          <span className="sr-only">{t("aiEmployees.table.actions")}</span>
         </div>
+
+        {employees.map((employee) => (
+          <AiEmployeeRow
+            key={employee.id}
+            employee={employee}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
     </div>
   );

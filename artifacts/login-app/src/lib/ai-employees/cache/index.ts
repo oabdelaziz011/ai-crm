@@ -17,4 +17,5 @@ export {
   aiEmployeeVersionCompareKey,
   aiEmployeeVersionsKey,
   invalidateAiEmployeeQueries,
+  upsertAiEmployeeInListCaches,
 } from "./ai-employee-query-keys";

@@ -67,6 +67,10 @@ function mapRuntimeConfiguration(value: unknown): AiEmployeeRuntimeConfiguration
     rateLimitPerMinute: stored.rateLimitPerMinute ?? defaults.rateLimitPerMinute,
     maxConcurrency: stored.maxConcurrency ?? defaults.maxConcurrency,
     disabledToolKeys: readStringArray(stored.disabledToolKeys),
+    transferableFlowId:
+      typeof stored.transferableFlowId === "string" && stored.transferableFlowId.trim()
+        ? stored.transferableFlowId.trim()
+        : null,
     runtimeFlags,
     retrievalPolicy,
   };

@@ -4,6 +4,7 @@ import { DashboardCard, DashboardTableSkeleton } from "@/components/dashboard/ui
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { PlatformAiOpsRequestRow } from "@/lib/platform-ai-operations";
+import { opsStatusLabel } from "../ops-status-label";
 
 type OpsRequestMonitorProps = {
   rows: PlatformAiOpsRequestRow[];
@@ -11,12 +12,13 @@ type OpsRequestMonitorProps = {
 };
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation("common");
   const normalized = status.toLowerCase();
   return (
     <Badge
       variant="outline"
       className={cn(
-        "text-[10px] capitalize",
+        "text-[10px]",
         normalized === "succeeded" || normalized === "completed"
           ? "border-emerald-500/30 text-emerald-400"
           : normalized === "failed"
@@ -24,7 +26,7 @@ function StatusBadge({ status }: { status: string }) {
             : "border-amber-500/30 text-amber-400",
       )}
     >
-      {status}
+      {opsStatusLabel(t, status)}
     </Badge>
   );
 }
@@ -71,7 +73,11 @@ export function OpsRequestMonitor({ rows, loading }: OpsRequestMonitorProps) {
                     {format(new Date(row.recorded_at), "HH:mm:ss")}
                   </td>
                   <td className="px-3 py-2.5 font-medium">{row.company_name}</td>
-                  <td className="px-3 py-2.5 capitalize">{row.module}</td>
+                  <td className="px-3 py-2.5">
+                    {!row.module || row.module.toLowerCase() === "unknown"
+                      ? t("platformAiOps.moduleUnknown")
+                      : row.module}
+                  </td>
                   <td className="px-3 py-2.5">{row.model}</td>
                   <td className="px-3 py-2.5">{row.total_tokens.toLocaleString()}</td>
                   <td className="px-3 py-2.5">{row.latency_ms}ms</td>

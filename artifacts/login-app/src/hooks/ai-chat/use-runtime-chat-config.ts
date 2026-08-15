@@ -88,7 +88,8 @@ export function useRuntimeChatConfig(
       if (
         isKnowledgeRetrievalEligible({
           aiChatEnabled: true,
-          knowledgeFeatureEnabled: knowledgeFlag.isEnabled,
+          // Soft-allow while unresolved/default; only hard-block when explicitly false.
+          knowledgeFeatureEnabled: knowledgeFlag.isEnabled !== false,
           assistantKnowledgeEnabled: knowledgeEnabled,
         })
       ) {

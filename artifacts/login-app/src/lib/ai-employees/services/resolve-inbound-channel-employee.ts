@@ -4,6 +4,15 @@ import { createAiEmployeeServices } from "@/lib/ai-employees";
 import type { AiEmployeeRecord } from "@/lib/ai-employees/types";
 import { resolveEmployeeChannelRuntime } from "./resolve-employee-channel-runtime";
 
+const INBOUND_EMPLOYEE_TTL_MS = 30_000;
+
+type InboundEmployeeCacheEntry = {
+  expiresAt: number;
+  employee: AiEmployeeRecord | null;
+};
+
+const inboundEmployeeCache = new Map<string, InboundEmployeeCacheEntry>();
+
 function scoreEmployeeForChannel(
   employee: AiEmployeeRecord,
   channelKey: string,
@@ -29,6 +38,7 @@ export function buildInboundEmployeeConversationMetadata(
       aiEmployeeId: employee.id,
       aiEmployeeVersionId: employee.publishedVersionId,
       aiEmployeeDisplayName: employee.displayName,
+      transferableFlowId: employee.runtimeConfiguration.transferableFlowId ?? null,
     },
     {
       state: "AI_HANDLING",
@@ -47,9 +57,19 @@ export async function resolveInboundChannelEmployee(
   channelKey: string,
   companyChannelId: string,
 ): Promise<AiEmployeeRecord | null> {
+  const cacheKey = `${companyId}:${channelKey}:${companyChannelId}`;
+  const now = Date.now();
+  const cached = inboundEmployeeCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.employee;
+  }
+
   const services = createAiEmployeeServices(client);
   const published = await services.registry.list(companyId, { status: "published" });
-  if (published.length === 0) return null;
+  if (published.length === 0) {
+    inboundEmployeeCache.set(cacheKey, { expiresAt: now + INBOUND_EMPLOYEE_TTL_MS, employee: null });
+    return null;
+  }
 
   const ranked = [...published].sort(
     (left, right) =>
@@ -64,8 +84,29 @@ export async function resolveInboundChannelEmployee(
 
   for (const employee of candidates) {
     const binding = await resolveEmployeeChannelRuntime(companyId, employee.id, client);
-    if (binding) return employee;
+    if (binding) {
+      inboundEmployeeCache.set(cacheKey, {
+        expiresAt: now + INBOUND_EMPLOYEE_TTL_MS,
+        employee,
+      });
+      return employee;
+    }
+    console.warn("[ai-employee] inbound resolve skipped employee without channel runtime binding", {
+      companyId,
+      companyChannelId,
+      channelKey,
+      aiEmployeeId: employee.id,
+      displayName: employee.displayName,
+      score: scoreEmployeeForChannel(employee, channelKey, companyChannelId),
+      transferableFlowId: employee.runtimeConfiguration.transferableFlowId ?? null,
+    });
   }
 
+  inboundEmployeeCache.set(cacheKey, { expiresAt: now + INBOUND_EMPLOYEE_TTL_MS, employee: null });
   return null;
+}
+
+/** Test helper — clears the inbound employee pick cache. */
+export function clearInboundChannelEmployeeCache(): void {
+  inboundEmployeeCache.clear();
 }

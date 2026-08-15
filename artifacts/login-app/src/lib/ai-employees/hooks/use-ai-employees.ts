@@ -6,39 +6,21 @@ import {
   aiEmployeesListKey,
   aiEmployeeToolsKey,
   invalidateAiEmployeeQueries,
+  upsertAiEmployeeInListCaches,
 } from "@/lib/ai-employees/cache";
 import { getAiEmployeeServices } from "@/lib/ai-employees";
 import { AiEmployeeRegistryError } from "@/lib/ai-employees/services";
-import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import type { AiEmployeeFormValues, AiEmployeeListFilter } from "@/lib/ai-employees/types";
 
 const services = getAiEmployeeServices();
 
 export function useAiEmployees(companyId: string | null, filter: AiEmployeeListFilter = {}) {
-  const queryKey = aiEmployeesListKey(companyId, filter);
-  const enabled = Boolean(companyId);
-  const hookPayload = { companyId, enabled, queryKey };
-  console.log("[AI_EMPLOYEES_TRACE use-ai-employees]", hookPayload);
-  aiEmployeesTrace("use-ai-employees", hookPayload);
-
-  const query = useQuery({
-    queryKey,
-    enabled,
+  return useQuery({
+    queryKey: aiEmployeesListKey(companyId, filter),
+    enabled: Boolean(companyId),
     queryFn: () => services.registry.list(companyId!, filter),
+    refetchOnMount: "always",
   });
-
-  const resultPayload = {
-    data: query.data,
-    employees: query.data,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    status: query.status,
-    fetchStatus: query.fetchStatus,
-  };
-  console.log("[AI_EMPLOYEES_TRACE use-ai-employees result]", resultPayload);
-  aiEmployeesTrace("use-ai-employees result", resultPayload);
-
-  return query;
 }
 
 export function useAiEmployeesInfinite(companyId: string | null, filter: AiEmployeeListFilter = {}) {
@@ -85,6 +67,8 @@ export function useCreateAiEmployee(companyId: string | null) {
       return services.registry.create(companyId, values, user?.id ?? null);
     },
     onSuccess: (employee) => {
+      upsertAiEmployeeInListCaches(qc, companyId, employee);
+      qc.setQueryData(aiEmployeeDetailKey(companyId, employee.id), employee);
       invalidateAiEmployeeQueries(qc, companyId, employee.id);
     },
   });
@@ -98,6 +82,12 @@ export function useUpdateAiEmployee(companyId: string | null, agentId: string | 
     mutationFn: (values: AiEmployeeFormValues) => {
       if (!companyId || !agentId) throw new Error("AI Employee required");
       return services.registry.update(agentId, companyId, values, user?.id ?? null);
+    },
+    onSuccess: (employee) => {
+      upsertAiEmployeeInListCaches(qc, companyId, employee);
+      if (agentId) {
+        qc.setQueryData(aiEmployeeDetailKey(companyId, agentId), employee);
+      }
     },
     onSettled: () => {
       invalidateAiEmployeeQueries(qc, companyId, agentId);

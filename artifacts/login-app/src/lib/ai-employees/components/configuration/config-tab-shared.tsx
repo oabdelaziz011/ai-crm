@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { AgentRuntimeConfiguration } from "@/lib/ai-employees/adapters";
 import type { AiEmployeeConfigurationUpdate, AiEmployeeRecord } from "@/lib/ai-employees/types";
 
@@ -29,22 +30,25 @@ export function ReadonlyGrid({
 }: {
   rows: Array<{ label: string; value: string | number | boolean | null | undefined }>;
 }) {
+  const { t } = useTranslation("common");
   return (
     <div className="divide-y divide-border/50 rounded-xl border border-border/60">
       {rows.map((row) => (
         <div key={row.label} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
           <span className="text-muted-foreground">{row.label}</span>
-          <span className="font-medium">{formatValue(row.value)}</span>
+          <span className="font-medium">
+            {row.value == null || row.value === ""
+              ? "—"
+              : typeof row.value === "boolean"
+                ? row.value
+                  ? t("aiEmployees.config.fields.enabled")
+                  : t("aiEmployees.config.fields.disabled")
+                : String(row.value)}
+          </span>
         </div>
       ))}
     </div>
   );
-}
-
-function formatValue(value: string | number | boolean | null | undefined): string {
-  if (value == null || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
 }
 
 export function ValidationList({ preview }: { preview: AgentRuntimeConfiguration | null }) {

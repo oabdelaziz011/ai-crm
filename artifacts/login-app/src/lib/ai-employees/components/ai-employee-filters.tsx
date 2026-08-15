@@ -15,6 +15,11 @@ import {
   selectUniqueProviders,
   selectUniqueTags,
 } from "@/lib/ai-employees/selectors";
+import {
+  formatEmployeeDepartmentLabel,
+  formatEmployeeProviderLabel,
+} from "@/lib/ai-employees/utilities/format-employee-field-label";
+import { formatEmployeeTagLabel } from "@/lib/ai-employees/utilities/format-employee-tag-label";
 
 type AiEmployeeFiltersProps = {
   filter: AiEmployeeListFilter;
@@ -67,7 +72,10 @@ export const AiEmployeeFilters = memo(function AiEmployeeFilters({
         onValueChange={(value) => onChange({ department: value })}
         options={[
           { value: "all", label: t("aiEmployees.filters.all") },
-          ...departments.map((department) => ({ value: department, label: department })),
+          ...departments.map((department) => ({
+            value: department,
+            label: formatEmployeeDepartmentLabel(t, department),
+          })),
         ]}
       />
 
@@ -77,7 +85,10 @@ export const AiEmployeeFilters = memo(function AiEmployeeFilters({
         onValueChange={(value) => onChange({ provider: value })}
         options={[
           { value: "all", label: t("aiEmployees.filters.all") },
-          ...providers.map((provider) => ({ value: provider, label: provider })),
+          ...providers.map((provider) => ({
+            value: provider,
+            label: formatEmployeeProviderLabel(t, provider),
+          })),
         ]}
       />
 
@@ -97,7 +108,7 @@ export const AiEmployeeFilters = memo(function AiEmployeeFilters({
         onValueChange={(value) => onChange({ tags: value === "all" ? [] : [value] })}
         options={[
           { value: "all", label: t("aiEmployees.filters.all") },
-          ...tags.map((tag) => ({ value: tag, label: tag })),
+          ...tags.map((tag) => ({ value: tag, label: formatEmployeeTagLabel(t, tag) })),
         ]}
       />
     </div>

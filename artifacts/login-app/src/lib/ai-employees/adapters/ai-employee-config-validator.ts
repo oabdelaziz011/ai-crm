@@ -119,11 +119,16 @@ export function validateAiEmployeeRuntimeConfiguration(input: {
         });
       }
     }
-    if (input.tenantMissing.includes("embedding") || input.tenantMissing.includes("vector_store")) {
+    if (
+      input.tenantMissing.includes("embedding") ||
+      input.tenantMissing.includes("vector_store") ||
+      input.tenantMissing.includes("collection")
+    ) {
       issues.push({
         field: "knowledge",
         code: "tenant_knowledge_incomplete",
-        message: "Tenant knowledge infrastructure is not fully configured",
+        message:
+          "Semantic embeddings are not configured — keyword knowledge search will be used until vector retrieval is set up",
         severity: "warning",
       });
     }
@@ -135,7 +140,9 @@ export function validateAiEmployeeRuntimeConfiguration(input: {
         field: "tools",
         code: "unknown_tool",
         message: `Unknown tool: ${toolKey}`,
-        severity: "error",
+        // Warning only — a single unseeded catalog row must not block channel binding
+        // (otherwise WhatsApp falls back to a different employee without booking/transfer).
+        severity: "warning",
       });
     }
   }
@@ -168,15 +175,11 @@ export function isAgentRuntimeConfigurationReady(issues: AiEmployeeConfigValidat
 }
 
 export function collectRuntimeMissing(input: AiEmployeeRuntimeAdapterInput): string[] {
-  const missing = [...input.tenantRuntime.missing];
+  // Embedding / vector / collection gaps are non-blocking: knowledge can fall back to keyword search.
+  const softMissing = new Set(["embedding", "vector_store", "collection", "knowledge_binding"]);
+  const missing = input.tenantRuntime.missing.filter((item) => !softMissing.has(item));
   if (!input.employee.provider) missing.push("employee_provider");
   if (!input.employee.model) missing.push("employee_model");
   if (!input.tenantRuntime.providerConnectionId) missing.push("provider_connection");
-  if (
-    input.employee.knowledgeSourceIds.length > 0 &&
-    !input.tenantRuntime.knowledgeRetrieval
-  ) {
-    missing.push("knowledge_binding");
-  }
   return [...new Set(missing)];
 }

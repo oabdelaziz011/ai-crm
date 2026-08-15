@@ -14,6 +14,15 @@ import { isKnowledgeRetrievalEligible } from "@/lib/platform-ai/knowledge-access
 import { pickDefaultConnection, type RuntimeChatExecutionConfig } from "@/lib/runtime-integration/chat-config";
 import { supabase } from "@/lib/supabase";
 
+const RUNTIME_BINDING_TTL_MS = 60_000;
+
+type RuntimeBindingCacheEntry = {
+  expiresAt: number;
+  value: Promise<AgentRuntimeChannelBinding | null>;
+};
+
+const runtimeBindingCache = new Map<string, RuntimeBindingCacheEntry>();
+
 function createCompanyServiceContext(companyId: string) {
   return {
     userId: null,
@@ -37,10 +46,15 @@ async function loadRuntimeChatConfig(
 
   const missing: RuntimeChatExecutionConfig["missing"] = [];
 
-  const aiChatEnabled = await resolveFeatureEnabledViaApplicationLayer(
-    portContext,
-    PLATFORM_AI_FEATURE_KEY.AI_CHAT,
-  );
+  const [aiChatEnabled, knowledgeFeatureEnabled, providerConnections] = await Promise.all([
+    resolveFeatureEnabledViaApplicationLayer(portContext, PLATFORM_AI_FEATURE_KEY.AI_CHAT),
+    resolveFeatureEnabledViaApplicationLayer(portContext, PLATFORM_AI_FEATURE_KEY.KNOWLEDGE),
+    providerServices.registry.listConnections(providerContext, {
+      companyId,
+      isEnabled: true,
+    }),
+  ]);
+
   if (!aiChatEnabled) {
     missing.push("provider");
     return {
@@ -51,20 +65,12 @@ async function loadRuntimeChatConfig(
     };
   }
 
-  const providerConnections = await providerServices.registry.listConnections(providerContext, {
-    companyId,
-    isEnabled: true,
-  });
   const providerConnection = pickDefaultConnection(providerConnections);
   if (!providerConnection) {
     missing.push("provider");
   }
 
   let knowledgeRetrieval: RuntimeChatExecutionConfig["knowledgeRetrieval"] = null;
-  const knowledgeFeatureEnabled = await resolveFeatureEnabledViaApplicationLayer(
-    portContext,
-    PLATFORM_AI_FEATURE_KEY.KNOWLEDGE,
-  );
 
   if (
     isKnowledgeRetrievalEligible({
@@ -73,16 +79,17 @@ async function loadRuntimeChatConfig(
       assistantKnowledgeEnabled: knowledgeEnabled,
     })
   ) {
-    const embeddingConnections = await embeddingServices.registry.listConnections(providerContext, {
-      companyId,
-      isEnabled: true,
-    });
+    const [embeddingConnections, vectorConnections] = await Promise.all([
+      embeddingServices.registry.listConnections(providerContext, {
+        companyId,
+        isEnabled: true,
+      }),
+      vectorStoreServices.registry.listConnections(providerContext, {
+        companyId,
+        isEnabled: true,
+      }),
+    ]);
     const embeddingConnection = pickDefaultConnection(embeddingConnections);
-
-    const vectorConnections = await vectorStoreServices.registry.listConnections(providerContext, {
-      companyId,
-      isEnabled: true,
-    });
     const vectorConnection = pickDefaultConnection(vectorConnections);
 
     const collections = vectorConnection
@@ -169,10 +176,10 @@ async function loadTenantRuntimeContext(
 
 export { evaluateEmployeeChannelRuntimeBinding } from "./evaluate-employee-channel-runtime-binding";
 
-export async function resolveEmployeeChannelRuntime(
+async function resolveEmployeeChannelRuntimeUncached(
   companyId: string,
   aiEmployeeId: string,
-  client: SupabaseClient = supabase,
+  client: SupabaseClient,
 ): Promise<AgentRuntimeChannelBinding | null> {
   const services = createAiEmployeeServices(client);
   const employee = await services.registry.getById(aiEmployeeId, companyId);
@@ -181,4 +188,33 @@ export async function resolveEmployeeChannelRuntime(
   const tenantRuntime = await loadTenantRuntimeContext(client, companyId, employee);
   const preview = await services.configuration.buildRuntimePreview(employee, tenantRuntime);
   return evaluateEmployeeChannelRuntimeBinding(employee, preview);
+}
+
+/**
+ * Resolve channel runtime binding with a short in-process TTL cache.
+ * WhatsApp inbound previously resolved the same employee 2–3× per message (~4–8s).
+ */
+export async function resolveEmployeeChannelRuntime(
+  companyId: string,
+  aiEmployeeId: string,
+  client: SupabaseClient = supabase,
+): Promise<AgentRuntimeChannelBinding | null> {
+  const cacheKey = `${companyId}:${aiEmployeeId}`;
+  const now = Date.now();
+  const hit = runtimeBindingCache.get(cacheKey);
+  if (hit && hit.expiresAt > now) {
+    return hit.value;
+  }
+
+  const value = resolveEmployeeChannelRuntimeUncached(companyId, aiEmployeeId, client).catch((error) => {
+    runtimeBindingCache.delete(cacheKey);
+    throw error;
+  });
+  runtimeBindingCache.set(cacheKey, { expiresAt: now + RUNTIME_BINDING_TTL_MS, value });
+  return value;
+}
+
+/** Test helper — clears the in-process binding cache. */
+export function clearEmployeeChannelRuntimeCache(): void {
+  runtimeBindingCache.clear();
 }

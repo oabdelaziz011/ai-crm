@@ -3,6 +3,8 @@ export { AiEmployeeFilters } from "./ai-employee-filters";
 export { AiEmployeeEditSections, AiEmployeeFormSections } from "./ai-employee-form-sections";
 export { AiEmployeeStatusBadge } from "./ai-employee-status-badge";
 export { AiEmployeeTable } from "./ai-employee-table";
+export { ChannelInboundBindingPanel } from "./channel-inbound-binding-panel";
+export { ChannelRoutingTagsField } from "./channel-routing-tags-field";
 export { AgentConfigurationWorkspace } from "./configuration/agent-configuration-workspace";
 export { LifecycleManagerPanel } from "./lifecycle/lifecycle-manager-panel";
 export { ReadinessScoreCard } from "./lifecycle/readiness-score-card";

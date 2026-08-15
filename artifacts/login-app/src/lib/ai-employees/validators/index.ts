@@ -3,5 +3,6 @@ export {
   formValuesToInsert,
   formValuesToUpdate,
   normalizeAiEmployeeName,
+  resolveAiEmployeeInternalName,
   recordToFormValues,
 } from "./ai-employee-validators";

@@ -28,6 +28,7 @@ import type { FloatingAiQuickAction } from "@/lib/floating-ai/types";
 import { FLOATING_AI_CAPABILITIES } from "@/lib/floating-ai/types";
 import { normalizeAgentGoal, isAgentGoal } from "@/lib/floating-ai/agent-goals";
 import { parseSlashCommand } from "@/lib/floating-ai/slash-commands";
+import { dashboardNestHref } from "@/lib/routing";
 import { ContextBar } from "./context-bar";
 import { QuickActions } from "./quick-actions";
 import { TaskProgressList } from "./task-progress-list";
@@ -121,7 +122,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
   const handleQuickAction = useCallback(
     (action: FloatingAiQuickAction) => {
       if (action.navigateTo) {
-        setLocation(action.navigateTo);
+        setLocation(dashboardNestHref(action.navigateTo));
         return;
       }
       if (action.prompt) {

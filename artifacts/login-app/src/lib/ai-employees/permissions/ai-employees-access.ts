@@ -36,8 +36,11 @@ export function isAiEmployeesWorkspaceAccessible(input: {
   isSuperAdmin: boolean;
   hasPermission: (code: string) => boolean;
   agentsFeatureEnabled: boolean | undefined;
+  /** Phase 3 commercial entitlement for ai_employee (optional until nav fully wired). */
+  companyFeatureEnabled?: boolean;
 }): boolean {
   if (input.isSuperAdmin) return true;
+  if (input.companyFeatureEnabled === false) return false;
   if (input.agentsFeatureEnabled === false) return false;
   return hasAiEmployeesViewPermission(input.hasPermission, input.isSuperAdmin);
 }

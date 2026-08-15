@@ -25,6 +25,11 @@ export type PrepareEmployeeChatRuntimeInput = {
   aiEmployeeId?: string | null;
   conversationMetadata?: Record<string, unknown> | null;
   bindingResolver?: (companyId: string, aiEmployeeId: string) => Promise<AgentRuntimeChannelBinding | null>;
+  /**
+   * Prefer a fresh resolve when the stored snapshot is incomplete (missing prompt/tools/flow).
+   * Complete snapshots are reused so WhatsApp does not re-load providers/knowledge every message.
+   */
+  preferFreshBinding?: boolean;
 };
 
 export type PrepareEmployeeChatRuntimeResult = {
@@ -58,6 +63,30 @@ function buildResult(input: {
   };
 }
 
+function isReusableChannelBinding(
+  executionContext: AgentEmployeeExecutionContext,
+  aiEmployeeId?: string | null,
+): boolean {
+  if (aiEmployeeId && executionContext.aiEmployeeId !== aiEmployeeId) return false;
+  if (!executionContext.providerConnectionId) return false;
+  const page = executionContext.pageContext ?? {};
+  const runtimePage = executionContext.employeeRuntime.pageContext ?? {};
+  const systemPrompt =
+    (typeof page.systemPrompt === "string" && page.systemPrompt) ||
+    (typeof runtimePage.systemPrompt === "string" && runtimePage.systemPrompt) ||
+    "";
+  const transferableFlowId =
+    (typeof page.transferableFlowId === "string" && page.transferableFlowId) ||
+    (typeof runtimePage.transferableFlowId === "string" && runtimePage.transferableFlowId) ||
+    "";
+  // Stale conversation snapshots historically omitted prompts — only reuse complete bindings.
+  return (
+    systemPrompt.trim().length > 0 ||
+    executionContext.allowedToolKeys.length > 0 ||
+    transferableFlowId.trim().length > 0
+  );
+}
+
 export async function prepareEmployeeChatRuntime(
   input: PrepareEmployeeChatRuntimeInput,
 ): Promise<PrepareEmployeeChatRuntimeResult> {
@@ -68,9 +97,19 @@ export async function prepareEmployeeChatRuntime(
     conversationMetadata: input.conversationMetadata,
   });
 
-  if (hydrated.executionContext) {
+  const canReuse =
+    hydrated.executionContext != null &&
+    (!input.preferFreshBinding ||
+      isReusableChannelBinding(hydrated.executionContext, input.aiEmployeeId));
+
+  if (canReuse && hydrated.executionContext) {
+    // Preserve systemPrompt / allowedToolKeys / transferableFlowId from the frozen
+    // employee pageContext. basePageContext alone is channel routing metadata only.
     const pageContext = attachAgentEmployeeExecutionContext(
-      input.basePageContext,
+      {
+        ...hydrated.executionContext.pageContext,
+        ...input.basePageContext,
+      },
       hydrated.executionContext,
     );
     return buildResult({

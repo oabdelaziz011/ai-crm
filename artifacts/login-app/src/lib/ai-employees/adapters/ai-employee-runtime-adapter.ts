@@ -35,9 +35,48 @@ export function buildAgentRuntimeConfiguration(
     allowedToolKeys: employee.allowedToolKeys,
   });
   const disabledKeys = employee.runtimeConfiguration.disabledToolKeys;
-  const enabledKeys = allowedKeys.filter((key) => !disabledKeys.includes(key));
+  const transferableFlowId = employee.runtimeConfiguration.transferableFlowId ?? null;
+  let enabledKeys = allowedKeys.filter((key) => !disabledKeys.includes(key));
+  // Drop catalog-missing tools so runtime scope stays valid without failing the whole employee.
+  const knownToolKeySet = new Set(toolCatalog.map((tool) => tool.key));
+  enabledKeys = enabledKeys.filter((key) => knownToolKeySet.has(key) || key === "transfer_to_workflow");
+  if (transferableFlowId && !enabledKeys.includes("transfer_to_workflow")) {
+    enabledKeys = [...enabledKeys, "transfer_to_workflow"];
+  }
+  const hasSchedulingTools = enabledKeys.some((key) =>
+    [
+      "create_booking",
+      "search_availability",
+      "find_next_available",
+      "recommend_appointment",
+      "reschedule_booking",
+      "cancel_booking",
+    ].includes(key),
+  );
   const enabledTicketTools = enabledKeys.filter(isTicketToolKey);
   const ticketToolPromptHint = buildTicketToolPromptHint(enabledTicketTools);
+  const bookingActionPromptAddon = hasSchedulingTools
+    ? [
+        "CRITICAL BOOKING ACTION RULES:",
+        "- You may only confirm a booking after create_booking returns success=true with a bookingId.",
+        "- Before offering times, call search_availability or find_next_available.",
+        "- If a tool returns success=false, booking_conflict, or slot_unavailable: tell the customer the slot is already booked/unavailable and offer another slot. Never invent availability.",
+        "- Never say تم الحجز / booked / confirmed unless a tool actually succeeded.",
+      ].join("\n")
+    : "";
+  const transferPromptAddon = transferableFlowId
+    ? [
+        "CRITICAL WORKFLOW TRANSFER RULES:",
+        `- This employee is linked to automation flow ${transferableFlowId}.`,
+        "- For multi-step booking lists (doctor/date/time pickers), call transfer_to_workflow immediately.",
+        "- You may still use real booking tools for direct availability checks or create_booking when the customer already gave exact details.",
+        "- After transfer_to_workflow succeeds, reply using customerFacingMessage from the tool result.",
+        "- Never invent a booking confirmation without a successful tool result.",
+      ].join("\n")
+    : "";
+  const channelSystemPrompt = [employee.systemPrompt.trim(), bookingActionPromptAddon, transferPromptAddon]
+    .filter(Boolean)
+    .join("\n\n");
 
   const toolEntries = toolCatalog
     .filter((tool) => allowedKeys.includes(tool.key))
@@ -83,7 +122,8 @@ export function buildAgentRuntimeConfiguration(
           knowledgeRetrieval: tenantRuntime.knowledgeRetrieval
             ? {
                 ...tenantRuntime.knowledgeRetrieval,
-                topK: employee.runtimeConfiguration.retrievalPolicy.topK,
+                // Channel replies need fewer chunks for lower latency.
+                topK: Math.min(employee.runtimeConfiguration.retrievalPolicy.topK || 3, 3),
                 minScore: employee.runtimeConfiguration.retrievalPolicy.minScore,
                 sourceIds: employee.knowledgeSourceIds,
               }
@@ -101,7 +141,8 @@ export function buildAgentRuntimeConfiguration(
             aiEmployeeId: employee.id,
             aiEmployeeName: employee.displayName,
             allowedToolKeys: enabledKeys,
-            systemPrompt: employee.systemPrompt,
+            systemPrompt: channelSystemPrompt,
+            transferableFlowId,
             ...(ticketToolPromptHint ? { ticketToolPromptHint } : {}),
           },
         }

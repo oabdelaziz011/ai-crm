@@ -7,6 +7,10 @@ import {
   ReadonlyGrid,
   ValidationList,
 } from "@/lib/ai-employees/components/configuration/config-tab-shared";
+import {
+  formatToolCategoryLabel,
+  formatToolNameLabel,
+} from "@/lib/ai-employees/utilities/format-tool-label";
 
 export function ToolsConfigTab({ employee, preview, canEdit, isSaving, onSave }: AgentConfigTabProps) {
   const { t } = useTranslation("common");
@@ -40,8 +44,10 @@ export function ToolsConfigTab({ employee, preview, canEdit, isSaving, onSave }:
               <div key={tool.key} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{tool.displayName}</span>
-                    <Badge variant="outline">{tool.category}</Badge>
+                    <span className="text-sm font-medium">
+                      {formatToolNameLabel(t, tool.key, tool.displayName)}
+                    </span>
+                    <Badge variant="outline">{formatToolCategoryLabel(t, tool.category)}</Badge>
                     <Badge variant={tool.riskLevel === "critical" ? "destructive" : "secondary"}>
                       {tool.riskLevel}
                     </Badge>

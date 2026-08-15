@@ -14,9 +14,17 @@ import {
   hasAiEmployeesViewPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "./permissions/ai-employees-access.js";
-import { normalizeAiEmployeeName } from "./validators/ai-employee-validators.js";
+import {
+  normalizeAiEmployeeName,
+  resolveAiEmployeeInternalName,
+} from "./validators/ai-employee-validators.js";
 import { computeAiEmployeeListWindow } from "./virtualization/ai-employee-list-window.js";
-import { agentDetailHref, agentEditHref, agentNewHref } from "../../config/agents-route-registry.js";
+import {
+  agentContinueHref,
+  agentDetailHref,
+  agentEditHref,
+  agentNewHref,
+} from "../../config/agents-route-registry.js";
 import type { AiEmployeeDbRow, AiEmployeeRecord } from "./types/ai-employee-types.js";
 
 const sampleRow: AiEmployeeDbRow = {
@@ -148,6 +156,11 @@ describe("AiEmployee RBAC", () => {
 describe("AiEmployee registry helpers", () => {
   it("normalizes internal names", () => {
     assert.equal(normalizeAiEmployeeName("Support Agent 1"), "support-agent-1");
+    assert.equal(normalizeAiEmployeeName("وكيل-الدعم"), "وكيل-الدعم");
+    assert.equal(
+      resolveAiEmployeeInternalName("", "موظف دعم"),
+      normalizeAiEmployeeName("موظف دعم"),
+    );
   });
 
   it("virtualizes large employee lists", () => {
@@ -157,8 +170,12 @@ describe("AiEmployee registry helpers", () => {
   });
 
   it("exposes stable agent routes", () => {
-    assert.equal(agentNewHref(), "/agents/new");
-    assert.equal(agentDetailHref("abc"), "/agents/abc");
-    assert.equal(agentEditHref("abc"), "/agents/abc/edit");
+    assert.equal(agentNewHref(), "/new");
+    assert.equal(agentDetailHref("abc"), "/abc");
+    assert.equal(agentEditHref("abc"), "/abc/edit");
+    assert.equal(
+      agentContinueHref("75d6c2ab-7a01-4dfa-91bb-580f9c8b8c0b"),
+      "/new?draft=75d6c2ab-7a01-4dfa-91bb-580f9c8b8c0b",
+    );
   });
 });

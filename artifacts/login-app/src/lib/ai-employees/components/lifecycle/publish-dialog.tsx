@@ -43,8 +43,22 @@ export function PublishDialog({
     () => (validation?.issues ?? []).filter((issue) => issue.severity === "error"),
     [validation],
   );
+  const missingReasons = useMemo(() => {
+    const fromPreview = (preview?.missing ?? []).map((code) =>
+      t(`aiEmployees.lifecycle.publish.missing.${code}`, { defaultValue: code }),
+    );
+    const fromReadiness = (readiness?.categories ?? [])
+      .filter((category) => !category.ready)
+      .flatMap((category) =>
+        category.missing.map((code) =>
+          t(`aiEmployees.lifecycle.readiness.missing.${code}`, { defaultValue: code }),
+        ),
+      );
+    return [...new Set([...fromPreview, ...fromReadiness])];
+  }, [preview?.missing, readiness?.categories, t]);
+  // Preview.ready can stay false when only soft knowledge gaps remain — publish uses readiness.
   const canPublish =
-    Boolean(preview?.ready) &&
+    Boolean(preview) &&
     !hasBlockingPublishIssues(validation ?? { ready: false, issues: [] }) &&
     (readiness?.ready ?? false);
 
@@ -94,7 +108,10 @@ export function PublishDialog({
                   {blockingIssues.map((issue) => (
                     <li key={`${issue.field}-${issue.code}`}>• {issue.message}</li>
                   ))}
-                  {blockingIssues.length === 0 ? (
+                  {blockingIssues.length === 0
+                    ? missingReasons.map((reason) => <li key={reason}>• {reason}</li>)
+                    : null}
+                  {blockingIssues.length === 0 && missingReasons.length === 0 ? (
                     <li>• {t("aiEmployees.lifecycle.publish.notReady")}</li>
                   ) : null}
                 </ul>

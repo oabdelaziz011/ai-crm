@@ -25,6 +25,8 @@ export function companyMeetsMinimumPlan(
   companyPlanTier: PlanTier | null,
   minimumPlan: PlanTier | null | undefined,
 ): boolean {
+  // Phase 7.3: package name tiers must NOT gate AI capabilities.
+  // Commercial access is company_feature_overrides → is_feature_enabled; flags are kill-switches.
   if (!minimumPlan) return true;
   if (!companyPlanTier) return false;
   return PLAN_TIER_RANK[companyPlanTier] >= PLAN_TIER_RANK[minimumPlan];

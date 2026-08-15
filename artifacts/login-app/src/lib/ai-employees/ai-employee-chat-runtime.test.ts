@@ -99,6 +99,42 @@ describe("prepareEmployeeChatRuntime", () => {
     clearConversationExecutionContext("conv-chat-metadata");
   });
 
+  it("reuses a complete binding snapshot even when preferFreshBinding is set", async () => {
+    const channelRuntime = sampleChannelRuntime();
+    const executionContext = createAgentEmployeeExecutionContext(channelRuntime, {
+      module: "agents",
+      aiEmployeeId: "employee-chat-1",
+      systemPrompt: "You are a helpful sales employee.",
+      transferableFlowId: "flow-1",
+    });
+    const metadata = buildEmployeeConversationMetadataPatch({}, executionContext, {
+      publishedVersionId: "version-1",
+      displayName: "Chat Employee",
+    });
+
+    clearConversationExecutionContext("conv-chat-fresh");
+
+    let resolveCount = 0;
+    const result = await prepareEmployeeChatRuntime({
+      companyId: "company-chat-4",
+      conversationId: "conv-chat-fresh",
+      aiEmployeeId: "employee-chat-1",
+      basePageContext: { module: "omnichannel" },
+      conversationMetadata: metadata,
+      preferFreshBinding: true,
+      bindingResolver: async () => {
+        resolveCount += 1;
+        return channelRuntime;
+      },
+    });
+
+    assert.equal(result.reusedExistingContext, true);
+    assert.equal(result.resolveCount, 0);
+    assert.equal(resolveCount, 0);
+
+    clearConversationExecutionContext("conv-chat-fresh");
+  });
+
   it("returns pass-through when no employee conversation exists", async () => {
     const result = await prepareEmployeeChatRuntime({
       companyId: "company-chat-2",

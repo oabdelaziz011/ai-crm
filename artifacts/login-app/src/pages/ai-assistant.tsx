@@ -24,6 +24,7 @@ import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { getDashboardRouteById } from "@/config/dashboard-route-registry";
 import { PlatformManagedProviderStatus } from "@/components/ai-assistant/platform-managed-provider-status";
+import { AiProviderSetupPanel } from "@/components/ai-assistant/ai-provider-setup-panel";
 import { useKnowledgeFeatureEnabled, useAnalyticsFeatureEnabled, useWorkflowFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import {
   useAiAssistantSettings,
@@ -196,6 +197,7 @@ export function AiAssistantPage() {
 
   const canView = isSuperAdmin || hasPermission("ai_assistant.view");
   const canEdit = isSuperAdmin || hasPermission("ai_assistant.edit");
+  const canManageProviders = isSuperAdmin || hasPermission("ai.providers.manage");
   const { resolvedEnabled: knowledgeFeatureEnabled } = useKnowledgeFeatureEnabled();
   const { resolvedEnabled: analyticsFeatureEnabled } = useAnalyticsFeatureEnabled();
   const { resolvedEnabled: workflowFeatureEnabled } = useWorkflowFeatureEnabled();
@@ -465,6 +467,13 @@ export function AiAssistantPage() {
 
         <TabsContent value="general" className="space-y-4">
           <PlatformManagedProviderStatus companyId={companyId} />
+          <AiProviderSetupPanel
+            companyId={companyId}
+            assistantProvider={draft.provider}
+            assistantModel={draft.model}
+            assistantName={draft.assistant_name || t("aiAssistant.general.assistantNamePlaceholder")}
+            canEdit={canManageProviders}
+          />
           <Card>
             <h2 className="mb-4 text-sm font-semibold">{t("aiAssistant.sections.general")}</h2>
             <div className="mb-4">

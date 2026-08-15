@@ -1,3 +1,4 @@
+import { LEGACY_AI_FEATURE_KEY_MAP } from "@workspace/configuration-platform";
 import {
   PLATFORM_AI_FEATURE_KEY,
   type PlatformAIFeatureKey,
@@ -10,7 +11,8 @@ export function platformAiFeatureQueryKey(companyId: string | null, featureKey: 
 }
 
 export function usePlatformAIFeatureEnabled(featureKey: PlatformAIFeatureKey) {
-  const resolved = useFeatureFlag(featureKey);
+  // Runtime resolves unified keys (`ai.chat`); map legacy catalog keys (`ai_chat`) first.
+  const resolved = useFeatureFlag(LEGACY_AI_FEATURE_KEY_MAP[featureKey] ?? featureKey);
 
   return {
     isLoading: resolved.isLoading,
@@ -18,6 +20,8 @@ export function usePlatformAIFeatureEnabled(featureKey: PlatformAIFeatureKey) {
     isEnabled: resolved.isEnabled,
     /** Undefined until the first fetch completes. */
     resolvedEnabled: resolved.resolvedEnabled,
+    licenseBlocked: resolved.licenseBlocked,
+    licenseReason: resolved.licenseReason,
   };
 }
 

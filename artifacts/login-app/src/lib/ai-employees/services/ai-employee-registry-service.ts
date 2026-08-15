@@ -12,6 +12,7 @@ import {
   formValuesToInsert,
   formValuesToUpdate,
   normalizeAiEmployeeName,
+  resolveAiEmployeeInternalName,
 } from "@/lib/ai-employees/validators";
 import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import { AiEmployeeRegistryError } from "./ai-employee-errors";
@@ -66,7 +67,10 @@ export class AiEmployeeRegistryService {
     values: AiEmployeeFormValues,
     actorId?: string | null,
   ): Promise<AiEmployeeRecord> {
-    await this.assertUniqueName(companyId, values.name);
+    await this.assertUniqueName(
+      companyId,
+      resolveAiEmployeeInternalName(values.name, values.displayName),
+    );
     const knowledgeNames = await this.resolveKnowledgeNames(companyId, values.knowledgeSourceIds);
     const row = await this.repository.create(formValuesToInsert(companyId, values, knowledgeNames, actorId));
     return mapAiEmployeeRow(row);
@@ -82,7 +86,11 @@ export class AiEmployeeRegistryService {
     if (!existing) {
       throw new AiEmployeeRegistryError("AI Employee not found", "not_found");
     }
-    await this.assertUniqueName(companyId, values.name, id);
+    await this.assertUniqueName(
+      companyId,
+      resolveAiEmployeeInternalName(values.name, values.displayName),
+      id,
+    );
     const knowledgeNames = await this.resolveKnowledgeNames(companyId, values.knowledgeSourceIds);
     const row = await this.repository.update(id, companyId, formValuesToUpdate(values, knowledgeNames, actorId));
     const ownerLabels = row.owner_id
@@ -115,7 +123,7 @@ export class AiEmployeeRegistryService {
   private async assertUniqueName(companyId: string, name: string, excludeId?: string): Promise<void> {
     const normalized = normalizeAiEmployeeName(name);
     if (!normalized) {
-      throw new AiEmployeeRegistryError("Name is required", "validation");
+      throw new AiEmployeeRegistryError("Internal name is required", "validation");
     }
     const existing = await this.repository.getByName(companyId, normalized, excludeId);
     if (existing) {

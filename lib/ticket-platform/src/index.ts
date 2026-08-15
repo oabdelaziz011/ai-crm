@@ -5,12 +5,14 @@ import type {
   TicketAuditPort,
   TicketEventPublisherPort,
   TicketNotificationPort,
+  TicketSlaSettingsPort,
 } from "./ports/ticket-platform-ports.js";
 import type { TicketReadPort } from "./ports/ticket-read-port.js";
 import {
   createSupabaseTicketAssigneeResolver,
   createSupabaseTicketCommentRepository,
   createSupabaseTicketRepository,
+  createSupabaseTicketSlaSettingsPort,
 } from "./repositories/supabase-ticket-repositories.js";
 import {
   createNoopTicketAuditPort,
@@ -33,6 +35,7 @@ export type CreateTicketPlatformServicesOptions = {
   notifications?: TicketNotificationPort;
   audit?: TicketAuditPort;
   cache?: TicketQueryCachePort;
+  slaSettings?: TicketSlaSettingsPort;
 };
 
 export function createTicketPlatformServices(
@@ -46,6 +49,7 @@ export function createTicketPlatformServices(
   const notifications = options.notifications ?? createNoopTicketNotificationPort();
   const audit = options.audit ?? createNoopTicketAuditPort();
   const cache = options.cache ?? new InMemoryTicketQueryCache();
+  const slaSettings = options.slaSettings ?? createSupabaseTicketSlaSettingsPort(client);
 
   const commandDeps = {
     tickets,
@@ -54,6 +58,8 @@ export function createTicketPlatformServices(
     events,
     notifications,
     audit,
+    slaSettings,
+    cache,
   };
 
   const commands = new TicketCommandService(commandDeps);
@@ -77,8 +83,26 @@ export { createTicketReadPort } from "./adapters/ticket-query-read-port.js";
 export { TicketCommandService } from "./services/ticket-command-service.js";
 export { TicketQueryService } from "./services/ticket-query-service.js";
 export {
+  computeSlaDueAt,
+  isSlaBreached,
+  isSlaWarning,
+  computeResolutionMinutes,
+  computeResponseMinutes,
+  computeSlaCompliancePercent,
+  defaultSlaHoursByPriority,
+  resolveSlaHoursByPriority,
+  resolveSlaWarningHours,
+  DEFAULT_SLA_WARNING_HOURS,
+} from "./services/ticket-sla-service.js";
+export type {
+  TicketSlaHoursByPriority,
+  TicketSlaSettings,
+} from "./services/ticket-sla-service.js";
+export {
   createNoopTicketAuditPort,
   createNoopTicketEventPublisher,
   createNoopTicketNotificationPort,
+  createNoopTicketSlaSettingsPort,
   createSupabaseTicketAuditPort,
 } from "./ports/noop-ports.js";
+export { createSupabaseTicketSlaSettingsPort } from "./repositories/supabase-ticket-repositories.js";

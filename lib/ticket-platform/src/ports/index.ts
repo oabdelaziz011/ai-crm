@@ -7,4 +7,6 @@ export type {
   TicketNotificationInput,
   TicketNotificationKind,
   TicketNotificationPort,
+  TicketSlaSettingsPort,
+  TicketSlaSettingsRecord,
 } from "./ticket-platform-ports.js";

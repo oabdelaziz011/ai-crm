@@ -38,6 +38,17 @@ export class TicketQueryService {
     return { ticket: toTicketSummary(ticket), comments };
   }
 
+  async findByTicketNumber(
+    ctx: TicketServiceContext,
+    input: { companyId: string; ticketNumber: string },
+  ): Promise<{ ticket: TicketSummary | null }> {
+    assertTicketCompanyAccess(ctx, input.companyId);
+    assertTicketPermission(ctx, TICKET_PERMISSIONS.view);
+
+    const ticket = await this.deps.tickets.findByTicketNumber(input.companyId, input.ticketNumber);
+    return { ticket: ticket ? toTicketSummary(ticket) : null };
+  }
+
   async listCustomerTickets(
     ctx: TicketServiceContext,
     input: { companyId: string; customerId: string; limit?: number },

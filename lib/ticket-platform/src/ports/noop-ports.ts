@@ -4,6 +4,7 @@ import type {
   TicketEventPublisherPort,
   TicketNotificationInput,
   TicketNotificationPort,
+  TicketSlaSettingsPort,
 } from "./ticket-platform-ports.js";
 
 export function createNoopTicketEventPublisher(): TicketEventPublisherPort {
@@ -26,6 +27,14 @@ export function createNoopTicketAuditPort(): TicketAuditPort {
   return {
     async write(): Promise<void> {
       /* optional — DB triggers also write audit_logs */
+    },
+  };
+}
+
+export function createNoopTicketSlaSettingsPort(): TicketSlaSettingsPort {
+  return {
+    async getByCompanyId() {
+      return null;
     },
   };
 }

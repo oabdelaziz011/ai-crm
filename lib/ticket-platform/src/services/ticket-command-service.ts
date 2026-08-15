@@ -16,9 +16,17 @@ import type {
   TicketAuditPort,
   TicketEventPublisherPort,
   TicketNotificationPort,
+  TicketSlaSettingsPort,
 } from "../ports/ticket-platform-ports.js";
+import type { TicketQueryCachePort } from "../cache/ticket-query-cache-port.js";
 import type { TicketCommentRepository, TicketRepository } from "../repositories/ticket-repository-port.js";
-import { computeSlaDueAt, isSlaBreached, isSlaWarning } from "./ticket-sla-service.js";
+import {
+  computeSlaDueAt,
+  isSlaBreached,
+  isSlaWarning,
+  resolveSlaHoursByPriority,
+  resolveSlaWarningHours,
+} from "./ticket-sla-service.js";
 import type { TicketPriority, TicketServiceContext, TicketStatus, TicketSummary } from "../types/ticket-types.js";
 import { toTicketSummary } from "../types/ticket-types.js";
 import {
@@ -41,10 +49,30 @@ export type TicketCommandServiceDeps = {
   events: TicketEventPublisherPort;
   notifications: TicketNotificationPort;
   audit: TicketAuditPort;
+  slaSettings?: TicketSlaSettingsPort;
+  cache?: TicketQueryCachePort;
 };
 
 export class TicketCommandService {
   constructor(private readonly deps: TicketCommandServiceDeps) {}
+
+  private async invalidateCompanyReads(companyId: string): Promise<void> {
+    await this.deps.cache?.invalidateCompany(companyId);
+  }
+
+  private async resolveSlaDueAt(
+    companyId: string,
+    priority: TicketPriority,
+    referenceNow = new Date(),
+  ): Promise<string> {
+    const settings = (await this.deps.slaSettings?.getByCompanyId(companyId)) ?? null;
+    return computeSlaDueAt(priority, referenceNow, resolveSlaHoursByPriority(settings));
+  }
+
+  private async resolveWarningHours(companyId: string): Promise<number> {
+    const settings = (await this.deps.slaSettings?.getByCompanyId(companyId)) ?? null;
+    return resolveSlaWarningHours(settings);
+  }
 
   async createTicket(
     ctx: TicketServiceContext,
@@ -64,7 +92,7 @@ export class TicketCommandService {
     const subject = readRequiredString(input.subject, "Subject");
     const priority = readPriority(input.priority);
     const ticketNumber = await this.deps.tickets.generateTicketNumber(input.companyId);
-    const slaDueAt = computeSlaDueAt(priority);
+    const slaDueAt = await this.resolveSlaDueAt(input.companyId, priority);
 
     const record = await this.deps.tickets.create({
       companyId: input.companyId,
@@ -87,6 +115,7 @@ export class TicketCommandService {
     await this.deps.events.publish(createTicketCreatedEvent(record, actorUserId));
     await this.checkSlaNotifications(record, actorUserId);
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -112,6 +141,7 @@ export class TicketCommandService {
     });
 
     await this.deps.events.publish(createTicketUpdatedEvent(record, actorUserId));
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -174,6 +204,7 @@ export class TicketCommandService {
       conversationId: record.conversationId,
     });
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -201,7 +232,7 @@ export class TicketCommandService {
       resolvedAt: null,
       reopenedAt: now,
       reopenedBy: actorUserId,
-      slaDueAt: computeSlaDueAt(existing.priority),
+      slaDueAt: await this.resolveSlaDueAt(input.companyId, existing.priority),
     });
 
     if (input.reason?.trim()) {
@@ -235,6 +266,7 @@ export class TicketCommandService {
       metadata: { previousStatus: existing.status, newStatus: "open" },
     });
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -252,6 +284,7 @@ export class TicketCommandService {
     await this.writeAudit(input.companyId, actorUserId, "DELETE", "support_ticket", input.ticketId, {});
     await this.deps.events.publish(createTicketDeletedEvent(existing, actorUserId));
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticketId: input.ticketId };
   }
 
@@ -303,6 +336,7 @@ export class TicketCommandService {
       conversationId: record.conversationId,
     });
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -328,6 +362,7 @@ export class TicketCommandService {
     });
 
     await this.deps.events.publish(createTicketAssignedEvent(record, actorUserId, null));
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -347,7 +382,7 @@ export class TicketCommandService {
       ticketId: input.ticketId,
       updatedBy: actorUserId,
       priority,
-      slaDueAt: computeSlaDueAt(priority),
+      slaDueAt: await this.resolveSlaDueAt(input.companyId, priority),
     });
 
     await this.writeAudit(input.companyId, actorUserId, "UPDATE", "support_ticket", input.ticketId, {
@@ -369,6 +404,7 @@ export class TicketCommandService {
     });
     await this.checkSlaNotifications(record, actorUserId);
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -427,6 +463,7 @@ export class TicketCommandService {
       metadata: { previousStatus: existing.status, newStatus: status },
     });
 
+    await this.invalidateCompanyReads(input.companyId);
     return { ticket: toTicketSummary(record) };
   }
 
@@ -478,6 +515,7 @@ export class TicketCommandService {
       metadata: { isInternal, commentId: comment.id },
     });
 
+    await this.invalidateCompanyReads(input.companyId);
     return { commentId: comment.id, ticketId: input.ticketId };
   }
 
@@ -527,7 +565,7 @@ export class TicketCommandService {
       return;
     }
 
-    if (isSlaWarning(ticket.slaDueAt)) {
+    if (isSlaWarning(ticket.slaDueAt, new Date(), await this.resolveWarningHours(ticket.companyId))) {
       await this.deps.notifications.notify({
         kind: "sla_warning",
         companyId: ticket.companyId,

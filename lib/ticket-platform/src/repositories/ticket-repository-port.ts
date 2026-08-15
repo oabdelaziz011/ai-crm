@@ -55,6 +55,7 @@ export interface TicketRepository {
   update(input: UpdateTicketRepositoryInput): Promise<TicketRecord>;
   softDelete(companyId: string, ticketId: string, deletedBy: string): Promise<TicketRecord>;
   findById(companyId: string, ticketId: string): Promise<TicketRecord | null>;
+  findByTicketNumber(companyId: string, ticketNumber: string): Promise<TicketRecord | null>;
   search(filters: TicketSearchFilters): Promise<{ tickets: TicketRecord[]; total: number }>;
   listByCustomer(companyId: string, customerId: string, limit?: number): Promise<TicketRecord[]>;
   listByConversation(companyId: string, conversationId: string): Promise<TicketRecord[]>;

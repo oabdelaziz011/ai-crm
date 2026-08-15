@@ -52,3 +52,17 @@ export interface TicketAssigneeResolverPort {
   loadAssigneeNames(userIds: string[]): Promise<Map<string, string>>;
   findAssigneeCandidates(companyId: string, assigneeName: string): Promise<string[]>;
 }
+
+export type TicketSlaSettingsRecord = {
+  companyId: string;
+  urgentHours: number;
+  highHours: number;
+  normalHours: number;
+  lowHours: number;
+  warningHours: number;
+};
+
+/** Loads per-company SLA hours; return null to use platform defaults. */
+export interface TicketSlaSettingsPort {
+  getByCompanyId(companyId: string): Promise<TicketSlaSettingsRecord | null>;
+}

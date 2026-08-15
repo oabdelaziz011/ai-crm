@@ -19,6 +19,11 @@ export interface TicketReadPort {
     input: { companyId: string; ticketId: string },
   ): Promise<{ ticket: TicketSummary; comments: TicketCommentRecord[] }>;
 
+  findByTicketNumber(
+    access: TicketReadAccessContext,
+    input: { companyId: string; ticketNumber: string },
+  ): Promise<{ ticket: TicketSummary | null }>;
+
   searchTickets(
     access: TicketReadAccessContext,
     input: {
@@ -28,7 +33,11 @@ export interface TicketReadPort {
       priority?: string;
       customerId?: string;
       conversationId?: string;
+      assignedUserId?: string;
+      unassignedOnly?: boolean;
       assigneeName?: string;
+      sortBy?: "updated_at" | "created_at" | "priority" | "status";
+      sortDir?: "asc" | "desc";
       limit?: number;
       offset?: number;
     },

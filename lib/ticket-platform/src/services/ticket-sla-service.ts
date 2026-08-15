@@ -1,8 +1,47 @@
 import { SLA_HOURS_BY_PRIORITY } from "../constants.js";
 import type { TicketPriority } from "../types/ticket-types.js";
 
-export function computeSlaDueAt(priority: TicketPriority, referenceNow = new Date()): string {
-  const hours = SLA_HOURS_BY_PRIORITY[priority];
+export type TicketSlaHoursByPriority = Record<TicketPriority, number>;
+
+export type TicketSlaSettings = {
+  companyId: string;
+  urgentHours: number;
+  highHours: number;
+  normalHours: number;
+  lowHours: number;
+  warningHours: number;
+};
+
+export const DEFAULT_SLA_WARNING_HOURS = 1;
+
+export function defaultSlaHoursByPriority(): TicketSlaHoursByPriority {
+  return { ...SLA_HOURS_BY_PRIORITY };
+}
+
+export function resolveSlaHoursByPriority(
+  settings: TicketSlaSettings | null | undefined,
+): TicketSlaHoursByPriority {
+  if (!settings) return defaultSlaHoursByPriority();
+  return {
+    urgent: settings.urgentHours,
+    high: settings.highHours,
+    normal: settings.normalHours,
+    low: settings.lowHours,
+  };
+}
+
+export function resolveSlaWarningHours(
+  settings: TicketSlaSettings | null | undefined,
+): number {
+  return settings?.warningHours ?? DEFAULT_SLA_WARNING_HOURS;
+}
+
+export function computeSlaDueAt(
+  priority: TicketPriority,
+  referenceNow = new Date(),
+  hoursByPriority: TicketSlaHoursByPriority = SLA_HOURS_BY_PRIORITY,
+): string {
+  const hours = hoursByPriority[priority] ?? SLA_HOURS_BY_PRIORITY[priority];
   const due = new Date(referenceNow.getTime() + hours * 60 * 60 * 1000);
   return due.toISOString();
 }
@@ -12,7 +51,11 @@ export function isSlaBreached(slaDueAt: string | null, referenceNow = new Date()
   return new Date(slaDueAt).getTime() < referenceNow.getTime();
 }
 
-export function isSlaWarning(slaDueAt: string | null, referenceNow = new Date(), warningHours = 1): boolean {
+export function isSlaWarning(
+  slaDueAt: string | null,
+  referenceNow = new Date(),
+  warningHours = DEFAULT_SLA_WARNING_HOURS,
+): boolean {
   if (!slaDueAt) return false;
   const dueMs = new Date(slaDueAt).getTime();
   const nowMs = referenceNow.getTime();

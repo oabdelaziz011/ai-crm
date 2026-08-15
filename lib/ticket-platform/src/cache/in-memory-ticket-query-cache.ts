@@ -20,4 +20,11 @@ export class InMemoryTicketQueryCache implements TicketQueryCachePort {
   async delete(key: string): Promise<void> {
     this.store.delete(key);
   }
+
+  async invalidateCompany(companyId: string): Promise<void> {
+    const needle = `companyId=${companyId}`;
+    for (const key of this.store.keys()) {
+      if (key.includes(needle)) this.store.delete(key);
+    }
+  }
 }

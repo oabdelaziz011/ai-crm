@@ -75,20 +75,28 @@ export type TicketSearchFilters = {
   customerId?: string;
   conversationId?: string;
   assignedUserId?: string;
+  /** When true, only tickets with no assignee (ignores assignedUserId). */
+  unassignedOnly?: boolean;
   assigneeName?: string;
+  sortBy?: "updated_at" | "created_at" | "priority" | "status";
+  sortDir?: "asc" | "desc";
   limit?: number;
   offset?: number;
 };
 
 export type TicketMetricsSnapshot = {
+  totalTickets: number;
   openTickets: number;
   closedToday: number;
+  unassignedTickets: number;
+  highUrgentTickets: number;
   slaCompliancePercent: number;
   averageResponseMinutes: number;
   averageResolutionMinutes: number;
   slaBreaches: number;
   slaBreachesOpen: number;
   slaBreachesClosed: number;
+  slaAtRiskOpen: number;
   ticketsByPriority: Record<string, number>;
   ticketsByStatus: Record<string, number>;
   ticketsByAgent: Array<{ agentId: string; agentName: string; count: number }>;

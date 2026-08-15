@@ -7,6 +7,8 @@ export interface TicketQueryCachePort {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttlMs: number): Promise<void>;
   delete(key: string): Promise<void>;
+  /** Drop every cached entry for a company so post-mutation reads are fresh. */
+  invalidateCompany(companyId: string): Promise<void>;
 }
 
 export function buildTicketQueryCacheKey(parts: Record<string, string | number | undefined>): string {

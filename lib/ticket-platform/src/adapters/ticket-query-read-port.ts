@@ -8,6 +8,10 @@ export function createTicketReadPort(queries: TicketQueryService): TicketReadPor
       return queries.getTicket(access, input);
     },
 
+    findByTicketNumber(access, input) {
+      return queries.findByTicketNumber(access, input);
+    },
+
     searchTickets(access, input) {
       return queries.searchTickets(access, {
         companyId: input.companyId,
@@ -16,7 +20,11 @@ export function createTicketReadPort(queries: TicketQueryService): TicketReadPor
         priority: input.priority as TicketPriority | undefined,
         customerId: input.customerId,
         conversationId: input.conversationId,
+        assignedUserId: input.assignedUserId,
+        unassignedOnly: input.unassignedOnly,
         assigneeName: input.assigneeName,
+        sortBy: input.sortBy,
+        sortDir: input.sortDir,
         limit: input.limit,
         offset: input.offset,
       });

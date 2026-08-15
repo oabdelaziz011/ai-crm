@@ -8,6 +8,7 @@ import {
   TicketAssigneeNotFoundError,
 } from "../errors.js";
 import type { TicketAssigneeResolverPort } from "../ports/ticket-platform-ports.js";
+import type { TicketSlaSettingsPort } from "../ports/ticket-platform-ports.js";
 import type {
   CreateTicketRepositoryInput,
   TicketCommentRepository,
@@ -251,19 +252,48 @@ export function createSupabaseTicketRepository(client: SupabaseClient): TicketRe
       return hydrated ?? null;
     },
 
+    async findByTicketNumber(companyId, ticketNumber) {
+      const normalized = ticketNumber.trim();
+      if (!normalized) return null;
+
+      const { data, error } = await client
+        .from("support_tickets")
+        .select("*")
+        .eq("company_id", companyId)
+        .ilike("ticket_number", normalized)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+
+      const [hydrated] = await hydrateAssigneeNames(client, [mapTicketRow(data as Record<string, unknown>)]);
+      return hydrated ?? null;
+    },
+
     async search(filters) {
+      const sortColumn =
+        filters.sortBy === "created_at"
+          ? "created_at"
+          : filters.sortBy === "priority"
+            ? "priority"
+            : filters.sortBy === "status"
+              ? "status"
+              : "updated_at";
+      const ascending = filters.sortDir === "asc";
+
       let query = client
         .from("support_tickets")
         .select("*", { count: "exact" })
         .eq("company_id", filters.companyId)
         .is("deleted_at", null)
-        .order("updated_at", { ascending: false });
+        .order(sortColumn, { ascending });
 
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.priority) query = query.eq("priority", filters.priority);
       if (filters.customerId) query = query.eq("customer_id", filters.customerId);
       if (filters.conversationId) query = query.eq("conversation_id", filters.conversationId);
       if (filters.assignedUserId) query = query.eq("assigned_user_id", filters.assignedUserId);
+      if (filters.unassignedOnly) query = query.is("assigned_user_id", null);
 
       const keyword = filters.query?.trim();
       if (keyword) {
@@ -425,14 +455,18 @@ export function createSupabaseTicketRepository(client: SupabaseClient): TicketRe
         : [];
 
       return {
+        totalTickets: Number(payload.totalTickets ?? 0),
         openTickets: Number(payload.openTickets ?? 0),
         closedToday: Number(payload.closedToday ?? 0),
+        unassignedTickets: Number(payload.unassignedTickets ?? 0),
+        highUrgentTickets: Number(payload.highUrgentTickets ?? 0),
         slaCompliancePercent: Number(payload.slaCompliancePercent ?? 100),
         averageResponseMinutes: Number(payload.averageResponseMinutes ?? 0),
         averageResolutionMinutes: Number(payload.averageResolutionMinutes ?? 0),
         slaBreaches: Number(payload.slaBreaches ?? 0),
         slaBreachesOpen: Number(payload.slaBreachesOpen ?? 0),
         slaBreachesClosed: Number(payload.slaBreachesClosed ?? 0),
+        slaAtRiskOpen: Number(payload.slaAtRiskOpen ?? 0),
         ticketsByPriority: (payload.ticketsByPriority as Record<string, number>) ?? {},
         ticketsByStatus: (payload.ticketsByStatus as Record<string, number>) ?? {},
         ticketsByAgent,
@@ -468,6 +502,35 @@ export function createSupabaseTicketCommentRepository(client: SupabaseClient): T
         .order("created_at", { ascending: true });
       if (error) throw new Error(error.message);
       return (data ?? []).map((row) => mapCommentRow(row as Record<string, unknown>));
+    },
+  };
+}
+
+export function createSupabaseTicketSlaSettingsPort(
+  client: SupabaseClient,
+): TicketSlaSettingsPort {
+  return {
+    async getByCompanyId(companyId) {
+      const { data, error } = await client
+        .from("company_ticket_sla_settings")
+        .select(
+          "company_id, urgent_hours, high_hours, normal_hours, low_hours, warning_hours",
+        )
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (error) {
+        console.warn("[ticket-platform] SLA settings load failed:", error.message);
+        return null;
+      }
+      if (!data) return null;
+      return {
+        companyId: String(data.company_id),
+        urgentHours: Number(data.urgent_hours),
+        highHours: Number(data.high_hours),
+        normalHours: Number(data.normal_hours),
+        lowHours: Number(data.low_hours),
+        warningHours: Number(data.warning_hours),
+      };
     },
   };
 }

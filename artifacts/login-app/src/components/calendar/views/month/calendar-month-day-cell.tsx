@@ -48,11 +48,11 @@ export function CalendarMonthDayCell({
       onClick={() => onDayClick?.(day.cell.date)}
       onFocus={() => onFocusDate?.(day.cell.date)}
       className={cn(
-        "min-h-[108px] border-b border-r border-white/10 p-1.5 text-left align-top transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60",
-        !day.cell.inCurrentMonth && "bg-black/10 text-muted-foreground",
+        "min-h-[108px] border-b border-e border-border bg-background p-1.5 text-start align-top transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60",
+        !day.cell.inCurrentMonth && "text-muted-foreground/50",
         isToday && "bg-primary/5",
         isSelected && "ring-2 ring-inset ring-primary/40",
-        isFocused && !isSelected && "bg-white/[0.03]",
+        isFocused && !isSelected && "bg-primary/5",
       )}
     >
       <div className="mb-1 flex items-center justify-between">

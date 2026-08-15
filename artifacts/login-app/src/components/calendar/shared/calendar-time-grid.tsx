@@ -23,14 +23,14 @@ export function CalendarTimeGrid({
   const hours = getCalendarVisibleHours(startHour, endHour);
 
   return (
-    <div className={cn("border-r border-white/10", className)}>
+    <div className={cn("border-r border-border/60", className)}>
       {headerOffset > 0 && (
-        <div className="border-b border-white/10" style={{ height: headerOffset }} />
+        <div className="border-b border-border/60" style={{ height: headerOffset }} />
       )}
       {hours.map((hour) => (
         <div
           key={hour}
-          className="border-b border-white/5 px-2 text-[10px] text-muted-foreground flex items-start pt-1"
+          className="border-b border-border/40 px-2 text-[10px] text-muted-foreground flex items-start pt-1"
           style={{ height: CALENDAR_HOUR_ROW_HEIGHT_PX }}
         >
           {String(hour).padStart(2, "0")}:00
@@ -61,12 +61,12 @@ export function CalendarTimeGridBody({
   return (
     <div className={cn("relative", className)}>
       {headerOffset > 0 && (
-        <div className="border-b border-white/10" style={{ height: headerOffset }} />
+        <div className="border-b border-border/60" style={{ height: headerOffset }} />
       )}
       {hours.map((hour) => (
         <div
           key={hour}
-          className="border-b border-white/5"
+          className="border-b border-border/40"
           style={{ height: CALENDAR_HOUR_ROW_HEIGHT_PX }}
         />
       ))}

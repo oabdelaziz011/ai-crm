@@ -43,10 +43,10 @@ export function CalendarResourceColumn({
     preview.resourceId === lane.resourceId;
 
   return (
-    <div className="flex border-b border-white/10" style={{ minHeight: lane.laneHeightPx }}>
+    <div className="flex border-b border-border/60" style={{ minHeight: lane.laneHeightPx }}>
       {showResourceLabel && (
         <div
-          className="shrink-0 border-r border-white/10 px-3 py-3 text-xs font-medium truncate"
+          className="shrink-0 border-r border-border/60 px-3 py-3 text-xs font-medium truncate"
           style={{ width: resourceLabelWidth }}
           title={lane.resourceName}
         >
@@ -62,7 +62,7 @@ export function CalendarResourceColumn({
           {hours.map((hour) => (
             <div
               key={hour}
-              className={cn("h-full border-r border-white/5")}
+              className={cn("h-full border-r border-border/40")}
               style={{ width: timelineHourWidth }}
             />
           ))}

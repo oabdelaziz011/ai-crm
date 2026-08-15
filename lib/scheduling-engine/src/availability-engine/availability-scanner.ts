@@ -101,18 +101,7 @@ async function resolveResourceDateSlots(
     referenceNow: Date;
   },
 ): Promise<DateSlotSnapshot> {
-  const availability = await engines.resolveAvailability(
-    input.companyId,
-    input.resourceId,
-    input.serviceId,
-    input.date,
-    { respectBookingRules: true, referenceNow: input.referenceNow },
-  );
-
-  if (!availability.available) {
-    return { available: false, slots: [], timezone: "UTC", durationMinutes: 0 };
-  }
-
+  // getAvailableSlots already loads availability context — avoid a second full DB round-trip.
   const resolved = await engines.getAvailableSlots(
     input.companyId,
     input.resourceId,
@@ -138,6 +127,28 @@ async function resolveResourceDateSlots(
   };
 }
 
+async function mapPool<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const current = nextIndex;
+      nextIndex += 1;
+      results[current] = await mapper(items[current]!);
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()));
+  return results;
+}
+
 function resolveDatesToScan(input: ScanAvailableDatesInput, searchedWindow: number): string[] {
   if (input.singleDate) {
     return input.singleDate >= input.startDate ? [input.singleDate] : [];
@@ -154,21 +165,27 @@ export async function scanAvailableDates(
   const datesToScan = resolveDatesToScan(input, searchedWindow);
   const availableDatesSet = new Set<string>();
   const resources: ScannedResourceAvailability[] = [];
+  // Parallelize day scans — sequential 14-day WhatsApp lookups were 15–25s.
+  const dateConcurrency = Math.min(6, Math.max(2, datesToScan.length));
 
   for (const resource of input.resources) {
-    const resourceAvailableDates: string[] = [];
-    const slots: ScannedAvailabilitySlot[] = [];
-    let durationMinutes = input.durationMinutes;
-
-    for (const date of datesToScan) {
-      const snapshot = await resolveResourceDateSlots(engines, {
+    const snapshots = await mapPool(datesToScan, dateConcurrency, (date) =>
+      resolveResourceDateSlots(engines, {
         companyId: input.companyId,
         serviceId: input.serviceId,
         resourceId: resource.resourceId,
         date,
         referenceNow,
-      });
+      }),
+    );
 
+    const resourceAvailableDates: string[] = [];
+    const slots: ScannedAvailabilitySlot[] = [];
+    let durationMinutes = input.durationMinutes;
+
+    for (let index = 0; index < datesToScan.length; index += 1) {
+      const date = datesToScan[index]!;
+      const snapshot = snapshots[index]!;
       if (!snapshot.available) continue;
 
       durationMinutes = snapshot.durationMinutes || durationMinutes;

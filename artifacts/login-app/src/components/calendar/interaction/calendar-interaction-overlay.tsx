@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   CALENDAR_DAY_END_HOUR,
   CALENDAR_DAY_START_HOUR,
+  CALENDAR_HOUR_ROW_HEIGHT_PX,
 } from "@/lib/calendar/constants/calendar-time-grid-config";
 
 type CalendarInteractionOverlayProps = {
@@ -15,6 +16,7 @@ type CalendarInteractionOverlayProps = {
   axis: "vertical" | "horizontal";
   label?: string;
   className?: string;
+  hourRowHeight?: number;
 };
 
 export function CalendarInteractionOverlay({
@@ -22,6 +24,7 @@ export function CalendarInteractionOverlay({
   axis,
   label,
   className,
+  hourRowHeight = CALENDAR_HOUR_ROW_HEIGHT_PX,
 }: CalendarInteractionOverlayProps) {
   if (!preview) return null;
 
@@ -32,6 +35,7 @@ export function CalendarInteractionOverlay({
           preview.durationMinutes,
           CALENDAR_DAY_START_HOUR,
           CALENDAR_DAY_END_HOUR,
+          hourRowHeight,
         )
       : previewStyleHorizontal(
           preview.slotStart,
@@ -45,7 +49,7 @@ export function CalendarInteractionOverlay({
       aria-hidden
       className={cn(
         "pointer-events-none absolute z-30 rounded-md border-2 border-dashed border-primary/70 bg-primary/10",
-        axis === "vertical" ? "left-1 right-1" : "top-1 bottom-1",
+        axis === "vertical" ? "inset-x-1.5" : "top-1 bottom-1",
         className,
       )}
       style={style}

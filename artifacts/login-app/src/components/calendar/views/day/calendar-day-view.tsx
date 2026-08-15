@@ -60,11 +60,11 @@ export function CalendarDayView({
   }
 
   return (
-    <CalendarTimeGridScroll
-      ref={scrollRef}
-      hourRowHeight={hourRowHeight}
-      bodyClassName="min-h-full"
-    >
+    <div className="h-full min-h-0">
+      <CalendarTimeGridScroll
+        ref={scrollRef}
+        hourRowHeight={hourRowHeight}
+      >
       <CalendarNowIndicator percent={nowPercent} />
       {dayEvents
         .filter((event) => !interaction?.hiddenEventIds.has(event.id))
@@ -77,19 +77,22 @@ export function CalendarDayView({
             gridSizePx={gridHeight}
             axis="vertical"
             handlers={interaction?.handlers}
-            style={{
-              ...layoutEventInDayGrid(event, CALENDAR_DAY_START_HOUR, CALENDAR_DAY_END_HOUR),
-              left: 4,
-              right: 4,
-            }}
+            style={layoutEventInDayGrid(
+              event,
+              CALENDAR_DAY_START_HOUR,
+              CALENDAR_DAY_END_HOUR,
+              hourRowHeight,
+            )}
           />
         ))}
       {interaction && (
         <CalendarInteractionOverlay
           preview={interaction.interactionState.preview}
           axis="vertical"
+          hourRowHeight={hourRowHeight}
         />
       )}
-    </CalendarTimeGridScroll>
+      </CalendarTimeGridScroll>
+    </div>
   );
 }

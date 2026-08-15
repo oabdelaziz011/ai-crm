@@ -8,15 +8,16 @@ type CalendarShellProps = {
   className?: string;
 };
 
+/** Full-height calendar chrome — grid stretches to the bottom of the main pane. */
 export function CalendarShell({ toolbar, filters, children, className }: CalendarShellProps) {
   return (
     <section
       aria-label="Calendar"
-      className={cn("flex flex-col gap-4", className)}
+      className={cn("flex min-h-0 flex-1 flex-col gap-3 bg-background", className)}
     >
-      {toolbar}
-      {filters}
-      <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden min-h-[520px]">
+      <div className="shrink-0 space-y-3">{toolbar}</div>
+      {filters ? <div className="shrink-0">{filters}</div> : null}
+      <div className="min-h-0 flex-1 overflow-hidden border border-border bg-background">
         {children}
       </div>
     </section>

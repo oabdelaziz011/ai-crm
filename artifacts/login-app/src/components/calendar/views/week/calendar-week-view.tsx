@@ -1,5 +1,7 @@
 import { addDays, format, parseISO } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { CalendarEvent } from "@/lib/calendar/types/calendar-event";
 import { layoutEventInDayGrid } from "@/lib/calendar/layout/day-grid-layout";
 import { CalendarEmptyState } from "@/components/calendar/overlays/calendar-empty-state";
@@ -14,6 +16,7 @@ import {
 } from "@/lib/calendar/constants/calendar-time-grid-config";
 import { useNowIndicator } from "@/hooks/calendar/use-now-indicator";
 import { nowService } from "@/hooks/calendar/use-now-indicator";
+import { cn } from "@/lib/utils";
 
 const WEEK_HEADER_HEIGHT = 40;
 
@@ -54,6 +57,8 @@ export function CalendarWeekView({
   onCreateBooking,
   canCreate,
 }: CalendarWeekViewProps) {
+  const { i18n } = useTranslation("common");
+  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
   const scrollRef = useRef<HTMLDivElement>(null);
   const weekDates = useMemo(
     () => buildWeekDates(startDate, endDate),
@@ -96,83 +101,97 @@ export function CalendarWeekView({
   }
 
   return (
-    <div className="min-h-[640px]">
+    <div className="flex h-full min-h-0 flex-col bg-background">
       <div
-        className="grid border-b border-white/10"
+        className="grid shrink-0 border-b border-border bg-background"
         style={{ gridTemplateColumns: `56px repeat(${weekDates.length}, minmax(0, 1fr))` }}
       >
         <div style={{ height: WEEK_HEADER_HEIGHT }} />
-        {weekDates.map((date) => (
-          <div
-            key={`header-${date}`}
-            className="border-l border-white/10 px-2 py-2 text-center text-xs font-medium"
-            style={{ height: WEEK_HEADER_HEIGHT }}
-          >
-            {format(parseISO(`${date}T12:00:00`), "EEE d")}
-          </div>
-        ))}
+        {weekDates.map((date) => {
+          const isToday = date === today;
+          return (
+            <div
+              key={`header-${date}`}
+              className={cn(
+                "border-s border-border px-2 py-2 text-center text-xs font-medium",
+                isToday && "text-primary",
+              )}
+              style={{ height: WEEK_HEADER_HEIGHT }}
+            >
+              {format(parseISO(`${date}T12:00:00`), "EEE d", { locale: dateLocale })}
+            </div>
+          );
+        })}
       </div>
 
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: `56px minmax(0, 1fr)` }}
-      >
-        <div className="border-r border-white/10">
-          {hours.map((hour) => (
-            <div
-              key={hour}
-              className="border-b border-white/5 px-2 text-[10px] text-muted-foreground flex items-start pt-1"
-              style={hourStyle}
-            >
-              {String(hour).padStart(2, "0")}:00
-            </div>
-          ))}
-        </div>
-
-        <div ref={scrollRef} className="max-h-[640px] overflow-y-auto overflow-x-hidden">
-          <div
-            className="relative grid"
-            style={{
-              gridTemplateColumns: `repeat(${weekDates.length}, minmax(0, 1fr))`,
-              minHeight: gridHeight,
-            }}
-            role="grid"
-          >
-            {weekDates.map((date) => (
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `56px repeat(${weekDates.length}, minmax(0, 1fr))`,
+            height: gridHeight,
+          }}
+          role="grid"
+        >
+          <div className="border-e border-border bg-background" style={{ height: gridHeight }}>
+            {hours.map((hour) => (
               <div
-                key={date}
-                className="relative border-l border-white/10"
-                onPointerEnter={() => interaction?.onTargetDateChange?.(date)}
-                data-date={date}
+                key={hour}
+                className="flex items-start border-b border-border px-2 pt-1 text-[10px] text-muted-foreground"
+                style={hourStyle}
               >
-                {date === today && <CalendarNowIndicator percent={nowPercent} />}
-                {(eventsByDate.get(date) ?? [])
-                  .filter((event) => !interaction?.hiddenEventIds.has(event.id))
-                  .map((event) => (
-                    <InteractiveCalendarEventBlock
-                      key={`${event.id}-${event.version}`}
-                      event={event}
-                      date={date}
-                      selected={selectedEventId === event.id}
-                      gridSizePx={gridHeight}
-                      axis="vertical"
-                      handlers={interaction?.handlers}
-                      style={{
-                        ...layoutEventInDayGrid(event, CALENDAR_DAY_START_HOUR, CALENDAR_DAY_END_HOUR),
-                        left: 4,
-                        right: 4,
-                      }}
-                    />
-                  ))}
-                {previewDate === date && interaction && (
-                  <CalendarInteractionOverlay
-                    preview={interaction.interactionState.preview}
-                    axis="vertical"
-                  />
-                )}
+                {String(hour).padStart(2, "0")}:00
               </div>
             ))}
           </div>
+
+          {weekDates.map((date) => (
+            <div
+              key={date}
+              className="relative border-s border-border bg-background"
+              style={{ height: gridHeight }}
+              onPointerEnter={() => interaction?.onTargetDateChange?.(date)}
+              data-date={date}
+            >
+              {hours.map((hour) => (
+                <div
+                  key={`${date}-${hour}`}
+                  className="pointer-events-none absolute inset-x-0 border-b border-border/70"
+                  style={{
+                    top: (hour - CALENDAR_DAY_START_HOUR) * hourRowHeight,
+                    height: hourRowHeight,
+                  }}
+                />
+              ))}
+              {date === today && <CalendarNowIndicator percent={nowPercent} />}
+              {(eventsByDate.get(date) ?? [])
+                .filter((event) => !interaction?.hiddenEventIds.has(event.id))
+                .map((event) => (
+                  <InteractiveCalendarEventBlock
+                    key={`${event.id}-${event.version}`}
+                    event={event}
+                    date={date}
+                    selected={selectedEventId === event.id}
+                    gridSizePx={gridHeight}
+                    axis="vertical"
+                    handlers={interaction?.handlers}
+                    style={layoutEventInDayGrid(
+                      event,
+                      CALENDAR_DAY_START_HOUR,
+                      CALENDAR_DAY_END_HOUR,
+                      hourRowHeight,
+                    )}
+                  />
+                ))}
+              {previewDate === date && interaction && (
+                <CalendarInteractionOverlay
+                  preview={interaction.interactionState.preview}
+                  axis="vertical"
+                  hourRowHeight={hourRowHeight}
+                />
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

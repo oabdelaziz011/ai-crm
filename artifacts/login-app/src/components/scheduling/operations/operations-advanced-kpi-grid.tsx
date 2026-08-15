@@ -66,7 +66,7 @@ export function OperationsAdvancedKpiGrid({ kpis, loading }: OperationsAdvancedK
       </div>
 
       {kpis.hourlyDistribution.length > 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-border/60 bg-muted/10 p-4">
           <h4 className="mb-3 text-sm font-medium">{t("scheduling.operations.analytics.hourlyDistribution")}</h4>
           <div className="flex items-end gap-1 overflow-x-auto pb-1" role="img" aria-label={t("scheduling.operations.analytics.hourlyDistribution")}>
             {kpis.hourlyDistribution.map((bucket) => {

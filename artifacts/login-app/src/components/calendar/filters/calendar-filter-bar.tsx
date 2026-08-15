@@ -10,6 +10,9 @@ import { SCHEDULING_BOOKING_STATUSES } from "@/lib/scheduling/booking-domain";
 import type { CalendarFilters } from "@/lib/calendar/types/calendar-view-state";
 import { useTranslation } from "react-i18next";
 
+/** Statuses shown in the filter strip — skip rescheduled (not a day-state). */
+const FILTER_STATUSES = SCHEDULING_BOOKING_STATUSES.filter((status) => status !== "rescheduled");
+
 type CalendarFilterOption = {
   id: string;
   name: string;
@@ -39,14 +42,12 @@ export function CalendarFilterBar({
     filters.resourceIds === "all" ? "all" : (filters.resourceIds[0] ?? "all");
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/10 px-3 py-2">
-      <span className="text-xs text-muted-foreground">{t("calendar.filters.label")}</span>
-
+    <div className="flex flex-wrap items-center gap-2 border-y border-border bg-background py-2">
       <Select
         value={filters.branchId ?? "all"}
         onValueChange={(value) => onBranchChange(value === "all" ? null : value)}
       >
-        <SelectTrigger className="h-8 w-[160px] border-white/10 text-xs">
+        <SelectTrigger className="h-8 w-[150px] border-border bg-background text-xs">
           <SelectValue placeholder={t("calendar.filters.branch")} />
         </SelectTrigger>
         <SelectContent>
@@ -65,7 +66,7 @@ export function CalendarFilterBar({
           onResourceChange(value === "all" ? "all" : [value])
         }
       >
-        <SelectTrigger className="h-8 w-[180px] border-white/10 text-xs">
+        <SelectTrigger className="h-8 w-[160px] border-border bg-background text-xs">
           <SelectValue placeholder={t("calendar.filters.resource")} />
         </SelectTrigger>
         <SelectContent>
@@ -79,23 +80,21 @@ export function CalendarFilterBar({
       </Select>
 
       <div className="flex flex-wrap items-center gap-1">
-        {SCHEDULING_BOOKING_STATUSES.filter((status) => status !== "rescheduled").map(
-          (status) => {
-            const active = filters.statuses.includes(status);
-            return (
-              <Button
-                key={status}
-                type="button"
-                size="sm"
-                variant={active ? "secondary" : "ghost"}
-                className="h-7 px-2 text-[11px]"
-                onClick={() => onToggleStatus(status)}
-              >
-                {t(`calendar.status.${status}`)}
-              </Button>
-            );
-          },
-        )}
+        {FILTER_STATUSES.map((status) => {
+          const active = filters.statuses.includes(status);
+          return (
+            <Button
+              key={status}
+              type="button"
+              size="sm"
+              variant={active ? "secondary" : "outline"}
+              className="h-7 border-border bg-background px-2 text-[11px]"
+              onClick={() => onToggleStatus(status)}
+            >
+              {t(`calendar.status.${status}`)}
+            </Button>
+          );
+        })}
       </div>
 
       <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onClear}>

@@ -78,6 +78,7 @@ export function useOperationsContactActions(companyId: string | null) {
     await ConversationService.openWhatsappConversation({
       customerId: booking.customerId,
       companyId,
+      phone: booking.customer?.phone,
       navigate: setLocation,
       onCloseProfile: onClose,
     });

@@ -43,5 +43,5 @@ export function CalendarLoadingBoundary({
     );
   }
 
-  return <>{children}</>;
+  return <div className="h-full min-h-0">{children}</div>;
 }

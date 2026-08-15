@@ -88,7 +88,7 @@ export function OperationsVirtualTimeline({
 
   if (slots.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-background/30 p-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border border-border/60 bg-background p-8 text-center text-sm text-muted-foreground">
         {t("scheduling.operations.timeline.empty")}
       </div>
     );
@@ -97,7 +97,7 @@ export function OperationsVirtualTimeline({
   return (
     <div
       ref={scrollRef}
-      className="relative max-h-[520px] overflow-y-auto scroll-smooth rounded-xl border border-white/10"
+      className="relative max-h-[520px] overflow-y-auto scroll-smooth rounded-xl border border-border/60"
       onScroll={handleScroll}
       role="list"
       aria-label={t("scheduling.operations.timeline.title")}

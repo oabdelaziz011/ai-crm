@@ -2,21 +2,17 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
-import { DashboardCard, DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
+import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
 import { OperationsHeader } from "@/components/scheduling/operations/operations-header";
 import { OperationsKpiGrid } from "@/components/scheduling/operations/operations-kpi-grid";
 import { OperationsVirtualTimeline } from "@/components/scheduling/operations/operations-virtual-timeline";
 import type { TimelineDropTarget } from "@/components/scheduling/operations/operations-virtual-timeline";
-import { OperationsDailyStatsPanel } from "@/components/scheduling/operations/operations-daily-stats";
 import { OperationsBookingDrawer } from "@/components/scheduling/operations/operations-booking-drawer";
 import { OperationsCancelModal } from "@/components/scheduling/operations/operations-cancel-modal";
 import { OperationsRescheduleModal } from "@/components/scheduling/operations/operations-reschedule-modal";
-import { OperationsCapacityMeter } from "@/components/scheduling/operations/operations-capacity-meter";
 import { OperationsWaitingQueuePanel } from "@/components/scheduling/operations/operations-waiting-queue-panel";
-import { OperationsResourceUtilization } from "@/components/scheduling/operations/operations-resource-utilization";
-import { OperationsAdvancedKpiGrid } from "@/components/scheduling/operations/operations-advanced-kpi-grid";
 import {
   OperationsDragRescheduleDialog,
   type DragRescheduleTarget,
@@ -56,27 +52,6 @@ import { useCustomersEnrichment } from "@/hooks/use-customers";
 import type { BookingConflictDetail } from "@/lib/scheduling/operations/conflicts";
 
 const exportService = new OperationsExportService(new OperationsRepository(supabase));
-
-const EMPTY_CAPACITY = {
-  occupancyPercent: 0,
-  availabilityPercent: 100,
-  utilizationPercent: 0,
-  bookedSlots: 0,
-  availableSlots: 0,
-  totalSlots: 0,
-};
-
-const EMPTY_ADVANCED = {
-  peakHour: null,
-  peakHourBookings: 0,
-  averageDelayMinutes: 0,
-  averageWaitMinutes: 0,
-  cancellationRate: 0,
-  noShowRate: 0,
-  resourceUtilizationPercent: 0,
-  todaysLoad: 0,
-  hourlyDistribution: [],
-};
 
 export function OperationsPage() {
   const { t } = useTranslation("common");
@@ -302,7 +277,7 @@ export function OperationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 bg-background">
       <OperationsHeader
         filters={filters}
         onFiltersChange={updateFilters}
@@ -333,48 +308,26 @@ export function OperationsPage() {
         loading={isLoading}
       />
 
-      <OperationsCapacityMeter metrics={data?.capacity ?? EMPTY_CAPACITY} loading={isLoading} />
-
-      <OperationsAdvancedKpiGrid kpis={data?.advancedKpis ?? EMPTY_ADVANCED} loading={isLoading} />
-
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <DashboardCard className="p-5">
-          <h3 className="mb-4 font-semibold">{t("scheduling.operations.timeline.title")}</h3>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="border border-border bg-background p-4">
+          <h2 className="mb-3 text-sm font-semibold">
+            {t("scheduling.operations.timeline.title")}
+          </h2>
           <OperationsVirtualTimeline
             slots={data?.timelineSlots ?? []}
             onSelectBooking={setSelectedBookingId}
             onQuickAction={(action, bookingId) => void handleQuickAction(action, bookingId)}
             onDropBooking={(target) => void handleTimelineDrop(target)}
           />
-        </DashboardCard>
-
-        <div className="space-y-6">
-          <OperationsWaitingQueuePanel
-            entries={data?.waitingQueue ?? []}
-            bookings={data?.bookings ?? []}
-            onSelectBooking={setSelectedBookingId}
-            loading={isLoading}
-          />
-          <OperationsDailyStatsPanel
-            stats={
-              data?.dailyStats ?? {
-                totalBookings: 0,
-                completed: 0,
-                cancelled: 0,
-                noShow: 0,
-                available: 0,
-                occupancyPercent: 0,
-                revenueCents: 0,
-                averageDurationMinutes: 0,
-                averageWaitingMinutes: 0,
-              }
-            }
-            loading={isLoading}
-          />
         </div>
-      </div>
 
-      <OperationsResourceUtilization rows={data?.resourceUtilization ?? []} loading={isLoading} />
+        <OperationsWaitingQueuePanel
+          entries={data?.waitingQueue ?? []}
+          bookings={data?.bookings ?? []}
+          onSelectBooking={setSelectedBookingId}
+          loading={isLoading}
+        />
+      </div>
 
       <OperationsBookingDrawer
         booking={selectedBooking}

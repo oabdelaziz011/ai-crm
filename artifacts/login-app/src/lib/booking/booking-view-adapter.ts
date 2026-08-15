@@ -63,6 +63,7 @@ export function schedulingBookingToAppBooking(
     resource_id: row.resource_id,
     scheduling_status: row.status,
     source: row.source,
+    confirmation_number: row.confirmation_number ?? null,
   };
 }
 

@@ -25,7 +25,7 @@ export function CalendarZoomControl({ zoomLevel, onZoomChange }: CalendarZoomCon
     <Button
       variant="outline"
       size="sm"
-      className="border-white/10 gap-2"
+      className="border-border gap-2"
       onClick={cycle}
       title={t("calendar.interaction.zoomHint")}
     >

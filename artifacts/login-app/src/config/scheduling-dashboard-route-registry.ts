@@ -45,7 +45,8 @@ export const SCHEDULING_DASHBOARD_ROUTE_REGISTRY: readonly SchedulingDashboardRo
     nestedPath: "/bookings",
     titleKey: "scheduling.dashboard.nav.bookings",
     permission: "bookings.view",
-    externalPath: "/dashboard/bookings",
+    /** Legacy bookings list → Universal Operations queue. */
+    externalPath: "/dashboard/operations",
   },
   {
     id: "availability",
@@ -88,7 +89,10 @@ export const SCHEDULING_DASHBOARD_ROUTE_REGISTRY: readonly SchedulingDashboardRo
 ];
 
 export function schedulingDashboardNavItems() {
-  return SCHEDULING_DASHBOARD_ROUTE_REGISTRY;
+  // Calendar lives as its own sidebar module; bookings list → operations.
+  return SCHEDULING_DASHBOARD_ROUTE_REGISTRY.filter(
+    (route) => route.id !== "bookings" && route.id !== "calendar",
+  );
 }
 
 export const SCHEDULING_DASHBOARD_DEFAULT_NESTED_PATH = "/operations";

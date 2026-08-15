@@ -121,7 +121,7 @@ export function ResourceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-lg border-white/10 bg-card max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg border-border/60 bg-card max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit
@@ -137,7 +137,7 @@ export function ResourceFormDialog({
               id="resource-name"
               disabled={!canEdit}
               {...form.register("name")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
             {form.formState.errors.name && (
               <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
@@ -149,7 +149,7 @@ export function ResourceFormDialog({
             <select
               id="resource-type"
               disabled={!canEdit}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
               {...form.register("resource_type")}
             >
               {SCHEDULING_RESOURCE_TYPES.map((type) => (
@@ -165,7 +165,7 @@ export function ResourceFormDialog({
             <select
               id="resource-branch"
               disabled={!canEdit}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
               value={form.watch("branch_id") ?? ""}
               onChange={(e) =>
                 form.setValue("branch_id", e.target.value ? e.target.value : null)
@@ -186,7 +186,7 @@ export function ResourceFormDialog({
               <select
                 id="resource-status"
                 disabled={!canEdit}
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
                 {...form.register("status")}
               >
                 {SCHEDULING_RESOURCE_STATUSES.map((status) => (
@@ -201,7 +201,7 @@ export function ResourceFormDialog({
               <select
                 id="resource-timezone"
                 disabled={!canEdit}
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
                 {...form.register("timezone")}
               >
                 {COMMON_TIMEZONES.map((tz) => (
@@ -221,12 +221,12 @@ export function ResourceFormDialog({
               id="resource-description"
               disabled={!canEdit}
               rows={3}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm resize-none"
+              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm resize-none"
               {...form.register("description")}
             />
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-background/20 p-3 space-y-3">
+          <div className="rounded-xl border border-border/60 bg-background p-3 space-y-3">
             <CapabilityMultiSelect
               label={t("scheduling.capabilities.resourceServicesTitle")}
               items={serviceItems}
@@ -245,7 +245,7 @@ export function ResourceFormDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} className="border-white/10">
+            <Button type="button" variant="outline" onClick={onClose} className="border-border/60">
               {t("buttons.cancel")}
             </Button>
             {canEdit && (

@@ -87,6 +87,7 @@ export type CalendarEventRecord = {
   discount_cents?: number | null;
   tax_cents?: number | null;
   invoice_id?: string | null;
+  confirmation_number?: string | null;
   customers?: { id: string; name: string } | null;
   scheduling_services?: {
     id: string;

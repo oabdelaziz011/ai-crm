@@ -56,6 +56,8 @@ export type SchedulingBooking = {
   updated_at: string;
   deleted_at: string | null;
   invoice_id?: string | null;
+  /** Company-scoped sequential reference, e.g. BK-000123. */
+  confirmation_number?: string | null;
 };
 
 export type SchedulingBookingInsert = {

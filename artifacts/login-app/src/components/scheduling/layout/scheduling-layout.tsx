@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Redirect, Route, Switch } from "wouter";
+import { Redirect, Route, Switch, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
   SCHEDULING_DEFAULT_NESTED_PATH,
@@ -7,7 +7,9 @@ import {
 } from "@/config/scheduling-route-registry";
 import { SchedulingRouteGuard } from "@/components/scheduling/layout/scheduling-route-guard";
 import { SchedulingSubNav } from "@/components/scheduling/layout/scheduling-sub-nav";
+import { ModulePageHeader } from "@/components/dashboard/module-page-header";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+import { Button } from "@/components/ui/button";
 import { NEST_INDEX } from "@/lib/routing";
 import { SchedulingResourceProfilePage } from "@/pages/dashboard/settings/scheduling/scheduling-resource-profile-page";
 import { SchedulingServiceProfilePage } from "@/pages/dashboard/settings/scheduling/scheduling-service-profile-page";
@@ -17,15 +19,28 @@ function GuardedRoute({ route }: { route: (typeof SCHEDULING_ROUTE_REGISTRY)[num
   return <SchedulingRouteGuard route={route} Page={Page} />;
 }
 
+/** Settings → Scheduling: resources, availability, rules, holidays. */
 export function SchedulingLayout() {
   const { t } = useTranslation("common");
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">{t("scheduling.title")}</h2>
-        <p className="text-sm text-muted-foreground mt-1">{t("scheduling.subtitle")}</p>
-      </div>
+    <div className="space-y-4 bg-background">
+      <ModulePageHeader
+        title={t("scheduling.title")}
+        subtitle={t("scheduling.subtitle")}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm" className="border-border bg-background">
+              <Link href="~/dashboard/settings/calendar">{t("navigation.calendar")}</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="border-border bg-background">
+              <Link href="~/dashboard/scheduling/operations">
+                {t("calendar.links.todayBoard")}
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <SchedulingSubNav />
 

@@ -68,10 +68,10 @@ export function CapabilityMultiSelect({
           onChange={(event) => setQuery(event.target.value)}
           placeholder={searchPlaceholder ?? t("scheduling.capabilities.searchPlaceholder")}
           disabled={disabled || isLoading}
-          className="pl-9 bg-background/50 border-white/10"
+          className="pl-9 bg-background border-border/60"
         />
       </div>
-      <div className="rounded-xl border border-white/10 bg-background/25 max-h-48 overflow-y-auto divide-y divide-white/5">
+      <div className="rounded-xl border border-border/60 bg-background max-h-48 overflow-y-auto divide-y divide-border/40">
         {isLoading ? (
           <p className="px-3 py-4 text-sm text-muted-foreground">{t("scheduling.resources.servicesCountLoading")}</p>
         ) : sortedItems.length === 0 ? (
@@ -86,7 +86,7 @@ export function CapabilityMultiSelect({
             return (
               <label
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.02] cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/10 cursor-pointer"
               >
                 <Checkbox
                   checked={checked}

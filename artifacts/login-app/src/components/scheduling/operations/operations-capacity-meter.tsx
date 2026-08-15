@@ -40,7 +40,7 @@ export function OperationsCapacityMeter({ metrics, loading }: OperationsCapacity
       {loading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-10 animate-pulse rounded-lg bg-white/5" />
+            <div key={i} className="h-10 animate-pulse rounded-lg bg-muted/20" />
           ))}
         </div>
       ) : (
@@ -51,7 +51,7 @@ export function OperationsCapacityMeter({ metrics, loading }: OperationsCapacity
                 <span className="text-muted-foreground">{t(row.labelKey)}</span>
                 <span className="font-semibold tabular-nums">{row.value}%</span>
               </div>
-              <div className="relative h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="relative h-2 overflow-hidden rounded-full bg-muted/30">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${row.accentClass}`}
                   style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }}

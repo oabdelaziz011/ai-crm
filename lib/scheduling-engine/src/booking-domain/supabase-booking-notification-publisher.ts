@@ -36,7 +36,14 @@ export class SupabaseBookingNotificationPublisher implements BookingEventPublish
   async publish(event: BookingDomainEvent): Promise<void> {
     if (event.type !== "BookingCreated" && event.type !== "BookingRescheduled") {
       if (event.type === "BookingCancelled") {
-        await this.cancelBookingReminders(event.payload.booking.company_id, event.payload.booking.id);
+        try {
+          await this.cancelBookingReminders(event.payload.booking.company_id, event.payload.booking.id);
+        } catch (error) {
+          console.warn(
+            "[booking-reminders] cancel failed; booking update continues",
+            error instanceof Error ? error.message : error,
+          );
+        }
       }
       return;
     }
@@ -51,7 +58,7 @@ export class SupabaseBookingNotificationPublisher implements BookingEventPublish
       .maybeSingle();
 
     const recipientKey = customer?.phone ?? customer?.email ?? booking.customer_id;
-    await this.client.from("communication_audit_log").insert({
+    const { error: auditError } = await this.client.from("communication_audit_log").insert({
       company_id: booking.company_id,
       channel: "system",
       template_key: event.type === "BookingCreated" ? "booking_created" : "booking_rescheduled",
@@ -64,9 +71,19 @@ export class SupabaseBookingNotificationPublisher implements BookingEventPublish
         customerName: customer?.name ?? "Customer",
       },
     });
+    if (auditError) {
+      console.warn("[booking-notifications] audit insert failed:", auditError.message);
+    }
 
-    await this.cancelBookingReminders(booking.company_id, booking.id);
-    await this.scheduleBookingReminders(booking.company_id, booking.id, booking.start_at, booking.timezone);
+    try {
+      await this.cancelBookingReminders(booking.company_id, booking.id);
+      await this.scheduleBookingReminders(booking.company_id, booking.id, booking.start_at, booking.timezone);
+    } catch (error) {
+      console.warn(
+        "[booking-reminders] schedule failed; booking create continues",
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   private async cancelBookingReminders(companyId: string, bookingId: string): Promise<void> {

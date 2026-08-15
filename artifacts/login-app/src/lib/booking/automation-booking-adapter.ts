@@ -190,6 +190,7 @@ export function createSchedulingAwareBookingServicePort(
         return {
           bookingId: result.booking.id,
           bookingDate: result.booking.start_at,
+          confirmationNumber: result.booking.confirmation_number ?? null,
         };
       } catch (error) {
         if (error instanceof BookingDomainError) {

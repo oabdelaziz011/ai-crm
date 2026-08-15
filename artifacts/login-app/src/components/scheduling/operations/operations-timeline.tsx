@@ -19,7 +19,7 @@ export function OperationsTimeline({
 
   if (slots.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-background/30 p-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border border-border/60 bg-background p-8 text-center text-sm text-muted-foreground">
         {t("scheduling.operations.timeline.empty")}
       </div>
     );
@@ -64,7 +64,7 @@ export function OperationsTimeline({
                       <span className={`rounded-full border px-2 py-0.5 ${colors.text} ${colors.border}`}>
                         {t(`scheduling.operations.status.${booking.status}`)}
                       </span>
-                      <span className="rounded-full border border-white/10 px-2 py-0.5 text-muted-foreground">
+                      <span className="rounded-full border border-border/60 px-2 py-0.5 text-muted-foreground">
                         {t(`scheduling.operations.payment.${booking.paymentStatus}`)}
                       </span>
                       <span className="text-muted-foreground">

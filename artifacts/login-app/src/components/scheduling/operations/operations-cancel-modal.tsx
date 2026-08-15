@@ -53,7 +53,7 @@ export function OperationsCancelModal({
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value as OperationsCancellationReason)}
-              className="w-full rounded-xl border border-white/10 bg-background/50 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm"
             >
               {OPERATIONS_CANCELLATION_REASONS.map((item) => (
                 <option key={item} value={item}>

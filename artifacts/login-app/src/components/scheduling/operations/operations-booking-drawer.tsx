@@ -131,6 +131,10 @@ export function OperationsBookingDrawer({
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
+          <p dir="ltr" className="font-mono text-[12px] text-muted-foreground">
+            {booking.confirmationNumber?.trim() ||
+              booking.id.slice(0, 8).toUpperCase()}
+          </p>
           <SheetTitle>{booking.customer?.name ?? t("scheduling.operations.drawer.title")}</SheetTitle>
         </SheetHeader>
 
@@ -139,12 +143,20 @@ export function OperationsBookingDrawer({
             <span className={`rounded-full px-2.5 py-1 text-xs ${statusBadgeClasses(booking.status)}`}>
               {t(`scheduling.operations.status.${booking.status}`)}
             </span>
-            <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">
+            <span className="rounded-full border border-border/60 px-2.5 py-1 text-xs text-muted-foreground">
               {t(`scheduling.operations.payment.${booking.paymentStatus}`)}
             </span>
           </div>
 
           <dl className="space-y-3 text-sm">
+            <DetailRow
+              label={t("scheduling.operations.drawer.referenceNumber")}
+              value={
+                booking.confirmationNumber?.trim() ||
+                booking.id.slice(0, 8).toUpperCase()
+              }
+              mono
+            />
             <DetailRow label={t("scheduling.operations.drawer.phone")} value={booking.customer?.phone} />
             <DetailRow label={t("scheduling.operations.drawer.email")} value={booking.customer?.email} />
             <DetailRow label={t("scheduling.operations.drawer.service")} value={booking.service?.name} />
@@ -163,7 +175,7 @@ export function OperationsBookingDrawer({
             />
             <DetailRow label={t("scheduling.operations.drawer.notes")} value={booking.notes} />
             <DetailRow label={t("scheduling.operations.drawer.createdBy")} value={booking.createdBy} />
-            <DetailRow label={t("scheduling.operations.drawer.bookingId")} value={booking.id} />
+            <DetailRow label={t("scheduling.operations.drawer.bookingId")} value={booking.id} mono />
           </dl>
 
           <div className="grid grid-cols-2 gap-2">
@@ -216,11 +228,21 @@ export function OperationsBookingDrawer({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
+function DetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string | null | undefined;
+  mono?: boolean;
+}) {
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 break-all">{value?.trim() ? value : "—"}</dd>
+      <dd className={`mt-0.5 break-all ${mono ? "font-mono text-[12px]" : ""}`} dir={mono ? "ltr" : undefined}>
+        {value?.trim() ? value : "—"}
+      </dd>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +9,14 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ExternalLink, Loader2 } from "lucide-react";
 import type { Booking, BookingStatus, Customer } from "@/lib/types";
 import {
@@ -18,6 +26,7 @@ import {
   useUpdateBooking,
   formatBookingDomainError,
 } from "@/hooks/use-bookings";
+import { useCreateCustomer } from "@/hooks/use-customers";
 import { useSchedulingServices } from "@/hooks/scheduling/use-scheduling-services";
 import { useServiceResources } from "@/hooks/scheduling/use-resource-capabilities";
 import {
@@ -30,11 +39,20 @@ import { useTranslation } from "react-i18next";
 import { toDashboardAbsolutePath } from "@/lib/routing";
 import { BranchSelector } from "@/lib/company/branches/components";
 import { useCurrentUserBranches } from "@/lib/company/branches/hooks";
+import { cn } from "@/lib/utils";
 
 const LEGACY_STATUSES: BookingStatus[] = ["Pending", "Confirmed", "Cancelled"];
 
+type CustomerEntryMode = "existing" | "new";
+
 type SchedulingFormValues = {
   customer_id: string;
+  new_customer_name: string;
+  new_customer_email: string;
+  new_customer_phone: string;
+  new_customer_age: string;
+  new_customer_gender: string;
+  new_customer_notes: string;
   service_id: string;
   resource_id: string;
   date: string;
@@ -82,6 +100,21 @@ function BookingFieldHint({
   );
 }
 
+const EMPTY_SCHEDULING_VALUES: SchedulingFormValues = {
+  customer_id: "",
+  new_customer_name: "",
+  new_customer_email: "",
+  new_customer_phone: "",
+  new_customer_age: "",
+  new_customer_gender: "",
+  new_customer_notes: "",
+  service_id: "",
+  resource_id: "",
+  date: "",
+  slot_start: "",
+  notes: "",
+};
+
 export function BookingModal({
   open,
   onClose,
@@ -99,14 +132,23 @@ export function BookingModal({
   const isEdit = !!booking;
   const isSchedulingEdit = Boolean(booking?.isSchedulingBooking);
   const isSchedulingCreate = !isEdit && Boolean(companyId);
+  const allowNewCustomer = isSchedulingCreate && !lockCustomer;
 
   const createBooking = useCreateBooking(companyId);
+  const createCustomer = useCreateCustomer();
   const rescheduleBooking = useRescheduleBooking(companyId);
   const updateLegacy = useUpdateBooking();
-  const isPending = createBooking.isPending || rescheduleBooking.isPending || updateLegacy.isPending;
+  const isPending =
+    createBooking.isPending ||
+    createCustomer.isPending ||
+    rescheduleBooking.isPending ||
+    updateLegacy.isPending;
 
   const { data: userBranches = [] } = useCurrentUserBranches(companyId);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [customerMode, setCustomerMode] = useState<CustomerEntryMode>("existing");
+  const customerModeRef = useRef<CustomerEntryMode>(customerMode);
+  customerModeRef.current = customerMode;
 
   const effectiveBranchId = useMemo(() => {
     if (branchId) return branchId;
@@ -120,14 +162,59 @@ export function BookingModal({
     !branchId &&
     userBranches.length > 1;
 
-  const schedulingSchema = z.object({
-    customer_id: z.string().min(1, t("forms.booking.customerRequired")),
-    service_id: z.string().min(1, t("forms.booking.serviceRequired")),
-    resource_id: z.string().min(1, t("forms.booking.resourceRequired")),
-    date: z.string().min(1, t("forms.booking.dateRequired")),
-    slot_start: z.string().min(1, t("forms.booking.slotRequired")),
-    notes: z.string().optional(),
-  });
+  const schedulingSchema = useMemo(
+    () =>
+      z
+        .object({
+          customer_id: z.string(),
+          new_customer_name: z.string(),
+          new_customer_email: z
+            .string()
+            .email(t("forms.customer.invalidEmail"))
+            .or(z.literal(""))
+            .optional(),
+          new_customer_phone: z.string().optional(),
+          new_customer_age: z
+            .string()
+            .optional()
+            .refine(
+              (value) =>
+                !value?.trim() ||
+                (/^\d+$/.test(value.trim()) &&
+                  Number.parseInt(value, 10) >= 0 &&
+                  Number.parseInt(value, 10) <= 150),
+              t("forms.customer.invalidAge"),
+            ),
+          new_customer_gender: z.string().optional(),
+          new_customer_notes: z.string().optional(),
+          service_id: z.string().min(1, t("forms.booking.serviceRequired")),
+          resource_id: z.string().min(1, t("forms.booking.resourceRequired")),
+          date: z.string().min(1, t("forms.booking.dateRequired")),
+          slot_start: z.string().min(1, t("forms.booking.slotRequired")),
+          notes: z.string().optional(),
+        })
+        .superRefine((values, ctx) => {
+          if (isSchedulingEdit || customerModeRef.current === "existing") {
+            if (!values.customer_id.trim()) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["customer_id"],
+                message: t("forms.booking.customerRequired"),
+              });
+            }
+            return;
+          }
+
+          if (!values.new_customer_name.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["new_customer_name"],
+              message: t("forms.booking.newCustomerNameRequired"),
+            });
+          }
+        }),
+    [isSchedulingEdit, t],
+  );
 
   const legacySchema = z.object({
     customer_id: z.string().optional(),
@@ -138,14 +225,7 @@ export function BookingModal({
 
   const schedulingForm = useForm<SchedulingFormValues>({
     resolver: zodResolver(schedulingSchema),
-    defaultValues: {
-      customer_id: "",
-      service_id: "",
-      resource_id: "",
-      date: "",
-      slot_start: "",
-      notes: "",
-    },
+    defaultValues: EMPTY_SCHEDULING_VALUES,
   });
 
   const legacyForm = useForm<LegacyFormValues>({
@@ -237,13 +317,15 @@ export function BookingModal({
   useEffect(() => {
     if (!open) return;
 
+    setCustomerMode("existing");
+
     if (isSchedulingCreate || isSchedulingEdit) {
       schedulingForm.reset({
+        ...EMPTY_SCHEDULING_VALUES,
         customer_id: booking?.customer_id ?? defaultCustomerId ?? "",
         service_id: booking?.service_id ?? "",
         resource_id: booking?.resource_id ?? "",
         date: booking?.booking_date ? booking.booking_date.slice(0, 10) : "",
-        slot_start: "",
         notes: booking?.notes ?? "",
       });
       return;
@@ -255,7 +337,15 @@ export function BookingModal({
       booking_date: booking?.booking_date ? booking.booking_date.slice(0, 16) : "",
       status: booking?.status ?? "Pending",
     });
-  }, [open, booking, defaultCustomerId, isSchedulingCreate, isSchedulingEdit, schedulingForm, legacyForm]);
+  }, [
+    open,
+    booking,
+    defaultCustomerId,
+    isSchedulingCreate,
+    isSchedulingEdit,
+    schedulingForm,
+    legacyForm,
+  ]);
 
   useEffect(() => {
     if (!open || !isSchedulingCreate) return;
@@ -268,7 +358,12 @@ export function BookingModal({
     schedulingForm.setValue("slot_start", "");
   }, [watchedResourceId, watchedDate, open, isSchedulingCreate, schedulingForm]);
 
-  const onSubmitScheduling = (values: SchedulingFormValues) => {
+  useEffect(() => {
+    if (!open) return;
+    schedulingForm.clearErrors(["customer_id", "new_customer_name", "new_customer_email", "new_customer_age"]);
+  }, [customerMode, open, schedulingForm]);
+
+  const onSubmitScheduling = async (values: SchedulingFormValues) => {
     if (!companyId) {
       schedulingForm.setError("root", { message: t("forms.booking.companyRequired") });
       return;
@@ -299,7 +394,7 @@ export function BookingModal({
               ),
             );
             onClose();
-            schedulingForm.reset();
+            schedulingForm.reset(EMPTY_SCHEDULING_VALUES);
           },
           onError: (error) =>
             schedulingForm.setError("root", { message: formatBookingDomainError(error) }),
@@ -308,9 +403,33 @@ export function BookingModal({
       return;
     }
 
+    let customerId = values.customer_id.trim();
+    let linkedCustomer = customers.find((c) => c.id === customerId) ?? null;
+
+    if (customerMode === "new" && allowNewCustomer) {
+      try {
+        linkedCustomer = await createCustomer.mutateAsync({
+          name: values.new_customer_name.trim(),
+          email: values.new_customer_email?.trim() || null,
+          phone: values.new_customer_phone?.trim() || null,
+          age: values.new_customer_age?.trim()
+            ? Number.parseInt(values.new_customer_age.trim(), 10)
+            : null,
+          gender: values.new_customer_gender?.trim() || null,
+          notes: values.new_customer_notes?.trim() || null,
+        });
+        customerId = linkedCustomer.id;
+      } catch (error) {
+        schedulingForm.setError("root", {
+          message: error instanceof Error ? error.message : t("forms.booking.customerRequired"),
+        });
+        return;
+      }
+    }
+
     createBooking.mutate(
       {
-        customerId: values.customer_id,
+        customerId,
         resourceId: values.resource_id,
         serviceId: values.service_id,
         date: values.date,
@@ -326,7 +445,7 @@ export function BookingModal({
             schedulingBookingToAppBooking(
               {
                 ...created,
-                customers: customers.find((c) => c.id === created.customer_id) ?? null,
+                customers: linkedCustomer ?? customers.find((c) => c.id === created.customer_id) ?? null,
                 scheduling_services: serviceName
                   ? { id: created.service_id, name: serviceName, duration_minutes: 0 }
                   : null,
@@ -336,7 +455,8 @@ export function BookingModal({
             ),
           );
           onClose();
-          schedulingForm.reset();
+          setCustomerMode("existing");
+          schedulingForm.reset(EMPTY_SCHEDULING_VALUES);
         },
         onError: (error) =>
           schedulingForm.setError("root", { message: formatBookingDomainError(error) }),
@@ -366,6 +486,190 @@ export function BookingModal({
     );
   };
 
+  const renderNewCustomerFields = () => (
+    <div className="space-y-3 rounded-xl border border-white/10 bg-background/20 p-3.5">
+      <BookingFieldHint variant="muted">{t("forms.booking.newCustomerHint")}</BookingFieldHint>
+      <FormField
+        control={schedulingForm.control}
+        name="new_customer_name"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{t("forms.customer.name")} *</FormLabel>
+            <FormControl>
+              <Input
+                placeholder={t("forms.customer.fullName")}
+                className="bg-background/50 border-white/10"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormField
+          control={schedulingForm.control}
+          name="new_customer_phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("forms.customer.phone")}</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder={t("forms.customer.phonePlaceholder")}
+                  className="bg-background/50 border-white/10"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={schedulingForm.control}
+          name="new_customer_email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("forms.customer.email")}</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder={t("forms.customer.emailPlaceholder")}
+                  className="bg-background/50 border-white/10"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormField
+          control={schedulingForm.control}
+          name="new_customer_age"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("forms.customer.age")}</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={0}
+                  max={150}
+                  placeholder={t("forms.customer.agePlaceholder")}
+                  className="bg-background/50 border-white/10"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={schedulingForm.control}
+          name="new_customer_gender"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("forms.customer.gender")}</FormLabel>
+              <Select
+                value={field.value || "__empty__"}
+                onValueChange={(value) => field.onChange(value === "__empty__" ? "" : value)}
+              >
+                <FormControl>
+                  <SelectTrigger className="bg-background/50 border-white/10">
+                    <SelectValue placeholder={t("forms.customer.genderPlaceholder")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="__empty__">{t("forms.customer.notSet")}</SelectItem>
+                  <SelectItem value="Male">{t("forms.customer.genderOptions.male")}</SelectItem>
+                  <SelectItem value="Female">{t("forms.customer.genderOptions.female")}</SelectItem>
+                  <SelectItem value="Other">{t("forms.customer.genderOptions.other")}</SelectItem>
+                  <SelectItem value="Prefer not to say">
+                    {t("forms.customer.genderOptions.preferNotToSay")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <FormField
+        control={schedulingForm.control}
+        name="new_customer_notes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{t("forms.customer.notes")}</FormLabel>
+            <FormControl>
+              <textarea
+                placeholder={t("forms.customer.optionalNotes")}
+                rows={2}
+                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2 text-sm outline-none focus:border-primary/40 resize-none transition-colors placeholder:text-muted-foreground"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+
+  const renderCustomerField = () => (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <label className="text-sm font-medium leading-none">{t("forms.booking.customer")}</label>
+        {allowNewCustomer && (
+          <ToggleGroup
+            type="single"
+            value={customerMode}
+            onValueChange={(value) => {
+              if (value === "existing" || value === "new") setCustomerMode(value);
+            }}
+            size="sm"
+            variant="outline"
+            className="justify-start"
+          >
+            <ToggleGroupItem value="existing" className="px-3 text-xs">
+              {t("forms.booking.customerModeExisting")}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="new" className="px-3 text-xs">
+              {t("forms.booking.customerModeNew")}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        )}
+      </div>
+
+      {customerMode === "new" && allowNewCustomer ? (
+        renderNewCustomerFields()
+      ) : (
+        <FormField
+          control={schedulingForm.control}
+          name="customer_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <select
+                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                  disabled={lockCustomer || isSchedulingEdit}
+                  {...field}
+                >
+                  <option value="">{t("forms.booking.selectCustomer")}</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+    </div>
+  );
+
   const renderSchedulingForm = () => (
     <Form {...schedulingForm}>
       <form onSubmit={schedulingForm.handleSubmit(onSubmitScheduling)} className="space-y-4">
@@ -375,24 +679,7 @@ export function BookingModal({
           </p>
         )}
 
-        <FormField control={schedulingForm.control} name="customer_id" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("forms.booking.customer")}</FormLabel>
-            <FormControl>
-              <select
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
-                disabled={lockCustomer}
-                {...field}
-              >
-                <option value="">{t("forms.booking.noCustomer")}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+        {renderCustomerField()}
 
         {showBranchSelector && (
           <div className="space-y-2">
@@ -408,124 +695,128 @@ export function BookingModal({
           </div>
         )}
 
-        <FormField control={schedulingForm.control} name="service_id" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("forms.booking.service")}</FormLabel>
-            <FormControl>
-              <select
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
-                disabled={isSchedulingEdit || servicesLoading}
-                {...field}
-              >
-                <option value="">{t("forms.booking.selectService")}</option>
-                {activeServices.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {service.name} ({service.duration_minutes}m)
+        <div className={cn("grid gap-4", customerMode === "new" && allowNewCustomer && "sm:grid-cols-2")}>
+          <FormField control={schedulingForm.control} name="service_id" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("forms.booking.service")}</FormLabel>
+              <FormControl>
+                <select
+                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                  disabled={isSchedulingEdit || servicesLoading}
+                  {...field}
+                >
+                  <option value="">{t("forms.booking.selectService")}</option>
+                  {activeServices.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} ({service.duration_minutes}m)
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={schedulingForm.control} name="resource_id" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                {t("forms.booking.resource")}
+                {resourcesLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+              </FormLabel>
+              <FormControl>
+                <select
+                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                  disabled={!watchedServiceId || isSchedulingEdit || resourcesLoading}
+                  {...field}
+                >
+                  <option value="">
+                    {resourcesLoading
+                      ? t("forms.booking.loadingResources")
+                      : t("forms.booking.selectResource")}
                   </option>
-                ))}
-              </select>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
-
-        <FormField control={schedulingForm.control} name="resource_id" render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-2">
-              {t("forms.booking.resource")}
-              {resourcesLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-            </FormLabel>
-            <FormControl>
-              <select
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
-                disabled={!watchedServiceId || isSchedulingEdit || resourcesLoading}
-                {...field}
-              >
-                <option value="">
-                  {resourcesLoading
-                    ? t("forms.booking.loadingResources")
-                    : t("forms.booking.selectResource")}
-                </option>
-                {eligibleResources.map((resource) => (
-                  <option key={resource.id} value={resource.id}>{resource.name}</option>
-                ))}
-              </select>
-            </FormControl>
-            {resourcesError && (
-              <BookingFieldHint variant="error">
-                {t("forms.booking.resourcesLoadError")}
-                {resourcesQueryError?.message ? ` (${resourcesQueryError.message})` : ""}
-              </BookingFieldHint>
-            )}
-            {showResourceEmptyState && (
-              <div className="rounded-xl border border-white/10 bg-background/25 px-3 py-3 space-y-3">
-                <BookingFieldHint variant="muted">
-                  {t("forms.booking.noEligibleResourcesEmptyState")}
+                  {eligibleResources.map((resource) => (
+                    <option key={resource.id} value={resource.id}>{resource.name}</option>
+                  ))}
+                </select>
+              </FormControl>
+              {resourcesError && (
+                <BookingFieldHint variant="error">
+                  {t("forms.booking.resourcesLoadError")}
+                  {resourcesQueryError?.message ? ` (${resourcesQueryError.message})` : ""}
                 </BookingFieldHint>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
-                    <Link href={toDashboardAbsolutePath("/settings/scheduling/resources")}>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      {t("forms.booking.openResourcesSettings")}
-                    </Link>
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
-                    <Link href={toDashboardAbsolutePath("/settings/scheduling/services")}>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      {t("forms.booking.openServicesSettings")}
-                    </Link>
-                  </Button>
+              )}
+              {showResourceEmptyState && (
+                <div className="rounded-xl border border-white/10 bg-background/25 px-3 py-3 space-y-3">
+                  <BookingFieldHint variant="muted">
+                    {t("forms.booking.noEligibleResourcesEmptyState")}
+                  </BookingFieldHint>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
+                      <Link href={toDashboardAbsolutePath("/settings/scheduling/resources")}>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {t("forms.booking.openResourcesSettings")}
+                      </Link>
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
+                      <Link href={toDashboardAbsolutePath("/settings/scheduling/services")}>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {t("forms.booking.openServicesSettings")}
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-            <FormMessage />
-          </FormItem>
-        )} />
+              )}
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
 
-        <FormField control={schedulingForm.control} name="date" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("forms.booking.date")}</FormLabel>
-            <FormControl>
-              <Input type="date" className="bg-background/50 border-white/10" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <div className={cn("grid gap-4", customerMode === "new" && allowNewCustomer && "sm:grid-cols-2")}>
+          <FormField control={schedulingForm.control} name="date" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("forms.booking.date")}</FormLabel>
+              <FormControl>
+                <Input type="date" className="bg-background/50 border-white/10" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-        <FormField control={schedulingForm.control} name="slot_start" render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-2">
-              {t("forms.booking.slot")}
-              {slotsLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-            </FormLabel>
-            <FormControl>
-              <select
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
-                disabled={!watchedResourceId || !watchedDate || slotsLoading}
-                {...field}
-              >
-                <option value="">
-                  {slotsLoading
-                    ? t("forms.booking.loadingSlots")
-                    : t("forms.booking.selectSlot")}
-                </option>
-                {(slotsResult?.slots ?? []).map((slot) => (
-                  <option key={slot} value={slot}>{slot}</option>
-                ))}
-              </select>
-            </FormControl>
-            {slotsError && (
-              <BookingFieldHint variant="error">
-                {t("forms.booking.slotsLoadError")}
-                {slotsQueryError?.message ? ` (${slotsQueryError.message})` : ""}
-              </BookingFieldHint>
-            )}
-            {showSlotEmptyState && slotMessageKey && (
-              <BookingFieldHint variant="muted">{t(slotMessageKey)}</BookingFieldHint>
-            )}
-            <FormMessage />
-          </FormItem>
-        )} />
+          <FormField control={schedulingForm.control} name="slot_start" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                {t("forms.booking.slot")}
+                {slotsLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+              </FormLabel>
+              <FormControl>
+                <select
+                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                  disabled={!watchedResourceId || !watchedDate || slotsLoading}
+                  {...field}
+                >
+                  <option value="">
+                    {slotsLoading
+                      ? t("forms.booking.loadingSlots")
+                      : t("forms.booking.selectSlot")}
+                  </option>
+                  {(slotsResult?.slots ?? []).map((slot) => (
+                    <option key={slot} value={slot}>{slot}</option>
+                  ))}
+                </select>
+              </FormControl>
+              {slotsError && (
+                <BookingFieldHint variant="error">
+                  {t("forms.booking.slotsLoadError")}
+                  {slotsQueryError?.message ? ` (${slotsQueryError.message})` : ""}
+                </BookingFieldHint>
+              )}
+              {showSlotEmptyState && slotMessageKey && (
+                <BookingFieldHint variant="muted">{t(slotMessageKey)}</BookingFieldHint>
+              )}
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
 
         <FormField control={schedulingForm.control} name="notes" render={({ field }) => (
           <FormItem>
@@ -634,10 +925,16 @@ export function BookingModal({
   );
 
   const useSchedulingForm = isSchedulingCreate || isSchedulingEdit;
+  const expandForNewCustomer = allowNewCustomer && customerMode === "new";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="bg-card border-white/10 text-foreground max-w-md">
+      <DialogContent
+        className={cn(
+          "bg-card border-white/10 text-foreground transition-[max-width] duration-200",
+          expandForNewCustomer ? "max-w-2xl" : "max-w-lg",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>
             {isEdit

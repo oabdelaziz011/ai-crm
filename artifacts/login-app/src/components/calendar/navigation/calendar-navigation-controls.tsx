@@ -1,4 +1,5 @@
 import { format, parseISO } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,14 +26,15 @@ export function CalendarNavigationControls({
   onJumpToDate,
   label,
 }: CalendarNavigationControlsProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
   const selected = parseISO(`${anchorDate}T12:00:00`);
   const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const showTimezoneHint = displayTimezone !== browserTz;
 
   return (
     <div className="flex items-center gap-1">
-      <Button variant="outline" size="sm" onClick={onToday} className="border-white/10">
+      <Button variant="outline" size="sm" onClick={onToday} className="border-border bg-background">
         {t("calendar.navigation.today")}
       </Button>
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrevious}>
@@ -43,9 +45,9 @@ export function CalendarNavigationControls({
           <Button
             variant="outline"
             size="sm"
-            className={cn("border-white/10 min-w-[160px] justify-center font-medium")}
+            className={cn("min-w-[160px] justify-center border-border bg-background font-medium")}
           >
-            {label ?? format(selected, "MMM d, yyyy")}
+            {label ?? format(selected, "MMM d, yyyy", { locale: dateLocale })}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -64,9 +66,7 @@ export function CalendarNavigationControls({
         <ChevronRight className="h-4 w-4" />
       </Button>
       {showTimezoneHint && (
-        <span className="text-xs text-muted-foreground ml-1 hidden sm:inline">
-          {displayTimezone}
-        </span>
+        <span className="ms-1 hidden text-xs text-muted-foreground sm:inline">{displayTimezone}</span>
       )}
     </div>
   );

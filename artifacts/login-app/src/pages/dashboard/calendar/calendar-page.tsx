@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { Can } from "@/components/rbac/permission-guard";
@@ -39,6 +41,7 @@ import type { Booking } from "@/lib/types";
 import type { WeekdayIndex } from "@/lib/scheduling/types";
 import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+import { dashboardNestHref } from "@/lib/routing";
 
 const CalendarDayView = lazy(
   () => import("@/components/calendar/views/day/calendar-day-view").then((m) => ({ default: m.CalendarDayView })),
@@ -62,7 +65,8 @@ const CalendarAgendaView = lazy(
 const INTERACTIVE_VIEWS = new Set(["day", "week", "timeline"]);
 
 export function CalendarPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
   const { toast } = useToast();
   const { profile, user } = useAuth();
   const { openCustomerProfile } = useCustomerProfile();
@@ -204,15 +208,27 @@ export function CalendarPage() {
 
   const navigationLabel = useMemo(() => {
     if (viewState.view === "month") {
-      return format(parseISO(`${viewState.anchorDate}T12:00:00`), "MMMM yyyy");
+      return format(parseISO(`${viewState.anchorDate}T12:00:00`), "MMMM yyyy", {
+        locale: dateLocale,
+      });
     }
     if (viewState.view === "week" || viewState.view === "agenda") {
       const start = parseISO(`${queryVisibleRange.startDate}T12:00:00`);
       const end = parseISO(`${queryVisibleRange.endDate}T12:00:00`);
-      return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
+      return `${format(start, "MMM d", { locale: dateLocale })} – ${format(end, "MMM d, yyyy", {
+        locale: dateLocale,
+      })}`;
     }
-    return format(parseISO(`${viewState.anchorDate}T12:00:00`), "MMM d, yyyy");
-  }, [viewState.view, viewState.anchorDate, queryVisibleRange.startDate, queryVisibleRange.endDate]);
+    return format(parseISO(`${viewState.anchorDate}T12:00:00`), "MMM d, yyyy", {
+      locale: dateLocale,
+    });
+  }, [
+    viewState.view,
+    viewState.anchorDate,
+    queryVisibleRange.startDate,
+    queryVisibleRange.endDate,
+    dateLocale,
+  ]);
 
   const openBooking = useCallback(
     (event: CalendarEvent) => {
@@ -453,11 +469,12 @@ export function CalendarPage() {
   ]);
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col bg-background px-4 py-4 md:px-6 md:py-5 lg:px-8">
       <CalendarShell
         toolbar={
           <CalendarToolbar
             title={t("calendar.title")}
+            subtitle={t("calendar.subtitle")}
             navigation={
               <CalendarNavigationControls
                 anchorDate={viewState.anchorDate}
@@ -474,6 +491,16 @@ export function CalendarPage() {
             }
             actions={
               <>
+                <Button asChild variant="outline" size="sm" className="border-border bg-background">
+                  <Link href={dashboardNestHref("/scheduling/operations")}>
+                    {t("calendar.links.todayBoard")}
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="border-border bg-background">
+                  <Link href={dashboardNestHref("/settings/scheduling")}>
+                    {t("calendar.links.schedulingSetup")}
+                  </Link>
+                </Button>
                 {INTERACTIVE_VIEWS.has(viewState.view) && (
                   <CalendarZoomControl
                     zoomLevel={viewState.timeline.zoomLevel}
@@ -507,7 +534,9 @@ export function CalendarPage() {
           error={error}
           onRetry={() => void refetch()}
         >
-          <Suspense fallback={<DashboardPageFallback />}>{viewContent}</Suspense>
+          <div className="h-full min-h-0">
+            <Suspense fallback={<DashboardPageFallback />}>{viewContent}</Suspense>
+          </div>
         </CalendarLoadingBoundary>
       </CalendarShell>
 

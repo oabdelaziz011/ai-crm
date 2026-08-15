@@ -37,34 +37,48 @@ export const CalendarTimeGridScroll = forwardRef<HTMLDivElement, CalendarTimeGri
   ) {
     const hours = getCalendarVisibleHours(startHour, endHour);
     const gridHeight = hours.length * hourRowHeight + headerOffset;
-
     const hourStyle = useMemo(() => ({ height: hourRowHeight }), [hourRowHeight]);
 
     return (
-      <div className={cn("grid min-h-[640px]", sidebar ? "grid-cols-[56px_1fr]" : "grid-cols-1", className)}>
-        {sidebar ?? (
-          <div className="border-r border-white/10">
+      <div ref={ref} className={cn("h-full min-h-0 overflow-y-auto overflow-x-hidden", className)}>
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: "56px minmax(0, 1fr)",
+            height: gridHeight,
+          }}
+        >
+          <div className="border-e border-border bg-background" style={{ height: gridHeight }}>
             {headerOffset > 0 && (
-              <div className="border-b border-white/10" style={{ height: headerOffset }} />
+              <div className="border-b border-border" style={{ height: headerOffset }} />
+            )}
+            {sidebar ??
+              hours.map((hour) => (
+                <div
+                  key={hour}
+                  className="flex items-start border-b border-border px-2 pt-1 text-[10px] text-muted-foreground"
+                  style={hourStyle}
+                >
+                  {String(hour).padStart(2, "0")}:00
+                </div>
+              ))}
+          </div>
+          <div
+            style={{ height: gridHeight }}
+            className={cn("relative border-s border-border bg-background", bodyClassName)}
+          >
+            {headerOffset > 0 && (
+              <div className="border-b border-border" style={{ height: headerOffset }} />
             )}
             {hours.map((hour) => (
               <div
                 key={hour}
-                className="border-b border-white/5 px-2 text-[10px] text-muted-foreground flex items-start pt-1"
-                style={hourStyle}
-              >
-                {String(hour).padStart(2, "0")}:00
-              </div>
-            ))}
-          </div>
-        )}
-        <div ref={ref} className="max-h-[640px] overflow-y-auto overflow-x-hidden">
-          <div style={{ minHeight: gridHeight }} className={cn("relative", bodyClassName)}>
-            {headerOffset > 0 && (
-              <div className="border-b border-white/10" style={{ height: headerOffset }} />
-            )}
-            {hours.map((hour) => (
-              <div key={hour} className="border-b border-white/5" style={hourStyle} />
+                className="pointer-events-none absolute inset-x-0 border-b border-border/70"
+                style={{
+                  top: headerOffset + (hour - startHour) * hourRowHeight,
+                  height: hourRowHeight,
+                }}
+              />
             ))}
             {children}
           </div>

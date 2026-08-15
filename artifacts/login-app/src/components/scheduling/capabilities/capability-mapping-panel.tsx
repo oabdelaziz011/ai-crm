@@ -58,7 +58,7 @@ export function CapabilityMappingPanel({
 
   return (
     <DashboardCard className="overflow-hidden">
-      <div className="p-5 border-b border-white/5 flex items-start justify-between gap-4">
+      <div className="p-5 border-b border-border/40 flex items-start justify-between gap-4">
         <div>
           <h3 className="font-semibold text-sm">{title}</h3>
           {subtitle && (
@@ -83,13 +83,13 @@ export function CapabilityMappingPanel({
       ) : sortedItems.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground px-6">{emptyMessage}</div>
       ) : (
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-border/40">
           {sortedItems.map((item) => {
             const checked = draft.includes(item.id);
             return (
               <label
                 key={item.id}
-                className="flex items-center gap-3 px-6 py-3.5 hover:bg-white/[0.02] cursor-pointer"
+                className="flex items-center gap-3 px-6 py-3.5 hover:bg-muted/10 cursor-pointer"
               >
                 <Checkbox
                   checked={checked}

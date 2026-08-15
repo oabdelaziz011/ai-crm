@@ -24,14 +24,14 @@ export function CalendarTimeAxis({
 
   return (
     <div
-      className={cn("flex border-b border-white/10", className)}
+      className={cn("flex border-b border-border/60", className)}
       style={{ minWidth: hours.length * hourWidthPx }}
       role="row"
     >
       {hours.map((hour) => (
         <div
           key={hour}
-          className="shrink-0 border-r border-white/5 px-2 py-2 text-[10px] text-muted-foreground"
+          className="shrink-0 border-r border-border/40 px-2 py-2 text-[10px] text-muted-foreground"
           style={{ width: hourWidthPx }}
         >
           {String(hour).padStart(2, "0")}:00

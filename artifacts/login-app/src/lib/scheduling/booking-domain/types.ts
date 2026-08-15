@@ -84,6 +84,8 @@ export type SchedulingBooking = {
   payment_status?: BookingPaymentStatus | string;
   discount_cents?: number;
   tax_cents?: number;
+  /** Company-scoped sequential reference, e.g. BK-000123. */
+  confirmation_number?: string | null;
 };
 
 export type SchedulingBookingInsert = {

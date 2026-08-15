@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { CalendarView } from "@/lib/calendar/types/calendar-view-state";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -18,7 +19,7 @@ export function CalendarViewSwitcher({ view, onViewChange }: CalendarViewSwitche
   const views = isMobile ? MOBILE_VIEWS : DESKTOP_VIEWS;
 
   return (
-    <div className="inline-flex flex-wrap rounded-lg border border-white/10 p-0.5 bg-black/20">
+    <div className="inline-flex flex-wrap gap-0.5 rounded-md border border-border bg-background p-0.5">
       {views.map((item) => (
         <Button
           key={item}
@@ -27,8 +28,8 @@ export function CalendarViewSwitcher({ view, onViewChange }: CalendarViewSwitche
           variant="ghost"
           onClick={() => onViewChange(item)}
           className={cn(
-            "h-8 px-3 text-xs rounded-md",
-            view === item && "bg-white/10 text-foreground",
+            "h-8 rounded-sm px-3 text-xs",
+            view === item && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
           )}
         >
           {t(`calendar.views.${item}`)}
@@ -36,4 +37,8 @@ export function CalendarViewSwitcher({ view, onViewChange }: CalendarViewSwitche
       ))}
     </div>
   );
+}
+
+export function CalendarToolbarActions({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-2">{children}</div>;
 }

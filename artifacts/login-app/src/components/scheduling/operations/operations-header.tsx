@@ -1,5 +1,7 @@
 import { format } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { Download, RefreshCw } from "lucide-react";
+import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { BranchSelector } from "@/lib/company/branches/components/branch-selector";
@@ -33,7 +35,9 @@ export function OperationsHeader({
   isRefreshing,
   exportDisabled,
 }: OperationsHeaderProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
+  const fieldClass = "h-9 rounded-md border border-border bg-background px-3 text-sm";
 
   const presets: { id: OperationsDatePreset; label: string }[] = [
     { id: "today", label: t("scheduling.operations.date.today") },
@@ -43,11 +47,20 @@ export function OperationsHeader({
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("scheduling.operations.title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("scheduling.operations.subtitle")}</p>
+    <div className="space-y-4 bg-background">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">
+            {t("scheduling.operations.title")}
+          </h1>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            {t("scheduling.operations.subtitle")}
+          </p>
+          <Button asChild variant="link" className="h-auto px-0 text-sm">
+            <Link href="~/dashboard/settings/scheduling">
+              {t("calendar.links.schedulingSetup")}
+            </Link>
+          </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -55,7 +68,7 @@ export function OperationsHeader({
             size="sm"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="gap-2"
+            className="gap-2 border-border bg-background"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             {t("buttons.refresh")}
@@ -65,7 +78,7 @@ export function OperationsHeader({
             size="sm"
             onClick={onExport}
             disabled={exportDisabled}
-            className="gap-2"
+            className="gap-2 border-border bg-background"
           >
             <Download className="h-4 w-4" />
             {t("buttons.export")}
@@ -79,6 +92,7 @@ export function OperationsHeader({
             key={preset.id}
             size="sm"
             variant={filters.datePreset === preset.id ? "default" : "outline"}
+            className={filters.datePreset === preset.id ? undefined : "border-border bg-background"}
             onClick={() => onFiltersChange({ datePreset: preset.id })}
           >
             {preset.label}
@@ -89,12 +103,12 @@ export function OperationsHeader({
             type="date"
             value={filters.date}
             onChange={(e) => onFiltersChange({ date: e.target.value })}
-            className="rounded-lg border border-white/10 bg-background/50 px-3 py-1.5 text-sm"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
           />
         ) : null}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <BranchSelector
           branches={branches}
           value={filters.branchId}
@@ -106,7 +120,7 @@ export function OperationsHeader({
           onChange={(e) =>
             onFiltersChange({ resourceIds: e.target.value ? [e.target.value] : [] })
           }
-          className="rounded-xl border border-white/10 bg-background/50 px-3 py-2 text-sm"
+          className={fieldClass}
         >
           <option value="">{t("scheduling.operations.filters.allResources")}</option>
           {resources.map((resource) => (
@@ -120,7 +134,7 @@ export function OperationsHeader({
           onChange={(e) =>
             onFiltersChange({ serviceIds: e.target.value ? [e.target.value] : [] })
           }
-          className="rounded-xl border border-white/10 bg-background/50 px-3 py-2 text-sm"
+          className={fieldClass}
         >
           <option value="">{t("scheduling.operations.filters.allServices")}</option>
           {services.map((service) => (
@@ -138,34 +152,32 @@ export function OperationsHeader({
                 : [],
             })
           }
-          className="rounded-xl border border-white/10 bg-background/50 px-3 py-2 text-sm"
+          className={fieldClass}
         >
           <option value="">{t("scheduling.operations.filters.allStatuses")}</option>
           {SCHEDULING_BOOKING_STATUSES.filter((s) => s !== "rescheduled").map((status) => (
             <option key={status} value={status}>
-              {t(`scheduling.operations.status.${status}`)}
+              {t(`scheduling.operations.status.${status}`, {
+                defaultValue: t(`calendar.status.${status}`),
+              })}
             </option>
           ))}
         </select>
       </div>
 
-      <div className="relative">
-        <input
-          value={filters.search}
-          onChange={(e) => onFiltersChange({ search: e.target.value })}
-          placeholder={t("scheduling.operations.filters.searchPlaceholder")}
-          className="w-full rounded-xl border border-white/10 bg-background/50 px-3 py-2.5 text-sm"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("scheduling.operations.filters.searchHint")}
-        </p>
-      </div>
+      <input
+        value={filters.search}
+        onChange={(e) => onFiltersChange({ search: e.target.value })}
+        placeholder={t("scheduling.operations.filters.searchPlaceholder")}
+        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+      />
 
       <p className="text-xs text-muted-foreground">
         {t("scheduling.operations.date.viewing", {
           date: format(
             new Date(`${resolveOperationsDate(filters.datePreset, filters.date)}T12:00:00`),
             "PPP",
+            { locale: dateLocale },
           ),
         })}
       </p>

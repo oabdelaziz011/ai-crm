@@ -72,7 +72,7 @@ export function OperationsRescheduleModal({
                 setDate(e.target.value);
                 setSlotStart("");
               }}
-              className="w-full rounded-xl border border-white/10 bg-background/50 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm"
             />
           </div>
 

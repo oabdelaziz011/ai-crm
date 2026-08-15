@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Clock } from "lucide-react";
-import { DashboardCard } from "@/components/dashboard/ui";
 import type { WaitingQueueEntry } from "@/lib/scheduling/operations/queue";
 import {
   buildWaitingQueue,
@@ -32,16 +31,16 @@ export function OperationsWaitingQueuePanel({
   );
 
   return (
-    <DashboardCard className="p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold">{t("scheduling.operations.queue.title")}</h3>
+    <div className="border border-border bg-background p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold">{t("scheduling.operations.queue.title")}</h2>
         <span className="text-xs text-muted-foreground">{entries.length}</span>
       </div>
 
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-white/5" />
+            <div key={i} className="h-14 animate-pulse rounded-md bg-muted/20" />
           ))}
         </div>
       ) : entries.length === 0 ? (
@@ -52,20 +51,20 @@ export function OperationsWaitingQueuePanel({
             <li key={entry.bookingId}>
               <button
                 type="button"
-                className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-start transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex w-full items-center gap-3 border border-border bg-background p-3 text-start transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 onClick={() => onSelectBooking(entry.bookingId)}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-300">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground">
                   <Clock className="h-4 w-4" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{entry.customerName}</div>
+                  <div className="truncate text-sm font-medium">{entry.customerName}</div>
                   <div className="truncate text-xs text-muted-foreground">
                     {entry.serviceName} · {entry.resourceName}
                   </div>
                 </div>
                 <div className="shrink-0 text-end">
-                  <div className="font-mono text-sm font-semibold text-amber-300">
+                  <div className="font-mono text-sm font-semibold tabular-nums">
                     {formatWaitingDuration(entry.waitingMinutes)}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
@@ -77,6 +76,6 @@ export function OperationsWaitingQueuePanel({
           ))}
         </ul>
       )}
-    </DashboardCard>
+    </div>
   );
 }

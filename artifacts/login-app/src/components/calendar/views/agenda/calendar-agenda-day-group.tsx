@@ -29,7 +29,7 @@ export function CalendarAgendaDayGroup({
       <div
         id={`agenda-day-${group.date}`}
         className={cn(
-          "px-1 py-2 text-sm font-semibold border-b border-white/10 bg-black/30 backdrop-blur-sm",
+          "px-1 py-2 text-sm font-semibold border-b border-border/60 bg-background backdrop-blur-sm",
           sticky && "sticky top-0 z-10",
           isToday && "text-primary",
         )}

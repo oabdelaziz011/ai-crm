@@ -41,6 +41,7 @@ export class CalendarRepository {
         discount_cents,
         tax_cents,
         invoice_id,
+        confirmation_number,
         customers(id, name),
         scheduling_services(id, name, duration_minutes, price_cents, currency),
         scheduling_resources(id, name, resource_type),

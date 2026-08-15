@@ -35,13 +35,13 @@ export function OperationsDailyStatsPanel({ stats, loading }: OperationsDailySta
       {loading ? (
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-12 animate-pulse rounded-lg bg-white/5" />
+            <div key={index} className="h-12 animate-pulse rounded-lg bg-muted/20" />
           ))}
         </div>
       ) : (
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {items.map((item) => (
-            <div key={item.label} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+            <div key={item.label} className="rounded-lg border border-border/40 bg-muted/10 p-3">
               <dt className="text-xs text-muted-foreground">{item.label}</dt>
               <dd className="mt-1 text-lg font-semibold">{item.value}</dd>
             </div>

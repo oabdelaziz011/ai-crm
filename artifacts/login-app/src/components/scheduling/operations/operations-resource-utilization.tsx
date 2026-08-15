@@ -20,7 +20,7 @@ export function OperationsResourceUtilization({
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-12 animate-pulse rounded-lg bg-white/5" />
+            <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/20" />
           ))}
         </div>
       ) : rows.length === 0 ? (
@@ -29,7 +29,7 @@ export function OperationsResourceUtilization({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-start text-xs text-muted-foreground">
+              <tr className="border-b border-border/60 text-start text-xs text-muted-foreground">
                 <th className="pb-2 pe-4 font-medium">{t("scheduling.operations.utilization.resource")}</th>
                 <th className="pb-2 pe-4 font-medium">{t("scheduling.operations.utilization.bookings")}</th>
                 <th className="pb-2 pe-4 font-medium">{t("scheduling.operations.utilization.busy")}</th>
@@ -39,7 +39,7 @@ export function OperationsResourceUtilization({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.resourceId} className="border-b border-white/5 last:border-0">
+                <tr key={row.resourceId} className="border-b border-border/40 last:border-0">
                   <td className="py-2.5 pe-4">
                     <div className="font-medium">{row.resourceName}</div>
                     <div className="text-xs capitalize text-muted-foreground">{row.resourceType}</div>
@@ -69,7 +69,7 @@ function UtilBar({ value, tone }: { value: number; tone: "emerald" | "blue" }) {
   const color = tone === "emerald" ? "bg-emerald-500" : "bg-blue-500";
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/30">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${Math.min(100, value)}%` }}

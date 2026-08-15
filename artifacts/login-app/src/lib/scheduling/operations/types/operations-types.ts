@@ -52,6 +52,8 @@ export type OperationsBookingView = {
   discountCents: number;
   taxCents: number;
   invoiceId?: string | null;
+  /** Company-scoped sequential reference, e.g. BK-000123. */
+  confirmationNumber: string | null;
   displayStart: string;
   displayEnd: string;
   durationMinutes: number;

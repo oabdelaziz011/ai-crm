@@ -17,7 +17,7 @@ export function SchedulingSubNav() {
   );
 
   return (
-    <nav key={i18n.language} className="mb-6 flex flex-wrap gap-2 border-b border-white/5 pb-4">
+    <nav key={i18n.language} className="mb-6 flex flex-wrap gap-2 border-b border-border/40 pb-4">
       {items.map((item) => {
         const href = nestedSectionHref(item.nestedPath);
         const active =
@@ -31,7 +31,7 @@ export function SchedulingSubNav() {
               "rounded-lg px-3 py-1.5 text-sm transition-colors",
               active
                 ? "bg-primary/15 text-primary border border-primary/20"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5",
+                : "text-muted-foreground hover:bg-muted/20 hover:text-foreground",
             )}
           >
             {translateRouteTitle(t, item.titleKey)}

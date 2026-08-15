@@ -204,7 +204,7 @@ export function ServiceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-3xl border-white/10 bg-card max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl border-border/60 bg-card max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit
@@ -234,7 +234,7 @@ export function ServiceFormDialog({
                   id="service-name"
                   disabled={!canEdit}
                   {...form.register("name")}
-                  className="bg-background/50 border-white/10"
+                  className="bg-background border-border/60"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -246,7 +246,7 @@ export function ServiceFormDialog({
                     id="service-category"
                     disabled={!canEdit}
                     {...form.register("category")}
-                    className="bg-background/50 border-white/10"
+                    className="bg-background border-border/60"
                   />
                 </div>
                 <div className="space-y-2">
@@ -254,7 +254,7 @@ export function ServiceFormDialog({
                   <select
                     id="service-status"
                     disabled={!canEdit}
-                    className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                    className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
                     {...form.register("status")}
                   >
                     {SCHEDULING_SERVICE_STATUSES.map((status) => (
@@ -273,7 +273,7 @@ export function ServiceFormDialog({
                   id="service-description"
                   disabled={!canEdit}
                   rows={3}
-                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm resize-none"
+                  className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm resize-none"
                   {...form.register("description")}
                 />
               </div>
@@ -296,7 +296,7 @@ export function ServiceFormDialog({
             </TabsContent>
 
             <TabsContent value="resources" className="mt-4">
-              <div className="rounded-xl border border-white/10 bg-background/20 p-3 space-y-3">
+              <div className="rounded-xl border border-border/60 bg-background p-3 space-y-3">
                 <CapabilityMultiSelect
                   label={t("scheduling.capabilities.serviceResourcesTitle")}
                   items={resourceItems}
@@ -317,7 +317,7 @@ export function ServiceFormDialog({
           </Tabs>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} className="border-white/10">
+            <Button type="button" variant="outline" onClick={onClose} className="border-border/60">
               {t("buttons.cancel")}
             </Button>
             {canEdit && (

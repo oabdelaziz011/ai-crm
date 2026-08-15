@@ -63,7 +63,7 @@ export function CalendarMonthView({
 
   return (
     <div className="min-h-[640px]">
-      <div className="grid grid-cols-7 border-b border-white/10 bg-black/20" role="row" aria-hidden>
+      <div className="grid grid-cols-7 border-b border-border bg-background" role="row" aria-hidden>
         {weekdayOrder.map((dayIndex) => (
           <div
             key={dayIndex}

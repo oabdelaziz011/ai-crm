@@ -83,6 +83,10 @@ export function mapRecordToOperationsBooking(
     discountCents: Number(record.discount_cents) || 0,
     taxCents: Number(record.tax_cents) || 0,
     invoiceId: record.invoice_id ?? null,
+    confirmationNumber:
+      typeof record.confirmation_number === "string" && record.confirmation_number.trim()
+        ? record.confirmation_number.trim()
+        : null,
     displayStart: TimezoneResolver.localTimeForInstant(start, displayTimezone),
     displayEnd: TimezoneResolver.localTimeForInstant(end, displayTimezone),
     durationMinutes,
@@ -101,6 +105,7 @@ export function filterOperationsBookings(
       booking.customer?.name,
       booking.customer?.phone,
       booking.id,
+      booking.confirmationNumber,
       booking.service?.name,
       booking.resource?.name,
     ]

@@ -40,15 +40,18 @@ export function previewStyleVertical(
   durationMinutes: number,
   startHour: number,
   endHour: number,
-): { top: string; height: string } {
+  hourRowHeightPx = 56,
+): { top: string; height: string; left: string; right: string } {
   const dayStartMinutes = startHour * 60;
-  const totalMinutes = getCalendarDayTotalMinutes(startHour, endHour);
   const startMinutes = displayTimeToMinutes(slotStart);
-  const top = ((startMinutes - dayStartMinutes) / totalMinutes) * 100;
-  const height = Math.max((durationMinutes / totalMinutes) * 100, 2.5);
+  const topPx = ((startMinutes - dayStartMinutes) / 60) * hourRowHeightPx;
+  const heightPx = Math.max((Math.max(durationMinutes, 15) / 60) * hourRowHeightPx, 28);
+  void endHour;
   return {
-    top: `${Math.max(0, top)}%`,
-    height: `${Math.min(height, 100 - Math.max(0, top))}%`,
+    top: `${Math.max(0, topPx)}px`,
+    height: `${heightPx}px`,
+    left: "6px",
+    right: "6px",
   };
 }
 

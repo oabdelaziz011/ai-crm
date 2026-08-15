@@ -106,6 +106,7 @@ export class OperationsRepository {
         discount_cents,
         tax_cents,
         invoice_id,
+        confirmation_number,
         customers(id, name, phone, email),
         scheduling_services(id, name, duration_minutes, price_cents, currency),
         scheduling_resources(id, name, resource_type),

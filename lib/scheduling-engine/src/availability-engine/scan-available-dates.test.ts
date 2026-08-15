@@ -143,9 +143,8 @@ describe("availability-scanner", () => {
   it("returns the first bookable slot without scanning the full window", async () => {
     let slotChecks = 0;
     const countingEngines: AvailabilityScanEnginePort = {
-      async resolveAvailability(_companyId, _resourceId, _serviceId, date) {
-        slotChecks += 1;
-        return { available: date === "2026-07-30" || date === "2026-07-31" };
+      async resolveAvailability() {
+        return { available: true };
       },
       async getAvailableSlots(_companyId, _resourceId, _serviceId, date) {
         slotChecks += 1;
@@ -158,10 +157,11 @@ describe("availability-scanner", () => {
           };
         }
         return {
-          available: true,
+          available: date === "2026-07-31",
           timezone: "UTC",
           durationMinutes: 30,
-          generatedSlots: [{ start: "09:00", end: "09:30" }],
+          generatedSlots:
+            date === "2026-07-31" ? [{ start: "09:00", end: "09:30" }] : [],
         };
       },
     };
@@ -178,6 +178,7 @@ describe("availability-scanner", () => {
 
     assert.equal(next?.date, "2026-07-30");
     assert.deepEqual(next?.slot, { start: "10:00", end: "10:30" });
-    assert.equal(slotChecks, 3);
+    // Only getAvailableSlots is used (no duplicate resolveAvailability round-trip).
+    assert.equal(slotChecks, 2);
   });
 });

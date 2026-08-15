@@ -29,7 +29,7 @@ export function BookingRuleField({
   const { t } = useTranslation("common");
 
   return (
-    <div className="space-y-2 rounded-xl border border-white/10 bg-background/20 p-4">
+    <div className="space-y-2 rounded-xl border border-border/60 bg-background p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1">
           <Label htmlFor={htmlFor} className="text-sm font-medium">

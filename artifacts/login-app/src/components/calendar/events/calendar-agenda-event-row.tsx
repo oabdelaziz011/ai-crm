@@ -24,9 +24,9 @@ export function CalendarAgendaEventRow({
       aria-label={`${event.subtitle}, ${event.title}, ${event.displayStart} to ${event.displayEnd}`}
       onClick={() => onClick?.(event)}
       className={cn(
-        "w-full flex items-start gap-3 rounded-lg border px-3 py-3 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+        "w-full flex items-start gap-3 rounded-lg border px-3 py-3 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
         event.color.borderClass,
-        selected && "ring-2 ring-primary/60 bg-white/[0.04]",
+        selected && "ring-2 ring-primary/60 bg-muted/30",
       )}
     >
       <div className="w-14 shrink-0 text-xs font-mono text-muted-foreground pt-0.5">

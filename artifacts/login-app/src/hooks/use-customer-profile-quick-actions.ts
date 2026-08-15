@@ -131,6 +131,7 @@ export function useCustomerProfileQuickActions({
           await ConversationService.openWhatsappConversation({
             customerId: customer.id,
             companyId: context?.companyId,
+            phone: customer.phone,
             profileContext: context,
             navigate: setLocation,
             onCloseProfile,

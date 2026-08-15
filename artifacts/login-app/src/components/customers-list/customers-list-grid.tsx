@@ -43,7 +43,21 @@ const HEADER_LABEL_KEYS: Record<CustomerColumnId, string> = {
   ltv: "dashboard.customers.list.columns.ltv",
   status: "dashboard.customers.list.columns.status",
   lastActivity: "dashboard.customers.list.columns.lastActivity",
-  actions: "",
+  actions: "dashboard.customers.list.columns.actions",
+};
+
+/** Must stay in sync with CustomersListRow visibility so headers never drift from cells. */
+const COLUMN_VISIBILITY_CLASS: Partial<Record<CustomerColumnId, string>> = {
+  tags: "hidden lg:block",
+  company: "hidden md:block",
+  phone: "hidden lg:block",
+  email: "hidden xl:block",
+  assigned: "hidden xl:block",
+  nextAppointment: "hidden lg:block",
+  outstanding: "hidden md:block",
+  ltv: "hidden md:block",
+  status: "hidden sm:block",
+  lastActivity: "hidden xl:block",
 };
 
 export const CustomersListGrid = memo(function CustomersListGrid({
@@ -105,17 +119,19 @@ export const CustomersListGrid = memo(function CustomersListGrid({
   const visibleRows = rows.slice(startIndex, endIndex);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="sticky top-[calc(var(--customers-toolbar-offset,0px)+0px)] z-10 border-b border-border bg-muted/20">
-        <div className="flex items-center px-0 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="flex max-h-[min(68vh,720px)] min-h-[20rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-background">
+      <div className="sticky top-0 z-20 shrink-0 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex w-max min-w-full items-center px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {visibleColumns.map((columnId) => {
             const width = columnWidths[columnId];
+            const visibilityClass = COLUMN_VISIBILITY_CLASS[columnId];
+
             if (columnId === "select") {
               return (
                 <div
                   key={columnId}
                   className="flex shrink-0 items-center justify-center px-2"
-                  style={{ width, minWidth: width }}
+                  style={{ width, minWidth: width, maxWidth: width }}
                 >
                   <Checkbox
                     checked={allSelected}
@@ -128,26 +144,22 @@ export const CustomersListGrid = memo(function CustomersListGrid({
             }
 
             if (columnId === "actions") {
-              return <div key={columnId} style={{ width, minWidth: width }} />;
+              return (
+                <div
+                  key={columnId}
+                  className="flex shrink-0 items-center justify-center overflow-hidden px-1 text-center"
+                  style={{ width, minWidth: width, maxWidth: width }}
+                >
+                  <span className="sr-only">{t(HEADER_LABEL_KEYS.actions)}</span>
+                </div>
+              );
             }
 
             return (
               <div
                 key={columnId}
-                className={cn(
-                  "relative truncate px-2",
-                  columnId === "company" && "hidden md:block",
-                  columnId === "phone" && "hidden lg:block",
-                  columnId === "email" && "hidden xl:block",
-                  columnId === "assigned" && "hidden xl:block",
-                  columnId === "tags" && "hidden lg:block",
-                  columnId === "nextAppointment" && "hidden lg:block",
-                  columnId === "outstanding" && "hidden md:block",
-                  columnId === "ltv" && "hidden md:block",
-                  columnId === "status" && "hidden sm:block",
-                  columnId === "lastActivity" && "hidden xl:block",
-                )}
-                style={{ width, minWidth: width }}
+                className={cn("relative shrink-0 truncate px-2", visibilityClass)}
+                style={{ width, minWidth: width, maxWidth: width }}
               >
                 {t(HEADER_LABEL_KEYS[columnId])}
                 <button
@@ -167,7 +179,7 @@ export const CustomersListGrid = memo(function CustomersListGrid({
 
       <div
         ref={scrollRef}
-        className="max-h-[min(68vh,720px)] overflow-auto"
+        className="min-h-0 flex-1 overflow-auto"
         role="grid"
         aria-rowcount={rows.length}
       >
@@ -193,7 +205,7 @@ export const CustomersListGrid = memo(function CustomersListGrid({
         </div>
       </div>
 
-      <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+      <div className="shrink-0 border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
         {t("dashboard.customers.list.rowCount", { count: rows.length })}
       </div>
     </div>

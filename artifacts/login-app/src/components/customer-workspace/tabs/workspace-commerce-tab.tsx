@@ -17,7 +17,7 @@ export function WorkspaceCommerceTab({ active, onChange, children }: Props) {
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <nav
-        className="flex gap-1 rounded-lg border border-border/70 bg-muted/20 p-1"
+        className="flex gap-1 rounded-lg border border-border/60 bg-background p-1"
         aria-label={t("dashboard.customerWorkspace.commerce.navLabel")}
       >
         {tabs.map((tab) => (

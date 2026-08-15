@@ -8,13 +8,13 @@ type Props = {
 
 export function TimelineSearch({ value, placeholder, onChange }: Props) {
   return (
-    <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
-      <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+    <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-2.5">
+      <Search className="size-3.5 shrink-0 text-muted-foreground" />
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="bg-transparent text-sm outline-none flex-1 placeholder:text-muted-foreground"
+        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
     </div>
   );

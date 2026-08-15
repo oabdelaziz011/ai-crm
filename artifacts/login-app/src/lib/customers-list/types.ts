@@ -129,18 +129,18 @@ export const DEFAULT_COLUMN_ORDER: CustomerColumnId[] = [
 
 export const DEFAULT_COLUMN_WIDTHS: Partial<Record<CustomerColumnId, number>> = {
   select: 44,
-  customer: 240,
-  tags: 160,
-  company: 140,
+  customer: 220,
+  tags: 140,
+  company: 130,
   phone: 130,
   email: 180,
   assigned: 140,
-  nextAppointment: 150,
-  outstanding: 120,
+  nextAppointment: 140,
+  outstanding: 110,
   ltv: 110,
-  status: 110,
-  lastActivity: 130,
-  actions: 160,
+  status: 100,
+  lastActivity: 120,
+  actions: 52,
 };
 
 export const DEFAULT_COLUMN_VISIBILITY: Record<CustomerColumnId, boolean> = {

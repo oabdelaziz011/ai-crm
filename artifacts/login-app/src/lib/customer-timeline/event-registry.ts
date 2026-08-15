@@ -58,6 +58,14 @@ function payloadString(event: TimelineEvent, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function resolveDetail(event: TimelineEvent, ctx: TimelineRenderContext): string | null {
+  const detailKey = event.metadata?.detailKey;
+  if (typeof detailKey === "string" && detailKey.trim()) {
+    return t(ctx, `details.${detailKey}`);
+  }
+  return typeof event.metadata?.detail === "string" ? event.metadata.detail : null;
+}
+
 defineDescriptor({
   type: "customer_created",
   category: "lifecycle",
@@ -125,7 +133,8 @@ defineDescriptor({
   icon: CalendarCheck,
   accentClass: "text-violet-400 bg-violet-500/15 border-violet-500/30",
   resolveTitle: (_event, ctx) => t(ctx, "booking_created.title"),
-  resolveDescription: (event) => event.metadata?.detail ?? payloadString(event, "service"),
+  resolveDescription: (event, ctx) =>
+    resolveDetail(event, ctx) ?? payloadString(event, "service"),
 });
 
 defineDescriptor({
@@ -134,7 +143,7 @@ defineDescriptor({
   icon: CalendarCheck,
   accentClass: "text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
   resolveTitle: (_event, ctx) => t(ctx, "booking_confirmed.title"),
-  resolveDescription: (event) => event.metadata?.detail ?? null,
+  resolveDescription: (event, ctx) => resolveDetail(event, ctx),
 });
 
 defineDescriptor({
@@ -143,7 +152,7 @@ defineDescriptor({
   icon: CalendarClock,
   accentClass: "text-amber-400 bg-amber-500/15 border-amber-500/30",
   resolveTitle: (_event, ctx) => t(ctx, "booking_rescheduled.title"),
-  resolveDescription: (event) => event.metadata?.detail ?? null,
+  resolveDescription: (event, ctx) => resolveDetail(event, ctx),
 });
 
 defineDescriptor({
@@ -152,7 +161,7 @@ defineDescriptor({
   icon: CalendarCheck,
   accentClass: "text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
   resolveTitle: (_event, ctx) => t(ctx, "booking_completed.title"),
-  resolveDescription: (event) => event.metadata?.detail ?? null,
+  resolveDescription: (event, ctx) => resolveDetail(event, ctx),
 });
 
 defineDescriptor({
@@ -161,7 +170,7 @@ defineDescriptor({
   icon: CalendarX,
   accentClass: "text-rose-400 bg-rose-500/15 border-rose-500/30",
   resolveTitle: (_event, ctx) => t(ctx, "booking_cancelled.title"),
-  resolveDescription: (event) => event.metadata?.detail ?? null,
+  resolveDescription: (event, ctx) => resolveDetail(event, ctx),
 });
 
 defineDescriptor({

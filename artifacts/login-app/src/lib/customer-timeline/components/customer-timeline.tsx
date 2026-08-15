@@ -11,14 +11,21 @@ import { TimelineSearch } from "./timeline-search";
 import { TimelineFilters } from "./timeline-filters";
 import { TimelineList } from "./timeline-list";
 import { TimelineLoading } from "./timeline-loading";
+import { cn } from "@/lib/utils";
 
 type CustomerTimelineProps = {
   customerId: string;
   companyId?: string | null;
   cardVariant?: "default" | "workspace";
+  fillHeight?: boolean;
 };
 
-export function CustomerTimelinePanel({ customerId, companyId, cardVariant = "default" }: CustomerTimelineProps) {
+export function CustomerTimelinePanel({
+  customerId,
+  companyId,
+  cardVariant = "default",
+  fillHeight = false,
+}: CustomerTimelineProps) {
   const { t, i18n } = useTranslation("common");
   const { filter, setLegacyFilter, groupMode, setGroupMode } = useTimelineFilters();
   const { search, setSearch, debouncedSearch } = useTimelineSearch();
@@ -51,52 +58,74 @@ export function CustomerTimelinePanel({ customerId, companyId, cardVariant = "de
   );
 
   if (query.isLoading) {
-    return <TimelineLoading label={t("dashboard.customerProfile.timeline.loading")} />;
+    return (
+      <div className={cn("flex items-center justify-center", fillHeight && "min-h-0 flex-1")}>
+        <TimelineLoading label={t("dashboard.customerProfile.timeline.loading")} />
+      </div>
+    );
   }
 
   if (query.error) {
     return (
-      <p className="text-sm text-destructive py-8 text-center">
-        {query.error.message || t("dashboard.customerProfile.timeline.loadError")}
-      </p>
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center",
+          fillHeight && "min-h-0 flex-1",
+        )}
+      >
+        <p className="text-sm text-destructive">
+          {query.error.message || t("dashboard.customerProfile.timeline.loadError")}
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <TimelineHeader
-        title={t("dashboard.customerProfile.timeline.title")}
-        subtitle={t("dashboard.customerProfile.timeline.subtitle")}
-      />
+    <div className={cn("flex flex-col gap-3", fillHeight && "min-h-0 flex-1")}>
+      <div className="shrink-0 space-y-3">
+        {cardVariant !== "workspace" ? (
+          <TimelineHeader
+            title={t("dashboard.customerProfile.timeline.title")}
+            subtitle={t("dashboard.customerProfile.timeline.subtitle")}
+          />
+        ) : null}
 
-      <TimelineSearch
-        value={search}
-        onChange={setSearch}
-        placeholder={t("dashboard.customerProfile.timeline.searchPlaceholder")}
-      />
+        <TimelineSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={t("dashboard.customerProfile.timeline.searchPlaceholder")}
+        />
 
-      <TimelineFilters
-        filter={(filter.legacyFilterId ?? "all") as TimelineFilterId}
-        groupMode={groupMode}
-        onFilterChange={(value) => setLegacyFilter(value)}
-        onGroupModeChange={(mode: TimelineGroupMode) => setGroupMode(mode)}
-        translate={(key) => t(key)}
-      />
+        <TimelineFilters
+          filter={(filter.legacyFilterId ?? "all") as TimelineFilterId}
+          groupMode={groupMode}
+          onFilterChange={(value) => setLegacyFilter(value)}
+          onGroupModeChange={(mode: TimelineGroupMode) => setGroupMode(mode)}
+          translate={(key) => t(key)}
+        />
+      </div>
 
-      <TimelineList
-        groups={groups}
-        renderContext={renderContext}
-        hasMore={query.hasNextPage}
-        isFetchingMore={query.isFetchingNextPage}
-        onLoadMore={() => void query.fetchNextPage()}
-        emptyMessage={
-          debouncedSearch
-            ? t("dashboard.customerProfile.timeline.emptySearch")
-            : t("dashboard.customerProfile.timeline.empty")
-        }
-        loadMoreLabel={t("dashboard.customerProfile.timeline.loadMore")}
-        cardVariant={cardVariant}
-      />
+      <div
+        className={cn(
+          fillHeight ? "min-h-0 flex-1 overflow-y-auto pe-1" : undefined,
+        )}
+      >
+        <TimelineList
+          groups={groups}
+          renderContext={renderContext}
+          hasMore={query.hasNextPage}
+          isFetchingMore={query.isFetchingNextPage}
+          onLoadMore={() => void query.fetchNextPage()}
+          emptyMessage={
+            debouncedSearch
+              ? t("dashboard.customerProfile.timeline.emptySearch")
+              : t("dashboard.customerProfile.timeline.empty")
+          }
+          loadMoreLabel={t("dashboard.customerProfile.timeline.loadMore")}
+          cardVariant={cardVariant}
+          fillHeight={fillHeight}
+        />
+      </div>
     </div>
   );
 }

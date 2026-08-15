@@ -20,15 +20,25 @@ export function WorkspacePanel({
   dense?: boolean;
 }) {
   return (
-    <section className={cn("rounded-xl border border-border/70 bg-card/85 shadow-sm", dense ? "p-4" : "p-5 lg:p-6", className)}>
-      {(title || subtitle || action) ? (
-      <div className={cn("flex items-start justify-between gap-3", dense ? "mb-3" : "mb-4")}>
-        <div>
-          {title ? <h3 className="text-sm font-semibold tracking-tight">{title}</h3> : null}
-          {subtitle && <p className={cn("text-[11px] text-muted-foreground", title && "mt-0.5")}>{subtitle}</p>}
+    <section
+      className={cn(
+        "rounded-2xl border border-border/70 bg-background",
+        dense ? "p-4" : "p-5 lg:p-6",
+        className,
+      )}
+    >
+      {title || subtitle || action ? (
+        <div className={cn("flex items-start justify-between gap-3", dense ? "mb-3" : "mb-4")}>
+          <div>
+            {title ? <h3 className="text-sm font-semibold tracking-tight">{title}</h3> : null}
+            {subtitle ? (
+              <p className={cn("text-[11px] leading-relaxed text-muted-foreground", title && "mt-0.5")}>
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+          {action}
         </div>
-        {action}
-      </div>
       ) : null}
       {children}
     </section>
@@ -48,26 +58,47 @@ export function WorkspaceHealthCard({
 }) {
   const { t } = useTranslation("common");
   const toneRing = {
-    success: "ring-success/30",
-    warning: "ring-warning/30",
-    destructive: "ring-destructive/30",
+    success: "ring-success/20 border-success/25",
+    warning: "ring-warning/20 border-warning/25",
+    destructive: "ring-destructive/20 border-destructive/25",
+  };
+  const toneBg = {
+    success: "bg-success/5",
+    warning: "bg-warning/5",
+    destructive: "bg-destructive/5",
   };
 
   return (
-    <div className={cn("rounded-xl border border-border/70 bg-card/85 p-4 ring-1", toneRing[health.tone], className)}>
+    <div
+      className={cn(
+        "rounded-2xl border bg-background p-4 ring-1",
+        toneRing[health.tone],
+        toneBg[health.tone],
+        className,
+      )}
+    >
       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
         {t("dashboard.customerWorkspace.health.title")}
       </p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold">{customerName}</p>
+          <p className="truncate text-lg font-bold tracking-tight">{customerName}</p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="text-end shrink-0">
-          <p className={cn("font-mono text-3xl font-bold tabular-nums", health.tone === "success" && "text-success", health.tone === "warning" && "text-warning", health.tone === "destructive" && "text-destructive")}>
+        <div className="shrink-0 text-end">
+          <p
+            className={cn(
+              "font-mono text-3xl font-bold tabular-nums",
+              health.tone === "success" && "text-success",
+              health.tone === "warning" && "text-warning",
+              health.tone === "destructive" && "text-destructive",
+            )}
+          >
             {health.score}
           </p>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t(health.labelKey)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {t(health.labelKey)}
+          </p>
         </div>
       </div>
     </div>
@@ -88,15 +119,17 @@ export function WorkspaceGuidedEmpty({
   onAction?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-lg border border-dashed border-border/60 bg-muted/10 px-4 py-6 text-center">
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted/40">
-        <Icon className="size-5 text-muted-foreground" />
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-border/70 bg-background px-4 py-6 text-center">
+      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+        <Icon className="size-5 text-primary" />
       </div>
       <p className="mt-3 text-sm font-semibold">{title}</p>
-      <p className="mt-1 max-w-xs text-xs text-muted-foreground leading-relaxed">{description}</p>
-      {actionLabel && onAction && (
-        <Button size="sm" className="mt-4 h-8 text-xs" onClick={onAction}>{actionLabel}</Button>
-      )}
+      <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">{description}</p>
+      {actionLabel && onAction ? (
+        <Button size="sm" className="mt-4 h-8 rounded-xl text-xs" onClick={onAction}>
+          {actionLabel}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -113,13 +146,13 @@ export function WorkspaceEmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed border-border/60 bg-muted/10 px-6 py-10 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted/40">
-        <Icon className="size-6 text-muted-foreground" />
+    <div className="flex min-h-full flex-1 flex-col items-center justify-center rounded-xl border border-border/60 bg-background px-6 py-14 text-center">
+      <div className="flex size-11 items-center justify-center rounded-xl border border-border/60 bg-background">
+        <Icon className="size-5 text-muted-foreground" />
       </div>
-      <p className="mt-4 text-sm font-semibold">{title}</p>
-      <p className="mt-1.5 max-w-sm text-xs text-muted-foreground leading-relaxed">{description}</p>
-      {action && <div className="mt-5">{action}</div>}
+      <p className="mt-3 text-sm font-semibold">{title}</p>
+      <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-muted-foreground">{description}</p>
+      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
 }
@@ -140,19 +173,32 @@ export function WorkspaceMetric({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("rounded-lg border border-border/70 bg-card", compact ? "px-2.5 py-2" : "p-4")}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-        {Icon && (
-          <div className="flex size-7 items-center justify-center rounded-md bg-muted/35">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-border/70 bg-background",
+        compact ? "px-3 py-2.5" : "p-4",
+      )}
+    >
+      <div className="absolute inset-y-0 start-0 w-1 bg-primary/60" aria-hidden />
+      <div className="flex items-start justify-between gap-2 ps-1">
+        <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+        {Icon ? (
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
             <Icon className="size-3.5 text-primary" />
           </div>
-        )}
+        ) : null}
       </div>
-      <p className={cn("mt-0.5 font-mono font-bold tabular-nums tracking-tight", compact ? "text-lg" : "text-2xl", accent === "warning" && "text-warning", accent === "success" && "text-success")}>
+      <p
+        className={cn(
+          "mt-0.5 ps-1 font-mono font-bold tabular-nums tracking-tight",
+          compact ? "text-lg" : "text-2xl",
+          accent === "warning" && "text-warning",
+          accent === "success" && "text-success",
+        )}
+      >
         {value}
       </p>
-      {hint && <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p>}
+      {hint ? <p className="mt-0.5 ps-1 text-[10px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -176,20 +222,20 @@ export function WorkspaceListRow({
       type={onClick ? "button" : undefined}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-lg border border-border/50 bg-background/25 text-start",
+        "flex w-full items-center justify-between gap-2 rounded-xl border border-border/60 bg-background text-start shadow-sm",
         compact ? "px-3 py-2" : "px-3.5 py-2.5",
-        onClick && "transition-colors hover:border-primary/25 hover:bg-primary/5",
+        onClick && "transition-colors hover:border-primary/30 hover:bg-primary/5",
       )}
     >
       <div className="min-w-0">
         <p className={cn("truncate font-medium", compact ? "text-xs" : "text-sm")}>{title}</p>
-        {subtitle && <p className="truncate text-[10px] text-muted-foreground">{subtitle}</p>}
+        {subtitle ? <p className="truncate text-[10px] text-muted-foreground">{subtitle}</p> : null}
       </div>
-      {badge && (
-        <span className="shrink-0 rounded bg-muted/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+      {badge ? (
+        <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground">
           {badge}
         </span>
-      )}
+      ) : null}
     </Wrapper>
   );
 }
@@ -198,7 +244,7 @@ export function WorkspaceSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/40" />
+        <div key={i} className="h-14 animate-pulse rounded-xl bg-muted/60" />
       ))}
     </div>
   );

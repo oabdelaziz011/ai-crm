@@ -22,7 +22,10 @@ export function computeCustomerLtv(invoices: Invoice[]): number {
 
 export function computeOutstandingBalance(invoices: Invoice[]): number {
   return invoices
-    .filter((inv) => inv.status === "Unpaid" || inv.status === "Overdue")
+    .filter((inv) => {
+      const status = String(inv.status ?? "").toLowerCase();
+      return status === "unpaid" || status === "overdue" || status === "issued" || status === "pending";
+    })
     .reduce((sum, inv) => sum + Number(inv.amount), 0);
 }
 
@@ -239,8 +242,86 @@ export function fmtCurrency(amount: number): string {
   return formatBillingCurrency(amount);
 }
 
-export function fmtDate(value: string): string {
-  return format(parseISO(value), "MMM d, yyyy");
+export function fmtDate(value: string, language = "en"): string {
+  try {
+    return new Intl.DateTimeFormat(language.startsWith("ar") ? "ar" : "en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(parseISO(value));
+  } catch {
+    return format(parseISO(value), "MMM d, yyyy");
+  }
+}
+
+export function fmtDateTime(value: string, language = "en"): string {
+  try {
+    return new Intl.DateTimeFormat(language.startsWith("ar") ? "ar" : "en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(parseISO(value));
+  } catch {
+    return format(parseISO(value), "MMM d, yyyy · h:mm a");
+  }
+}
+
+const BOOKING_STATUS_KEYS: Record<string, string> = {
+  pending: "status.pending",
+  confirmed: "status.confirmed",
+  cancelled: "status.cancelled",
+  checked_in: "dashboard.customerWorkspace.bookingStatus.checkedIn",
+  with_nurse: "dashboard.customerWorkspace.bookingStatus.withNurse",
+  in_progress: "dashboard.customerWorkspace.bookingStatus.inProgress",
+  completed: "dashboard.customerWorkspace.bookingStatus.completed",
+  no_show: "dashboard.customerWorkspace.bookingStatus.noShow",
+  rescheduled: "dashboard.customerWorkspace.bookingStatus.rescheduled",
+  archived: "dashboard.customerWorkspace.bookingStatus.archived",
+};
+
+const INVOICE_STATUS_KEYS: Record<string, string> = {
+  unpaid: "dashboard.customerWorkspace.invoices.unpaid",
+  paid: "dashboard.customerWorkspace.invoices.paid",
+  overdue: "dashboard.customerWorkspace.invoices.overdue",
+  pending: "dashboard.customerWorkspace.invoices.pending",
+  draft: "dashboard.customerWorkspace.invoices.draft",
+  issued: "dashboard.customerWorkspace.invoices.issued",
+};
+
+export function localizeBookingStatus(
+  status: string | null | undefined,
+  translate: (key: string) => string,
+): string {
+  if (!status?.trim()) return "";
+  const key = status.trim().toLowerCase().replace(/\s+/g, "_");
+  const i18nKey = BOOKING_STATUS_KEYS[key];
+  if (!i18nKey) return status;
+  const label = translate(i18nKey);
+  return label === i18nKey ? status : label;
+}
+
+export function localizeInvoiceStatus(
+  status: string | null | undefined,
+  translate: (key: string) => string,
+): string {
+  if (!status?.trim()) return "";
+  const key = status.trim().toLowerCase();
+  const i18nKey = INVOICE_STATUS_KEYS[key];
+  if (!i18nKey) return status;
+  const label = translate(i18nKey);
+  return label === i18nKey ? status : label;
+}
+
+export function bookingReferenceNumber(booking: Pick<Booking, "id"> & { confirmation_number?: string | null }): string {
+  const ref = booking.confirmation_number?.trim();
+  return ref || booking.id.slice(0, 8).toUpperCase();
+}
+
+export function invoiceReferenceNumber(invoice: Pick<Invoice, "id"> & { invoice_number?: string | null }): string {
+  const ref = invoice.invoice_number?.trim();
+  return ref || invoice.id.slice(0, 8).toUpperCase();
 }
 
 /** Nest-relative href under `/dashboard/customers` (Wouter nested router). */

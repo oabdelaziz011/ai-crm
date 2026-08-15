@@ -13,7 +13,7 @@ import {
   type SortDirection,
 } from "./types";
 
-const STORAGE_KEY = "valueor-customers-list-prefs-v1";
+const STORAGE_KEY = "valueor-customers-list-prefs-v2";
 
 function readStorage(): Partial<CustomerListPreferences> | null {
   try {

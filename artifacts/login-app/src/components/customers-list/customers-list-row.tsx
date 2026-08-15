@@ -1,11 +1,12 @@
 import { memo, useCallback } from "react";
 import {
   CalendarPlus,
-  FileText,
   Mail,
   MessageCircle,
   MoreHorizontal,
   Phone,
+  Pencil,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -45,11 +47,24 @@ type CustomersListRowProps = {
 };
 
 const STATUS_STYLES = {
-  active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
+  active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20 dark:text-emerald-400",
   inactive: "bg-muted text-muted-foreground border-border",
-  at_risk: "bg-orange-500/15 text-orange-700 border-orange-500/20",
-  new: "bg-blue-500/15 text-blue-700 border-blue-500/20",
+  at_risk: "bg-orange-500/15 text-orange-700 border-orange-500/20 dark:text-orange-400",
+  new: "bg-blue-500/15 text-blue-700 border-blue-500/20 dark:text-blue-400",
 } as const;
+
+const COLUMN_VISIBILITY_CLASS: Partial<Record<CustomerColumnId, string>> = {
+  tags: "hidden lg:flex",
+  company: "hidden md:block",
+  phone: "hidden lg:block",
+  email: "hidden xl:block",
+  assigned: "hidden xl:block",
+  nextAppointment: "hidden lg:block",
+  outstanding: "hidden md:block",
+  ltv: "hidden md:block",
+  status: "hidden sm:flex",
+  lastActivity: "hidden xl:block",
+};
 
 export const CustomersListRow = memo(function CustomersListRow({
   row,
@@ -68,33 +83,39 @@ export const CustomersListRow = memo(function CustomersListRow({
   const { customer } = row;
 
   const cellStyle = useCallback(
-    (columnId: CustomerColumnId) => ({
-      width: columnWidths[columnId],
-      minWidth: columnWidths[columnId],
-      maxWidth: columnWidths[columnId],
-    }),
+    (columnId: CustomerColumnId) => {
+      const width = columnWidths[columnId];
+      return {
+        width,
+        minWidth: width,
+        maxWidth: width,
+      };
+    },
     [columnWidths],
   );
 
-  const nameSize = density === "ultra" ? "text-sm" : density === "compact" ? "text-sm" : "text-[15px]";
+  const nameSize = density === "ultra" ? "text-sm" : density === "compact" ? "text-sm" : "text-[13px]";
 
   return (
     <div
       role="row"
       className={cn(
-        "group relative flex items-center border-b border-border/70 transition-colors duration-150",
-        "hover:bg-muted/30 focus-within:bg-muted/20",
-        selected && "bg-primary/5 hover:bg-primary/8",
+        "group flex w-max min-w-full items-stretch border-b border-border/40 transition-colors",
+        "hover:bg-primary/5",
+        selected && "bg-primary/8 hover:bg-primary/10",
       )}
       style={{ height: rowHeight }}
     >
       {visibleColumns.map((columnId) => {
+        const widthStyle = cellStyle(columnId);
+        const visibilityClass = COLUMN_VISIBILITY_CLASS[columnId];
+
         if (columnId === "select") {
           return (
             <div
               key={columnId}
               className="flex shrink-0 items-center justify-center px-2"
-              style={cellStyle(columnId)}
+              style={widthStyle}
               onClick={(e) => e.stopPropagation()}
             >
               <Checkbox
@@ -112,17 +133,17 @@ export const CustomersListRow = memo(function CustomersListRow({
               key={columnId}
               type="button"
               onClick={onOpen}
-              className="flex min-w-0 flex-1 items-center gap-2.5 px-2 text-start"
-              style={cellStyle(columnId)}
+              className="flex shrink-0 items-center gap-2.5 overflow-hidden px-2 text-start"
+              style={widthStyle}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/15 text-xs font-bold text-primary">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/15 text-[10px] font-bold text-primary">
                 {customerInitials(customer.name)}
               </span>
-              <span className="min-w-0">
-                <span className={cn("flex items-center gap-2 font-semibold truncate", nameSize)}>
-                  {customer.name}
+              <span className="min-w-0 overflow-hidden">
+                <span className={cn("flex items-center gap-1.5 font-medium truncate", nameSize)}>
+                  <span className="truncate">{customer.name}</span>
                   {row.isVip && (
-                    <Badge className="h-5 border-amber-500/30 bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/15">
+                    <Badge className="h-5 shrink-0 border-amber-500/30 bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/15">
                       VIP
                     </Badge>
                   )}
@@ -134,19 +155,27 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "tags") {
           return (
-            <div key={columnId} className="hidden min-w-0 px-2 lg:flex flex-wrap gap-1" style={cellStyle(columnId)}>
-              {row.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="h-5 px-1.5 text-[10px] font-normal capitalize">
-                  {tag}
-                </Badge>
-              ))}
+            <div
+              key={columnId}
+              className={cn("min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2", visibilityClass)}
+              style={widthStyle}
+            >
+              {row.tags.length === 0 ? (
+                <span className="text-sm text-muted-foreground">—</span>
+              ) : (
+                row.tags.slice(0, 3).map((tag) => (
+                  <Badge key={tag} variant="secondary" className="h-5 px-1.5 text-[10px] font-normal capitalize">
+                    {tag}
+                  </Badge>
+                ))
+              )}
             </div>
           );
         }
 
         if (columnId === "company") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden md:block font-medium text-sm">
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm font-medium", visibilityClass)}>
               {row.company ?? "—"}
             </Cell>
           );
@@ -154,23 +183,23 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "phone") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden lg:block text-sm text-muted-foreground">
-              <span dir="ltr">{customer.phone ?? "—"}</span>
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm text-muted-foreground", visibilityClass)}>
+              <span dir="ltr">{customer.phone?.trim() ? customer.phone : "—"}</span>
             </Cell>
           );
         }
 
         if (columnId === "email") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden xl:block text-sm text-muted-foreground/80 truncate">
-              {customer.email ?? "—"}
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm text-muted-foreground", visibilityClass)}>
+              {customer.email?.trim() ? customer.email : "—"}
             </Cell>
           );
         }
 
         if (columnId === "assigned") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden xl:block text-sm text-muted-foreground">
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm text-muted-foreground", visibilityClass)}>
               {row.assignedEmployee ?? t("dashboard.customers.list.unassigned")}
             </Cell>
           );
@@ -178,7 +207,7 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "nextAppointment") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden lg:block text-sm">
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm tabular-nums", visibilityClass)}>
               {row.nextAppointment ? fmtDate(row.nextAppointment.booking_date) : "—"}
             </Cell>
           );
@@ -186,9 +215,9 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "outstanding") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden md:block text-sm tabular-nums">
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm tabular-nums", visibilityClass)}>
               {row.outstanding > 0 ? (
-                <span className="text-orange-600 font-medium">{formatMoney(row.outstanding)}</span>
+                <span className="font-medium text-orange-600 dark:text-orange-400">{formatMoney(row.outstanding)}</span>
               ) : (
                 "—"
               )}
@@ -198,7 +227,7 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "ltv") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden md:block text-sm tabular-nums font-medium">
+            <Cell key={columnId} style={widthStyle} className={cn("text-sm tabular-nums font-medium", visibilityClass)}>
               {row.ltv > 0 ? formatMoney(row.ltv) : "—"}
             </Cell>
           );
@@ -206,7 +235,11 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "status") {
           return (
-            <div key={columnId} className="hidden sm:flex px-2" style={cellStyle(columnId)}>
+            <div
+              key={columnId}
+              className={cn("min-w-0 shrink-0 items-center overflow-hidden px-2", visibilityClass)}
+              style={widthStyle}
+            >
               <Badge variant="outline" className={cn("capitalize", STATUS_STYLES[row.status])}>
                 {t(`dashboard.customers.list.status.${row.status === "at_risk" ? "atRisk" : row.status}`)}
               </Badge>
@@ -216,7 +249,7 @@ export const CustomersListRow = memo(function CustomersListRow({
 
         if (columnId === "lastActivity") {
           return (
-            <Cell key={columnId} columnId={columnId} style={cellStyle(columnId)} className="hidden xl:block text-xs text-muted-foreground">
+            <Cell key={columnId} style={widthStyle} className={cn("text-xs text-muted-foreground tabular-nums", visibilityClass)}>
               {row.lastActivity ? fmtDate(row.lastActivity) : "—"}
             </Cell>
           );
@@ -226,57 +259,62 @@ export const CustomersListRow = memo(function CustomersListRow({
           return (
             <div
               key={columnId}
-              className="flex items-center justify-end gap-0.5 px-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-              style={cellStyle(columnId)}
+              className="flex shrink-0 items-center justify-center overflow-hidden px-1"
+              style={widthStyle}
               onClick={(e) => e.stopPropagation()}
             >
-              <QuickActionButton
-                icon={Phone}
-                label={t("dashboard.customerProfile.quickActions.call")}
-                onClick={() => onQuickAction("call")}
-                disabled={!customer.phone}
-              />
-              <QuickActionButton
-                icon={MessageCircle}
-                label="WhatsApp"
-                onClick={() => onQuickAction("whatsapp")}
-                disabled={!customer.phone}
-              />
-              <QuickActionButton
-                icon={Mail}
-                label="Email"
-                onClick={() => onQuickAction("email")}
-                disabled={!customer.email}
-              />
-              <QuickActionButton
-                icon={CalendarPlus}
-                label={t("dashboard.customerProfile.quickActions.newBooking")}
-                onClick={() => onQuickAction("booking")}
-              />
-              <QuickActionButton
-                icon={FileText}
-                label={t("dashboard.customerProfile.quickActions.newInvoice")}
-                onClick={() => onQuickAction("invoice")}
-              />
-              <QuickActionButton
-                icon={UserRound}
-                label={t("dashboard.customers.list.openProfile")}
-                onClick={() => onQuickAction("profile")}
-              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7">
-                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    aria-label={t("dashboard.customers.list.columns.actions")}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="min-w-[11rem]">
+                  <DropdownMenuItem onClick={() => onQuickAction("profile")}>
+                    <UserRound className="me-2 h-3.5 w-3.5" />
+                    {t("dashboard.customers.list.openProfile")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onQuickAction("booking")}>
+                    <CalendarPlus className="me-2 h-3.5 w-3.5" />
+                    {t("dashboard.customerProfile.quickActions.newBooking")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!customer.phone}
+                    onClick={() => onQuickAction("call")}
+                  >
+                    <Phone className="me-2 h-3.5 w-3.5" />
+                    {t("dashboard.customerProfile.quickActions.call")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!customer.phone}
+                    onClick={() => onQuickAction("whatsapp")}
+                  >
+                    <MessageCircle className="me-2 h-3.5 w-3.5" />
+                    {t("dashboard.customerProfile.quickActions.whatsapp")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!customer.email}
+                    onClick={() => onQuickAction("email")}
+                  >
+                    <Mail className="me-2 h-3.5 w-3.5" />
+                    {t("dashboard.customerProfile.quickActions.email")}
+                  </DropdownMenuItem>
+                  {(onEdit || onDelete) && <DropdownMenuSeparator />}
                   {onEdit && (
                     <DropdownMenuItem onClick={onEdit}>
+                      <Pencil className="me-2 h-3.5 w-3.5" />
                       {t("buttons.edit")}
                     </DropdownMenuItem>
                   )}
                   {onDelete && (
-                    <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+                      <Trash2 className="me-2 h-3.5 w-3.5" />
                       {t("buttons.delete")}
                     </DropdownMenuItem>
                   )}
@@ -296,42 +334,14 @@ function Cell({
   children,
   className,
   style,
-  columnId,
 }: {
   children: React.ReactNode;
   className?: string;
   style: React.CSSProperties;
-  columnId: CustomerColumnId;
 }) {
   return (
-    <div className={cn("min-w-0 truncate px-2", className)} style={style} data-column={columnId}>
+    <div className={cn("flex shrink-0 items-center overflow-hidden truncate px-2", className)} style={style}>
       {children}
     </div>
-  );
-}
-
-function QuickActionButton({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-}: {
-  icon: typeof Phone;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-7 w-7 hidden 2xl:inline-flex"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-    >
-      <Icon className="h-3.5 w-3.5" />
-    </Button>
   );
 }

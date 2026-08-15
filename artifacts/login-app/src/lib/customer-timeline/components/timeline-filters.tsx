@@ -1,5 +1,6 @@
 import type { TimelineFilterId, TimelineGroupMode } from "@/lib/customer-timeline/types";
 import { TIMELINE_FILTERS } from "@/lib/customer-timeline/timeline-filters";
+import { cn } from "@/lib/utils";
 
 const GROUP_MODES: TimelineGroupMode[] = ["day", "week", "month", "conversation", "workflow", "booking"];
 
@@ -19,18 +20,19 @@ export function TimelineFilters({
   translate,
 }: Props) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex flex-wrap gap-1.5">
         {TIMELINE_FILTERS.map((filterId) => (
           <button
             key={filterId}
             type="button"
             onClick={() => onFilterChange(filterId)}
-            className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
               filter === filterId
-                ? "bg-primary/15 text-primary border-primary/30"
-                : "border-white/10 text-muted-foreground hover:text-foreground"
-            }`}
+                ? "border-primary/35 bg-primary/10 text-primary"
+                : "border-border/60 bg-background text-muted-foreground hover:border-border hover:text-foreground",
+            )}
           >
             {translate(`dashboard.customerProfile.timeline.filters.${filterId}`)}
           </button>
@@ -42,11 +44,12 @@ export function TimelineFilters({
             key={mode}
             type="button"
             onClick={() => onGroupModeChange(mode)}
-            className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+            className={cn(
+              "rounded-lg border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors",
               groupMode === mode
-                ? "bg-muted text-foreground border-border"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+                ? "border-border bg-background text-foreground"
+                : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-background hover:text-foreground",
+            )}
           >
             {translate(`dashboard.customerProfile.timeline.groupModes.${mode}`)}
           </button>

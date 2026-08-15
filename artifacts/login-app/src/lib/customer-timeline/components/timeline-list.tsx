@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { EnrichedTimelineGroup, TimelineRenderContext } from "@/lib/customer-timeline/types";
+import { cn } from "@/lib/utils";
 import { TimelineGroupSection } from "./timeline-group";
 import { TimelineEmptyState } from "./timeline-empty-state";
 
@@ -13,6 +14,7 @@ type Props = {
   emptyMessage: string;
   loadMoreLabel: string;
   cardVariant?: "default" | "workspace";
+  fillHeight?: boolean;
 };
 
 const WINDOW_SIZE = 40;
@@ -26,6 +28,7 @@ export function TimelineList({
   emptyMessage,
   loadMoreLabel,
   cardVariant,
+  fillHeight,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -63,11 +66,11 @@ export function TimelineList({
   }, [hasMore, isFetchingMore, onLoadMore]);
 
   if (groups.length === 0) {
-    return <TimelineEmptyState message={emptyMessage} />;
+    return <TimelineEmptyState message={emptyMessage} fillHeight={fillHeight} />;
   }
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-2.5", fillHeight && "pb-2")}>
       {visibleGroups.map((group) => (
         <TimelineGroupSection key={group.key} group={group} renderContext={renderContext} cardVariant={cardVariant} />
       ))}

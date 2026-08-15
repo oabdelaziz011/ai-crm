@@ -79,11 +79,13 @@ function formatGroupLabel(
   locale: string,
   dayFormatter: Intl.DateTimeFormat,
 ): string {
+  const isAr = locale.toLowerCase().startsWith("ar");
   if (mode === "day") {
     return dayFormatter.format(new Date(`${key}T12:00:00.000Z`));
   }
   if (mode === "week") {
-    return `Week of ${dayFormatter.format(new Date(`${key}T12:00:00.000Z`))}`;
+    const day = dayFormatter.format(new Date(`${key}T12:00:00.000Z`));
+    return isAr ? `أسبوع ${day}` : `Week of ${day}`;
   }
   if (mode === "month") {
     const [year, month] = key.split("-");
@@ -91,9 +93,17 @@ function formatGroupLabel(
       new Date(Number(year), Number(month) - 1, 1),
     );
   }
-  if (mode === "conversation") return key === "general" ? "General" : `Conversation ${key.slice(0, 8)}`;
-  if (mode === "workflow") return `Workflow ${key.slice(0, 8)}`;
-  if (mode === "booking") return key === "unlinked" ? "Other" : `Booking ${key.slice(0, 8)}`;
+  if (mode === "conversation") {
+    if (key === "general") return isAr ? "عام" : "General";
+    return isAr ? `محادثة ${key.slice(0, 8)}` : `Conversation ${key.slice(0, 8)}`;
+  }
+  if (mode === "workflow") {
+    return isAr ? `سير عمل ${key.slice(0, 8)}` : `Workflow ${key.slice(0, 8)}`;
+  }
+  if (mode === "booking") {
+    if (key === "unlinked") return isAr ? "أخرى" : "Other";
+    return isAr ? `حجز ${key.slice(0, 8)}` : `Booking ${key.slice(0, 8)}`;
+  }
   return key;
 }
 

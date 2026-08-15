@@ -34,17 +34,17 @@ export function TimelineEventCard({
   return (
     <li
       className={cn(
-        "group rounded-xl border transition-colors",
+        "group rounded-2xl border transition-colors",
         isWorkspace
-          ? "border-border/60 bg-card/60 px-4 py-3 hover:border-primary/25 hover:bg-card/80"
-          : "border-white/10 bg-background/20 px-3 py-2.5",
+          ? "border-border/60 bg-background px-3.5 py-2.5 hover:border-primary/30"
+          : "border-border/60 bg-background px-3 py-2.5",
       )}
     >
       <div className="flex gap-3">
         <div
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-lg border",
-            isWorkspace ? "size-9" : "mt-0.5 size-7 rounded-full",
+            "flex shrink-0 items-center justify-center rounded-xl border",
+            isWorkspace ? "size-10 shadow-sm" : "mt-0.5 size-7 rounded-full",
             accentClass,
           )}
         >
@@ -52,19 +52,28 @@ export function TimelineEventCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className={cn("font-semibold leading-snug", isWorkspace ? "text-sm" : "text-sm font-medium")}>{title}</p>
+            <p
+              className={cn(
+                "font-semibold leading-snug text-foreground",
+                isWorkspace ? "text-[13px]" : "text-sm font-medium",
+              )}
+            >
+              {title}
+            </p>
             <div className="shrink-0 text-end">
               <time className="block text-[10px] font-medium text-muted-foreground">{occurredAt}</time>
-              <span className="text-[10px] text-muted-foreground/70">{relativeTime}</span>
+              <span className="text-[10px] text-muted-foreground/80">{relativeTime}</span>
             </div>
           </div>
-          {actor && (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{actorLabel ?? actor}</p>
-          )}
-          {description && (
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">{description}</p>
-          )}
-          {isWorkspace && actionLabel && onAction && (
+          {actor ? (
+            <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{actorLabel ?? actor}</p>
+          ) : null}
+          {description ? (
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">
+              {description}
+            </p>
+          ) : null}
+          {isWorkspace && actionLabel && onAction ? (
             <button
               type="button"
               onClick={onAction}
@@ -73,7 +82,7 @@ export function TimelineEventCard({
               {actionLabel}
               <ArrowRight className="size-3" />
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </li>

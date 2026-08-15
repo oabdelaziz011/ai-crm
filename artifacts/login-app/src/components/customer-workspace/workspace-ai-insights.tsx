@@ -18,13 +18,15 @@ export function WorkspaceAiInsights({ insights, compact, className, onInsightAct
   return (
     <div
       className={cn(
-        "rounded-xl border border-primary/20 bg-gradient-to-br from-primary/8 via-card/80 to-card/60",
+        "rounded-2xl border border-primary/20 bg-primary/5 shadow-sm",
         compact ? "p-3" : "p-4",
         className,
       )}
     >
       <div className="mb-2 flex items-center gap-2">
-        <Sparkles className="size-3.5 shrink-0 text-primary" />
+        <div className="flex size-6 items-center justify-center rounded-md bg-primary/15">
+          <Sparkles className="size-3.5 shrink-0 text-primary" />
+        </div>
         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
           {t("dashboard.customerWorkspace.aiInsights.label")}
         </p>
@@ -36,12 +38,12 @@ export function WorkspaceAiInsights({ insights, compact, className, onInsightAct
               <button
                 type="button"
                 onClick={() => onInsightAction(insight)}
-                className="w-full text-start text-xs leading-snug text-foreground/90 hover:text-primary transition-colors"
+                className="w-full rounded-lg px-1.5 py-1 text-start text-xs leading-snug text-foreground/90 transition-colors hover:bg-primary/10 hover:text-primary"
               >
                 {t(insight.messageKey, insight.params)}
               </button>
             ) : (
-              <p className="text-xs leading-snug text-foreground/90">
+              <p className="px-1.5 text-xs leading-snug text-foreground/90">
                 {t(insight.messageKey, insight.params)}
               </p>
             )}

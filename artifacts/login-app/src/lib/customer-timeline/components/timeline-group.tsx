@@ -1,8 +1,6 @@
-import type { EnrichedTimelineGroup, TimelineGroup } from "@/lib/customer-timeline/types";
+import type { EnrichedTimelineGroup, TimelineGroup, TimelineRenderContext } from "@/lib/customer-timeline/types";
 import { TimelineDateDivider } from "./timeline-date-divider";
-import { TimelineCard } from "./timeline-card";
-import type { TimelineRenderContext } from "@/lib/customer-timeline/types";
-import { format } from "date-fns";
+import { formatTimelineClock, TimelineCard } from "./timeline-card";
 
 type Props = {
   group: TimelineGroup | EnrichedTimelineGroup;
@@ -20,7 +18,7 @@ export function TimelineGroupSection({ group, renderContext, cardVariant }: Prop
             key={activity.id}
             activity={activity}
             renderContext={renderContext}
-            occurredAtLabel={format(new Date(activity.occurredAt), "p")}
+            occurredAtLabel={formatTimelineClock(activity.occurredAt, renderContext.locale)}
             variant={cardVariant}
           />
         ))}

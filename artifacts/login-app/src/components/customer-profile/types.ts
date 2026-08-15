@@ -8,7 +8,8 @@ export type CustomerProfileTab =
   | "notes"
   | "files"
   | "ai-summary"
-  | "history";
+  | "history"
+  | "tickets";
 
 /** @deprecated Use `ai-summary` */
 export type LegacyCustomerProfileTab = "ai-insights" | "system";
@@ -35,6 +36,7 @@ export type CustomerProfileOpenParams = {
 export const CUSTOMER_PROFILE_TABS: CustomerProfileTab[] = [
   "overview",
   "timeline",
+  "tickets",
   "bookings",
   "invoices",
   "payments",

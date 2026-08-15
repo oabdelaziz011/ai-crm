@@ -229,17 +229,21 @@ export class QuoteCommandService {
     });
 
     const oppLines = await this.deps.quotes.listOpportunityLines(input.companyId, opportunity.id);
-    const lines: QuoteLineItemRecord[] = [];
-    for (const [index, oppLine] of oppLines.entries()) {
-      const amounts = computeQuoteLineAmounts({
-        quantity: oppLine.quantity,
-        unitPrice: oppLine.unitPrice,
-        discountPercent: oppLine.discountPercent,
-        taxPercent: oppLine.taxPercent,
-      });
-      const product = await this.deps.quotes.getCatalogProduct(input.companyId, oppLine.productId);
-      lines.push(
-        await this.deps.quotes.upsertLine({
+    const catalogProducts = await Promise.all(
+      oppLines.map((oppLine) =>
+        this.deps.quotes.getCatalogProduct(input.companyId, oppLine.productId),
+      ),
+    );
+    const lines: QuoteLineItemRecord[] = await Promise.all(
+      oppLines.map(async (oppLine, index) => {
+        const amounts = computeQuoteLineAmounts({
+          quantity: oppLine.quantity,
+          unitPrice: oppLine.unitPrice,
+          discountPercent: oppLine.discountPercent,
+          taxPercent: oppLine.taxPercent,
+        });
+        const product = catalogProducts[index];
+        return this.deps.quotes.upsertLine({
           companyId: input.companyId,
           quoteId: quote.id,
           lineKind: product ? mapProductTypeToLineKind(product.productType) : "product",
@@ -257,9 +261,9 @@ export class QuoteCommandService {
           total: amounts.total,
           sortOrder: index,
           actorUserId: actor,
-        }),
-      );
-    }
+        });
+      }),
+    );
 
     const withTotals = await refreshTotals(this.deps.quotes, input.companyId, quote.id, actor);
     await this.deps.quotes.setOpportunityCurrentQuote({

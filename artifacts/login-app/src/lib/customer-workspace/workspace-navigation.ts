@@ -3,27 +3,37 @@ import type { CustomerProfileTab } from "@/components/customer-profile/types";
 export type WorkspacePrimaryTab =
   | "overview"
   | "activity"
-  | "commerce"
-  | "communication"
-  | "files"
-  | "ai"
-  | "history";
+  | "bookings"
+  | "invoices"
+  | "tickets"
+  | "communication";
 
+export type WorkspaceMoreTab = "payments" | "files" | "ai" | "history";
+
+/** @deprecated Commerce grouping removed. */
 export type CommerceSubTab = "bookings" | "invoices" | "payments";
 
+/** Visible top-level tabs (kept short on purpose). */
 export const WORKSPACE_PRIMARY_TABS: WorkspacePrimaryTab[] = [
   "overview",
   "activity",
-  "commerce",
+  "bookings",
+  "invoices",
+  "tickets",
   "communication",
+];
+
+/** Secondary destinations under «More». */
+export const WORKSPACE_MORE_TABS: WorkspaceMoreTab[] = [
+  "payments",
   "files",
   "ai",
   "history",
 ];
 
+/** @deprecated */
 export const COMMERCE_SUB_TABS: CommerceSubTab[] = ["bookings", "invoices", "payments"];
 
-/** Map URL segment → internal tab id (backward compatible). */
 export function normalizeWorkspaceRouteTab(tab: string | undefined): CustomerProfileTab {
   if (!tab || tab === "overview") return "overview";
   if (tab === "activity") return "timeline";
@@ -33,6 +43,7 @@ export function normalizeWorkspaceRouteTab(tab: string | undefined): CustomerPro
   const allowed: CustomerProfileTab[] = [
     "overview",
     "timeline",
+    "tickets",
     "bookings",
     "invoices",
     "payments",
@@ -49,7 +60,6 @@ export function normalizeWorkspaceRouteTab(tab: string | undefined): CustomerPro
   return "overview";
 }
 
-/** Preferred URL segment for a tab (grouped navigation). */
 export function workspaceRouteSegment(tab: CustomerProfileTab): string {
   switch (tab) {
     case "timeline":
@@ -58,6 +68,7 @@ export function workspaceRouteSegment(tab: CustomerProfileTab): string {
     case "bookings":
     case "invoices":
     case "payments":
+    case "tickets":
       return tab;
     case "ai-summary":
       return "ai";
@@ -67,7 +78,8 @@ export function workspaceRouteSegment(tab: CustomerProfileTab): string {
 }
 
 export function resolveWorkspaceNavigation(tab: CustomerProfileTab): {
-  primary: WorkspacePrimaryTab;
+  primary: WorkspacePrimaryTab | "more";
+  more?: WorkspaceMoreTab;
   commerce?: CommerceSubTab;
 } {
   switch (tab) {
@@ -75,19 +87,21 @@ export function resolveWorkspaceNavigation(tab: CustomerProfileTab): {
     case "notes":
       return { primary: "activity" };
     case "bookings":
-      return { primary: "commerce", commerce: "bookings" };
+      return { primary: "bookings", commerce: "bookings" };
     case "invoices":
-      return { primary: "commerce", commerce: "invoices" };
-    case "payments":
-      return { primary: "commerce", commerce: "payments" };
+      return { primary: "invoices", commerce: "invoices" };
+    case "tickets":
+      return { primary: "tickets" };
     case "communication":
       return { primary: "communication" };
+    case "payments":
+      return { primary: "more", more: "payments", commerce: "payments" };
     case "files":
-      return { primary: "files" };
+      return { primary: "more", more: "files" };
     case "ai-summary":
-      return { primary: "ai" };
+      return { primary: "more", more: "ai" };
     case "history":
-      return { primary: "history" };
+      return { primary: "more", more: "history" };
     default:
       return { primary: "overview" };
   }
@@ -95,4 +109,9 @@ export function resolveWorkspaceNavigation(tab: CustomerProfileTab): {
 
 export function isCommerceTab(tab: CustomerProfileTab): tab is CommerceSubTab {
   return tab === "bookings" || tab === "invoices" || tab === "payments";
+}
+
+export function moreTabToProfileTab(tab: WorkspaceMoreTab): CustomerProfileTab {
+  if (tab === "ai") return "ai-summary";
+  return tab;
 }

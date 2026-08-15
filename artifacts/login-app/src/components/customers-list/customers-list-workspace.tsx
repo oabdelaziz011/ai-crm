@@ -236,10 +236,13 @@ export function CustomersListWorkspace() {
         return;
       }
 
+      if (action !== "whatsapp") return;
+
       try {
         await ConversationService.openWhatsappConversation({
           customerId: customer.id,
           companyId,
+          phone: customer.phone,
           navigate: setLocation,
         });
       } catch (error) {

@@ -5,9 +5,9 @@ type Props = {
 
 export function TimelineHeader({ title, subtitle }: Props) {
   return (
-    <div>
-      <h3 className="font-semibold">{title}</h3>
-      {subtitle ? <p className="text-xs text-muted-foreground mt-1">{subtitle}</p> : null}
+    <div className="rounded-xl border border-border/60 bg-background px-4 py-3">
+      <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+      {subtitle ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{subtitle}</p> : null}
     </div>
   );
 }

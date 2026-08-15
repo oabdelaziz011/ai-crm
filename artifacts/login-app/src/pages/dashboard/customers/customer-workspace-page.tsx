@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { CustomerWorkspaceShell } from "@/components/customer-workspace/customer-workspace-shell";
-import { WorkspaceCommerceTab } from "@/components/customer-workspace/tabs/workspace-commerce-tab";
+import { Ticket360Workspace } from "@/components/tickets/ticket360-workspace";
+import { CreateCustomerTicketDialog } from "@/components/tickets/create-customer-ticket-dialog";
 import { useAuth } from "@/context/auth-context";
 import { useCustomer, useCustomerRealtime } from "@/hooks/use-customer";
 import { useCustomers } from "@/hooks/use-customers";
@@ -33,7 +34,6 @@ import {
   lastVisitBooking,
   nextUpcomingBooking,
 } from "@/lib/customer-workspace/customer-workspace-utils";
-import { isCommerceTab } from "@/lib/customer-workspace/workspace-navigation";
 import { NEST_INDEX } from "@/lib/routing";
 import { queryShellStateFromQuery } from "@/lib/react-query/query-shell-state";
 import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
@@ -83,6 +83,11 @@ const HistoryTab = lazy(() =>
     default: m.WorkspaceHistoryTab,
   })),
 );
+const TicketsTab = lazy(() =>
+  import("@/components/customer-workspace/tabs/workspace-tickets-tab").then((m) => ({
+    default: m.WorkspaceTicketsTab,
+  })),
+);
 
 type CustomerWorkspacePageProps = {
   customerId: string;
@@ -113,6 +118,8 @@ export function CustomerWorkspacePage({
   const allInvoices = invoicesQuery.data ?? [];
   const bookingsLoading = queryShellStateFromQuery(bookingsQuery).isInitialLoad;
   const invoicesLoading = queryShellStateFromQuery(invoicesQuery).isInitialLoad;
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [createTicketOpen, setCreateTicketOpen] = useState(false);
 
   useCustomerRealtime(customerId);
 
@@ -162,7 +169,7 @@ export function CustomerWorkspacePage({
 
   if (customerShell.isInitialLoad && !customer) {
     return (
-      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-[hsl(222_44%_7%)]">
+      <div className="flex h-full min-h-0 items-center justify-center bg-muted/40">
         <Loader2 className="size-8 animate-spin text-primary" />
       </div>
     );
@@ -182,17 +189,17 @@ export function CustomerWorkspacePage({
 
   if (!customer) {
     return (
-      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-[hsl(222_44%_7%)]">
+      <div className="flex h-full min-h-0 items-center justify-center bg-muted/40">
         <Loader2 className="size-8 animate-spin text-primary" />
       </div>
     );
   }
 
   const tags = deriveCustomerTags(customer, ltv, customerBookings.length);
-  const commerceSub = isCommerceTab(activeTab) ? activeTab : "bookings";
 
   return (
     <>
+      <div className="flex h-full min-h-0 flex-col">
       <CustomerWorkspaceShell
         customer={customer}
         activeTab={activeTab}
@@ -225,28 +232,31 @@ export function CustomerWorkspacePage({
           {(activeTab === "timeline") && (
             <TimelineTab customerId={customer.id} companyId={companyId} />
           )}
-          {isCommerceTab(activeTab) && (
-            <WorkspaceCommerceTab active={commerceSub} onChange={navigateTab}>
-              {commerceSub === "bookings" && (
-                <BookingsTab
-                  customer={customer}
-                  bookings={allBookings}
-                  loading={bookingsLoading}
-                  onNewBooking={() => onQuickAction("new-booking")}
-                />
-              )}
-              {commerceSub === "invoices" && (
-                <InvoicesTab
-                  customer={customer}
-                  invoices={allInvoices}
-                  loading={invoicesLoading}
-                  onNewInvoice={() => onQuickAction("new-invoice")}
-                />
-              )}
-              {commerceSub === "payments" && (
-                <PaymentsTab invoices={allInvoices} customerId={customer.id} loading={invoicesLoading} />
-              )}
-            </WorkspaceCommerceTab>
+          {activeTab === "tickets" && (
+            <TicketsTab
+              customerId={customer.id}
+              onOpenTicket={(ticketId) => setSelectedTicketId(ticketId)}
+              onCreateTicket={() => setCreateTicketOpen(true)}
+            />
+          )}
+          {activeTab === "bookings" && (
+            <BookingsTab
+              customer={customer}
+              bookings={allBookings}
+              loading={bookingsLoading}
+              onNewBooking={() => onQuickAction("new-booking")}
+            />
+          )}
+          {activeTab === "invoices" && (
+            <InvoicesTab
+              customer={customer}
+              invoices={allInvoices}
+              loading={invoicesLoading}
+              onNewInvoice={() => onQuickAction("new-invoice")}
+            />
+          )}
+          {activeTab === "payments" && (
+            <PaymentsTab invoices={allInvoices} customerId={customer.id} loading={invoicesLoading} />
           )}
           {activeTab === "communication" && (
             <CommunicationTab
@@ -266,6 +276,24 @@ export function CustomerWorkspacePage({
           )}
         </Suspense>
       </CustomerWorkspaceShell>
+      </div>
+
+      <Ticket360Workspace
+        ticketId={selectedTicketId}
+        open={Boolean(selectedTicketId)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTicketId(null);
+        }}
+        onOpenTicket={(ticketId) => setSelectedTicketId(ticketId)}
+      />
+
+      <CreateCustomerTicketDialog
+        open={createTicketOpen}
+        onOpenChange={setCreateTicketOpen}
+        customerId={customer.id}
+        customerName={customer.name}
+        onCreated={(ticketId) => setSelectedTicketId(ticketId)}
+      />
 
       <BookingModal
         open={!!bookingPrefill}

@@ -1,11 +1,12 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { Route, Switch, useLocation } from "wouter";
-import { Bot, Plus } from "lucide-react";
+import { Bot, FileText, Plus, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
-import { DashboardCard, DashboardErrorBanner, DashboardPageFallback, DashboardStatCard } from "@/components/dashboard/ui";
+import { ModulePurposeBanner } from "@/components/dashboard/module-purpose-banner";
+import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import {
   AiEmployeeDeleteDialog,
@@ -24,14 +25,35 @@ import {
   hasAiEmployeesEditPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
-import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
 import { agentNewHref } from "@/config/agents-route-registry";
-import { nestedSectionHref } from "@/lib/routing";
+import { nestedSectionHref, NEST_INDEX } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
 import { AgentCreateWizardPage } from "@/pages/dashboard/agents/agent-create-wizard-page";
 import { AgentDetailPage } from "@/pages/dashboard/agents/agent-detail-page";
 import { AgentEditPage } from "@/pages/dashboard/agents/agent-edit-page";
-import { NEST_INDEX } from "@/lib/routing";
+import { cn } from "@/lib/utils";
+
+function AgentsStat({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Bot;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border/50 px-4 py-3">
+      <div className="flex size-9 items-center justify-center rounded-xl border border-border/60 text-primary">
+        <Icon className="size-4" aria-hidden />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-mono text-xl font-semibold tabular-nums">{value}</p>
+      </div>
+    </div>
+  );
+}
 
 export function AgentsListPage() {
   const { t } = useTranslation("common");
@@ -56,18 +78,6 @@ export function AgentsListPage() {
 
   const { data: employees = [], isLoading, error } = useAiEmployees(companyId, filter);
   const deleteEmployee = useDeleteAiEmployee(companyId);
-
-  useEffect(() => {
-    const payload = {
-      companyId,
-      filter,
-      "employees.length": employees.length,
-      isLoading,
-      error: error?.message ?? null,
-    };
-    console.log("[AI_EMPLOYEES_TRACE agents-layout]", payload);
-    aiEmployeesTrace("agents-layout", payload);
-  }, [companyId, filter, employees.length, isLoading, error]);
 
   const ownerOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -112,36 +122,50 @@ export function AgentsListPage() {
     return <DashboardErrorBanner message={error.message} />;
   }
 
-  const renderPayload = { "employees.length": employees.length, employees };
-  console.log("[AI_EMPLOYEES_TRACE agents-layout render]", renderPayload);
-  aiEmployeesTrace("agents-layout render", renderPayload);
-
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <Bot className="size-6 text-primary" />
-              <h1 className="text-2xl font-bold">{t("aiEmployees.title")}</h1>
+              <Bot className="size-6 text-primary" aria-hidden />
+              <h1 className="text-2xl font-bold tracking-tight">{t("aiEmployees.title")}</h1>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{t("aiEmployees.subtitle")}</p>
           </div>
           {canCreate ? (
-            <Button className="rounded-xl" onClick={() => setLocation(nestedSectionHref(agentNewHref()))}>
+            <Button
+              className="rounded-xl"
+              onClick={() => setLocation(nestedSectionHref(agentNewHref()))}
+            >
               <Plus className="me-2 size-4" />
               {t("aiEmployees.create")}
             </Button>
           ) : null}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <DashboardStatCard label={t("aiEmployees.stats.total")} value={stats.total} icon={Bot} />
-          <DashboardStatCard label={t("aiEmployees.stats.published")} value={stats.published} icon={Bot} />
-          <DashboardStatCard label={t("aiEmployees.stats.draft")} value={stats.draft} icon={Bot} />
+        <ModulePurposeBanner
+          title={t("aiEmployees.listGuide.title")}
+          body={t("aiEmployees.listGuide.body")}
+          points={[
+            t("aiEmployees.listGuide.points.create"),
+            t("aiEmployees.listGuide.points.publish"),
+            t("aiEmployees.listGuide.points.channels"),
+          ]}
+          className="shadow-none"
+        />
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <AgentsStat label={t("aiEmployees.stats.total")} value={stats.total} icon={Bot} />
+          <AgentsStat
+            label={t("aiEmployees.stats.published")}
+            value={stats.published}
+            icon={Sparkles}
+          />
+          <AgentsStat label={t("aiEmployees.stats.draft")} value={stats.draft} icon={FileText} />
         </div>
 
-        <DashboardCard className="space-y-4 p-5">
+        <div className={cn("space-y-4 rounded-2xl border border-border/50 p-4 sm:p-5")}>
           <AiEmployeeFilters
             filter={filter}
             employees={employees}
@@ -149,7 +173,7 @@ export function AgentsListPage() {
             onChange={(patch) => setFilter((current) => ({ ...current, ...patch }))}
           />
           {employees.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border/60 px-6 py-12 text-center text-sm text-muted-foreground">
               {t("aiEmployees.empty")}
             </div>
           ) : (
@@ -160,7 +184,7 @@ export function AgentsListPage() {
               onDelete={setDeleteTarget}
             />
           )}
-        </DashboardCard>
+        </div>
       </div>
 
       <AiEmployeeDeleteDialog

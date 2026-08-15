@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Plus, Radio, Settings2, Wifi, WifiOff } from "lucide-react";
@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/rbac/permission-guard";
+import { ChannelInboundRoutingStrip } from "@/components/channels/channel-inbound-routing-strip";
 import { ChannelWorkflowBindingSection } from "@/components/channels/channel-workflow-binding-section";
 import {
   DashboardCard,
@@ -18,8 +19,16 @@ import {
   useCommunicationChannelTypes,
   useCompanyChannelsAdmin,
 } from "@/hooks/channels/use-company-channels-admin";
-import { useChannelWorkflowBindingForm } from "@/hooks/channels/use-channel-workflow-binding";
+import {
+  useChannelWorkflowBindingForm,
+  useCompanyChannelWorkflowBindings,
+  useDisableChannelWorkflowBinding,
+  useEnableChannelWorkflowBinding,
+} from "@/hooks/channels/use-channel-workflow-binding";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
+import { resolveChannelCommercialFeatureCode } from "@/lib/billing/feature-code-map";
 import { useToast } from "@/hooks/use-toast";
+import { cancelActiveAutomationSessionsForFlow, formatChannelWorkflowBindingError } from "@/lib/channel-workflow-binding/channel-workflow-binding-repository";
 import type { SaveChannelWorkflowBindingResult } from "@/lib/channel-workflow-binding/types";
 import {
   buildWhatsAppWebhookUrl,
@@ -30,6 +39,7 @@ import {
   resolveDefaultChannelProvider,
   resolveDefaultHealthStatus,
 } from "@/lib/channels/channel-defaults";
+import { supabase } from "@/lib/supabase";
 import type { CompanyChannelRecord } from "@workspace/channel-registry";
 import {
   Dialog,
@@ -47,6 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 function readConfigString(configuration: Record<string, unknown>, key: string): string {
   const value = configuration[key];
@@ -90,9 +101,16 @@ export default function ChannelsPage() {
   const { toast } = useToast();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
   const { data: channels = [], isLoading, error } = useCompanyChannelsAdmin();
   const { data: channelTypes = [] } = useCommunicationChannelTypes();
   const { create, updateConfig, enable, disable, setDefault } = useChannelAdminMutations(companyId);
+  const {
+    data: workflowBindings = [],
+    isLoading: workflowBindingsLoading,
+  } = useCompanyChannelWorkflowBindings(companyId);
+  const disableWorkflow = useDisableChannelWorkflowBinding(companyId);
+  const enableWorkflow = useEnableChannelWorkflowBinding(companyId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -101,6 +119,7 @@ export default function ChannelsPage() {
   const [displayName, setDisplayName] = useState("");
   const [provider, setProvider] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [routingActionChannelId, setRoutingActionChannelId] = useState<string | null>(null);
 
   const workflowBinding = useChannelWorkflowBindingForm(
     companyId,
@@ -108,12 +127,61 @@ export default function ChannelsPage() {
     configDialogOpen,
   );
 
+  const bindingByChannelId = useMemo(() => {
+    const map = new Map(workflowBindings.map((item) => [item.companyChannelId, item]));
+    return map;
+  }, [workflowBindings]);
+
+  const isChannelEntitled = (channelKey: string | undefined): boolean => {
+    const featureCode = resolveChannelCommercialFeatureCode(channelKey);
+    if (!featureCode) return true;
+    return commercialFeatureEnabled(featureCode) === true;
+  };
+
+  // If workflow binding is already off, cancel leftover waiting sessions so old
+  // interactive WhatsApp steps cannot keep looking like "automation is still answering".
+  useEffect(() => {
+    if (!companyId || workflowBindingsLoading) return;
+    const disabledFlowIds = [
+      ...new Set(
+        workflowBindings
+          .filter((item) => !item.isEnabled && item.automationFlowId)
+          .map((item) => item.automationFlowId),
+      ),
+    ];
+    if (disabledFlowIds.length === 0) return;
+
+    let cancelled = false;
+    void (async () => {
+      for (const automationFlowId of disabledFlowIds) {
+        if (cancelled) return;
+        try {
+          await cancelActiveAutomationSessionsForFlow(supabase, {
+            companyId,
+            automationFlowId,
+          });
+        } catch {
+          /* best-effort cleanup */
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, workflowBindings, workflowBindingsLoading]);
+
   const selectedType = channelTypes.find((type) => type.id === channelTypeId);
+  const selectedTypeEntitled = isChannelEntitled(selectedType?.key);
   const isWhatsAppType = selectedType?.key === "whatsapp";
   const isWebChatType = selectedType?.key === "web_chat";
   const showProviderField = Boolean(selectedType) && !isFixedProviderChannel(selectedType?.key);
   const isWhatsAppChannel = (channel: CompanyChannelRecord) =>
     channel.communication_channel?.key === "whatsapp";
+  const supportsInboundRouting = (channel: CompanyChannelRecord) => {
+    const key = channel.communication_channel?.key;
+    return key === "whatsapp" || key === "messenger" || key === "instagram" || key === "web_chat";
+  };
   const webhookBaseUrl = resolveWhatsAppWebhookBaseUrl();
   const productionWebhookUrl = buildWhatsAppWebhookUrl(webhookBaseUrl);
 
@@ -132,6 +200,7 @@ export default function ChannelsPage() {
   };
 
   const openConfigDialog = (channel: CompanyChannelRecord) => {
+    if (!isChannelEntitled(channel.communication_channel?.key)) return;
     setConfigTarget(channel);
     setPhoneNumberId(readConfigString(channel.configuration, "phoneNumberId"));
     setConfigDialogOpen(true);
@@ -147,6 +216,13 @@ export default function ChannelsPage() {
 
   const handleCreate = async () => {
     if (!channelTypeId || !displayName.trim() || !selectedType) return;
+    if (!isChannelEntitled(selectedType.key)) {
+      toast({
+        title: t("dashboard.channels.featureNotEntitled"),
+        variant: "destructive",
+      });
+      return;
+    }
     const configuration = isWhatsAppType
       ? buildWhatsAppReferenceConfiguration()
       : ({} as Record<string, unknown>);
@@ -169,6 +245,7 @@ export default function ChannelsPage() {
       isDefault: isWebChatType && !hasExistingWebChat && !hasDefaultChannel,
       configuration,
       webhookUrl: isWhatsAppType ? productionWebhookUrl : undefined,
+      channelTypeKey: selectedType.key,
     });
     setDialogOpen(false);
     setDisplayName("");
@@ -190,11 +267,14 @@ export default function ChannelsPage() {
     }
 
     try {
-      await updateConfig.mutateAsync({
-        companyChannelId: configTarget.id,
-        configuration: buildWhatsAppReferenceConfiguration(),
-        webhookUrl: productionWebhookUrl,
-      });
+      if (isWhatsAppChannel(configTarget)) {
+        await updateConfig.mutateAsync({
+          companyChannelId: configTarget.id,
+          configuration: buildWhatsAppReferenceConfiguration(),
+          webhookUrl: productionWebhookUrl,
+          channelTypeKey: configTarget.communication_channel?.key,
+        });
+      }
 
       const bindingResult = await workflowBinding.saveBinding.mutateAsync(workflowBinding.binding);
       toast({
@@ -206,7 +286,7 @@ export default function ChannelsPage() {
     } catch (saveError) {
       toast({
         title: t("dashboard.channels.automationWorkflow.saveError"),
-        description: saveError instanceof Error ? saveError.message : String(saveError),
+        description: formatChannelWorkflowBindingError(saveError),
         variant: "destructive",
       });
     }
@@ -234,6 +314,52 @@ export default function ChannelsPage() {
     void handleSaveConfig();
   };
 
+  const handleDisableWorkflow = async (companyChannelId: string) => {
+    const channel = channels.find((item) => item.id === companyChannelId);
+    if (!isChannelEntitled(channel?.communication_channel?.key)) return;
+    const binding = bindingByChannelId.get(companyChannelId);
+    if (!binding?.isEnabled) return;
+    setRoutingActionChannelId(companyChannelId);
+    try {
+      await disableWorkflow.mutateAsync(binding);
+      toast({
+        title: t("dashboard.channels.automationWorkflow.bindingDisabled"),
+        description: t("dashboard.channels.inboundRouting.disableSuccessHint"),
+      });
+    } catch (disableError) {
+      toast({
+        title: t("dashboard.channels.automationWorkflow.saveError"),
+        description: formatChannelWorkflowBindingError(disableError),
+        variant: "destructive",
+      });
+    } finally {
+      setRoutingActionChannelId(null);
+    }
+  };
+
+  const handleEnableWorkflow = async (companyChannelId: string) => {
+    const channel = channels.find((item) => item.id === companyChannelId);
+    if (!isChannelEntitled(channel?.communication_channel?.key)) return;
+    const binding = bindingByChannelId.get(companyChannelId);
+    if (!binding || binding.isEnabled || !binding.automationFlowId) return;
+    setRoutingActionChannelId(companyChannelId);
+    try {
+      await enableWorkflow.mutateAsync(binding);
+      toast({
+        title: t("dashboard.channels.automationWorkflow.bindingUpdated"),
+        description: t("dashboard.channels.inboundRouting.enableSuccessHint"),
+      });
+    } catch (enableError) {
+      toast({
+        title: t("dashboard.channels.automationWorkflow.saveError"),
+        description: formatChannelWorkflowBindingError(enableError),
+        variant: "destructive",
+      });
+    } finally {
+      setRoutingActionChannelId(null);
+    }
+  };
+
   const isSaveConfigDisabled =
     updateConfig.isPending
     || workflowBinding.saveBinding.isPending
@@ -241,13 +367,16 @@ export default function ChannelsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("dashboard.channels.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("dashboard.channels.subtitle")}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-2xl">
+          <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.channels.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.channels.subtitle")}</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            {t("dashboard.channels.inboundRouting.pageHint")}
+          </p>
         </div>
         <Can permission="channels.manage">
-          <Button onClick={openCreateDialog} className="gap-2">
+          <Button onClick={openCreateDialog} className="gap-2 shrink-0">
             <Plus className="w-4 h-4" />
             {t("dashboard.channels.addChannel")}
           </Button>
@@ -272,78 +401,159 @@ export default function ChannelsPage() {
         {isLoading ? (
           <DashboardTableSkeleton rows={4} />
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border/60">
             {channels.length === 0 && (
               <p className="p-8 text-center text-sm text-muted-foreground">{t("dashboard.channels.empty")}</p>
             )}
-            {channels.map((channel) => (
-              <div key={channel.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium">{channel.display_name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {channelTypeLabel(
-                      t,
-                      channel.communication_channel?.key,
-                      channel.communication_channel?.display_name,
-                    )}{" "}
-                    · {providerLabel(t, channel.provider)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1 font-mono truncate">{channel.id}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full border ${
-                      channel.is_enabled
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                        : "border-white/10 text-muted-foreground"
-                    }`}
-                  >
-                    {channel.is_enabled
-                      ? t("dashboard.channels.enabledStatus.enabled")
-                      : t("dashboard.channels.enabledStatus.disabled")}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {healthStatusLabel(t, channel.health_status)}
-                  </span>
-                  {channel.is_default && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      {t("dashboard.channels.default")}
-                    </span>
-                  )}
-                  <Can permission="channels.manage">
-                    <div className="flex gap-2">
-                      {isWhatsAppChannel(channel) && (
+            {channels.map((channel) => {
+              const showInboundRouting = supportsInboundRouting(channel);
+              const binding = bindingByChannelId.get(channel.id) ?? null;
+              const channelKey = channel.communication_channel?.key;
+              const entitled = isChannelEntitled(channelKey);
+
+              return (
+                <div key={channel.id} className="p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-base font-semibold tracking-tight">{channel.display_name}</p>
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                            channel.is_enabled
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                              : "border-border text-muted-foreground",
+                          )}
+                        >
+                          {channel.is_enabled
+                            ? t("dashboard.channels.enabledStatus.enabled")
+                            : t("dashboard.channels.enabledStatus.disabled")}
+                        </span>
+                        <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                          {healthStatusLabel(t, channel.health_status)}
+                        </span>
+                        {channel.is_default ? (
+                          <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                            {t("dashboard.channels.default")}
+                          </span>
+                        ) : null}
+                        {!entitled ? (
+                          <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[11px] text-rose-700 dark:text-rose-300">
+                            {t("dashboard.channels.featureNotEntitledBadge")}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {channelTypeLabel(
+                          t,
+                          channel.communication_channel?.key,
+                          channel.communication_channel?.display_name,
+                        )}{" "}
+                        · {providerLabel(t, channel.provider)}
+                        <span className="mx-1.5 text-border">·</span>
+                        {format(new Date(channel.updated_at), "PP")}
+                      </p>
+                      {!entitled ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {t("dashboard.channels.featureNotEntitled")}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <Can permission="channels.manage">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {channel.is_enabled ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            disabled={!entitled || disable.isPending}
+                            onClick={() =>
+                              disable.mutate({
+                                companyChannelId: channel.id,
+                                channelTypeKey: channel.communication_channel?.key,
+                              })
+                            }
+                            title={t("dashboard.channels.disableChannel")}
+                          >
+                            <WifiOff className="size-3.5" />
+                            {t("dashboard.channels.disableChannel")}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            disabled={!entitled || enable.isPending}
+                            onClick={() =>
+                              enable.mutate({
+                                companyChannelId: channel.id,
+                                channelTypeKey: channel.communication_channel?.key,
+                              })
+                            }
+                            title={t("dashboard.channels.enableChannel")}
+                          >
+                            <Wifi className="size-3.5" />
+                            {t("dashboard.channels.enableChannel")}
+                          </Button>
+                        )}
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="border-white/10"
-                          onClick={() => openConfigDialog(channel)}
+                          variant={channel.is_default ? "secondary" : "ghost"}
+                          disabled={
+                            !entitled
+                            || channel.is_default
+                            || !channel.is_enabled
+                            || setDefault.isPending
+                          }
+                          onClick={() => {
+                            if (!channel.is_default && channel.is_enabled && entitled) {
+                              setDefault.mutate({
+                                companyChannelId: channel.id,
+                                channelTypeKey: channel.communication_channel?.key,
+                              });
+                            }
+                          }}
+                          title={
+                            channel.is_default
+                              ? t("dashboard.channels.default")
+                              : t("dashboard.channels.makeDefault")
+                          }
                         >
-                          {t("dashboard.channels.configure")}
+                          {channel.is_default
+                            ? t("dashboard.channels.default")
+                            : t("dashboard.channels.makeDefault")}
                         </Button>
-                      )}
-                      {channel.is_enabled ? (
-                        <Button size="sm" variant="outline" className="border-white/10" onClick={() => disable.mutate(channel.id)}>
-                          <WifiOff className="w-3.5 h-3.5" />
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="outline" className="border-white/10" onClick={() => enable.mutate(channel.id)}>
-                          <Wifi className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                      {!channel.is_default && channel.is_enabled && (
-                        <Button size="sm" variant="outline" className="border-white/10" onClick={() => setDefault.mutate(channel.id)}>
-                          {t("dashboard.channels.makeDefault")}
-                        </Button>
-                      )}
-                    </div>
-                  </Can>
+                      </div>
+                    </Can>
+                  </div>
+
+                  {showInboundRouting ? (
+                    <ChannelInboundRoutingStrip
+                      binding={binding}
+                      loading={workflowBindingsLoading}
+                      actionsDisabled={
+                        !entitled
+                        || (
+                          channelKey === "email"
+                          && commercialFeatureEnabled("ai_email_routing") !== true
+                          && !binding?.isEnabled
+                        )
+                      }
+                      disabling={
+                        routingActionChannelId === channel.id && disableWorkflow.isPending
+                      }
+                      enabling={
+                        routingActionChannelId === channel.id && enableWorkflow.isPending
+                      }
+                      onDisableWorkflow={() => void handleDisableWorkflow(channel.id)}
+                      onEnableWorkflow={() => void handleEnableWorkflow(channel.id)}
+                      onConfigure={() => openConfigDialog(channel)}
+                    />
+                  ) : null}
                 </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {format(new Date(channel.updated_at), "PP")}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </DashboardCard>
@@ -361,13 +571,24 @@ export default function ChannelsPage() {
                   <SelectValue placeholder={t("dashboard.channels.selectType")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {channelTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.display_name}
-                    </SelectItem>
-                  ))}
+                  {channelTypes.map((type) => {
+                    const typeEntitled = isChannelEntitled(type.key);
+                    return (
+                      <SelectItem key={type.id} value={type.id} disabled={!typeEntitled}>
+                        {type.display_name}
+                        {!typeEntitled
+                          ? ` — ${t("dashboard.channels.featureNotEntitledBadge")}`
+                          : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {selectedType && !selectedTypeEntitled ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.channels.featureNotEntitled")}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>{t("dashboard.channels.displayName")}</Label>
@@ -408,7 +629,15 @@ export default function ChannelsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => void handleCreate()} disabled={create.isPending || !channelTypeId || !displayName.trim()}>
+            <Button
+              onClick={() => void handleCreate()}
+              disabled={
+                create.isPending
+                || !channelTypeId
+                || !displayName.trim()
+                || !selectedTypeEntitled
+              }
+            >
               {t("buttons.create")}
             </Button>
           </DialogFooter>
@@ -421,31 +650,39 @@ export default function ChannelsPage() {
             <DialogTitle>{t("dashboard.channels.configure")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-xs text-muted-foreground">{t("dashboard.channels.whatsappConfig")}</p>
-            <p className="text-xs text-muted-foreground">
-              {t("dashboard.channels.whatsappCredentialsManagedInSettings")}{" "}
-              <Link to="/dashboard/settings/whatsapp" className="text-primary underline underline-offset-2">
-                {t("dashboard.settings.nav.whatsapp")}
-              </Link>
-            </p>
-            <div className="space-y-2">
-              <Label>{t("dashboard.channels.phoneNumberId")}</Label>
-              <Input
-                value={phoneNumberId}
-                readOnly
-                placeholder={t("dashboard.channels.phoneNumberIdSyncedHint")}
-                className="font-mono text-xs"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("dashboard.channels.webhookUrl")}</Label>
-              <Input value={productionWebhookUrl} readOnly className="font-mono text-xs" />
-              <p className="text-[11px] text-muted-foreground">
-                {webhookBaseUrl
-                  ? t("dashboard.channels.webhookUrlHelp")
-                  : t("dashboard.channels.webhookUrlMissingBase")}
+            {configTarget && isWhatsAppChannel(configTarget) ? (
+              <>
+                <p className="text-xs text-muted-foreground">{t("dashboard.channels.whatsappConfig")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.channels.whatsappCredentialsManagedInSettings")}{" "}
+                  <Link to="/dashboard/settings/whatsapp" className="text-primary underline underline-offset-2">
+                    {t("dashboard.settings.nav.whatsapp")}
+                  </Link>
+                </p>
+                <div className="space-y-2">
+                  <Label>{t("dashboard.channels.phoneNumberId")}</Label>
+                  <Input
+                    value={phoneNumberId}
+                    readOnly
+                    placeholder={t("dashboard.channels.phoneNumberIdSyncedHint")}
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("dashboard.channels.webhookUrl")}</Label>
+                  <Input value={productionWebhookUrl} readOnly className="font-mono text-xs" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {webhookBaseUrl
+                      ? t("dashboard.channels.webhookUrlHelp")
+                      : t("dashboard.channels.webhookUrlMissingBase")}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {t("dashboard.channels.inboundRouting.pageHint")}
               </p>
-            </div>
+            )}
             <ChannelWorkflowBindingSection
               workflowEnabled={workflowBinding.workflowEnabled}
               onWorkflowEnabledChange={workflowBinding.setWorkflowEnabled}

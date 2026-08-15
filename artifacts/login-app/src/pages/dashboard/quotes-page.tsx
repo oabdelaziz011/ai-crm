@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
-import { BriefcaseBusiness, FileText, Plus } from "lucide-react";
+import { BriefcaseBusiness, FileText, Loader2, Plus } from "lucide-react";
 import { EnterpriseEmptyState } from "@/components/enterprise";
 import { Quote360Workspace } from "@/components/quotes/quote360-workspace";
 import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
@@ -38,6 +38,7 @@ export function QuotesPage() {
   const [open, setOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [opportunityId, setOpportunityId] = useState<string | null>(null);
+  const [creatingOpportunityId, setCreatingOpportunityId] = useState<string | null>(null);
 
   const opportunityNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -48,6 +49,33 @@ export function QuotesPage() {
   }, [opportunities.data?.items]);
 
   const items = list.data?.items ?? [];
+  const isCreatingQuote = Boolean(creatingOpportunityId) || commands.createFromOpportunity.isPending;
+
+  const handlePickOpportunity = (pickedOpportunityId: string) => {
+    if (isCreatingQuote) return;
+    setCreatingOpportunityId(pickedOpportunityId);
+    setPickerOpen(false);
+    toast({ title: t("quotes.creating") });
+    commands.createFromOpportunity.mutate(
+      { opportunityId: pickedOpportunityId },
+      {
+        onSuccess: (result) => {
+          setCreatingOpportunityId(null);
+          toast({ title: t("quotes.createSuccess") });
+          setSelectedId(result.quote.id);
+          setOpen(true);
+        },
+        onError: (error) => {
+          setCreatingOpportunityId(null);
+          toast({
+            title: t("quotes.createFailed"),
+            description: resolveApplicationErrorMessage(error),
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   return (
     <div className="flex min-h-0 w-full flex-col gap-5" dir={i18n.dir()}>
@@ -203,28 +231,9 @@ export function QuotesPage() {
                 <button
                   key={opp.id}
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5 text-start transition hover:bg-muted/30"
-                  disabled={commands.createFromOpportunity.isPending}
-                  onClick={() => {
-                    commands.createFromOpportunity.mutate(
-                      { opportunityId: opp.id },
-                      {
-                        onSuccess: (result) => {
-                          setPickerOpen(false);
-                          toast({ title: t("quotes.createSuccess") });
-                          setSelectedId(result.quote.id);
-                          setOpen(true);
-                        },
-                        onError: (error) => {
-                          toast({
-                            title: t("quotes.createFailed"),
-                            description: resolveApplicationErrorMessage(error),
-                            variant: "destructive",
-                          });
-                        },
-                      },
-                    );
-                  }}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5 text-start transition hover:bg-muted/30 disabled:opacity-60"
+                  disabled={isCreatingQuote}
+                  onClick={() => handlePickOpportunity(opp.id)}
                 >
                   <BriefcaseBusiness className="size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
@@ -247,6 +256,19 @@ export function QuotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isCreatingQuote ? (
+        <div
+          className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/95 px-4 py-2 text-[13px] font-medium shadow-lg backdrop-blur">
+            <Loader2 className="size-3.5 animate-spin text-primary" aria-hidden />
+            {t("quotes.creating")}
+          </div>
+        </div>
+      ) : null}
 
       <Quote360Workspace
         quoteId={selectedId}

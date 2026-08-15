@@ -214,11 +214,11 @@ export function DashboardHomePage() {
 
   const kpiDrillDown: Record<ExecutiveKpiId, string> = {
     revenue: getDashboardRouteById("reports").nestedPath,
-    bookings: getDashboardRouteById("bookings").nestedPath,
+    bookings: getDashboardRouteById("universal-operations").nestedPath,
     customers: getDashboardRouteById("customers").nestedPath,
     outstanding: getDashboardRouteById("invoices").nestedPath,
-    conversion: getDashboardRouteById("bookings").nestedPath,
-    utilization: getDashboardRouteById("calendar").nestedPath,
+    conversion: getDashboardRouteById("universal-operations").nestedPath,
+    utilization: getDashboardRouteById("universal-operations").nestedPath,
   };
 
   const kpiDefinitions = useMemo(() => {
@@ -301,7 +301,7 @@ export function DashboardHomePage() {
   ]);
 
   const handlePrimaryAction = () => {
-    if (primaryAction === "pending") setLocation(getDashboardRouteById("bookings").nestedPath);
+    if (primaryAction === "pending") setLocation(getDashboardRouteById("universal-operations").nestedPath);
     else if (primaryAction === "outstanding") setLocation(getDashboardRouteById("invoices").nestedPath);
     else setBookingModalOpen(true);
   };

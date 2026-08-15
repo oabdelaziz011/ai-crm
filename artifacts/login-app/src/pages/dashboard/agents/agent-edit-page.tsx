@@ -7,7 +7,8 @@ import { useAuth } from "@/context/auth-context";
 import { useRegisterFloatingAiContext } from "@/context/floating-ai-context";
 import { usePermissions } from "@/hooks/use-rbac";
 import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
-import { DashboardCard, DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
+import { ModulePurposeBanner } from "@/components/dashboard/module-purpose-banner";
+import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { AiEmployeeEditSections } from "@/lib/ai-employees/components/ai-employee-form-sections";
 import {
@@ -133,7 +134,7 @@ export function AgentEditPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center justify-between gap-3">
         <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => setLocation(nestedSectionHref(agentDetailHref(agentId)))}>
           <ArrowLeft className="me-2 size-4" />
@@ -146,11 +147,21 @@ export function AgentEditPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold">{t("aiEmployees.edit.title")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("aiEmployees.edit.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{employee.displayName}</p>
       </div>
 
-      <DashboardCard className="p-6">
+      <ModulePurposeBanner
+        title={t("aiEmployees.edit.guide.title")}
+        body={t("aiEmployees.edit.guide.body")}
+        points={[
+          t("aiEmployees.edit.guide.points.profile"),
+          t("aiEmployees.edit.guide.points.publish"),
+        ]}
+        className="shadow-none"
+      />
+
+      <section className="space-y-6 rounded-2xl border border-border/50 bg-transparent p-5 sm:p-6">
         <AiEmployeeEditSections
           values={values}
           companyId={companyId}
@@ -159,7 +170,7 @@ export function AgentEditPage() {
           toolOptions={toolOptions}
           onChange={(patch) => setValues((current) => (current ? { ...current, ...patch } : current))}
         />
-      </DashboardCard>
+      </section>
     </div>
   );
 }

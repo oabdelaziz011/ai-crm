@@ -31,6 +31,7 @@ import type { TFunction } from "i18next";
 
 /** Operator-facing column order — Queue 2.1 / 2.2. */
 const OPERATOR_COLUMN_ORDER = [
+  "reference",
   "queue_number",
   "scheduled_at",
   "appointment_time",

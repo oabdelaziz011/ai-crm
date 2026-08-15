@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 128" fill="none" role="img" aria-label="ValueOR — Software Business Solutions">
+  <title>ValueOR</title>
+  <desc>ValueOR Software Business Solutions (transparent — no plate)</desc>
+  <!-- Prefer PNG assets in UI; this SVG is a lightweight fallback without a logo plate -->
+  <text
+    x="8"
+    y="72"
+    fill="#0F172A"
+    font-family="Inter, Segoe UI, Helvetica Neue, Arial, sans-serif"
+    font-size="48"
+    font-weight="700"
+    letter-spacing="-0.02em"
+  >Value<tspan fill="#0E9BB5">OR</tspan></text>
+  <text
+    x="12"
+    y="104"
+    fill="#64748B"
+    font-family="Inter, Segoe UI, Helvetica Neue, Arial, sans-serif"
+    font-size="13"
+    font-weight="600"
+    letter-spacing="0.16em"
+  >SOFTWARE BUSINESS SOLUTIONS</text>
+</svg>

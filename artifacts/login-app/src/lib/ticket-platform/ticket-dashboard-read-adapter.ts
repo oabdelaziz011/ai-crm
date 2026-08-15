@@ -26,5 +26,11 @@ export async function fetchSupportTicketMetrics(companyId: string): Promise<Supp
     ticketsByPriority: metrics.ticketsByPriority,
     ticketsByStatus: metrics.ticketsByStatus,
     ticketsByAgent: metrics.ticketsByAgent,
+    totalTickets: metrics.totalTickets,
+    unassignedTickets: metrics.unassignedTickets,
+    highUrgentTickets: metrics.highUrgentTickets,
+    slaBreaches: metrics.slaBreaches,
+    slaBreachesOpen: metrics.slaBreachesOpen,
+    slaAtRiskOpen: metrics.slaAtRiskOpen,
   };
 }

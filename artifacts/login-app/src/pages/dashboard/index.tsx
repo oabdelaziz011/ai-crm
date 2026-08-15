@@ -7,6 +7,7 @@ import { usePreferredLanguageSync } from "@/lib/i18n/use-preferred-language-sync
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { DashboardOutlet } from "@/components/dashboard/dashboard-outlet";
 import { CustomerProfileProvider } from "@/context/customer-profile-context";
+import { FirstTimeCompanyOnboardingGate } from "@/components/companies/first-time-company-onboarding-gate";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -47,10 +48,12 @@ export default function DashboardApp() {
   }
 
   return (
-    <CustomerProfileProvider>
-      <DashboardLayout>
-        <DashboardOutlet />
-      </DashboardLayout>
-    </CustomerProfileProvider>
+    <FirstTimeCompanyOnboardingGate>
+      <CustomerProfileProvider>
+        <DashboardLayout>
+          <DashboardOutlet />
+        </DashboardLayout>
+      </CustomerProfileProvider>
+    </FirstTimeCompanyOnboardingGate>
   );
 }

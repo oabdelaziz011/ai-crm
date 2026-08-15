@@ -547,10 +547,7 @@ export function CompanyOverviewTab() {
     identity: permissions.canBranding ? () => goCompany("branding") : undefined,
     brand: permissions.canBranding ? () => goCompany("branding") : undefined,
     billing: canOpenBillingHealth
-      ? () =>
-          permissions.canSubscription
-            ? goCompany("subscription")
-            : setLocation("~/dashboard/workspace/billing")
+      ? () => goCompany("subscription")
       : undefined,
     employees: () => goCompany("employees"),
     branches: () => goCompany("branches"),

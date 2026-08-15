@@ -25,3 +25,8 @@ export function canDeleteCompanies(
 ): boolean {
   return isSuperAdmin || hasPermission("companies.delete");
 }
+
+/** Commercial approval / Features & Access — platform super-admin only. */
+export function canManageCompanyCommercialAccess(isSuperAdmin: boolean): boolean {
+  return isSuperAdmin;
+}

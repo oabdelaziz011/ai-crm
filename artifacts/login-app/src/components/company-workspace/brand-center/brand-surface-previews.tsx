@@ -41,11 +41,14 @@ export function BrandSurfacePreview({ document, surface, contact }: Props) {
   }
 
   if (surface === "sidebar") {
+    const sidebarBase = colors.sidebar || colors.secondary;
+    const sidebarEnd = colors.sidebarAccent || colors.primary;
+    const sidebarActive = colors.sidebarActive || colors.primary;
     return (
       <div className="flex min-h-[260px] overflow-hidden" style={tokenStyle}>
         <aside
           className="flex w-[4.5rem] flex-col border-e border-black/10"
-          style={{ background: `linear-gradient(180deg, ${colors.secondary}, ${colors.primary})` }}
+          style={{ background: `linear-gradient(180deg, ${sidebarBase}, ${sidebarEnd})` }}
         >
           <div className="flex h-14 items-center justify-center border-b border-white/15">
             <CompanyLogo name={name} logoUrl={logos.square} className="h-9 w-9" />
@@ -58,7 +61,7 @@ export function BrandSurfacePreview({ document, surface, contact }: Props) {
         </aside>
         <aside
           className="flex w-44 flex-col border-e border-black/10 text-white"
-          style={{ background: `linear-gradient(180deg, ${colors.secondary}ee, ${colors.primary}cc)` }}
+          style={{ background: `linear-gradient(180deg, ${sidebarBase}ee, ${sidebarEnd}cc)` }}
         >
           <div className="flex h-14 items-center gap-2 border-b border-white/15 px-3">
             <CompanyLogo name={name} logoUrl={logos.dark || logos.primary} className="h-8 w-8" />
@@ -70,7 +73,12 @@ export function BrandSurfacePreview({ document, surface, contact }: Props) {
             </div>
           </div>
           <div className="space-y-1 p-2 text-[11px]">
-            <div className="rounded-lg bg-white/15 px-2 py-1.5 font-medium">CRM</div>
+            <div
+              className="rounded-lg px-2 py-1.5 font-medium"
+              style={{ backgroundColor: `${sidebarActive}55` }}
+            >
+              CRM
+            </div>
             <div className="rounded-lg px-2 py-1.5 text-white/75">Operations</div>
           </div>
         </aside>

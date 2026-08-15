@@ -48,7 +48,7 @@ type SectionId =
   | "documents"
   | "email";
 
-const COLOR_KEYS: (keyof CompanyBrandColors)[] = [
+const SYSTEM_COLOR_KEYS: (keyof CompanyBrandColors)[] = [
   "primary",
   "secondary",
   "accent",
@@ -57,6 +57,12 @@ const COLOR_KEYS: (keyof CompanyBrandColors)[] = [
   "danger",
   "background",
   "surface",
+];
+
+const SIDEBAR_COLOR_KEYS: (keyof CompanyBrandColors)[] = [
+  "sidebar",
+  "sidebarActive",
+  "sidebarAccent",
 ];
 
 function documentsEqual(a: CompanyBrandCenterDocument, b: CompanyBrandCenterDocument): boolean {
@@ -389,39 +395,77 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
 
           {section === "colors" ? (
             <section className="space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-              <h2 className="text-sm font-semibold">
-                {t("companyWorkspace.brandCenter.sections.colors")}
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {COLOR_KEYS.map((key) => (
-                  <div
-                    key={key}
-                    data-brand-focus={`color-${key}`}
-                    className={cn(
-                      "space-y-1.5 rounded-xl p-1 transition-shadow",
-                      highlightFocusId === `color-${key}` &&
-                        "ring-2 ring-primary ring-offset-2 ring-offset-background",
-                    )}
-                  >
-                    <Label>{t(`companyWorkspace.brandCenter.color${capitalize(key)}`)}</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={normalizeHexForPicker(draft.colors[key])}
-                        disabled={fieldDisabled}
-                        onChange={(e) => patchColors(key, e.target.value.toUpperCase())}
-                        className="size-10 cursor-pointer rounded-lg border border-border/60 bg-transparent p-0.5 disabled:cursor-not-allowed"
-                      />
-                      <Input
-                        value={draft.colors[key]}
-                        disabled={fieldDisabled}
-                        dir="ltr"
-                        className="font-mono text-sm uppercase"
-                        onChange={(e) => patchColors(key, e.target.value)}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <h2 className="text-sm font-semibold">
+                    {t("companyWorkspace.brandCenter.sections.colors")}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {t("companyWorkspace.brandCenter.colorsHint")}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={fieldDisabled}
+                  onClick={() => {
+                    setDraft((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            colors: { ...DEFAULT_BRAND_COLORS },
+                          }
+                        : prev,
+                    );
+                  }}
+                >
+                  {t("companyWorkspace.brandCenter.resetColors")}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("companyWorkspace.brandCenter.colorGroupSystem")}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("companyWorkspace.brandCenter.colorGroupSystemHint")}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {SYSTEM_COLOR_KEYS.map((key) => (
+                    <BrandColorField
+                      key={key}
+                      colorKey={key}
+                      value={draft.colors[key]}
+                      disabled={fieldDisabled}
+                      highlight={highlightFocusId === `color-${key}`}
+                      label={t(`companyWorkspace.brandCenter.color${capitalize(key)}`)}
+                      onChange={(value) => patchColors(key, value)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t border-border/50 pt-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("companyWorkspace.brandCenter.colorGroupSidebar")}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("companyWorkspace.brandCenter.colorGroupSidebarHint")}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {SIDEBAR_COLOR_KEYS.map((key) => (
+                    <BrandColorField
+                      key={key}
+                      colorKey={key}
+                      value={draft.colors[key]}
+                      disabled={fieldDisabled}
+                      highlight={highlightFocusId === `color-${key}`}
+                      label={t(`companyWorkspace.brandCenter.color${capitalize(key)}`)}
+                      onChange={(value) => patchColors(key, value)}
+                    />
+                  ))}
+                </div>
               </div>
             </section>
           ) : null}
@@ -525,6 +569,50 @@ function Field({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
+    </div>
+  );
+}
+
+function BrandColorField({
+  colorKey,
+  value,
+  disabled,
+  highlight,
+  label,
+  onChange,
+}: {
+  colorKey: keyof CompanyBrandColors;
+  value: string;
+  disabled: boolean;
+  highlight: boolean;
+  label: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div
+      data-brand-focus={`color-${colorKey}`}
+      className={cn(
+        "space-y-1.5 rounded-xl p-1 transition-shadow",
+        highlight && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+      )}
+    >
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={normalizeHexForPicker(value)}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          className="size-10 cursor-pointer rounded-lg border border-border/60 bg-transparent p-0.5 disabled:cursor-not-allowed"
+        />
+        <Input
+          value={value}
+          disabled={disabled}
+          dir="ltr"
+          className="font-mono text-sm uppercase"
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
     </div>
   );
 }

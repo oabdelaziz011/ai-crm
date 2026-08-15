@@ -9,15 +9,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  useCancelBillingSubscription,
   useRestoreBillingSubscription,
   useSuspendBillingSubscription,
 } from "@/hooks/billing/use-billing-edit";
+
+export type BillingSubscriptionStatusMode = "suspend" | "restore" | "cancel";
 
 type BillingSubscriptionStatusDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId: string;
-  mode: "suspend" | "restore";
+  mode: BillingSubscriptionStatusMode;
   onSuccess?: () => void;
   onError?: (message: string) => void;
 };
@@ -33,8 +36,10 @@ export function BillingSubscriptionStatusDialog({
   const { t } = useTranslation("common");
   const suspendMutation = useSuspendBillingSubscription();
   const restoreMutation = useRestoreBillingSubscription();
+  const cancelMutation = useCancelBillingSubscription();
   const [reason, setReason] = useState("");
-  const isPending = suspendMutation.isPending || restoreMutation.isPending;
+  const isPending =
+    suspendMutation.isPending || restoreMutation.isPending || cancelMutation.isPending;
 
   useEffect(() => {
     if (open) setReason("");
@@ -44,33 +49,59 @@ export function BillingSubscriptionStatusDialog({
     try {
       if (mode === "suspend") {
         await suspendMutation.mutateAsync({ companyId, reason: reason.trim() || null });
-      } else {
+      } else if (mode === "restore") {
         await restoreMutation.mutateAsync({ companyId, reason: reason.trim() || null });
+      } else {
+        await cancelMutation.mutateAsync({
+          companyId,
+          reason: reason.trim() || null,
+          atPeriodEnd: false,
+        });
       }
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
-      onError?.(
-        error instanceof Error
-          ? error.message
-          : mode === "suspend"
-            ? t("billing.edit.suspendFailed")
-            : t("billing.edit.restoreFailed"),
-      );
+      const fallback =
+        mode === "suspend"
+          ? t("billing.edit.suspendFailed")
+          : mode === "restore"
+            ? t("billing.edit.restoreFailed")
+            : t("billing.edit.cancelFailed", "Could not cancel subscription");
+      onError?.(error instanceof Error ? error.message : fallback);
     }
   };
+
+  const title =
+    mode === "suspend"
+      ? t("billing.edit.suspendTitle")
+      : mode === "restore"
+        ? t("billing.edit.restoreTitle")
+        : t("billing.edit.cancelTitle", "Cancel subscription");
+
+  const description =
+    mode === "suspend"
+      ? t("billing.edit.suspendDescription")
+      : mode === "restore"
+        ? t("billing.edit.restoreDescription")
+        : t(
+            "billing.edit.cancelDescription",
+            "Marks the subscription lifecycle as canceled. Does not delete company data or revoke grants by itself.",
+          );
+
+  const confirmLabel =
+    mode === "suspend"
+      ? t("billing.edit.suspendConfirm")
+      : mode === "restore"
+        ? t("billing.edit.restoreConfirm")
+        : t("billing.edit.cancelConfirm", "Cancel subscription");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "suspend" ? t("billing.edit.suspendTitle") : t("billing.edit.restoreTitle")}
-          </DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          {mode === "suspend" ? t("billing.edit.suspendDescription") : t("billing.edit.restoreDescription")}
-        </p>
+        <p className="text-sm text-muted-foreground">{description}</p>
         <div>
           <label className="text-sm text-muted-foreground">{t("billing.edit.reasonOptional")}</label>
           <textarea
@@ -85,15 +116,11 @@ export function BillingSubscriptionStatusDialog({
             {t("buttons.cancel")}
           </Button>
           <Button
-            variant={mode === "suspend" ? "destructive" : "default"}
-            onClick={handleSubmit}
+            variant={mode === "restore" ? "default" : "destructive"}
+            onClick={() => void handleSubmit()}
             disabled={isPending}
           >
-            {isPending
-              ? t("billing.common.loading")
-              : mode === "suspend"
-                ? t("billing.edit.suspendConfirm")
-                : t("billing.edit.restoreConfirm")}
+            {isPending ? t("billing.common.loading") : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

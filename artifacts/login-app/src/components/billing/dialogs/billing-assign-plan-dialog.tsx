@@ -1,3 +1,7 @@
+/**
+ * Initial package assignment only (subscription has no plan_id).
+ * Existing package changes MUST use BillingChangePackageDialog → change_company_package_v1.
+ */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -67,9 +71,15 @@ export function BillingAssignPlanDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("billing.edit.assignPlan")}</DialogTitle>
+          <DialogTitle>{t("billing.edit.assignInitialPackage", "Assign package")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+            {t(
+              "billing.edit.assignInitialPackageHint",
+              "Initial package assignment for subscriptions without a package. To change an existing package, use Change Package.",
+            )}
+          </p>
           <div>
             <label className="text-sm text-muted-foreground">{t("billing.tables.plan")}</label>
             <select
@@ -110,7 +120,9 @@ export function BillingAssignPlanDialog({
             {t("buttons.cancel")}
           </Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending || !planId}>
-            {mutation.isPending ? t("billing.common.loading") : t("billing.edit.assignPlanConfirm")}
+            {mutation.isPending
+              ? t("billing.common.loading")
+              : t("billing.edit.assignInitialPackageConfirm", "Assign package")}
           </Button>
         </DialogFooter>
       </DialogContent>

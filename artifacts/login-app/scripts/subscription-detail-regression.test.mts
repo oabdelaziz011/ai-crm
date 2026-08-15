@@ -39,6 +39,59 @@ assert.match(detailPage, /mutationsAllowed/);
 assert.match(detailPage, /canViewAudit \? <TabsTrigger value="audit"/);
 console.log("  ✓ audit tab RBAC gate + provisioning gate + mutation lock");
 
+// Phase 7.9A — single package-change path for existing subscriptions
+assert.match(detailPage, /BillingChangePackageDialog/);
+assert.match(detailPage, /change_company_package_v1|useChangeCompanyPackage|changePackage/);
+assert.match(detailPage, /canChangePackage/);
+assert.match(detailPage, /canAssignInitialPackage/);
+assert.match(detailPage, /!subscription\.plan_id/);
+assert.doesNotMatch(detailPage, /billing\.edit\.assignPlan(?!Initial)/);
+assert.doesNotMatch(detailPage, /UpgradePlanCta/);
+assert.doesNotMatch(detailPage, /canChangePlan=\{canEdit\}/);
+assert.doesNotMatch(detailPage, /onPlanChanged=/);
+console.log("  ✓ Phase 7.9A: Change Package is sole existing-package path; Assign only when !plan_id");
+
+const planExperience = readFileSync(
+  join(root, "src/components/billing/panels/plan-experience-panel.tsx"),
+  "utf8",
+);
+assert.match(planExperience, /onChangePackage/);
+assert.match(planExperience, /billing\.edit\.changePackage/);
+assert.doesNotMatch(planExperience, /import\s*\{[^}]*UpgradePlanCta/);
+assert.doesNotMatch(planExperience, /useAssignSubscriptionPlan/);
+assert.doesNotMatch(planExperience, /supabase\.rpc\(\s*["']assign_subscription_plan/);
+console.log("  ✓ PlanExperiencePanel uses Change Package only (no Upgrade CTA)");
+
+const changeDialog = readFileSync(
+  join(root, "src/components/billing/dialogs/billing-change-package-dialog.tsx"),
+  "utf8",
+);
+assert.match(changeDialog, /useChangeCompanyPackage/);
+assert.match(changeDialog, /cycleReadOnly|unchanged/);
+assert.doesNotMatch(changeDialog, /useAssignSubscriptionPlan/);
+const billingEditHooks = readFileSync(join(root, "src/hooks/billing/use-billing-edit.ts"), "utf8");
+assert.match(billingEditHooks, /change_company_package_v1/);
+console.log("  ✓ Change Package dialog → change_company_package_v1; cycle read-only");
+
+const upgradeCta = readFileSync(
+  join(root, "src/components/billing/panels/upgrade-plan-cta.tsx"),
+  "utf8",
+);
+assert.match(upgradeCta, /@deprecated|Phase 7\.9A/);
+assert.doesNotMatch(upgradeCta, /useAssignSubscriptionPlan/);
+assert.doesNotMatch(upgradeCta, /supabase\.rpc/);
+assert.doesNotMatch(upgradeCta, /mutateAsync/);
+console.log("  ✓ UpgradePlanCta stubbed; no package mutation");
+
+const assignDialog = readFileSync(
+  join(root, "src/components/billing/dialogs/billing-assign-plan-dialog.tsx"),
+  "utf8",
+);
+assert.match(assignDialog, /Initial package assignment only/);
+assert.match(assignDialog, /useAssignSubscriptionPlan/);
+console.log("  ✓ Assign dialog retained for initial assignment only");
+
+
 const billingLayout = readFileSync(join(root, "src/components/billing/layout/billing-layout.tsx"), "utf8");
 assert.match(billingLayout, /BillingHealthProvider/);
 assert.match(billingLayout, /BillingHealthGate/);

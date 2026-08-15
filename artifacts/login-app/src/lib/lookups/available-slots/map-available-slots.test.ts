@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   availableSlotRecordToLookupRow,
+  formatDisplayTime,
   mapResolvedSlotsToAvailableSlotRecords,
 } from "./map-available-slots";
 
@@ -31,7 +32,7 @@ describe("mapResolvedSlotsToAvailableSlotRecords", () => {
       },
     };
 
-    const records = mapResolvedSlotsToAvailableSlotRecords(resolved, "branch_1");
+    const records = mapResolvedSlotsToAvailableSlotRecords(resolved, "branch_1", "en-US");
     assert.equal(records.length, 5);
     assert.equal(records[0]?.display_time, "9:00 AM");
     assert.equal(records[0]?.duration_minutes, 30);
@@ -42,7 +43,14 @@ describe("mapResolvedSlotsToAvailableSlotRecords", () => {
     assert.match(records[0]?.start_at ?? "", /2026-07-28T09:00:00/);
   });
 
-  it("maps records to lookup rows for list nodes", () => {
+  it("formats slot times in Arabic when locale is Arabic", () => {
+    assert.match(formatDisplayTime("09:00", "ar-EG"), /9:00/);
+    assert.match(formatDisplayTime("09:00", "ar-EG"), /ص/);
+    assert.match(formatDisplayTime("14:30", "ar-EG"), /2:30/);
+    assert.match(formatDisplayTime("14:30", "ar-EG"), /م/);
+  });
+
+  it("maps records to lookup rows without repeating the time in description", () => {
     const row = availableSlotRecordToLookupRow(
       {
         start_at: "2026-07-28T09:00:00.000Z",
@@ -60,6 +68,7 @@ describe("mapResolvedSlotsToAvailableSlotRecords", () => {
 
     assert.equal(row.title, "9:00 AM");
     assert.equal(row.id, "2026-07-28T09:00:00.000Z");
+    assert.equal(row.description, undefined);
     assert.equal(row.record?.duration_minutes, 30);
   });
 });

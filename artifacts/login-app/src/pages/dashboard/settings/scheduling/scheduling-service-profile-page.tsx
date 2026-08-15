@@ -126,7 +126,7 @@ export function SchedulingServiceProfilePage() {
           )}
         </div>
         {canEdit && (
-          <Button size="sm" variant="outline" className="border-white/10" onClick={() => setEditOpen(true)}>
+          <Button size="sm" variant="outline" className="border-border/60" onClick={() => setEditOpen(true)}>
             {t("scheduling.services.editDetails")}
           </Button>
         )}

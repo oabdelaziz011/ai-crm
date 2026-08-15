@@ -1,20 +1,34 @@
 import { useMemo, useState, useEffect } from "react";
-import { Activity, Bot, KeyRound, Settings2 } from "lucide-react";
+import { Activity, Bot, KeyRound, RefreshCw, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CompanyAiAccessPanel } from "@/components/platform-ai";
+import {
+  CompanyAiAccessPanel,
+  PlatformAiConnectionLed,
+  type PlatformAiConnectionState,
+} from "@/components/platform-ai";
+import { LEGACY_AI_FEATURE_KEY_MAP } from "@workspace/configuration-platform";
 import { getLiveBackendFeatureKey } from "@/lib/platform-ai";
+import {
+  buildApplicationContext,
+  createLoginAppApplicationLayerRegistry,
+  permissionCodes,
+} from "@/lib/application-layer/application-layer-bootstrap";
+import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useCompanies } from "@/hooks/use-companies";
 import { usePlatformAIProviderServices } from "@/hooks/use-platform-ai-provider";
+import { usePlatformAiOpsProviderHealth } from "@/hooks/platform-ai-operations/use-platform-ai-operations";
 import { useToast } from "@/hooks/use-toast";
+import { featureFlagQueryKey } from "@/hooks/use-feature-flag";
 
 export function SettingsPlatformAiPage() {
   const { t } = useTranslation("common");
-  const { isSuperAdmin } = useAuthUser();
+  const { user } = useAuth();
+  const { isSuperAdmin, hasPermission } = useAuthUser();
   const { services, context } = usePlatformAIProviderServices();
   const { data: companies = [] } = useCompanies();
   const { toast } = useToast();
@@ -39,7 +53,12 @@ export function SettingsPlatformAiPage() {
     queryFn: () => services.platform.listModels(selectedProviderId),
   });
 
-  const { data: keys = [] } = useQuery({
+  const {
+    data: keys = [],
+    isLoading: keysLoading,
+    isFetching: keysFetching,
+    refetch: refetchKeys,
+  } = useQuery({
     queryKey: ["platform-ai-keys", selectedProviderId],
     enabled: Boolean(selectedProviderId),
     queryFn: () => services.platform.listProviderKeys(context, selectedProviderId),
@@ -57,9 +76,30 @@ export function SettingsPlatformAiPage() {
     queryFn: () => services.platform.listFeatureFlags(context, selectedCompanyId),
   });
 
+  const {
+    data: providerHealth,
+    isFetching: healthFetching,
+    refetch: refetchHealth,
+  } = usePlatformAiOpsProviderHealth(isSuperAdmin);
+
   const activeProvider = useMemo(
     () => providers.find((provider) => provider.id === selectedProviderId) ?? providers[0] ?? null,
     [providers, selectedProviderId],
+  );
+
+  const activeKey = useMemo(
+    () => keys.find((key) => key.is_active) ?? null,
+    [keys],
+  );
+
+  const connectionState: PlatformAiConnectionState = useMemo(() => {
+    if (!selectedProviderId || keysLoading) return "checking";
+    return activeKey ? "connected" : "disconnected";
+  }, [activeKey, keysLoading, selectedProviderId]);
+
+  const recentSuccess = useMemo(
+    () => usage.find((row) => row.status === "success" || row.status === "succeeded" || row.status === "completed"),
+    [usage],
   );
 
   useEffect(() => {
@@ -85,6 +125,7 @@ export function SettingsPlatformAiPage() {
     onSuccess: async () => {
       setApiKey("");
       await qc.invalidateQueries({ queryKey: ["platform-ai-keys"] });
+      await refetchHealth();
       toast({ title: t("platformAi.admin.keySaved") });
     },
     onError: (error) => {
@@ -124,6 +165,7 @@ export function SettingsPlatformAiPage() {
   const toggleFeature = useMutation({
     mutationFn: async (input: { featureId: string; enabled: boolean }) => {
       if (!selectedCompanyId) throw new Error("Select a company");
+      if (!user?.id) throw new Error("Not authenticated");
       const backendFeatureKey = getLiveBackendFeatureKey(input.featureId);
       if (!backendFeatureKey) return;
       await services.platform.setFeatureFlag(
@@ -132,15 +174,66 @@ export function SettingsPlatformAiPage() {
         backendFeatureKey,
         input.enabled,
       );
+
+      // Runtime modules resolve unified keys from `platform_feature_flags`.
+      const unifiedKey = LEGACY_AI_FEATURE_KEY_MAP[backendFeatureKey];
+      if (unifiedKey) {
+        const registry = createLoginAppApplicationLayerRegistry({
+          companyId: selectedCompanyId,
+          actorUserId: user.id,
+          isSuperAdmin,
+          hasPermission,
+        });
+        const appContext = buildApplicationContext({
+          tenantId: selectedCompanyId,
+          actorId: user.id,
+          permissions: permissionCodes(hasPermission, isSuperAdmin),
+        });
+        await registry.getServices().featureFlags.upsert(
+          {
+            featureKey: unifiedKey,
+            scopeType: "company",
+            scopeId: selectedCompanyId,
+            enabled: input.enabled,
+            environment: "all",
+            rolloutPercentage: 100,
+          },
+          appContext,
+        );
+      }
     },
     onMutate: (input) => {
       setTogglingFeatureId(input.featureId);
     },
-    onSettled: async () => {
+    onSettled: async (_data, _error, input) => {
       setTogglingFeatureId(null);
-      await qc.invalidateQueries({ queryKey: ["platform-ai-feature-flags"] });
+      const backendFeatureKey = input ? getLiveBackendFeatureKey(input.featureId) : null;
+      const unifiedKey = backendFeatureKey
+        ? LEGACY_AI_FEATURE_KEY_MAP[backendFeatureKey]
+        : undefined;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["platform-ai-feature-flags"] }),
+        unifiedKey
+          ? qc.invalidateQueries({
+              queryKey: featureFlagQueryKey(selectedCompanyId, unifiedKey),
+            })
+          : Promise.resolve(),
+        qc.invalidateQueries({ queryKey: ["runtime-chat-config"] }),
+      ]);
     },
   });
+
+  const verifyBinding = async () => {
+    const [keysResult] = await Promise.all([refetchKeys(), refetchHealth()]);
+    const nextKeys = keysResult.data ?? keys;
+    const bound = nextKeys.some((key) => key.is_active);
+    toast({
+      title: bound
+        ? t("platformAi.admin.connection.verifiedConnected")
+        : t("platformAi.admin.connection.verifiedDisconnected"),
+      variant: bound ? "default" : "destructive",
+    });
+  };
 
   if (!isSuperAdmin) {
     return (
@@ -148,8 +241,58 @@ export function SettingsPlatformAiPage() {
     );
   }
 
+  const verifying = keysFetching || healthFetching;
+
   return (
     <div className="space-y-8">
+      <section className="rounded-2xl border border-white/10 bg-card/40 p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">{t("platformAi.admin.connection.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("platformAi.admin.connection.subtitle")}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <PlatformAiConnectionLed
+              state={verifying && !activeKey && keysLoading ? "checking" : connectionState}
+              connectedLabel={t("platformAi.admin.connection.connected")}
+              disconnectedLabel={t("platformAi.admin.connection.disconnected")}
+              checkingLabel={t("platformAi.admin.connection.checking")}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void verifyBinding()}
+              disabled={verifying || !selectedProviderId}
+            >
+              <RefreshCw className={verifying ? "me-1.5 size-3.5 animate-spin" : "me-1.5 size-3.5"} />
+              {t("platformAi.admin.connection.verify")}
+            </Button>
+          </div>
+        </div>
+        {activeKey ? (
+          <p className="text-xs text-muted-foreground">
+            {t("platformAi.admin.activeKeyHint", { hint: activeKey.key_hint ?? "****" })}
+            {recentSuccess
+              ? ` · ${t("platformAi.admin.connection.lastSuccess", {
+                  model: recentSuccess.model,
+                  status: recentSuccess.status,
+                })}`
+              : providerHealth?.status === "green" || providerHealth?.status === "yellow"
+                ? ` · ${t("platformAi.admin.connection.runtimeHealthy", {
+                    latency: providerHealth.latencyMs,
+                  })}`
+                : ` · ${t("platformAi.admin.connection.boundReady")}`}
+          </p>
+        ) : (
+          <p className="text-xs text-rose-600 dark:text-rose-300">
+            {t("platformAi.admin.connection.needKey")}
+          </p>
+        )}
+      </section>
+
       <section className="rounded-2xl border border-white/10 bg-card/40 p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-primary" />
@@ -205,14 +348,22 @@ export function SettingsPlatformAiPage() {
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-card/40 p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold">{t("platformAi.admin.apiKeys")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold">{t("platformAi.admin.apiKeys")}</h2>
+          </div>
+          <PlatformAiConnectionLed
+            state={connectionState}
+            connectedLabel={t("platformAi.admin.connection.connected")}
+            disconnectedLabel={t("platformAi.admin.connection.disconnected")}
+            checkingLabel={t("platformAi.admin.connection.checking")}
+          />
         </div>
         <p className="text-sm text-muted-foreground">{t("platformAi.admin.apiKeysHint")}</p>
-        {keys[0]?.key_hint ? (
+        {activeKey?.key_hint ? (
           <p className="text-sm font-mono text-emerald-400">
-            {t("platformAi.admin.activeKeyHint", { hint: keys[0].key_hint })}
+            {t("platformAi.admin.activeKeyHint", { hint: activeKey.key_hint })}
           </p>
         ) : (
           <p className="text-sm text-amber-400">{t("platformAi.admin.noKeyConfigured")}</p>

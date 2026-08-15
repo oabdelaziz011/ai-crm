@@ -19,6 +19,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
+const LOOKUP_META_FILTER_KEYS = new Set(["language", "days_ahead", "daysAhead"]);
+
 function applyLookupFilters(
   records: Record<string, unknown>[],
   filters: ListLookupFilters | undefined,
@@ -27,6 +29,8 @@ function applyLookupFilters(
   return records.filter((record) =>
     Object.entries(filters).every(([key, expected]) => {
       if (expected == null || expected === "") return true;
+      // Scheduling/display meta (e.g. conversation language) must not filter entity rows.
+      if (LOOKUP_META_FILTER_KEYS.has(key)) return true;
       const actual = record[key];
       if (typeof expected === "boolean") return Boolean(actual) === expected;
       return String(actual ?? "") === String(expected);

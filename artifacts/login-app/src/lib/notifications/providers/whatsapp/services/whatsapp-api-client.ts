@@ -14,20 +14,40 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+function mapWhatsAppNetworkError(error: unknown, base: string): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/failed to fetch|networkerror|load failed|fetch failed/i.test(message)) {
+    return new Error(
+      `Cannot reach WhatsApp API at ${base}. Check that VITE_API_SERVER_URL is online (api-server running) and reachable from this browser.`,
+    );
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
 async function postWhatsAppApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const base = resolveAuthenticatedApiBase();
   if (!base) {
     throw new Error("VITE_API_SERVER_URL is not configured");
   }
 
-  const response = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers: await buildAuthHeaders(),
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: await buildAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    throw mapWhatsAppNetworkError(error, base);
+  }
 
-  const payload = (await response.json()) as T & { error?: string; message?: string };
+  let payload: T & { error?: string; message?: string };
+  try {
+    payload = (await response.json()) as T & { error?: string; message?: string };
+  } catch {
+    throw new Error(`WhatsApp API returned non-JSON (${response.status}) from ${base}${path}`);
+  }
   if (!response.ok) {
     throw new Error(payload.message ?? payload.error ?? `WhatsApp API failed (${response.status})`);
   }

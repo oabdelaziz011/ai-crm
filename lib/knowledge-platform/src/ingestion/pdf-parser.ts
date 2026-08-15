@@ -8,9 +8,37 @@ type PDFPageProxy = Awaited<ReturnType<Awaited<ReturnType<PdfJsModule["getDocume
 
 let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
 
+async function configurePdfWorker(pdfjs: PdfJsModule): Promise<void> {
+  if (pdfjs.GlobalWorkerOptions.workerSrc) return;
+
+  // Browser (Vite): prefer a version-matched CDN worker so bundling never omits the asset.
+  if (typeof window !== "undefined") {
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
+    return;
+  }
+
+  // Node (unit tests): resolve the local worker file.
+  try {
+    const [{ createRequire }, { pathToFileURL }] = await Promise.all([
+      import("node:module"),
+      import("node:url"),
+    ]);
+    const require = createRequire(import.meta.url);
+    const workerPath = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+  } catch {
+    // Leave unset — pdf.js may fall back to a fake worker in Node.
+  }
+}
+
 async function loadPdfJs(): Promise<PdfJsModule> {
   if (!pdfJsModulePromise) {
-    pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
+    pdfJsModulePromise = (async () => {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      await configurePdfWorker(pdfjs);
+      return pdfjs;
+    })();
   }
   return pdfJsModulePromise;
 }

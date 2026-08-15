@@ -33,6 +33,13 @@ function mapPreferenceRow(row: PreferenceRow): NotificationPreference {
   };
 }
 
+function channelsMatch(
+  a: NotificationChannel | null,
+  b: NotificationChannel | null,
+): boolean {
+  return (a ?? null) === (b ?? null);
+}
+
 export class NotificationPreferenceRepository {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -51,28 +58,75 @@ export class NotificationPreferenceRepository {
     return (data ?? []).map((row) => mapPreferenceRow(row as PreferenceRow));
   }
 
+  /**
+   * Upsert without relying on PostgREST onConflict against an expression unique index
+   * (coalesce(user_id), coalesce(channel)).
+   */
   async upsert(
     preference: Omit<NotificationPreference, "id" | "createdAt" | "updatedAt">,
   ): Promise<NotificationPreference> {
+    const existing = await this.findExact(
+      preference.companyId,
+      preference.userId,
+      preference.scope,
+      preference.channel,
+    );
+
+    const payload = {
+      company_id: preference.companyId,
+      user_id: preference.userId,
+      scope: preference.scope,
+      channel: preference.channel,
+      min_priority: preference.minPriority,
+      muted: preference.muted,
+      working_hours: preference.workingHours,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing) {
+      const { data, error } = await this.client
+        .from("notification_preferences")
+        .update(payload)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      return mapPreferenceRow(data as PreferenceRow);
+    }
+
     const { data, error } = await this.client
       .from("notification_preferences")
-      .upsert(
-        {
-          company_id: preference.companyId,
-          user_id: preference.userId,
-          scope: preference.scope,
-          channel: preference.channel,
-          min_priority: preference.minPriority,
-          muted: preference.muted,
-          working_hours: preference.workingHours,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "company_id,user_id,scope,channel" },
-      )
+      .insert(payload)
       .select("*")
       .single();
-
     if (error) throw new Error(error.message);
     return mapPreferenceRow(data as PreferenceRow);
+  }
+
+  private async findExact(
+    companyId: string,
+    userId: string | null,
+    scope: "user" | "tenant",
+    channel: NotificationChannel | null,
+  ): Promise<NotificationPreference | null> {
+    let builder = this.client
+      .from("notification_preferences")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("scope", scope);
+
+    if (userId) builder = builder.eq("user_id", userId);
+    else builder = builder.is("user_id", null);
+
+    if (channel) builder = builder.eq("channel", channel);
+    else builder = builder.is("channel", null);
+
+    const { data, error } = await builder.maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const mapped = mapPreferenceRow(data as PreferenceRow);
+    // Defensive: ensure channel match (null vs value)
+    if (!channelsMatch(mapped.channel, channel)) return null;
+    return mapped;
   }
 }

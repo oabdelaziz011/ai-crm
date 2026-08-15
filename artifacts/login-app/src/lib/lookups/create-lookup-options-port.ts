@@ -16,7 +16,7 @@ export function createLookupOptionsPort(client?: SupabaseClient): LookupOptionsP
       return rows.map((row) => ({
         id: row.id,
         title: row.title,
-        description: row.description,
+        ...(row.description?.trim() ? { description: row.description.trim() } : {}),
         value: row.value ?? row.id,
         ...(row.record ? { record: row.record } : {}),
       }));

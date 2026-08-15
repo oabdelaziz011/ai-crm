@@ -1,62 +1,30 @@
-import { useState } from "react";
-import { BookOpen, Loader2, Plus } from "lucide-react";
+import { useLocation } from "wouter";
+import { BookOpen, FileUp, Plus, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ModulePurposeBanner } from "@/components/dashboard/module-purpose-banner";
 import { useAuth } from "@/context/auth-context";
-import { useCreateKnowledgeSource } from "@/hooks/knowledge/use-create-knowledge-source";
 import { useKnowledgeSources } from "@/hooks/knowledge/use-knowledge-sources";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { canManageKnowledge } from "@/lib/knowledge/knowledge-permissions";
-import { useToast } from "@/hooks/use-toast";
+import { knowledgeCreateHref } from "@/config/knowledge-route-registry";
+import { isKnowledgeWizardDraft } from "@/lib/knowledge/knowledge-wizard-draft";
+import { nestedSectionHref } from "@/lib/routing";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { DashboardCard, DashboardErrorBanner, DashboardTableSkeleton } from "@/components/dashboard/ui";
+import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
+import { cn } from "@/lib/utils";
 
 export function KnowledgeSourcesPage() {
   const { t } = useTranslation("common");
-  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { company } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const companyId = company?.id ?? null;
   const canManage = canManageKnowledge(hasPermission, isSuperAdmin);
 
   const { data: sources = [], isLoading, error } = useKnowledgeSources(companyId);
-  const createSource = useCreateKnowledgeSource();
-
-  const [displayName, setDisplayName] = useState("");
-  const [key, setKey] = useState("");
-  const [sourceType, setSourceType] = useState<"manual" | "pdf" | "policy">("pdf");
-
-  const handleCreate = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!companyId || !displayName.trim() || !key.trim()) return;
-
-    try {
-      await createSource.mutateAsync({
-        companyId,
-        key: key.trim(),
-        displayName: displayName.trim(),
-        sourceType,
-        description: t("knowledge.sources.defaultDescription"),
-      });
-      setDisplayName("");
-      setKey("");
-      toast({ title: t("knowledge.sources.createSuccess") });
-    } catch (createError) {
-      toast({
-        variant: "destructive",
-        title: t("knowledge.sources.createFailed"),
-        description: createError instanceof Error ? createError.message : undefined,
-      });
-    }
-  };
 
   if (isLoading) {
-    return (
-      <DashboardCard className="p-6">
-        <DashboardTableSkeleton rows={4} />
-      </DashboardCard>
-    );
+    return <DashboardPageFallback />;
   }
 
   if (error) {
@@ -64,89 +32,106 @@ export function KnowledgeSourcesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {canManage && (
-        <DashboardCard className="p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-primary" />
-            {t("knowledge.sources.createTitle")}
-          </h3>
-          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="source-name">{t("knowledge.sources.displayName")}</Label>
-              <Input
-                id="source-name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="bg-background/50 border-white/10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="source-key">{t("knowledge.sources.key")}</Label>
-              <Input
-                id="source-key"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                className="bg-background/50 border-white/10"
-                dir="ltr"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="source-type">{t("knowledge.sources.type")}</Label>
-              <select
-                id="source-type"
-                value={sourceType}
-                onChange={(e) => setSourceType(e.target.value as "manual" | "pdf" | "policy")}
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
-              >
-                <option value="pdf">PDF</option>
-                <option value="manual">{t("knowledge.sources.typeManual")}</option>
-                <option value="policy">{t("knowledge.sources.typePolicy")}</option>
-              </select>
-            </div>
-            <div className="md:col-span-4 flex justify-end">
-              <Button type="submit" disabled={createSource.isPending}>
-                {createSource.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("knowledge.sources.createAction")}
-              </Button>
-            </div>
-          </form>
-        </DashboardCard>
-      )}
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">{t("knowledge.library.title")}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("knowledge.library.subtitle")}</p>
+        </div>
+        {canManage ? (
+          <Button
+            className="rounded-xl"
+            onClick={() => setLocation(nestedSectionHref(knowledgeCreateHref()))}
+          >
+            <Sparkles className="me-2 size-4" />
+            {t("knowledge.wizard.startCta")}
+          </Button>
+        ) : null}
+      </div>
 
-      <DashboardCard className="p-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-primary" />
-          {t("knowledge.sources.listTitle")}
-        </h3>
-        {sources.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("knowledge.sources.empty")}</p>
-        ) : (
-          <div className="space-y-3">
-            {sources.map((source) => (
-              <div
-                key={source.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-black/20 rounded-xl border border-white/5"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium">{source.display_name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {source.key} · {source.source_type}
-                  </p>
-                </div>
+      <ModulePurposeBanner
+        title={t("knowledge.guide.title")}
+        body={t("knowledge.guide.body")}
+        points={[
+          t("knowledge.guide.points.source"),
+          t("knowledge.guide.points.import"),
+          t("knowledge.guide.points.documents"),
+          t("knowledge.guide.points.verify"),
+        ]}
+        className="shadow-none"
+      />
+
+      {!canManage ? (
+        <p className="rounded-xl border border-border/50 px-4 py-3 text-sm text-muted-foreground">
+          {t("knowledge.sources.manageDenied")}
+        </p>
+      ) : null}
+
+      {sources.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/50 px-6 py-12 text-center">
+          <BookOpen className="mx-auto size-8 text-muted-foreground" aria-hidden />
+          <p className="mt-3 text-sm font-medium">{t("knowledge.sources.empty")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("knowledge.wizard.emptyHint")}</p>
+          {canManage ? (
+            <Button
+              className="mt-4 rounded-xl"
+              onClick={() => setLocation(nestedSectionHref(knowledgeCreateHref()))}
+            >
+              <Plus className="me-2 size-4" />
+              {t("knowledge.wizard.startCta")}
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sources.map((source) => (
+            <div
+              key={source.id}
+              className={cn(
+                "flex flex-col gap-3 rounded-2xl border border-border/50 px-4 py-3 sm:flex-row sm:items-center",
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{source.display_name}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground" dir="ltr">
+                  {source.key} · {source.source_type}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {isKnowledgeWizardDraft(source) ? (
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-800 dark:text-amber-200">
+                    {t("knowledge.library.draftBadge")}
+                  </span>
+                ) : null}
                 <span
-                  className={`text-xs px-2 py-1 rounded-full border ${
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-xs",
                     source.is_enabled
-                      ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                      : "border-white/10 text-muted-foreground"
-                  }`}
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "border-border/60 text-muted-foreground",
+                  )}
                 >
                   {source.is_enabled ? t("knowledge.sources.enabled") : t("knowledge.sources.disabled")}
                 </span>
+                {canManage ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => setLocation(nestedSectionHref(knowledgeCreateHref(source.id)))}
+                  >
+                    <FileUp className="me-1.5 size-3.5" />
+                    {isKnowledgeWizardDraft(source)
+                      ? t("knowledge.library.continueDraft")
+                      : t("knowledge.library.continueWizard")}
+                  </Button>
+                ) : null}
               </div>
-            ))}
-          </div>
-        )}
-      </DashboardCard>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

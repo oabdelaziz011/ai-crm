@@ -6,7 +6,6 @@ import { useAuth } from "@/context/auth-context";
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import {
-  DashboardCard,
   DashboardErrorBanner,
   DashboardTableSkeleton,
 } from "@/components/dashboard/ui";
@@ -101,8 +100,8 @@ export function SchedulingHolidaysPage() {
   };
 
   return (
-    <DashboardCard className="overflow-hidden">
-      <div className="p-5 border-b border-white/5 flex items-center justify-between">
+    <div className="overflow-hidden border border-border bg-background">
+      <div className="p-5 border-b border-border/40 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <CalendarHeart className="w-4 h-4 text-primary" />
@@ -131,7 +130,7 @@ export function SchedulingHolidaysPage() {
           {t("scheduling.holidays.empty")}
         </div>
       ) : (
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-border">
           {holidays.map((holiday) => (
             <div key={holiday.id} className="flex items-center gap-4 px-6 py-4">
               <div className="flex-1 min-w-0">
@@ -171,7 +170,7 @@ export function SchedulingHolidaysPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md border-white/10 bg-card">
+        <DialogContent className="sm:max-w-md border-border/60 bg-card">
           <DialogHeader>
             <DialogTitle>
               {editing ? t("scheduling.holidays.editTitle") : t("scheduling.holidays.createTitle")}
@@ -183,7 +182,7 @@ export function SchedulingHolidaysPage() {
               <Input
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                className="bg-background/50 border-white/10"
+                className="bg-background border-border/60"
               />
             </div>
             <div className="space-y-2">
@@ -192,13 +191,13 @@ export function SchedulingHolidaysPage() {
                 type="date"
                 value={form.holiday_date}
                 onChange={(e) => setForm((prev) => ({ ...prev, holiday_date: e.target.value }))}
-                className="bg-background/50 border-white/10"
+                className="bg-background border-border/60"
               />
             </div>
             <div className="space-y-2">
               <Label>{t("scheduling.holidays.fields.branch")}</Label>
               <select
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
                 value={form.branch_id ?? ""}
                 onChange={(e) =>
                   setForm((prev) => ({
@@ -217,7 +216,7 @@ export function SchedulingHolidaysPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} className="border-white/10">
+            <Button variant="outline" onClick={() => setOpen(false)} className="border-border/60">
               {t("buttons.cancel")}
             </Button>
             <Button
@@ -249,6 +248,6 @@ export function SchedulingHolidaysPage() {
         description={t("scheduling.holidays.deleteDescription", { title: deleting?.title ?? "" })}
         pending={deleteHoliday.isPending}
       />
-    </DashboardCard>
+    </div>
   );
 }

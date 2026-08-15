@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { wxRecordServiceResolution } from "@workspace/automation-platform";
+import { TimezoneResolver } from "@workspace/scheduling-engine";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import type { LookupOptionRow } from "../types";
+import { resolveSchedulingDisplayLocale } from "../scheduling-display-locale";
 import type { AvailableSlotsLookupContext } from "./available-slot-types";
 import {
   availableSlotRecordToLookupRow,
@@ -32,27 +34,38 @@ export async function fetchAvailableSlotsLookupOptions(
 
   wxRecordServiceResolution("availableSlots.lookup");
   const scheduling = createSchedulingServices(client);
-  const resolved = await scheduling.slotGenerationEngine.getAvailableSlots(
-    companyId,
-    context.resource_id,
-    context.service_id,
-    context.date,
-    { respectBookingRules: true },
-  );
+  const [resolved, rules, resourceResult] = await Promise.all([
+    scheduling.slotGenerationEngine.getAvailableSlots(
+      companyId,
+      context.resource_id,
+      context.service_id,
+      context.date,
+      { respectBookingRules: true },
+    ),
+    scheduling.bookingRules.get(companyId),
+    client
+      .from("scheduling_resources")
+      .select("branch_id")
+      .eq("company_id", companyId)
+      .eq("id", context.resource_id)
+      .maybeSingle(),
+  ]);
 
   if (!resolved.available || resolved.slots.length === 0) {
     return [];
   }
 
-  const { data: resource } = await client
-    .from("scheduling_resources")
-    .select("branch_id")
-    .eq("company_id", companyId)
-    .eq("id", context.resource_id)
-    .maybeSingle();
-
-  const branchId = (resource?.branch_id as string | null | undefined) ?? null;
-  const records = mapResolvedSlotsToAvailableSlotRecords(resolved, branchId);
+  const timezone = TimezoneResolver.resolveEffectiveTimezone(
+    null,
+    null,
+    rules?.timezone ?? resolved.timezone ?? "UTC",
+  );
+  const displayLocale = resolveSchedulingDisplayLocale({
+    timezone,
+    language: typeof filters?.language === "string" ? filters.language : null,
+  });
+  const branchId = (resourceResult.data?.branch_id as string | null | undefined) ?? null;
+  const records = mapResolvedSlotsToAvailableSlotRecords(resolved, branchId, displayLocale);
 
   return records.map((record) =>
     availableSlotRecordToLookupRow(record, displayField, valueField),

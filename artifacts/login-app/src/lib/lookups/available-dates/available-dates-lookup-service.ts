@@ -15,6 +15,7 @@ import {
   availableDateRecordToLookupRow,
   formatAvailableDateLabel,
 } from "./map-available-dates";
+import { resolveSchedulingDisplayLocale } from "../scheduling-display-locale";
 
 function readRequiredContext(
   filters: Record<string, unknown> | undefined,
@@ -54,6 +55,10 @@ export async function fetchAvailableDatesLookupOptions(
   const rules = await scheduling.bookingRules.get(companyId);
   const timezone = TimezoneResolver.resolveEffectiveTimezone(null, null, rules?.timezone ?? "UTC");
   const startDate = TimezoneResolver.localDateForInstant(referenceNow, timezone);
+  const displayLocale = resolveSchedulingDisplayLocale({
+    timezone,
+    language: typeof filters?.language === "string" ? filters.language : null,
+  });
 
   const [{ data: resource }, serviceDuration] = await Promise.all([
     client
@@ -90,7 +95,7 @@ export async function fetchAvailableDatesLookupOptions(
 
   const records: AvailableDateRecord[] = scanResult.availableDates.map((date) => ({
     date,
-    display_date: formatAvailableDateLabel(date, timezone),
+    display_date: formatAvailableDateLabel(date, timezone, displayLocale),
     service_id: context.service_id,
     resource_id: context.resource_id,
     timezone,

@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import {
-  DashboardCard,
   DashboardErrorBanner,
   DashboardTableSkeleton,
 } from "@/components/dashboard/ui";
@@ -239,20 +238,20 @@ export function SchedulingAvailabilityPage() {
 
   if (resources.length === 0) {
     return (
-      <DashboardCard className="p-8 text-center text-sm text-muted-foreground">
+      <div className="border border-border bg-background p-8 text-center text-sm text-muted-foreground">
         {t("scheduling.availability.noResources")}
-      </DashboardCard>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <DashboardCard className="p-5">
+      <div className="border border-border bg-background p-5">
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-2 min-w-[220px]">
             <Label>{t("scheduling.availability.selectResource")}</Label>
             <select
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
               value={selectedResourceId ?? ""}
               onChange={(e) => setSelectedResourceId(e.target.value)}
             >
@@ -271,12 +270,12 @@ export function SchedulingAvailabilityPage() {
             </p>
           )}
         </div>
-      </DashboardCard>
+      </div>
 
       {error && <DashboardErrorBanner message={error.message} />}
 
-      <DashboardCard className="overflow-hidden">
-        <div className="p-5 border-b border-white/5 flex items-center justify-between">
+      <div className="overflow-hidden border border-border bg-background">
+        <div className="p-5 border-b border-border/40 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-sm flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-primary" />
@@ -297,7 +296,7 @@ export function SchedulingAvailabilityPage() {
         {availabilityLoading ? (
           <DashboardTableSkeleton />
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border">
             {weeklyForm.days.map((day) => (
               <div key={day.day_of_week} className="px-6 py-4 space-y-3">
                 <div className="flex flex-wrap items-center gap-4">
@@ -322,7 +321,7 @@ export function SchedulingAvailabilityPage() {
                         onChange={(e) =>
                           updateDay(day.day_of_week, { opens_at: e.target.value })
                         }
-                        className="w-32 bg-background/50 border-white/10"
+                        className="w-32 bg-background border-border/60"
                       />
                       <span className="text-muted-foreground text-sm">→</span>
                       <Input
@@ -332,7 +331,7 @@ export function SchedulingAvailabilityPage() {
                         onChange={(e) =>
                           updateDay(day.day_of_week, { closes_at: e.target.value })
                         }
-                        className="w-32 bg-background/50 border-white/10"
+                        className="w-32 bg-background border-border/60"
                       />
                     </>
                   )}
@@ -371,7 +370,7 @@ export function SchedulingAvailabilityPage() {
                             );
                             updateDay(day.day_of_week, { breaks });
                           }}
-                          className="w-32 bg-background/50 border-white/10"
+                          className="w-32 bg-background border-border/60"
                         />
                         <span className="text-muted-foreground text-sm">→</span>
                         <Input
@@ -386,7 +385,7 @@ export function SchedulingAvailabilityPage() {
                             );
                             updateDay(day.day_of_week, { breaks });
                           }}
-                          className="w-32 bg-background/50 border-white/10"
+                          className="w-32 bg-background border-border/60"
                         />
                         {canEdit && (
                           <Button
@@ -407,10 +406,10 @@ export function SchedulingAvailabilityPage() {
             ))}
           </div>
         )}
-      </DashboardCard>
+      </div>
 
-      <DashboardCard className="overflow-hidden">
-        <div className="p-5 border-b border-white/5 flex items-center justify-between">
+      <div className="overflow-hidden border border-border bg-background">
+        <div className="p-5 border-b border-border/40 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-sm">{t("scheduling.availability.exceptionsTitle")}</h3>
             <p className="text-xs text-muted-foreground mt-1">
@@ -418,7 +417,7 @@ export function SchedulingAvailabilityPage() {
             </p>
           </div>
           {canEdit && (
-            <Button size="sm" variant="outline" className="border-white/10" onClick={() => setExceptionOpen(true)}>
+            <Button size="sm" variant="outline" className="border-border/60" onClick={() => setExceptionOpen(true)}>
               <Plus className="w-4 h-4 me-1" />
               {t("scheduling.availability.addException")}
             </Button>
@@ -432,7 +431,7 @@ export function SchedulingAvailabilityPage() {
             {t("scheduling.availability.noExceptions")}
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border">
             {availability?.exceptions.map((item) => (
               <div key={item.id} className="flex items-center gap-4 px-6 py-4">
                 <div className="flex-1 min-w-0">
@@ -465,10 +464,10 @@ export function SchedulingAvailabilityPage() {
             ))}
           </div>
         )}
-      </DashboardCard>
+      </div>
 
       <Dialog open={exceptionOpen} onOpenChange={setExceptionOpen}>
-        <DialogContent className="sm:max-w-md border-white/10 bg-card">
+        <DialogContent className="sm:max-w-md border-border/60 bg-card">
           <DialogHeader>
             <DialogTitle>{t("scheduling.availability.addException")}</DialogTitle>
           </DialogHeader>
@@ -476,7 +475,7 @@ export function SchedulingAvailabilityPage() {
             <div className="space-y-2">
               <Label>{t("scheduling.availability.fields.type")}</Label>
               <select
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
                 value={exceptionDraft.exception_type}
                 onChange={(e) =>
                   setExceptionDraft((prev) => ({
@@ -499,7 +498,7 @@ export function SchedulingAvailabilityPage() {
                 onChange={(e) =>
                   setExceptionDraft((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="bg-background/50 border-white/10"
+                className="bg-background border-border/60"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -511,7 +510,7 @@ export function SchedulingAvailabilityPage() {
                   onChange={(e) =>
                     setExceptionDraft((prev) => ({ ...prev, starts_at: e.target.value }))
                   }
-                  className="bg-background/50 border-white/10"
+                  className="bg-background border-border/60"
                 />
               </div>
               <div className="space-y-2">
@@ -522,13 +521,13 @@ export function SchedulingAvailabilityPage() {
                   onChange={(e) =>
                     setExceptionDraft((prev) => ({ ...prev, ends_at: e.target.value }))
                   }
-                  className="bg-background/50 border-white/10"
+                  className="bg-background border-border/60"
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExceptionOpen(false)} className="border-white/10">
+            <Button variant="outline" onClick={() => setExceptionOpen(false)} className="border-border/60">
               {t("buttons.cancel")}
             </Button>
             <Button onClick={submitException} disabled={createException.isPending}>

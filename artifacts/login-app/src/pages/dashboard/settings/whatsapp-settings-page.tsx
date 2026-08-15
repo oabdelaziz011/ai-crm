@@ -120,6 +120,14 @@ export function SettingsWhatsAppPage() {
     });
   };
 
+  const describeConnectionError = (raw: string | undefined) => {
+    if (!raw) return t("notifications.whatsapp.settings.connectionTestFailed");
+    if (/failed to fetch|cannot reach whatsapp api|networkerror|load failed/i.test(raw)) {
+      return t("notifications.whatsapp.settings.apiUnreachable");
+    }
+    return raw;
+  };
+
   const onConnectionTest = () => {
     setLatestConnectionTest(null);
     connectionTest.mutate(undefined, {
@@ -134,7 +142,9 @@ export function SettingsWhatsAppPage() {
           toast({ title: t("notifications.whatsapp.settings.connectionTestSuccess") });
           return;
         }
-        const detail = report.error ?? t("notifications.whatsapp.settings.connectionTestFailed");
+        const detail = describeConnectionError(
+          report.error ?? t("notifications.whatsapp.settings.connectionTestFailed"),
+        );
         setLatestConnectionTest({
           ok: false,
           latencyMs: report.latencyMs,
@@ -148,15 +158,16 @@ export function SettingsWhatsAppPage() {
         });
       },
       onError: (error) => {
+        const detail = describeConnectionError(error.message);
         setLatestConnectionTest({
           ok: false,
           latencyMs: 0,
-          error: error.message,
+          error: detail,
           tokenStatus: "unknown",
         });
         toast({
           title: t("notifications.whatsapp.settings.connectionTestFailed"),
-          description: error.message,
+          description: detail,
           variant: "destructive",
         });
       },

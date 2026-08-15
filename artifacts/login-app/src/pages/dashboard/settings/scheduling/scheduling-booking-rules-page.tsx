@@ -10,7 +10,6 @@ import {
   BookingRuleSection,
 } from "@/components/scheduling/booking-rules/booking-rule-field";
 import {
-  DashboardCard,
   DashboardErrorBanner,
   DashboardTableSkeleton,
 } from "@/components/dashboard/ui";
@@ -87,8 +86,8 @@ export function SchedulingBookingRulesPage() {
   }
 
   return (
-    <DashboardCard className="overflow-hidden">
-      <div className="p-5 border-b border-white/5">
+    <div className="overflow-hidden border border-border bg-background">
+      <div className="p-5 border-b border-border/40">
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <Settings2 className="w-4 h-4 text-primary" />
           {t("scheduling.bookingRules.title")}
@@ -123,7 +122,7 @@ export function SchedulingBookingRulesPage() {
               min={0}
               disabled={!canEdit}
               {...form.register("min_booking_notice_minutes")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
           </BookingRuleField>
 
@@ -140,7 +139,7 @@ export function SchedulingBookingRulesPage() {
               min={1}
               disabled={!canEdit}
               {...form.register("max_booking_window_days")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
           </BookingRuleField>
         </BookingRuleSection>
@@ -164,7 +163,7 @@ export function SchedulingBookingRulesPage() {
               step={5}
               disabled={!canEdit}
               {...form.register("slot_interval_minutes")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
             <p className="text-xs text-muted-foreground/90 mt-2 font-mono leading-relaxed">
               {t("scheduling.bookingRules.examples.slotInterval")}
@@ -189,7 +188,7 @@ export function SchedulingBookingRulesPage() {
               min={0}
               disabled={!canEdit}
               {...form.register("buffer_before_minutes")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
           </BookingRuleField>
 
@@ -206,7 +205,7 @@ export function SchedulingBookingRulesPage() {
               min={0}
               disabled={!canEdit}
               {...form.register("buffer_after_minutes")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
           </BookingRuleField>
         </BookingRuleSection>
@@ -228,7 +227,7 @@ export function SchedulingBookingRulesPage() {
               min={0}
               disabled={!canEdit}
               {...form.register("min_cancellation_notice_minutes")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
             <p className="text-xs text-muted-foreground/90 mt-2">
               {t("scheduling.bookingRules.examples.cancellationNotice")}
@@ -248,7 +247,7 @@ export function SchedulingBookingRulesPage() {
               min={0}
               disabled={!canEdit}
               {...form.register("min_reschedule_notice_minutes")}
-              className="bg-background/50 border-white/10"
+              className="bg-background border-border/60"
             />
             <p className="text-xs text-muted-foreground/90 mt-2">
               {t("scheduling.bookingRules.examples.rescheduleNotice")}
@@ -261,7 +260,7 @@ export function SchedulingBookingRulesPage() {
               helpKey="scheduling.bookingRules.fields.allowOverbookingHelp"
               tooltipKey="scheduling.bookingRules.fields.allowOverbookingTooltip"
             >
-              <div className="flex items-center justify-between rounded-lg border border-white/5 bg-background/30 px-3 py-2">
+              <div className="flex items-center justify-between rounded-lg border border-border/40 bg-background px-3 py-2">
                 <span className="text-sm text-muted-foreground">
                   {form.watch("allow_overbooking")
                     ? t("scheduling.bookingRules.fields.allowOverbookingOn")
@@ -291,7 +290,7 @@ export function SchedulingBookingRulesPage() {
             <select
               id="timezone"
               disabled={!canEdit}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
               {...form.register("timezone")}
             >
               {timezoneOptions.map((tz) => (
@@ -315,7 +314,7 @@ export function SchedulingBookingRulesPage() {
             <select
               id="week_start_day"
               disabled={!canEdit}
-              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
               {...form.register("week_start_day", { valueAsNumber: true })}
             >
               {WEEKDAY_INDICES.map((day) => (
@@ -334,6 +333,6 @@ export function SchedulingBookingRulesPage() {
           </Button>
         )}
       </form>
-    </DashboardCard>
+    </div>
   );
 }

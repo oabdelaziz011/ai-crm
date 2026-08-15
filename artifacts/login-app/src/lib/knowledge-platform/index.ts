@@ -23,7 +23,7 @@ async function loadKnowledgePlatformModule() {
 export function useKnowledgePlatformServices() {
   const { user, profile, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
-  const { isEnabled: knowledgeFeatureEnabled } = useKnowledgeFeatureEnabled();
+  const { resolvedEnabled: knowledgeFeatureEnabled } = useKnowledgeFeatureEnabled();
   const moduleQuery = useQuery({
     queryKey: knowledgePlatformModuleKey,
     queryFn: loadKnowledgePlatformModule,
@@ -45,7 +45,8 @@ export function useKnowledgePlatformServices() {
       companyId: profile?.company_id ?? null,
       isSuperAdmin,
       hasPermission,
-      isKnowledgeFeatureEnabled: () => knowledgeFeatureEnabled,
+      // Soft-allow while unresolved (undefined); only hard-block when explicitly false.
+      isKnowledgeFeatureEnabled: () => knowledgeFeatureEnabled !== false,
     }),
     [user?.id, profile?.company_id, isSuperAdmin, hasPermission, knowledgeFeatureEnabled],
   );

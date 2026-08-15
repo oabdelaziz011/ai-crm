@@ -126,14 +126,14 @@ export function SchedulingResourceProfilePage() {
           </p>
         </div>
         {canEdit && (
-          <Button size="sm" variant="outline" className="border-white/10" onClick={() => setEditOpen(true)}>
+          <Button size="sm" variant="outline" className="border-border/60" onClick={() => setEditOpen(true)}>
             {t("scheduling.resources.editDetails")}
           </Button>
         )}
       </div>
 
       <Tabs defaultValue="services">
-        <TabsList className="bg-transparent border-b border-white/10 rounded-none w-full justify-start h-auto p-0 gap-0">
+        <TabsList className="bg-transparent border-b border-border/60 rounded-none w-full justify-start h-auto p-0 gap-0">
           <TabsTrigger
             value="overview"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -192,7 +192,7 @@ export function SchedulingResourceProfilePage() {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-background/25 px-3 py-2.5">
+    <div className="rounded-lg border border-border/60 bg-background px-3 py-2.5">
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <p className="text-sm font-medium mt-0.5">{value}</p>
     </div>

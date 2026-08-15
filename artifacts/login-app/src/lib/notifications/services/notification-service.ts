@@ -2,6 +2,7 @@ import type {
   CreateNotificationInput,
   Notification,
   NotificationChannel,
+  NotificationEvent,
   NotificationListFilter,
   NotificationPage,
   NotificationPreference,
@@ -14,6 +15,7 @@ import { NotificationRepository } from "@/lib/notifications/repositories/notific
 import { NotificationPreferenceRepository } from "@/lib/notifications/repositories/notification-preference-repository";
 import { NotificationQueueRepository } from "@/lib/notifications/repositories/notification-queue-repository";
 import { notificationTemplateRegistry } from "@/lib/notifications/templates/template-registry";
+import { readMutedEvents } from "@/lib/notifications/preference-settings";
 
 const PRIORITY_RANK: Record<NotificationPriority, number> = {
   low: 0,
@@ -34,6 +36,7 @@ export class NotificationPreferenceService {
     recipient: NotificationRecipient,
     channel: NotificationChannel,
     priority: NotificationPriority,
+    event?: NotificationEvent | null,
   ): boolean {
     const relevant = preferences.filter(
       (pref) =>
@@ -41,13 +44,21 @@ export class NotificationPreferenceService {
         (pref.channel === null || pref.channel === channel),
     );
 
-    if (relevant.some((pref) => pref.muted)) {
+    // Mute only when a preference targets this channel (channel=null is the event-settings bag).
+    if (relevant.some((pref) => pref.muted && pref.channel === channel)) {
       return false;
     }
 
     const minPriority = relevant.find((pref) => pref.minPriority)?.minPriority;
     if (minPriority && PRIORITY_RANK[priority] < PRIORITY_RANK[minPriority]) {
       return false;
+    }
+
+    if (event) {
+      const mutedEvents = new Set(readMutedEvents(preferences, recipient.userId));
+      if (mutedEvents.has(event)) {
+        return false;
+      }
     }
 
     return true;
@@ -151,7 +162,15 @@ export class NotificationService {
 
     for (const recipient of input.recipients) {
       for (const channel of channels) {
-        if (!this.preferenceService.shouldDeliver(preferences, recipient, channel, priority)) {
+        if (
+          !this.preferenceService.shouldDeliver(
+            preferences,
+            recipient,
+            channel,
+            priority,
+            input.event,
+          )
+        ) {
           continue;
         }
 

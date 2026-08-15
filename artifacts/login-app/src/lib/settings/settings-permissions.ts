@@ -36,6 +36,9 @@ export function isSettingsRoutePermitted(
   if (isSelfServiceSettingsRoute(route.id)) {
     return true;
   }
+  if (route.permission === "tickets.manage") {
+    return isSuperAdmin || hasPermission("tickets.manage") || hasPermission("settings.edit");
+  }
   if (!canViewSettings(hasPermission, isSuperAdmin)) {
     return false;
   }
@@ -47,6 +50,13 @@ export function isSettingsRoutePermitted(
   }
   if (route.permission === "scheduling.view") {
     return hasPermission("scheduling.view") || hasPermission("settings.view");
+  }
+  if (route.permission === "bookings.view") {
+    return (
+      hasPermission("bookings.view") ||
+      hasPermission("scheduling.view") ||
+      hasPermission("settings.view")
+    );
   }
   return hasPermission(route.permission);
 }

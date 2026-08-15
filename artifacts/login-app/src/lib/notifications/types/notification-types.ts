@@ -61,6 +61,11 @@ export type NotificationWorkingHours = {
   startHour: number;
   endHour: number;
   days: number[];
+  /**
+   * Optional event mute list (stored in existing working_hours jsonb).
+   * Used by staff notification settings — no separate column required.
+   */
+  mutedEvents?: NotificationEvent[];
 };
 
 export type NotificationQueueItem = {

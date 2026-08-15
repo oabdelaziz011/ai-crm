@@ -13,7 +13,9 @@ export type SettingsRouteId =
   | "whatsapp"
   | "messenger"
   | "instagram"
+  | "calendar"
   | "scheduling"
+  | "ticket-sla"
   | "platform-ai";
 
 export type SettingsRouteDefinition = {
@@ -129,6 +131,16 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     ),
   },
   {
+    id: "calendar",
+    nestedPath: "/calendar",
+    titleKey: "dashboard.settings.nav.calendar",
+    permission: "bookings.view",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/settings-calendar-page"),
+      "SettingsCalendarPage",
+    ),
+  },
+  {
     id: "scheduling",
     nestedPath: "/scheduling",
     titleKey: "dashboard.settings.nav.scheduling",
@@ -136,6 +148,16 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/scheduling-page"),
       "SettingsSchedulingPage",
+    ),
+  },
+  {
+    id: "ticket-sla",
+    nestedPath: "/tickets/sla",
+    titleKey: "dashboard.settings.nav.ticketSla",
+    permission: "tickets.manage",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/ticket-sla-settings-page"),
+      "SettingsTicketSlaPage",
     ),
   },
   {

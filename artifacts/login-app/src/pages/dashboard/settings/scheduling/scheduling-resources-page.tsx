@@ -11,7 +11,6 @@ import {
 import { useSchedulingEditAccess } from "@/components/scheduling/layout/scheduling-route-guard";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import {
-  DashboardCard,
   DashboardErrorBanner,
   DashboardTableSkeleton,
 } from "@/components/dashboard/ui";
@@ -117,8 +116,8 @@ export function SchedulingResourcesPage() {
   };
 
   return (
-    <DashboardCard className="overflow-hidden">
-      <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4">
+    <div className="overflow-hidden border border-border bg-background">
+      <div className="p-5 border-b border-border/40 flex items-center justify-between gap-4">
         <div>
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
@@ -150,13 +149,13 @@ export function SchedulingResourcesPage() {
           {t("scheduling.resources.empty")}
         </div>
       ) : (
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-border">
           {resources.map((resource) => {
             const assignedCount = serviceCounts.get(resource.id) ?? 0;
             return (
               <div
                 key={resource.id}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02]"
+                className="flex items-center gap-4 px-6 py-4 hover:bg-muted/10"
               >
                 <div className="flex-1 min-w-0">
                   <Link
@@ -237,6 +236,6 @@ export function SchedulingResourcesPage() {
         })}
         pending={deleteResource.isPending}
       />
-    </DashboardCard>
+    </div>
   );
 }

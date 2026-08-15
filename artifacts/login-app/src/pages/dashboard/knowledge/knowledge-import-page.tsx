@@ -1,16 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { format } from "date-fns";
-import { FileUp, Loader2, UploadCloud } from "lucide-react";
+import { ar, enUS } from "date-fns/locale";
+import { BookOpen, FileUp, Loader2, UploadCloud, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link, useSearch } from "wouter";
 import { useAuth } from "@/context/auth-context";
 import { useKnowledgeDocuments } from "@/hooks/knowledge/use-knowledge-documents";
 import { useImportKnowledgeDocument, readFileAsBase64 } from "@/hooks/knowledge/use-knowledge-import";
 import { useKnowledgeSources } from "@/hooks/knowledge/use-knowledge-sources";
 import { useToast } from "@/hooks/use-toast";
+import { nestedSectionHref } from "@/lib/routing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DashboardCard, DashboardErrorBanner, DashboardTableSkeleton } from "@/components/dashboard/ui";
+import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
+import { cn } from "@/lib/utils";
 
 type ImportMetadata = {
   status?: string;
@@ -26,22 +30,47 @@ function getImportMetadata(metadata: Record<string, unknown>): ImportMetadata | 
   return value as ImportMetadata;
 }
 
+function readSourceQuery(search: string): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  return params.get("source")?.trim() ?? "";
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function KnowledgeImportPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
+  const search = useSearch();
   const { company } = useAuth();
   const companyId = company?.id ?? null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
 
   const { data: sources = [] } = useKnowledgeSources(companyId);
   const { data: documents = [], isLoading, error } = useKnowledgeDocuments(companyId);
   const importDocument = useImportKnowledgeDocument();
 
-  const pdfSources = useMemo(() => sources.filter((source) => source.is_enabled), [sources]);
+  const enabledSources = useMemo(() => sources.filter((source) => source.is_enabled), [sources]);
 
   const [sourceId, setSourceId] = useState("");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [textContent, setTextContent] = useState("");
+
+  useEffect(() => {
+    const fromQuery = readSourceQuery(search);
+    if (fromQuery && enabledSources.some((source) => source.id === fromQuery)) {
+      setSourceId((current) => current || fromQuery);
+      return;
+    }
+    if (enabledSources.length === 1) {
+      setSourceId((current) => current || enabledSources[0]!.id);
+    }
+  }, [search, enabledSources]);
 
   const importedDocuments = useMemo(
     () =>
@@ -51,7 +80,40 @@ export function KnowledgeImportPage() {
     [documents],
   );
 
-  const handleImport = async (event: React.FormEvent) => {
+  const hasContent = Boolean(file) || Boolean(textContent.trim());
+  const canSubmit = Boolean(companyId && sourceId && hasContent && !importDocument.isPending);
+
+  const clearFile = () => {
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleFileChange = (next: File | null) => {
+    if (!next) {
+      clearFile();
+      return;
+    }
+    const name = next.name.toLowerCase();
+    const allowed =
+      next.type === "application/pdf" ||
+      next.type === "text/plain" ||
+      name.endsWith(".pdf") ||
+      name.endsWith(".txt");
+    if (!allowed) {
+      toast({
+        variant: "destructive",
+        title: t("knowledge.import.failed"),
+        description: t("knowledge.import.validation.unsupportedFile"),
+      });
+      clearFile();
+      return;
+    }
+    setFile(next);
+  };
+
+  const handleImport = async (event: FormEvent) => {
     event.preventDefault();
     if (!companyId || !sourceId) return;
 
@@ -62,10 +124,10 @@ export function KnowledgeImportPage() {
         await importDocument.mutateAsync({
           companyId,
           sourceId,
-          title: title.trim() || file.name.replace(/\.pdf$/i, ""),
+          title: title.trim() || file.name.replace(/\.(pdf|txt)$/i, ""),
           rawContent: base64,
           contentEncoding: "base64",
-          mimeType: isPdf ? "application/pdf" : file.type || "application/octet-stream",
+          mimeType: isPdf ? "application/pdf" : file.type || "text/plain",
           fileName: file.name,
         });
       } else if (textContent.trim()) {
@@ -81,7 +143,7 @@ export function KnowledgeImportPage() {
         throw new Error(t("knowledge.import.validation.noContent"));
       }
 
-      setFile(null);
+      clearFile();
       setTextContent("");
       setTitle("");
       toast({ title: t("knowledge.import.success") });
@@ -94,12 +156,14 @@ export function KnowledgeImportPage() {
     }
   };
 
+  const statusLabel = (status?: string) => {
+    const key = (status ?? "completed").toLowerCase();
+    const translated = t(`knowledge.import.status.${key}`, { defaultValue: "" });
+    return translated || t("knowledge.import.status.completed");
+  };
+
   if (isLoading) {
-    return (
-      <DashboardCard className="p-6">
-        <DashboardTableSkeleton rows={4} />
-      </DashboardCard>
-    );
+    return <DashboardPageFallback />;
   }
 
   if (error) {
@@ -107,29 +171,41 @@ export function KnowledgeImportPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <DashboardCard className="p-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <UploadCloud className="w-4 h-4 text-primary" />
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">{t("knowledge.import.uploadTitle")}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t("knowledge.import.uploadSubtitle")}</p>
+      </div>
+
+      <section className="space-y-4 rounded-2xl border border-border/50 p-5 sm:p-6">
+        <h3 className="flex items-center gap-2 font-semibold">
+          <UploadCloud className="size-4 text-primary" />
           {t("knowledge.import.uploadTitle")}
         </h3>
 
-        {pdfSources.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("knowledge.import.noSources")}</p>
+        {enabledSources.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center">
+            <BookOpen className="mx-auto size-7 text-muted-foreground" aria-hidden />
+            <p className="mt-3 text-sm font-medium">{t("knowledge.import.noSources")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("knowledge.import.noSourcesHint")}</p>
+            <Button asChild className="mt-4 rounded-xl">
+              <Link href={nestedSectionHref("/")}>{t("knowledge.import.createSourceFirst")}</Link>
+            </Button>
+          </div>
         ) : (
-          <form onSubmit={handleImport} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={(event) => void handleImport(event)} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="import-source">{t("knowledge.import.source")}</Label>
                 <select
                   id="import-source"
                   value={sourceId}
-                  onChange={(e) => setSourceId(e.target.value)}
-                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                  onChange={(event) => setSourceId(event.target.value)}
+                  className="w-full rounded-xl border border-border/60 bg-background px-3 py-2.5 text-sm"
                   required
                 >
                   <option value="">{t("knowledge.import.selectSource")}</option>
-                  {pdfSources.map((source) => (
+                  {enabledSources.map((source) => (
                     <option key={source.id} value={source.id}>
                       {source.display_name} ({source.source_type})
                     </option>
@@ -141,22 +217,71 @@ export function KnowledgeImportPage() {
                 <Input
                   id="import-title"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(event) => setTitle(event.target.value)}
                   placeholder={t("knowledge.import.documentTitlePlaceholder")}
-                  className="bg-background/50 border-white/10"
+                  className="rounded-xl"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="import-file">{t("knowledge.import.pdfFile")}</Label>
-              <Input
+              <Label>{t("knowledge.import.pdfFile")}</Label>
+              <input
+                ref={fileInputRef}
                 id="import-file"
                 type="file"
-                accept="application/pdf,.pdf,text/plain"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="bg-background/50 border-white/10"
+                accept="application/pdf,.pdf,text/plain,.txt"
+                className="sr-only"
+                onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
               />
+              <div
+                className={cn(
+                  "flex flex-col gap-3 rounded-xl border border-dashed border-border/60 px-4 py-4 sm:flex-row sm:items-center",
+                  file ? "border-primary/40 bg-primary/5" : "",
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  {file ? (
+                    <>
+                      <p className="truncate text-sm font-medium" dir="ltr">
+                        {file.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">
+                        {formatFileSize(file.size)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium">{t("knowledge.import.chooseFile")}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {t("knowledge.import.fileHint")}
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FileUp className="me-2 size-4" />
+                    {file ? t("knowledge.import.changeFile") : t("knowledge.import.chooseFile")}
+                  </Button>
+                  {file ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="rounded-xl"
+                      onClick={clearFile}
+                      aria-label={t("knowledge.import.clearFile")}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -164,20 +289,21 @@ export function KnowledgeImportPage() {
               <textarea
                 id="import-text"
                 value={textContent}
-                onChange={(e) => setTextContent(e.target.value)}
+                onChange={(event) => setTextContent(event.target.value)}
                 rows={5}
-                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm"
+                className="w-full rounded-xl border border-border/60 bg-background px-3 py-2.5 text-sm"
                 placeholder={t("knowledge.import.plainTextPlaceholder")}
               />
+              <p className="text-xs text-muted-foreground">{t("knowledge.import.contentRequiredHint")}</p>
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={importDocument.isPending || !sourceId}>
+              <Button type="submit" className="rounded-xl" disabled={!canSubmit}>
                 {importDocument.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <>
-                    <FileUp className="w-4 h-4 me-2" />
+                    <FileUp className="me-2 size-4" />
                     {t("knowledge.import.submit")}
                   </>
                 )}
@@ -185,10 +311,10 @@ export function KnowledgeImportPage() {
             </div>
           </form>
         )}
-      </DashboardCard>
+      </section>
 
-      <DashboardCard className="p-6">
-        <h3 className="font-semibold mb-4">{t("knowledge.import.statusTitle")}</h3>
+      <section className="space-y-4 rounded-2xl border border-border/50 p-5 sm:p-6">
+        <h3 className="font-semibold">{t("knowledge.import.statusTitle")}</h3>
         {importedDocuments.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("knowledge.import.statusEmpty")}</p>
         ) : (
@@ -198,19 +324,25 @@ export function KnowledgeImportPage() {
               return (
                 <div
                   key={document.id}
-                  className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-black/20 rounded-xl border border-white/5"
+                  className="flex flex-col gap-3 rounded-xl border border-border/40 px-4 py-3 sm:flex-row sm:items-center"
                 >
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium">{document.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {importMeta?.file_name ?? document.mime_type}
-                      {importMeta?.page_count != null ? ` · ${importMeta.page_count} pages` : ""}
+                      {importMeta?.page_count != null
+                        ? ` · ${t("knowledge.import.pageCount", { count: importMeta.page_count })}`
+                        : ""}
                     </p>
                   </div>
-                  <div className="text-xs text-muted-foreground text-end">
-                    <p className="capitalize text-emerald-400">{importMeta?.status ?? "completed"}</p>
+                  <div className="text-end text-xs text-muted-foreground">
+                    <p className="text-emerald-600 dark:text-emerald-400">
+                      {statusLabel(importMeta?.status)}
+                    </p>
                     {importMeta?.imported_at ? (
-                      <p dir="ltr">{format(new Date(importMeta.imported_at), "PPp")}</p>
+                      <p dir="ltr">
+                        {format(new Date(importMeta.imported_at), "PPp", { locale: dateLocale })}
+                      </p>
                     ) : null}
                   </div>
                 </div>
@@ -218,7 +350,7 @@ export function KnowledgeImportPage() {
             })}
           </div>
         )}
-      </DashboardCard>
+      </section>
     </div>
   );
 }

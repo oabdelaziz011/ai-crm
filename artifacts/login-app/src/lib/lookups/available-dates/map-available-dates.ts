@@ -1,15 +1,40 @@
 import type { AvailableDateRecord } from "./available-date-types";
+import {
+  resolveSchedulingDisplayLocale,
+  truncateWhatsAppListTitle,
+} from "../scheduling-display-locale";
 
-export function formatAvailableDateLabel(date: string, timezone: string): string {
+export function formatAvailableDateLabel(
+  date: string,
+  timezone: string,
+  locale?: string | null,
+): string {
   const parsed = Date.parse(`${date}T12:00:00.000Z`);
   if (Number.isNaN(parsed)) return date;
-  return new Intl.DateTimeFormat(undefined, {
+  const intlLocale = resolveSchedulingDisplayLocale({
+    language: locale,
+    timezone,
+  });
+  const instant = new Date(parsed);
+  const nowYear = new Intl.DateTimeFormat(intlLocale, {
+    year: "numeric",
+    timeZone: timezone || "UTC",
+  }).format(new Date());
+  const dateYear = new Intl.DateTimeFormat(intlLocale, {
+    year: "numeric",
+    timeZone: timezone || "UTC",
+  }).format(instant);
+
+  const label = new Intl.DateTimeFormat(intlLocale, {
     weekday: "short",
     month: "short",
     day: "numeric",
-    year: "numeric",
+    ...(dateYear === nowYear ? {} : { year: "numeric" }),
     timeZone: timezone || "UTC",
-  }).format(new Date(parsed));
+    numberingSystem: "latn",
+  }).format(instant);
+
+  return truncateWhatsAppListTitle(label);
 }
 
 export function availableDateRecordToLookupRow(
@@ -28,7 +53,7 @@ export function availableDateRecordToLookupRow(
   return {
     id: record.date,
     title: display,
-    description: record.date,
+    // Omit description — WhatsApp already shows title; ISO date duplicated the label.
     value,
     record: record as unknown as Record<string, unknown>,
   };

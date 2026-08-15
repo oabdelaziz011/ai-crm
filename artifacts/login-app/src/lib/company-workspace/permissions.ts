@@ -43,6 +43,14 @@ export function canViewCompanySubscription(access: Access): boolean {
   ]);
 }
 
+/**
+ * Initiate online SaaS checkout from the company portal.
+ * Requires company update (admin) — view-only subscription access is insufficient.
+ */
+export function canInitiateCompanyOnlinePayment(access: Access): boolean {
+  return canUpdateCompany(access);
+}
+
 /** Deep-link to Workspace Billing (upgrade/history) — stricter than tab visibility. */
 export function canOpenWorkspaceBilling(access: Access): boolean {
   if (access.isSuperAdmin) return true;

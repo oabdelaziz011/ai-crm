@@ -34,6 +34,7 @@ export type CompanyBrandLogos = Readonly<{
 }>;
 
 export type CompanyBrandColors = Readonly<{
+  /** Buttons, links, rings, charts — system chrome (not sidebar). */
   primary: string;
   secondary: string;
   accent: string;
@@ -42,6 +43,12 @@ export type CompanyBrandColors = Readonly<{
   danger: string;
   background: string;
   surface: string;
+  /** Sidebar shell — independent from button/system primary. */
+  sidebar: string;
+  /** Active nav item / sidebar highlight. */
+  sidebarActive: string;
+  /** Sidebar hover / secondary chrome. */
+  sidebarAccent: string;
 }>;
 
 export type CompanyBrandDocuments = Readonly<{

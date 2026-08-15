@@ -8,6 +8,8 @@ export const BRAND_FOCUS = {
   logoEmail: "logo-email",
   colorPrimary: "color-primary",
   colorSecondary: "color-secondary",
+  colorSidebar: "color-sidebar",
+  colorSidebarActive: "color-sidebarActive",
   emailSender: "email-sender",
   emailFooter: "email-footer",
 } as const;

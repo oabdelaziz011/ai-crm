@@ -52,15 +52,22 @@ export function normalizeBrandLogos(raw: unknown, mainFallback: string | null = 
 
 export function normalizeBrandColors(raw: unknown): CompanyBrandColors {
   const r = readRecord(raw);
+  // Legacy docs only had primary/secondary/accent — map those into sidebar slots once.
+  const legacyPrimary = asColor(r.primary, DEFAULT_BRAND_COLORS.primary);
+  const legacySecondary = asColor(r.secondary, DEFAULT_BRAND_COLORS.secondary);
+  const legacyAccent = asColor(r.accent, DEFAULT_BRAND_COLORS.accent);
   return {
-    primary: asColor(r.primary, DEFAULT_BRAND_COLORS.primary),
-    secondary: asColor(r.secondary, DEFAULT_BRAND_COLORS.secondary),
-    accent: asColor(r.accent, DEFAULT_BRAND_COLORS.accent),
+    primary: legacyPrimary,
+    secondary: legacySecondary,
+    accent: legacyAccent,
     success: asColor(r.success, DEFAULT_BRAND_COLORS.success),
     warning: asColor(r.warning, DEFAULT_BRAND_COLORS.warning),
     danger: asColor(r.danger, DEFAULT_BRAND_COLORS.danger),
     background: asColor(r.background, DEFAULT_BRAND_COLORS.background),
     surface: asColor(r.surface, DEFAULT_BRAND_COLORS.surface),
+    sidebar: asColor(r.sidebar, legacySecondary),
+    sidebarActive: asColor(r.sidebarActive, legacyPrimary),
+    sidebarAccent: asColor(r.sidebarAccent, legacyAccent),
   };
 }
 

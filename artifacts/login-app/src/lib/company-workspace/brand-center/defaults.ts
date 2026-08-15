@@ -17,6 +17,10 @@ export const DEFAULT_BRAND_COLORS: CompanyBrandColors = {
   danger: "#DC2626",
   background: "#F3F4F6",
   surface: "#FFFFFF",
+  // Sidebar palette is independent from button/system primary.
+  sidebar: "#134E4A",
+  sidebarActive: "#0D9488",
+  sidebarAccent: "#0F766E",
 };
 
 export function emptyBrandLogos(): CompanyBrandLogos {

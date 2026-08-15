@@ -82,9 +82,7 @@ export function buildExecutiveInsights(
         tone: "danger",
         messageKey: "storageAlmostFull",
         params: { pct: Math.round(pct) },
-        action: caps.canSubscription
-          ? { type: "companyTab", tab: "subscription" }
-          : { type: "route", href: "/dashboard/workspace/billing" },
+        action: { type: "companyTab", tab: "subscription" },
       });
     } else if (pct >= 75) {
       insights.push({
@@ -92,9 +90,7 @@ export function buildExecutiveInsights(
         tone: "warning",
         messageKey: "storageHigh",
         params: { pct: Math.round(pct) },
-        action: caps.canSubscription
-          ? { type: "companyTab", tab: "subscription" }
-          : { type: "route", href: "/dashboard/workspace/billing" },
+        action: { type: "companyTab", tab: "subscription" },
       });
     }
   }
@@ -109,9 +105,7 @@ export function buildExecutiveInsights(
           tone: days <= 7 ? "danger" : "warning",
           messageKey: "renewalSoon",
           params: { days },
-          action: caps.canBilling
-            ? { type: "route", href: "/dashboard/workspace/billing" }
-            : { type: "companyTab", tab: "subscription" },
+          action: { type: "companyTab", tab: "subscription" },
         });
       }
     }

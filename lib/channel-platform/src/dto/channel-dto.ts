@@ -44,6 +44,9 @@ export type ChannelRuntimeConfigDto = {
   executionPolicy?: {
     streaming?: boolean;
     maxDurationMs?: number;
+    max_tokens?: number;
+    maxTokens?: number;
+    temperature?: number;
   };
 };
 

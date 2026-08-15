@@ -256,10 +256,13 @@ async function resolveWhatsAppRuntimeConfigurationUncached(
     );
   }
 
-  const phoneNumberId =
-    credentials.phoneNumberId.trim() ||
-    channelReferences.phoneNumberId?.trim() ||
-    "";
+  // Prefer the company-channel phone number when present. Inbound reconciliation
+  // updates channel.configuration.phoneNumberId to the number Meta delivers on;
+  // company_whatsapp_settings can lag with a stale id and would send replies from
+  // a different WhatsApp Business number (Meta 200 OK, customer never sees it).
+  const channelPhoneNumberId = channelReferences.phoneNumberId?.trim() || "";
+  const settingsPhoneNumberId = credentials.phoneNumberId.trim();
+  const phoneNumberId = channelPhoneNumberId || settingsPhoneNumberId || "";
 
   if (!phoneNumberId) {
     diag("canonical.resolve.failed", { reason: "phone_number_id_missing" });
@@ -268,6 +271,11 @@ async function resolveWhatsAppRuntimeConfigurationUncached(
 
   diag("canonical.resolve.success", {
     phoneNumberId,
+    phoneNumberIdSource: channelPhoneNumberId
+      ? "company_channel"
+      : "company_whatsapp_settings",
+    settingsPhoneNumberId: settingsPhoneNumberId || null,
+    channelPhoneNumberId: channelPhoneNumberId || null,
     businessAccountId: credentials.businessAccountId ?? null,
     apiVersion: credentials.apiVersion,
     accessTokenPresent: true,

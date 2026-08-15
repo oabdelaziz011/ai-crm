@@ -3,6 +3,7 @@ import type { IntentEngineServices } from "@workspace/ai-intent-engine";
 import type { AIExecutionServices, EnterpriseAIRuntimeService } from "@workspace/ai-execution-engine";
 import type { AIProviderServices } from "@workspace/ai-provider-layer";
 import type { PromptOrchestratorServices } from "@workspace/ai-prompt-orchestrator";
+import { detectReplyLanguage } from "@workspace/ai-prompt-orchestrator";
 import type { RetrievalServices } from "@workspace/retrieval-engine";
 import type { VectorQueryServices } from "@workspace/vector-query";
 import type { Customer360Dto, Customer360Loader } from "@workspace/customer-360";
@@ -407,7 +408,8 @@ export function createRuntimeEnginePortsWithContext(
         const senderHint = readSenderHint(conversationRecord.metadata ?? {}, input.pageContext);
 
         let customer360: Customer360Dto | null = null;
-        if (options.customer360Loader) {
+        // Channel webhooks: skip Customer360 — multi-second DB load + stale booking timeline noise.
+        if (options.customer360Loader && options.promptMode !== "webhook") {
           const actorUserId =
             promptCtx.userId ??
             (await options.resolveActorUserId?.(input.companyId)) ??
@@ -435,6 +437,12 @@ export function createRuntimeEnginePortsWithContext(
             },
           );
         }
+
+        const replyLanguage = detectReplyLanguage(input.messageText);
+        const employeeSystemPrompt =
+          typeof input.pageContext?.systemPrompt === "string"
+            ? input.pageContext.systemPrompt.trim()
+            : "";
 
         const built = await runtime.buildPrompt(asConversationContext(promptCtx), {
           companyId: input.companyId,
@@ -465,7 +473,10 @@ export function createRuntimeEnginePortsWithContext(
             knowledge: mapRetrievalSnapshotToKnowledgeContext(input.retrieval),
             ...(options.promptMode === "dashboard" && input.retrieval
               ? { systemInstructions: formatRetrievalInstructions(input.retrieval.chunks) }
-              : {}),
+              : employeeSystemPrompt
+                ? { systemInstructions: [employeeSystemPrompt] }
+                : {}),
+            language: replyLanguage,
             pageContext: input.pageContext,
             assembledContext: input.pageContext?.assembledContext,
             memorySnapshot: input.pageContext?.memorySnapshot,
@@ -480,7 +491,10 @@ export function createRuntimeEnginePortsWithContext(
             content: message.content,
             createdAt: message.createdAt,
           })),
-          conversationWindow: { maxMessages: 20, tokenBudget: 4096 },
+          conversationWindow:
+            options.promptMode === "webhook"
+              ? { maxMessages: 6, tokenBudget: 1800 }
+              : { maxMessages: 20, tokenBudget: 4096 },
         });
 
         if (!built.buildId) {

@@ -93,6 +93,7 @@ describe("OutboundMessagePipeline integration", () => {
     const sessionRepository: ChannelSessionRepository = {
       findByExternalThread: async () => sessions[0] ?? null,
       createSession: async () => sessions[0]!,
+      reattachConversation: async () => sessions[0]!,
       touchInbound: async () => sessions[0]!,
       touchOutbound: async (sessionId) => {
         const record = sessions.find((session) => session.id === sessionId)!;
@@ -202,6 +203,7 @@ describe("OutboundMessagePipeline integration", () => {
       {
         findByExternalThread: async () => null,
         createSession: async () => ({ id: "session-1" }) as ChannelSessionRecord,
+        reattachConversation: async () => ({ id: "session-1" }) as ChannelSessionRecord,
         touchInbound: async () => ({ id: "session-1" }) as ChannelSessionRecord,
         touchOutbound: async () => ({ id: "session-1" }) as ChannelSessionRecord,
       },

@@ -112,24 +112,47 @@ function entryToDispatchMessage(entry: OutboundQueueEntry): AutomationOutboundDi
 export function extractAutomationOutboundMessages(
   result: AutomationResponseSource,
 ): AutomationOutboundDispatchMessage[] {
+  const messages: AutomationOutboundDispatchMessage[] = [];
+
   const queue = readOutboundQueue(result.variables);
   if (queue.length > 0) {
-    return queue.flatMap((entry) => {
+    for (const entry of queue) {
       const message = entryToDispatchMessage(entry);
-      return message ? [message] : [];
-    });
+      if (message) messages.push(message);
+    }
+  } else {
+    const legacy = readLatestOutbound(result.variables);
+    if (legacy) {
+      // Structured outbound from interactive nodes is only meaningful while waiting,
+      // or when a completed turn intentionally left queue/legacy text to send.
+      // For failed runs, prefer not to replay a prior interactive payload.
+      if (
+        result.lifecycle === "waiting_input" ||
+        result.lifecycle === "completed" ||
+        result.lifecycle === "running"
+      ) {
+        const message = entryToDispatchMessage(legacy);
+        if (message) messages.push(message);
+      }
+    }
   }
 
-  const legacy = readLatestOutbound(result.variables);
-  if (legacy) {
-    const message = entryToDispatchMessage(legacy);
-    if (message) return [message];
+  // Ask/wait prompts are stored in __prompt and are often set AFTER earlier nodes
+  // already queued welcome/send_message text. Include the prompt while waiting
+  // unless it is already the last queued outbound text.
+  // Never replay __prompt after leaving waiting_input (e.g. failed later node).
+  if (result.lifecycle === "waiting_input") {
+    const prompt = result.variables.__prompt;
+    if (typeof prompt === "string" && prompt.trim()) {
+      const trimmed = prompt.trim();
+      const lastText = messages[messages.length - 1]?.text?.trim() ?? "";
+      if (lastText !== trimmed) {
+        messages.push({ text: trimmed, payload: { kind: "automation_prompt" } });
+      }
+    }
   }
 
-  const prompt = result.variables.__prompt;
-  if (typeof prompt === "string" && prompt.trim()) {
-    return [{ text: prompt.trim(), payload: { kind: "automation_prompt" } }];
-  }
+  if (messages.length > 0) return messages;
 
   const lastMessage = result.variables.lastMessage;
   if (typeof lastMessage === "string" && lastMessage.trim() && result.lifecycle === "completed") {

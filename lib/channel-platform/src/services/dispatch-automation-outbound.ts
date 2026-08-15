@@ -22,6 +22,32 @@ export type DispatchAutomationOutboundResult = {
   responseContent?: string;
 };
 
+function outboundMessageFingerprint(message: AutomationOutboundDispatchMessage): string {
+  const payload = message.payload;
+  const text = message.text.trim();
+  if (payload && typeof payload === "object") {
+    const kind = typeof payload.kind === "string" ? payload.kind : "payload";
+    if (kind === "list") {
+      const title = typeof payload.title === "string" ? payload.title : "";
+      const body = typeof payload.body === "string" ? payload.body : "";
+      const sections = Array.isArray(payload.sections) ? JSON.stringify(payload.sections) : "";
+      return `list:${title}|${body}|${sections}`;
+    }
+    if (kind === "buttons") {
+      const buttonText = typeof payload.text === "string" ? payload.text : text;
+      const buttons = Array.isArray(payload.buttons) ? JSON.stringify(payload.buttons) : "";
+      return `buttons:${buttonText}|${buttons}`;
+    }
+    if (kind === "text") {
+      const body = typeof payload.text === "string" ? payload.text : text;
+      return `text:${body.trim()}`;
+    }
+    // Include text so automation_prompt / other kinds dedupe identical bubbles.
+    return `${kind}:${text}|${JSON.stringify(payload)}`;
+  }
+  return `text:${text}`;
+}
+
 export async function dispatchAutomationOutboundMessages(
   ctx: ServiceContext,
   dispatcher: ChannelDispatcherPort,
@@ -33,10 +59,18 @@ export async function dispatchAutomationOutboundMessages(
     async () => {
       const deliveryEventIds: string[] = [];
       const outboundMessageIds: string[] = [];
+      const sentFingerprints = new Set<string>();
 
       for (const message of input.messages) {
         const text = message.text.trim();
         if (!text && !(message.attachments?.length ?? 0)) continue;
+
+        // Workflow graphs (and duplicate webhook resumes) can emit the same bubble twice.
+        const fingerprint = outboundMessageFingerprint(message);
+        if (sentFingerprints.has(fingerprint)) {
+          continue;
+        }
+        sentFingerprints.add(fingerprint);
 
         const metadata = {
           automationRunId: input.automationRunId,

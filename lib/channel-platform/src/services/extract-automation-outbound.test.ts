@@ -45,6 +45,59 @@ describe("extractAutomationOutboundMessages", () => {
     });
     assert.deepEqual(messages.map((message) => message.text), ["Legacy"]);
   });
+
+  it("does not replay stale __prompt after a later node fails", () => {
+    const messages = extractAutomationOutboundMessages({
+      lifecycle: "failed",
+      variables: {
+        __prompt: "كم عمرك؟",
+        customer_age: "٤٤",
+      },
+    });
+    assert.deepEqual(messages, []);
+  });
+
+  it("still sends __prompt while waiting for input", () => {
+    const messages = extractAutomationOutboundMessages({
+      lifecycle: "waiting_input",
+      variables: {
+        __prompt: "كم عمرك؟",
+        __waitingFor: "customer_age",
+      },
+    });
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0]?.text, "كم عمرك؟");
+  });
+
+  it("appends __prompt after earlier queued send_message text while waiting", () => {
+    const messages = extractAutomationOutboundMessages({
+      lifecycle: "waiting_input",
+      variables: {
+        __outboundQueue: [{ kind: "text", text: "أهلاً بك 👋\nمرحبًا بكم في عيادتنا." }],
+        __prompt: "اهلا بيك يا فندم اقدر اساعدك ازاي ؟",
+        __waitingFor: "customer_intent",
+      },
+    });
+
+    assert.equal(messages.length, 2);
+    assert.equal(messages[0]?.text, "أهلاً بك 👋\nمرحبًا بكم في عيادتنا.");
+    assert.equal(messages[1]?.text, "اهلا بيك يا فندم اقدر اساعدك ازاي ؟");
+    assert.equal(messages[1]?.payload?.kind, "automation_prompt");
+  });
+
+  it("does not duplicate __prompt when it matches the last queued text", () => {
+    const messages = extractAutomationOutboundMessages({
+      lifecycle: "waiting_input",
+      variables: {
+        __outboundQueue: [{ kind: "buttons", text: "اختر ما تحتاجه", buttons: [{ id: "a", label: "A" }] }],
+        __prompt: "اختر ما تحتاجه",
+        __waitingFor: "__interactiveSelection",
+      },
+    });
+
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0]?.text, "اختر ما تحتاجه");
+  });
 });
 
 describe("extractAutomationResponseContent", () => {

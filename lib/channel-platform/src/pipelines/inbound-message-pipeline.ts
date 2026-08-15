@@ -45,6 +45,78 @@ import {
   waTraceBindWorkflow,
   waTraceNoteError,
 } from "../debug/whatsapp-conversation-trace-bridge.js";
+import { isBookingTransferIntent } from "../utils/workflow-transfer-intent.js";
+import {
+  claimInteractiveReplyDedupe,
+  extractInteractiveReplyContextIdFromPayload,
+  extractInteractiveReplyIdFromPayload,
+  INTERACTIVE_REPLY_DEDUPE_TTL_MS,
+  releaseInteractiveReplyDedupe,
+} from "../utils/interactive-reply-dedupe.js";
+
+const IN_FLIGHT_INBOUND_TTL_MS = 2 * 60 * 1000;
+
+function readActiveWorkflowTransfer(
+  metadata: Record<string, unknown> | null | undefined,
+): { flowId: string } | null {
+  if (!metadata) return null;
+  const transfer = metadata.inboundWorkflowTransfer;
+  if (!transfer || typeof transfer !== "object") return null;
+  const record = transfer as Record<string, unknown>;
+  if (record.active !== true) return null;
+  const flowId = typeof record.flowId === "string" ? record.flowId.trim() : "";
+  return flowId ? { flowId } : null;
+}
+
+function buildClearedWorkflowTransfer(
+  previous: unknown,
+  reason: string,
+): Record<string, unknown> {
+  const base =
+    previous && typeof previous === "object" && !Array.isArray(previous)
+      ? { ...(previous as Record<string, unknown>) }
+      : {};
+  return {
+    ...base,
+    active: false,
+    clearedAt: new Date().toISOString(),
+    clearedReason: reason,
+  };
+}
+
+const TERMINAL_WORKFLOW_LIFECYCLES = new Set(["completed", "failed", "cancelled"]);
+
+function readTransferableFlowId(
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!metadata) return null;
+  const value = metadata.transferableFlowId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isFreshInboundTimestamp(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return true;
+  return Date.now() - parsed < IN_FLIGHT_INBOUND_TTL_MS;
+}
+
+function shouldSkipDuplicateInbound(duplicate: {
+  processing_status: string;
+  runtime_execution_id?: string | null;
+  updated_at?: string | null;
+  received_at?: string | null;
+}): boolean {
+  if (duplicate.processing_status === "processed") return true;
+  if (duplicate.processing_status === "failed" && duplicate.runtime_execution_id) return true;
+  if (
+    (duplicate.processing_status === "processing" || duplicate.processing_status === "received") &&
+    isFreshInboundTimestamp(duplicate.updated_at ?? duplicate.received_at)
+  ) {
+    return true;
+  }
+  return false;
+}
 
 export class InboundMessagePipeline {
   constructor(
@@ -64,15 +136,16 @@ export class InboundMessagePipeline {
     const companyChannel = await this.resolveCompanyChannel(request.companyChannelId, request.companyId);
     const adapter = this.adapterRegistry.require(request.channelKey);
     const idempotencyKey = request.idempotencyKey ?? randomUUID();
+    const interactiveReplyId = extractInteractiveReplyIdFromPayload(request.payload);
+    const interactiveReplyContextId = extractInteractiveReplyContextIdFromPayload(request.payload);
 
     const duplicate = await this.inboundRepository.findByIdempotencyKey(
       request.companyChannelId,
       idempotencyKey,
     );
-    if (
-      duplicate?.processing_status === "processed" ||
-      (duplicate?.processing_status === "failed" && duplicate.runtime_execution_id)
-    ) {
+    // Meta often retries while the first attempt is still running. Re-running the
+    // pipeline produces duplicate WhatsApp replies for the same customer message.
+    if (duplicate && shouldSkipDuplicateInbound(duplicate)) {
       return {
         inboundEventId: duplicate.id,
         conversationId: duplicate.conversation_id ?? request.conversationId ?? "",
@@ -81,6 +154,81 @@ export class InboundMessagePipeline {
         runtimeExecutionId: duplicate.runtime_execution_id ?? undefined,
         duplicate: true,
       };
+    }
+
+    // Meta can deliver the same list/button tap twice with different wamids.
+    // Claim after wamid idempotency so failed same-wamid retries can still proceed.
+    // Scope claims by context message id so the same doctor/service id on a later
+    // list (e.g. pricing after booking) is not treated as a duplicate tap.
+    if (interactiveReplyId && !duplicate) {
+      const claimed = claimInteractiveReplyDedupe({
+        companyChannelId: request.companyChannelId,
+        externalThreadId: request.externalThreadId,
+        replyId: interactiveReplyId,
+        contextMessageId: interactiveReplyContextId,
+      });
+
+      const recentInteractive = this.inboundRepository.findRecentInteractiveReply
+        ? await this.inboundRepository.findRecentInteractiveReply({
+            companyChannelId: request.companyChannelId,
+            externalThreadId: request.externalThreadId,
+            replyId: interactiveReplyId,
+            contextMessageId: interactiveReplyContextId,
+            withinMs: INTERACTIVE_REPLY_DEDUPE_TTL_MS,
+            excludeIdempotencyKey: idempotencyKey,
+          })
+        : null;
+
+      if (!claimed || (recentInteractive && shouldSkipDuplicateInbound(recentInteractive))) {
+        // If the first delivery left automation still waiting on this list (e.g. race
+        // rolled the run back onto the list node), allow a re-tap / second wamid through.
+        let allowWaitingRetry = false;
+        if (
+          claimed &&
+          recentInteractive?.processing_status === "processed" &&
+          this.workflowResolver &&
+          this.ports.automation?.hasWaitingRun
+        ) {
+          try {
+            const resolution = await this.workflowResolver.resolveDetail(request.companyChannelId);
+            if (resolution.status === "resolved") {
+              allowWaitingRetry = await this.ports.automation.hasWaitingRun({
+                companyId: request.companyId,
+                flowId: resolution.workflow.automationFlowId,
+                channelKey: request.channelKey,
+                externalUserId: request.senderExternalId ?? request.externalThreadId,
+              });
+            }
+          } catch {
+            allowWaitingRetry = false;
+          }
+        }
+
+        if (allowWaitingRetry) {
+          request.trace?.step("webhook.interactive_reply_dedupe_bypassed", {
+            replyId: interactiveReplyId,
+            contextMessageId: interactiveReplyContextId,
+            priorInboundEventId: recentInteractive?.id ?? null,
+            reason: "automation_still_waiting",
+          });
+        } else {
+          const prior = recentInteractive;
+          request.trace?.step("webhook.interactive_reply_deduped", {
+            replyId: interactiveReplyId,
+            contextMessageId: interactiveReplyContextId,
+            priorInboundEventId: prior?.id ?? null,
+            reason: !claimed ? "in_memory_claim" : "recent_inbound_event",
+          });
+          return {
+            inboundEventId: prior?.id ?? `deduped:${idempotencyKey}`,
+            conversationId: prior?.conversation_id ?? request.conversationId ?? "",
+            channelSessionId: prior?.channel_session_id ?? "",
+            incomingMessageId: prior?.incoming_message_id ?? "",
+            runtimeExecutionId: prior?.runtime_execution_id ?? undefined,
+            duplicate: true,
+          };
+        }
+      }
     }
 
     const inboundEvent = duplicate
@@ -189,31 +337,109 @@ export class InboundMessagePipeline {
             waPerfNoteSkipped("Workflow lookup", "no_workflow_resolver");
             return { status: "skipped" as const, reason: "no_binding" as const };
           })();
-      const resolvedWorkflow =
-        workflowResolution.status === "resolved" ? workflowResolution.workflow : null;
-      const useWorkflow = Boolean(resolvedWorkflow && this.ports.automation);
 
-      request.trace?.step(
-        useWorkflow ? "webhook.workflow_resolved" : "webhook.workflow_missing",
-        useWorkflow && resolvedWorkflow
-          ? {
-              automationFlowId: resolvedWorkflow.automationFlowId,
-            }
-          : {
-              companyChannelId: request.companyChannelId,
-              skipReason: workflowResolution.status === "skipped" ? workflowResolution.reason : "no_binding",
-              ...(workflowResolution.status === "skipped" && workflowResolution.automationFlowId
-                ? { automationFlowId: workflowResolution.automationFlowId }
-                : {}),
-            },
+      const disabledBoundFlowId =
+        workflowResolution.status === "skipped" &&
+        workflowResolution.reason === "binding_disabled" &&
+        typeof workflowResolution.automationFlowId === "string"
+          ? workflowResolution.automationFlowId
+          : null;
+
+      const existingSession = await this.sessionRepository.findByExternalThread(
+        request.companyChannelId,
+        normalized.externalThreadId,
       );
+      const stickyConversationId = request.conversationId ?? existingSession?.conversation_id ?? null;
+      let stickyMetadata =
+        stickyConversationId && this.ports.conversation.getConversationMetadata
+          ? await this.ports.conversation.getConversationMetadata(stickyConversationId)
+          : null;
+      let stickyTransfer = readActiveWorkflowTransfer(stickyMetadata);
+      // Channel binding disabled: do not keep routing into the same automation flow via sticky handoff.
+      if (disabledBoundFlowId && stickyTransfer?.flowId === disabledBoundFlowId) {
+        if (
+          stickyConversationId &&
+          this.ports.conversation.updateConversationMetadata &&
+          this.ports.conversation.getConversationMetadata
+        ) {
+          const currentMeta =
+            (await this.ports.conversation.getConversationMetadata(stickyConversationId)) ??
+            stickyMetadata ??
+            {};
+          stickyMetadata = {
+            ...currentMeta,
+            inboundWorkflowTransfer: buildClearedWorkflowTransfer(
+              currentMeta.inboundWorkflowTransfer,
+              "channel_binding_disabled",
+            ),
+          };
+          await this.ports.conversation.updateConversationMetadata({
+            conversationId: stickyConversationId,
+            metadata: stickyMetadata,
+          });
+        }
+        request.trace?.step("webhook.sticky_workflow_cleared", {
+          flowId: stickyTransfer.flowId,
+          reason: "channel_binding_disabled",
+        });
+        stickyTransfer = null;
+      }
+      const bindingWorkflow =
+        workflowResolution.status === "resolved" ? workflowResolution.workflow : null;
+
+      // Sticky AI→workflow handoff must not restart a finished flow. If nothing is waiting,
+      // clear the sticky flag and fall back to the AI employee.
+      if (
+        stickyTransfer &&
+        !bindingWorkflow &&
+        this.ports.automation?.hasWaitingRun &&
+        stickyConversationId
+      ) {
+        const canResumeSticky = await this.ports.automation.hasWaitingRun({
+          companyId: request.companyId,
+          flowId: stickyTransfer.flowId,
+          channelKey: request.channelKey,
+          externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
+        });
+        if (!canResumeSticky) {
+          if (
+            this.ports.conversation.updateConversationMetadata &&
+            this.ports.conversation.getConversationMetadata
+          ) {
+            const currentMeta =
+              (await this.ports.conversation.getConversationMetadata(stickyConversationId)) ??
+              stickyMetadata ??
+              {};
+            stickyMetadata = {
+              ...currentMeta,
+              inboundWorkflowTransfer: buildClearedWorkflowTransfer(
+                currentMeta.inboundWorkflowTransfer,
+                "stale_sticky_no_waiting_run",
+              ),
+            };
+            await this.ports.conversation.updateConversationMetadata({
+              conversationId: stickyConversationId,
+              metadata: stickyMetadata,
+            });
+          }
+          request.trace?.step("webhook.sticky_workflow_cleared", {
+            flowId: stickyTransfer.flowId,
+            reason: "stale_sticky_no_waiting_run",
+          });
+          stickyTransfer = null;
+        }
+      }
 
       let aiEmployeeId = request.aiEmployeeId;
       let employeeConversationMetadata = request.employeeConversationMetadata;
+      let transferSource: "channel_binding" | "ai_employee_sticky" | "ai_employee_intent" | null =
+        bindingWorkflow ? "channel_binding" : stickyTransfer ? "ai_employee_sticky" : null;
 
+      // Resolve AI employee while channel workflow is off so we can force-transfer booking intents.
       if (
         request.executeAi &&
-        !useWorkflow &&
+        !bindingWorkflow &&
+        !stickyTransfer &&
         !aiEmployeeId &&
         this.ports.employeeRuntime
       ) {
@@ -247,13 +473,84 @@ export class InboundMessagePipeline {
             note: "no_employee_resolved",
           });
         }
-      } else if (request.channelKey === "whatsapp" && request.executeAi && !useWorkflow) {
+      }
+
+      const intentTransferFlowId =
+        !bindingWorkflow &&
+        !stickyTransfer &&
+        !disabledBoundFlowId &&
+        this.ports.automation &&
+        isBookingTransferIntent(inboundText)
+          ? readTransferableFlowId(employeeConversationMetadata) ??
+            readTransferableFlowId(stickyMetadata)
+          : null;
+
+      if (intentTransferFlowId) {
+        transferSource = "ai_employee_intent";
+      } else if (
+        !bindingWorkflow &&
+        !stickyTransfer &&
+        isBookingTransferIntent(inboundText) &&
+        request.channelKey === "whatsapp"
+      ) {
+        logWhatsApp("Booking intent without transferable flow", {
+          companyId: request.companyId,
+          companyChannelId: request.companyChannelId,
+          aiEmployeeId: aiEmployeeId ?? null,
+          phoneNumber: normalized.senderExternalId,
+          note: "configure_transferableFlowId_on_employee_channels_tab",
+        });
+        request.trace?.step("webhook.booking_intent_no_transfer_flow", {
+          aiEmployeeId: aiEmployeeId ?? null,
+          hasEmployeeMetadata: Boolean(employeeConversationMetadata),
+        });
+      }
+
+      const resolvedWorkflow =
+        bindingWorkflow ??
+        (stickyTransfer && this.ports.automation
+          ? {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              automationFlowId: stickyTransfer.flowId,
+              executionMetadata: undefined,
+            }
+          : null) ??
+        (intentTransferFlowId
+          ? {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              automationFlowId: intentTransferFlowId,
+              executionMetadata: undefined,
+            }
+          : null);
+      const useWorkflow = Boolean(resolvedWorkflow && this.ports.automation);
+
+      request.trace?.step(
+        useWorkflow ? "webhook.workflow_resolved" : "webhook.workflow_missing",
+        useWorkflow && resolvedWorkflow
+          ? {
+              automationFlowId: resolvedWorkflow.automationFlowId,
+              ...(transferSource && transferSource !== "channel_binding"
+                ? { transferSource }
+                : {}),
+            }
+          : {
+              companyChannelId: request.companyChannelId,
+              skipReason: workflowResolution.status === "skipped" ? workflowResolution.reason : "no_binding",
+              ...(workflowResolution.status === "skipped" && workflowResolution.automationFlowId
+                ? { automationFlowId: workflowResolution.automationFlowId }
+                : {}),
+            },
+      );
+
+      if (request.channelKey === "whatsapp" && request.executeAi && !useWorkflow) {
         logWhatsApp("AI Employee selected", {
           companyId: request.companyId,
           companyChannelId: request.companyChannelId,
           aiEmployeeId: aiEmployeeId ?? null,
           phoneNumber: normalized.senderExternalId,
-          note: aiEmployeeId ? "preselected_on_request" : "skipped_resolution",
+          note: aiEmployeeId ? "preselected_or_resolved" : "skipped_resolution",
         });
       }
 
@@ -296,6 +593,35 @@ export class InboundMessagePipeline {
       await waPerfMeasure("Database writes: touch inbound session", () =>
         this.sessionRepository.touchInbound(session.id),
       );
+
+      if (
+        intentTransferFlowId &&
+        transferSource === "ai_employee_intent" &&
+        this.ports.conversation.updateConversationMetadata &&
+        this.ports.conversation.getConversationMetadata
+      ) {
+        const currentMeta =
+          (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ?? {};
+        await this.ports.conversation.updateConversationMetadata({
+          conversationId: session.conversation_id,
+          metadata: {
+            ...currentMeta,
+            transferableFlowId: intentTransferFlowId,
+            inboundWorkflowTransfer: {
+              active: true,
+              flowId: intentTransferFlowId,
+              transferredAt: new Date().toISOString(),
+              transferredByEmployeeId: aiEmployeeId ?? null,
+              reason: "booking_intent_auto_transfer",
+            },
+          },
+        });
+        request.trace?.step("webhook.ai_employee_intent_transfer", {
+          flowId: intentTransferFlowId,
+          conversationId: session.conversation_id,
+        });
+      }
+
       request.trace?.step("webhook.session_resolved", {
         channelSessionId: session.id,
         conversationId: session.conversation_id,
@@ -431,12 +757,41 @@ export class InboundMessagePipeline {
         waTraceBindAutomationRun(automationRunId);
         responseContent = automationResult.responseContent;
         const outboundMessages = automationResult.outboundMessages ?? [];
+        const workflowLifecycle = automationResult.lifecycle ?? null;
 
         request.trace?.step("webhook.automation_completed", {
           automationRunId,
           outboundMessageCount: outboundMessages.length,
           hasResponseContent: Boolean(responseContent?.trim()),
+          lifecycle: workflowLifecycle,
         });
+
+        if (
+          workflowLifecycle &&
+          TERMINAL_WORKFLOW_LIFECYCLES.has(workflowLifecycle) &&
+          transferSource &&
+          transferSource !== "channel_binding" &&
+          this.ports.conversation.updateConversationMetadata &&
+          this.ports.conversation.getConversationMetadata
+        ) {
+          const currentMeta =
+            (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ?? {};
+          await this.ports.conversation.updateConversationMetadata({
+            conversationId: session.conversation_id,
+            metadata: {
+              ...currentMeta,
+              inboundWorkflowTransfer: buildClearedWorkflowTransfer(
+                currentMeta.inboundWorkflowTransfer,
+                `workflow_${workflowLifecycle}`,
+              ),
+            },
+          });
+          request.trace?.step("webhook.sticky_workflow_cleared", {
+            flowId: resolvedWorkflow.automationFlowId,
+            reason: `workflow_${workflowLifecycle}`,
+            automationRunId,
+          });
+        }
 
         if (outboundMessages.length > 0) {
           try {
@@ -570,7 +925,24 @@ export class InboundMessagePipeline {
             );
           }
 
-          runtimeConfig = prepared.runtimeConfig;
+          runtimeConfig = {
+            ...prepared.runtimeConfig,
+            executionPolicy: {
+              ...(prepared.runtimeConfig.executionPolicy ?? {}),
+              // Channel replies are sent only after the full text is ready.
+              streaming: false,
+              // Keep WhatsApp replies short — large max_tokens inflate latency.
+              max_tokens: Math.min(
+                Number(
+                  (prepared.runtimeConfig.executionPolicy as { maxTokens?: number; max_tokens?: number } | undefined)
+                    ?.max_tokens ??
+                    (prepared.runtimeConfig.executionPolicy as { maxTokens?: number } | undefined)?.maxTokens ??
+                    400,
+                ) || 400,
+                400,
+              ),
+            },
+          };
 
           if (prepared.metadataPatch && this.ports.conversation.updateConversationMetadata) {
             await this.ports.conversation.updateConversationMetadata({
@@ -730,6 +1102,14 @@ export class InboundMessagePipeline {
         responseContent,
       };
     } catch (error) {
+      if (interactiveReplyId && !duplicate) {
+        releaseInteractiveReplyDedupe({
+          companyChannelId: request.companyChannelId,
+          externalThreadId: request.externalThreadId,
+          replyId: interactiveReplyId,
+          contextMessageId: interactiveReplyContextId,
+        });
+      }
       const pipelineError =
         error instanceof Error ? error.message : "Inbound pipeline failed";
       waTraceNoteError(pipelineError);

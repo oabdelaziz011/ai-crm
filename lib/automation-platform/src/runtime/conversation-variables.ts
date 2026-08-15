@@ -4,6 +4,12 @@
  * Interactive message nodes (buttons, lists) write into this namespace on resume.
  * Condition nodes resolve `conversation.*` fields via `resolveFieldValue`.
  */
+import { canonicalizeSelectionId, resolveFreeTextSelectionId } from "./bilingual-selection-aliases.js";
+import {
+  normalizeConversationLanguage,
+  type ConversationLanguage,
+} from "./conversation-language.js";
+
 export const INTERACTIVE_SELECTION_INPUT_KEY = "interactive_selection";
 
 export const INTERACTION_SELECTION_TYPES = ["button", "list", "flow", "quick_reply"] as const;
@@ -37,6 +43,8 @@ export type ConversationRuntimeVariables = {
   last_button_title?: string;
   last_selection_type?: InteractionSelectionType;
   channel?: string;
+  /** Detected once from the customer's first message: "ar" | "en". */
+  language?: ConversationLanguage;
 };
 
 export type ExtractInteractiveSelectionOptions = {
@@ -67,6 +75,11 @@ export function mergeConversationVariables(
     if (typedKey === "last_selection_type") {
       const normalized = normalizeInteractionType(value);
       if (normalized) next.last_selection_type = normalized;
+      continue;
+    }
+    if (typedKey === "language") {
+      const language = normalizeConversationLanguage(value);
+      if (language) next.language = language;
       continue;
     }
     if (
@@ -124,7 +137,8 @@ export function extractInteractiveSelection(
   if (!replyId && !title) return null;
 
   const resolvedTitle = title || replyId;
-  const resolvedId = replyId || title;
+  const canonicalId = canonicalizeSelectionId(replyId || null, title || null);
+  const resolvedId = canonicalId || replyId || title;
   const lastSelectionType = resolveInteractionSelectionType(input, options);
 
   return {

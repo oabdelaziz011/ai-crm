@@ -85,6 +85,23 @@ describe("resolveWhatsAppRuntimeConfiguration", () => {
     assert.equal(config.phoneNumberId, "1214681355059951");
   });
 
+  it("prefers channel phone number when settings phone number is stale", async () => {
+    const config = await resolveWhatsAppRuntimeConfiguration(
+      "company-1",
+      { phoneNumberId: "1214681355059951" },
+      {
+        loadByCompanyId: async () => ({
+          accessToken: "settings-token",
+          phoneNumberId: "1168042419733416",
+          verifyToken: "verify-token",
+          apiVersion: "v21.0",
+        }),
+      },
+    );
+
+    assert.equal(config.phoneNumberId, "1214681355059951");
+  });
+
   it("throws when canonical credentials are missing", async () => {
     await assert.rejects(
       () =>

@@ -32,6 +32,27 @@ function createEngine(options?: {
       sessions.push(record);
       return record;
     },
+    reattachConversation: async (sessionId, conversationId) => {
+      const session = sessions.find((item) => item.id === sessionId);
+      if (!session) throw new Error("session not found");
+      session.conversation_id = conversationId;
+      return {
+        id: session.id,
+        company_id: "company-1",
+        company_channel_id: "channel-1",
+        channel_key: "whatsapp",
+        conversation_id: conversationId,
+        external_thread_id: "thread-1",
+        sender_external_id: null,
+        metadata: {},
+        inbound_count: 0,
+        outbound_count: 0,
+        last_inbound_at: null,
+        last_outbound_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    },
     touchInbound: async (sessionId) => {
       const session = sessions.find((item) => item.id === sessionId);
       if (!session) throw new Error("session not found");

@@ -33,6 +33,7 @@ import {
   readLatestOutbound,
   readOutboundQueue,
 } from "../runtime/outbound-queue.js";
+import { detectConversationLanguage } from "../runtime/conversation-language.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -132,6 +133,7 @@ export class ConversationOrchestrator {
     }
 
     const trigger: OrchestratorTriggerType = resolution.created || resolution.expired ? "new_conversation" : "incoming_message";
+    const detectedLanguage = detectConversationLanguage(inbound.text);
     execution = await this.dispatcher.dispatch(ctx, {
       companyId: resolution.companyId,
       channel: inbound.channel,
@@ -143,6 +145,11 @@ export class ConversationOrchestrator {
         customerId: resolution.customerId,
         lastMessage: inbound.text,
         ...inbound.payload,
+        conversation: {
+          last_message: inbound.text,
+          channel: inbound.channel,
+          ...(detectedLanguage ? { language: detectedLanguage } : {}),
+        },
       },
     });
 
@@ -178,25 +185,48 @@ export class ConversationOrchestrator {
     execution: AutomationExecutionResult,
     inbound: { companyId: string; channel: AutomationChannel; externalUserId: string },
   ): NormalizedOutboundMessage[] {
+    const base = {
+      channel: inbound.channel,
+      companyId: inbound.companyId,
+      sessionId: execution.session.id,
+      externalUserId: inbound.externalUserId,
+    };
     const queue = readOutboundQueue(execution.variables);
+    const messages: NormalizedOutboundMessage[] = [];
+
     if (queue.length > 0) {
-      return queue.map((entry) => {
+      for (const entry of queue) {
         const kind = entry.kind;
         const text = outboundEntryDisplayText(entry);
         const isInteractive = kind === "buttons" || kind === "list";
-        return {
-          channel: inbound.channel,
-          companyId: inbound.companyId,
-          sessionId: execution.session.id,
-          externalUserId: inbound.externalUserId,
+        messages.push({
+          ...base,
           messageType: isInteractive ? "payload" : "text",
           text,
           payload: entry as Record<string, unknown>,
-        };
-      });
+        });
+      }
+    } else {
+      messages.push(...this.buildLegacyPromptOutbounds(execution, inbound));
     }
 
-    return this.buildLegacyPromptOutbounds(execution, inbound);
+    if (execution.lifecycle === "waiting_input") {
+      const prompt = execution.variables.__prompt;
+      if (typeof prompt === "string" && prompt.trim()) {
+        const trimmed = prompt.trim();
+        const lastText = messages[messages.length - 1]?.text?.trim() ?? "";
+        if (lastText !== trimmed) {
+          messages.push({
+            ...base,
+            messageType: "text",
+            text: trimmed,
+            payload: { kind: "automation_prompt" },
+          });
+        }
+      }
+    }
+
+    return messages;
   }
 
   /** @deprecated fallback for runs persisted before the outbound queue existed */

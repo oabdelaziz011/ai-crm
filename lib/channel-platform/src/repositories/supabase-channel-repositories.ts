@@ -19,6 +19,10 @@ import type {
   ChannelInboundEventRecord,
   ChannelSessionRecord,
 } from "../types.js";
+import {
+  extractInteractiveReplyContextIdFromPayload,
+  extractInteractiveReplyIdFromPayload,
+} from "../utils/interactive-reply-dedupe.js";
 
 function sessionCacheKey(companyChannelId: string, externalThreadId: string): string {
   return `${companyChannelId}:${externalThreadId}`;
@@ -103,6 +107,23 @@ export function createSupabaseChannelSessionRepository(client: SupabaseClient): 
       return session;
     },
 
+    async reattachConversation(sessionId, conversationId) {
+      const { data, error } = await client
+        .from("channel_sessions")
+        .update({
+          conversation_id: conversationId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      const session = mapSession(data);
+      rememberSession(session);
+      return session;
+    },
+
     async touchInbound(sessionId) {
       const { data, error } = await client
         .from("channel_sessions")
@@ -147,6 +168,46 @@ export function createSupabaseChannelInboundEventRepository(
 
       if (error) throw error;
       return data ? mapInbound(data) : null;
+    },
+
+    async findRecentInteractiveReply(input) {
+      const since = new Date(Date.now() - input.withinMs).toISOString();
+      const { data, error } = await client
+        .from("channel_inbound_events")
+        .select("*")
+        .eq("company_channel_id", input.companyChannelId)
+        .eq("external_thread_id", input.externalThreadId)
+        .in("processing_status", ["received", "processing", "processed"])
+        .gte("received_at", since)
+        .order("received_at", { ascending: false })
+        .limit(25);
+
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      const wantedContext =
+        typeof input.contextMessageId === "string" && input.contextMessageId.trim()
+          ? input.contextMessageId.trim()
+          : null;
+      for (const row of rows) {
+        if (
+          input.excludeIdempotencyKey &&
+          row.idempotency_key === input.excludeIdempotencyKey
+        ) {
+          continue;
+        }
+        const payload =
+          row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
+            ? (row.payload as Record<string, unknown>)
+            : null;
+        const replyId = extractInteractiveReplyIdFromPayload(payload);
+        if (!replyId || replyId !== input.replyId.trim()) continue;
+        if (wantedContext) {
+          const rowContext = extractInteractiveReplyContextIdFromPayload(payload);
+          if (rowContext !== wantedContext) continue;
+        }
+        return mapInbound(row);
+      }
+      return null;
     },
 
     async createEvent(input: CreateInboundEventInput) {

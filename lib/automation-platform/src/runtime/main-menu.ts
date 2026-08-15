@@ -1,5 +1,7 @@
 import { ValidationError } from "../errors.js";
 import type { AutomationNodeRecord } from "../types.js";
+import type { ConversationLanguage } from "./conversation-language.js";
+import { localizeNodeConfigForLanguage } from "./localize-node-config.js";
 import type { OutboundQueueEntry } from "./outbound-queue.js";
 
 export const PRIMARY_MENU_CONFIG_KEY = "primaryMenu";
@@ -16,8 +18,20 @@ function readInteractiveButtons(config: Record<string, unknown>): InteractiveBut
   if (!Array.isArray(config.buttons)) return [];
   return config.buttons.flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
-    const id = readString((entry as { id?: unknown }).id);
-    const label = readString((entry as { label?: unknown }).label);
+    const button = entry as {
+      id?: unknown;
+      label?: unknown;
+      labelAr?: unknown;
+      labelEn?: unknown;
+      title?: unknown;
+    };
+    const id = readString(button.id);
+    // Prefer already-localized `label`, then bilingual fields (preserve mid-word spaces via trim-only).
+    const label =
+      readString(button.label) ??
+      readString(button.labelAr) ??
+      readString(button.labelEn) ??
+      readString(button.title);
     if (!id || !label) return [];
     return [{ id, label }];
   });
@@ -35,7 +49,10 @@ function readListSections(config: Record<string, unknown>): Array<{
       ? (section as { rows: unknown[] }).rows.flatMap((row) => {
           if (!row || typeof row !== "object") return [];
           const id = readString((row as { id?: unknown }).id);
-          const rowTitle = readString((row as { title?: unknown }).title);
+          const rowTitle =
+            readString((row as { title?: unknown }).title) ??
+            readString((row as { titleAr?: unknown }).titleAr) ??
+            readString((row as { titleEn?: unknown }).titleEn);
           if (!id || !rowTitle) return [];
           const description = readString((row as { description?: unknown }).description) ?? undefined;
           return [{ id, title: rowTitle, ...(description ? { description } : {}) }];
@@ -57,12 +74,14 @@ export function isPrimaryMenuNode(node: AutomationNodeRecord): boolean {
 
 export function buildInteractiveMenuOutbound(
   menuNode: AutomationNodeRecord,
+  options?: { language?: ConversationLanguage | null },
 ): { outbound: OutboundQueueEntry; prompt: string } {
-  const action = readString(menuNode.config.action);
+  const config = localizeNodeConfigForLanguage(menuNode.config, options?.language ?? null);
+  const action = readString(config.action);
   if (action === "send_buttons") {
-    const message = readString(menuNode.config.message);
+    const message = readString(config.message);
     if (!message) throw new ValidationError("Main menu buttons step requires config.message.");
-    const buttons = readInteractiveButtons(menuNode.config);
+    const buttons = readInteractiveButtons(config);
     if (buttons.length === 0) {
       throw new ValidationError("Main menu buttons step requires at least one button.");
     }
@@ -70,10 +89,10 @@ export function buildInteractiveMenuOutbound(
   }
 
   if (action === "send_list") {
-    const title = readString(menuNode.config.title);
-    const body = readString(menuNode.config.body);
-    const buttonLabel = readString(menuNode.config.buttonLabel) ?? "View options";
-    const sections = readListSections(menuNode.config);
+    const title = readString(config.title);
+    const body = readString(config.body);
+    const buttonLabel = readString(config.buttonLabel) ?? "View options";
+    const sections = readListSections(config);
     if (!title || !body) {
       throw new ValidationError("Main menu list step requires config.title and config.body.");
     }

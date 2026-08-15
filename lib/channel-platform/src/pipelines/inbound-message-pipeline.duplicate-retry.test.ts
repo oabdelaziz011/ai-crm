@@ -95,7 +95,7 @@ describe("InboundMessagePipeline duplicate webhook retry", () => {
     assert.equal(env.inboundEvents[0]?.processing_status, "processed");
   });
 
-  it("accepts idempotent addIncomingMessage responses marked as reused", async () => {
+  it("does not reprocess an in-flight inbound webhook retry", async () => {
     const env = createTestEnvironment({
       automationResponse: "Workflow reply",
       workflowBinding: {
@@ -105,27 +105,41 @@ describe("InboundMessagePipeline duplicate webhook retry", () => {
       },
     });
 
-    const originalAddIncoming = env.ports.conversation.addIncomingMessage.bind(env.ports.conversation);
-    env.ports.conversation.addIncomingMessage = async (input) => {
-      const created = await originalAddIncoming(input);
-      return {
-        ...created,
-        reused: input.externalMessageId === "wamid.reused",
-      };
-    };
+    env.inboundEvents.push({
+      id: "inbound-inflight",
+      company_id: "company-1",
+      company_channel_id: env.companyChannel.id,
+      channel_key: "web_chat",
+      idempotency_key: "wamid.inflight",
+      external_thread_id: "thread-inflight",
+      external_message_id: "wamid.inflight",
+      sender_external_id: null,
+      processing_status: "processing",
+      conversation_id: "conv-inflight",
+      channel_session_id: "session-inflight",
+      incoming_message_id: null,
+      runtime_execution_id: null,
+      payload: { text: "Hello" },
+      error_message: null,
+      received_at: new Date().toISOString(),
+      processed_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
 
     const response = await env.router.routeInbound(createContext(), {
       companyId: "company-1",
       companyChannelId: env.companyChannel.id,
       channelKey: "web_chat",
       source: "webhook",
-      idempotencyKey: "wamid.reused",
-      externalThreadId: "thread-reused",
-      externalMessageId: "wamid.reused",
+      idempotencyKey: "wamid.inflight",
+      externalThreadId: "thread-inflight",
+      externalMessageId: "wamid.inflight",
       payload: { text: "Hello" },
     });
 
-    assert.equal(response.automationRunId, "automation-run-1");
-    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(response.duplicate, true);
+    assert.equal(env.automationCalls, 0);
+    assert.equal(env.outgoingMessages.length, 0);
   });
 });

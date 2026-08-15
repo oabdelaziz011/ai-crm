@@ -108,6 +108,12 @@ export function createTestEnvironment(options?: {
       sessions.push(record);
       return record;
     },
+    reattachConversation: async (sessionId, conversationId) => {
+      const record = sessions.find((session) => session.id === sessionId)!;
+      record.conversation_id = conversationId;
+      record.updated_at = new Date().toISOString();
+      return record;
+    },
     touchInbound: async (sessionId) => {
       const record = sessions.find((session) => session.id === sessionId)!;
       record.last_inbound_at = new Date().toISOString();
@@ -125,6 +131,34 @@ export function createTestEnvironment(options?: {
       inboundEvents.find(
         (event) => event.company_channel_id === companyChannelId && event.idempotency_key === idempotencyKey,
       ) ?? null,
+    findRecentInteractiveReply: async (input) => {
+      const since = Date.now() - input.withinMs;
+      for (const event of [...inboundEvents].reverse()) {
+        if (event.company_channel_id !== input.companyChannelId) continue;
+        if (event.external_thread_id !== input.externalThreadId) continue;
+        if (input.excludeIdempotencyKey && event.idempotency_key === input.excludeIdempotencyKey) continue;
+        if (!["received", "processing", "processed"].includes(event.processing_status)) continue;
+        if (Date.parse(event.received_at) < since) continue;
+        const payload = event.payload as Record<string, unknown>;
+        const message = payload.message as
+          | {
+              type?: string;
+              context?: { id?: string };
+              interactive?: { list_reply?: { id?: string }; button_reply?: { id?: string } };
+            }
+          | undefined;
+        const replyId =
+          message?.interactive?.list_reply?.id ?? message?.interactive?.button_reply?.id ?? null;
+        if (replyId !== input.replyId) continue;
+        const wantedContext =
+          typeof input.contextMessageId === "string" && input.contextMessageId.trim()
+            ? input.contextMessageId.trim()
+            : null;
+        if (wantedContext && message?.context?.id !== wantedContext) continue;
+        return event;
+      }
+      return null;
+    },
     createEvent: async (input: CreateInboundEventInput) => {
       const record: ChannelInboundEventRecord = {
         id: `inbound-${inboundEvents.length + 1}`,

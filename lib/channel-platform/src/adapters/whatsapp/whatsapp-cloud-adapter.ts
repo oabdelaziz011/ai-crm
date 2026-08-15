@@ -198,7 +198,7 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
               rows: section.rows.map((row) => ({
                 id: row.id,
                 title: row.title,
-                description: row.description,
+                ...(row.description?.trim() ? { description: row.description.trim() } : {}),
               })),
             })),
           },
@@ -298,6 +298,7 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
     const channelPhoneNumberId = channelReferences.phoneNumberId?.trim() || null;
     const runtimePhoneNumberId = runtimeConfig.phoneNumberId?.trim() || "";
     if (channelPhoneNumberId && runtimePhoneNumberId && channelPhoneNumberId !== runtimePhoneNumberId) {
+      // Should be rare after resolveWhatsAppRuntimeConfiguration prefers channel id.
       console.error("[WHATSAPP_OUTBOUND_TRACE] phoneNumberId mismatch — inbound channel vs send credentials", {
         companyId: ctx.companyChannel.companyId,
         companyChannelId: ctx.companyChannel.id,

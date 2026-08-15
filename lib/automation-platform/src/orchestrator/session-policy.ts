@@ -1,6 +1,10 @@
 import { DEFAULT_SESSION_TIMEOUT_MS } from "../constants.js";
 import { isIfNodeTraceEnabled } from "../debug/runtime-trace-flags.js";
-import { extractInteractiveSelection, INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
+import {
+  extractInteractiveSelection,
+  INTERACTIVE_SELECTION_INPUT_KEY,
+} from "../runtime/conversation-variables.js";
+import { resolveFreeTextSelectionId } from "../runtime/bilingual-selection-aliases.js";
 import { readLatestOutbound } from "../runtime/outbound-queue.js";
 import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
 
@@ -184,6 +188,17 @@ export function buildResumeInput(
         typeof payload.replyId === "string" && payload.replyId.trim()
           ? payload.replyId.trim()
           : input.title;
+    } else {
+      // Free-text while waiting on Buttons/List — map known intents (pricing/book/…)
+      // so "اسعار وتكلفة" routes to pricing instead of default/"وضح طلبك".
+      const freeTextId = resolveFreeTextSelectionId(inboundText);
+      if (freeTextId) {
+        input.replyId = freeTextId;
+        input.title = inboundText.trim() || freeTextId;
+        input[INTERACTIVE_SELECTION_INPUT_KEY] = freeTextId;
+        input.interactionType = "button";
+        input.kind = "interactive_reply";
+      }
     }
 
     if (typeof payload.interactionType === "string" && payload.interactionType.trim()) {

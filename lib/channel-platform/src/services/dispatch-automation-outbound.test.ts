@@ -131,4 +131,61 @@ describe("dispatchAutomationOutboundMessages", () => {
     });
     assert.deepEqual(dispatchedMetadata, persistedMetadata);
   });
+
+  it("dedupes identical interactive list payloads in one dispatch batch", async () => {
+    const dispatched: string[] = [];
+    const conversation: ChannelConversationPort = {
+      createConversation: async () => ({ id: "conv-1" }),
+      addIncomingMessage: async (input) => ({
+        id: "msg-in-1",
+        conversationId: input.conversationId,
+        messageType: "incoming",
+        content: input.content,
+        createdAt: new Date().toISOString(),
+      }),
+      addOutgoingMessage: async (input) => ({
+        id: `msg-out-${dispatched.length + 1}`,
+        conversationId: input.conversationId,
+        messageType: "outgoing",
+        content: input.content,
+        createdAt: new Date().toISOString(),
+      }),
+    };
+    const dispatcher: ChannelDispatcherPort = {
+      async dispatch(_ctx, request) {
+        dispatched.push(String(request.metadata?.outboundPayload?.title ?? request.text));
+        return { deliveryEventId: `delivery-${dispatched.length}`, deliveryStatus: "sent" };
+      },
+    };
+
+    const listPayload = {
+      kind: "list",
+      title: "Choose a doctor",
+      body: "Pick the option that fits you best.",
+      buttonLabel: "View options",
+      sections: [{ title: "Options", rows: [{ id: "doc-1", title: "ADAM" }] }],
+    };
+
+    await dispatchAutomationOutboundMessages(
+      { isSuperAdmin: true } as ServiceContext,
+      dispatcher,
+      conversation,
+      {
+        companyId: "company-1",
+        companyChannelId: "channel-1",
+        channelKey: "whatsapp",
+        conversationId: "conv-1",
+        channelSessionId: "session-1",
+        externalThreadId: "user-1",
+        automationRunId: "run-1",
+        correlationId: "corr-1",
+        messages: [
+          { text: listPayload.body, payload: listPayload },
+          { text: listPayload.body, payload: { ...listPayload } },
+        ],
+      },
+    );
+
+    assert.deepEqual(dispatched, ["Choose a doctor"]);
+  });
 });

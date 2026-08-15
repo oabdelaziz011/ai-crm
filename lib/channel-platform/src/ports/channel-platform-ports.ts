@@ -125,6 +125,16 @@ export type ChannelAutomationPort = {
     flowVersionId?: string;
     resumed?: boolean;
   }>;
+  /**
+   * True when there is a waiting_input run/session that can be resumed for this user+flow.
+   * Used to drop stale AI→workflow sticky transfers after the flow already completed.
+   */
+  hasWaitingRun?(input: {
+    companyId: string;
+    flowId: string;
+    channelKey: string;
+    externalUserId: string;
+  }): Promise<boolean>;
 };
 
 export type ChannelPlatformPorts = {
@@ -147,6 +157,8 @@ export type ChannelRouterPort = {
       executeAi?: boolean;
       runtimeConfig?: ChannelRuntimeConfigDto;
       aiAssistantId?: string;
+      aiEmployeeId?: string;
+      employeeConversationMetadata?: Record<string, unknown>;
     },
   ): Promise<InboundRouteResponseDto>;
 };

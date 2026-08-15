@@ -91,6 +91,28 @@ export async function resolveListNodeSections(
   }
 
   const resolvedFilters = resolveLookupFilterValues(lookupConfig.filters, variables);
+  // Only scheduling lookups consume conversation.language for display locale.
+  // Injecting it into entity lookups (services/resources/…) makes applyLookupFilters
+  // drop every row that has no matching `language` column — booking stops after phone.
+  const languageAwareLookups = new Set([
+    "available_dates",
+    "available_slots",
+    "recommended_appointments",
+  ]);
+  const conversationLanguage =
+    variables.conversation &&
+    typeof variables.conversation === "object" &&
+    !Array.isArray(variables.conversation) &&
+    typeof (variables.conversation as { language?: unknown }).language === "string"
+      ? String((variables.conversation as { language: string }).language).trim()
+      : "";
+  if (
+    conversationLanguage &&
+    !resolvedFilters.language &&
+    languageAwareLookups.has(lookupConfig.lookup)
+  ) {
+    resolvedFilters.language = conversationLanguage;
+  }
   logListNodeLifecycle({
     stage: "before_execute_list_node",
     ...traceBase,
@@ -119,6 +141,21 @@ export async function resolveListNodeSections(
         stage: "before_execute_list_node",
         ...traceBase,
         reason: "resolve_list_sections_empty:available_dates",
+      });
+      return [];
+    }
+    // Empty entity catalogs should surface a user-facing message in the list sender,
+    // not hard-fail the whole booking run after a successful find_customer.
+    if (
+      lookupConfig.lookup === "services" ||
+      lookupConfig.lookup === "resources" ||
+      lookupConfig.lookup === "staff" ||
+      lookupConfig.lookup === "branches"
+    ) {
+      logListNodeLifecycle({
+        stage: "before_execute_list_node",
+        ...traceBase,
+        reason: `resolve_list_sections_empty:${lookupConfig.lookup}`,
       });
       return [];
     }

@@ -179,7 +179,10 @@ export class EnterpriseRuntimeCoordinator {
           });
         }
 
-        const recentMessages = await this.ports.conversation.listRecentMessages(input.conversationId, 10);
+        const recentMessages = await this.ports.conversation.listRecentMessages(
+          input.conversationId,
+          input.pageContext?.channelKey ? 6 : 10,
+        );
 
         // 5. Prompt
         prompt = await this.runStage(ctx, execution.id, "prompt", stepDtos, correlationId, async () =>

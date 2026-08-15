@@ -69,12 +69,26 @@ export type ResolveSessionInput = {
 export type ChannelSessionRepository = {
   findByExternalThread(companyChannelId: string, externalThreadId: string): Promise<ChannelSessionRecord | null>;
   createSession(input: ResolveSessionInput & { conversationId: string }): Promise<ChannelSessionRecord>;
+  reattachConversation(sessionId: string, conversationId: string): Promise<ChannelSessionRecord>;
   touchInbound(sessionId: string): Promise<ChannelSessionRecord>;
   touchOutbound(sessionId: string): Promise<ChannelSessionRecord>;
 };
 
 export type ChannelInboundEventRepository = {
   findByIdempotencyKey(companyChannelId: string, idempotencyKey: string): Promise<ChannelInboundEventRecord | null>;
+  /**
+   * Recent inbound with the same WhatsApp interactive replyId on this thread.
+   * When contextMessageId is set, only matches taps on the same outbound list/button.
+   * Used when Meta delivers the same list tap under different wamids.
+   */
+  findRecentInteractiveReply?(input: {
+    companyChannelId: string;
+    externalThreadId: string;
+    replyId: string;
+    contextMessageId?: string | null;
+    withinMs: number;
+    excludeIdempotencyKey?: string;
+  }): Promise<ChannelInboundEventRecord | null>;
   createEvent(input: CreateInboundEventInput): Promise<ChannelInboundEventRecord>;
   updateEvent(input: UpdateInboundEventInput): Promise<ChannelInboundEventRecord>;
 };

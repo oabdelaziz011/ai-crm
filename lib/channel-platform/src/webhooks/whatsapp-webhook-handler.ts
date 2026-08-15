@@ -90,6 +90,8 @@ export function createWhatsAppWebhookHandler(deps: WhatsAppWebhookHandlerDeps) {
       const ctx = deps.resolveSystemContext();
 
       let executeAi = input.executeAi;
+      let aiEmployeeId: string | undefined;
+      let employeeConversationMetadata: Record<string, unknown> | undefined;
       if (executeAi == null) {
         if (deps.ports.employeeRuntime) {
           const employeeBinding = await deps.ports.employeeRuntime.resolveForInboundChannel({
@@ -98,6 +100,11 @@ export function createWhatsAppWebhookHandler(deps: WhatsAppWebhookHandlerDeps) {
             channelKey: "whatsapp",
           });
           executeAi = Boolean(employeeBinding);
+          // Pass the resolved employee into the pipeline so it does not resolve again.
+          if (employeeBinding) {
+            aiEmployeeId = employeeBinding.aiEmployeeId;
+            employeeConversationMetadata = employeeBinding.conversationMetadataSeed;
+          }
         } else if (deps.resolveRuntimeConfig) {
           executeAi = Boolean(await deps.resolveRuntimeConfig(channel.companyId));
         } else {
@@ -109,6 +116,7 @@ export function createWhatsAppWebhookHandler(deps: WhatsAppWebhookHandlerDeps) {
         companyChannelId: input.companyChannelId,
         executeAi,
         employeeRuntimeEnabled: Boolean(deps.ports.employeeRuntime),
+        aiEmployeeId: aiEmployeeId ?? null,
       });
 
       const legacyRuntime =
@@ -123,6 +131,8 @@ export function createWhatsAppWebhookHandler(deps: WhatsAppWebhookHandlerDeps) {
         rawPayload: input.rawPayload,
         executeAi,
         aiAssistantId: legacyRuntime?.aiAssistantId,
+        aiEmployeeId,
+        employeeConversationMetadata,
         requestId: input.requestId ?? null,
         runtimeConfig: legacyRuntime?.providerConnectionId
           ? {

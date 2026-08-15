@@ -118,7 +118,11 @@
       "askDocuments": "Ask documents",
       "searchKnowledge": "Search knowledge",
       "businessSummary": "Business summary",
-      "help": "Help"
+      "help": "Help",
+      "executiveBrief": "Executive briefing",
+      "executiveRisks": "Top risks",
+      "executiveActions": "Next actions",
+      "openFinancial": "Open financial"
     },
     "tasks": {
       "label": "Background tasks",
@@ -165,16 +169,19 @@
   "navigation": {
     "home": "Home",
     "customers": "Customers",
+    "tickets": "Tickets",
     "bookings": "Bookings",
     "calendar": "Calendar",
     "scheduling": "Scheduling",
-    "universalOperations": "Operations",
+    "appointments": "Appointments",
+    "universalOperations": "Operations Hub",
     "leads": "Leads",
     "opportunities": "Opportunities",
     "products": "Products",
     "quotes": "Quotes",
     "communication": "Outbound Queue",
-    "invoices": "Invoices",
+    "invoices": "Invoices & Financial Billing",
+    "financialWorkspace": "Invoices & Financial Billing",
     "financial": "Financial Billing",
     "executive": "Executive Intelligence",
     "organization": "Organization",
@@ -209,7 +216,9 @@
     "reports": "Reports",
     "settings": "Settings",
     "demoScenarios": "Demo Scenarios",
-    "company": "Company"
+    "company": "Company",
+    "companyHub": "Company",
+    "companyWorkspace": "Workspace"
   },
   "demo": {
     "scenarios": {
@@ -504,6 +513,7 @@
         "connectionTest": "Test Connection",
         "connectionTestSuccess": "WhatsApp connection test passed",
         "connectionTestFailed": "WhatsApp connection test failed",
+        "apiUnreachable": "Cannot reach the API server (VITE_API_SERVER_URL). Start api-server or fix the webhook host — this is not a Meta token error.",
         "testMessage": "Send test message",
         "testRecipient": "Test phone (E.164)",
         "testSuccess": "Test message sent",
@@ -669,8 +679,8 @@
   },
   "auth": {
     "login": {
-      "title": "Secure Gateway",
-      "subtitle": "Enter your credentials to access the vault.",
+      "title": "ValueOR",
+      "subtitle": "Enter your credentials to access the system.",
       "identity": "Identity",
       "passkey": "Passkey",
       "submit": "Authenticate",
@@ -681,20 +691,57 @@
       "forgotPassword": "Forgot password?"
     },
     "register": {
-      "title": "Initialize Identity",
-      "subtitle": "Establish your credentials to enter the vault.",
-      "identity": "Desired Identity",
+      "title": "Create your account",
+      "subtitle": "Set up your identity, company, and starting subscription.",
+      "progressLabel": "Registration steps",
+      "identity": "Email",
       "fullName": "Full name",
       "ownerJobTitle": "Owner job title",
       "jobTitleHint": "Descriptive only — permissions come from roles.",
-      "passkey": "Secure Passkey",
-      "submit": "Initialize Access",
-      "already": "Already established?",
-      "authenticateHere": "Authenticate here",
-      "successTitle": "Identity created",
+      "passkey": "Password",
+      "submit": "Create account",
+      "already": "Already have an account?",
+      "authenticateHere": "Sign in here",
+      "successTitle": "Account created",
       "successDescription": "Your credentials have been securely stored. You can now log in.",
+      "successOnboardingDescription": "Your account and company are ready.",
       "confirmEmailTitle": "Confirm your email",
-      "confirmEmailDescription": "We sent an activation link to your email. Open it on this device to complete registration."
+      "confirmEmailDescription": "We sent an activation link to your email. Open it on this device to complete registration.",
+      "confirmEmailOnboardingDescription": "Confirm your email, then sign in — we will finish creating your company automatically.",
+      "finishingCompany": "Finishing your company setup…",
+      "review": {
+        "account": "Your account",
+        "company": "Company",
+        "business": "Business details",
+        "plan": "Subscription"
+      },
+      "steps": {
+        "account": {
+          "label": "Account",
+          "title": "Your identity",
+          "description": "Create the credentials you will use to sign in."
+        },
+        "company": {
+          "label": "Company",
+          "title": "Company information",
+          "description": "Tell us about the organization you are creating."
+        },
+        "business": {
+          "label": "Business",
+          "title": "Location and business settings",
+          "description": "Country, city, timezone, and currency for your company."
+        },
+        "plan": {
+          "label": "Plan",
+          "title": "Starting subscription",
+          "description": "Your starting plan is assigned automatically. Billing stays unchanged."
+        },
+        "review": {
+          "label": "Review",
+          "title": "Review and create",
+          "description": "Confirm the details before creating your account and company."
+        }
+      }
     },
     "forgotPassword": {
       "title": "Reset password",
@@ -790,6 +837,7 @@
     "exportReport": "Export Report",
     "filter": "Filter",
     "cancel": "Cancel",
+    "edit": "Edit",
     "delete": "Delete",
     "saveChanges": "Save Changes",
     "save": "Save",
@@ -836,6 +884,11 @@
       "rescheduleTitle": "Reschedule Booking",
       "customer": "Customer",
       "customerRequired": "Customer is required",
+      "customerModeExisting": "Existing customer",
+      "customerModeNew": "New customer",
+      "newCustomerHint": "Creates a CRM customer record, then links this booking to their history.",
+      "newCustomerNameRequired": "Customer name is required",
+      "selectCustomer": "Select a customer",
       "noCustomer": "— No customer —",
       "service": "Service *",
       "serviceRequired": "Service is required",
@@ -909,7 +962,8 @@
       "plan": "Subscription Plan *",
       "planRequired": "Subscription plan is required",
       "planPlaceholder": "Pro",
-      "expiresAt": "Expiration Date"
+      "expiresAt": "Expiration Date",
+      "editSubtitle": "Update company identity, contact details, location, and plan."
     }
   },
   "dashboard": {
@@ -1225,6 +1279,7 @@
         "title": "Quick Actions",
         "call": "Call",
         "whatsapp": "WhatsApp",
+        "email": "Email",
         "newBooking": "New Booking",
         "newInvoice": "New Invoice",
         "addNote": "Add Note",
@@ -1264,6 +1319,7 @@
         "loadMore": "Load more activity",
         "searchPlaceholder": "Search timeline…",
         "byActor": "by {{actor}}",
+        "systemActor": "System",
         "fallbackTitle": "{{type}}",
         "filters": {
           "all": "All",
@@ -1307,6 +1363,14 @@
           },
           "instagram_message": {
             "title": "Instagram message"
+          },
+          "details": {
+            "patientCheckedIn": "Patient checked in.",
+            "patientSentToNurse": "Patient sent to nurse.",
+            "patientSentToDoctor": "Patient sent to doctor.",
+            "visitCompleted": "Visit completed.",
+            "operationArchived": "Operation archived.",
+            "triageCompleted": "Triage completed."
           },
           "booking_created": {
             "title": "Booking created"
@@ -1394,6 +1458,12 @@
       "assignedStaff": "Assigned staff",
       "unassigned": "Unassigned",
       "outstanding": "Outstanding balance",
+      "outstandingShort": "Outstanding",
+      "sections": {
+        "contact": "Contact",
+        "relationship": "Relationship",
+        "value": "Value & visits"
+      },
       "header": {
         "message": "Message",
         "newBooking": "New Booking",
@@ -1409,6 +1479,7 @@
         "nextBooking": "Next booking",
         "lastVisit": "Last visit",
         "notSet": "Not set",
+        "noContact": "No phone or email on file",
         "whatsappAvailable": "Available",
         "book": "Book",
         "invoice": "Invoice",
@@ -1428,11 +1499,42 @@
       "tabs": {
         "overview": "Overview",
         "activity": "Activity",
+        "tickets": "Tickets",
+        "bookings": "Bookings",
+        "invoices": "Invoices",
+        "payments": "Payments",
         "commerce": "Commerce",
         "communication": "Communication",
         "files": "Files",
         "ai": "AI",
-        "history": "History"
+        "history": "History",
+        "more": "More"
+      },
+      "bookingStatus": {
+        "checkedIn": "Checked in",
+        "withNurse": "With nurse",
+        "inProgress": "In progress",
+        "completed": "Completed",
+        "noShow": "No-show",
+        "rescheduled": "Rescheduled",
+        "archived": "Archived"
+      },
+      "actionsMenu": "Actions",
+      "tickets": {
+        "listTitle": "Support tickets",
+        "listHint": "Open a card to review status, priority, and ownership.",
+        "openTicket": "Open ticket",
+        "count": "{{count}} ticket(s)",
+        "emptyTitle": "No tickets yet",
+        "emptyDescription": "Tickets created for this customer will appear here.",
+        "noPermissionTitle": "Tickets unavailable",
+        "noPermissionBody": "You need tickets.view permission to see this customer's tickets.",
+        "summary": {
+          "total": "Total",
+          "open": "Open / active",
+          "urgent": "High / urgent",
+          "waiting": "Waiting customer"
+        }
       },
       "commerce": {
         "navLabel": "Commerce sections",
@@ -1461,6 +1563,9 @@
         "viewDetails": "View details"
       },
       "overview": {
+        "snapshotEyebrow": "Relationship snapshot",
+        "snapshotTitle": "What matters now",
+        "snapshotSubtitle": "Health, value, and the next best action for this customer — prioritized for ops and sales follow-up.",
         "profileTitle": "Customer profile",
         "profileSubtitle": "Contact details and demographics",
         "summaryTitle": "Customer summary",
@@ -1471,6 +1576,7 @@
         "summaryBookings": "{{count}} bookings",
         "kpisTitle": "Key metrics",
         "upcomingTitle": "Upcoming booking",
+        "upcomingHint": "Next scheduled service touchpoint",
         "noUpcoming": "No upcoming bookings scheduled.",
         "balanceTitle": "Outstanding balance",
         "balanceHint": "Unpaid and overdue invoices",
@@ -1502,7 +1608,12 @@
         "noPast": "No past appointments.",
         "noCancelled": "No cancelled appointments.",
         "rescheduled": "Rescheduled",
-        "noRescheduled": "No rescheduled appointments."
+        "noRescheduled": "No rescheduled appointments.",
+        "period": "Period",
+        "colReference": "Reference",
+        "colService": "Service",
+        "colWhen": "When",
+        "colStatus": "Status"
       },
       "invoices": {
         "emptyTitle": "No invoices yet",
@@ -1512,6 +1623,10 @@
         "pending": "Pending",
         "overdue": "Overdue",
         "draft": "Draft",
+        "issued": "Issued",
+        "unpaid": "Unpaid",
+        "colNumber": "Invoice number",
+        "colAmount": "Amount",
         "noOutstanding": "No outstanding invoices.",
         "noPaid": "No paid invoices.",
         "noPending": "No pending invoices.",
@@ -1578,7 +1693,11 @@
         "systemTitle": "System identifiers",
         "noPermission": "You do not have permission to view audit logs.",
         "emptyTitle": "No audit events",
-        "emptyDescription": "Changes to this customer profile will appear here."
+        "emptyDescription": "Changes to this customer profile will appear here.",
+        "colAction": "Action",
+        "colActor": "By",
+        "colEntity": "Entity",
+        "colWhen": "When"
       }
     },
     "bookings": {
@@ -1638,6 +1757,8 @@
       "subtitle": "Connect company channels through the Enterprise Channel Platform",
       "addChannel": "Add channel",
       "empty": "No channels configured yet. Add your first channel to start receiving messages.",
+      "featureNotEntitled": "This channel type is not included in your plan. Contact your administrator to enable it.",
+      "featureNotEntitledBadge": "Not entitled",
       "default": "Default",
       "makeDefault": "Set default",
       "channelType": "Channel type",
@@ -1647,6 +1768,8 @@
       "webChatProviderHint": "Uses the internal {{provider}} provider automatically.",
       "configure": "Configure",
       "saveConfig": "Save configuration",
+      "enableChannel": "Enable channel",
+      "disableChannel": "Disable channel",
       "whatsappConfig": "WhatsApp channel",
       "whatsappCredentialsManagedInSettings": "Meta credentials are managed in Settings →",
       "phoneNumberIdSyncedHint": "Synced from WhatsApp Provider settings",
@@ -1658,6 +1781,25 @@
       "webhookUrlHelp": "Register this URL in Meta Developer Console. Routing resolves the company channel from the phone number ID in each webhook payload.",
       "webhookUrlMissingBase": "Set VITE_API_SERVER_URL in the portal environment to display the full callback URL.",
       "apiVersion": "API version",
+      "inboundRouting": {
+        "pageHint": "For each messaging channel, choose who answers customers: an automation workflow or an AI employee. Only one path runs at a time.",
+        "label": "Who replies",
+        "loading": "Loading reply routing…",
+        "modeWorkflow": "Automation workflow",
+        "modeAi": "AI employee",
+        "workflowHint": "Active workflow: {{name}}. Inbound messages skip the AI employee while this is on.",
+        "aiHint": "Workflow is off. A published AI employee with a WhatsApp channel tag will answer inbound messages.",
+        "aiHintWithAssignedFlow": "Workflow “{{name}}” is assigned but off. Turn it on to route replies through automation again.",
+        "unnamedWorkflow": "Selected workflow",
+        "disableWorkflow": "Disable workflow",
+        "enableWorkflow": "Enable workflow",
+        "assignWorkflow": "Assign workflow",
+        "editWorkflow": "Edit workflow",
+        "openWorkflows": "Open workflows",
+        "changeSettings": "Change settings",
+        "disableSuccessHint": "AI employee can now answer inbound messages on this channel. Send a new text message (do not tap old workflow buttons).",
+        "enableSuccessHint": "Automation workflow will answer inbound messages on this channel."
+      },
       "automationWorkflow": {
         "title": "Automation Workflow",
         "helper": "Inbound messages use the selected workflow only when the toggle below is enabled. Otherwise AI Runtime handles replies.",
@@ -1801,12 +1943,241 @@
     "reports": {
       "title": "Reports",
       "subtitle": "Business performance at a glance",
+      "hubSubtitle": "Pick a report. You only see what your role and company modules allow.",
+      "reportType": "Report",
+      "pickReport": "Choose a report",
+      "branchFilter": "Branch",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "saveView": "Save view",
+      "savedViews": "Saved views",
+      "viewNamePlaceholder": "e.g. Bookings this month",
+      "viewSaved": "View saved",
+      "schedule": "Schedule",
+      "scheduleEmail": "Email",
+      "scheduleFrequency": "Frequency",
+      "scheduleHint": "Saves the schedule for this report and filters. Delivery starts when the email worker is enabled.",
+      "scheduleSavedTitle": "Schedule saved",
+      "scheduleSavedDescription": "Email delivery runs when the reports scheduler worker is enabled for your environment.",
+      "scheduledTitle": "Scheduled reports",
+      "freqDaily": "Daily",
+      "freqWeekly": "Weekly",
+      "freqMonthly": "Monthly",
+      "pdfSuccessTitle": "PDF exported",
+      "exportUnavailable": "Export not available for this report",
+      "emptyCatalog": "No reports are available for your permissions or company package.",
+      "openFull": "Open full view",
+      "openModuleHint": "Open the module for day-to-day work.",
+      "exportSuccessTitle": "Report exported",
+      "exportSuccessDescription": "CSV download started.",
+      "exportFailedTitle": "Export failed",
+      "exportFailedDescription": "Could not export this report right now.",
+      "centerTitle": "Reports dashboard",
+      "centerSubtitle": "A comprehensive view of your company performance across modules you use.",
+      "centerBadge": "Analytics",
+      "refresh": "Refresh",
+      "export": "Export",
+      "lastUpdated": "Last updated",
+      "backToCenter": "Back to dashboard",
+      "discoveryTitle": "Browse reports",
+      "discoverySubtitle": "Only reports allowed for your role and company modules are listed.",
+      "discoveryEmpty": "No reports match your search.",
+      "discoveryCount": "{{count}} reports",
+      "searchPlaceholder": "Search reports…",
+      "categories": {
+        "overview": "Overview",
+        "crm": "CRM reports",
+        "sales": "Sales reports",
+        "bookings": "Booking reports",
+        "operations": "Operations reports",
+        "billing": "Financial reports",
+        "platform": "Companies & SaaS",
+        "intelligence": "Executive intelligence",
+        "ai": "AI reports"
+      },
+      "center": {
+        "kpis": {
+          "newCustomers": "New customers (this month)",
+          "collectionRate": "Collection rate"
+        },
+        "revenueOverTime": "Revenue over time",
+        "bookingStatus": "Booking status",
+        "moduleMix": "Activity by module",
+        "recentInvoices": "Recent invoices",
+        "recentBookings": "Recent bookings",
+        "viewDetails": "View details",
+        "colId": "ID",
+        "colAmount": "Amount",
+        "colDate": "Date",
+        "colService": "Service",
+        "colStatus": "Status",
+        "emptyPeriod": "Not enough data for this view yet."
+      },
       "stats": {
         "revenue": "Total Revenue",
         "customers": "Total Customers",
         "bookings": "Total Bookings",
         "invoices": "Total Invoices"
       },
+      "catalog": {
+        "overview": "Overview",
+        "overviewDesc": "Key totals across customers, bookings, and invoices.",
+        "bookings": "Bookings",
+        "bookingsDesc": "Booking volume, status mix, and recent appointments for the selected period.",
+        "customers": "Customers",
+        "customersDesc": "Customer base growth and contact coverage for the selected period.",
+        "leads": "Leads",
+        "leadsDesc": "Lead volume by status and source for your sales team.",
+        "opportunities": "Opportunities",
+        "opportunitiesDesc": "Pipeline count, value, and stage distribution — shown inline.",
+        "products": "Products",
+        "productsDesc": "Catalog size, types, and active products — shown inline.",
+        "quotes": "Quotes",
+        "quotesDesc": "Quote volume, value, and status mix — shown inline.",
+        "tickets": "Tickets",
+        "ticketsDesc": "Support inbox KPIs, status, priority, and SLA risk — shown inline.",
+        "operations": "Operations",
+        "operationsDesc": "Operations queue volume and status for the selected branch and dates.",
+        "invoices": "Invoices",
+        "invoicesDesc": "Invoice totals by payment status with recent invoice detail.",
+        "financial": "Financial dashboard",
+        "financialDesc": "Collections, overdue exposure, and billing health for your company.",
+        "companies": "Companies",
+        "companiesDesc": "Tenant companies, status, plans, and subscription lifecycle.",
+        "companyRevenue": "Company revenue",
+        "companyRevenueDesc": "SaaS MRR, ARR, active subscriptions, and payment health.",
+        "subscriptions": "Subscriptions",
+        "subscriptionsDesc": "Company subscriptions by plan, cycle, and renewal date.",
+        "executive": "Executive summary",
+        "executiveDesc": "Leadership KPIs generated from the executive engine.",
+        "aiConsumption": "AI operations & consumption",
+        "aiConsumptionDesc": "Tokens, estimated cost, quota, overage, storage, API calls, and company consumption rates.",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "pending": "Pending"
+      },
+      "labels": {
+        "active": "Active",
+        "trial": "Trial",
+        "trialing": "Trialing",
+        "suspended": "Suspended",
+        "expired": "Expired",
+        "pastDue": "Past due",
+        "canceled": "Canceled",
+        "draft": "Draft",
+        "planBasic": "Basic",
+        "planPro": "Pro",
+        "planEnterprise": "Enterprise",
+        "planFree": "Free",
+        "unknown": "Unknown",
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "ai": {
+        "tokensUsed": "Tokens used",
+        "estimatedCost": "Estimated cost",
+        "quotaUsed": "Quota used",
+        "unlimited": "Unlimited",
+        "requests": "AI requests",
+        "overageTokens": "Overage tokens",
+        "estimatedExtraCost": "Estimated overage cost",
+        "avgLatency": "Avg latency",
+        "successRate": "Success rate",
+        "byProvider": "Consumption by provider",
+        "byStatus": "Executions by status",
+        "noUsage": "No AI usage recorded yet.",
+        "topModels": "Top models by tokens",
+        "model": "Model",
+        "tokens": "Tokens",
+        "recentCharges": "Recent billable AI usage",
+        "provider": "Provider",
+        "companyConsumption": "Company AI consumption rates",
+        "noCompanyConsumption": "No company consumption snapshots yet. Paid usage appears after AI runtime activity.",
+        "consumptionRate": "Consumption rate",
+        "storageMb": "Storage (MB)",
+        "apiCalls": "API calls"
+      },
+      "executive": {
+        "todayRevenue": "Today's revenue",
+        "monthlyRevenue": "Monthly revenue",
+        "bookingsToday": "Bookings today",
+        "outstanding": "Outstanding",
+        "completionRate": "Completion rate",
+        "cancellationRate": "Cancellation rate",
+        "noShowRate": "No-show rate",
+        "capacityUtilization": "Capacity utilization",
+        "outstandingInvoices": "Outstanding invoices",
+        "refundRate": "Refund rate",
+        "collections": "Collections",
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "deliverySuccess": "Delivery success",
+        "retentionRate": "Retention rate",
+        "portalUsage": "Portal usage",
+        "operationalKpis": "Operational KPIs",
+        "financialKpis": "Financial KPIs",
+        "communication": "Communication",
+        "emptyDetail": "Executive KPIs above are live. Detailed sections appear when the executive engine returns period metrics.",
+        "loadingEngine": "Loading executive engine…",
+        "liveFromCompany": "Showing live company KPIs from bookings, customers, and invoices. Executive engine sections appear when available."
+      },
+      "detail": {
+        "recentBookings": "Recent bookings",
+        "customer": "Customer",
+        "customerList": "Customers in period",
+        "withEmail": "With email",
+        "withPhone": "With phone",
+        "name": "Name",
+        "phone": "Phone",
+        "email": "Email",
+        "sources": "Sources",
+        "byStatus": "By status",
+        "bySource": "By source",
+        "byStage": "By stage",
+        "byType": "By type",
+        "byPriority": "By priority",
+        "byCompanyStatus": "By company status",
+        "bySubscription": "By subscription",
+        "leadList": "Leads in period",
+        "source": "Source",
+        "pipelineValue": "Pipeline value",
+        "opportunityList": "Opportunities",
+        "stage": "Stage",
+        "active": "Active",
+        "inactive": "Inactive",
+        "productList": "Product catalog",
+        "sku": "SKU",
+        "type": "Type",
+        "quoteValue": "Quoted value",
+        "quoteList": "Quotes",
+        "openTickets": "Open",
+        "unassigned": "Unassigned",
+        "slaAtRisk": "SLA at risk",
+        "opsInPeriod": "Operations in period",
+        "opsToday": "Today",
+        "opsQueue": "Operations queue snapshot",
+        "mrr": "MRR",
+        "arr": "ARR",
+        "activeSubs": "Active subscriptions",
+        "platformPayments": "Recent platform payments",
+        "company": "Company",
+        "trialing": "Trialing",
+        "companyList": "Companies",
+        "plan": "Plan",
+        "subscription": "Subscription",
+        "failedPayments": "Failed payments (30d)",
+        "failRate": "Fail rate",
+        "subscriptionMix": "Subscription mix",
+        "companyStatusMix": "Company status",
+        "subscriptionList": "Subscriptions",
+        "billingCycle": "Billing cycle",
+        "renewal": "Renewal",
+        "invoiceCountByStatus": "Invoice count by status"
+      },
+      "tableRows": "{{count}} rows",
+      "centerSubtitleStrong": "Your single reports module — every report opens inline with live data, filtered by branch and date, according to your permissions.",
+      "aiInsightsInline": "AI operational metrics are summarized here for entitled roles. Use filters above to compare company activity alongside AI package usage.",
+      "unsupported": "This report is not available yet.",
       "aiInsightsTitle": "AI platform insights",
       "aiInsightsSubtitle": "Operational metrics from the AI runtime and observability layer",
       "viewAiAnalytics": "View AI analytics",
@@ -1830,8 +2201,33 @@
         "whatsapp": "WhatsApp",
         "messenger": "Messenger",
         "instagram": "Instagram",
+        "calendar": "Calendar",
         "scheduling": "Scheduling",
+        "ticketSla": "Ticket SLA",
         "platformAi": "Platform AI"
+      },
+      "tickets": {
+        "sla": {
+          "title": "Ticket SLA by priority",
+          "subtitle": "Set how many hours each priority has before the SLA due time.",
+          "applyHint": "Changes apply to new tickets, priority changes, and reopened tickets. Open tickets keep their current SLA due time.",
+          "save": "Save SLA settings",
+          "saved": "Ticket SLA settings saved",
+          "saveFailed": "Could not save SLA settings",
+          "readOnly": "You need tickets.manage permission to edit these settings.",
+          "fields": {
+            "urgent": "Urgent (hours)",
+            "urgentHelp": "Default 4 hours",
+            "high": "High (hours)",
+            "highHelp": "Default 8 hours",
+            "normal": "Normal (hours)",
+            "normalHelp": "Default 24 hours",
+            "low": "Low (hours)",
+            "lowHelp": "Default 72 hours",
+            "warning": "Warning window (hours)",
+            "warningHelp": "Mark tickets as at-risk this many hours before SLA is due. Default 1 hour."
+          }
+        }
       },
       "security": {
         "changePassword": "Change Password",
@@ -1842,9 +2238,27 @@
         "activeSessionsDesc": "View and revoke sessions"
       },
       "notifications": {
-        "newBookings": "New Bookings",
-        "invoicePaid": "Invoice Paid",
-        "whatsappAlerts": "WhatsApp Alerts",
+        "newBookings": "New bookings",
+        "newBookingsDesc": "In-app alerts when appointments are created, updated, cancelled, or reminded.",
+        "invoicePaid": "Invoice paid",
+        "invoicePaidDesc": "Alerts when a payment is received for an invoice.",
+        "whatsappAlerts": "WhatsApp alerts",
+        "whatsappAlertsDesc": "Allow outbound WhatsApp notifications for your account.",
+        "inApp": "In-app alerts",
+        "inAppDesc": "Show notifications in the bell inbox.",
+        "emailAlerts": "Email alerts",
+        "emailAlertsDesc": "Allow email notifications for your account.",
+        "channelsTitle": "Delivery channels",
+        "topicsTitle": "Topics",
+        "pageDescription": "Choose what you receive. Changes apply immediately to new notifications.",
+        "configureEmail": "Configure email",
+        "configureWhatsapp": "Configure WhatsApp",
+        "noCompany": "Join or create a company to manage notification preferences.",
+        "loadFailed": "Could not load notification preferences.",
+        "savedTitle": "Preferences saved",
+        "savedDescription": "Your notification preferences were updated.",
+        "saveFailedTitle": "Could not save",
+        "saveFailedDescription": "Please try again.",
         "weeklyReport": "Weekly Report",
         "aiInsights": "AI Insights"
       },
@@ -1858,13 +2272,14 @@
         "description": "Choose how VaultOS looks on this device. Your selection is saved to your profile.",
         "recommended": "Recommended",
         "system": "System",
-        "systemDesc": "Follow your operating system light or dark setting.",
+        "systemDesc": "Follow your device light/dark setting, and restore the original platform UI colors (without Brand Center overrides).",
         "light": "Light",
         "lightDesc": "Always use the light theme.",
         "dark": "Dark",
         "darkDesc": "Always use the dark theme.",
         "saveFailedTitle": "Could not save theme",
-        "saveFailedDescription": "Your theme preference could not be saved. Please try again."
+        "saveFailedDescription": "Your theme preference could not be saved. Please try again.",
+        "colorsResetFailed": "Could not restore the original brand colors. Please try again."
       }
     },
     "suspended": {
@@ -1875,30 +2290,140 @@
   },
   "knowledge": {
     "title": "Knowledge",
-    "subtitle": "Manage company knowledge sources, imported documents, and import status.",
+    "subtitle": "One library + one guided wizard. No tab hopping.",
     "noPermission": "You do not have permission to view knowledge.",
     "featureDisabled": "Knowledge Base is disabled for this company.",
     "companyRequired": "A company context is required to manage knowledge.",
     "sectionNoPermission": "You do not have permission to view this knowledge section.",
+    "library": {
+      "title": "Knowledge library",
+      "subtitle": "Everything your AI employees can search. Add knowledge through the wizard.",
+      "continueWizard": "Continue in wizard",
+      "continueDraft": "Continue draft",
+      "draftBadge": "Draft"
+    },
+    "guide": {
+      "title": "Business path (4 milestones)",
+      "body": "The old tabs are now one wizard: define → ingest → confirm → validate.",
+      "points": {
+        "source": "1) Source — name what this knowledge is about.",
+        "import": "2) Import — upload PDF or paste text.",
+        "documents": "3) Documents — confirm the content landed.",
+        "verify": "4) Verify — ask a test question before going live."
+      }
+    },
+    "wizard": {
+      "title": "Add knowledge",
+      "subtitle": "Four business milestones in one flow — same jobs as the old tabs, without the confusion.",
+      "startCta": "Add knowledge",
+      "emptyHint": "Press Add knowledge and follow the four milestones. You will not need the old tabs.",
+      "stepOf": "Milestone {{current}} of {{total}}",
+      "stepsNav": "Knowledge milestones",
+      "back": "Back",
+      "next": "Next",
+      "saveAndContinue": "Save & continue",
+      "saveDraftExit": "Save as draft & exit",
+      "draftSaved": "Draft saved — continue anytime from the library",
+      "draftSaveFailed": "Could not save draft.",
+      "draftNeedsName": "Enter a display name before saving a draft.",
+      "draftBadge": "Draft autosave on",
+      "finish": "Create & save",
+      "skipUpload": "Skip upload for now",
+      "backToSources": "Back to library",
+      "backToImport": "Back to import",
+      "contentFileHint": "This is the Import milestone — choose a PDF or .txt.",
+      "contentTextPlaceholder": "Or paste text here instead of uploading a file…",
+      "sourceBusinessHint": "Think of this as a folder name (Policies, FAQ, Prices) — not the file yet.",
+      "importForSource": "Importing into: {{name}}",
+      "documentsBusinessHint": "Documents for “{{name}}”. If the list is empty, go back and upload.",
+      "documentsLoading": "Loading documents…",
+      "documentsEmpty": "No documents in this source yet.",
+      "verifyBusinessHint": "Optional but recommended: ask a question a customer might ask, and check that retrieval finds your content.",
+      "verifyKeywordFallbackHint": "Embedding / vector store defaults are not configured yet — verification will use keyword search on your imported text so you can still validate content.",
+      "verifyLanguageMismatchHint": "Keyword search matches the same language as the PDF. Your docs look English — ask in English (e.g. “What is the company policy?”). Cross-language Arabic→English needs semantic embeddings.",
+      "verifyArabicKeywordHint": "You can ask in Arabic. We map the question to English keywords for search, then summarize the answer in Arabic. Source citations stay in the PDF language.",
+      "verifyModeHybrid": "Mode: hybrid (vector + keyword)",
+      "verifyModeKeyword": "Mode: keyword search",
+      "verifyQuestion": "Test question",
+      "verifyQuestionPlaceholder": "e.g. What is the company policy? / ما هي سياسة الشركة؟",
+      "verifySampleFromTitle": "What is in {{title}}?",
+      "verifySampleArabicFromTitle": "ماذا يوجد في {{title}}؟",
+      "verifySampleEnglishPolicy": "What is the company policy?",
+      "verifySampleEnglishHours": "What are the business hours?",
+      "verifySampleArabicPolicy": "ما هي سياسة الشركة؟",
+      "verifySampleArabicHours": "ما هي ساعات العمل؟",
+      "verifySampleArabicOverview": "عن إيه قاعدة المعرفة دي؟",
+      "verifyAnswerLabel": "Answer",
+      "verifyCitationsHint": "Source passages (original document language).",
+      "runVerify": "Run retrieval check",
+      "verifyResultsEmpty": "Results appear here after you run the check.",
+      "verifyEmptyLanguageMismatch": "No matches — you asked in Arabic while the PDF is English, and keyword mode does not translate. Try an English question from the suggestions above.",
+      "verifyEmptyNoHits": "No matching passages found. Try exact words from the PDF (e.g. policy, hours). If you just imported, click Run again — drafts are published for search automatically.",
+      "successWithImport": "Knowledge source created and document imported.",
+      "successSourceOnly": "Knowledge source created. You can upload documents in the Import milestone.",
+      "assignEmployee": "Assign to AI employee",
+      "viewSources": "Back to library",
+      "guide": {
+        "title": "Why this wizard?",
+        "body": "We folded Sources, Import, Documents, and Retrieval into four ordered milestones.",
+        "points": {
+          "source": "Source = define the container.",
+          "import": "Import = put content in.",
+          "documents": "Documents = confirm it is stored.",
+          "verify": "Verify = prove the AI can find it."
+        }
+      },
+      "steps": {
+        "source": "Source",
+        "import": "Import",
+        "documents": "Documents",
+        "verify": "Verify"
+      },
+      "stepHints": {
+        "source": "Milestone 1 (was: Sources tab) — name the knowledge container.",
+        "import": "Milestone 2 (was: Import tab) — upload PDF or paste text.",
+        "documents": "Milestone 3 (was: Documents tab) — review what was ingested.",
+        "verify": "Milestone 4 (was: Retrieval Tester) — validate search quality."
+      }
+    },
     "nav": {
-      "sources": "Sources",
+      "sources": "Library",
+      "library": "Library",
+      "create": "Add knowledge",
       "documents": "Documents",
-      "importStatus": "Import Status",
+      "import": "Import",
+      "importStatus": "Import",
       "retrievalTester": "Retrieval Tester"
     },
     "sources": {
-      "createTitle": "Create Source",
-      "listTitle": "Knowledge Sources",
+      "createTitle": "Create knowledge source",
+      "createHint": "A source is only a folder/container — not the PDF itself.",
+      "flowHint": "Recommended: enter a name → Create & upload → pick your PDF on the next screen.",
+      "listTitle": "Knowledge sources",
+      "listSubtitle": "Containers that AI employees can search when answering.",
       "displayName": "Display name",
+      "displayNamePlaceholder": "e.g. Company policies",
       "key": "Source key",
+      "keyPlaceholder": "company-policies",
+      "keyHint": "Technical id (auto-filled from the name). You can edit it.",
       "type": "Source type",
+      "typeHint": "Choose PDF if you will upload PDF files next. This does not upload the file yet.",
       "typeManual": "Manual",
       "typePolicy": "Policy",
       "createAction": "Create source",
+      "createAndUpload": "Create & upload PDF",
+      "createOnly": "Create only",
+      "cancelCreate": "Cancel",
       "createSuccess": "Knowledge source created.",
+      "createSuccessHint": "Next: import a PDF or text document into this source.",
+      "createSuccessUploadHint": "Opening Import so you can upload the PDF now.",
       "createFailed": "Could not create knowledge source.",
       "defaultDescription": "Company knowledge source",
       "empty": "No knowledge sources yet.",
+      "emptyHint": "Create a source first, then import documents so AI employees can use them.",
+      "manageDenied": "You can view sources, but creating or uploading requires knowledge manage permission.",
+      "goImport": "Go to Import",
+      "uploadDocs": "Upload docs",
       "enabled": "Enabled",
       "disabled": "Disabled"
     },
@@ -1949,23 +2474,39 @@
       }
     },
     "import": {
-      "uploadTitle": "Import Document",
+      "uploadTitle": "Import document",
+      "uploadSubtitle": "Add PDF or text into a knowledge source so retrieval can index it.",
       "source": "Knowledge source",
       "selectSource": "Select a source",
       "documentTitle": "Document title",
       "documentTitlePlaceholder": "Optional — defaults to file name",
       "pdfFile": "PDF or text file",
+      "chooseFile": "Choose file",
+      "changeFile": "Change file",
+      "clearFile": "Remove file",
+      "fileHint": "PDF or .txt — select a file here before importing.",
+      "contentRequiredHint": "Import needs either a selected file or pasted text below.",
       "plainText": "Plain text fallback",
       "plainTextPlaceholder": "Paste text content when not uploading a file",
       "submit": "Import document",
       "success": "Document imported successfully.",
       "failed": "Document import failed.",
-      "noSources": "Create an enabled knowledge source before importing documents.",
-      "statusTitle": "Import Status",
+      "noSources": "No enabled knowledge sources yet.",
+      "noSourcesHint": "Create a source on the Sources tab, then come back here to upload.",
+      "createSourceFirst": "Create a source first",
+      "statusTitle": "Recent imports",
       "statusEmpty": "No imported documents yet.",
       "defaultTextTitle": "Imported Text Document",
+      "pageCount": "{{count}} pages",
+      "status": {
+        "completed": "Completed",
+        "pending": "Pending",
+        "processing": "Processing",
+        "failed": "Failed"
+      },
       "validation": {
-        "noContent": "Provide a PDF/text file or plain text content."
+        "noContent": "Provide a PDF/text file or plain text content.",
+        "unsupportedFile": "Unsupported file type. Use PDF or .txt only."
       }
     },
     "retrieval": {
@@ -1983,7 +2524,9 @@
       "citations": "Citations",
       "confidence": "{{value}}% confidence",
       "latency": "{{ms}} ms",
-      "page": "Page {{page}}"
+      "page": "Page {{page}}",
+      "queryPlaceholder": "e.g. What are your business hours?",
+      "resultsEmpty": "Retrieval results will appear here after you run a test."
     }
   },
   "aiRuntime": {
@@ -2278,6 +2821,18 @@
       "find_customer": {
         "displayName": "Find Customer",
         "description": "Look up a customer by phone, email, or customer ID."
+      },
+      "create_ticket": {
+        "displayName": "Create Ticket",
+        "description": "Open a support ticket from the conversation."
+      },
+      "find_ticket": {
+        "displayName": "Find Ticket",
+        "description": "Look up a support ticket by number and expose its details."
+      },
+      "assign_ticket": {
+        "displayName": "Assign Ticket",
+        "description": "Assign a support ticket to a team member."
       }
     },
     "validation": {
@@ -2304,6 +2859,15 @@
           "duration": "duration",
           "customer": "customer",
           "notes": "notes"
+        },
+        "createTicket": {
+          "subject": "subject",
+          "description": "description",
+          "priority": "priority",
+          "customer": "customer"
+        },
+        "findTicket": {
+          "ticketNumber": "ticket number"
         },
         "findCustomer": {
           "value": "lookup value"
@@ -3071,6 +3635,21 @@
         "customer": "Customer",
         "notes": "Notes"
       },
+      "createTicket": {
+        "hint": "Bind each field to a previous answer or AI decision, or enter a fixed value.",
+        "outputHint": "After create, use {{ticket.ticketNumber}} (or {{ticket_number}}) in the next Send Message to tell the customer their ticket number.",
+        "subject": "Subject",
+        "description": "Description",
+        "priority": "Priority",
+        "priorityPlaceholder": "normal, high, urgent…",
+        "customer": "Customer ID",
+        "customerPlaceholder": "Usually customer.id from Find/Create Customer"
+      },
+      "findTicket": {
+        "hint": "Bind the ticket number from a previous question, then use If/Else on lookup.status or ticket.exists.",
+        "ticketNumber": "Ticket number",
+        "ticketNumberPlaceholder": "e.g. TKT-000005"
+      },
       "findCustomer": {
         "lookupBy": "Lookup By",
         "value": "Value",
@@ -3086,7 +3665,10 @@
       "providers": "providers available",
       "subgroups": {
         "last_interaction": "Last Interaction",
-        "saved_variables": "Saved variables"
+        "saved_variables": "Saved variables",
+        "ai_outputs": "AI outputs",
+        "ticket": "Ticket",
+        "customer_lookup": "Customer lookup"
       },
       "categories": {
         "customer": "Customer",
@@ -3096,7 +3678,7 @@
         "company": "Company",
         "workflow": "Workflow",
         "system": "System",
-        "ai": "Future AI"
+        "ai": "AI"
       },
       "fields": {
         "customer": {
@@ -3144,8 +3726,8 @@
           "agent_name": "Agent name"
         },
         "ai": {
-          "intent": "Detected intent",
-          "confidence": "Confidence score"
+          "intent": "Detected intent (legacy)",
+          "confidence": "Confidence score (legacy)"
         }
       }
     },
@@ -3161,6 +3743,41 @@
     "fields": {
       "message": "Message",
       "messagePlaceholder": "Write a friendly message your customer will understand…",
+      "messageArabic": "Message (Arabic)",
+      "messageEnglish": "Message (English)",
+      "messageArabicPlaceholder": "اكتب الرسالة بالعربية…",
+      "messageEnglishPlaceholder": "Write the message in English…",
+      "bilingualMessageHint": "Enter Arabic and English. WhatsApp sends the version that matches the customer’s language (detected from their first message).",
+      "bilingualButtonsHint": "WhatsApp allows max 3 buttons. Add Arabic and English labels (max 20 characters each).",
+      "whatsappButtonLimit": "WhatsApp only sends the first {{max}} buttons. Extra buttons are ignored — use a List node for 4+ options.",
+      "whatsappButtonDropped": "Not sent on WhatsApp (beyond the 3-button limit)",
+      "buttonLabelArabic": "Arabic label",
+      "buttonLabelEnglish": "English label",
+      "buttonLabelArabicPlaceholder": "e.g. Book appointment",
+      "buttonLabelEnglishPlaceholder": "e.g. Book appointment",
+      "questionArabic": "Question (Arabic)",
+      "questionEnglish": "Question (English)",
+      "questionArabicPlaceholder": "اكتب السؤال بالعربية…",
+      "questionEnglishPlaceholder": "Write the question in English…",
+      "promptArabic": "Prompt (Arabic)",
+      "promptEnglish": "Prompt (English)",
+      "promptArabicPlaceholder": "اكتب النص التوضيحي بالعربية…",
+      "promptEnglishPlaceholder": "Write the prompt in English…",
+      "titleArabic": "Title (Arabic)",
+      "titleEnglish": "Title (English)",
+      "titleArabicPlaceholder": "عنوان القائمة بالعربية…",
+      "titleEnglishPlaceholder": "List title in English…",
+      "bodyArabic": "Body (Arabic)",
+      "bodyEnglish": "Body (English)",
+      "bodyArabicPlaceholder": "نص القائمة بالعربية…",
+      "bodyEnglishPlaceholder": "List body in English…",
+      "menuButtonArabic": "Menu button (Arabic)",
+      "menuButtonEnglish": "Menu button (English)",
+      "menuButtonArabicPlaceholder": "عرض الخيارات",
+      "menuButtonEnglishPlaceholder": "View options",
+      "listTitleArabic": "Arabic title {{number}}",
+      "listTitleEnglish": "English title {{number}}",
+      "bilingualListRowHint": "Option ID stays fixed for routing. Add Arabic and English titles.",
       "characterCount": "{{count}} characters",
       "emojiPlaceholder": "Add emoji",
       "buttons": "Buttons",
@@ -3172,10 +3789,13 @@
       "moveOptionDown": "Move option down",
       "buttonLabel": "Button {{number}}",
       "buttonId": "Selection ID",
+      "buttonIdPlaceholder": "e.g. book",
       "buttonIdHint": "Used in routing rules. Renaming updates downstream conditions automatically.",
       "question": "Question",
       "questionPlaceholder": "What would you like to ask?",
       "saveAnswerAs": "Save answer as",
+      "saveAnswerAsPlaceholder": "e.g. ticket_subject",
+      "saveAnswerAsHint": "This name appears in the variable picker for later steps.",
       "saveSelectedValueAs": "Save selected value to",
       "saveSelectedValueAsPlaceholder": "customer_gender",
       "lookupOutputVariable": "Output variable",
@@ -3544,6 +4164,15 @@
       "published": "Published",
       "draft": "Draft"
     },
+    "listGuide": {
+      "title": "How AI Employees work",
+      "body": "This list is your home. Open any employee to manage Overview, Setup, Channels, Knowledge & tools, Lifecycle, and Activity tabs.",
+      "points": {
+        "create": "Create a draft with the wizard, then open the profile workspace (tabs) — not only the wizard.",
+        "publish": "Publish from the Lifecycle tab — drafts never answer customers.",
+        "channels": "Use the Channels tab so WhatsApp / Messenger / Instagram match the right employee."
+      }
+    },
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Search by name, department, provider…",
@@ -3563,12 +4192,17 @@
       "owner": "Owner",
       "created": "Created",
       "updated": "Updated",
-      "actions": "Actions"
+      "actions": "Actions",
+      "channels": "Channels"
     },
     "actions": {
       "view": "View",
       "edit": "Edit",
-      "delete": "Archive"
+      "continue": "Continue setup",
+      "delete": "Archive",
+      "menu": "Actions",
+      "openLifecycle": "Open lifecycle & publish",
+      "openChannels": "Open messaging channels"
     },
     "delete": {
       "title": "Archive AI Employee",
@@ -3580,10 +4214,37 @@
     },
     "wizard": {
       "title": "Create AI Employee",
-      "subtitle": "Configure a profile only — execution remains in Agent Runtime.",
+      "subtitle": "Profile setup only — publish from Lifecycle so messaging channels can use this employee.",
       "back": "Back",
       "next": "Next",
-      "create": "Create profile",
+      "create": "Save",
+      "finish": "Save",
+      "saveDraftExit": "Save draft & exit",
+      "draftSaved": "Draft saved — you can continue anytime from the list",
+      "draftFinished": "Saved",
+      "draftBadge": "Draft autosave on",
+      "draftNeedsName": "Enter a display name before saving a draft.",
+      "stepOf": "Step {{current}} of {{total}}",
+      "stepsNav": "Wizard steps",
+      "guide": {
+        "title": "What you are setting up",
+        "body": "This wizard creates a draft AI employee profile. Customers are not contacted until you publish from Lifecycle.",
+        "points": {
+          "profile": "General + provider + model define who this employee is and which AI connection it uses.",
+          "channels": "Channel routing decides which WhatsApp / Messenger / Instagram traffic this employee can answer.",
+          "publish": "After create, open the profile → Lifecycle → Publish to go live.",
+          "draft": "Each Next click saves a draft in the list so you can leave and resume later."
+        }
+      },
+      "stepHints": {
+        "general": "Name the employee, assign an owner, and choose which WhatsApp / Messenger / Instagram traffic can route to them.",
+        "provider": "Pick the AI provider type (e.g. OpenAI). Runtime uses the company default connection for that type.",
+        "model": "Choose the chat model id (e.g. gpt-4.1) plus temperature and max tokens for replies.",
+        "prompt": "Describe role, tone, language, and what the employee must / must not do. Starter templates only fill text — tools stay unrestricted.",
+        "knowledge": "Optional: attach company knowledge sources the employee may search when answering.",
+        "tools": "Optional: allow system actions for tickets, CRM, bookings, leads, and knowledge search. Retrieval check is in Knowledge — here pick runtime tools for chat.",
+        "review": "Confirm the draft. After create, publish from Lifecycle before customers can talk to it."
+      },
       "steps": {
         "general": "General",
         "provider": "Provider",
@@ -3595,7 +4256,15 @@
       }
     },
     "edit": {
-      "title": "Edit AI Employee"
+      "title": "Edit AI Employee",
+      "guide": {
+        "title": "Editing a profile",
+        "body": "Changes stay on the draft until you publish again from Lifecycle.",
+        "points": {
+          "profile": "Update identity, provider, prompt, knowledge, and tools here.",
+          "publish": "If the employee is already live, re-publish from Lifecycle after major changes."
+        }
+      }
     },
     "detail": {
       "general": "General information",
@@ -3609,40 +4278,111 @@
       "executions": "Recent executions",
       "notConnected": "Not connected",
       "placeholder": "Coming soon",
-      "noPrompt": "No prompt configured"
+      "noPrompt": "No prompt configured",
+      "noData": "No data yet",
+      "estimatedCost": "Est. daily cost",
+      "emptyKnowledge": "No knowledge sources assigned",
+      "emptyTools": "No tools assigned",
+      "emptySkills": "No skills assigned",
+      "guide": {
+        "title": "How this employee page works",
+        "body": "Use the tabs below. Overview shows next steps; Setup edits runtime settings; Channels binds messaging; Lifecycle publishes the draft.",
+        "points": {
+          "publish": "Publish from Lifecycle — draft employees never answer customers.",
+          "channels": "Channels tab shows which WhatsApp / Messenger / Instagram connections match.",
+          "tools": "Knowledge & tools controls what the employee can search and do.",
+          "omnichannel": "After publish, inbound messages can auto-select this employee."
+        }
+      }
     },
     "form": {
       "displayName": "Display name",
       "internalName": "Internal name",
       "internalNamePlaceholder": "support-agent",
+      "internalNameHint": "Technical system key. If left empty, it is generated from the display name.",
       "department": "Department",
+      "departmentPlaceholder": "Customer Support",
       "owner": "Owner",
       "selectOwner": "Select owner",
       "noOwner": "Unassigned",
       "status": "Status",
-      "avatarUrl": "Avatar URL",
+      "avatarUrl": "Avatar URL (optional)",
+      "avatarUrlPlaceholder": "https://…/photo.png",
+      "avatarUrlHint": "Optional image URL shown next to this employee in the list and profile. Leave empty to use initials.",
       "description": "Description",
       "tags": "Tags",
       "tagsPlaceholder": "support, sales, tier-1",
       "providerConnection": "Provider connection",
       "selectProvider": "Select provider",
-      "providerHint": "Select the tenant provider connection this employee should use at runtime.",
-      "availableProviders": "{{count}} provider types available on the platform.",
+      "providerHint": "Choose the AI provider type this employee will use. Duplicate company connections for the same provider are collapsed into one option; runtime uses the company default connection.",
+      "defaultProviderConnection": "default",
+      "noProviderConnections": "No enabled provider connections for this company. Configure one under AI Platform / Provider settings first.",
+      "availableProviders": "{{count}} provider types available.",
       "model": "Model",
+      "modelHint": "Pick a model from the suggestions or type any model id supported by your provider.",
       "temperature": "Temperature",
+      "temperatureHint": "0 = precise, ~0.7 = balanced, higher = more creative.",
       "maxTokens": "Max tokens",
+      "maxTokensHint": "Upper limit for each reply length.",
       "systemPrompt": "System prompt",
       "systemPromptPlaceholder": "Describe the employee role, tone, and constraints…",
-      "knowledgeHint": "Assign knowledge sources available to this employee.",
-      "toolsHint": "Select allowed tools for this employee profile.",
+      "promptTemplates": {
+        "title": "Quick start templates",
+        "hint": "Choose a starter — it only fills the prompt text. It does not limit tools, knowledge, or channels.",
+        "editHint": "You can edit freely after selecting a template.",
+        "support": {
+          "title": "Customer support",
+          "summary": "Helpful, calm, escalates when needed",
+          "body": "You are a customer support AI employee for this company.\n\nGoals:\n- Answer clearly in the customer's language (Arabic or English).\n- Resolve common questions using available knowledge and tools.\n- Ask one clarifying question when information is missing.\n- Escalate politely to a human when the request is sensitive, unpaid, or outside your tools.\n\nStyle:\n- Professional, warm, concise.\n- Never invent policies, prices, or account data.\n- If unsure, say so and offer the next best step."
+        },
+        "sales": {
+          "title": "Sales assistant",
+          "summary": "Qualify leads and book next steps",
+          "body": "You are a sales AI employee for this company.\n\nGoals:\n- Understand the lead's need, budget signals, and timeline.\n- Explain products/services honestly using available knowledge.\n- Suggest a clear next step (call, meeting, quote, or follow-up).\n- Capture key facts with tools when available.\n\nStyle:\n- Consultative, not pushy.\n- Prefer short messages suitable for WhatsApp / Messenger.\n- Never invent discounts or commitments the company did not approve."
+        },
+        "receptionist": {
+          "title": "Reception / triage",
+          "summary": "Greet, classify, route",
+          "body": "You are a front-desk AI employee for this company.\n\nGoals:\n- Greet the customer and identify why they contacted us.\n- Collect name, preferred channel, and request type.\n- Route support vs sales vs booking requests to the right flow.\n- Keep handoff notes clear for human agents.\n\nStyle:\n- Friendly and brief.\n- Confirm understanding before acting.\n- Never expose internal IDs or system errors to the customer."
+        },
+        "operations": {
+          "title": "Operations helper",
+          "summary": "Status checks and follow-ups",
+          "body": "You are an operations AI employee for this company.\n\nGoals:\n- Help staff and customers with status checks, scheduling, and process questions.\n- Use tools/knowledge to fetch facts instead of guessing.\n- Summarize actions taken and remaining blockers.\n- Escalate when a change requires human approval.\n\nStyle:\n- Clear, structured, actionable.\n- Prefer bullet points for status updates.\n- Stay within company policy and available permissions."
+        }
+      },
+      "knowledgeHint": "Optional: assign company knowledge sources this employee may search when answering.",
+      "toolsHint": "Optional: allow system actions for tickets, CRM, bookings, leads, and knowledge search. Retrieval check lives in the Knowledge module — here choose runtime tools this chat employee may call.",
       "provider": "Provider",
       "knowledge": "Knowledge",
       "tools": "Tools",
-      "selectedCount": "{{count}} selected"
+      "selectedCount": "{{count}} selected",
+      "statusLifecycleHint": "Status changes to Published only via Lifecycle → Publish.",
+      "knowledgeEmpty": "No knowledge sources yet. You can continue and assign them later.",
+      "knowledgeEmptyHint": "Open Knowledge to create a source and import documents, then return here.",
+      "knowledgeManageHint": "Need more sources or documents? Manage them in the Knowledge module.",
+      "openKnowledgeModule": "Open Knowledge module",
+      "toolsEmpty": "No tools available yet. You can continue and assign tools later.",
+      "channelRouting": {
+        "title": "Channel routing",
+        "hint": "Choose which messaging channels this employee can auto-reply on. Publish from Lifecycle when ready.",
+        "omnichannel": "All messaging channels",
+        "tickets": "Handle support tickets",
+        "companyChannels": "Company channel connections",
+        "noCompanyChannels": "No WhatsApp / Messenger / Instagram company channels yet. Configure them under Channels.",
+        "noneSelected": "No channels selected",
+        "publishHint": "After creating the profile, open Lifecycle and Publish so inbound messages can use this employee.",
+        "channels": {
+          "whatsapp": "WhatsApp",
+          "messenger": "Messenger",
+          "instagram": "Instagram",
+          "channel": "Channel"
+        }
+      }
     },
     "config": {
       "title": "Runtime configuration",
-      "subtitle": "Preview and tune employee runtime binding. Execution remains in Agent Runtime.",
+      "subtitle": "Preview and tune employee runtime binding. Execution stays in the AI runtime.",
       "ready": "Ready",
       "notReady": "Not ready",
       "issueCount": "{{count}} issues",
@@ -3725,7 +4465,26 @@
       "unpublishedDraft": "Unpublished changes",
       "readiness": {
         "title": "Readiness score",
-        "subtitle": "Derived from validation results — no runtime execution."
+        "subtitle": "Derived from validation results — no runtime execution.",
+        "categories": {
+          "prompt": "Prompt",
+          "provider": "Provider",
+          "model": "Model",
+          "runtime": "Runtime",
+          "knowledge": "Knowledge",
+          "tools": "Tools",
+          "permissions": "Permissions",
+          "limits": "Limits"
+        },
+        "missing": {
+          "prompt_required": "System prompt is required",
+          "provider_connection_required": "Link an enabled company AI provider connection",
+          "model_required": "Model is required",
+          "runtime_binding_incomplete": "Runtime binding needs a matching provider connection",
+          "knowledge_sources_required": "Assign at least one knowledge source",
+          "knowledge_keyword_fallback": "No vector collection yet — keyword search will be used",
+          "tools_optional_empty": "No tools selected (optional for chat-only)"
+        }
       },
       "actions": {
         "publish": "Publish",
@@ -3748,7 +4507,17 @@
         "confirm": "Publish version",
         "done": "Done",
         "success": "Employee published successfully",
-        "failed": "Publish failed"
+        "failed": "Publish failed",
+        "missing": {
+          "provider": "AI provider connection missing",
+          "embedding": "Embedding connection missing (optional)",
+          "vector_store": "Vector store missing (optional)",
+          "collection": "Vector collection missing (optional)",
+          "employee_provider": "Employee provider is missing",
+          "employee_model": "Employee model is missing",
+          "provider_connection": "No matching company provider connection",
+          "knowledge_binding": "Knowledge vector binding missing (optional — keyword search works)"
+        }
       },
       "rollback": {
         "success": "Rolled back to selected version"
@@ -3829,7 +4598,8 @@
           "offline": "Offline",
           "busy": "Busy",
           "idle": "Idle",
-          "waiting": "Waiting"
+          "waiting": "Waiting",
+          "not_published": "Not published"
         }
       },
       "queue": {
@@ -4217,6 +4987,165 @@
         "score": "Health score: {{score}}%",
         "recommendations": "Recommendations"
       }
+    },
+    "channelBinding": {
+      "title": "Inbound channel binding",
+      "subtitle": "Auto-reply eligibility for WhatsApp, Messenger, and Instagram.",
+      "ready": "Ready for inbound",
+      "notReady": "Not ready",
+      "loading": "Loading channels…",
+      "noChannels": "No enabled messaging channels found for this company.",
+      "openChannels": "Open messaging channels",
+      "matched": "Matched",
+      "unmatched": "Not tagged",
+      "score": "score {{score}}",
+      "fallbackWarning": "Published with no channel tags: this employee may be used as a fallback for any inbound channel.",
+      "checks": {
+        "published": "Employee is published",
+        "notPublished": "Employee is not published yet — use Lifecycle → Publish",
+        "channels": "{{count}} channel tag match(es)",
+        "runtimeOk": "Provider, model, and prompt look configured",
+        "runtimeMissing": "Provider, model, or prompt still missing"
+      },
+      "capabilities": "Capabilities & routing tags",
+      "transferableFlow": {
+        "title": "Employee transferable workflow",
+        "hint": "Pick one automation flow. The employee answers first; booking/appointment requests auto-transfer into the flow. Keep the channel workflow toggle off.",
+        "placeholder": "Select a workflow…",
+        "none": "No workflow transfer",
+        "save": "Save transferable workflow",
+        "toolMissing": "Enabling the transfer tool on save…",
+        "savedHint": "Linked. Send a booking/appointment request on WhatsApp to test.",
+        "oneFlowNote": "Only one active flow is listed because that is the only active flow for this company."
+      }
+    },
+    "tags": {
+      "companyChannel": "Company channel {{id}}",
+      "channel": "Channel: {{key}}",
+      "capability": "Capability: {{key}}",
+      "language": "Language: {{code}}",
+      "capabilities": {
+        "omnichannel": "All messaging channels",
+        "tickets": "Support tickets",
+        "ai-runtime": "AI runtime",
+        "knowledge": "Knowledge",
+        "ticket-creation": "Ticket creation",
+        "escalation": "Escalation",
+        "handover-human": "Handover to human",
+        "conversation-summary": "Conversation summary",
+        "suggested-replies": "Suggested replies"
+      },
+      "languages": {
+        "en": "English",
+        "ar": "Arabic"
+      }
+    },
+    "fields": {
+      "departments": {
+        "customerSupport": "Customer Support",
+        "support": "Support",
+        "sales": "Sales",
+        "operations": "Operations",
+        "marketing": "Marketing"
+      },
+      "providers": {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "google": "Google",
+        "azure": "Azure"
+      }
+    },
+    "tools": {
+      "categories": {
+        "knowledge": "Knowledge",
+        "support": "Support",
+        "crm": "CRM",
+        "sales": "Sales",
+        "scheduling": "Scheduling",
+        "billing": "Billing",
+        "handoff": "Handoff",
+        "automation": "Automation",
+        "control": "Control",
+        "other": "Other"
+      },
+      "names": {
+        "knowledge_lookup": "Knowledge Lookup",
+        "knowledge_search": "Knowledge Search",
+        "faq": "FAQ",
+        "crm_lookup": "CRM Lookup",
+        "customer_profile": "Customer Profile",
+        "create_customer": "Create Customer",
+        "search_customer": "Search Customers",
+        "update_customer": "Update Customer",
+        "merge_customers": "Merge Customers",
+        "import_customers": "Import Customers",
+        "find_duplicate_customers": "Find Duplicate Customers",
+        "create_ticket": "Create Ticket",
+        "update_ticket": "Update Ticket",
+        "close_ticket": "Close Ticket",
+        "assign_ticket": "Assign Ticket",
+        "add_ticket_comment": "Add Ticket Comment",
+        "change_ticket_priority": "Change Ticket Priority",
+        "change_ticket_status": "Change Ticket Status",
+        "search_ticket": "Search Tickets",
+        "search_availability": "Search Availability",
+        "find_next_available": "Find Next Available",
+        "recommend_appointment": "Recommend Appointment",
+        "create_booking": "Create Booking",
+        "booking_search": "Booking Search",
+        "search_bookings": "Search Bookings",
+        "reschedule_booking": "Reschedule Booking",
+        "cancel_booking": "Cancel Booking",
+        "check_in": "Check In",
+        "check_out": "Check Out",
+        "booking": "Booking",
+        "invoice_search": "Invoice Search",
+        "notification": "Notification",
+        "escalation": "Escalation",
+        "escalate_to_human": "Escalate To Human",
+        "queue_handoff": "Queue Handoff",
+        "return_to_ai": "Return To AI",
+        "transfer_to_workflow": "Transfer To Workflow",
+        "create_lead": "Create Lead",
+        "update_lead": "Update Lead",
+        "qualify_lead": "Qualify Lead",
+        "convert_lead": "Convert Lead",
+        "assign_lead": "Assign Lead",
+        "search_lead": "Search Leads",
+        "merge_lead": "Merge Leads",
+        "score_lead": "Score Lead",
+        "suggest_next_action": "Suggest Next Action"
+      }
+    },
+    "workspace": {
+      "tabs": {
+        "overview": "Overview",
+        "setup": "Setup",
+        "channels": "Channels",
+        "knowledge": "Knowledge & tools",
+        "lifecycle": "Lifecycle",
+        "activity": "Activity"
+      },
+      "tabsNav": "Employee sections",
+      "overview": {
+        "title": "What to do next",
+        "body": "This profile page is where you finish setup, connect channels, and publish. The create wizard only collects the draft.",
+        "statusDraft": "Draft — not answering customers yet",
+        "statusPublished": "Published — can answer on matched channels",
+        "statusDisabled": "Disabled — paused",
+        "statusArchived": "Archived",
+        "nextSteps": "Next steps",
+        "stepContinue": "Review or finish profile setup (provider, model, prompt).",
+        "stepChannels": "Choose which WhatsApp / Messenger / Instagram traffic this employee can answer.",
+        "stepKnowledge": "Confirm knowledge sources and allowed tools.",
+        "stepPublish": "Publish from Lifecycle so the employee goes live.",
+        "ctaContinue": "Continue setup",
+        "ctaChannels": "Open channels",
+        "ctaPublish": "Go to publish",
+        "ctaEdit": "Edit profile",
+        "runtimeNotPublished": "Not published",
+        "summaryTitle": "Profile summary"
+      }
     }
   },
   "branches": {
@@ -4368,6 +5297,133 @@
     "noPayments": "No payments yet.",
     "noRefunds": "No refunds yet."
   },
+  "financialWorkspace": {
+    "title": "Invoices & Financial Billing",
+    "subtitle": "Manage invoices, payments, and financial accounts in one place",
+    "refresh": "Refresh",
+    "export": "Export",
+    "exportStarted": "Export started",
+    "createInvoice": "Create invoice",
+    "recordPayment": "Record payment",
+    "paymentRecorded": "Payment recorded",
+    "paymentFailed": "Could not record payment",
+    "paymentNeedsCustomer": "This invoice has no customer. Link a customer before recording a payment.",
+    "loadError": "Could not load financial data",
+    "loadingDetail": "Loading invoice details…",
+    "searchPlaceholder": "Search invoice, customer, or payment…",
+    "resetFilters": "Reset",
+    "recentInvoices": "Latest invoices",
+    "recentPayments": "Latest payments",
+    "paymentHistory": "Payment history",
+    "lineItems": "Line items",
+    "overdueBadge": "Overdue",
+    "receiptsHint": "Completed payments shown as receipt records (customer financial domain).",
+    "tabs": {
+      "overview": "Overview",
+      "invoices": "Invoices",
+      "payments": "Payments",
+      "receipts": "Receipts",
+      "accounts": "Financial accounts",
+      "reports": "Financial reports"
+    },
+    "filters": {
+      "invoiceStatus": "Invoice status",
+      "paymentStatus": "Payment status",
+      "allStatuses": "All statuses"
+    },
+    "kpis": {
+      "invoiceCount": "Total invoices",
+      "billed": "Total billed",
+      "paid": "Total paid",
+      "due": "Amount due",
+      "overdue": "Overdue",
+      "collectionRate": "Collection rate",
+      "averageInvoice": "Average invoice"
+    },
+    "charts": {
+      "overTime": "Invoices & payments over time",
+      "invoiced": "Invoiced",
+      "paid": "Paid",
+      "invoiceStatus": "Invoice status",
+      "paymentStatus": "Payment status"
+    },
+    "empty": {
+      "charts": "Not enough financial data for this period",
+      "invoices": "No invoices in the selected period",
+      "payments": "No payments",
+      "receipts": "No receipts yet",
+      "accounts": "No financial accounts yet"
+    },
+    "cols": {
+      "invoice": "Invoice #",
+      "receipt": "Receipt #",
+      "customer": "Customer",
+      "date": "Date",
+      "dueDate": "Due date",
+      "amount": "Amount",
+      "total": "Total",
+      "paid": "Paid",
+      "remaining": "Remaining",
+      "status": "Status",
+      "method": "Method",
+      "actions": "Actions",
+      "invoices": "Invoices",
+      "billed": "Billed",
+      "due": "Due",
+      "overdue": "Overdue",
+      "lastActivity": "Last activity",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "tax": "Tax",
+      "description": "Description",
+      "qty": "Qty",
+      "unitPrice": "Unit price",
+      "reference": "Reference"
+    },
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "pay": "Record payment"
+    },
+    "status": {
+      "invoice": {
+        "draft": "Draft",
+        "pending": "Pending",
+        "issued": "Issued",
+        "partially_paid": "Partially paid",
+        "paid": "Paid",
+        "cancelled": "Cancelled",
+        "refunded": "Refunded"
+      },
+      "payment": {
+        "pending": "Pending",
+        "processing": "Processing",
+        "completed": "Completed",
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "partially_refunded": "Partially refunded"
+      }
+    },
+    "method": {
+      "cash": "Cash",
+      "card": "Card",
+      "bank_transfer": "Bank transfer",
+      "wallet": "Wallet",
+      "online": "Online",
+      "mixed": "Mixed"
+    },
+    "reports": {
+      "sales": "Sales report",
+      "collection": "Collections report",
+      "overdue": "Overdue report",
+      "due": "Outstanding report",
+      "debtors": "Debtor customers",
+      "average": "Average invoice"
+    },
+    "payAmount": "Amount",
+    "payMethod": "Payment method",
+    "confirmPay": "Confirm payment"
+  },
   "executive": {
     "title": "Executive Intelligence",
     "subtitle": "Decision-support platform for owners, executives, and branch managers.",
@@ -4427,8 +5483,8 @@
     }
   },
   "executiveDashboard": {
-    "title": "Executive Dashboard",
-    "subtitle": "Enterprise operations overview — what is happening, what needs attention, and what to do next.",
+    "title": "Executive Intelligence",
+    "subtitle": "One screen for revenue, operations, risks, and the next best action.",
     "defaultCompany": "Your company",
     "loading": "Loading executive dashboard",
     "refresh": "Refresh",
@@ -4460,7 +5516,17 @@
       "bookings": "Bookings",
       "invoices": "Outstanding Invoices",
       "empty": "—",
-      "error": "Unavailable"
+      "error": "Unavailable",
+      "revenueToday": "Revenue today",
+      "outstanding": "Outstanding",
+      "collectedToday": "Collected today",
+      "bookingsToday": "Bookings today",
+      "completedOps": "Completed operations",
+      "utilization": "Utilization",
+      "newCustomers": "New customers",
+      "conversionRate": "Conversion rate",
+      "pendingPayments": "Pending payments",
+      "noShowRate": "No-show rate"
     },
     "analytics": {
       "revenueTrend": "Revenue Trend",
@@ -4476,17 +5542,18 @@
       "noData": "Not enough snapshot data to chart this metric yet."
     },
     "activity": {
-      "title": "Live Activity",
-      "empty": "No dashboard events yet.",
-      "loadMore": "Infinite scroll will load more activity in a future sprint.",
+      "title": "System sync activity",
+      "empty": "No provider sync events yet.",
       "providerSuccess": "Provider synced",
       "providerFailed": "Provider failed",
       "providerSkipped": "Provider skipped",
-      "warning": "Dashboard warning"
+      "warning": "Dashboard warning",
+      "refresh": "Refresh activity",
+      "openIntegrations": "Open integrations"
     },
     "summary": {
-      "title": "AI Executive Summary",
-      "subtitle": "Rule-based insights derived from the current dashboard snapshot.",
+      "title": "Executive summary",
+      "subtitle": "Rule-based insights from the current dashboard snapshot (AI-ready, not generative).",
       "aiPrepared": "AI-ready",
       "topWins": "Top Wins",
       "topRisks": "Top Risks",
@@ -4517,7 +5584,103 @@
       "createInvoice": "Create Invoice",
       "launchCampaign": "Launch Campaign",
       "openAi": "Open AI Employee"
-    }
+    },
+    "purpose": {
+      "title": "What this page is for",
+      "body": "This is the owner cockpit. It summarizes business health across finance, bookings, customers, and AI — so you know what is happening and what needs attention.",
+      "pointPulse": "Track live KPIs and trends for the selected time range.",
+      "pointAlerts": "Review automated alerts, forecasts, and branch performance from the intelligence engine.",
+      "pointActions": "Jump to invoices, customers, financial overview, or the outbound queue when action is needed.",
+      "openFinancial": "Financial overview",
+      "openInvoices": "Invoices",
+      "openCustomers": "Customers",
+      "openQueue": "Outbound queue",
+      "pointAi": "Connects to AI analytics and the floating assistant with this page KPI context.",
+      "openAi": "AI analytics"
+    },
+    "intelligence": {
+      "sectionTitle": "Intelligence engine",
+      "loading": "Loading intelligence…",
+      "unavailable": "Intelligence panels are temporarily unavailable.",
+      "alertsTitle": "Active alerts",
+      "alertsSubtitle": "Risk signals that need owner attention.",
+      "alertsEmpty": "No active alerts. Operations look calm.",
+      "forecastsTitle": "Forecasts",
+      "forecastsSubtitle": "Short-horizon projections from recent trends.",
+      "forecastsEmpty": "Not enough history to forecast yet.",
+      "horizonDays": "{{days}}-day horizon",
+      "growthTrend": "Growth trend",
+      "branchesTitle": "Branch intelligence",
+      "branchesSubtitle": "How locations compare on revenue, bookings, and health.",
+      "branchesEmpty": "No branch performance rows yet.",
+      "timelineTitle": "Business timeline",
+      "timelineSubtitle": "Recent high-signal events across the company.",
+      "timelineEmpty": "No timeline events yet.",
+      "colBranch": "Branch",
+      "colRevenue": "Revenue",
+      "colBookings": "Bookings",
+      "colHealth": "Health",
+      "dismiss": "Dismiss",
+      "resolve": "Resolve",
+      "severity": {
+        "info": "Info",
+        "warning": "Warning",
+        "critical": "Critical"
+      },
+      "forecastTypes": {
+        "revenue": "Revenue",
+        "bookings": "Bookings",
+        "occupancy": "Occupancy",
+        "demand": "Demand",
+        "cash_flow": "Cash flow"
+      }
+    },
+    "healthStatus": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "fair": "Fair",
+      "at_risk": "At risk",
+      "critical": "Critical"
+    },
+    "ai": {
+      "sectionTitle": "AI bridge",
+      "bridgeTitle": "Executive Intelligence is connected to AI",
+      "bridgeBody": "This page KPI context is passed to the floating assistant. Review AI executions and cost, or ask the assistant for a briefing, risks, and next actions.",
+      "contextLabel": "KPI context",
+      "askAssistant": "Ask assistant",
+      "openAiChat": "AI workspace",
+      "openAnalytics": "AI analytics",
+      "openUsage": "AI usage & cost",
+      "recentTitle": "Recent AI executions",
+      "noAiPermission": "You do not have AI analytics/cost permission. You can still open the assistant if you have chat access.",
+      "tokensUnit": "tokens",
+      "stats": {
+        "executions": "AI executions",
+        "latency": "Avg latency",
+        "tokens": "Tokens",
+        "cost": "Estimated cost"
+      },
+      "promptBrief": "Summarize business health from the current Executive Intelligence dashboard and prioritize today.",
+      "promptRisks": "What are the top risks visible from the Executive Intelligence KPIs?",
+      "promptNextActions": "What immediate actions do you recommend based on the Executive Intelligence KPIs?",
+      "executionStatus": {
+        "success": "Success",
+        "failed": "Failed",
+        "timeout": "Timeout",
+        "cancelled": "Cancelled",
+        "running": "Running",
+        "completed": "Completed",
+        "error": "Error"
+      },
+      "promptBriefShort": "Brief me",
+      "promptRisksShort": "Top risks",
+      "promptNextActionsShort": "Next actions",
+      "viewAllExecutions": "View all"
+    },
+    "filterAll": "All KPIs",
+    "filterFinance": "Finance",
+    "filterCustomers": "Customers",
+    "filterOperations": "Operations"
   },
   "omnichannel": {
     "title": "Omnichannel Console",
@@ -5381,8 +6544,8 @@
     }
   },
   "organization": {
-    "title": "Organization Management",
-    "subtitle": "Enterprise multi-branch hierarchy, transfers, policies, and analytics.",
+    "title": "Organization",
+    "subtitle": "Company structure hub: branches, departments, performance, and transfers — useful even with one location.",
     "noPermission": "You do not have permission to view organization management.",
     "noCompany": "No company context available.",
     "overviewTitle": "Organization Overview",
@@ -5421,11 +6584,88 @@
     "noAnalytics": "No analytics data available.",
     "noHierarchy": "No hierarchy configured yet.",
     "loading": "Loading…",
-    "manageBranches": "Manage branches"
+    "manageBranches": "Manage branches",
+    "purpose": {
+      "title": "What this page is for",
+      "body": "This is the company structure control room. It shows branches, departments, resources, and operational health, and links you to Company Workspace and Executive Intelligence.",
+      "pointStructure": "See the current structure: branches, departments, resources, and health.",
+      "pointOps": "Jump quickly to manage branches, departments, and employees in Company Workspace.",
+      "pointScale": "When you add a second branch, cross-location comparison and transfers become much more powerful.",
+      "openBranches": "Manage branches",
+      "openExecutive": "Executive Intelligence"
+    },
+    "singleBranchTitle": "Add another branch to unlock Organization",
+    "singleBranchBody": "You currently have {{count}} branch. Organization becomes useful once you run 2 or more locations. Manage branches in Company Workspace.",
+    "hierarchyHint": "Visual map of regions, branch groups, and branches.",
+    "comparisonHint": "Today’s performance ranking across branches.",
+    "transfersHint": "Pending and in-flight moves of bookings or entities between branches.",
+    "searchHint": "Find branches, customers, or bookings across the organization.",
+    "levels": {
+      "organization": "Organization",
+      "region": "Region",
+      "branch_group": "Branch group",
+      "branch": "Branch",
+      "department": "Department"
+    },
+    "transferStatus": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "rolled_back": "Rolled back"
+    },
+    "transferType": {
+      "booking": "Booking",
+      "doctor": "Doctor",
+      "equipment": "Equipment",
+      "room": "Room",
+      "staff": "Staff"
+    },
+    "entityType": {
+      "booking": "Booking",
+      "customer": "Customer",
+      "resource": "Resource",
+      "invoice": "Invoice"
+    },
+    "searchTypes": {
+      "branch": "Branch",
+      "region": "Region",
+      "customer": "Customer",
+      "doctor": "Doctor",
+      "booking": "Booking",
+      "invoice": "Invoice",
+      "resource": "Resource"
+    },
+    "sidebarHint": "Available under the Company group in the sidebar, next to Workspace.",
+    "growthTitle": "Ready to scale beyond one branch",
+    "growthBody": "You currently have {{count}} branch. This page already works as your structure hub. Cross-location comparison and transfers become stronger after you add a second branch.",
+    "addBranchCta": "Add branch",
+    "manageDepartments": "Manage departments",
+    "tabs": {
+      "overview": "Overview",
+      "hierarchy": "Hierarchy",
+      "performance": "Performance",
+      "transfers": "Transfers",
+      "search": "Search"
+    },
+    "branchPulseTitle": "Branch pulse today",
+    "branchPulseHint": "Revenue, bookings, and health for each branch today.",
+    "noBranchesYet": "No branches yet. Create the first branch from Company Workspace.",
+    "regionLabel": "Region: {{name}}",
+    "noRegion": "No region",
+    "quickSetupTitle": "Quick setup",
+    "quickSetupHint": "Complete your operating structure from Company Workspace.",
+    "setupBranches": "Set up branches",
+    "setupDepartments": "Set up departments",
+    "setupEmployees": "Set up employees",
+    "openExecutive": "Open Executive Intelligence",
+    "comparisonSingleHint": "Showing performance for your current branch. Add another branch to compare locations.",
+    "transfersSingleHint": "Cross-branch transfers need 2+ branches. You can still monitor the queue here as you scale."
   },
   "integrations": {
-    "title": "Integration Hub",
-    "subtitle": "API keys, webhooks, OAuth clients, and third-party connectors.",
+    "title": "Integrations",
+    "subtitle": "Developer hub for API keys, webhooks, delivery health, and connector status.",
     "noPermission": "You do not have permission to view integrations.",
     "noCompany": "No company context available.",
     "overviewTitle": "Integration Overview",
@@ -5454,7 +6694,101 @@
     "monitoring": "Usage & Monitoring",
     "errorRate": "Error rate (24h)",
     "webhookSuccess": "Webhook success rate",
-    "topEndpoints": "Top endpoints"
+    "topEndpoints": "Top endpoints",
+    "purpose": {
+      "title": "What this page is for",
+      "body": "This is the technical integration console — not live chat and not WhatsApp setup. Use it to let external systems call ValueOR or receive events.",
+      "pointApi": "Create API keys so trusted systems can read customers, bookings, and branches.",
+      "pointWebhooks": "Subscribe endpoints to booking/customer/invoice events and retry failed deliveries.",
+      "pointNotChannels": "To connect WhatsApp or talk to customers, use Channels / Omnichannel. To install plugins, use Marketplace.",
+      "openChannels": "Open Channels",
+      "openOmnichannel": "Open Omnichannel",
+      "openMarketplace": "Open Marketplace"
+    },
+    "keysHint": "Keys authenticate machine-to-machine access to your company API.",
+    "defaultScopesHint": "New keys currently receive customers.read, bookings.read, and branches.read.",
+    "webhooksHint": "Subscriptions push domain events to your HTTPS endpoint.",
+    "deliveriesHint": "Inspect delivery attempts and retry failures.",
+    "registryHint": "Catalog of planned and available connectors. Available ones still configure elsewhere (Channels).",
+    "monitoringHint": "API and webhook reliability for the last 24 hours.",
+    "connectorsReadyHint": "Available connectors in registry",
+    "eventTypesCount": "{{count}} registered event types",
+    "callsCount": "{{count}} calls",
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled",
+      "paused": "Paused",
+      "inactive": "Inactive"
+    },
+    "deliveryStatus": {
+      "pending": "Pending",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "dead_letter": "Dead letter",
+      "retrying": "Retrying"
+    },
+    "connectorsCatalog": {
+      "accounting": {
+        "name": "Accounting",
+        "description": "QuickBooks, Xero, and ERP accounting sync"
+      },
+      "erp": {
+        "name": "ERP",
+        "description": "Enterprise resource planning integration"
+      },
+      "laboratory": {
+        "name": "Laboratory",
+        "description": "Lab results and orders"
+      },
+      "radiology": {
+        "name": "Radiology",
+        "description": "Imaging and PACS integration"
+      },
+      "insurance": {
+        "name": "Insurance",
+        "description": "Claims and eligibility verification"
+      },
+      "email": {
+        "name": "Email",
+        "description": "SMTP and transactional email"
+      },
+      "sms": {
+        "name": "SMS",
+        "description": "SMS gateway providers"
+      },
+      "whatsapp": {
+        "name": "WhatsApp",
+        "description": "WhatsApp Business API"
+      },
+      "calendar": {
+        "name": "Calendar",
+        "description": "Google Calendar and Outlook sync"
+      },
+      "identity": {
+        "name": "Identity",
+        "description": "SSO and identity providers"
+      },
+      "storage": {
+        "name": "Storage",
+        "description": "Document and file storage"
+      },
+      "custom": {
+        "name": "Custom",
+        "description": "Custom webhook-based connector"
+      }
+    },
+    "connection": {
+      "title": "Integration binding",
+      "subtitle": "Status reflects whether this company has an active API key or webhook subscription bound.",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "checking": "Checking…",
+      "verify": "Verify binding",
+      "verifiedConnected": "Integration binding is active.",
+      "verifiedDisconnected": "No active API key or webhook bound.",
+      "needBinding": "Create an API key or webhook subscription below to connect integrations for this company.",
+      "boundSummary": "Bound: {{keys}} active API key(s) · {{webhooks}} active webhook(s)"
+    }
   },
   "marketplace": {
     "title": "Plugin Marketplace",
@@ -5611,7 +6945,7 @@
   },
   "scheduling": {
     "title": "Scheduling",
-    "subtitle": "Configure resources, availability, booking rules, and holidays for appointment-based businesses.",
+    "subtitle": "Configure resources, availability, booking rules, and holidays. Use Calendar for appointments and Today’s board for check-in.",
     "noPermission": "You do not have permission to view scheduling settings.",
     "nav": {
       "resources": "Resources",
@@ -5631,6 +6965,10 @@
       }
     },
     "dashboard": {
+      "groups": {
+        "day": "Today",
+        "setup": "Setup"
+      },
       "nav": {
         "calendar": "Calendar",
         "bookings": "Bookings",
@@ -5638,13 +6976,13 @@
         "resources": "Resources",
         "bookingRules": "Booking Rules",
         "holidays": "Holidays",
-        "operations": "Operations Center"
+        "operations": "Today’s board"
       }
     },
     "operations": {
-      "title": "Operations Center",
-      "subtitle": "Manage the working day — bookings, availability, and front-desk actions in one place.",
-      "noPermission": "You do not have permission to view the Operations Center.",
+      "title": "Today’s board",
+      "subtitle": "Check in guests, update statuses, and watch today’s load — not the full calendar.",
+      "noPermission": "You do not have permission to view Today’s board.",
       "minutes": "min",
       "exportSuccess": "Operations data exported.",
       "checkInSuccess": "Guest checked in.",
@@ -5701,7 +7039,10 @@
         "pending": "Pending",
         "confirmed": "Booked",
         "checked_in": "Checked In",
+        "with_nurse": "With nurse",
+        "in_progress": "In session",
         "completed": "Completed",
+        "archived": "Archived",
         "cancelled": "Cancelled",
         "no_show": "No Show",
         "rescheduled": "Rescheduled"
@@ -5724,6 +7065,7 @@
       },
       "drawer": {
         "title": "Booking Details",
+        "referenceNumber": "Reference number",
         "phone": "Phone",
         "email": "Email",
         "service": "Service",
@@ -5733,7 +7075,7 @@
         "price": "Price",
         "notes": "Notes",
         "createdBy": "Created By",
-        "bookingId": "Booking ID",
+        "bookingId": "System ID",
         "bookingHistory": "Booking History",
         "auditHistory": "Audit History",
         "auditHint": "System audit entries for this booking appear in Audit Logs."
@@ -6224,6 +7566,7 @@
     },
     "nav": {
       "overview": "Overview",
+      "packages": "Packages",
       "companies": "Companies",
       "plans": "Plans",
       "subscriptions": "Subscriptions",
@@ -6282,7 +7625,67 @@
       "suspendSuccess": "Subscription access suspended.",
       "restoreSuccess": "Subscription access restored.",
       "reasonOptional": "Reason (optional)",
-      "companyAccess": "Company access"
+      "companyAccess": "Company access",
+      "markPastDue": "Mark past due",
+      "markPastDueTitle": "Mark subscription past due",
+      "markPastDueDescription": "This changes the subscription lifecycle state to past due. It does NOT collect payment and does NOT perform renewal.",
+      "markPastDueConfirm": "Mark past due",
+      "markPastDueSuccess": "Subscription marked past due.",
+      "markPastDueFailed": "Could not mark subscription past due.",
+      "recordRenewalFailure": "Start grace / record renewal failure",
+      "recordRenewalFailureTitle": "Start grace / record renewal failure",
+      "recordRenewalFailureDescription": "This records a failed/unpaid renewal lifecycle event and may start a grace period. It does NOT collect payment and does NOT perform a paid renewal.",
+      "recordRenewalFailureConfirm": "Record renewal failure",
+      "recordRenewalFailureSuccess": "Renewal failure recorded; grace lifecycle applied if eligible.",
+      "recordRenewalFailureFailed": "Could not record renewal failure / start grace.",
+      "lifecycleEnforcementTitle": "Lifecycle enforcement",
+      "lifecycleEnforcementHint": "Evaluates overdue trials, billing periods, and grace windows using existing lifecycle rules. Does not collect payment or perform paid renewal.",
+      "lifecycleEnforcementLimit": "Batch limit (max {{max}})",
+      "runLifecycleEnforcement": "Run Lifecycle Enforcement",
+      "runLifecycleEnforcementConfirm": "Run enforcement",
+      "lifecycleEnforcementConfirm": "This batch evaluates overdue subscriptions, trials, and grace periods and applies existing lifecycle rules (limit {{limit}}). It does not charge customers or collect payment.",
+      "lifecycleEnforcementResult": "Last enforcement result",
+      "lifecycleEnforcementSuccess": "Lifecycle enforcement finished. Review the summary below.",
+      "lifecycleEnforcementFailed": "Lifecycle enforcement failed."
+    },
+    "entitlements": {
+      "featureCode": "Code",
+      "classification": "Type",
+      "commercial": "Commercial",
+      "core": "Core",
+      "startsAt": "Starts",
+      "expiresAt": "Expires",
+      "startsAtOptional": "Starts at (optional)",
+      "expiresAtOptional": "Expires at (optional)",
+      "notesOptional": "Notes (optional)",
+      "indefinite": "No expiration",
+      "grantAction": "Grant commercial access",
+      "grantTitle": "Grant commercial feature",
+      "grantDescription": "Creates a manual or contract grant. Does not assign a package, start a trial, or change subscription lifecycle.",
+      "grantConfirm": "Grant commercial access",
+      "grantSuccess": "Commercial feature grant applied.",
+      "grantFailed": "Could not grant commercial feature.",
+      "grantFeatureRequired": "Select a commercial feature to grant.",
+      "grantSourceInvalid": "Source must be manual or contract.",
+      "grantStartsInvalid": "Starts at is not a valid date.",
+      "grantExpiresInvalid": "Expires at is not a valid date.",
+      "grantWindowInvalid": "Expires at must be after starts at.",
+      "grantExpiresPast": "Expires at must be in the future when set.",
+      "commercialFeature": "Commercial feature",
+      "grantSource": "Source",
+      "noGrantableFeatures": "No grantable commercial features",
+      "revokeManual": "Revoke manual grant",
+      "revokeContract": "Revoke contract grant",
+      "revokeManualConfirm": "Revoke manual grant",
+      "revokeContractConfirm": "Revoke contract grant",
+      "revokeTitle": "Revoke commercial grant",
+      "revokeDescription": "This deactivates the active {{source}} grant for this feature. It does not remove the company package, cancel the subscription, or change trial lifecycle.",
+      "revokeSuccess": "Grant revoked.",
+      "revokeFailed": "Could not revoke grant.",
+      "revokeNotAllowed": "This grant source cannot be revoked from Billing.",
+      "revokeManagedBlocked": "Managed — no direct revoke",
+      "managedSourceHint": "Managed by package / trial / system lifecycle",
+      "grantExistsNotEffective": "Grant present; not currently effective"
     },
     "payment": {
       "confirmTitle": "Record manual payment?",
@@ -6374,16 +7777,22 @@
       "usageSummary": "Usage Summary",
       "aiTokensUsed": "AI tokens used",
       "storageUsed": "Storage used",
-      "features": "Plan Features",
-      "featuresHint": "Resolved entitlements with source precedence (override → plan → default).",
+      "features": "Commercial entitlements",
+      "featuresHint": "Effective access from feature definitions and company grants (package, trial, manual, contract, system).",
       "featureName": "Feature",
       "featureSource": "Source",
       "featureSources": {
+        "package": "Package",
+        "trial": "Trial",
+        "manual": "Manual",
+        "contract": "Contract",
+        "system": "System",
+        "none": "None",
+        "default": "Default",
         "plan": "Plan",
-        "override": "Override",
-        "default": "Default"
+        "override": "Override"
       },
-      "noFeatures": "No plan features configured.",
+      "noFeatures": "No features configured.",
       "usageSummaryHint": "Current period usage compared to plan limits.",
       "noUsage": "No usage snapshot available yet.",
       "upgradeHint": "Higher-tier plans available for this subscription. Plan changes are managed by billing administrators.",
@@ -7099,18 +8508,27 @@
   },
   "companies": {
     "title": "Companies",
-    "subtitle": "Manage tenant companies, plans, and lifecycle status.",
+    "subtitle": "Approve tenants and manage commercial access, plans, and lifecycle status.",
     "item": "company",
     "noPermission": "Only Super Admin can manage companies.",
     "searchPlaceholder": "Search companies…",
     "emptyAll": "No companies yet. Add your first company.",
     "emptySearch": "No companies match your filters.",
+    "emptyPending": "No companies awaiting approval.",
     "neverExpires": "No expiration",
     "stats": {
-      "total": "Total Companies",
+      "total": "All Companies",
+      "pending": "Pending",
       "active": "Active",
       "trial": "Trial",
       "suspended": "Suspended"
+    },
+    "tabs": {
+      "pending": "Pending",
+      "active": "Active",
+      "trial": "Trial",
+      "suspended": "Suspended",
+      "all": "All"
     },
     "filters": {
       "allStatuses": "All statuses",
@@ -7127,6 +8545,80 @@
       "completed": "Provisioned",
       "failed": "Provisioning failed",
       "retry": "Retry tenant provisioning"
+    },
+    "deleteTitle": "Delete company \"{{name}}\"?",
+    "deleteDescription": "This permanently removes the company and related tenant data.",
+    "table": {
+      "name": "Company",
+      "businessType": "Business type",
+      "industry": "Industry",
+      "status": "Status",
+      "plan": "Plan",
+      "owner": "Owner",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "created": "Created",
+      "updated": "Updated",
+      "actions": "Actions",
+      "dash": "—"
+    },
+    "approval": {
+      "review": "Review & approve",
+      "reviewTitle": "Company review",
+      "viewTitle": "Company details",
+      "companyInfo": "Company information",
+      "accountConfig": "Account configuration",
+      "featurePreview": "Feature entitlements",
+      "featurePreviewHint": "Trial pack is applied from billing settings on approval. Core system grants stay source=system.",
+      "awaitingApproval": "Awaiting Approval",
+      "rejected": "Rejected",
+      "rejectedReason": "Rejection reason",
+      "legalName": "Legal name",
+      "taxId": "Tax ID",
+      "notes": "Approval notes",
+      "approve": "Approve Company",
+      "reject": "Reject Company",
+      "rejectTitle": "Reject company",
+      "reason": "Reason",
+      "reasonRequired": "A rejection reason is required.",
+      "approveSuccess": "Company approved",
+      "approveFailed": "Could not approve company",
+      "rejectSuccess": "Company rejected",
+      "rejectFailed": "Could not reject company",
+      "confirmApproveTitle": "Confirm approval",
+      "confirmApproveDescription": "Approve \"{{name}}\" as {{mode}}? Commercial access will be provisioned server-side.",
+      "trialHint": "Creates a Trial account, trialing subscription, and configured trial feature grants.",
+      "activeHint": "Creates an Active account. Configure commercial features after approval via Features & Access.",
+      "mode": {
+        "trial": "Trial",
+        "active": "Active"
+      }
+    },
+    "features": {
+      "title": "Features & Access",
+      "accessState": "Access state",
+      "trialEnds": "Trial ends",
+      "extendTrial": "Extend Trial",
+      "extendByDays": "Extend by (days)",
+      "extendTrialSuccess": "Trial extended",
+      "extendTrialFailed": "Could not extend trial",
+      "feature": "Feature",
+      "category": "Category",
+      "status": "Status",
+      "source": "Source",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enable": "Enable",
+      "disable": "Disable",
+      "details": "Grant details",
+      "startsAt": "Starts",
+      "expiresAt": "Expires",
+      "notes": "Notes",
+      "indefinite": "No expiration",
+      "selectHint": "Select a feature to view grant details.",
+      "saveSuccess": "Feature access updated",
+      "saveFailed": "Could not update feature access"
     }
   },
   "roles": {
@@ -7310,8 +8802,12 @@
   },
   "calendar": {
     "title": "Calendar",
-    "subtitle": "View and manage appointments across your schedule.",
+    "subtitle": "See clinic appointments by day, week, or month. Create and move bookings here.",
     "loading": "Loading calendar…",
+    "links": {
+      "todayBoard": "Today’s board",
+      "schedulingSetup": "Scheduling setup"
+    },
     "navigation": {
       "today": "Today"
     },
@@ -7334,7 +8830,10 @@
       "pending": "Pending",
       "confirmed": "Confirmed",
       "checked_in": "Checked In",
+      "with_nurse": "With nurse",
+      "in_progress": "In session",
       "completed": "Completed",
+      "archived": "Archived",
       "cancelled": "Cancelled",
       "no_show": "No show",
       "rescheduled": "Rescheduled"
@@ -7399,7 +8898,8 @@
     "active": "Active",
     "paused": "Paused",
     "suspended": "Suspended",
-    "trial": "Trial"
+    "trial": "Trial",
+    "inactive": "Inactive"
   },
   "dialogs": {
     "delete": {
@@ -7480,7 +8980,8 @@
       "title": "Enterprise Agent Workflows",
       "subtitle": "Active and recent agent workflows across all tenants",
       "empty": "No agent workflows recorded yet.",
-      "tasks": "tasks"
+      "tasks": "tasks",
+      "crmAgent": "CRM Agent"
     },
     "knowledge": {
       "documents": "Documents",
@@ -7543,14 +9044,44 @@
       "prev": "Previous",
       "next": "Next",
       "page": "Page {{page}}"
-    }
+    },
+    "status": {
+      "succeeded": "Succeeded",
+      "completed": "Completed",
+      "failed": "Failed",
+      "pending": "Pending",
+      "running": "Running",
+      "unknown": "Unknown"
+    },
+    "moduleUnknown": "Unknown"
   },
   "platformAi": {
     "tenant": {
       "title": "Platform-managed AI provider",
-      "description": "Your company uses the VaultOS platform AI provider. API keys, models, and provider configuration are managed centrally by the platform administrator.",
-      "statusReady": "AI provider is active for your company.",
-      "statusDisabled": "AI is currently disabled for your company. Contact your platform administrator."
+      "description": "Your company uses the ValueOR platform AI provider. API keys and models are managed centrally in Settings → Platform AI.",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "checking": "Checking…",
+      "verify": "Verify binding",
+      "checkingDetail": "Checking provider binding and company AI feature…",
+      "statusReady": "Ready: provider is bound and AI Chat is enabled for this company.",
+      "statusFeatureDisabled": "Provider is bound, but AI Chat is still disabled for this company.",
+      "statusLicenseBlocked": "AI Chat is blocked by the company license: {{reason}}",
+      "licenseUnknown": "license check failed",
+      "statusProviderMissing": "AI Chat is enabled, but no company provider connection is bound yet.",
+      "statusDisconnected": "Not ready: bind a provider and enable AI Chat for this company.",
+      "statusDisabled": "AI is currently disabled for your company. Contact your platform administrator.",
+      "providerLine": "Provider connection: {{status}} ({{name}})",
+      "featureLine": "Company AI Chat feature: {{status}}",
+      "featureOn": "Enabled",
+      "featureOff": "Disabled",
+      "enableFeature": "Enable AI Chat for company",
+      "openProviderSetup": "Open provider setup",
+      "openPlatformSettings": "Open Platform AI settings",
+      "verifiedConnected": "AI Chat is ready for this company.",
+      "verifiedDisconnected": "AI Chat is not fully ready yet.",
+      "featureEnabledToast": "AI Chat feature enabled for this company.",
+      "featureEnableError": "Could not enable AI Chat for this company."
     },
     "admin": {
       "title": "Platform AI Administration",
@@ -7658,6 +9189,20 @@
           "name": "AI Automation",
           "description": "Trigger and coordinate AI-driven automations across the platform."
         }
+      },
+      "connection": {
+        "title": "AI provider connection",
+        "subtitle": "Status reflects whether an encrypted platform API key is bound to the selected provider.",
+        "connected": "Connected",
+        "disconnected": "Disconnected",
+        "checking": "Checking…",
+        "verify": "Verify binding",
+        "verifiedConnected": "Provider key is bound and ready.",
+        "verifiedDisconnected": "No active provider key bound.",
+        "needKey": "Save an encrypted API key below to connect the platform AI provider.",
+        "boundReady": "Key bound — ready for platform AI calls.",
+        "lastSuccess": "Recent usage: {{model}} ({{status}})",
+        "runtimeHealthy": "Recent runtime health OK ({{latency}} ms)"
       }
     }
   },
@@ -7721,7 +9266,7 @@
       "readyDescription": "A default provider connection is active. AI Chat and runtime execution can use this registry entry.",
       "missingDescription": "Assistant preferences are saved, but runtime execution requires a company provider connection in the AI Provider registry.",
       "stepPreferences": "Choose provider and model preferences below (assistant metadata).",
-      "stepConnection": "Create or select a provider connection with credentials.",
+      "stepConnection": "Create a company provider connection (uses the platform key).",
       "stepDefault": "Mark the matching connection as default for this company.",
       "providerMismatch": "You have a default provider connection for a different provider type. Select or create one that matches your assistant provider.",
       "loading": "Loading provider connections…",
@@ -7740,7 +9285,8 @@
       "setDefaultSuccess": "Default provider connection updated.",
       "saveError": "Could not save provider connection",
       "readOnlyHint": "Ask an administrator with ai.providers.manage to connect a provider.",
-      "defaultConnectionName": "{{assistant}} · {{provider}}"
+      "defaultConnectionName": "{{assistant}} · {{provider}}",
+      "platformKeyHint": "Uses the encrypted platform API key from Settings → Platform AI. No company key is needed here."
     },
     "conversation": {
       "rememberConversation": "Remember conversation",
@@ -10209,31 +11755,238 @@
       "unknown": "Stage"
     }
   },
+  "tickets": {
+    "360": {
+      "title": "Ticket 360",
+      "loading": "Loading ticket…",
+      "loadErrorTitle": "Could not load ticket",
+      "loadErrorBody": "Refresh and try again, or pick another ticket from the inbox.",
+      "close": "Close",
+      "overviewTitle": "Overview",
+      "noCustomer": "No customer linked",
+      "noCustomerTitle": "No customer",
+      "noCustomerBody": "This ticket is not linked to a customer record.",
+      "customerLoadError": "Customer unavailable",
+      "customerLoadErrorBody": "Could not load customer context for this ticket.",
+      "openCustomer": "Open customer workspace",
+      "previousTickets": "Previous tickets",
+      "noPreviousTickets": "No other tickets for this customer.",
+      "noChannel": "No channel",
+      "noConversation": "No conversation",
+      "noConversationTitle": "No conversation linked",
+      "noConversationBody": "Conversation transcript is only available when the ticket is linked to an omnichannel conversation.",
+      "conversationLinkedTitle": "Conversation linked",
+      "conversationLinkedBody": "Conversation {{id}}… is linked. Full transcript stays in Omnichannel — not duplicated here.",
+      "conversationRef": "Conversation",
+      "slaDue": "SLA due",
+      "tabs": {
+        "overview": "Overview",
+        "conversation": "Conversation",
+        "customer": "Customer",
+        "activity": "Activity",
+        "audit": "Audit"
+      },
+      "activity": {
+        "created": "Ticket created",
+        "updated": "Ticket updated",
+        "deleted": "Ticket deleted",
+        "assigned": "Assigned",
+        "reassigned": "Reassigned",
+        "unassigned": "Unassigned",
+        "statusChanged": "Status {{from}} → {{to}}",
+        "priorityChanged": "Priority {{from}} → {{to}}",
+        "commentAdded": "Comment added"
+      },
+      "activityEmptyTitle": "No activity yet",
+      "activityEmptyBody": "Ticket changes and comments will appear here from audit logs.",
+      "activityErrorTitle": "Activity unavailable",
+      "activityErrorBody": "Could not load the audit trail for this ticket."
+    },
+    "purposeTitle": "Support ticketing workspace",
+    "purposeBody": "Create, assign, and resolve support tickets. Connect AI employees with the Tickets capability, and use Create Ticket / Assign Ticket nodes in Workflows.",
+    "subtitle": "Track customer issues, assign owners, and keep conversations linked to tickets.",
+    "create": "New ticket",
+    "createAction": "Create ticket",
+    "cancel": "Cancel",
+    "assign": "Assign",
+    "unassign": "Unassign",
+    "assignTitle": "Assign ticket",
+    "assignHint": "Choose any active user in your company.",
+    "noAssignees": "No active users available to assign.",
+    "detailTitle": "Ticket details",
+    "noDescription": "No description provided.",
+    "createdAt": "Created",
+    "commentsTitle": "Comments & notes",
+    "noComments": "No comments yet.",
+    "commentPlaceholder": "Add a comment or internal note…",
+    "addComment": "Add comment",
+    "internalNote": "Internal note",
+    "publicComment": "Customer-visible comment",
+    "emptyTitle": "No tickets yet",
+    "emptyBody": "Create a ticket manually, let an AI employee open one, or add a Create Ticket step in a workflow.",
+    "searchPlaceholder": "Search by subject, number, or description…",
+    "metrics": {
+      "total": "In view",
+      "open": "Open / active",
+      "unassigned": "Unassigned",
+      "urgent": "High / urgent"
+    },
+    "kpis": {
+      "all": "All",
+      "open": "Open",
+      "in_progress": "In progress",
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "closed": "Closed",
+      "unassigned": "Unassigned",
+      "high_urgent": "High / Urgent",
+      "sla_at_risk": "SLA at risk",
+      "sla_breached": "SLA breached"
+    },
+    "sla": {
+      "safe": "Safe",
+      "at_risk": "At risk",
+      "breached": "Breached",
+      "none": "No SLA"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "messenger": "Messenger",
+      "instagram": "Instagram",
+      "web": "Web",
+      "email": "Email",
+      "sms": "SMS",
+      "voice": "Voice"
+    },
+    "filter": {
+      "allStatus": "All statuses",
+      "allPriority": "All priorities",
+      "allAssignees": "All assignees",
+      "unassigned": "Unassigned"
+    },
+    "sort": {
+      "label": "Sort",
+      "updatedDesc": "Updated · newest",
+      "updatedAsc": "Updated · oldest",
+      "createdDesc": "Created · newest",
+      "createdAsc": "Created · oldest",
+      "priorityDesc": "Priority",
+      "statusAsc": "Status"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} of {{totalPages}}",
+      "summary": "{{from}}–{{to}} of {{total}}"
+    },
+    "columns": {
+      "number": "Ticket",
+      "subject": "Subject",
+      "customer": "Customer",
+      "phone": "Mobile",
+      "channel": "Channel",
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "sla": "SLA",
+      "lastActivity": "Last activity",
+      "updated": "Updated",
+      "actions": "Actions"
+    },
+    "fields": {
+      "subject": "Subject",
+      "description": "Description",
+      "customer": "Customer",
+      "customerSearch": "Search customers by name, email, or phone…",
+      "customerPlaceholder": "Select a customer",
+      "noCustomer": "No customer",
+      "selectedCustomer": "Selected customer"
+    },
+    "status": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "waiting_customer": "Waiting on customer",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "toasts": {
+      "created": "Ticket created",
+      "createFailed": "Could not create ticket",
+      "assigned": "Ticket assigned",
+      "assignFailed": "Could not assign ticket",
+      "unassigned": "Ticket unassigned",
+      "unassignFailed": "Could not unassign ticket",
+      "commentAdded": "Comment added",
+      "commentFailed": "Could not add comment",
+      "statusUpdated": "Status updated",
+      "statusFailed": "Could not update status",
+      "priorityUpdated": "Priority updated",
+      "priorityFailed": "Could not update priority"
+    }
+  },
   "products": {
     "subtitle": "Reusable catalog of products and services for opportunities and quotes.",
     "create": "New product",
+    "createHint": "Capture what sales will sell and price — details can be refined later in Product 360.",
     "addCategory": "Add category",
+    "categoryHint": "Categories keep the catalog browseable when attaching products to quotes.",
     "createAction": "Create",
     "cancel": "Cancel",
+    "createSuccess": "Product created",
+    "createFailed": "Could not create product",
+    "categorySuccess": "Category created",
+    "categoryFailed": "Could not create category",
     "emptyTitle": "Catalog is empty",
     "emptyBody": "Add products once, then attach them to opportunities and quotes.",
     "loading": "Loading catalog…",
     "searchPlaceholder": "Search products…",
     "integrationHint": "Products feed Opportunity lines and Quote builder.",
     "openOpportunities": "Open opportunities",
+    "sections": {
+      "identity": "Product identity",
+      "commercial": "Commercial terms"
+    },
+    "actions": {
+      "generateSku": "Generate SKU"
+    },
     "columns": {
       "name": "Name",
       "sku": "SKU",
+      "category": "Category",
       "type": "Type",
       "price": "Price",
-      "status": "Status"
+      "status": "Status",
+      "uncategorized": "Uncategorized"
     },
     "fields": {
-      "name": "Name",
-      "sku": "SKU",
+      "name": "Product name",
+      "sku": "SKU / code",
       "type": "Type",
-      "basePrice": "Base price",
+      "category": "Category",
+      "basePrice": "Sell price",
+      "currency": "Currency",
+      "description": "Short description",
+      "brand": "Brand",
+      "cost": "Cost (optional)",
       "categoryName": "Category name"
+    },
+    "placeholders": {
+      "name": "e.g. Clinic consultation package",
+      "sku": "Unique catalog code",
+      "category": "No category",
+      "description": "What the customer receives — used by sales on quotes",
+      "brand": "Optional brand or line",
+      "cost": "Internal cost",
+      "categoryName": "e.g. Services"
+    },
+    "hints": {
+      "cost": "Used to estimate margin. Leave blank if unknown."
     },
     "status": {
       "active": "Active",
@@ -10284,7 +12037,8 @@
       "converted": "Converted"
     },
     "createSuccess": "Quote created",
-    "createFailed": "Could not create quote"
+    "createFailed": "Could not create quote",
+    "creating": "Creating quote…"
   },
   "entityWorkspace": {
     "layouts": {
@@ -10500,7 +12254,7 @@
       "branches": "Branches",
       "departments": "Departments",
       "branding": "Brand Center",
-      "subscription": "Subscription"
+      "subscription": "Plan & billing"
     },
     "overview": {
       "setup": {
@@ -11075,7 +12829,7 @@
       "logoInvoice": "Invoice logo",
       "logoEmail": "Email logo",
       "logoFavicon": "Favicon",
-      "colorPrimary": "Primary",
+      "colorPrimary": "Primary (buttons)",
       "colorSecondary": "Secondary",
       "colorAccent": "Accent",
       "colorSuccess": "Success",
@@ -11083,6 +12837,15 @@
       "colorDanger": "Danger",
       "colorBackground": "Background",
       "colorSurface": "Surface",
+      "colorSidebar": "Sidebar background",
+      "colorSidebarActive": "Sidebar active item",
+      "colorSidebarAccent": "Sidebar hover",
+      "colorGroupSystem": "System & buttons",
+      "colorGroupSystemHint": "Buttons, links, indicators, charts, and page chrome.",
+      "colorGroupSidebar": "Sidebar only",
+      "colorGroupSidebarHint": "Navigation rail colors — independent from buttons and system accents.",
+      "colorsHint": "System colors and sidebar colors are separate. To restore the original platform UI chrome, use Appearance → System.",
+      "resetColors": "Reset to platform defaults",
       "invoiceFooter": "Invoice footer",
       "quotationFooter": "Quotation footer",
       "terms": "Terms & conditions",
@@ -11326,10 +13089,185 @@
     },
     "subscription": {
       "ownerOnly": "Only company owners can view subscription details.",
-      "currentPlan": "Subscription",
+      "pageTitle": "Plan & billing",
+      "pageSubtitle": "View your subscription, features, invoices, and payments for this company.",
+      "currentPlan": "Current subscription",
+      "overviewSection": "Subscription",
+      "featuresSection": "Features & access",
+      "featuresReadOnlyHint": "Feature access for your company. Changes are managed by your platform administrator.",
+      "usageSection": "Usage",
+      "invoicesSection": "Invoices",
+      "paymentsSection": "Payments",
+      "receiptsSection": "Receipts",
       "paymentMethod": "Payment method",
+      "price": "Price",
+      "currency": "Currency",
+      "trialStatus": "Trial status",
+      "trialActive": "Active trial",
+      "trialInactive": "Not on trial",
+      "trialEnds": "Trial ends",
+      "periodStart": "Period start",
+      "graceEnds": "Grace period ends",
+      "pastDueHint": "Your subscription is past due. Contact your billing administrator if you need help.",
+      "loadError": "Could not load billing information. Please try again.",
+      "tenantMismatch": "Billing data is unavailable for this company context.",
       "upgrade": "Upgrade",
       "billingHistory": "Billing history"
+    },
+    "payment": {
+      "sectionTitle": "Online payment",
+      "payNow": "Pay now",
+      "renewNow": "Renew subscription",
+      "starting": "Starting payment…",
+      "amountHint": "Amount is locked by your current package and billing cycle.",
+      "allowed": "Payment available",
+      "unauthorized": "You can view billing details, but only a company administrator can start payment.",
+      "noCompany": "No company context is available for payment.",
+      "noSubscription": "No subscription is available for payment.",
+      "noPlan": "Assign a package before starting online payment.",
+      "freePackage": "No payment required for this package.",
+      "customPricing": "Contact billing — online payment is not available for custom pricing.",
+      "companySuspended": "Online payment is not available while the company is suspended.",
+      "companyNotApproved": "Online payment is not available until the company is approved.",
+      "invalidState": "Online payment is not available for this subscription status.",
+      "recoveryHint": "Payment required to restore your subscription.",
+      "trialHint": "Paying converts your trial to a paid subscription after payment is confirmed.",
+      "checkoutFailed": "Could not start payment. Please try again.",
+      "priceMismatch": "The payment amount changed. Refreshing billing details — please try again.",
+      "apiMissing": "Payment API is not configured.",
+      "providerUnavailable": "Online payment is temporarily unavailable. Please contact support.",
+      "returnConfirmed": "Payment confirmed. Your subscription details have been updated.",
+      "returnProcessing": "Payment started — waiting for confirmation. This page will update when settlement completes.",
+      "returnFailed": "Payment failed. You can try again.",
+      "returnCanceled": "Payment was canceled.",
+      "returnExpired": "The payment session expired. Please try again."
+    }
+  },
+  "companyOnboarding": {
+    "title": "Company onboarding",
+    "subtitleFirstTime": "Create your company to start using ValueOR.",
+    "subtitleAdmin": "Create a new company and invite its initial administrator.",
+    "progressLabel": "Onboarding steps",
+    "gateTitle": "Set up your company",
+    "gateBody": "Complete company onboarding to continue to your workspace.",
+    "actions": {
+      "back": "Back",
+      "next": "Next",
+      "create": "Create Company"
+    },
+    "steps": {
+      "company": {
+        "label": "Company",
+        "title": "Company information",
+        "description": "Tell us about the organization you are creating."
+      },
+      "business": {
+        "label": "Business",
+        "title": "Business and location",
+        "description": "Set location, timezone, and currency preferences."
+      },
+      "owner": {
+        "label": "Owner",
+        "title": "Initial owner / administrator",
+        "description": "This person becomes the Company Admin through existing RBAC."
+      },
+      "plan": {
+        "label": "Plan",
+        "title": "Plan",
+        "description": "Your starting plan is assigned automatically. Billing stays unchanged."
+      },
+      "review": {
+        "label": "Review",
+        "title": "Review and create",
+        "description": "Confirm the details before creating the company."
+      }
+    },
+    "fields": {
+      "selectPlaceholder": "Select…",
+      "name": "Company name",
+      "legalName": "Legal / registered name",
+      "businessType": "Business type",
+      "industry": "Industry",
+      "contactEmail": "Company email",
+      "contactPhone": "Company phone",
+      "website": "Website",
+      "description": "Company description",
+      "taxId": "Tax / VAT number",
+      "commercialRegistration": "Commercial registration number",
+      "country": "Country",
+      "city": "City",
+      "selectCountryFirst": "Select a country first",
+      "address": "Address",
+      "timezone": "Timezone",
+      "currency": "Currency",
+      "ownerFirstName": "First name",
+      "ownerLastName": "Last name",
+      "ownerDisplayName": "Display name",
+      "ownerEmail": "Work email",
+      "ownerPhone": "Phone",
+      "ownerJobTitle": "Job title",
+      "plan": "Plan",
+      "status": "Status"
+    },
+    "businessTypes": {
+      "clinic": "Clinic",
+      "hospital": "Hospital",
+      "dental": "Dental practice",
+      "pharmacy": "Pharmacy",
+      "retail": "Retail",
+      "services": "Services",
+      "education": "Education",
+      "technology": "Technology",
+      "other": "Other",
+      "agency": "Agency",
+      "hotel": "Hotel"
+    },
+    "industries": {
+      "healthcare": "Healthcare",
+      "beauty_wellness": "Beauty & wellness",
+      "retail_commerce": "Retail & commerce",
+      "professional_services": "Professional services",
+      "education_training": "Education & training",
+      "technology_software": "Technology & software",
+      "hospitality": "Hospitality",
+      "other": "Other"
+    },
+    "owner": {
+      "firstTimeHint": "You are already signed in. We will assign you as Company Admin — no second login is created."
+    },
+    "plan": {
+      "readOnlyBadge": "Read-only",
+      "defaultName": "Basic",
+      "defaultDescription": "Starter plan for new companies. Payment and plan upgrades stay in billing.",
+      "trialLabel": "Trial",
+      "interval": "Billing interval",
+      "monthly": "Monthly",
+      "price": "Price",
+      "month": "month",
+      "included": "Included with trial",
+      "status": "Status",
+      "noPaymentHint": "No payment is collected during onboarding."
+    },
+    "review": {
+      "company": "Company",
+      "business": "Business",
+      "owner": "Owner",
+      "plan": "Plan",
+      "edit": "Edit"
+    },
+    "validation": {
+      "required": "This field is required",
+      "emailInvalid": "Enter a valid email address",
+      "websiteInvalid": "Enter a valid website URL",
+      "nameTooLong": "Value is too long"
+    },
+    "errors": {
+      "alreadyAssigned": "Your account already belongs to a company.",
+      "forbidden": "You are not allowed to create a company.",
+      "duplicate": "Company creation is already in progress.",
+      "generic": "Could not create the company. Please try again.",
+      "formIncomplete": "Please complete the required fields before creating the company.",
+      "ownerInviteNoRole": "Company created, but no admin role is available to invite the owner."
     }
   }
 }

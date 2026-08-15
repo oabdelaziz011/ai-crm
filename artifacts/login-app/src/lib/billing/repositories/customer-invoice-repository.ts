@@ -35,8 +35,17 @@ function mapInvoice(row: Record<string, unknown>, lineItems: InvoiceLineItem[] =
     taxMode: (row.tax_mode as CustomerInvoice["taxMode"]) ?? "exclusive",
     branchId: row.branch_id ? String(row.branch_id) : null,
     notes: row.notes ? String(row.notes) : null,
-    issuedAt: row.issued_at ? String(row.issued_at) : null,
-    dueAt: row.due_at ? String(row.due_at) : null,
+    issuedAt: row.issued_at
+      ? String(row.issued_at)
+      : row.invoice_date
+        ? String(row.invoice_date)
+        : null,
+    // Legacy CRM rows often only have invoice_date; surface it as due when due_at is empty.
+    dueAt: row.due_at
+      ? String(row.due_at)
+      : row.invoice_date
+        ? String(row.invoice_date)
+        : null,
     paidAt: row.paid_at ? String(row.paid_at) : null,
     cancelledAt: row.cancelled_at ? String(row.cancelled_at) : null,
     lineItems,

@@ -22,6 +22,7 @@ const VALID_TRANSITIONS: Record<InvoiceLifecycleStatus, InvoiceLifecycleStatus[]
 
 /** Enterprise invoice lifecycle engine. */
 export class InvoiceEngineService {
+  private readonly client: SupabaseClient;
   private readonly invoices: CustomerInvoiceRepository;
   private readonly taxEngine: TaxEngineService;
   private readonly discountEngine: DiscountEngineService;
@@ -32,6 +33,7 @@ export class InvoiceEngineService {
     private readonly ledger: LedgerService,
     pdfGenerator: InvoicePdfGenerator = new MinimalInvoicePdfGenerator(),
   ) {
+    this.client = client;
     this.invoices = new CustomerInvoiceRepository(client);
     this.taxEngine = new TaxEngineService(client);
     this.discountEngine = new DiscountEngineService(client);
@@ -53,10 +55,15 @@ export class InvoiceEngineService {
 
     const netSubtotal = subtotalCents - discountCents;
     const tax = await this.taxEngine.calculate(input.companyId, netSubtotal, input.taxMode ?? "exclusive");
-    const currency = input.lineItems[0] ? "USD" : "USD";
+    const currency = await this.resolveCompanyCurrency(input.companyId);
+
+    const dueAt =
+      input.dueAt ??
+      (await this.resolveDefaultDueAt(input.companyId, new Date()));
 
     const invoice = await this.invoices.createDraft({
       ...input,
+      dueAt,
       subtotalCents: tax.subtotalCents,
       taxCents: tax.taxCents,
       discountCents,
@@ -162,5 +169,32 @@ export class InvoiceEngineService {
     if (!VALID_TRANSITIONS[from]?.includes(to)) {
       throw new Error(`Invalid invoice transition: ${from} → ${to}`);
     }
+  }
+
+  private async resolveCompanyCurrency(companyId: string): Promise<string> {
+    const { data } = await this.client
+      .from("company_financial_settings")
+      .select("default_currency")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    const code = String(data?.default_currency ?? "").trim().toUpperCase();
+    return code || "USD";
+  }
+
+  private async resolveDefaultDueAt(companyId: string, from: Date): Promise<string> {
+    let days = 30;
+    try {
+      const { data } = await this.client.rpc("resolve_billing_setting_integer", {
+        p_code: "default_payment_terms_days",
+        p_company_id: companyId,
+      });
+      const parsed = Number(data);
+      if (Number.isFinite(parsed) && parsed >= 0) days = parsed;
+    } catch {
+      // keep default 30-day terms
+    }
+    const due = new Date(from);
+    due.setDate(due.getDate() + days);
+    return due.toISOString();
   }
 }

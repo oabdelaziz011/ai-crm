@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -12,6 +13,7 @@ import {
   type CompanyLocaleRuntime,
 } from "@/lib/company-locale/runtime";
 import { decimalFromCents } from "@/lib/billing/utilities/money";
+import { supabase } from "@/lib/supabase";
 
 export type CompanyLocale = CompanyLocaleRuntime & {
   /** Intl date style used by formatDate (derived from language). */
@@ -28,7 +30,7 @@ export type CompanyLocale = CompanyLocaleRuntime & {
 };
 
 /**
- * Global company localization — currency from billing settings, language/TZ from profile.
+ * Global company localization — currency from billing / financial settings, language/TZ from profile.
  * Reuses existing React Query caches only.
  */
 export function useCompanyLocale(): CompanyLocale {
@@ -41,8 +43,23 @@ export function useCompanyLocale(): CompanyLocale {
     companyId,
     Boolean(companyId),
   );
+  const financialCurrencyQuery = useQuery({
+    queryKey: ["company-financial-settings", "default_currency", companyId],
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_financial_settings")
+        .select("default_currency")
+        .eq("company_id", companyId!)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data?.default_currency ? String(data.default_currency).toUpperCase() : null;
+    },
+  });
 
   const currency =
+    financialCurrencyQuery.data ||
     parseBillingSettingString(currencyQuery.data)?.toUpperCase() ||
     getCompanyCurrency() ||
     "USD";
@@ -100,12 +117,14 @@ export function useCompanyLocale(): CompanyLocale {
       formatCurrency,
       formatDate,
       formatNumber,
-      isLoading: Boolean(companyId) && currencyQuery.isLoading,
+      isLoading:
+        Boolean(companyId) && (currencyQuery.isLoading || financialCurrencyQuery.isLoading),
     };
   }, [
     companyId,
     currency,
     currencyQuery.isLoading,
+    financialCurrencyQuery.isLoading,
     intlLocale,
     language,
     timezone,

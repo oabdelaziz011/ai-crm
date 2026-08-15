@@ -55,7 +55,6 @@ import {
 } from "@/lib/billing/cache/query-keys";
 import { downloadCsv } from "@/lib/billing/export-csv";
 import { getFinancialPlatformServices } from "@/lib/billing/services/financial-platform-service";
-import { formatMoney } from "@/lib/billing/utilities/money";
 import type { CustomerInvoice, CustomerPayment } from "@/lib/billing/types/financial-types";
 import type { PaymentMethodType } from "@/lib/billing/types/financial-enums";
 import type { Invoice } from "@/lib/types";
@@ -240,7 +239,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
   const qc = useQueryClient();
   const { profile, user } = useAuth();
   const companyId = profile?.company_id ?? null;
-  const { currency: companyCurrency } = useCompanyLocaleContext();
+  const { currency: companyCurrency, formatMoney: formatCompanyMoney } = useCompanyLocaleContext();
   const canCreate = useHasPermission("invoices.create");
   const canEdit = useHasPermission("invoices.edit");
 
@@ -294,7 +293,8 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
 
   const invoices = invoicesQuery.data ?? [];
   const payments = paymentsQuery.data ?? [];
-  const currency = invoices[0]?.currency || payments[0]?.currency || companyCurrency || "USD";
+  // Always display using company billing settings currency (not stored invoice/payment defaults).
+  const currency = companyCurrency || "USD";
 
   const customerNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -378,7 +378,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
   const loading = dashboard.isLoading || invoicesQuery.isLoading || paymentsQuery.isLoading;
   const error = invoicesQuery.error ?? paymentsQuery.error ?? dashboard.metrics.error;
 
-  const money = (cents: number, cur = currency) => formatMoney(cents, cur);
+  const money = (cents: number) => formatCompanyMoney(cents, currency);
 
   const kpiIcon = (icon: string) => {
     switch (icon) {
@@ -484,7 +484,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
         invoiceId: payInvoice.id,
         customerId,
         amountCents,
-        currency: payInvoice.currency,
+        currency: companyCurrency || payInvoice.currency,
         paymentMethod: payMethod,
         createdBy: user?.id ?? null,
       });
@@ -577,7 +577,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
             label={t(kpi.labelKey)}
             value={
               kpi.format === "money"
-                ? money(kpi.valueCents, kpi.currency)
+                ? money(kpi.valueCents)
                 : kpi.format === "percent"
                   ? `${kpi.valueNumber ?? 0}%`
                   : (kpi.valueNumber ?? 0)
@@ -776,7 +776,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
                         <td className="px-3 py-2 font-mono text-xs">{row.id.slice(0, 8)}</td>
                         <td className="px-3 py-2">{row.customerName}</td>
                         <td className="px-3 py-2 font-mono text-xs">{row.invoiceNumber}</td>
-                        <td className="px-3 py-2 text-end font-mono">{money(row.amountCents, row.currency)}</td>
+                        <td className="px-3 py-2 text-end font-mono">{money(row.amountCents)}</td>
                         <td className="px-3 py-2">{t(`financialWorkspace.method.${row.method}`, row.method)}</td>
                         <td className="px-3 py-2">{row.date}</td>
                       </tr>
@@ -821,10 +821,10 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
                           </span>
                         </td>
                         <td className="px-3 py-2 text-end font-mono">{row.invoiceCount}</td>
-                        <td className="px-3 py-2 text-end font-mono">{money(row.billedCents, row.currency)}</td>
-                        <td className="px-3 py-2 text-end font-mono">{money(row.paidCents, row.currency)}</td>
-                        <td className="px-3 py-2 text-end font-mono">{money(row.dueCents, row.currency)}</td>
-                        <td className="px-3 py-2 text-end font-mono">{money(row.overdueCents, row.currency)}</td>
+                        <td className="px-3 py-2 text-end font-mono">{money(row.billedCents)}</td>
+                        <td className="px-3 py-2 text-end font-mono">{money(row.paidCents)}</td>
+                        <td className="px-3 py-2 text-end font-mono">{money(row.dueCents)}</td>
+                        <td className="px-3 py-2 text-end font-mono">{money(row.overdueCents)}</td>
                         <td className="px-3 py-2">{row.lastActivityAt?.slice(0, 10) ?? "—"}</td>
                       </tr>
                     ))}
@@ -902,153 +902,143 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
                   {t("financialWorkspace.loadingDetail")}
                 </p>
               ) : (
-                <div className="space-y-3 text-sm">
-                  <div className="flex flex-wrap gap-2">
-                    <StatusBadge tone={invoiceTone((detailInvoice ?? selectedInvoice).status)}>
-                      {t(
-                        `financialWorkspace.status.invoice.${(detailInvoice ?? selectedInvoice).status}`,
-                        (detailInvoice ?? selectedInvoice).status,
-                      )}
-                    </StatusBadge>
-                    {isInvoiceOverdue(detailInvoice ?? selectedInvoice) ? (
-                      <StatusBadge tone="danger">{t("financialWorkspace.overdueBadge")}</StatusBadge>
-                    ) : null}
-                  </div>
-                  <dl className="grid grid-cols-2 gap-2">
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.customer")}</dt>
-                      <dd>
-                        {(detailInvoice ?? selectedInvoice).customerId
-                          ? customerNameById.get((detailInvoice ?? selectedInvoice).customerId!) ?? "—"
-                          : "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.date")}</dt>
-                      <dd>
-                        {(
-                          (detailInvoice ?? selectedInvoice).issuedAt ||
-                          (detailInvoice ?? selectedInvoice).createdAt
-                        ).slice(0, 10)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.subtotal")}</dt>
-                      <dd className="font-mono">
-                        {money(
-                          (detailInvoice ?? selectedInvoice).subtotalCents,
-                          (detailInvoice ?? selectedInvoice).currency,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.discount")}</dt>
-                      <dd className="font-mono">
-                        {money(
-                          (detailInvoice ?? selectedInvoice).discountCents,
-                          (detailInvoice ?? selectedInvoice).currency,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.tax")}</dt>
-                      <dd className="font-mono">
-                        {money(
-                          (detailInvoice ?? selectedInvoice).taxCents,
-                          (detailInvoice ?? selectedInvoice).currency,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.total")}</dt>
-                      <dd className="font-mono">
-                        {money(
-                          (detailInvoice ?? selectedInvoice).totalCents,
-                          (detailInvoice ?? selectedInvoice).currency,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.paid")}</dt>
-                      <dd className="font-mono">
-                        {money(
-                          (detailInvoice ?? selectedInvoice).paidCents,
-                          (detailInvoice ?? selectedInvoice).currency,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.remaining")}</dt>
-                      <dd className="font-mono">
-                        {money(
-                          remainingInvoiceCents(detailInvoice ?? selectedInvoice),
-                          (detailInvoice ?? selectedInvoice).currency,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">{t("financialWorkspace.cols.dueDate")}</dt>
-                      <dd>{(detailInvoice ?? selectedInvoice).dueAt?.slice(0, 10) ?? "—"}</dd>
-                    </div>
-                  </dl>
-                  {(detailInvoice?.lineItems?.length ?? 0) > 0 ? (
-                    <div>
-                      <p className="mb-1.5 text-xs font-semibold uppercase text-muted-foreground">
-                        {t("financialWorkspace.lineItems")}
-                      </p>
-                      <div className="overflow-auto rounded-md border border-border">
-                        <table className="w-full text-xs">
-                          <thead className="bg-muted/60 text-muted-foreground">
-                            <tr>
-                              <th className="px-2 py-1.5 text-start">{t("financialWorkspace.cols.description")}</th>
-                              <th className="px-2 py-1.5 text-end">{t("financialWorkspace.cols.qty")}</th>
-                              <th className="px-2 py-1.5 text-end">{t("financialWorkspace.cols.unitPrice")}</th>
-                              <th className="px-2 py-1.5 text-end">{t("financialWorkspace.cols.total")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {detailInvoice!.lineItems.map((item, idx) => (
-                              <tr key={item.id ?? idx} className="border-t border-border/70">
-                                <td className="px-2 py-1.5">{item.description}</td>
-                                <td className="px-2 py-1.5 text-end font-mono">{item.quantity}</td>
-                                <td className="px-2 py-1.5 text-end font-mono">
-                                  {money(item.unitPriceCents, detailInvoice!.currency)}
-                                </td>
-                                <td className="px-2 py-1.5 text-end font-mono">
-                                  {money(item.totalCents, detailInvoice!.currency)}
-                                </td>
-                              </tr>
+                <div className="space-y-4 text-sm">
+                  {(() => {
+                    const inv = detailInvoice ?? selectedInvoice;
+                    return (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          <StatusBadge tone={invoiceTone(inv.status)}>
+                            {t(`financialWorkspace.status.invoice.${inv.status}`, inv.status)}
+                          </StatusBadge>
+                          {isInvoiceOverdue(inv) ? (
+                            <StatusBadge tone="danger">{t("financialWorkspace.overdueBadge")}</StatusBadge>
+                          ) : null}
+                        </div>
+
+                        {/* Meta: start = العميل / تاريخ الاستحقاق · end = التاريخ */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground">{t("financialWorkspace.cols.customer")}</p>
+                              <p className="font-medium">
+                                {inv.customerId ? customerNameById.get(inv.customerId) ?? "—" : "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">{t("financialWorkspace.cols.dueDate")}</p>
+                              <p className="font-medium">
+                                {(inv.dueAt || inv.issuedAt || inv.createdAt)?.slice(0, 10) ?? "—"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="space-y-3 sm:text-end">
+                            <div>
+                              <p className="text-xs text-muted-foreground">{t("financialWorkspace.cols.date")}</p>
+                              <p className="font-medium">
+                                {(inv.issuedAt || inv.createdAt).slice(0, 10)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Financial totals — label start, amount end */}
+                        <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+                          <ul className="space-y-1.5">
+                            {(
+                              [
+                                ["subtotal", inv.subtotalCents],
+                                ["discount", inv.discountCents],
+                                ["tax", inv.taxCents],
+                                ["total", inv.totalCents],
+                                ["paid", inv.paidCents],
+                                ["remaining", remainingInvoiceCents(inv)],
+                              ] as const
+                            ).map(([key, cents]) => (
+                              <li
+                                key={key}
+                                className={cn(
+                                  "flex items-center justify-between gap-3",
+                                  key === "total" || key === "remaining"
+                                    ? "border-t border-border/70 pt-1.5 font-semibold"
+                                    : null,
+                                )}
+                              >
+                                <span className="text-muted-foreground">
+                                  {t(`financialWorkspace.cols.${key}`)}
+                                </span>
+                                <span className="font-mono tabular-nums">{money(cents)}</span>
+                              </li>
                             ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div>
-                    <p className="mb-1.5 text-xs font-semibold uppercase text-muted-foreground">
-                      {t("financialWorkspace.paymentHistory")}
-                    </p>
-                    <ul className="space-y-1.5">
-                      {payments.filter((p) => p.invoiceId === selectedInvoice.id).length === 0 ? (
-                        <li className="text-muted-foreground">{t("financialWorkspace.empty.payments")}</li>
-                      ) : (
-                        payments
-                          .filter((p) => p.invoiceId === selectedInvoice.id)
-                          .map((p) => (
-                            <li
-                              key={p.id}
-                              className="flex justify-between rounded-md border border-border px-2.5 py-1.5"
-                            >
-                              <span>
-                                {t(`financialWorkspace.method.${p.paymentMethod}`, p.paymentMethod)} ·{" "}
-                                {t(`financialWorkspace.status.payment.${p.status}`, p.status)}
-                              </span>
-                              <span className="font-mono">{money(p.amountCents, p.currency)}</span>
-                            </li>
-                          ))
-                      )}
-                    </ul>
-                  </div>
+                          </ul>
+                        </div>
+
+                        {(detailInvoice?.lineItems?.length ?? 0) > 0 ? (
+                          <div>
+                            <p className="mb-1.5 text-xs font-semibold uppercase text-muted-foreground">
+                              {t("financialWorkspace.lineItems")}
+                            </p>
+                            <div className="overflow-auto rounded-md border border-border">
+                              <table className="w-full text-xs">
+                                <thead className="bg-muted/60 text-muted-foreground">
+                                  <tr>
+                                    <th className="px-2 py-1.5 text-start">
+                                      {t("financialWorkspace.cols.description")}
+                                    </th>
+                                    <th className="px-2 py-1.5 text-end">{t("financialWorkspace.cols.qty")}</th>
+                                    <th className="px-2 py-1.5 text-end">
+                                      {t("financialWorkspace.cols.unitPrice")}
+                                    </th>
+                                    <th className="px-2 py-1.5 text-end">{t("financialWorkspace.cols.total")}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {detailInvoice!.lineItems.map((item, idx) => (
+                                    <tr key={item.id ?? idx} className="border-t border-border/70">
+                                      <td className="px-2 py-1.5">{item.description}</td>
+                                      <td className="px-2 py-1.5 text-end font-mono">{item.quantity}</td>
+                                      <td className="px-2 py-1.5 text-end font-mono">
+                                        {money(item.unitPriceCents)}
+                                      </td>
+                                      <td className="px-2 py-1.5 text-end font-mono">
+                                        {money(item.totalCents)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div>
+                          <p className="mb-1.5 text-xs font-semibold uppercase text-muted-foreground">
+                            {t("financialWorkspace.paymentHistory")}
+                          </p>
+                          <ul className="space-y-1.5">
+                            {payments.filter((p) => p.invoiceId === selectedInvoice.id).length === 0 ? (
+                              <li className="text-muted-foreground">{t("financialWorkspace.empty.payments")}</li>
+                            ) : (
+                              payments
+                                .filter((p) => p.invoiceId === selectedInvoice.id)
+                                .map((p) => (
+                                  <li
+                                    key={p.id}
+                                    className="flex justify-between gap-3 rounded-md border border-border px-2.5 py-1.5"
+                                  >
+                                    <span>
+                                      {t(`financialWorkspace.method.${p.paymentMethod}`, p.paymentMethod)} ·{" "}
+                                      {t(`financialWorkspace.status.payment.${p.status}`, p.status)}
+                                    </span>
+                                    <span className="font-mono tabular-nums">{money(p.amountCents)}</span>
+                                  </li>
+                                ))
+                            )}
+                          </ul>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               <DialogFooter>
@@ -1078,7 +1068,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
             <p className="text-sm text-muted-foreground">
               {payInvoice?.invoiceNumber ?? payInvoice?.id.slice(0, 8)} ·{" "}
               {t("financialWorkspace.cols.remaining")}:{" "}
-              {payInvoice ? money(remainingInvoiceCents(payInvoice), payInvoice.currency) : "—"}
+              {payInvoice ? money(remainingInvoiceCents(payInvoice)) : "—"}
             </p>
             <div className="space-y-1">
               <Label>{t("financialWorkspace.cols.amount")}</Label>
@@ -1143,7 +1133,7 @@ function InvoiceTable({
   title: string;
   rows: CustomerInvoice[];
   customerNameById: Map<string, string>;
-  money: (cents: number, currency?: string) => string;
+  money: (cents: number) => string;
   t: (key: string, fallback?: string) => string;
   onSelect: (inv: CustomerInvoice) => void;
   onPay?: (inv: CustomerInvoice) => void;
@@ -1187,9 +1177,9 @@ function InvoiceTable({
                   </td>
                   <td className="px-3 py-2">{(inv.issuedAt || inv.createdAt).slice(0, 10)}</td>
                   <td className="px-3 py-2">{inv.dueAt?.slice(0, 10) ?? "—"}</td>
-                  <td className="px-3 py-2 text-end font-mono">{money(inv.totalCents, inv.currency)}</td>
+                  <td className="px-3 py-2 text-end font-mono">{money(inv.totalCents)}</td>
                   <td className="px-3 py-2 text-end font-mono">
-                    {money(remainingInvoiceCents(inv), inv.currency)}
+                    {money(remainingInvoiceCents(inv))}
                   </td>
                   <td className="px-3 py-2">
                     <StatusBadge tone={invoiceTone(inv.status)}>
@@ -1236,7 +1226,7 @@ function PaymentTable({
   rows: CustomerPayment[];
   customerNameById: Map<string, string>;
   invoiceNumberById: Map<string, string>;
-  money: (cents: number, currency?: string) => string;
+  money: (cents: number) => string;
   t: (key: string, fallback?: string) => string;
   compact?: boolean;
 }) {
@@ -1273,7 +1263,7 @@ function PaymentTable({
                   <td className="px-3 py-2 font-mono text-xs">
                     {invoiceNumberById.get(pay.invoiceId) ?? pay.invoiceId.slice(0, 8)}
                   </td>
-                  <td className="px-3 py-2 text-end font-mono">{money(pay.amountCents, pay.currency)}</td>
+                  <td className="px-3 py-2 text-end font-mono">{money(pay.amountCents)}</td>
                   <td className="px-3 py-2">
                     {t(`financialWorkspace.method.${pay.paymentMethod}`, pay.paymentMethod)}
                   </td>

@@ -28,6 +28,7 @@ import {
   Package,
   UserCog,
   Users,
+  Ticket,
   FlaskConical,
   Workflow,
   ScrollText,
@@ -45,6 +46,7 @@ export type DashboardSectionId =
   | "ai-runtime"
   | "company"
   | "customers"
+  | "tickets"
   | "bookings"
   | "calendar"
   | "scheduling"
@@ -78,7 +80,10 @@ export type DashboardSectionId =
   | "demo-scenarios"
   | "platform-ai-operations";
 
-export type DashboardSidebarGroupId = "user-management" | "ai-platform";
+export type DashboardSidebarGroupId =
+  | "user-management"
+  | "ai-platform"
+  | "company-hub";
 
 export type DashboardRouteDefinition = {
   id: DashboardSectionId;
@@ -91,8 +96,14 @@ export type DashboardRouteDefinition = {
   permission?: string;
   superAdminOnly?: boolean;
   sidebarGroup?: DashboardSidebarGroupId;
-  /** When set, route and sidebar require the Platform AI feature flag (in addition to RBAC). */
+  /** When set, route and sidebar require the Platform AI feature flag (kill-switch). */
   platformFeatureKey?: PlatformAIFeatureKey;
+  /**
+   * Phase 6 commercial entitlement code (feature_definitions.code).
+   * When set: RBAC ∧ company entitlement ∧ optional kill-switch.
+   * Do NOT set for core non-commercial modules (customers / core_crm).
+   */
+  commercialFeatureCode?: string;
   Page: LazyExoticComponent<ComponentType>;
 };
 
@@ -104,6 +115,12 @@ export type DashboardSidebarGroupDefinition = {
 };
 
 export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[] = [
+  {
+    id: "company-hub",
+    titleKey: "navigation.companyHub",
+    icon: Building2,
+    childIds: ["company", "organization"],
+  },
   {
     id: "ai-platform",
     titleKey: "navigation.aiPlatform",
@@ -148,9 +165,10 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     id: "company",
     path: "/dashboard/company",
     nestedPath: "/company",
-    titleKey: "navigation.company",
+    titleKey: "navigation.companyWorkspace",
     icon: Building2,
     permission: "company.view",
+    sidebarGroup: "company-hub",
     Page: lazyNamed(
       () => import("@/pages/dashboard/company/company-workspace-page"),
       "CompanyWorkspacePage",
@@ -163,6 +181,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.omnichannel",
     icon: MessageSquare,
     permission: "ai.conversations.view",
+    commercialFeatureCode: "omnichannel",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/conversations/omnichannel-console-page")),
   },
@@ -173,6 +192,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.channels",
     icon: Radio,
     permission: "channels.view",
+    // Workspace shell: per-channel actions enforce whatsapp_channel / facebook_channel / etc.
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/channels/channels-page")),
   },
@@ -183,6 +203,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.communication",
     icon: Send,
     permission: "channels.view",
+    commercialFeatureCode: "email_channel",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(
       () => import("@/pages/dashboard/communication/communication-center-page"),
@@ -207,6 +228,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: Activity,
     permission: "ai.analytics.view",
     platformFeatureKey: PLATFORM_AI_FEATURE_KEY.AI_ANALYTICS,
+    commercialFeatureCode: "advanced_reports",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/ai/ai-analytics-page")),
   },
@@ -230,12 +252,23 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     Page: lazyPage(() => import("@/pages/dashboard/customers/customers-layout")),
   },
   {
+    id: "tickets",
+    path: "/dashboard/tickets",
+    nestedPath: "/tickets",
+    titleKey: "navigation.tickets",
+    icon: Ticket,
+    permission: "tickets.view",
+    commercialFeatureCode: "ticketing",
+    Page: lazyNamed(() => import("@/pages/dashboard/tickets-page"), "TicketsPage"),
+  },
+  {
     id: "bookings",
     path: "/dashboard/bookings",
     nestedPath: "/bookings",
     titleKey: "navigation.bookings",
     icon: CalendarDays,
     permission: "bookings.view",
+    commercialFeatureCode: "bookings",
     Page: lazyPage(() => import("@/pages/dashboard/bookings-page")),
   },
   {
@@ -245,6 +278,8 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.calendar",
     icon: Calendar,
     permission: "bookings.view",
+    commercialFeatureCode: "bookings",
+    /** Not in main sidebar — entry lives under Settings → Calendar. */
     Page: lazyNamed(() => import("@/pages/dashboard/calendar/calendar-page"), "CalendarPage"),
   },
   {
@@ -254,6 +289,8 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.scheduling",
     icon: CalendarRange,
     permission: "bookings.view",
+    commercialFeatureCode: "bookings",
+    /** Not in main sidebar — setup lives under Settings → Scheduling. */
     Page: lazyNamed(() => import("@/pages/dashboard/scheduling/scheduling-page"), "SchedulingPage"),
   },
   {
@@ -262,6 +299,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     nestedPath: "/operations",
     titleKey: "navigation.universalOperations",
     icon: Briefcase,
+    commercialFeatureCode: "operations",
     Page: lazyNamed(() => import("@/pages/dashboard/operations/operations-page"), "OperationsPage"),
   },
   {
@@ -271,6 +309,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.leads",
     icon: Target,
     permission: "leads.view",
+    commercialFeatureCode: "leads",
     Page: lazyNamed(() => import("@/pages/dashboard/leads-page"), "LeadsPage"),
   },
   {
@@ -280,6 +319,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.opportunities",
     icon: Briefcase,
     permission: "opportunities.view",
+    commercialFeatureCode: "opportunities",
     Page: lazyNamed(
       () => import("@/pages/dashboard/opportunities-page"),
       "OpportunitiesPage",
@@ -307,7 +347,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     id: "invoices",
     path: "/dashboard/invoices",
     nestedPath: "/invoices",
-    titleKey: "navigation.invoices",
+    titleKey: "navigation.financialWorkspace",
     icon: FileText,
     permission: "invoices.view",
     Page: lazyPage(() => import("@/pages/dashboard/invoices-page")),
@@ -316,9 +356,10 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     id: "financial",
     path: "/dashboard/financial",
     nestedPath: "/financial",
-    titleKey: "navigation.financial",
+    titleKey: "navigation.financialWorkspace",
     icon: Coins,
     permission: "invoices.view",
+    /** Hidden from sidebar — redirects into unified invoices workspace. */
     Page: lazyNamed(
       () => import("@/pages/dashboard/financial/financial-billing-dashboard-page"),
       "FinancialBillingDashboardPage",
@@ -343,6 +384,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.organization",
     icon: GitBranch,
     permission: "organization.view",
+    sidebarGroup: "company-hub",
     Page: lazyNamed(
       () => import("@/pages/dashboard/organization/organization-dashboard-page"),
       "OrganizationDashboardPage",
@@ -355,6 +397,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.integrations",
     icon: Plug,
     permission: "integrations.view",
+    commercialFeatureCode: "api_access",
     Page: lazyNamed(
       () => import("@/pages/dashboard/integrations/integrations-dashboard-page"),
       "IntegrationsDashboardPage",
@@ -409,6 +452,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.workspace",
     icon: LayoutGrid,
     permission: "workspace.view",
+    /** Not in sidebar — redirects to Company Workspace → Plan & billing. */
     Page: lazyNamed(() => import("@/pages/workspace"), "WorkspacePage"),
   },
   {
@@ -456,6 +500,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.whatsapp",
     icon: MessageSquare,
     permission: "whatsapp.view",
+    commercialFeatureCode: "whatsapp_channel",
     Page: lazyPage(() => import("@/pages/dashboard/whatsapp-page")),
   },
   {
@@ -465,6 +510,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.aiAssistant",
     icon: Sparkles,
     permission: "ai_assistant.view",
+    commercialFeatureCode: "ai_assistant",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/ai-assistant"), "AiAssistantPage"),
   },
@@ -476,6 +522,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: Bot,
     permission: "agents.view",
     platformFeatureKey: PLATFORM_AI_FEATURE_KEY.AI_AGENTS,
+    commercialFeatureCode: "ai_employee",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/agents/agents-page")),
   },
@@ -486,6 +533,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.aiChat",
     icon: Bot,
     permission: "ai_chat.view",
+    commercialFeatureCode: "ai_assistant",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/ai-chat-page")),
   },
@@ -518,6 +566,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: Workflow,
     permission: "automation.view",
     platformFeatureKey: PLATFORM_AI_FEATURE_KEY.AUTOMATION,
+    commercialFeatureCode: "workflow_automation",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/automation-page")),
   },
@@ -528,6 +577,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.reports",
     icon: BarChart3,
     permission: "reports.view",
+    commercialFeatureCode: "basic_reports",
     Page: lazyPage(() => import("@/pages/dashboard/reports-page")),
   },
   {
@@ -558,27 +608,22 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   | { type: "route"; id: DashboardSectionId }
   | { type: "group"; id: DashboardSidebarGroupId }
 )[] = [
-  { type: "route", id: "company" },
+  { type: "group", id: "company-hub" },
   { type: "group", id: "ai-platform" },
   { type: "route", id: "customers" },
-  { type: "route", id: "bookings" },
-  { type: "route", id: "calendar" },
-  { type: "route", id: "scheduling" },
+  { type: "route", id: "tickets" },
   { type: "route", id: "universal-operations" },
   { type: "route", id: "leads" },
   { type: "route", id: "opportunities" },
   { type: "route", id: "products" },
   { type: "route", id: "quotes" },
   { type: "route", id: "invoices" },
-  { type: "route", id: "financial" },
   { type: "route", id: "executive" },
-  { type: "route", id: "organization" },
   { type: "route", id: "integrations" },
   { type: "route", id: "marketplace" },
   { type: "route", id: "companies" },
   { type: "route", id: "platform-ai-operations" },
   { type: "route", id: "demo-scenarios" },
-  { type: "route", id: "workspace" },
   { type: "route", id: "subscriptions" },
   { type: "route", id: "audit-logs" },
   { type: "group", id: "user-management" },
@@ -632,11 +677,15 @@ export type PlatformFeatureEnabledLookup = (
   featureKey: PlatformAIFeatureKey,
 ) => boolean | undefined;
 
+/** Commercial entitlement lookup: true | false | undefined (loading/unknown → DENY). */
+export type CommercialFeatureEnabledLookup = (featureCode: string) => boolean | undefined;
+
 export function isDashboardRoutePermitted(
   route: DashboardRouteDefinition,
   isSuperAdmin: boolean,
   hasPermission: (permission: string) => boolean,
   platformFeatureEnabled?: PlatformFeatureEnabledLookup,
+  commercialFeatureEnabled?: CommercialFeatureEnabledLookup,
 ): boolean {
   if (isSuperAdmin) {
     return true;
@@ -676,6 +725,14 @@ export function isDashboardRoutePermitted(
   if (route.platformFeatureKey) {
     const enabled = platformFeatureEnabled?.(route.platformFeatureKey);
     if (enabled === false) {
+      return false;
+    }
+  }
+
+  if (route.commercialFeatureCode) {
+    const entitled = commercialFeatureEnabled?.(route.commercialFeatureCode);
+    // Fail closed: undefined (loading/error) and false both deny.
+    if (entitled !== true) {
       return false;
     }
   }

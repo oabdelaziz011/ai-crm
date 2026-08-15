@@ -58,6 +58,7 @@ export interface CompanyRecord {
   subscription_status: string | null;
   billing_cycle: string | null;
   subscription_expires_at: string | null;
+  approval_status?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -403,7 +404,12 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
   }, [queryClient]);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    // Mark identity as pending before SIGNED_IN so onboarding gate does not flash.
+    setIsRefreshing(true);
     const result = await supabase.auth.signInWithPassword({ email, password });
+    if (result.error) {
+      setIsRefreshing(false);
+    }
     return {
       error: result.error
         ? { message: result.error.message, code: result.error.code, status: result.error.status }

@@ -6,5 +6,6 @@ export {
   isBillingDetailNestPath,
   isNestedSectionActive,
   toDashboardAbsolutePath,
+  dashboardNestHref,
   assertNoDuplicateAdjacentSegments,
 } from "./nested-paths";

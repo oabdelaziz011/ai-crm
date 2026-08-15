@@ -11,6 +11,8 @@ import { UserMenu } from "@/components/app-shell/user-menu";
 import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
 import { useResolvedCompanyLogos } from "@/hooks/company-workspace/use-company-brand-logos";
 import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
+import { useCompanyCapability } from "@/hooks/billing/use-company-feature";
+import { useAiChatFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
 import { useAiPanel } from "@/hooks/floating-ai/use-ai-panel";
 import { useHasPermission } from "@/hooks/use-rbac";
 import { preloadFloatingAiAssistant } from "@/components/floating-ai/floating-ai-assistant";
@@ -24,11 +26,18 @@ type AppHeaderProps = {
 
 export function AppHeader({ companyId, onSignOut, onActivateAi }: AppHeaderProps) {
   const { t } = useTranslation("common");
-  const { isRefreshing } = useAuth();
+  const { isRefreshing, isSuperAdmin } = useAuth();
   const { displayName, identity } = useCompanyIdentity(Boolean(companyId));
   const brandLogos = useResolvedCompanyLogos();
   const { setMobileSidebarOpen, openCommandPalette } = useAppShell();
-  const canViewAi = useHasPermission("ai_chat.view");
+  const canViewAiPermission = useHasPermission("ai_chat.view");
+  const { enabled: aiAssistantEntitled } = useCompanyCapability("ai_assistant", {
+    enabled: Boolean(companyId) && !isSuperAdmin,
+  });
+  const { isEnabled: aiChatFlagEnabled, isLoading: aiChatFlagLoading } = useAiChatFeatureEnabled();
+  const canViewAi =
+    canViewAiPermission
+    && (isSuperAdmin || (aiAssistantEntitled && !aiChatFlagLoading && aiChatFlagEnabled));
   const { isPanelVisible, openPanel, closePanel } = useAiPanel();
   const { setPendingFocusOnOpen, consumePendingFocus } = useFloatingAi();
 

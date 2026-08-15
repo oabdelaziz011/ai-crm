@@ -22,6 +22,7 @@ export interface AuthBootstrapCompany {
   subscription_status: string | null;
   billing_cycle: string | null;
   subscription_expires_at: string | null;
+  approval_status?: string | null;
 }
 
 export interface AuthBootstrapRole {

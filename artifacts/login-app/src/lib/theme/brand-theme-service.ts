@@ -1,5 +1,6 @@
 import { DEFAULT_BRAND_COLORS } from "@/lib/company-workspace/brand-center/defaults";
 import type { CompanyBrandColors } from "@/lib/company-workspace/brand-center/types";
+import { isPlatformAppearanceActive } from "@/lib/theme/resolve-app-theme";
 import {
   contrastForeground,
   hexToHsl,
@@ -44,6 +45,7 @@ const BRAND_STYLE_KEYS = [
   "--sidebar",
   "--sidebar-background",
   "--sidebar-foreground",
+  "--sidebar-gradient-end",
   "--sidebar-primary",
   "--sidebar-primary-foreground",
   "--sidebar-primary-border",
@@ -60,6 +62,35 @@ function resolveColor(value: string | undefined, fallback: string): HslChannels 
 
 function channels(hsl: HslChannels): string {
   return hslToCssChannels(hsl);
+}
+
+/**
+ * Sidebar chrome uses dedicated Brand Center sidebar fields — independent of
+ * button/system primary so operators can theme the rail without changing CTAs.
+ */
+function buildSidebarChrome(
+  sidebar: HslChannels,
+  sidebarActive: HslChannels,
+  sidebarAccent: HslChannels,
+) {
+  const sidebarBase = sidebar;
+  const sidebarEnd = withLightness(sidebarBase, Math.max(sidebarBase.l - 8, 6));
+  const sidebarHover = sidebarAccent;
+  const sidebarBorder = withLightness(sidebarBase, Math.min(sidebarBase.l + 12, 36));
+
+  return {
+    "--sidebar": channels(sidebarBase),
+    "--sidebar-background": channels(sidebarBase),
+    "--sidebar-foreground": contrastForeground(sidebarBase),
+    "--sidebar-gradient-end": channels(sidebarEnd),
+    "--sidebar-primary": channels(sidebarActive),
+    "--sidebar-primary-foreground": contrastForeground(sidebarActive),
+    "--sidebar-primary-border": `hsl(${channels(sidebarActive)})`,
+    "--sidebar-accent": channels(sidebarHover),
+    "--sidebar-accent-foreground": contrastForeground(sidebarBase),
+    "--sidebar-border": channels(sidebarBorder),
+    "--sidebar-ring": channels(sidebarActive),
+  } as const;
 }
 
 /**
@@ -85,6 +116,9 @@ export function buildBrandThemeCssVariables(
   const danger = resolveColor(palette.danger, DEFAULT_BRAND_COLORS.danger);
   const background = resolveColor(palette.background, DEFAULT_BRAND_COLORS.background);
   const surface = resolveColor(palette.surface, DEFAULT_BRAND_COLORS.surface);
+  const sidebar = resolveColor(palette.sidebar, DEFAULT_BRAND_COLORS.sidebar);
+  const sidebarActive = resolveColor(palette.sidebarActive, DEFAULT_BRAND_COLORS.sidebarActive);
+  const sidebarAccent = resolveColor(palette.sidebarAccent, DEFAULT_BRAND_COLORS.sidebarAccent);
 
   if (mode === "dark") {
     const darkPrimary = withLightness(primary, Math.max(primary.l, 48));
@@ -96,8 +130,11 @@ export function buildBrandThemeCssVariables(
     const darkCard = withLightness(withSaturation(secondary, Math.min(secondary.s, 38)), 10);
     const darkMuted = withLightness(withSaturation(secondary, Math.min(secondary.s, 30)), 13);
     const darkBorder = withLightness(withSaturation(secondary, Math.min(secondary.s, 28)), 16);
-    const darkSidebar = withLightness(withSaturation(secondary, Math.min(secondary.s, 44)), 8);
-    const darkSidebarAccent = withLightness(darkSidebar, 14);
+    const darkPageAccent = withLightness(withSaturation(secondary, Math.min(secondary.s, 44)), 14);
+    const darkSidebar = withLightness(sidebar, Math.min(sidebar.l, 18));
+    const darkSidebarActive = withLightness(sidebarActive, Math.max(sidebarActive.l, 48));
+    const darkSidebarAccent = withLightness(sidebarAccent, Math.min(Math.max(sidebarAccent.l, 22), 36));
+    const sidebarChrome = buildSidebarChrome(darkSidebar, darkSidebarActive, darkSidebarAccent);
 
     return {
       "--primary": channels(darkPrimary),
@@ -106,7 +143,7 @@ export function buildBrandThemeCssVariables(
       "--secondary": channels(darkMuted),
       "--secondary-foreground": "210 25% 92%",
       "--secondary-border": `hsl(${channels(darkBorder)})`,
-      "--accent": channels(darkSidebarAccent),
+      "--accent": channels(darkPageAccent),
       "--accent-foreground": "210 25% 96%",
       "--accent-border": `hsl(${channels(darkBorder)})`,
       "--success": channels(darkSuccess),
@@ -129,27 +166,17 @@ export function buildBrandThemeCssVariables(
       "--muted-foreground": "215 14% 58%",
       "--muted-border": `hsl(${channels(darkBorder)})`,
       "--ring": channels(darkPrimary),
-      "--sidebar": channels(darkSidebar),
-      "--sidebar-background": channels(darkSidebar),
-      "--sidebar-foreground": "210 20% 88%",
-      "--sidebar-primary": channels(darkPrimary),
-      "--sidebar-primary-foreground": contrastForeground(darkPrimary),
-      "--sidebar-primary-border": `hsl(${channels(darkPrimary)})`,
-      "--sidebar-accent": channels(darkSidebarAccent),
-      "--sidebar-accent-foreground": "210 25% 96%",
-      "--sidebar-border": channels(darkBorder),
-      "--sidebar-ring": channels(darkPrimary),
+      ...sidebarChrome,
       "--chart-1": channels(darkPrimary),
     };
   }
 
   const muted = withLightness(background, Math.max(background.l - 4, 90));
   const border = withLightness(withSaturation(background, Math.min(background.s, 24)), Math.min(background.l - 8, 88));
-  const sidebarBg = withLightness(background, Math.max(background.l - 2, 94));
-  const sidebarAccent = withLightness(background, Math.max(background.l - 5, 90));
-  // Brand secondary is often a deep brand color — use for sidebar primary / secondary token.
+  // Brand secondary drives muted UI chrome (cards/chips), not the sidebar rail.
   const secondaryUi = withLightness(withSaturation(secondary, Math.min(secondary.s, 20)), 93);
   const accentUi = withLightness(withSaturation(accent, Math.min(accent.s, 30)), 92);
+  const sidebarChrome = buildSidebarChrome(sidebar, sidebarActive, sidebarAccent);
 
   return {
     "--primary": channels(primary),
@@ -181,16 +208,7 @@ export function buildBrandThemeCssVariables(
     "--muted-foreground": "215 16% 40%",
     "--muted-border": `hsl(${channels(border)})`,
     "--ring": channels(primary),
-    "--sidebar": channels(sidebarBg),
-    "--sidebar-background": channels(sidebarBg),
-    "--sidebar-foreground": channels(withLightness(secondary, 18)),
-    "--sidebar-primary": channels(primary),
-    "--sidebar-primary-foreground": contrastForeground(primary),
-    "--sidebar-primary-border": `hsl(${channels(primary)})`,
-    "--sidebar-accent": channels(sidebarAccent),
-    "--sidebar-accent-foreground": channels(withLightness(secondary, 11)),
-    "--sidebar-border": channels(border),
-    "--sidebar-ring": channels(primary),
+    ...sidebarChrome,
     "--chart-1": channels(primary),
   };
 }
@@ -201,6 +219,11 @@ export function applyBrandTheme(
   mode: BrandThemeMode = "light",
 ): void {
   if (typeof document === "undefined") return;
+  // Appearance → System must keep stylesheet tokens; ignore brand paint.
+  if (isPlatformAppearanceActive()) {
+    clearBrandThemeInlineStyles();
+    return;
+  }
   const root = document.documentElement;
   const tokens = buildBrandThemeCssVariables(colors, mode);
   for (const [key, value] of Object.entries(tokens)) {
@@ -211,6 +234,10 @@ export function applyBrandTheme(
 
 /** Reset to ValueOR defaults for the active mode. */
 export function applyDefaultBrandTheme(mode: BrandThemeMode = "light"): void {
+  if (isPlatformAppearanceActive()) {
+    clearBrandThemeInlineStyles();
+    return;
+  }
   applyBrandTheme(DEFAULT_BRAND_COLORS, mode);
 }
 

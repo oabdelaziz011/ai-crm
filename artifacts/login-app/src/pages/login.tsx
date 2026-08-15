@@ -12,7 +12,9 @@ import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
 import { hasPendingPasswordSetupIntent, RESET_PASSWORD_PATH } from "@/lib/auth-redirect";
+import { AUTH_CONTROL_CLASS } from "@/lib/auth/auth-field-styles";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 type LoginFormValues = {
   email: string;
@@ -67,10 +69,7 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout
-      title={t("auth.login.title")}
-      subtitle={t("auth.login.subtitle")}
-    >
+    <AuthLayout subtitle={t("auth.login.subtitle")}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {form.formState.errors.root && (
@@ -85,7 +84,7 @@ export default function Login() {
                 <Input
                   type="email"
                   placeholder={t("auth.placeholders.email")}
-                  className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12"
+                  className={cn(AUTH_CONTROL_CLASS)}
                   {...field}
                 />
               </FormControl>
@@ -99,7 +98,7 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder={t("auth.placeholders.password")}
-                  className="bg-background/50 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50 h-12 font-mono tracking-widest"
+                  className={cn(AUTH_CONTROL_CLASS, "font-mono tracking-widest")}
                   {...field}
                 />
               </FormControl>

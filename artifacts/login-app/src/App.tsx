@@ -43,18 +43,18 @@ function LazyRoute({ component: Component }: { component: React.ComponentType })
   );
 }
 
-class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMessage: string | null }> {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorMessage: null };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMessage: error?.message ?? "Unknown error" };
   }
 
-  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
-    // Keep UI stable in production and avoid leaking sensitive details.
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[AppErrorBoundary]", error, errorInfo);
   }
 
   render() {
@@ -64,6 +64,11 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
           <div className="w-full max-w-md rounded-2xl border border-border bg-card/40 p-6 text-center">
             <h1 className="text-xl font-semibold">Something went wrong</h1>
             <p className="mt-2 text-sm text-muted-foreground">Please refresh the page and try again.</p>
+            {this.state.errorMessage ? (
+              <pre className="mt-4 max-h-40 overflow-auto rounded-lg bg-muted/60 p-3 text-start text-xs text-destructive">
+                {this.state.errorMessage}
+              </pre>
+            ) : null}
           </div>
         </div>
       );

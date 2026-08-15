@@ -162,6 +162,7 @@ export class IntegrationApiGatewayService {
       priority: query.priority as never,
       customerId: query.customerId,
       conversationId: query.conversationId,
+      assignedUserId: query.assignedUserId,
       assigneeName: query.assigneeName,
       limit: query.limit ? Number(query.limit) : undefined,
       offset: query.offset ? Number(query.offset) : undefined,
@@ -243,6 +244,24 @@ export class IntegrationApiGatewayService {
       companyId: ctx.companyId,
       ticketId,
       ...body,
+    });
+  }
+
+  async unassignTicket(ctx: ApiAuthContext, ticketId: string) {
+    return this.platformServices.commands.unassignTicket(this.ticketContext(ctx), {
+      companyId: ctx.companyId,
+      ticketId,
+    });
+  }
+
+  async getTicketMetrics(ctx: ApiAuthContext) {
+    const now = new Date();
+    const todayStartIso = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    ).toISOString();
+    return this.platformServices.queries.fetchMetrics(this.ticketContext(ctx), {
+      companyId: ctx.companyId,
+      todayStartIso,
     });
   }
 

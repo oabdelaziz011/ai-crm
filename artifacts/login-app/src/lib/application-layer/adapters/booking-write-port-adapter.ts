@@ -10,6 +10,7 @@ function mapDomainBooking(
     start_at: string;
     status: string;
     resource_id?: string | null;
+    confirmation_number?: string | null;
   },
   tenantId: string,
   extras?: Partial<BookingReadModel>,
@@ -19,7 +20,8 @@ function mapDomainBooking(
     tenantId,
     customerId: booking.customer_id,
     customerName: extras?.customerName ?? "Customer",
-    reference: booking.id.slice(0, 8).toUpperCase(),
+    reference:
+      booking.confirmation_number?.trim() || booking.id.slice(0, 8).toUpperCase(),
     scheduledAt: booking.start_at,
     status: booking.status,
     paymentStatus: extras?.paymentStatus ?? "Unpaid",

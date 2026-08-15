@@ -6,7 +6,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Tooltip,
@@ -14,15 +13,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CompanyLogo } from "@/components/billing/identity/company-logo";
+import { ValueOrLogo } from "@/components/brand/valueor-logo";
+import { useTheme } from "next-themes";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
-import { useResolvedCompanyLogos } from "@/hooks/company-workspace/use-company-brand-logos";
-import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
 import { useCurrentUserAvatar } from "@/hooks/use-current-user-avatar";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useSidebarBadgeCounts } from "@/hooks/use-sidebar-badge-counts";
-import { pickChromeLogo } from "@/lib/company-workspace/brand-center/resolve-brand-logos";
 import { useTranslation } from "react-i18next";
 import {
   DASHBOARD_SIDEBAR_GROUPS,
@@ -47,6 +45,7 @@ type SidebarSectionKey = "intelligence" | "operations" | "administration" | "acc
 function sectionLabelForEntry(
   entry: (typeof DASHBOARD_SIDEBAR_ORDER)[number],
 ): SidebarSectionKey | null {
+  if (entry.type === "group" && entry.id === "company-hub") return null;
   if (entry.type === "group" && entry.id === "ai-platform") return "intelligence";
   if (entry.type === "route" && entry.id === "customers") return "operations";
   if (entry.type === "route" && entry.id === "companies") return "administration";
@@ -58,19 +57,9 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
   const { t, i18n } = useTranslation("common");
   const [location, setLocation] = useLocation();
   const { hasPermission, isSuperAdmin } = useAuthUser();
-  const { displayName, identity } = useCompanyIdentity();
   const { name: userName } = useCurrentUserAvatar();
-  const { resolvedTheme } = useTheme();
-  const brandLogos = useResolvedCompanyLogos();
-  const chromeLogo = pickChromeLogo(brandLogos, {
-    theme: resolvedTheme === "dark" ? "dark" : "light",
-    collapsed: false,
-  });
-  const compactLogo = pickChromeLogo(brandLogos, {
-    theme: resolvedTheme === "dark" ? "dark" : "light",
-    collapsed: true,
-  });
   const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
+  const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
   const isRtl = i18n.dir() === "rtl";
   const {
     sidebarCollapsed,
@@ -78,11 +67,21 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
     mobileSidebarOpen,
     setMobileSidebarOpen,
   } = useAppShell();
+  const { theme, resolvedTheme } = useTheme();
+  // System + light OS → light sidebar chrome → dark wordmark.
+  // Branded light/dark themes paint a dark sidebar → white wordmark.
+  const logoTone =
+    theme === "system"
+      ? resolvedTheme === "dark"
+        ? "onDark"
+        : "onLightSidebar"
+      : "onDark";
 
   const activeSectionId = sectionIdFromNestedPath(location);
   const isHomeActive = isDashboardHomeNestedPath(location);
 
   const [groupOpen, setGroupOpen] = useState<Record<DashboardSidebarGroupId, boolean>>({
+    "company-hub": true,
     "ai-platform": false,
     "user-management": false,
   });
@@ -102,26 +101,32 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
         getDashboardRouteById("customers"),
         isSuperAdmin,
         hasPermission,
+        platformFeatureEnabled,
+        commercialFeatureEnabled,
       ),
       bookings: isDashboardRoutePermitted(
         getDashboardRouteById("bookings"),
         isSuperAdmin,
         hasPermission,
+        platformFeatureEnabled,
+        commercialFeatureEnabled,
       ),
       invoices: isDashboardRoutePermitted(
         getDashboardRouteById("invoices"),
         isSuperAdmin,
         hasPermission,
+        platformFeatureEnabled,
+        commercialFeatureEnabled,
       ),
     }),
-    [hasPermission, isSuperAdmin],
+    [hasPermission, isSuperAdmin, platformFeatureEnabled, commercialFeatureEnabled],
   );
 
   const sidebarBadges = useSidebarBadgeCounts(badgePermissions);
 
   const badgeCounts: Partial<Record<DashboardSectionId, number>> = {
     customers: sidebarBadges.customers,
-    bookings: sidebarBadges.bookings,
+    "universal-operations": sidebarBadges.bookings,
     invoices: sidebarBadges.invoices,
   };
 
@@ -146,7 +151,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
 
   const renderNavItem = (sectionId: DashboardSectionId, indented = false) => {
     const route = getDashboardRouteById(sectionId);
-    if (!isDashboardRoutePermitted(route, isSuperAdmin, hasPermission, platformFeatureEnabled)) return null;
+    if (!isDashboardRoutePermitted(route, isSuperAdmin, hasPermission, platformFeatureEnabled, commercialFeatureEnabled)) return null;
 
     const active = activeSectionId === sectionId;
     const badge = badgeCounts[sectionId];
@@ -212,7 +217,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
     if (!group) return null;
 
     const visibleChildren = group.childIds.filter((childId) =>
-      isDashboardRoutePermitted(getDashboardRouteById(childId), isSuperAdmin, hasPermission, platformFeatureEnabled),
+      isDashboardRoutePermitted(getDashboardRouteById(childId), isSuperAdmin, hasPermission, platformFeatureEnabled, commercialFeatureEnabled),
     );
     if (visibleChildren.length === 0) return null;
 
@@ -315,42 +320,30 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
         >
           <div
             className={cn(
-              "flex h-16 shrink-0 items-center border-b border-sidebar-border",
-              sidebarCollapsed ? "justify-center px-2" : "gap-3 px-4",
+              "flex h-[4.25rem] shrink-0 items-center overflow-hidden border-b border-sidebar-border",
+              sidebarCollapsed ? "justify-center px-2" : "px-3",
             )}
           >
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="flex min-w-0 items-center gap-3 text-start transition-opacity hover:opacity-90"
+              className={cn(
+                "flex min-w-0 max-w-full items-center overflow-hidden transition-opacity hover:opacity-90",
+                sidebarCollapsed ? "justify-center" : "w-full justify-start",
+              )}
               aria-label={t("navigation.home")}
             >
-              <CompanyLogo
-                name={displayName}
-                logoUrl={sidebarCollapsed ? compactLogo : chromeLogo}
-                className="size-9 shrink-0 rounded-xl shadow-lg shadow-primary/20"
+              <ValueOrLogo
+                tone={logoTone}
+                compact={sidebarCollapsed}
+                title="ValueOR"
+                className={cn("bg-transparent", sidebarCollapsed ? "size-9" : "w-full")}
               />
-              {!sidebarCollapsed && (
-                <div className="min-w-0">
-                  <p className="truncate text-[15px] font-bold tracking-tight leading-none">
-                    {identity?.name ? (
-                      identity.name
-                    ) : (
-                      <>
-                        Value<span className="text-primary">OR</span>
-                      </>
-                    )}
-                  </p>
-                  <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-sidebar-foreground/50">
-                    {t("app.dashboard")}
-                  </p>
-                </div>
-              )}
             </button>
           </div>
 
           <nav
-            className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3"
+            className="shell-sidebar-scroll flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-3"
             aria-label={t("appShell.sidebar.navigation")}
           >
             {!sidebarCollapsed && (

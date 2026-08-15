@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
 import { getPasswordSetupCallbackUrl, rememberPasswordSetupIntent } from "@/lib/auth-redirect";
+import { AUTH_CONTROL_CLASS } from "@/lib/auth/auth-field-styles";
 import { supabase } from "@/lib/supabase";
 
 type ForgotPasswordFormValues = {
@@ -63,7 +64,7 @@ export default function ForgotPassword() {
             <FormItem>
               <FormLabel className="text-muted-foreground">{t("auth.login.identity")}</FormLabel>
               <FormControl>
-                <Input type="email" placeholder={t("auth.placeholders.email")} className="bg-background/50 border-white/10 h-12" {...field} />
+                <Input type="email" placeholder={t("auth.placeholders.email")} className={AUTH_CONTROL_CLASS} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

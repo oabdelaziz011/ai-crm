@@ -131,7 +131,10 @@ export function useQuoteCommands() {
         const result = await servicesFactory().quote.createFromOpportunity(input, contextFactory());
         return unwrapCommandResult(result);
       },
-      onSuccess: invalidate,
+      onSuccess: () => {
+        // Non-blocking refresh so the picker can close immediately.
+        invalidate();
+      },
     }),
     createVersion: useMutation({
       mutationFn: async (quoteId: string) => {

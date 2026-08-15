@@ -14,6 +14,7 @@ import {
   isAppTheme,
   resolveAppTheme,
 } from "@/lib/theme/resolve-app-theme";
+import { clearBrandThemeInlineStyles } from "@/lib/theme/brand-theme-service";
 import { cn } from "@/lib/utils";
 
 const THEME_OPTIONS: readonly {
@@ -60,6 +61,11 @@ export function AppearanceSettingsSection() {
   const activeTheme =
     mounted && isAppTheme(theme) ? theme : resolveAppTheme(profile?.preferred_theme);
 
+  const restorePlatformStylesheetTheme = () => {
+    // Drop Brand Center inline overrides → fall back to index.css :root / .dark
+    clearBrandThemeInlineStyles();
+  };
+
   const handleThemeChange = async (value: string) => {
     if (!isAppTheme(value)) {
       return;
@@ -68,6 +74,9 @@ export function AppearanceSettingsSection() {
     const previous = activeTheme;
     setTheme(value);
     cacheAppTheme(value);
+    if (value === "system") {
+      restorePlatformStylesheetTheme();
+    }
 
     try {
       await updateTheme.mutateAsync(value);
@@ -117,6 +126,11 @@ export function AppearanceSettingsSection() {
                   ? "border-primary/40 bg-primary/5"
                   : "border-border bg-card/40 hover:bg-muted/40",
               )}
+              onClick={() => {
+                if (option.value === "system" && activeTheme === "system") {
+                  restorePlatformStylesheetTheme();
+                }
+              }}
             >
               <RadioGroupItem
                 id={`theme-${option.value}`}

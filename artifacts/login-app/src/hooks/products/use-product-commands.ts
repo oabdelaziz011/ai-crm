@@ -127,6 +127,10 @@ export function useProductCommands() {
       currency?: string;
       categoryId?: string | null;
       description?: string;
+      brand?: string;
+      cost?: number | null;
+      taxClass?: string;
+      tags?: string[];
     }) => {
       const result = await servicesFactory().product.createProduct(input, contextFactory());
       return unwrapCommandResult(result);

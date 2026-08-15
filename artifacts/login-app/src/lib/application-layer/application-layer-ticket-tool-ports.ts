@@ -1,5 +1,7 @@
 import type { TicketAgentToolPorts, TicketSummary } from "@workspace/ai-tool-router";
 import type { TicketReadModel } from "@workspace/application-layer";
+import { requireCompanyFeature } from "@/lib/billing/require-company-feature";
+import { supabase } from "@/lib/supabase";
 import type { LoginAppPortContext } from "./adapters/customer-read-port-adapter.js";
 import {
   buildToolApplicationContext,
@@ -26,12 +28,20 @@ function mapTicket(ticket: TicketReadModel): TicketSummary {
   };
 }
 
-/** Ticket AI tools — all operations route through TicketApplicationService. */
+/** Ticket AI tools — gated by ai_ticketing + ticketing entitlements. */
 export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortContext): TicketAgentToolPorts {
   const services = createLoginAppApplicationServices(portContext);
+  const companyId = portContext.companyId;
+
+  async function assertAiTicketing(): Promise<void> {
+    if (!companyId) throw new Error("Company required");
+    await requireCompanyFeature(supabase, companyId, "ticketing");
+    await requireCompanyFeature(supabase, companyId, "ai_ticketing");
+  }
 
   return {
     async createTicket(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.createTicket(
         {
@@ -47,6 +57,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return { ticket };
     },
     async updateTicket(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.updateTicket(
         { ticketId: input.ticketId, subject: input.subject, description: input.description },
@@ -55,6 +66,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return { ticket: mapTicket(unwrapCommand(result)) };
     },
     async closeTicket(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.closeTicket(
         { ticketId: input.ticketId, resolutionNote: input.resolutionNote, status: input.status },
@@ -63,6 +75,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return { ticket: mapTicket(unwrapCommand(result)) };
     },
     async assignTicket(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.assignTicket(
         {
@@ -75,6 +88,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return { ticket: mapTicket(unwrapCommand(result)) };
     },
     async addTicketComment(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.addTicketComment(
         { ticketId: input.ticketId, body: input.body, isInternal: input.isInternal },
@@ -83,6 +97,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return unwrapCommand(result);
     },
     async changeTicketPriority(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.changeTicketPriority(
         { ticketId: input.ticketId, priority: input.priority },
@@ -91,6 +106,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return { ticket: mapTicket(unwrapCommand(result)) };
     },
     async changeTicketStatus(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.changeTicketStatus(
         { ticketId: input.ticketId, status: input.status },
@@ -99,6 +115,7 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
       return { ticket: mapTicket(unwrapCommand(result)) };
     },
     async searchTickets(input) {
+      await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);
       const result = await services.ticket.searchTickets(
         {

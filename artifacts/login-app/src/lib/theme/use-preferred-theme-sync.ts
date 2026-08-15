@@ -14,10 +14,9 @@ export function usePreferredThemeSync() {
     }
 
     const resolved = resolveAppTheme(profile.preferred_theme);
+    cacheAppTheme(resolved);
     if (theme !== resolved) {
       setTheme(resolved);
-    } else {
-      cacheAppTheme(resolved);
     }
   }, [profile?.preferred_theme, profile, setTheme, theme]);
 }

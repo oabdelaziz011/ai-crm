@@ -6,6 +6,7 @@ import { DEFAULT_BRAND_COLORS } from "@/lib/company-workspace/brand-center/defau
 import {
   applyBrandTheme,
   applyDefaultBrandTheme,
+  clearBrandThemeInlineStyles,
   type BrandThemeMode,
 } from "@/lib/theme/brand-theme-service";
 
@@ -17,11 +18,14 @@ function resolveMode(resolvedTheme: string | undefined): BrandThemeMode {
  * Loads company branding from the shared React Query cache and applies CSS variables
  * whenever branding or light/dark mode changes — no full page reload.
  * useLayoutEffect so tokens land before the next paint (shell / chrome).
+ *
+ * When the user chooses Appearance → System, keep the original stylesheet tokens
+ * (index.css :root / .dark) instead of Brand Center overrides.
  */
 export function CompanyBrandThemeBridge() {
   const { company } = useAuth();
   const companyId = company?.id ?? null;
-  const { resolvedTheme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const mode = resolveMode(resolvedTheme);
   const { data: brandDocument, isSuccess, isError } = useCompanyBrandCenter(
     companyId,
@@ -34,6 +38,17 @@ export function CompanyBrandThemeBridge() {
   }, [brandDocument?.colors]);
 
   useLayoutEffect(() => {
+    // System appearance = original platform chrome from CSS, not Brand Center paint.
+    if (theme === "system") {
+      document.documentElement.dataset.appearance = "system";
+      clearBrandThemeInlineStyles();
+      return;
+    }
+
+    if (theme === "light" || theme === "dark") {
+      document.documentElement.dataset.appearance = theme;
+    }
+
     if (!companyId) {
       applyDefaultBrandTheme(mode);
       return;
@@ -52,7 +67,7 @@ export function CompanyBrandThemeBridge() {
 
     // No branding / error → ValueOR defaults.
     applyBrandTheme(DEFAULT_BRAND_COLORS, mode);
-  }, [companyId, colorsFingerprint, brandDocument?.colors, mode, isSuccess, isError]);
+  }, [companyId, colorsFingerprint, brandDocument?.colors, mode, isSuccess, isError, theme]);
 
   return null;
 }

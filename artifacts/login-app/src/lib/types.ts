@@ -69,17 +69,21 @@ export type MyProfileUpdate = Partial<
 >;
 
 export type CompanyStatus = "Active" | "Suspended" | "Trial";
-export type PlanTier = "Basic" | "Pro" | "Enterprise";
+export type CompanyApprovalStatus = "pending" | "approved" | "rejected";
+export type PlanTier = string;
 export type SubscriptionStatus = "active" | "trialing" | "past_due" | "grace_period" | "canceled" | "expired";
 export type BillingCycle = "monthly" | "yearly";
 
+/** Sellable commercial package row (`public.plans`). Packaging/pricing only — not runtime auth. */
 export type Plan = {
   id: string;
-  name: PlanTier;
-  code: "basic" | "pro" | "enterprise";
+  name: string;
+  code: string;
   display_name?: string | null;
   description?: string | null;
   is_active?: boolean;
+  is_highlighted?: boolean;
+  is_public?: boolean;
   sort_order?: number;
   tier_rank?: number;
   max_users?: number | null;
@@ -87,7 +91,12 @@ export type Plan = {
   storage_gb?: number | null;
   ai_tokens_monthly?: number | null;
   features?: unknown;
+  metadata?: Record<string, unknown> | null;
+  /** free | fixed | custom — list-price mode only (not entitlement). */
+  pricing_mode?: "free" | "fixed" | "custom" | string | null;
+  /** Monthly list price (amount per month). */
   price_monthly: number;
+  /** Annual list price (total per year). */
   price_yearly: number;
   created_at: string;
   updated_at: string;
@@ -159,15 +168,39 @@ export type NotificationItem = {
 
 export type TenantProvisioningStatus = "pending" | "provisioning" | "completed" | "failed";
 
+export type CompanyBillingProfileSummary = {
+  legal_name?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
+  commercial_registration?: string | null;
+};
+
+export type CompanyPrimaryBranchSummary = {
+  id?: string | null;
+  city?: string | null;
+  country?: string | null;
+  timezone?: string | null;
+  address_line1?: string | null;
+};
+
 export type Company = {
   id: string;
   name: string;
   logo_url: string | null;
   company_type?: string | null;
+  /** Business type (clinic, retail, …). Distinct from company_type tenant class. */
+  business_type?: string | null;
+  industry?: string | null;
   contact_person?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
   status: CompanyStatus;
+  approval_status?: CompanyApprovalStatus;
+  approval_requested_at?: string | null;
+  approval_reviewed_at?: string | null;
+  approval_reviewed_by?: string | null;
+  approval_rejection_reason?: string | null;
+  approval_notes?: string | null;
   plan_id: string | null;
   subscription_plan: string;
   subscription_status: SubscriptionStatus;
@@ -180,6 +213,8 @@ export type Company = {
   created_at: string;
   updated_at: string;
   plan?: Plan | null;
+  billing_profile?: CompanyBillingProfileSummary | CompanyBillingProfileSummary[] | null;
+  primary_branch?: CompanyPrimaryBranchSummary | CompanyPrimaryBranchSummary[] | null;
 };
 
 export type BookingStatus = "Pending" | "Confirmed" | "Cancelled";
@@ -203,9 +238,20 @@ export type Booking = {
   resource_id?: string | null;
   scheduling_status?: string;
   source?: string;
+  /** Company-scoped reference, e.g. BK-000123 (scheduling bookings). */
+  confirmation_number?: string | null;
 };
 
-export type InvoiceStatus = "Unpaid" | "Paid" | "Overdue";
+export type InvoiceStatus =
+  | "Unpaid"
+  | "Paid"
+  | "Overdue"
+  | "issued"
+  | "Issued"
+  | "pending"
+  | "Pending"
+  | "draft"
+  | "Draft";
 export type Invoice = {
   id: string;
   user_id: string;
@@ -213,6 +259,8 @@ export type Invoice = {
   amount: number;
   status: InvoiceStatus;
   invoice_date: string;
+  /** Human-facing invoice reference when present. */
+  invoice_number?: string | null;
   created_at: string;
   updated_at: string;
   customers?: Pick<Customer, "id" | "name"> | null;
@@ -233,8 +281,22 @@ export type CompanyInsert = {
   billing_cycle?: BillingCycle;
   subscription_expires_at?: string | null;
   logo_url?: string | null;
+  industry?: string | null;
+  business_type?: string | null;
+  contact_person?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
 };
 export type CompanyUpdate = Partial<CompanyInsert>;
+
+export type CompanyIdentityUpdate = {
+  legal_name?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
+  commercial_registration?: string | null;
+  country?: string | null;
+  city?: string | null;
+};
 
 export type BookingInsert = Omit<
   Booking,

@@ -43,6 +43,18 @@ export function cacheAppTheme(theme: AppTheme): void {
     return;
   }
   window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  document.documentElement.dataset.appearance = theme;
+}
+
+/** True when Appearance preference is System (platform stylesheet, no Brand Center paint). */
+export function isPlatformAppearanceActive(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  if (document.documentElement.dataset.appearance === "system") {
+    return true;
+  }
+  return readCachedAppTheme() === "system";
 }
 
 export function readSystemPrefersDark(): boolean {

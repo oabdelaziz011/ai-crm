@@ -77,6 +77,23 @@ export function toDashboardAbsolutePath(dashboardNestPath: string): string {
   return `${DASHBOARD_ABSOLUTE_PREFIX}${normalized}`;
 }
 
+/**
+ * Normalize a dashboard target for use inside the `/dashboard` nest.
+ * Accepts nest-relative (`/financial`), absolute (`/dashboard/financial`), or root-escape (`~/dashboard/financial`).
+ */
+export function dashboardNestHref(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return NEST_INDEX;
+  if (trimmed.startsWith("~/")) return trimmed;
+  if (trimmed === DASHBOARD_ABSOLUTE_PREFIX || trimmed === `${DASHBOARD_ABSOLUTE_PREFIX}/`) {
+    return NEST_INDEX;
+  }
+  if (trimmed.startsWith(`${DASHBOARD_ABSOLUTE_PREFIX}/`)) {
+    return nestedSectionHref(trimmed.slice(DASHBOARD_ABSOLUTE_PREFIX.length));
+  }
+  return nestedSectionHref(trimmed);
+}
+
 /** Fail when any adjacent path segments repeat (guards duplicated nest prefixes). */
 export function assertNoDuplicateAdjacentSegments(absolutePath: string): void {
   const segments = absolutePath.split("/").filter(Boolean);

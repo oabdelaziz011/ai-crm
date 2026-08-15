@@ -19,10 +19,16 @@ import {
 } from "@/lib/automation/domain/automation-mapper";
 import { WORKFLOW_TEMPLATES } from "@/lib/automation/templates/workflow-templates";
 import { assertLegacyAutomationWorkflowEnabled } from "@/lib/automation/utils/workflow-guard";
+import { requireCompanyFeature } from "@/lib/billing/require-company-feature";
 
 /** CRUD + execution persistence — no business logic. */
 export class AutomationRepository {
   constructor(private readonly client: SupabaseClient) {}
+
+  private async assertWorkflowAutomationEntitled(companyId: string): Promise<void> {
+    assertLegacyAutomationWorkflowEnabled(companyId);
+    await requireCompanyFeature(this.client, companyId, "workflow_automation");
+  }
 
   async list(companyId: string): Promise<AutomationWorkflow[]> {
     const { data, error } = await this.client
@@ -86,7 +92,7 @@ export class AutomationRepository {
   }
 
   async create(companyId: string, input: AutomationWorkflowInput): Promise<AutomationWorkflow> {
-    assertLegacyAutomationWorkflowEnabled(companyId);
+    await this.assertWorkflowAutomationEntitled(companyId);
     const conditions: ConditionGroup = input.conditions ?? { operator: "and", conditions: [] };
     const schedule = input.schedule ?? { type: "immediate" };
     const graph = input.graph ?? buildWorkflowGraph({ trigger: input.trigger, conditions, schedule, actions: input.actions });
@@ -117,7 +123,7 @@ export class AutomationRepository {
     workflowId: string,
     input: Partial<AutomationWorkflowInput>,
   ): Promise<AutomationWorkflow> {
-    assertLegacyAutomationWorkflowEnabled(companyId);
+    await this.assertWorkflowAutomationEntitled(companyId);
     const existing = await this.getById(companyId, workflowId);
     if (!existing) throw new Error("Workflow not found");
 
@@ -150,7 +156,7 @@ export class AutomationRepository {
   }
 
   async setEnabled(companyId: string, workflowId: string, enabled: boolean): Promise<AutomationWorkflow> {
-    assertLegacyAutomationWorkflowEnabled(companyId);
+    await this.assertWorkflowAutomationEntitled(companyId);
     const { data, error } = await this.client
       .from("automation_workflows")
       .update({ enabled, updated_at: new Date().toISOString() })
@@ -164,7 +170,7 @@ export class AutomationRepository {
   }
 
   async delete(companyId: string, workflowId: string): Promise<void> {
-    assertLegacyAutomationWorkflowEnabled(companyId);
+    await this.assertWorkflowAutomationEntitled(companyId);
     const { error } = await this.client
       .from("automation_workflows")
       .delete()
@@ -183,7 +189,7 @@ export class AutomationRepository {
     status: AutomationStatus;
     scheduledAt: string | null;
   }): Promise<AutomationExecution> {
-    assertLegacyAutomationWorkflowEnabled(input.companyId);
+    await this.assertWorkflowAutomationEntitled(input.companyId);
     const { data, error } = await this.client
       .from("automation_executions")
       .insert({

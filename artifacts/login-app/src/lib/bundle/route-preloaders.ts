@@ -6,7 +6,8 @@ type RoutePreloader = () => Promise<unknown>;
 export const DASHBOARD_ROUTE_PRELOADERS: Partial<Record<DashboardSectionId, RoutePreloader>> = {
   company: () => import("@/pages/dashboard/company/company-workspace-page"),
   customers: () => import("@/pages/dashboard/customers/customers-layout"),
-  bookings: () => import("@/pages/dashboard/bookings-page"),
+  bookings: () => import("@/pages/dashboard/operations/operations-page"),
+  "universal-operations": () => import("@/pages/dashboard/operations/operations-page"),
   calendar: () => import("@/pages/dashboard/calendar/calendar-page"),
   reports: () => import("@/pages/dashboard/reports-page"),
   "ai-assistant": () => import("@/pages/ai-assistant"),
@@ -33,6 +34,6 @@ export function preloadLikelyNextRoute(currentSectionId: DashboardSectionId | nu
     return;
   }
   if (currentSectionId === "customers") {
-    preloadDashboardRoute("bookings");
+    preloadDashboardRoute("universal-operations");
   }
 }

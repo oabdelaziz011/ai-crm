@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthErrorMessage } from "@/hooks/use-auth-error-message";
 import { clearPasswordSetupIntent } from "@/lib/auth-redirect";
+import { AUTH_CONTROL_CLASS } from "@/lib/auth/auth-field-styles";
 import { waitForRecoverySession } from "@/lib/auth-session";
 import { supabase } from "@/lib/supabase";
 
@@ -120,7 +121,7 @@ export default function ResetPassword() {
             <FormItem>
               <FormLabel className="text-muted-foreground">{t("auth.resetPassword.newPassword")}</FormLabel>
               <FormControl>
-                <Input type="password" className="bg-background/50 border-white/10 h-12" {...field} />
+                <Input type="password" className={AUTH_CONTROL_CLASS} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,7 +130,7 @@ export default function ResetPassword() {
             <FormItem>
               <FormLabel className="text-muted-foreground">{t("auth.resetPassword.confirmPassword")}</FormLabel>
               <FormControl>
-                <Input type="password" className="bg-background/50 border-white/10 h-12" {...field} />
+                <Input type="password" className={AUTH_CONTROL_CLASS} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

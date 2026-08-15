@@ -7,6 +7,7 @@ import {
   type PlanEntitlements,
 } from "@workspace/configuration-platform";
 import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
+import { toBillingFeatureCode } from "@/lib/billing/feature-code-map";
 
 type LicenseRow = {
   tenant_id: string;
@@ -48,7 +49,11 @@ function mapEntitlements(row: EntitlementRow): PlanEntitlements {
 
 function canRead(ctx: LoginAppPortContext): boolean {
   if (ctx.isSuperAdmin) return true;
-  return ctx.hasPermission("licenses.read") || ctx.hasPermission("configuration.read");
+  return (
+    ctx.hasPermission("licenses.read") ||
+    ctx.hasPermission("configuration.read") ||
+    ctx.hasPermission("feature_flags.read")
+  );
 }
 
 export function createLoginAppLicenseReadPort(
@@ -81,11 +86,49 @@ export function createLoginAppLicenseReadPort(
     },
 
     async canAccess(tenantId, featureKey) {
+      // Mapped commercial keys → Phase 6 billing entitlement SoT only.
+      // LicensingEngine must NEVER authorize mapped commercial features.
+      const billingCode = toBillingFeatureCode(featureKey);
+      if (billingCode) {
+        if (tenantId !== ctx.companyId && !ctx.isSuperAdmin) {
+          return Object.freeze({
+            allowed: false,
+            reason: "Tenant mismatch",
+            planCode: "billing",
+            status: "suspended" as const,
+          });
+        }
+
+        const { data, error } = await client.rpc("is_feature_enabled", {
+          p_company_id: tenantId,
+          p_feature_code: billingCode,
+        });
+
+        if (error) {
+          return Object.freeze({
+            allowed: false,
+            reason: error.message,
+            planCode: "billing",
+            status: "expired" as const,
+          });
+        }
+
+        const allowed = Boolean(data);
+        return Object.freeze({
+          allowed,
+          reason: allowed ? undefined : `Company not entitled to ${billingCode}`,
+          planCode: "billing",
+          status: (allowed ? "active" : "expired") as CompanyLicenseState["status"],
+        });
+      }
+
+      // Unmapped legacy keys only: LicensingEngine for quotas / legacy JSON features.
+      // Examples: knowledge.platform, embeddings, tool.calling — not in BILLING_FEATURE_CODES.
       const state = await this.getCompanyLicense(tenantId);
       if (!state) {
         return Object.freeze({
           allowed: false,
-          reason: "No license",
+          reason: "No license configured",
           planCode: "unknown",
           status: "expired" as const,
         });

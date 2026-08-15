@@ -5,6 +5,7 @@ import {
 } from "@/config/dashboard-route-registry";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { usePlatformFeatureEnabledLookup } from "@/hooks/platform-ai/use-platform-ai-feature-enabled";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import AccessDeniedPage from "@/pages/access-denied";
 import { useTranslation } from "react-i18next";
@@ -17,14 +18,29 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
   const { t } = useTranslation("common");
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
+  const { lookup: commercialFeatureEnabled, isLoading: commercialLoading } =
+    useCommercialFeatureLookup();
+
+  if (route.commercialFeatureCode && commercialLoading && !isSuperAdmin) {
+    return <DashboardPageFallback />;
+  }
+
   const permitted = isDashboardRoutePermitted(
     route,
     isSuperAdmin,
     hasPermission,
     platformFeatureEnabled,
+    commercialFeatureEnabled,
   );
 
   if (!permitted) {
+    if (route.commercialFeatureCode) {
+      return (
+        <AccessDeniedPage
+          requiredPermission={route.permission ?? route.commercialFeatureCode}
+        />
+      );
+    }
     if (route.platformFeatureKey && route.id === "knowledge") {
       return (
         <div className="flex min-h-[40vh] items-center justify-center px-6">

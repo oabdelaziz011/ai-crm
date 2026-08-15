@@ -1,4 +1,4 @@
-import type { CSSProperties, ElementType, ReactNode } from "react";
+import type { CSSProperties, ElementType, KeyboardEvent, ReactNode } from "react";
 import { AlertCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,10 +8,18 @@ export function DashboardCard({
   children,
   className = "",
   style,
+  onClick,
+  role,
+  tabIndex,
+  onKeyDown,
 }: {
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
+  onClick?: () => void;
+  role?: string;
+  tabIndex?: number;
+  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
   return (
     <div
@@ -21,6 +29,10 @@ export function DashboardCard({
         className,
       )}
       style={style}
+      onClick={onClick}
+      role={role}
+      tabIndex={tabIndex}
+      onKeyDown={onKeyDown}
     >
       {children}
     </div>
@@ -34,6 +46,7 @@ export function DashboardStatCard({
   trend,
   trendUp,
   loading,
+  onClick,
 }: {
   label: string;
   value: string | number;
@@ -41,9 +54,28 @@ export function DashboardStatCard({
   trend?: string;
   trendUp?: boolean;
   loading?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <DashboardCard className="group relative overflow-hidden p-5">
+    <DashboardCard
+      className={cn(
+        "group relative overflow-hidden p-5",
+        onClick && "cursor-pointer transition-colors hover:border-primary/30",
+      )}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
       <div className="pointer-events-none absolute -end-4 -top-4 size-24 rounded-full bg-primary/5 transition-transform duration-300 group-hover:scale-110" />
 
       <div className="relative flex items-start justify-between gap-3">

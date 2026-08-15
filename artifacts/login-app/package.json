@@ -21,6 +21,8 @@
     "test:company-provisioning-e2e": "tsx ../../scripts/company-provisioning-e2e.mts",
     "test:company-provisioning-validation": "tsx ../../scripts/company-provisioning-validation.mts",
     "test:billing-settings-core": "tsx scripts/billing-settings-core.test.mts",
+    "test:commercial-entitlements": "tsx scripts/commercial-entitlements-foundation.test.mts && tsx scripts/commercial-entitlement-service.test.mts",
+    "test:trial-onboarding": "node ../../scripts/verify-264-trial-onboarding.mjs",
     "test:billing-settings-i18n": "tsx scripts/billing-settings-i18n-verify.mts",
     "test:subscription-detail": "tsx scripts/subscription-detail-regression.test.mts",
     "test:workflow-builder-core": "node scripts/run-workflow-builder-test.mjs scripts/workflow-builder-core.test.mts",

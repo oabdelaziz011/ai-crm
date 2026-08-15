@@ -32,12 +32,14 @@ describe("operations queue row mapper", () => {
       visitType: "FollowUp",
       discountCents: 0,
       taxCents: 0,
+      confirmationNumber: "BK-000123",
       displayStart: "10:00",
       displayEnd: "10:30",
       durationMinutes: 30,
     };
 
     const row = mapOperationsBookingToRow(booking, config);
+    assert.equal(row.values.reference, "BK-000123");
     assert.equal(row.id, "bk_12345678");
     assert.equal(row.customerId, "cust_1");
     assert.equal(row.statusId, "st_checked_in");

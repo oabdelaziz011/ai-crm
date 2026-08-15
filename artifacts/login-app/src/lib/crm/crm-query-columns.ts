@@ -11,6 +11,7 @@ export const INVOICE_LIST_COLUMNS = `
   amount,
   status,
   invoice_date,
+  invoice_number,
   created_at,
   updated_at,
   customers(id, name)
@@ -46,6 +47,7 @@ export const SCHEDULING_BOOKING_LIST_COLUMNS = `
   status,
   source,
   notes,
+  confirmation_number,
   rescheduled_from_id,
   version,
   created_by,

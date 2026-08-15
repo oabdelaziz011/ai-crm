@@ -409,34 +409,16 @@ await test("unit: toDashboardAbsolutePath has no duplicate segments", () => {
 }
 
 {
-  const harness = setupHarness("/dashboard/workspace");
-  await mountApp(harness, { billing: false, workspace: true });
-
-  await test("workspace: overview → billing", async () => {
-    assert.ok(getText("workspace-overview"));
-    assert.equal(getHref("workspace-billing-link"), "/dashboard/workspace/billing");
-    await click("workspace-billing-link");
-    assertAbsolutePath(harness, "/dashboard/workspace/billing", "overview → billing");
-    assert.ok(getText("workspace-billing"));
+  await test("workspace: legacy module targets company plan & billing tab", async () => {
+    const { companyWorkspaceHref } = await import("../src/lib/company-workspace/company-workspace-routes.ts");
+    const target = companyWorkspaceHref("subscription");
+    assert.match(target, /\/company\?tab=subscription/);
   });
 
-  await test("workspace: overview → usage", async () => {
-    harness.navigate("/dashboard/workspace");
-    await mountApp(harness, { billing: false, workspace: true });
-    assert.equal(getHref("workspace-usage-link"), "/dashboard/workspace/usage");
-    await click("workspace-usage-link");
-    assertAbsolutePath(harness, "/dashboard/workspace/usage", "overview → usage");
-    assert.ok(getText("workspace-usage"));
-  });
-
-  await test("workspace: registry routes have no duplicated /workspace segment", async () => {
+  await test("workspace: registry absolute paths have no duplicated segments", async () => {
     for (const route of WORKSPACE_ROUTE_REGISTRY) {
       const abs = toDashboardAbsolutePath(`/workspace${nestedSectionHref(route.nestedPath)}`);
       assertNoDuplicateAdjacentSegments(abs);
-      harness.navigate(abs);
-      await mountApp(harness, { billing: false, workspace: true });
-      const markerId = route.nestedPath === "/" ? "workspace-overview" : `workspace-${route.id}`;
-      assert.ok(getText(markerId), `expected #${markerId} for route ${route.id}`);
     }
   });
 }

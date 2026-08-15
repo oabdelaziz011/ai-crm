@@ -65,23 +65,54 @@ export function bookingEventToBusType(eventType: string): WebhookEventType | nul
 export class IntegrationBookingEventPublisher {
   constructor(private readonly inner?: { publish(event: unknown): Promise<void> }) {}
 
-  async publish(event: { type: string; payload: { booking: { id: string; company_id: string; customer_id?: string } } }): Promise<void> {
-    if (this.inner) await this.inner.publish(event);
+  async publish(event: {
+    type: string;
+    payload: {
+      booking: {
+        id: string;
+        company_id: string;
+        customer_id?: string;
+        start_at?: string;
+        updated_at?: string;
+        cancelled_at?: string | null;
+        completed_at?: string | null;
+      };
+    };
+  }): Promise<void> {
+    try {
+      if (this.inner) await this.inner.publish(event);
+    } catch (error) {
+      console.warn(
+        "[booking-side-effects] inner publisher failed; booking create continues",
+        error instanceof Error ? error.message : error,
+      );
+    }
 
     const busType = bookingEventToBusType(event.type);
     if (!busType) return;
 
     const booking = event.payload.booking;
-    await getEnterpriseEventPublisher().publish({
-      companyId: booking.company_id,
-      eventType: busType,
-      eventId: `${booking.id}:${event.type}:${Date.now()}`,
-      payload: {
-        bookingId: booking.id,
-        customerId: booking.customer_id ?? "",
-        eventType: event.type,
-      },
-    });
+    const nowIso = new Date().toISOString();
+    try {
+      await getEnterpriseEventPublisher().publish({
+        companyId: booking.company_id,
+        eventType: busType,
+        eventId: `${booking.id}:${event.type}:${Date.now()}`,
+        payload: {
+          bookingId: booking.id,
+          customerId: booking.customer_id ?? "",
+          eventType: event.type,
+          scheduledAt: booking.start_at ?? nowIso,
+          cancelledAt: booking.cancelled_at ?? booking.updated_at ?? nowIso,
+          completedAt: booking.completed_at ?? booking.updated_at ?? nowIso,
+        },
+      });
+    } catch (error) {
+      console.warn(
+        "[booking-side-effects] platform event publish failed; booking create continues",
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 }
 

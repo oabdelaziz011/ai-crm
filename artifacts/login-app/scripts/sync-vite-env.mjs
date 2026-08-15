@@ -39,6 +39,10 @@ const supabaseKey =
 const apiServerUrl =
   rootEnv.VITE_API_SERVER_URL ||
   existingLocal.VITE_API_SERVER_URL;
+const webhookBaseUrl =
+  rootEnv.VITE_WEBHOOK_BASE_URL ||
+  rootEnv.WEBHOOK_BASE_URL ||
+  existingLocal.VITE_WEBHOOK_BASE_URL;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error(
@@ -53,6 +57,9 @@ const lines = [
 ];
 if (apiServerUrl) {
   lines.push(`VITE_API_SERVER_URL=${apiServerUrl}`);
+}
+if (webhookBaseUrl) {
+  lines.push(`VITE_WEBHOOK_BASE_URL=${webhookBaseUrl}`);
 }
 
 writeFileSync(envLocalPath, `${lines.join("\n")}\n`, "utf8");

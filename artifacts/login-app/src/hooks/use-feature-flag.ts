@@ -6,6 +6,7 @@ import {
   createLoginAppApplicationLayerRegistry,
   permissionCodes,
 } from "@/lib/application-layer/application-layer-bootstrap";
+import { isCommercialBillingMappedKey } from "@/lib/billing/feature-code-map";
 import {
   LEGACY_AI_FEATURE_KEY_MAP,
   type PlatformFeatureKey,
@@ -24,6 +25,7 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const companyId = company?.id ?? null;
   const unifiedKey = resolveUnifiedFeatureKey(featureKey);
+  const commercialMapped = isCommercialBillingMappedKey(unifiedKey);
 
   const query = useQuery({
     queryKey: featureFlagQueryKey(companyId, unifiedKey),
@@ -31,7 +33,11 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId || !user?.id) {
-        return { enabled: true, source: "default" as const, licenseBlocked: false };
+        return {
+          enabled: !commercialMapped,
+          source: "default" as const,
+          licenseBlocked: commercialMapped,
+        };
       }
 
       const portContext = {
@@ -52,14 +58,19 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
         context,
       );
 
-      return result.data ?? { enabled: true, featureKey: unifiedKey, source: "default" as const };
+      return result.data ?? {
+        enabled: !commercialMapped,
+        featureKey: unifiedKey,
+        source: "default" as const,
+        licenseBlocked: commercialMapped,
+      };
     },
   });
 
   return {
     isLoading: query.isLoading,
-    /** Resolved value; defaults to true while loading (missing-row semantics). */
-    isEnabled: query.data?.enabled ?? true,
+    /** Commercial modules default false while loading; unmapped flags keep legacy true. */
+    isEnabled: query.data?.enabled ?? (commercialMapped ? false : true),
     resolvedEnabled: query.isFetched ? query.data?.enabled : undefined,
     licenseBlocked: query.data?.licenseBlocked ?? false,
     licenseReason:
@@ -73,6 +84,7 @@ export function useCanAccessFeature(featureKey: PlatformFeatureKey | string) {
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const companyId = company?.id ?? null;
   const unifiedKey = resolveUnifiedFeatureKey(featureKey);
+  const commercialMapped = isCommercialBillingMappedKey(unifiedKey);
 
   const query = useQuery({
     queryKey: ["license-access", companyId, unifiedKey] as const,
@@ -80,7 +92,7 @@ export function useCanAccessFeature(featureKey: PlatformFeatureKey | string) {
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId || !user?.id) {
-        return { allowed: true, planCode: "unknown", status: "active" as const };
+        return { allowed: false, planCode: "unknown", status: "expired" as const };
       }
 
       const portContext = {
@@ -97,13 +109,19 @@ export function useCanAccessFeature(featureKey: PlatformFeatureKey | string) {
       });
 
       const result = await registry.getServices().licensing.canAccess({ featureKey: unifiedKey }, context);
-      return result.data ?? { allowed: true, planCode: "unknown", status: "active" as const };
+      return result.data ?? {
+        allowed: false,
+        planCode: "unknown",
+        status: "expired" as const,
+        reason: "Access unresolved",
+      };
     },
   });
 
   return {
     isLoading: query.isLoading,
-    allowed: query.data?.allowed ?? true,
+    // Commercial modules deny while loading; unmapped legacy flags keep prior default.
+    allowed: query.data?.allowed ?? (commercialMapped ? false : true),
     reason: query.data?.reason,
     planCode: query.data?.planCode,
     status: query.data?.status,

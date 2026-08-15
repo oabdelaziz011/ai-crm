@@ -17,17 +17,20 @@ const DashboardHomePage = lazy(() =>
 
 const CUSTOMER_WORKSPACE_PATH = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i;
 const OMNICHANNEL_CONSOLE_PATH = /^\/omnichannel(?:\/|$)/i;
+const CALENDAR_PATH = /^\/calendar(?:\/|$)/i;
 
 export function DashboardOutlet() {
   const [location] = useLocation();
   const activeSectionId = sectionIdFromNestedPath(location) ?? "home";
   const isCustomerWorkspace = CUSTOMER_WORKSPACE_PATH.test(location);
   const isOmnichannelConsole = OMNICHANNEL_CONSOLE_PATH.test(location);
+  const isCalendarPage = CALENDAR_PATH.test(location);
+  const isFullBleed = isCustomerWorkspace || isOmnichannelConsole || isCalendarPage;
 
   return (
     <main
       className={
-        isCustomerWorkspace || isOmnichannelConsole
+        isFullBleed
           ? "relative flex h-full min-h-0 flex-1 overflow-hidden p-0"
           : "relative flex-1 overflow-y-auto px-6 py-6 md:px-10 md:py-8 lg:px-12"
       }
@@ -40,7 +43,7 @@ export function DashboardOutlet() {
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
           className={
-            isOmnichannelConsole
+            isFullBleed
               ? "relative z-10 flex h-full min-h-0 w-full flex-col"
               : "relative z-10 w-full"
           }

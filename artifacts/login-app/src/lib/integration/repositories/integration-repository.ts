@@ -44,6 +44,19 @@ export class IntegrationRepository {
   }
 
   async createApiKey(input: CreateApiKeyInput): Promise<CreateApiKeyResult> {
+    const { data: entitled, error: entitlementError } = await this.client.rpc("is_feature_enabled", {
+      p_company_id: input.companyId,
+      p_feature_code: "api_access",
+    });
+    if (entitlementError) throw new Error(entitlementError.message);
+    if (!entitled) {
+      const err = new Error("API access is not entitled for this company") as Error & {
+        code?: string;
+      };
+      err.code = "FEATURE_NOT_ENTITLED";
+      throw err;
+    }
+
     const secret = generateApiKeySecret();
     const keyHash = hashSecret(secret);
     const keyPrefix = secret.slice(0, 12);

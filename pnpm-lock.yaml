@@ -38,6 +38,9 @@ importers:
       '@workspace/ai-tool-router':
         specifier: workspace:*
         version: link:../../lib/ai-tool-router
+      '@workspace/ai-workflow-platform':
+        specifier: workspace:*
+        version: link:../../lib/ai-workflow-platform
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod

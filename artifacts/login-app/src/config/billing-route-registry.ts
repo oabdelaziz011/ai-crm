@@ -5,6 +5,7 @@ export const BILLING_BASE_NESTED_PATH = "/subscriptions";
 
 export type BillingRouteId =
   | "overview"
+  | "packages"
   | "payments"
   | "invoices"
   | "receipts"
@@ -27,7 +28,7 @@ export type BillingRouteDefinition = {
 };
 
 /** Phase 2+ routes not yet implemented — redirect to overview if accessed directly. */
-export const BLOCKED_BILLING_PATHS = ["/companies", "/plans", "/list", "/reports", "/refunds", "/providers"] as const;
+export const BLOCKED_BILLING_PATHS = ["/companies", "/list", "/reports", "/refunds", "/providers"] as const;
 
 const lazyNamed = <T extends ComponentType>(
   loader: () => Promise<Record<string, T>>,
@@ -46,6 +47,13 @@ export const BILLING_ROUTE_REGISTRY: readonly BillingRouteDefinition[] = [
     titleKey: "billing.nav.overview",
     phase: 1,
     Page: lazyNamed(() => import("@/pages/dashboard/billing/billing-overview-page"), "BillingOverviewPage"),
+  },
+  {
+    id: "packages",
+    nestedPath: "/packages",
+    titleKey: "billing.nav.packages",
+    phase: 1,
+    Page: lazyNamed(() => import("@/pages/dashboard/billing/billing-packages-page"), "BillingPackagesPage"),
   },
   {
     id: "payments",

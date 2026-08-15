@@ -20,6 +20,16 @@ import { BillingKpiGrid } from "@/components/billing/ui/billing-kpi-grid";
 import { BillingPagination } from "@/components/billing/ui/billing-pagination";
 import { BillingToolbar } from "@/components/billing/ui/billing-toolbar";
 import { DashboardCard, DashboardErrorBanner, DashboardTableSkeleton } from "@/components/dashboard/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,18 +45,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBillingHealthContext } from "@/context/billing-health-context";
 import {
   useCompanySubscriptionsPaged,
   type SortDirection,
   type SubscriptionSortKey,
 } from "@/hooks/billing/use-company-subscriptions";
+import {
+  clampLifecycleEnforcementLimit,
+  LIFECYCLE_ENFORCEMENT_DEFAULT_LIMIT,
+  LIFECYCLE_ENFORCEMENT_MAX_LIMIT,
+  useRunSubscriptionLifecycleEnforcement,
+} from "@/hooks/billing/use-billing-lifecycle";
 import { useBillingRevenueMetrics } from "@/hooks/billing/use-platform-financial-list";
+import { useToast } from "@/hooks/use-toast";
 import { useAuthUser } from "@/hooks/use-rbac";
-import { canViewBilling } from "@/lib/billing/billing-permissions";
+import { canEditBilling, canViewBilling } from "@/lib/billing/billing-permissions";
 import { billingNotAvailable, translateBillingCycle } from "@/lib/billing/billing-display-i18n";
 import { downloadCsv } from "@/lib/billing/export-csv";
 import { fetchCompanySubscriptionsForExport } from "@/lib/billing/fetch-export-data";
 import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
+import { summarizeLifecycleEnforcementResult } from "@/lib/billing/lifecycle-enforcement-summary";
 import { billingDetailHref } from "@/lib/routing";
 import type { BillingSubscriptionStatus, CompanySubscription } from "@/lib/billing/types";
 
@@ -54,8 +73,11 @@ const PAGE_SIZE = 10;
 
 export function BillingOverviewPage() {
   const { t } = useTranslation("common");
+  const { toast } = useToast();
   const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { mutationsAllowed } = useBillingHealthContext();
   const canView = canViewBilling(hasPermission, isSuperAdmin);
+  const canEdit = canEditBilling(hasPermission, isSuperAdmin) && mutationsAllowed;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BillingSubscriptionStatus>("all");
@@ -64,6 +86,14 @@ export function BillingOverviewPage() {
   const [sortKey, setSortKey] = useState<SubscriptionSortKey>("renewal");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [exporting, setExporting] = useState(false);
+  const [enforcementConfirmOpen, setEnforcementConfirmOpen] = useState(false);
+  const [enforcementLimitInput, setEnforcementLimitInput] = useState(
+    String(LIFECYCLE_ENFORCEMENT_DEFAULT_LIMIT),
+  );
+  const [enforcementResult, setEnforcementResult] = useState<Record<string, unknown> | null>(null);
+  const [enforcementError, setEnforcementError] = useState<string | null>(null);
+
+  const runLifecycleEnforcement = useRunSubscriptionLifecycleEnforcement();
 
   const offset = (page - 1) * PAGE_SIZE;
   const { data, isLoading, error, isFetching } = useCompanySubscriptionsPaged({
@@ -127,6 +157,40 @@ export function BillingOverviewPage() {
 
   const activeRate = stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0;
 
+  const clampedEnforcementLimit = clampLifecycleEnforcementLimit(
+    Number(enforcementLimitInput) || LIFECYCLE_ENFORCEMENT_DEFAULT_LIMIT,
+  );
+  const enforcementSummary = summarizeLifecycleEnforcementResult(enforcementResult);
+
+  const handleRunLifecycleEnforcement = async () => {
+    setEnforcementError(null);
+    try {
+      const result = await runLifecycleEnforcement.mutateAsync({
+        limit: clampedEnforcementLimit,
+      });
+      setEnforcementResult(result);
+      setEnforcementConfirmOpen(false);
+      toast({
+        title: t("billing.toast.successTitle"),
+        description: t(
+          "billing.edit.lifecycleEnforcementSuccess",
+          "Lifecycle enforcement finished. Review the summary below.",
+        ),
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : t("billing.edit.lifecycleEnforcementFailed", "Lifecycle enforcement failed.");
+      setEnforcementError(message);
+      toast({
+        title: t("billing.toast.errorTitle"),
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!canView) {
     return (
       <div className="space-y-2">
@@ -162,6 +226,75 @@ export function BillingOverviewPage() {
           { key: "failedRate", label: t("billing.platform.analytics.failedRate"), value: `${revenue?.failed_payment_rate ?? 0}%`, icon: AlertTriangle },
         ]}
       />
+
+      {canEdit ? (
+        <DashboardCard className="space-y-4 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">
+                {t("billing.edit.lifecycleEnforcementTitle", "Lifecycle enforcement")}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t(
+                  "billing.edit.lifecycleEnforcementHint",
+                  "Evaluates overdue trials, billing periods, and grace windows using existing lifecycle rules. Does not collect payment or perform paid renewal.",
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground" htmlFor="lifecycle-enforcement-limit">
+                  {t("billing.edit.lifecycleEnforcementLimit", "Batch limit (max {{max}})", {
+                    max: LIFECYCLE_ENFORCEMENT_MAX_LIMIT,
+                  })}
+                </label>
+                <input
+                  id="lifecycle-enforcement-limit"
+                  type="number"
+                  min={1}
+                  max={LIFECYCLE_ENFORCEMENT_MAX_LIMIT}
+                  value={enforcementLimitInput}
+                  onChange={(e) => setEnforcementLimitInput(e.target.value)}
+                  className="mt-1 block w-28 rounded-xl border border-white/10 bg-background/50 px-3 py-2 text-sm"
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEnforcementLimitInput(String(clampedEnforcementLimit));
+                  setEnforcementConfirmOpen(true);
+                }}
+                disabled={runLifecycleEnforcement.isPending}
+              >
+                {runLifecycleEnforcement.isPending
+                  ? t("billing.common.loading")
+                  : t("billing.edit.runLifecycleEnforcement", "Run Lifecycle Enforcement")}
+              </Button>
+            </div>
+          </div>
+          {enforcementError ? <DashboardErrorBanner message={enforcementError} /> : null}
+          {enforcementSummary.length > 0 ? (
+            <div className="rounded-xl border border-white/10 bg-background/40 p-4">
+              <h3 className="text-sm font-medium">
+                {t("billing.edit.lifecycleEnforcementResult", "Last enforcement result")}
+              </h3>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                {enforcementSummary.map((row) => (
+                  <div key={row.key} className="flex justify-between gap-3 text-sm">
+                    <dt className="text-muted-foreground">{row.label}</dt>
+                    <dd className="font-medium tabular-nums">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {enforcementResult ? (
+                <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-background/60 p-3 text-xs text-muted-foreground">
+                  {JSON.stringify(enforcementResult, null, 2)}
+                </pre>
+              ) : null}
+            </div>
+          ) : null}
+        </DashboardCard>
+      ) : null}
 
       {error ? <DashboardErrorBanner message={error.message} /> : null}
       {data?.degraded && data.degradedMessage ? (
@@ -318,6 +451,39 @@ export function BillingOverviewPage() {
           onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
         />
       </DashboardCard>
+
+      <AlertDialog open={enforcementConfirmOpen} onOpenChange={setEnforcementConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("billing.edit.runLifecycleEnforcement", "Run Lifecycle Enforcement")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "billing.edit.lifecycleEnforcementConfirm",
+                "This batch evaluates overdue subscriptions, trials, and grace periods and applies existing lifecycle rules (limit {{limit}}). It does not charge customers or collect payment.",
+                { limit: clampedEnforcementLimit },
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={runLifecycleEnforcement.isPending}>
+              {t("buttons.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={runLifecycleEnforcement.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleRunLifecycleEnforcement();
+              }}
+            >
+              {runLifecycleEnforcement.isPending
+                ? t("billing.common.loading")
+                : t("billing.edit.runLifecycleEnforcementConfirm", "Run enforcement")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

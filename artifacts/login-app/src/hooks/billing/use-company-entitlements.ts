@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import {
+  bindCompanyFeatureEntitlementClient,
+  getCompanyFeatureEntitlements,
+} from "@/lib/billing/company-feature-entitlement-service";
 import type { CompanyEntitlement, CompanyUsageSnapshot } from "@/lib/billing/types";
+
+bindCompanyFeatureEntitlementClient(supabase);
 
 export function useCompanyEntitlements(companyId: string | null, enabled = true) {
   return useQuery({
@@ -8,11 +14,7 @@ export function useCompanyEntitlements(companyId: string | null, enabled = true)
     enabled: enabled && Boolean(companyId),
     queryFn: async (): Promise<CompanyEntitlement[]> => {
       if (!companyId) return [];
-      const { data, error } = await supabase.rpc("get_company_entitlements", {
-        p_company_id: companyId,
-      });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as CompanyEntitlement[];
+      return getCompanyFeatureEntitlements(companyId);
     },
   });
 }

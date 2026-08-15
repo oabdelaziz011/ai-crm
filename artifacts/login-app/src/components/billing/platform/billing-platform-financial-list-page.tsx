@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { BillingEmptyState } from "@/components/billing/ui/billing-empty-state";
 import { BillingPagination } from "@/components/billing/ui/billing-pagination";
@@ -22,6 +23,7 @@ import {
 import { canViewBilling } from "@/lib/billing/billing-permissions";
 import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
 import type { PlatformFinancialListType } from "@/lib/billing/platform-financial-list";
+import { billingDetailHref } from "@/lib/routing";
 
 const PAGE_SIZE = 15;
 
@@ -124,11 +126,13 @@ export function BillingPlatformFinancialListPage({ config }: { config: ListConfi
               </TableHeader>
               <TableBody>
                 {rows.map((row, index) => {
-                  const company = row.company as { name?: string } | undefined;
+                  const company = row.company as { id?: string; name?: string } | undefined;
                   return (
                     <TableRow key={String(row.id ?? index)}>
                       {config.columns.map((col) => (
-                        <TableCell key={col.key}>{renderCell(col.key, row, company?.name)}</TableCell>
+                        <TableCell key={col.key}>
+                          {renderCell(col.key, row, company?.name, company?.id)}
+                        </TableCell>
                       ))}
                     </TableRow>
                   );
@@ -152,10 +156,27 @@ export function BillingPlatformFinancialListPage({ config }: { config: ListConfi
     </div>
   );
 
-  function renderCell(key: string, row: Record<string, unknown>, companyName?: string) {
+  function renderCell(
+    key: string,
+    row: Record<string, unknown>,
+    companyName?: string,
+    companyIdFromJoin?: string,
+  ) {
     switch (key) {
-      case "company":
-        return companyName ?? billingNotAvailable(t);
+      case "company": {
+        const label = companyName ?? billingNotAvailable(t);
+        const companyId = String(row.company_id ?? companyIdFromJoin ?? "");
+        const linkToDetail =
+          (config.listType === "renewals" || config.listType === "expirations") && companyId;
+        if (linkToDetail) {
+          return (
+            <Link href={billingDetailHref(companyId)} className="text-primary hover:underline">
+              {label}
+            </Link>
+          );
+        }
+        return label;
+      }
       case "number":
         return String(row.invoice_number ?? row.receipt_number ?? row.provider_payment_id ?? billingNotAvailable(t));
       case "amount":

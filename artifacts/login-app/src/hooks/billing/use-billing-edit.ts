@@ -36,6 +36,8 @@ export function useAssignSubscriptionPlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { companyId: string; planId: string; billingCycle?: "monthly" | "yearly" | null }) => {
+      // Initial / bootstrap package assignment only.
+      // Existing paid package changes MUST use change_company_package_v1 (useChangeCompanyPackage).
       const { data, error } = await supabase.rpc("assign_subscription_plan", {
         p_company_id: input.companyId,
         p_plan_id: input.planId,
@@ -75,5 +77,72 @@ export function useRestoreBillingSubscription() {
       return data as Record<string, unknown>;
     },
     onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}
+
+export function useCancelBillingSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      companyId: string;
+      reason?: string | null;
+      atPeriodEnd?: boolean;
+    }) => {
+      const { data, error } = await supabase.rpc("cancel_company_subscription_v1", {
+        p_company_id: input.companyId,
+        p_reason: input.reason ?? null,
+        p_at_period_end: input.atPeriodEnd ?? false,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}
+
+export function useConvertTrialToPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      companyId: string;
+      planId: string;
+      billingCycle: "monthly" | "yearly";
+      reason?: string | null;
+      conversionSource?: "admin" | "payment" | "api" | "migration" | "system";
+    }) => {
+      const { data, error } = await supabase.rpc("convert_trial_to_paid_v1", {
+        p_company_id: input.companyId,
+        p_plan_id: input.planId,
+        p_billing_cycle: input.billingCycle,
+        p_reason: input.reason ?? null,
+        p_conversion_source: input.conversionSource ?? "admin",
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => invalidateBillingCompany(qc, variables.companyId),
+  });
+}
+
+export function useChangeCompanyPackage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      companyId: string;
+      planId: string;
+      reason?: string | null;
+    }) => {
+      const { data, error } = await supabase.rpc("change_company_package_v1", {
+        p_company_id: input.companyId,
+        p_plan_id: input.planId,
+        p_reason: input.reason ?? null,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => {
+      invalidateBillingCompany(qc, variables.companyId);
+      void qc.invalidateQueries({ queryKey: ["billing", "commercial-packages"] });
+    },
   });
 }

@@ -1,31 +1,43 @@
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard/ui";
-import { UpgradePlanCta } from "@/components/billing/panels/upgrade-plan-cta";
 import { billingNotAvailable, formatBillingUnit, translateBillingCycle } from "@/lib/billing/billing-display-i18n";
-import { formatBillingCurrency } from "@/lib/billing/format";
+import { formatPackageListPrice } from "@/lib/billing/package-pricing";
 import type { CompanySubscription } from "@/lib/billing/types";
 
 type PlanExperiencePanelProps = {
   subscription: CompanySubscription;
-  enabled?: boolean;
-  canChangePlan?: boolean;
-  onPlanChanged?: () => void;
-  onPlanChangeError?: (message: string) => void;
+  /** When true and onChangePackage is set, shows the single "Change package" action. */
+  canChangePackage?: boolean;
+  onChangePackage?: () => void;
 };
 
+/**
+ * Package experience summary for an existing subscription.
+ * Package changes MUST go through change_company_package_v1 (Change Package dialog),
+ * not assign_subscription_plan / UpgradePlanCta.
+ */
 export function PlanExperiencePanel({
   subscription,
-  enabled = true,
-  canChangePlan = true,
-  onPlanChanged,
-  onPlanChangeError,
+  canChangePackage = false,
+  onChangePackage,
 }: PlanExperiencePanelProps) {
   const { t } = useTranslation("common");
 
-  const planPrice =
-    subscription.billing_cycle === "yearly"
-      ? subscription.plan?.price_yearly
-      : subscription.plan?.price_monthly;
+  const listPriceLabel = formatPackageListPrice(
+    {
+      pricing_mode: subscription.plan?.pricing_mode,
+      price_monthly: subscription.plan?.price_monthly,
+      price_yearly: subscription.plan?.price_yearly,
+    },
+    {
+      billingCycle: subscription.billing_cycle,
+      withPeriod: true,
+      listPricePrefix: t("billing.detail.listPrice", "List price"),
+      freeLabel: t("billing.packages.pricingMode.free", "Free"),
+      customLabel: t("billing.packages.pricingMode.custom", "Custom / Contact sales"),
+    },
+  );
 
   return (
     <DashboardCard className="p-5 space-y-5">
@@ -36,16 +48,20 @@ export function PlanExperiencePanel({
             {subscription.plan?.display_name ?? subscription.plan?.name ?? t("billing.plan.unassigned")}
           </p>
           <p className="text-sm text-muted-foreground">
-            {translateBillingCycle(t, subscription.billing_cycle)} · {formatBillingCurrency(planPrice ?? null)}
+            {translateBillingCycle(t, subscription.billing_cycle)} · {listPriceLabel}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t(
+              "billing.detail.listPriceHint",
+              "Catalog list price — not a recorded payment. Charged amounts are not modeled yet.",
+            )}
           </p>
         </div>
-        <UpgradePlanCta
-          subscription={subscription}
-          enabled={enabled}
-          canChangePlan={canChangePlan}
-          onSuccess={onPlanChanged}
-          onError={onPlanChangeError}
-        />
+        {canChangePackage && onChangePackage ? (
+          <Button size="sm" variant="outline" onClick={onChangePackage}>
+            {t("billing.edit.changePackage", "Change package")}
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm lg:grid-cols-4">

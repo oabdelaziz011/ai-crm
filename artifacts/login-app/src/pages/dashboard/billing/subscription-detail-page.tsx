@@ -4,7 +4,13 @@ import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { BillingAssignPlanDialog } from "@/components/billing/dialogs/billing-assign-plan-dialog";
+import { BillingChangePackageDialog } from "@/components/billing/dialogs/billing-change-package-dialog";
+import { BillingConvertTrialDialog } from "@/components/billing/dialogs/billing-convert-trial-dialog";
 import { BillingEditContactDialog } from "@/components/billing/dialogs/billing-edit-contact-dialog";
+import {
+  BillingLifecycleActionDialog,
+  type BillingLifecycleActionMode,
+} from "@/components/billing/dialogs/billing-lifecycle-action-dialog";
 import { BillingRecordPaymentDialog } from "@/components/billing/dialogs/billing-record-payment-dialog";
 import { BillingSubscriptionStatusDialog } from "@/components/billing/dialogs/billing-subscription-status-dialog";
 import { CompanyIdentityHeader } from "@/components/billing/identity/company-identity-header";
@@ -27,6 +33,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBillingHealthContext } from "@/context/billing-health-context";
 import { useBillingPaymentOptions, BillingPaymentOptionsError } from "@/hooks/billing/use-billing-payment-options";
+import {
+  MARK_PAST_DUE_UI_STATUSES,
+  RECORD_RENEWAL_FAILURE_UI_STATUSES,
+} from "@/hooks/billing/use-billing-lifecycle";
 import { useCompanyProvisioning } from "@/hooks/billing/use-company-provisioning";
 import { useRecordSubscriptionPayment } from "@/hooks/billing/use-record-subscription-payment";
 import { useBillingSettingValue, parseBillingSettingString } from "@/hooks/billing/use-billing-setting-value";
@@ -42,6 +52,7 @@ import {
 import { billingNotAvailable, translateBillingCycle, translateCompanyStatus } from "@/lib/billing/billing-display-i18n";
 import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
 import { isUuidSegment } from "@/lib/billing/subscription-status-display";
+import { canManageCompanyCommercialAccess } from "@/lib/companies/company-permissions";
 import { NEST_INDEX } from "@/lib/routing";
 
 export function SubscriptionDetailPage() {
@@ -55,6 +66,7 @@ export function SubscriptionDetailPage() {
   const canViewAudit = canViewBillingAudit(hasPermission, isSuperAdmin);
   const canEdit = canEditBilling(hasPermission, isSuperAdmin) && mutationsAllowed;
   const canRecord = canRecordBillingPayment(hasPermission, isSuperAdmin) && mutationsAllowed;
+  const canManageCommercial = canManageCompanyCommercialAccess(isSuperAdmin);
 
   const {
     provisioning,
@@ -80,7 +92,14 @@ export function SubscriptionDetailPage() {
 
   const [editContactOpen, setEditContactOpen] = useState(false);
   const [assignPlanOpen, setAssignPlanOpen] = useState(false);
-  const [statusDialogMode, setStatusDialogMode] = useState<"suspend" | "restore" | null>(null);
+  const [changePackageOpen, setChangePackageOpen] = useState(false);
+  const [convertTrialOpen, setConvertTrialOpen] = useState(false);
+  const [statusDialogMode, setStatusDialogMode] = useState<"suspend" | "restore" | "cancel" | null>(
+    null,
+  );
+  const [lifecycleDialogMode, setLifecycleDialogMode] = useState<BillingLifecycleActionMode | null>(
+    null,
+  );
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [selectedMethodCode, setSelectedMethodCode] = useState("");
@@ -161,6 +180,20 @@ export function SubscriptionDetailPage() {
   }
 
   const companySuspended = subscription.company?.status === "Suspended";
+  const subscriptionCanceled = subscription.status === "canceled";
+  const isTrialing = subscription.status === "trialing";
+  const canChangePackage =
+    subscription.status === "active" ||
+    subscription.status === "past_due" ||
+    subscription.status === "grace_period";
+  /** Initial bootstrap only — never for changing an existing commercial package. */
+  const canAssignInitialPackage = canEdit && !subscription.plan_id;
+  const canMarkPastDue =
+    canEdit &&
+    (MARK_PAST_DUE_UI_STATUSES as readonly string[]).includes(subscription.status);
+  const canRecordRenewalFailure =
+    canEdit &&
+    (RECORD_RENEWAL_FAILURE_UI_STATUSES as readonly string[]).includes(subscription.status);
 
   const planPrice =
     subscription.billing_cycle === "yearly"
@@ -220,9 +253,21 @@ export function SubscriptionDetailPage() {
           <Button size="sm" variant="outline" onClick={() => setEditContactOpen(true)}>
             {t("billing.edit.editContact")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setAssignPlanOpen(true)}>
-            {t("billing.edit.assignPlan")}
-          </Button>
+          {canAssignInitialPackage ? (
+            <Button size="sm" variant="outline" onClick={() => setAssignPlanOpen(true)}>
+              {t("billing.edit.assignInitialPackage", "Assign package")}
+            </Button>
+          ) : null}
+          {canChangePackage ? (
+            <Button size="sm" variant="outline" onClick={() => setChangePackageOpen(true)}>
+              {t("billing.edit.changePackage", "Change package")}
+            </Button>
+          ) : null}
+          {isTrialing ? (
+            <Button size="sm" onClick={() => setConvertTrialOpen(true)}>
+              {t("billing.edit.convertTrial", "Convert trial to paid")}
+            </Button>
+          ) : null}
           {companySuspended ? (
             <Button size="sm" variant="outline" onClick={() => setStatusDialogMode("restore")}>
               {t("billing.edit.restoreSubscription")}
@@ -232,6 +277,25 @@ export function SubscriptionDetailPage() {
               {t("billing.edit.suspendSubscription")}
             </Button>
           )}
+          {!subscriptionCanceled ? (
+            <Button size="sm" variant="outline" onClick={() => setStatusDialogMode("cancel")}>
+              {t("billing.edit.cancelSubscription", "Cancel subscription")}
+            </Button>
+          ) : null}
+          {canMarkPastDue ? (
+            <Button size="sm" variant="outline" onClick={() => setLifecycleDialogMode("past_due")}>
+              {t("billing.edit.markPastDue", "Mark past due")}
+            </Button>
+          ) : null}
+          {canRecordRenewalFailure ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setLifecycleDialogMode("renewal_failure")}
+            >
+              {t("billing.edit.recordRenewalFailure", "Start grace / record renewal failure")}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -264,6 +328,12 @@ export function SubscriptionDetailPage() {
                   {t("billing.edit.companyAccess")}: {translateCompanyStatus(t, subscription.company.status)}
                 </p>
               ) : null}
+              {subscription.company?.approval_status ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("billing.detail.approvalStatus", "Approval")}:{" "}
+                  {subscription.company.approval_status}
+                </p>
+              ) : null}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-muted-foreground">{t("billing.detail.cycle")}</p>
@@ -281,6 +351,12 @@ export function SubscriptionDetailPage() {
                   <p className="text-muted-foreground">{t("billing.detail.nextRenewal")}</p>
                   <p className="font-medium">{formatBillingDate(subscription.next_renewal_at)}</p>
                 </div>
+                {subscription.status === "trialing" ? (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">{t("billing.detail.trialEnds", "Trial ends")}</p>
+                    <p className="font-medium">{formatBillingDate(subscription.trial_ends_at)}</p>
+                  </div>
+                ) : null}
               </div>
               {canRecord ? (
                 <div className="space-y-2">
@@ -298,6 +374,12 @@ export function SubscriptionDetailPage() {
                     {recordPayment.isPending ? t("billing.detail.recording") : t("billing.detail.recordPayment")}
                     {planPrice && currency ? ` · ${formatBillingCurrency(planPrice, currency)}` : ""}
                   </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(
+                      "billing.detail.recordPaymentListPriceHint",
+                      "Suggested amount uses current package list price — not proof of prior payment.",
+                    )}
+                  </p>
                   {currencyUnavailable ? (
                     <p className="text-xs text-destructive">{t("billing.detail.currencyMissing")}</p>
                   ) : null}
@@ -312,9 +394,8 @@ export function SubscriptionDetailPage() {
             <div className="xl:col-span-2 space-y-4">
               <PlanExperiencePanel
                 subscription={subscription}
-                canChangePlan={canEdit}
-                onPlanChanged={() => showToastSuccess(t("billing.edit.planSaved"))}
-                onPlanChangeError={showToastError}
+                canChangePackage={canEdit && canChangePackage}
+                onChangePackage={() => setChangePackageOpen(true)}
               />
               <UsageSummaryPanel subscription={subscription} />
             </div>
@@ -327,7 +408,10 @@ export function SubscriptionDetailPage() {
               canEdit={canEdit}
               onEdit={() => setEditContactOpen(true)}
             />
-            <PlanFeaturesPanel companyId={subscription.company_id} />
+            <PlanFeaturesPanel
+              companyId={subscription.company_id}
+              canManageCommercial={canManageCommercial}
+            />
           </div>
         </TabsContent>
 
@@ -357,7 +441,10 @@ export function SubscriptionDetailPage() {
         </TabsContent>
 
         <TabsContent value="entitlements">
-          <PlanFeaturesPanel companyId={subscription.company_id} />
+          <PlanFeaturesPanel
+            companyId={subscription.company_id}
+            canManageCommercial={canManageCommercial}
+          />
         </TabsContent>
 
         {canViewAudit ? (
@@ -384,11 +471,39 @@ export function SubscriptionDetailPage() {
         onError={showToastError}
       />
 
-      <BillingAssignPlanDialog
-        open={assignPlanOpen}
-        onOpenChange={setAssignPlanOpen}
+      {canAssignInitialPackage ? (
+        <BillingAssignPlanDialog
+          open={assignPlanOpen}
+          onOpenChange={setAssignPlanOpen}
+          subscription={subscription}
+          onSuccess={() => showToastSuccess(t("billing.edit.planSaved"))}
+          onError={showToastError}
+        />
+      ) : null}
+
+      <BillingChangePackageDialog
+        open={changePackageOpen}
+        onOpenChange={setChangePackageOpen}
         subscription={subscription}
-        onSuccess={() => showToastSuccess(t("billing.edit.planSaved"))}
+        onSuccess={(result) =>
+          showToastSuccess(
+            result.skipped
+              ? t("billing.edit.changePackageNoop", "Already on selected package")
+              : t("billing.edit.changePackageSuccess", "Package updated"),
+          )
+        }
+        onError={showToastError}
+      />
+
+      <BillingConvertTrialDialog
+        open={convertTrialOpen}
+        onOpenChange={setConvertTrialOpen}
+        subscription={subscription}
+        onSuccess={() =>
+          showToastSuccess(
+            t("billing.edit.convertTrialSuccess", "Subscription activated"),
+          )
+        }
         onError={showToastError}
       />
 
@@ -402,7 +517,29 @@ export function SubscriptionDetailPage() {
             showToastSuccess(
               statusDialogMode === "suspend"
                 ? t("billing.edit.suspendSuccess")
-                : t("billing.edit.restoreSuccess"),
+                : statusDialogMode === "restore"
+                  ? t("billing.edit.restoreSuccess")
+                  : t("billing.edit.cancelSuccess", "Subscription canceled"),
+            )
+          }
+          onError={showToastError}
+        />
+      ) : null}
+
+      {lifecycleDialogMode ? (
+        <BillingLifecycleActionDialog
+          open
+          onOpenChange={(open) => !open && setLifecycleDialogMode(null)}
+          companyId={subscription.company_id}
+          mode={lifecycleDialogMode}
+          onSuccess={() =>
+            showToastSuccess(
+              lifecycleDialogMode === "past_due"
+                ? t("billing.edit.markPastDueSuccess", "Subscription marked past due.")
+                : t(
+                    "billing.edit.recordRenewalFailureSuccess",
+                    "Renewal failure recorded; grace lifecycle applied if eligible.",
+                  ),
             )
           }
           onError={showToastError}

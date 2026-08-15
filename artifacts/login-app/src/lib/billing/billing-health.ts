@@ -81,17 +81,19 @@ export async function runBillingHealthCheck(client: SupabaseClient): Promise<Bil
 
   const { data: plans, error: plansError } = await client
     .from("plans")
-    .select("id,code,price_monthly,price_yearly")
+    .select("id,code,pricing_mode,price_monthly,price_yearly")
     .eq("is_active", true);
   if (plansError) throw new Error(plansError.message);
 
-  const plansMissingPricing = (plans ?? []).filter(
-    (plan) =>
-      plan.price_monthly == null ||
-      plan.price_yearly == null ||
-      Number(plan.price_monthly) <= 0 ||
-      Number(plan.price_yearly) <= 0,
-  );
+  const plansMissingPricing = (plans ?? []).filter((plan) => {
+    const mode = String(plan.pricing_mode ?? "fixed");
+    if (mode === "free" || mode === "custom") return false;
+    if (plan.price_monthly == null || plan.price_yearly == null) return true;
+    const monthly = Number(plan.price_monthly);
+    const yearly = Number(plan.price_yearly);
+    if (monthly < 0 || yearly < 0) return true;
+    return monthly <= 0 && yearly <= 0;
+  });
   if ((plans ?? []).length === 0 || plansMissingPricing.length > 0) {
     issues.push("active_plan_missing_pricing");
   }
@@ -108,5 +110,6 @@ export const BILLING_HEALTH_ISSUE_LABELS: Record<BillingHealthIssue, string> = {
   migration_105_missing: "Migration 105 missing (list_billing_audit_logs_paged p_company_id)",
   default_currency_missing: "default_currency is not configured",
   payment_methods_missing: "supported_payment_method_codes is empty or missing",
-  active_plan_missing_pricing: "One or more active plans lack valid monthly/yearly pricing",
+  active_plan_missing_pricing:
+    "One or more active fixed-price plans lack valid monthly/yearly list pricing",
 };

@@ -18,6 +18,17 @@ export class BookingBillingBridge implements BookingEventPublisher {
   async publish(event: BookingDomainEvent): Promise<void> {
     if (this.inner) await this.inner.publish(event);
 
+    try {
+      await this.maybeAutoInvoice(event);
+    } catch (error) {
+      console.warn(
+        "[booking-billing] auto-invoice failed; booking create continues",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  private async maybeAutoInvoice(event: BookingDomainEvent): Promise<void> {
     const booking =
       event.type === "BookingRescheduled" ? event.payload.booking : event.payload.booking;
 
@@ -61,6 +72,7 @@ export class BookingBillingBridge implements BookingEventPublisher {
 
     if (!owner?.user_id) return;
 
+    const unitPriceCents = Number(price.priceCents ?? 0);
     const invoice = await this.invoiceEngine.createDraft(
       {
         companyId: booking.company_id,
@@ -71,10 +83,10 @@ export class BookingBillingBridge implements BookingEventPublisher {
           {
             description: service?.name ?? "Service",
             quantity: 1,
-            unitPriceCents: price.priceCents,
+            unitPriceCents,
             taxCents: 0,
             discountCents: 0,
-            totalCents: price.priceCents,
+            totalCents: unitPriceCents,
             serviceId: booking.service_id,
             resourceId: booking.resource_id,
           },

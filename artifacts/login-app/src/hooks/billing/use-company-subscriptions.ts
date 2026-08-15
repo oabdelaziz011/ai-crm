@@ -63,10 +63,10 @@ export function useCompanySubscription(companyId: string | null, enabled = true)
         .select(
           `
           *,
-          company:companies(id, name, logo_url, company_type, status, created_at),
+          company:companies(id, name, logo_url, company_type, status, created_at, approval_status),
           plan:plans(
             id, name, display_name, code, tier_rank,
-            price_monthly, price_yearly,
+            pricing_mode, price_monthly, price_yearly,
             max_users, max_customers, storage_gb, ai_tokens_monthly, features
           )
         `,

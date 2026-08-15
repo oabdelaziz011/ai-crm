@@ -111,7 +111,14 @@ export class InvoiceEngineService {
       companyId,
       eventType: "invoice.created",
       eventId: `${invoiceId}:invoice.created`,
-      payload: { invoiceId, invoiceNumber, customerId: invoice.customerId, totalCents: invoice.totalCents },
+      payload: {
+        invoiceId,
+        invoiceNumber,
+        customerId: invoice.customerId,
+        amountCents: Number(invoice.totalCents ?? 0),
+        currency: invoice.currency || "USD",
+        totalCents: invoice.totalCents,
+      },
     });
 
     void this.generatePdf(companyId, invoiceId).catch((err) => {

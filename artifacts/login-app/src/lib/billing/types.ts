@@ -73,6 +73,10 @@ export type CompanySubscription = {
   grace_period_ends_at: string | null;
   auto_renewal: boolean;
   payment_method_label: string | null;
+  /** Frozen package feature codes at last assign (packaging history — not runtime SoT). */
+  package_feature_snapshot?: string[] | unknown;
+  package_assigned_at?: string | null;
+  package_assigned_by?: string | null;
   created_at: string;
   updated_at: string;
   company?: {
@@ -81,6 +85,7 @@ export type CompanySubscription = {
     logo_url: string | null;
     company_type: string | null;
     status?: string | null;
+    approval_status?: string | null;
     created_at?: string;
   } | null;
   plan?: {
@@ -89,6 +94,7 @@ export type CompanySubscription = {
     display_name: string | null;
     code: string;
     tier_rank: number;
+    pricing_mode?: string | null;
     price_monthly: number;
     price_yearly: number;
     max_users: number | null;
@@ -149,9 +155,15 @@ export type BillingAuditLog = {
 export type CompanyEntitlement = {
   feature_code: string;
   label: string;
+  category?: string;
   enabled: boolean;
-  source: "override" | "plan" | "default";
+  source: "override" | "plan" | "default" | "trial" | "manual" | "contract" | "system" | "none" | string;
   limit_value: Record<string, unknown>;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  notes?: string | null;
+  is_commercial?: boolean;
+  override_state?: "enabled" | "disabled" | null;
 };
 
 export type CompanyUsageSnapshot = {

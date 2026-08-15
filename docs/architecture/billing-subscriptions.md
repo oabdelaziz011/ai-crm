@@ -198,6 +198,14 @@ Future Invoice Center unions both read models. **No schema merge in Phase 1–4.
 
 ## 2. Feature Flag & Entitlements Architecture (v4)
 
+> **Phase 7.5:** `company_subscriptions` is lifecycle SoT only. It does **not** replace Phase 6 commercial entitlement resolution. See `docs/architecture/commercial-packages-v1.md` (Subscription lifecycle).
+>
+> **Phase 7.6:** Administrative Trial → Paid via `convert_trial_to_paid_v1`. No payment provider / checkout. See commercial-packages doc (Trial → Paid conversion).
+
+> **Phase 7.7:** Administrative package upgrade/downgrade via `change_company_package_v1` (preserves lifecycle dates/cycle; syncs `source=package` grants only). No payment / proration. See commercial-packages doc.
+
+> **Phase 7.8:** Operational lifecycle enforcement via `run_subscription_lifecycle_enforcement_v1` (trial/period/grace). Optional worker/CLI/internal cron. **No fabricated renewal.** Paid renewal remains `renew_subscription_from_payment`.
+
 ### 2.1 Purpose
 
 Provide a **feature flag system independent from subscription plans**. Plans define **default entitlements**; platform admins can enable or disable individual features for specific companies without changing plan assignment.
@@ -205,6 +213,12 @@ Provide a **feature flag system independent from subscription plans**. Plans def
 This supports: beta access, enterprise custom deals, temporary grants, kill switches, and gradual rollouts — without plan proliferation.
 
 ### 2.2 Resolution model
+
+> **Superseded (Phase 6 / 7.3):** Runtime commercial access is **not** resolved from `plan_features`.
+> Authoritative path: `company_feature_overrides` + `feature_definitions` classification + approval/suspension + flags + RBAC → `is_feature_enabled` / `require_company_feature_v1`.
+> `plan_features` is packaging metadata only (see `docs/architecture/commercial-packages-v1.md`).
+
+Legacy diagram (historical — do not implement):
 
 ```mermaid
 flowchart TD
@@ -215,7 +229,7 @@ flowchart TD
   D -->|not found| F[Return feature_definitions.default_enabled]
 ```
 
-**Precedence:** `company_feature_overrides` (if active) → `plan_features` (from active subscription plan) → `feature_definitions.default_enabled`.
+**Current precedence (commercial):** active `company_feature_overrides` → deny for commercial catalog features → `default_enabled` only for non-commercial/core.
 
 Overrides may be **time-bound** (`expires_at`) for trials and promotions.
 

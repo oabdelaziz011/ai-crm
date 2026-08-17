@@ -162,7 +162,28 @@ describe("buildCompanyOnboardingPayload", () => {
     assert.equal(payload.website, "https://www.acme.test");
     assert.equal(payload.commercial_registration, "CR-9");
     assert.equal(payload.owner_display_name, "Omar Ali");
+    assert.equal(payload.owner_phone, "050");
     assert.equal(payload.subscription_plan, "Basic");
+  });
+
+  it("falls back owner_phone to contact_phone when owner phone is blank", () => {
+    const payload = buildCompanyOnboardingPayload(
+      emptyCompanyOnboardingValues({
+        name: "Acme",
+        legalName: "Acme LLC",
+        businessType: "clinic",
+        industry: "healthcare",
+        contactEmail: "ops@acme.test",
+        contactPhone: "+966500000000",
+        ownerFirstName: "Omar",
+        ownerLastName: "Ali",
+        ownerPhone: "  ",
+      }),
+      { mode: "first_time" },
+    );
+
+    assert.equal(payload.owner_phone, "+966500000000");
+    assert.equal(payload.contact_phone, "+966500000000");
   });
 });
 

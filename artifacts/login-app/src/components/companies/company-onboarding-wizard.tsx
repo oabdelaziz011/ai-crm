@@ -22,9 +22,12 @@ import {
   COMPANY_INDUSTRIES,
   COMPANY_ONBOARDING_CURRENCIES,
   COMPANY_ONBOARDING_STEPS,
+  OWNER_JOB_TITLE_OPTIONS,
   buildCompanyOnboardingPayload,
   buildOwnerDisplayName,
+  companyOnboardingValuesFromPayload,
   emptyCompanyOnboardingValues,
+  loadPendingCompanyOnboarding,
   validateCompanyOnboardingStep,
   type CompanyOnboardingFieldErrors,
   type CompanyOnboardingMode,
@@ -82,11 +85,14 @@ export function CompanyOnboardingWizard({
   mode,
   onOpenChange,
   onCompleted,
+  initialValues,
 }: {
   open: boolean;
   mode: CompanyOnboardingMode;
   onOpenChange: (open: boolean) => void;
   onCompleted?: (company: Company) => void | Promise<void>;
+  /** Prefill from registration pending payload when auto-onboard fails. */
+  initialValues?: Partial<CompanyOnboardingValues>;
 }) {
   const { t, i18n } = useTranslation("common");
   const { user, profile, refreshAuthContext } = useAuth();
@@ -137,6 +143,9 @@ export function CompanyOnboardingWizard({
     setFieldErrors({});
     setRootError(null);
 
+    const pending = mode === "first_time" ? loadPendingCompanyOnboarding() : null;
+    const fromPending = pending ? companyOnboardingValuesFromPayload(pending) : {};
+
     const next = emptyCompanyOnboardingValues({
       timezone: prefill.timezone || "Asia/Riyadh",
       currency: "SAR",
@@ -147,9 +156,23 @@ export function CompanyOnboardingWizard({
       ownerPhone: mode === "first_time" ? prefill.phone ?? "" : "",
       ownerJobTitle: mode === "first_time" ? prefill.jobTitle || "Owner" : "Owner",
       contactEmail: mode === "first_time" ? prefill.email ?? "" : "",
+      ...fromPending,
+      ...initialValues,
     });
+    if (next.ownerDisplayName && !next.ownerFirstName) {
+      const parts = next.ownerDisplayName.trim().split(/\s+/).filter(Boolean);
+      next.ownerFirstName = parts[0] ?? next.ownerFirstName;
+      next.ownerLastName =
+        parts.length > 1 ? parts.slice(1).join(" ") : parts[0] ?? next.ownerLastName;
+    }
+    if (mode === "first_time" && !next.ownerEmail && prefill.email) {
+      next.ownerEmail = prefill.email;
+    }
+    if (mode === "first_time" && !next.contactEmail && prefill.email) {
+      next.contactEmail = prefill.email;
+    }
     setValues(next);
-  }, [open, mode, prefill]);
+  }, [open, mode, prefill, initialValues]);
 
   const patch = (partial: Partial<CompanyOnboardingValues>) => {
     setValues((prev) => {
@@ -668,12 +691,24 @@ export function CompanyOnboardingWizard({
                   {t("companyOnboarding.fields.ownerJobTitle")}
                   <RequiredMark />
                 </Label>
-                <Input
+                <select
                   id="co-owner-title"
-                  className="mt-1.5"
+                  className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   value={values.ownerJobTitle}
                   onChange={(event) => patch({ ownerJobTitle: event.target.value })}
-                />
+                >
+                  <option value="">{t("companyOnboarding.fields.selectPlaceholder")}</option>
+                  {OWNER_JOB_TITLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(`companyOnboarding.ownerJobTitles.${option.i18nKey}`)}
+                    </option>
+                  ))}
+                  {!OWNER_JOB_TITLE_OPTIONS.some(
+                    (option) => option.value === values.ownerJobTitle,
+                  ) && values.ownerJobTitle.trim() ? (
+                    <option value={values.ownerJobTitle}>{values.ownerJobTitle}</option>
+                  ) : null}
+                </select>
                 <FieldError message={fieldErrors.ownerJobTitle && t(`companyOnboarding.validation.${fieldErrors.ownerJobTitle}`, { defaultValue: fieldErrors.ownerJobTitle })} />
               </div>
             </div>
@@ -755,7 +790,14 @@ export function CompanyOnboardingWizard({
                       ["ownerDisplayName", values.ownerDisplayName],
                       ["ownerEmail", values.ownerEmail],
                       ["ownerPhone", values.ownerPhone],
-                      ["ownerJobTitle", values.ownerJobTitle],
+                      ["ownerJobTitle", (() => {
+                        const option = OWNER_JOB_TITLE_OPTIONS.find(
+                          (item) => item.value === values.ownerJobTitle,
+                        );
+                        return option
+                          ? t(`companyOnboarding.ownerJobTitles.${option.i18nKey}`)
+                          : values.ownerJobTitle;
+                      })()],
                     ],
                   },
                   {

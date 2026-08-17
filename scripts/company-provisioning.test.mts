@@ -18,7 +18,7 @@ const ROLE_A = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const ROLE_B = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const GLOBAL_ROLE = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
-const PLATFORM_TEMPLATE_NAMES = ["Admin", "Manager", "Employee"] as const;
+const PLATFORM_TEMPLATE_NAMES = ["Admin"] as const;
 
 function test(name: string, fn: () => void | Promise<void>) {
   return Promise.resolve(fn()).then(
@@ -34,8 +34,8 @@ const roleA = { id: ROLE_A, company_id: COMPANY_A, is_system: false, name: "Admi
 const roleB = { id: ROLE_B, company_id: COMPANY_B, is_system: false, name: "Admin" };
 const globalRole = { id: GLOBAL_ROLE, company_id: null, is_system: true, name: "Global Operator" };
 
-await test("Platform default role templates include Admin, Manager, Employee", () => {
-  assert.deepEqual([...PLATFORM_TEMPLATE_NAMES], ["Admin", "Manager", "Employee"]);
+await test("Platform mandatory tenant role template is Admin only", () => {
+  assert.deepEqual([...PLATFORM_TEMPLATE_NAMES], ["Admin"]);
 });
 
 await test("New company roles should be tenant-scoped (company_id set)", () => {
@@ -44,20 +44,20 @@ await test("New company roles should be tenant-scoped (company_id set)", () => {
   assert.equal(provisionedRole.is_system, false);
 });
 
-await test("Company A dropdown includes tenant + intentional global roles", () => {
+await test("Company A dropdown includes only that tenant's roles", () => {
   const options = filterRolesForCompany([roleA, roleB, globalRole], COMPANY_A);
-  assert.equal(options.length, 2);
+  assert.equal(options.length, 1);
   assert.ok(options.some((role) => role.id === ROLE_A));
-  assert.ok(options.some((role) => role.id === GLOBAL_ROLE));
+  assert.equal(options.some((role) => role.id === GLOBAL_ROLE), false);
 });
 
 await test("Company A cannot assign Company B role", () => {
   assert.equal(isRoleAssignableToCompany(roleB, COMPANY_A), false);
 });
 
-await test("Global role is assignable to any tenant", () => {
-  assert.equal(isRoleAssignableToCompany(globalRole, COMPANY_A), true);
-  assert.equal(isRoleAssignableToCompany(globalRole, COMPANY_B), true);
+await test("Platform/global role is not assignable to tenant users", () => {
+  assert.equal(isRoleAssignableToCompany(globalRole, COMPANY_A), false);
+  assert.equal(isRoleAssignableToCompany(globalRole, COMPANY_B), false);
 });
 
 await test("Invite user rejects company with zero tenant roles", () => {
@@ -78,17 +78,17 @@ await test("Invite user rejects company with zero tenant roles", () => {
   }
 });
 
-await test("Invite user accepts global role for target company", () => {
+await test("Invite user accepts tenant role for target company", () => {
   const result = validateProvisionRequest({
     callerUserId: "super-1",
     callerCompanyId: null,
     isSuperAdmin: true,
     hasUsersEdit: true,
     requestedCompanyId: COMPANY_A,
-    requestedRoleId: GLOBAL_ROLE,
-    role: globalRole,
+    requestedRoleId: ROLE_A,
+    role: roleA,
     existingTargetProfile: null,
-    companyTenantRoleCount: 3,
+    companyTenantRoleCount: 1,
   });
   assert.equal(result.ok, true);
 });

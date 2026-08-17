@@ -41,7 +41,9 @@ export function buildCompanyOnboardingPayload(
     contact_person: displayName,
     owner_display_name: displayName,
     owner_full_name: displayName,
-    owner_phone: emptyToNull(values.ownerPhone),
+    // Always persist an owner phone on the profile — fall back to company contact phone
+    // when the account step left ownerPhone empty (contact_phone is required).
+    owner_phone: emptyToNull(values.ownerPhone) ?? emptyToNull(values.contactPhone),
     owner_job_title: emptyToNull(values.ownerJobTitle) ?? "Owner",
     status: options.mode === "admin_add" ? "Trial" : undefined,
     subscription_plan: "Basic",

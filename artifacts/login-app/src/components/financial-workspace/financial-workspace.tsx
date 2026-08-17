@@ -93,6 +93,12 @@ function readTab(search: string): FinancialWorkspaceTab {
   return TAB_IDS.includes(raw as FinancialWorkspaceTab) ? (raw as FinancialWorkspaceTab) : "overview";
 }
 
+function readInvoiceId(search: string): string | null {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const id = (params.get("invoiceId") ?? params.get("invoice") ?? "").trim();
+  return id || null;
+}
+
 function StatusBadge({
   tone,
   children,
@@ -293,6 +299,15 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
 
   const invoices = invoicesQuery.data ?? [];
   const payments = paymentsQuery.data ?? [];
+
+  useEffect(() => {
+    const invoiceId = readInvoiceId(search);
+    if (!invoiceId || invoices.length === 0) return;
+    const found = invoices.find((invoice) => invoice.id === invoiceId);
+    if (!found) return;
+    setSelectedInvoice(found);
+    setTab("invoices");
+  }, [search, invoices]);
   // Always display using company billing settings currency (not stored invoice/payment defaults).
   const currency = companyCurrency || "USD";
 

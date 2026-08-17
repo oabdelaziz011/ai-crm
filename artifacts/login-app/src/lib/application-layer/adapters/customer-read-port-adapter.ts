@@ -5,6 +5,13 @@ import { CustomerInvoiceRepository } from "@/lib/billing/repositories/customer-i
 
 const CUSTOMER_SEARCH_COLUMNS = "id, name, email, phone, age, gender, notes, created_at, updated_at, company_id";
 
+/**
+ * Port context for product operations.
+ * `hasPermission` here is the product authorization boundary and should be
+ * RBAC ∩ company feature availability (see hasCompanyPermission /
+ * useCompanyPermissionAuth). Do not pass raw RBAC-only hasPermission for
+ * mapped product permissions.
+ */
 export type LoginAppPortContext = Readonly<{
   companyId: string;
   actorUserId: string;

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { useUpdateBillingSettings } from "@/hooks/billing/use-billing-settings";
 import { useToast } from "@/hooks/use-toast";
 import { setCompanyLocaleRuntime } from "@/lib/company-locale/runtime";
+import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 
 const PROFILE_CURRENCY_OPTIONS = ["SAR", "EGP", "USD", "AED", "EUR", "GBP"] as const;
@@ -26,6 +27,7 @@ export function ProfileCurrencyField() {
     // Immediate runtime + cache so money formatters update without refresh.
     setCompanyLocaleRuntime({ currency: code });
     void qc.setQueryData(["billing", "setting", "default_currency", companyId], code);
+    void qc.setQueryData(["company-financial-settings", "default_currency", companyId], code);
 
     try {
       // `default_currency` allows company + platform scopes (billing definitions).
@@ -34,6 +36,24 @@ export function ProfileCurrencyField() {
         companyId: companyId,
         changes: { default_currency: code },
       });
+
+      // Keep financial engine settings in sync with the profile billing currency.
+      if (companyId) {
+        const { error } = await supabase.from("company_financial_settings").upsert(
+          {
+            company_id: companyId,
+            default_currency: code,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "company_id" },
+        );
+        if (error) {
+          console.warn("[profile-currency] financial settings sync failed", error.message);
+        }
+        void qc.invalidateQueries({ queryKey: ["company-financial-settings", "default_currency", companyId] });
+        void qc.invalidateQueries({ queryKey: ["billing", "setting", "default_currency", companyId] });
+      }
+
       toast({
         title: t("profiles.currency.saveSuccessTitle"),
         description: t("profiles.currency.saveSuccessDescription", { currency: code }),
@@ -41,6 +61,7 @@ export function ProfileCurrencyField() {
     } catch (error) {
       setCompanyLocaleRuntime({ currency });
       void qc.setQueryData(["billing", "setting", "default_currency", companyId], currency);
+      void qc.setQueryData(["company-financial-settings", "default_currency", companyId], currency);
       toast({
         title: t("profiles.currency.saveFailedTitle"),
         description: error instanceof Error ? error.message : t("profiles.currency.saveFailedDescription"),

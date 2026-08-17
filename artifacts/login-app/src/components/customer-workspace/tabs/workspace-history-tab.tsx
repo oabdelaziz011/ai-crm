@@ -20,7 +20,8 @@ type Props = {
 export function WorkspaceHistoryTab({ customer }: Props) {
   const { t, i18n } = useTranslation("common");
   const canViewAudit = useHasPermission("audit_logs.view");
-  const { data: auditLogs = [], isLoading } = useAuditLogs(canViewAudit);
+  // Recent capped fetch (single request) then filter to this customer — avoids loading 500 global rows.
+  const { data: auditLogs = [], isLoading } = useAuditLogs(canViewAudit, {}, 100);
 
   const customerLogs = useMemo(
     () =>

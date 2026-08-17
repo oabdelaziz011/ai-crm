@@ -59,8 +59,8 @@ export function useCompanyLocale(): CompanyLocale {
   });
 
   const currency =
-    financialCurrencyQuery.data ||
     parseBillingSettingString(currencyQuery.data)?.toUpperCase() ||
+    financialCurrencyQuery.data ||
     getCompanyCurrency() ||
     "USD";
   const language = profile?.preferred_language || i18n.language || "en";

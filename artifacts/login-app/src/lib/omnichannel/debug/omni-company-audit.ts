@@ -34,18 +34,21 @@ declare global {
 }
 
 function pushLog(entry: OmniCompanyLogEntry) {
-  console.info("[OMNI_COMPANY]", entry.stage, {
-    companyId: entry.companyId,
-    profileCompanyId: entry.profileCompanyId,
-    companyRecordId: entry.companyRecordId,
-    userEmail: entry.userEmail,
-    changedFromVaultos: entry.changedFromVaultos,
-    profileVsCompanyMismatch: entry.profileVsCompanyMismatch,
-    ...(entry.extra ?? {}),
-  });
+  // Keep traces in window for debugging; avoid console noise on auth pages.
   if (typeof window !== "undefined") {
     window.__OMNI_COMPANY_LOGS ??= [];
     window.__OMNI_COMPANY_LOGS.push(entry);
+    if (window.localStorage?.getItem("OMNI_COMPANY_DEBUG") === "1") {
+      console.info("[OMNI_COMPANY]", entry.stage, {
+        companyId: entry.companyId,
+        profileCompanyId: entry.profileCompanyId,
+        companyRecordId: entry.companyRecordId,
+        userEmail: entry.userEmail,
+        changedFromVaultos: entry.changedFromVaultos,
+        profileVsCompanyMismatch: entry.profileVsCompanyMismatch,
+        ...(entry.extra ?? {}),
+      });
+    }
   }
 }
 

@@ -49,9 +49,7 @@ import { slugifyKnowledgeSourceKey } from "@/lib/knowledge/slugify-source-key";
 import { useAIProviderServices } from "@/lib/ai-provider-layer";
 import { useRetrievalServices } from "@/lib/retrieval-engine";
 import { nestedSectionHref } from "@/lib/routing";
-import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import type { KnowledgeCitation } from "@workspace/retrieval-engine";
 
 const STEPS: KnowledgeWizardStep[] = ["source", "import", "documents", "verify"];
@@ -86,7 +84,6 @@ export function KnowledgeCreateWizardPage() {
   const { data: allSources = [] } = useKnowledgeSources(companyId);
   const { services: retrievalServices, context: retrievalContext } = useRetrievalServices();
   const { services: providerServices, context: providerContext } = useAIProviderServices();
-  const platformAiServices = useMemo(() => createPlatformAIProviderServices(supabase), []);
   const runtimeConfigQuery = useRuntimeChatConfig(companyId, true);
   const runtimeConfig = runtimeConfigQuery.data;
 
@@ -461,16 +458,14 @@ export function KnowledgeCreateWizardPage() {
       const connection = connections.find((item) => item.id === runtimeConfig.providerConnectionId);
       if (!connection) return null;
       const providerKey = connection.ai_provider_definition?.key ?? "openai";
-      const runtime = await platformAiServices.platform.resolveRuntimeConfig(
-        companyId,
-        providerKey,
-        "chat",
-      );
-      if (!runtime.apiKey) return null;
+      const model =
+        (typeof connection.configuration?.model === "string" && connection.configuration.model) ||
+        undefined;
 
+      // Platform-managed keys: gateway proxy → api-server (no browser apiKey).
       const response = await providerServices.gateway.chatCompletion({
-        providerKey: runtime.providerKey,
-        model: runtime.model,
+        providerKey,
+        model,
         temperature: 0.2,
         maxTokens: 500,
         messages: [
@@ -486,10 +481,9 @@ export function KnowledgeCreateWizardPage() {
           userId: user?.id ?? null,
         },
         metadata: {
-          apiKey: runtime.apiKey,
-          baseUrl: runtime.baseUrl,
           companyId,
-          usesPlatformKey: runtime.usesPlatformKey,
+          usesPlatformKey: connection.uses_platform_key !== false,
+          __platformApiProxy: connection.uses_platform_key !== false,
         },
       });
       return response.text?.trim() || null;

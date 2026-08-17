@@ -184,6 +184,11 @@ minimum_password_length = 6
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
 
+# Enable via Dashboard (Auth → Providers → Email → Password) or Management API
+# password_hibp_enabled=true. Requires Pro plan+. Clears Security Advisor WARN.
+# [auth.password.hibp]
+# enabled = true
+
 # Configure passkey sign-ins.
 # [auth.passkey]
 # enabled = false

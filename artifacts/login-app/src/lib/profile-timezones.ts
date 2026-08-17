@@ -7,6 +7,7 @@ export const PROFILE_TIMEZONE_OPTIONS = [
   { value: "Europe/London", labelKey: "profiles.timezones.europeLondon" },
   { value: "Europe/Paris", labelKey: "profiles.timezones.europeParis" },
   { value: "Europe/Berlin", labelKey: "profiles.timezones.europeBerlin" },
+  { value: "Africa/Cairo", labelKey: "profiles.timezones.africaCairo" },
   { value: "Asia/Dubai", labelKey: "profiles.timezones.asiaDubai" },
   { value: "Asia/Riyadh", labelKey: "profiles.timezones.asiaRiyadh" },
   { value: "Asia/Kolkata", labelKey: "profiles.timezones.asiaKolkata" },

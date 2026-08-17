@@ -30,8 +30,10 @@ export function wbDebug(tag: string, data?: unknown) {
   const entry: WbDebugEntry = { t: Date.now(), seq: ++seq, tag, data };
   if (typeof window !== "undefined") {
     ensureStore().push(entry);
+    if (window.localStorage?.getItem("WB_DEBUG") === "1") {
+      console.log(`[WB-DEBUG ${entry.seq}] ${tag}`, data ?? "");
+    }
   }
-  console.log(`[WB-DEBUG ${entry.seq}] ${tag}`, data ?? "");
 }
 
 export function wbDebugMount(component: string) {

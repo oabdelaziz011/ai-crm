@@ -138,6 +138,7 @@ export class PaymentService {
               customerId,
               paidAt: payment.paidAt ?? new Date().toISOString(),
               amountCents: invoice.totalCents,
+              currency: invoice.currency,
             },
           });
         }

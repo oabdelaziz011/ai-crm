@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "wouter";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { usePromptTemplates } from "@/hooks/prompts/use-prompt-templates";
@@ -31,7 +32,15 @@ export function AIPromptSelector({ config, onChange, nodeKey }: AIPromptSelector
 
   return (
     <div className="space-y-2">
-      <Label className="text-sm font-medium">{ai("promptTemplate")}</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm font-medium">{ai("promptTemplate")}</Label>
+        <Link
+          href="~/dashboard/prompts"
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          {ai("managePromptTemplates")}
+        </Link>
+      </div>
       <SearchableSelect
         value={aiConfig.promptTemplateKey ?? ""}
         onValueChange={(value) => onChange(patchAIWorkflowConfig(config, { promptTemplateKey: value }, nodeKey))}

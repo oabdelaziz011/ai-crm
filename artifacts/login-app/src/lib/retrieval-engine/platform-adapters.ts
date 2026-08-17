@@ -5,6 +5,7 @@ import type {
   EmbeddingPlatformConfigurationResolver,
 } from "@workspace/retrieval-engine";
 import type { VectorQueryServices } from "@workspace/vector-query";
+import { platformAiEmbeddings } from "@/lib/platform-ai/platform-ai-api-client";
 
 type EmbeddingRegistry = EmbeddingPlatformServices["registry"];
 type EmbeddingFactory = EmbeddingPlatformServices["factory"];
@@ -18,6 +19,10 @@ function connectionNeedsPlatformKey(configuration: Record<string, unknown>): boo
         ? configuration.api_key
         : "";
   return !apiKey.trim();
+}
+
+function configurationRequestsPlatformProxy(configuration: Record<string, unknown>): boolean {
+  return configuration.__platformApiProxy === true || configuration.usesPlatformKey === true;
 }
 
 export function createQueryEmbeddingPort(deps: {
@@ -61,6 +66,30 @@ export function createQueryEmbeddingPort(deps: {
           ...(typeof platformConfiguration.model === "string" && platformConfiguration.model
             ? { model: platformConfiguration.model }
             : {}),
+        };
+      }
+
+      // Platform-managed keys: never decrypt/embed in the browser.
+      if (
+        connectionNeedsPlatformKey(connection.configuration) ||
+        configurationRequestsPlatformProxy(mergedConfiguration)
+      ) {
+        const response = await platformAiEmbeddings({
+          companyId: input.companyId,
+          providerKey,
+          model,
+          input: input.text,
+        });
+        const vector = response.vector ?? response.vectors[0];
+        if (!vector) {
+          throw new Error("Platform AI embeddings response did not include a vector.");
+        }
+        return {
+          vector,
+          dimensions: response.dimensions,
+          providerKey: response.providerKey,
+          model: response.model,
+          mock: false,
         };
       }
 

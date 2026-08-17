@@ -32,7 +32,7 @@ export const PROMPT_ROUTE_REGISTRY: readonly PromptRouteDefinition[] = [
   },
   {
     id: "editor",
-    nestedPath: "/editor/:templateKey",
+    nestedPath: "/editor/:templateId",
     titleKey: "prompts.nav.editor",
     permission: "prompts.manage",
     Page: lazyNamed(() => import("@/pages/dashboard/prompts/prompt-editor-page"), "PromptEditorPage"),

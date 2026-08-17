@@ -9,11 +9,11 @@ import { useVectorQueryServices } from "@/lib/vector-query";
 import { supabase } from "@/lib/supabase";
 import { createRetrievalObservabilityPort } from "./observability-adapter";
 import { createRetrievalPlatformPorts } from "./platform-adapters";
-import { createPlatformAIProviderServices, PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 
 /**
  * Factory hook for Retrieval Engine domain services.
  * Business logic lives in @workspace/retrieval-engine — not in UI.
+ * Platform embedding credentials are resolved on api-server only.
  */
 export function useRetrievalServices() {
   const { user, profile, isSuperAdmin } = useAuth();
@@ -21,7 +21,6 @@ export function useRetrievalServices() {
   const { services: observabilityServices } = useAIObservabilityServices();
   const { services: embeddingServices } = useEmbeddingPlatformServices();
   const { services: vectorQueryServices } = useVectorQueryServices();
-  const platformServices = useMemo(() => createPlatformAIProviderServices(supabase), []);
 
   const context = useMemo<ServiceContext>(
     () => ({
@@ -43,20 +42,13 @@ export function useRetrievalServices() {
         vectorQuery: {
           management: vectorQueryServices.management,
         },
-        resolvePlatformConfiguration: async ({ companyId, providerKey }) => {
-          const runtime = await platformServices.platform.resolveRuntimeConfig(
-            companyId,
-            providerKey,
-            PLATFORM_AI_FEATURE_KEY.EMBEDDINGS,
-          );
-          return {
-            apiKey: runtime.apiKey,
-            model: runtime.model,
-            baseUrl: runtime.baseUrl,
-          };
-        },
+        // Signal only — createQueryEmbeddingPort proxies to api-server when set.
+        resolvePlatformConfiguration: async () => ({
+          usesPlatformKey: true,
+          __platformApiProxy: true,
+        }),
       }),
-    [embeddingServices.registry, embeddingServices.factory, vectorQueryServices.management, platformServices],
+    [embeddingServices.registry, embeddingServices.factory, vectorQueryServices.management],
   );
 
   const services = useMemo(

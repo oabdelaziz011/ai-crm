@@ -32,7 +32,7 @@ export function PromptSectionEditor({ sections, sectionOrder, onChange }: Props)
         return (
           <div key={key} className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <Label className="font-medium">{key}</Label>
+              <Label className="font-medium">{t(`prompts.sections.${key}`, { defaultValue: key })}</Label>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{t("prompts.editor.enabled")}</span>
                 <Switch

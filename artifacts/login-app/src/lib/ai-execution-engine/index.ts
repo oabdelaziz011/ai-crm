@@ -12,11 +12,12 @@ import { createEnterpriseRuntimeIntegrations } from "@/lib/runtime-integration/r
 import { createRuntimeToolPort } from "@/lib/runtime-integration/tool-port-adapter";
 import { createScopedRuntimeToolPort } from "@/lib/ai-employees/utilities/scoped-runtime-tool-port";
 import { createPlatformRuntimeConfigPort } from "@/lib/platform-ai-provider/platform-runtime-port";
-import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
+import { assertPlatformAiApiConfigured } from "@/lib/platform-ai/platform-ai-api-client";
 
 /**
  * Factory hook for AI Execution Engine domain services.
  * Business logic lives in @workspace/ai-execution-engine — not in UI.
+ * Platform API keys are never resolved in the browser — gateway proxy uses api-server.
  */
 export function useAIExecutionServices() {
   const { user, profile, isSuperAdmin } = useAuth();
@@ -30,20 +31,19 @@ export function useAIExecutionServices() {
     () => createScopedRuntimeToolPort(createRuntimeToolPort(toolRouterServices, createOptions)),
     [toolRouterServices, createOptions],
   );
-  const platformServices = useMemo(() => createPlatformAIProviderServices(supabase), []);
   const platformConfig = useMemo(
     () =>
-      createPlatformRuntimeConfigPort(async ({ companyId, providerKey, useCase }) => {
-        const runtime = await platformServices.platform.resolveRuntimeConfig(companyId, providerKey, useCase);
+      createPlatformRuntimeConfigPort(async ({ providerKey }) => {
+        // Do not call platform_resolve_ai_runtime_config from the browser.
+        // Credentials are resolved on api-server when the gateway proxy runs.
+        assertPlatformAiApiConfigured();
         return {
-          apiKey: runtime.apiKey,
-          model: runtime.model,
-          baseUrl: runtime.baseUrl,
-          providerKey: runtime.providerKey,
-          usesPlatformKey: runtime.usesPlatformKey,
+          providerKey,
+          usesPlatformKey: true,
+          __platformApiProxy: true,
         };
       }),
-    [platformServices],
+    [],
   );
 
   const services = useMemo(

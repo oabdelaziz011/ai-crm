@@ -3,7 +3,6 @@ import type { DashboardSectionId } from "@/config/dashboard-route-registry";
 const AI_DASHBOARD_SECTIONS = new Set<DashboardSectionId>([
   "ai-assistant",
   "ai-chat",
-  "ai-runtime",
   "ai-usage",
   "ai-analytics",
   "prompts",

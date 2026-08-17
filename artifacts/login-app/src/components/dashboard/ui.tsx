@@ -78,15 +78,18 @@ export function DashboardStatCard({
     >
       <div className="pointer-events-none absolute -end-4 -top-4 size-24 rounded-full bg-primary/5 transition-transform duration-300 group-hover:scale-110" />
 
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 space-y-2 overflow-hidden">
+          <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {label}
           </p>
           {loading ? (
-            <div className="h-8 w-20 animate-pulse rounded-md bg-muted" />
+            <div className="h-6 w-20 animate-pulse rounded-md bg-muted" />
           ) : (
-            <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+            <p
+              className="truncate whitespace-nowrap font-mono text-sm font-semibold leading-none tabular-nums tracking-tight text-foreground sm:text-[15px] lg:text-base"
+              title={typeof value === "string" || typeof value === "number" ? String(value) : undefined}
+            >
               {value}
             </p>
           )}
@@ -98,16 +101,16 @@ export function DashboardStatCard({
               )}
             >
               {trendUp ? (
-                <ArrowUpRight className="size-3.5" />
+                <ArrowUpRight className="size-3.5 shrink-0" />
               ) : (
-                <ArrowDownRight className="size-3.5" />
+                <ArrowDownRight className="size-3.5 shrink-0" />
               )}
-              {trend}
+              <span className="truncate">{trend}</span>
             </p>
           )}
         </div>
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50">
-          <Icon className="size-[18px] text-primary" />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 sm:size-9">
+          <Icon className="size-3.5 text-primary sm:size-4" />
         </div>
       </div>
     </DashboardCard>

@@ -18,7 +18,9 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
+import { DashboardTrialBanner } from "@/components/dashboard/dashboard-trial-banner";
 import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
+import { useCompanySubscription } from "@/hooks/billing/use-company-subscriptions";
 import { useCustomers } from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
@@ -37,6 +39,11 @@ import {
 } from "@/components/dashboard/ui";
 import { ExecutiveKpiCard, ExecutiveKpiSkeleton } from "@/components/dashboard/executive/executive-kpi-card";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
+import {
+  canUpdateCompany,
+  canViewCompanySubscription,
+} from "@/lib/company-workspace/permissions";
+import { resolveTrialBanner } from "@/lib/dashboard/resolve-trial-banner";
 
 const ExecutiveTrendChart = lazy(() =>
   import("@/components/dashboard/executive/executive-trend-chart").then((module) => ({
@@ -86,6 +93,34 @@ export function DashboardHomePage() {
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const { setCopilotOpen } = useAppShell();
   const companyId = profile?.company_id ?? null;
+  const access = useMemo(
+    () => ({ isSuperAdmin, hasPermission }),
+    [isSuperAdmin, hasPermission],
+  );
+  const canSeeTrialBanner =
+    canViewCompanySubscription(access) || canUpdateCompany(access);
+  const subscriptionQuery = useCompanySubscription(companyId, canSeeTrialBanner);
+  const trialBanner = useMemo(
+    () =>
+      resolveTrialBanner({
+        canView: canSeeTrialBanner,
+        companyStatus: company?.status,
+        companySubscriptionStatus: company?.subscription_status,
+        companyExpiresAt: company?.subscription_expires_at,
+        subscriptionStatus: subscriptionQuery.data?.status,
+        trialEndsAt: subscriptionQuery.data?.trial_ends_at,
+        currentPeriodEnd: subscriptionQuery.data?.current_period_end,
+      }),
+    [
+      canSeeTrialBanner,
+      company?.status,
+      company?.subscription_status,
+      company?.subscription_expires_at,
+      subscriptionQuery.data?.status,
+      subscriptionQuery.data?.trial_ends_at,
+      subscriptionQuery.data?.current_period_end,
+    ],
+  );
 
   const canViewCustomers = isSuperAdmin || hasPermission("customers.view");
   const canViewBookings = isSuperAdmin || hasPermission("bookings.view");
@@ -320,6 +355,8 @@ export function DashboardHomePage() {
       {errors.length > 0 && (
         <DashboardErrorBanner message={errors.map((e) => e!.message).join(" · ")} />
       )}
+
+      {trialBanner ? <DashboardTrialBanner model={trialBanner} access={access} /> : null}
 
       {/* SECTION 1 — Executive Hero (compact) */}
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">

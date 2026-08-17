@@ -32,6 +32,7 @@ import {
   FlaskConical,
   Workflow,
   ScrollText,
+  Mail,
 } from "lucide-react";
 import type { PlatformAIFeatureKey } from "@workspace/platform-ai-provider";
 import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
@@ -43,7 +44,6 @@ export type DashboardSectionId =
   | "channels"
   | "ai-usage"
   | "ai-analytics"
-  | "ai-runtime"
   | "company"
   | "customers"
   | "tickets"
@@ -56,6 +56,7 @@ export type DashboardSectionId =
   | "products"
   | "quotes"
   | "communication"
+  | "email"
   | "invoices"
   | "financial"
   | "executive"
@@ -129,6 +130,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
       "omnichannel",
       "channels",
       "communication",
+      "email",
       "ai-assistant",
       "ai-employees",
       "ai-chat",
@@ -137,7 +139,6 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
       "automation",
       "ai-usage",
       "ai-analytics",
-      "ai-runtime",
     ],
   },
   {
@@ -211,6 +212,17 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     ),
   },
   {
+    id: "email",
+    path: "/dashboard/email",
+    nestedPath: "/email",
+    titleKey: "navigation.email",
+    icon: Mail,
+    permission: "channels.view",
+    commercialFeatureCode: "email_channel",
+    sidebarGroup: "ai-platform",
+    Page: lazyNamed(() => import("@/pages/email"), "EmailPage"),
+  },
+  {
     id: "ai-usage",
     path: "/dashboard/ai-usage",
     nestedPath: "/ai-usage",
@@ -231,16 +243,6 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     commercialFeatureCode: "advanced_reports",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/ai/ai-analytics-page")),
-  },
-  {
-    id: "ai-runtime",
-    path: "/dashboard/ai-runtime",
-    nestedPath: "/ai-runtime",
-    titleKey: "navigation.aiRuntime",
-    icon: Gauge,
-    permission: "ai.execution.view",
-    sidebarGroup: "ai-platform",
-    Page: lazyPage(() => import("@/pages/dashboard/ai-runtime-monitor-page")),
   },
   {
     id: "customers",

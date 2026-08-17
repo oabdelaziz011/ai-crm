@@ -15,6 +15,12 @@ const DashboardHomePage = lazy(() =>
   })),
 );
 
+const NotificationDetailPage = lazy(() =>
+  import("@/pages/dashboard/notification-detail-page").then((module) => ({
+    default: module.NotificationDetailPage,
+  })),
+);
+
 const CUSTOMER_WORKSPACE_PATH = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i;
 const OMNICHANNEL_CONSOLE_PATH = /^\/omnichannel(?:\/|$)/i;
 const CALENDAR_PATH = /^\/calendar(?:\/|$)/i;
@@ -56,8 +62,16 @@ export function DashboardOutlet() {
               <Route path="/platform/ai-settings">
                 <Redirect to="/settings/platform-ai" />
               </Route>
+              <Route path="/ai-runtime">
+                <Redirect to="/ai-analytics" />
+              </Route>
+              <Route path="/notifications/:notificationId">
+                <Suspense fallback={<DashboardPageFallback />}>
+                  <NotificationDetailPage />
+                </Suspense>
+              </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>

@@ -1,5 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
+import { isSettingsRoutePermitted } from "@/lib/settings/settings-permissions";
 
 export const SETTINGS_BASE_NESTED_PATH = "/settings";
 
@@ -25,6 +26,11 @@ export type SettingsRouteDefinition = {
   permission?: string;
   /** Restrict to platform super administrators (future: platform_ai.manage). */
   superAdminOnly?: boolean;
+  /**
+   * Commercial entitlement required in addition to RBAC.
+   * Uses existing billing feature_definitions.code values only.
+   */
+  commercialFeatureCode?: string;
   Page: LazyExoticComponent<ComponentType>;
 };
 
@@ -95,6 +101,7 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/email",
     titleKey: "dashboard.settings.nav.email",
     permission: "settings.edit",
+    commercialFeatureCode: "email_channel",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/email-settings-page"),
       "SettingsEmailPage",
@@ -105,6 +112,7 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/whatsapp",
     titleKey: "dashboard.settings.nav.whatsapp",
     permission: "settings.edit",
+    commercialFeatureCode: "whatsapp_channel",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/whatsapp-settings-page"),
       "SettingsWhatsAppPage",
@@ -115,6 +123,7 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/messenger",
     titleKey: "dashboard.settings.nav.messenger",
     permission: "settings.edit",
+    commercialFeatureCode: "facebook_channel",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/messenger-settings-page"),
       "SettingsMessengerPage",
@@ -125,6 +134,7 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/instagram",
     titleKey: "dashboard.settings.nav.instagram",
     permission: "settings.edit",
+    commercialFeatureCode: "instagram_channel",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/instagram-settings-page"),
       "SettingsInstagramPage",
@@ -135,6 +145,8 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/calendar",
     titleKey: "dashboard.settings.nav.calendar",
     permission: "bookings.view",
+    // Same commercial code as dashboard Calendar / Bookings / Scheduling routes.
+    commercialFeatureCode: "bookings",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/settings-calendar-page"),
       "SettingsCalendarPage",
@@ -145,6 +157,7 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/scheduling",
     titleKey: "dashboard.settings.nav.scheduling",
     permission: "scheduling.view",
+    commercialFeatureCode: "bookings",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/scheduling-page"),
       "SettingsSchedulingPage",
@@ -155,6 +168,8 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     nestedPath: "/tickets/sla",
     titleKey: "dashboard.settings.nav.ticketSla",
     permission: "tickets.manage",
+    // SLA is part of the ticketing commercial module (no separate SLA feature code).
+    commercialFeatureCode: "ticketing",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/ticket-sla-settings-page"),
       "SettingsTicketSlaPage",
@@ -174,6 +189,13 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
 
 export const SETTINGS_DEFAULT_NESTED_PATH = "/profile";
 
-export function settingsNavItems(): readonly SettingsRouteDefinition[] {
-  return SETTINGS_ROUTE_REGISTRY;
+/** Settings sub-nav items filtered by RBAC + commercial entitlement. */
+export function settingsNavItems(
+  hasPermission: (code: string) => boolean = () => false,
+  isSuperAdmin = false,
+  commercialFeatureEnabled?: (featureCode: string) => boolean | undefined,
+): readonly SettingsRouteDefinition[] {
+  return SETTINGS_ROUTE_REGISTRY.filter((route) =>
+    isSettingsRoutePermitted(route, hasPermission, isSuperAdmin, commercialFeatureEnabled),
+  );
 }

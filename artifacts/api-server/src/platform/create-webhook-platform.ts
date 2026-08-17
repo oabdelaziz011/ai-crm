@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createConversationServices } from "@workspace/ai-conversation";
 import { createAIExecutionServices } from "@workspace/ai-execution-engine";
-import { createIntentEngineServices } from "@workspace/ai-intent-engine";
+import { createIntentEngineServices, createLlmEmailRoutingClassifier, createEmailRoutingEngine } from "@workspace/ai-intent-engine";
+import { createSupabaseEmailRoutingTargetResolver } from "./email-routing-target-resolver-adapter.js";
 import { createAIProviderServices } from "@workspace/ai-provider-layer";
 import { createPromptOrchestratorServices } from "@workspace/ai-prompt-orchestrator";
 import { createChannelRegistryServices } from "@workspace/channel-registry";
@@ -56,6 +57,9 @@ import { createWebhookWorkflowTransferPorts } from "./webhook-workflow-transfer-
 import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
 import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
+import { createEmailRoutingTicketActionPort } from "./email-routing-ticket-adapter.js";
+import { createAiEmailRoutingCommercialPort } from "./ai-email-routing-commercial-adapter.js";
+import { createAiEmployeeEmailCommercialPort } from "./ai-employee-email-commercial-adapter.js";
 import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
 import { instrumentSupabaseClientForWhatsAppPerf } from "@workspace/channel-platform/server";
@@ -253,6 +257,11 @@ export function getWebhookPlatform(): WebhookPlatform {
       resolveRuntimeActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),
     },
   );
+  ports.emailRoutingTickets = createEmailRoutingTicketActionPort(client, {
+    resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
+  });
+  ports.aiEmailRoutingCommercial = createAiEmailRoutingCommercialPort(client);
+  ports.aiEmployeeEmailCommercial = createAiEmployeeEmailCommercialPort(client);
 
   const whatsAppCredentialsLoader = createSupabaseWhatsAppCredentialsLoader(client, {
     onDiagnostic: (detail) =>
@@ -270,6 +279,10 @@ export function getWebhookPlatform(): WebhookPlatform {
   const channelPlatform = createServerChannelPlatformServices(client, {
     ports,
     workflowResolver,
+    emailRoutingClassifier: createLlmEmailRoutingClassifier(provider.gateway),
+    emailRoutingEngine: createEmailRoutingEngine({
+      targetResolver: createSupabaseEmailRoutingTargetResolver(client),
+    }),
     whatsAppCredentialsLoader,
     whatsAppCredentialLifecycle,
     whatsAppOutboundDiagnostic: (detail) => logger.info({ ...detail, event: "whatsapp.outbound" }, "WhatsApp outbound diagnostic"),

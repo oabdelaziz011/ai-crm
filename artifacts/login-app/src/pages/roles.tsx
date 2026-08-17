@@ -30,6 +30,12 @@ import {
   type RoleRecord,
 } from "@/hooks/use-rbac";
 import { usePermissionCatalogLanguageVersion } from "@/lib/rbac/permission-display-i18n";
+import {
+  filterDelegablePermissionRecords,
+  filterRolesForTenantManagement,
+} from "@/lib/rbac/tenant-role-management";
+import { filterPermissionsAvailableForCompany } from "@/lib/billing/feature-definition-permissions";
+import { useCompanyFeaturePermissionGate } from "@/hooks/billing/use-feature-definition-permissions";
 
 const EMPTY_FORM: RoleFormValues = {
   name: "",
@@ -120,16 +126,43 @@ function RolePermissionDetails({
 export function RolesPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
-  const { isSuperAdmin } = useAuthUser();
+  const { isSuperAdmin, hasPermission, profile } = useAuthUser();
+  const companyGate = useCompanyFeaturePermissionGate(profile?.company_id ?? null);
   const { developerMode, setDeveloperMode } = useRbacDeveloperMode();
   const { data: roles = [], isLoading } = useRoles();
-  const { data: permissions = [] } = usePermissionCatalog();
+  const { data: permissionsCatalog = [] } = usePermissionCatalog();
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
   const canCreateRoles = useHasPermission("roles.create");
   const canEditRoles = useHasPermission("roles.edit");
   const canDeleteRoles = useHasPermission("roles.delete");
+
+  // Non-Super-Admins: actor-delegable ∩ company-available feature permissions.
+  const permissions = useMemo(() => {
+    const delegable = filterDelegablePermissionRecords(
+      permissionsCatalog,
+      hasPermission,
+      isSuperAdmin,
+    );
+    return filterPermissionsAvailableForCompany(delegable, {
+      isSuperAdmin,
+      featurePermissions: companyGate.featurePermissions,
+      isFeatureEnabled: companyGate.isFeatureEnabled,
+    });
+  }, [
+    permissionsCatalog,
+    hasPermission,
+    isSuperAdmin,
+    companyGate.featurePermissions,
+    companyGate.isFeatureEnabled,
+  ]);
+
+  // Tenant Role Management lists CUSTOM roles only (no fixed Admin/Manager/Employee catalog).
+  const managedRoles = useMemo(
+    () => filterRolesForTenantManagement(roles, { includeProtected: isSuperAdmin }),
+    [roles, isSuperAdmin],
+  );
 
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -177,7 +210,10 @@ export function RolesPage() {
         id: role.id,
         name: role.name ?? "",
         description: role.description ?? "",
-        permissions: permissionCodes,
+        // Keep only permissions this actor may still delegate (DB also enforces).
+        permissions: isSuperAdmin
+          ? permissionCodes
+          : permissionCodes.filter((code) => hasPermission(code)),
       });
     } finally {
       setEditPermissionsLoading(false);
@@ -283,18 +319,32 @@ export function RolesPage() {
       </Card>
 
       <Card className="overflow-hidden p-0">
-        <div className="border-b border-white/5 px-5 py-4 text-sm font-semibold">{t("forms.roles.existing")}</div>
+        <div className="border-b border-white/5 px-5 py-4 text-sm font-semibold">
+          {t("roles.customRolesHeading")}
+        </div>
         {isLoading ? (
           <div className="space-y-3 p-6">
             {Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="h-12 animate-pulse rounded-xl bg-white/5" />
             ))}
           </div>
-        ) : roles.length === 0 ? (
-          <div className="px-6 py-16 text-center text-sm text-muted-foreground">{t("forms.roles.none")}</div>
+        ) : managedRoles.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <p className="text-sm font-medium text-foreground">{t("roles.emptyCustomTitle")}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("roles.emptyCustomDescription")}</p>
+            {canCreateRoles ? (
+              <Button
+                onClick={openCreateDialog}
+                className="mt-6 bg-primary/20 text-primary hover:bg-primary/30 gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                {t("roles.createRole")}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <div className="divide-y divide-white/5">
-            {roles.map((role) => {
+            {managedRoles.map((role) => {
               const isProtectedRole =
                 role.role_type === "DEFAULT" || role.role_type === "PLATFORM";
               const canEditThisRole = canEditRoles && (!isProtectedRole || isSuperAdmin);

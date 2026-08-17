@@ -22,6 +22,13 @@ export function mapReplaceUserRoleRpcError(message: string): RoleAssignmentError
     );
   }
 
+  if (message.includes("role_delegation_denied") || message.includes("permission_delegation_denied")) {
+    return new RoleAssignmentError(
+      ROLE_ASSIGNMENT_REJECTION.FORBIDDEN,
+      "You cannot assign a role that includes permissions you do not have.",
+    );
+  }
+
   if (message.includes("Cross tenant access denied") || message === "Forbidden") {
     return new RoleAssignmentError(
       ROLE_ASSIGNMENT_REJECTION.FORBIDDEN,

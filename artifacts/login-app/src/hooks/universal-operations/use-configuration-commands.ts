@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import {
   buildApplicationContext,
   createLoginAppApplicationLayerRegistry,
@@ -11,26 +10,30 @@ import { invalidateOperationsPlatformQueries } from "@/lib/application-layer/ope
 const OPERATIONS_WORKSPACE_DOMAIN = "operations.workspace";
 
 function useConfigurationCommandContext() {
-  const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
-
-  if (!company?.id || !user?.id) return null;
-
-  const portContext = {
-    companyId: company.id,
-    actorUserId: user.id,
+  const {
+    companyId,
     isSuperAdmin,
-    hasPermission,
-  };
+    hasCompanyPermission,
+    buildPortContext,
+  } = useCompanyPermissionAuth();
+
+  if (!companyId) return null;
+
+  let portContext;
+  try {
+    portContext = buildPortContext();
+  } catch {
+    return null;
+  }
 
   const registry = createLoginAppApplicationLayerRegistry(portContext);
   const context = buildApplicationContext({
-    tenantId: company.id,
-    actorId: user.id,
-    permissions: permissionCodes(hasPermission, isSuperAdmin),
+    tenantId: companyId,
+    actorId: portContext.actorUserId,
+    permissions: permissionCodes(hasCompanyPermission, isSuperAdmin),
   });
 
-  return { registry, context, companyId: company.id };
+  return { registry, context, companyId };
 }
 
 export function useConfigurationCommands(templateKey = "clinic") {

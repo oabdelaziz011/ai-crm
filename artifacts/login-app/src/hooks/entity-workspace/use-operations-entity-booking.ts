@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { OperationsRow } from "@workspace/universal-operations-engine";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
 import { mapBookingReadModelToRow } from "@/lib/application-layer/operations-queue-row-mapper";
 import { useUniversalOperationsConfig } from "@/hooks/universal-operations/use-universal-operations-queue";
@@ -9,7 +9,7 @@ import { useUniversalOperationsConfig } from "@/hooks/universal-operations/use-u
 /** Live operation context from booking id (Queue `operationId`). */
 export function useOperationsEntityBooking(operationId: string | null | undefined, templateKey = "clinic") {
   const { company, user, profile } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission: hasPermission, isSuperAdmin } = useCompanyPermissionAuth();
   const companyId = company?.id ?? profile?.company_id ?? null;
   const configQuery = useUniversalOperationsConfig(templateKey);
   const config = configQuery.data;

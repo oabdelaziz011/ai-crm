@@ -26,7 +26,7 @@ import type { OperationsWorkspaceConfig } from "@workspace/universal-operations-
 
 import { useAuth } from "@/context/auth-context";
 
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
 import {
   createOperationsConfigCommandContext,
@@ -130,7 +130,7 @@ export function useUniversalOperationsConfig(templateKey = "clinic") {
 
   const { company } = useAuth();
 
-  const { hasPermission, isSuperAdmin, user } = useAuthUser();
+  const { hasCompanyPermission: hasPermission, isSuperAdmin, user } = useCompanyPermissionAuth();
 
   return useQuery({
 
@@ -178,7 +178,7 @@ export function useUniversalOperationsConfig(templateKey = "clinic") {
 
 export function useUniversalOperationsQueue(templateKey = "clinic") {
   const { user, company, profile } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission: hasPermission, isSuperAdmin } = useCompanyPermissionAuth();
   const configQuery = useUniversalOperationsConfig(templateKey);
 
   useUniversalOperationsRealtime(company?.id ?? null);

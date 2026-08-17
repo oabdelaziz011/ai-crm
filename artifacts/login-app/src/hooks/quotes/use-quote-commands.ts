@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import {
   buildApplicationContext,
   createLoginAppApplicationLayerRegistry,
@@ -13,28 +13,32 @@ import {
 
 function useQuoteServices() {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const {
+    hasCompanyPermission,
+    isSuperAdmin,
+    buildPortContext,
+  } = useCompanyPermissionAuth();
 
   const contextFactory = () => {
     if (!company?.id || !user?.id) throw new Error("Not authenticated");
     return buildApplicationContext({
       tenantId: company.id,
       actorId: user.id,
-      permissions: permissionCodes(hasPermission, isSuperAdmin),
+      permissions: permissionCodes(hasCompanyPermission, isSuperAdmin),
     });
   };
 
   const servicesFactory = () => {
-    if (!company?.id || !user?.id) throw new Error("Not authenticated");
-    return createLoginAppApplicationLayerRegistry({
-      companyId: company.id,
-      actorUserId: user.id,
-      isSuperAdmin,
-      hasPermission,
-    }).getServices();
+    return createLoginAppApplicationLayerRegistry(buildPortContext()).getServices();
   };
 
-  return { companyId: company?.id ?? null, contextFactory, servicesFactory, hasPermission, isSuperAdmin };
+  return {
+    companyId: company?.id ?? null,
+    contextFactory,
+    servicesFactory,
+    hasPermission: hasCompanyPermission,
+    isSuperAdmin,
+  };
 }
 
 export function useQuotesList(filter?: {

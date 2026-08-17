@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser, useHasPermission } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
 import {
   filterAvailableReports,
@@ -17,18 +17,18 @@ export function useAvailableReports(selectedReportId?: string | null): {
   access: ReportAccessContext;
 } {
   const { isSuperAdmin } = useAuth();
-  const { hasPermission } = useAuthUser();
-  const canViewReportsHub = useHasPermission("reports.view") || isSuperAdmin;
+  const { hasCompanyPermission } = useCompanyPermissionAuth();
+  const canViewReportsHub = isSuperAdmin || hasCompanyPermission("reports.view");
   const { lookup, isLoading, isResolved } = useCommercialFeatureLookup();
 
   const access: ReportAccessContext = useMemo(
     () => ({
       isSuperAdmin,
-      hasPermission,
+      hasPermission: hasCompanyPermission,
       isModuleEnabled: lookup,
       canViewReportsHub,
     }),
-    [canViewReportsHub, hasPermission, isSuperAdmin, lookup],
+    [canViewReportsHub, hasCompanyPermission, isSuperAdmin, lookup],
   );
 
   const available = useMemo(() => {

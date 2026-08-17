@@ -2,6 +2,10 @@ import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useSession, useUser, usePermissionsContext } from "@/context/auth-context";
 import { supabase } from "@/lib/supabase";
+import {
+  assertPermissionsAreDelegable,
+  assertRolePermissionsAreDelegable,
+} from "@/lib/rbac/permission-delegation";
 
 export interface RoleRecord {
   id: string;
@@ -199,18 +203,54 @@ export async function fetchRolePermissionCodes(roleId: string): Promise<string[]
 
 export function useCreateRole() {
   const qc = useQueryClient();
+  const { profile, isSuperAdmin } = useUser();
+  const { hasPermission } = usePermissions();
   return useMutation({
-    mutationFn: async ({ name, description, permissions }: { name: string; description: string; permissions: string[] }) => {
-      const { data: roleData, error: roleError } = await supabase.from("roles").insert({ name, description }).select().single();
+    mutationFn: async ({
+      name,
+      description,
+      permissions,
+    }: {
+      name: string;
+      description: string;
+      permissions: string[];
+    }) => {
+      const companyId = profile?.company_id ?? null;
+      if (!isSuperAdmin && !companyId) {
+        throw new Error("Company membership is required to create a role");
+      }
+
+      assertPermissionsAreDelegable(permissions, hasPermission, isSuperAdmin);
+
+      // Tenant roles must be CUSTOM + scoped to current company for RLS
+      // (roles_insert_policy + role_permissions_* policies).
+      const { data: roleData, error: roleError } = await supabase
+        .from("roles")
+        .insert({
+          name,
+          description: description || null,
+          company_id: companyId,
+          is_system: false,
+          role_type: "CUSTOM",
+          template_key: null,
+        })
+        .select()
+        .single();
       if (roleError) throw new Error(roleError.message);
 
-      const { data: permissionRows, error: permissionError } = await supabase.from("permissions").select("id, code").in("code", permissions);
-      if (!permissionError && permissionRows) {
-        const mappings = permissionRows
+      if (permissions.length > 0) {
+        const { data: permissionRows, error: permissionError } = await supabase
+          .from("permissions")
+          .select("id, code")
+          .in("code", permissions);
+        if (permissionError) throw new Error(permissionError.message);
+
+        const mappings = (permissionRows ?? [])
           .filter((row) => row?.id)
           .map((row) => ({ role_id: roleData.id, permission_id: row.id }));
         if (mappings.length > 0) {
-          await supabase.from("role_permissions").insert(mappings);
+          const { error: mapError } = await supabase.from("role_permissions").insert(mappings);
+          if (mapError) throw new Error(mapError.message);
         }
       }
       return roleData as RoleRecord;
@@ -224,19 +264,46 @@ export function useCreateRole() {
 
 export function useUpdateRole() {
   const qc = useQueryClient();
+  const { isSuperAdmin } = useUser();
+  const { hasPermission } = usePermissions();
   return useMutation({
-    mutationFn: async ({ id, name, description, permissions }: { id: string; name: string; description: string; permissions: string[] }) => {
-      const { data, error } = await supabase.from("roles").update({ name, description }).eq("id", id).select().single();
+    mutationFn: async ({
+      id,
+      name,
+      description,
+      permissions,
+    }: {
+      id: string;
+      name: string;
+      description: string;
+      permissions: string[];
+    }) => {
+      assertPermissionsAreDelegable(permissions, hasPermission, isSuperAdmin);
+
+      const { data, error } = await supabase
+        .from("roles")
+        .update({ name, description: description || null })
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw new Error(error.message);
 
-      await supabase.from("role_permissions").delete().eq("role_id", id);
-      const { data: permissionRows, error: permissionError } = await supabase.from("permissions").select("id, code").in("code", permissions);
-      if (!permissionError && permissionRows) {
-        const mappings = permissionRows
+      const { error: deleteError } = await supabase.from("role_permissions").delete().eq("role_id", id);
+      if (deleteError) throw new Error(deleteError.message);
+
+      if (permissions.length > 0) {
+        const { data: permissionRows, error: permissionError } = await supabase
+          .from("permissions")
+          .select("id, code")
+          .in("code", permissions);
+        if (permissionError) throw new Error(permissionError.message);
+
+        const mappings = (permissionRows ?? [])
           .filter((row) => row?.id)
           .map((row) => ({ role_id: id, permission_id: row.id }));
         if (mappings.length > 0) {
-          await supabase.from("role_permissions").insert(mappings);
+          const { error: mapError } = await supabase.from("role_permissions").insert(mappings);
+          if (mapError) throw new Error(mapError.message);
         }
       }
       return data as RoleRecord;
@@ -265,8 +332,14 @@ export function useDeleteRole() {
 
 export function useAssignUserRoles() {
   const qc = useQueryClient();
+  const { isSuperAdmin } = useUser();
+  const { hasPermission } = usePermissions();
   return useMutation({
     mutationFn: async ({ userId, roleIds }: { userId: string; roleIds: string[] }) => {
+      for (const roleId of roleIds) {
+        const codes = await fetchRolePermissionCodes(roleId);
+        assertRolePermissionsAreDelegable(codes, hasPermission, isSuperAdmin);
+      }
       const { replaceUserRoles } = await import("@/lib/users/replace-user-role");
       await replaceUserRoles(userId, roleIds);
     },
@@ -278,15 +351,25 @@ export function useAssignUserRoles() {
 
 export function useAssignUserPermissions() {
   const qc = useQueryClient();
+  const { isSuperAdmin } = useUser();
+  const { hasPermission } = usePermissions();
   return useMutation({
     mutationFn: async ({ userId, permissionCodes }: { userId: string; permissionCodes: string[] }) => {
+      assertPermissionsAreDelegable(permissionCodes, hasPermission, isSuperAdmin);
       await supabase.from("user_permissions").delete().eq("user_id", userId);
       if (permissionCodes.length > 0) {
-        const { data: permissionRows, error } = await supabase.from("permissions").select("id, code").in("code", permissionCodes);
-        if (!error && permissionRows) {
-          const rows = permissionRows.filter((row) => row?.id).map((row) => ({ user_id: userId, permission_id: row.id }));
+        const { data: permissionRows, error } = await supabase
+          .from("permissions")
+          .select("id, code")
+          .in("code", permissionCodes);
+        if (error) throw new Error(error.message);
+        if (permissionRows) {
+          const rows = permissionRows
+            .filter((row) => row?.id)
+            .map((row) => ({ user_id: userId, permission_id: row.id }));
           if (rows.length > 0) {
-            await supabase.from("user_permissions").insert(rows);
+            const { error: insertError } = await supabase.from("user_permissions").insert(rows);
+            if (insertError) throw new Error(insertError.message);
           }
         }
       }

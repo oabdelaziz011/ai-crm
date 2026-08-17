@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import {
   buildApplicationContext,
   createLoginAppApplicationLayerRegistry,
@@ -20,23 +20,18 @@ export function useLeadsQueue(filter?: {
   offset?: number;
 }) {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   return useQuery({
     queryKey: ["leads-workspace", "list", company?.id, filter],
-    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasPermission("leads.view"))),
+    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasCompanyPermission("leads.view"))),
     queryFn: async () => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const services = registry.getServices();
       const context = buildApplicationContext({
         tenantId: company!.id,
         actorId: user!.id,
-        permissions: permissionCodes(hasPermission, isSuperAdmin),
+        permissions: permissionCodes(hasCompanyPermission, isSuperAdmin),
       });
       const result = await services.lead.listLeads(filter ?? {}, context);
       return Object.freeze({
@@ -50,18 +45,13 @@ export function useLeadsQueue(filter?: {
 
 export function useLeadPipelines() {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   return useQuery({
     queryKey: ["leads-workspace", "pipelines", company?.id],
-    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasPermission("leads.view"))),
+    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasCompanyPermission("leads.view"))),
     queryFn: async () => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const ports = registry.resolve<ApplicationPorts>("ports");
       return ports.leadRead.listPipelines(company!.id);
     },
@@ -71,23 +61,20 @@ export function useLeadPipelines() {
 
 export function useLeadKanbanBoard(pipelineId: string | null) {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   return useQuery({
     queryKey: ["leads-workspace", "kanban", company?.id, pipelineId],
-    enabled: Boolean(company?.id && user?.id && pipelineId && (isSuperAdmin || hasPermission("leads.view"))),
+    enabled: Boolean(
+      company?.id && user?.id && pipelineId && (isSuperAdmin || hasCompanyPermission("leads.view")),
+    ),
     queryFn: async () => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const services = registry.getServices();
       const context = buildApplicationContext({
         tenantId: company!.id,
         actorId: user!.id,
-        permissions: permissionCodes(hasPermission, isSuperAdmin),
+        permissions: permissionCodes(hasCompanyPermission, isSuperAdmin),
       });
       const result = await services.lead.getPipelineBoard({ pipelineId: pipelineId! }, context);
       return result.data;
@@ -98,23 +85,18 @@ export function useLeadKanbanBoard(pipelineId: string | null) {
 
 export function useLeadDashboardMetrics() {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   return useQuery({
     queryKey: ["leads-workspace", "dashboard", company?.id],
-    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasPermission("leads.view"))),
+    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasCompanyPermission("leads.view"))),
     queryFn: async () => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const services = registry.getServices();
       const context = buildApplicationContext({
         tenantId: company!.id,
         actorId: user!.id,
-        permissions: permissionCodes(hasPermission, isSuperAdmin),
+        permissions: permissionCodes(hasCompanyPermission, isSuperAdmin),
       });
       const result = await services.lead.getDashboardMetrics({}, context);
       return result.data;
@@ -125,20 +107,15 @@ export function useLeadDashboardMetrics() {
 
 export function useLeadStages(pipelineId: string | null) {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   return useQuery({
     queryKey: ["leads-workspace", "stages", company?.id, pipelineId],
     enabled: Boolean(
-      company?.id && user?.id && pipelineId && (isSuperAdmin || hasPermission("leads.view")),
+      company?.id && user?.id && pipelineId && (isSuperAdmin || hasCompanyPermission("leads.view")),
     ),
     queryFn: async () => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const ports = registry.resolve<ApplicationPorts>("ports");
       return ports.leadRead.listStages(company!.id, pipelineId!);
     },
@@ -148,18 +125,13 @@ export function useLeadStages(pipelineId: string | null) {
 
 export function useLeadSources() {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   return useQuery({
     queryKey: ["leads-workspace", "sources", company?.id],
-    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasPermission("leads.view"))),
+    enabled: Boolean(company?.id && user?.id && (isSuperAdmin || hasCompanyPermission("leads.view"))),
     queryFn: async () => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const ports = registry.resolve<ApplicationPorts>("ports");
       return ports.leadRead.listSources(company!.id);
     },

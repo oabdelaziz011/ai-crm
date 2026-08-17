@@ -7,7 +7,7 @@ import type {
 } from "@/lib/entity-workspace";
 import type { Customer } from "@/lib/types";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
 import { mapBookingReadModelToRow } from "@/lib/application-layer/operations-queue-row-mapper";
 import { useUniversalOperationsConfig } from "@/hooks/universal-operations/use-universal-operations-queue";
@@ -91,7 +91,7 @@ export function useEntityWorkspaceBundle(input: {
   templateKey?: string;
 }) {
   const { company, user, profile } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission: hasPermission, isSuperAdmin } = useCompanyPermissionAuth();
   const companyId = company?.id ?? profile?.company_id ?? null;
   const services = useEntityWorkspaceServices();
   const configQuery = useUniversalOperationsConfig(input.templateKey ?? "clinic");

@@ -86,6 +86,16 @@ export function AuditLogsPage() {
 
   const filtered = useMemo(() => filterAuditRowViews(rowViews, filters), [rowViews, filters]);
 
+  const stats = useMemo(
+    () => ({
+      total: filtered.length,
+      create: filtered.filter((row) => row.operation === "CREATE").length,
+      update: filtered.filter((row) => row.operation === "UPDATE").length,
+      delete: filtered.filter((row) => row.operation === "DELETE").length,
+    }),
+    [filtered],
+  );
+
   const selectedLog = useMemo(
     () => rowViews.find((row) => row.log.id === selectedLogId)?.log ?? null,
     [rowViews, selectedLogId],
@@ -114,22 +124,22 @@ export function AuditLogsPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t("auditLogs.stats.total")} value={logs.length} icon={ShieldCheck} />
+        <StatCard label={t("auditLogs.stats.total")} value={stats.total} icon={ShieldCheck} />
         <StatCard
           label={t("auditLogs.stats.create")}
-          value={rowViews.filter((row) => row.operation === "CREATE").length}
+          value={stats.create}
           icon={ShieldCheck}
           accent="text-emerald-400"
         />
         <StatCard
           label={t("auditLogs.stats.update")}
-          value={rowViews.filter((row) => row.operation === "UPDATE").length}
+          value={stats.update}
           icon={ShieldCheck}
           accent="text-amber-400"
         />
         <StatCard
           label={t("auditLogs.stats.delete")}
-          value={rowViews.filter((row) => row.operation === "DELETE").length}
+          value={stats.delete}
           icon={ShieldCheck}
           accent="text-rose-400"
         />
@@ -316,10 +326,29 @@ export function AuditLogsPage() {
                         <TableCell>
                           <EmployeeIdentityCard
                             userId={row.userId ?? row.log.profile?.id}
+                            identity={
+                              row.log.profile
+                                ? {
+                                    id: row.log.profile.id,
+                                    userId: row.log.profile.id,
+                                    fullName: row.log.profile.full_name ?? row.userName ?? "",
+                                    email: row.log.profile.email ?? row.userEmail ?? null,
+                                    avatarUrl: null,
+                                    phone: null,
+                                    jobTitle: null,
+                                    department: null,
+                                    status: "active",
+                                    language: null,
+                                    timezone: null,
+                                    bio: null,
+                                    extensionNumber: null,
+                                  }
+                                : null
+                            }
                             fallbackName={row.userName}
                             fallbackEmail={row.userEmail}
                             showEmail
-                            showJobTitle
+                            showJobTitle={false}
                           />
                         </TableCell>
                         <TableCell>

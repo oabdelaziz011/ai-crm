@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import {
   buildApplicationContext,
   createLoginAppApplicationLayerRegistry,
@@ -24,29 +24,26 @@ export type Lead360WorkspaceData = Lead360AggregateDto & {
 
 export function useLead360Workspace(leadId: string | null, role: Lead360WorkspaceRole = "sales_manager") {
   const { user, company } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission, isSuperAdmin, buildPortContext } = useCompanyPermissionAuth();
 
   const sections = resolveLead360Sections(
     DEFAULT_LEAD360_SECTIONS,
     role,
-    (code) => isSuperAdmin || hasPermission(code),
+    (code) => isSuperAdmin || hasCompanyPermission(code),
   );
 
   const query = useQuery({
     queryKey: ["lead360-workspace", leadId, company?.id, role],
-    enabled: Boolean(leadId && company?.id && user?.id && (isSuperAdmin || hasPermission("leads.view"))),
+    enabled: Boolean(
+      leadId && company?.id && user?.id && (isSuperAdmin || hasCompanyPermission("leads.view")),
+    ),
     queryFn: async (): Promise<Lead360WorkspaceData | null> => {
-      const registry = createLoginAppApplicationLayerRegistry({
-        companyId: company!.id,
-        actorUserId: user!.id,
-        isSuperAdmin,
-        hasPermission,
-      });
+      const registry = createLoginAppApplicationLayerRegistry(buildPortContext());
       const services = registry.getServices();
       const context = buildApplicationContext({
         tenantId: company!.id,
         actorId: user!.id,
-        permissions: permissionCodes(hasPermission, isSuperAdmin),
+        permissions: permissionCodes(hasCompanyPermission, isSuperAdmin),
       });
       const result = await services.lead.getLead360Aggregate(
         { leadId: leadId!, role, visibleSections: sections.map((s) => s.id) },

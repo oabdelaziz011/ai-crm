@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
 import { supabase } from "@/lib/supabase";
 import { useEntityNotes } from "./use-entity-notes";
@@ -35,7 +35,7 @@ async function countCustomerRows(
  */
 export function useEntityRelatedCounts(entityType: string, entityId: string) {
   const { company, user, profile } = useAuth();
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission: hasPermission, isSuperAdmin } = useCompanyPermissionAuth();
   const companyId = company?.id ?? profile?.company_id ?? null;
   const notesQuery = useEntityNotes(entityType, entityId);
   const filesQuery = useEntityAttachments(entityType, entityId);

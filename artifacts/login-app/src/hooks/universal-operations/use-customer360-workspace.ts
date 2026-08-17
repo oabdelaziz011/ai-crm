@@ -14,7 +14,7 @@ import type { OperationsRow } from "@workspace/universal-operations-engine";
 
 import { useAuth } from "@/context/auth-context";
 
-import { useAuthUser } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 
 import { useMemo, useState } from "react";
 
@@ -138,7 +138,7 @@ export function useCustomer360Workspace(row: OperationsRow | null, role: Custome
 
   const { user, company } = useAuth();
 
-  const { hasPermission, isSuperAdmin } = useAuthUser();
+  const { hasCompanyPermission: hasPermission, isSuperAdmin } = useCompanyPermissionAuth();
 
   const platform = useWorkspacePlatformOptional();
 

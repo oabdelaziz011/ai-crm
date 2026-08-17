@@ -109,103 +109,353 @@
       "icon": "⚙️",
       "order": 195,
       "label": "الأتمتة"
+    },
+    "leads": {
+      "icon": "🎯",
+      "order": 25,
+      "label": "العملاء المحتملون"
+    },
+    "tickets": {
+      "icon": "🎫",
+      "order": 28,
+      "label": "التذاكر"
+    },
+    "products": {
+      "icon": "📦",
+      "order": 32,
+      "label": "المنتجات"
+    },
+    "quotes": {
+      "icon": "📝",
+      "order": 34,
+      "label": "عروض الأسعار"
+    },
+    "opportunities": {
+      "icon": "💼",
+      "order": 26,
+      "label": "الفرص"
+    },
+    "handoff": {
+      "icon": "🔁",
+      "order": 145,
+      "label": "التحويل البشري"
+    },
+    "organization": {
+      "icon": "🏛️",
+      "order": 96,
+      "label": "التنظيم"
+    },
+    "marketplace": {
+      "icon": "🏪",
+      "order": 200,
+      "label": "سوق الإضافات"
+    },
+    "integrations": {
+      "icon": "🔌",
+      "order": 205,
+      "label": "التكاملات"
+    },
+    "governance": {
+      "icon": "⚖️",
+      "order": 210,
+      "label": "حوكمة الذكاء الاصطناعي"
+    },
+    "configuration": {
+      "icon": "🧩",
+      "order": 215,
+      "label": "إعدادات المنصة"
+    },
+    "featureFlags": {
+      "icon": "🚩",
+      "order": 220,
+      "label": "أعلام الميزات"
+    },
+    "licenses": {
+      "icon": "📜",
+      "order": 225,
+      "label": "التراخيص"
+    },
+    "operations": {
+      "icon": "🛠️",
+      "order": 230,
+      "label": "العمليات"
+    },
+    "tasks": {
+      "icon": "✅",
+      "order": 235,
+      "label": "المهام"
+    },
+    "skills": {
+      "icon": "🧠",
+      "order": 192,
+      "label": "مهارات الذكاء الاصطناعي"
+    },
+    "executive": {
+      "icon": "📊",
+      "order": 46,
+      "label": "التنفيذي"
     }
   },
   "codes": {
-    "customers.view": {
-      "name": "عرض العملاء",
-      "description": "يسمح للمستخدم بعرض قائمة العملاء وبياناتهم.",
-      "group": "customers"
+    "agents.create": {
+      "name": "إنشاء موظفي الذكاء الاصطناعي",
+      "description": "يسمح بإنشاء ملفات موظفي الذكاء الاصطناعي في مساحة العمل.",
+      "group": "aiPlatform"
     },
-    "customers.create": {
-      "name": "إنشاء العملاء",
-      "description": "يسمح بإضافة عملاء جدد.",
-      "group": "customers"
+    "agents.delete": {
+      "name": "أرشفة موظفي الذكاء الاصطناعي",
+      "description": "يسمح بأرشفة ملفات موظفي الذكاء الاصطناعي.",
+      "group": "aiPlatform"
     },
-    "customers.edit": {
-      "name": "تعديل العملاء",
-      "description": "يسمح بتعديل بيانات العملاء.",
-      "group": "customers"
+    "agents.edit": {
+      "name": "تعديل موظفي الذكاء الاصطناعي",
+      "description": "يسمح بتعديل ملفات موظفي الذكاء الاصطناعي والتعيينات.",
+      "group": "aiPlatform"
     },
-    "customers.search": {
-      "name": "بحث العملاء (وكيل CRM)",
-      "description": "يسمح بأدوات بحث وكيل CRM واكتشاف التكرارات. يعادل customers.view على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
-      "group": "customers"
+    "agents.execute": {
+      "name": "تنفيذ وكلاء الذكاء الاصطناعي",
+      "description": "يسمح ببدء واستئناف وإلغاء سير عمل الوكلاء.",
+      "group": "aiPlatform"
     },
-    "customers.update": {
-      "name": "تحديث العملاء (وكيل CRM)",
-      "description": "يسمح بأدوات تحديث حقل واحد عبر وكيل CRM. يعادل customers.edit على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
-      "group": "customers"
+    "agents.manage": {
+      "name": "إدارة وكلاء الذكاء الاصطناعي",
+      "description": "يسمح بإدارة إعدادات وسياسات الوكلاء.",
+      "group": "aiPlatform"
     },
-    "customers.merge": {
-      "name": "دمج العملاء (وكيل CRM)",
-      "description": "يسمح بأدوات دمج العملاء عبر وكيل CRM. يعادل customers.edit و customers.delete على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
-      "group": "customers"
+    "agents.publish": {
+      "name": "نشر إصدارات الموظف الذكي",
+      "description": "يسمح بـ: نشر إصدارات الموظف الذكي.",
+      "group": "aiPlatform"
     },
-    "customers.import": {
-      "name": "استيراد العملاء (وكيل CRM)",
-      "description": "يسمح بأدوات الاستيراد الجماعي عبر وكيل CRM. يعادل customers.create على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
-      "group": "customers"
+    "agents.rollback": {
+      "name": "استرجاع إصدار الموظف الذكي",
+      "description": "يسمح بـ: استرجاع إصدار الموظف الذكي.",
+      "group": "aiPlatform"
     },
-    "customers.delete": {
-      "name": "حذف العملاء",
-      "description": "يسمح بحذف سجلات العملاء.",
-      "group": "customers"
+    "agents.view": {
+      "name": "عرض وكلاء الذكاء الاصطناعي",
+      "description": "يسمح بعرض سير عمل الوكلاء والأحداث ونقاط التحقق.",
+      "group": "aiPlatform"
     },
-    "bookings.view": {
-      "name": "عرض الحجوزات",
-      "description": "يسمح بعرض الحجوزات والمواعيد.",
+    "ai_assistant.edit": {
+      "name": "تعديل المساعد الذكي",
+      "description": "يسمح بتعديل إعدادات المساعد الذكي.",
+      "group": "aiAssistant"
+    },
+    "ai_assistant.view": {
+      "name": "عرض المساعد الذكي",
+      "description": "يسمح بعرض إعدادات المساعد الذكي.",
+      "group": "aiAssistant"
+    },
+    "ai_chat.use": {
+      "name": "استخدام الدردشة الذكية",
+      "description": "يسمح بإرسال رسائل عبر الدردشة الذكية.",
+      "group": "aiChat"
+    },
+    "ai_chat.view": {
+      "name": "عرض الدردشة الذكية",
+      "description": "يسمح بالوصول إلى واجهة الدردشة الذكية.",
+      "group": "aiChat"
+    },
+    "ai.analytics.manage": {
+      "name": "إدارة تحليلات الذكاء الاصطناعي",
+      "description": "يسمح بإدارة إعدادات مراقبة الذكاء الاصطناعي.",
+      "group": "aiAnalytics"
+    },
+    "ai.analytics.view": {
+      "name": "عرض تحليلات الذكاء الاصطناعي",
+      "description": "يسمح بعرض تحليلات أداء الذكاء الاصطناعي.",
+      "group": "aiAnalytics"
+    },
+    "ai.conversations.release": {
+      "name": "إسناد المحادثات للذكاء الاصطناعي",
+      "description": "يسمح بإسناد المحادثات مجدداً للذكاء الاصطناعي.",
+      "group": "conversations"
+    },
+    "ai.conversations.reply": {
+      "name": "الرد على المحادثات",
+      "description": "يسمح بالرد على محادثات العملاء.",
+      "group": "conversations"
+    },
+    "ai.conversations.takeover": {
+      "name": "استلام المحادثات",
+      "description": "يسمح باستلام المحادثات التي يديرها الذكاء الاصطناعي.",
+      "group": "conversations"
+    },
+    "ai.conversations.view": {
+      "name": "عرض المحادثات",
+      "description": "يسمح بعرض صندوق الوارد والمحادثات.",
+      "group": "conversations"
+    },
+    "ai.costs.view": {
+      "name": "عرض تكاليف الذكاء الاصطناعي",
+      "description": "يسمح بعرض استهلاك الرموز وتكلفة الذكاء الاصطناعي.",
+      "group": "aiAnalytics"
+    },
+    "ai.execution.manage": {
+      "name": "إدارة تنفيذات الذكاء الاصطناعي",
+      "description": "يسمح بإدارة سياسات التنفيذ وتشغيل المهام.",
+      "group": "aiPlatform"
+    },
+    "ai.execution.view": {
+      "name": "عرض تنفيذات الذكاء الاصطناعي",
+      "description": "يسمح بعرض سجل التنفيذ ومؤشرات الأداء.",
+      "group": "aiPlatform"
+    },
+    "ai.knowledge.manage": {
+      "name": "إدارة معرفة الذكاء الاصطناعي (قديم)",
+      "description": "صلاحية قديمة تُعادل إدارة قاعدة المعرفة.",
+      "group": "knowledge"
+    },
+    "ai.providers.manage": {
+      "name": "إدارة مزودي الذكاء الاصطناعي",
+      "description": "يسمح بإدارة اتصالات وإعدادات مزودي الذكاء الاصطناعي.",
+      "group": "aiPlatform"
+    },
+    "ai.providers.view": {
+      "name": "عرض مزودي الذكاء الاصطناعي",
+      "description": "يسمح بعرض تعريفات مزودي الذكاء الاصطناعي واتصالاتهم.",
+      "group": "aiPlatform"
+    },
+    "ai.whatsapp.manage": {
+      "name": "إدارة تكامل واتساب (قديم)",
+      "description": "صلاحية قديمة تُعادل إدارة القنوات.",
+      "group": "channels"
+    },
+    "audit_logs.view": {
+      "name": "عرض سجلات التدقيق",
+      "description": "يسمح بعرض سجلات تدقيق النظام.",
+      "group": "audit"
+    },
+    "automation.archive": {
+      "name": "أرشفة سير العمل وإيقاف التنفيذ الإنتاجي",
+      "description": "يسمح بـ: أرشفة سير العمل وإيقاف التنفيذ الإنتاجي.",
+      "group": "automation"
+    },
+    "automation.create": {
+      "name": "إنشاء تدفقات الأتمتة",
+      "description": "يسمح بـ: إنشاء تدفقات الأتمتة.",
+      "group": "automation"
+    },
+    "automation.delete": {
+      "name": "حذف تدفقات الأتمتة",
+      "description": "يسمح بـ: حذف تدفقات الأتمتة.",
+      "group": "automation"
+    },
+    "automation.edit": {
+      "name": "تعديل تدفقات الأتمتة",
+      "description": "يسمح بـ: تعديل تدفقات الأتمتة.",
+      "group": "automation"
+    },
+    "automation.execute": {
+      "name": "تنفيذ تدفقات الأتمتة والجلسات",
+      "description": "يسمح بـ: تنفيذ تدفقات الأتمتة والجلسات.",
+      "group": "automation"
+    },
+    "automation.publish": {
+      "name": "نشر تدفقات الأتمتة",
+      "description": "يسمح بـ: نشر تدفقات الأتمتة.",
+      "group": "automation"
+    },
+    "automation.rollback": {
+      "name": "تفعيل إصدار سابق لسير العمل",
+      "description": "يسمح بـ: تفعيل إصدار سابق لسير العمل.",
+      "group": "automation"
+    },
+    "automation.simulate": {
+      "name": "محاكاة سير العمل",
+      "description": "يسمح بتشغيل محاكاة تجريبية في المنشئ دون تنفيذ إنتاجي.",
+      "group": "automation"
+    },
+    "automation.view": {
+      "name": "عرض الأتمتة",
+      "description": "يسمح بعرض تدفقات الأتمتة والتشغيلات والوصول إلى منشئ سير العمل.",
+      "group": "automation"
+    },
+    "availability.search": {
+      "name": "البحث عن المواعيد المتاحة",
+      "description": "يسمح بـ: البحث عن المواعيد المتاحة.",
       "group": "bookings"
     },
-    "bookings.create": {
-      "name": "إنشاء الحجوزات",
-      "description": "يسمح بإنشاء حجوزات جديدة.",
-      "group": "bookings"
+    "billing.audit.export": {
+      "name": "تصدير سجل تدقيق الفوترة",
+      "description": "يسمح بتصدير سجلات تدقيق الفوترة.",
+      "group": "billing"
     },
-    "bookings.edit": {
-      "name": "تعديل الحجوزات",
-      "description": "يسمح بتعديل الحجوزات الحالية.",
-      "group": "bookings"
+    "billing.audit.view": {
+      "name": "عرض سجل تدقيق الفوترة",
+      "description": "يسمح بعرض سجل تدقيق الفوترة.",
+      "group": "billing"
     },
-    "bookings.delete": {
-      "name": "حذف الحجوزات",
-      "description": "يسمح بإلغاء أو حذف الحجوزات.",
-      "group": "bookings"
+    "billing.contact.edit_own": {
+      "name": "تعديل جهة الفوترة",
+      "description": "يسمح بتعديل بيانات جهة الاتصال للفوترة.",
+      "group": "billing"
     },
-    "invoices.view": {
-      "name": "عرض الفواتير",
-      "description": "يسمح بعرض الفواتير ومستندات الفوترة.",
-      "group": "invoices"
+    "billing.documents.download_own": {
+      "name": "تنزيل مستندات الفوترة",
+      "description": "يسمح بتنزيل فواتير الاشتراك والإيصالات.",
+      "group": "billing"
     },
-    "invoices.create": {
-      "name": "إنشاء الفواتير",
-      "description": "يسمح بإصدار فواتير جديدة.",
-      "group": "invoices"
+    "billing.edit": {
+      "name": "إدارة الفوترة (المنصة)",
+      "description": "يسمح بتعديل الاشتراكات وجهات الفوترة وإجراءات الإيقاف أو الاستعادة.",
+      "group": "billing"
     },
-    "invoices.edit": {
-      "name": "تعديل الفواتير",
-      "description": "يسمح بتعديل تفاصيل الفواتير.",
-      "group": "invoices"
+    "billing.features.edit": {
+      "name": "تعديل صلاحيات الميزات",
+      "description": "يسمح بإدارة تخصيصات ميزات الشركات.",
+      "group": "billing"
     },
-    "invoices.delete": {
-      "name": "حذف الفواتير",
-      "description": "يسمح بحذف سجلات الفواتير.",
-      "group": "invoices"
+    "billing.features.manage_catalog": {
+      "name": "إدارة كatalog الميزات",
+      "description": "يسمح بإدارة تعريفات الميزات في الكatalog.",
+      "group": "billing"
     },
-    "reports.view": {
-      "name": "عرض التقارير",
-      "description": "يسمح بالوصول إلى التقارير والتحليلات.",
-      "group": "reports"
+    "billing.features.view": {
+      "name": "عرض صلاحيات الميزات",
+      "description": "يسمح بعرض كatalog الميزات وتخصيصات الشركات.",
+      "group": "billing"
     },
-    "dashboard.view": {
-      "name": "عرض لوحة التحكم",
-      "description": "يسمح بعرض لوحة العمليات المؤسسية والمقاييس المجمعة.",
-      "group": "dashboard"
+    "billing.health.manage": {
+      "name": "إدارة صحة الفوترة",
+      "description": "يسمح بإدارة مهام صحة الفوترة وإعادة المحاولات.",
+      "group": "billing"
     },
-    "workspace.view": {
-      "name": "الوصول إلى بيئة العمل",
-      "description": "يسمح بالدخول إلى بيئة عمل الشركة.",
-      "group": "workspace"
+    "billing.health.view": {
+      "name": "عرض صحة الفوترة",
+      "description": "يسمح بعرض لوحة صحة الفوترة والتنبيهات.",
+      "group": "billing"
+    },
+    "billing.manage_own": {
+      "name": "إدارة الاشتراك الخاص",
+      "description": "يسمح بتجديد وإدارة اشتراك شركتك.",
+      "group": "billing"
+    },
+    "billing.manage_plans": {
+      "name": "إدارة خطط الاشتراك",
+      "description": "يسمح بإدارة كتalog خطط الاشتراك.",
+      "group": "billing"
+    },
+    "billing.payment_method.manage_own": {
+      "name": "إدارة طرق الدفع",
+      "description": "يسمح بإدارة طرق الدفع الخاصة بالشركة.",
+      "group": "billing"
+    },
+    "billing.record_payment": {
+      "name": "تسجيل المدفوعات",
+      "description": "يسمح بتسجيل المدفوعات والفواتير يدوياً.",
+      "group": "billing"
+    },
+    "billing.settings.edit": {
+      "name": "تعديل إعدادات الفوترة",
+      "description": "يسمح بتعديل إعدادات الفوترة.",
+      "group": "billing"
+    },
+    "billing.settings.view": {
+      "name": "عرض إعدادات الفوترة",
+      "description": "يسمح بعرض إعدادات الفوترة.",
+      "group": "billing"
     },
     "billing.view": {
       "name": "عرض الفوترة (المنصة)",
@@ -222,84 +472,9 @@
       "description": "يسمح بعرض تحليلات الفوترة وتقارير الإيرادات.",
       "group": "billing"
     },
-    "billing.edit": {
-      "name": "إدارة الفوترة (المنصة)",
-      "description": "يسمح بتعديل الاشتراكات وجهات الفوترة وإجراءات الإيقاف أو الاستعادة.",
-      "group": "billing"
-    },
-    "billing.manage_own": {
-      "name": "إدارة الاشتراك الخاص",
-      "description": "يسمح بتجديد وإدارة اشتراك شركتك.",
-      "group": "billing"
-    },
-    "billing.manage_plans": {
-      "name": "إدارة خطط الاشتراك",
-      "description": "يسمح بإدارة كتalog خطط الاشتراك.",
-      "group": "billing"
-    },
-    "billing.record_payment": {
-      "name": "تسجيل المدفوعات",
-      "description": "يسمح بتسجيل المدفوعات والفواتير يدوياً.",
-      "group": "billing"
-    },
-    "billing.contact.edit_own": {
-      "name": "تعديل جهة الفوترة",
-      "description": "يسمح بتعديل بيانات جهة الاتصال للفوترة.",
-      "group": "billing"
-    },
-    "billing.payment_method.manage_own": {
-      "name": "إدارة طرق الدفع",
-      "description": "يسمح بإدارة طرق الدفع الخاصة بالشركة.",
-      "group": "billing"
-    },
-    "billing.documents.download_own": {
-      "name": "تنزيل مستندات الفوترة",
-      "description": "يسمح بتنزيل فواتير الاشتراك والإيصالات.",
-      "group": "billing"
-    },
-    "billing.settings.view": {
-      "name": "عرض إعدادات الفوترة",
-      "description": "يسمح بعرض إعدادات الفوترة.",
-      "group": "billing"
-    },
-    "billing.settings.edit": {
-      "name": "تعديل إعدادات الفوترة",
-      "description": "يسمح بتعديل إعدادات الفوترة.",
-      "group": "billing"
-    },
-    "billing.audit.view": {
-      "name": "عرض سجل تدقيق الفوترة",
-      "description": "يسمح بعرض سجل تدقيق الفوترة.",
-      "group": "billing"
-    },
-    "billing.audit.export": {
-      "name": "تصدير سجل تدقيق الفوترة",
-      "description": "يسمح بتصدير سجلات تدقيق الفوترة.",
-      "group": "billing"
-    },
-    "billing.features.view": {
-      "name": "عرض صلاحيات الميزات",
-      "description": "يسمح بعرض كatalog الميزات وتخصيصات الشركات.",
-      "group": "billing"
-    },
-    "billing.features.edit": {
-      "name": "تعديل صلاحيات الميزات",
-      "description": "يسمح بإدارة تخصيصات ميزات الشركات.",
-      "group": "billing"
-    },
-    "billing.features.manage_catalog": {
-      "name": "إدارة كatalog الميزات",
-      "description": "يسمح بإدارة تعريفات الميزات في الكatalog.",
-      "group": "billing"
-    },
-    "billing.health.view": {
-      "name": "عرض صحة الفوترة",
-      "description": "يسمح بعرض لوحة صحة الفوترة والتنبيهات.",
-      "group": "billing"
-    },
-    "billing.health.manage": {
-      "name": "إدارة صحة الفوترة",
-      "description": "يسمح بإدارة مهام صحة الفوترة وإعادة المحاولات.",
+    "billing.webhooks.manage": {
+      "name": "إدارة webhooks الفوترة",
+      "description": "يسمح بإدارة webhooks الفوترة الصادرة.",
       "group": "billing"
     },
     "billing.webhooks.view": {
@@ -307,74 +482,79 @@
       "description": "يسمح بعرض نقاط webhook الصادرة للفوترة.",
       "group": "billing"
     },
-    "billing.webhooks.manage": {
-      "name": "إدارة webhooks الفوترة",
-      "description": "يسمح بإدارة webhooks الفوترة الصادرة.",
-      "group": "billing"
+    "bookings.create": {
+      "name": "إنشاء الحجوزات",
+      "description": "يسمح بإنشاء حجوزات جديدة.",
+      "group": "bookings"
     },
-    "users.view": {
-      "name": "عرض المستخدمين",
-      "description": "يسمح بعرض مستخدمي الشركة وملفاتهم.",
-      "group": "users"
+    "bookings.delete": {
+      "name": "حذف الحجوزات",
+      "description": "يسمح بإلغاء أو حذف الحجوزات.",
+      "group": "bookings"
     },
-    "users.edit": {
-      "name": "إدارة المستخدمين",
-      "description": "يسمح بإنشاء المستخدمين وتعديلهم وتعيين الأدوار.",
-      "group": "users"
+    "bookings.edit": {
+      "name": "تعديل الحجوزات",
+      "description": "يسمح بتعديل الحجوزات الحالية.",
+      "group": "bookings"
     },
-    "users.create": {
-      "name": "إنشاء المستخدمين",
-      "description": "يسمح بإنشاء حسابات مستخدمين جديدة.",
-      "group": "users"
+    "bookings.view": {
+      "name": "عرض الحجوزات",
+      "description": "يسمح بعرض الحجوزات والمواعيد.",
+      "group": "bookings"
     },
-    "users.delete": {
-      "name": "حذف المستخدمين",
-      "description": "يسمح بإلغاء تفعيل أو حذف حسابات المستخدمين.",
-      "group": "users"
+    "branches.manage": {
+      "name": "إدارة الفروع",
+      "description": "يسمح بإنشاء وإدارة فروع الشركة.",
+      "group": "company"
     },
-    "roles.view": {
-      "name": "عرض الأدوار",
-      "description": "يسمح بعرض الأدوار وصلاحياتها.",
-      "group": "roles"
+    "channel.platform.dispatch": {
+      "name": "إرسال رسائل القنوات",
+      "description": "يسمح بإرسال الرسائل الصادرة عبر القنوات.",
+      "group": "aiPlatform"
     },
-    "roles.create": {
-      "name": "إنشاء الأدوار",
-      "description": "يسمح بإنشاء أدوار مخصصة.",
-      "group": "roles"
+    "channel.platform.route": {
+      "name": "توجيه أحداث القنوات",
+      "description": "يسمح بتوجيه الأحداث الواردة عبر القنوات.",
+      "group": "aiPlatform"
     },
-    "roles.edit": {
-      "name": "تعديل الأدوار",
-      "description": "يسمح بتعديل الأدوار وصلاحياتها.",
-      "group": "roles"
+    "channel.platform.view": {
+      "name": "عرض منصة القنوات",
+      "description": "يسمح بعرض أحداث منصة القنوات وحالة التسليم.",
+      "group": "aiPlatform"
     },
-    "roles.delete": {
-      "name": "حذف الأدوار",
-      "description": "يسمح بحذف الأدوار المخصصة.",
-      "group": "roles"
+    "channels.manage": {
+      "name": "إدارة القنوات",
+      "description": "يسمح بإعداد قنوات اتصال الشركة.",
+      "group": "channels"
     },
-    "permissions.view": {
-      "name": "عرض صلاحيات المستخدم (قديم)",
-      "description": "صلاحية قديمة تُعادل عرض الأدوار.",
-      "group": "roles"
+    "channels.view": {
+      "name": "عرض القنوات",
+      "description": "يسمح بعرض قنوات اتصال الشركة.",
+      "group": "channels"
     },
-    "permissions.edit": {
-      "name": "تعديل صلاحيات المستخدم (قديم)",
-      "description": "صلاحية قديمة تُعادل تعديل الأدوار.",
-      "group": "roles"
+    "collaboration.handover": {
+      "name": "طلب تسليم المهام",
+      "description": "يسمح بـ: طلب تسليم المهام.",
+      "group": "aiPlatform"
     },
-    "companies.view": {
-      "name": "عرض الشركات",
-      "description": "يسمح بعرض شركات المستأجرين على المنصة.",
-      "group": "companies"
+    "collaboration.manage": {
+      "name": "إدارة مجموعات الوكلاء",
+      "description": "يسمح بـ: إدارة مجموعات الوكلاء.",
+      "group": "aiPlatform"
+    },
+    "collaboration.view": {
+      "name": "عرض تعاون الوكلاء",
+      "description": "يسمح بـ: عرض تعاون الوكلاء.",
+      "group": "aiPlatform"
+    },
+    "collections.manage": {
+      "name": "إدارة المجموعات",
+      "description": "يسمح بإدارة مجموعات المتجهات والفهرسة.",
+      "group": "aiPlatform"
     },
     "companies.create": {
       "name": "إنشاء الشركات",
       "description": "يسمح بإنشاء شركات مستأجرين جديدة.",
-      "group": "companies"
-    },
-    "companies.edit": {
-      "name": "تعديل الشركات",
-      "description": "يسمح بتعديل سجلات الشركات وإعداداتها.",
       "group": "companies"
     },
     "companies.delete": {
@@ -382,35 +562,15 @@
       "description": "يسمح بحذف شركات المستأجرين.",
       "group": "companies"
     },
-    "subscriptions.view": {
-      "name": "عرض الاشتراكات (قديم)",
-      "description": "صلاحية قديمة؛ يُفضّل استخدام عرض الفوترة.",
-      "group": "billing"
+    "companies.edit": {
+      "name": "تعديل الشركات",
+      "description": "يسمح بتعديل سجلات الشركات وإعداداتها.",
+      "group": "companies"
     },
-    "subscriptions.edit": {
-      "name": "تعديل الاشتراكات (قديم)",
-      "description": "صلاحية قديمة؛ يُفضّل استخدام إدارة الفوترة.",
-      "group": "billing"
-    },
-    "settings.view": {
-      "name": "عرض الإعدادات",
-      "description": "يسمح بعرض إعدادات الشركة والتطبيق.",
-      "group": "settings"
-    },
-    "settings.edit": {
-      "name": "تعديل الإعدادات",
-      "description": "يسمح بتعديل إعدادات الشركة والتطبيق.",
-      "group": "settings"
-    },
-    "company.view": {
-      "name": "عرض مساحة عمل الشركة",
-      "description": "يسمح بعرض مساحة عمل الشركة.",
-      "group": "company"
-    },
-    "company.update": {
-      "name": "تحديث الشركة",
-      "description": "يسمح بتحديث بيانات ملف الشركة.",
-      "group": "company"
+    "companies.view": {
+      "name": "عرض الشركات",
+      "description": "يسمح بعرض شركات المستأجرين على المنصة.",
+      "group": "companies"
     },
     "company.branding": {
       "name": "إدارة هوية الشركة",
@@ -422,109 +582,34 @@
       "description": "يسمح بعرض وإدارة اشتراك الشركة.",
       "group": "company"
     },
-    "employees.manage": {
-      "name": "إدارة الموظفين",
-      "description": "يسمح بدعوة وإدارة موظفي الشركة.",
+    "company.update": {
+      "name": "تحديث الشركة",
+      "description": "يسمح بتحديث بيانات ملف الشركة.",
       "group": "company"
     },
-    "branches.manage": {
-      "name": "إدارة الفروع",
-      "description": "يسمح بإنشاء وإدارة فروع الشركة.",
+    "company.view": {
+      "name": "عرض مساحة عمل الشركة",
+      "description": "يسمح بعرض مساحة عمل الشركة.",
       "group": "company"
     },
-    "departments.manage": {
-      "name": "إدارة الأقسام",
-      "description": "يسمح بإنشاء وإدارة أقسام الشركة.",
-      "group": "company"
+    "configuration.publish": {
+      "name": "نشر تغييرات الإعدادات",
+      "description": "يسمح بـ: نشر تغييرات الإعدادات.",
+      "group": "configuration"
     },
-    "scheduling.view": {
-      "name": "عرض الجدولة",
-      "description": "يسمح بعرض موارد الجدولة والتوفر والقواعد والعطلات.",
-      "group": "scheduling"
+    "configuration.read": {
+      "name": "عرض إعدادات المنصة",
+      "description": "يسمح بـ: عرض إعدادات المنصة.",
+      "group": "configuration"
     },
-    "scheduling.edit": {
-      "name": "إدارة الجدولة",
-      "description": "يسمح بإنشاء وتعديل إعدادات الجدولة.",
-      "group": "scheduling"
-    },
-    "audit_logs.view": {
-      "name": "عرض سجلات التدقيق",
-      "description": "يسمح بعرض سجلات تدقيق النظام.",
-      "group": "audit"
-    },
-    "ai_assistant.view": {
-      "name": "عرض المساعد الذكي",
-      "description": "يسمح بعرض إعدادات المساعد الذكي.",
-      "group": "aiAssistant"
-    },
-    "ai_assistant.edit": {
-      "name": "تعديل المساعد الذكي",
-      "description": "يسمح بتعديل إعدادات المساعد الذكي.",
-      "group": "aiAssistant"
-    },
-    "ai_chat.view": {
-      "name": "عرض الدردشة الذكية",
-      "description": "يسمح بالوصول إلى واجهة الدردشة الذكية.",
-      "group": "aiChat"
-    },
-    "ai_chat.use": {
-      "name": "استخدام الدردشة الذكية",
-      "description": "يسمح بإرسال رسائل عبر الدردشة الذكية.",
-      "group": "aiChat"
-    },
-    "ai.conversations.view": {
-      "name": "عرض المحادثات",
-      "description": "يسمح بعرض صندوق الوارد والمحادثات.",
-      "group": "conversations"
-    },
-    "ai.conversations.reply": {
-      "name": "الرد على المحادثات",
-      "description": "يسمح بالرد على محادثات العملاء.",
-      "group": "conversations"
-    },
-    "ai.conversations.takeover": {
-      "name": "استلام المحادثات",
-      "description": "يسمح باستلام المحادثات التي يديرها الذكاء الاصطناعي.",
-      "group": "conversations"
-    },
-    "ai.conversations.release": {
-      "name": "إسناد المحادثات للذكاء الاصطناعي",
-      "description": "يسمح بإسناد المحادثات مجدداً للذكاء الاصطناعي.",
-      "group": "conversations"
-    },
-    "conversation.view": {
-      "name": "عرض المحادثات",
-      "description": "يسمح بعرض محادثات القنوات المتعددة.",
-      "group": "conversations"
+    "configuration.write": {
+      "name": "تعديل مسودات الإعدادات",
+      "description": "يسمح بـ: تعديل مسودات الإعدادات.",
+      "group": "configuration"
     },
     "conversation.assign": {
       "name": "إسناد المحادثات",
       "description": "يسمح بإسناد المحادثات للوكلاء أو قوائم الانتظار.",
-      "group": "conversations"
-    },
-    "conversation.reassign": {
-      "name": "إعادة إسناد المحادثات",
-      "description": "يسمح بإعادة إسناد المحادثات بين الوكلاء أو الفرق.",
-      "group": "conversations"
-    },
-    "conversation.take_over": {
-      "name": "الاستلام",
-      "description": "يسمح باستلام ملكية المحادثة.",
-      "group": "conversations"
-    },
-    "conversation.return_to_ai": {
-      "name": "إرجاع للذكاء الاصطناعي",
-      "description": "يسمح بإرجاع المحادثة للذكاء الاصطناعي.",
-      "group": "conversations"
-    },
-    "conversation.escalate": {
-      "name": "تصعيد المحادثات",
-      "description": "يسمح بتصعيد المحادثات للمشرفين.",
-      "group": "conversations"
-    },
-    "conversation.resolve": {
-      "name": "حل المحادثات",
-      "description": "يسمح بتحديد المحادثات كمحلولة.",
       "group": "conversations"
     },
     "conversation.close": {
@@ -532,9 +617,14 @@
       "description": "يسمح بإغلاق المحادثات.",
       "group": "conversations"
     },
-    "conversation.reopen": {
-      "name": "إعادة فتح المحادثات",
-      "description": "يسمح بإعادة فتح المحادثات المغلقة.",
+    "conversation.create_customer": {
+      "name": "إنشاء عميل",
+      "description": "يسمح بإنشاء عميل من محادثة.",
+      "group": "conversations"
+    },
+    "conversation.escalate": {
+      "name": "تصعيد المحادثات",
+      "description": "يسمح بتصعيد المحادثات للمشرفين.",
       "group": "conversations"
     },
     "conversation.internal_note": {
@@ -552,9 +642,14 @@
       "description": "يسمح بربط عميل موجود بمحادثة.",
       "group": "conversations"
     },
-    "conversation.create_customer": {
-      "name": "إنشاء عميل",
-      "description": "يسمح بإنشاء عميل من محادثة.",
+    "conversation.reassign": {
+      "name": "إعادة إسناد المحادثات",
+      "description": "يسمح بإعادة إسناد المحادثات بين الوكلاء أو الفرق.",
+      "group": "conversations"
+    },
+    "conversation.reopen": {
+      "name": "إعادة فتح المحادثات",
+      "description": "يسمح بإعادة فتح المحادثات المغلقة.",
       "group": "conversations"
     },
     "conversation.reply": {
@@ -562,34 +657,249 @@
       "description": "يسمح بالرد على رسائل العملاء.",
       "group": "conversations"
     },
-    "ai.analytics.view": {
-      "name": "عرض تحليلات الذكاء الاصطناعي",
-      "description": "يسمح بعرض تحليلات أداء الذكاء الاصطناعي.",
-      "group": "aiAnalytics"
+    "conversation.resolve": {
+      "name": "حل المحادثات",
+      "description": "يسمح بتحديد المحادثات كمحلولة.",
+      "group": "conversations"
     },
-    "ai.analytics.manage": {
-      "name": "إدارة تحليلات الذكاء الاصطناعي",
-      "description": "يسمح بإدارة إعدادات مراقبة الذكاء الاصطناعي.",
-      "group": "aiAnalytics"
+    "conversation.return_to_ai": {
+      "name": "إرجاع للذكاء الاصطناعي",
+      "description": "يسمح بإرجاع المحادثة للذكاء الاصطناعي.",
+      "group": "conversations"
     },
-    "ai.costs.view": {
-      "name": "عرض تكاليف الذكاء الاصطناعي",
-      "description": "يسمح بعرض استهلاك الرموز وتكلفة الذكاء الاصطناعي.",
-      "group": "aiAnalytics"
+    "conversation.take_over": {
+      "name": "الاستلام",
+      "description": "يسمح باستلام ملكية المحادثة.",
+      "group": "conversations"
     },
-    "channels.view": {
-      "name": "عرض القنوات",
-      "description": "يسمح بعرض قنوات اتصال الشركة.",
-      "group": "channels"
+    "conversation.view": {
+      "name": "عرض المحادثات",
+      "description": "يسمح بعرض محادثات القنوات المتعددة.",
+      "group": "conversations"
     },
-    "channels.manage": {
-      "name": "إدارة القنوات",
-      "description": "يسمح بإعداد قنوات اتصال الشركة.",
-      "group": "channels"
+    "customers.create": {
+      "name": "إنشاء العملاء",
+      "description": "يسمح بإضافة عملاء جدد.",
+      "group": "customers"
     },
-    "knowledge.view": {
-      "name": "عرض قاعدة المعرفة",
-      "description": "يسمح بعرض مصادر المعرفة والمستندات.",
+    "customers.delete": {
+      "name": "حذف العملاء",
+      "description": "يسمح بحذف سجلات العملاء.",
+      "group": "customers"
+    },
+    "customers.edit": {
+      "name": "تعديل العملاء",
+      "description": "يسمح بتعديل بيانات العملاء.",
+      "group": "customers"
+    },
+    "customers.import": {
+      "name": "استيراد العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات الاستيراد الجماعي عبر وكيل CRM. يعادل customers.create على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.merge": {
+      "name": "دمج العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات دمج العملاء عبر وكيل CRM. يعادل customers.edit و customers.delete على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.search": {
+      "name": "بحث العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات بحث وكيل CRM واكتشاف التكرارات. يعادل customers.view على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.update": {
+      "name": "تحديث العملاء (وكيل CRM)",
+      "description": "يسمح بأدوات تحديث حقل واحد عبر وكيل CRM. يعادل customers.edit على مستوى RLS عند استخدامه عبر أدوات الوكيل.",
+      "group": "customers"
+    },
+    "customers.view": {
+      "name": "عرض العملاء",
+      "description": "يسمح للمستخدم بعرض قائمة العملاء وبياناتهم.",
+      "group": "customers"
+    },
+    "dashboard.view": {
+      "name": "عرض لوحة التحكم",
+      "description": "يسمح بعرض لوحة العمليات المؤسسية والمقاييس المجمعة.",
+      "group": "dashboard"
+    },
+    "departments.manage": {
+      "name": "إدارة الأقسام",
+      "description": "يسمح بإنشاء وإدارة أقسام الشركة.",
+      "group": "company"
+    },
+    "embeddings.generate": {
+      "name": "إنشاء التضمينات",
+      "description": "يسمح بجدولة ومعالجة مهام التضمين.",
+      "group": "aiPlatform"
+    },
+    "embeddings.manage": {
+      "name": "إدارة التضمينات",
+      "description": "يسمح بإدارة اتصالات مزودي التضمين.",
+      "group": "aiPlatform"
+    },
+    "embeddings.view": {
+      "name": "عرض التضمينات",
+      "description": "يسمح بعرض مزودي التضمين والمهام والمتجهات.",
+      "group": "aiPlatform"
+    },
+    "employees.manage": {
+      "name": "إدارة الموظفين",
+      "description": "يسمح بدعوة وإدارة موظفي الشركة.",
+      "group": "company"
+    },
+    "executive.manage_alerts": {
+      "name": "إدارة تنبيهات التنفيذي",
+      "description": "يسمح بـ: إدارة تنبيهات التنفيذي.",
+      "group": "executive"
+    },
+    "executive.view": {
+      "name": "عرض لوحة الذكاء التنفيذي",
+      "description": "يسمح بـ: عرض لوحة الذكاء التنفيذي.",
+      "group": "executive"
+    },
+    "feature_flags.publish": {
+      "name": "نشر أعلام الميزات",
+      "description": "يسمح بـ: نشر أعلام الميزات.",
+      "group": "featureFlags"
+    },
+    "feature_flags.read": {
+      "name": "عرض أعلام الميزات",
+      "description": "يسمح بـ: عرض أعلام الميزات.",
+      "group": "featureFlags"
+    },
+    "feature_flags.write": {
+      "name": "إدارة أعلام الميزات",
+      "description": "يسمح بـ: إدارة أعلام الميزات.",
+      "group": "featureFlags"
+    },
+    "governance.approve": {
+      "name": "اعتماد طلبات الحوكمة",
+      "description": "يسمح بـ: اعتماد طلبات الحوكمة.",
+      "group": "governance"
+    },
+    "governance.create": {
+      "name": "إنشاء سياسات الحوكمة",
+      "description": "يسمح بـ: إنشاء سياسات الحوكمة.",
+      "group": "governance"
+    },
+    "governance.edit": {
+      "name": "تعديل سياسات الحوكمة",
+      "description": "يسمح بـ: تعديل سياسات الحوكمة.",
+      "group": "governance"
+    },
+    "governance.manage": {
+      "name": "إدارة منصة الحوكمة",
+      "description": "يسمح بـ: إدارة منصة الحوكمة.",
+      "group": "governance"
+    },
+    "governance.view": {
+      "name": "عرض حوكمة الذكاء الاصطناعي",
+      "description": "يسمح بـ: عرض حوكمة الذكاء الاصطناعي.",
+      "group": "governance"
+    },
+    "handoff.accept": {
+      "name": "قبول المحادثات المحولة",
+      "description": "يسمح بـ: قبول المحادثات المحولة.",
+      "group": "handoff"
+    },
+    "handoff.assign": {
+      "name": "تعيين المحادثات",
+      "description": "يسمح بـ: تعيين المحادثات.",
+      "group": "handoff"
+    },
+    "handoff.escalate": {
+      "name": "تصعيد المحادثات",
+      "description": "يسمح بـ: تصعيد المحادثات.",
+      "group": "handoff"
+    },
+    "handoff.manage": {
+      "name": "إدارة قواعد التحويل",
+      "description": "يسمح بـ: إدارة قواعد التحويل.",
+      "group": "handoff"
+    },
+    "handoff.presence": {
+      "name": "حالة حضور الوكلاء",
+      "description": "يسمح بـ: حالة حضور الوكلاء.",
+      "group": "handoff"
+    },
+    "handoff.queue": {
+      "name": "إدارة طابور التحويل",
+      "description": "يسمح بـ: إدارة طابور التحويل.",
+      "group": "handoff"
+    },
+    "handoff.reject": {
+      "name": "رفض طلبات التحويل",
+      "description": "يسمح بـ: رفض طلبات التحويل.",
+      "group": "handoff"
+    },
+    "handoff.return_to_ai": {
+      "name": "إعادة المحادثة للذكاء الاصطناعي",
+      "description": "يسمح بـ: إعادة المحادثة للذكاء الاصطناعي.",
+      "group": "handoff"
+    },
+    "handoff.transfer": {
+      "name": "نقل المحادثات",
+      "description": "يسمح بـ: نقل المحادثات.",
+      "group": "handoff"
+    },
+    "handoff.view": {
+      "name": "عرض التحويل البشري",
+      "description": "يسمح بـ: عرض التحويل البشري.",
+      "group": "handoff"
+    },
+    "integrations.api_keys": {
+      "name": "إدارة مفاتيح API",
+      "description": "يسمح بـ: إدارة مفاتيح API.",
+      "group": "integrations"
+    },
+    "integrations.manage": {
+      "name": "إدارة التكاملات",
+      "description": "يسمح بـ: إدارة التكاملات.",
+      "group": "integrations"
+    },
+    "integrations.view": {
+      "name": "عرض مركز التكامل",
+      "description": "يسمح بـ: عرض مركز التكامل.",
+      "group": "integrations"
+    },
+    "integrations.webhooks": {
+      "name": "إدارة Webhooks",
+      "description": "يسمح بـ: إدارة Webhooks.",
+      "group": "integrations"
+    },
+    "intents.manage": {
+      "name": "إدارة النوايا",
+      "description": "يسمح بإدارة تعريفات النوايا وتفعيلها.",
+      "group": "aiPlatform"
+    },
+    "intents.view": {
+      "name": "عرض النوايا",
+      "description": "يسمح بعرض تعريفات النوايا وسجل المطابقة.",
+      "group": "aiPlatform"
+    },
+    "invoices.create": {
+      "name": "إنشاء الفواتير",
+      "description": "يسمح بإصدار فواتير جديدة.",
+      "group": "invoices"
+    },
+    "invoices.delete": {
+      "name": "حذف الفواتير",
+      "description": "يسمح بحذف سجلات الفواتير.",
+      "group": "invoices"
+    },
+    "invoices.edit": {
+      "name": "تعديل الفواتير",
+      "description": "يسمح بتعديل تفاصيل الفواتير.",
+      "group": "invoices"
+    },
+    "invoices.view": {
+      "name": "عرض الفواتير",
+      "description": "يسمح بعرض الفواتير ومستندات الفوترة.",
+      "group": "invoices"
+    },
+    "knowledge.import": {
+      "name": "استيراد المعرفة",
+      "description": "يسمح باستيراد المستندات وإنشاء مقاطع المعرفة.",
       "group": "knowledge"
     },
     "knowledge.manage": {
@@ -597,55 +907,385 @@
       "description": "يسمح بإدارة مصادر المعرفة والمستندات.",
       "group": "knowledge"
     },
-    "knowledge.import": {
-      "name": "استيراد المعرفة",
-      "description": "يسمح باستيراد المستندات وإنشاء مقاطع المعرفة.",
-      "group": "knowledge"
-    },
     "knowledge.publish": {
       "name": "نشر المعرفة",
       "description": "يسمح بنشر إصدارات مستندات المعرفة.",
       "group": "knowledge"
     },
-    "whatsapp.view": {
-      "name": "عرض أتمتة واتساب",
-      "description": "يسمح بعرض إعدادات أتمتة واتساب.",
-      "group": "whatsapp"
-    },
-    "whatsapp.run": {
-      "name": "تشغيل أتمتة واتساب (قديم)",
-      "description": "صلاحية قديمة تُعادل عرض أتمتة واتساب.",
-      "group": "whatsapp"
-    },
-    "ai.knowledge.manage": {
-      "name": "إدارة معرفة الذكاء الاصطناعي (قديم)",
-      "description": "صلاحية قديمة تُعادل إدارة قاعدة المعرفة.",
+    "knowledge.read": {
+      "name": "قراءة المعرفة",
+      "description": "يسمح بـ: قراءة المعرفة.",
       "group": "knowledge"
     },
-    "ai.whatsapp.manage": {
-      "name": "إدارة تكامل واتساب (قديم)",
-      "description": "صلاحية قديمة تُعادل إدارة القنوات.",
-      "group": "channels"
+    "knowledge.view": {
+      "name": "عرض قاعدة المعرفة",
+      "description": "يسمح بعرض مصادر المعرفة والمستندات.",
+      "group": "knowledge"
     },
-    "channel.platform.view": {
-      "name": "عرض منصة القنوات",
-      "description": "يسمح بعرض أحداث منصة القنوات وحالة التسليم.",
+    "leads.archive": {
+      "name": "أرشفة العملاء المحتملين",
+      "description": "يسمح بـ: أرشفة العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.assign": {
+      "name": "تعيين العملاء المحتملين",
+      "description": "يسمح بـ: تعيين العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.convert": {
+      "name": "تحويل العملاء المحتملين",
+      "description": "يسمح بـ: تحويل العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.create": {
+      "name": "إنشاء عملاء محتملين",
+      "description": "يسمح بـ: إنشاء عملاء محتملين.",
+      "group": "leads"
+    },
+    "leads.delete": {
+      "name": "حذف العملاء المحتملين",
+      "description": "يسمح بـ: حذف العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.edit": {
+      "name": "تعديل العملاء المحتملين",
+      "description": "يسمح بـ: تعديل العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.export": {
+      "name": "تصدير العملاء المحتملين",
+      "description": "يسمح بـ: تصدير العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.manage": {
+      "name": "إدارة منصة العملاء المحتملين",
+      "description": "يسمح بـ: إدارة منصة العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.merge": {
+      "name": "دمج العملاء المحتملين",
+      "description": "يسمح بـ: دمج العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.qualify": {
+      "name": "تأهيل العملاء المحتملين",
+      "description": "يسمح بـ: تأهيل العملاء المحتملين.",
+      "group": "leads"
+    },
+    "leads.view": {
+      "name": "عرض العملاء المحتملين",
+      "description": "يسمح بـ: عرض العملاء المحتملين.",
+      "group": "leads"
+    },
+    "licenses.assign": {
+      "name": "تعيين الخطط والإضافات",
+      "description": "يسمح بـ: تعيين الخطط والإضافات.",
+      "group": "licenses"
+    },
+    "licenses.read": {
+      "name": "عرض التراخيص والصلاحيات",
+      "description": "يسمح بـ: عرض التراخيص والصلاحيات.",
+      "group": "licenses"
+    },
+    "licenses.write": {
+      "name": "إدارة تراخيص الشركة",
+      "description": "يسمح بـ: إدارة تراخيص الشركة.",
+      "group": "licenses"
+    },
+    "marketplace.develop": {
+      "name": "نشر إضافات مخصصة",
+      "description": "يسمح بـ: نشر إضافات مخصصة.",
+      "group": "marketplace"
+    },
+    "marketplace.install": {
+      "name": "تثبيت الإضافات",
+      "description": "يسمح بـ: تثبيت الإضافات.",
+      "group": "marketplace"
+    },
+    "marketplace.manage": {
+      "name": "إدارة الإضافات",
+      "description": "يسمح بـ: إدارة الإضافات.",
+      "group": "marketplace"
+    },
+    "marketplace.view": {
+      "name": "عرض سوق الإضافات",
+      "description": "يسمح بـ: عرض سوق الإضافات.",
+      "group": "marketplace"
+    },
+    "operations.read": {
+      "name": "عرض مساحة العمليات",
+      "description": "يسمح بـ: عرض مساحة العمليات.",
+      "group": "operations"
+    },
+    "operations.write": {
+      "name": "تنفيذ أوامر العمليات",
+      "description": "يسمح بـ: تنفيذ أوامر العمليات.",
+      "group": "operations"
+    },
+    "opportunities.convert": {
+      "name": "تحويل إلى فرص",
+      "description": "يسمح بـ: تحويل إلى فرص.",
+      "group": "opportunities"
+    },
+    "opportunities.create": {
+      "name": "إنشاء فرص",
+      "description": "يسمح بـ: إنشاء فرص.",
+      "group": "opportunities"
+    },
+    "opportunities.delete": {
+      "name": "حذف الفرص",
+      "description": "يسمح بـ: حذف الفرص.",
+      "group": "opportunities"
+    },
+    "opportunities.edit": {
+      "name": "تعديل الفرص",
+      "description": "يسمح بـ: تعديل الفرص.",
+      "group": "opportunities"
+    },
+    "opportunities.view": {
+      "name": "عرض الفرص",
+      "description": "يسمح بـ: عرض الفرص.",
+      "group": "opportunities"
+    },
+    "organization.manage": {
+      "name": "إدارة الهيكل التنظيمي",
+      "description": "يسمح بـ: إدارة الهيكل التنظيمي.",
+      "group": "organization"
+    },
+    "organization.transfer": {
+      "name": "نقل بين الفروع",
+      "description": "يسمح بـ: نقل بين الفروع.",
+      "group": "organization"
+    },
+    "organization.view": {
+      "name": "عرض الهيكل التنظيمي",
+      "description": "يسمح بـ: عرض الهيكل التنظيمي.",
+      "group": "organization"
+    },
+    "permissions.edit": {
+      "name": "تعديل صلاحيات المستخدم (قديم)",
+      "description": "صلاحية قديمة تُعادل تعديل الأدوار.",
+      "group": "roles"
+    },
+    "permissions.view": {
+      "name": "عرض صلاحيات المستخدم (قديم)",
+      "description": "صلاحية قديمة تُعادل عرض الأدوار.",
+      "group": "roles"
+    },
+    "products.create": {
+      "name": "إنشاء منتجات",
+      "description": "يسمح بـ: إنشاء منتجات.",
+      "group": "products"
+    },
+    "products.delete": {
+      "name": "أرشفة المنتجات",
+      "description": "يسمح بـ: أرشفة المنتجات.",
+      "group": "products"
+    },
+    "products.edit": {
+      "name": "تعديل المنتجات",
+      "description": "يسمح بـ: تعديل المنتجات.",
+      "group": "products"
+    },
+    "products.pricing": {
+      "name": "إدارة التسعير",
+      "description": "يسمح بـ: إدارة التسعير.",
+      "group": "products"
+    },
+    "products.view": {
+      "name": "عرض المنتجات",
+      "description": "يسمح بـ: عرض المنتجات.",
+      "group": "products"
+    },
+    "prompts.manage": {
+      "name": "إدارة قوالب المطالبات",
+      "description": "يسمح بإدارة قوالب المطالبات وإصداراتها.",
       "group": "aiPlatform"
     },
-    "channel.platform.route": {
-      "name": "توجيه أحداث القنوات",
-      "description": "يسمح بتوجيه الأحداث الواردة عبر القنوات.",
+    "prompts.preview": {
+      "name": "معاينة قوالب الأوامر",
+      "description": "يسمح بـ: معاينة قوالب الأوامر.",
       "group": "aiPlatform"
     },
-    "channel.platform.dispatch": {
-      "name": "إرسال رسائل القنوات",
-      "description": "يسمح بإرسال الرسائل الصادرة عبر القنوات.",
+    "prompts.publish": {
+      "name": "نشر قوالب الأوامر",
+      "description": "يسمح بـ: نشر قوالب الأوامر.",
       "group": "aiPlatform"
     },
-    "runtime.view": {
-      "name": "عرض محرك التشغيل",
-      "description": "يسمح بعرض جلسات التشغيل وخطوات المعالجة.",
+    "prompts.rollback": {
+      "name": "استرجاع قوالب الأوامر",
+      "description": "يسمح بـ: استرجاع قوالب الأوامر.",
       "group": "aiPlatform"
+    },
+    "prompts.view": {
+      "name": "عرض قوالب المطالبات",
+      "description": "يسمح بعرض قوالب المطالبات وسجل البناء.",
+      "group": "aiPlatform"
+    },
+    "quotes.approve": {
+      "name": "اعتماد عروض الأسعار",
+      "description": "يسمح بـ: اعتماد عروض الأسعار.",
+      "group": "quotes"
+    },
+    "quotes.create": {
+      "name": "إنشاء عروض أسعار",
+      "description": "يسمح بـ: إنشاء عروض أسعار.",
+      "group": "quotes"
+    },
+    "quotes.delete": {
+      "name": "أرشفة عروض الأسعار",
+      "description": "يسمح بـ: أرشفة عروض الأسعار.",
+      "group": "quotes"
+    },
+    "quotes.edit": {
+      "name": "تعديل عروض الأسعار",
+      "description": "يسمح بـ: تعديل عروض الأسعار.",
+      "group": "quotes"
+    },
+    "quotes.send": {
+      "name": "إرسال عروض الأسعار",
+      "description": "يسمح بـ: إرسال عروض الأسعار.",
+      "group": "quotes"
+    },
+    "quotes.view": {
+      "name": "عرض عروض الأسعار",
+      "description": "يسمح بـ: عرض عروض الأسعار.",
+      "group": "quotes"
+    },
+    "reports.ai_consumption": {
+      "name": "عرض تقرير استهلاك الذكاء الاصطناعي",
+      "description": "يسمح بـ: عرض تقرير استهلاك الذكاء الاصطناعي.",
+      "group": "reports"
+    },
+    "reports.ai_operations": {
+      "name": "عرض تقرير عمليات الذكاء الاصطناعي",
+      "description": "يسمح بـ: عرض تقرير عمليات الذكاء الاصطناعي.",
+      "group": "reports"
+    },
+    "reports.bookings": {
+      "name": "عرض تقرير الحجوزات",
+      "description": "يسمح بـ: عرض تقرير الحجوزات.",
+      "group": "reports"
+    },
+    "reports.companies": {
+      "name": "عرض تقرير الشركات",
+      "description": "يسمح بـ: عرض تقرير الشركات.",
+      "group": "reports"
+    },
+    "reports.company_revenue": {
+      "name": "عرض تقرير إيرادات الشركة",
+      "description": "يسمح بـ: عرض تقرير إيرادات الشركة.",
+      "group": "reports"
+    },
+    "reports.customers": {
+      "name": "عرض تقرير العملاء",
+      "description": "يسمح بـ: عرض تقرير العملاء.",
+      "group": "reports"
+    },
+    "reports.executive": {
+      "name": "عرض التقرير التنفيذي",
+      "description": "يسمح بـ: عرض التقرير التنفيذي.",
+      "group": "reports"
+    },
+    "reports.export": {
+      "name": "تصدير التقارير",
+      "description": "يسمح بـ: تصدير التقارير.",
+      "group": "reports"
+    },
+    "reports.financial": {
+      "name": "عرض التقرير المالي",
+      "description": "يسمح بـ: عرض التقرير المالي.",
+      "group": "reports"
+    },
+    "reports.invoices": {
+      "name": "عرض تقرير الفواتير",
+      "description": "يسمح بـ: عرض تقرير الفواتير.",
+      "group": "reports"
+    },
+    "reports.leads": {
+      "name": "عرض تقرير العملاء المحتملين",
+      "description": "يسمح بـ: عرض تقرير العملاء المحتملين.",
+      "group": "reports"
+    },
+    "reports.operations": {
+      "name": "عرض تقرير العمليات",
+      "description": "يسمح بـ: عرض تقرير العمليات.",
+      "group": "reports"
+    },
+    "reports.opportunities": {
+      "name": "عرض تقرير الفرص",
+      "description": "يسمح بـ: عرض تقرير الفرص.",
+      "group": "reports"
+    },
+    "reports.overview": {
+      "name": "عرض تقرير النظرة العامة",
+      "description": "يسمح بـ: عرض تقرير النظرة العامة.",
+      "group": "reports"
+    },
+    "reports.products": {
+      "name": "عرض تقرير المنتجات",
+      "description": "يسمح بـ: عرض تقرير المنتجات.",
+      "group": "reports"
+    },
+    "reports.quotes": {
+      "name": "عرض تقرير عروض الأسعار",
+      "description": "يسمح بـ: عرض تقرير عروض الأسعار.",
+      "group": "reports"
+    },
+    "reports.schedule": {
+      "name": "جدولة إرسال التقارير",
+      "description": "يسمح بـ: جدولة إرسال التقارير.",
+      "group": "reports"
+    },
+    "reports.subscriptions": {
+      "name": "عرض تقرير الاشتراكات",
+      "description": "يسمح بـ: عرض تقرير الاشتراكات.",
+      "group": "reports"
+    },
+    "reports.tickets": {
+      "name": "عرض تقرير التذاكر",
+      "description": "يسمح بـ: عرض تقرير التذاكر.",
+      "group": "reports"
+    },
+    "reports.view": {
+      "name": "عرض التقارير",
+      "description": "يسمح بالوصول إلى التقارير والتحليلات.",
+      "group": "reports"
+    },
+    "retrieval.execute": {
+      "name": "تنفيذ الاسترجاع",
+      "description": "يسمح بتنفيذ تجميع سياق الاسترجاع.",
+      "group": "aiPlatform"
+    },
+    "retrieval.manage": {
+      "name": "إدارة الاسترجاع",
+      "description": "يسمح بإدارة سياسات وإعدادات الاسترجاع.",
+      "group": "aiPlatform"
+    },
+    "retrieval.view": {
+      "name": "عرض الاسترجاع",
+      "description": "يسمح بعرض سياسات الاسترجاع والسياقات.",
+      "group": "aiPlatform"
+    },
+    "roles.create": {
+      "name": "إنشاء الأدوار",
+      "description": "يسمح بإنشاء أدوار مخصصة.",
+      "group": "roles"
+    },
+    "roles.delete": {
+      "name": "حذف الأدوار",
+      "description": "يسمح بحذف الأدوار المخصصة.",
+      "group": "roles"
+    },
+    "roles.edit": {
+      "name": "تعديل الأدوار",
+      "description": "يسمح بتعديل الأدوار وصلاحياتها.",
+      "group": "roles"
+    },
+    "roles.view": {
+      "name": "عرض الأدوار",
+      "description": "يسمح بعرض الأدوار وصلاحياتها.",
+      "group": "roles"
     },
     "runtime.execute": {
       "name": "تشغيل محرك الذكاء الاصطناعي",
@@ -657,79 +1297,124 @@
       "description": "يسمح بإدارة سياسات وإعدادات التشغيل.",
       "group": "aiPlatform"
     },
-    "agents.view": {
-      "name": "عرض وكلاء الذكاء الاصطناعي",
-      "description": "يسمح بعرض سير عمل الوكلاء والأحداث ونقاط التحقق.",
+    "runtime.view": {
+      "name": "عرض محرك التشغيل",
+      "description": "يسمح بعرض جلسات التشغيل وخطوات المعالجة.",
       "group": "aiPlatform"
     },
-    "agents.execute": {
-      "name": "تنفيذ وكلاء الذكاء الاصطناعي",
-      "description": "يسمح ببدء واستئناف وإلغاء سير عمل الوكلاء.",
-      "group": "aiPlatform"
+    "scheduling.edit": {
+      "name": "إدارة الجدولة",
+      "description": "يسمح بإنشاء وتعديل إعدادات الجدولة.",
+      "group": "scheduling"
     },
-    "agents.manage": {
-      "name": "إدارة وكلاء الذكاء الاصطناعي",
-      "description": "يسمح بإدارة إعدادات وسياسات الوكلاء.",
-      "group": "aiPlatform"
+    "scheduling.view": {
+      "name": "عرض الجدولة",
+      "description": "يسمح بعرض موارد الجدولة والتوفر والقواعد والعطلات.",
+      "group": "scheduling"
     },
-    "agents.create": {
-      "name": "إنشاء موظفي الذكاء الاصطناعي",
-      "description": "يسمح بإنشاء ملفات موظفي الذكاء الاصطناعي في مساحة العمل.",
-      "group": "aiPlatform"
+    "settings.edit": {
+      "name": "تعديل الإعدادات",
+      "description": "يسمح بتعديل إعدادات الشركة والتطبيق.",
+      "group": "settings"
     },
-    "agents.edit": {
-      "name": "تعديل موظفي الذكاء الاصطناعي",
-      "description": "يسمح بتعديل ملفات موظفي الذكاء الاصطناعي والتعيينات.",
-      "group": "aiPlatform"
+    "settings.view": {
+      "name": "عرض الإعدادات",
+      "description": "يسمح بعرض إعدادات الشركة والتطبيق.",
+      "group": "settings"
     },
-    "agents.delete": {
-      "name": "أرشفة موظفي الذكاء الاصطناعي",
-      "description": "يسمح بأرشفة ملفات موظفي الذكاء الاصطناعي.",
-      "group": "aiPlatform"
+    "skills.create": {
+      "name": "إنشاء مهارات",
+      "description": "يسمح بـ: إنشاء مهارات.",
+      "group": "skills"
     },
-    "ai.execution.view": {
-      "name": "عرض تنفيذات الذكاء الاصطناعي",
-      "description": "يسمح بعرض سجل التنفيذ ومؤشرات الأداء.",
-      "group": "aiPlatform"
+    "skills.edit": {
+      "name": "تعديل المهارات",
+      "description": "يسمح بـ: تعديل المهارات.",
+      "group": "skills"
     },
-    "ai.execution.manage": {
-      "name": "إدارة تنفيذات الذكاء الاصطناعي",
-      "description": "يسمح بإدارة سياسات التنفيذ وتشغيل المهام.",
-      "group": "aiPlatform"
+    "skills.manage": {
+      "name": "إدارة المهارات",
+      "description": "يسمح بـ: إدارة المهارات.",
+      "group": "skills"
     },
-    "ai.providers.view": {
-      "name": "عرض مزودي الذكاء الاصطناعي",
-      "description": "يسمح بعرض تعريفات مزودي الذكاء الاصطناعي واتصالاتهم.",
-      "group": "aiPlatform"
+    "skills.publish": {
+      "name": "نشر إصدارات المهارات",
+      "description": "يسمح بـ: نشر إصدارات المهارات.",
+      "group": "skills"
     },
-    "ai.providers.manage": {
-      "name": "إدارة مزودي الذكاء الاصطناعي",
-      "description": "يسمح بإدارة اتصالات وإعدادات مزودي الذكاء الاصطناعي.",
-      "group": "aiPlatform"
+    "skills.rollback": {
+      "name": "استرجاع إصدار مهارة",
+      "description": "يسمح بـ: استرجاع إصدار مهارة.",
+      "group": "skills"
     },
-    "intents.view": {
-      "name": "عرض النوايا",
-      "description": "يسمح بعرض تعريفات النوايا وسجل المطابقة.",
-      "group": "aiPlatform"
+    "skills.view": {
+      "name": "عرض مهارات الذكاء الاصطناعي",
+      "description": "يسمح بـ: عرض مهارات الذكاء الاصطناعي.",
+      "group": "skills"
     },
-    "intents.manage": {
-      "name": "إدارة النوايا",
-      "description": "يسمح بإدارة تعريفات النوايا وتفعيلها.",
-      "group": "aiPlatform"
+    "subscriptions.edit": {
+      "name": "تعديل الاشتراكات (قديم)",
+      "description": "صلاحية قديمة؛ يُفضّل استخدام إدارة الفوترة.",
+      "group": "billing"
     },
-    "prompts.view": {
-      "name": "عرض قوالب المطالبات",
-      "description": "يسمح بعرض قوالب المطالبات وسجل البناء.",
-      "group": "aiPlatform"
+    "subscriptions.view": {
+      "name": "عرض الاشتراكات (قديم)",
+      "description": "صلاحية قديمة؛ يُفضّل استخدام عرض الفوترة.",
+      "group": "billing"
     },
-    "prompts.manage": {
-      "name": "إدارة قوالب المطالبات",
-      "description": "يسمح بإدارة قوالب المطالبات وإصداراتها.",
-      "group": "aiPlatform"
+    "tasks.assign": {
+      "name": "تعيين المهام",
+      "description": "يسمح بـ: تعيين المهام.",
+      "group": "tasks"
     },
-    "tools.view": {
-      "name": "عرض الأدوات",
-      "description": "يسمح بعرض تعريفات الأدوات وسجل التنفيذ.",
+    "tasks.read": {
+      "name": "عرض المهام",
+      "description": "يسمح بـ: عرض المهام.",
+      "group": "tasks"
+    },
+    "tasks.write": {
+      "name": "إنشاء وإدارة المهام",
+      "description": "يسمح بـ: إنشاء وإدارة المهام.",
+      "group": "tasks"
+    },
+    "tickets.assign": {
+      "name": "تعيين التذاكر",
+      "description": "يسمح بـ: تعيين التذاكر.",
+      "group": "tickets"
+    },
+    "tickets.close": {
+      "name": "إغلاق التذاكر",
+      "description": "يسمح بـ: إغلاق التذاكر.",
+      "group": "tickets"
+    },
+    "tickets.comment": {
+      "name": "التعليق على التذاكر",
+      "description": "يسمح بـ: التعليق على التذاكر.",
+      "group": "tickets"
+    },
+    "tickets.create": {
+      "name": "إنشاء تذاكر",
+      "description": "يسمح بـ: إنشاء تذاكر.",
+      "group": "tickets"
+    },
+    "tickets.edit": {
+      "name": "تعديل التذاكر",
+      "description": "يسمح بـ: تعديل التذاكر.",
+      "group": "tickets"
+    },
+    "tickets.manage": {
+      "name": "إدارة منصة التذاكر",
+      "description": "يسمح بـ: إدارة منصة التذاكر.",
+      "group": "tickets"
+    },
+    "tickets.view": {
+      "name": "عرض التذاكر",
+      "description": "يسمح بـ: عرض التذاكر.",
+      "group": "tickets"
+    },
+    "tools.execute": {
+      "name": "تنفيذ الأدوات",
+      "description": "يسمح بتنفيذ الأدوات عبر موجه الأدوات.",
       "group": "aiPlatform"
     },
     "tools.manage": {
@@ -737,54 +1422,34 @@
       "description": "يسمح بإدارة تعريفات الأدوات وتفعيلها.",
       "group": "aiPlatform"
     },
-    "tools.execute": {
-      "name": "تنفيذ الأدوات",
-      "description": "يسمح بتنفيذ الأدوات عبر موجه الأدوات.",
+    "tools.view": {
+      "name": "عرض الأدوات",
+      "description": "يسمح بعرض تعريفات الأدوات وسجل التنفيذ.",
       "group": "aiPlatform"
     },
-    "automation.view": {
-      "name": "عرض الأتمتة",
-      "description": "يسمح بعرض تدفقات الأتمتة والتشغيلات والوصول إلى منشئ سير العمل.",
-      "group": "automation"
+    "users.create": {
+      "name": "إنشاء المستخدمين",
+      "description": "يسمح بإنشاء حسابات مستخدمين جديدة.",
+      "group": "users"
     },
-    "automation.simulate": {
-      "name": "محاكاة سير العمل",
-      "description": "يسمح بتشغيل محاكاة تجريبية في المنشئ دون تنفيذ إنتاجي.",
-      "group": "automation"
+    "users.delete": {
+      "name": "حذف المستخدمين",
+      "description": "يسمح بإلغاء تفعيل أو حذف حسابات المستخدمين.",
+      "group": "users"
     },
-    "embeddings.view": {
-      "name": "عرض التضمينات",
-      "description": "يسمح بعرض مزودي التضمين والمهام والمتجهات.",
-      "group": "aiPlatform"
+    "users.edit": {
+      "name": "إدارة المستخدمين",
+      "description": "يسمح بإنشاء المستخدمين وتعديلهم وتعيين الأدوار.",
+      "group": "users"
     },
-    "embeddings.manage": {
-      "name": "إدارة التضمينات",
-      "description": "يسمح بإدارة اتصالات مزودي التضمين.",
-      "group": "aiPlatform"
+    "users.view": {
+      "name": "عرض المستخدمين",
+      "description": "يسمح بعرض مستخدمي الشركة وملفاتهم.",
+      "group": "users"
     },
-    "embeddings.generate": {
-      "name": "إنشاء التضمينات",
-      "description": "يسمح بجدولة ومعالجة مهام التضمين.",
-      "group": "aiPlatform"
-    },
-    "vectorstores.view": {
-      "name": "عرض مخازن المتجهات",
-      "description": "يسمح بعرض مزودي مخازن المتجهات والمجموعات.",
-      "group": "aiPlatform"
-    },
-    "vectorstores.manage": {
-      "name": "إدارة مخازن المتجهات",
-      "description": "يسمح بإدارة اتصالات مخازن المتجهات.",
-      "group": "aiPlatform"
-    },
-    "collections.manage": {
-      "name": "إدارة المجموعات",
-      "description": "يسمح بإدارة مجموعات المتجهات والفهرسة.",
-      "group": "aiPlatform"
-    },
-    "vectorquery.view": {
-      "name": "عرض استعلامات المتجهات",
-      "description": "يسمح بعرض سياسات البحث بالمتجهات والنتائج.",
+    "vectorquery.execute": {
+      "name": "تنفيذ استعلامات المتجهات",
+      "description": "يسمح بتنفيذ عمليات البحث بالتشابه.",
       "group": "aiPlatform"
     },
     "vectorquery.manage": {
@@ -792,25 +1457,45 @@
       "description": "يسمح بإدارة سياسات البحث بالمتجهات.",
       "group": "aiPlatform"
     },
-    "vectorquery.execute": {
-      "name": "تنفيذ استعلامات المتجهات",
-      "description": "يسمح بتنفيذ عمليات البحث بالتشابه.",
+    "vectorquery.view": {
+      "name": "عرض استعلامات المتجهات",
+      "description": "يسمح بعرض سياسات البحث بالمتجهات والنتائج.",
       "group": "aiPlatform"
     },
-    "retrieval.view": {
-      "name": "عرض الاسترجاع",
-      "description": "يسمح بعرض سياسات الاسترجاع والسياقات.",
+    "vectorstores.manage": {
+      "name": "إدارة مخازن المتجهات",
+      "description": "يسمح بإدارة اتصالات مخازن المتجهات.",
       "group": "aiPlatform"
     },
-    "retrieval.manage": {
-      "name": "إدارة الاسترجاع",
-      "description": "يسمح بإدارة سياسات وإعدادات الاسترجاع.",
+    "vectorstores.view": {
+      "name": "عرض مخازن المتجهات",
+      "description": "يسمح بعرض مزودي مخازن المتجهات والمجموعات.",
       "group": "aiPlatform"
     },
-    "retrieval.execute": {
-      "name": "تنفيذ الاسترجاع",
-      "description": "يسمح بتنفيذ تجميع سياق الاسترجاع.",
-      "group": "aiPlatform"
+    "whatsapp.run": {
+      "name": "تشغيل أتمتة واتساب (قديم)",
+      "description": "صلاحية قديمة تُعادل عرض أتمتة واتساب.",
+      "group": "whatsapp"
+    },
+    "whatsapp.view": {
+      "name": "عرض أتمتة واتساب",
+      "description": "يسمح بعرض إعدادات أتمتة واتساب.",
+      "group": "whatsapp"
+    },
+    "workflow.execute": {
+      "name": "بدء وإدارة سير العمل",
+      "description": "يسمح بـ: بدء وإدارة سير العمل.",
+      "group": "automation"
+    },
+    "workflow.read": {
+      "name": "عرض تنفيذات سير العمل",
+      "description": "يسمح بـ: عرض تنفيذات سير العمل.",
+      "group": "automation"
+    },
+    "workspace.view": {
+      "name": "الوصول إلى بيئة العمل",
+      "description": "يسمح بالدخول إلى بيئة عمل الشركة.",
+      "group": "workspace"
     }
   }
 }

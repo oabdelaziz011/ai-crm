@@ -36,16 +36,19 @@ export function getPermissionCatalogEntry(code: string): PermissionCatalogEntry 
 
 export function inferGroupId(code: string): string {
   if (code.startsWith("customers.")) return "customers";
-  if (code.startsWith("bookings.")) return "bookings";
+  if (code.startsWith("bookings.") || code.startsWith("availability.")) return "bookings";
   if (code.startsWith("invoices.")) return "invoices";
   if (code.startsWith("reports.")) return "reports";
   if (code.startsWith("dashboard.")) return "dashboard";
   if (code === "workspace.view") return "workspace";
-  if (code.startsWith("billing.") || code.startsWith("subscriptions.")) return "billing";
+  if (code.startsWith("billing.") || code.startsWith("subscriptions.") || code.startsWith("licenses.")) {
+    return code.startsWith("licenses.") ? "licenses" : "billing";
+  }
   if (code.startsWith("users.")) return "users";
   if (code.startsWith("roles.") || code.startsWith("permissions.")) return "roles";
   if (code.startsWith("companies.")) return "companies";
   if (code.startsWith("settings.")) return "settings";
+  if (code.startsWith("company.")) return "company";
   if (code.startsWith("audit_logs.")) return "audit";
   if (code.startsWith("ai_assistant.")) return "aiAssistant";
   if (code.startsWith("ai_chat.")) return "aiChat";
@@ -53,8 +56,24 @@ export function inferGroupId(code: string): string {
   if (code.startsWith("channels.") || code === "ai.whatsapp.manage") return "channels";
   if (code.startsWith("knowledge.") || code === "ai.knowledge.manage") return "knowledge";
   if (code.startsWith("whatsapp.")) return "whatsapp";
-  if (code.startsWith("automation.")) return "automation";
+  if (code.startsWith("automation.") || code.startsWith("workflow.")) return "automation";
   if (code.startsWith("ai.analytics.") || code.startsWith("ai.costs.")) return "aiAnalytics";
+  if (code.startsWith("leads.")) return "leads";
+  if (code.startsWith("tickets.")) return "tickets";
+  if (code.startsWith("products.")) return "products";
+  if (code.startsWith("quotes.")) return "quotes";
+  if (code.startsWith("opportunities.")) return "opportunities";
+  if (code.startsWith("handoff.")) return "handoff";
+  if (code.startsWith("organization.")) return "organization";
+  if (code.startsWith("marketplace.")) return "marketplace";
+  if (code.startsWith("integrations.")) return "integrations";
+  if (code.startsWith("governance.")) return "governance";
+  if (code.startsWith("configuration.")) return "configuration";
+  if (code.startsWith("feature_flags.")) return "featureFlags";
+  if (code.startsWith("operations.")) return "operations";
+  if (code.startsWith("tasks.")) return "tasks";
+  if (code.startsWith("skills.")) return "skills";
+  if (code.startsWith("executive.")) return "executive";
   return "aiPlatform";
 }
 

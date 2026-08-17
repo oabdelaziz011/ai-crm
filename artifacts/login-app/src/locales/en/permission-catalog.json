@@ -109,103 +109,353 @@
       "icon": "⚙️",
       "order": 195,
       "label": "Automation"
+    },
+    "leads": {
+      "icon": "🎯",
+      "order": 25,
+      "label": "Leads"
+    },
+    "tickets": {
+      "icon": "🎫",
+      "order": 28,
+      "label": "Tickets"
+    },
+    "products": {
+      "icon": "📦",
+      "order": 32,
+      "label": "Products"
+    },
+    "quotes": {
+      "icon": "📝",
+      "order": 34,
+      "label": "Quotes"
+    },
+    "opportunities": {
+      "icon": "💼",
+      "order": 26,
+      "label": "Opportunities"
+    },
+    "handoff": {
+      "icon": "🔁",
+      "order": 145,
+      "label": "Human Handoff"
+    },
+    "organization": {
+      "icon": "🏛️",
+      "order": 96,
+      "label": "Organization"
+    },
+    "marketplace": {
+      "icon": "🏪",
+      "order": 200,
+      "label": "Marketplace"
+    },
+    "integrations": {
+      "icon": "🔌",
+      "order": 205,
+      "label": "Integrations"
+    },
+    "governance": {
+      "icon": "⚖️",
+      "order": 210,
+      "label": "AI Governance"
+    },
+    "configuration": {
+      "icon": "🧩",
+      "order": 215,
+      "label": "Configuration"
+    },
+    "featureFlags": {
+      "icon": "🚩",
+      "order": 220,
+      "label": "Feature Flags"
+    },
+    "licenses": {
+      "icon": "📜",
+      "order": 225,
+      "label": "Licenses"
+    },
+    "operations": {
+      "icon": "🛠️",
+      "order": 230,
+      "label": "Operations"
+    },
+    "tasks": {
+      "icon": "✅",
+      "order": 235,
+      "label": "Tasks"
+    },
+    "skills": {
+      "icon": "🧠",
+      "order": 192,
+      "label": "AI Skills"
+    },
+    "executive": {
+      "icon": "📊",
+      "order": 46,
+      "label": "Executive"
     }
   },
   "codes": {
-    "customers.view": {
-      "name": "View Customers",
-      "description": "Allows viewing the customer list and their details.",
-      "group": "customers"
+    "agents.create": {
+      "name": "Create AI Employees",
+      "description": "Allows creating AI employee profiles in the workspace.",
+      "group": "aiPlatform"
     },
-    "customers.create": {
-      "name": "Create Customers",
-      "description": "Allows adding new customers.",
-      "group": "customers"
+    "agents.delete": {
+      "name": "Archive AI Employees",
+      "description": "Allows archiving AI employee profiles.",
+      "group": "aiPlatform"
     },
-    "customers.edit": {
-      "name": "Edit Customers",
-      "description": "Allows updating customer information.",
-      "group": "customers"
+    "agents.edit": {
+      "name": "Edit AI Employees",
+      "description": "Allows editing AI employee profiles and assignments.",
+      "group": "aiPlatform"
     },
-    "customers.search": {
-      "name": "Search Customers (CRM Agent)",
-      "description": "Allows CRM agent search and duplicate-detection tools. Implies customers.view for RLS when used via agent tools.",
-      "group": "customers"
+    "agents.execute": {
+      "name": "Execute AI Agents",
+      "description": "Allows starting, resuming, and cancelling AI agent workflows.",
+      "group": "aiPlatform"
     },
-    "customers.update": {
-      "name": "Update Customers (CRM Agent)",
-      "description": "Allows CRM agent single-field update tools. Implies customers.edit for RLS when used via agent tools.",
-      "group": "customers"
+    "agents.manage": {
+      "name": "Manage AI Agents",
+      "description": "Allows managing AI agent configuration and policies.",
+      "group": "aiPlatform"
     },
-    "customers.merge": {
-      "name": "Merge Customers (CRM Agent)",
-      "description": "Allows CRM agent customer merge tools. Implies customers.edit and customers.delete for RLS when used via agent tools.",
-      "group": "customers"
+    "agents.publish": {
+      "name": "Publish Agents",
+      "description": "Publish AI employee versions.",
+      "group": "aiPlatform"
     },
-    "customers.import": {
-      "name": "Import Customers (CRM Agent)",
-      "description": "Allows CRM agent bulk import tools. Implies customers.create for RLS when used via agent tools.",
-      "group": "customers"
+    "agents.rollback": {
+      "name": "Rollback Agents",
+      "description": "Rollback AI employee versions.",
+      "group": "aiPlatform"
     },
-    "customers.delete": {
-      "name": "Delete Customers",
-      "description": "Allows removing customer records.",
-      "group": "customers"
+    "agents.view": {
+      "name": "View AI Agents",
+      "description": "Allows viewing AI agent workflows, events, and checkpoints.",
+      "group": "aiPlatform"
     },
-    "bookings.view": {
-      "name": "View Bookings",
-      "description": "Allows viewing bookings and schedules.",
+    "ai_assistant.edit": {
+      "name": "Edit AI Assistant",
+      "description": "Allows editing AI Assistant configuration.",
+      "group": "aiAssistant"
+    },
+    "ai_assistant.view": {
+      "name": "View AI Assistant",
+      "description": "Allows viewing AI Assistant configuration.",
+      "group": "aiAssistant"
+    },
+    "ai_chat.use": {
+      "name": "Use AI Chat",
+      "description": "Allows sending messages through AI chat.",
+      "group": "aiChat"
+    },
+    "ai_chat.view": {
+      "name": "View AI Chat",
+      "description": "Allows access to the AI chat interface.",
+      "group": "aiChat"
+    },
+    "ai.analytics.manage": {
+      "name": "Manage AI Analytics",
+      "description": "Allows managing AI observability configuration.",
+      "group": "aiAnalytics"
+    },
+    "ai.analytics.view": {
+      "name": "View AI Analytics",
+      "description": "Allows viewing AI performance analytics.",
+      "group": "aiAnalytics"
+    },
+    "ai.conversations.release": {
+      "name": "Release Conversations",
+      "description": "Allows releasing conversations back to AI handling.",
+      "group": "conversations"
+    },
+    "ai.conversations.reply": {
+      "name": "Reply in Conversations",
+      "description": "Allows replying to customer conversations.",
+      "group": "conversations"
+    },
+    "ai.conversations.takeover": {
+      "name": "Take Over Conversations",
+      "description": "Allows taking control of AI-handled conversations.",
+      "group": "conversations"
+    },
+    "ai.conversations.view": {
+      "name": "View Conversations",
+      "description": "Allows viewing team inbox and AI conversations.",
+      "group": "conversations"
+    },
+    "ai.costs.view": {
+      "name": "View AI Costs",
+      "description": "Allows viewing AI token usage and cost accounting.",
+      "group": "aiAnalytics"
+    },
+    "ai.execution.manage": {
+      "name": "Manage AI Executions",
+      "description": "Allows managing execution policies and running jobs.",
+      "group": "aiPlatform"
+    },
+    "ai.execution.view": {
+      "name": "View AI Executions",
+      "description": "Allows viewing AI execution history and metrics.",
+      "group": "aiPlatform"
+    },
+    "ai.knowledge.manage": {
+      "name": "Manage AI Knowledge (Legacy)",
+      "description": "Legacy permission mapped to Manage Knowledge Base.",
+      "group": "knowledge"
+    },
+    "ai.providers.manage": {
+      "name": "Manage AI Providers",
+      "description": "Allows managing AI provider connections and configuration.",
+      "group": "aiPlatform"
+    },
+    "ai.providers.view": {
+      "name": "View AI Providers",
+      "description": "Allows viewing AI provider definitions and connections.",
+      "group": "aiPlatform"
+    },
+    "ai.whatsapp.manage": {
+      "name": "Manage WhatsApp Integration (Legacy)",
+      "description": "Legacy permission mapped to Manage Channels.",
+      "group": "channels"
+    },
+    "audit_logs.view": {
+      "name": "View Audit Logs",
+      "description": "Allows viewing system audit logs.",
+      "group": "audit"
+    },
+    "automation.archive": {
+      "name": "Archive Automation",
+      "description": "Archive workflows and stop production execution.",
+      "group": "automation"
+    },
+    "automation.create": {
+      "name": "Create Automation",
+      "description": "Create automation flows.",
+      "group": "automation"
+    },
+    "automation.delete": {
+      "name": "Delete Automation",
+      "description": "Delete automation flows.",
+      "group": "automation"
+    },
+    "automation.edit": {
+      "name": "Edit Automation",
+      "description": "Edit automation flows.",
+      "group": "automation"
+    },
+    "automation.execute": {
+      "name": "Execute Automation",
+      "description": "Execute automation flows and sessions.",
+      "group": "automation"
+    },
+    "automation.publish": {
+      "name": "Publish Automation",
+      "description": "Publish automation flows.",
+      "group": "automation"
+    },
+    "automation.rollback": {
+      "name": "Rollback Automation",
+      "description": "Activate a previous published workflow version.",
+      "group": "automation"
+    },
+    "automation.simulate": {
+      "name": "Simulate Workflows",
+      "description": "Allows dry-run workflow simulation in the builder without production execution.",
+      "group": "automation"
+    },
+    "automation.view": {
+      "name": "View Automation",
+      "description": "Allows viewing automation flows, runs, and workflow builder access.",
+      "group": "automation"
+    },
+    "availability.search": {
+      "name": "search scheduling",
+      "description": "Search bookable appointment availability via AI tools.",
       "group": "bookings"
     },
-    "bookings.create": {
-      "name": "Create Bookings",
-      "description": "Allows creating new bookings.",
-      "group": "bookings"
+    "billing.audit.export": {
+      "name": "Export Billing Audit Log",
+      "description": "Allows exporting billing audit records.",
+      "group": "billing"
     },
-    "bookings.edit": {
-      "name": "Edit Bookings",
-      "description": "Allows updating existing bookings.",
-      "group": "bookings"
+    "billing.audit.view": {
+      "name": "View Billing Audit Log",
+      "description": "Allows viewing the billing audit trail.",
+      "group": "billing"
     },
-    "bookings.delete": {
-      "name": "Delete Bookings",
-      "description": "Allows canceling or deleting bookings.",
-      "group": "bookings"
+    "billing.contact.edit_own": {
+      "name": "Edit Billing Contact",
+      "description": "Allows editing your company billing contact details.",
+      "group": "billing"
     },
-    "invoices.view": {
-      "name": "View Invoices",
-      "description": "Allows viewing invoices and billing documents.",
-      "group": "invoices"
+    "billing.documents.download_own": {
+      "name": "Download Billing Documents",
+      "description": "Allows downloading subscription invoices and receipts.",
+      "group": "billing"
     },
-    "invoices.create": {
-      "name": "Create Invoices",
-      "description": "Allows issuing new invoices.",
-      "group": "invoices"
+    "billing.edit": {
+      "name": "Manage Billing (Platform)",
+      "description": "Allows editing subscriptions, billing contacts, and suspend or restore actions.",
+      "group": "billing"
     },
-    "invoices.edit": {
-      "name": "Edit Invoices",
-      "description": "Allows updating invoice details.",
-      "group": "invoices"
+    "billing.features.edit": {
+      "name": "Edit Feature Entitlements",
+      "description": "Allows managing company feature overrides.",
+      "group": "billing"
     },
-    "invoices.delete": {
-      "name": "Delete Invoices",
-      "description": "Allows removing invoice records.",
-      "group": "invoices"
+    "billing.features.manage_catalog": {
+      "name": "Manage Feature Catalog",
+      "description": "Allows managing feature definition catalog.",
+      "group": "billing"
     },
-    "reports.view": {
-      "name": "View Reports",
-      "description": "Allows access to business and analytics reports.",
-      "group": "reports"
+    "billing.features.view": {
+      "name": "View Feature Entitlements",
+      "description": "Allows viewing feature catalog and company overrides.",
+      "group": "billing"
     },
-    "dashboard.view": {
-      "name": "View Dashboard",
-      "description": "Allows viewing the enterprise operations dashboard and aggregated metrics.",
-      "group": "dashboard"
+    "billing.health.manage": {
+      "name": "Manage Billing Health",
+      "description": "Allows managing billing health jobs and retries.",
+      "group": "billing"
     },
-    "workspace.view": {
-      "name": "Access Workspace",
-      "description": "Allows access to the company workspace area.",
-      "group": "workspace"
+    "billing.health.view": {
+      "name": "View Billing Health",
+      "description": "Allows viewing billing health dashboard and alerts.",
+      "group": "billing"
+    },
+    "billing.manage_own": {
+      "name": "Manage Own Subscription",
+      "description": "Allows renewing and managing your company subscription.",
+      "group": "billing"
+    },
+    "billing.manage_plans": {
+      "name": "Manage Subscription Plans",
+      "description": "Allows managing the subscription plans catalog.",
+      "group": "billing"
+    },
+    "billing.payment_method.manage_own": {
+      "name": "Manage Payment Methods",
+      "description": "Allows managing your company payment methods.",
+      "group": "billing"
+    },
+    "billing.record_payment": {
+      "name": "Record Payments",
+      "description": "Allows recording manual payments and invoices.",
+      "group": "billing"
+    },
+    "billing.settings.edit": {
+      "name": "Edit Billing Settings",
+      "description": "Allows modifying billing configuration settings.",
+      "group": "billing"
+    },
+    "billing.settings.view": {
+      "name": "View Billing Settings",
+      "description": "Allows viewing billing configuration settings.",
+      "group": "billing"
     },
     "billing.view": {
       "name": "View Billing (Platform)",
@@ -222,84 +472,9 @@
       "description": "Allows viewing billing analytics and revenue reports.",
       "group": "billing"
     },
-    "billing.edit": {
-      "name": "Manage Billing (Platform)",
-      "description": "Allows editing subscriptions, billing contacts, and suspend or restore actions.",
-      "group": "billing"
-    },
-    "billing.manage_own": {
-      "name": "Manage Own Subscription",
-      "description": "Allows renewing and managing your company subscription.",
-      "group": "billing"
-    },
-    "billing.manage_plans": {
-      "name": "Manage Subscription Plans",
-      "description": "Allows managing the subscription plans catalog.",
-      "group": "billing"
-    },
-    "billing.record_payment": {
-      "name": "Record Payments",
-      "description": "Allows recording manual payments and invoices.",
-      "group": "billing"
-    },
-    "billing.contact.edit_own": {
-      "name": "Edit Billing Contact",
-      "description": "Allows editing your company billing contact details.",
-      "group": "billing"
-    },
-    "billing.payment_method.manage_own": {
-      "name": "Manage Payment Methods",
-      "description": "Allows managing your company payment methods.",
-      "group": "billing"
-    },
-    "billing.documents.download_own": {
-      "name": "Download Billing Documents",
-      "description": "Allows downloading subscription invoices and receipts.",
-      "group": "billing"
-    },
-    "billing.settings.view": {
-      "name": "View Billing Settings",
-      "description": "Allows viewing billing configuration settings.",
-      "group": "billing"
-    },
-    "billing.settings.edit": {
-      "name": "Edit Billing Settings",
-      "description": "Allows modifying billing configuration settings.",
-      "group": "billing"
-    },
-    "billing.audit.view": {
-      "name": "View Billing Audit Log",
-      "description": "Allows viewing the billing audit trail.",
-      "group": "billing"
-    },
-    "billing.audit.export": {
-      "name": "Export Billing Audit Log",
-      "description": "Allows exporting billing audit records.",
-      "group": "billing"
-    },
-    "billing.features.view": {
-      "name": "View Feature Entitlements",
-      "description": "Allows viewing feature catalog and company overrides.",
-      "group": "billing"
-    },
-    "billing.features.edit": {
-      "name": "Edit Feature Entitlements",
-      "description": "Allows managing company feature overrides.",
-      "group": "billing"
-    },
-    "billing.features.manage_catalog": {
-      "name": "Manage Feature Catalog",
-      "description": "Allows managing feature definition catalog.",
-      "group": "billing"
-    },
-    "billing.health.view": {
-      "name": "View Billing Health",
-      "description": "Allows viewing billing health dashboard and alerts.",
-      "group": "billing"
-    },
-    "billing.health.manage": {
-      "name": "Manage Billing Health",
-      "description": "Allows managing billing health jobs and retries.",
+    "billing.webhooks.manage": {
+      "name": "Manage Billing Webhooks",
+      "description": "Allows managing outbound billing webhooks.",
       "group": "billing"
     },
     "billing.webhooks.view": {
@@ -307,74 +482,79 @@
       "description": "Allows viewing outbound billing webhook endpoints.",
       "group": "billing"
     },
-    "billing.webhooks.manage": {
-      "name": "Manage Billing Webhooks",
-      "description": "Allows managing outbound billing webhooks.",
-      "group": "billing"
+    "bookings.create": {
+      "name": "Create Bookings",
+      "description": "Allows creating new bookings.",
+      "group": "bookings"
     },
-    "users.view": {
-      "name": "View Users",
-      "description": "Allows viewing company users and their profiles.",
-      "group": "users"
+    "bookings.delete": {
+      "name": "Delete Bookings",
+      "description": "Allows canceling or deleting bookings.",
+      "group": "bookings"
     },
-    "users.edit": {
-      "name": "Manage Users",
-      "description": "Allows creating, editing, and assigning roles to users.",
-      "group": "users"
+    "bookings.edit": {
+      "name": "Edit Bookings",
+      "description": "Allows updating existing bookings.",
+      "group": "bookings"
     },
-    "users.create": {
-      "name": "Create Users",
-      "description": "Allows creating new user accounts.",
-      "group": "users"
+    "bookings.view": {
+      "name": "View Bookings",
+      "description": "Allows viewing bookings and schedules.",
+      "group": "bookings"
     },
-    "users.delete": {
-      "name": "Delete Users",
-      "description": "Allows deactivating or removing user accounts.",
-      "group": "users"
+    "branches.manage": {
+      "name": "Manage Branches",
+      "description": "Allows creating and managing company branches.",
+      "group": "company"
     },
-    "roles.view": {
-      "name": "View Roles",
-      "description": "Allows viewing roles and their permissions.",
-      "group": "roles"
+    "channel.platform.dispatch": {
+      "name": "Dispatch Channel Messages",
+      "description": "Allows dispatching outbound channel messages.",
+      "group": "aiPlatform"
     },
-    "roles.create": {
-      "name": "Create Roles",
-      "description": "Allows creating custom roles.",
-      "group": "roles"
+    "channel.platform.route": {
+      "name": "Route Channel Events",
+      "description": "Allows routing inbound channel events.",
+      "group": "aiPlatform"
     },
-    "roles.edit": {
-      "name": "Edit Roles",
-      "description": "Allows editing roles and their permissions.",
-      "group": "roles"
+    "channel.platform.view": {
+      "name": "View Channel Platform",
+      "description": "Allows viewing channel platform events and delivery status.",
+      "group": "aiPlatform"
     },
-    "roles.delete": {
-      "name": "Delete Roles",
-      "description": "Allows deleting custom roles.",
-      "group": "roles"
+    "channels.manage": {
+      "name": "Manage Channels",
+      "description": "Allows configuring company communication channels.",
+      "group": "channels"
     },
-    "permissions.view": {
-      "name": "View User Permissions (Legacy)",
-      "description": "Legacy permission mapped to View Roles.",
-      "group": "roles"
+    "channels.view": {
+      "name": "View Channels",
+      "description": "Allows viewing company communication channels.",
+      "group": "channels"
     },
-    "permissions.edit": {
-      "name": "Edit User Permissions (Legacy)",
-      "description": "Legacy permission mapped to Edit Roles.",
-      "group": "roles"
+    "collaboration.handover": {
+      "name": "Handover Collaboration",
+      "description": "Request agent task handovers.",
+      "group": "aiPlatform"
     },
-    "companies.view": {
-      "name": "View Companies",
-      "description": "Allows viewing tenant companies on the platform.",
-      "group": "companies"
+    "collaboration.manage": {
+      "name": "Manage Collaboration",
+      "description": "Manage agent groups and policies.",
+      "group": "aiPlatform"
+    },
+    "collaboration.view": {
+      "name": "View Collaboration",
+      "description": "View multi-agent collaboration.",
+      "group": "aiPlatform"
+    },
+    "collections.manage": {
+      "name": "Manage Collections",
+      "description": "Allows managing vector collections and indexed vectors.",
+      "group": "aiPlatform"
     },
     "companies.create": {
       "name": "Create Companies",
       "description": "Allows provisioning new tenant companies.",
-      "group": "companies"
-    },
-    "companies.edit": {
-      "name": "Edit Companies",
-      "description": "Allows updating company records and settings.",
       "group": "companies"
     },
     "companies.delete": {
@@ -382,35 +562,15 @@
       "description": "Allows removing tenant companies.",
       "group": "companies"
     },
-    "subscriptions.view": {
-      "name": "View Subscriptions (Legacy)",
-      "description": "Legacy permission; use View Billing where possible.",
-      "group": "billing"
+    "companies.edit": {
+      "name": "Edit Companies",
+      "description": "Allows updating company records and settings.",
+      "group": "companies"
     },
-    "subscriptions.edit": {
-      "name": "Edit Subscriptions (Legacy)",
-      "description": "Legacy permission; use Manage Billing where possible.",
-      "group": "billing"
-    },
-    "settings.view": {
-      "name": "View Settings",
-      "description": "Allows viewing company and application settings.",
-      "group": "settings"
-    },
-    "settings.edit": {
-      "name": "Edit Settings",
-      "description": "Allows modifying company and application settings.",
-      "group": "settings"
-    },
-    "company.view": {
-      "name": "View Company Workspace",
-      "description": "Allows viewing the company workspace.",
-      "group": "company"
-    },
-    "company.update": {
-      "name": "Update Company",
-      "description": "Allows updating company profile details.",
-      "group": "company"
+    "companies.view": {
+      "name": "View Companies",
+      "description": "Allows viewing tenant companies on the platform.",
+      "group": "companies"
     },
     "company.branding": {
       "name": "Manage Company Branding",
@@ -422,109 +582,34 @@
       "description": "Allows viewing and managing the company subscription.",
       "group": "company"
     },
-    "employees.manage": {
-      "name": "Manage Employees",
-      "description": "Allows inviting and managing company employees.",
+    "company.update": {
+      "name": "Update Company",
+      "description": "Allows updating company profile details.",
       "group": "company"
     },
-    "branches.manage": {
-      "name": "Manage Branches",
-      "description": "Allows creating and managing company branches.",
+    "company.view": {
+      "name": "View Company Workspace",
+      "description": "Allows viewing the company workspace.",
       "group": "company"
     },
-    "departments.manage": {
-      "name": "Manage Departments",
-      "description": "Allows creating and managing company departments.",
-      "group": "company"
+    "configuration.publish": {
+      "name": "Publish Configuration",
+      "description": "Publish configuration changes.",
+      "group": "configuration"
     },
-    "scheduling.view": {
-      "name": "View Scheduling",
-      "description": "Allows viewing scheduling resources, availability, rules, and holidays.",
-      "group": "scheduling"
+    "configuration.read": {
+      "name": "Read Configuration",
+      "description": "View platform configuration.",
+      "group": "configuration"
     },
-    "scheduling.edit": {
-      "name": "Manage Scheduling",
-      "description": "Allows creating and editing scheduling configuration.",
-      "group": "scheduling"
-    },
-    "audit_logs.view": {
-      "name": "View Audit Logs",
-      "description": "Allows viewing system audit logs.",
-      "group": "audit"
-    },
-    "ai_assistant.view": {
-      "name": "View AI Assistant",
-      "description": "Allows viewing AI Assistant configuration.",
-      "group": "aiAssistant"
-    },
-    "ai_assistant.edit": {
-      "name": "Edit AI Assistant",
-      "description": "Allows editing AI Assistant configuration.",
-      "group": "aiAssistant"
-    },
-    "ai_chat.view": {
-      "name": "View AI Chat",
-      "description": "Allows access to the AI chat interface.",
-      "group": "aiChat"
-    },
-    "ai_chat.use": {
-      "name": "Use AI Chat",
-      "description": "Allows sending messages through AI chat.",
-      "group": "aiChat"
-    },
-    "ai.conversations.view": {
-      "name": "View Conversations",
-      "description": "Allows viewing team inbox and AI conversations.",
-      "group": "conversations"
-    },
-    "ai.conversations.reply": {
-      "name": "Reply in Conversations",
-      "description": "Allows replying to customer conversations.",
-      "group": "conversations"
-    },
-    "ai.conversations.takeover": {
-      "name": "Take Over Conversations",
-      "description": "Allows taking control of AI-handled conversations.",
-      "group": "conversations"
-    },
-    "ai.conversations.release": {
-      "name": "Release Conversations",
-      "description": "Allows releasing conversations back to AI handling.",
-      "group": "conversations"
-    },
-    "conversation.view": {
-      "name": "View Conversations",
-      "description": "Allows viewing omnichannel conversations.",
-      "group": "conversations"
+    "configuration.write": {
+      "name": "Write Configuration",
+      "description": "Edit platform configuration drafts.",
+      "group": "configuration"
     },
     "conversation.assign": {
       "name": "Assign Conversations",
       "description": "Allows assigning conversations to agents or queues.",
-      "group": "conversations"
-    },
-    "conversation.reassign": {
-      "name": "Reassign Conversations",
-      "description": "Allows reassigning conversations between agents or teams.",
-      "group": "conversations"
-    },
-    "conversation.take_over": {
-      "name": "Take Over Conversations",
-      "description": "Allows taking ownership of a conversation.",
-      "group": "conversations"
-    },
-    "conversation.return_to_ai": {
-      "name": "Return to AI",
-      "description": "Allows releasing conversations back to AI handling.",
-      "group": "conversations"
-    },
-    "conversation.escalate": {
-      "name": "Escalate Conversations",
-      "description": "Allows escalating conversations to supervisors.",
-      "group": "conversations"
-    },
-    "conversation.resolve": {
-      "name": "Resolve Conversations",
-      "description": "Allows marking conversations as resolved.",
       "group": "conversations"
     },
     "conversation.close": {
@@ -532,9 +617,14 @@
       "description": "Allows closing conversations.",
       "group": "conversations"
     },
-    "conversation.reopen": {
-      "name": "Reopen Conversations",
-      "description": "Allows reopening closed conversations.",
+    "conversation.create_customer": {
+      "name": "Create Customer",
+      "description": "Allows creating a customer from a conversation.",
+      "group": "conversations"
+    },
+    "conversation.escalate": {
+      "name": "Escalate Conversations",
+      "description": "Allows escalating conversations to supervisors.",
       "group": "conversations"
     },
     "conversation.internal_note": {
@@ -552,9 +642,14 @@
       "description": "Allows linking an existing customer to a conversation.",
       "group": "conversations"
     },
-    "conversation.create_customer": {
-      "name": "Create Customer",
-      "description": "Allows creating a customer from a conversation.",
+    "conversation.reassign": {
+      "name": "Reassign Conversations",
+      "description": "Allows reassigning conversations between agents or teams.",
+      "group": "conversations"
+    },
+    "conversation.reopen": {
+      "name": "Reopen Conversations",
+      "description": "Allows reopening closed conversations.",
       "group": "conversations"
     },
     "conversation.reply": {
@@ -562,34 +657,249 @@
       "description": "Allows replying to customer messages.",
       "group": "conversations"
     },
-    "ai.analytics.view": {
-      "name": "View AI Analytics",
-      "description": "Allows viewing AI performance analytics.",
-      "group": "aiAnalytics"
+    "conversation.resolve": {
+      "name": "Resolve Conversations",
+      "description": "Allows marking conversations as resolved.",
+      "group": "conversations"
     },
-    "ai.analytics.manage": {
-      "name": "Manage AI Analytics",
-      "description": "Allows managing AI observability configuration.",
-      "group": "aiAnalytics"
+    "conversation.return_to_ai": {
+      "name": "Return to AI",
+      "description": "Allows releasing conversations back to AI handling.",
+      "group": "conversations"
     },
-    "ai.costs.view": {
-      "name": "View AI Costs",
-      "description": "Allows viewing AI token usage and cost accounting.",
-      "group": "aiAnalytics"
+    "conversation.take_over": {
+      "name": "Take Over Conversations",
+      "description": "Allows taking ownership of a conversation.",
+      "group": "conversations"
     },
-    "channels.view": {
-      "name": "View Channels",
-      "description": "Allows viewing company communication channels.",
-      "group": "channels"
+    "conversation.view": {
+      "name": "View Conversations",
+      "description": "Allows viewing omnichannel conversations.",
+      "group": "conversations"
     },
-    "channels.manage": {
-      "name": "Manage Channels",
-      "description": "Allows configuring company communication channels.",
-      "group": "channels"
+    "customers.create": {
+      "name": "Create Customers",
+      "description": "Allows adding new customers.",
+      "group": "customers"
     },
-    "knowledge.view": {
-      "name": "View Knowledge Base",
-      "description": "Allows viewing knowledge sources and documents.",
+    "customers.delete": {
+      "name": "Delete Customers",
+      "description": "Allows removing customer records.",
+      "group": "customers"
+    },
+    "customers.edit": {
+      "name": "Edit Customers",
+      "description": "Allows updating customer information.",
+      "group": "customers"
+    },
+    "customers.import": {
+      "name": "Import Customers (CRM Agent)",
+      "description": "Allows CRM agent bulk import tools. Implies customers.create for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.merge": {
+      "name": "Merge Customers (CRM Agent)",
+      "description": "Allows CRM agent customer merge tools. Implies customers.edit and customers.delete for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.search": {
+      "name": "Search Customers (CRM Agent)",
+      "description": "Allows CRM agent search and duplicate-detection tools. Implies customers.view for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.update": {
+      "name": "Update Customers (CRM Agent)",
+      "description": "Allows CRM agent single-field update tools. Implies customers.edit for RLS when used via agent tools.",
+      "group": "customers"
+    },
+    "customers.view": {
+      "name": "View Customers",
+      "description": "Allows viewing the customer list and their details.",
+      "group": "customers"
+    },
+    "dashboard.view": {
+      "name": "View Dashboard",
+      "description": "Allows viewing the enterprise operations dashboard and aggregated metrics.",
+      "group": "dashboard"
+    },
+    "departments.manage": {
+      "name": "Manage Departments",
+      "description": "Allows creating and managing company departments.",
+      "group": "company"
+    },
+    "embeddings.generate": {
+      "name": "Generate Embeddings",
+      "description": "Allows queueing and processing embedding jobs.",
+      "group": "aiPlatform"
+    },
+    "embeddings.manage": {
+      "name": "Manage Embeddings",
+      "description": "Allows managing embedding provider connections.",
+      "group": "aiPlatform"
+    },
+    "embeddings.view": {
+      "name": "View Embeddings",
+      "description": "Allows viewing embedding providers, jobs, and vectors.",
+      "group": "aiPlatform"
+    },
+    "employees.manage": {
+      "name": "Manage Employees",
+      "description": "Allows inviting and managing company employees.",
+      "group": "company"
+    },
+    "executive.manage_alerts": {
+      "name": "Manage Executive Intelligence",
+      "description": "Dismiss and resolve executive alerts.",
+      "group": "executive"
+    },
+    "executive.view": {
+      "name": "View Executive Intelligence",
+      "description": "View executive intelligence dashboard.",
+      "group": "executive"
+    },
+    "feature_flags.publish": {
+      "name": "Publish Feature Flags",
+      "description": "Publish feature flag changes.",
+      "group": "featureFlags"
+    },
+    "feature_flags.read": {
+      "name": "Read Feature Flags",
+      "description": "View feature flag state.",
+      "group": "featureFlags"
+    },
+    "feature_flags.write": {
+      "name": "Write Feature Flags",
+      "description": "Manage feature flags.",
+      "group": "featureFlags"
+    },
+    "governance.approve": {
+      "name": "Approve Governance",
+      "description": "Approve governance requests.",
+      "group": "governance"
+    },
+    "governance.create": {
+      "name": "Create Governance",
+      "description": "Create AI governance policies.",
+      "group": "governance"
+    },
+    "governance.edit": {
+      "name": "Edit Governance",
+      "description": "Edit AI governance policies.",
+      "group": "governance"
+    },
+    "governance.manage": {
+      "name": "Manage Governance",
+      "description": "Manage AI governance platform.",
+      "group": "governance"
+    },
+    "governance.view": {
+      "name": "View Governance",
+      "description": "View AI governance policies.",
+      "group": "governance"
+    },
+    "handoff.accept": {
+      "name": "Accept Human Handoff",
+      "description": "Accept queued or transferred conversations.",
+      "group": "handoff"
+    },
+    "handoff.assign": {
+      "name": "Assign Human Handoff",
+      "description": "Assign conversations to agents or queues.",
+      "group": "handoff"
+    },
+    "handoff.escalate": {
+      "name": "Escalate Human Handoff",
+      "description": "Escalate conversations to supervisors or specialized queues.",
+      "group": "handoff"
+    },
+    "handoff.manage": {
+      "name": "Manage Human Handoff",
+      "description": "Manage handoff queues, routing rules, and escalation policies.",
+      "group": "handoff"
+    },
+    "handoff.presence": {
+      "name": "Presence Human Handoff",
+      "description": "Update and view agent presence.",
+      "group": "handoff"
+    },
+    "handoff.queue": {
+      "name": "Queue Human Handoff",
+      "description": "Enqueue and dequeue conversations.",
+      "group": "handoff"
+    },
+    "handoff.reject": {
+      "name": "Reject Human Handoff",
+      "description": "Reject handoff requests.",
+      "group": "handoff"
+    },
+    "handoff.return_to_ai": {
+      "name": "Return to AI Human Handoff",
+      "description": "Return conversations to AI handling.",
+      "group": "handoff"
+    },
+    "handoff.transfer": {
+      "name": "Transfer Human Handoff",
+      "description": "Transfer conversations between agents, queues, and AI.",
+      "group": "handoff"
+    },
+    "handoff.view": {
+      "name": "View Human Handoff",
+      "description": "View handoff state, queues, and agent workspace context.",
+      "group": "handoff"
+    },
+    "integrations.api_keys": {
+      "name": "API Keys Integration Hub",
+      "description": "Create and rotate API keys.",
+      "group": "integrations"
+    },
+    "integrations.manage": {
+      "name": "Manage Integration Hub",
+      "description": "Manage API keys, OAuth clients, and webhooks.",
+      "group": "integrations"
+    },
+    "integrations.view": {
+      "name": "View Integration Hub",
+      "description": "View integration hub dashboard.",
+      "group": "integrations"
+    },
+    "integrations.webhooks": {
+      "name": "Webhooks Integration Hub",
+      "description": "Manage webhook subscriptions.",
+      "group": "integrations"
+    },
+    "intents.manage": {
+      "name": "Manage Intents",
+      "description": "Allows managing intent definitions and enablement.",
+      "group": "aiPlatform"
+    },
+    "intents.view": {
+      "name": "View Intents",
+      "description": "Allows viewing intent definitions and match history.",
+      "group": "aiPlatform"
+    },
+    "invoices.create": {
+      "name": "Create Invoices",
+      "description": "Allows issuing new invoices.",
+      "group": "invoices"
+    },
+    "invoices.delete": {
+      "name": "Delete Invoices",
+      "description": "Allows removing invoice records.",
+      "group": "invoices"
+    },
+    "invoices.edit": {
+      "name": "Edit Invoices",
+      "description": "Allows updating invoice details.",
+      "group": "invoices"
+    },
+    "invoices.view": {
+      "name": "View Invoices",
+      "description": "Allows viewing invoices and billing documents.",
+      "group": "invoices"
+    },
+    "knowledge.import": {
+      "name": "Import Knowledge",
+      "description": "Allows importing documents and generating knowledge chunks.",
       "group": "knowledge"
     },
     "knowledge.manage": {
@@ -597,55 +907,385 @@
       "description": "Allows managing knowledge sources and documents.",
       "group": "knowledge"
     },
-    "knowledge.import": {
-      "name": "Import Knowledge",
-      "description": "Allows importing documents and generating knowledge chunks.",
-      "group": "knowledge"
-    },
     "knowledge.publish": {
       "name": "Publish Knowledge",
       "description": "Allows publishing knowledge document versions.",
       "group": "knowledge"
     },
-    "whatsapp.view": {
-      "name": "View WhatsApp Automation",
-      "description": "Allows viewing WhatsApp automation settings.",
-      "group": "whatsapp"
-    },
-    "whatsapp.run": {
-      "name": "Run WhatsApp Automation (Legacy)",
-      "description": "Legacy permission mapped to View WhatsApp.",
-      "group": "whatsapp"
-    },
-    "ai.knowledge.manage": {
-      "name": "Manage AI Knowledge (Legacy)",
-      "description": "Legacy permission mapped to Manage Knowledge Base.",
+    "knowledge.read": {
+      "name": "Read Knowledge",
+      "description": "Query knowledge base.",
       "group": "knowledge"
     },
-    "ai.whatsapp.manage": {
-      "name": "Manage WhatsApp Integration (Legacy)",
-      "description": "Legacy permission mapped to Manage Channels.",
-      "group": "channels"
+    "knowledge.view": {
+      "name": "View Knowledge Base",
+      "description": "Allows viewing knowledge sources and documents.",
+      "group": "knowledge"
     },
-    "channel.platform.view": {
-      "name": "View Channel Platform",
-      "description": "Allows viewing channel platform events and delivery status.",
+    "leads.archive": {
+      "name": "Archive Leads",
+      "description": "Archive or restore leads.",
+      "group": "leads"
+    },
+    "leads.assign": {
+      "name": "Assign Leads",
+      "description": "Assign leads to agents.",
+      "group": "leads"
+    },
+    "leads.convert": {
+      "name": "Convert Leads",
+      "description": "Convert leads to customers.",
+      "group": "leads"
+    },
+    "leads.create": {
+      "name": "Create Leads",
+      "description": "Create leads.",
+      "group": "leads"
+    },
+    "leads.delete": {
+      "name": "Delete Leads",
+      "description": "Archive and delete leads.",
+      "group": "leads"
+    },
+    "leads.edit": {
+      "name": "Edit Leads",
+      "description": "Update lead fields.",
+      "group": "leads"
+    },
+    "leads.export": {
+      "name": "Export Leads",
+      "description": "Export lead data.",
+      "group": "leads"
+    },
+    "leads.manage": {
+      "name": "Manage Leads",
+      "description": "Manage pipelines, stages, and lead platform settings.",
+      "group": "leads"
+    },
+    "leads.merge": {
+      "name": "Merge Leads",
+      "description": "Merge duplicate leads.",
+      "group": "leads"
+    },
+    "leads.qualify": {
+      "name": "Qualify Leads",
+      "description": "Qualify or disqualify leads.",
+      "group": "leads"
+    },
+    "leads.view": {
+      "name": "View Leads",
+      "description": "View leads and pipeline.",
+      "group": "leads"
+    },
+    "licenses.assign": {
+      "name": "Assign Licenses",
+      "description": "Assign plans and add-ons.",
+      "group": "licenses"
+    },
+    "licenses.read": {
+      "name": "Read Licenses",
+      "description": "View license and entitlements.",
+      "group": "licenses"
+    },
+    "licenses.write": {
+      "name": "Write Licenses",
+      "description": "Manage company licenses.",
+      "group": "licenses"
+    },
+    "marketplace.develop": {
+      "name": "Develop Plugin Platform",
+      "description": "Publish and manage custom plugins.",
+      "group": "marketplace"
+    },
+    "marketplace.install": {
+      "name": "Install Plugin Platform",
+      "description": "Install plugins from marketplace.",
+      "group": "marketplace"
+    },
+    "marketplace.manage": {
+      "name": "Manage Plugin Platform",
+      "description": "Install, enable, disable, and upgrade plugins.",
+      "group": "marketplace"
+    },
+    "marketplace.view": {
+      "name": "View Plugin Platform",
+      "description": "View plugin marketplace.",
+      "group": "marketplace"
+    },
+    "operations.read": {
+      "name": "Read Operations",
+      "description": "View operations queue and workspace.",
+      "group": "operations"
+    },
+    "operations.write": {
+      "name": "Write Operations",
+      "description": "Execute operations commands.",
+      "group": "operations"
+    },
+    "opportunities.convert": {
+      "name": "Convert Opportunities",
+      "description": "Create opportunities from qualified leads.",
+      "group": "opportunities"
+    },
+    "opportunities.create": {
+      "name": "Create Opportunities",
+      "description": "Create opportunities.",
+      "group": "opportunities"
+    },
+    "opportunities.delete": {
+      "name": "Delete Opportunities",
+      "description": "Archive or delete opportunities.",
+      "group": "opportunities"
+    },
+    "opportunities.edit": {
+      "name": "Edit Opportunities",
+      "description": "Update opportunity fields.",
+      "group": "opportunities"
+    },
+    "opportunities.view": {
+      "name": "View Opportunities",
+      "description": "View opportunities and pipeline.",
+      "group": "opportunities"
+    },
+    "organization.manage": {
+      "name": "Manage Multi-Branch",
+      "description": "Manage regions, groups, and branch policies.",
+      "group": "organization"
+    },
+    "organization.transfer": {
+      "name": "Transfer Multi-Branch",
+      "description": "Initiate cross-branch transfers.",
+      "group": "organization"
+    },
+    "organization.view": {
+      "name": "View Multi-Branch",
+      "description": "View organization hierarchy and analytics.",
+      "group": "organization"
+    },
+    "permissions.edit": {
+      "name": "Edit User Permissions (Legacy)",
+      "description": "Legacy permission mapped to Edit Roles.",
+      "group": "roles"
+    },
+    "permissions.view": {
+      "name": "View User Permissions (Legacy)",
+      "description": "Legacy permission mapped to View Roles.",
+      "group": "roles"
+    },
+    "products.create": {
+      "name": "Create Products",
+      "description": "Create catalog products.",
+      "group": "products"
+    },
+    "products.delete": {
+      "name": "Delete Products",
+      "description": "Archive catalog products.",
+      "group": "products"
+    },
+    "products.edit": {
+      "name": "Edit Products",
+      "description": "Update catalog products.",
+      "group": "products"
+    },
+    "products.pricing": {
+      "name": "Pricing Products",
+      "description": "Manage global and regional pricing.",
+      "group": "products"
+    },
+    "products.view": {
+      "name": "View Products",
+      "description": "View product and service catalog.",
+      "group": "products"
+    },
+    "prompts.manage": {
+      "name": "Manage Prompt Templates",
+      "description": "Allows managing prompt templates and versions.",
       "group": "aiPlatform"
     },
-    "channel.platform.route": {
-      "name": "Route Channel Events",
-      "description": "Allows routing inbound channel events.",
+    "prompts.preview": {
+      "name": "Preview Prompt Templates",
+      "description": "Allows previewing rendered prompt output.",
       "group": "aiPlatform"
     },
-    "channel.platform.dispatch": {
-      "name": "Dispatch Channel Messages",
-      "description": "Allows dispatching outbound channel messages.",
+    "prompts.publish": {
+      "name": "Publish Prompt Templates",
+      "description": "Allows publishing validated prompt template versions.",
       "group": "aiPlatform"
     },
-    "runtime.view": {
-      "name": "View AI Runtime",
-      "description": "Allows viewing runtime sessions and pipeline steps.",
+    "prompts.rollback": {
+      "name": "Rollback Prompt Templates",
+      "description": "Allows rolling back prompt templates to prior versions.",
       "group": "aiPlatform"
+    },
+    "prompts.view": {
+      "name": "View Prompt Templates",
+      "description": "Allows viewing prompt templates and build history.",
+      "group": "aiPlatform"
+    },
+    "quotes.approve": {
+      "name": "Approve Quotes",
+      "description": "Approve or reject quote approvals.",
+      "group": "quotes"
+    },
+    "quotes.create": {
+      "name": "Create Quotes",
+      "description": "Create quotes.",
+      "group": "quotes"
+    },
+    "quotes.delete": {
+      "name": "Delete Quotes",
+      "description": "Archive quotes.",
+      "group": "quotes"
+    },
+    "quotes.edit": {
+      "name": "Edit Quotes",
+      "description": "Edit draft quotes.",
+      "group": "quotes"
+    },
+    "quotes.send": {
+      "name": "Send Quotes",
+      "description": "Send quotes to customers.",
+      "group": "quotes"
+    },
+    "quotes.view": {
+      "name": "View Quotes",
+      "description": "View quotes.",
+      "group": "quotes"
+    },
+    "reports.ai_consumption": {
+      "name": "AI consumption Reports",
+      "description": "View AI token consumption and paid usage report.",
+      "group": "reports"
+    },
+    "reports.ai_operations": {
+      "name": "AI Reports",
+      "description": "View AI operations report.",
+      "group": "reports"
+    },
+    "reports.bookings": {
+      "name": "Bookings Reports",
+      "description": "View bookings report.",
+      "group": "reports"
+    },
+    "reports.companies": {
+      "name": "Companies Reports",
+      "description": "View companies report.",
+      "group": "reports"
+    },
+    "reports.company_revenue": {
+      "name": "Company revenue Reports",
+      "description": "View company SaaS revenue report.",
+      "group": "reports"
+    },
+    "reports.customers": {
+      "name": "Customers Reports",
+      "description": "View customers report.",
+      "group": "reports"
+    },
+    "reports.executive": {
+      "name": "Executive Reports",
+      "description": "View executive report.",
+      "group": "reports"
+    },
+    "reports.export": {
+      "name": "Export Reports",
+      "description": "Export reports (CSV/PDF).",
+      "group": "reports"
+    },
+    "reports.financial": {
+      "name": "Financial Reports",
+      "description": "View financial report.",
+      "group": "reports"
+    },
+    "reports.invoices": {
+      "name": "Invoices Reports",
+      "description": "View invoices report.",
+      "group": "reports"
+    },
+    "reports.leads": {
+      "name": "Leads Reports",
+      "description": "View leads report.",
+      "group": "reports"
+    },
+    "reports.operations": {
+      "name": "Operations Reports",
+      "description": "View operations report.",
+      "group": "reports"
+    },
+    "reports.opportunities": {
+      "name": "Opportunities Reports",
+      "description": "View opportunities report.",
+      "group": "reports"
+    },
+    "reports.overview": {
+      "name": "Overview Reports",
+      "description": "View overview analytics report.",
+      "group": "reports"
+    },
+    "reports.products": {
+      "name": "Products Reports",
+      "description": "View products report.",
+      "group": "reports"
+    },
+    "reports.quotes": {
+      "name": "Quotes Reports",
+      "description": "View quotes report.",
+      "group": "reports"
+    },
+    "reports.schedule": {
+      "name": "Schedule Reports",
+      "description": "Create scheduled report deliveries.",
+      "group": "reports"
+    },
+    "reports.subscriptions": {
+      "name": "Subscriptions Reports",
+      "description": "View subscriptions report.",
+      "group": "reports"
+    },
+    "reports.tickets": {
+      "name": "Tickets Reports",
+      "description": "View tickets report.",
+      "group": "reports"
+    },
+    "reports.view": {
+      "name": "View Reports",
+      "description": "Allows access to business and analytics reports.",
+      "group": "reports"
+    },
+    "retrieval.execute": {
+      "name": "Execute Retrieval",
+      "description": "Allows executing retrieval context assembly.",
+      "group": "aiPlatform"
+    },
+    "retrieval.manage": {
+      "name": "Manage Retrieval",
+      "description": "Allows managing retrieval policies and configuration.",
+      "group": "aiPlatform"
+    },
+    "retrieval.view": {
+      "name": "View Retrieval",
+      "description": "Allows viewing retrieval policies, executions, and contexts.",
+      "group": "aiPlatform"
+    },
+    "roles.create": {
+      "name": "Create Roles",
+      "description": "Allows creating custom roles.",
+      "group": "roles"
+    },
+    "roles.delete": {
+      "name": "Delete Roles",
+      "description": "Allows deleting custom roles.",
+      "group": "roles"
+    },
+    "roles.edit": {
+      "name": "Edit Roles",
+      "description": "Allows editing roles and their permissions.",
+      "group": "roles"
+    },
+    "roles.view": {
+      "name": "View Roles",
+      "description": "Allows viewing roles and their permissions.",
+      "group": "roles"
     },
     "runtime.execute": {
       "name": "Execute AI Runtime",
@@ -657,94 +1297,124 @@
       "description": "Allows managing runtime policies and configuration.",
       "group": "aiPlatform"
     },
-    "agents.view": {
-      "name": "View AI Agents",
-      "description": "Allows viewing AI agent workflows, events, and checkpoints.",
+    "runtime.view": {
+      "name": "View AI Runtime",
+      "description": "Allows viewing runtime sessions and pipeline steps.",
       "group": "aiPlatform"
     },
-    "agents.execute": {
-      "name": "Execute AI Agents",
-      "description": "Allows starting, resuming, and cancelling AI agent workflows.",
-      "group": "aiPlatform"
+    "scheduling.edit": {
+      "name": "Manage Scheduling",
+      "description": "Allows creating and editing scheduling configuration.",
+      "group": "scheduling"
     },
-    "agents.manage": {
-      "name": "Manage AI Agents",
-      "description": "Allows managing AI agent configuration and policies.",
-      "group": "aiPlatform"
+    "scheduling.view": {
+      "name": "View Scheduling",
+      "description": "Allows viewing scheduling resources, availability, rules, and holidays.",
+      "group": "scheduling"
     },
-    "agents.create": {
-      "name": "Create AI Employees",
-      "description": "Allows creating AI employee profiles in the workspace.",
-      "group": "aiPlatform"
+    "settings.edit": {
+      "name": "Edit Settings",
+      "description": "Allows modifying company and application settings.",
+      "group": "settings"
     },
-    "agents.edit": {
-      "name": "Edit AI Employees",
-      "description": "Allows editing AI employee profiles and assignments.",
-      "group": "aiPlatform"
+    "settings.view": {
+      "name": "View Settings",
+      "description": "Allows viewing company and application settings.",
+      "group": "settings"
     },
-    "agents.delete": {
-      "name": "Archive AI Employees",
-      "description": "Allows archiving AI employee profiles.",
-      "group": "aiPlatform"
+    "skills.create": {
+      "name": "Create Skills",
+      "description": "Create AI skills.",
+      "group": "skills"
     },
-    "ai.execution.view": {
-      "name": "View AI Executions",
-      "description": "Allows viewing AI execution history and metrics.",
-      "group": "aiPlatform"
+    "skills.edit": {
+      "name": "Edit Skills",
+      "description": "Edit AI skills.",
+      "group": "skills"
     },
-    "ai.execution.manage": {
-      "name": "Manage AI Executions",
-      "description": "Allows managing execution policies and running jobs.",
-      "group": "aiPlatform"
+    "skills.manage": {
+      "name": "Manage Skills",
+      "description": "Manage AI skills.",
+      "group": "skills"
     },
-    "ai.providers.view": {
-      "name": "View AI Providers",
-      "description": "Allows viewing AI provider definitions and connections.",
-      "group": "aiPlatform"
+    "skills.publish": {
+      "name": "Publish Skills",
+      "description": "Publish AI skill versions.",
+      "group": "skills"
     },
-    "ai.providers.manage": {
-      "name": "Manage AI Providers",
-      "description": "Allows managing AI provider connections and configuration.",
-      "group": "aiPlatform"
+    "skills.rollback": {
+      "name": "Rollback Skills",
+      "description": "Rollback AI skill versions.",
+      "group": "skills"
     },
-    "intents.view": {
-      "name": "View Intents",
-      "description": "Allows viewing intent definitions and match history.",
-      "group": "aiPlatform"
+    "skills.view": {
+      "name": "View Skills",
+      "description": "View AI skills catalog.",
+      "group": "skills"
     },
-    "intents.manage": {
-      "name": "Manage Intents",
-      "description": "Allows managing intent definitions and enablement.",
-      "group": "aiPlatform"
+    "subscriptions.edit": {
+      "name": "Edit Subscriptions (Legacy)",
+      "description": "Legacy permission; use Manage Billing where possible.",
+      "group": "billing"
     },
-    "prompts.view": {
-      "name": "View Prompt Templates",
-      "description": "Allows viewing prompt templates and build history.",
-      "group": "aiPlatform"
+    "subscriptions.view": {
+      "name": "View Subscriptions (Legacy)",
+      "description": "Legacy permission; use View Billing where possible.",
+      "group": "billing"
     },
-    "prompts.manage": {
-      "name": "Manage Prompt Templates",
-      "description": "Allows managing prompt templates and versions.",
-      "group": "aiPlatform"
+    "tasks.assign": {
+      "name": "Assign Tasks",
+      "description": "Assign tasks to users.",
+      "group": "tasks"
     },
-    "prompts.publish": {
-      "name": "Publish Prompt Templates",
-      "description": "Allows publishing validated prompt template versions.",
-      "group": "aiPlatform"
+    "tasks.read": {
+      "name": "Read Tasks",
+      "description": "View tasks.",
+      "group": "tasks"
     },
-    "prompts.preview": {
-      "name": "Preview Prompt Templates",
-      "description": "Allows previewing rendered prompt output.",
-      "group": "aiPlatform"
+    "tasks.write": {
+      "name": "Write Tasks",
+      "description": "Create and manage tasks.",
+      "group": "tasks"
     },
-    "prompts.rollback": {
-      "name": "Rollback Prompt Templates",
-      "description": "Allows rolling back prompt templates to prior versions.",
-      "group": "aiPlatform"
+    "tickets.assign": {
+      "name": "Assign Tickets",
+      "description": "Assign support tickets to agents.",
+      "group": "tickets"
     },
-    "tools.view": {
-      "name": "View Tools",
-      "description": "Allows viewing tool definitions and execution history.",
+    "tickets.close": {
+      "name": "Close Tickets",
+      "description": "Close or resolve support tickets.",
+      "group": "tickets"
+    },
+    "tickets.comment": {
+      "name": "Comment Tickets",
+      "description": "Add comments to support tickets.",
+      "group": "tickets"
+    },
+    "tickets.create": {
+      "name": "Create Tickets",
+      "description": "Create support tickets.",
+      "group": "tickets"
+    },
+    "tickets.edit": {
+      "name": "Edit Tickets",
+      "description": "Update support ticket fields.",
+      "group": "tickets"
+    },
+    "tickets.manage": {
+      "name": "Manage Tickets",
+      "description": "Manage support ticket platform settings.",
+      "group": "tickets"
+    },
+    "tickets.view": {
+      "name": "View Tickets",
+      "description": "View support tickets.",
+      "group": "tickets"
+    },
+    "tools.execute": {
+      "name": "Execute Tools",
+      "description": "Allows executing tools through the tool router.",
       "group": "aiPlatform"
     },
     "tools.manage": {
@@ -752,54 +1422,34 @@
       "description": "Allows managing tool definitions and enablement.",
       "group": "aiPlatform"
     },
-    "tools.execute": {
-      "name": "Execute Tools",
-      "description": "Allows executing tools through the tool router.",
+    "tools.view": {
+      "name": "View Tools",
+      "description": "Allows viewing tool definitions and execution history.",
       "group": "aiPlatform"
     },
-    "automation.view": {
-      "name": "View Automation",
-      "description": "Allows viewing automation flows, runs, and workflow builder access.",
-      "group": "automation"
+    "users.create": {
+      "name": "Create Users",
+      "description": "Allows creating new user accounts.",
+      "group": "users"
     },
-    "automation.simulate": {
-      "name": "Simulate Workflows",
-      "description": "Allows dry-run workflow simulation in the builder without production execution.",
-      "group": "automation"
+    "users.delete": {
+      "name": "Delete Users",
+      "description": "Allows deactivating or removing user accounts.",
+      "group": "users"
     },
-    "embeddings.view": {
-      "name": "View Embeddings",
-      "description": "Allows viewing embedding providers, jobs, and vectors.",
-      "group": "aiPlatform"
+    "users.edit": {
+      "name": "Manage Users",
+      "description": "Allows creating, editing, and assigning roles to users.",
+      "group": "users"
     },
-    "embeddings.manage": {
-      "name": "Manage Embeddings",
-      "description": "Allows managing embedding provider connections.",
-      "group": "aiPlatform"
+    "users.view": {
+      "name": "View Users",
+      "description": "Allows viewing company users and their profiles.",
+      "group": "users"
     },
-    "embeddings.generate": {
-      "name": "Generate Embeddings",
-      "description": "Allows queueing and processing embedding jobs.",
-      "group": "aiPlatform"
-    },
-    "vectorstores.view": {
-      "name": "View Vector Stores",
-      "description": "Allows viewing vector store providers and collections.",
-      "group": "aiPlatform"
-    },
-    "vectorstores.manage": {
-      "name": "Manage Vector Stores",
-      "description": "Allows managing vector store provider connections.",
-      "group": "aiPlatform"
-    },
-    "collections.manage": {
-      "name": "Manage Collections",
-      "description": "Allows managing vector collections and indexed vectors.",
-      "group": "aiPlatform"
-    },
-    "vectorquery.view": {
-      "name": "View Vector Queries",
-      "description": "Allows viewing vector search policies and results.",
+    "vectorquery.execute": {
+      "name": "Execute Vector Queries",
+      "description": "Allows executing vector similarity searches.",
       "group": "aiPlatform"
     },
     "vectorquery.manage": {
@@ -807,25 +1457,45 @@
       "description": "Allows managing vector search policies and configuration.",
       "group": "aiPlatform"
     },
-    "vectorquery.execute": {
-      "name": "Execute Vector Queries",
-      "description": "Allows executing vector similarity searches.",
+    "vectorquery.view": {
+      "name": "View Vector Queries",
+      "description": "Allows viewing vector search policies and results.",
       "group": "aiPlatform"
     },
-    "retrieval.view": {
-      "name": "View Retrieval",
-      "description": "Allows viewing retrieval policies, executions, and contexts.",
+    "vectorstores.manage": {
+      "name": "Manage Vector Stores",
+      "description": "Allows managing vector store provider connections.",
       "group": "aiPlatform"
     },
-    "retrieval.manage": {
-      "name": "Manage Retrieval",
-      "description": "Allows managing retrieval policies and configuration.",
+    "vectorstores.view": {
+      "name": "View Vector Stores",
+      "description": "Allows viewing vector store providers and collections.",
       "group": "aiPlatform"
     },
-    "retrieval.execute": {
-      "name": "Execute Retrieval",
-      "description": "Allows executing retrieval context assembly.",
-      "group": "aiPlatform"
+    "whatsapp.run": {
+      "name": "Run WhatsApp Automation (Legacy)",
+      "description": "Legacy permission mapped to View WhatsApp.",
+      "group": "whatsapp"
+    },
+    "whatsapp.view": {
+      "name": "View WhatsApp Automation",
+      "description": "Allows viewing WhatsApp automation settings.",
+      "group": "whatsapp"
+    },
+    "workflow.execute": {
+      "name": "Execute Workflow",
+      "description": "Start and manage workflows.",
+      "group": "automation"
+    },
+    "workflow.read": {
+      "name": "Read Workflow",
+      "description": "View workflow executions.",
+      "group": "automation"
+    },
+    "workspace.view": {
+      "name": "Access Workspace",
+      "description": "Allows access to the company workspace area.",
+      "group": "workspace"
     }
   }
 }

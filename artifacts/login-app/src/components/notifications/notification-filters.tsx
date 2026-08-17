@@ -22,7 +22,7 @@ export function NotificationFilters({ filter, onChange }: NotificationFiltersPro
   const unreadOnly = filter.unreadOnly ?? false;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-white/10">
+    <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-border/50">
       <Button
         variant={unreadOnly ? "default" : "outline"}
         size="sm"

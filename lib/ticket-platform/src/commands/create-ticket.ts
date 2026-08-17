@@ -9,6 +9,7 @@ export type CreateTicketInput = {
   priority?: TicketPriority;
   customerId?: string;
   conversationId?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export function executeCreateTicket(

@@ -64,6 +64,21 @@ export class NotificationRepository {
     };
   }
 
+  async getById(companyId: string, id: string): Promise<Notification | null> {
+    const { data, error } = await this.client
+      .from("notifications")
+      .select(
+        "id, company_id, user_id, title, message, type, category, is_read, archived_at, priority, event_type, channel, delivery_status, created_at",
+      )
+      .eq("company_id", companyId)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return mapRowToNotification(data as never);
+  }
+
   async getUnreadCount(companyId: string): Promise<number> {
     const { count, error } = await this.client
       .from("notifications")

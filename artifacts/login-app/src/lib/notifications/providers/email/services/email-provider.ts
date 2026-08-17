@@ -48,28 +48,54 @@ export class EmailProvider {
   }
 
   async testConnection(companyId: string, recipientEmail: string): Promise<EmailDeliveryResult> {
+    const rendered = this.renderer.renderEvent("generic_system", {
+      detail: "SMTP connection test",
+    });
+    return this.sendDirect(companyId, {
+      to: recipientEmail,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      queueId: "test",
+    });
+  }
+
+  /**
+   * Send a pre-rendered message via company SMTP settings (server-side credentials only).
+   * Used by connection tests and Email Template test-send.
+   */
+  async sendDirect(
+    companyId: string,
+    message: {
+      to: string;
+      subject: string;
+      html: string;
+      text: string;
+      queueId?: string;
+    },
+  ): Promise<EmailDeliveryResult> {
     const settings = await this.settingsRepository.getSecure(companyId);
     if (!settings?.enabled) {
       throw new Error("Email provider is disabled");
     }
+    if (!settings.smtpHost || !settings.fromEmail) {
+      throw new Error("Outbound email is not configured");
+    }
 
-    const rendered = this.renderer.renderEvent("generic_system", {
-      detail: "SMTP connection test",
-    });
-
+    const queueId = message.queueId ?? "direct";
     const started = Date.now();
     try {
       await this.transport.send(
         {
-          to: recipientEmail,
-          subject: rendered.subject,
-          html: rendered.html,
-          text: rendered.text,
+          to: message.to,
+          subject: message.subject,
+          html: message.html,
+          text: message.text,
         },
         this.toSmtpConfig(settings),
       );
       const result: EmailDeliveryResult = {
-        queueId: "test",
+        queueId,
         notificationId: null,
         companyId,
         provider: EMAIL_PROVIDER,
@@ -77,25 +103,25 @@ export class EmailProvider {
         durationMs: Date.now() - started,
         attempts: 1,
         lastError: null,
-        recipientEmail,
-        subject: rendered.subject,
+        recipientEmail: message.to,
+        subject: message.subject,
         timestamp: new Date().toISOString(),
       };
       await this.deliveryLogRepository.append(result);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const errMessage = error instanceof Error ? error.message : String(error);
       const result: EmailDeliveryResult = {
-        queueId: "test",
+        queueId,
         notificationId: null,
         companyId,
         provider: EMAIL_PROVIDER,
         status: "failed",
         durationMs: Date.now() - started,
         attempts: 1,
-        lastError: message,
-        recipientEmail,
-        subject: rendered.subject,
+        lastError: errMessage,
+        recipientEmail: message.to,
+        subject: message.subject,
         timestamp: new Date().toISOString(),
       };
       await this.deliveryLogRepository.append(result);

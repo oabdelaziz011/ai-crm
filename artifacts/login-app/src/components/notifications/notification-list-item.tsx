@@ -1,100 +1,64 @@
 import { format } from "date-fns";
 import { ar, enUS } from "date-fns/locale";
-import { Archive, MailOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { localizeNotification } from "@/lib/notification-i18n";
+import { cn } from "@/lib/utils";
+import { localizeNotification, type NotificationEntityLabels } from "@/lib/notification-i18n";
 import { notificationToLegacyItem } from "@/lib/notifications";
 import type { Notification } from "@/lib/notifications/types";
 
 type NotificationListItemProps = {
   notification: Notification;
-  onMarkRead?: (id: string) => void;
-  onMarkUnread?: (id: string) => void;
-  onArchive?: (id: string) => void;
+  onOpen?: (notification: Notification) => void;
   busy?: boolean;
+  entityLabels?: NotificationEntityLabels;
 };
 
-function PriorityDot({ priority }: { priority: Notification["priority"] }) {
-  const cls =
-    priority === "urgent"
-      ? "bg-rose-400"
-      : priority === "high"
-        ? "bg-amber-400"
-        : priority === "normal"
-          ? "bg-sky-400"
-          : "bg-muted-foreground/50";
-  return <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${cls}`} />;
-}
-
-export function NotificationListItem({
-  notification,
-  onMarkRead,
-  onMarkUnread,
-  onArchive,
-  busy,
-}: NotificationListItemProps) {
+export function NotificationListItem({ notification, onOpen, busy, entityLabels }: NotificationListItemProps) {
   const { t, i18n } = useTranslation("common");
-  const localized = localizeNotification(t, notificationToLegacyItem(notification));
+  const localized = localizeNotification(t, notificationToLegacyItem(notification), entityLabels, {
+    event: notification.event,
+    category: notification.category,
+  });
   const dateLocale = i18n.language === "ar" ? ar : enUS;
+  const unread = !notification.isRead;
 
   return (
-    <div className="px-4 py-3 hover:bg-white/[0.02] transition-colors">
-      <div className="flex items-start gap-3">
-        <PriorityDot priority={notification.priority} />
-        <div className="flex-1 min-w-0">
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => onOpen?.(notification)}
+      className={cn(
+        "w-full px-3 py-3 text-start transition-colors border-b border-border/40 last:border-b-0",
+        unread
+          ? "bg-primary/10 shadow-[inset_3px_0_0_0_hsl(var(--primary))] hover:bg-primary/15"
+          : "hover:bg-muted/50 opacity-80",
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <span
+          className={cn(
+            "mt-1.5 size-2 shrink-0 rounded-full",
+            unread ? "bg-primary shadow-[0_0_8px_hsl(var(--primary))]" : "bg-muted-foreground/30",
+          )}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
           <div className="flex items-center justify-between gap-2">
-            <p
-              className={`text-sm truncate ${notification.isRead ? "text-muted-foreground" : "font-semibold"}`}
-            >
+            <p className={cn("text-sm truncate", unread ? "font-semibold text-foreground" : "text-muted-foreground")}>
               {localized.title}
             </p>
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
-              {t(`notifications.category.${notification.category}`, notification.category)}
+              {t(`notifications.category.${notification.category}`, { defaultValue: notification.category })}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 break-words whitespace-pre-wrap">
             {localized.message}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1" dir="ltr">
+          <p className="text-[11px] text-muted-foreground" dir="ltr">
             {format(new Date(notification.createdAt), "PPp", { locale: dateLocale })}
           </p>
-          <div className="flex items-center gap-2 mt-2">
-            {notification.isRead ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs border-white/10"
-                disabled={busy}
-                onClick={() => onMarkUnread?.(notification.id)}
-              >
-                <MailOpen className="w-3.5 h-3.5 me-1" />
-                {t("notifications.platform.markUnread")}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs border-white/10"
-                disabled={busy}
-                onClick={() => onMarkRead?.(notification.id)}
-              >
-                {t("notifications.markRead")}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-              disabled={busy}
-              onClick={() => onArchive?.(notification.id)}
-            >
-              <Archive className="w-3.5 h-3.5 me-1" />
-              {t("notifications.platform.archive")}
-            </Button>
-          </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }

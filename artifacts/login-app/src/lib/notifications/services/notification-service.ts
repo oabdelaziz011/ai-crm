@@ -119,6 +119,10 @@ export class NotificationService {
     return this.repository.list({ companyId, page, pageSize, filter });
   }
 
+  getById(companyId: string, id: string): Promise<Notification | null> {
+    return this.repository.getById(companyId, id);
+  }
+
   getUnreadCount(companyId: string): Promise<number> {
     return this.repository.getUnreadCount(companyId);
   }

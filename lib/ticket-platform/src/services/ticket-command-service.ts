@@ -83,6 +83,7 @@ export class TicketCommandService {
       priority?: TicketPriority;
       customerId?: string;
       conversationId?: string;
+      metadata?: Record<string, unknown>;
     },
   ): Promise<{ ticket: TicketSummary }> {
     const actorUserId = assertTicketActor(ctx);
@@ -105,6 +106,7 @@ export class TicketCommandService {
       conversationId: readOptionalString(input.conversationId) ?? null,
       createdBy: actorUserId,
       slaDueAt,
+      metadata: input.metadata ?? {},
     });
 
     await this.writeAudit(input.companyId, actorUserId, "CREATE", "support_ticket", record.id, {

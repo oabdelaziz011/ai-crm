@@ -59,6 +59,77 @@ function canWriteNotifications(ctx: LoginAppPortContext): boolean {
   return ctx.isSuperAdmin || ctx.hasPermission("notification.write") || ctx.hasPermission("notifications.manage");
 }
 
+async function enrichNotificationParams(
+  client: SupabaseClient,
+  companyId: string,
+  params: Record<string, string>,
+): Promise<Record<string, string>> {
+  const next = { ...params };
+  const customerId = (next.customerId || next.customer_id || "").trim();
+  const invoiceId = (next.invoiceId || next.invoice_id || "").trim();
+  const bookingId = (next.bookingId || next.booking_id || "").trim();
+
+  if (customerId && !(next.customerName || next.name || "").trim()) {
+    const { data } = await client
+      .from("customers")
+      .select("name")
+      .eq("company_id", companyId)
+      .eq("id", customerId)
+      .maybeSingle();
+    if (data?.name) {
+      next.customerName = String(data.name);
+      next.name = String(data.name);
+    }
+  }
+
+  if (invoiceId && !(next.invoiceNumber || "").trim()) {
+    const { data } = await client
+      .from("invoices")
+      .select("invoice_number, customer_id, total_cents, currency")
+      .eq("company_id", companyId)
+      .eq("id", invoiceId)
+      .maybeSingle();
+    if (data) {
+      if (data.invoice_number) next.invoiceNumber = String(data.invoice_number);
+      if (!next.customerId && data.customer_id) next.customerId = String(data.customer_id);
+      if (!next.amount?.trim() && data.total_cents != null) {
+        const currency = String(data.currency || next.currency || "USD").toUpperCase();
+        next.amount = `${(Number(data.total_cents) / 100).toFixed(2)} ${currency}`;
+        next.amountCents = String(data.total_cents);
+        next.currency = currency;
+      }
+    }
+  }
+
+  if (bookingId && !(next.customerName || next.name || "").trim()) {
+    const { data } = await client
+      .from("scheduling_bookings")
+      .select("customer_id")
+      .eq("company_id", companyId)
+      .eq("id", bookingId)
+      .maybeSingle();
+    if (data?.customer_id && !next.customerId) {
+      next.customerId = String(data.customer_id);
+    }
+  }
+
+  // Second pass if invoice/booking filled customerId without a name.
+  if (next.customerId && !(next.customerName || next.name || "").trim()) {
+    const { data } = await client
+      .from("customers")
+      .select("name")
+      .eq("company_id", companyId)
+      .eq("id", next.customerId)
+      .maybeSingle();
+    if (data?.name) {
+      next.customerName = String(data.name);
+      next.name = String(data.name);
+    }
+  }
+
+  return next;
+}
+
 export function createLoginAppNotificationReadPort(
   client: SupabaseClient,
   ctx: LoginAppPortContext,
@@ -113,7 +184,7 @@ export function createLoginAppNotificationReadPort(
 }
 
 export function createLoginAppNotificationWritePort(
-  _client: SupabaseClient,
+  client: SupabaseClient,
   ctx: LoginAppPortContext,
 ): NotificationWritePort {
   const { notifications } = getNotificationServices();
@@ -124,21 +195,65 @@ export function createLoginAppNotificationWritePort(
         throw new Error("Permission denied");
       }
 
+      const metadata = (input.metadata ?? {}) as Record<string, unknown>;
+      const amountCents = Number(metadata.amountCents ?? 0);
+      const currency = String(metadata.currency ?? "USD");
+      const amountLabel =
+        typeof metadata.amount === "string" && metadata.amount.trim()
+          ? metadata.amount
+          : Number.isFinite(amountCents) && amountCents > 0
+            ? `${(amountCents / 100).toFixed(2)} ${currency}`
+            : "";
+      const invoiceId = String(metadata.invoiceId ?? (input.entityType === "invoice" ? input.entityId : "") ?? "");
+      const paymentId = String(metadata.paymentId ?? (input.entityType === "payment" ? input.entityId : "") ?? "");
+      const customerId = String(metadata.customerId ?? (input.entityType === "customer" ? input.entityId : "") ?? "");
+      const bookingId = String(
+        metadata.bookingId ?? (input.entityType === "booking" ? input.entityId : "") ?? "",
+      );
+
       const mappedEvent = EVENT_TYPE_MAP[input.eventType] ?? "generic_system";
-      const messagePayload = JSON.stringify({
-        messageKey: "notifications.platform.templates.genericSystem.message",
-        params: {
-          title: input.title,
-          body: input.body,
-          correlationId: input.correlationId,
-          entityType: input.entityType ?? "",
-          entityId: input.entityId ?? "",
-          navigationTarget: input.navigationTarget ?? "",
-          severity: input.severity,
-          recipientRole: input.recipientRole ?? "",
-          ...(input.metadata ?? {}),
-        },
-      });
+      let params: Record<string, string> = {
+        title: input.title,
+        body: input.body,
+        detail: input.body,
+        amount: amountLabel,
+        amountCents: Number.isFinite(amountCents) ? String(amountCents) : "",
+        currency,
+        invoiceId,
+        paymentId,
+        customerId,
+        bookingId,
+        correlationId: input.correlationId ?? "",
+        entityType: input.entityType ?? "",
+        entityId: input.entityId ?? "",
+        navigationTarget: input.navigationTarget ?? "",
+        severity: input.severity ?? "",
+        recipientRole: input.recipientRole ?? "",
+        ...Object.fromEntries(
+          Object.entries(metadata)
+            .filter(([, value]) => value != null && String(value).trim() !== "")
+            .map(([key, value]) => [key, String(value)]),
+        ),
+      };
+
+      if (!params.invoiceId && input.entityType === "invoice" && input.entityId) {
+        params.invoiceId = input.entityId;
+      }
+      if (!params.bookingId && input.entityType === "booking" && input.entityId) {
+        params.bookingId = input.entityId;
+      }
+      if (!params.customerId && input.entityType === "customer" && input.entityId) {
+        params.customerId = input.entityId;
+      }
+      if (!params.reason?.trim() && input.body?.trim()) {
+        params.reason = input.body;
+      }
+
+      try {
+        params = await enrichNotificationParams(client, input.tenantId, params);
+      } catch (error) {
+        console.warn("[notifications] param enrichment failed", error);
+      }
 
       const created = await notifications.createNotification({
         companyId: input.tenantId,
@@ -147,10 +262,7 @@ export function createLoginAppNotificationWritePort(
         userId: input.recipientUserId ?? null,
         priority: (input.priority as NotificationPriority) ?? "normal",
         channels: ["in_app"],
-        params: {
-          title: input.title,
-          body: input.body,
-        },
+        params,
       });
 
       const first = created[0];
@@ -163,7 +275,7 @@ export function createLoginAppNotificationWritePort(
         tenantId: first.companyId,
         recipientUserId: first.recipient.userId,
         title: input.title,
-        message: messagePayload,
+        message: first.messagePayload,
         category: first.category,
         priority: first.priority,
         severity: input.severity,

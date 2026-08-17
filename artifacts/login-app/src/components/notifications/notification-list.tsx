@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NotificationListItem } from "@/components/notifications/notification-list-item";
+import type { NotificationEntityLabels } from "@/lib/notification-i18n";
 import type { Notification } from "@/lib/notifications/types";
 
 type NotificationListProps = {
@@ -10,10 +11,9 @@ type NotificationListProps = {
   isFetchingNextPage?: boolean;
   hasNextPage?: boolean;
   onLoadMore?: () => void;
-  onMarkRead?: (id: string) => void;
-  onMarkUnread?: (id: string) => void;
-  onArchive?: (id: string) => void;
+  onOpen?: (notification: Notification) => void;
   busy?: boolean;
+  entityLabels?: NotificationEntityLabels;
 };
 
 export function NotificationList({
@@ -22,10 +22,9 @@ export function NotificationList({
   isFetchingNextPage,
   hasNextPage,
   onLoadMore,
-  onMarkRead,
-  onMarkUnread,
-  onArchive,
+  onOpen,
   busy,
+  entityLabels,
 }: NotificationListProps) {
   const { t } = useTranslation("common");
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -58,27 +57,22 @@ export function NotificationList({
   }
 
   if (items.length === 0) {
-    return (
-      <p className="px-4 py-6 text-sm text-muted-foreground">{t("notifications.empty")}</p>
-    );
+    return <p className="px-4 py-6 text-sm text-muted-foreground">{t("notifications.empty")}</p>;
   }
 
   return (
-    <div className="divide-y divide-white/5">
+    <div>
       {items.map((notification) => (
         <NotificationListItem
           key={notification.id}
           notification={notification}
-          onMarkRead={onMarkRead}
-          onMarkUnread={onMarkUnread}
-          onArchive={onArchive}
+          onOpen={onOpen}
           busy={busy}
+          entityLabels={entityLabels}
         />
       ))}
       <div ref={sentinelRef} className="h-8 flex items-center justify-center">
-        {isFetchingNextPage ? (
-          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-        ) : null}
+        {isFetchingNextPage ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : null}
       </div>
     </div>
   );

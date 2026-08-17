@@ -26,10 +26,13 @@ export function createTicketNotificationBridge(): TicketNotificationPort {
         recipients: [{ userId: recipientUserId, companyId: input.companyId }],
         channels: ["in_app"],
         params: {
+          title: NOTIFICATION_EVENT_BY_KIND[input.kind],
+          kind: NOTIFICATION_EVENT_BY_KIND[input.kind],
           ticketId: input.ticketId,
           ticketNumber: input.ticketNumber,
           subject: input.subject,
-          kind: NOTIFICATION_EVENT_BY_KIND[input.kind],
+          body: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
+          detail: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
           ...(input.metadata ?? {}),
         },
       });

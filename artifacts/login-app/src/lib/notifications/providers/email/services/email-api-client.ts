@@ -97,6 +97,27 @@ export function testEmailConnection(companyId: string, recipientEmail: string) {
   return postEmailApi("/email/test-connection", { companyId, recipientEmail });
 }
 
+export type EmailTemplateTestSendResponse = {
+  ok: true;
+  templateId: string;
+  templateCode: string;
+  recipientEmail: string;
+  subject: string;
+  unresolved: string[];
+};
+
+export function testSendEmailTemplate(input: {
+  companyId: string;
+  templateId: string;
+  recipientEmail: string;
+}): Promise<EmailTemplateTestSendResponse> {
+  return postEmailApi<EmailTemplateTestSendResponse>("/email/templates/test-send", {
+    companyId: input.companyId,
+    templateId: input.templateId,
+    recipientEmail: input.recipientEmail,
+  });
+}
+
 export function processEmailQueue(companyId: string) {
   return postEmailApi("/email/process-queue", { companyId });
 }

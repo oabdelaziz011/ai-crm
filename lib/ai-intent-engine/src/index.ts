@@ -49,3 +49,4 @@ export * from "./repositories/supabase-intent-repositories.js";
 export * from "./services/intent-registry-service.js";
 export * from "./services/intent-matching-service.js";
 export * from "./services/intent-engine-service.js";
+export * from "./email-routing/index.js";

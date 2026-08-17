@@ -13,18 +13,28 @@ import { useOnboardOwnCompany } from "@/hooks/companies/use-company-onboarding";
 import { usePlans } from "@/hooks/use-plans";
 import { useToast } from "@/hooks/use-toast";
 import { AUTH_CONTROL_CLASS } from "@/lib/auth/auth-field-styles";
+import { resolveAuthErrorKey } from "@/lib/auth-errors";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import { persistPreferredLanguage } from "@/lib/i18n/persist-preferred-language";
+import { isAppLanguage } from "@/lib/i18n/resolve-app-language";
 import {
+  clearAwaitingCompanyMembership,
+  clearPendingCompanyOnboarding,
   COMPANY_BUSINESS_TYPES,
   COMPANY_INDUSTRIES,
   COMPANY_ONBOARDING_CURRENCIES,
+  OWNER_JOB_TITLE_OPTIONS,
   buildCompanyOnboardingPayload,
   buildOwnerDisplayName,
   emptyCompanyOnboardingValues,
+  markAwaitingCompanyMembership,
+  markCompanyOnboardingCompleted,
   savePendingCompanyOnboarding,
   validateCompanyOnboardingStep,
   type CompanyOnboardingFieldErrors,
   type CompanyOnboardingValues,
 } from "@/lib/companies/onboarding";
+import { supabase } from "@/lib/supabase";
 import {
   COMPANY_GEO_COUNTRIES,
   geoLabel,
@@ -70,16 +80,95 @@ function splitFullName(fullName: string): { first: string; last: string } {
   return { first: parts[0], last: parts.slice(1).join(" ") };
 }
 
+function ownerJobTitleLabel(
+  value: string,
+  translate: (key: string) => string,
+): string {
+  const option = OWNER_JOB_TITLE_OPTIONS.find((item) => item.value === value);
+  return option
+    ? translate(`companyOnboarding.ownerJobTitles.${option.i18nKey}`)
+    : value;
+}
+
+const REGISTER_FIELD_IDS: Record<string, string> = {
+  fullName: "reg-full-name",
+  jobTitle: "reg-job-title",
+  email: "reg-email",
+  password: "reg-password",
+  phone: "reg-phone",
+  name: "reg-name",
+  legalName: "reg-legal",
+  businessType: "reg-business-type",
+  industry: "reg-industry",
+  contactEmail: "reg-contact-email",
+  contactPhone: "reg-contact-phone",
+  website: "reg-website",
+  country: "reg-country",
+  city: "reg-city",
+  address: "reg-address",
+  timezone: "reg-timezone",
+  currency: "reg-currency",
+};
+
+function scrollToFirstError(fieldKey: string | undefined) {
+  if (!fieldKey) return;
+  const id = REGISTER_FIELD_IDS[fieldKey];
+  if (!id) return;
+  requestAnimationFrame(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById(id)?.focus?.();
+  });
+}
+
+const MIN_PASSWORD_LENGTH = 6;
+
 function validateAccountStep(account: AccountDraft): AccountFieldErrors {
   const errors: AccountFieldErrors = {};
   if (!account.fullName.trim()) errors.fullName = "required";
   if (!account.jobTitle.trim()) errors.jobTitle = "required";
+  if (!account.phone.trim()) errors.phone = "required";
+  else if (account.phone.trim().length > 40) errors.phone = "max";
   if (!account.email.trim()) errors.email = "required";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email.trim())) {
     errors.email = "emailInvalid";
   }
-  if (!account.password || account.password.length < 6) errors.password = "passwordMin";
+  if (!account.password) errors.password = "required";
+  else if (account.password.length < MIN_PASSWORD_LENGTH) errors.password = "passwordMin";
   return errors;
+}
+
+function isAccountStepValid(account: AccountDraft): boolean {
+  return Object.keys(validateAccountStep(account)).length === 0;
+}
+
+function accountErrorMessage(
+  field: keyof AccountDraft,
+  code: string | undefined,
+  translate: (key: string, options?: Record<string, string>) => string,
+): string | undefined {
+  if (!code) return undefined;
+  if (field === "password") {
+    if (code === "weakPassword") return translate("auth.errors.weakPassword");
+    if (code === "required") {
+      return translate("companyOnboarding.validation.required", {
+        defaultValue: translate("auth.validation.passwordMin"),
+      });
+    }
+    return translate("auth.validation.passwordMin");
+  }
+  if (field === "email") {
+    if (code === "emailAlreadyExists") return translate("auth.errors.emailAlreadyExists");
+    if (code === "emailInvalid" || code === "invalidEmail") {
+      return translate("auth.validation.email");
+    }
+    return translate(`companyOnboarding.validation.${code}`, { defaultValue: code });
+  }
+  if (field === "phone") {
+    return translate(`companyOnboarding.validation.${code}`, {
+      defaultValue: translate("companyOnboarding.validation.required"),
+    });
+  }
+  return translate(`companyOnboarding.validation.${code}`, { defaultValue: code });
 }
 
 function syncOwnerFromAccount(
@@ -97,7 +186,8 @@ function syncOwnerFromAccount(
     ownerLastName: last,
     ownerDisplayName: displayName,
     ownerEmail: account.email.trim(),
-    ownerPhone: account.phone.trim() || values.ownerPhone,
+    ownerPhone:
+      account.phone.trim() || values.ownerPhone.trim() || values.contactPhone.trim(),
     ownerJobTitle: account.jobTitle.trim() || "Owner",
     contactEmail: values.contactEmail.trim() || account.email.trim(),
     contactPhone: values.contactPhone.trim() || account.phone.trim(),
@@ -109,11 +199,19 @@ export default function Register() {
   const isRtl = i18n.dir() === "rtl";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, isLoading, signUp, refreshAuthContext } = useAuth();
+  const { user, profile, isLoading, signUp, refreshAuthContext, applyCompanyMembership } =
+    useAuth();
   const authErrorMessage = useAuthErrorMessage();
   const onboard = useOnboardOwnCompany();
   const { data: plans = [] } = usePlans();
   const submittingRef = useRef(false);
+  const accountRef = useRef<AccountDraft>({
+    fullName: "",
+    jobTitle: "Owner",
+    email: "",
+    password: "",
+    phone: "",
+  });
 
   const [stepIndex, setStepIndex] = useState(0);
   const [account, setAccount] = useState<AccountDraft>({
@@ -123,6 +221,7 @@ export default function Register() {
     password: "",
     phone: "",
   });
+  const [accountAttempted, setAccountAttempted] = useState(false);
   const [accountErrors, setAccountErrors] = useState<AccountFieldErrors>({});
   const [values, setValues] = useState<CompanyOnboardingValues>(() =>
     emptyCompanyOnboardingValues({ timezone: "Asia/Riyadh", currency: "SAR" }),
@@ -131,6 +230,9 @@ export default function Register() {
   const [rootError, setRootError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  accountRef.current = account;
+  const accountValid = isAccountStepValid(account);
+
   const step = REGISTER_STEPS[stepIndex] ?? "account";
   const basicPlan = useMemo(
     () => plans.find((plan) => /basic/i.test(plan.name ?? "")) ?? plans[0] ?? null,
@@ -138,14 +240,46 @@ export default function Register() {
   );
 
   useEffect(() => {
+    // Only leave register once the user already has a company — never interrupt
+    // an in-progress signup/onboard attempt just because a session appeared.
     if (!user || isSubmitting) return;
-    setLocation("/dashboard");
-  }, [user, isSubmitting, setLocation]);
+    if (profile?.company_id) {
+      setLocation("/dashboard");
+    }
+  }, [user, isSubmitting, profile?.company_id, setLocation]);
 
   const patchAccount = (partial: Partial<AccountDraft>) => {
-    setAccount((prev) => ({ ...prev, ...partial }));
-    setAccountErrors({});
+    setAccount((prev) => {
+      const next = { ...prev, ...partial };
+      accountRef.current = next;
+      return next;
+    });
+    setAccountErrors((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(partial) as Array<keyof AccountDraft>) {
+        delete next[key];
+      }
+      return next;
+    });
     setRootError(null);
+  };
+
+  const validateAccountField = (field: keyof AccountDraft, draft?: AccountDraft) => {
+    const source = draft ?? accountRef.current;
+    const errors = validateAccountStep(source);
+    setAccountErrors((prev) => {
+      const next = { ...prev };
+      if (errors[field]) next[field] = errors[field];
+      else delete next[field];
+      return next;
+    });
+  };
+
+  const runAccountValidation = (draft = accountRef.current): AccountFieldErrors => {
+    const errors = validateAccountStep(draft);
+    setAccountErrors(errors);
+    setAccountAttempted(true);
+    return errors;
   };
 
   const patch = (partial: Partial<CompanyOnboardingValues>) => {
@@ -166,10 +300,12 @@ export default function Register() {
 
   const handleNext = () => {
     if (step === "account") {
-      const errors = validateAccountStep(account);
-      setAccountErrors(errors);
-      if (Object.keys(errors).length > 0) return;
-      setValues((prev) => syncOwnerFromAccount(prev, account));
+      const errors = runAccountValidation(accountRef.current);
+      if (Object.keys(errors).length > 0) {
+        scrollToFirstError(Object.keys(errors)[0]);
+        return;
+      }
+      setValues((prev) => syncOwnerFromAccount(prev, accountRef.current));
       setStepIndex(1);
       return;
     }
@@ -177,7 +313,10 @@ export default function Register() {
     if (step === "company" || step === "business") {
       const errors = validateCompanyOnboardingStep(step, values);
       setFieldErrors(errors);
-      if (Object.keys(errors).length > 0) return;
+      if (Object.keys(errors).length > 0) {
+        scrollToFirstError(Object.keys(errors)[0]);
+        return;
+      }
     }
 
     setStepIndex((index) => Math.min(REGISTER_STEPS.length - 1, index + 1));
@@ -190,15 +329,15 @@ export default function Register() {
     setRootError(null);
 
     try {
-      const accountCheck = validateAccountStep(account);
+      const accountCheck = runAccountValidation(accountRef.current);
       if (Object.keys(accountCheck).length > 0) {
-        setAccountErrors(accountCheck);
         setStepIndex(0);
+        scrollToFirstError(Object.keys(accountCheck)[0]);
         return;
       }
 
       for (const checkStep of ["company", "business", "owner"] as const) {
-        const synced = syncOwnerFromAccount(values, account);
+        const synced = syncOwnerFromAccount(values, accountRef.current);
         const errors = validateCompanyOnboardingStep(checkStep, synced);
         if (Object.keys(errors).length > 0) {
           setValues(synced);
@@ -206,30 +345,49 @@ export default function Register() {
           setStepIndex(
             checkStep === "owner" ? 0 : REGISTER_STEPS.indexOf(checkStep as RegisterStepId),
           );
+          scrollToFirstError(Object.keys(errors)[0]);
           return;
         }
       }
 
-      const synced = syncOwnerFromAccount(values, account);
+      const synced = syncOwnerFromAccount(values, accountRef.current);
       const payload = buildCompanyOnboardingPayload(synced, { mode: "first_time" });
 
-      const { error, needsEmailConfirmation } = await signUp(
-        account.email.trim(),
-        account.password,
+      const { error, needsEmailConfirmation, session: signedInSession } = await signUp(
+        accountRef.current.email.trim(),
+        accountRef.current.password,
         {
-          fullName: account.fullName.trim(),
-          jobTitle: account.jobTitle.trim() || "Owner",
+          fullName: accountRef.current.fullName.trim(),
+          jobTitle: accountRef.current.jobTitle.trim() || "Owner",
+          phone: accountRef.current.phone.trim() || synced.ownerPhone.trim() || undefined,
+          preferredLanguage: i18n.language,
         },
       );
 
       if (error) {
-        setRootError(authErrorMessage(error));
+        const authKey = resolveAuthErrorKey(error);
         setStepIndex(0);
+        if (authKey === "weakPassword") {
+          setAccountErrors({ password: "weakPassword" });
+          setRootError(null);
+          scrollToFirstError("password");
+        } else if (authKey === "emailAlreadyExists" || authKey === "invalidEmail") {
+          setAccountErrors({
+            email: authKey === "invalidEmail" ? "emailInvalid" : "emailAlreadyExists",
+          });
+          setRootError(null);
+          scrollToFirstError("email");
+        } else {
+          setRootError(authErrorMessage(error));
+        }
         return;
       }
 
-      if (needsEmailConfirmation) {
-        savePendingCompanyOnboarding(payload);
+      // Stash draft for email-confirm / retry paths only — not for opening a second wizard.
+      savePendingCompanyOnboarding(payload);
+      markAwaitingCompanyMembership();
+
+      if (needsEmailConfirmation || !signedInSession) {
         toast({
           title: t("auth.register.confirmEmailTitle"),
           description: t("auth.register.confirmEmailOnboardingDescription", {
@@ -241,15 +399,65 @@ export default function Register() {
         return;
       }
 
-      await onboard.mutateAsync(payload);
-      await refreshAuthContext();
-      toast({
-        title: t("auth.register.successTitle"),
-        description: t("auth.register.successOnboardingDescription", {
-          defaultValue: "Your account and company are ready.",
-        }),
-      });
-      setLocation("/dashboard");
+      // Make sure the session is usable for the onboard RPC.
+      const {
+        data: { session: activeSession },
+      } = await supabase.auth.getSession();
+      if (!activeSession) {
+        setRootError(t("auth.errors.unknownServerError"));
+        return;
+      }
+
+      try {
+        const lang = isAppLanguage(i18n.language)
+          ? i18n.language
+          : i18n.language?.toLowerCase().startsWith("ar")
+            ? "ar"
+            : "ar";
+        await persistPreferredLanguage(lang);
+        await i18n.changeLanguage(lang);
+      } catch {
+        /* language sync is best-effort */
+      }
+
+      try {
+        const onboardResult = await onboard.mutateAsync(payload);
+        applyCompanyMembership({
+          companyId: onboardResult.companyId,
+          companyName: onboardResult.company?.name ?? payload.name,
+        });
+        clearPendingCompanyOnboarding();
+        clearAwaitingCompanyMembership();
+        markCompanyOnboardingCompleted();
+        toast({
+          title: t("auth.register.successTitle"),
+          description: t("auth.register.successOnboardingDescription", {
+            defaultValue: "Your account and company are ready.",
+          }),
+        });
+        setLocation("/dashboard");
+        void refreshAuthContext();
+      } catch (onboardError) {
+        const message =
+          onboardError instanceof Error
+            ? onboardError.message
+            : t("companyOnboarding.errors.generic");
+        if (message === "company_already_assigned") {
+          clearPendingCompanyOnboarding();
+          clearAwaitingCompanyMembership();
+          markCompanyOnboardingCompleted();
+          await refreshAuthContext();
+          setLocation("/dashboard");
+          return;
+        }
+        // Stay on register — never dump the user into an empty second onboarding wizard.
+        clearAwaitingCompanyMembership();
+        setRootError(
+          t(`companyOnboarding.errors.${message}`, {
+            defaultValue: message,
+          }),
+        );
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : t("companyOnboarding.errors.generic");
@@ -340,9 +548,22 @@ export default function Register() {
         </div>
       ) : null}
 
+      {step === "account" && (accountAttempted || Boolean(accountErrors.password)) && !accountValid ? (
+        <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center text-sm font-medium text-destructive">
+          {t("auth.register.formIncomplete")}
+        </div>
+      ) : null}
+
       <div className="min-h-[280px]">
         {step === "account" ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleNext();
+            }}
+            noValidate
+          >
             <div className="md:col-span-2">
               <Label htmlFor="reg-full-name">
                 {t("auth.register.fullName")}
@@ -350,17 +571,22 @@ export default function Register() {
               </Label>
               <Input
                 id="reg-full-name"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
+                className={cn(
+                  "mt-1.5",
+                  AUTH_CONTROL_CLASS,
+                  accountErrors.fullName && "border-destructive focus-visible:ring-destructive/40",
+                )}
                 value={account.fullName}
                 onChange={(event) => patchAccount({ fullName: event.target.value })}
+                onBlur={() => validateAccountField("fullName")}
                 placeholder={t("auth.placeholders.fullName", { defaultValue: "Ahmed Hassan" })}
+                aria-invalid={Boolean(accountErrors.fullName)}
               />
               <FieldError
                 message={
-                  accountErrors.fullName &&
-                  t(`companyOnboarding.validation.${accountErrors.fullName}`, {
-                    defaultValue: accountErrors.fullName,
-                  })
+                  accountErrors.fullName
+                    ? accountErrorMessage("fullName", accountErrors.fullName, t)
+                    : undefined
                 }
               />
             </div>
@@ -369,32 +595,64 @@ export default function Register() {
                 {t("auth.register.ownerJobTitle")}
                 <RequiredMark />
               </Label>
-              <Input
+              <select
                 id="reg-job-title"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
+                className={cn(
+                  "mt-1.5 w-full rounded-md border border-border px-3 py-2 text-sm",
+                  AUTH_CONTROL_CLASS,
+                  accountErrors.jobTitle && "border-destructive focus-visible:ring-destructive/40",
+                )}
                 value={account.jobTitle}
                 onChange={(event) => patchAccount({ jobTitle: event.target.value })}
-              />
+                onBlur={() => validateAccountField("jobTitle")}
+              >
+                <option value="">{t("companyOnboarding.fields.selectPlaceholder")}</option>
+                {OWNER_JOB_TITLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(`companyOnboarding.ownerJobTitles.${option.i18nKey}`)}
+                  </option>
+                ))}
+                {!OWNER_JOB_TITLE_OPTIONS.some((option) => option.value === account.jobTitle) &&
+                account.jobTitle.trim() ? (
+                  <option value={account.jobTitle}>{account.jobTitle}</option>
+                ) : null}
+              </select>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {t("auth.register.jobTitleHint")}
               </p>
               <FieldError
                 message={
-                  accountErrors.jobTitle &&
-                  t(`companyOnboarding.validation.${accountErrors.jobTitle}`, {
-                    defaultValue: accountErrors.jobTitle,
-                  })
+                  accountErrors.jobTitle
+                    ? accountErrorMessage("jobTitle", accountErrors.jobTitle, t)
+                    : undefined
                 }
               />
             </div>
             <div>
-              <Label htmlFor="reg-phone">{t("companyOnboarding.fields.ownerPhone")}</Label>
+              <Label htmlFor="reg-phone">
+                {t("companyOnboarding.fields.ownerPhone")}
+                <RequiredMark />
+              </Label>
               <Input
                 id="reg-phone"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
+                className={cn(
+                  "mt-1.5",
+                  AUTH_CONTROL_CLASS,
+                  accountErrors.phone && "border-destructive focus-visible:ring-destructive/40",
+                )}
                 value={account.phone}
                 onChange={(event) => patchAccount({ phone: event.target.value })}
+                onBlur={() => validateAccountField("phone")}
+                placeholder={t("users.form.phonePlaceholder", { defaultValue: "+966…" })}
+                aria-invalid={Boolean(accountErrors.phone)}
                 dir="ltr"
+              />
+              <FieldError
+                message={
+                  accountErrors.phone
+                    ? accountErrorMessage("phone", accountErrors.phone, t)
+                    : undefined
+                }
               />
             </div>
             <div>
@@ -405,20 +663,22 @@ export default function Register() {
               <Input
                 id="reg-email"
                 type="email"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
+                className={cn(
+                  "mt-1.5",
+                  AUTH_CONTROL_CLASS,
+                  accountErrors.email && "border-destructive focus-visible:ring-destructive/40",
+                )}
                 value={account.email}
                 onChange={(event) => patchAccount({ email: event.target.value })}
+                onBlur={() => validateAccountField("email")}
                 placeholder={t("auth.placeholders.email")}
+                aria-invalid={Boolean(accountErrors.email)}
               />
               <FieldError
                 message={
-                  accountErrors.email &&
-                  t(`companyOnboarding.validation.${accountErrors.email}`, {
-                    defaultValue:
-                      accountErrors.email === "passwordMin"
-                        ? t("auth.validation.passwordMin")
-                        : accountErrors.email,
-                  })
+                  accountErrors.email
+                    ? accountErrorMessage("email", accountErrors.email, t)
+                    : undefined
                 }
               />
             </div>
@@ -430,20 +690,59 @@ export default function Register() {
               <Input
                 id="reg-password"
                 type="password"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
+                className={cn(
+                  "mt-1.5",
+                  AUTH_CONTROL_CLASS,
+                  accountErrors.password && "border-destructive focus-visible:ring-destructive/40",
+                )}
                 value={account.password}
-                onChange={(event) => patchAccount({ password: event.target.value })}
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                autoComplete="new-password"
+                onChange={(event) => {
+                  const password = event.target.value;
+                  setAccount((prev) => {
+                    const next = { ...prev, password };
+                    accountRef.current = next;
+                    return next;
+                  });
+                  setRootError(null);
+                  if (password.length > 0 && password.length < MIN_PASSWORD_LENGTH) {
+                    setAccountAttempted(true);
+                  }
+                  setAccountErrors((prev) => {
+                    const updated = { ...prev };
+                    if (!password) {
+                      if (accountAttempted) updated.password = "required";
+                      else delete updated.password;
+                    } else if (password.length < MIN_PASSWORD_LENGTH) {
+                      updated.password = "passwordMin";
+                    } else {
+                      delete updated.password;
+                    }
+                    return updated;
+                  });
+                }}
+                onBlur={() => validateAccountField("password")}
                 placeholder={t("auth.placeholders.password")}
+                aria-invalid={Boolean(accountErrors.password)}
               />
+              <PasswordStrengthMeter password={account.password} />
+              {!accountErrors.password && !account.password ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {t("auth.validation.passwordMin")}
+                </p>
+              ) : null}
               <FieldError
                 message={
                   accountErrors.password
-                    ? t("auth.validation.passwordMin")
+                    ? accountErrorMessage("password", accountErrors.password, t)
                     : undefined
                 }
               />
             </div>
-          </div>
+            <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
+          </form>
         ) : null}
 
         {step === "company" ? (
@@ -610,10 +909,24 @@ export default function Register() {
               <Label htmlFor="reg-website">{t("companyOnboarding.fields.website")}</Label>
               <Input
                 id="reg-website"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
+                className={cn(
+                  "mt-1.5",
+                  AUTH_CONTROL_CLASS,
+                  fieldErrors.website && "border-destructive focus-visible:ring-destructive/40",
+                )}
                 value={values.website}
                 onChange={(event) => patch({ website: event.target.value })}
+                placeholder="https://example.com"
                 dir="ltr"
+                aria-invalid={Boolean(fieldErrors.website)}
+              />
+              <FieldError
+                message={
+                  fieldErrors.website &&
+                  t(`companyOnboarding.validation.${fieldErrors.website}`, {
+                    defaultValue: fieldErrors.website,
+                  })
+                }
               />
             </div>
             <div className="md:col-span-2">
@@ -726,9 +1039,9 @@ export default function Register() {
                 value={values.timezone}
                 onChange={(event) => patch({ timezone: event.target.value })}
               >
-                {PROFILE_TIMEZONE_OPTIONS.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
+                {PROFILE_TIMEZONE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
                   </option>
                 ))}
               </select>
@@ -814,7 +1127,7 @@ export default function Register() {
                   id: "account" as const,
                   rows: [
                     ["fullName", account.fullName],
-                    ["ownerJobTitle", account.jobTitle],
+                    ["ownerJobTitle", ownerJobTitleLabel(account.jobTitle, t)],
                     ["identity", account.email],
                     ["ownerPhone", account.phone],
                   ],
@@ -920,7 +1233,20 @@ export default function Register() {
         </Button>
 
         {step !== "review" ? (
-          <Button type="button" onClick={handleNext} disabled={isSubmitting} className="gap-2">
+          <Button
+            type="button"
+            onClick={() => {
+              if (step === "account" && !isAccountStepValid(accountRef.current)) {
+                const errors = runAccountValidation(accountRef.current);
+                scrollToFirstError(Object.keys(errors)[0]);
+                return;
+              }
+              handleNext();
+            }}
+            disabled={isSubmitting}
+            aria-disabled={step === "account" && !accountValid}
+            className={cn("gap-2", step === "account" && !accountValid && "opacity-60")}
+          >
             {t("companyOnboarding.actions.next")}
             {isRtl ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
           </Button>

@@ -112,10 +112,24 @@ export type AuthActionsContextValue = {
   signUp: (
     email: string,
     password: string,
-    options?: { fullName?: string; jobTitle?: string },
-  ) => Promise<{ error: AuthErrorLike | null; needsEmailConfirmation: boolean }>;
+    options?: {
+      fullName?: string;
+      jobTitle?: string;
+      phone?: string;
+      preferredLanguage?: string;
+    },
+  ) => Promise<{
+    error: AuthErrorLike | null;
+    needsEmailConfirmation: boolean;
+    session: Session | null;
+  }>;
   signOut: () => Promise<void>;
   refreshAuthContext: () => Promise<void>;
+  /** Optimistically attach company membership after self-serve onboarding succeeds. */
+  applyCompanyMembership: (input: {
+    companyId: string;
+    companyName?: string | null;
+  }) => void;
 };
 
 /** Combined view — prefer slice hooks to avoid cross-slice re-renders. */
@@ -224,6 +238,13 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
         if (authBootstrapProfilesEqual(current, nextProfile)) {
           return current;
         }
+        // Don't clobber an optimistic company_id with a stale null refresh
+        // (or a missing profile row right after signup / onboard).
+        if (current?.company_id && (!nextProfile || !nextProfile.company_id)) {
+          appPerfAuthContextUpdate("user");
+          if (!nextProfile) return current;
+          return { ...nextProfile, company_id: current.company_id };
+        }
         appPerfAuthContextUpdate("user");
         return nextProfile;
       });
@@ -237,6 +258,9 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
           && current?.status === nextCompany?.status
           && current?.subscription_status === nextCompany?.subscription_status
         ) {
+          return current;
+        }
+        if (current?.id && !nextCompany) {
           return current;
         }
         appPerfAuthContextUpdate("user");
@@ -421,10 +445,17 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
     async (
       email: string,
       password: string,
-      options?: { fullName?: string; jobTitle?: string },
+      options?: {
+        fullName?: string;
+        jobTitle?: string;
+        phone?: string;
+        preferredLanguage?: string;
+      },
     ) => {
       const fullName = options?.fullName?.trim() || undefined;
       const jobTitle = options?.jobTitle?.trim() || "Owner";
+      const phone = options?.phone?.trim() || undefined;
+      const preferredLanguage = options?.preferredLanguage?.trim() || undefined;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -433,16 +464,77 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
           data: {
             ...(fullName ? { full_name: fullName } : {}),
             job_title: jobTitle,
+            ...(phone ? { phone } : {}),
+            ...(preferredLanguage ? { preferred_language: preferredLanguage } : {}),
           },
         },
       });
 
+      // Ensure the client has the session before any follow-up RPCs (onboard).
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        latestSessionRef.current = data.session;
+        setSession(data.session);
+      }
+
       return {
         error: error ? { message: error.message, code: error.code, status: error.status } : null,
         needsEmailConfirmation: Boolean(data.user && !data.session),
+        session: data.session ?? null,
       };
     },
     [],
+  );
+
+  const applyCompanyMembership = useCallback(
+    (input: { companyId: string; companyName?: string | null }) => {
+      const companyId = input.companyId.trim();
+      if (!companyId) return;
+
+      setProfile((current) => {
+        if (!current) {
+          const userId = latestSessionRef.current?.user?.id;
+          if (!userId) return current;
+          return {
+            id: userId,
+            company_id: companyId,
+            full_name: null,
+            is_super_admin: false,
+            preferred_language: null,
+            preferred_theme: null,
+            timezone: null,
+            avatar_url: null,
+          };
+        }
+        if (current.company_id === companyId) return current;
+        return { ...current, company_id: companyId };
+      });
+
+      setCompany({
+        id: companyId,
+        name: input.companyName ?? null,
+        logo_url: null,
+        status: "Trial",
+        subscription_status: null,
+        billing_cycle: null,
+        subscription_expires_at: null,
+        approval_status: null,
+      });
+
+      if (queryClient) {
+        queryClient.setQueryData(
+          ["my-profile"],
+          (existing: { company_id?: string | null } | undefined) =>
+            existing ? { ...existing, company_id: companyId } : existing,
+        );
+        void queryClient.invalidateQueries({ queryKey: ["rbac"] });
+        void queryClient.invalidateQueries({ queryKey: ["companies"] });
+      }
+    },
+    [queryClient],
   );
 
   const signOut = useCallback(async () => {
@@ -499,8 +591,9 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
       signUp,
       signOut,
       refreshAuthContext,
+      applyCompanyMembership,
     }),
-    [signIn, signUp, signOut, refreshAuthContext],
+    [signIn, signUp, signOut, refreshAuthContext, applyCompanyMembership],
   );
 
   useEffect(() => {

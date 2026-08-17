@@ -60,10 +60,19 @@ const CATEGORY_TO_GROUP: Record<string, PackageFeatureGroupId> = {
   automation: "automation",
   reporting: "reporting",
   integrations: "integration",
+  billing: "other",
+  admin: "core",
 };
 
-/** Core catalog codes that remain non-commercial under Phase 6. */
-const CORE_FEATURE_CODES = new Set(["core_crm", "customers"]);
+/** Core / platform catalog codes that remain non-commercial under Phase 6 + 302. */
+const CORE_FEATURE_CODES = new Set([
+  "core_crm",
+  "customers",
+  "users_roles",
+  "company_settings",
+  "administration",
+  "security_audit",
+]);
 
 export function isCorePackageFeature(feature: PackageFeatureSelection): boolean {
   if (CORE_FEATURE_CODES.has(feature.code)) return true;

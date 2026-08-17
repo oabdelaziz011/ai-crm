@@ -126,7 +126,7 @@ export async function getCompanyFeatureAccess(
       featureCode: code,
       enabled,
       commercial: isBillingFeatureCode(code)
-        ? !["core_crm", "customers"].includes(code)
+        ? !["core_crm", "customers", "users_roles", "company_settings", "administration", "security_audit"].includes(code)
         : true,
       source: "none",
       reason: enabled ? undefined : "No entitlement row",

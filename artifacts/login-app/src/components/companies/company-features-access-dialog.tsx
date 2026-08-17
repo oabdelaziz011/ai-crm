@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { format } from "date-fns";
-import { Loader2, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyEntitlements, useSyncCompanyPackageEntitlements } from "@/hooks/billing/use-company-entitlements";
 import { useCompanyAccessState } from "@/hooks/billing/use-company-feature";
+import { useFeaturePermissionMap } from "@/hooks/billing/use-feature-definition-permissions";
 import {
   useExtendCompanyTrial,
   useRevokeCompanyFeatureGrant,
@@ -23,6 +24,11 @@ import {
 import type { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { isCommercialEntitlement, normalizeEntitlementSource } from "@/lib/billing/entitlement-display";
+import {
+  filterCompanyFeatureEntitlementsForDisplay,
+  resolveCompanyFeatureCatalogSection,
+  sortCompanyFeatureEntitlements,
+} from "@/lib/billing/company-feature-catalog-display";
 
 type CompanyFeaturesAccessDialogProps = {
   company: Company | null;
@@ -40,12 +46,14 @@ export function CompanyFeaturesAccessDialog({
   const companyId = company?.id ?? null;
   const { data: entitlements = [], isLoading, refetch } = useCompanyEntitlements(companyId, open);
   const accessState = useCompanyAccessState(companyId, open);
+  const { map: featurePermissionMap } = useFeaturePermissionMap(open);
   const setGrant = useSetCompanyFeatureGrant();
   const revokeGrant = useRevokeCompanyFeatureGrant();
   const extendTrial = useExtendCompanyTrial();
   const syncPackage = useSyncCompanyPackageEntitlements();
   const [extendDays, setExtendDays] = useState("14");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [expandedCode, setExpandedCode] = useState<string | null>(null);
   const [localTrialEndsAt, setLocalTrialEndsAt] = useState<string | null>(null);
 
   const allCommercialUnlinked =
@@ -57,12 +65,26 @@ export function CompanyFeaturesAccessDialog({
   useEffect(() => {
     setLocalTrialEndsAt(null);
     setSelectedCode(null);
+    setExpandedCode(null);
   }, [companyId, open]);
 
   const selected = useMemo(
     () => entitlements.find((row) => row.feature_code === selectedCode) ?? null,
     [entitlements, selectedCode],
   );
+
+  const selectedPermissions = useMemo(() => {
+    if (!selectedCode) return [];
+    return featurePermissionMap.get(selectedCode) ?? [];
+  }, [featurePermissionMap, selectedCode]);
+
+  const visibleEntitlements = useMemo(() => {
+    const filtered = filterCompanyFeatureEntitlementsForDisplay(
+      entitlements,
+      featurePermissionMap,
+    );
+    return sortCompanyFeatureEntitlements(filtered);
+  }, [entitlements, featurePermissionMap]);
 
   const trialEndsAt = localTrialEndsAt ?? company?.subscription_expires_at ?? null;
 
@@ -121,6 +143,7 @@ export function CompanyFeaturesAccessDialog({
           <DialogTitle>
             {t("companies.features.title")}: {company.name}
           </DialogTitle>
+          <p className="text-sm text-muted-foreground">{t("companies.features.groupsHint")}</p>
         </DialogHeader>
 
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
@@ -213,66 +236,131 @@ export function CompanyFeaturesAccessDialog({
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-start">{t("companies.features.feature")}</th>
-                    <th className="px-3 py-2 text-start">{t("companies.features.category")}</th>
+                    <th className="px-3 py-2 text-start">{t("companies.features.permissions")}</th>
                     <th className="px-3 py-2 text-start">{t("companies.features.status")}</th>
-                    <th className="px-3 py-2 text-start">{t("companies.features.source")}</th>
                     <th className="px-3 py-2 text-end">{t("companies.table.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {entitlements.map((row) => (
-                    <tr
-                      key={row.feature_code}
-                      className={cn(
-                        "border-t border-border/50",
-                        selectedCode === row.feature_code && "bg-primary/5",
-                      )}
-                    >
-                      <td className="px-3 py-2">
-                        <button
-                          type="button"
-                          className="text-start font-medium hover:underline"
-                          onClick={() => setSelectedCode(row.feature_code)}
-                        >
-                          {row.label}
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {row.category ?? "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span
+                  {visibleEntitlements.map((row, index) => {
+                    const included = featurePermissionMap.get(row.feature_code) ?? [];
+                    const isExpanded = expandedCode === row.feature_code;
+                    const section = resolveCompanyFeatureCatalogSection(row.feature_code);
+                    const prevSection =
+                      index > 0
+                        ? resolveCompanyFeatureCatalogSection(
+                            visibleEntitlements[index - 1]!.feature_code,
+                          )
+                        : null;
+                    const showSectionHeader = section !== prevSection;
+                    return (
+                      <Fragment key={row.feature_code}>
+                        {showSectionHeader ? (
+                          <tr className="border-t border-border/50 bg-muted/30">
+                            <td
+                              colSpan={4}
+                              className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                            >
+                              {section === "administration"
+                                ? t("companies.features.sectionAdministration", {
+                                    defaultValue: "Administration",
+                                  })
+                                : section === "legacy"
+                                  ? t("companies.features.sectionLegacy", {
+                                      defaultValue: "Legacy",
+                                    })
+                                  : t("companies.features.sectionProduct", {
+                                      defaultValue: "Product capabilities",
+                                    })}
+                            </td>
+                          </tr>
+                        ) : null}
+                        <tr
                           className={cn(
-                            "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                            row.enabled
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-muted text-muted-foreground",
+                            "border-t border-border/50",
+                            selectedCode === row.feature_code && "bg-primary/5",
                           )}
                         >
-                          {row.enabled
-                            ? t("companies.features.enabled")
-                            : t("companies.features.disabled")}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">
-                        {row.source ?? "—"}
-                      </td>
-                      <td className="px-3 py-2 text-end">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-7 rounded-lg text-xs"
-                          disabled={setGrant.isPending || revokeGrant.isPending}
-                          onClick={() => void toggleFeature(row.feature_code, !row.enabled)}
-                        >
-                          {row.enabled
-                            ? t("companies.features.disable")
-                            : t("companies.features.enable")}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-3 py-2 align-top">
+                          <button
+                            type="button"
+                            className="text-start font-medium hover:underline"
+                            onClick={() => setSelectedCode(row.feature_code)}
+                          >
+                            {row.label}
+                          </button>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {row.category ?? row.feature_code}
+                          </p>
+                          {included.length > 0 ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="mt-1 h-6 px-1 text-[11px] text-muted-foreground"
+                              onClick={() => {
+                                setSelectedCode(row.feature_code);
+                                setExpandedCode(isExpanded ? null : row.feature_code);
+                              }}
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp className="me-1 size-3" />
+                                  {t("companies.features.hidePermissions")}
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="me-1 size-3" />
+                                  {t("companies.features.viewPermissions")}
+                                </>
+                              )}
+                            </Button>
+                          ) : null}
+                          {isExpanded ? (
+                            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border/50 bg-muted/20 p-2 text-[11px] text-muted-foreground">
+                              {included.map((code) => (
+                                <li key={code} className="font-mono">
+                                  ✓ {code}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs text-muted-foreground">
+                          {t("companies.features.permissionCount", { count: included.length })}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                              row.enabled
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {row.enabled
+                              ? t("companies.features.enabled")
+                              : t("companies.features.disabled")}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 align-top text-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 rounded-lg text-xs"
+                            disabled={setGrant.isPending || revokeGrant.isPending}
+                            onClick={() => void toggleFeature(row.feature_code, !row.enabled)}
+                          >
+                            {row.enabled
+                              ? t("companies.features.disable")
+                              : t("companies.features.enable")}
+                          </Button>
+                        </td>
+                      </tr>
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -286,6 +374,14 @@ export function CompanyFeaturesAccessDialog({
                   <div>
                     <dt className="text-muted-foreground">{t("companies.features.feature")}</dt>
                     <dd className="font-medium">{selected.label}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">{t("companies.features.permissions")}</dt>
+                    <dd>
+                      {t("companies.features.permissionCount", {
+                        count: selectedPermissions.length,
+                      })}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t("companies.features.source")}</dt>
@@ -311,6 +407,9 @@ export function CompanyFeaturesAccessDialog({
                     <dt className="text-muted-foreground">{t("companies.features.notes")}</dt>
                     <dd>{selected.notes || "—"}</dd>
                   </div>
+                  <p className="pt-2 text-xs text-muted-foreground">
+                    {t("companies.features.employeeRbacHint")}
+                  </p>
                 </dl>
               ) : (
                 <p className="text-muted-foreground">{t("companies.features.selectHint")}</p>

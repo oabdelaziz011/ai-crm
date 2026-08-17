@@ -3,10 +3,15 @@
  * Unmapped platform keys are NOT treated as commercial billing modules.
  */
 
-/** Billing catalog codes from migration 263. */
+/** Billing catalog codes from migration 263 (+ 302 catalog split). */
 export const BILLING_FEATURE_CODES = [
   "core_crm",
   "customers",
+  "finance",
+  "users_roles",
+  "company_settings",
+  "administration",
+  "security_audit",
   "leads",
   "opportunities",
   "bookings",

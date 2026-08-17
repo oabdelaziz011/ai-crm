@@ -87,14 +87,14 @@
     "aiPlatform": "منصة الذكاء الاصطناعي",
     "omnichannel": "وحدة القنوات الموحدة",
     "channels": "القنوات",
+    "email": "البريد الإلكتروني",
     "aiUsage": "استخدام وتكلفة الذكاء الاصطناعي",
     "aiAnalytics": "تحليلات الذكاء الاصطناعي",
-    "aiRuntime": "تشغيل الذكاء الاصطناعي",
     "aiAssistant": "المساعد الذكي",
     "aiEmployees": "موظفو الذكاء الاصطناعي",
     "aiChat": "مساحة الذكاء الاصطناعي",
     "knowledge": "المعرفة",
-    "prompts": "المطالبات",
+    "prompts": "قوالب مطالبات الذكاء",
     "reports": "التقارير",
     "settings": "الإعدادات",
     "demoScenarios": "سيناريوهات العرض",
@@ -159,7 +159,17 @@
       "invoice": "فاتورة",
       "subscription": "اشتراك",
       "whatsapp": "واتساب",
-      "system": "نظام"
+      "system": "نظام",
+      "customer": "عميل",
+      "payment": "دفعة"
+    },
+    "detail": {
+      "back": "رجوع",
+      "notFound": "الإشعار غير موجود.",
+      "read": "مقروء",
+      "unread": "غير مقروء",
+      "details": "تفاصيل إضافية",
+      "openRelated": "فتح العنصر المرتبط"
     },
     "pagination": {
       "previous": "السابق",
@@ -203,15 +213,19 @@
       "templates": {
         "appointmentCreated": {
           "title": "تم إنشاء موعد",
-          "message": "تم جدولة موعد جديد."
+          "message": "تم جدولة موعد للعميل {{customerName}}."
         },
         "appointmentUpdated": {
           "title": "تم تحديث موعد",
-          "message": "تم تحديث موعد."
+          "message": "تم تحديث موعد العميل {{customerName}}."
         },
         "appointmentCancelled": {
           "title": "تم إلغاء موعد",
-          "message": "تم إلغاء موعد."
+          "message": "تم إلغاء موعد العميل {{customerName}}. السبب: {{reason}}"
+        },
+        "appointmentReminder": {
+          "title": "تذكير بالموعد",
+          "message": "تذكير بموعد العميل {{customerName}}."
         },
         "customerCreated": {
           "title": "عميل جديد",
@@ -219,16 +233,66 @@
         },
         "invoiceCreated": {
           "title": "تم إنشاء فاتورة",
-          "message": "تم إنشاء الفاتورة {{invoiceId}}."
+          "message": "تم إنشاء الفاتورة {{invoiceNumber}} للعميل {{customerName}} بمبلغ {{amount}}."
         },
         "paymentReceived": {
           "title": "تم استلام دفعة",
-          "message": "تم استلام دفعة بقيمة {{amount}}."
+          "message": "تم دفع فاتورة {{invoiceNumber}} للعميل {{customerName}} بمبلغ {{amount}}."
         },
         "genericSystem": {
           "title": "إشعار النظام",
           "message": "{{detail}}"
         }
+      },
+      "compose": {
+        "paymentReceived": "تم استلام دفعة",
+        "invoiceCreated": "تم إنشاء فاتورة",
+        "appointmentCancelled": "تم إلغاء موعد",
+        "appointmentCreated": "تم إنشاء موعد",
+        "appointmentUpdated": "تم تحديث موعد",
+        "customerCreated": "تم إنشاء عميل جديد",
+        "invoicePart": "رقم {{invoice}}",
+        "customerPart": "للعميل {{customer}}",
+        "amountPart": "بمبلغ {{amount}}",
+        "reasonPart": "السبب: {{reason}}",
+        "subjectPart": "الموضوع: {{subject}}",
+        "ticketPart": "التذكرة {{ticket}}",
+        "bookingPart": "الحجز {{booking}}",
+        "conversationPart": "المحادثة {{conversation}}",
+        "leadPart": "العميل المحتمل {{lead}}",
+        "taskPart": "المهمة {{task}}",
+        "filePart": "الملف {{file}}",
+        "workflowPart": "سير العمل {{workflow}}"
+      },
+      "operations": {
+        "completed": "اكتملت العملية",
+        "taskAssigned": "تم تعيين مهمة",
+        "taskCompleted": "اكتملت المهمة",
+        "workflowExecuted": "تم تنفيذ سير عمل",
+        "aiSummary": "ملخص الذكاء الاصطناعي جاهز",
+        "knowledgeUpdated": "تم تحديث المعرفة",
+        "permissionChanged": "تم تغيير صلاحية",
+        "fileUploaded": "تم رفع ملف",
+        "conversationTransferred": "تم تحويل محادثة إليك",
+        "conversationAssigned": "تم إسناد محادثة إليك",
+        "conversationEscalated": "تم تصعيد محادثة",
+        "conversationQueued": "محادثة دخلت قائمة الانتظار",
+        "handoffAccepted": "تم قبول التحويل",
+        "handoffRejected": "تم رفض التحويل",
+        "returnedToAi": "عادت المحادثة للذكاء الاصطناعي",
+        "supervisorAlert": "تنبيه للمشرف",
+        "handoff": "إشعار تحويل",
+        "mention": "تم ذكرك في محادثة",
+        "leadConverted": "تم تحويل عميل محتمل",
+        "leadAssigned": "تم إسناد عميل محتمل",
+        "leadUpdated": "تم تحديث عميل محتمل",
+        "ticketAssigned": "تم إسناد تذكرة",
+        "ticketComment": "تعليق جديد على تذكرة",
+        "ticketStatusChanged": "تغيرت حالة تذكرة",
+        "ticketPriorityChanged": "تغيرت أولوية تذكرة",
+        "ticketClosed": "تم إغلاق تذكرة",
+        "ticketSlaWarning": "تحذير SLA لتذكرة",
+        "ticketSlaBreach": "تجاوز SLA لتذكرة"
       }
     },
     "email": {
@@ -471,7 +535,9 @@
       "unknown": "غير معروف",
       "service": "خدمة",
       "company": "شركة",
-      "role": "دور"
+      "role": "دور",
+      "noReason": "بدون سبب مذكور",
+      "systemDetail": "لا توجد تفاصيل إضافية"
     },
     "events": {
       "newCustomer": {
@@ -583,6 +649,7 @@
       "jobTitleHint": "للعرض فقط — الصلاحيات تأتي من الأدوار.",
       "passkey": "كلمة المرور",
       "submit": "إنشاء الحساب",
+      "formIncomplete": "صحّح الحقول المحددة قبل المتابعة.",
       "already": "لديك حساب بالفعل؟",
       "authenticateHere": "سجل الدخول هنا",
       "successTitle": "تم إنشاء الحساب",
@@ -660,7 +727,12 @@
     },
     "validation": {
       "email": "أدخل بريدًا إلكترونيًا صالحًا",
-      "passwordMin": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل"
+      "passwordMin": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
+      "passwordStrength": {
+        "weak": "كلمة المرور ضعيفة",
+        "medium": "كلمة المرور متوسطة",
+        "strong": "كلمة المرور قوية"
+      }
     },
     "errors": {
       "invalidEmail": "أدخل بريداً إلكترونياً صالحاً.",
@@ -828,8 +900,8 @@
       "create": "إنشاء فاتورة"
     },
     "roles": {
-      "existing": "الأدوار الحالية",
-      "none": "لا توجد أدوار حتى الآن.",
+      "existing": "أدوار الشركة",
+      "none": "لا توجد أدوار مخصصة بعد. أنشئ دوراً لتحديد صلاحيات فريقك.",
       "edit": "تعديل الدور",
       "create": "إنشاء دور",
       "namePlaceholder": "قائد المبيعات",
@@ -867,6 +939,14 @@
       "quickLinksSubtitle": "انتقل إلى الأقسام التي يمكنك الوصول إليها.",
       "openSection": "فتح هذا القسم",
       "noSections": "لا يوجد لديك وصول إلى أي أقسام في لوحة التحكم بعد. تواصل مع المسؤول إذا كنت بحاجة إلى صلاحيات.",
+      "trialBanner": {
+        "title": "أنت على الخطة التجريبية",
+        "badge": "تجريبي",
+        "body": "شركتك تستخدم حالياً الفترة التجريبية المجانية. يمكنك الترقية في أي وقت للحفاظ على الوصول الكامل.",
+        "bodyWithDate": "شركتك على الخطة التجريبية المجانية. من المقرر أن تنتهي في {{date}}.",
+        "expired": "انتهت الفترة التجريبية — قم بالترقية لاستعادة الوصول الكامل",
+        "cta": "عرض الخطة والفوترة"
+      },
       "executive": {
         "allBranches": "جميع الفروع",
         "branchWithCount": "{{name}} · {{count}} فروع",
@@ -2412,17 +2492,295 @@
       "draftBadge": "مسودة"
     }
   },
-  "aiRuntime": {
-    "title": "مراقبة منصة الذكاء الاصطناعي",
-    "subtitle": "عرض تشغيلي للقراءة فقط لجلسات التنفيذ ومراقبة المنصة المؤسسية.",
-    "metrics": {
-      "events": "الأحداث المنظمة",
-      "cacheHitRatio": "نسبة إصابة الذاكرة المؤقتة",
-      "sessions": "الجلسات المتتبعة"
+  "emailModule": {
+    "title": "البريد الإلكتروني",
+    "subtitle": "صندوق بريد الشركة والقوالب وتوجيه الذكاء الاصطناعي وإعدادات القناة.",
+    "nav": {
+      "inbox": "الوارد",
+      "sent": "المرسل",
+      "drafts": "المسودات",
+      "templates": "القوالب",
+      "aiRouting": "توجيه الذكاء الاصطناعي",
+      "settings": "الإعدادات"
     },
-    "sessions": {
-      "title": "جلسات التنفيذ الأخيرة",
-      "empty": "لا توجد جلسات منصة مسجلة في هذه العملية بعد."
+    "inbox": {
+      "hint": "نشاط تسليم البريد الوارد والصادر لشركتك (قناة البريد)."
+    },
+    "sent": {
+      "hint": "رسائل البريد المرسلة من قائمة انتظار الاتصال الحالية."
+    },
+    "drafts": {
+      "title": "المسودات",
+      "empty": "لا يوجد مخزن مسودات بريد بعد. استخدم إعدادات قناة البريد الحالية للإرسال."
+    },
+    "templates": {
+      "title": "القوالب",
+      "subtitle": "قوالب موضوع ونص قابلة لإعادة الاستخدام مع متغيرات للبريد.",
+      "empty": "لا توجد قوالب بعد. أنشئ أول قالب للبدء.",
+      "searchPlaceholder": "ابحث بالاسم أو الرمز…",
+      "create": "إنشاء قالب",
+      "edit": "تعديل القالب",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "duplicate": "تكرار",
+      "delete": "حذف",
+      "preview": "معاينة",
+      "previewTitle": "معاينة ببيانات تجريبية",
+      "enabled": "مفعّل",
+      "disabled": "معطّل",
+      "name": "الاسم",
+      "code": "الرمز",
+      "subject": "الموضوع",
+      "body": "النص",
+      "variables": {
+        "heading": "المتغيرات المتاحة",
+        "hint": "انقر لإدراجها في الحقل المحدد.",
+        "companyName": "اسم الشركة",
+        "customerName": "اسم العميل",
+        "customerEmail": "بريد العميل",
+        "ticketNumber": "رقم التذكرة",
+        "ticketSubject": "موضوع التذكرة",
+        "bookingReference": "مرجع الحجز"
+      },
+      "columns": {
+        "name": "الاسم",
+        "code": "الرمز",
+        "subject": "الموضوع",
+        "status": "الحالة",
+        "actions": "إجراءات"
+      },
+      "readOnly": "يمكنك عرض القوالب لكن تحتاج settings.edit للتعديل.",
+      "loadError": "تعذر تحميل قوالب البريد.",
+      "retry": "إعادة المحاولة",
+      "saved": "تم حفظ القالب.",
+      "duplicated": "تم تكرار القالب.",
+      "deleted": "تم حذف القالب.",
+      "saveError": "تعذر حفظ القالب.",
+      "deleteConfirmTitle": "حذف القالب؟",
+      "deleteConfirmDescription": "سيُحذف «{{name}}» نهائياً.",
+      "noMatches": "لا توجد قوالب مطابقة لبحثك.",
+      "testSend": "إرسال بريد تجريبي",
+      "testSendTitle": "إرسال بريد تجريبي",
+      "testSendRecipient": "بريد المستلم",
+      "testSendHint": "يستخدم بيانات المعاينة للمتغيرات. يجب ضبط SMTP في إعدادات البريد.",
+      "testSendSuccess": "تم إرسال البريد التجريبي.",
+      "testSendError": "تعذر إرسال البريد التجريبي.",
+      "testSendSaveFirst": "احفظ القالب قبل إرسال تجريبي.",
+      "testSendDisabled": "فعّل القالب قبل إرسال تجريبي.",
+      "testSendNotConfigured": "البريد الصادر غير مضبوط. اضبط SMTP من إعدادات البريد أولاً."
+    },
+    "aiRouting": {
+      "title": "توجيه البريد بالذكاء الاصطناعي",
+      "subtitle": "اربط كل فئة تصنيف بقسم أو موظف أو طابور داخل شركتك.",
+      "statusLabel": "الحالة:",
+      "statusEnabled": "مفعّل",
+      "unsaved": "تغييرات غير محفوظة",
+      "empty": "لا توجد أهداف توجيه بعد. اختر هدفاً لكل فئة ثم احفظ.",
+      "loading": "جاري تحميل إعدادات التوجيه…",
+      "loadError": "تعذر تحميل إعدادات توجيه البريد بالذكاء الاصطناعي.",
+      "retry": "إعادة المحاولة",
+      "notEntitled": "توجيه البريد بالذكاء الاصطناعي غير مشمول في خطتك.",
+      "readOnly": "يمكنك عرض الإعدادات لكن تحتاج صلاحية settings.edit للتعديل.",
+      "save": "حفظ التغييرات",
+      "saving": "جاري الحفظ…",
+      "saveSuccess": "تم حفظ إعدادات توجيه البريد.",
+      "saveError": "فشل حفظ إعدادات توجيه البريد.",
+      "enabled": "مفعّل",
+      "disabled": "معطّل",
+      "selectTarget": "اختر الهدف",
+      "clearTarget": "بدون هدف",
+      "noTargets": "لا توجد خيارات لهذه الشركة",
+      "columns": {
+        "category": "الفئة",
+        "enabled": "مفعّل",
+        "targetType": "نوع الهدف",
+        "target": "الهدف"
+      },
+      "targetTypes": {
+        "department": "قسم",
+        "employee": "موظف",
+        "queue": "طابور"
+      },
+      "categories": {
+        "sales": "المبيعات",
+        "support": "الدعم",
+        "billing": "الفوترة",
+        "complaint": "الشكاوى",
+        "hr": "الموارد البشرية",
+        "generalInquiry": "استفسار عام"
+      }
+    }
+  },
+  "prompts": {
+    "title": "قوالب مطالبات الذكاء",
+    "subtitle": "اكتب وأدر قوالب التعليمات التي يستخدمها الذكاء الاصطناعي داخل خطوات سير العمل.",
+    "noPermission": "ليس لديك صلاحية عرض المطالبات.",
+    "purpose": {
+      "title": "إيه هي الصفحة دي؟",
+      "body": "دي مش مطالبات مالية. الصفحة دي لإدارة قوالب تعليمات الذكاء الاصطناعي — النصوص اللي الـ AI بيتبعها لما خطوة في سير العمل تعمل قرار أو تلخيص أو استخراج بيانات.",
+      "point1": "أنشئ أو عدّل قوالب الشركة هنا، ثم انشرها.",
+      "point2": "في منشئ سير العمل، كل خطوة ذكاء تختار قالب من المكتبة دي.",
+      "point3": "قوالب النظام للعرض فقط؛ أضف نسخة شركة من قالب جاهز لو عايز تخصّص.",
+      "openWorkflows": "فتح سير العمل"
+    },
+    "nav": {
+      "library": "مكتبة المطالبات",
+      "editor": "محرر القالب"
+    },
+    "status": {
+      "disabled": "معطّل",
+      "system": "نظام",
+      "company": "شركة"
+    },
+    "library": {
+      "title": "مكتبة المطالبات",
+      "subtitle": "قوالب تعليمات قابلة لإعادة الاستخدام لخطوات الذكاء في سير العمل.",
+      "emptyTitle": "لا توجد قوالب بعد",
+      "empty": "أنشئ قالب شركة من قالب جاهز، أو افتح قالب نظام للمعاينة.",
+      "openEditor": "فتح المحرر",
+      "openPreview": "معاينة",
+      "createFromPreset": "إضافة للشركة",
+      "alreadyAdded": "مضاف مسبقاً",
+      "created": "تم إنشاء القالب «{{name}}»"
+    },
+    "templates": {
+      "title": "قوالب جاهزة",
+      "subtitle": "قوالب للبداية: دعم، حجز، مبيعات، وخطوات الذكاء في سير العمل."
+    },
+    "editor": {
+      "enabled": "مفعّل",
+      "sectionPlaceholder": "اكتب محتوى المطالبة مع متغيرات مثل {{customer.name}}",
+      "notFound": "قالب المطالبة غير موجود.",
+      "systemReadOnly": "قوالب النظام للعرض فقط. أنشئ نسخة شركة من قالب جاهز للتعديل.",
+      "saveDraft": "حفظ مسودة",
+      "publish": "نشر",
+      "draftSaved": "تم حفظ المسودة",
+      "published": "تم نشر القالب",
+      "enabledOn": "تم تفعيل القالب",
+      "enabledOff": "تم تعطيل القالب",
+      "draftNotes": "حُفظ كمسودة من منصة المطالبات",
+      "publishNotes": "نُشر من منصة المطالبات"
+    },
+    "variables": {
+      "title": "متصفح المتغيرات",
+      "subtitle": "المتغيرات الديناميكية المدعومة التي يحلّها مزودو السياق."
+    },
+    "preview": {
+      "title": "معاينة المطالبة",
+      "meta": "{{tokens}} رمز تقديري · {{variables}} متغيرات",
+      "empty": "ستظهر المعاينة بعد إضافة محتوى المطالبة."
+    },
+    "validation": {
+      "title": "التحقق",
+      "ready": "جاهز",
+      "blocked": "محظور",
+      "noIssues": "لا توجد مشاكل تحقق."
+    },
+    "versions": {
+      "title": "سجل الإصدارات",
+      "empty": "لا توجد إصدارات بعد.",
+      "active": "نشط",
+      "rollback": "تراجع",
+      "rollbackSuccess": "تم الرجوع للإصدار المحدد"
+    },
+    "lifecycle": {
+      "draft": "مسودة",
+      "published": "منشور",
+      "archived": "مؤرشف"
+    },
+    "types": {
+      "conversation": "محادثة",
+      "classification": "تصنيف",
+      "tool_assistance": "مساعدة أدوات",
+      "summarization": "تلخيص",
+      "extraction": "استخراج",
+      "fallback": "احتياطي",
+      "escalation": "تصعيد"
+    },
+    "sections": {
+      "system_instructions": "تعليمات النظام",
+      "assistant_profile": "ملف المساعد",
+      "customer_360": "ملف العميل 360",
+      "conversation_summary": "ملخص المحادثة",
+      "recent_messages": "الرسائل الأخيرة",
+      "conversation_state": "حالة المحادثة",
+      "intent_decision": "قرار النية",
+      "tool_results": "نتائج الأدوات",
+      "company_policies": "سياسات الشركة",
+      "language": "اللغة",
+      "tone": "النبرة",
+      "formatting_rules": "قواعد التنسيق",
+      "safety_instructions": "تعليمات السلامة",
+      "knowledge_context": "سياق المعرفة",
+      "output_contract": "عقد الإخراج"
+    },
+    "presets": {
+      "customer_support": {
+        "name": "دعم العملاء",
+        "description": "الرد على أسئلة العملاء بسياق الشركة وضوابط السلامة."
+      },
+      "booking_assistant": {
+        "name": "مساعد الحجز",
+        "description": "توجيه العملاء خلال تدفق حجز المواعيد."
+      },
+      "faq_assistant": {
+        "name": "مساعد الأسئلة الشائعة",
+        "description": "الإجابة عن الأسئلة المتكررة وفق سياسات الشركة."
+      },
+      "sales_assistant": {
+        "name": "مساعد المبيعات",
+        "description": "تأهيل العملاء المحتملين وشرح قيمة المنتج."
+      },
+      "lead_qualification": {
+        "name": "تأهيل العملاء المحتملين",
+        "description": "مطالبات منظمة لتأهيل الليدز."
+      },
+      "appointment_booking": {
+        "name": "حجز المواعيد",
+        "description": "مساعدة العملاء على حجز وتأكيد المواعيد."
+      },
+      "crm_assistant": {
+        "name": "مساعد إدارة علاقات العملاء",
+        "description": "تلخيص سياق CRM واقتراح المتابعات."
+      },
+      "workflow_decision": {
+        "name": "قرار سير العمل",
+        "description": "مطالبات القرار لتفرع وتصنيف خطوات سير العمل."
+      },
+      "workflow_summarize": {
+        "name": "تلخيص سير العمل",
+        "description": "تلخيص نص سير العمل بأسلوب ونبرة وطول قابلين للضبط."
+      },
+      "workflow_extract": {
+        "name": "استخراج سير العمل",
+        "description": "استخراج بيانات أعمال منظمة من إدخال غير منظم."
+      }
+    },
+    "systemNames": {
+      "conversation_default": "محادثة افتراضية",
+      "conversation_default_description": "قالب الاستجابة الافتراضي للمحادثة.",
+      "classification_default": "تصنيف افتراضي",
+      "classification_default_description": "قالب التصنيف الافتراضي للنية.",
+      "tool_assistance_default": "مساعدة أدوات افتراضية",
+      "tool_assistance_default_description": "قالب مساعدة الأدوات الافتراضي.",
+      "summarization_default": "تلخيص افتراضي",
+      "summarization_default_description": "قالب التلخيص الافتراضي للمحادثة.",
+      "extraction_default": "استخراج افتراضي",
+      "extraction_default_description": "قالب الاستخراج المنظم الافتراضي.",
+      "fallback_default": "احتياطي افتراضي",
+      "fallback_default_description": "قالب الاحتياطي الافتراضي.",
+      "escalation_default": "تصعيد افتراضي",
+      "escalation_default_description": "قالب التصعيد البشري الافتراضي."
+    },
+    "errors": {
+      "companyRequired": "يلزم سياق شركة.",
+      "alreadyExists": "يوجد بالفعل قالب شركة بالمفتاح «{{key}}».",
+      "createFailed": "تعذّر إنشاء القالب.",
+      "saveFailed": "تعذّر حفظ المسودة.",
+      "publishFailed": "تعذّر نشر القالب.",
+      "updateFailed": "تعذّر تحديث القالب.",
+      "rollbackFailed": "تعذّر الرجوع لإصدار القالب.",
+      "sectionPermission": "ليس لديك صلاحية عرض هذا القسم من المطالبات."
     }
   },
   "aiAnalytics": {
@@ -3650,6 +4008,7 @@
       "selectPromptTemplate": "اختر قالب المطالبة",
       "searchPrompts": "ابحث في المطالبات",
       "noPromptTemplates": "لم يتم العثور على قوالب مطالبات",
+      "managePromptTemplates": "إدارة القوالب",
       "loadingProviders": "جارٍ تحميل المزودين…",
       "selectProviderConnection": "اختر اتصال المزود",
       "searchProviders": "ابحث في المزودين",
@@ -8341,8 +8700,14 @@
       "extendByDays": "التمديد بالأيام",
       "extendTrialSuccess": "تم تمديد التجربة",
       "extendTrialFailed": "تعذر تمديد التجربة",
-      "feature": "الميزة",
+      "feature": "مجموعة الميزات",
       "category": "الفئة",
+      "permissions": "الصلاحيات المضمّنة",
+      "permissionCount": "{{count}} صلاحية مضمّنة",
+      "viewPermissions": "عرض الصلاحيات المضمّنة",
+      "hidePermissions": "إخفاء الصلاحيات",
+      "groupsHint": "اضبط مجموعات قدرات الشركة. هذا لا يمنح صلاحيات للموظفين — التحكم التفصيلي يبقى عبر الأدوار.",
+      "employeeRbacHint": "تفعيل المجموعة يجعل صلاحياتها متاحة للشركة. وصول الموظفين يُدار من صفحة الأدوار.",
       "status": "الحالة",
       "source": "المصدر",
       "enabled": "مفعّلة",
@@ -8354,30 +8719,33 @@
       "expiresAt": "الانتهاء",
       "notes": "ملاحظات",
       "indefinite": "بدون انتهاء",
-      "selectHint": "اختر ميزة لعرض تفاصيل المنح.",
+      "selectHint": "اختر مجموعة ميزات لعرض تفاصيل المنح.",
       "saveSuccess": "تم تحديث وصول الميزة",
       "saveFailed": "تعذر تحديث وصول الميزة"
     }
   },
   "roles": {
     "title": "الأدوار",
-    "subtitle": "إنشاء الأدوار وتعيين الصلاحيات عبر شبكة مرنة.",
+    "subtitle": "أنشئ أدواراً خاصة بشركتك وامنح فقط الصلاحيات التي يحق لك تفويضها.",
     "noDescription": "بدون وصف",
     "edit": "تعديل",
     "delete": "حذف",
     "createRole": "إنشاء دور",
+    "customRolesHeading": "أدوار الشركة",
+    "emptyCustomTitle": "لا توجد أدوار مخصصة بعد",
+    "emptyCustomDescription": "أنشئ دوراً لتحديد صلاحيات فريقك.",
     "confirm": {
       "deleteTitle": "حذف الدور \"{{role}}\"؟",
       "deleteDescription": "سيؤدي هذا إلى إزالة الدور وتعيينات صلاحياته نهائياً. وسيفقد المستخدمون المعيّنون لهذا الدور تلك الصلاحيات."
     },
     "permissions": {
       "title": "إدارة الصلاحيات",
-      "selectAll": "تحديد جميع الصلاحيات",
+      "selectAll": "تحديد كل ما يمكنك تفويضه",
       "clearAll": "إلغاء تحديد الكل",
       "expandAll": "توسيع الكل",
       "collapseAll": "طي الكل",
       "searchPlaceholder": "ابحث عن صلاحية...",
-      "selectedCounter": "المحدد: {{selected}} / {{total}} صلاحية",
+      "selectedCounter": "المحدد: {{selected}} / {{total}} صلاحية قابلة للتفويض",
       "groupCounter": "{{selected}} / {{total}}",
       "groupSelectAll": "تحديد جميع صلاحيات {{group}}",
       "noResults": "لا توجد صلاحيات مطابقة لبحثك.",
@@ -8522,20 +8890,21 @@
       "successDescription": "تم تغيير كلمة المرور بنجاح."
     },
     "timezones": {
-      "utc": "UTC",
+      "utc": "التوقيت العالمي (UTC)",
       "americaNewYork": "التوقيت الشرقي (نيويورك)",
       "americaChicago": "التوقيت المركزي (شيكاغو)",
       "americaDenver": "التوقيت الجبلي (دنفر)",
       "americaLosAngeles": "التوقيت الهادئ (لوس أنجلوس)",
       "europeLondon": "لندن",
       "europeParis": "باريس",
-      "europeBerlin": "Berlin",
+      "europeBerlin": "برلين",
+      "africaCairo": "القاهرة",
       "asiaDubai": "دبي",
       "asiaRiyadh": "الرياض",
-      "asiaKolkata": "India (Kolkata)",
+      "asiaKolkata": "الهند (كولكاتا)",
       "asiaSingapore": "سنغافورة",
-      "asiaTokyo": "Tokyo",
-      "australiaSydney": "Sydney"
+      "asiaTokyo": "طوكيو",
+      "australiaSydney": "سيدني"
     }
   },
   "calendar": {
@@ -12875,6 +13244,16 @@
       "ownerJobTitle": "المسمى الوظيفي",
       "plan": "الخطة",
       "status": "الحالة"
+    },
+    "ownerJobTitles": {
+      "owner": "مالك",
+      "ceo": "الرئيس التنفيذي",
+      "founder": "مؤسس",
+      "coFounder": "مؤسس مشارك",
+      "generalManager": "مدير عام",
+      "managingDirector": "العضو المنتدب",
+      "operationsManager": "مدير العمليات",
+      "other": "أخرى"
     },
     "businessTypes": {
       "clinic": "عيادة",

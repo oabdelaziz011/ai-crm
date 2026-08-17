@@ -16,8 +16,7 @@ export function usePreferredLanguageSync() {
     const resolved = resolveAppLanguage(profile.preferred_language);
     if (i18n.resolvedLanguage !== resolved) {
       void i18n.changeLanguage(resolved);
-    } else {
-      cacheAppLanguage(resolved);
     }
+    cacheAppLanguage(resolved);
   }, [profile?.preferred_language, profile, i18n]);
 }

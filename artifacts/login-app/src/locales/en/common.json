@@ -204,14 +204,14 @@
     "aiPlatform": "AI Platform",
     "omnichannel": "Omnichannel Console",
     "channels": "Channels",
+    "email": "Email",
     "aiUsage": "AI Usage & Cost",
     "aiAnalytics": "AI Analytics",
-    "aiRuntime": "AI Runtime",
     "aiAssistant": "AI Assistant",
     "aiEmployees": "AI Employees",
     "aiChat": "AI Workspace",
     "knowledge": "Knowledge",
-    "prompts": "Prompts",
+    "prompts": "AI Prompt Templates",
     "automation": "Workflows",
     "reports": "Reports",
     "settings": "Settings",
@@ -276,7 +276,17 @@
       "invoice": "Invoice",
       "subscription": "Subscription",
       "whatsapp": "WhatsApp",
-      "system": "System"
+      "system": "System",
+      "customer": "Customer",
+      "payment": "Payment"
+    },
+    "detail": {
+      "back": "Back",
+      "notFound": "Notification not found.",
+      "read": "Read",
+      "unread": "Unread",
+      "details": "Additional details",
+      "openRelated": "Open related item"
     },
     "pagination": {
       "previous": "Previous",
@@ -320,15 +330,19 @@
       "templates": {
         "appointmentCreated": {
           "title": "Appointment created",
-          "message": "A new appointment was scheduled."
+          "message": "A new appointment was scheduled for {{customerName}}."
         },
         "appointmentUpdated": {
           "title": "Appointment updated",
-          "message": "An appointment was updated."
+          "message": "An appointment for {{customerName}} was updated."
         },
         "appointmentCancelled": {
           "title": "Appointment cancelled",
-          "message": "An appointment was cancelled."
+          "message": "Appointment for {{customerName}} was cancelled. Reason: {{reason}}"
+        },
+        "appointmentReminder": {
+          "title": "Appointment reminder",
+          "message": "Reminder: appointment for {{customerName}}."
         },
         "customerCreated": {
           "title": "New customer",
@@ -336,16 +350,66 @@
         },
         "invoiceCreated": {
           "title": "Invoice created",
-          "message": "Invoice {{invoiceId}} was created."
+          "message": "Invoice {{invoiceNumber}} for {{customerName}} was created ({{amount}})."
         },
         "paymentReceived": {
           "title": "Payment received",
-          "message": "Payment of {{amount}} was received."
+          "message": "Invoice {{invoiceNumber}} for {{customerName}} was paid ({{amount}})."
         },
         "genericSystem": {
           "title": "System notification",
           "message": "{{detail}}"
         }
+      },
+      "compose": {
+        "paymentReceived": "Payment received",
+        "invoiceCreated": "Invoice created",
+        "appointmentCancelled": "Appointment cancelled",
+        "appointmentCreated": "Appointment created",
+        "appointmentUpdated": "Appointment updated",
+        "customerCreated": "New customer created",
+        "invoicePart": "invoice {{invoice}}",
+        "customerPart": "for {{customer}}",
+        "amountPart": "amount {{amount}}",
+        "reasonPart": "reason: {{reason}}",
+        "subjectPart": "subject: {{subject}}",
+        "ticketPart": "ticket {{ticket}}",
+        "bookingPart": "booking {{booking}}",
+        "conversationPart": "conversation {{conversation}}",
+        "leadPart": "lead {{lead}}",
+        "taskPart": "task {{task}}",
+        "filePart": "file {{file}}",
+        "workflowPart": "workflow {{workflow}}"
+      },
+      "operations": {
+        "completed": "Operation completed",
+        "taskAssigned": "Task assigned",
+        "taskCompleted": "Task completed",
+        "workflowExecuted": "Workflow executed",
+        "aiSummary": "AI summary ready",
+        "knowledgeUpdated": "Knowledge updated",
+        "permissionChanged": "Permission changed",
+        "fileUploaded": "File uploaded",
+        "conversationTransferred": "Conversation transferred to you",
+        "conversationAssigned": "Conversation assigned to you",
+        "conversationEscalated": "Conversation escalated",
+        "conversationQueued": "Conversation entered queue",
+        "handoffAccepted": "Handoff accepted",
+        "handoffRejected": "Handoff rejected",
+        "returnedToAi": "Conversation returned to AI",
+        "supervisorAlert": "Supervisor alert",
+        "handoff": "Handoff notification",
+        "mention": "You were mentioned in a conversation",
+        "leadConverted": "Lead converted",
+        "leadAssigned": "Lead assigned",
+        "leadUpdated": "Lead updated",
+        "ticketAssigned": "Ticket assigned",
+        "ticketComment": "New ticket comment",
+        "ticketStatusChanged": "Ticket status changed",
+        "ticketPriorityChanged": "Ticket priority changed",
+        "ticketClosed": "Ticket closed",
+        "ticketSlaWarning": "Ticket SLA warning",
+        "ticketSlaBreach": "Ticket SLA breach"
       }
     },
     "email": {
@@ -588,7 +652,9 @@
       "unknown": "Unknown",
       "service": "service",
       "company": "company",
-      "role": "role"
+      "role": "role",
+      "noReason": "No reason provided",
+      "systemDetail": "No additional details"
     },
     "events": {
       "newCustomer": {
@@ -700,6 +766,7 @@
       "jobTitleHint": "Descriptive only — permissions come from roles.",
       "passkey": "Password",
       "submit": "Create account",
+      "formIncomplete": "Please fix the highlighted fields before continuing.",
       "already": "Already have an account?",
       "authenticateHere": "Sign in here",
       "successTitle": "Account created",
@@ -777,7 +844,12 @@
     },
     "validation": {
       "email": "Enter a valid email address",
-      "passwordMin": "Password must be at least 6 characters"
+      "passwordMin": "Password must be at least 6 characters",
+      "passwordStrength": {
+        "weak": "Weak password",
+        "medium": "Medium password",
+        "strong": "Strong password"
+      }
     },
     "errors": {
       "invalidEmail": "Enter a valid email address.",
@@ -945,8 +1017,8 @@
       "create": "Create Invoice"
     },
     "roles": {
-      "existing": "Existing roles",
-      "none": "No roles created yet.",
+      "existing": "Company roles",
+      "none": "No custom roles yet. Create a role to define permissions for your team.",
       "edit": "Edit role",
       "create": "Create role",
       "namePlaceholder": "Sales Lead",
@@ -984,6 +1056,14 @@
       "quickLinksSubtitle": "Jump to the sections you can access.",
       "openSection": "Open this section",
       "noSections": "You do not have access to any dashboard sections yet. Contact your administrator if you need access.",
+      "trialBanner": {
+        "title": "You are on the trial plan",
+        "badge": "Trial",
+        "body": "Your company is currently using the free trial. Upgrade anytime to keep full access.",
+        "bodyWithDate": "Your company is on the free trial. It is scheduled to end on {{date}}.",
+        "expired": "Trial period has ended — upgrade to restore full access",
+        "cta": "View plan & billing"
+      },
       "executive": {
         "allBranches": "All branches",
         "branchWithCount": "{{name}} · {{count}} branches",
@@ -2529,45 +2609,174 @@
       "resultsEmpty": "Retrieval results will appear here after you run a test."
     }
   },
-  "aiRuntime": {
-    "title": "AI Runtime Monitor",
-    "subtitle": "Read-only operational view of enterprise AI execution sessions and observability.",
-    "metrics": {
-      "events": "Structured events",
-      "cacheHitRatio": "Cache hit ratio",
-      "sessions": "Tracked sessions"
+  "emailModule": {
+    "title": "Email",
+    "subtitle": "Company email inbox, templates, AI routing, and channel settings.",
+    "nav": {
+      "inbox": "Inbox",
+      "sent": "Sent",
+      "drafts": "Drafts",
+      "templates": "Templates",
+      "aiRouting": "AI Routing",
+      "settings": "Settings"
     },
-    "sessions": {
-      "title": "Recent execution sessions",
-      "empty": "No runtime sessions recorded in this process yet."
+    "inbox": {
+      "hint": "Inbound and outbound email delivery activity for your company (email channel)."
+    },
+    "sent": {
+      "hint": "Sent email deliveries from the existing communication queue."
+    },
+    "drafts": {
+      "title": "Drafts",
+      "empty": "No email draft store is available yet. Compose and send through existing email channel settings."
+    },
+    "templates": {
+      "title": "Templates",
+      "subtitle": "Reusable subject and body templates with placeholders for Email.",
+      "empty": "No email templates yet. Create your first template to get started.",
+      "searchPlaceholder": "Search by name or code…",
+      "create": "Create template",
+      "edit": "Edit template",
+      "save": "Save",
+      "cancel": "Cancel",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "preview": "Preview",
+      "previewTitle": "Preview with sample data",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "name": "Name",
+      "code": "Code",
+      "subject": "Subject",
+      "body": "Body",
+      "variables": {
+        "heading": "Available variables",
+        "hint": "Click to insert into the focused field.",
+        "companyName": "Company name",
+        "customerName": "Customer name",
+        "customerEmail": "Customer email",
+        "ticketNumber": "Ticket number",
+        "ticketSubject": "Ticket subject",
+        "bookingReference": "Booking reference"
+      },
+      "columns": {
+        "name": "Name",
+        "code": "Code",
+        "subject": "Subject",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "readOnly": "You can view templates but need settings.edit to change them.",
+      "loadError": "Unable to load email templates.",
+      "retry": "Retry",
+      "saved": "Template saved.",
+      "duplicated": "Template duplicated.",
+      "deleted": "Template deleted.",
+      "saveError": "Unable to save template.",
+      "deleteConfirmTitle": "Delete template?",
+      "deleteConfirmDescription": "This permanently removes “{{name}}”.",
+      "noMatches": "No templates match your search.",
+      "testSend": "Send Test Email",
+      "testSendTitle": "Send test email",
+      "testSendRecipient": "Recipient email",
+      "testSendHint": "Uses sample preview data for variables. Outbound SMTP must be configured in Email Settings.",
+      "testSendSuccess": "Test email sent.",
+      "testSendError": "Unable to send test email.",
+      "testSendSaveFirst": "Save the template before sending a test.",
+      "testSendDisabled": "Enable the template before sending a test.",
+      "testSendNotConfigured": "Outbound email is not configured. Configure SMTP in Email Settings first."
+    },
+    "aiRouting": {
+      "title": "AI Email Routing",
+      "subtitle": "Map each classification category to a department, employee, or queue in your company.",
+      "statusLabel": "Status:",
+      "statusEnabled": "Enabled",
+      "unsaved": "Unsaved changes",
+      "empty": "No routing targets configured yet. Select a target for each category and save.",
+      "loading": "Loading routing configuration…",
+      "loadError": "Unable to load AI Email Routing configuration.",
+      "retry": "Retry",
+      "notEntitled": "AI Email Routing is not included in your plan.",
+      "readOnly": "You can view this configuration but need settings.edit to change it.",
+      "save": "Save Changes",
+      "saving": "Saving…",
+      "saveSuccess": "AI Email Routing configuration saved.",
+      "saveError": "Failed to save AI Email Routing configuration.",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "selectTarget": "Select target",
+      "clearTarget": "No target",
+      "noTargets": "No options for this company",
+      "columns": {
+        "category": "Category",
+        "enabled": "Enabled",
+        "targetType": "Target Type",
+        "target": "Target"
+      },
+      "targetTypes": {
+        "department": "Department",
+        "employee": "Employee",
+        "queue": "Queue"
+      },
+      "categories": {
+        "sales": "Sales",
+        "support": "Support",
+        "billing": "Billing",
+        "complaint": "Complaint",
+        "hr": "HR",
+        "generalInquiry": "General Inquiry"
+      }
     }
   },
   "prompts": {
-    "title": "Prompt Platform",
-    "subtitle": "Author, preview, validate, version, and compose enterprise prompt templates.",
+    "title": "AI Prompt Templates",
+    "subtitle": "Write and manage the instruction templates used by AI steps inside workflows.",
     "noPermission": "You do not have permission to view prompts.",
+    "purpose": {
+      "title": "What is this page?",
+      "body": "This is not financial claims. This page manages AI prompt templates — the written instructions the AI follows when a workflow runs a decision, summary, extraction, or similar step.",
+      "point1": "Create or edit company templates here, then publish them.",
+      "point2": "In Workflow Builder, each AI step picks a template from this library.",
+      "point3": "System templates are read-only; add a company copy from a preset to customize.",
+      "openWorkflows": "Open Workflows"
+    },
     "nav": {
       "library": "Prompt Library",
       "editor": "Template Editor"
     },
     "status": {
       "disabled": "Disabled",
-      "system": "System"
+      "system": "System",
+      "company": "Company"
     },
     "library": {
       "title": "Prompt Library",
       "subtitle": "Reusable prompt templates for workflows and AI runtime execution.",
-      "empty": "No prompt templates found for this company.",
-      "openEditor": "Open editor"
+      "emptyTitle": "No templates yet",
+      "empty": "Create a company template from a preset, or open a system template to preview it.",
+      "openEditor": "Open editor",
+      "openPreview": "Preview",
+      "createFromPreset": "Add to company",
+      "alreadyAdded": "Already added",
+      "created": "Created template “{{name}}”"
     },
     "templates": {
       "title": "Template Presets",
-      "subtitle": "Enterprise starter templates for support, booking, sales, and workflow decisions."
+      "subtitle": "Starter templates for support, booking, sales, and workflow AI steps."
     },
     "editor": {
       "enabled": "Enabled",
       "sectionPlaceholder": "Write prompt content with variables like {{customer.name}}",
-      "notFound": "Prompt template not found."
+      "notFound": "Prompt template not found.",
+      "systemReadOnly": "System templates are read-only. Create a company copy from a preset to edit.",
+      "saveDraft": "Save draft",
+      "publish": "Publish",
+      "draftSaved": "Draft saved",
+      "published": "Template published",
+      "enabledOn": "Template enabled",
+      "enabledOff": "Template disabled",
+      "draftNotes": "Saved as draft from Prompt Platform",
+      "publishNotes": "Published from Prompt Platform"
     },
     "variables": {
       "title": "Variable Browser",
@@ -2587,7 +2796,108 @@
     "versions": {
       "title": "Version History",
       "empty": "No versions yet.",
-      "active": "Active"
+      "active": "Active",
+      "rollback": "Rollback",
+      "rollbackSuccess": "Rolled back to selected version"
+    },
+    "lifecycle": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "types": {
+      "conversation": "Conversation",
+      "classification": "Classification",
+      "tool_assistance": "Tool assistance",
+      "summarization": "Summarization",
+      "extraction": "Extraction",
+      "fallback": "Fallback",
+      "escalation": "Escalation"
+    },
+    "sections": {
+      "system_instructions": "System instructions",
+      "assistant_profile": "Assistant profile",
+      "customer_360": "Customer 360",
+      "conversation_summary": "Conversation summary",
+      "recent_messages": "Recent messages",
+      "conversation_state": "Conversation state",
+      "intent_decision": "Intent decision",
+      "tool_results": "Tool results",
+      "company_policies": "Company policies",
+      "language": "Language",
+      "tone": "Tone",
+      "formatting_rules": "Formatting rules",
+      "safety_instructions": "Safety instructions",
+      "knowledge_context": "Knowledge context",
+      "output_contract": "Output contract"
+    },
+    "presets": {
+      "customer_support": {
+        "name": "Customer Support",
+        "description": "Resolve customer questions with company context and safety guardrails."
+      },
+      "booking_assistant": {
+        "name": "Booking Assistant",
+        "description": "Guide customers through appointment booking flows."
+      },
+      "faq_assistant": {
+        "name": "FAQ Assistant",
+        "description": "Answer frequently asked questions using company policies."
+      },
+      "sales_assistant": {
+        "name": "Sales Assistant",
+        "description": "Qualify leads and explain product value."
+      },
+      "lead_qualification": {
+        "name": "Lead Qualification",
+        "description": "Structured lead qualification prompts."
+      },
+      "appointment_booking": {
+        "name": "Appointment Booking",
+        "description": "Help customers book and confirm appointments."
+      },
+      "crm_assistant": {
+        "name": "CRM Assistant",
+        "description": "Summarize CRM context and suggest follow-ups."
+      },
+      "workflow_decision": {
+        "name": "Workflow Decision",
+        "description": "Decision prompts for workflow branching and classification."
+      },
+      "workflow_summarize": {
+        "name": "Workflow Summarize",
+        "description": "Summarize workflow text with configurable style, tone, and length."
+      },
+      "workflow_extract": {
+        "name": "Workflow Extract",
+        "description": "Extract structured business data from unstructured workflow input."
+      }
+    },
+    "systemNames": {
+      "conversation_default": "Conversation Default",
+      "conversation_default_description": "Default conversation response prompt template.",
+      "classification_default": "Classification Default",
+      "classification_default_description": "Default intent classification prompt template.",
+      "tool_assistance_default": "Tool Assistance Default",
+      "tool_assistance_default_description": "Default tool assistance prompt template.",
+      "summarization_default": "Summarization Default",
+      "summarization_default_description": "Default conversation summarization prompt template.",
+      "extraction_default": "Extraction Default",
+      "extraction_default_description": "Default structured extraction prompt template.",
+      "fallback_default": "Fallback Default",
+      "fallback_default_description": "Default fallback prompt template.",
+      "escalation_default": "Escalation Default",
+      "escalation_default_description": "Default human escalation prompt template."
+    },
+    "errors": {
+      "companyRequired": "A company context is required.",
+      "alreadyExists": "A company template with key “{{key}}” already exists.",
+      "createFailed": "Could not create the template.",
+      "saveFailed": "Could not save the draft.",
+      "publishFailed": "Could not publish the template.",
+      "updateFailed": "Could not update the template.",
+      "rollbackFailed": "Could not roll back the template version.",
+      "sectionPermission": "You do not have permission to view this prompt section."
     }
   },
   "aiAnalytics": {
@@ -3875,6 +4185,7 @@
       "selectPromptTemplate": "Select prompt template",
       "searchPrompts": "Search prompts",
       "noPromptTemplates": "No prompt templates found",
+      "managePromptTemplates": "Manage templates",
       "loadingProviders": "Loading providers…",
       "selectProviderConnection": "Select provider connection",
       "searchProviders": "Search providers",
@@ -8612,8 +8923,14 @@
       "extendByDays": "Extend by (days)",
       "extendTrialSuccess": "Trial extended",
       "extendTrialFailed": "Could not extend trial",
-      "feature": "Feature",
+      "feature": "Feature group",
       "category": "Category",
+      "permissions": "Included permissions",
+      "permissionCount": "{{count}} permissions included",
+      "viewPermissions": "View included permissions",
+      "hidePermissions": "Hide permissions",
+      "groupsHint": "Configure company capability groups. This does not assign permissions to employees — RBAC still controls who can do what.",
+      "employeeRbacHint": "Enabling a group makes its permissions available to the company. Employee access is still managed in Roles.",
       "status": "Status",
       "source": "Source",
       "enabled": "Enabled",
@@ -8625,30 +8942,33 @@
       "expiresAt": "Expires",
       "notes": "Notes",
       "indefinite": "No expiration",
-      "selectHint": "Select a feature to view grant details.",
+      "selectHint": "Select a feature group to view grant details.",
       "saveSuccess": "Feature access updated",
       "saveFailed": "Could not update feature access"
     }
   },
   "roles": {
     "title": "Roles",
-    "subtitle": "Create roles and assign permissions in a modular grid.",
+    "subtitle": "Create company-specific roles and assign only the permissions you can delegate.",
     "noDescription": "No description",
     "edit": "Edit",
     "delete": "Delete",
     "createRole": "Create Role",
+    "customRolesHeading": "Company roles",
+    "emptyCustomTitle": "No custom roles yet",
+    "emptyCustomDescription": "Create a role to define permissions for your team.",
     "confirm": {
       "deleteTitle": "Delete role \"{{role}}\"?",
       "deleteDescription": "This will permanently remove the role and its permission assignments. Users assigned to this role will lose those permissions."
     },
     "permissions": {
       "title": "Permission Management",
-      "selectAll": "Select All Permissions",
+      "selectAll": "Select all you can delegate",
       "clearAll": "Clear All",
       "expandAll": "Expand All",
       "collapseAll": "Collapse All",
       "searchPlaceholder": "Search permissions...",
-      "selectedCounter": "Selected: {{selected}} / {{total}} permissions",
+      "selectedCounter": "Selected: {{selected}} / {{total}} delegable permissions",
       "groupCounter": "{{selected}} / {{total}}",
       "groupSelectAll": "Select all permissions in {{group}}",
       "noResults": "No permissions match your search.",
@@ -8801,6 +9121,7 @@
       "europeLondon": "London",
       "europeParis": "Paris",
       "europeBerlin": "Berlin",
+      "africaCairo": "Cairo",
       "asiaDubai": "Dubai",
       "asiaRiyadh": "Riyadh",
       "asiaKolkata": "India (Kolkata)",
@@ -13217,6 +13538,16 @@
       "ownerJobTitle": "Job title",
       "plan": "Plan",
       "status": "Status"
+    },
+    "ownerJobTitles": {
+      "owner": "Owner",
+      "ceo": "CEO",
+      "founder": "Founder",
+      "coFounder": "Co-Founder",
+      "generalManager": "General Manager",
+      "managingDirector": "Managing Director",
+      "operationsManager": "Operations Manager",
+      "other": "Other"
     },
     "businessTypes": {
       "clinic": "Clinic",

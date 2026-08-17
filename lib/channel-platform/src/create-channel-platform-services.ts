@@ -14,6 +14,7 @@ import { OutboundMessagePipeline } from "./pipelines/outbound-message-pipeline.j
 import type { ChannelPlatformPorts } from "./ports/channel-platform-ports.js";
 import type { ChannelWorkflowResolver } from "./services/channel-workflow-resolver.js";
 import { NoopChannelTelemetryPort, type ChannelTelemetryPort } from "./ports/telemetry-port.js";
+import type { EmailRoutingClassifierPort, EmailRoutingEnginePort } from "./ports/email-routing-classifier-port.js";
 import { ChannelRouter } from "./router/channel-router.js";
 import {
   createSupabaseChannelDeliveryEventRepository,
@@ -45,6 +46,10 @@ export type ChannelPlatformServicesOptions = {
   emailCredentialsLoader?: import("./adapters/email/email-canonical-credentials.js").EmailCredentialsLoader;
   emailOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
   workflowResolver?: ChannelWorkflowResolver;
+  /** Inbound email-only AI Email Routing classifier (Sprint 3). */
+  emailRoutingClassifier?: EmailRoutingClassifierPort;
+  /** Inbound email-only AI Email Routing engine (Sprint 4). */
+  emailRoutingEngine?: EmailRoutingEnginePort;
 };
 
 export type ChannelPlatformServices = {
@@ -118,6 +123,8 @@ export function createChannelPlatformServices(
     sessionRepository,
     options.workflowResolver,
     options.whatsAppDirectOutboundBypass,
+    options.emailRoutingClassifier,
+    options.emailRoutingEngine,
   );
 
   const router = new ChannelRouter(

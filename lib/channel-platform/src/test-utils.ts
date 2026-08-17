@@ -51,9 +51,15 @@ export function createContext(overrides?: Partial<ServiceContext>): ServiceConte
 export function createTestEnvironment(options?: {
   companyChannel?: Partial<ResolvedCompanyChannel>;
   runtimeResponse?: string;
+  runtimeError?: Error;
   automationResponse?: string;
   automationPort?: ChannelAutomationPort;
   adapters?: ChannelAdapterPort[];
+  emailRoutingClassifier?: import("./ports/email-routing-classifier-port.js").EmailRoutingClassifierPort;
+  emailRoutingEngine?: import("./ports/email-routing-classifier-port.js").EmailRoutingEnginePort;
+  employeeRuntime?: ChannelPlatformPorts["employeeRuntime"];
+  aiEmployeeEmailCommercial?: ChannelPlatformPorts["aiEmployeeEmailCommercial"];
+  aiEmailRoutingCommercial?: ChannelPlatformPorts["aiEmailRoutingCommercial"];
   workflowBinding?: {
     companyId: string;
     companyChannelId: string;
@@ -79,6 +85,8 @@ export function createTestEnvironment(options?: {
   const incomingMessages: ConversationMessageSummary[] = [];
   const outgoingMessages: ConversationMessageSummary[] = [];
   const conversations: Array<{ id: string; companyChannelId: string }> = [];
+  const conversationMetadataById = new Map<string, Record<string, unknown>>();
+  const incomingMessageMetadata: Array<Record<string, unknown> | undefined> = [];
   const telemetryEvents: Array<Record<string, unknown>> = [];
   let runtimeCalls = 0;
   let automationCalls = 0;
@@ -281,6 +289,9 @@ export function createTestEnvironment(options?: {
         companyChannelId: input.companyChannelId,
       };
       conversations.push(record);
+      if (input.metadata) {
+        conversationMetadataById.set(record.id, { ...input.metadata });
+      }
       return { id: record.id };
     },
     addIncomingMessage: async (input) => {
@@ -292,6 +303,7 @@ export function createTestEnvironment(options?: {
         createdAt: new Date().toISOString(),
       };
       incomingMessages.push(record);
+      incomingMessageMetadata.push(input.metadata);
       return record;
     },
     addOutgoingMessage: async (input) => {
@@ -305,11 +317,19 @@ export function createTestEnvironment(options?: {
       outgoingMessages.push(record);
       return record;
     },
+    getConversationMetadata: async (conversationId) =>
+      conversationMetadataById.get(conversationId) ?? null,
+    updateConversationMetadata: async (input) => {
+      conversationMetadataById.set(input.conversationId, { ...input.metadata });
+    },
   };
 
   const runtimePort: ChannelRuntimePort = {
     execute: async (input): Promise<RuntimeExecutionSummary> => {
       runtimeCalls += 1;
+      if (options?.runtimeError) {
+        throw options.runtimeError;
+      }
       return {
         executionId: "runtime-exec-1",
         responseContent: options?.runtimeResponse ?? `Echo: ${input.messageText}`,
@@ -335,6 +355,15 @@ export function createTestEnvironment(options?: {
     runtime: runtimePort,
     automation: automationPort,
   };
+  if (options?.employeeRuntime) {
+    ports.employeeRuntime = options.employeeRuntime;
+  }
+  if (options?.aiEmployeeEmailCommercial) {
+    ports.aiEmployeeEmailCommercial = options.aiEmployeeEmailCommercial;
+  }
+  if (options?.aiEmailRoutingCommercial) {
+    ports.aiEmailRoutingCommercial = options.aiEmailRoutingCommercial;
+  }
 
   const workflowResolver = options?.workflowBinding
     ? new ChannelWorkflowResolver({
@@ -392,6 +421,9 @@ export function createTestEnvironment(options?: {
     inboundRepository,
     sessionRepository,
     workflowResolver,
+    undefined,
+    options?.emailRoutingClassifier,
+    options?.emailRoutingEngine,
   );
 
   const router = new ChannelRouter(
@@ -411,8 +443,10 @@ export function createTestEnvironment(options?: {
     inboundEvents,
     deliveryEvents,
     incomingMessages,
+    incomingMessageMetadata,
     outgoingMessages,
     conversations,
+    conversationMetadataById,
     telemetryEvents,
     companyChannel,
     ports,

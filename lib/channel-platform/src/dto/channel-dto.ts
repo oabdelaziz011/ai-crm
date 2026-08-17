@@ -90,6 +90,38 @@ export type InboundRouteResponseDto = {
   /** When outbound dispatch fails after inbound/AI succeeded */
   outboundError?: string;
   duplicate?: boolean;
+  /**
+   * AI Email Routing classification (inbound email only).
+   * Distinct from generic IntentClassifier results.
+   */
+  emailRoutingClassification?: {
+    category: string;
+    confidence: number;
+    subcategory?: string | null;
+    reason: string;
+    source: string;
+  };
+  /**
+   * AI Email Routing decision (inbound email only).
+   * Distinct from classification and from generic IntentClassifier results.
+   */
+  emailRoutingDecision?: {
+    targetType: string;
+    targetId: string | null;
+    category: string;
+    confidence: number;
+    reason: string;
+    source: string;
+    configurationRequired: boolean;
+  };
+  /** Sprint 5 ticket action result (inbound email only). */
+  emailRoutingTicket?: {
+    status: string;
+    reason: string;
+    ticketId: string | null;
+    ticketNumber?: string;
+    assignedUserId: string | null;
+  };
 };
 
 export type OutboundDispatchRequestDto = {

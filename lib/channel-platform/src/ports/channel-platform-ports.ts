@@ -143,6 +143,12 @@ export type ChannelPlatformPorts = {
   runtime: ChannelRuntimePort;
   employeeRuntime?: ChannelEmployeeRuntimePort;
   automation?: ChannelAutomationPort;
+  /** Sprint 5: AI Email Routing → existing ticket create/assign. */
+  emailRoutingTickets?: import("./email-routing-ticket-action-port.js").EmailRoutingTicketActionPort;
+  /** Sprint 6: ai_email_routing entitlement + usage metering. */
+  aiEmailRoutingCommercial?: import("./ai-email-routing-commercial-port.js").AiEmailRoutingCommercialPort;
+  /** Sprint 3: ai_employee entitlement + usage for Email-channel AI Employee replies. */
+  aiEmployeeEmailCommercial?: import("./ai-employee-email-commercial-port.js").AiEmployeeEmailCommercialPort;
 };
 
 export type ChannelRouterPort = {

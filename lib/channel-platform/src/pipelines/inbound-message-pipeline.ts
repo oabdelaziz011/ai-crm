@@ -53,6 +53,15 @@ import {
   INTERACTIVE_REPLY_DEDUPE_TTL_MS,
   releaseInteractiveReplyDedupe,
 } from "../utils/interactive-reply-dedupe.js";
+import {
+  toEmailRoutingClassificationRuntime,
+  toEmailRoutingDecisionRuntime,
+  type EmailRoutingClassificationRuntime,
+  type EmailRoutingClassifierPort,
+  type EmailRoutingDecisionRuntime,
+  type EmailRoutingEnginePort,
+} from "../ports/email-routing-classifier-port.js";
+import type { EmailRoutingTicketActionRuntimeResult } from "../ports/email-routing-ticket-action-port.js";
 
 const IN_FLIGHT_INBOUND_TTL_MS = 2 * 60 * 1000;
 
@@ -128,6 +137,8 @@ export class InboundMessagePipeline {
     private readonly sessionRepository: ChannelSessionRepository,
     private readonly workflowResolver?: ChannelWorkflowResolver,
     private readonly whatsAppDirectOutboundBypass?: WhatsAppDirectOutboundBypassOptions,
+    private readonly emailRoutingClassifier?: EmailRoutingClassifierPort,
+    private readonly emailRoutingEngine?: EmailRoutingEnginePort,
   ) {}
 
   async process(ctx: ServiceContext, request: InboundRouteRequestDto): Promise<InboundRouteResponseDto> {
@@ -322,6 +333,82 @@ export class InboundMessagePipeline {
         interactiveReply: Boolean(normalized.metadata?.kind === "interactive_reply"),
       });
 
+      // Sprint 3–6: AI Email Routing (email only) — gated by commercial entitlement/quota.
+      let emailRoutingClassification: EmailRoutingClassificationRuntime | undefined;
+      let emailRoutingDecision: EmailRoutingDecisionRuntime | undefined;
+      let emailRoutingTicket: EmailRoutingTicketActionRuntimeResult | undefined;
+      if (request.channelKey === "email" && this.emailRoutingClassifier) {
+        let aiEmailRoutingAllowed = true;
+        if (this.ports.aiEmailRoutingCommercial) {
+          try {
+            const access = await this.ports.aiEmailRoutingCommercial.checkAccess({
+              companyId: request.companyId,
+            });
+            aiEmailRoutingAllowed = access.allowed;
+            request.trace?.step("webhook.email_routing_commercial", {
+              inboundEventId: inboundEvent.id,
+              companyId: request.companyId,
+              allowed: access.allowed,
+              reason: access.reason,
+            });
+          } catch {
+            // Fail closed on unexpected commercial-port errors.
+            aiEmailRoutingAllowed = false;
+            request.trace?.step("webhook.email_routing_commercial", {
+              inboundEventId: inboundEvent.id,
+              companyId: request.companyId,
+              allowed: false,
+              reason: "entitlement_error",
+            });
+          }
+        }
+
+        if (aiEmailRoutingAllowed) {
+          emailRoutingClassification = await this.classifyInboundEmailRouting({
+            companyId: request.companyId,
+            subject:
+              typeof normalized.metadata?.subject === "string" ? normalized.metadata.subject : null,
+            body: inboundText,
+            inboundEventId: inboundEvent.id,
+            trace: request.trace,
+          });
+          if (emailRoutingClassification) {
+            if (this.emailRoutingEngine) {
+              emailRoutingDecision = await this.decideInboundEmailRouting({
+                companyId: request.companyId,
+                classification: emailRoutingClassification,
+                inboundEventId: inboundEvent.id,
+                trace: request.trace,
+              });
+            }
+            normalized.metadata = {
+              ...(normalized.metadata ?? {}),
+              emailRoutingClassification,
+              ...(emailRoutingDecision ? { emailRoutingDecision } : {}),
+            };
+
+            if (this.ports.aiEmailRoutingCommercial) {
+              try {
+                await this.ports.aiEmailRoutingCommercial.recordUsage({
+                  companyId: request.companyId,
+                  inboundEventId: inboundEvent.id,
+                  category: emailRoutingClassification.category,
+                  source: emailRoutingClassification.source,
+                });
+              } catch {
+                // Metering failure must not break inbound email or AI routing results.
+                request.trace?.step("webhook.email_routing_usage", {
+                  inboundEventId: inboundEvent.id,
+                  companyId: request.companyId,
+                  recorded: false,
+                  reason: "usage_record_failed",
+                });
+              }
+            }
+          }
+        }
+      }
+
       traceParsedInboundMessage({
         channelKey: request.channelKey,
         externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
@@ -435,13 +522,39 @@ export class InboundMessagePipeline {
       let transferSource: "channel_binding" | "ai_employee_sticky" | "ai_employee_intent" | null =
         bindingWorkflow ? "channel_binding" : stickyTransfer ? "ai_employee_sticky" : null;
 
+      // Email AI Employee: fail-closed commercial entitlement (ai_employee). Separate from Email Routing.
+      let emailAiEmployeeAllowed = true;
+      if (request.channelKey === "email" && request.executeAi && this.ports.aiEmployeeEmailCommercial) {
+        try {
+          const access = await this.ports.aiEmployeeEmailCommercial.checkAccess({
+            companyId: request.companyId,
+          });
+          emailAiEmployeeAllowed = access.allowed;
+          request.trace?.step("webhook.ai_employee_email_commercial", {
+            inboundEventId: inboundEvent.id,
+            companyId: request.companyId,
+            allowed: access.allowed,
+            reason: access.reason,
+          });
+        } catch {
+          emailAiEmployeeAllowed = false;
+          request.trace?.step("webhook.ai_employee_email_commercial", {
+            inboundEventId: inboundEvent.id,
+            companyId: request.companyId,
+            allowed: false,
+            reason: "entitlement_error",
+          });
+        }
+      }
+
       // Resolve AI employee while channel workflow is off so we can force-transfer booking intents.
       if (
         request.executeAi &&
         !bindingWorkflow &&
         !stickyTransfer &&
         !aiEmployeeId &&
-        this.ports.employeeRuntime
+        this.ports.employeeRuntime &&
+        (request.channelKey !== "email" || emailAiEmployeeAllowed)
       ) {
         const resolvedEmployee = await this.ports.employeeRuntime.resolveForInboundChannel({
           companyId: request.companyId,
@@ -554,16 +667,36 @@ export class InboundMessagePipeline {
         });
       }
 
+      if (request.channelKey === "email" && request.executeAi && !emailAiEmployeeAllowed) {
+        aiEmployeeId = undefined;
+        employeeConversationMetadata = undefined;
+        request.trace?.step("webhook.ai_employee_email_skipped", {
+          inboundEventId: inboundEvent.id,
+          reason: "not_entitled",
+        });
+      }
+
       let legacyAssistantId = request.aiAssistantId;
       if (request.executeAi && !useWorkflow && !legacyAssistantId) {
-        legacyAssistantId =
-          (await this.ports.conversation.resolveCompanyAssistantId?.(request.companyId)) ?? undefined;
+        // Email AI Employee path does not fall back to legacy assistant when entitlement denied.
+        if (request.channelKey !== "email" || emailAiEmployeeAllowed) {
+          legacyAssistantId =
+            (await this.ports.conversation.resolveCompanyAssistantId?.(request.companyId)) ?? undefined;
+        }
       }
 
       if (request.executeAi && !useWorkflow && !aiEmployeeId && !legacyAssistantId) {
-        throw new ValidationError(
-          "A published AI Employee or legacy assistant is required when executeAi is true.",
-        );
+        if (request.channelKey === "email") {
+          request.trace?.step("webhook.ai_employee_email_skipped", {
+            inboundEventId: inboundEvent.id,
+            reason: emailAiEmployeeAllowed ? "no_employee" : "not_entitled",
+          });
+          // Continue inbound ingestion without AI reply (do not throw).
+        } else {
+          throw new ValidationError(
+            "A published AI Employee or legacy assistant is required when executeAi is true.",
+          );
+        }
       }
 
       const session = await waPerfMeasure("Conversation lookup", () =>
@@ -575,7 +708,9 @@ export class InboundMessagePipeline {
           senderExternalId: normalized.senderExternalId,
           conversationId: request.conversationId,
           aiAssistantId: legacyAssistantId,
-          requireAiAssistant: !useWorkflow,
+          requireAiAssistant:
+            !useWorkflow &&
+            (request.channelKey !== "email" || Boolean(aiEmployeeId || legacyAssistantId)),
           employeeConversationMetadata,
           metadata: normalized.metadata,
         }),
@@ -636,6 +771,88 @@ export class InboundMessagePipeline {
           phoneNumber: normalized.senderExternalId,
           aiEmployeeId: aiEmployeeId ?? null,
         });
+      }
+
+      if (
+        (emailRoutingClassification || emailRoutingDecision) &&
+        this.ports.conversation.updateConversationMetadata &&
+        this.ports.conversation.getConversationMetadata
+      ) {
+        const currentMeta =
+          (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ?? {};
+        await this.ports.conversation.updateConversationMetadata({
+          conversationId: session.conversation_id,
+          metadata: {
+            ...currentMeta,
+            ...(emailRoutingClassification ? { emailRoutingClassification } : {}),
+            ...(emailRoutingDecision ? { emailRoutingDecision } : {}),
+          },
+        });
+      }
+
+      if (
+        request.channelKey === "email" &&
+        emailRoutingClassification &&
+        emailRoutingDecision &&
+        this.ports.emailRoutingTickets
+      ) {
+        try {
+          emailRoutingTicket = await this.ports.emailRoutingTickets.apply({
+            companyId: request.companyId,
+            conversationId: session.conversation_id,
+            inboundEventId: inboundEvent.id,
+            subject:
+              typeof normalized.metadata?.subject === "string" ? normalized.metadata.subject : null,
+            bodyPreview: inboundText.slice(0, 500),
+            classification: emailRoutingClassification,
+            decision: emailRoutingDecision,
+          });
+          request.trace?.step("webhook.email_routing_ticket", {
+            inboundEventId: inboundEvent.id,
+            companyId: request.companyId,
+            status: emailRoutingTicket.status,
+            ticketId: emailRoutingTicket.ticketId,
+            assignedUserId: emailRoutingTicket.assignedUserId,
+            targetType: emailRoutingTicket.targetType ?? null,
+            success: emailRoutingTicket.status !== "failed",
+          });
+          if (
+            this.ports.conversation.updateConversationMetadata &&
+            this.ports.conversation.getConversationMetadata
+          ) {
+            const currentMeta =
+              (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ?? {};
+            await this.ports.conversation.updateConversationMetadata({
+              conversationId: session.conversation_id,
+              metadata: {
+                ...currentMeta,
+                emailRoutingTicket,
+              },
+            });
+          }
+          normalized.metadata = {
+            ...(normalized.metadata ?? {}),
+            emailRoutingTicket,
+          };
+        } catch (error) {
+          const reason =
+            error instanceof Error ? error.message.slice(0, 120) : "email_routing_ticket_failed";
+          emailRoutingTicket = {
+            status: "failed",
+            reason,
+            ticketId: null,
+            assignedUserId: null,
+          };
+          request.trace?.step("webhook.email_routing_ticket", {
+            inboundEventId: inboundEvent.id,
+            companyId: request.companyId,
+            status: "failed",
+            ticketId: null,
+            assignedUserId: null,
+            success: false,
+          });
+          // Do not fail inbound email ingestion because ticket apply failed.
+        }
       }
 
       let incomingMessageId: string | undefined = inboundEvent.incoming_message_id ?? undefined;
@@ -714,6 +931,9 @@ export class InboundMessagePipeline {
             WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD.type === "text"
               ? WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD.text.body
               : undefined,
+          emailRoutingClassification,
+          emailRoutingDecision,
+          emailRoutingTicket,
         };
       }
 
@@ -894,12 +1114,20 @@ export class InboundMessagePipeline {
           outboundDeliveryId,
           outboundDeliveryIds,
           responseContent,
+          emailRoutingClassification,
+          emailRoutingDecision,
+          emailRoutingTicket,
         };
       }
 
-      if (!useWorkflow && request.executeAi) {
+      if (
+        !useWorkflow &&
+        request.executeAi &&
+        (request.channelKey !== "email" || Boolean(aiEmployeeId || legacyAssistantId))
+      ) {
         let runtimeConfig = request.runtimeConfig;
 
+        try {
         if (aiEmployeeId && this.ports.employeeRuntime) {
           const conversationMetadata =
             (await this.ports.conversation.getConversationMetadata?.(session.conversation_id)) ??
@@ -916,10 +1144,17 @@ export class InboundMessagePipeline {
               channelKey: request.channelKey,
               companyChannelId: request.companyChannelId,
               conversationId: session.conversation_id,
+              ...(request.channelKey === "email" &&
+              typeof normalized.metadata?.subject === "string"
+                ? { emailSubject: normalized.metadata.subject }
+                : {}),
             },
           });
 
           if (!prepared?.runtimeConfig.providerConnectionId) {
+            if (request.channelKey === "email") {
+              throw new Error("Published AI Employee runtime is not ready for inbound email execution.");
+            }
             throw new ValidationError(
               "Published AI Employee runtime is not ready for inbound channel execution.",
             );
@@ -958,6 +1193,9 @@ export class InboundMessagePipeline {
         }
 
         if (!runtimeConfig?.providerConnectionId) {
+          if (request.channelKey === "email") {
+            throw new Error("runtimeConfig.providerConnectionId is required when executeAi is true.");
+          }
           throw new ValidationError("runtimeConfig.providerConnectionId is required when executeAi is true.");
         }
 
@@ -966,12 +1204,19 @@ export class InboundMessagePipeline {
           aiEmployeeId: aiEmployeeId ?? null,
         });
 
+        const emailSubject =
+          typeof normalized.metadata?.subject === "string" ? normalized.metadata.subject.trim() : "";
+        const aiMessageText =
+          request.channelKey === "email" && emailSubject
+            ? `Subject: ${emailSubject}\n\n${inboundText}`
+            : inboundText;
+
         waPerfMarkInboundExecution("ai_runtime");
         const runtimeResult = await waPerfMeasure("OpenAI request", () =>
           this.ports.runtime.execute({
             companyId: request.companyId,
             conversationId: session.conversation_id,
-            messageText: inboundText,
+            messageText: aiMessageText,
             runtimeConfig,
             correlationId: inboundEvent.id,
             onStreamChunk: request.onStreamChunk,
@@ -1039,6 +1284,26 @@ export class InboundMessagePipeline {
 
           outboundDeliveryId = outbound.deliveryEventId;
 
+          if (
+            request.channelKey === "email" &&
+            outboundDeliveryId &&
+            this.ports.aiEmployeeEmailCommercial
+          ) {
+            try {
+              await this.ports.aiEmployeeEmailCommercial.recordUsage({
+                companyId: request.companyId,
+                inboundEventId: inboundEvent.id,
+                aiEmployeeId: aiEmployeeId ?? null,
+              });
+            } catch {
+              request.trace?.step("webhook.ai_employee_email_usage", {
+                inboundEventId: inboundEvent.id,
+                recorded: false,
+                reason: "usage_record_failed",
+              });
+            }
+          }
+
           if (request.channelKey === "whatsapp") {
             logWhatsApp("Reply completed", {
               companyId: request.companyId,
@@ -1079,7 +1344,44 @@ export class InboundMessagePipeline {
           outboundDeliveryId,
           outboundError,
           responseContent,
+          emailRoutingClassification,
+          emailRoutingDecision,
+          emailRoutingTicket,
         };
+        } catch (error) {
+          if (request.channelKey !== "email") {
+            throw error;
+          }
+          // Soft-fail Email AI Employee: keep inbound processed, no outbound claim.
+          const message = error instanceof Error ? error.message : "ai_employee_email_failed";
+          request.trace?.step("webhook.ai_employee_email_skipped", {
+            inboundEventId: inboundEvent.id,
+            reason: "execution_failed",
+            error: message.slice(0, 160),
+          });
+          await this.inboundRepository.updateEvent({
+            inboundEventId: inboundEvent.id,
+            processingStatus: "processed",
+            conversationId: session.conversation_id,
+            channelSessionId: session.id,
+            incomingMessageId,
+            runtimeExecutionId,
+            processedAt: new Date().toISOString(),
+          });
+          return {
+            inboundEventId: inboundEvent.id,
+            conversationId: session.conversation_id,
+            channelSessionId: session.id,
+            incomingMessageId: incomingMessageId ?? "",
+            runtimeExecutionId,
+            outboundDeliveryId,
+            outboundError: message,
+            responseContent,
+            emailRoutingClassification,
+            emailRoutingDecision,
+            emailRoutingTicket,
+          };
+        }
       }
 
       await this.inboundRepository.updateEvent({
@@ -1100,6 +1402,9 @@ export class InboundMessagePipeline {
         runtimeExecutionId,
         outboundDeliveryId,
         responseContent,
+        emailRoutingClassification,
+        emailRoutingDecision,
+        emailRoutingTicket,
       };
     } catch (error) {
       if (interactiveReplyId && !duplicate) {
@@ -1135,6 +1440,105 @@ export class InboundMessagePipeline {
         processedAt: new Date().toISOString(),
       });
       throw error;
+    }
+  }
+
+  private async classifyInboundEmailRouting(input: {
+    companyId: string;
+    subject: string | null;
+    body: string;
+    inboundEventId: string;
+    trace?: InboundRouteRequestDto["trace"];
+  }): Promise<EmailRoutingClassificationRuntime | undefined> {
+    if (!this.emailRoutingClassifier) return undefined;
+
+    try {
+      const result = await this.emailRoutingClassifier.classify({
+        subject: input.subject,
+        body: input.body,
+        companyId: input.companyId,
+      });
+      const runtime = toEmailRoutingClassificationRuntime(result);
+      input.trace?.step("webhook.email_routing_classified", {
+        inboundEventId: input.inboundEventId,
+        companyId: input.companyId,
+        category: runtime.category,
+        confidence: runtime.confidence,
+        source: runtime.source,
+        success: true,
+      });
+      return runtime;
+    } catch (error) {
+      // Sprint 2 classifier should not throw; if the port does, never fail ingestion.
+      const reason =
+        error instanceof Error ? error.message.slice(0, 120) : "email_routing_classifier_failed";
+      const runtime: EmailRoutingClassificationRuntime = {
+        category: "general_inquiry",
+        confidence: 0.1,
+        subcategory: null,
+        reason: `Email routing classification failed: ${reason}`,
+        source: "llm",
+      };
+      input.trace?.step("webhook.email_routing_classified", {
+        inboundEventId: input.inboundEventId,
+        companyId: input.companyId,
+        category: runtime.category,
+        confidence: runtime.confidence,
+        source: runtime.source,
+        success: false,
+      });
+      return runtime;
+    }
+  }
+
+  private async decideInboundEmailRouting(input: {
+    companyId: string;
+    classification: EmailRoutingClassificationRuntime;
+    inboundEventId: string;
+    trace?: InboundRouteRequestDto["trace"];
+  }): Promise<EmailRoutingDecisionRuntime | undefined> {
+    if (!this.emailRoutingEngine) return undefined;
+
+    try {
+      const result = await this.emailRoutingEngine.route({
+        companyId: input.companyId,
+        classification: input.classification,
+      });
+      const runtime = toEmailRoutingDecisionRuntime(result);
+      input.trace?.step("webhook.email_routing_decided", {
+        inboundEventId: input.inboundEventId,
+        companyId: input.companyId,
+        category: runtime.category,
+        targetType: runtime.targetType,
+        targetId: runtime.targetId,
+        confidence: runtime.confidence,
+        configurationRequired: runtime.configurationRequired,
+        success: true,
+      });
+      return runtime;
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message.slice(0, 120) : "email_routing_engine_failed";
+      const runtime: EmailRoutingDecisionRuntime = {
+        targetType: "unresolved",
+        targetId: null,
+        category: "general_inquiry",
+        confidence: input.classification.confidence,
+        reason: `Email routing decision failed: ${reason}`,
+        source: "classification",
+        configurationRequired: true,
+      };
+      input.trace?.step("webhook.email_routing_decided", {
+        inboundEventId: input.inboundEventId,
+        companyId: input.companyId,
+        category: runtime.category,
+        targetType: runtime.targetType,
+        targetId: runtime.targetId,
+        confidence: runtime.confidence,
+        configurationRequired: runtime.configurationRequired,
+        success: false,
+      });
+      return runtime;
     }
   }
 

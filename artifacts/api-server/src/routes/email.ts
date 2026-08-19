@@ -5,6 +5,7 @@ import en from "@login-app/locales/en/common.json" with { type: "json" };
 import { SmtpEmailTransport } from "@login-app/lib/notifications/providers/email/adapter/smtp-email-transport";
 import { EmailRenderer } from "@login-app/lib/notifications/providers/email/renderer/email-renderer";
 import { createEmailProvider } from "@login-app/lib/notifications/providers/email/services/email-provider";
+import { createEmailsSentCommercialPort } from "../platform/emails-sent-commercial-adapter.js";
 import {
   SendEmailTemplateError,
   sendEmailTemplate,
@@ -43,7 +44,9 @@ function createProvider(client: ReturnType<typeof createClient> | import("@supab
   const t = i18next.getFixedT("en", "common");
   const renderer = EmailRenderer.fromI18n(t);
   // EmailProvider is typed against login-app's SupabaseClient generics; cast at the boundary.
-  return createEmailProvider(client as never, new SmtpEmailTransport(), renderer);
+  return createEmailProvider(client as never, new SmtpEmailTransport(), renderer, {
+    emailsSentCommercial: createEmailsSentCommercialPort(client),
+  });
 }
 
 router.post("/email/health", async (req, res, next) => {

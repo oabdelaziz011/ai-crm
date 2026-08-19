@@ -60,6 +60,8 @@ import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
 import { createEmailRoutingTicketActionPort } from "./email-routing-ticket-adapter.js";
 import { createAiEmailRoutingCommercialPort } from "./ai-email-routing-commercial-adapter.js";
 import { createAiEmployeeEmailCommercialPort } from "./ai-employee-email-commercial-adapter.js";
+import { createWhatsAppMessagesCommercialPort } from "./whatsapp-messages-commercial-adapter.js";
+import { createAiTokensCommercialPort } from "./ai-tokens-commercial-adapter.js";
 import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
 import { instrumentSupabaseClientForWhatsAppPerf } from "@workspace/channel-platform/server";
@@ -157,6 +159,8 @@ export function getWebhookPlatform(): WebhookPlatform {
     vectorQueryPort: retrievalPlatformPorts.vectorQueryPort,
   });
 
+  const aiTokensCommercial = createAiTokensCommercialPort(client);
+
   // Enterprise runtime without tools is enough for AI Extract / Decision on the webhook path.
   // Tools need the automation engine (circular), so employee tooling uses a second runtime below.
   const workflowAiExecution = createAIExecutionServices(
@@ -167,6 +171,7 @@ export function getWebhookPlatform(): WebhookPlatform {
       knowledge: retrieval.knowledge,
       platformConfig,
     }),
+    { aiTokensCommercial },
   );
   if (!workflowAiExecution.enterpriseRuntime) {
     throw new Error("Enterprise AI runtime is required for webhook AI workflow nodes.");
@@ -190,6 +195,7 @@ export function getWebhookPlatform(): WebhookPlatform {
       tools,
       platformConfig,
     }),
+    { aiTokensCommercial },
   );
   const tenantRuntimeConfig = createTenantRuntimeConfigService(client);
 
@@ -262,6 +268,7 @@ export function getWebhookPlatform(): WebhookPlatform {
   });
   ports.aiEmailRoutingCommercial = createAiEmailRoutingCommercialPort(client);
   ports.aiEmployeeEmailCommercial = createAiEmployeeEmailCommercialPort(client);
+  ports.whatsappMessagesCommercial = createWhatsAppMessagesCommercialPort(client);
 
   const whatsAppCredentialsLoader = createSupabaseWhatsAppCredentialsLoader(client, {
     onDiagnostic: (detail) =>

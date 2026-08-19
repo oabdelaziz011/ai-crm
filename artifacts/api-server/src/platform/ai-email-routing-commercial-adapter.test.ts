@@ -5,6 +5,7 @@ import {
   AI_EMAIL_ROUTING_USAGE_METRIC_CODE,
 } from "@workspace/channel-platform";
 import { createAiEmailRoutingCommercialPort } from "./ai-email-routing-commercial-adapter.js";
+import type { EffectiveQuotaPolicy } from "../lib/quota/effective-quota-policy.js";
 
 type RpcCall = { fn: string; args: Record<string, unknown> };
 
@@ -35,6 +36,18 @@ function mockClient(handler: (call: RpcCall) => { data: unknown; error: { messag
   };
 }
 
+function planPolicy(included: number): EffectiveQuotaPolicy {
+  return {
+    configured: true,
+    included_quantity: included,
+    unlimited: false,
+    overage_allowed: false,
+    overage_unit_size: null,
+    overage_unit_price: null,
+    source: "plan_limit",
+  };
+}
+
 describe("createAiEmailRoutingCommercialPort", () => {
   it("uses is_feature_enabled with ai_email_routing and fails closed on RPC error", async () => {
     const { client, calls } = mockClient(() => ({
@@ -57,30 +70,28 @@ describe("createAiEmailRoutingCommercialPort", () => {
     assert.equal(access.reason, "not_entitled");
   });
 
-  it("allows when entitled and no quota limit is configured", async () => {
+  it("11. allows when entitled and no quota limit is configured", async () => {
     const { client } = mockClient((call) => {
       if (call.fn === "is_feature_enabled") return { data: true, error: null };
-      if (call.fn === "get_company_entitlements") {
-        return {
-          data: [
-            {
-              feature_code: AI_EMAIL_ROUTING_FEATURE_CODE,
-              enabled: true,
-              limit_value: {},
-            },
-          ],
-          error: null,
-        };
-      }
-      return { data: null, error: { message: "unexpected" } };
+      return { data: null, error: null };
     });
-    const port = createAiEmailRoutingCommercialPort(client as never);
+    const port = createAiEmailRoutingCommercialPort(client as never, {
+      resolveQuotaPolicy: async () => ({
+        configured: false,
+        included_quantity: null,
+        unlimited: false,
+        overage_allowed: false,
+        overage_unit_size: null,
+        overage_unit_price: null,
+        source: "none",
+      }),
+    });
     const access = await port.checkAccess({ companyId: "co-1" });
     assert.equal(access.allowed, true);
     assert.equal(access.reason, "entitled");
   });
 
-  it("enforces quota when limit_value.monthly is configured", async () => {
+  it("12. enforces quota when entitled, exceeded, and overage false", async () => {
     const port = createAiEmailRoutingCommercialPort(
       {
         rpc: async (fn: string) => {
@@ -90,13 +101,59 @@ describe("createAiEmailRoutingCommercialPort", () => {
         from: () => ({}) as never,
       } as never,
       {
-        resolveMonthlyLimit: async () => 2,
+        resolveQuotaPolicy: async () => planPolicy(2),
         resolveMonthlyUsage: async () => 2,
       },
     );
     const access = await port.checkAccess({ companyId: "co-1" });
     assert.equal(access.allowed, false);
     assert.equal(access.reason, "quota_exceeded");
+  });
+
+  it("13. allows when entitled, over quota, and overage allowed (no billing)", async () => {
+    const port = createAiEmailRoutingCommercialPort(
+      {
+        rpc: async (fn: string) => {
+          if (fn === "is_feature_enabled") return { data: true, error: null };
+          return { data: null, error: null };
+        },
+        from: () => ({}) as never,
+      } as never,
+      {
+        resolveQuotaPolicy: async () => ({
+          configured: true,
+          included_quantity: 2,
+          unlimited: false,
+          overage_allowed: true,
+          overage_unit_size: 1000,
+          overage_unit_price: 5,
+          source: "company_override",
+        }),
+        resolveMonthlyUsage: async () => 5,
+      },
+    );
+    const access = await port.checkAccess({ companyId: "co-1" });
+    assert.equal(access.allowed, true);
+    assert.equal(access.reason, "entitled");
+  });
+
+  it("14. blocks when not entitled regardless of quota", async () => {
+    const port = createAiEmailRoutingCommercialPort(
+      {
+        rpc: async (fn: string) => {
+          if (fn === "is_feature_enabled") return { data: false, error: null };
+          return { data: null, error: null };
+        },
+        from: () => ({}) as never,
+      } as never,
+      {
+        resolveQuotaPolicy: async () => planPolicy(999),
+        resolveMonthlyUsage: async () => 0,
+      },
+    );
+    const access = await port.checkAccess({ companyId: "co-1" });
+    assert.equal(access.allowed, false);
+    assert.equal(access.reason, "not_entitled");
   });
 
   it("records usage via ingest_usage_event with inbound idempotency key", async () => {

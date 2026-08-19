@@ -5,6 +5,7 @@ import en from "@login-app/locales/en/common.json" with { type: "json" };
 import { MetaWhatsAppTransport } from "@login-app/lib/notifications/providers/whatsapp/adapter/meta-whatsapp-transport";
 import { WhatsAppRenderer } from "@login-app/lib/notifications/providers/whatsapp/renderer/whatsapp-renderer";
 import { createWhatsAppProvider } from "@login-app/lib/notifications/providers/whatsapp/services/whatsapp-provider";
+import { createWhatsAppMessagesCommercialPort } from "../platform/whatsapp-messages-commercial-adapter.js";
 import {
   parseWhatsAppChannelReferences,
   performWhatsAppOutboundHealthCheck,
@@ -40,7 +41,9 @@ function getServiceClient() {
 function createProvider(client: ReturnType<typeof createClient>) {
   const t = i18next.getFixedT("en", "common");
   const renderer = WhatsAppRenderer.fromI18n(t);
-  return createWhatsAppProvider(client, new MetaWhatsAppTransport(), renderer);
+  return createWhatsAppProvider(client, new MetaWhatsAppTransport(), renderer, {
+    whatsappMessagesCommercial: createWhatsAppMessagesCommercialPort(client),
+  });
 }
 
 router.post("/whatsapp/health", async (req, res, next) => {

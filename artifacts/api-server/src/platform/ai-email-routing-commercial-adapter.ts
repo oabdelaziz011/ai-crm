@@ -4,40 +4,31 @@ import {
   AI_EMAIL_ROUTING_FEATURE_CODE,
   AI_EMAIL_ROUTING_USAGE_METRIC_CODE,
 } from "@workspace/channel-platform";
+import { evaluateQuotaAccess } from "../lib/quota/effective-quota-policy.js";
+import { fetchCurrentBillingPeriodUsage } from "../lib/quota/fetch-metric-usage.js";
+import { resolveEffectiveQuotaPolicy } from "../lib/quota/resolve-effective-quota-policy.js";
+import type { EffectiveQuotaPolicy } from "../lib/quota/effective-quota-policy.js";
 
 export type AiEmailRoutingCommercialAdapterOptions = {
   /**
-   * Optional quota reader. When omitted or returns null limit, quota is not enforced
-   * (existing architecture has no AI Email Routing hard quota yet).
+   * Optional quota policy resolver for tests. Production uses unified server-side resolver.
    */
-  resolveMonthlyLimit?: (companyId: string) => Promise<number | null>;
+  resolveQuotaPolicy?: (companyId: string) => Promise<EffectiveQuotaPolicy>;
   /**
    * Optional current-period usage counter for quota checks.
-   * When limit is set but counter is unavailable → fail closed for the commercial feature.
+   * When quota is configured but counter is unavailable → fail closed for the commercial feature.
    */
   resolveMonthlyUsage?: (companyId: string) => Promise<number | null>;
 };
 
-function readLimitValue(raw: unknown): number | null {
-  if (raw == null) return null;
-  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return raw;
-  if (typeof raw === "object" && !Array.isArray(raw)) {
-    const record = raw as Record<string, unknown>;
-    for (const key of ["monthly", "max", "limit", "count", "quantity"]) {
-      const value = record[key];
-      if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
-      if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
-        return Number(value);
-      }
-    }
-  }
-  return null;
-}
-
 /**
  * Commercial gate + usage metering for AI Email Routing.
  * Entitlement SoT: public.is_feature_enabled (fail-closed).
- * Usage SoT: public.ingest_usage_event (idempotent via inbound event id).
+ * Quota SoT: company_usage_limit_overrides → plan_features.limit_value (unified resolver).
+ * Usage SoT: public.usage_records via ingest_usage_event (idempotent by inbound event id).
+ *
+ * Concurrency: checkAccess reads usage then decides; recordUsage writes separately.
+ * Concurrent requests can both pass before either records — best-effort, not atomic.
  */
 export function createAiEmailRoutingCommercialPort(
   client: SupabaseClient,
@@ -65,31 +56,19 @@ export function createAiEmailRoutingCommercialPort(
         return { allowed: false, reason: "entitlement_error" };
       }
 
-      // Quota: only when existing limit_value / resolver provides a numeric limit.
       try {
-        let limit: number | null = null;
-        if (options.resolveMonthlyLimit) {
-          limit = await options.resolveMonthlyLimit(companyId);
-        } else {
-          const { data: entitlements, error: entError } = await client.rpc("get_company_entitlements", {
-            p_company_id: companyId,
-          });
-          if (entError) {
-            return { allowed: false, reason: "entitlement_error" };
-          }
-          const rows = Array.isArray(entitlements) ? entitlements : [];
-          const row = rows.find(
-            (item) =>
-              item &&
-              typeof item === "object" &&
-              String((item as { feature_code?: unknown }).feature_code ?? "") ===
-                AI_EMAIL_ROUTING_FEATURE_CODE,
-          ) as { limit_value?: unknown } | undefined;
-          limit = readLimitValue(row?.limit_value);
-        }
+        const policy = options.resolveQuotaPolicy
+          ? await options.resolveQuotaPolicy(companyId)
+          : await resolveEffectiveQuotaPolicy(client, {
+              companyId,
+              usageMetricCode: AI_EMAIL_ROUTING_USAGE_METRIC_CODE,
+              featureCode: AI_EMAIL_ROUTING_FEATURE_CODE,
+            });
 
-        if (limit == null) {
-          // No configured quota policy → do not invent hard limits.
+        const needsUsageCheck =
+          policy.configured && !policy.unlimited && policy.included_quantity != null;
+
+        if (!needsUsageCheck) {
           return { allowed: true, reason: "entitled" };
         }
 
@@ -97,29 +76,25 @@ export function createAiEmailRoutingCommercialPort(
         if (options.resolveMonthlyUsage) {
           usage = await options.resolveMonthlyUsage(companyId);
         } else {
-          const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-          const { data: usageRows, error: usageError } = await client
-            .from("usage_records")
-            .select("quantity")
-            .eq("company_id", companyId)
-            .eq("metric_code", AI_EMAIL_ROUTING_USAGE_METRIC_CODE)
-            .eq("billing_period", period);
-          if (usageError) {
-            // Fail closed when a quota exists but usage cannot be read.
+          try {
+            usage = await fetchCurrentBillingPeriodUsage(client, {
+              companyId,
+              usageMetricCode: AI_EMAIL_ROUTING_USAGE_METRIC_CODE,
+            });
+          } catch {
             return { allowed: false, reason: "entitlement_unavailable" };
           }
-          usage = (usageRows ?? []).reduce(
-            (sum, row) => sum + Number((row as { quantity?: unknown }).quantity ?? 0),
-            0,
-          );
         }
 
         if (usage == null) {
           return { allowed: false, reason: "entitlement_unavailable" };
         }
-        if (usage >= limit) {
+
+        const decision = evaluateQuotaAccess(policy, usage);
+        if (!decision.allowed) {
           return { allowed: false, reason: "quota_exceeded" };
         }
+
         return { allowed: true, reason: "entitled" };
       } catch {
         return { allowed: false, reason: "entitlement_error" };

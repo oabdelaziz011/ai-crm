@@ -1,39 +1,34 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AiEmployeeEmailCommercialPort } from "@workspace/channel-platform";
+import type { AiTokensCommercialPort } from "@workspace/ai-execution-engine";
 import {
-  AI_EMPLOYEE_EMAIL_USAGE_METRIC_CODE,
-  AI_EMPLOYEE_FEATURE_CODE,
-} from "@workspace/channel-platform";
+  AI_ASSISTANT_FEATURE_CODE,
+  AI_TOKENS_USAGE_METRIC_CODE,
+} from "@workspace/ai-execution-engine";
 import { evaluateQuotaAccess } from "../lib/quota/effective-quota-policy.js";
 import { fetchCurrentBillingPeriodUsage } from "../lib/quota/fetch-metric-usage.js";
 import { resolveEffectiveQuotaPolicy } from "../lib/quota/resolve-effective-quota-policy.js";
 import type { EffectiveQuotaPolicy } from "../lib/quota/effective-quota-policy.js";
 
-export type AiEmployeeEmailCommercialAdapterOptions = {
-  /** Optional quota policy resolver for tests. Production uses unified server-side resolver. */
+export type AiTokensCommercialAdapterOptions = {
   resolveQuotaPolicy?: (companyId: string) => Promise<EffectiveQuotaPolicy>;
-  /**
-   * Optional current-period usage counter for quota checks.
-   * When quota is configured but counter is unavailable → fail closed for the commercial feature.
-   */
   resolveMonthlyUsage?: (companyId: string) => Promise<number | null>;
 };
 
 /**
- * Commercial gate + usage metering for AI Employee Email replies.
+ * Commercial gate + usage metering for AI Assistant tokens.
  * Entitlement SoT: public.is_feature_enabled (fail-closed).
  * Quota SoT: company_usage_limit_overrides → plan_features.limit_value (unified resolver).
- * Usage SoT: public.ingest_usage_event (idempotent by company + inbound event id).
+ * Usage SoT: public.ingest_usage_event (idempotent by company + execution id).
  *
- * Counting policy: SUCCESS-ONLY — usage recorded after successful outbound email reply.
+ * Counting policy: SUCCESS-ONLY provider-reported total_tokens.
  *
  * Concurrency: checkAccess reads usage then decides; recordUsage writes separately.
  * Concurrent requests can both pass before either records — best-effort, not atomic.
  */
-export function createAiEmployeeEmailCommercialPort(
+export function createAiTokensCommercialPort(
   client: SupabaseClient,
-  options: AiEmployeeEmailCommercialAdapterOptions = {},
-): AiEmployeeEmailCommercialPort {
+  options: AiTokensCommercialAdapterOptions = {},
+): AiTokensCommercialPort {
   return {
     async checkAccess(input) {
       const companyId = input.companyId?.trim();
@@ -44,7 +39,7 @@ export function createAiEmployeeEmailCommercialPort(
       try {
         const { data, error } = await client.rpc("is_feature_enabled", {
           p_company_id: companyId,
-          p_feature_code: AI_EMPLOYEE_FEATURE_CODE,
+          p_feature_code: AI_ASSISTANT_FEATURE_CODE,
         });
         if (error) {
           return { allowed: false, reason: "entitlement_error" };
@@ -61,8 +56,8 @@ export function createAiEmployeeEmailCommercialPort(
           ? await options.resolveQuotaPolicy(companyId)
           : await resolveEffectiveQuotaPolicy(client, {
               companyId,
-              usageMetricCode: AI_EMPLOYEE_EMAIL_USAGE_METRIC_CODE,
-              featureCode: AI_EMPLOYEE_FEATURE_CODE,
+              usageMetricCode: AI_TOKENS_USAGE_METRIC_CODE,
+              featureCode: AI_ASSISTANT_FEATURE_CODE,
             });
 
         const needsUsageCheck =
@@ -79,7 +74,7 @@ export function createAiEmployeeEmailCommercialPort(
           try {
             usage = await fetchCurrentBillingPeriodUsage(client, {
               companyId,
-              usageMetricCode: AI_EMPLOYEE_EMAIL_USAGE_METRIC_CODE,
+              usageMetricCode: AI_TOKENS_USAGE_METRIC_CODE,
             });
           } catch {
             return { allowed: false, reason: "entitlement_unavailable" };
@@ -103,27 +98,30 @@ export function createAiEmployeeEmailCommercialPort(
 
     async recordUsage(input) {
       const companyId = input.companyId?.trim();
-      const inboundEventId = input.inboundEventId?.trim();
-      if (!companyId || !inboundEventId) {
+      const executionId = input.executionId?.trim();
+      const quantity = Number(input.quantity);
+      if (!companyId || !executionId) {
         return { recorded: false, reason: "missing_ids" };
       }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return { recorded: false, reason: "invalid_quantity" };
+      }
 
-      const idempotencyKey = `ai_employee_email:${companyId}:${inboundEventId}`;
+      const idempotencyKey = `ai_tokens:${companyId}:${executionId}`;
       try {
         const { data, error } = await client.rpc("ingest_usage_event", {
           p_company_id: companyId,
-          p_metric_code: AI_EMPLOYEE_EMAIL_USAGE_METRIC_CODE,
-          p_quantity: 1,
+          p_metric_code: AI_TOKENS_USAGE_METRIC_CODE,
+          p_quantity: quantity,
           p_metadata: {
-            featureCode: AI_EMPLOYEE_FEATURE_CODE,
-            channel: "email",
-            ai_employee_id: input.aiEmployeeId ?? null,
+            featureCode: AI_ASSISTANT_FEATURE_CODE,
+            executionId,
           },
           p_idempotency_key: idempotencyKey,
           p_recorded_at: new Date().toISOString(),
-          p_source: "channel_platform",
-          p_reference_type: "channel_inbound_event",
-          p_reference_id: inboundEventId,
+          p_source: "ai_execution_engine",
+          p_reference_type: "ai_execution",
+          p_reference_id: executionId,
         });
         if (error) {
           return { recorded: false, reason: "ingest_failed" };

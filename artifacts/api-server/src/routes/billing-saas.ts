@@ -27,13 +27,13 @@ router.post("/checkout", async (req: Request, res: Response, next: NextFunction)
       throw new HttpError(403, "No company context for authenticated user.", "forbidden");
     }
 
-    // Reject attempts to target another company via body
+    // Authoritative money/company fields are resolved server-side from the JWT company.
+    // Body amount, currency, discount, custom_price, and company_id are never used as settlement values.
     const bodyCompany = req.body?.companyId ?? req.body?.company_id;
     if (bodyCompany && String(bodyCompany) !== companyId) {
       throw new HttpError(403, "Cannot create checkout for another company.", "forbidden");
     }
 
-    // Explicitly ignore client amount/currency if sent
     const returnUrl = String(req.body?.returnUrl ?? req.body?.return_url ?? "").trim();
     const cancelUrl = (req.body?.cancelUrl ?? req.body?.cancel_url ?? null) as string | null;
     const idempotencyKey = (req.body?.idempotencyKey ?? req.body?.idempotency_key ?? null) as
@@ -49,6 +49,7 @@ router.post("/checkout", async (req: Request, res: Response, next: NextFunction)
       returnUrl,
       cancelUrl,
       idempotencyKey,
+      actorUserId: req.supabaseUser?.id ?? null,
     });
 
     res.status(200).json(result);

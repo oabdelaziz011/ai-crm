@@ -9,7 +9,8 @@ export type CreateSaasCheckoutRequest = {
   returnUrl: string;
   cancelUrl?: string | null;
   idempotencyKey?: string | null;
-  /** Ignored for amount/currency — server locks from plan. Optional provider override only via server env. */
+  actorUserId?: string | null;
+  /** Ignored for amount/currency/company — server locks payable from DB. */
 };
 
 function serviceClient(): SupabaseClient {
@@ -42,6 +43,7 @@ export async function createSaasCheckoutSession(input: CreateSaasCheckoutRequest
     p_idempotency_key: input.idempotencyKey ?? null,
     p_company_id: input.companyId,
     p_provider_code: process.env.SAAS_CHECKOUT_PROVIDER?.trim() || null,
+    p_actor_user_id: input.actorUserId ?? null,
   });
 
   if (error) {
@@ -57,7 +59,17 @@ export async function createSaasCheckoutSession(input: CreateSaasCheckoutRequest
   };
 
   if (!result?.ok) {
-    throw new HttpError(400, result?.message ?? "Checkout not available", result?.code ?? "checkout_rejected");
+    const code = result?.code ?? "checkout_rejected";
+    const forbidden = new Set([
+      "UNAUTHORIZED_CHECKOUT",
+      "COMPANY_SUSPENDED",
+      "COMPANY_REJECTED",
+    ]);
+    throw new HttpError(
+      forbidden.has(code) ? 403 : 400,
+      result?.message ?? "Checkout not available",
+      code,
+    );
   }
 
   const session = result.session!;

@@ -21,6 +21,10 @@ const migrationSql = readFileSync(
   resolve(root, "supabase/migrations/275_saas_checkout_sessions.sql"),
   "utf8",
 );
+const migration304 = readFileSync(
+  resolve(root, "supabase/migrations/304_company_payable_checkout.sql"),
+  "utf8",
+);
 
 const client = new pg.Client({
   connectionString: env.DATABASE_URL,
@@ -44,7 +48,9 @@ async function expectFail(label, fn) {
 
 try {
   await client.query(migrationSql);
+  await client.query(migration304);
   console.log("  ✓ migration 275 applied");
+  console.log("  ✓ migration 304 reapplied so payable checkout is not overwritten");
 
   await client.query("begin");
   await client.query("select set_config('vault.provisioning_bootstrap', 'true', true)");

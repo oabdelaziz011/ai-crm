@@ -127,8 +127,13 @@ try {
   await client.query("begin");
   await client.query("select set_config('vault.provisioning_bootstrap', 'true', true)");
   const c2 = await client.query(`
-    insert into public.companies (name, status, subscription_plan, subscription_status, company_type)
-    values ('Phase4 Provision '||gen_random_uuid()::text, 'Trial', 'Basic', 'trialing', 'tenant')
+    insert into public.companies (
+      name, status, subscription_plan, subscription_status, company_type, approval_status
+    )
+    values (
+      'Phase4 Provision '||gen_random_uuid()::text,
+      'Trial', 'Basic', 'trialing', 'tenant', 'approved'
+    )
     returning id
   `);
   const id = c2.rows[0].id;

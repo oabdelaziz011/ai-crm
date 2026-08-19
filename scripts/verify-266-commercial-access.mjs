@@ -22,9 +22,91 @@ const client = new pg.Client({
 await client.connect();
 console.log("\nPhase 6 live commercial access verification\n");
 
+async function feature(companyId, code) {
+  const r = await client.query(`select public.is_feature_enabled($1, $2) as e`, [companyId, code]);
+  return Boolean(r.rows[0].e);
+}
+
+async function accessState(companyId) {
+  const r = await client.query(`select public.get_company_access_state($1) as s`, [companyId]);
+  return r.rows[0].s;
+}
+
 try {
+  // Read-only: live pending companies must not receive commercial access
+  // from existing trial/system grants. Do not mutate their rows.
+  const named = await client.query(`
+    select c.id, c.name, c.approval_status, c.status
+    from public.companies c
+    where c.name in ('Auto Test Co', 'Elnesma', 'Retest Co')
+    order by c.name
+  `);
+  assert.equal(named.rows.length, 3, "expected Auto Test Co, Elnesma, Retest Co");
+  for (const row of named.rows) {
+    assert.equal(row.approval_status, "pending", `${row.name} should still be pending`);
+    assert.equal(await feature(row.id, "bookings"), false, `${row.name} bookings`);
+    assert.equal(await feature(row.id, "finance"), false, `${row.name} finance`);
+    assert.equal(await feature(row.id, "core_crm"), true, `${row.name} core_crm`);
+    assert.equal(await accessState(row.id), "expired", `${row.name} access state`);
+    console.log(`  ✓ live pending ${row.name}: commercial DENY, core ALLOW`);
+  }
+
   await client.query("begin");
   await client.query("select set_config('vault.provisioning_bootstrap', 'true', true)");
+  await client.query("select set_config('request.jwt.claim.role', 'service_role', true)");
+
+  const matrix = await client.query(`
+    insert into public.companies (
+      name, status, subscription_plan, subscription_status, company_type,
+      approval_status, approval_requested_at, tenant_provisioning_status
+    ) values (
+      'Phase6 Gate '||gen_random_uuid()::text,
+      'Active', 'Pro', 'active', 'tenant',
+      'approved', now(), 'completed'
+    ) returning id
+  `);
+  const companyId = matrix.rows[0].id;
+  await client.query(`select public._ensure_core_system_feature_grants($1)`, [companyId]);
+  await client.query(
+    `select public.set_company_feature_grant($1, 'bookings', true, 'manual', now(), null, 'phase6-gate')`,
+    [companyId],
+  );
+
+  // A
+  assert.equal(await feature(companyId, "bookings"), true);
+  console.log("  ✓ A approved + commercial entitlement → TRUE");
+
+  // B
+  await client.query(`update public.companies set approval_status = 'pending' where id = $1`, [companyId]);
+  assert.equal(await feature(companyId, "bookings"), false);
+  console.log("  ✓ B pending + commercial entitlement → FALSE");
+
+  // C
+  await client.query(`update public.companies set approval_status = 'rejected' where id = $1`, [companyId]);
+  assert.equal(await feature(companyId, "bookings"), false);
+  console.log("  ✓ C rejected + commercial entitlement → FALSE");
+
+  // D
+  await client.query(
+    `update public.companies set approval_status = 'approved', status = 'Suspended' where id = $1`,
+    [companyId],
+  );
+  assert.equal(await feature(companyId, "bookings"), false);
+  console.log("  ✓ D suspended + commercial entitlement → FALSE");
+
+  // E
+  await client.query(
+    `update public.companies set approval_status = 'approved', status = 'Active' where id = $1`,
+    [companyId],
+  );
+  assert.equal(await feature(companyId, "leads"), false);
+  console.log("  ✓ E approved + no commercial entitlement → FALSE");
+
+  // F
+  assert.equal(await feature(companyId, "core_crm"), true);
+  await client.query(`update public.companies set approval_status = 'pending' where id = $1`, [companyId]);
+  assert.equal(await feature(companyId, "core_crm"), true);
+  console.log("  ✓ F approved/pending + core feature → TRUE");
 
   const pending = await client.query(`
     insert into public.companies (
@@ -39,7 +121,6 @@ try {
   const pendingId = pending.rows[0].id;
   await client.query(`select public._ensure_core_system_feature_grants($1)`, [pendingId]);
 
-  // Accidental trial grant while pending
   const feat = await client.query(`
     select code from public.feature_definitions
     where code = 'whatsapp_channel' and is_active = true limit 1
@@ -70,7 +151,6 @@ try {
 
   await client.query(`select public.approve_company_v1($1, 'trial', 'phase6')`, [pendingId]);
   const wa3 = await client.query(`select public.is_feature_enabled($1, 'whatsapp_channel') as e`, [pendingId]);
-  // May be true if trial pack includes whatsapp, or false if not — either is fine for approval path.
   console.log("  ✓ approved company evaluates entitlement normally (whatsapp=", wa3.rows[0].e, ")");
 
   const customers = await client.query(`select public.is_feature_enabled($1, 'customers') as e`, [pendingId]);

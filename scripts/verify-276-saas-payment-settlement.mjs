@@ -20,6 +20,10 @@ const migrationSql = readFileSync(
   resolve(root, "supabase/migrations/276_saas_payment_settlement.sql"),
   "utf8",
 );
+const migration304 = readFileSync(
+  resolve(root, "supabase/migrations/304_company_payable_checkout.sql"),
+  "utf8",
+);
 
 const client = new pg.Client({
   connectionString: env.DATABASE_URL,
@@ -129,7 +133,9 @@ async function checkoutAndVerify(companyId, key) {
 
 try {
   await client.query(migrationSql);
+  await client.query(migration304);
   console.log("  ✓ migration 276 applied");
+  console.log("  ✓ migration 304 reapplied so payable settlement is not overwritten");
 
   await client.query("begin");
   await client.query("select set_config('vault.provisioning_bootstrap', 'true', true)");

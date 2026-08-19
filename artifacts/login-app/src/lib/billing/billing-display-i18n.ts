@@ -15,6 +15,18 @@ export function translateBillingCycle(t: TFunction, cycle: string | null | undef
   return cycle;
 }
 
+export function translatePlanName(
+  t: TFunction,
+  plan: { code?: string | null; display_name?: string | null; name?: string | null } | null | undefined,
+): string {
+  const code = plan?.code?.toLowerCase();
+  if (code) {
+    const key = `companies.commercial.packageNames.${code}`;
+    if (i18n.exists(key)) return t(key);
+  }
+  return plan?.display_name || plan?.name || t("billing.plan.unassigned");
+}
+
 export function translateCompanyStatus(t: TFunction, status: string | null | undefined): string {
   if (!status) return billingNotAvailable(t);
   const key = `billing.companyStatus.${status}`;

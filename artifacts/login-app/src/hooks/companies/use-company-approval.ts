@@ -3,6 +3,10 @@ import { supabase } from "@/lib/supabase";
 import { COMPANIES_KEY } from "@/hooks/use-companies";
 import type { Company } from "@/lib/types";
 import {
+  classifyRejectCompanyError,
+  parseRejectCompanyResponse,
+} from "@/lib/companies/reject-company-flow";
+import {
   bindCompanyFeatureEntitlementClient,
   extendCompanyTrial,
   revokeCompanyFeatureGrant,
@@ -12,10 +16,12 @@ import {
 bindCompanyFeatureEntitlementClient(supabase);
 
 function invalidateCommercialQueries(qc: ReturnType<typeof useQueryClient>) {
-  void qc.invalidateQueries({ queryKey: COMPANIES_KEY });
-  void qc.invalidateQueries({ queryKey: ["billing"] });
-  void qc.invalidateQueries({ queryKey: ["feature-flag"] });
-  void qc.invalidateQueries({ queryKey: ["license-access"] });
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: COMPANIES_KEY }),
+    qc.invalidateQueries({ queryKey: ["billing"] }),
+    qc.invalidateQueries({ queryKey: ["feature-flag"] }),
+    qc.invalidateQueries({ queryKey: ["license-access"] }),
+  ]);
 }
 
 export function useApproveCompany() {
@@ -36,7 +42,9 @@ export function useApproveCompany() {
       if (!company?.id) throw new Error("Approve did not return a company.");
       return company;
     },
-    onSuccess: () => invalidateCommercialQueries(qc),
+    onSuccess: async () => {
+      await invalidateCommercialQueries(qc);
+    },
   });
 }
 
@@ -44,16 +52,28 @@ export function useRejectCompany() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { companyId: string; reason: string }): Promise<Company> => {
+      const trimmed = input.reason.trim();
+      if (!trimmed) {
+        throw new Error("rejection_reason_required");
+      }
+
       const { data, error } = await supabase.rpc("reject_company_v1", {
         p_company_id: input.companyId,
-        p_reason: input.reason,
+        p_reason: trimmed,
       });
-      if (error) throw new Error(error.message);
-      const company = (data?.company ?? null) as Company | null;
-      if (!company?.id) throw new Error("Reject did not return a company.");
-      return company;
+      if (error) {
+        const code = classifyRejectCompanyError(error.message ?? "");
+        throw new Error(code === "unknown" ? error.message : code);
+      }
+
+      try {
+        const company = parseRejectCompanyResponse(data);
+        await invalidateCommercialQueries(qc);
+        return company;
+      } catch {
+        throw new Error("invalidResponse");
+      }
     },
-    onSuccess: () => invalidateCommercialQueries(qc),
   });
 }
 

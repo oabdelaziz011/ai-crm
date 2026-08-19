@@ -28,6 +28,12 @@ import {
   useResetManagedUserPassword,
   useUpdateManagedUser,
 } from "@/hooks/use-users-management";
+import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
+import {
+  formatResourceOccupancy,
+  occupancyAllowsCreate,
+  occupancyDisplayUsed,
+} from "@/lib/billing/company-resource-limits";
 import { BranchAssignmentMultiSelect } from "@/lib/company/branches/components";
 import { useBranches, useUserBranchAssignmentMap } from "@/lib/company/branches/hooks";
 import { Button } from "@/components/ui/button";
@@ -139,6 +145,12 @@ export function UsersPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   const createTargetCompanyId = resolveCompanyId(createForm.companyId);
+  const occupancyCompanyId = canPickCompany
+    ? (companyFilter !== "all" ? companyFilter : createTargetCompanyId)
+    : (company?.id ?? null);
+  const occupancyQuery = useCompanyResourceOccupancy(occupancyCompanyId);
+  const userOccupancy = occupancyQuery.data?.users ?? null;
+  const canAddUser = occupancyAllowsCreate(userOccupancy);
   const { data: branchAssignmentMap = {} } = useUserBranchAssignmentMap(company?.id ?? createTargetCompanyId);
   const { data: companyBranches = [], isLoading: branchesLoading } = useBranches(createTargetCompanyId);
   const {
@@ -407,10 +419,23 @@ export function UsersPage() {
         <div>
           <h1 className="text-2xl font-bold">{t("users.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("users.subtitle")}</p>
+          {occupancyCompanyId && userOccupancy ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t("users.occupancy.label")}:{" "}
+              {formatResourceOccupancy(
+                occupancyDisplayUsed(userOccupancy),
+                userOccupancy.max_allowed,
+                t("users.occupancy.unlimited"),
+              )}
+              {userOccupancy.is_over_limit ? ` — ${t("users.occupancy.overLimit")}` : null}
+            </p>
+          ) : null}
         </div>
         {canManage && (
         <Button
           onClick={() => setCreateOpen(true)}
+          disabled={!canAddUser}
+          title={!canAddUser ? t("users.occupancy.overLimit") : undefined}
           className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary gap-2"
         >
           <Plus className="w-4 h-4" /> {t("users.addUser")}

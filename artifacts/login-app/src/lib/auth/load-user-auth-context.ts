@@ -23,6 +23,8 @@ export interface AuthBootstrapCompany {
   billing_cycle: string | null;
   subscription_expires_at: string | null;
   approval_status?: string | null;
+  suspension_reason?: string | null;
+  approval_rejection_reason?: string | null;
 }
 
 export interface AuthBootstrapRole {
@@ -154,7 +156,7 @@ async function loadAuthContextSequential(userId: string): Promise<AuthBootstrapP
       ? supabase
           .from("companies")
           .select(
-            "id, name, logo_url, status, subscription_status, billing_cycle, subscription_expires_at",
+            "id, name, logo_url, status, subscription_status, billing_cycle, subscription_expires_at, approval_status, suspension_reason, approval_rejection_reason",
           )
           .eq("id", profile.company_id)
           .maybeSingle()

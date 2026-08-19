@@ -5,6 +5,7 @@ import {
   getCompanyFeatureEntitlements,
   syncCompanyPackageEntitlements,
 } from "@/lib/billing/company-feature-entitlement-service";
+import { fetchCompanyCurrentPeriodUsage } from "@/lib/billing/fetch-current-period-usage";
 import type { CompanyEntitlement, CompanyUsageSnapshot } from "@/lib/billing/types";
 
 bindCompanyFeatureEntitlementClient(supabase);
@@ -46,6 +47,18 @@ export function useCompanyUsageSnapshot(companyId: string | null, enabled = true
         .maybeSingle();
       if (error) throw new Error(error.message);
       return (data as CompanyUsageSnapshot | null) ?? null;
+    },
+  });
+}
+
+/** Live current billing-period usage from usage_records (matches runtime quota semantics). */
+export function useCompanyCurrentPeriodUsage(companyId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["billing", "usage-current-period", companyId],
+    enabled: enabled && Boolean(companyId),
+    queryFn: async (): Promise<Record<string, number>> => {
+      if (!companyId) return {};
+      return fetchCompanyCurrentPeriodUsage(supabase, companyId);
     },
   });
 }

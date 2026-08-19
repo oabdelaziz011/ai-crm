@@ -80,30 +80,53 @@ export async function processCommunicationQueue(
   limit = 25,
 ): Promise<{ processed: number; failed: number }> {
   if (channel === "whatsapp") {
-    const { getWhatsAppProviderServices } = await import("@/lib/notifications/providers/whatsapp");
+    const { isWhatsAppApiConfigured, processWhatsAppQueue } = await import(
+      "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client"
+    );
+    if (isWhatsAppApiConfigured()) {
+      const result = (await processWhatsAppQueue(companyId)) as {
+        processed?: number;
+        failed?: number;
+      };
+      return {
+        processed: Number(result.processed ?? 0),
+        failed: Number(result.failed ?? 0),
+      };
+    }
+
     const { MetaWhatsAppTransport } = await import(
       "@/lib/notifications/providers/whatsapp/adapter/meta-whatsapp-transport"
     );
-    const services = getWhatsAppProviderServices();
-    if (services.provider) {
-      const transport = new MetaWhatsAppTransport();
-      const { createWhatsAppProvider } = await import(
-        "@/lib/notifications/providers/whatsapp/services/whatsapp-provider"
-      );
-      const { WhatsAppRenderer } = await import(
-        "@/lib/notifications/providers/whatsapp/renderer/whatsapp-renderer"
-      );
-      const provider = createWhatsAppProvider(
-        client,
-        transport,
-        new WhatsAppRenderer((k, p) => `${k} ${Object.values(p).join(" ")}`),
-      );
-      const result = await provider.processPending(companyId, limit);
-      return { processed: result.processed, failed: result.failed };
-    }
+    const { createWhatsAppProvider } = await import(
+      "@/lib/notifications/providers/whatsapp/services/whatsapp-provider"
+    );
+    const { WhatsAppRenderer } = await import(
+      "@/lib/notifications/providers/whatsapp/renderer/whatsapp-renderer"
+    );
+    const provider = createWhatsAppProvider(
+      client,
+      new MetaWhatsAppTransport(),
+      new WhatsAppRenderer((k, p) => `${k} ${Object.values(p).join(" ")}`),
+    );
+    const result = await provider.processPending(companyId, limit);
+    return { processed: result.processed, failed: result.failed };
   }
 
   if (channel === "email") {
+    const { isEmailApiConfigured, processEmailQueue } = await import(
+      "@/lib/notifications/providers/email/services/email-api-client"
+    );
+    if (isEmailApiConfigured()) {
+      const result = (await processEmailQueue(companyId)) as {
+        processed?: number;
+        failed?: number;
+      };
+      return {
+        processed: Number(result.processed ?? 0),
+        failed: Number(result.failed ?? 0),
+      };
+    }
+
     const { ensureEmailProviderServices } = await import("@/lib/notifications/providers/email");
     const { provider } = await ensureEmailProviderServices();
     const result = await provider.processPending(companyId, limit);

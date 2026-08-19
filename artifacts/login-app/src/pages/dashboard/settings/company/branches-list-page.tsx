@@ -37,6 +37,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { BranchManagementError } from "@/lib/company/branches/services";
+import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
+import { formatResourceOccupancy, occupancyAllowsCreate } from "@/lib/billing/company-resource-limits";
 
 export function BranchesListPage() {
   const { t } = useTranslation("common");
@@ -63,6 +65,9 @@ export function BranchesListPage() {
     isFetchingNextPage,
   } = useBranchesInfinite(companyId, filter);
 
+  const occupancyQuery = useCompanyResourceOccupancy(companyId);
+  const branchOccupancy = occupancyQuery.data?.branches ?? null;
+  const canAddBranch = occupancyAllowsCreate(branchOccupancy);
   const createBranch = useCreateBranch(companyId);
   const updateBranch = useUpdateBranch(companyId, editing?.id ?? null);
   const deleteBranch = useDeleteBranch(companyId);
@@ -149,11 +154,24 @@ export function BranchesListPage() {
           <div>
             <h3 className="font-semibold">{t("branches.managementTitle")}</h3>
             <p className="text-sm text-muted-foreground mt-1">{t("branches.managementSubtitle")}</p>
+            {branchOccupancy ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                {t("branches.occupancy.label")}:{" "}
+                {formatResourceOccupancy(
+                  branchOccupancy.current_count,
+                  branchOccupancy.max_allowed,
+                  t("branches.occupancy.unlimited"),
+                )}
+                {branchOccupancy.is_over_limit ? ` — ${t("branches.occupancy.overLimit")}` : null}
+              </p>
+            ) : null}
           </div>
           {canEdit && (
             <Button
               size="sm"
               className="gap-2 shrink-0"
+              disabled={!canAddBranch}
+              title={!canAddBranch ? t("branches.occupancy.overLimit") : undefined}
               onClick={() => {
                 setEditing(null);
                 setModalOpen(true);

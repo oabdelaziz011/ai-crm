@@ -12,8 +12,14 @@ export function normalizeEntitlementSource(source: string | null | undefined): s
   return value.length > 0 ? value : "none";
 }
 
-export function isCommercialEntitlement(row: Pick<CompanyEntitlement, "is_commercial">): boolean {
-  return row.is_commercial === true;
+export function entitlementFeatureCode(row: CompanyEntitlement | Record<string, unknown>): string {
+  const rec = row as Record<string, unknown>;
+  return String(rec.feature_code ?? rec["feature_code"] ?? "");
+}
+
+export function isCommercialEntitlement(row: CompanyEntitlement | Record<string, unknown>): boolean {
+  const rec = row as Record<string, unknown>;
+  return rec.is_commercial === true || rec["is_commercial"] === true;
 }
 
 export function isManagedEntitlementSource(source: string | null | undefined): boolean {

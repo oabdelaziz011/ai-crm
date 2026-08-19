@@ -80,7 +80,24 @@ export async function getCompanyFeatureEntitlements(
     p_company_id: companyId,
   });
   if (error) throw new Error(error.message);
-  return (data ?? []) as CompanyEntitlement[];
+  return ((data ?? []) as Record<string, unknown>[]).map(normalizeCompanyEntitlementRow);
+}
+
+function normalizeCompanyEntitlementRow(raw: Record<string, unknown>): CompanyEntitlement {
+  const featureCode = String(raw.feature_code ?? "");
+  return {
+    feature_code: featureCode,
+    label: String(raw.label ?? featureCode),
+    category: raw.category != null ? String(raw.category) : undefined,
+    enabled: Boolean(raw.enabled),
+    source: String(raw.source ?? "none"),
+    limit_value: (raw.limit_value ?? {}) as Record<string, unknown>,
+    starts_at: (raw.starts_at as string | null | undefined) ?? null,
+    expires_at: (raw.expires_at as string | null | undefined) ?? null,
+    notes: (raw.notes as string | null | undefined) ?? null,
+    is_commercial: Boolean(raw.is_commercial),
+    override_state: (raw.override_state as CompanyEntitlement["override_state"]) ?? null,
+  };
 }
 
 /** Repair path: provision package grants from the current subscription plan. */

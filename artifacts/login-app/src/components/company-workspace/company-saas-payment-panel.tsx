@@ -29,6 +29,14 @@ type CompanySaasPaymentPanelProps = {
   subscription: CompanySubscription;
   plan: CompanySubscription["plan"] | null | undefined;
   currency: string | null | undefined;
+  assignedAmount?: number | null;
+  listAmount?: number | null;
+  onlineCheckoutAllowed?: boolean;
+  approvalStatus?: string | null;
+  payableSource?: string | null;
+  discountPercent?: number | null;
+  preApprovalPaid?: boolean;
+  paymentPortalState?: string | null;
 };
 
 export function CompanySaasPaymentPanel({
@@ -36,6 +44,14 @@ export function CompanySaasPaymentPanel({
   subscription,
   plan,
   currency,
+  assignedAmount,
+  listAmount,
+  onlineCheckoutAllowed = true,
+  approvalStatus,
+  payableSource,
+  discountPercent,
+  preApprovalPaid = false,
+  paymentPortalState,
 }: CompanySaasPaymentPanelProps) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
@@ -47,6 +63,8 @@ export function CompanySaasPaymentPanel({
   const idempotencyRef = useRef<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const resolvedApproval =
+    approvalStatus ?? company?.approval_status ?? subscription.company?.approval_status;
   const canInitiate = canInitiateCompanyOnlinePayment({ hasPermission, isSuperAdmin });
   const eligibility = useMemo(
     () =>
@@ -54,22 +72,48 @@ export function CompanySaasPaymentPanel({
         canInitiate,
         companyId,
         companyStatus: company?.status ?? subscription.company?.status,
-        approvalStatus: company?.approval_status ?? subscription.company?.approval_status,
+        approvalStatus: resolvedApproval,
         subscription,
         plan,
+        payableAmount: assignedAmount,
+        payableSource,
+        onlineCheckoutAllowed,
+        preApprovalPaid,
       }),
-    [canInitiate, company, companyId, plan, subscription],
+    [
+      assignedAmount,
+      canInitiate,
+      company,
+      companyId,
+      onlineCheckoutAllowed,
+      payableSource,
+      plan,
+      preApprovalPaid,
+      resolvedApproval,
+      subscription,
+    ],
   );
 
-  const expectedAmount = expectedListPriceAmount(subscription, plan);
+  const catalogAmount = expectedListPriceAmount(subscription, plan);
+  const displayAmount = assignedAmount ?? catalogAmount;
   const displayCurrency = currency ?? null;
+  const portalState =
+    paymentPortalState ??
+    (eligibility.code === "AWAITING_APPROVAL"
+      ? "awaiting_approval"
+      : eligibility.code === "NOT_CONFIGURED"
+        ? "not_configured"
+        : resolvedApproval === "pending" && eligibility.allowed
+          ? "payment_required"
+          : "standard");
+  const checkoutAllowed =
+    eligibility.allowed && onlineCheckoutAllowed && portalState !== "awaiting_approval";
 
   const params = useMemo(() => new URLSearchParams(search), [search]);
   const isReturn = params.get("payment_return") === "1";
   const returnQuery = useSaasCheckoutReturnSession(isReturn);
   const returnState = derivePortalPaymentReturnState(returnQuery.data ?? null);
 
-  // One extra summary refresh after return (not continuous polling)
   useEffect(() => {
     if (!isReturn) return;
     void qc.invalidateQueries({ queryKey: WORKSPACE_BILLING_SUMMARY_KEY });
@@ -81,7 +125,7 @@ export function CompanySaasPaymentPanel({
 
   const handlePay = async () => {
     setLocalError(null);
-    if (!eligibility.allowed || expectedAmount == null || !displayCurrency) {
+    if (!checkoutAllowed || displayAmount == null || !displayCurrency) {
       setLocalError(t(eligibility.reasonKey, "Payment is not available."));
       return;
     }
@@ -104,11 +148,10 @@ export function CompanySaasPaymentPanel({
         returnUrl,
         cancelUrl: returnUrl,
         idempotencyKey: idempotencyRef.current,
-        expectedAmount,
+        expectedAmount: displayAmount,
         expectedCurrency: displayCurrency,
       });
 
-      // Safety: amount already validated in mutation; refresh if URL missing
       if (!result.checkoutUrl) {
         void qc.invalidateQueries({ queryKey: WORKSPACE_BILLING_SUMMARY_KEY });
         throw new Error("CHECKOUT_URL_MISSING");
@@ -128,7 +171,6 @@ export function CompanySaasPaymentPanel({
       } else if (code === "API_SERVER_NOT_CONFIGURED") {
         message = t("companyWorkspace.payment.apiMissing", "Payment API is not configured.");
       } else if (err instanceof Error && err.message && !err.message.startsWith("CHECKOUT_")) {
-        // Prefer mapped server codes when present
         const serverCode = (err as Error & { code?: string }).code;
         if (serverCode === "FREE_PACKAGE_NO_PAYMENT") {
           message = t("companyWorkspace.payment.freePackage", "No payment required for this package.");
@@ -136,6 +178,11 @@ export function CompanySaasPaymentPanel({
           message = t(
             "companyWorkspace.payment.customPricing",
             "Contact billing — online payment is not available for custom pricing.",
+          );
+        } else if (serverCode === "UNAUTHORIZED_CHECKOUT") {
+          message = t(
+            "companyWorkspace.payment.unauthorized",
+            "You can view billing details, but only a company administrator can start payment.",
           );
         } else if (serverCode === "NO_ONLINE_PROVIDER_CONFIGURED" || serverCode === "NOT_IMPLEMENTED") {
           message = t(
@@ -154,10 +201,15 @@ export function CompanySaasPaymentPanel({
       ? t("companyWorkspace.payment.renewNow", "Renew subscription")
       : t("companyWorkspace.payment.payNow", "Pay now");
 
+  const planLabel = plan?.display_name || plan?.name || t("billing.plan.unassigned", "Unassigned");
+  const cycleLabel = subscription.billing_cycle;
+
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-background p-4">
       <h3 className="text-sm font-semibold">
-        {t("companyWorkspace.payment.sectionTitle", "Online payment")}
+        {portalState === "payment_required"
+          ? t("companyWorkspace.payment.paymentRequired", "Payment Required")
+          : t("companyWorkspace.payment.sectionTitle", "Online payment")}
       </h3>
 
       {isReturn ? (
@@ -166,7 +218,14 @@ export function CompanySaasPaymentPanel({
           role="status"
           aria-live="polite"
         >
-          {returnState === "confirmed" ? (
+          {returnState === "confirmed" && portalState === "awaiting_approval" ? (
+            <p>
+              {t("companyWorkspace.payment.paymentReceived", "Payment received")}
+              {". "}
+              {t("companyWorkspace.payment.awaitingApproval", "Awaiting company approval")}
+            </p>
+          ) : null}
+          {returnState === "confirmed" && portalState !== "awaiting_approval" ? (
             <p>
               {t(
                 "companyWorkspace.payment.returnConfirmed",
@@ -204,13 +263,36 @@ export function CompanySaasPaymentPanel({
         </div>
       ) : null}
 
+      {portalState === "awaiting_approval" ? (
+        <div className="space-y-1 text-sm">
+          <p className="font-medium text-foreground">
+            {t("companyWorkspace.payment.paymentReceived", "Payment received")}
+          </p>
+          <p className="text-muted-foreground">
+            {t("companyWorkspace.payment.awaitingApproval", "Awaiting company approval")}
+          </p>
+        </div>
+      ) : null}
+
+      {portalState === "not_configured" ? (
+        <div className="space-y-1 text-sm text-muted-foreground">
+          <p>{t("companyWorkspace.payment.notConfigured", "Payment is not available yet.")}</p>
+          <p>
+            {t(
+              "companyWorkspace.payment.configurationPending",
+              "Your commercial configuration is still being prepared.",
+            )}
+          </p>
+        </div>
+      ) : null}
+
       {eligibility.code === "FREE_PACKAGE" ? (
         <p className="text-sm text-muted-foreground">
           {t("companyWorkspace.payment.freePackage", "No payment required for this package.")}
         </p>
       ) : null}
 
-      {eligibility.code === "CUSTOM_PRICING" ? (
+      {eligibility.code === "CUSTOM_PRICING" && portalState === "standard" ? (
         <p className="text-sm text-muted-foreground">
           {t(
             "companyWorkspace.payment.customPricing",
@@ -219,7 +301,8 @@ export function CompanySaasPaymentPanel({
         </p>
       ) : null}
 
-      {eligibility.code === "PAYMENT_BLOCKED" || eligibility.code === "INVALID_SUBSCRIPTION_STATE" ? (
+      {(eligibility.code === "PAYMENT_BLOCKED" || eligibility.code === "INVALID_SUBSCRIPTION_STATE") &&
+      portalState === "standard" ? (
         <p className="text-sm text-muted-foreground">
           {t(eligibility.reasonKey, "Online payment is not available for this company right now.")}
         </p>
@@ -235,7 +318,9 @@ export function CompanySaasPaymentPanel({
         </p>
       ) : null}
 
-      {subscription.status === "trialing" && eligibility.allowed ? (
+      {subscription.status === "trialing" &&
+      eligibility.allowed &&
+      resolvedApproval !== "pending" ? (
         <p className="text-xs text-muted-foreground">
           {t(
             "companyWorkspace.payment.trialHint",
@@ -244,29 +329,54 @@ export function CompanySaasPaymentPanel({
         </p>
       ) : null}
 
-      {eligibility.allowed && expectedAmount != null && displayCurrency ? (
+      {portalState !== "not_configured" &&
+      portalState !== "awaiting_approval" &&
+      displayAmount != null &&
+      displayCurrency ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm">
+          <div className="space-y-1 text-sm">
+            {portalState === "payment_required" ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {t("companyWorkspace.payment.planLabel", "Plan")}: {planLabel}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("companyWorkspace.payment.billingCycle", "Billing cycle")}: {cycleLabel}
+                </p>
+              </>
+            ) : null}
+            {listAmount != null && listAmount !== displayAmount ? (
+              <p className="text-xs text-muted-foreground">
+                {t("companyWorkspace.payment.listPriceHint", "List price")}:{" "}
+                {formatBillingCurrency(listAmount, displayCurrency)}
+              </p>
+            ) : null}
+            {payableSource === "discount" && discountPercent != null ? (
+              <p className="text-xs text-muted-foreground">
+                {t("companyWorkspace.payment.discountHint", "Company discount")}: {discountPercent}%
+              </p>
+            ) : null}
             <p className="font-medium text-foreground">
-              {formatBillingCurrency(expectedAmount, displayCurrency)}
+              {t("companyWorkspace.payment.companyPrice", "Company price")}:{" "}
+              {formatBillingCurrency(displayAmount, displayCurrency)}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t(
-                "companyWorkspace.payment.amountHint",
-                "Amount is locked by your current package and billing cycle.",
-              )}
+              {t("companyWorkspace.payment.totalDue", "Total due")}:{" "}
+              {formatBillingCurrency(displayAmount, displayCurrency)}
             </p>
           </div>
-          <Button
-            type="button"
-            disabled={createCheckout.isPending}
-            aria-busy={createCheckout.isPending}
-            onClick={() => void handlePay()}
-          >
-            {createCheckout.isPending
-              ? t("companyWorkspace.payment.starting", "Starting payment…")
-              : buttonLabel}
-          </Button>
+          {checkoutAllowed && displayAmount != null ? (
+            <Button
+              type="button"
+              disabled={createCheckout.isPending}
+              aria-busy={createCheckout.isPending}
+              onClick={() => void handlePay()}
+            >
+              {createCheckout.isPending
+                ? t("companyWorkspace.payment.starting", "Starting payment…")
+                : buttonLabel}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

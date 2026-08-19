@@ -59,6 +59,8 @@ export interface CompanyRecord {
   billing_cycle: string | null;
   subscription_expires_at: string | null;
   approval_status?: string | null;
+  suspension_reason?: string | null;
+  approval_rejection_reason?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -257,6 +259,9 @@ export function AuthProvider({ children, queryClient }: AuthProviderProps) {
           && current?.name === nextCompany?.name
           && current?.status === nextCompany?.status
           && current?.subscription_status === nextCompany?.subscription_status
+          && current?.approval_status === nextCompany?.approval_status
+          && current?.suspension_reason === nextCompany?.suspension_reason
+          && current?.approval_rejection_reason === nextCompany?.approval_rejection_reason
         ) {
           return current;
         }

@@ -321,7 +321,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
           <div
             className={cn(
               "flex h-[4.25rem] shrink-0 items-center overflow-hidden border-b border-sidebar-border",
-              sidebarCollapsed ? "justify-center px-2" : "px-3",
+              sidebarCollapsed ? "justify-center px-2" : "px-3.5",
             )}
           >
             <button
@@ -337,7 +337,10 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
                 tone={logoTone}
                 compact={sidebarCollapsed}
                 title="ValueOR"
-                className={cn("bg-transparent", sidebarCollapsed ? "size-9" : "w-full")}
+                className={cn(
+                  "bg-transparent",
+                  sidebarCollapsed ? "size-10" : "h-[42px] w-full max-w-full",
+                )}
               />
             </button>
           </div>

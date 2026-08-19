@@ -17,6 +17,8 @@ import {
   translateWorkspaceHealth,
 } from "@/lib/billing/billing-display-i18n";
 import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
+import { formatResourceOccupancy, occupancyDisplayUsed } from "@/lib/billing/company-resource-limits";
+import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
 import type { BillingSubscriptionStatus, CompanySubscription } from "@/lib/billing/types";
 
 function Field({
@@ -53,6 +55,7 @@ export function CompanySubscriptionTab() {
   /** Tenant isolation: always the authenticated company — never a URL/query company id. */
   const companyId = company?.id ?? bundle?.companyId ?? null;
   const { data, isLoading, error } = useWorkspaceBillingSummary(permissions.canSubscription);
+  const occupancyQuery = useCompanyResourceOccupancy(companyId, permissions.canSubscription);
 
   const subscription = data?.subscription as CompanySubscription | null | undefined;
   const plan = (data?.plan ?? subscription?.plan) as CompanySubscription["plan"] | null | undefined;
@@ -131,13 +134,26 @@ export function CompanySubscriptionTab() {
     );
   }
 
-  const seats =
-    plan?.max_users != null
-      ? t("companyWorkspace.overview.seatsOf", {
-          used: bundle?.counts.employees ?? 0,
-          limit: plan.max_users,
-        })
-      : null;
+  const occupancy = occupancyQuery.data;
+  const unlimitedLabel = t("companyWorkspace.subscription.resourceLimits.unlimited");
+  const seats = occupancy
+    ? formatResourceOccupancy(
+        occupancyDisplayUsed(occupancy.users),
+        occupancy.users.max_allowed,
+        unlimitedLabel,
+      )
+    : occupancyQuery.isLoading
+      ? t("common.loading")
+      : t("companyWorkspace.subscription.resourceLimits.unavailable", "Unavailable");
+  const branchSeats = occupancy
+    ? formatResourceOccupancy(
+        occupancyDisplayUsed(occupancy.branches),
+        occupancy.branches.max_allowed,
+        unlimitedLabel,
+      )
+    : occupancyQuery.isLoading
+      ? t("common.loading")
+      : t("companyWorkspace.subscription.resourceLimits.unavailable", "Unavailable");
   const storage =
     plan?.storage_gb != null
       ? t("companyWorkspace.overview.storageCapacityValue", { gb: plan.storage_gb })
@@ -285,7 +301,8 @@ export function CompanySubscriptionTab() {
             label={t("companyWorkspace.subscription.paymentMethod")}
             value={subscription.payment_method_label}
           />
-          <Field label={t("companyWorkspace.overview.seatUsage")} value={seats} />
+          <Field label={t("companyWorkspace.subscription.resourceLimits.users")} value={seats} />
+          <Field label={t("companyWorkspace.subscription.resourceLimits.branches")} value={branchSeats} />
           <Field label={t("companyWorkspace.overview.storageCapacity")} value={storage} />
         </div>
       </section>
@@ -295,6 +312,14 @@ export function CompanySubscriptionTab() {
         subscription={subscription}
         plan={plan}
         currency={data?.currency ?? null}
+        assignedAmount={data?.next_invoice_amount ?? null}
+        listAmount={data?.list_price_amount ?? null}
+        onlineCheckoutAllowed={data?.online_checkout_allowed ?? true}
+        approvalStatus={data?.approval_status ?? data?.company?.approval_status ?? company?.approval_status}
+        payableSource={data?.payable_source ?? null}
+        discountPercent={data?.discount_percent ?? null}
+        preApprovalPaid={Boolean(data?.pre_approval_paid)}
+        paymentPortalState={data?.payment_portal_state ?? null}
       />
 
       <section className="space-y-2">

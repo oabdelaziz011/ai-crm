@@ -12,7 +12,12 @@ import type {
   SmtpConfig,
 } from "@/lib/notifications/providers/email/types/email-types";
 import { EMAIL_PROVIDER } from "@/lib/notifications/providers/email/types/email-types";
+import type { EmailsSentCommercialPort } from "@workspace/channel-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type EmailProviderOptions = {
+  emailsSentCommercial?: EmailsSentCommercialPort;
+};
 
 export type EmailProviderProcessResult = {
   processed: number;
@@ -30,6 +35,7 @@ export class EmailProvider {
     private readonly queueConsumer: EmailQueueConsumer,
     private readonly settingsRepository: EmailSettingsRepository,
     private readonly deliveryLogRepository: EmailDeliveryLogRepository,
+    private readonly emailsSentCommercial?: EmailsSentCommercialPort,
   ) {}
 
   async healthCheck(companyId: string): Promise<EmailTransportHealthResult & { enabled: boolean }> {
@@ -184,6 +190,43 @@ export class EmailProvider {
       }
 
       const rendered = this.renderer.renderEvent(event, params);
+
+      if (this.emailsSentCommercial) {
+        const access = await this.emailsSentCommercial.checkAccess({
+          companyId: item.companyId,
+        });
+        if (!access.allowed) {
+          const denialMessage =
+            access.reason === "quota_exceeded"
+              ? "Email send quota exceeded."
+              : access.reason === "not_entitled"
+                ? "Email channel is not entitled."
+                : "Email commercial access unavailable.";
+          await this.queueConsumer.markFailed(
+            item.companyId,
+            item.id,
+            denialMessage,
+            maxRetryCount,
+            undefined,
+          );
+          const denied: EmailDeliveryResult = {
+            queueId: item.id,
+            notificationId: item.notificationId,
+            companyId: item.companyId,
+            provider: EMAIL_PROVIDER,
+            status: "failed",
+            durationMs: Date.now() - started,
+            attempts,
+            lastError: denialMessage,
+            recipientEmail,
+            subject: rendered.subject,
+            timestamp: new Date().toISOString(),
+          };
+          await this.deliveryLogRepository.append(denied);
+          return denied;
+        }
+      }
+
       await this.transport.send(
         {
           to: recipientEmail,
@@ -195,6 +238,15 @@ export class EmailProvider {
       );
 
       await this.queueConsumer.markCompleted(item.companyId, item.id);
+
+      if (this.emailsSentCommercial) {
+        await this.emailsSentCommercial
+          .recordUsage({
+            companyId: item.companyId,
+            queueId: item.id,
+          })
+          .catch(() => undefined);
+      }
 
       const result: EmailDeliveryResult = {
         queueId: item.id,
@@ -277,6 +329,7 @@ export function createEmailProvider(
   client: SupabaseClient,
   transport: EmailTransport,
   renderer: EmailRenderer,
+  options: EmailProviderOptions = {},
 ): EmailProvider {
   return new EmailProvider(
     client,
@@ -285,5 +338,6 @@ export function createEmailProvider(
     new EmailQueueConsumer(client),
     new EmailSettingsRepository(client),
     new EmailDeliveryLogRepository(client),
+    options.emailsSentCommercial,
   );
 }

@@ -200,7 +200,9 @@ export type Company = {
   approval_reviewed_at?: string | null;
   approval_reviewed_by?: string | null;
   approval_rejection_reason?: string | null;
+  suspension_reason?: string | null;
   approval_notes?: string | null;
+  approval_change_request?: string | null;
   plan_id: string | null;
   subscription_plan: string;
   subscription_status: SubscriptionStatus;

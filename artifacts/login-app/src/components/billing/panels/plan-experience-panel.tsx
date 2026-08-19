@@ -4,6 +4,8 @@ import { DashboardCard } from "@/components/dashboard/ui";
 import { billingNotAvailable, formatBillingUnit, translateBillingCycle } from "@/lib/billing/billing-display-i18n";
 import { formatPackageListPrice } from "@/lib/billing/package-pricing";
 import type { CompanySubscription } from "@/lib/billing/types";
+import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
+import { formatResourceOccupancy, occupancyDisplayUsed } from "@/lib/billing/company-resource-limits";
 
 type PlanExperiencePanelProps = {
   subscription: CompanySubscription;
@@ -23,6 +25,17 @@ export function PlanExperiencePanel({
   onChangePackage,
 }: PlanExperiencePanelProps) {
   const { t } = useTranslation("common");
+  const occupancyQuery = useCompanyResourceOccupancy(subscription.company_id, Boolean(subscription.company_id));
+  const occupancy = occupancyQuery.data;
+  const usersOccupancyLabel = occupancy
+    ? formatResourceOccupancy(
+        occupancyDisplayUsed(occupancy.users),
+        occupancy.users.max_allowed,
+        t("companyWorkspace.subscription.resourceLimits.unlimited"),
+      )
+    : occupancyQuery.isLoading
+      ? t("common.loading")
+      : billingNotAvailable(t);
 
   const listPriceLabel = formatPackageListPrice(
     {
@@ -67,7 +80,7 @@ export function PlanExperiencePanel({
       <div className="grid grid-cols-2 gap-2 text-sm lg:grid-cols-4">
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
           <p className="text-muted-foreground">{t("billing.detail.maxUsers")}</p>
-          <p className="mt-1 text-lg font-semibold">{subscription.plan?.max_users ?? billingNotAvailable(t)}</p>
+          <p className="mt-1 text-lg font-semibold">{usersOccupancyLabel}</p>
         </div>
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
           <p className="text-muted-foreground">{t("billing.detail.maxCustomers")}</p>

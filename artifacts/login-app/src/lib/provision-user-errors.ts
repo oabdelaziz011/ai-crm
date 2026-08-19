@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import i18n from "@/i18n";
 import { translateAuthError, translateAuthErrorMessage, type AuthErrorLike } from "@/lib/auth-errors";
+import { isUserSeatLimitError } from "@/lib/billing/company-resource-limits";
 
 type FunctionInvokeError = {
   message?: string | null;
@@ -30,6 +31,23 @@ export function isProvisionUserUnavailable(error: unknown): boolean {
   );
 }
 
+function provisionPayloadLooksLikeSeatLimit(
+  invokeError: unknown,
+  response: { error?: unknown; code?: unknown } | null | undefined,
+): boolean {
+  const responseText = `${String(response?.error ?? "")} ${String(response?.code ?? "")}`;
+  if (isUserSeatLimitError(responseText)) return true;
+  if (
+    invokeError &&
+    typeof invokeError === "object" &&
+    "message" in invokeError &&
+    isUserSeatLimitError(String((invokeError as AuthErrorLike).message ?? ""))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function translateProvisionUserError(
   invokeError: unknown,
   response: { error?: unknown; code?: unknown } | null | undefined,
@@ -37,6 +55,10 @@ export function translateProvisionUserError(
 ): string {
   if (isProvisionUserUnavailable(invokeError)) {
     return t("users.errors.provisionServiceUnavailable");
+  }
+
+  if (provisionPayloadLooksLikeSeatLimit(invokeError, response)) {
+    return t("users.errors.seatLimitReached");
   }
 
   if (invokeError) {
@@ -60,6 +82,10 @@ export function translateProvisionUserErrorMessage(
 ): string {
   if (isProvisionUserUnavailable(invokeError)) {
     return i18n.t("users.errors.provisionServiceUnavailable", { ns: "common" });
+  }
+
+  if (provisionPayloadLooksLikeSeatLimit(invokeError, response)) {
+    return i18n.t("users.errors.seatLimitReached", { ns: "common" });
   }
 
   if (invokeError) {

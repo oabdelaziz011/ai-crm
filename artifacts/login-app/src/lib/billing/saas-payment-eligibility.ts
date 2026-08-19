@@ -10,7 +10,10 @@ export type SaasPaymentEligibilityCode =
   | "NO_COMPANY"
   | "NO_SUBSCRIPTION"
   | "NO_PLAN"
-  | "UNAUTHORIZED";
+  | "UNAUTHORIZED"
+  | "NOT_CONFIGURED"
+  | "AWAITING_APPROVAL"
+  | "INVALID_PAYABLE";
 
 export type SaasPaymentEligibility = {
   code: SaasPaymentEligibilityCode;
@@ -34,6 +37,10 @@ export type SaasPaymentEligibilityInput = {
     price_monthly?: number | null;
     price_yearly?: number | null;
   } | null | undefined;
+  payableAmount?: number | null;
+  payableSource?: string | null;
+  onlineCheckoutAllowed?: boolean | null;
+  preApprovalPaid?: boolean | null;
 };
 
 const PAYABLE_STATUSES: BillingSubscriptionStatus[] = [
@@ -75,30 +82,45 @@ export function resolveSaasPaymentEligibility(
   }
 
   const approval = (input.approvalStatus ?? "approved").trim().toLowerCase();
-  if (approval === "pending" || approval === "rejected") {
+  if (approval === "rejected") {
     return {
       code: "PAYMENT_BLOCKED",
       allowed: false,
       action: "none",
-      reasonKey: "companyWorkspace.payment.companyNotApproved",
+      reasonKey: "companyWorkspace.payment.companyRejected",
+    };
+  }
+
+  if (approval === "pending" && input.preApprovalPaid) {
+    return {
+      code: "AWAITING_APPROVAL",
+      allowed: false,
+      action: "none",
+      reasonKey: "companyWorkspace.payment.awaitingApproval",
     };
   }
 
   if (!input.subscription) {
     return {
-      code: "NO_SUBSCRIPTION",
+      code: approval === "pending" ? "NOT_CONFIGURED" : "NO_SUBSCRIPTION",
       allowed: false,
       action: "none",
-      reasonKey: "companyWorkspace.payment.noSubscription",
+      reasonKey:
+        approval === "pending"
+          ? "companyWorkspace.payment.notConfigured"
+          : "companyWorkspace.payment.noSubscription",
     };
   }
 
   if (!input.subscription.plan_id || !input.plan) {
     return {
-      code: "NO_PLAN",
+      code: approval === "pending" ? "NOT_CONFIGURED" : "NO_PLAN",
       allowed: false,
       action: "none",
-      reasonKey: "companyWorkspace.payment.noPlan",
+      reasonKey:
+        approval === "pending"
+          ? "companyWorkspace.payment.notConfigured"
+          : "companyWorkspace.payment.noPlan",
     };
   }
 
@@ -112,7 +134,36 @@ export function resolveSaasPaymentEligibility(
     };
   }
 
-  if (pricingMode === "custom") {
+  const catalogAmount = expectedListPriceAmount(input.subscription, input.plan);
+  const payable =
+    input.payableAmount == null || input.payableAmount === undefined
+      ? catalogAmount
+      : Number(input.payableAmount);
+  const source = (input.payableSource ?? "").trim().toLowerCase();
+  const serverAllowsOnline = input.onlineCheckoutAllowed !== false;
+
+  if (pricingMode === "custom" && source !== "custom" && source !== "discount") {
+    return {
+      code: "CUSTOM_PRICING",
+      allowed: false,
+      action: "none",
+      reasonKey: "companyWorkspace.payment.customPricing",
+    };
+  }
+
+  if (payable == null || !Number.isFinite(payable) || payable <= 0) {
+    return {
+      code: approval === "pending" ? "NOT_CONFIGURED" : "INVALID_PAYABLE",
+      allowed: false,
+      action: "none",
+      reasonKey:
+        approval === "pending"
+          ? "companyWorkspace.payment.notConfigured"
+          : "companyWorkspace.payment.invalidPayable",
+    };
+  }
+
+  if (!serverAllowsOnline) {
     return {
       code: "CUSTOM_PRICING",
       allowed: false,
@@ -131,18 +182,6 @@ export function resolveSaasPaymentEligibility(
     };
   }
 
-  const cycle = input.subscription.billing_cycle;
-  const amount =
-    cycle === "yearly" ? Number(input.plan.price_yearly) : Number(input.plan.price_monthly);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return {
-      code: "CUSTOM_PRICING",
-      allowed: false,
-      action: "none",
-      reasonKey: "companyWorkspace.payment.customPricing",
-    };
-  }
-
   const action: "pay" | "renew" =
     status === "past_due" || status === "grace_period" ? "renew" : "pay";
 
@@ -150,7 +189,10 @@ export function resolveSaasPaymentEligibility(
     code: "PAYMENT_ALLOWED",
     allowed: true,
     action,
-    reasonKey: "companyWorkspace.payment.allowed",
+    reasonKey:
+      approval === "pending"
+        ? "companyWorkspace.payment.paymentRequired"
+        : "companyWorkspace.payment.allowed",
   };
 }
 

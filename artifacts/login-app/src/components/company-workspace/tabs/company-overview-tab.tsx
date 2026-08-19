@@ -21,6 +21,8 @@ import {
 } from "@/hooks/ai-observability/use-ai-analytics";
 import { useAiCostAggregate, useAiCostRecords } from "@/hooks/ai-observability/use-ai-costs";
 import { useCompanyUsageSnapshot } from "@/hooks/billing/use-company-entitlements";
+import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
+import { occupancyDisplayUsed } from "@/lib/billing/company-resource-limits";
 import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
 import { useCompanyBrandCenter } from "@/hooks/company-workspace/use-company-brand-center";
 import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
@@ -100,6 +102,7 @@ export function CompanyOverviewTab() {
   const canInvoices = isSuperAdmin || hasPermission("invoices.view");
 
   const billing = useWorkspaceBillingSummary(permissions.canSubscription);
+  const occupancyQuery = useCompanyResourceOccupancy(companyId, Boolean(companyId));
   const usageSnapshot = useCompanyUsageSnapshot(
     companyId,
     Boolean(companyId && permissions.canSubscription),
@@ -157,7 +160,8 @@ export function CompanyOverviewTab() {
     subscription?.status ?? profile?.subscriptionStatus ?? null,
   );
 
-  const seatsLimit = plan?.max_users ?? null;
+  const seatsLimit = occupancyQuery.data?.users.max_allowed ?? null;
+  const seatsUsed = occupancyQuery.data ? occupancyDisplayUsed(occupancyQuery.data.users) : 0;
   const storageLimitGb = plan?.storage_gb ?? null;
   const aiTokenLimit = plan?.ai_tokens_monthly ?? null;
 
@@ -308,7 +312,7 @@ export function CompanyOverviewTab() {
         includeBilling: canOpenBillingHealth,
         subscriptionActive: isSubscriptionActiveStatus(subscriptionStatus),
         subscriptionExpiringSoon: renewalDays != null && renewalDays >= 0 && renewalDays <= 14,
-        employeesCount: counts?.employees ?? 0,
+        employeesCount: occupancyQuery.data ? occupancyDisplayUsed(occupancyQuery.data.users) : (counts?.employees ?? 0),
         seatsLimit,
         branchesCount: counts?.branches ?? 0,
         departmentsCount: counts?.departments ?? 0,
@@ -339,6 +343,7 @@ export function CompanyOverviewTab() {
       counts?.branches,
       counts?.departments,
       counts?.employees,
+      occupancyQuery.data,
       hasPrimaryLogo,
       identity?.contactEmail,
       identity?.legalName,
@@ -508,7 +513,7 @@ export function CompanyOverviewTab() {
     licenseMeters.push({
       id: "seats",
       label: t("companyWorkspace.overview.license.employees"),
-      used: counts.employees,
+      used: seatsUsed,
       limit: seatsLimit,
     });
   }

@@ -13,6 +13,8 @@ import {
 import { getBranchServices } from "@/lib/company/branches";
 import { BranchManagementError } from "@/lib/company/branches/services";
 import type { BranchFormValues, BranchListFilter } from "@/lib/company/branches/types";
+import { isBranchLimitError } from "@/lib/billing/company-resource-limits";
+import i18n from "@/i18n";
 
 const services = getBranchServices();
 
@@ -180,10 +182,16 @@ export async function syncUserBranchAssignments(
 }
 
 export function formatBranchError(error: unknown): string {
-  if (error instanceof BranchManagementError) {
-    return error.message;
+  const message =
+    error instanceof BranchManagementError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : String(error ?? "");
+  if (isBranchLimitError(message)) {
+    return i18n.t("branches.errors.limitReached", { ns: "common" });
   }
-  if (error instanceof Error) {
+  if (error instanceof BranchManagementError || error instanceof Error) {
     return error.message;
   }
   return "An unexpected error occurred";

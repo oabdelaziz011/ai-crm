@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { COMPANY_SUBSCRIPTIONS_KEY } from "@/hooks/billing/use-company-subscriptions";
+import { COMPANIES_KEY } from "@/hooks/use-companies";
 
 function invalidateBillingCompany(qc: ReturnType<typeof useQueryClient>, companyId: string) {
   qc.invalidateQueries({ queryKey: COMPANY_SUBSCRIPTIONS_KEY });
@@ -13,6 +14,7 @@ function invalidateBillingCompany(qc: ReturnType<typeof useQueryClient>, company
   qc.invalidateQueries({ queryKey: ["billing", "payments", companyId] });
   qc.invalidateQueries({ queryKey: ["billing", "receipts", companyId] });
   qc.invalidateQueries({ queryKey: ["notifications", "list", companyId] });
+  qc.invalidateQueries({ queryKey: COMPANIES_KEY });
 }
 
 export function useUpsertBillingContact() {
@@ -53,10 +55,12 @@ export function useAssignSubscriptionPlan() {
 export function useSuspendBillingSubscription() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { companyId: string; reason?: string | null }) => {
+    mutationFn: async (input: { companyId: string; reason: string }) => {
+      const reason = input.reason.trim();
+      if (!reason) throw new Error("suspension_reason_required");
       const { data, error } = await supabase.rpc("suspend_billing_subscription", {
         p_company_id: input.companyId,
-        p_reason: input.reason ?? null,
+        p_reason: reason,
       });
       if (error) throw new Error(error.message);
       return data as Record<string, unknown>;
@@ -143,6 +147,48 @@ export function useChangeCompanyPackage() {
     onSuccess: (_data, variables) => {
       invalidateBillingCompany(qc, variables.companyId);
       void qc.invalidateQueries({ queryKey: ["billing", "commercial-packages"] });
+    },
+  });
+}
+
+export function useConfigureCompanyCustomPackage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      companyId: string;
+      packageName: string;
+      billingCycle: "monthly" | "yearly";
+      customPriceMonthly: number | null;
+      customPriceYearly: number | null;
+      notes: string | null;
+      featureCodes: string[];
+      maxUsers: number | null;
+      maxBranches: number | null;
+      usageLimits: Array<{
+        metric_code: string;
+        included_quantity: number | null;
+        is_unlimited: boolean;
+      }>;
+    }) => {
+      const { data, error } = await supabase.rpc("configure_company_custom_package_v1", {
+        p_company_id: input.companyId,
+        p_package_name: input.packageName,
+        p_billing_cycle: input.billingCycle,
+        p_custom_price_monthly: input.customPriceMonthly,
+        p_custom_price_yearly: input.customPriceYearly,
+        p_notes: input.notes,
+        p_feature_codes: input.featureCodes,
+        p_max_users: input.maxUsers,
+        p_max_branches: input.maxBranches,
+        p_usage_limits: input.usageLimits,
+      });
+      if (error) throw new Error(error.message);
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_data, variables) => {
+      invalidateBillingCompany(qc, variables.companyId);
+      void qc.invalidateQueries({ queryKey: ["billing", "company-commercial-terms"] });
+      void qc.invalidateQueries({ queryKey: ["billing", "company-resource-occupancy"] });
     },
   });
 }

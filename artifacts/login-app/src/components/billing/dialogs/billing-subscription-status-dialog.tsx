@@ -48,7 +48,12 @@ export function BillingSubscriptionStatusDialog({
   const handleSubmit = async () => {
     try {
       if (mode === "suspend") {
-        await suspendMutation.mutateAsync({ companyId, reason: reason.trim() || null });
+        const trimmed = reason.trim();
+        if (!trimmed) {
+          onError?.(t("companies.lifecycle.reasonRequired"));
+          return;
+        }
+        await suspendMutation.mutateAsync({ companyId, reason: trimmed });
       } else if (mode === "restore") {
         await restoreMutation.mutateAsync({ companyId, reason: reason.trim() || null });
       } else {
@@ -103,7 +108,9 @@ export function BillingSubscriptionStatusDialog({
         </DialogHeader>
         <p className="text-sm text-muted-foreground">{description}</p>
         <div>
-          <label className="text-sm text-muted-foreground">{t("billing.edit.reasonOptional")}</label>
+          <label className="text-sm text-muted-foreground">
+            {mode === "suspend" ? t("companies.lifecycle.suspendReason") : t("billing.edit.reasonOptional")}
+          </label>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}

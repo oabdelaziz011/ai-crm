@@ -5,9 +5,17 @@ export type WorkspaceBillingSummary = {
   company_id: string;
   subscription: Record<string, unknown> | null;
   plan: Record<string, unknown> | null;
-  company: { id: string; name: string; logo_url?: string | null; status?: string | null } | null;
+  company: { id: string; name: string; logo_url?: string | null; status?: string | null; approval_status?: string | null } | null;
   billing_contact: Record<string, unknown> | null;
   next_invoice_amount: number | null;
+  list_price_amount?: number | null;
+  payable_source?: string | null;
+  discount_percent?: number | null;
+  online_checkout_allowed?: boolean;
+  approval_status?: string | null;
+  pre_approval_paid?: boolean;
+  pre_approval_paid_at?: string | null;
+  payment_portal_state?: "awaiting_approval" | "not_configured" | "payment_required" | "standard" | string;
   currency: string | null;
   workspace_health: "healthy" | "at_risk" | "critical" | string;
 };

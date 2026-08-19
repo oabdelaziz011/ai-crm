@@ -14,7 +14,12 @@ import type {
   WhatsAppTransportHealthResult,
 } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
 import { WHATSAPP_PROVIDER } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
+import type { WhatsAppMessagesCommercialPort } from "@workspace/channel-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type WhatsAppProviderOptions = {
+  whatsappMessagesCommercial?: WhatsAppMessagesCommercialPort;
+};
 
 export type WhatsAppProviderProcessResult = {
   processed: number;
@@ -32,6 +37,7 @@ export class WhatsAppProvider {
     private readonly queueConsumer: WhatsAppQueueConsumer,
     private readonly settingsRepository: WhatsAppSettingsRepository,
     private readonly deliveryLogRepository: WhatsAppDeliveryLogRepository,
+    private readonly whatsappMessagesCommercial?: WhatsAppMessagesCommercialPort,
   ) {}
 
   async healthCheck(
@@ -171,6 +177,43 @@ export class WhatsAppProvider {
       const languageCode = params.language ?? params.locale ?? settings.defaultLanguage;
       const rendered = this.renderer.renderEvent(event, params, languageCode);
 
+      if (this.whatsappMessagesCommercial) {
+        const access = await this.whatsappMessagesCommercial.checkAccess({
+          companyId: item.companyId,
+        });
+        if (!access.allowed) {
+          const denialMessage =
+            access.reason === "quota_exceeded"
+              ? "WhatsApp message quota exceeded."
+              : access.reason === "not_entitled"
+                ? "WhatsApp channel is not entitled."
+                : "WhatsApp commercial access unavailable.";
+          await this.queueConsumer.markFailed(
+            item.companyId,
+            item.id,
+            denialMessage,
+            settings.maxRetryCount,
+            undefined,
+          );
+          const denied: WhatsAppDeliveryResult = {
+            queueId: item.id,
+            notificationId: item.notificationId,
+            companyId: item.companyId,
+            provider: WHATSAPP_PROVIDER,
+            status: "failed",
+            durationMs: Date.now() - started,
+            attempts,
+            lastError: denialMessage,
+            recipientPhone: recipient.phone,
+            messageId: null,
+            templateKey: rendered.templateKey,
+            timestamp: new Date().toISOString(),
+          };
+          await this.deliveryLogRepository.append(denied);
+          return denied;
+        }
+      }
+
       const sendResult = await this.transport.send(
         {
           to: recipient.phone,
@@ -183,7 +226,24 @@ export class WhatsAppProvider {
         this.toMetaConfig(settings),
       );
 
+      const messageId = sendResult.messageId?.trim() ?? "";
+      if (!messageId) {
+        throw new Error("WhatsApp API did not return an outbound message id.");
+      }
+
       await this.queueConsumer.markCompleted(item.companyId, item.id);
+
+      if (this.whatsappMessagesCommercial) {
+        await this.whatsappMessagesCommercial
+          .recordUsage({
+            companyId: item.companyId,
+            externalMessageId: messageId,
+            usageSource: "notification_queue",
+            referenceType: "notification_queue",
+            referenceId: item.id,
+          })
+          .catch(() => undefined);
+      }
 
       const result: WhatsAppDeliveryResult = {
         queueId: item.id,
@@ -195,7 +255,7 @@ export class WhatsAppProvider {
         attempts,
         lastError: null,
         recipientPhone: recipient.phone,
-        messageId: sendResult.messageId,
+        messageId,
         templateKey: rendered.templateKey,
         timestamp: new Date().toISOString(),
       };
@@ -291,6 +351,7 @@ export function createWhatsAppProvider(
   client: SupabaseClient,
   transport: WhatsAppTransport,
   renderer: WhatsAppRenderer,
+  options: WhatsAppProviderOptions = {},
 ): WhatsAppProvider {
   return new WhatsAppProvider(
     client,
@@ -299,5 +360,6 @@ export function createWhatsAppProvider(
     new WhatsAppQueueConsumer(client),
     new WhatsAppSettingsRepository(client),
     new WhatsAppDeliveryLogRepository(client),
+    options.whatsappMessagesCommercial,
   );
 }

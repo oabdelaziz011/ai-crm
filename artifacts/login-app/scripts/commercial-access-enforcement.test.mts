@@ -34,6 +34,10 @@ const migration266 = join(
   __dirname,
   "../../../supabase/migrations/266_commercial_access_enforcement.sql",
 );
+const migration306 = join(
+  __dirname,
+  "../../../supabase/migrations/306_fix_commercial_approval_access_gate.sql",
+);
 
 console.log("\nPhase 6 commercial access enforcement\n");
 
@@ -42,6 +46,14 @@ assert.match(sql, /approval_status is distinct from 'approved'/);
 assert.match(sql, /require_company_feature_v1/);
 assert.doesNotMatch(sql, /create table.*product_features/i);
 console.log("  ✓ migration 266 approval gate present");
+
+const sql306 = readFileSync(migration306, "utf8");
+assert.match(sql306, /create or replace function internal\.is_feature_enabled/);
+assert.match(sql306, /v_commercial and v_approval_status is distinct from 'approved'/);
+assert.match(sql306, /create or replace function internal\.get_company_access_state/);
+assert.doesNotMatch(sql306, /create or replace function public\.is_feature_enabled/);
+assert.doesNotMatch(sql306, /sync_company_package_entitlements/);
+console.log("  ✓ migration 306 restores internal approval gate only");
 
 const WHATSAPP: FeatureDefinitionLike = {
   code: "whatsapp_channel",
@@ -83,6 +95,17 @@ function grant(
     ...partial,
   };
 }
+
+assert.equal(
+  composeEffectiveFeatureAccess({
+    isSuperAdmin: true,
+    hasRbacPermission: false,
+    companyFeatureEnabled: false,
+    entitlementResolved: false,
+  }),
+  true,
+);
+console.log("  ✓ G super-admin bypass unchanged (RBAC/entitlement not required)");
 
 // A approved + entitlement + RBAC
 assert.equal(

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, Fragment } from "react";
-import { format } from "date-fns";
-import { ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +22,22 @@ import {
 } from "@/hooks/companies/use-company-approval";
 import type { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { isCommercialEntitlement, normalizeEntitlementSource } from "@/lib/billing/entitlement-display";
+import { formatBillingDate } from "@/lib/billing/format";
+import { sanitizeCompanyCommercialError } from "@/lib/companies/company-lifecycle-errors";
+import {
+  canDirectRevokeEntitlementSource,
+  entitlementFeatureCode,
+  isCommercialEntitlement,
+  isGrantableCommercialEntitlement,
+  isManagedEntitlementSource,
+  normalizeEntitlementSource,
+} from "@/lib/billing/entitlement-display";
 import {
   filterCompanyFeatureEntitlementsForDisplay,
   resolveCompanyFeatureCatalogSection,
   sortCompanyFeatureEntitlements,
 } from "@/lib/billing/company-feature-catalog-display";
+import { localizedFeatureLabel } from "@/lib/billing/custom-package-config";
 
 type CompanyFeaturesAccessDialogProps = {
   company: Company | null;
@@ -53,7 +62,6 @@ export function CompanyFeaturesAccessDialog({
   const syncPackage = useSyncCompanyPackageEntitlements();
   const [extendDays, setExtendDays] = useState("14");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [expandedCode, setExpandedCode] = useState<string | null>(null);
   const [localTrialEndsAt, setLocalTrialEndsAt] = useState<string | null>(null);
 
   const allCommercialUnlinked =
@@ -65,18 +73,12 @@ export function CompanyFeaturesAccessDialog({
   useEffect(() => {
     setLocalTrialEndsAt(null);
     setSelectedCode(null);
-    setExpandedCode(null);
   }, [companyId, open]);
 
   const selected = useMemo(
-    () => entitlements.find((row) => row.feature_code === selectedCode) ?? null,
+    () => entitlements.find((row) => entitlementFeatureCode(row) === selectedCode) ?? null,
     [entitlements, selectedCode],
   );
-
-  const selectedPermissions = useMemo(() => {
-    if (!selectedCode) return [];
-    return featurePermissionMap.get(selectedCode) ?? [];
-  }, [featurePermissionMap, selectedCode]);
 
   const visibleEntitlements = useMemo(() => {
     const filtered = filterCompanyFeatureEntitlementsForDisplay(
@@ -90,6 +92,10 @@ export function CompanyFeaturesAccessDialog({
 
   async function toggleFeature(code: string, enable: boolean) {
     if (!companyId) return;
+    const row = entitlements.find((item) => entitlementFeatureCode(item) === code);
+    if (!row) return;
+    if (enable && !isGrantableCommercialEntitlement(row)) return;
+    if (!enable && !canDirectRevokeEntitlementSource(row.source)) return;
     try {
       if (enable) {
         await setGrant.mutateAsync({
@@ -105,7 +111,7 @@ export function CompanyFeaturesAccessDialog({
     } catch (error) {
       toast({
         title: t("companies.features.saveFailed"),
-        description: error instanceof Error ? error.message : undefined,
+        description: sanitizeCompanyCommercialError(error, t("companies.features.saveFailed")),
         variant: "destructive",
       });
     }
@@ -128,7 +134,7 @@ export function CompanyFeaturesAccessDialog({
     } catch (error) {
       toast({
         title: t("companies.features.extendTrialFailed"),
-        description: error instanceof Error ? error.message : undefined,
+        description: sanitizeCompanyCommercialError(error, t("companies.features.extendTrialFailed")),
         variant: "destructive",
       });
     }
@@ -149,14 +155,20 @@ export function CompanyFeaturesAccessDialog({
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full border border-border/60 px-2.5 py-1">
             {t("companies.features.accessState")}:{" "}
-            <strong>{accessState.data ?? "—"}</strong>
+            <strong>
+              {accessState.data
+                ? t(`companies.features.accessStates.${accessState.data}`, {
+                    defaultValue: t("companies.features.accessStates.active"),
+                  })
+                : "—"}
+            </strong>
           </span>
           <span className="rounded-full border border-border/60 px-2.5 py-1">
-            {t("status." + company.status.toLowerCase(), { defaultValue: company.status })}
+            {t(`companies.displayStatus.${company.status === "Trial" ? "trial" : company.status === "Suspended" ? "suspended" : "active"}`)}
           </span>
           {trialEndsAt ? (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-800">
-              {t("companies.features.trialEnds")}: {format(new Date(trialEndsAt), "MMM d, yyyy")}
+              {t("companies.features.trialEnds")}: {formatBillingDate(trialEndsAt)}
             </span>
           ) : null}
         </div>
@@ -212,7 +224,7 @@ export function CompanyFeaturesAccessDialog({
                   .catch((error: unknown) => {
                     toast({
                       title: t("companies.features.saveFailed"),
-                      description: error instanceof Error ? error.message : undefined,
+                      description: sanitizeCompanyCommercialError(error, t("companies.features.saveFailed")),
                       variant: "destructive",
                     });
                   });
@@ -236,15 +248,15 @@ export function CompanyFeaturesAccessDialog({
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-start">{t("companies.features.feature")}</th>
-                    <th className="px-3 py-2 text-start">{t("companies.features.permissions")}</th>
                     <th className="px-3 py-2 text-start">{t("companies.features.status")}</th>
+                    <th className="px-3 py-2 text-start">{t("companies.features.source")}</th>
+                    <th className="px-3 py-2 text-start">{t("companies.features.startsAt")}</th>
+                    <th className="px-3 py-2 text-start">{t("companies.features.expiresAt")}</th>
                     <th className="px-3 py-2 text-end">{t("companies.table.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleEntitlements.map((row, index) => {
-                    const included = featurePermissionMap.get(row.feature_code) ?? [];
-                    const isExpanded = expandedCode === row.feature_code;
                     const section = resolveCompanyFeatureCatalogSection(row.feature_code);
                     const prevSection =
                       index > 0
@@ -258,7 +270,7 @@ export function CompanyFeaturesAccessDialog({
                         {showSectionHeader ? (
                           <tr className="border-t border-border/50 bg-muted/30">
                             <td
-                              colSpan={4}
+                              colSpan={6}
                               className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                             >
                               {section === "administration"
@@ -285,49 +297,15 @@ export function CompanyFeaturesAccessDialog({
                           <button
                             type="button"
                             className="text-start font-medium hover:underline"
-                            onClick={() => setSelectedCode(row.feature_code)}
+                            onClick={() => setSelectedCode(entitlementFeatureCode(row))}
                           >
-                            {row.label}
+                            {localizedFeatureLabel(t, entitlementFeatureCode(row), row.label)}
                           </button>
                           <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            {row.category ?? row.feature_code}
+                            {isCommercialEntitlement(row)
+                              ? t("companies.approval.wizard.commercialFeature")
+                              : t("companies.approval.wizard.coreFeature")}
                           </p>
-                          {included.length > 0 ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="mt-1 h-6 px-1 text-[11px] text-muted-foreground"
-                              onClick={() => {
-                                setSelectedCode(row.feature_code);
-                                setExpandedCode(isExpanded ? null : row.feature_code);
-                              }}
-                            >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUp className="me-1 size-3" />
-                                  {t("companies.features.hidePermissions")}
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown className="me-1 size-3" />
-                                  {t("companies.features.viewPermissions")}
-                                </>
-                              )}
-                            </Button>
-                          ) : null}
-                          {isExpanded ? (
-                            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border/50 bg-muted/20 p-2 text-[11px] text-muted-foreground">
-                              {included.map((code) => (
-                                <li key={code} className="font-mono">
-                                  ✓ {code}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-2 align-top text-xs text-muted-foreground">
-                          {t("companies.features.permissionCount", { count: included.length })}
                         </td>
                         <td className="px-3 py-2 align-top">
                           <span
@@ -343,19 +321,50 @@ export function CompanyFeaturesAccessDialog({
                               : t("companies.features.disabled")}
                           </span>
                         </td>
+                        <td className="px-3 py-2 align-top text-xs">
+                          {t(`companies.features.grantSource.${normalizeEntitlementSource(row.source)}`, {
+                            defaultValue: t("companies.features.grantSource.none"),
+                          })}
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs">
+                          {formatBillingDate(row.starts_at)}
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs">
+                          {row.expires_at
+                            ? formatBillingDate(row.expires_at)
+                            : t("companies.features.indefinite")}
+                        </td>
                         <td className="px-3 py-2 align-top text-end">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 rounded-lg text-xs"
-                            disabled={setGrant.isPending || revokeGrant.isPending}
-                            onClick={() => void toggleFeature(row.feature_code, !row.enabled)}
-                          >
-                            {row.enabled
-                              ? t("companies.features.disable")
-                              : t("companies.features.enable")}
-                          </Button>
+                          {isManagedEntitlementSource(row.source) ? (
+                            <span className="text-[11px] text-muted-foreground">
+                              {normalizeEntitlementSource(row.source) === "trial"
+                                ? t("companies.features.managedByTrial")
+                                : normalizeEntitlementSource(row.source) === "system"
+                                  ? t("companies.features.managedBySystem")
+                                  : t("companies.features.managedByPackage")}
+                            </span>
+                          ) : !isCommercialEntitlement(row) ? (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-lg text-xs"
+                              disabled={
+                                setGrant.isPending ||
+                                revokeGrant.isPending ||
+                                (row.enabled
+                                  ? !canDirectRevokeEntitlementSource(row.source)
+                                  : !isGrantableCommercialEntitlement(row))
+                              }
+                              onClick={() => void toggleFeature(entitlementFeatureCode(row), !row.enabled)}
+                            >
+                              {row.enabled
+                                ? t("companies.features.disable")
+                                : t("companies.features.enable")}
+                            </Button>
+                          )}
                         </td>
                       </tr>
                       </Fragment>
@@ -373,33 +382,27 @@ export function CompanyFeaturesAccessDialog({
                 <dl className="space-y-2 text-sm">
                   <div>
                     <dt className="text-muted-foreground">{t("companies.features.feature")}</dt>
-                    <dd className="font-medium">{selected.label}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">{t("companies.features.permissions")}</dt>
-                    <dd>
-                      {t("companies.features.permissionCount", {
-                        count: selectedPermissions.length,
-                      })}
+                    <dd className="font-medium">
+                      {localizedFeatureLabel(t, entitlementFeatureCode(selected), selected.label)}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t("companies.features.source")}</dt>
-                    <dd className="uppercase">{selected.source ?? "—"}</dd>
+                    <dd>
+                      {t(`companies.features.grantSource.${normalizeEntitlementSource(selected.source)}`, {
+                        defaultValue: t("companies.features.grantSource.none"),
+                      })}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t("companies.features.startsAt")}</dt>
-                    <dd>
-                      {selected.starts_at
-                        ? format(new Date(selected.starts_at), "MMM d, yyyy HH:mm")
-                        : "—"}
-                    </dd>
+                    <dd>{formatBillingDate(selected.starts_at)}</dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t("companies.features.expiresAt")}</dt>
                     <dd>
                       {selected.expires_at
-                        ? format(new Date(selected.expires_at), "MMM d, yyyy HH:mm")
+                        ? formatBillingDate(selected.expires_at)
                         : t("companies.features.indefinite")}
                     </dd>
                   </div>

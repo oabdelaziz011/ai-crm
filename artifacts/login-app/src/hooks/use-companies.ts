@@ -47,7 +47,7 @@ export function useCompanies(enabled = true) {
             "branches(id, city, country, address_line1, timezone, is_primary, deleted_at)",
           ].join(", "),
         )
-        .order("created_at", { ascending: false });
+        .order("updated_at", { ascending: false });
       if (error) throw new Error(error.message);
 
       return (data ?? []).map((row) => {

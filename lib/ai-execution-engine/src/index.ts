@@ -37,9 +37,14 @@ export type AIExecutionServices = {
   registries: ReturnType<typeof createDefaultRuntimeRegistries>;
 };
 
+export type AIExecutionServicesOptions = {
+  aiTokensCommercial?: import("./ports/ai-tokens-commercial-port.js").AiTokensCommercialPort;
+};
+
 export function createAIExecutionServices(
   client: SupabaseClient,
   integrations?: EnterpriseRuntimeIntegrations,
+  options?: AIExecutionServicesOptions,
 ): AIExecutionServices {
   const executionRepository = createSupabaseAIExecutionRepository(client);
   const metricsRepository = createSupabaseAIExecutionMetricsRepository(client);
@@ -61,6 +66,7 @@ export function createAIExecutionServices(
       connectionReader,
       providerFactory,
       policyService,
+      options?.aiTokensCommercial,
     ),
     sessions,
     observability,
@@ -82,6 +88,7 @@ export function createAIExecutionServices(
       knowledge: integrations.knowledge,
       tools: integrations.tools,
       platformConfig: integrations.platformConfig,
+      aiTokensCommercial: options?.aiTokensCommercial,
     });
   }
 
@@ -115,6 +122,7 @@ export * from "./repositories/supabase-execution-repositories.js";
 export * from "./services/ai-execution-policy-service.js";
 export * from "./services/ai-execution-metrics-service.js";
 export * from "./services/ai-execution-service.js";
+export * from "./ports/ai-tokens-commercial-port.js";
 export type { RuntimeKnowledgePort, RuntimeKnowledgeQueryInput, RuntimeKnowledgeQueryResult } from "./ports/knowledge-port.js";
 export {
   createEnterpriseRuntimeIntegrations,

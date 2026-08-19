@@ -32,7 +32,7 @@ export type RuntimeGatewayChatResponse = {
   model: string;
   providerKey: string;
   finishReason: string;
-  usage: { inputTokens: number; outputTokens: number; totalTokens: number };
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number; source?: "provider" };
   latencyMs: number;
   estimatedCostUsd?: number;
   toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;

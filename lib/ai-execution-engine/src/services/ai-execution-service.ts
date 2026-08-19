@@ -1,6 +1,7 @@
 import type { AIProviderFactory } from "@workspace/ai-provider-layer";
 import { AI_EXECUTION_PERMISSIONS } from "../constants.js";
 import {
+  AICommercialDeniedError,
   AIExecutionCancelledError,
   AIExecutionTimeoutError,
   PermissionDeniedError,
@@ -8,6 +9,7 @@ import {
   ProviderConnectionDisabledError,
   ProviderConnectionNotFoundError,
 } from "../errors.js";
+import type { AiTokensCommercialPort } from "../ports/ai-tokens-commercial-port.js";
 import type {
   AIExecutionMetricsRepository,
   AIExecutionRepository,
@@ -24,12 +26,18 @@ import type {
 } from "../types.js";
 import {
   assertNotCancelled,
-  estimateTokenUsage,
+  isProviderReportedTokenUsage,
   normalizeProviderResponse,
   resolveModel,
   sleep,
   withTimeout,
 } from "../utils/execution-utils.js";
+
+const EMPTY_TOKEN_USAGE = {
+  prompt_tokens: 0,
+  completion_tokens: 0,
+  total_tokens: 0,
+} as const;
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -53,6 +61,7 @@ export class AIExecutionService {
     private readonly connectionReader: ProviderConnectionReader,
     private readonly providerFactory: AIProviderFactory,
     private readonly policyService: AIExecutionPolicyService,
+    private readonly aiTokensCommercial?: AiTokensCommercialPort,
   ) {}
 
   async execute(ctx: ServiceContext, input: ExecuteAIInput): Promise<AIExecutionResult> {
@@ -89,6 +98,13 @@ export class AIExecutionService {
     const startedAt = Date.now();
 
     try {
+      if (this.aiTokensCommercial) {
+        const access = await this.aiTokensCommercial.checkAccess({ companyId: input.companyId });
+        if (!access.allowed) {
+          throw new AICommercialDeniedError(access.reason);
+        }
+      }
+
       const result = await this.runWithRetries(
         primaryConnection,
         promptBuild.final_prompt,
@@ -116,6 +132,17 @@ export class AIExecutionService {
       });
 
       await this.recordMetrics(input.companyId, completed);
+
+      if (this.aiTokensCommercial && isProviderReportedTokenUsage(result.tokenUsage)) {
+        await this.aiTokensCommercial
+          .recordUsage({
+            companyId: input.companyId,
+            executionId: execution.id,
+            quantity: result.tokenUsage.total_tokens,
+          })
+          .catch(() => undefined);
+      }
+
       return this.toResult(completed, result.normalized);
     } catch (error) {
       return this.failExecution(
@@ -235,8 +262,7 @@ export class AIExecutionService {
       promptBuild,
       policy,
     );
-    const tokenUsage =
-      generateResult.tokenUsage ?? estimateTokenUsage(prompt, generateResult.text);
+    const tokenUsage = generateResult.tokenUsage ?? EMPTY_TOKEN_USAGE;
     const finishReason = generateResult.finishReason ?? normalized.finishReason;
 
     return {

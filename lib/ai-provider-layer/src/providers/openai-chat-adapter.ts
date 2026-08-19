@@ -345,6 +345,28 @@ export class OpenAIChatAdapter implements AIProvider {
     let tokenUsage: ProviderTokenUsage | undefined;
     let resolvedModel = model;
 
+    const consumeSseLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) return;
+
+      const payloadText = trimmed.slice(5).trim();
+      if (!payloadText || payloadText === "[DONE]") return;
+
+      const payload = JSON.parse(payloadText) as OpenAIChatCompletionResponse;
+      resolvedModel = payload.model ?? resolvedModel;
+      const delta = payload.choices?.[0]?.delta?.content ?? "";
+      if (delta) {
+        text += delta;
+        metadata.onChunk?.(delta);
+      }
+      if (payload.choices?.[0]?.finish_reason) {
+        finishReason = payload.choices[0].finish_reason ?? finishReason;
+      }
+      if (payload.usage) {
+        tokenUsage = normalizeUsage(payload.usage);
+      }
+    };
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -354,25 +376,16 @@ export class OpenAIChatAdapter implements AIProvider {
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
+        consumeSseLine(line);
+      }
+    }
 
-        const payloadText = trimmed.slice(5).trim();
-        if (!payloadText || payloadText === "[DONE]") continue;
-
-        const payload = JSON.parse(payloadText) as OpenAIChatCompletionResponse;
-        resolvedModel = payload.model ?? resolvedModel;
-        const delta = payload.choices?.[0]?.delta?.content ?? "";
-        if (delta) {
-          text += delta;
-          metadata.onChunk?.(delta);
-        }
-        if (payload.choices?.[0]?.finish_reason) {
-          finishReason = payload.choices[0].finish_reason ?? finishReason;
-        }
-        if (payload.usage) {
-          tokenUsage = normalizeUsage(payload.usage);
-        }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      try {
+        consumeSseLine(buffer);
+      } catch {
+        // Incomplete trailing SSE buffer after stream close.
       }
     }
 
@@ -494,6 +507,10 @@ function buildChatCompletionBody(
     stream: streaming,
   };
 
+  if (streaming) {
+    body.stream_options = { include_usage: true };
+  }
+
   const completionLimit =
     typeof metadata.max_completion_tokens === "number"
       ? metadata.max_completion_tokens
@@ -594,5 +611,6 @@ function normalizeUsage(usage?: {
     prompt_tokens: promptTokens,
     completion_tokens: completionTokens,
     total_tokens: totalTokens,
+    source: "provider",
   };
 }

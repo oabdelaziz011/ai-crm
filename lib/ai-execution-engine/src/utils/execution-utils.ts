@@ -105,6 +105,17 @@ export function validateExecutionPolicy(policy: ExecutionRuntimePolicy): void {
   if (policy.retry_delay_ms < 0) throw new ValidationError("retry_delay_ms cannot be negative.");
 }
 
+export function isProviderReportedTokenUsage(
+  usage: TokenUsage | null | undefined,
+): usage is TokenUsage {
+  return Boolean(
+    usage &&
+      usage.source === "provider" &&
+      Number.isFinite(usage.total_tokens) &&
+      usage.total_tokens > 0,
+  );
+}
+
 export function estimateTokenUsage(prompt: string, completionText: string): TokenUsage {
   const promptTokens = Math.max(1, Math.ceil(prompt.length / 4));
   const completionTokens = Math.max(1, Math.ceil(completionText.length / 4));

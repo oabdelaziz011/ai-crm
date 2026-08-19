@@ -68,6 +68,9 @@ describe("OpenAIChatAdapter", () => {
     assert.equal(result.mock, false);
     assert.match(result.text, /MFA policy/i);
     assert.equal(result.tokenUsage?.total_tokens, 60);
+    assert.equal(result.tokenUsage?.prompt_tokens, 42);
+    assert.equal(result.tokenUsage?.completion_tokens, 18);
+    assert.equal(result.tokenUsage?.source, "provider");
     assert.equal(result.finishReason, "stop");
   });
 
@@ -89,6 +92,95 @@ describe("OpenAIChatAdapter", () => {
     assert.ok(chunks.length > 0);
     assert.match(result.text, /Enterprise MFA policy/i);
     assert.equal(result.tokenUsage?.total_tokens, 60);
+    assert.equal(result.tokenUsage?.source, "provider");
+  });
+
+  it("requests stream_options.include_usage on streaming OpenAI requests", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    const fetchFn = async (_url: string, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return createMockChatFetch({ stream: true })(_url, init);
+    };
+
+    const adapter = createOpenAIChatAdapter(
+      { model: "gpt-4o-mini", apiKey: "test-key" },
+      { fetchFn },
+    );
+
+    await adapter.generate({
+      prompt: "User: Explain MFA",
+      metadata: { streaming: true },
+    });
+
+    assert.equal(capturedBody?.stream, true);
+    assert.deepEqual(capturedBody?.stream_options, { include_usage: true });
+  });
+
+  it("does not invent tokenUsage when the stream omits usage metadata", async () => {
+    const fetchFn = async () => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                model: "gpt-4o-mini",
+                choices: [{ delta: { content: "Hello" } }],
+              })}\n\n`,
+            ),
+          );
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                model: "gpt-4o-mini",
+                choices: [{ finish_reason: "stop" }],
+              })}\n\n`,
+            ),
+          );
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+      return { ok: true, status: 200, body: stream, json: async () => ({}) } as Response;
+    };
+
+    const adapter = createOpenAIChatAdapter(
+      { model: "gpt-4o-mini", apiKey: "test-key" },
+      { fetchFn },
+    );
+
+    const result = await adapter.generate({
+      prompt: "User: Hi",
+      metadata: { streaming: true },
+    });
+
+    assert.equal(result.text.trim(), "Hello");
+    assert.equal(result.tokenUsage, undefined);
+  });
+
+  it("does not invent tokenUsage when the stream fails", async () => {
+    const fetchFn = async () => {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.error(new Error("stream aborted"));
+        },
+      });
+      return { ok: true, status: 200, body: stream, json: async () => ({}) } as Response;
+    };
+
+    const adapter = createOpenAIChatAdapter(
+      { model: "gpt-4o-mini", apiKey: "test-key" },
+      { fetchFn },
+    );
+
+    await assert.rejects(
+      () =>
+        adapter.generate({
+          prompt: "User: Hi",
+          metadata: { streaming: true },
+        }),
+      /stream aborted/,
+    );
   });
 
   it("uses max_completion_tokens and omits unsupported temperature for GPT-5 models", async () => {

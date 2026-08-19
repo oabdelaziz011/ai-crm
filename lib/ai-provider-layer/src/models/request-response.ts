@@ -28,6 +28,7 @@ export type TokenUsage = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  source?: "provider";
 };
 
 export type ChatCompletionResponse = {

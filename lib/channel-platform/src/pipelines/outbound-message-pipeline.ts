@@ -3,7 +3,12 @@ import type { ChannelPlatformPorts } from "../ports/channel-platform-ports.js";
 import type { OutboundDispatchRequestDto, OutboundDispatchResponseDto } from "../dto/channel-dto.js";
 import type { ChannelSessionRepository } from "../repositories/channel-platform-repositories.js";
 import { CHANNEL_PLATFORM_PERMISSIONS } from "../constants.js";
-import { CompanyChannelNotFoundError, PermissionDeniedError, ValidationError } from "../errors.js";
+import {
+  CompanyChannelNotFoundError,
+  DeliveryFailedError,
+  PermissionDeniedError,
+  ValidationError,
+} from "../errors.js";
 import type { ServiceContext } from "../types.js";
 import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
 import { traceOutboundValidationEnter, traceOutboundValidationFail, traceOutboundValidationPass } from "../debug/omni-outbound-400-bridge.js";
@@ -146,6 +151,21 @@ export class OutboundMessagePipeline {
     waPerfEnd("Message formatting", { channelKey: request.channelKey });
 
     try {
+      if (request.channelKey === "whatsapp" && this.ports.whatsappMessagesCommercial) {
+        const access = await this.ports.whatsappMessagesCommercial.checkAccess({
+          companyId: request.companyId,
+        });
+        if (!access.allowed) {
+          throw new DeliveryFailedError(
+            access.reason === "quota_exceeded"
+              ? "WhatsApp message quota exceeded."
+              : access.reason === "not_entitled"
+                ? "WhatsApp channel is not entitled."
+                : "WhatsApp commercial access unavailable.",
+          );
+        }
+      }
+
       traceOutboundValidationEnter({
         validationName: "WhatsAppCloudAdapter.sendOutbound",
         layer: "whatsapp.provider",
@@ -175,6 +195,21 @@ export class OutboundMessagePipeline {
       await waPerfMeasure("Database writes: touch outbound session", () =>
         this.sessionRepository.touchOutbound(request.channelSessionId),
       );
+
+      if (
+        request.channelKey === "whatsapp" &&
+        this.ports.whatsappMessagesCommercial &&
+        (updated.external_message_id ?? sendResult.externalMessageId)
+      ) {
+        await this.ports.whatsappMessagesCommercial
+          .recordUsage({
+            companyId: request.companyId,
+            externalMessageId: updated.external_message_id ?? sendResult.externalMessageId!,
+            deliveryEventId: updated.id,
+            companyChannelId: request.companyChannelId,
+          })
+          .catch(() => undefined);
+      }
 
       traceOutboundValidationPass("OutboundMessagePipeline.process", {
         deliveryStatus: updated.delivery_status,

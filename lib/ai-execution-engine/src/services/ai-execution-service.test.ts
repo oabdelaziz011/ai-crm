@@ -69,7 +69,23 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
   };
 }
 
-function createEnvironment(options?: { failGenerations?: number; slowGenerationMs?: number }) {
+function createEnvironment(options?: {
+  failGenerations?: number;
+  slowGenerationMs?: number;
+  providerUsage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    source?: "provider";
+  };
+  tokenUsageOverride?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    source?: "provider";
+  };
+  aiTokensCommercial?: import("../ports/ai-tokens-commercial-port.js").AiTokensCommercialPort;
+}) {
   const executions: AIExecutionRecord[] = [];
   const metrics: AIExecutionMetricsRecord[] = [];
   let generationAttempts = 0;
@@ -153,7 +169,14 @@ function createEnvironment(options?: { failGenerations?: number; slowGenerationM
       if (options?.failGenerations && generationAttempts <= options.failGenerations) {
         throw new Error("GENERATION_FAILED");
       }
-      return originalGenerate(generateInput);
+      const generated = await originalGenerate(generateInput);
+      if (options?.tokenUsageOverride) {
+        return { ...generated, tokenUsage: options.tokenUsageOverride };
+      }
+      if (options?.providerUsage) {
+        return { ...generated, tokenUsage: { ...options.providerUsage, source: "provider" as const } };
+      }
+      return generated;
     };
     return provider;
   };
@@ -256,10 +279,18 @@ function createEnvironment(options?: { failGenerations?: number; slowGenerationM
     connectionReader,
     factory,
     policyService,
+    options?.aiTokensCommercial,
   );
   const metricsService = new AIExecutionMetricsService(executionRepository, metricsRepository);
 
-  return { executionService, metricsService, policyService, executions, metrics };
+  return {
+    executionService,
+    metricsService,
+    policyService,
+    executions,
+    metrics,
+    getGenerationAttempts: () => generationAttempts,
+  };
 }
 
 describe("AIExecutionPolicyService", () => {
@@ -333,10 +364,28 @@ describe("AIExecutionService", () => {
     assert.equal(result.status, "succeeded");
     assert.equal(result.provider_key, "openai");
     assert.ok(result.latency_ms >= 0);
-    assert.ok(result.token_usage.total_tokens > 0);
+    assert.equal(result.token_usage.total_tokens, 0);
+    assert.equal(result.token_usage.source, undefined);
     assert.ok(result.normalized_response);
     assert.equal(metrics.length, 1);
     assert.equal(executions.length, 1);
+  });
+
+  it("preserves provider-reported tokenUsage and does not estimate", async () => {
+    const { executionService } = createEnvironment({
+      providerUsage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 },
+    });
+
+    const result = await executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+
+    assert.equal(result.token_usage.prompt_tokens, 11);
+    assert.equal(result.token_usage.completion_tokens, 7);
+    assert.equal(result.token_usage.total_tokens, 18);
+    assert.equal(result.token_usage.source, "provider");
   });
 
   it("selects the default provider connection when none is specified", async () => {
@@ -441,6 +490,261 @@ describe("AIExecutionService", () => {
       AIExecutionCancelledError,
     );
   });
+
+  it("A. entitlement denied → generate is not called", async () => {
+    const env = createEnvironment({
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: false, reason: "not_entitled" };
+        },
+        async recordUsage() {
+          return { recorded: true };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.error_code, "AI_ASSISTANT_NOT_ENTITLED");
+    assert.equal(env.getGenerationAttempts(), 0);
+  });
+
+  it("B. quota already exceeded → generate is not called", async () => {
+    const env = createEnvironment({
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: false, reason: "quota_exceeded" };
+        },
+        async recordUsage() {
+          return { recorded: true };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.error_code, "AI_TOKENS_QUOTA_EXCEEDED");
+    assert.equal(env.getGenerationAttempts(), 0);
+  });
+
+  it("C/D. quota available + provider usage → one commercial event with quantity 100", async () => {
+    const recorded: Array<{ companyId: string; executionId: string; quantity: number }> = [];
+    const env = createEnvironment({
+      providerUsage: { prompt_tokens: 40, completion_tokens: 60, total_tokens: 100 },
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage(input) {
+          recorded.push(input);
+          return { recorded: true, reason: "recorded" };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(result.status, "succeeded");
+    assert.equal(env.getGenerationAttempts(), 1);
+    assert.equal(recorded.length, 1);
+    assert.equal(recorded[0]?.quantity, 100);
+    assert.equal(recorded[0]?.companyId, "company-1");
+    assert.equal(recorded[0]?.executionId, result.execution_id);
+  });
+
+  it("F. successful response with missing usage → zero commercial events", async () => {
+    let recordCalls = 0;
+    const env = createEnvironment({
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage() {
+          recordCalls += 1;
+          return { recorded: true };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(result.status, "succeeded");
+    assert.equal(recordCalls, 0);
+  });
+
+  it("G. estimated usage is not commercially metered", async () => {
+    let recordCalls = 0;
+    const env = createEnvironment({
+      tokenUsageOverride: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage() {
+          recordCalls += 1;
+          return { recorded: true };
+        },
+      },
+    });
+    await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(recordCalls, 0);
+  });
+
+  it("H. provider failure → zero commercial events", async () => {
+    let recordCalls = 0;
+    const env = createEnvironment({
+      failGenerations: 10,
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage() {
+          recordCalls += 1;
+          return { recorded: true };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.notEqual(result.status, "succeeded");
+    assert.equal(recordCalls, 0);
+  });
+
+  it("I. metering failure after success does not re-execute generate", async () => {
+    const env = createEnvironment({
+      providerUsage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage() {
+          throw new Error("ingest failed");
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(result.status, "succeeded");
+    assert.equal(env.getGenerationAttempts(), 1);
+  });
+
+  it("K. tenant isolation — company A cannot meter company B", async () => {
+    const recorded: string[] = [];
+    const env = createEnvironment({
+      providerUsage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      aiTokensCommercial: {
+        async checkAccess(input) {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage(input) {
+          recorded.push(input.companyId);
+          return { recorded: true };
+        },
+      },
+    });
+    await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.deepEqual(recorded, ["company-1"]);
+  });
+
+  it("M. zero token provider usage → no commercial event", async () => {
+    let recordCalls = 0;
+    const env = createEnvironment({
+      tokenUsageOverride: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        source: "provider",
+      },
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage() {
+          recordCalls += 1;
+          return { recorded: true };
+        },
+      },
+    });
+    await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(recordCalls, 0);
+  });
+
+  it("E. streaming success with provider usage meters once", async () => {
+    const recorded: number[] = [];
+    const env = createEnvironment({
+      providerUsage: { prompt_tokens: 8, completion_tokens: 12, total_tokens: 20 },
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage(input) {
+          recorded.push(input.quantity);
+          return { recorded: true };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+      policy: { streaming: true },
+    });
+    assert.equal(result.status, "succeeded");
+    assert.deepEqual(recorded, [20]);
+  });
+
+  it("N. retries then success meters one commercial record", async () => {
+    const recorded: string[] = [];
+    const env = createEnvironment({
+      failGenerations: 1,
+      providerUsage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
+      aiTokensCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage(input) {
+          recorded.push(input.executionId);
+          return { recorded: true };
+        },
+      },
+    });
+    const result = await env.executionService.execute(createContext(), {
+      companyId: "company-1",
+      promptBuildId: "build-1",
+      providerConnectionId: "conn-primary",
+    });
+    assert.equal(result.status, "succeeded");
+    assert.equal(recorded.length, 1);
+    assert.equal(recorded[0], result.execution_id);
+  });
 });
 
 describe("AIExecutionMetricsService", () => {
@@ -454,6 +758,6 @@ describe("AIExecutionMetricsService", () => {
 
     const snapshot = await metricsService.getExecutionMetrics(createContext(), result.execution_id);
     assert.equal(snapshot.metrics.execution_id, result.execution_id);
-    assert.ok(snapshot.metrics.total_tokens > 0);
+    assert.equal(snapshot.metrics.total_tokens, 0);
   });
 });

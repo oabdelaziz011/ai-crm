@@ -59,6 +59,7 @@ export function createTestEnvironment(options?: {
   emailRoutingEngine?: import("./ports/email-routing-classifier-port.js").EmailRoutingEnginePort;
   employeeRuntime?: ChannelPlatformPorts["employeeRuntime"];
   aiEmployeeEmailCommercial?: ChannelPlatformPorts["aiEmployeeEmailCommercial"];
+  whatsappMessagesCommercial?: ChannelPlatformPorts["whatsappMessagesCommercial"];
   aiEmailRoutingCommercial?: ChannelPlatformPorts["aiEmailRoutingCommercial"];
   workflowBinding?: {
     companyId: string;
@@ -363,6 +364,9 @@ export function createTestEnvironment(options?: {
   }
   if (options?.aiEmailRoutingCommercial) {
     ports.aiEmailRoutingCommercial = options.aiEmailRoutingCommercial;
+  }
+  if (options?.whatsappMessagesCommercial) {
+    ports.whatsappMessagesCommercial = options.whatsappMessagesCommercial;
   }
 
   const workflowResolver = options?.workflowBinding

@@ -12,13 +12,19 @@ import type { ConfigurationValidationResult, GenerateResult } from "../types.js"
 import type { AIProvider } from "./provider-contract.js";
 import type { EnterpriseAIProvider } from "./enterprise-provider-contract.js";
 
-function toTokenUsage(usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }) {
+function toTokenUsage(usage?: {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  source?: "provider";
+}) {
   const inputTokens = usage?.prompt_tokens ?? 0;
   const outputTokens = usage?.completion_tokens ?? 0;
   return {
     inputTokens,
     outputTokens,
     totalTokens: usage?.total_tokens ?? inputTokens + outputTokens,
+    ...(usage?.source === "provider" ? { source: "provider" as const } : {}),
   };
 }
 

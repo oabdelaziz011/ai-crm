@@ -87,6 +87,8 @@ export type ProviderTokenUsage = {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
+  /** Present only when values came from provider usage metadata. */
+  source?: "provider";
 };
 
 export type GenerateMetadata = {

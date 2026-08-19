@@ -39,6 +39,8 @@ export * from "./ports/email-routing-classifier-port.js";
 export * from "./ports/email-routing-ticket-action-port.js";
 export * from "./ports/ai-email-routing-commercial-port.js";
 export * from "./ports/ai-employee-email-commercial-port.js";
+export * from "./ports/whatsapp-messages-commercial-port.js";
+export * from "./ports/emails-sent-commercial-port.js";
 export * from "./ports/telemetry-port.js";
 export * from "./adapters/channel-adapter-registry.js";
 export * from "./adapters/stub-web-chat-adapter.js";

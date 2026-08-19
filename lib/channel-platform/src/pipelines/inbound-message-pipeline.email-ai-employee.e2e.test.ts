@@ -63,13 +63,14 @@ function employeeRuntime(aiEmployeeId = "emp-1"): NonNullable<ChannelPlatformPor
   };
 }
 
-function commercial(allowed: boolean, usage?: { recorded: string[] }): AiEmployeeEmailCommercialPort {
+function commercial(
+  allowed: boolean,
+  usage?: { recorded: string[] },
+  reason: "entitled" | "not_entitled" | "quota_exceeded" = allowed ? "entitled" : "not_entitled",
+): AiEmployeeEmailCommercialPort {
   return {
     async checkAccess() {
-      return {
-        allowed,
-        reason: allowed ? "entitled" : "not_entitled",
-      };
+      return { allowed, reason };
     },
     async recordUsage(input) {
       usage?.recorded.push(input.inboundEventId);
@@ -164,6 +165,25 @@ describe("Email AI Employee E2E (Sprint 3)", () => {
     assert.equal(env.inboundEvents[0]?.processing_status, "processed");
   });
 
+  it("9. quota exceeded → AI Employee email is NOT executed", async () => {
+    const outboundCalls: Array<Record<string, unknown>> = [];
+    const usage = { recorded: [] as string[] };
+    const env = createTestEnvironment({
+      companyChannel: { channelKey: "email", provider: "email" },
+      adapters: [emailAdapter({ outboundCalls })],
+      employeeRuntime: employeeRuntime(),
+      aiEmployeeEmailCommercial: commercial(false, usage, "quota_exceeded"),
+      runtimeResponse: "should-not-send",
+    });
+
+    const response = await routeEmail(env);
+    assert.equal(response.responseContent, undefined);
+    assert.equal(env.runtimeCalls, 0);
+    assert.equal(outboundCalls.length, 0);
+    assert.equal(usage.recorded.length, 0);
+    assert.equal(env.inboundEvents[0]?.processing_status, "processed");
+  });
+
   it("executeAi disabled → no AI reply", async () => {
     const outboundCalls: Array<Record<string, unknown>> = [];
     const env = createTestEnvironment({
@@ -181,33 +201,37 @@ describe("Email AI Employee E2E (Sprint 3)", () => {
 
   it("LLM failure → inbound processed, no outbound reply", async () => {
     const outboundCalls: Array<Record<string, unknown>> = [];
+    const usage = { recorded: [] as string[] };
     const env = createTestEnvironment({
       companyChannel: { channelKey: "email", provider: "email" },
       adapters: [emailAdapter({ outboundCalls })],
       employeeRuntime: employeeRuntime(),
-      aiEmployeeEmailCommercial: commercial(true),
+      aiEmployeeEmailCommercial: commercial(true, usage),
       runtimeError: new Error("provider timeout"),
     });
 
     const response = await routeEmail(env);
     assert.equal(env.inboundEvents[0]?.processing_status, "processed");
     assert.equal(outboundCalls.length, 0);
+    assert.equal(usage.recorded.length, 0);
     assert.ok(response.outboundError);
     assert.match(String(response.outboundError), /provider timeout/);
   });
 
   it("SMTP/provider failure → inbound processed", async () => {
+    const usage = { recorded: [] as string[] };
     const env = createTestEnvironment({
       companyChannel: { channelKey: "email", provider: "email" },
       adapters: [emailAdapter({ failOutbound: true })],
       employeeRuntime: employeeRuntime(),
-      aiEmployeeEmailCommercial: commercial(true),
+      aiEmployeeEmailCommercial: commercial(true, usage),
       runtimeResponse: "Reply body",
     });
 
     const response = await routeEmail(env);
     assert.equal(env.inboundEvents[0]?.processing_status, "processed");
     assert.equal(response.responseContent, "Reply body");
+    assert.equal(usage.recorded.length, 0);
     assert.ok(response.outboundError);
     assert.match(String(response.outboundError), /SMTP/);
   });

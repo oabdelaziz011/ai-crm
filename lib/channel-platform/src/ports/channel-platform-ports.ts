@@ -149,6 +149,8 @@ export type ChannelPlatformPorts = {
   aiEmailRoutingCommercial?: import("./ai-email-routing-commercial-port.js").AiEmailRoutingCommercialPort;
   /** Sprint 3: ai_employee entitlement + usage for Email-channel AI Employee replies. */
   aiEmployeeEmailCommercial?: import("./ai-employee-email-commercial-port.js").AiEmployeeEmailCommercialPort;
+  /** Sprint 6G: whatsapp_channel entitlement + usage for WhatsApp outbound sends. */
+  whatsappMessagesCommercial?: import("./whatsapp-messages-commercial-port.js").WhatsAppMessagesCommercialPort;
 };
 
 export type ChannelRouterPort = {

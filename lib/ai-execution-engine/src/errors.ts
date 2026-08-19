@@ -67,3 +67,32 @@ export class ValidationError extends AIExecutionError {
     super("VALIDATION_ERROR", message);
   }
 }
+
+export class AICommercialDeniedError extends AIExecutionError {
+  readonly commercialReason:
+    | "not_entitled"
+    | "quota_exceeded"
+    | "entitlement_unavailable"
+    | "entitlement_error";
+
+  constructor(
+    reason: "not_entitled" | "quota_exceeded" | "entitlement_unavailable" | "entitlement_error",
+  ) {
+    const code =
+      reason === "quota_exceeded"
+        ? "AI_TOKENS_QUOTA_EXCEEDED"
+        : reason === "not_entitled"
+          ? "AI_ASSISTANT_NOT_ENTITLED"
+          : reason === "entitlement_unavailable"
+            ? "AI_ASSISTANT_ENTITLEMENT_UNAVAILABLE"
+            : "AI_ASSISTANT_ENTITLEMENT_ERROR";
+    const message =
+      reason === "quota_exceeded"
+        ? "AI token quota exceeded."
+        : reason === "not_entitled"
+          ? "AI Assistant is not entitled."
+          : "AI Assistant commercial access unavailable.";
+    super(code, message);
+    this.commercialReason = reason;
+  }
+}

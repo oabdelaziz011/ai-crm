@@ -43,6 +43,7 @@ export function createRuntimeGatewayPort(gateway: AIGatewayService): RuntimeGate
           inputTokens: response.usage.inputTokens,
           outputTokens: response.usage.outputTokens,
           totalTokens: response.usage.totalTokens,
+          ...(response.usage.source === "provider" ? { source: "provider" as const } : {}),
         },
         latencyMs: response.latencyMs,
         estimatedCostUsd: response.estimatedCostUsd,

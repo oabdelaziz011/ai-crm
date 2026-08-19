@@ -9,7 +9,12 @@ import {
   PromptRenderError,
   ProviderUnavailableError,
 } from "../errors/runtime-errors.js";
-import { PermissionDeniedError, ProviderConnectionDisabledError, ProviderConnectionNotFoundError } from "../errors.js";
+import {
+  AICommercialDeniedError,
+  PermissionDeniedError,
+  ProviderConnectionDisabledError,
+  ProviderConnectionNotFoundError,
+} from "../errors.js";
 import type { RuntimeGatewayPort, RuntimePromptPort, RuntimeToolPort, PlatformRuntimeConfigPort } from "../ports/runtime-ports.js";
 import type { RuntimeKnowledgePort } from "../ports/knowledge-port.js";
 import { mapKnowledgeQueryResult } from "../ports/knowledge-port.js";
@@ -25,6 +30,8 @@ import { ExecutionSessionService } from "./execution-session-service.js";
 import { ToolCallLoopService } from "./tool-call-loop-service.js";
 import { StreamingRuntimeService } from "./streaming-runtime-service.js";
 import type { AIExecutionPolicyService } from "../services/ai-execution-policy-service.js";
+import type { AiTokensCommercialPort } from "../ports/ai-tokens-commercial-port.js";
+import { isProviderReportedTokenUsage } from "../utils/execution-utils.js";
 import type {
   EnterpriseRuntimeExecuteInput,
   EnterpriseRuntimeExecuteResult,
@@ -59,6 +66,7 @@ export class EnterpriseAIRuntimeService {
       observability: RuntimeObservability;
       knowledge?: RuntimeKnowledgePort;
       platformConfig?: PlatformRuntimeConfigPort;
+      aiTokensCommercial?: AiTokensCommercialPort;
     },
   ) {
     this.contextBuilder = new ContextBuilder(deps.registries.contextProviders);
@@ -327,6 +335,13 @@ export class EnterpriseAIRuntimeService {
       this.deps.observability.recordCacheMiss();
     }
 
+    if (this.deps.aiTokensCommercial) {
+      const access = await this.deps.aiTokensCommercial.checkAccess({ companyId: input.companyId });
+      if (!access.allowed) {
+        throw new AICommercialDeniedError(access.reason);
+      }
+    }
+
     await this.deps.registries.hooks.emit("beforeGateway", { input });
 
     const gatewayStarted = Date.now();
@@ -380,6 +395,7 @@ export class EnterpriseAIRuntimeService {
         prompt_tokens: loopResult.response.usage.inputTokens,
         completion_tokens: loopResult.response.usage.outputTokens,
         total_tokens: loopResult.response.usage.totalTokens,
+        ...(loopResult.response.usage.source === "provider" ? { source: "provider" as const } : {}),
       };
       estimatedCostUsd = loopResult.response.estimatedCostUsd ?? null;
     } else if (input.stream && this.deps.gateway.streamChatCompletion) {
@@ -409,6 +425,7 @@ export class EnterpriseAIRuntimeService {
         prompt_tokens: gatewayResponse.usage.inputTokens,
         completion_tokens: gatewayResponse.usage.outputTokens,
         total_tokens: gatewayResponse.usage.totalTokens,
+        ...(gatewayResponse.usage.source === "provider" ? { source: "provider" as const } : {}),
       };
       estimatedCostUsd = gatewayResponse.estimatedCostUsd ?? null;
     }
@@ -483,6 +500,16 @@ export class EnterpriseAIRuntimeService {
       retryCount: 0,
       usedFallbackProvider: false,
     });
+
+    if (this.deps.aiTokensCommercial && isProviderReportedTokenUsage(tokenUsage)) {
+      await this.deps.aiTokensCommercial
+        .recordUsage({
+          companyId: input.companyId,
+          executionId: execution.id,
+          quantity: tokenUsage.total_tokens,
+        })
+        .catch(() => undefined);
+    }
 
     const session = this.deps.sessions.create({
       executionId: execution.id,

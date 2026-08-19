@@ -522,14 +522,18 @@ export class InboundMessagePipeline {
       let transferSource: "channel_binding" | "ai_employee_sticky" | "ai_employee_intent" | null =
         bindingWorkflow ? "channel_binding" : stickyTransfer ? "ai_employee_sticky" : null;
 
-      // Email AI Employee: fail-closed commercial entitlement (ai_employee). Separate from Email Routing.
+      // Email AI Employee: fail-closed commercial entitlement + quota (ai_employee). Separate from Email Routing.
       let emailAiEmployeeAllowed = true;
+      let emailAiEmployeeBlockReason: string | undefined;
       if (request.channelKey === "email" && request.executeAi && this.ports.aiEmployeeEmailCommercial) {
         try {
           const access = await this.ports.aiEmployeeEmailCommercial.checkAccess({
             companyId: request.companyId,
           });
           emailAiEmployeeAllowed = access.allowed;
+          if (!access.allowed) {
+            emailAiEmployeeBlockReason = access.reason;
+          }
           request.trace?.step("webhook.ai_employee_email_commercial", {
             inboundEventId: inboundEvent.id,
             companyId: request.companyId,
@@ -538,6 +542,7 @@ export class InboundMessagePipeline {
           });
         } catch {
           emailAiEmployeeAllowed = false;
+          emailAiEmployeeBlockReason = "entitlement_error";
           request.trace?.step("webhook.ai_employee_email_commercial", {
             inboundEventId: inboundEvent.id,
             companyId: request.companyId,
@@ -672,7 +677,7 @@ export class InboundMessagePipeline {
         employeeConversationMetadata = undefined;
         request.trace?.step("webhook.ai_employee_email_skipped", {
           inboundEventId: inboundEvent.id,
-          reason: "not_entitled",
+          reason: emailAiEmployeeBlockReason ?? "not_entitled",
         });
       }
 

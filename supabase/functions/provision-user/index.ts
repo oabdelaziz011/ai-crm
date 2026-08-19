@@ -261,6 +261,29 @@ Deno.serve(async (req) => {
     const preferredLanguage = payload.preferredLanguage?.trim() || null;
     const timezone = payload.timezone?.trim() || null;
 
+    let reservationId: string | null = null;
+    if (isActive) {
+      const { data: reservation, error: reserveError } = await supabaseAdmin.rpc(
+        "reserve_company_user_seat_v1",
+        { p_company_id: effectiveCompanyId },
+      );
+      if (reserveError) {
+        const message = reserveError.message ?? "";
+        const atLimit = message.includes("user_seat_limit_reached");
+        return jsonResponse(
+          {
+            error: atLimit ? "user_seat_limit_reached" : message,
+            code: atLimit ? "user_seat_limit_reached" : "reserve_failed",
+          },
+          atLimit ? 409 : 400,
+        );
+      }
+      reservationId =
+        reservation && typeof reservation === "object" && "reservation_id" in reservation
+          ? String((reservation as { reservation_id: string }).reservation_id)
+          : null;
+    }
+
     const inviteResult = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       redirectTo,
       data: {
@@ -270,6 +293,11 @@ Deno.serve(async (req) => {
     });
 
     if (inviteResult.error || !inviteResult.data.user) {
+      if (reservationId) {
+        await supabaseAdmin.rpc("release_company_user_seat_v1", {
+          p_reservation_id: reservationId,
+        });
+      }
       return jsonResponse(
         { error: inviteResult.error?.message ?? "Unable to invite user." },
         400,
@@ -295,7 +323,20 @@ Deno.serve(async (req) => {
       .eq("id", userId);
 
     if (profileError) {
-      return jsonResponse({ error: profileError.message }, 500);
+      if (reservationId) {
+        await supabaseAdmin.rpc("release_company_user_seat_v1", {
+          p_reservation_id: reservationId,
+        });
+      }
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      const atLimit = (profileError.message ?? "").includes("user_seat_limit_reached");
+      return jsonResponse(
+        {
+          error: atLimit ? "user_seat_limit_reached" : profileError.message,
+          code: atLimit ? "user_seat_limit_reached" : "profile_attach_failed",
+        },
+        atLimit ? 409 : 500,
+      );
     }
 
     await assignUserRole(supabaseAdmin, userId, requestedRoleId);

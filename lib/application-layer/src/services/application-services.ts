@@ -336,7 +336,7 @@ export class BookingApplicationService {
       commandType: "CancelBooking",
       request,
       context,
-      requiredPermissions: ["booking.write"],
+      requiredPermissions: ["bookings.delete", "bookings.edit", "booking.write"],
       handler: async (req, ctx) => {
         const { response } = await CommandHandlers.handleCancelBooking({ ports: this.deps.ports, infra: this.deps.infra }, req, ctx);
         return response;

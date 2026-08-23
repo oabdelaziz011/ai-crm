@@ -109,15 +109,43 @@ export class TicketCommandService {
       metadata: input.metadata ?? {},
     });
 
-    await this.writeAudit(input.companyId, actorUserId, "CREATE", "support_ticket", record.id, {
-      ticketNumber: record.ticketNumber,
-      priority: record.priority,
-    });
+    // Ticket row is already committed via PostgREST. Side-effects must never fail create_ticket —
+    // otherwise the customer gets "can't file complaint" while an open ticket already exists.
+    try {
+      await this.writeAudit(input.companyId, actorUserId, "CREATE", "support_ticket", record.id, {
+        ticketNumber: record.ticketNumber,
+        priority: record.priority,
+      });
+    } catch (error) {
+      console.warn("[ticket-platform] create audit failed:", error instanceof Error ? error.message : error);
+    }
 
-    await this.deps.events.publish(createTicketCreatedEvent(record, actorUserId));
-    await this.checkSlaNotifications(record, actorUserId);
+    try {
+      await this.deps.events.publish(createTicketCreatedEvent(record, actorUserId));
+    } catch (error) {
+      console.warn(
+        "[ticket-platform] create event publish failed:",
+        error instanceof Error ? error.message : error,
+      );
+    }
 
-    await this.invalidateCompanyReads(input.companyId);
+    try {
+      await this.checkSlaNotifications(record, actorUserId);
+    } catch (error) {
+      console.warn(
+        "[ticket-platform] create SLA notification failed:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
+    try {
+      await this.invalidateCompanyReads(input.companyId);
+    } catch (error) {
+      console.warn(
+        "[ticket-platform] create cache invalidate failed:",
+        error instanceof Error ? error.message : error,
+      );
+    }
     return { ticket: toTicketSummary(record) };
   }
 

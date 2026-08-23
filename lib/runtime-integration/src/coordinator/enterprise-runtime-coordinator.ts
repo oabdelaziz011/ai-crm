@@ -179,9 +179,11 @@ export class EnterpriseRuntimeCoordinator {
           });
         }
 
+        // Channel threads (WhatsApp) need a wider window so cancel lists + phone
+        // survive while the customer picks a BK- reference across several turns.
         const recentMessages = await this.ports.conversation.listRecentMessages(
           input.conversationId,
-          input.pageContext?.channelKey ? 6 : 10,
+          input.pageContext?.channelKey ? 24 : 12,
         );
 
         // 5. Prompt

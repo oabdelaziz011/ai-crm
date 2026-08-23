@@ -439,10 +439,21 @@ export function createRuntimeEnginePortsWithContext(
         }
 
         const replyLanguage = detectReplyLanguage(input.messageText);
-        const employeeSystemPrompt =
+        const catalogPromptAddon =
+          typeof input.pageContext?.schedulingCatalogPrompt === "string"
+            ? input.pageContext.schedulingCatalogPrompt.trim()
+            : "";
+        const employeeSystemPrompt = [
           typeof input.pageContext?.systemPrompt === "string"
             ? input.pageContext.systemPrompt.trim()
-            : "";
+            : "",
+          catalogPromptAddon,
+          senderHint.senderPhone
+            ? `CHANNEL SENDER:\n- WhatsApp phone: ${senderHint.senderPhone}\n- Use this number for search_customer / create_customer unless the customer gives a different mobile.`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
 
         const built = await runtime.buildPrompt(asConversationContext(promptCtx), {
           companyId: input.companyId,
@@ -515,6 +526,25 @@ export function createRuntimeEnginePortsWithContext(
       ...base.execution,
       async execute(executionCtx, input) {
         const runtime = requireEnterpriseRuntime(deps.execution);
+        let trustedCustomerId: string | null = null;
+        let trustedCustomerName: string | null = null;
+        try {
+          const conversationRecord = await deps.conversation.conversations.getConversation(
+            asConversationContext(executionCtx),
+            input.conversationId,
+          );
+          trustedCustomerId = conversationRecord.customer_id
+            ? String(conversationRecord.customer_id)
+            : null;
+          const meta = (conversationRecord.metadata ?? {}) as Record<string, unknown>;
+          trustedCustomerName =
+            typeof meta.trustedCustomerName === "string" && meta.trustedCustomerName.trim()
+              ? meta.trustedCustomerName.trim()
+              : null;
+        } catch {
+          // Fail closed — no trusted identity if conversation cannot be loaded.
+        }
+
         const result = await runtime.execute(asConversationContext(executionCtx), {
           companyId: input.companyId,
           conversationId: input.conversationId,
@@ -529,8 +559,14 @@ export function createRuntimeEnginePortsWithContext(
                 orchestrationMode: "conversation" as const,
                 toolsEnabled: true,
               }
-            : {}),
-          promptContext: {},
+            : {
+                // Webhook AI Employee path still needs tools for booking/tickets.
+                toolsEnabled: true,
+              }),
+          promptContext: {
+            ...(trustedCustomerId ? { trustedCustomerId } : {}),
+            ...(trustedCustomerName ? { trustedCustomerName } : {}),
+          },
         });
 
         return {

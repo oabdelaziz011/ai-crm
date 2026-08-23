@@ -214,6 +214,8 @@ export function createSupabaseRuntimeSessionRepository(client: SupabaseClient): 
         .select("*")
         .eq("conversation_id", conversationId)
         .eq("session_status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data ? mapSession(data as Record<string, unknown>) : null;

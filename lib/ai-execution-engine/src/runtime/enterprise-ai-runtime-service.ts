@@ -380,12 +380,17 @@ export class EnterpriseAIRuntimeService {
     };
 
     if (useToolLoop) {
+      const trustedCustomerId =
+        typeof input.promptContext?.trustedCustomerId === "string"
+          ? input.promptContext.trustedCustomerId.trim()
+          : null;
       const loopResult = await this.toolLoop.runWithOptionalStreaming({
         ctx,
         conversationId: input.conversationId!,
         gatewayRequest: gatewayBaseRequest,
         tools: llmTools,
         allowedToolKeys: this.deps.tools!.allowedToolKeys(),
+        trustedCustomerId: trustedCustomerId || null,
         onStreamChunk: input.stream ? input.onStreamChunk : undefined,
       });
       gatewayLatencyMs = Date.now() - gatewayStarted;

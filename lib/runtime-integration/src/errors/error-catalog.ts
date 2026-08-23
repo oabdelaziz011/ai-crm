@@ -67,6 +67,26 @@ export class RuntimeErrorCatalogService {
       };
     }
 
+    if (error && typeof error === "object") {
+      const record = error as { message?: unknown; error?: unknown; code?: unknown };
+      const message =
+        typeof record.message === "string" && record.message.trim()
+          ? record.message.trim()
+          : typeof record.error === "string" && record.error.trim()
+            ? record.error.trim()
+            : null;
+      if (message) {
+        return {
+          code: "RUNTIME_UNKNOWN",
+          category: "runtime",
+          humanMessage: "Runtime execution failed.",
+          developerMessage: message,
+          correlationId: correlationId ?? null,
+          recoverable: false,
+        };
+      }
+    }
+
     return {
       code: "RUNTIME_UNKNOWN",
       category: "runtime",

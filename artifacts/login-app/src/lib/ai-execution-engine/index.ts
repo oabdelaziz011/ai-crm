@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { createEnterpriseRuntimeIntegrations } from "@/lib/runtime-integration/runtime-adapters";
 import { createRuntimeToolPort } from "@/lib/runtime-integration/tool-port-adapter";
 import { createScopedRuntimeToolPort } from "@/lib/ai-employees/utilities/scoped-runtime-tool-port";
+import { createRpcCommercialEntitlementPort } from "@/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate";
 import { createPlatformRuntimeConfigPort } from "@/lib/platform-ai-provider/platform-runtime-port";
 import { assertPlatformAiApiConfigured } from "@/lib/platform-ai/platform-ai-api-client";
 
@@ -28,7 +29,10 @@ export function useAIExecutionServices() {
   const { services: toolRouterServices, createOptions } = useToolRouterServices();
 
   const tools = useMemo(
-    () => createScopedRuntimeToolPort(createRuntimeToolPort(toolRouterServices, createOptions)),
+    () =>
+      createScopedRuntimeToolPort(createRuntimeToolPort(toolRouterServices, createOptions), {
+        commercialEntitlement: createRpcCommercialEntitlementPort(supabase),
+      }),
     [toolRouterServices, createOptions],
   );
   const platformConfig = useMemo(

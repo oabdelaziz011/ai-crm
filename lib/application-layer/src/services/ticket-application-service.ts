@@ -35,6 +35,20 @@ export class TicketApplicationService {
     });
   }
 
+  getTicket(
+    request: { ticketId: string },
+    context: ApplicationContext,
+  ): Promise<QueryResult<TicketReadModel | null>> {
+    const pipeline = this.deps.queryPipeline ?? new QueryPipeline();
+    return pipeline.execute({
+      queryType: "TicketGet",
+      request,
+      context,
+      requiredPermissions: ["tickets.view"],
+      handler: async (req, ctx) => this.deps.ports.ticketRead.getById(ctx.tenantId, req.ticketId),
+    });
+  }
+
   createTicket(
     request: CreateTicketRequestDto,
     context: ApplicationContext,

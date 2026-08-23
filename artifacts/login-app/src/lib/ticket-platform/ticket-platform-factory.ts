@@ -27,41 +27,49 @@ const TICKET_WEBHOOK_EVENT_MAP: Partial<Record<string, WebhookEventType>> = {
 export function createTicketEventBridge(): TicketEventPublisherPort {
   return {
     async publish(event: TicketDomainEvent): Promise<void> {
-      const workflowName = TICKET_WORKFLOW_EVENTS[event.type];
-      const payload = event.payload;
+      try {
+        const workflowName = TICKET_WORKFLOW_EVENTS[event.type];
+        const payload = event.payload;
 
-      await dispatchAutomationEvent({
-        name: workflowName,
-        companyId: event.companyId,
-        params: {
-          ticketId: payload.ticketId,
-          ticketNumber: payload.ticketNumber,
-          status: payload.newStatus ?? payload.ticket?.status ?? "",
-          priority: payload.newPriority ?? payload.ticket?.priority ?? "",
-          customerId: payload.customerId ?? "",
-          conversationId: payload.conversationId ?? "",
-        },
-        userId: payload.actorUserId,
-      });
-
-      const webhookType = TICKET_WEBHOOK_EVENT_MAP[event.type];
-      if (webhookType) {
-        await getEnterpriseEventPublisher().publish({
+        await dispatchAutomationEvent({
+          name: workflowName,
           companyId: event.companyId,
-          eventType: webhookType,
-          eventId: `${payload.ticketId}:${webhookType}:${event.occurredAt}`,
-          payload: {
+          params: {
             ticketId: payload.ticketId,
             ticketNumber: payload.ticketNumber,
-            status: payload.newStatus ?? payload.ticket?.status,
-            priority: payload.newPriority ?? payload.ticket?.priority,
-            customerId: payload.customerId,
-            conversationId: payload.conversationId,
-            assignedUserId: payload.assignedUserId,
-            commentId: payload.commentId,
-            eventType: event.type,
+            status: payload.newStatus ?? payload.ticket?.status ?? "",
+            priority: payload.newPriority ?? payload.ticket?.priority ?? "",
+            customerId: payload.customerId ?? "",
+            conversationId: payload.conversationId ?? "",
           },
+          userId: payload.actorUserId,
         });
+
+        const webhookType = TICKET_WEBHOOK_EVENT_MAP[event.type];
+        if (webhookType) {
+          await getEnterpriseEventPublisher().publish({
+            companyId: event.companyId,
+            eventType: webhookType,
+            eventId: `${payload.ticketId}:${webhookType}:${event.occurredAt}`,
+            payload: {
+              ticketId: payload.ticketId,
+              ticketNumber: payload.ticketNumber,
+              status: payload.newStatus ?? payload.ticket?.status,
+              priority: payload.newPriority ?? payload.ticket?.priority,
+              customerId: payload.customerId,
+              conversationId: payload.conversationId,
+              assignedUserId: payload.assignedUserId,
+              commentId: payload.commentId,
+              eventType: event.type,
+            },
+          });
+        }
+      } catch (error) {
+        // Never block ticket mutations on automation/webhook fan-out failures.
+        console.warn(
+          "[ticket-platform] event bridge publish failed:",
+          error instanceof Error ? error.message : error,
+        );
       }
     },
   };

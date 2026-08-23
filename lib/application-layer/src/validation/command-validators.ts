@@ -289,6 +289,33 @@ export const commandValidators: Record<string, (request: unknown) => void> = {
     requireString(req.featureKey, "featureKey");
     requireString(req.scopeType, "scopeType");
   },
+  CreateTicket: (request) => {
+    requireString(asRecord(request).subject, "subject");
+  },
+  UpdateTicket: (request) => {
+    requireString(asRecord(request).ticketId, "ticketId");
+  },
+  CloseTicket: (request) => {
+    requireString(asRecord(request).ticketId, "ticketId");
+  },
+  AssignTicket: (request) => {
+    requireString(asRecord(request).ticketId, "ticketId");
+  },
+  AddTicketComment: (request) => {
+    const req = asRecord(request);
+    requireString(req.ticketId, "ticketId");
+    requireString(req.body, "body");
+  },
+  ChangeTicketPriority: (request) => {
+    const req = asRecord(request);
+    requireString(req.ticketId, "ticketId");
+    requireString(req.priority, "priority");
+  },
+  ChangeTicketStatus: (request) => {
+    const req = asRecord(request);
+    requireString(req.ticketId, "ticketId");
+    requireString(req.status, "status");
+  },
 };
 
 export const queryValidators: Record<string, (request: unknown) => void> = {
@@ -409,6 +436,9 @@ export const queryValidators: Record<string, (request: unknown) => void> = {
   },
   AssembleAIContext: () => {},
   TicketSearch: () => {},
+  TicketGet: (request) => {
+    requireString(asRecord(request).ticketId, "ticketId");
+  },
 };
 
 export function validateCommand(commandType: string, request: unknown): void {

@@ -75,7 +75,19 @@ function mapCommentRow(row: Record<string, unknown>): TicketCommentRecord {
 export function createSupabaseTicketAssigneeResolver(client: SupabaseClient): TicketAssigneeResolverPort {
   return {
     async resolveAssigneeUserId(input) {
-      if (input.assigneeUserId?.trim()) return input.assigneeUserId.trim();
+      if (input.assigneeUserId?.trim()) {
+        const assigneeUserId = input.assigneeUserId.trim();
+        const { data, error } = await client
+          .from("profiles")
+          .select("id")
+          .eq("id", assigneeUserId)
+          .eq("company_id", input.companyId)
+          .maybeSingle();
+
+        if (error) throw new Error(error.message);
+        if (!data) throw new TicketAssigneeNotFoundError(assigneeUserId);
+        return assigneeUserId;
+      }
       const name = input.assigneeName?.trim();
       if (!name) throw new TicketAssigneeNotFoundError("assignee");
 

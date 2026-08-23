@@ -4,12 +4,19 @@ import { createAgentEmployeeExecutionContext } from "./utilities/agent-employee-
 import { applyToolScopeBeforeRoute, createScopedRuntimeToolPort } from "./utilities/scoped-runtime-tool-port.js";
 import {
   evaluateToolScope,
-  EMPLOYEE_TOOL_SCOPE_DENIED_CODE,
+  TOOL_NOT_ASSIGNED_CODE,
 } from "./utilities/tool-scope-filter.js";
 import {
+  clearConversationToolScope,
   registerConversationToolScope,
   runWithEmployeeToolScope,
 } from "./utilities/tool-scope-context.js";
+
+const ALWAYS_ENTITLED = {
+  async isFeatureEnabled() {
+    return true;
+  },
+};
 
 describe("evaluateToolScope", () => {
   it("passes through when employee scope is absent", () => {
@@ -36,7 +43,8 @@ describe("evaluateToolScope", () => {
     });
     assert.equal(result.decision, "deny");
     if (result.decision !== "deny") return;
-    assert.equal(result.denial.errorCode, EMPLOYEE_TOOL_SCOPE_DENIED_CODE);
+    assert.equal(result.denial.errorCode, TOOL_NOT_ASSIGNED_CODE);
+    assert.equal(result.denial.denialReason, TOOL_NOT_ASSIGNED_CODE);
     assert.equal(result.denial.toolKey, "create_customer");
     assert.equal(result.denial.employeeId, "agent-scope-1");
     assert.ok(result.denial.timestamp);
@@ -67,6 +75,7 @@ describe("applyToolScopeBeforeRoute", () => {
         toolKey: "create_customer",
         input: {},
       },
+      { commercialEntitlement: ALWAYS_ENTITLED },
     );
 
     assert.equal(passThroughRouteCalled, true);
@@ -89,18 +98,19 @@ describe("applyToolScopeBeforeRoute", () => {
             toolKey: "create_customer",
             input: {},
           },
+          { commercialEntitlement: ALWAYS_ENTITLED },
         );
 
         assert.equal(scopedRouteCalled, false);
         assert.equal(denied.status, "failed");
-        assert.equal(denied.errorCode, EMPLOYEE_TOOL_SCOPE_DENIED_CODE);
+        assert.equal(denied.errorCode, TOOL_NOT_ASSIGNED_CODE);
         assert.equal(denied.output?.toolKey, "create_customer");
         assert.equal(denied.output?.employeeId, "agent-scope-1");
       },
     );
   });
 
-  it("passes allowed tools through to ToolRouterService", async () => {
+  it("passes allowed tools through to ToolRouterService when commercially entitled", async () => {
     let routedToolKey: string | null = null;
 
     await runWithEmployeeToolScope(
@@ -127,6 +137,7 @@ describe("applyToolScopeBeforeRoute", () => {
             toolKey: "knowledge_search",
             input: { query: "policy" },
           },
+          { commercialEntitlement: ALWAYS_ENTITLED },
         );
 
         assert.equal(routedToolKey, "knowledge_search");
@@ -141,32 +152,37 @@ describe("applyToolScopeBeforeRoute", () => {
       employeeId: "agent-scope-1",
     });
 
-    let routed = false;
-    const result = await applyToolScopeBeforeRoute(
-      {
-        route: async () => {
-          routed = true;
-          return {
-            executionId: "exec-2",
-            toolKey: "search_customer",
-            status: "succeeded",
-            output: { success: true },
-            durationMs: 1,
-            errorCode: null,
-            errorMessage: null,
-          };
+    try {
+      let routed = false;
+      const result = await applyToolScopeBeforeRoute(
+        {
+          route: async () => {
+            routed = true;
+            return {
+              executionId: "exec-2",
+              toolKey: "search_customer",
+              status: "succeeded",
+              output: { success: true },
+              durationMs: 1,
+              errorCode: null,
+              errorMessage: null,
+            };
+          },
         },
-      },
-      { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
-      {
-        conversationId: "conversation-direct",
-        toolKey: "search_customer",
-        input: {},
-      },
-    );
+        { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+        {
+          conversationId: "conversation-direct",
+          toolKey: "search_customer",
+          input: {},
+        },
+        { commercialEntitlement: ALWAYS_ENTITLED },
+      );
 
-    assert.equal(routed, true);
-    assert.equal(result.status, "succeeded");
+      assert.equal(routed, true);
+      assert.equal(result.status, "succeeded");
+    } finally {
+      clearConversationToolScope("conversation-direct");
+    }
   });
 });
 
@@ -182,7 +198,7 @@ describe("createScopedRuntimeToolPort", () => {
       route: async () => ({
         executionId: "exec-1",
         toolKey: "knowledge_search",
-        status: "succeeded",
+        status: "succeeded" as const,
         output: {},
         durationMs: 1,
         errorCode: null,
@@ -190,7 +206,9 @@ describe("createScopedRuntimeToolPort", () => {
       }),
     };
 
-    const scopedPort = createScopedRuntimeToolPort(basePort);
+    const scopedPort = createScopedRuntimeToolPort(basePort, {
+      commercialEntitlement: ALWAYS_ENTITLED,
+    });
 
     runWithEmployeeToolScope(
       { allowedToolKeys: ["knowledge_search"], employeeId: "agent-scope-1" },

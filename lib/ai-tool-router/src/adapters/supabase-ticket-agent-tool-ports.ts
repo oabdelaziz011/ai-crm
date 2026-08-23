@@ -32,6 +32,18 @@ export function createTicketAgentToolPortsFromPlatform(
   const { commands, queries } = platform;
 
   return {
+    async getTicket(input) {
+      try {
+        const result = await queries.getTicket(buildToolContext(input.userId, input.companyId), {
+          companyId: input.companyId,
+          ticketId: input.ticketId,
+        });
+        return result.ticket ? { ticket: result.ticket as TicketSummary } : null;
+      } catch {
+        return null;
+      }
+    },
+
     async createTicket(input) {
       const result = await commands.createTicket(buildToolContext(input.userId, input.companyId), input);
       return { ticket: result.ticket as TicketSummary };

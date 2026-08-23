@@ -27,7 +27,7 @@ export const CREATE_TICKET_LLM: LlmFunctionToolDefinition = {
   function: {
     name: CREATE_TICKET_TOOL_KEY,
     description:
-      "Create a new support ticket. Use when the user reports an issue or asks to open a ticket. Example: Create a high priority ticket about billing.",
+      "Create a new support ticket whenever the customer files a complaint. Always create a fresh ticket even if a similar or open ticket already exists. Call create_ticket once per customer complaint message. After success, always tell the customer the exact ticketNumber from the tool result (e.g. TKT-000012).",
     parameters: {
       type: "object",
       properties: {
@@ -51,13 +51,25 @@ export const UPDATE_TICKET_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: UPDATE_TICKET_TOOL_KEY,
-    description: "Update subject or description on an existing support ticket.",
+    description:
+      "Update an existing support ticket. Set ONLY the field the customer asked to change. Arabic: subject/title = عنوان or موضوع (NOT وصف); description/body = وصف or تفاصيل (NOT عنوان). Never put a title/subject update into description or vice versa.",
     parameters: {
       type: "object",
       properties: {
-        ticketId: { type: "string", description: "Support ticket UUID" },
-        subject: { type: "string", description: "Updated subject" },
-        description: { type: "string", description: "Updated description" },
+        ticketId: {
+          type: "string",
+          description: "Ticket number (e.g. TKT-000093) or ticket UUID",
+        },
+        subject: {
+          type: "string",
+          description:
+            "New ticket SUBJECT/title ONLY when the customer asks to update عنوان or موضوع. Do NOT use for وصف/تفاصيل.",
+        },
+        description: {
+          type: "string",
+          description:
+            "New ticket DESCRIPTION/body ONLY when the customer asks to update وصف or تفاصيل. Do NOT use for عنوان/موضوع.",
+        },
       },
       required: ["ticketId"],
       additionalProperties: false,
@@ -112,11 +124,14 @@ export const ADD_TICKET_COMMENT_LLM: LlmFunctionToolDefinition = {
   function: {
     name: ADD_TICKET_COMMENT_TOOL_KEY,
     description:
-      "Add a comment to a ticket. Set isInternal true for internal agent notes. Example: Add internal note.",
+      "Add a comment to a ticket. Arabic: أضف تعليق / ضيف تعليق. Set isInternal true for internal agent notes only.",
     parameters: {
       type: "object",
       properties: {
-        ticketId: { type: "string", description: "Support ticket UUID" },
+        ticketId: {
+          type: "string",
+          description: "Ticket number (e.g. TKT-000093) or ticket UUID",
+        },
         body: { type: "string", description: "Comment text" },
         isInternal: { type: "boolean", description: "When true, visible to agents only" },
       },
@@ -150,11 +165,15 @@ export const CHANGE_TICKET_STATUS_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: CHANGE_TICKET_STATUS_TOOL_KEY,
-    description: "Change ticket workflow status.",
+    description:
+      "Change ticket workflow status. Map Arabic: مفتوحة→open, قيد المعالجة→in_progress, بانتظار العميل→waiting_customer, محلولة→resolved, مغلقة→closed. Use only the enum values.",
     parameters: {
       type: "object",
       properties: {
-        ticketId: { type: "string", description: "Support ticket UUID" },
+        ticketId: {
+          type: "string",
+          description: "Ticket number (e.g. TKT-000093) or ticket UUID from the selected ticket",
+        },
         status: {
           type: "string",
           enum: ["open", "in_progress", "waiting_customer", "resolved", "closed"],
@@ -170,11 +189,15 @@ export const SEARCH_TICKET_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: SEARCH_TICKET_TOOL_KEY,
-    description: "Search support tickets by keyword, status, priority, assignee name, or customer.",
+    description:
+      "Search the trusted customer's support tickets by ticket number. Call ONLY after the customer provides a ticket number (e.g. TKT-000085). Set query to that exact ticket number. Do NOT pass the customer's phone number as query. Do NOT call this tool just because they asked to track a complaint without a number — ask for the number first. After success, share status/priority/dates only; NEVER reveal subject or description. Do NOT create a new ticket just to answer a status question.",
     parameters: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Search subject, number, or description" },
+        query: {
+          type: "string",
+          description: "Exact ticket number from the customer (e.g. TKT-000085). Required for status lookup.",
+        },
         status: {
           type: "string",
           enum: ["open", "in_progress", "waiting_customer", "resolved", "closed"],

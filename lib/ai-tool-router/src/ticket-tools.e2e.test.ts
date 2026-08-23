@@ -37,6 +37,7 @@ function createRecordingToolPort(onRoute: (input: Record<string, unknown>) => vo
           conversationId: input.conversationId,
           conversationState: "waiting_user",
           userId: "agent-1",
+          trustedCustomerId: "customer-e2e",
         },
         input.input,
       );
@@ -64,6 +65,25 @@ function createRecordingToolPort(onRoute: (input: Record<string, unknown>) => vo
 function createE2ETicketPorts(): TicketAgentToolPorts {
   let lastTicketId = "ticket-e2e-1";
   return {
+    async getTicket(input) {
+      return {
+        ticket: {
+          id: input.ticketId,
+          ticketNumber: "TKT-000099",
+          subject: "E2E",
+          description: "",
+          status: "open",
+          priority: "normal",
+          customerId: "customer-e2e",
+          conversationId: "conv-e2e",
+          assignedUserId: null,
+          assignedUserName: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          closedAt: null,
+        },
+      };
+    },
     async createTicket(input) {
       lastTicketId = "ticket-e2e-1";
       return {
@@ -74,7 +94,7 @@ function createE2ETicketPorts(): TicketAgentToolPorts {
           description: input.description ?? "",
           status: "open",
           priority: input.priority ?? "normal",
-          customerId: null,
+          customerId: input.customerId ?? null,
           conversationId: input.conversationId ?? null,
           assignedUserId: null,
           assignedUserName: null,

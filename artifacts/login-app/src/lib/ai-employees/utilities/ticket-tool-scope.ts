@@ -60,9 +60,29 @@ export function filterTicketToolsByPermissions(input: {
 export function buildTicketToolPromptHint(enabledTicketTools: string[]): string | null {
   if (enabledTicketTools.length === 0) return null;
 
+  const hasSearch = enabledTicketTools.includes("search_ticket");
+  const hasCreate = enabledTicketTools.includes("create_ticket");
+
   return [
-    "Ticket management tools are enabled for this assistant.",
+    "CRITICAL TICKET ACTION RULES:",
     `Available ticket tools: ${enabledTicketTools.join(", ")}.`,
-    "Use create_ticket for new issues, search_ticket to find tickets, assign_ticket for handoffs, add_ticket_comment for internal notes, and close_ticket when resolved.",
-  ].join(" ");
+    hasSearch
+      ? "- When the customer asks to see/list their tickets (تذاكري / my tickets): call search_ticket without a ticket number — results are scoped to the trusted customer only."
+      : null,
+    hasSearch
+      ? "- When the customer asks to track one complaint by number: call search_ticket with query set to that exact number, then reply with status/priority/dates only."
+      : null,
+    hasSearch
+      ? "- Never say you cannot search/track tickets (ليس لدي القدرة على البحث / لا يمكنني تتبع الشكاوى) while search_ticket is available — ask for the ticket number instead."
+      : null,
+    hasSearch
+      ? "- NEVER tell the customer the ticket subject/topic or description (الموضوع / وصف الشكوى). Share status and operational details only."
+      : null,
+    hasCreate
+      ? "- Use create_ticket only for a NEW complaint. Do not create a ticket just to answer a status/number question."
+      : null,
+    "- Use assign_ticket for handoffs, add_ticket_comment for internal notes, and close_ticket when resolved.",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

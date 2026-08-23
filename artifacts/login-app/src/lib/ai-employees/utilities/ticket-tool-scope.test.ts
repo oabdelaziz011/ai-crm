@@ -7,7 +7,7 @@ import {
 } from "./ticket-tool-scope.js";
 
 describe("ticket-tool-scope", () => {
-  it("strips ticket tools when employee lacks ticket capability", () => {
+  it("keeps explicitly assigned ticket tools even without capability tag", () => {
     const keys = resolveTicketToolKeysForEmployee({
       tags: [],
       allowedToolKeys: ["create_customer", "create_ticket"],
@@ -24,8 +24,16 @@ describe("ticket-tool-scope", () => {
     assert.ok(keys.includes("search_ticket"));
   });
 
-  it("builds prompt hint only when ticket tools enabled", () => {
+  it("buildTicketToolPromptHint is null when no ticket tools", () => {
     assert.equal(buildTicketToolPromptHint([]), null);
-    assert.match(buildTicketToolPromptHint(["create_ticket", "assign_ticket"])!, /assign_ticket/);
+  });
+
+  it("buildTicketToolPromptHint requires ticket number before search_ticket", () => {
+    const hint = buildTicketToolPromptHint(["create_ticket", "assign_ticket", "search_ticket"]);
+    assert.match(hint!, /search_ticket/);
+    assert.match(hint!, /FIRST ask for their ticket number/);
+    assert.match(hint!, /Never say you cannot search/);
+    assert.match(hint!, /NEVER tell the customer the ticket subject/);
+    assert.match(hint!, /assign_ticket/);
   });
 });

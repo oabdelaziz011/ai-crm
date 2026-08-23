@@ -12,30 +12,36 @@ const NOTIFICATION_EVENT_BY_KIND: Record<TicketNotificationInput["kind"], string
 };
 
 export function createTicketNotificationBridge(): TicketNotificationPort {
-  const { notifications } = getNotificationServices();
-
   return {
     async notify(input: TicketNotificationInput): Promise<void> {
-      const recipientUserId = input.recipientUserId?.trim();
-      if (!recipientUserId) return;
+      try {
+        const recipientUserId = input.recipientUserId?.trim();
+        if (!recipientUserId) return;
 
-      await notifications.createNotification({
-        companyId: input.companyId,
-        event: "generic_system",
-        userId: input.actorUserId,
-        recipients: [{ userId: recipientUserId, companyId: input.companyId }],
-        channels: ["in_app"],
-        params: {
-          title: NOTIFICATION_EVENT_BY_KIND[input.kind],
-          kind: NOTIFICATION_EVENT_BY_KIND[input.kind],
-          ticketId: input.ticketId,
-          ticketNumber: input.ticketNumber,
-          subject: input.subject,
-          body: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
-          detail: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
-          ...(input.metadata ?? {}),
-        },
-      });
+        const { notifications } = getNotificationServices();
+        await notifications.createNotification({
+          companyId: input.companyId,
+          event: "generic_system",
+          userId: input.actorUserId,
+          recipients: [{ userId: recipientUserId, companyId: input.companyId }],
+          channels: ["in_app"],
+          params: {
+            title: NOTIFICATION_EVENT_BY_KIND[input.kind],
+            kind: NOTIFICATION_EVENT_BY_KIND[input.kind],
+            ticketId: input.ticketId,
+            ticketNumber: input.ticketNumber,
+            subject: input.subject,
+            body: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
+            detail: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
+            ...(input.metadata ?? {}),
+          },
+        });
+      } catch (error) {
+        console.warn(
+          "[ticket-platform] notification bridge failed:",
+          error instanceof Error ? error.message : error,
+        );
+      }
     },
   };
 }

@@ -40,6 +40,18 @@ export function createApplicationLayerTicketToolPorts(portContext: LoginAppPortC
   }
 
   return {
+    async getTicket(input) {
+      await assertAiTicketing();
+      try {
+        const ctx = buildToolApplicationContext(portContext, input.userId);
+        const result = await services.ticket.getTicket({ ticketId: input.ticketId }, ctx);
+        const ticket = unwrapQuery(result);
+        return ticket ? { ticket: mapTicket(ticket) } : null;
+      } catch {
+        // Missing / inaccessible tickets must not leak details to AI ownership checks.
+        return null;
+      }
+    },
     async createTicket(input) {
       await assertAiTicketing();
       const ctx = buildToolApplicationContext(portContext, input.userId);

@@ -5,11 +5,19 @@ import {
   type RuntimeToolDenial,
 } from "@workspace/ai-execution-engine";
 import { isTestRuntime } from "@workspace/platform-crypto/client";
+import {
+  AI_EMPLOYEE_TOOL_SAFE_DENIAL_MESSAGE,
+  type AiEmployeeCommercialDenialReason,
+} from "./ai-employee-commercial-runtime-gate.js";
 
 export { EMPLOYEE_TOOL_SCOPE_DENIED_CODE };
 
+/** Phase 2 assignment denial reason (structured). Legacy code remains for older harnesses. */
+export const TOOL_NOT_ASSIGNED_CODE = "TOOL_NOT_ASSIGNED" as const;
+
 export type EmployeeToolScopeDenial = RuntimeToolDenial & {
-  errorCode: typeof EMPLOYEE_TOOL_SCOPE_DENIED_CODE;
+  errorCode: typeof TOOL_NOT_ASSIGNED_CODE | typeof EMPLOYEE_TOOL_SCOPE_DENIED_CODE;
+  denialReason: typeof TOOL_NOT_ASSIGNED_CODE;
   employeeId: string;
   message: string;
 };
@@ -28,13 +36,26 @@ export type ToolScopeEvaluation =
 
 export function createEmployeeToolScopeDenial(input: {
   toolKey: string;
-  reason: string;
+  reason?: string;
   employeeId: string;
   timestamp?: string;
 }): EmployeeToolScopeDenial {
-  return toLegacyCompatibleDenial(
-    createSharedEmployeeToolScopeDenial(input),
-  ) as EmployeeToolScopeDenial;
+  const safeReason = AI_EMPLOYEE_TOOL_SAFE_DENIAL_MESSAGE;
+  const base = toLegacyCompatibleDenial(
+    createSharedEmployeeToolScopeDenial({
+      toolKey: input.toolKey,
+      reason: safeReason,
+      employeeId: input.employeeId,
+      timestamp: input.timestamp,
+    }),
+  );
+  return {
+    ...base,
+    errorCode: TOOL_NOT_ASSIGNED_CODE,
+    denialReason: TOOL_NOT_ASSIGNED_CODE,
+    message: safeReason,
+    reason: safeReason,
+  };
 }
 
 export function evaluateToolScope(input: {
@@ -50,14 +71,12 @@ export function evaluateToolScope(input: {
     return { decision: "allow", employeeId: input.employeeId };
   }
 
-  const reason = `Tool ${input.toolKey} is not permitted for AI Employee ${input.employeeId}.`;
   return {
     decision: "deny",
     employeeId: input.employeeId,
-    reason,
+    reason: AI_EMPLOYEE_TOOL_SAFE_DENIAL_MESSAGE,
     denial: createEmployeeToolScopeDenial({
       toolKey: input.toolKey,
-      reason,
       employeeId: input.employeeId,
     }),
   };
@@ -70,6 +89,7 @@ export function logToolScopeDecision(input: {
   denied: boolean;
   decision: ToolScopeDecision;
   reason?: string;
+  denialReason?: AiEmployeeCommercialDenialReason | typeof TOOL_NOT_ASSIGNED_CODE;
 }): void {
   if (isTestRuntime()) return;
 
@@ -82,6 +102,7 @@ export function logToolScopeDecision(input: {
       denied: input.denied,
       decision: input.decision,
       reason: input.reason ?? null,
+      denialReason: input.denialReason ?? null,
       timestamp: new Date().toISOString(),
     }),
   );
@@ -120,5 +141,6 @@ export function stampToolScopeDecision(
     denied: true,
     decision: "deny",
     reason: evaluation.reason,
+    denialReason: TOOL_NOT_ASSIGNED_CODE,
   });
 }

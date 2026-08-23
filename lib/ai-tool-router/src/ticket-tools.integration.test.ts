@@ -17,6 +17,25 @@ import type { ConversationReader } from "./ports/conversation-reader.js";
 
 function createStubTicketPorts(): TicketAgentToolPorts {
   return {
+    async getTicket(input) {
+      return {
+        ticket: {
+          id: input.ticketId,
+          ticketNumber: "TKT-000010",
+          subject: "Payment failed",
+          description: "",
+          status: "open",
+          priority: "normal",
+          customerId: "customer-1",
+          conversationId: "conv-1",
+          assignedUserId: null,
+          assignedUserName: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          closedAt: null,
+        },
+      };
+    },
     async createTicket(input) {
       return {
         ticket: {
@@ -304,6 +323,7 @@ function createRouter(handlers: ReturnType<typeof createToolHandlerRegistry>, ke
         id: "conv-1",
         company_id: "company-1",
         state: "waiting_user",
+        customer_id: "customer-1",
       };
     },
   };

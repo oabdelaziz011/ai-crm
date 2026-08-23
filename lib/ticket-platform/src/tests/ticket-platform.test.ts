@@ -250,4 +250,131 @@ describe("ticket command SLA resolution", () => {
     );
     assert.equal(result.ticket.priority, "urgent");
   });
+
+  it("createTicket still succeeds when event publish throws after insert", async () => {
+    const tickets = {
+      async generateTicketNumber() {
+        return "TKT-000100";
+      },
+      async create(input: {
+        companyId: string;
+        ticketNumber: string;
+        subject: string;
+        description: string;
+        status: TicketRecord["status"];
+        priority: TicketRecord["priority"];
+        customerId: string | null;
+        conversationId: string | null;
+        createdBy: string;
+        slaDueAt: string;
+      }) {
+        const record: TicketRecord = {
+          id: "t-event-fail",
+          companyId: input.companyId,
+          ticketNumber: input.ticketNumber,
+          subject: input.subject,
+          description: input.description,
+          status: input.status,
+          priority: input.priority,
+          customerId: input.customerId,
+          conversationId: input.conversationId,
+          assignedUserId: null,
+          assignedUserName: null,
+          createdBy: input.createdBy,
+          updatedBy: input.createdBy,
+          closedAt: null,
+          closedBy: null,
+          reopenedAt: null,
+          reopenedBy: null,
+          slaDueAt: input.slaDueAt,
+          firstResponseAt: null,
+          resolvedAt: null,
+          metadata: {},
+          createdAt: "2026-08-01T12:00:00.000Z",
+          updatedAt: "2026-08-01T12:00:00.000Z",
+          deletedAt: null,
+        };
+        return record;
+      },
+      async update() {
+        throw new Error("unused");
+      },
+      async softDelete() {
+        throw new Error("unused");
+      },
+      async findById() {
+        return null;
+      },
+      async search() {
+        return { tickets: [], total: 0 };
+      },
+      async listByCustomer() {
+        return [];
+      },
+      async listByConversation() {
+        return [];
+      },
+      async countOpenByCustomer() {
+        return 0;
+      },
+      async fetchCustomerSnapshot() {
+        throw new Error("unused");
+      },
+      async fetchMetrics() {
+        throw new Error("unused");
+      },
+    } as unknown as TicketRepository;
+
+    const service = new TicketCommandService({
+      tickets,
+      comments: {
+        async add() {
+          throw new Error("unused");
+        },
+        async listByTicket() {
+          return [];
+        },
+      } as unknown as TicketCommentRepository,
+      assignees: {
+        async resolveAssigneeUserId() {
+          return "u1";
+        },
+        async loadAssigneeNames() {
+          return new Map();
+        },
+        async findAssigneeCandidates() {
+          return [];
+        },
+      },
+      events: {
+        async publish() {
+          throw new Error("permission denied for function current_company_id");
+        },
+      },
+      notifications: { async notify() {} },
+      audit: { async write() {} },
+      slaSettings: {
+        async getByCompanyId() {
+          return null;
+        },
+      },
+    });
+
+    const result = await service.createTicket(
+      {
+        companyId: "company-1",
+        userId: "actor-1",
+        isSuperAdmin: false,
+        hasPermission: (code) => code === "tickets.create",
+      },
+      {
+        companyId: "company-1",
+        subject: "Complaint still opens",
+        priority: "high",
+      },
+    );
+
+    assert.equal(result.ticket.ticketNumber, "TKT-000100");
+    assert.equal(result.ticket.subject, "Complaint still opens");
+  });
 });

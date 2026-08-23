@@ -24,6 +24,16 @@ export type TicketSummary = {
 };
 
 export type TicketAgentToolPorts = {
+  /**
+   * Internal ownership lookup — not an LLM-exposed tool.
+   * Company-scoped; returns null when the ticket is missing for that company.
+   */
+  getTicket(input: {
+    companyId: string;
+    userId: string;
+    ticketId: string;
+  }): Promise<{ ticket: TicketSummary } | null>;
+
   createTicket(input: {
     companyId: string;
     userId: string;

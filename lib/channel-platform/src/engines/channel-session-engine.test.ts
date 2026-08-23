@@ -73,6 +73,26 @@ function createEngine(options?: {
         updated_at: new Date().toISOString(),
       };
     },
+    updateSessionMetadata: async (sessionId) => {
+      const session = sessions.find((item) => item.id === sessionId);
+      if (!session) throw new Error("session not found");
+      return {
+        id: session.id,
+        company_id: "company-1",
+        company_channel_id: "channel-1",
+        channel_key: "whatsapp",
+        conversation_id: session.conversation_id,
+        external_thread_id: "thread-1",
+        sender_external_id: null,
+        metadata: session.metadata ?? {},
+        inbound_count: 1,
+        outbound_count: 0,
+        last_inbound_at: session.last_inbound_at,
+        last_outbound_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    },
     touchOutbound: async () => {
       throw new Error("not implemented");
     },
@@ -161,3 +181,126 @@ describe("ChannelSessionEngine", () => {
     assert.equal(sessions.length, 1);
   });
 });
+
+describe("ChannelSessionEngine Phase 2 rotation identity", () => {
+  it("Phase 2: rotation creates a fresh conversation without copying customer_id", async () => {
+    const createdConversations: Array<Record<string, unknown>> = [];
+    const sessions: Array<{ id: string; conversation_id: string }> = [
+      { id: "session-1", conversation_id: "conv-automation-polluted" },
+    ];
+
+    const sessionRepository = {
+      findByExternalThread: async () => ({
+        id: "session-1",
+        company_id: "company-1",
+        company_channel_id: "channel-1",
+        channel_key: "whatsapp",
+        conversation_id: "conv-automation-polluted",
+        external_thread_id: "thread-1",
+        sender_external_id: "201011404109",
+        metadata: {},
+        inbound_count: 1,
+        outbound_count: 0,
+        last_inbound_at: null,
+        last_outbound_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+      createSession: async () => {
+        throw new Error("createSession should not run for existing thread");
+      },
+      reattachConversation: async (sessionId: string, conversationId: string) => {
+        const session = sessions.find((item) => item.id === sessionId);
+        if (!session) throw new Error("session not found");
+        session.conversation_id = conversationId;
+        return {
+          id: session.id,
+          company_id: "company-1",
+          company_channel_id: "channel-1",
+          channel_key: "whatsapp",
+          conversation_id: conversationId,
+          external_thread_id: "thread-1",
+          sender_external_id: "201011404109",
+          metadata: {},
+          inbound_count: 1,
+          outbound_count: 0,
+          last_inbound_at: null,
+          last_outbound_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      },
+      touchInbound: async () => {
+        throw new Error("not implemented");
+      },
+      touchOutbound: async () => {
+        throw new Error("not implemented");
+      },
+    };
+
+    const ports = {
+      registry: {
+        getCompanyChannel: async () => null,
+        findCompanyChannelByPhoneNumberId: async () => [],
+        findCompanyChannelsByWhatsAppVerifyToken: async () => [],
+      },
+      conversation: {
+        createConversation: async (input: Record<string, unknown>) => {
+          createdConversations.push(input);
+          assert.equal(
+            Object.prototype.hasOwnProperty.call(input, "customerId") ||
+              Object.prototype.hasOwnProperty.call(input, "customer_id"),
+            false,
+            "rotation must not silently copy customer_id onto the new conversation",
+          );
+          return { id: "conv-ai-fresh" };
+        },
+        addIncomingMessage: async () => ({
+          id: "msg-1",
+          conversationId: "conv-ai-fresh",
+          messageType: "incoming",
+          content: "hello",
+          createdAt: new Date().toISOString(),
+        }),
+        addOutgoingMessage: async () => ({
+          id: "msg-2",
+          conversationId: "conv-ai-fresh",
+          messageType: "outgoing",
+          content: "hi",
+          createdAt: new Date().toISOString(),
+        }),
+        getConversationMetadata: async () => ({
+          // No aiEmployeeInboundSession + different/missing employee => rotate
+        }),
+      },
+      runtime: {
+        execute: async () => ({
+          executionId: "exec-1",
+          responseContent: "ok",
+          correlationId: "corr-1",
+        }),
+      },
+    } as unknown as ChannelPlatformPorts;
+
+    const engine = new ChannelSessionEngine(sessionRepository as never, ports);
+    const resolved = await engine.resolveSession(
+      { companyId: "company-1", userId: "user-1", isSuperAdmin: false, hasPermission: () => true },
+      {
+        companyId: "company-1",
+        companyChannelId: "channel-1",
+        channelKey: "whatsapp",
+        externalThreadId: "thread-1",
+        senderExternalId: "201011404109",
+        aiAssistantId: "assistant-1",
+        employeeConversationMetadata: { aiEmployeeId: "employee-1" },
+        requireAiAssistant: true,
+      },
+    );
+
+    assert.equal(resolved.conversation_id, "conv-ai-fresh");
+    assert.equal(createdConversations.length, 1);
+    // Phase 2 inbound pipeline re-resolves WhatsApp sender → CRM before AI execution
+    // on the fresh conversation (customer_id starts null and is bound only via resolver).
+  });
+});
+

@@ -94,6 +94,10 @@ describe("OutboundMessagePipeline integration", () => {
       findByExternalThread: async () => sessions[0] ?? null,
       createSession: async () => sessions[0]!,
       reattachConversation: async () => sessions[0]!,
+      updateSessionMetadata: async (sessionId) => {
+        const record = sessions.find((session) => session.id === sessionId)!;
+        return record;
+      },
       touchInbound: async () => sessions[0]!,
       touchOutbound: async (sessionId) => {
         const record = sessions.find((session) => session.id === sessionId)!;

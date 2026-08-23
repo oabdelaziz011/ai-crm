@@ -27,6 +27,7 @@ import type {
   UpdateDeliveryEventInput,
   UpdateInboundEventInput,
 } from "./repositories/channel-platform-repositories.js";
+import { mergeChannelSessionMetadata } from "./services/ai-employee-engagement-session.js";
 import type {
   ChannelDeliveryEventRecord,
   ChannelInboundEventRecord,
@@ -120,6 +121,12 @@ export function createTestEnvironment(options?: {
     reattachConversation: async (sessionId, conversationId) => {
       const record = sessions.find((session) => session.id === sessionId)!;
       record.conversation_id = conversationId;
+      record.updated_at = new Date().toISOString();
+      return record;
+    },
+    updateSessionMetadata: async (sessionId, metadataPatch) => {
+      const record = sessions.find((session) => session.id === sessionId)!;
+      record.metadata = mergeChannelSessionMetadata(record.metadata, metadataPatch);
       record.updated_at = new Date().toISOString();
       return record;
     },
@@ -320,6 +327,8 @@ export function createTestEnvironment(options?: {
     },
     getConversationMetadata: async (conversationId) =>
       conversationMetadataById.get(conversationId) ?? null,
+    hasOutgoingMessages: async (conversationId) =>
+      outgoingMessages.some((message) => message.conversationId === conversationId),
     updateConversationMetadata: async (input) => {
       conversationMetadataById.set(input.conversationId, { ...input.metadata });
     },

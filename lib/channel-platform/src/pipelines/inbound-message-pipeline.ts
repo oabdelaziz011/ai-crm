@@ -47,6 +47,16 @@ import {
 } from "../debug/whatsapp-conversation-trace-bridge.js";
 import { isBookingTransferIntent } from "../utils/workflow-transfer-intent.js";
 import {
+  buildEngagementMetadataPatch,
+  DEFAULT_AI_EMPLOYEE_SESSION_TIMEOUT_MINUTES,
+  hasEngagementWelcomeDelivered,
+  markEngagementWelcomeDelivered,
+  readAiEmployeeEngagement,
+  resolveAiEmployeeEngagement,
+  type AiEmployeeEngagementState,
+} from "../services/ai-employee-engagement-session.js";
+import { shouldAttemptWhatsAppDeterministicWelcome } from "../services/whatsapp-deterministic-welcome.js";
+import {
   claimInteractiveReplyDedupe,
   extractInteractiveReplyContextIdFromPayload,
   extractInteractiveReplyIdFromPayload,
@@ -518,6 +528,7 @@ export class InboundMessagePipeline {
       }
 
       let aiEmployeeId = request.aiEmployeeId;
+      let sessionTimeoutMinutes: number | undefined;
       let employeeConversationMetadata = request.employeeConversationMetadata;
       let transferSource: "channel_binding" | "ai_employee_sticky" | "ai_employee_intent" | null =
         bindingWorkflow ? "channel_binding" : stickyTransfer ? "ai_employee_sticky" : null;
@@ -568,6 +579,7 @@ export class InboundMessagePipeline {
         });
         if (resolvedEmployee) {
           aiEmployeeId = resolvedEmployee.aiEmployeeId;
+          sessionTimeoutMinutes = resolvedEmployee.sessionTimeoutMinutes;
           employeeConversationMetadata = resolvedEmployee.conversationMetadataSeed;
           request.trace?.step("webhook.ai_employee_resolved", {
             aiEmployeeId,
@@ -704,7 +716,7 @@ export class InboundMessagePipeline {
         }
       }
 
-      const session = await waPerfMeasure("Conversation lookup", () =>
+      let session = await waPerfMeasure("Conversation lookup", () =>
         this.sessionEngine.resolveSession(ctx, {
           companyId: request.companyId,
           companyChannelId: request.companyChannelId,
@@ -720,6 +732,57 @@ export class InboundMessagePipeline {
           metadata: normalized.metadata,
         }),
       );
+
+      let aiEmployeeEngagement: AiEmployeeEngagementState | null = null;
+
+      if (request.channelKey === "whatsapp" && aiEmployeeId) {
+        const effectiveSessionTimeoutMinutes =
+          sessionTimeoutMinutes ??
+          (this.ports.employeeRuntime?.resolveSessionTimeoutMinutes
+            ? await this.ports.employeeRuntime.resolveSessionTimeoutMinutes({
+                companyId: request.companyId,
+                aiEmployeeId,
+              })
+            : null) ??
+          DEFAULT_AI_EMPLOYEE_SESSION_TIMEOUT_MINUTES;
+
+        const engagementResolution = resolveAiEmployeeEngagement({
+          previousLastInboundAt: session.last_inbound_at,
+          now: new Date(),
+          sessionTimeoutMinutes: effectiveSessionTimeoutMinutes,
+          aiEmployeeId,
+          previousEngagement: readAiEmployeeEngagement(session.metadata),
+        });
+        aiEmployeeEngagement = engagementResolution.engagement;
+
+        session = await waPerfMeasure("Database writes: update engagement session metadata", () =>
+          this.sessionRepository.updateSessionMetadata(
+            session.id,
+            buildEngagementMetadataPatch(engagementResolution.engagement),
+          ),
+        );
+
+        if (engagementResolution.isNewEngagement) {
+          request.trace?.step("webhook.ai_employee_engagement_started", {
+            channelSessionId: session.id,
+            conversationId: session.conversation_id,
+            aiEmployeeId,
+            engagementStartedAt: engagementResolution.engagement.startedAt,
+            sessionTimeoutMinutes: effectiveSessionTimeoutMinutes,
+          });
+          if (request.channelKey === "whatsapp") {
+            logWhatsApp("AI Employee engagement started", {
+              companyId: request.companyId,
+              companyChannelId: request.companyChannelId,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              aiEmployeeId,
+              engagementStartedAt: engagementResolution.engagement.startedAt,
+              sessionTimeoutMinutes: effectiveSessionTimeoutMinutes,
+            });
+          }
+        }
+      }
 
       waTraceBindInboundExternalMessageId(normalized.externalMessageId);
       waTraceBindConversation(session.conversation_id);
@@ -777,6 +840,15 @@ export class InboundMessagePipeline {
           aiEmployeeId: aiEmployeeId ?? null,
         });
       }
+
+      // Phase 2 — bind trusted CRM identity from WhatsApp sender before AI prepare/execute.
+      const trustedChannelIdentity = await this.resolveAndBindTrustedChannelCustomer({
+        companyId: request.companyId,
+        channelKey: request.channelKey,
+        conversationId: session.conversation_id,
+        senderExternalId: normalized.senderExternalId,
+        trace: request.trace,
+      });
 
       if (
         (emailRoutingClassification || emailRoutingDecision) &&
@@ -1131,6 +1203,7 @@ export class InboundMessagePipeline {
         (request.channelKey !== "email" || Boolean(aiEmployeeId || legacyAssistantId))
       ) {
         let runtimeConfig = request.runtimeConfig;
+        let suppressWelcomePrompt = false;
 
         try {
         if (aiEmployeeId && this.ports.employeeRuntime) {
@@ -1139,16 +1212,100 @@ export class InboundMessagePipeline {
             employeeConversationMetadata ??
             null;
 
+          if (
+            request.channelKey === "whatsapp" &&
+            this.ports.employeeRuntime.resolveWhatsAppDeterministicWelcome
+          ) {
+            suppressWelcomePrompt = hasEngagementWelcomeDelivered(aiEmployeeEngagement);
+
+            if (
+              shouldAttemptWhatsAppDeterministicWelcome({
+                engagement: aiEmployeeEngagement,
+              })
+            ) {
+              const resolvedWelcome =
+                await this.ports.employeeRuntime.resolveWhatsAppDeterministicWelcome({
+                  companyId: request.companyId,
+                  aiEmployeeId,
+                  trustedCustomerName: trustedChannelIdentity.trustedCustomerName,
+                });
+
+              if (resolvedWelcome?.welcomeText) {
+                try {
+                  await this.dispatcher.dispatch(ctx, {
+                    companyId: request.companyId,
+                    companyChannelId: request.companyChannelId,
+                    channelKey: request.channelKey,
+                    conversationId: session.conversation_id,
+                    channelSessionId: session.id,
+                    externalThreadId: normalized.externalThreadId,
+                    text: resolvedWelcome.welcomeText,
+                    metadata: {
+                      deterministicWelcome: true,
+                      aiEmployeeId,
+                    },
+                    persistConversationMessage: true,
+                  });
+
+                  const deliveredEngagement = markEngagementWelcomeDelivered(aiEmployeeEngagement!);
+                  aiEmployeeEngagement = deliveredEngagement;
+                  session = await this.sessionRepository.updateSessionMetadata(
+                    session.id,
+                    buildEngagementMetadataPatch(deliveredEngagement),
+                  );
+                  suppressWelcomePrompt = true;
+
+                  request.trace?.step("webhook.whatsapp_deterministic_welcome_sent", {
+                    aiEmployeeId,
+                    conversationId: session.conversation_id,
+                    engagementStartedAt: deliveredEngagement.startedAt,
+                  });
+                  logWhatsApp("Deterministic welcome sent", {
+                    companyId: request.companyId,
+                    companyChannelId: request.companyChannelId,
+                    conversationId: session.conversation_id,
+                    aiEmployeeId,
+                    phoneNumber: normalized.senderExternalId,
+                    engagementStartedAt: deliveredEngagement.startedAt,
+                  });
+                } catch (error) {
+                  const welcomeError =
+                    error instanceof Error ? error.message : "welcome_outbound_dispatch_failed";
+                  request.trace?.step("webhook.whatsapp_deterministic_welcome_failed", {
+                    aiEmployeeId,
+                    error: welcomeError,
+                  });
+                  logWhatsAppError("Deterministic welcome dispatch failed", error, {
+                    companyId: request.companyId,
+                    companyChannelId: request.companyChannelId,
+                    conversationId: session.conversation_id,
+                    aiEmployeeId,
+                    phoneNumber: normalized.senderExternalId,
+                  });
+                }
+              }
+            }
+          }
+
           const prepared = await this.ports.employeeRuntime.prepareForConversation({
             companyId: request.companyId,
             conversationId: session.conversation_id,
             aiEmployeeId,
             conversationMetadata,
+            suppressWelcomePrompt,
             basePageContext: {
               module: "omnichannel",
               channelKey: request.channelKey,
               companyChannelId: request.companyChannelId,
               conversationId: session.conversation_id,
+              ...(trustedChannelIdentity.customerId
+                ? {
+                    trustedCustomerId: trustedChannelIdentity.customerId,
+                    ...(trustedChannelIdentity.trustedCustomerName
+                      ? { trustedCustomerName: trustedChannelIdentity.trustedCustomerName }
+                      : {}),
+                  }
+                : {}),
               ...(request.channelKey === "email" &&
               typeof normalized.metadata?.subject === "string"
                 ? { emailSubject: normalized.metadata.subject }
@@ -1185,9 +1342,16 @@ export class InboundMessagePipeline {
           };
 
           if (prepared.metadataPatch && this.ports.conversation.updateConversationMetadata) {
+            const currentMetaForPatch =
+              (await this.ports.conversation.getConversationMetadata?.(session.conversation_id)) ??
+              conversationMetadata ??
+              {};
             await this.ports.conversation.updateConversationMetadata({
               conversationId: session.conversation_id,
-              metadata: prepared.metadataPatch,
+              metadata: {
+                ...currentMetaForPatch,
+                ...prepared.metadataPatch,
+              },
             });
           }
 
@@ -1545,6 +1709,100 @@ export class InboundMessagePipeline {
       });
       return runtime;
     }
+  }
+
+  /**
+   * Phase 2 — resolve WhatsApp sender → CRM customer and bind conversation.customer_id
+   * only when empty. Fail closed on ambiguity. Never trusts senderName / LLM ids.
+   */
+  private async resolveAndBindTrustedChannelCustomer(input: {
+    companyId: string;
+    channelKey: string;
+    conversationId: string;
+    senderExternalId: string | null | undefined;
+    trace?: InboundRouteRequestDto["trace"];
+  }): Promise<{
+    customerId: string | null;
+    trustedCustomerName: string | null;
+    status: string;
+  }> {
+    const empty = { customerId: null, trustedCustomerName: null, status: "skipped" as const };
+
+    if (!this.ports.customerIdentity) return empty;
+    if (input.channelKey !== "whatsapp") return empty;
+
+    // Prefer existing trusted conversation.customer_id — skip CRM lookup.
+    if (this.ports.conversation.getConversationCustomerId) {
+      const existing = await this.ports.conversation.getConversationCustomerId(input.conversationId);
+      if (existing) {
+        // Load CRM name from metadata if previously stored; otherwise leave name null
+        // (welcome stays generic but tools still get trustedCustomerId).
+        const meta = this.ports.conversation.getConversationMetadata
+          ? await this.ports.conversation.getConversationMetadata(input.conversationId)
+          : null;
+        const trustedName =
+          typeof meta?.trustedCustomerName === "string" && meta.trustedCustomerName.trim()
+            ? meta.trustedCustomerName.trim()
+            : null;
+        input.trace?.step("webhook.channel_identity", {
+          status: "reused",
+          conversationId: input.conversationId,
+          customerId: existing,
+        });
+        return { customerId: existing, trustedCustomerName: trustedName, status: "reused" };
+      }
+    }
+
+    const resolved = await this.ports.customerIdentity.resolveTrustedCustomer({
+      companyId: input.companyId,
+      channelKey: input.channelKey,
+      senderExternalId: input.senderExternalId,
+    });
+
+    input.trace?.step("webhook.channel_identity", {
+      status: resolved.status,
+      conversationId: input.conversationId,
+      customerId: resolved.customerId,
+      hasTrustedName: Boolean(resolved.trustedCustomerName),
+    });
+
+    if (resolved.status === "known" && resolved.customerId) {
+      await this.ports.conversation.linkConversationCustomerIfEmpty?.({
+        conversationId: input.conversationId,
+        customerId: resolved.customerId,
+        companyId: input.companyId,
+      });
+
+      if (
+        resolved.trustedCustomerName &&
+        this.ports.conversation.updateConversationMetadata &&
+        this.ports.conversation.getConversationMetadata
+      ) {
+        const currentMeta =
+          (await this.ports.conversation.getConversationMetadata(input.conversationId)) ?? {};
+        await this.ports.conversation.updateConversationMetadata({
+          conversationId: input.conversationId,
+          metadata: {
+            ...currentMeta,
+            trustedCustomerName: resolved.trustedCustomerName,
+            // Never store WhatsApp profile senderName as CRM identity.
+          },
+        });
+      }
+
+      return {
+        customerId: resolved.customerId,
+        trustedCustomerName: resolved.trustedCustomerName,
+        status: "known",
+      };
+    }
+
+    // unknown / ambiguous / invalid — leave customer_id null (fail closed).
+    return {
+      customerId: null,
+      trustedCustomerName: null,
+      status: resolved.status,
+    };
   }
 
   private assertRoutePermission(ctx: ServiceContext, companyId: string): void {

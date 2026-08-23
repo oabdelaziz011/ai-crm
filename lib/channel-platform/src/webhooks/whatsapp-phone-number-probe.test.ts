@@ -67,4 +67,28 @@ describe("whatsapp phone number probe", () => {
 
     assert.equal(match, null);
   });
+
+  it("returns one channel when multiple company channels share the same company token match", async () => {
+    const fetchFn = async () =>
+      new Response(JSON.stringify({ id: "1214681355059951" }), { status: 200 });
+
+    const match = await probeWhatsAppPhoneNumberChannel(
+      "1214681355059951",
+      [
+        {
+          id: "channel-a",
+          companyId: "company-a",
+          configuration: { accessToken: "token-a" },
+        },
+        {
+          id: "channel-b",
+          companyId: "company-a",
+          configuration: { accessToken: "token-a" },
+        },
+      ],
+      { fetchFn: fetchFn as typeof fetch },
+    );
+
+    assert.equal(match?.id, "channel-a");
+  });
 });

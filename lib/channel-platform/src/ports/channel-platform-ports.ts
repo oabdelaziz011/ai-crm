@@ -44,7 +44,14 @@ export type ChannelEmployeeRuntimePort = {
   }): Promise<{
     aiEmployeeId: string;
     conversationMetadataSeed: Record<string, unknown>;
+    sessionTimeoutMinutes: number;
   } | null>;
+
+  /** Resolve session timeout when inbound already has a pre-selected employee id. */
+  resolveSessionTimeoutMinutes?(input: {
+    companyId: string;
+    aiEmployeeId: string;
+  }): Promise<number | null>;
 
   prepareForConversation(input: {
     companyId: string;
@@ -52,10 +59,19 @@ export type ChannelEmployeeRuntimePort = {
     aiEmployeeId: string;
     conversationMetadata?: Record<string, unknown> | null;
     basePageContext?: Record<string, unknown>;
+    /** WhatsApp deterministic welcome already sent or suppressed — omit LLM welcome prompt. */
+    suppressWelcomePrompt?: boolean;
   }): Promise<{
     runtimeConfig: ChannelRuntimeConfigDto;
     metadataPatch: Record<string, unknown> | null;
   } | null>;
+
+  /** WhatsApp-only: resolve configured welcome text for deterministic first-turn outbound. */
+  resolveWhatsAppDeterministicWelcome?(input: {
+    companyId: string;
+    aiEmployeeId: string;
+    trustedCustomerName?: string | null;
+  }): Promise<{ welcomeText: string } | null>;
 };
 
 export type ChannelConversationPort = {
@@ -89,6 +105,38 @@ export type ChannelConversationPort = {
   }): Promise<void>;
 
   getConversationMetadata?(conversationId: string): Promise<Record<string, unknown> | null>;
+
+  /** True when the conversation already has at least one persisted outgoing message. */
+  hasOutgoingMessages?(conversationId: string): Promise<boolean>;
+
+  /** Phase 2 — read trusted CRM link (null-safe). */
+  getConversationCustomerId?(conversationId: string): Promise<string | null>;
+
+  /**
+   * Phase 2 — bind trusted CRM customer when conversation.customer_id IS NULL.
+   * Must not overwrite an existing trusted identity.
+   */
+  linkConversationCustomerIfEmpty?(input: {
+    conversationId: string;
+    customerId: string;
+    companyId: string;
+  }): Promise<void>;
+};
+
+/**
+ * Phase 2 — resolve trusted CRM identity from inbound channel sender (WhatsApp phone).
+ * companyId must come from trusted channel routing, never from payload/LLM.
+ */
+export type ChannelCustomerIdentityPort = {
+  resolveTrustedCustomer(input: {
+    companyId: string;
+    channelKey: string;
+    senderExternalId: string | null | undefined;
+  }): Promise<{
+    status: "known" | "unknown" | "ambiguous" | "unsupported_channel" | "invalid_sender";
+    customerId: string | null;
+    trustedCustomerName: string | null;
+  }>;
 };
 
 export type ChannelRuntimePort = {
@@ -143,6 +191,8 @@ export type ChannelPlatformPorts = {
   runtime: ChannelRuntimePort;
   employeeRuntime?: ChannelEmployeeRuntimePort;
   automation?: ChannelAutomationPort;
+  /** Phase 2 — WhatsApp trusted CRM identity (optional; fail closed when absent). */
+  customerIdentity?: ChannelCustomerIdentityPort;
   /** Sprint 5: AI Email Routing → existing ticket create/assign. */
   emailRoutingTickets?: import("./email-routing-ticket-action-port.js").EmailRoutingTicketActionPort;
   /** Sprint 6: ai_email_routing entitlement + usage metering. */

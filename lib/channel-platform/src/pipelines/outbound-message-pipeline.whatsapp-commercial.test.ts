@@ -186,6 +186,7 @@ function buildPipelineHarness(input: {
     findByExternalThread: async () => sessions[0] ?? null,
     createSession: async () => sessions[0]!,
     reattachConversation: async () => sessions[0]!,
+    updateSessionMetadata: async () => sessions[0]!,
     touchInbound: async () => sessions[0]!,
     touchOutbound: async (sessionId) => {
       const record = sessions.find((session) => session.id === sessionId)!;
@@ -408,6 +409,7 @@ describe("OutboundMessagePipeline WhatsApp commercial enforcement", () => {
         }) as ChannelSessionRecord,
       createSession: async () => ({ id: "session-1" }) as ChannelSessionRecord,
       reattachConversation: async () => ({ id: "session-1" }) as ChannelSessionRecord,
+      updateSessionMetadata: async () => ({ id: "session-1" }) as ChannelSessionRecord,
       touchInbound: async () => ({ id: "session-1" }) as ChannelSessionRecord,
       touchOutbound: async () => ({ id: "session-1" }) as ChannelSessionRecord,
     };

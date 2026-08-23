@@ -69,6 +69,10 @@ export async function probeWhatsAppPhoneNumberChannel(
   }
 
   if (matches.length === 1) return matches[0]!;
+  if (matches.length > 1) {
+    const companyIds = new Set(matches.map((match) => match.companyId));
+    if (companyIds.size === 1) return matches[0]!;
+  }
   return null;
 }
 

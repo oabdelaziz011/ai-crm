@@ -81,6 +81,21 @@ export async function resolveWhatsAppWebhookCompanyChannelId(
     });
 
     if (matches.length > 1) {
+      const companyIds = new Set(matches.map((match) => match.companyId));
+      if (companyIds.size === 1) {
+        diag?.("routing.resolved", {
+          source: "phone_number",
+          companyChannelId: matches[0]!.id,
+          phoneNumberId,
+          collapsedDuplicateCompanyChannels: matches.length,
+        });
+        return {
+          ok: true,
+          companyChannelId: matches[0]!.id,
+          source: "phone_number",
+        };
+      }
+
       diag?.("routing.early_return", {
         code: "duplicate_phone_number",
         phoneNumberId,

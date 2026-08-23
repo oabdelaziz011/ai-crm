@@ -23,6 +23,7 @@ import {
   extractInteractiveReplyContextIdFromPayload,
   extractInteractiveReplyIdFromPayload,
 } from "../utils/interactive-reply-dedupe.js";
+import { mergeChannelSessionMetadata } from "../services/ai-employee-engagement-session.js";
 
 function sessionCacheKey(companyChannelId: string, externalThreadId: string): string {
   return `${companyChannelId}:${externalThreadId}`;
@@ -112,6 +113,36 @@ export function createSupabaseChannelSessionRepository(client: SupabaseClient): 
         .from("channel_sessions")
         .update({
           conversation_id: conversationId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      const session = mapSession(data);
+      rememberSession(session);
+      return session;
+    },
+
+    async updateSessionMetadata(sessionId, metadataPatch) {
+      const { data: existingRow, error: readError } = await client
+        .from("channel_sessions")
+        .select("metadata")
+        .eq("id", sessionId)
+        .single();
+
+      if (readError) throw readError;
+
+      const mergedMetadata = mergeChannelSessionMetadata(
+        (existingRow.metadata as Record<string, unknown> | null) ?? {},
+        metadataPatch,
+      );
+
+      const { data, error } = await client
+        .from("channel_sessions")
+        .update({
+          metadata: mergedMetadata,
           updated_at: new Date().toISOString(),
         })
         .eq("id", sessionId)

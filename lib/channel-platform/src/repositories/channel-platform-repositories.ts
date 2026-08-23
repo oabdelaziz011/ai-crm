@@ -70,6 +70,10 @@ export type ChannelSessionRepository = {
   findByExternalThread(companyChannelId: string, externalThreadId: string): Promise<ChannelSessionRecord | null>;
   createSession(input: ResolveSessionInput & { conversationId: string }): Promise<ChannelSessionRecord>;
   reattachConversation(sessionId: string, conversationId: string): Promise<ChannelSessionRecord>;
+  updateSessionMetadata(
+    sessionId: string,
+    metadataPatch: Record<string, unknown>,
+  ): Promise<ChannelSessionRecord>;
   touchInbound(sessionId: string): Promise<ChannelSessionRecord>;
   touchOutbound(sessionId: string): Promise<ChannelSessionRecord>;
 };

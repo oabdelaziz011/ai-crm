@@ -1,0 +1,374 @@
+{
+  "auditedAt": "2026-08-23T21:55:12.764Z",
+  "phone": "201023169075",
+  "vaultosCompanyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+  "checks": {
+    "company_channels": {
+      "vaultos": [
+        {
+          "id": "12bd29d5-2da3-4bf4-b090-16755f41cd91",
+          "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+          "display_name": "AI Flow channel",
+          "is_enabled": false,
+          "deleted_at": null,
+          "channel_id": "cad85e5b-2f37-4ad4-b71d-ec20d560343f",
+          "status": "disabled",
+          "external_account_id": null
+        },
+        {
+          "id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+          "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+          "display_name": "عمر",
+          "is_enabled": true,
+          "deleted_at": null,
+          "channel_id": "cad85e5b-2f37-4ad4-b71d-ec20d560343f",
+          "status": "active",
+          "external_account_id": null
+        }
+      ],
+      "otherTenants": [
+        {
+          "id": "25772356-8c97-4a7d-9dbf-6c6896f0f537",
+          "company_id": "d0000010-0001-4001-8001-000000000002",
+          "display_name": "E2E WhatsApp",
+          "is_enabled": true,
+          "deleted_at": null,
+          "channel_id": "cad85e5b-2f37-4ad4-b71d-ec20d560343f",
+          "status": "active",
+          "external_account_id": null
+        }
+      ],
+      "knownVaultChannelPresent": true
+    },
+    "channel_sessions": [
+      {
+        "id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "external_thread_id": "201023169075",
+        "last_inbound_at": "2026-08-21T01:20:37.959+00:00",
+        "session_status": "active",
+        "channel_key": "whatsapp"
+      }
+    ],
+    "conversations": [],
+    "customers": [
+      {
+        "id": "4961636b-d47a-471a-b206-c386067d7f74",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "phone": "01023169075",
+        "name": "Nessma Hossam"
+      },
+      {
+        "id": "1e6e345e-5180-46fc-9f2b-01f832a6a432",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "phone": "201023169075",
+        "name": "اسنان"
+      }
+    ],
+    "conversation_messages": {
+      "conversationId": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+      "recent": [
+        {
+          "id": "656490b3-c3b0-47bb-be22-cd2f483278bf",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "outgoing",
+          "content": "تم إلغاء الحجز BK-000025 بنجاح.",
+          "created_at": "2026-08-21T01:20:48.392145+00:00"
+        },
+        {
+          "id": "66372229-a40c-4aa1-ac9a-8fbdf04c1fa9",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "incoming",
+          "content": "BK-000025",
+          "created_at": "2026-08-21T01:20:40.03293+00:00"
+        },
+        {
+          "id": "c962d718-9db3-440e-a3d0-9655f67c7c28",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "outgoing",
+          "content": "لقيت 2 موعد ممكن إلغاؤه:\n1) رقم الحجز: BK-000025 | الموعد: 24-08-2026 الساعة 19:30 | الخدمة: عيادة | مع: ADAM | الحالة: مؤكد\n2) رقم الحجز: BK-000026 | الموعد: 23-08-2026 الساعة 20:30 | الخدمة: عيادة | مع: ADAM | الحالة: مؤكد\nقولّي أنهي موعد تلغي؟ ابعتي رقم القائمة (مثلاً 1 أو 2) أو رقم الحجز (مثل BK-000028). مش هألغي غير بعد ما تختاري.",
+          "created_at": "2026-08-21T01:20:19.850296+00:00"
+        },
+        {
+          "id": "c077fc25-cdad-410e-8729-abe14aa01b09",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "incoming",
+          "content": "01023169075",
+          "created_at": "2026-08-21T01:20:03.104227+00:00"
+        },
+        {
+          "id": "6100ca49-c447-4d1f-a5fc-bc92267bff62",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "outgoing",
+          "content": "يرجى تزويدي برقم الموبايل الخاص بالمريض حتى أتمكن من مساعدتك في إلغاء الحجز.",
+          "created_at": "2026-08-21T01:19:48.416186+00:00"
+        },
+        {
+          "id": "ba06db38-d9b9-456b-8b50-01fdbc3ded69",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "incoming",
+          "content": "عايزة الغي حجز",
+          "created_at": "2026-08-21T01:19:41.46967+00:00"
+        },
+        {
+          "id": "8b12c17e-4680-48ab-9e9f-2629b1571a87",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "outgoing",
+          "content": "مرحبًا! كيف يمكنني مساعدتك اليوم؟",
+          "created_at": "2026-08-21T01:19:28.216198+00:00"
+        },
+        {
+          "id": "acb82cb5-4de3-4241-a526-87d84e0d2e28",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "incoming",
+          "content": "مرحبا",
+          "created_at": "2026-08-21T01:19:18.887501+00:00"
+        },
+        {
+          "id": "5d825f9c-9250-427f-aabe-d4415b292caf",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "outgoing",
+          "content": "ما قدرناش نلغي الحجز ده. تأكدي من رقم الحجز أو ابعتي رقم الموبايل تاني.",
+          "created_at": "2026-08-21T01:14:17.285539+00:00"
+        },
+        {
+          "id": "e22cd4dd-8a2e-41de-a74b-6064df39fcc1",
+          "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+          "message_type": "incoming",
+          "content": "BK-000022",
+          "created_at": "2026-08-21T01:14:08.597087+00:00"
+        }
+      ],
+      "allSameConversation": true
+    },
+    "company_channel_customer_links": []
+  },
+  "globalSearch": {
+    "channel_inbound_events": [
+      {
+        "id": "6205a579-8d53-4633-86d5-96e17d29ba1a",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:20:35.003831+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "b13302e2-1b52-4939-a267-5e3b4a4bb9e5",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:20:00.166391+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "0d0f6042-2950-4a9c-ad46-8c13f4738f95",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:19:38.873542+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "8f26aeaa-5200-4d54-a9fe-a68c7a7e501d",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:19:13.773256+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "1de3c465-6f22-4eed-a962-684d2f6c494a",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:14:05.114655+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "910e462c-b4a6-4006-9c6f-a82b47ac1344",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:13:43.190037+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "294f56a5-5012-44b2-8ce6-631d30d208e4",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:13:19.366882+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "80a8de77-d81f-4a9b-b370-986b6a683297",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:13:05.036996+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "e02538e5-96ca-4ef4-883c-e5add9a330ff",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:12:46.601957+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "c16a9cf8-d2a1-43d5-866c-7e3cd94eb690",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:12:34.92813+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "4bd3bea4-b2ce-4ad1-a951-437264295e6a",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:11:54.10392+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "a494dca3-7c31-4e6a-b318-74b004939dcd",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:11:29.923074+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "ceb1e66c-bae1-4ec2-ae03-c93bf201717d",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:11:00.8342+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "6629d557-ef37-4e0f-9336-d9a95b51df1d",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T01:05:58.022917+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "87cb5e08-b4d2-486b-98e2-bd18338b349c",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T00:49:26.126245+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "0cfde16d-1d28-494f-b796-8f4d498dcbb5",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T00:48:45.896614+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "aaa8a266-7875-4d29-a9ba-a42af16bc14f",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T00:48:02.19713+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "16385265-f907-4f75-991c-79d3a9bbebde",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T00:47:38.839265+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "30da8ed7-1e9b-451c-badc-d4abc9852045",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T00:47:05.614589+00:00",
+        "processing_status": "processed"
+      },
+      {
+        "id": "89c3aa5b-f190-44c2-ad1b-b49a3c6e2ab8",
+        "company_id": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+        "company_channel_id": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+        "conversation_id": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+        "channel_session_id": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+        "sender_external_id": "201023169075",
+        "created_at": "2026-08-21T00:17:49.946112+00:00",
+        "processing_status": "processed"
+      }
+    ],
+    "conversations_metadata_phone": []
+  },
+  "duplicates": {
+    "channel_sessions": [],
+    "customers": [],
+    "conversations": [],
+    "inbound_other_company": []
+  },
+  "canonical": {
+    "phone": "201023169075",
+    "customerId": "4961636b-d47a-471a-b206-c386067d7f74",
+    "conversationId": "e6839f5c-a7e5-45c3-9986-5bd9bc5971bf",
+    "conversationNumber": null,
+    "channelSessionId": "4c43b25c-84e8-45bb-9ab5-a6297bcaa859",
+    "companyChannelId": "e126113b-6d0e-48d3-9296-a46aafe0cc75",
+    "companyId": "2d27f7fb-c15e-4d60-84e9-1793f36f2172",
+    "externalThreadId": "201023169075",
+    "archived": null,
+    "deletedAt": null,
+    "lastMessageAt": null
+  },
+  "inboxReady": false,
+  "notes": []
+}

@@ -103,7 +103,8 @@ export function normalizeProjectEnv(env) {
     out.SESSION_SECRET = "dev-secret-change-me";
   }
 
-  if (!out.INTERNAL_API_KEY?.trim()) {
+  const nodeEnv = out.NODE_ENV?.trim() || process.env.NODE_ENV?.trim() || "development";
+  if (nodeEnv !== "production" && !out.INTERNAL_API_KEY?.trim()) {
     out.INTERNAL_API_KEY = "dev-internal-api-key";
   }
 

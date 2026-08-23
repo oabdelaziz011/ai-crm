@@ -4,7 +4,7 @@
  * Production start remains scripts/start-with-env.mjs (no watch).
  */
 import { spawn, execFileSync } from "node:child_process";
-import { watch } from "node:fs";
+import { watch, existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -12,6 +12,11 @@ import {
   loadProjectEnv,
   validateApiServerEnv,
 } from "../../../scripts/lib/load-project-env.mjs";
+import {
+  getListeningPids,
+  killProcessTree,
+  reclaimStaleApiServerPort,
+} from "../../../scripts/cloudflare/spawn-utils.mjs";
 import { buildApiServer } from "../build.mjs";
 
 const apiServerRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -24,6 +29,108 @@ const watchRoots = [
 ];
 
 const DEBOUNCE_MS = 200;
+const LOCK_FILE = resolve(apiServerRoot, ".dev-watch.lock");
+
+function isProcessAlive(pid) {
+  if (!pid || !Number.isFinite(pid)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function acquireDevWatchLock() {
+  if (existsSync(LOCK_FILE)) {
+    const previousPid = Number(readFileSync(LOCK_FILE, "utf8").trim());
+    if (isProcessAlive(previousPid)) {
+      console.error(
+        `[api-server:dev] Another dev watcher is already running (pid ${previousPid}).`,
+      );
+      console.error(
+        "[api-server:dev] Stop the existing terminal or run: pnpm dev:api in only one session.",
+      );
+      process.exit(1);
+    }
+    try {
+      unlinkSync(LOCK_FILE);
+    } catch {
+      // stale lock — continue
+    }
+  }
+
+  writeFileSync(LOCK_FILE, String(process.pid), "utf8");
+}
+
+function releaseDevWatchLock() {
+  try {
+    if (existsSync(LOCK_FILE) && readFileSync(LOCK_FILE, "utf8").trim() === String(process.pid)) {
+      unlinkSync(LOCK_FILE);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function listExistingDevWatchPids() {
+  if (process.platform !== "win32") return [];
+  try {
+    const output = execFileSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -like '*dev-watch.mjs*' } | Select-Object -ExpandProperty ProcessId",
+      ],
+      { encoding: "utf8", shell: false },
+    ).trim();
+    if (!output) return [];
+    return output
+      .split(/\s+/)
+      .map((value) => Number(value))
+      .filter(Number.isFinite);
+  } catch {
+    return [];
+  }
+}
+
+function assertSingleDevWatchInstance() {
+  const existing = listExistingDevWatchPids().filter((pid) => pid !== process.pid);
+  if (existing.length === 0) return;
+
+  console.error(
+    `[api-server:dev] Found ${existing.length} existing dev watcher process(es): ${existing.join(", ")}`,
+  );
+  console.error(
+    "[api-server:dev] Close those terminals first, then run exactly one: pnpm dev:api",
+  );
+  process.exit(1);
+}
+
+async function waitForPortFree(port, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (getListeningPids(port).length === 0) return;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+
+  const blockers = getListeningPids(port);
+  throw new Error(
+    `Port ${port} is still in use after stopping api-server (pids: ${blockers.join(", ") || "unknown"}).`,
+  );
+}
+
+async function ensurePortFreeForRestart() {
+  try {
+    await waitForPortFree(listenPort, 10_000);
+    return;
+  } catch {
+    console.warn("[api-server:dev] Port still busy after stop; reclaiming stale api-server listener(s)...");
+    reclaimStaleApiServerPort(listenPort, projectRoot);
+    await waitForPortFree(listenPort, 10_000);
+  }
+}
 
 const env = loadProjectEnv(projectRoot, {
   hydrateProcessEnv: true,
@@ -40,6 +147,7 @@ const childEnv = {
   ...process.env,
   ...env,
 };
+const listenPort = Number(childEnv.PORT ?? "3000");
 
 /** @type {import("node:child_process").ChildProcess | null} */
 let server = null;
@@ -73,32 +181,30 @@ function printStartupBanner(buildInfo) {
   console.log(lines.join("\n"));
 }
 
-function stopServer() {
-  return new Promise((resolveStop) => {
-    if (!server || server.killed || server.exitCode !== null) {
-      server = null;
-      resolveStop();
-      return;
-    }
+async function stopServer() {
+  if (!server || server.killed || server.exitCode !== null) {
+    server = null;
+    return;
+  }
 
-    const child = server;
+  const child = server;
+  const childPid = child.pid;
+  server = null;
+
+  await new Promise((resolveStop) => {
     let settled = false;
     const finish = () => {
       if (settled) return;
       settled = true;
-      server = null;
       resolveStop();
     };
 
     child.once("exit", finish);
-    child.kill("SIGTERM");
-
-    setTimeout(() => {
-      if (!settled && child.exitCode === null) {
-        child.kill("SIGKILL");
-      }
-    }, 5_000);
+    killProcessTree(childPid);
+    setTimeout(finish, 5_000);
   });
+
+  await ensurePortFreeForRestart();
 }
 
 async function startServer(buildInfo) {
@@ -201,6 +307,7 @@ async function shutdown(signal) {
   if (debounceTimer) clearTimeout(debounceTimer);
   for (const watcher of watchers) watcher.close();
   await stopServer();
+  releaseDevWatchLock();
   process.exit(signal === "SIGINT" ? 0 : 0);
 }
 
@@ -210,5 +317,9 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   void shutdown("SIGTERM");
 });
+
+acquireDevWatchLock();
+assertSingleDevWatchInstance();
+reclaimStaleApiServerPort(listenPort, projectRoot);
 
 await rebuildAndMaybeRestart({ clean: true, reason: "initial" });

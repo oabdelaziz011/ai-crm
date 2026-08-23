@@ -288,6 +288,9 @@ importers:
       '@workspace/scheduling-engine':
         specifier: workspace:*
         version: link:../../lib/scheduling-engine
+      '@workspace/tenant-ai-bootstrap':
+        specifier: workspace:*
+        version: link:../../lib/tenant-ai-bootstrap
       '@workspace/ticket-platform':
         specifier: workspace:*
         version: link:../../lib/ticket-platform
@@ -772,6 +775,9 @@ importers:
       '@workspace/ai-provider-layer':
         specifier: workspace:*
         version: link:../ai-provider-layer
+      '@workspace/ai-tool-router':
+        specifier: workspace:*
+        version: link:../ai-tool-router
       '@workspace/customer-360':
         specifier: workspace:*
         version: link:../customer-360

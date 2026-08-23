@@ -59,7 +59,8 @@ function applyEnvAliases(): void {
     process.env.SESSION_SECRET = "dev-secret-change-me";
   }
 
-  if (!process.env.INTERNAL_API_KEY?.trim()) {
+  const nodeEnv = process.env.NODE_ENV?.trim() || "development";
+  if (nodeEnv !== "production" && !process.env.INTERNAL_API_KEY?.trim()) {
     process.env.INTERNAL_API_KEY = "dev-internal-api-key";
   }
 }

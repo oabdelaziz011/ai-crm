@@ -146,6 +146,17 @@ export function isApiServerProcess(commandLine) {
   return /(?:dist[\\/]main\.mjs|start-with-env\.mjs)/i.test(commandLine ?? "");
 }
 
+function isProjectApiServerProcess(commandLine, projectRoot) {
+  if (!isApiServerProcess(commandLine)) return false;
+  const normalized = (commandLine ?? "").replace(/\\/g, "/");
+  const apiServerRoot = resolve(projectRoot, "artifacts/api-server").replace(/\\/g, "/");
+  return (
+    normalized.includes(apiServerRoot) ||
+    normalized.includes("artifacts/api-server") ||
+    /(?:^|\s)(?:--enable-source-maps\s+)?dist\/main\.mjs(?:\s|$)/i.test(normalized)
+  );
+}
+
 export function isProjectCloudflaredProcess(commandLine, projectRoot) {
   const normalized = (commandLine ?? "").replace(/\\/g, "/");
   const configPath = resolve(projectRoot, "infra/cloudflare/config.yml").replace(/\\/g, "/");
@@ -237,8 +248,7 @@ export function reclaimStaleApiServerPort(port, projectRoot) {
 
   for (const pid of listeners) {
     const commandLine = getProcessCommandLine(pid).replace(/\\/g, "/");
-    if (!isApiServerProcess(commandLine)) continue;
-    if (!commandLine.includes(apiServerRoot) && !commandLine.includes("artifacts/api-server")) continue;
+    if (!isProjectApiServerProcess(commandLine, projectRoot)) continue;
     stale.push({ pid, commandLine });
   }
 

@@ -48,14 +48,16 @@ import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
 import { createTicketPlatformServices } from "@workspace/ticket-platform";
 import { createLeadPlatformServices } from "@workspace/lead-platform";
-import { createKnowledgeRuntimeProvider } from "@workspace/knowledge-runtime";
+import { createKnowledgeRuntimeProvider, createCrmRagKnowledgeRetriever } from "@workspace/knowledge-runtime";
 import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-engine";
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
 import { createWebhookWorkflowTransferPorts } from "./webhook-workflow-transfer-ports.js";
 import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
+import { createWebhookChannelCustomerIdentityPort } from "./webhook-channel-customer-identity-port.js";
 import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
+import { createRpcCommercialEntitlementPort } from "@login-app/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
 import { createEmailRoutingTicketActionPort } from "./email-routing-ticket-adapter.js";
 import { createAiEmailRoutingCommercialPort } from "./ai-email-routing-commercial-adapter.js";
@@ -67,6 +69,15 @@ import { logger } from "../lib/logger.js";
 import { instrumentSupabaseClientForWhatsAppPerf } from "@workspace/channel-platform/server";
 import { WA_REQUEST_CACHE_NS, waRequestGetOrLoad } from "@workspace/channel-platform";
 
+/**
+ * Technical service identity for channel registry / conversation / automation wiring.
+ * Uses elevated flags only to satisfy service-layer interfaces while the API runs with
+ * the Supabase service-role client.
+ *
+ * Phase 5E: This MUST NOT be used as the Product ServiceContext for AI Employee tool
+ * execution. Channel runtime execute() uses createWebhookAiEmployeeServiceContext instead
+ * (isSuperAdmin: false + constrained hasPermission).
+ */
 export type SystemServiceContext = {
   userId: null;
   companyId: null;
@@ -182,23 +193,8 @@ export function getWebhookPlatform(): WebhookPlatform {
     knowledge: retrieval.knowledge,
   });
   const workflowTransferPorts = createWebhookWorkflowTransferPorts(client, automationPlatform.engine);
-  const { tools: baseTools } = createWebhookToolRouterIntegrations(client, {
-    workflowTransferPorts,
-  });
-  const tools = createScopedRuntimeToolPort(baseTools);
-  const execution = createAIExecutionServices(
-    client,
-    createEnterpriseRuntimeIntegrations({
-      promptRuntime: prompt.runtime,
-      gateway: provider.gateway,
-      knowledge: retrieval.knowledge,
-      tools,
-      platformConfig,
-    }),
-    { aiTokensCommercial },
-  );
-  const tenantRuntimeConfig = createTenantRuntimeConfigService(client);
 
+  const tenantRuntimeConfig = createTenantRuntimeConfigService(client);
   const knowledgeRuntimeProvider = createKnowledgeRuntimeProvider(retrieval.knowledge, {
     embeddingQueue: {
       async queuePendingEmbeddings(input) {
@@ -223,6 +219,33 @@ export function getWebhookPlatform(): WebhookPlatform {
       },
     },
   });
+
+  const retrieveKnowledge = createCrmRagKnowledgeRetriever({
+    knowledgeRuntime: knowledgeRuntimeProvider,
+    resolveRetrievalConfig: async (companyId) => {
+      const config = await tenantRuntimeConfig.resolve(companyId);
+      return config.knowledgeRetrieval;
+    },
+  });
+
+  const { tools: baseTools } = createWebhookToolRouterIntegrations(client, {
+    workflowTransferPorts,
+    retrieveKnowledge,
+  });
+  const tools = createScopedRuntimeToolPort(baseTools, {
+    commercialEntitlement: createRpcCommercialEntitlementPort(client),
+  });
+  const execution = createAIExecutionServices(
+    client,
+    createEnterpriseRuntimeIntegrations({
+      promptRuntime: prompt.runtime,
+      gateway: provider.gateway,
+      knowledge: retrieval.knowledge,
+      tools,
+      platformConfig,
+    }),
+    { aiTokensCommercial },
+  );
 
   const runtimePorts = createRuntimeEnginePortsWithContext(
     { conversation, intent, vectorQuery, retrieval, prompt, execution, provider },
@@ -250,9 +273,18 @@ export function getWebhookPlatform(): WebhookPlatform {
   });
 
   const employeeRuntime = createWebhookEmployeeRuntimePort(client);
+  const customerIdentity = createWebhookChannelCustomerIdentityPort(client);
 
   const ports = createChannelPlatformPortsWithContext(
-    { channelRegistry, conversation, runtime, automation: automationPlatform.engine, supabaseClient: client, employeeRuntime },
+    {
+      channelRegistry,
+      conversation,
+      runtime,
+      automation: automationPlatform.engine,
+      supabaseClient: client,
+      employeeRuntime,
+      customerIdentity,
+    },
     {
       registry: SYSTEM_CONTEXT,
       conversation: SYSTEM_CONTEXT,

@@ -9,6 +9,7 @@ import type {
 } from "@workspace/channel-platform";
 import type { AutomationEngine } from "@workspace/automation-platform";
 import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
+import { createWebhookAiEmployeeServiceContext } from "./webhook-ai-employee-auth-context.js";
 import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext, runWithEmployeeToolScope } from "./employee-runtime-bridge.js";
 import { createChannelAutomationPort, createChannelAutomationPortFromClient } from "./channel-automation-port.js";
@@ -197,6 +198,8 @@ export function createChannelConversationPort(
   ctx: ConversationServiceContext,
   options?: {
     resolveCompanyAssistantId?: (companyId: string) => Promise<string | null>;
+    /** Service-role client for Phase 2 trusted customer_id binding (null-guard updates). */
+    supabaseClient?: import("@supabase/supabase-js").SupabaseClient;
   },
 ): ChannelConversationPort {
   return {
@@ -314,6 +317,42 @@ export function createChannelConversationPort(
         return conversation.metadata ?? null;
       });
     },
+
+    async hasOutgoingMessages(conversationId) {
+      if (!options?.supabaseClient || !conversationId?.trim()) {
+        return false;
+      }
+      const { count, error } = await options.supabaseClient
+        .from("conversation_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", conversationId)
+        .eq("message_type", "outgoing");
+      if (error) {
+        return false;
+      }
+      return (count ?? 0) > 0;
+    },
+
+    async getConversationCustomerId(conversationId) {
+      const conversation = await services.conversations.getConversation(ctx, conversationId);
+      return conversation.customer_id ? String(conversation.customer_id) : null;
+    },
+
+    async linkConversationCustomerIfEmpty(input) {
+      if (!input.conversationId?.trim() || !input.customerId?.trim() || !input.companyId?.trim()) {
+        return;
+      }
+      const client = options?.supabaseClient;
+      if (!client) return;
+      // Null-guard only — never overwrite an existing trusted identity.
+      // company_id filter keeps multi-tenant isolation under service-role.
+      await client
+        .from("conversations")
+        .update({ customer_id: input.customerId })
+        .eq("id", input.conversationId)
+        .eq("company_id", input.companyId)
+        .is("customer_id", null);
+    },
   };
 }
 
@@ -330,11 +369,13 @@ export function createChannelRuntimePort(
         ? await options.resolveRuntimeActorUserId(input.companyId)
         : ctx.userId;
 
-      const runtimeCtx: RuntimeServiceContext = {
-        ...ctx,
+      // Phase 5E: AI Employee channel execution is product-authorized (assignment ∩ commercial ∩
+      // ownership). Never inherit SYSTEM_CONTEXT.isSuperAdmin / hasPermission: () => true.
+      // Technical service-role DB access remains on the Supabase client / SYSTEM_CONTEXT ports.
+      const runtimeCtx: RuntimeServiceContext = createWebhookAiEmployeeServiceContext({
         companyId: input.companyId,
-        userId: actorUserId ?? ctx.userId,
-      };
+        userId: actorUserId,
+      });
 
       const response = await (async () => {
         const executionContext = readAgentEmployeeExecutionContext(input.runtimeConfig.pageContext);
@@ -382,6 +423,7 @@ export function createChannelPlatformPortsWithContext(
     automation?: AutomationEngine;
     supabaseClient?: SupabaseClient;
     employeeRuntime?: ChannelPlatformPorts["employeeRuntime"];
+    customerIdentity?: ChannelPlatformPorts["customerIdentity"];
   },
   ctx: {
     registry: RegistryServiceContext;
@@ -410,6 +452,7 @@ export function createChannelPlatformPortsWithContext(
     registry: createChannelRegistryPort(deps.channelRegistry, ctx.registry),
     conversation: createChannelConversationPort(deps.conversation, ctx.conversation, {
       resolveCompanyAssistantId,
+      supabaseClient: deps.supabaseClient,
     }),
     runtime: createChannelRuntimePort(deps.runtime, ctx.runtime, {
       resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
@@ -418,6 +461,10 @@ export function createChannelPlatformPortsWithContext(
 
   if (deps.employeeRuntime) {
     ports.employeeRuntime = deps.employeeRuntime;
+  }
+
+  if (deps.customerIdentity) {
+    ports.customerIdentity = deps.customerIdentity;
   }
 
   if (deps.automation && ctx.automation) {

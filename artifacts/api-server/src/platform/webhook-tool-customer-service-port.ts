@@ -41,5 +41,30 @@ export function createWebhookToolCustomerServicePort(client: SupabaseClient): To
         },
       };
     },
+    async updateCustomerName(input) {
+      const result = await customerService.updateCustomer({
+        companyId: input.companyId,
+        userId: input.userId,
+        customerId: input.customerId,
+        field: "name",
+        value: input.name,
+      });
+      return {
+        customer: {
+          id: result.customer.id,
+          name: result.customer.name,
+          email: result.customer.email,
+          phone: result.customer.phone,
+        },
+      };
+    },
+    async linkConversationCustomer(input) {
+      if (!input.conversationId?.trim() || !input.customerId?.trim()) return;
+      await client
+        .from("conversations")
+        .update({ customer_id: input.customerId })
+        .eq("id", input.conversationId)
+        .is("customer_id", null);
+    },
   };
 }

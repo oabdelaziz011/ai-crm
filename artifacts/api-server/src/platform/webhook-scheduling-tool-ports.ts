@@ -12,5 +12,23 @@ export function createWebhookSchedulingToolPorts(client: SupabaseClient): Schedu
     slotGenerationEngine,
     availabilityEngine,
   });
-  return createSchedulingToolPorts(client, engines, bookingDomain);
+  const ports = createSchedulingToolPorts(client, engines, bookingDomain);
+  return {
+    ...ports,
+    async createBooking(input) {
+      const result = await ports.createBooking({
+        ...input,
+        source: input.source ?? "whatsapp",
+      });
+      if (result.success && input.conversationId && input.customerId) {
+        await client
+          .from("conversations")
+          .update({ customer_id: input.customerId })
+          .eq("id", input.conversationId)
+          .eq("company_id", input.companyId)
+          .is("customer_id", null);
+      }
+      return result;
+    },
+  };
 }

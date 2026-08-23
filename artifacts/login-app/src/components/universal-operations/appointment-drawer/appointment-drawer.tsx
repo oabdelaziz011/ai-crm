@@ -1,8 +1,8 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { OperationsRow, OperationsWorkspaceConfig } from "@workspace/universal-operations-engine";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCustomer360Workspace } from "@/hooks/universal-operations/use-customer360-workspace";
@@ -16,6 +16,7 @@ import {
   formatWaitingDuration,
 } from "@/lib/universal-operations/operations-queue-date-range";
 import type { ResolvedOperationsAction } from "@/lib/universal-operations/action-registry";
+import { noteDialogSurfaceOpened } from "@/lib/ui/prevent-dialog-dismiss-for-nested-overlay";
 import { cn } from "@/lib/utils";
 
 const DRAWER_ACTION_ORDER = [
@@ -74,6 +75,7 @@ export function AppointmentDrawer({
   onSelectRow,
   config,
   actions,
+  presentation = "inline",
 }: {
   row: OperationsRow | null;
   rows: OperationsRow[];
@@ -82,6 +84,7 @@ export function AppointmentDrawer({
   onSelectRow: (row: OperationsRow) => void;
   config?: OperationsWorkspaceConfig;
   actions: AppointmentDrawerActionApi;
+  presentation?: "inline" | "sheet";
 }) {
   const { t } = useTranslation("common");
   // Soft enrichment only while drawer is open — does not reload the queue page.
@@ -124,19 +127,20 @@ export function AppointmentDrawer({
     return DRAWER_ACTION_ORDER.map((id) => byId.get(id)).filter(Boolean) as ResolvedOperationsAction[];
   }, [actions, row]);
 
-  return (
-    <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent
-        side="right"
-        className="relative flex h-full w-[min(440px,100vw)] max-w-[100vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[440px] [&>button.absolute]:hidden"
-      >
-        {!row || !model ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-            {t("universalOperations.appointment.empty", { defaultValue: "Select an appointment" })}
-          </div>
-        ) : (
-          <>
-            <header className="shrink-0 border-b border-border/60 px-3 py-2.5">
+  useEffect(() => {
+    if (open && presentation === "sheet") noteDialogSurfaceOpened();
+  }, [open, presentation]);
+
+  if (!open) return null;
+
+  const panelBody =
+    !row || !model ? (
+      <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+        {t("universalOperations.appointment.empty", { defaultValue: "Select an appointment" })}
+      </div>
+    ) : (
+      <>
+        <header className="shrink-0 border-b border-border/60 px-3 py-2.5">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -353,7 +357,40 @@ export function AppointmentDrawer({
               </TooltipProvider>
             </footer>
           </>
-        )}
+        );
+
+  const panelChrome = (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      <p className="sr-only">
+        {model?.patient.name ??
+          t("universalOperations.appointment.title", { defaultValue: "Appointment details" })}
+      </p>
+      {panelBody}
+    </div>
+  );
+
+  if (presentation === "inline") {
+    return (
+      <aside
+        className="flex h-full w-[min(420px,38vw)] min-w-[320px] shrink-0 flex-col border-s border-border/60 bg-background shadow-[-10px_0_28px_-16px_rgba(0,0,0,0.35)]"
+        aria-label={t("universalOperations.appointment.title", { defaultValue: "Appointment details" })}
+      >
+        {panelChrome}
+      </aside>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
+      <SheetContent
+        side="right"
+        className="relative z-[60] flex h-full w-[min(440px,100vw)] max-w-[100vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[440px] [&>button.absolute]:hidden"
+      >
+        <SheetTitle className="sr-only">
+          {model?.patient.name ??
+            t("universalOperations.appointment.title", { defaultValue: "Appointment details" })}
+        </SheetTitle>
+        {panelBody}
       </SheetContent>
     </Sheet>
   );

@@ -260,7 +260,7 @@ export const WORKFLOW_PACK_CLINIC: WorkflowDefinition = {
       from: ["pending", "confirmed", "waiting", "booked", "checked_in"],
       to: "cancelled",
       actionId: "appointments.cancel",
-      requiredPermissions: ["booking.write", "bookings.delete"],
+      requiredPermissions: ["bookings.delete", "bookings.edit"],
       actorRoles: ["reception", "manager"],
       confirmation: {
         titleKey: "universalOperations.actions.confirm.cancelTitle",

@@ -13,6 +13,7 @@ export function OperationsWorkspacePanel({
   onSelectRow,
   config,
   actions,
+  presentation = "inline",
 }: {
   row: OperationsRow | null;
   rows: OperationsRow[];
@@ -22,6 +23,7 @@ export function OperationsWorkspacePanel({
   templateKey?: string;
   config?: OperationsWorkspaceConfig;
   actions: AppointmentDrawerActionApi;
+  presentation?: "inline" | "sheet";
 }) {
   return (
     <AppointmentDrawer
@@ -32,6 +34,7 @@ export function OperationsWorkspacePanel({
       onSelectRow={onSelectRow}
       config={config}
       actions={actions}
+      presentation={presentation}
     />
   );
 }

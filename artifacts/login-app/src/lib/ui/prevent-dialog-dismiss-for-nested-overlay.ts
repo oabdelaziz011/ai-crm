@@ -51,7 +51,11 @@ const OPEN_NESTED_OVERLAY_SELECTOR = [
 /** Grace window after nested overlay pointer activity (select-item unmount race). */
 const NESTED_OVERLAY_GRACE_MS = 400;
 
+/** Grace window after a dialog/sheet opens (double-click second click hitting overlay). */
+const DIALOG_OPEN_GRACE_MS = 500;
+
 let lastNestedOverlayActivityAt = 0;
+let lastDialogSurfaceOpenedAt = 0;
 
 function asElement(target: EventTarget | null | undefined): Element | null {
   if (target instanceof Element) return target;
@@ -64,8 +68,18 @@ export function noteNestedOverlayActivity(): void {
   lastNestedOverlayActivityAt = Date.now();
 }
 
+/** Call when a dialog/sheet opens so the opening click cannot immediately dismiss it. */
+export function noteDialogSurfaceOpened(): void {
+  const now = Date.now();
+  lastDialogSurfaceOpenedAt = now;
+  lastNestedOverlayActivityAt = now;
+}
+
 export function isWithinNestedOverlayGracePeriod(now = Date.now()): boolean {
-  return now - lastNestedOverlayActivityAt < NESTED_OVERLAY_GRACE_MS;
+  return (
+    now - lastNestedOverlayActivityAt < NESTED_OVERLAY_GRACE_MS ||
+    now - lastDialogSurfaceOpenedAt < DIALOG_OPEN_GRACE_MS
+  );
 }
 
 /** True when the event target lives inside a portaled nested overlay. */

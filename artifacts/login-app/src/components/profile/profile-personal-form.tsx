@@ -15,7 +15,7 @@ import { DashboardCard } from "@/components/dashboard/ui";
 import { PROFILE_TIMEZONE_OPTIONS } from "@/lib/profile-timezones";
 import { isAppLanguage, resolveAppLanguage } from "@/lib/i18n/resolve-app-language";
 import { isValidAvatarUrl } from "@/lib/avatar-url";
-import { uploadProfileAvatar } from "@/lib/profile/avatar-upload";
+import { AvatarUploadError, uploadProfileAvatar } from "@/lib/profile/avatar-upload";
 import { ProfileCurrencyField } from "@/components/profile/profile-currency-field";
 import { UserAvatar } from "@/components/profile/user-avatar";
 
@@ -189,14 +189,22 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         description: t("profiles.avatar.uploadSuccessDescription"),
       });
     } catch (uploadError) {
+      const message =
+        uploadError instanceof AvatarUploadError
+          ? uploadError.code === "too_large"
+            ? t("profiles.avatar.tooLargeDescription")
+            : uploadError.code === "unauthenticated"
+              ? t("profiles.avatar.sessionExpiredDescription")
+              : uploadError.code === "forbidden"
+                ? t("profiles.avatar.forbiddenDescription")
+                : uploadError.message
+          : uploadError instanceof Error
+            ? uploadError.message
+            : t("profiles.avatar.uploadFailedDescription");
+
       toast({
         title: t("profiles.avatar.uploadFailedTitle"),
-        description:
-          uploadError instanceof Error && uploadError.message === "too_large"
-            ? t("profiles.avatar.tooLargeDescription")
-            : uploadError instanceof Error
-              ? uploadError.message
-              : t("profiles.avatar.uploadFailedDescription"),
+        description: message,
         variant: "destructive",
       });
     } finally {

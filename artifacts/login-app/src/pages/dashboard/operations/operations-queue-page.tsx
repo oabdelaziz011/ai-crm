@@ -190,6 +190,21 @@ export function OperationsQueuePage() {
     config,
     workspaceRole,
     templateKey,
+    onActionSuccess: (action, row) => {
+      if (
+        action.id === "appointments.cancel" ||
+        action.id === "appointments.mark_no_show" ||
+        action.id === "appointments.archive"
+      ) {
+        setSelectedRow((prev) => (prev?.id === row.id ? null : prev));
+        setSelectedIds((prev) => {
+          if (!prev.has(row.id)) return prev;
+          const next = new Set(prev);
+          next.delete(row.id);
+          return next;
+        });
+      }
+    },
   });
 
   const drawerActions = useMemo(
@@ -315,95 +330,98 @@ export function OperationsQueuePage() {
 
       <QueueKpiStrip kpis={kpis} />
 
-      <OperationsDataGrid
-        columns={gridColumns}
-        rows={rows}
-        loading={loading}
-        search={query.search ?? ""}
-        onSearchChange={updateSearch}
-        sort={query.sort ?? []}
-        onSortChange={updateSort}
-        selectedIds={selectedIds}
-        onSelectionChange={setSelectedIds}
-        activeRowId={activeRow?.id ?? null}
-        onRowClick={openAppointmentDrawer}
-        onRowDoubleClick={openAppointmentDrawer}
-        onLoadMore={loadMore}
-        hasMore={page?.hasMore}
-        density={preferences.density === "spacious" ? "comfortable" : preferences.density}
-        onDensityChange={(density) => setPreferences((prev) => ({ ...prev, density }))}
-        className="min-h-0 flex-1"
-        templateKey={templateKey}
-        config={config}
-        currencyCode={companyCurrency}
-        datePreset={datePreset}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDatePresetChange={applyDatePreset}
-        filters={{
-          doctor: String(query.filters?.resource ?? "all"),
-          service: String(query.filters?.service ?? "all"),
-          status: String(query.filters?.statusId ?? "all"),
-          branch: String(query.filters?.branch ?? "all"),
-        }}
-        filterOptions={filterOptions}
-        onFiltersChange={(next) =>
-          updateFilters({
-            resource: next.doctor === "all" ? undefined : next.doctor,
-            service: next.service === "all" ? undefined : next.service,
-            statusId: next.status === "all" ? undefined : next.status,
-            branch: next.branch === "all" ? undefined : next.branch,
-          })
-        }
-        onApplySavedView={(view) => {
-          if (view === "today") {
-            const range = resolveQueueDateRange("today", null, null, queueTimezone);
+      <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-border/60 bg-background">
+        <OperationsDataGrid
+          columns={gridColumns}
+          rows={rows}
+          loading={loading}
+          search={query.search ?? ""}
+          onSearchChange={updateSearch}
+          sort={query.sort ?? []}
+          onSortChange={updateSort}
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          activeRowId={activeRow?.id ?? null}
+          onRowClick={openAppointmentDrawer}
+          onRowDoubleClick={openAppointmentDrawer}
+          onLoadMore={loadMore}
+          hasMore={page?.hasMore}
+          density={preferences.density === "spacious" ? "comfortable" : preferences.density}
+          onDensityChange={(density) => setPreferences((prev) => ({ ...prev, density }))}
+          className="min-h-0 min-w-0 flex-1 border-0 shadow-none"
+          templateKey={templateKey}
+          config={config}
+          currencyCode={companyCurrency}
+          datePreset={datePreset}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDatePresetChange={applyDatePreset}
+          filters={{
+            doctor: String(query.filters?.resource ?? "all"),
+            service: String(query.filters?.service ?? "all"),
+            status: String(query.filters?.statusId ?? "all"),
+            branch: String(query.filters?.branch ?? "all"),
+          }}
+          filterOptions={filterOptions}
+          onFiltersChange={(next) =>
             updateFilters({
-              ...range,
-              timezone: queueTimezone,
-              statusId: undefined,
-              paymentStatusId: undefined,
-              resource: undefined,
-              service: undefined,
-              branch: undefined,
-            });
-            return;
+              resource: next.doctor === "all" ? undefined : next.doctor,
+              service: next.service === "all" ? undefined : next.service,
+              statusId: next.status === "all" ? undefined : next.status,
+              branch: next.branch === "all" ? undefined : next.branch,
+            })
           }
-          if (view === "waiting") {
-            updateFilters({ statusId: "st_waiting", paymentStatusId: undefined });
-            return;
-          }
-          if (view === "unpaid") {
-            updateFilters({ paymentStatusId: "pay_pending", statusId: undefined });
-          }
-        }}
-        onRefresh={() => {
-          void refetch();
-        }}
-        isRefreshing={isFetching}
-        columnChooserColumns={chooserColumns}
-        hiddenColumnIds={preferences.hiddenColumnIds ?? []}
-        onToggleColumn={toggleColumn}
-        renderRowActions={(row) => (
-          <OperationsRowActionsMenu
-            row={row}
-            groups={actionEngine.getAvailableActionGroups(row)}
-            executingId={actionEngine.executingId}
-            onSelect={actionEngine.requestAction}
-          />
-        )}
-      />
+          onApplySavedView={(view) => {
+            if (view === "today") {
+              const range = resolveQueueDateRange("today", null, null, queueTimezone);
+              updateFilters({
+                ...range,
+                timezone: queueTimezone,
+                statusId: undefined,
+                paymentStatusId: undefined,
+                resource: undefined,
+                service: undefined,
+                branch: undefined,
+              });
+              return;
+            }
+            if (view === "waiting") {
+              updateFilters({ statusId: "st_waiting", paymentStatusId: undefined });
+              return;
+            }
+            if (view === "unpaid") {
+              updateFilters({ paymentStatusId: "pay_pending", statusId: undefined });
+            }
+          }}
+          onRefresh={() => {
+            void refetch();
+          }}
+          isRefreshing={isFetching}
+          columnChooserColumns={chooserColumns}
+          hiddenColumnIds={preferences.hiddenColumnIds ?? []}
+          onToggleColumn={toggleColumn}
+          renderRowActions={(row) => (
+            <OperationsRowActionsMenu
+              row={row}
+              groups={actionEngine.getAvailableActionGroups(row)}
+              executingId={actionEngine.executingId}
+              onSelect={actionEngine.requestAction}
+            />
+          )}
+        />
 
-      <OperationsWorkspacePanel
-        row={activeRow}
-        rows={rows}
-        open={Boolean(selectedRow)}
-        onClose={() => setSelectedRow(null)}
-        onSelectRow={openAppointmentDrawer}
-        templateKey={templateKey}
-        config={config}
-        actions={drawerActions}
-      />
+        <OperationsWorkspacePanel
+          row={activeRow}
+          rows={rows}
+          open={Boolean(selectedRow)}
+          onClose={() => setSelectedRow(null)}
+          onSelectRow={openAppointmentDrawer}
+          templateKey={templateKey}
+          config={config}
+          actions={drawerActions}
+          presentation="inline"
+        />
+      </div>
 
       <ActionConfirmationDialog
         open={Boolean(actionEngine.pendingConfirmation)}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -210,6 +210,26 @@ export function OperationsDataGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(480);
+
+  const handleRowClick = useCallback(
+    (row: OperationsRow) => {
+      onRowClick(row);
+    },
+    [onRowClick],
+  );
+
+  const handleRowDoubleClick = useCallback(
+    (row: OperationsRow, event: MouseEvent<HTMLTableRowElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (onRowDoubleClick) {
+        onRowDoubleClick(row);
+        return;
+      }
+      onRowClick(row);
+    },
+    [onRowClick, onRowDoubleClick],
+  );
 
   const columnLabel = (column: OperationsColumnDefinition) =>
     translateOperationsQueueColumnHeader(t, column.internalName, templateKey, column.displayName);
@@ -733,8 +753,8 @@ export function OperationsDataGrid({
                       activeRowId === row.id && "bg-primary/10 ring-1 ring-inset ring-primary/25",
                     )}
                     style={{ height: rowHeight }}
-                    onClick={() => onRowClick(row)}
-                    onDoubleClick={() => onRowDoubleClick?.(row)}
+                    onClick={() => handleRowClick(row)}
+                    onDoubleClick={(event) => handleRowDoubleClick(row, event)}
                   >
                     <td
                       className="sticky left-0 z-10 border-b border-border/40 bg-background px-2 align-middle"

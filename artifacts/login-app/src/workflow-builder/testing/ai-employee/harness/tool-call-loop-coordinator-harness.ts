@@ -4,17 +4,24 @@ import {
   type RuntimeToolPort,
 } from "@workspace/ai-execution-engine";
 import { createContext, createTestEnvironment } from "@workspace/runtime-integration/coordinator/test-utils";
-import { EMPLOYEE_TOOL_SCOPE_DENIED_CODE, TOOL_NOT_ALLOWED_CODE } from "@workspace/ai-execution-engine";
+import { TOOL_NOT_ALLOWED_CODE } from "@workspace/ai-execution-engine";
 import {
   attachAgentEmployeeExecutionContext,
   createAgentEmployeeExecutionContext,
 } from "../../../../lib/ai-employees/utilities/agent-employee-execution-context";
-import { applyToolScopeBeforeRoute, createScopedRuntimeToolPort } from "../../../../lib/ai-employees/utilities/scoped-runtime-tool-port";
+import { createScopedRuntimeToolPort } from "../../../../lib/ai-employees/utilities/scoped-runtime-tool-port";
+import { TOOL_NOT_ASSIGNED_CODE } from "../../../../lib/ai-employees/utilities/tool-scope-filter";
 import { mergeEmployeePageContext } from "../../../../lib/ai-employees/utilities/merge-employee-page-context";
 import { registerConversationToolScope, runWithEmployeeToolScope } from "../../../../lib/ai-employees/utilities/tool-scope-context";
 import { createIntegrationChannelRuntime, createIntegrationEmployee } from "../fixtures/integration-fixtures";
 
 export type ToolCallLoopCoordinatorHarness = ReturnType<typeof createToolCallLoopCoordinatorHarness>;
+
+const ALWAYS_ENTITLED = {
+  async isFeatureEnabled() {
+    return true;
+  },
+};
 
 export function createToolCallLoopCoordinatorHarness(conversationId = "conv-tool-loop-e2e") {
   const env = createTestEnvironment();
@@ -39,6 +46,7 @@ export function createToolCallLoopCoordinatorHarness(conversationId = "conv-tool
     listLlmTools: () => [
       { type: "function", function: { name: "search_customer" } },
       { type: "function", function: { name: "booking_search" } },
+      { type: "function", function: { name: "knowledge_search" } },
     ],
     route: async (_serviceCtx, input) => {
       routerCallCount += 1;
@@ -55,9 +63,8 @@ export function createToolCallLoopCoordinatorHarness(conversationId = "conv-tool
     },
   };
 
-  const scopedToolPort = createScopedRuntimeToolPort({
-    ...baseToolPort,
-    route: (serviceCtx, input) => applyToolScopeBeforeRoute(baseToolPort, serviceCtx, input),
+  const scopedToolPort = createScopedRuntimeToolPort(baseToolPort, {
+    commercialEntitlement: ALWAYS_ENTITLED,
   });
 
   function buildGateway(
@@ -217,7 +224,7 @@ export function createToolCallLoopCoordinatorHarness(conversationId = "conv-tool
     runThroughCoordinator,
     denialCodes: {
       toolNotAllowed: TOOL_NOT_ALLOWED_CODE,
-      employeeScopeDenied: EMPLOYEE_TOOL_SCOPE_DENIED_CODE,
+      employeeScopeDenied: TOOL_NOT_ASSIGNED_CODE,
     },
   };
 }

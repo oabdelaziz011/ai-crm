@@ -53,6 +53,7 @@ export function useCancelBookingWithReason(companyId: string | null) {
         updatedBy: userId,
         reason: input.reason,
         notes: input.notes,
+        enforceCancellationPolicy: false,
       });
       return result.booking;
     },

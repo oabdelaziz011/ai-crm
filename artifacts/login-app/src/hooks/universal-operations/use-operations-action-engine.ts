@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -14,6 +15,10 @@ import { useOperationsCommands } from "@/hooks/universal-operations/use-operatio
 import { CallService, ConversationService } from "@/lib/customer-profile/services";
 import { operationsEntityWorkspaceHref } from "@/lib/entity-workspace";
 import {
+  BookingDomainError,
+  formatBookingValidationErrors,
+} from "@/lib/scheduling/booking-domain";
+import {
   featureFlagsFromConfig,
   getOperationsActionRegistry,
   type ActionGroupSection,
@@ -27,13 +32,50 @@ type PendingConfirmation = {
   row: OperationsRow;
 };
 
+/** Actions that remove the row from the active operations queue. */
+const QUEUE_REMOVE_ACTION_IDS = new Set([
+  "appointments.cancel",
+  "appointments.mark_no_show",
+  "appointments.archive",
+]);
+
 registerDefaultWorkflows({ includeExamples: true });
+
+function resolveOperationsActionErrorMessage(
+  error: unknown,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (error instanceof BookingDomainError) {
+    return formatBookingValidationErrors(error.codes, (key) => t(key));
+  }
+  if (error instanceof Error && error.message.trim()) {
+    if (error.message === "Permission denied") {
+      return t("universalOperations.actions.noPermission");
+    }
+    return error.message;
+  }
+  return t("universalOperations.actions.toast.error");
+}
+
+function removeRowFromQueuePages(page: unknown, rowId: string): unknown {
+  if (!page || typeof page !== "object") return page;
+  const record = page as { rows?: OperationsRow[]; total?: number };
+  if (!Array.isArray(record.rows)) return page;
+  const nextRows = record.rows.filter((row) => row.id !== rowId);
+  if (nextRows.length === record.rows.length) return page;
+  return {
+    ...record,
+    rows: nextRows,
+    total: typeof record.total === "number" ? Math.max(0, record.total - 1) : nextRows.length,
+  };
+}
 
 export function useOperationsActionEngine({
   config,
   onOpenCustomer360,
   workspaceRole,
   templateKey = "clinic",
+  onActionSuccess,
 }: {
   config: OperationsWorkspaceConfig | undefined;
   /** Optional override; default opens Operations Entity Workspace (never CRM). */
@@ -42,12 +84,15 @@ export function useOperationsActionEngine({
   workspaceRole?: string;
   /** Operations template key → registered workflow pack. */
   templateKey?: string;
+  /** Called after a successful action (e.g. clear selection / close drawer). */
+  onActionSuccess?: (action: ResolvedOperationsAction, row: OperationsRow) => void;
 }) {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { company } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const commands = useOperationsCommands();
+  const qc = useQueryClient();
   const registry = useMemo(() => getOperationsActionRegistry(), []);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [pendingPaymentRow, setPendingPaymentRow] = useState<OperationsRow | null>(null);
@@ -160,6 +205,25 @@ export function useOperationsActionEngine({
     [buildRuntime, registry, t],
   );
 
+  const refreshOperationsQueue = useCallback(
+    async (actionId: string, rowId: string) => {
+      if (QUEUE_REMOVE_ACTION_IDS.has(actionId)) {
+        qc.setQueriesData({ queryKey: ["universal-operations", "queue"] }, (page) =>
+          removeRowFromQueuePages(page, rowId),
+        );
+      }
+      await qc.invalidateQueries({
+        queryKey: ["universal-operations", "queue"],
+        refetchType: "active",
+      });
+      await qc.invalidateQueries({
+        queryKey: ["universal-operations"],
+        refetchType: "active",
+      });
+    },
+    [qc],
+  );
+
   const runAction = useCallback(
     async (action: ResolvedOperationsAction, row: OperationsRow) => {
       if (!action.enabled) return;
@@ -167,11 +231,13 @@ export function useOperationsActionEngine({
       try {
         const definition = registry.get(action.id);
         await registry.execute(action.id, buildRuntime(row));
+        await refreshOperationsQueue(action.id, row.id);
+        onActionSuccess?.(action, row);
         if (definition?.toastOnSuccess !== false) {
           toast.success(t("universalOperations.actions.toast.success", { action: action.title }));
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : t("universalOperations.actions.toast.error");
+        const message = resolveOperationsActionErrorMessage(error, t);
         if (message.toLowerCase().includes("coming soon")) {
           toast.message(t("universalOperations.actions.comingSoon"));
         } else {
@@ -181,7 +247,7 @@ export function useOperationsActionEngine({
         setExecutingId(null);
       }
     },
-    [buildRuntime, registry, t],
+    [buildRuntime, onActionSuccess, refreshOperationsQueue, registry, t],
   );
 
   const requestAction = useCallback(

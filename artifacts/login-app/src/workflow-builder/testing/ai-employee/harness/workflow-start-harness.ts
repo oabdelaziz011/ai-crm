@@ -11,7 +11,7 @@ import {
 } from "../../../../lib/ai-employees/utilities/agent-employee-execution-context";
 import { mergeEmployeePageContext } from "../../../../lib/ai-employees/utilities/merge-employee-page-context";
 import { applyToolScopeBeforeRoute } from "../../../../lib/ai-employees/utilities/scoped-runtime-tool-port";
-import { EMPLOYEE_TOOL_SCOPE_DENIED_CODE } from "../../../../lib/ai-employees/utilities/tool-scope-filter";
+import { TOOL_NOT_ASSIGNED_CODE } from "../../../../lib/ai-employees/utilities/tool-scope-filter";
 import { registerConversationToolScope } from "../../../../lib/ai-employees/utilities/tool-scope-context";
 import type {
   CapturedRuntimeChatCall,
@@ -217,9 +217,16 @@ export function createAgentWorkflowHarness(
             input: input.input,
             triggeredBy: "agent",
           },
+          {
+            commercialEntitlement: {
+              async isFeatureEnabled() {
+                return true;
+              },
+            },
+          },
         );
 
-        if (result.errorCode === EMPLOYEE_TOOL_SCOPE_DENIED_CODE) {
+        if (result.errorCode === TOOL_NOT_ASSIGNED_CODE) {
           telemetry.record({
             type: "tool_scope_decision",
             employeeId: (result.output as Record<string, unknown> | null)?.employeeId as string | undefined,

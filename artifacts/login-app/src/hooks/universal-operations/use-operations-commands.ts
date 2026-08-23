@@ -38,12 +38,17 @@ export function useOperationsCommands(customerId?: string | null) {
   const qc = useQueryClient();
   const cmdContext = useOperationsCommandContext();
 
-  const invalidate = (bookingId?: string, overrideCustomerId?: string | null) => {
+  const invalidate = async (bookingId?: string, overrideCustomerId?: string | null) => {
     if (!cmdContext) return;
     invalidateOperationsPlatformQueries(qc, {
       companyId: cmdContext.companyId,
       customerId: overrideCustomerId ?? customerId,
       bookingId,
+    });
+    // Ensure the live operations queue refetches immediately (not only after staleTime).
+    await qc.invalidateQueries({
+      queryKey: ["universal-operations", "queue"],
+      refetchType: "active",
     });
   };
 

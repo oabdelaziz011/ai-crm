@@ -132,7 +132,7 @@ export const appointmentActions: OperationsActionDefinition[] = [
     icon: XCircle,
     group: "danger",
     order: 10,
-    requiredPermissions: ["booking.write", "bookings.delete"],
+    requiredPermissions: ["bookings.delete", "bookings.edit"],
     permissionMode: "disable",
     surfaces: ["menu", "quickBar"],
     dialog: "confirm",

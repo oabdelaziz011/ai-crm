@@ -3,7 +3,7 @@ import {
   createAgentEmployeeExecutionContext,
   readAgentEmployeeExecutionContext,
 } from "../../../../lib/ai-employees/utilities/agent-employee-execution-context";
-import { EMPLOYEE_TOOL_SCOPE_DENIED_CODE } from "../../../../lib/ai-employees/utilities/tool-scope-filter";
+import { TOOL_NOT_ASSIGNED_CODE } from "../../../../lib/ai-employees/utilities/tool-scope-filter";
 import { prepareEmployeeChatRuntime } from "../../../../lib/ai-employees/utilities/prepare-employee-chat-runtime";
 import { clearConversationExecutionContext } from "../../../../lib/ai-employees/utilities/employee-conversation-binding";
 import {
@@ -36,7 +36,7 @@ const SCENARIO_NAMES: Record<AiEmployeeIntegrationScenarioId, string> = {
   "execution-context-reused-on-resume": "ExecutionContext reused on resume",
   "execution-context-reused-on-continue": "ExecutionContext reused on continue",
   "allowed-tool-executes-with-rbac": "Allowed tool executes with RBAC",
-  "denied-tool-returns-scope-denial": "Denied tool returns EMPLOYEE_TOOL_SCOPE_DENIED",
+  "denied-tool-returns-scope-denial": "Denied tool returns TOOL_NOT_ASSIGNED",
   "knowledge-retrieval-from-execution-context": "Knowledge retrieval from ExecutionContext",
   "provider-selection-from-execution-context": "Provider selection from ExecutionContext",
   "draft-employee-cannot-execute": "Draft employee cannot execute",
@@ -411,10 +411,10 @@ async function runDeniedToolReturnsScopeDenial(
   const assertions = [
     assertCondition(
       "scope-denied",
-      "Denied tool returns EMPLOYEE_TOOL_SCOPE_DENIED",
-      deniedCalls.some((call) => call.errorCode === EMPLOYEE_TOOL_SCOPE_DENIED_CODE) ||
+      "Denied tool returns TOOL_NOT_ASSIGNED",
+      deniedCalls.some((call) => call.errorCode === TOOL_NOT_ASSIGNED_CODE) ||
         deniedTelemetry.length > 0,
-      "Expected EMPLOYEE_TOOL_SCOPE_DENIED for booking_search",
+      "Expected TOOL_NOT_ASSIGNED for booking_search",
     ),
     assertCondition(
       "router-not-executed",
@@ -1133,8 +1133,9 @@ async function runToolCallLoopAllowedToolRoutesOnce(
   scenarioName: string,
 ) {
   const harness = createToolCallLoopCoordinatorHarness("conv-tool-loop-allowed");
+  // knowledge_search: assigned + entitled path (search_customer is short-circuited by booking intake hardening).
   const result = await harness.runToolLoop(
-    [{ id: "call-allowed-1", name: "search_customer", arguments: { query: "inactive" } }],
+    [{ id: "call-allowed-1", name: "knowledge_search", arguments: { query: "policy" } }],
   );
 
   const assertions = [
@@ -1142,14 +1143,14 @@ async function runToolCallLoopAllowedToolRoutesOnce(
       "tool-succeeded",
       "Allowed tool executes through ToolCallLoop",
       result.toolExecutions.some(
-        (execution) => execution.toolKey === "search_customer" && execution.status === "succeeded",
+        (execution) => execution.toolKey === "knowledge_search" && execution.status === "succeeded",
       ),
-      "search_customer did not succeed",
+      "knowledge_search did not succeed",
     ),
     assertCondition(
       "single-route",
       "ToolRouter invoked exactly once",
-      harness.routerCallCount === 1 && harness.routerCalls.join(",") === "search_customer",
+      harness.routerCallCount === 1 && harness.routerCalls.join(",") === "knowledge_search",
       `Expected one router call, got ${harness.routerCallCount}`,
     ),
   ];
@@ -1184,7 +1185,7 @@ async function runToolCallLoopDeniedToolStructuredDenial(
   const assertions = [
     assertCondition(
       "scope-denied-code",
-      "Denied tool returns EMPLOYEE_TOOL_SCOPE_DENIED",
+      "Denied tool returns TOOL_NOT_ASSIGNED",
       denialPayload?.errorCode === harness.denialCodes.employeeScopeDenied,
       `Expected ${harness.denialCodes.employeeScopeDenied}, got ${String(denialPayload?.errorCode)}`,
     ),
@@ -1219,7 +1220,7 @@ async function runToolCallLoopCoordinatorPath(
 ) {
   const harness = createToolCallLoopCoordinatorHarness("conv-tool-loop-coordinator");
   const { response } = await harness.runThroughCoordinator([
-    { id: "call-coordinator-1", name: "search_customer", arguments: { query: "active" } },
+    { id: "call-coordinator-1", name: "knowledge_search", arguments: { query: "policy" } },
   ]);
 
   const assertions = [

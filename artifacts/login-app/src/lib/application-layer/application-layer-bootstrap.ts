@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
 
   createApplicationLayerRegistry,
@@ -81,11 +82,14 @@ export function buildApplicationContext(input: {
 
 
 
-export function createLoginAppApplicationLayerRegistry(ctx: LoginAppPortContext): ApplicationLayerRegistry {
+export function createLoginAppApplicationLayerRegistry(
+  ctx: LoginAppPortContext,
+  client: SupabaseClient = supabase,
+): ApplicationLayerRegistry {
 
-  const ports = createLoginAppApplicationPorts(ctx, supabase);
+  const ports = createLoginAppApplicationPorts(ctx, client);
 
-  const reactive = createLoginAppReactiveSignalPort(supabase);
+  const reactive = createLoginAppReactiveSignalPort(client);
 
   const automation = createLoginAppAutomationDispatchPort();
 
@@ -137,17 +141,17 @@ export function createLoginAppApplicationLayerRegistry(ctx: LoginAppPortContext)
     [...createProductionSubscribers(deps), createIntegrationEventSubscriber()],
     {
 
-    auditStore: createSupabaseAuditTrailStore(supabase),
+    auditStore: createSupabaseAuditTrailStore(client),
 
-    timelineStore: createSupabaseTimelineStore(supabase),
+    timelineStore: createSupabaseTimelineStore(client),
 
-    correlationStore: createSupabaseCorrelationStore(supabase),
+    correlationStore: createSupabaseCorrelationStore(client),
 
-    idempotencyStore: createSupabaseIdempotencyStore(supabase),
+    idempotencyStore: createSupabaseIdempotencyStore(client),
 
-    deadLetterQueue: createSupabaseDeadLetterQueue(supabase),
+    deadLetterQueue: createSupabaseDeadLetterQueue(client),
 
-    telemetry: createSupabaseEventTelemetry(supabase),
+    telemetry: createSupabaseEventTelemetry(client),
 
     awaitSubscribers: false,
 
@@ -180,6 +184,16 @@ export function permissionCodes(hasPermission: (code: string) => boolean, isSupe
     "customers.view",
 
     "bookings.view",
+
+    "bookings.edit",
+
+    "bookings.delete",
+
+    "bookings.create",
+
+    "booking.write",
+
+    "booking.read",
 
     "executive.view",
 

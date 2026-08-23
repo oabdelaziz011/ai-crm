@@ -46,6 +46,16 @@ export function isFeatureCommerciallyGated(feature: FeatureDefinitionLike): bool
   return feature.isBillable || feature.requiresSubscription;
 }
 
+export function isActiveSubscriptionPeriodLapsed(
+  company: Pick<CompanyAccessInput, "subscriptionRow">,
+  now: Date,
+): boolean {
+  const cs = company.subscriptionRow;
+  if (!cs || cs.status !== "active") return false;
+  if (!cs.currentPeriodEnd) return false;
+  return cs.currentPeriodEnd.getTime() <= now.getTime();
+}
+
 export function isCompanyCommerciallyExpired(company: CompanyAccessInput, now: Date): boolean {
   if (!company.exists) return true;
   if (company.status === "Suspended") return false;
@@ -55,6 +65,9 @@ export function isCompanyCommerciallyExpired(company: CompanyAccessInput, now: D
   if (cs) {
     if (cs.status === "expired") return true;
     if (cs.status === "trialing" && cs.trialEndsAt && cs.trialEndsAt.getTime() <= now.getTime()) {
+      return true;
+    }
+    if (isActiveSubscriptionPeriodLapsed(company, now)) {
       return true;
     }
     if (
@@ -119,6 +132,13 @@ export function isFeatureEnabledPure(input: {
     if (grant.overrideState === "disabled") return false;
     if (grant.overrideState === "enabled") {
       if (grant.source === "trial" && isCompanyCommerciallyExpired(company, now)) {
+        return false;
+      }
+      if (
+        commercial &&
+        (grant.source === "trial" || grant.source === "package") &&
+        isActiveSubscriptionPeriodLapsed(company, now)
+      ) {
         return false;
       }
       return true;

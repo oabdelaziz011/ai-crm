@@ -327,4 +327,58 @@ assert.equal(
 );
 console.log("  ✓ package grant survives commercial/trial expiry (unlike trial grants)");
 
+const overdueNow = new Date("2026-08-14T12:00:00.000Z");
+assert.equal(
+  isFeatureEnabledPure({
+    company: company({
+      status: "Active",
+      subscriptionStatus: "active",
+      subscriptionRow: {
+        status: "active",
+        trialEndsAt: null,
+        currentPeriodEnd: new Date("2026-08-01T12:00:00.000Z"),
+      },
+    }),
+    feature: WHATSAPP,
+    grant: grant({ featureCode: "whatsapp_channel", source: "package" }),
+    now: overdueNow,
+  }),
+  false,
+);
+assert.equal(
+  isFeatureEnabledPure({
+    company: company({
+      status: "Active",
+      subscriptionStatus: "past_due",
+      subscriptionRow: {
+        status: "past_due",
+        trialEndsAt: null,
+        currentPeriodEnd: new Date("2026-08-01T12:00:00.000Z"),
+      },
+    }),
+    feature: WHATSAPP,
+    grant: grant({ featureCode: "whatsapp_channel", source: "package" }),
+    now: overdueNow,
+  }),
+  true,
+);
+assert.equal(
+  isFeatureEnabledPure({
+    company: company({
+      status: "Active",
+      subscriptionStatus: "active",
+      subscriptionRow: {
+        status: "active",
+        trialEndsAt: null,
+        currentPeriodEnd: new Date("2026-08-01T12:00:00.000Z"),
+      },
+    }),
+    feature: WHATSAPP,
+    grant: grant({ featureCode: "whatsapp_channel", source: "contract" }),
+    now: overdueNow,
+  }),
+  true,
+);
+console.log("  ✓ overdue active package commercial access fail-closed; past_due/contract intact");
+
 console.log("\nPhase 6 access matrix (static) passed\n");

@@ -5,6 +5,7 @@
  * Does NOT fabricate payments or renewals.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isBillingLifecycleWorkerEnabled } from "../billing/lifecycle-http.js";
 import { logger } from "../lib/logger.js";
 
 export type SubscriptionLifecycleWorkerHandle = {
@@ -24,8 +25,10 @@ function createServiceClient(): SupabaseClient | null {
   });
 }
 
+export { isBillingLifecycleWorkerEnabled };
+
 export function startSubscriptionLifecycleWorker(): SubscriptionLifecycleWorkerHandle | null {
-  if (process.env.BILLING_LIFECYCLE_WORKER_ENABLED !== "true") {
+  if (!isBillingLifecycleWorkerEnabled()) {
     return null;
   }
 

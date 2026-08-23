@@ -128,7 +128,39 @@ assert.equal(getCompanyAccessState(activeCompany, now), "active");
 assert.equal(getCompanyAccessState(suspendedCompany, now), "suspended");
 assert.equal(isCompanyCommerciallyExpired(expiredTrialCompany, now), true);
 assert.equal(getCompanyAccessState(expiredTrialCompany, now), "expired");
-console.log("  ✓ access state helper (trial/active/suspended/expired)");
+
+const currentPaidCompany: CompanyAccessInput = {
+  ...activeCompany,
+  subscriptionRow: {
+    status: "active",
+    trialEndsAt: null,
+    currentPeriodEnd: new Date("2026-09-01T12:00:00.000Z"),
+  },
+};
+const overdueActiveCompany: CompanyAccessInput = {
+  ...activeCompany,
+  subscriptionRow: {
+    status: "active",
+    trialEndsAt: null,
+    currentPeriodEnd: new Date("2026-08-01T12:00:00.000Z"),
+  },
+};
+const pastDueCompany: CompanyAccessInput = {
+  ...activeCompany,
+  subscriptionStatus: "past_due",
+  subscriptionRow: {
+    status: "past_due",
+    trialEndsAt: null,
+    currentPeriodEnd: new Date("2026-08-01T12:00:00.000Z"),
+  },
+};
+assert.equal(isCompanyCommerciallyExpired(currentPaidCompany, now), false);
+assert.equal(getCompanyAccessState(currentPaidCompany, now), "active");
+assert.equal(isCompanyCommerciallyExpired(overdueActiveCompany, now), true);
+assert.equal(getCompanyAccessState(overdueActiveCompany, now), "expired");
+assert.equal(isCompanyCommerciallyExpired(pastDueCompany, now), false);
+assert.equal(getCompanyAccessState(pastDueCompany, now), "active");
+console.log("  ✓ access state helper (trial/active/suspended/expired/overdue-active)");
 
 function grant(
   partial: Partial<FeatureGrantLike> & Pick<FeatureGrantLike, "featureCode" | "overrideState" | "source">,
@@ -309,5 +341,68 @@ assert.match(sql, /Insufficient permissions to manage company feature grants/);
 assert.match(sql, /set_company_feature_grant/);
 assert.match(sql, /revoke_company_feature_grant/);
 console.log("  ✓ N grant RPCs require is_super_admin (SQL auth check present)");
+
+assert.equal(
+  isFeatureEnabledPure({
+    company: currentPaidCompany,
+    feature: WHATSAPP,
+    grant: grant({
+      featureCode: "whatsapp_channel",
+      overrideState: "enabled",
+      source: "package",
+    }),
+    now,
+  }),
+  true,
+);
+assert.equal(
+  isFeatureEnabledPure({
+    company: overdueActiveCompany,
+    feature: WHATSAPP,
+    grant: grant({
+      featureCode: "whatsapp_channel",
+      overrideState: "enabled",
+      source: "package",
+    }),
+    now,
+  }),
+  false,
+);
+assert.equal(
+  isFeatureEnabledPure({
+    company: overdueActiveCompany,
+    feature: WHATSAPP,
+    grant: grant({
+      featureCode: "whatsapp_channel",
+      overrideState: "enabled",
+      source: "manual",
+    }),
+    now,
+  }),
+  true,
+);
+assert.equal(
+  isFeatureEnabledPure({
+    company: overdueActiveCompany,
+    feature: CUSTOMERS,
+    grant: null,
+    now,
+  }),
+  true,
+);
+assert.equal(
+  isFeatureEnabledPure({
+    company: pastDueCompany,
+    feature: WHATSAPP,
+    grant: grant({
+      featureCode: "whatsapp_channel",
+      overrideState: "enabled",
+      source: "package",
+    }),
+    now,
+  }),
+  true,
+);
+console.log("  ✓ overdue active fail-closes package commercial access; manual/core/past_due intact");
 
 console.log("\nAll Phase 2 foundation tests passed.\n");

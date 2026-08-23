@@ -3,22 +3,23 @@ import { createClient } from "@supabase/supabase-js";
 import { loadPlatformEnv } from "../config/env.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { logger } from "../lib/logger.js";
+import {
+  clampLifecycleEnforceLimit,
+  hasClientSuppliedCompanyId,
+  resolveInternalLifecycleAuth,
+} from "../billing/lifecycle-http.js";
 
 const router: IRouter = Router();
 const env = loadPlatformEnv();
 
 function requireInternalApiKey(req: Request, _res: Response, next: NextFunction): void {
-  const configuredKey = env.internalApiKey?.trim() || process.env.INTERNAL_API_KEY?.trim();
-  if (!configuredKey) {
-    next(new HttpError(503, "Internal API key not configured.", "internal_key_missing"));
-    return;
-  }
-  const bearer = req.header("authorization")?.startsWith("Bearer ")
-    ? req.header("authorization")!.slice("Bearer ".length).trim()
-    : null;
-  const headerKey = req.header("x-internal-api-key")?.trim();
-  if (bearer !== configuredKey && headerKey !== configuredKey) {
-    next(new HttpError(401, "Internal authentication required.", "unauthorized"));
+  const result = resolveInternalLifecycleAuth({
+    configuredKey: env.internalApiKey?.trim() || process.env.INTERNAL_API_KEY?.trim(),
+    authorizationHeader: req.header("authorization"),
+    internalKeyHeader: req.header("x-internal-api-key"),
+  });
+  if (!result.ok) {
+    next(new HttpError(result.status, result.message, result.code));
     return;
   }
   next();
@@ -28,6 +29,7 @@ function requireInternalApiKey(req: Request, _res: Response, next: NextFunction)
  * POST /api/internal/billing/lifecycle-enforce
  * Cron/external scheduler entrypoint. Invokes Phase 7.8 orchestrator.
  * Does not fabricate payments or renewals.
+ * Does not accept client company_id — enforcement is global and bounded.
  */
 router.post("/lifecycle-enforce", requireInternalApiKey, async (req, res, next) => {
   try {
@@ -37,8 +39,11 @@ router.post("/lifecycle-enforce", requireInternalApiKey, async (req, res, next) 
       throw new HttpError(503, "Supabase service credentials unavailable.", "supabase_unavailable");
     }
 
-    const limitRaw = Number(req.body?.limit ?? req.query.limit ?? 100);
-    const limit = Math.max(1, Math.min(500, Number.isFinite(limitRaw) ? limitRaw : 100));
+    if (hasClientSuppliedCompanyId(req.body, req.query)) {
+      logger.warn("Lifecycle enforce ignored client-supplied company_id");
+    }
+
+    const limit = clampLifecycleEnforceLimit(req.body?.limit ?? req.query.limit);
 
     const client = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -53,9 +58,12 @@ router.post("/lifecycle-enforce", requireInternalApiKey, async (req, res, next) 
       throw new HttpError(500, error.message, "lifecycle_enforce_failed");
     }
 
+    logger.info({ result: data, limit }, "Internal lifecycle enforce completed");
+
     res.json({
       ok: true,
       result: data,
+      limit,
       note: "No payment fabricated. Renewal requires renew_subscription_from_payment.",
     });
   } catch (error) {

@@ -67,16 +67,27 @@ export type CrmAgentToolPorts = {
   searchInvoices(input: {
     companyId: string;
     userId: string;
+    /**
+     * Trusted conversation customer only — never LLM-supplied.
+     * Required for AI Employee channel execution; ports fail closed when absent.
+     */
+    trustedCustomerId?: string | null;
     status?: string;
     overdueOnly?: boolean;
-  }): Promise<{ invoices: CrmInvoiceSummary[]; total: number }>;
+  }): Promise<{ invoices: CrmInvoiceSummary[]; total: number; errors?: string[]; message?: string }>;
 
   searchBookings(input: {
     companyId: string;
     userId: string;
+    /**
+     * Trusted conversation customer only — never LLM-supplied.
+     * Required for AI Employee channel execution; ports fail closed when absent.
+     */
+    trustedCustomerId?: string | null;
+    /** @deprecated Ignored for authorization — use trustedCustomerId only. */
     customerId?: string;
     daysBack?: number;
-  }): Promise<{ bookings: CrmBookingSummary[]; total: number }>;
+  }): Promise<{ bookings: CrmBookingSummary[]; total: number; errors?: string[]; message?: string }>;
 
   knowledgeSearch(input: {
     companyId: string;

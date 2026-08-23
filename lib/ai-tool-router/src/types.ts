@@ -96,6 +96,8 @@ export type ConversationSnapshot = {
   id: string;
   company_id: string;
   state: ConversationState;
+  /** Trusted CRM customer linked to the conversation — never from LLM tool args. */
+  customer_id: string | null;
 };
 
 export type ServiceContext = {

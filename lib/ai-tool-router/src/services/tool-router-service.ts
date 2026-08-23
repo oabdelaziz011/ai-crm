@@ -142,6 +142,7 @@ export class ToolRouterService {
       conversationId: conversation.id,
       conversationState: conversation.state,
       userId: ctx.userId,
+      trustedCustomerId: conversation.customer_id,
     };
 
     const maxAttempts = Math.max(1, definition.retry_policy.maxAttempts);

@@ -1,18 +1,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createLeadPlatformServices,
+  LEAD_PERMISSIONS,
   type LeadPlatformServices,
   type LeadServiceContext,
 } from "@workspace/lead-platform";
 import type { LeadAgentToolPorts } from "../tools/lead-agent-ports.js";
 import { nextActionForStatus } from "../tools/lead-agent-tools.js";
 
+/**
+ * Domain-layer permissions after ToolRouter + commercial gates.
+ * Constrained allowlist — not isSuperAdmin and not blanket () => true.
+ */
+const LEAD_AGENT_DOMAIN_PERMISSIONS: ReadonlySet<string> = new Set([
+  LEAD_PERMISSIONS.view,
+  LEAD_PERMISSIONS.create,
+  LEAD_PERMISSIONS.edit,
+  LEAD_PERMISSIONS.qualify,
+  LEAD_PERMISSIONS.convert,
+  LEAD_PERMISSIONS.assign,
+  LEAD_PERMISSIONS.merge,
+  LEAD_PERMISSIONS.archive,
+  LEAD_PERMISSIONS.manage,
+]);
+
 function buildToolContext(userId: string, companyId: string): LeadServiceContext {
   return {
     userId,
     companyId,
     isSuperAdmin: false,
-    hasPermission: () => true,
+    hasPermission: (code: string) => LEAD_AGENT_DOMAIN_PERMISSIONS.has(code),
   };
 }
 

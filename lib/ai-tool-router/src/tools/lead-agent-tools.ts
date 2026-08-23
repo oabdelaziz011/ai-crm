@@ -84,7 +84,7 @@ export function createLeadAgentTools(ports: LeadAgentToolPorts): Record<string, 
           email: readOptionalString(input.email),
           phone: readOptionalString(input.phone),
           companyName: readOptionalString(input.companyName),
-          conversationId: readOptionalString(input.conversationId) ?? context.conversationId,
+          conversationId: context.conversationId,
           aiSummary: readOptionalString(input.aiSummary),
         });
         return { success: true, lead: mapLead(result.lead) };

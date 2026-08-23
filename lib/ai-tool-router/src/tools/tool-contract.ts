@@ -6,6 +6,11 @@ export type ToolExecutionContext = {
   conversationState: ConversationState;
   userId: string | null;
   aiAssistantId?: string | null;
+  /**
+   * Trusted conversation customer (conversations.customer_id).
+   * Never accept LLM-supplied customerId for ownership / search scoping.
+   */
+  trustedCustomerId?: string | null;
 };
 
 export interface Tool {

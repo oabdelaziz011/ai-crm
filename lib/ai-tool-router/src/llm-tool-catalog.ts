@@ -121,11 +121,15 @@ const BOOKING_SEARCH_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: "booking_search",
-    description: "Search bookings by customer and recency. Read-only.",
+    description:
+      "CRM booking history for the trusted conversation customer only (read-only). Use for سجل الحجوزات / booking history / CRM history / past appointments overview. Do NOT use for cancel, reschedule, check-in, check-out, or phone-based operational lookup — those use search_bookings. Requires the conversation to already have a trusted customer (after phone lookup / search_customer).",
     parameters: {
       type: "object",
       properties: {
-        customerId: { type: "string", description: "Optional customer UUID filter" },
+        customerId: {
+          type: "string",
+          description: "Ignored for authorization — trusted conversation customer only",
+        },
         daysBack: { type: "number", description: "How many days back to search (default 30)" },
       },
       additionalProperties: false,
@@ -138,7 +142,7 @@ const SEARCH_AVAILABILITY_LLM: LlmFunctionToolDefinition = {
   function: {
     name: "search_availability",
     description:
-      "Search real bookable appointment availability for a service. Returns available dates, time slots, resource id/name, duration, and capacity. Read-only.",
+      "Search real bookable appointment availability for a service and return a list of open dates/time slots (المواعيد المتاحة). Use when the customer asks what times are open on a date or across several days. Do NOT use for أقرب موعد / earliest / next available — call find_next_available for that intent. Read-only.",
     parameters: {
       type: "object",
       properties: {
@@ -146,7 +150,11 @@ const SEARCH_AVAILABILITY_LLM: LlmFunctionToolDefinition = {
         resourceId: { type: "string", description: "Optional specific resource UUID" },
         branchId: { type: "string", description: "Optional branch UUID filter" },
         date: { type: "string", description: "Optional YYYY-MM-DD date for slot results" },
-        daysAhead: { type: "number", description: "Days to scan when date omitted (default 7, min 1, max 90). Examples: next 7 days = 7, two weeks = 14, this month = 30." },
+        daysAhead: {
+          type: "number",
+          description:
+            "Days to scan when date is omitted (default 7, min 1, max 90). Omit when date is set. Never pass 0.",
+        },
       },
       required: ["serviceId"],
       additionalProperties: false,
@@ -159,7 +167,7 @@ const FIND_NEXT_AVAILABLE_LLM: LlmFunctionToolDefinition = {
   function: {
     name: "find_next_available",
     description:
-      "Find the first real bookable appointment slot for a service. Skips unavailable dates and returns the earliest open slot with resource, date, and time. Read-only.",
+      "Find the single earliest/next real bookable appointment slot for a service (أقرب موعد / earliest available / next available). Skips unavailable dates and returns one slot with resource, date, and time. Read-only. Prefer this over search_availability when the customer asks for the nearest appointment rather than a date list.",
     parameters: {
       type: "object",
       properties: {
@@ -223,12 +231,21 @@ const SEARCH_BOOKINGS_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: "search_bookings",
-    description: "Search recent bookings for a customer or company queue. Read-only.",
+    description:
+      "Operational scheduling booking lookup by patient phone or trusted conversation customer. REQUIRED when the customer sends a phone to look up bookings, or wants to cancel/reschedule/check-in/check-out and needs a selectable booking list. Pass purpose=\"cancel\" for cancellation flows. Never stay silent — use customerFacingMessage. When purpose is cancel and multiple bookings exist, ask which one; do NOT cancel yet. Do NOT use for CRM booking-history / سجل الحجوزات — that is booking_search.",
     parameters: {
       type: "object",
       properties: {
-        customerId: { type: "string", description: "Optional CRM customer UUID filter" },
-        daysBack: { type: "number", description: "Days of history to include (default 30)" },
+        customerId: { type: "string", description: "Ignored — do not use for ownership" },
+        phone: {
+          type: "string",
+          description: "Patient mobile number to look up bookings for (preferred when the customer sends a phone)",
+        },
+        daysBack: { type: "number", description: "Days of history to include (default 30, or 90 with phone)" },
+        purpose: {
+          type: "string",
+          description: 'Use "cancel" when helping cancel an appointment; otherwise omit or "list".',
+        },
       },
       additionalProperties: false,
     },
@@ -258,14 +275,22 @@ const CANCEL_BOOKING_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: "cancel_booking",
-    description: "Cancel an existing booking.",
+    description:
+      "Cancel one existing booking AFTER the customer clearly selected it (list number or BK- reference from search_bookings). Prefer bookingReference (BK-…) when that is what the customer sent. Never cancel without a selection.",
     parameters: {
       type: "object",
       properties: {
-        bookingId: { type: "string", description: "Booking UUID" },
+        bookingId: { type: "string", description: "Booking UUID of the selected appointment" },
+        bookingReference: {
+          type: "string",
+          description: "Customer-facing booking number like BK-000025",
+        },
         reason: { type: "string", description: "Optional cancellation reason" },
+        phone: {
+          type: "string",
+          description: "Patient mobile used to authorize cancel when needed",
+        },
       },
-      required: ["bookingId"],
       additionalProperties: false,
     },
   },
@@ -275,14 +300,16 @@ const CHECK_IN_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: "check_in",
-    description: "Check in a customer for their scheduled booking.",
+    description:
+      "Check in a customer for their scheduled booking. Prefer bookingId UUID, or bookingReference (BK-…) with patient phone when trusted customer is not yet linked.",
     parameters: {
       type: "object",
       properties: {
         bookingId: { type: "string", description: "Booking UUID" },
+        bookingReference: { type: "string", description: "Booking confirmation like BK-000035" },
+        phone: { type: "string", description: "Patient mobile used to prove ownership when needed" },
         roomId: { type: "string", description: "Optional room UUID" },
       },
-      required: ["bookingId"],
       additionalProperties: false,
     },
   },
@@ -292,13 +319,15 @@ const CHECK_OUT_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: "check_out",
-    description: "Check out a customer after their appointment is complete.",
+    description:
+      "Check out a customer after their appointment. Prefer bookingId UUID, or bookingReference (BK-…) with patient phone when trusted customer is not yet linked.",
     parameters: {
       type: "object",
       properties: {
         bookingId: { type: "string", description: "Booking UUID" },
+        bookingReference: { type: "string", description: "Booking confirmation like BK-000035" },
+        phone: { type: "string", description: "Patient mobile used to prove ownership when needed" },
       },
-      required: ["bookingId"],
       additionalProperties: false,
     },
   },
@@ -651,7 +680,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     category: "knowledge",
     classification: "read_only",
     handlerSource: "crm_agent",
-    description: "Hybrid/keyword knowledge retrieval.",
+    description: "Semantic knowledge retrieval (RAG) over the company knowledge base.",
     requiredPermissions: ["tools.execute", "knowledge.view"],
     llmDefinition: KNOWLEDGE_SEARCH_LLM,
   },

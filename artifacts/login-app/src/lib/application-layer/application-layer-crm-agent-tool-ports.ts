@@ -1,14 +1,10 @@
 import type {
   CrmAgentToolPorts,
   CrmCustomerSummary,
+  CrmKnowledgeRetriever,
 } from "@workspace/ai-tool-router";
 import type { LoginAppPortContext } from "./adapters/customer-read-port-adapter.js";
 import { createLoginAppApplicationPorts } from "./create-login-app-application-ports.js";
-import {
-  buildToolApplicationContext,
-  createLoginAppApplicationServices,
-  unwrapQuery,
-} from "./application-layer-tool-context.js";
 import { supabase } from "@/lib/supabase";
 
 function mapCustomer(row: {
@@ -40,13 +36,15 @@ function normalizeEmailKey(email: string | null | undefined): string | null {
 
 export type CreateApplicationLayerCrmAgentToolPortsOptions = {
   portContext: LoginAppPortContext;
+  /** Phase 5K.1 — RAG via shared KnowledgeRuntimeProvider path. */
+  retrieveKnowledge?: CrmKnowledgeRetriever;
 };
 
 /** CRM agent ports backed by Application Layer read/write ports — no direct Supabase for domain reads. */
 export function createApplicationLayerCrmAgentToolPorts(
   options: CreateApplicationLayerCrmAgentToolPortsOptions,
 ): CrmAgentToolPorts {
-  const { portContext } = options;
+  const { portContext, retrieveKnowledge } = options;
   const ports = createLoginAppApplicationPorts(portContext, supabase);
   const tenantId = portContext.companyId;
 
@@ -84,6 +82,10 @@ export function createApplicationLayerCrmAgentToolPorts(
     },
 
     async updateCustomer(input) {
+      // Company-scoped CRM: trusted tenant from port context; LLM customerId is data only.
+      if (input.companyId !== tenantId) {
+        throw new Error("Company context mismatch.");
+      }
       const updated = await ports.customerWrite.update(tenantId, input.customerId, {
         [input.field]: input.value,
       });
@@ -124,6 +126,11 @@ export function createApplicationLayerCrmAgentToolPorts(
           message: "Merge requires explicit confirmation.",
         };
       }
+      if (!tenantId || input.companyId !== tenantId) {
+        throw new Error("Company context is required.");
+      }
+      // Intentionally blocked: no Application Layer merge command exists.
+      // Webhook uses ownership-hardened createSupabaseCrmAgentToolPorts.mergeCustomers.
       throw new Error(
         "Customer merge is not yet exposed via Application Layer commands. Use CRM UI for merge operations.",
       );
@@ -132,6 +139,9 @@ export function createApplicationLayerCrmAgentToolPorts(
     async importCustomers(input) {
       if (!input.confirmed) {
         return { imported: 0, skipped: 0, errors: ["Import requires explicit confirmation."] };
+      }
+      if (!tenantId || input.companyId !== tenantId) {
+        throw new Error("Company context mismatch.");
       }
 
       const errors: string[] = [];
@@ -162,12 +172,21 @@ export function createApplicationLayerCrmAgentToolPorts(
 
     async searchInvoices(input) {
       void input.userId;
-      const queue = await ports.bookingRead.listQueue(tenantId, { pageSize: 200 });
-      const customerIds = [...new Set(queue.map((b) => b.customerId))].slice(0, 50);
-      const invoiceLists = await Promise.all(
-        customerIds.map((customerId) => ports.invoiceRead.listForCustomer(tenantId, customerId)),
-      );
-      let invoices = invoiceLists.flat().map((inv) => ({
+      const trusted =
+        typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
+      if (!trusted) {
+        return {
+          invoices: [],
+          total: 0,
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message:
+            "Trusted customer context is required before searching invoices for this conversation.",
+        };
+      }
+
+      // Company scope = tenantId; customer scope = trustedCustomerId only (Phase 5C).
+      const listed = await ports.invoiceRead.listForCustomer(tenantId, trusted);
+      let invoices = listed.map((inv) => ({
         id: inv.id,
         customer_id: inv.customerId,
         amount: inv.amountCents / 100,
@@ -187,9 +206,20 @@ export function createApplicationLayerCrmAgentToolPorts(
 
     async searchBookings(input) {
       void input.userId;
-      const bookings = input.customerId
-        ? await ports.bookingRead.listForCustomer(tenantId, input.customerId)
-        : await ports.bookingRead.listQueue(tenantId, { pageSize: 200 });
+      const trusted =
+        typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
+      if (!trusted) {
+        return {
+          bookings: [],
+          total: 0,
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message:
+            "Trusted customer context is required before searching bookings for this conversation.",
+        };
+      }
+
+      // Ignore LLM customerId — trustedCustomerId only (Phase 5D).
+      const bookings = await ports.bookingRead.listForCustomer(tenantId, trusted);
 
       const daysBack = input.daysBack ?? 30;
       const cutoff = new Date();
@@ -210,19 +240,38 @@ export function createApplicationLayerCrmAgentToolPorts(
     },
 
     async knowledgeSearch(input) {
-      const services = createLoginAppApplicationServices(portContext);
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      const result = await services.knowledge.searchKnowledge(input.query, ctx, { limit: 8 });
-      const search = unwrapQuery(result);
-      const results = search.chunks.slice(0, 8).map((chunk, index) => ({
-        title: chunk.documentTitle ?? `Source ${index + 1}`,
-        excerpt: chunk.content.slice(0, 280),
-        confidence: chunk.score ?? search.confidence,
-      }));
+      const companyId =
+        typeof input.companyId === "string" ? input.companyId.trim() : "";
+      if (!companyId) {
+        return {
+          results: [],
+          contextText: "Company context is required for knowledge retrieval.",
+          items: [],
+        };
+      }
+      if (companyId !== portContext.companyId && !portContext.isSuperAdmin) {
+        return {
+          results: [],
+          contextText: "Company context is required for knowledge retrieval.",
+          items: [],
+        };
+      }
+      if (!retrieveKnowledge) {
+        return {
+          results: [],
+          contextText:
+            "Knowledge retrieval is unavailable: no retrieval provider configured for this runtime.",
+          items: [],
+        };
+      }
+      const result = await retrieveKnowledge({
+        companyId: portContext.companyId,
+        userId: input.userId,
+        query: input.query,
+      });
       return {
-        results,
-        contextText: search.chunks.map((c) => c.content).join("\n\n") || "No knowledge context returned.",
-        items: results,
+        ...result,
+        items: result.results,
       };
     },
   };

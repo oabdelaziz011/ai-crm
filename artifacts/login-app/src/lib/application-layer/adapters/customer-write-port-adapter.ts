@@ -44,11 +44,13 @@ export function createLoginAppCustomerWritePort(
       let latest = null as Awaited<ReturnType<typeof repository.findCustomersByField>>["record"];
       for (const [field, value] of Object.entries(patch)) {
         if (value == null) continue;
+        // Application-layer CustomerReadModel uses displayName; CRM repo column is name.
+        const repoField = field === "displayName" ? "name" : field;
         latest = await repository.updateCustomer({
           companyId: tenantId,
           customerId,
           userId: ctx.actorUserId,
-          field,
+          field: repoField,
           value: String(value),
         });
       }

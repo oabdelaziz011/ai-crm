@@ -35,8 +35,48 @@ function normalizeEmailKey(email: string | null | undefined): string | null {
   return trimmed || null;
 }
 
-async function listSchedulingBookings(client: SupabaseClient, companyId: string) {
+function requireTrustedCompanyId(companyId: string | null | undefined): string {
+  const trusted = typeof companyId === "string" ? companyId.trim() : "";
+  if (!trusted) {
+    throw new Error("Company context is required.");
+  }
+  return trusted;
+}
+
+/**
+ * Prove a customer id belongs to the trusted company before any mutation.
+ * Fail closed with a non-leaky message (does not reveal cross-company existence).
+ */
+async function assertCustomerOwnedByCompany(
+  client: SupabaseClient,
+  companyId: string,
+  customerId: string,
+  label: string,
+): Promise<void> {
+  const id = typeof customerId === "string" ? customerId.trim() : "";
+  if (!id) {
+    throw new Error(`${label} customer id is required.`);
+  }
+
   const { data, error } = await client
+    .from("customers")
+    .select("id")
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error(`${label} customer not found for this company.`);
+  }
+}
+
+async function listSchedulingBookings(
+  client: SupabaseClient,
+  companyId: string,
+  trustedCustomerId?: string | null,
+) {
+  let query = client
     .from("scheduling_bookings")
     .select("id, customer_id, status, start_at, service_id")
     .eq("company_id", companyId)
@@ -45,6 +85,12 @@ async function listSchedulingBookings(client: SupabaseClient, companyId: string)
     .order("start_at", { ascending: true })
     .limit(200);
 
+  const trusted = typeof trustedCustomerId === "string" ? trustedCustomerId.trim() : "";
+  if (trusted) {
+    query = query.eq("customer_id", trusted);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((row) => ({
@@ -75,7 +121,16 @@ async function listLegacyBookings(client: SupabaseClient, userId: string) {
   }));
 }
 
-async function keywordKnowledgeFallback(client: SupabaseClient, companyId: string, query: string) {
+/**
+ * Legacy keyword/FTS fallback (RPC `knowledge_keyword_search`).
+ * Kept for non–AI-Employee callers that explicitly need FTS.
+ * AI Employee `knowledge_search` must NOT use this — inject `retrieveKnowledge` (RAG) instead.
+ */
+export async function keywordKnowledgeFallback(
+  client: SupabaseClient,
+  companyId: string,
+  query: string,
+) {
   const { data, error } = await client.rpc("knowledge_keyword_search", {
     p_company_id: companyId,
     p_query: query,
@@ -106,6 +161,9 @@ async function keywordKnowledgeFallback(client: SupabaseClient, companyId: strin
         : "No knowledge documents matched this query.",
   };
 }
+
+const KNOWLEDGE_RETRIEVER_REQUIRED_MESSAGE =
+  "Knowledge retrieval is unavailable: no retrieval provider configured for this runtime.";
 
 export function createSupabaseCrmAgentToolPorts(
   client: SupabaseClient,
@@ -158,10 +216,14 @@ export function createSupabaseCrmAgentToolPorts(
     },
 
     async updateCustomer(input) {
+      const companyId = requireTrustedCompanyId(input.companyId);
+      // Company-scoped CRM: LLM may choose customerId as data, but it must belong to trusted company.
+      await assertCustomerOwnedByCompany(client, companyId, input.customerId, "Target");
+
       const result = await customerService.updateCustomer({
-        companyId: input.companyId,
+        companyId,
         userId: input.userId,
-        customerId: input.customerId,
+        customerId: input.customerId.trim(),
         field: input.field,
         value: input.value,
       });
@@ -216,37 +278,58 @@ export function createSupabaseCrmAgentToolPorts(
         };
       }
 
+      const companyId = requireTrustedCompanyId(input.companyId);
+
       if (input.duplicateCustomerIds.length === 0) {
         throw new Error("No duplicate customer IDs provided for merge.");
       }
 
-      const primaryId = input.primaryCustomerId;
-      const duplicateIds = input.duplicateCustomerIds.filter((id) => id !== primaryId);
+      const primaryId = String(input.primaryCustomerId ?? "").trim();
+      const duplicateIds = [
+        ...new Set(
+          input.duplicateCustomerIds
+            .map((id) => String(id ?? "").trim())
+            .filter((id) => id && id !== primaryId),
+        ),
+      ];
+
+      if (!primaryId) {
+        throw new Error("Primary customer id is required.");
+      }
+      if (duplicateIds.length === 0) {
+        throw new Error("No duplicate customer IDs provided for merge.");
+      }
+
+      // Ownership validation MUST complete before any reassignment/deletion.
+      await assertCustomerOwnedByCompany(client, companyId, primaryId, "Primary");
+      for (const duplicateId of duplicateIds) {
+        await assertCustomerOwnedByCompany(client, companyId, duplicateId, "Duplicate");
+      }
 
       for (const duplicateId of duplicateIds) {
         await client
           .from("bookings")
           .update({ customer_id: primaryId })
           .eq("customer_id", duplicateId)
-          .eq("company_id", input.companyId);
+          .eq("company_id", companyId);
 
         await client
           .from("scheduling_bookings")
           .update({ customer_id: primaryId })
           .eq("customer_id", duplicateId)
-          .eq("company_id", input.companyId);
+          .eq("company_id", companyId);
 
         await client
           .from("invoices")
           .update({ customer_id: primaryId })
           .eq("customer_id", duplicateId)
-          .eq("company_id", input.companyId);
+          .eq("company_id", companyId);
 
         const { error: deleteError } = await client
           .from("customers")
           .delete()
           .eq("id", duplicateId)
-          .eq("company_id", input.companyId);
+          .eq("company_id", companyId);
 
         if (deleteError) throw new Error(deleteError.message);
       }
@@ -264,6 +347,8 @@ export function createSupabaseCrmAgentToolPorts(
         return { imported: 0, skipped: 0, errors: ["Import requires explicit confirmation."] };
       }
 
+      const companyId = requireTrustedCompanyId(input.companyId);
+
       let imported = 0;
       let skipped = 0;
       const errors: string[] = [];
@@ -279,7 +364,7 @@ export function createSupabaseCrmAgentToolPorts(
         try {
           if (row.phone?.trim()) {
             const existing = await customerService.findCustomer({
-              companyId: input.companyId,
+              companyId,
               userId: input.userId,
               lookupBy: "phone",
               lookupValue: row.phone.trim(),
@@ -291,7 +376,7 @@ export function createSupabaseCrmAgentToolPorts(
           }
 
           await customerService.createCustomer({
-            companyId: input.companyId,
+            companyId,
             userId: input.userId,
             name,
             phone: row.phone?.trim() || null,
@@ -308,10 +393,23 @@ export function createSupabaseCrmAgentToolPorts(
     },
 
     async searchInvoices(input) {
+      const trusted =
+        typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
+      if (!trusted) {
+        return {
+          invoices: [],
+          total: 0,
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message:
+            "Trusted customer context is required before searching invoices for this conversation.",
+        };
+      }
+
       let query = client
         .from("invoices")
         .select("id, customer_id, total_cents, status, due_at")
         .eq("company_id", input.companyId)
+        .eq("customer_id", trusted)
         .eq("invoice_type", "customer")
         .order("due_at", { ascending: true })
         .limit(100);
@@ -340,9 +438,22 @@ export function createSupabaseCrmAgentToolPorts(
     },
 
     async searchBookings(input) {
+      const trusted =
+        typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
+      if (!trusted) {
+        return {
+          bookings: [],
+          total: 0,
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message:
+            "Trusted customer context is required before searching bookings for this conversation.",
+        };
+      }
+
+      // Ignore LLM customerId — trustedCustomerId only (Phase 5D).
       const daysBack = input.daysBack ?? 30;
       const [scheduling, legacy] = await Promise.all([
-        listSchedulingBookings(client, input.companyId),
+        listSchedulingBookings(client, input.companyId, trusted),
         listLegacyBookings(client, input.userId),
       ]);
 
@@ -350,8 +461,8 @@ export function createSupabaseCrmAgentToolPorts(
       cutoff.setDate(cutoff.getDate() - daysBack);
 
       const bookings = [...scheduling, ...legacy]
+        .filter((b) => b.customer_id === trusted)
         .filter((b) => {
-          if (input.customerId && b.customer_id !== input.customerId) return false;
           if (!b.scheduled_at) return true;
           return new Date(b.scheduled_at) >= cutoff;
         })
@@ -361,10 +472,18 @@ export function createSupabaseCrmAgentToolPorts(
     },
 
     async knowledgeSearch(input) {
-      if (options.retrieveKnowledge) {
-        return options.retrieveKnowledge(input);
+      const companyId = requireTrustedCompanyId(input.companyId);
+      if (!options.retrieveKnowledge) {
+        return {
+          results: [],
+          contextText: KNOWLEDGE_RETRIEVER_REQUIRED_MESSAGE,
+        };
       }
-      return keywordKnowledgeFallback(client, input.companyId, input.query);
+      return options.retrieveKnowledge({
+        companyId,
+        userId: input.userId,
+        query: input.query,
+      });
     },
   };
 }

@@ -112,6 +112,7 @@ function createMemoryStores(options?: {
       id: conversationId,
       company_id: "company-1",
       state: conversationState,
+      customer_id: null,
     }),
   };
 

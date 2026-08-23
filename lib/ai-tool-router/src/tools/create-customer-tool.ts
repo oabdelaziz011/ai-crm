@@ -2,6 +2,14 @@ import type { ConversationState } from "@workspace/ai-conversation";
 import type { Tool, ToolExecutionContext } from "./tool-contract.js";
 import type { ToolCustomerServicePort } from "./customer-service-port.js";
 import { validateAgainstSchema } from "../utils/tool-utils.js";
+import {
+  INCOMPLETE_EGYPT_MOBILE_MESSAGE_AR,
+  validateEgyptMobilePhone,
+} from "../utils/customer-phone-normalization.js";
+import {
+  buildExistingCustomerGreetingAr,
+  buildNewCustomerGreetingAr,
+} from "../utils/scheduling-customer-display.js";
 
 const INPUT_SCHEMA = {
   type: "object",
@@ -31,11 +39,14 @@ function readRequiredString(value: unknown, label: string): string {
 }
 
 function normalizePhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length < 7 || digits.length > 15) {
-    throw new Error("Phone must contain 7 to 15 digits.");
+  const validated = validateEgyptMobilePhone(value);
+  if (!validated.valid) {
+    if (validated.reason === "incomplete") {
+      throw new Error(INCOMPLETE_EGYPT_MOBILE_MESSAGE_AR);
+    }
+    throw new Error("Phone must be a valid Egyptian mobile number (11 digits starting with 01).");
   }
-  return value.trim();
+  return validated.local;
 }
 
 function normalizeEmail(value: unknown): string | null {
@@ -79,11 +90,18 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
       });
 
       if (duplicateCheck.status === "found" && duplicateCheck.customer) {
+        const customer = duplicateCheck.customer;
+        await customerService.linkConversationCustomer?.({
+          conversationId: context.conversationId,
+          customerId: customer.id,
+        });
         return {
-          success: false,
-          errorCode: "DUPLICATE_CUSTOMER",
-          customerId: duplicateCheck.customer.id,
-          message: `A customer with phone ${phone} already exists.`,
+          success: true,
+          customerId: customer.id,
+          existing: true,
+          customerName: customer.name,
+          customerGreeting: buildExistingCustomerGreetingAr(customer.name),
+          message: "Customer already exists. Use this customerId for create_booking.",
         };
       }
 
@@ -120,9 +138,16 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
         email,
       });
 
+      await customerService.linkConversationCustomer?.({
+        conversationId: context.conversationId,
+        customerId: created.customer.id,
+      });
+
       return {
         success: true,
         customerId: created.customer.id,
+        customerName: created.customer.name,
+        customerGreeting: buildNewCustomerGreetingAr(name),
         message: "Customer created successfully",
       };
     },
@@ -136,7 +161,7 @@ export const CREATE_CUSTOMER_LLM_TOOL_DEFINITION = {
   function: {
     name: CREATE_CUSTOMER_TOOL_KEY,
     description:
-      "Create a new customer in the CRM. Use when the user asks to add or register a customer. Requires name and phone; email is optional. Never delete or update customers.",
+      "Create or resolve a customer in the CRM for booking. Requires customer name and mobile phone. If the phone already exists, returns that customerId and preserves the existing CRM name. If the phone is new, creates a customer profile.",
     parameters: {
       type: "object",
       properties: {

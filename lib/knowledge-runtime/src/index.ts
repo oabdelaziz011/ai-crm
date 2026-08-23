@@ -7,3 +7,4 @@ export * from "./builder/knowledge-context-builder.js";
 export * from "./coordinator/knowledge-search-coordinator.js";
 export * from "./provider/knowledge-runtime-provider.js";
 export * from "./loader/knowledge-runtime-loader.js";
+export * from "./adapters/crm-rag-knowledge-retriever.js";

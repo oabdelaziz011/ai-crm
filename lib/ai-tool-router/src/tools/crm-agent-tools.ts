@@ -17,6 +17,12 @@ function requireUser(context: ToolExecutionContext): string {
   return context.userId;
 }
 
+function requireCompany(context: ToolExecutionContext): string {
+  const companyId = typeof context.companyId === "string" ? context.companyId.trim() : "";
+  if (!companyId) throw new Error("Company context is required.");
+  return companyId;
+}
+
 function createSearchCustomerTool(ports: CrmAgentToolPorts): Tool {
   return {
     supports: (state) => ACTIVE_STATES.includes(state),
@@ -51,8 +57,9 @@ function createUpdateCustomerTool(ports: CrmAgentToolPorts): Tool {
     },
     async execute(context, input) {
       const userId = requireUser(context);
+      const companyId = requireCompany(context);
       const result = await ports.updateCustomer({
-        companyId: context.companyId,
+        companyId,
         userId,
         customerId: String(input.customerId),
         field: String(input.field),
@@ -82,6 +89,7 @@ function createMergeCustomersTool(ports: CrmAgentToolPorts): Tool {
     },
     async execute(context, input) {
       const userId = requireUser(context);
+      const companyId = requireCompany(context);
       const confirmed = input.confirmed === true;
       if (!confirmed) {
         return {
@@ -91,7 +99,7 @@ function createMergeCustomersTool(ports: CrmAgentToolPorts): Tool {
         };
       }
       return ports.mergeCustomers({
-        companyId: context.companyId,
+        companyId,
         userId,
         primaryCustomerId: String(input.primaryCustomerId),
         duplicateCustomerIds: (input.duplicateCustomerIds as string[]) ?? [],
@@ -136,6 +144,7 @@ function createImportCustomersTool(ports: CrmAgentToolPorts): Tool {
     },
     async execute(context, input) {
       const userId = requireUser(context);
+      const companyId = requireCompany(context);
       let rows = (Array.isArray(input.rows) ? input.rows : []) as Array<{ name: string; phone?: string; email?: string }>;
       if (rows.length === 0 && typeof input.goal === "string") {
         rows = parseImportRowsFromGoal(input.goal);
@@ -151,7 +160,7 @@ function createImportCustomersTool(ports: CrmAgentToolPorts): Tool {
       }
 
       return ports.importCustomers({
-        companyId: context.companyId,
+        companyId,
         userId,
         rows,
         confirmed: true,
@@ -168,8 +177,10 @@ function createKnowledgeSearchTool(ports: CrmAgentToolPorts): Tool {
     },
     async execute(context, input) {
       const userId = requireUser(context);
+      const companyId = requireCompany(context);
       const query = String(input.query ?? input.goal ?? "");
-      const result = await ports.knowledgeSearch({ companyId: context.companyId, userId, query });
+      // Trusted companyId from ToolRouter context only — LLM may supply query, never tenant IDs.
+      const result = await ports.knowledgeSearch({ companyId, userId, query });
       return {
         success: true,
         results: result.results,
@@ -180,27 +191,71 @@ function createKnowledgeSearchTool(ports: CrmAgentToolPorts): Tool {
   };
 }
 
+/** Safe model-facing copy — do not reveal other customers' invoices. */
+export const INVOICE_CUSTOMER_CONTEXT_REQUIRED_MESSAGE =
+  "يجب تحديد العميل في هذه المحادثة أولاً قبل البحث عن الفواتير.";
+
 function createInvoiceSearchTool(ports: CrmAgentToolPorts): Tool {
   return {
     supports: (state) => ACTIVE_STATES.includes(state),
     validate(input) {
       validateAgainstSchema(
-        { type: "object", properties: { status: { type: "string" }, overdueOnly: { type: "boolean" } } },
+        {
+          type: "object",
+          properties: {
+            status: { type: "string" },
+            overdueOnly: { type: "boolean" },
+            // Accepted for schema compatibility only — never used for authorization.
+            customerId: { type: "string" },
+          },
+        },
         input,
       );
     },
     async execute(context, input) {
       const userId = requireUser(context);
+      // Never trust LLM customerId — conversation customer only (Phase 5C).
+      const trustedCustomerId = context.trustedCustomerId?.trim() || null;
+      if (!trustedCustomerId) {
+        return {
+          success: false,
+          errorCode: "CUSTOMER_CONTEXT_REQUIRED",
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message: INVOICE_CUSTOMER_CONTEXT_REQUIRED_MESSAGE,
+          invoices: [],
+          results: [],
+          total: 0,
+        };
+      }
+
       const result = await ports.searchInvoices({
         companyId: context.companyId,
         userId,
+        trustedCustomerId,
         status: typeof input.status === "string" ? input.status : undefined,
         overdueOnly: input.overdueOnly === true,
       });
+
+      if (result.errors?.length) {
+        return {
+          success: false,
+          errorCode: result.errors[0],
+          errors: result.errors,
+          message: result.message ?? INVOICE_CUSTOMER_CONTEXT_REQUIRED_MESSAGE,
+          invoices: [],
+          results: [],
+          total: 0,
+        };
+      }
+
       return { success: true, invoices: result.invoices, total: result.total, results: result.invoices };
     },
   };
 }
+
+/** Safe model-facing copy — do not reveal other customers' bookings. */
+export const BOOKING_SEARCH_CUSTOMER_CONTEXT_REQUIRED_MESSAGE =
+  "يجب تحديد العميل في هذه المحادثة أولاً قبل البحث عن الحجوزات.";
 
 function createBookingSearchTool(ports: CrmAgentToolPorts): Tool {
   return {
@@ -209,19 +264,50 @@ function createBookingSearchTool(ports: CrmAgentToolPorts): Tool {
       validateAgainstSchema(
         {
           type: "object",
-          properties: { customerId: { type: "string" }, daysBack: { type: "number" } },
+          properties: {
+            // Accepted for schema compatibility only — never used for authorization.
+            customerId: { type: "string" },
+            daysBack: { type: "number" },
+          },
         },
         input,
       );
     },
     async execute(context, input) {
       const userId = requireUser(context);
+      // Never trust LLM customerId — conversation customer only (Phase 5D).
+      const trustedCustomerId = context.trustedCustomerId?.trim() || null;
+      if (!trustedCustomerId) {
+        return {
+          success: false,
+          errorCode: "CUSTOMER_CONTEXT_REQUIRED",
+          errors: ["CUSTOMER_CONTEXT_REQUIRED"],
+          message: BOOKING_SEARCH_CUSTOMER_CONTEXT_REQUIRED_MESSAGE,
+          bookings: [],
+          results: [],
+          total: 0,
+        };
+      }
+
       const result = await ports.searchBookings({
         companyId: context.companyId,
         userId,
-        customerId: typeof input.customerId === "string" ? input.customerId : undefined,
+        trustedCustomerId,
         daysBack: typeof input.daysBack === "number" ? input.daysBack : 30,
       });
+
+      if (result.errors?.length) {
+        return {
+          success: false,
+          errorCode: result.errors[0],
+          errors: result.errors,
+          message: result.message ?? BOOKING_SEARCH_CUSTOMER_CONTEXT_REQUIRED_MESSAGE,
+          bookings: [],
+          results: [],
+          total: 0,
+        };
+      }
+
       return { success: true, bookings: result.bookings, total: result.total, results: result.bookings };
     },
   };

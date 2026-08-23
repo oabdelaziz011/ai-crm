@@ -36,6 +36,24 @@ export class KnowledgeRuntimeProvider {
       return emptyContext();
     }
 
+    return this.retrieveCached(ctx, input);
+  }
+
+  /**
+   * Explicit tool-driven retrieval (e.g. AI Employee `knowledge_search`).
+   * Skips the heuristic question filter — the tool call itself signals intent.
+   */
+  async retrieveForTool(
+    ctx: KnowledgeAccessContext,
+    input: KnowledgeRuntimeSearchInput,
+  ): Promise<KnowledgeContextDto> {
+    return this.retrieveCached(ctx, input);
+  }
+
+  private async retrieveCached(
+    ctx: KnowledgeAccessContext,
+    input: KnowledgeRuntimeSearchInput,
+  ): Promise<KnowledgeContextDto> {
     const cacheKey = this.cache.buildKey({
       companyId: input.companyId,
       collectionId: input.collectionId,

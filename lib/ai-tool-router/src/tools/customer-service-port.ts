@@ -25,4 +25,14 @@ export type ToolCustomerServicePort = {
     phone: string;
     email?: string | null;
   }): Promise<{ customer: ToolCustomerRecord }>;
+  updateCustomerName?(input: {
+    companyId: string;
+    userId: string;
+    customerId: string;
+    name: string;
+  }): Promise<{ customer: ToolCustomerRecord }>;
+  linkConversationCustomer?(input: {
+    conversationId: string;
+    customerId: string;
+  }): Promise<void>;
 };

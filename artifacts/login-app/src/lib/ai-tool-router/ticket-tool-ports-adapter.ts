@@ -17,6 +17,7 @@ export function createLoginAppTicketToolPorts(client: SupabaseClient, companyId?
     }) as T;
 
   return {
+    getTicket: wrap(ports.getTicket.bind(ports)),
     createTicket: wrap(ports.createTicket.bind(ports)),
     updateTicket: wrap(ports.updateTicket.bind(ports)),
     closeTicket: wrap(ports.closeTicket.bind(ports)),

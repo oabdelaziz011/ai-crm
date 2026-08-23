@@ -32,6 +32,7 @@ export function mapAiEmployeeRow(row: AiEmployeeDbRow, ownerLabel?: string | nul
     maxTokens: row.max_tokens,
     systemPrompt: row.system_prompt,
     systemPromptSummary: row.system_prompt_summary,
+    welcomeMessage: row.welcome_message ?? "",
     knowledgeSourceIds: readStringArray(row.knowledge_source_ids),
     knowledgeSummary: row.knowledge_summary,
     allowedToolKeys: readStringArray(row.allowed_tool_keys),
@@ -66,6 +67,7 @@ function mapRuntimeConfiguration(value: unknown): AiEmployeeRuntimeConfiguration
     retryCount: stored.retryCount ?? defaults.retryCount,
     rateLimitPerMinute: stored.rateLimitPerMinute ?? defaults.rateLimitPerMinute,
     maxConcurrency: stored.maxConcurrency ?? defaults.maxConcurrency,
+    sessionTimeoutMinutes: stored.sessionTimeoutMinutes ?? defaults.sessionTimeoutMinutes,
     disabledToolKeys: readStringArray(stored.disabledToolKeys),
     transferableFlowId:
       typeof stored.transferableFlowId === "string" && stored.transferableFlowId.trim()

@@ -99,7 +99,7 @@ describe("prepareEmployeeChatRuntime", () => {
     clearConversationExecutionContext("conv-chat-metadata");
   });
 
-  it("reuses a complete binding snapshot even when preferFreshBinding is set", async () => {
+  it("re-resolves live binding when preferFreshBinding is set (avoids stale tool scopes)", async () => {
     const channelRuntime = sampleChannelRuntime();
     const executionContext = createAgentEmployeeExecutionContext(channelRuntime, {
       module: "agents",
@@ -128,9 +128,10 @@ describe("prepareEmployeeChatRuntime", () => {
       },
     });
 
-    assert.equal(result.reusedExistingContext, true);
-    assert.equal(result.resolveCount, 0);
-    assert.equal(resolveCount, 0);
+    assert.equal(result.reusedExistingContext, false);
+    assert.equal(result.resolveCount, 1);
+    assert.equal(resolveCount, 1);
+    assert.ok(result.executionContext?.allowedToolKeys.includes("search_customer"));
 
     clearConversationExecutionContext("conv-chat-fresh");
   });

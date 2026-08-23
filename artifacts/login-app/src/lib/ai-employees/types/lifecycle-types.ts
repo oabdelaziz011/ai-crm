@@ -29,6 +29,7 @@ export type AiEmployeeVersionSnapshot = {
   maxTokens: number | null;
   systemPrompt: string;
   systemPromptSummary: string;
+  welcomeMessage: string;
   knowledgeSourceIds: string[];
   knowledgeSummary: string;
   allowedToolKeys: string[];
@@ -109,7 +110,7 @@ export type AiEmployeeReadinessScore = {
 };
 
 export type AiEmployeeVersionComparisonSection = {
-  section: "prompt" | "runtime" | "knowledge" | "tools" | "limits";
+  section: "prompt" | "welcome" | "runtime" | "knowledge" | "tools" | "limits";
   changed: boolean;
   before: string;
   after: string;

@@ -21,6 +21,9 @@ export function LimitsConfigTab({ employee, preview, canEdit, isSaving, onSave }
   const [retryCount, setRetryCount] = useState(String(limits.retryCount));
   const [rateLimitPerMinute, setRateLimitPerMinute] = useState(String(limits.rateLimitPerMinute));
   const [maxConcurrency, setMaxConcurrency] = useState(String(limits.maxConcurrency));
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(
+    String(limits.sessionTimeoutMinutes),
+  );
 
   useEffect(() => {
     setTemperature(String(employee.temperature ?? ""));
@@ -29,6 +32,7 @@ export function LimitsConfigTab({ employee, preview, canEdit, isSaving, onSave }
     setRetryCount(String(employee.runtimeConfiguration.retryCount));
     setRateLimitPerMinute(String(employee.runtimeConfiguration.rateLimitPerMinute));
     setMaxConcurrency(String(employee.runtimeConfiguration.maxConcurrency));
+    setSessionTimeoutMinutes(String(employee.runtimeConfiguration.sessionTimeoutMinutes));
   }, [employee]);
 
   const handleSave = () => {
@@ -40,6 +44,7 @@ export function LimitsConfigTab({ employee, preview, canEdit, isSaving, onSave }
         retryCount: Number(retryCount),
         rateLimitPerMinute: Number(rateLimitPerMinute),
         maxConcurrency: Number(maxConcurrency),
+        sessionTimeoutMinutes: Number(sessionTimeoutMinutes),
       },
     });
   };
@@ -67,6 +72,17 @@ export function LimitsConfigTab({ employee, preview, canEdit, isSaving, onSave }
             <Field label={t("aiEmployees.config.fields.maxConcurrency")} htmlFor="maxConcurrency">
               <Input id="maxConcurrency" value={maxConcurrency} onChange={(event) => setMaxConcurrency(event.target.value)} className="rounded-xl" />
             </Field>
+            <Field label={t("aiEmployees.config.fields.sessionTimeoutMinutes")} htmlFor="sessionTimeoutMinutes">
+              <Input
+                id="sessionTimeoutMinutes"
+                value={sessionTimeoutMinutes}
+                onChange={(event) => setSessionTimeoutMinutes(event.target.value)}
+                className="rounded-xl"
+              />
+            </Field>
+            <p className="md:col-span-2 text-xs text-muted-foreground">
+              {t("aiEmployees.config.fields.sessionTimeoutMinutesHint")}
+            </p>
             <div className="md:col-span-2">
               <Button className="rounded-xl" disabled={isSaving} onClick={handleSave}>
                 {t("aiEmployees.save")}
@@ -82,6 +98,7 @@ export function LimitsConfigTab({ employee, preview, canEdit, isSaving, onSave }
               { label: t("aiEmployees.config.fields.retryCount"), value: preview?.limits.retryCount },
               { label: t("aiEmployees.config.fields.rateLimitPerMinute"), value: preview?.limits.rateLimitPerMinute },
               { label: t("aiEmployees.config.fields.maxConcurrency"), value: preview?.limits.maxConcurrency },
+              { label: t("aiEmployees.config.fields.sessionTimeoutMinutes"), value: preview?.limits.sessionTimeoutMinutes },
             ]}
           />
         )}

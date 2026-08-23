@@ -16,6 +16,7 @@ export function employeeToVersionSnapshot(employee: AiEmployeeRecord): AiEmploye
     maxTokens: employee.maxTokens,
     systemPrompt: employee.systemPrompt,
     systemPromptSummary: employee.systemPromptSummary,
+    welcomeMessage: employee.welcomeMessage,
     knowledgeSourceIds: [...employee.knowledgeSourceIds],
     knowledgeSummary: employee.knowledgeSummary,
     allowedToolKeys: [...employee.allowedToolKeys],
@@ -37,6 +38,7 @@ export function compareEmployeeVersionSnapshots(
     rightVersionNumber,
     sections: [
       section("prompt", left.systemPrompt, right.systemPrompt),
+      section("welcome", left.welcomeMessage, right.welcomeMessage),
       section("runtime", JSON.stringify(left.runtimeConfiguration), JSON.stringify(right.runtimeConfiguration)),
       section("knowledge", left.knowledgeSourceIds.join(", "), right.knowledgeSourceIds.join(", ")),
       section("tools", left.allowedToolKeys.join(", "), right.allowedToolKeys.join(", ")),

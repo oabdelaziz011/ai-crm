@@ -77,6 +77,7 @@ export class AiEmployeeConfigurationService {
         maxTokens: employee.maxTokens,
         systemPrompt: employee.systemPrompt,
         systemPromptSummary: employee.systemPromptSummary,
+        welcomeMessage: employee.welcomeMessage,
         knowledgeSourceIds: employee.knowledgeSourceIds,
         allowedToolKeys,
         promptVersionLabel: employee.promptVersionLabel,
@@ -147,6 +148,10 @@ export class AiEmployeeConfigurationService {
       max_tokens: patch.maxTokens ?? existing.maxTokens,
       system_prompt: nextPrompt,
       system_prompt_summary: summarizeSystemPrompt(nextPrompt),
+      welcome_message:
+        patch.welcomeMessage != null
+          ? normalizeAiEmployeeWelcomeMessageForStorage(patch.welcomeMessage)
+          : existing.welcomeMessage,
       knowledge_source_ids: nextKnowledgeIds,
       knowledge_summary: summarizeKnowledge(knowledgeNames),
       allowed_tool_keys: nextAllowedTools,
@@ -188,7 +193,9 @@ export class AiEmployeeConfigurationService {
 function resolveConfigurationChangeEvent(
   patch: AiEmployeeConfigurationUpdate,
 ): import("@/lib/ai-employees/types").AiEmployeeChangeEventType | null {
-  if (patch.systemPrompt != null || patch.promptVersionLabel != null) return "prompt_updated";
+  if (patch.systemPrompt != null || patch.promptVersionLabel != null || patch.welcomeMessage != null) {
+    return "prompt_updated";
+  }
   if (patch.knowledgeSourceIds != null) return "knowledge_updated";
   if (patch.allowedToolKeys != null || patch.disabledToolKeys != null || patch.allowedSkillIds != null) {
     return "tools_updated";

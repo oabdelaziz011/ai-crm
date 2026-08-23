@@ -26,8 +26,8 @@ export type PrepareEmployeeChatRuntimeInput = {
   conversationMetadata?: Record<string, unknown> | null;
   bindingResolver?: (companyId: string, aiEmployeeId: string) => Promise<AgentRuntimeChannelBinding | null>;
   /**
-   * Prefer a fresh resolve when the stored snapshot is incomplete (missing prompt/tools/flow).
-   * Complete snapshots are reused so WhatsApp does not re-load providers/knowledge every message.
+   * When true (WhatsApp webhook), always re-resolve the live employee binding.
+   * Stale conversation snapshots can omit tools that were enabled later (e.g. search_ticket).
    */
   preferFreshBinding?: boolean;
 };
@@ -98,9 +98,9 @@ export async function prepareEmployeeChatRuntime(
   });
 
   const canReuse =
+    !input.preferFreshBinding &&
     hydrated.executionContext != null &&
-    (!input.preferFreshBinding ||
-      isReusableChannelBinding(hydrated.executionContext, input.aiEmployeeId));
+    isReusableChannelBinding(hydrated.executionContext, input.aiEmployeeId);
 
   if (canReuse && hydrated.executionContext) {
     // Preserve systemPrompt / allowedToolKeys / transferableFlowId from the frozen

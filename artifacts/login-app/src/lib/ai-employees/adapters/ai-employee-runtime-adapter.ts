@@ -12,6 +12,10 @@ import {
 } from "./model-capabilities-catalog";
 import { summarizeToolPermissions } from "./tool-metadata-adapter";
 import {
+  buildWelcomeMessagePromptAddon,
+  resolveAiEmployeeWelcomeMessage,
+} from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
+import {
   buildTicketToolPromptHint,
   isTicketToolKey,
   resolveTicketToolKeysForEmployee,
@@ -49,8 +53,12 @@ export function buildAgentRuntimeConfiguration(
       "search_availability",
       "find_next_available",
       "recommend_appointment",
+      "search_bookings",
+      "booking_search",
       "reschedule_booking",
       "cancel_booking",
+      "check_in",
+      "check_out",
     ].includes(key),
   );
   const enabledTicketTools = enabledKeys.filter(isTicketToolKey);
@@ -60,8 +68,26 @@ export function buildAgentRuntimeConfiguration(
         "CRITICAL BOOKING ACTION RULES:",
         "- You may only confirm a booking after create_booking returns success=true with a bookingId.",
         "- Before offering times, call search_availability or find_next_available.",
-        "- If a tool returns success=false, booking_conflict, or slot_unavailable: tell the customer the slot is already booked/unavailable and offer another slot. Never invent availability.",
-        "- Never say تم الحجز / booked / confirmed unless a tool actually succeeded.",
+        "- Use exact serviceId and resourceId UUIDs from the SCHEDULING CATALOG when provided.",
+        "- When search_availability returns success=true with availableDates or slots, list concrete dates and times immediately. Never say you are still checking after slots were returned.",
+        "- When search_availability returns customerSummary, include those dates/times in your Arabic reply once (you may shorten slightly but must show real options). Do not send the same availability list twice.",
+        "- Do not ask the customer to pick a date before showing available options from search_availability.",
+        "- After the customer picks a slot, do NOT call search_availability again. Ask once for customer name and mobile number only if this conversation does not already have a trusted CRM customer identity.",
+        "- If they already sent name and mobile in this conversation, do not ask again.",
+        "- Never send waiting text such as هبدأ / سأقوم الآن بحجز / سيقوم الآن بحجز / إتمام عملية الحجز / لحظة من فضلك. Call create_booking first, then reply with the confirmation.",
+        "- If the customer sends ؟؟ or يقول بعتهم بالفعل, continue the pending booking. Do not restart availability.",
+        "- Do NOT silently use the WhatsApp sender phone as the booking customer unless a trusted CRM customer is already bound on this conversation. If trustedCustomerId is present, do not ask for name/phone merely to identify them.",
+        "- Call search_customer by the mobile they provide. If not found, call create_customer with customer name + that mobile.",
+        "- create_customer creates a new CRM profile when the phone is new, or returns the existing CRM profile when the phone already exists (existing CRM name is preserved).",
+        "- After you have a real customer UUID from create_customer (preferred) or a matching search_customer hit, call create_booking immediately so the appointment is saved to the company calendar.",
+        "- Never invent customerId values such as 1, customer-id, the customer name, or a phone number. Only use a UUID from trustedCustomerId / conversation.customer_id, or returned by search_customer / create_customer. An LLM-invented customerId must never override trusted identity.",
+        "- When the customer asks to see bookings/appointments or sends a mobile number to look up bookings: call search_bookings with phone set to that mobile (purpose=list, NOT cancel). Reply using customerFacingMessage. Never stay silent.",
+        "- CANCEL FLOW: when the customer wants to cancel (الغاء/ألغي/cancel): ask for the customer mobile if missing, then call search_bookings with purpose=\"cancel\". Show the list and ASK which appointment. Do NOT call cancel_booking until they pick a list number or BK- reference. Never cancel all bookings.",
+        "- After they pick a BK- reference or list number, call cancel_booking for that booking only. Reply with the cancel confirmation. Do not restart a new booking intake and do not re-send the full list.",
+        "- CHECK-IN / CHECK-OUT: when the customer asks to check in/out (تسجيل حضور/انصراف) with a BK- reference (and phone if needed), call check_in or check_out directly with bookingReference + phone. Do not list bookings or invent status changes.",
+        "- Prefer booking_search only when the conversation already has a trusted customer and the user wants a CRM-style booking history without providing a phone.",
+        "- If a tool returns success=false, booking_conflict, or slot_unavailable: tell the customer the slot is already booked/unavailable and offer another available time from the last search result. Never invent availability and never say تم الحجز.",
+        "- Never say تم الحجز / booked / confirmed unless create_booking returned success=true with a bookingId.",
       ].join("\n")
     : "";
   const transferPromptAddon = transferableFlowId
@@ -74,7 +100,15 @@ export function buildAgentRuntimeConfiguration(
         "- Never invent a booking confirmation without a successful tool result.",
       ].join("\n")
     : "";
-  const channelSystemPrompt = [employee.systemPrompt.trim(), bookingActionPromptAddon, transferPromptAddon]
+  const resolvedWelcomeMessage = resolveAiEmployeeWelcomeMessage(employee.welcomeMessage);
+  const welcomePromptAddon = buildWelcomeMessagePromptAddon(resolvedWelcomeMessage);
+  const channelSystemPrompt = [
+    employee.systemPrompt.trim(),
+    bookingActionPromptAddon,
+    transferPromptAddon,
+    ticketToolPromptHint,
+    welcomePromptAddon,
+  ]
     .filter(Boolean)
     .join("\n\n");
 
@@ -142,6 +176,7 @@ export function buildAgentRuntimeConfiguration(
             aiEmployeeName: employee.displayName,
             allowedToolKeys: enabledKeys,
             systemPrompt: channelSystemPrompt,
+            welcomeMessage: resolvedWelcomeMessage,
             transferableFlowId,
             ...(ticketToolPromptHint ? { ticketToolPromptHint } : {}),
           },
@@ -195,6 +230,7 @@ export function buildAgentRuntimeConfiguration(
       retryCount: employee.runtimeConfiguration.retryCount,
       rateLimitPerMinute: employee.runtimeConfiguration.rateLimitPerMinute,
       maxConcurrency: employee.runtimeConfiguration.maxConcurrency,
+      sessionTimeoutMinutes: employee.runtimeConfiguration.sessionTimeoutMinutes,
     },
     runtimeFlags: employee.runtimeConfiguration.runtimeFlags,
     runtimeInfo: {

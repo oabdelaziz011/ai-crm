@@ -112,6 +112,7 @@ export class AiEmployeeLifecycleService {
       max_tokens: version.snapshot.maxTokens,
       system_prompt: version.snapshot.systemPrompt,
       system_prompt_summary: version.snapshot.systemPromptSummary,
+      welcome_message: version.snapshot.welcomeMessage,
       knowledge_source_ids: version.snapshot.knowledgeSourceIds,
       knowledge_summary: version.snapshot.knowledgeSummary,
       allowed_tool_keys: version.snapshot.allowedToolKeys,

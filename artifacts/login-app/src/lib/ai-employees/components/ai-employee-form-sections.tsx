@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { useMemo } from "react";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -14,20 +15,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useCompanyEntitlements } from "@/hooks/billing/use-company-entitlements";
 import { useAiProviderConnectionsAdmin } from "@/hooks/use-ai-provider-connections-admin";
 import { ChannelRoutingTagsField } from "@/lib/ai-employees/components/channel-routing-tags-field";
 import type { AiEmployeeFormValues } from "@/lib/ai-employees/types";
 import type { KnowledgeSourceOption, ToolDefinitionOption } from "@/lib/ai-employees/types";
 import {
+  clearAvailableToolKeys,
+  groupAvailableToolsByCapability,
+  isWebhookFacingEmployee,
+  resolveAvailableEmployeeTools,
+  selectAllAvailableToolKeys,
+  splitAssignedToolKeys,
+  toggleAvailableToolKey,
+  type AiEmployeeCapabilityGroupId,
+} from "@/lib/ai-employees/utilities/ai-employee-capability-catalog";
+import {
   formatEmployeeDepartmentLabel,
   formatEmployeeProviderLabel,
 } from "@/lib/ai-employees/utilities/format-employee-field-label";
 import { formatEmployeeTagLabel } from "@/lib/ai-employees/utilities/format-employee-tag-label";
-import {
-  formatToolCategoryLabel,
-  formatToolNameLabel,
-  groupToolsByCategory,
-} from "@/lib/ai-employees/utilities/format-tool-label";
+import { formatToolNameLabel } from "@/lib/ai-employees/utilities/format-tool-label";
 import {
   AI_EMPLOYEE_MODEL_SUGGESTIONS,
   AI_EMPLOYEE_PROMPT_TEMPLATE_KEYS,
@@ -66,6 +74,45 @@ export function AiEmployeeFormSections({
 }: AiEmployeeFormSectionsProps) {
   const { t } = useTranslation("common");
   const { data: connections = [] } = useAiProviderConnectionsAdmin(companyId);
+  const { data: entitlements = [], isLoading: entitlementsLoading } = useCompanyEntitlements(
+    companyId,
+    Boolean(companyId),
+  );
+
+  const enabledFeatureCodes = useMemo(
+    () => entitlements.filter((row) => row.enabled).map((row) => row.feature_code),
+    [entitlements],
+  );
+
+  const webhookFacing = useMemo(
+    () => isWebhookFacingEmployee(values.tags),
+    [values.tags],
+  );
+
+  const availableTools = useMemo(
+    () =>
+      resolveAvailableEmployeeTools({
+        enabledFeatureCodes,
+        catalogTools: toolOptions,
+        webhookFacing,
+      }),
+    [enabledFeatureCodes, toolOptions, webhookFacing],
+  );
+
+  const availableToolKeys = useMemo(
+    () => availableTools.map((tool) => tool.key),
+    [availableTools],
+  );
+
+  const { unavailableAssigned } = useMemo(
+    () => splitAssignedToolKeys(values.allowedToolKeys, availableToolKeys),
+    [values.allowedToolKeys, availableToolKeys],
+  );
+
+  const groupedAvailableTools = useMemo(
+    () => groupAvailableToolsByCapability(availableTools),
+    [availableTools],
+  );
 
   /** One selectable provider type per company — duplicates share the same runtime key. */
   const providerOptions = useMemo(() => {
@@ -204,6 +251,18 @@ export function AiEmployeeFormSections({
               onChange={(event) => onChange({ description: event.target.value })}
               className="min-h-28 rounded-xl"
             />
+          </Field>
+        </div>
+        <div className="md:col-span-2 xl:col-span-3">
+          <Field label={t("aiEmployees.form.welcomeMessage")} htmlFor="welcomeMessage">
+            <Textarea
+              id="welcomeMessage"
+              value={values.welcomeMessage}
+              onChange={(event) => onChange({ welcomeMessage: event.target.value })}
+              placeholder={t("aiEmployees.form.welcomeMessagePlaceholder")}
+              className="min-h-28 rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground">{t("aiEmployees.form.welcomeMessageHint")}</p>
           </Field>
         </div>
         <div className="md:col-span-2 xl:col-span-3">
@@ -440,19 +499,69 @@ export function AiEmployeeFormSections({
   }
 
   if (step === "tools") {
-    const groupedTools = groupToolsByCategory(toolOptions);
+    const aiEmployeeEnabled = enabledFeatureCodes.includes("ai_employee");
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t("aiEmployees.form.toolsHint")}</p>
-        {toolOptions.length === 0 ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="max-w-2xl text-sm text-muted-foreground">{t("aiEmployees.form.toolsHint")}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-xl"
+              disabled={availableToolKeys.length === 0}
+              onClick={() =>
+                onChange({
+                  allowedToolKeys: selectAllAvailableToolKeys(
+                    values.allowedToolKeys,
+                    availableToolKeys,
+                  ),
+                })
+              }
+            >
+              {t("aiEmployees.form.toolsSelectAllAvailable")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-xl"
+              disabled={availableToolKeys.length === 0 && values.allowedToolKeys.length === 0}
+              onClick={() =>
+                onChange({
+                  allowedToolKeys: clearAvailableToolKeys(
+                    values.allowedToolKeys,
+                    availableToolKeys,
+                  ),
+                })
+              }
+            >
+              {t("aiEmployees.form.toolsClearAll")}
+            </Button>
+          </div>
+        </div>
+
+        {!aiEmployeeEnabled && !entitlementsLoading ? (
           <p className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
-            {t("aiEmployees.form.toolsEmpty")}
+            {t("aiEmployees.form.toolsAiEmployeeRequired")}
           </p>
         ) : null}
-        {groupedTools.map((group) => (
-          <div key={group.category} className="space-y-2">
+
+        {aiEmployeeEnabled && availableTools.length === 0 && !entitlementsLoading ? (
+          <p className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
+            {t("aiEmployees.form.toolsEmptyEntitled")}
+          </p>
+        ) : null}
+
+        {entitlementsLoading ? (
+          <p className="text-sm text-muted-foreground">{t("aiEmployees.form.toolsLoading")}</p>
+        ) : null}
+
+        {groupedAvailableTools.map((group) => (
+          <div key={group.group} className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {formatToolCategoryLabel(t, group.category)}
+              {formatCapabilityGroupLabel(t, group.group)}
             </p>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {group.tools.map((tool) => {
@@ -466,9 +575,12 @@ export function AiEmployeeFormSections({
                       checked={checked}
                       onCheckedChange={(next) => {
                         onChange({
-                          allowedToolKeys: next
-                            ? [...values.allowedToolKeys, tool.key]
-                            : values.allowedToolKeys.filter((key) => key !== tool.key),
+                          allowedToolKeys: toggleAvailableToolKey(
+                            values.allowedToolKeys,
+                            availableToolKeys,
+                            tool.key,
+                            Boolean(next),
+                          ),
                         });
                       }}
                     />
@@ -477,7 +589,7 @@ export function AiEmployeeFormSections({
                         {formatToolNameLabel(t, tool.key, tool.displayName)}
                       </span>
                       <span className="block text-xs text-muted-foreground">
-                        {formatToolCategoryLabel(t, tool.category)}
+                        {formatToolDescriptionLabel(t, tool.key, tool.description)}
                       </span>
                     </span>
                   </label>
@@ -486,6 +598,27 @@ export function AiEmployeeFormSections({
             </div>
           </div>
         ))}
+
+        {unavailableAssigned.length > 0 ? (
+          <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+            <p className="text-sm font-medium text-foreground">
+              {t("aiEmployees.form.toolsUnavailableTitle")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t("aiEmployees.form.toolsUnavailableHint")}
+            </p>
+            <ul className="space-y-1">
+              {unavailableAssigned.map((toolKey) => (
+                <li key={toolKey} className="text-sm text-muted-foreground">
+                  {formatToolNameLabel(t, toolKey)}
+                  <span className="ms-2 text-xs">
+                    ({t("aiEmployees.form.toolsUnavailableBadge")})
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -534,6 +667,23 @@ export function AiEmployeeFormSections({
       </p>
     </div>
   );
+}
+
+function formatCapabilityGroupLabel(
+  t: TFunction<"common">,
+  group: AiEmployeeCapabilityGroupId,
+): string {
+  return t(`aiEmployees.form.capabilityGroups.${group}`);
+}
+
+function formatToolDescriptionLabel(
+  t: TFunction<"common">,
+  toolKey: string,
+  fallback?: string | null,
+): string {
+  return t(`aiEmployees.tools.descriptions.${toolKey}`, {
+    defaultValue: fallback?.trim() || t("aiEmployees.form.toolsDefaultDescription"),
+  });
 }
 
 function Field({

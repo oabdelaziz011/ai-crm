@@ -1,5 +1,6 @@
 import type { AiEmployeeFormValues } from "@/lib/ai-employees/types";
 import { DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION } from "@/lib/ai-employees/adapters";
+import { normalizeAiEmployeeWelcomeMessageForStorage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import {
   summarizeKnowledge,
   summarizeSystemPrompt,
@@ -58,6 +59,7 @@ export function formValuesToInsert(
     max_tokens: values.maxTokens,
     system_prompt: values.systemPrompt.trim(),
     system_prompt_summary: summarizeSystemPrompt(values.systemPrompt),
+    welcome_message: normalizeAiEmployeeWelcomeMessageForStorage(values.welcomeMessage),
     knowledge_source_ids: values.knowledgeSourceIds,
     knowledge_summary: summarizeKnowledge(knowledgeNames),
     allowed_tool_keys: values.allowedToolKeys,
@@ -94,6 +96,7 @@ export function formValuesToUpdate(
     max_tokens: values.maxTokens,
     system_prompt: values.systemPrompt.trim(),
     system_prompt_summary: summarizeSystemPrompt(values.systemPrompt),
+    welcome_message: normalizeAiEmployeeWelcomeMessageForStorage(values.welcomeMessage),
     knowledge_source_ids: values.knowledgeSourceIds,
     knowledge_summary: summarizeKnowledge(knowledgeNames),
     allowed_tool_keys: values.allowedToolKeys,
@@ -127,6 +130,7 @@ export function recordToFormValues(record: {
   temperature: number | null;
   maxTokens: number | null;
   systemPrompt: string;
+  welcomeMessage: string;
   knowledgeSourceIds: string[];
   allowedToolKeys: string[];
   allowedSkillIds: string[];
@@ -145,6 +149,7 @@ export function recordToFormValues(record: {
     temperature: record.temperature,
     maxTokens: record.maxTokens,
     systemPrompt: record.systemPrompt,
+    welcomeMessage: record.welcomeMessage,
     knowledgeSourceIds: record.knowledgeSourceIds,
     allowedToolKeys: record.allowedToolKeys,
     allowedSkillIds: record.allowedSkillIds,
@@ -165,6 +170,7 @@ export const DEFAULT_AI_EMPLOYEE_FORM: AiEmployeeFormValues = {
   temperature: 0.7,
   maxTokens: 4096,
   systemPrompt: "",
+  welcomeMessage: "",
   knowledgeSourceIds: [],
   allowedToolKeys: [],
   allowedSkillIds: [],

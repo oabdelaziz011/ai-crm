@@ -47,8 +47,8 @@ async function loadRuntimeChatConfig(
   const missing: RuntimeChatExecutionConfig["missing"] = [];
 
   const [aiChatEnabled, knowledgeFeatureEnabled, providerConnections] = await Promise.all([
-    resolveFeatureEnabledViaApplicationLayer(portContext, PLATFORM_AI_FEATURE_KEY.AI_CHAT),
-    resolveFeatureEnabledViaApplicationLayer(portContext, PLATFORM_AI_FEATURE_KEY.KNOWLEDGE),
+    resolveFeatureEnabledViaApplicationLayer(portContext, PLATFORM_AI_FEATURE_KEY.AI_CHAT, client),
+    resolveFeatureEnabledViaApplicationLayer(portContext, PLATFORM_AI_FEATURE_KEY.KNOWLEDGE, client),
     providerServices.registry.listConnections(providerContext, {
       companyId,
       isEnabled: true,

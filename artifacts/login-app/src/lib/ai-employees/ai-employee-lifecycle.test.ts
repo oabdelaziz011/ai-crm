@@ -26,6 +26,7 @@ const sampleRow: AiEmployeeDbRow = {
   max_tokens: 4096,
   system_prompt: "You are a helpful support agent.",
   system_prompt_summary: "You are a helpful support agent.",
+  welcome_message: "",
   knowledge_source_ids: ["kb-1"],
   knowledge_summary: "1 knowledge source",
   allowed_tool_keys: ["knowledge_lookup"],

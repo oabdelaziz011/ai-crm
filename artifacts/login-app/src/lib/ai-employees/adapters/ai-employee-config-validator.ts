@@ -108,6 +108,22 @@ export function validateAiEmployeeRuntimeConfiguration(input: {
     });
   }
 
+  if (input.runtimeConfiguration.sessionTimeoutMinutes <= 0) {
+    issues.push({
+      field: "limits.sessionTimeoutMinutes",
+      code: "session_timeout_invalid",
+      message: "Session timeout must be greater than zero minutes",
+      severity: "error",
+    });
+  } else if (input.runtimeConfiguration.sessionTimeoutMinutes > 10_080) {
+    issues.push({
+      field: "limits.sessionTimeoutMinutes",
+      code: "session_timeout_too_large",
+      message: "Session timeout cannot exceed 10080 minutes (7 days)",
+      severity: "error",
+    });
+  }
+
   if (input.knowledgeSourceIds.length > 0) {
     for (const sourceId of input.knowledgeSourceIds) {
       if (!input.knownKnowledgeSourceIds.has(sourceId)) {

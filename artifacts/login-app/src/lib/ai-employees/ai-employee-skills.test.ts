@@ -31,6 +31,7 @@ const employeeRow: AiEmployeeDbRow = {
   max_tokens: 4096,
   system_prompt: "You are a sales agent.",
   system_prompt_summary: "You are a sales agent.",
+  welcome_message: "",
   knowledge_source_ids: ["kb-1"],
   knowledge_summary: "1 source",
   allowed_tool_keys: ["knowledge_lookup"],

@@ -21,6 +21,7 @@ export type AiEmployeeRuntimeConfigurationStored = {
   retryCount: number;
   rateLimitPerMinute: number;
   maxConcurrency: number;
+  sessionTimeoutMinutes: number;
   disabledToolKeys: string[];
   /** Phase 1: single automation flow the employee may transfer WhatsApp threads into. */
   transferableFlowId: string | null;
@@ -33,6 +34,7 @@ export type AiEmployeeRuntimeConfiguration = {
   retryCount: number;
   rateLimitPerMinute: number;
   maxConcurrency: number;
+  sessionTimeoutMinutes: number;
   disabledToolKeys: string[];
   transferableFlowId: string | null;
   runtimeFlags: AiEmployeeRuntimeFlags;
@@ -120,6 +122,7 @@ export type AgentRuntimeLimitsConfig = {
   retryCount: number;
   rateLimitPerMinute: number;
   maxConcurrency: number;
+  sessionTimeoutMinutes: number;
 };
 
 export type AgentRuntimeInfoSnapshot = {
@@ -156,6 +159,7 @@ export type AgentRuntimeChannelBinding = {
     aiEmployeeName: string;
     allowedToolKeys: string[];
     systemPrompt: string;
+    welcomeMessage?: string;
     transferableFlowId?: string | null;
   };
 };
@@ -179,6 +183,7 @@ export type AiEmployeeRuntimeAdapterInput = {
     maxTokens: number | null;
     systemPrompt: string;
     systemPromptSummary: string;
+    welcomeMessage: string;
     knowledgeSourceIds: string[];
     allowedToolKeys: string[];
     promptVersionLabel: string;
@@ -218,6 +223,7 @@ export const DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION: AiEmployeeRuntimeConfigu
   retryCount: 2,
   rateLimitPerMinute: 60,
   maxConcurrency: 1,
+  sessionTimeoutMinutes: 1440,
   disabledToolKeys: [],
   transferableFlowId: null,
   runtimeFlags: {

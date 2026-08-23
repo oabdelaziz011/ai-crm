@@ -27,6 +27,7 @@ const employeeRow: AiEmployeeDbRow = {
   max_tokens: 4096,
   system_prompt: "Help users",
   system_prompt_summary: "Help users",
+  welcome_message: "",
   knowledge_source_ids: ["kb-1"],
   knowledge_summary: "1 source",
   allowed_tool_keys: ["knowledge_lookup"],

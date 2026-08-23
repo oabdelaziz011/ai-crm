@@ -18,6 +18,7 @@ export type AiEmployeeDbRow = {
   max_tokens: number | null;
   system_prompt: string;
   system_prompt_summary: string;
+  welcome_message: string;
   knowledge_source_ids: string[];
   knowledge_summary: string;
   allowed_tool_keys: string[];
@@ -53,6 +54,7 @@ export type AiEmployeeRecord = {
   maxTokens: number | null;
   systemPrompt: string;
   systemPromptSummary: string;
+  welcomeMessage: string;
   knowledgeSourceIds: string[];
   knowledgeSummary: string;
   allowedToolKeys: string[];
@@ -91,6 +93,7 @@ export type AiEmployeeFormValues = {
   temperature: number | null;
   maxTokens: number | null;
   systemPrompt: string;
+  welcomeMessage: string;
   knowledgeSourceIds: string[];
   allowedToolKeys: string[];
   allowedSkillIds?: string[];
@@ -135,6 +138,7 @@ export type AiEmployeeConfigurationUpdate = {
   temperature?: number | null;
   maxTokens?: number | null;
   systemPrompt?: string;
+  welcomeMessage?: string;
   knowledgeSourceIds?: string[];
   allowedToolKeys?: string[];
   allowedSkillIds?: string[];

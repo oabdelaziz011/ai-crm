@@ -33,6 +33,7 @@ function sampleEmployee(overrides: Partial<AiEmployeeRecord> = {}): AiEmployeeRe
     maxTokens: 4096,
     systemPrompt: "You are a helpful support agent.",
     systemPromptSummary: "You are a helpful support agent.",
+    welcomeMessage: "",
     knowledgeSourceIds: ["kb-1"],
     knowledgeSummary: "1 knowledge source",
     allowedToolKeys: ["knowledge_lookup"],
@@ -64,6 +65,7 @@ function buildPreview(employeeStatus: "published" | "draft" = "published") {
       maxTokens: 4096,
       systemPrompt: "You are a helpful support agent.",
       systemPromptSummary: "You are a helpful support agent.",
+      welcomeMessage: "",
       knowledgeSourceIds: ["kb-1"],
       allowedToolKeys: ["knowledge_lookup"],
       promptVersionLabel: "v1",
@@ -138,6 +140,30 @@ describe("evaluateEmployeeChannelRuntimeBinding", () => {
 });
 
 describe("mergeEmployeePageContext", () => {
+
+  it("preserves trustedCustomerId from base page context", () => {
+    const merged = mergeEmployeePageContext(
+      {
+        module: "omnichannel",
+        trustedCustomerId: "11111111-1111-4111-8111-111111111111",
+        trustedCustomerName: "عمر",
+      },
+      {
+        providerConnectionId: "conn-1",
+        knowledgeRetrieval: null,
+        executionPolicy: {},
+        pageContext: {
+          aiEmployeeId: "emp-1",
+          systemPrompt: "You are helpful.",
+          welcomeMessage: "أهلاً بيك",
+        },
+      } as never,
+    );
+    assert.equal(merged.trustedCustomerId, "11111111-1111-4111-8111-111111111111");
+    assert.equal(merged.trustedCustomerName, "عمر");
+    assert.equal(merged.aiEmployeeId, "emp-1");
+  });
+
   it("merges employee page context over the base context", () => {
     const channelRuntime = buildPreview().channelRuntime;
     assert.ok(channelRuntime);
@@ -147,7 +173,9 @@ describe("mergeEmployeePageContext", () => {
     );
     assert.equal(merged.module, "customers");
     assert.equal(merged.aiEmployeeId, "agent-bind-1");
-    assert.equal(merged.systemPrompt, "You are a helpful support agent.");
+    assert.match(String(merged.systemPrompt), /You are a helpful support agent\./);
+    assert.match(String(merged.systemPrompt), /CRITICAL FIRST-CONTACT WELCOME RULES/);
+    assert.equal(typeof merged.welcomeMessage, "string");
   });
 
   it("returns base context when no channel runtime is available", () => {

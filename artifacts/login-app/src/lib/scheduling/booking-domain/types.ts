@@ -148,6 +148,12 @@ export type BookingMutationContext = {
 export type CancelBookingInput = BookingMutationContext & {
   reason?: string | null;
   notes?: string | null;
+  /**
+   * When false, skip customer-facing cancellation notice windows.
+   * Staff operations (queue cancel) must be able to clear past/waiting bookings.
+   * Customer portal should keep the default (true).
+   */
+  enforceCancellationPolicy?: boolean;
 };
 
 export type CheckInBookingResult = {

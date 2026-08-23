@@ -44,13 +44,22 @@ export function createLoginAppBookingWritePort(
         throw new Error("Permission denied");
       }
       const scheduled = new Date(input.scheduledAt);
+      if (Number.isNaN(scheduled.getTime())) {
+        throw new Error("invalid_slot_time");
+      }
+      // Domain validateBooking requires HH:mm local wall time, not a full ISO instant.
+      const date = input.scheduledAt.slice(0, 10);
+      const timeMatch = /T(\d{2}:\d{2})/.exec(input.scheduledAt);
+      const slotStart =
+        timeMatch?.[1] ??
+        `${String(scheduled.getUTCHours()).padStart(2, "0")}:${String(scheduled.getUTCMinutes()).padStart(2, "0")}`;
       const result = await bookingDomain.createBooking({
         companyId: input.tenantId,
         customerId: input.customerId,
         resourceId: input.employeeId ?? "",
         serviceId: input.serviceId ?? "",
-        date: scheduled.toISOString().slice(0, 10),
-        slotStart: scheduled.toISOString(),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : scheduled.toISOString().slice(0, 10),
+        slotStart,
         source: "crm",
         createdBy: ctx.actorUserId,
         branchId: null,
@@ -74,7 +83,12 @@ export function createLoginAppBookingWritePort(
     },
 
     async cancel(tenantId, bookingId, reason) {
-      if (tenantId !== ctx.companyId || !ctx.hasPermission("bookings.edit")) {
+      // Staff queue cancel: bookings.delete (preferred) or bookings.edit.
+      const canCancel =
+        ctx.hasPermission("bookings.delete") ||
+        ctx.hasPermission("bookings.edit") ||
+        ctx.hasPermission("booking.write");
+      if (tenantId !== ctx.companyId || !canCancel) {
         throw new Error("Permission denied");
       }
       const result = await bookingDomain.cancelBooking({
@@ -83,6 +97,8 @@ export function createLoginAppBookingWritePort(
         updatedBy: ctx.actorUserId,
         reason: reason ?? null,
         notes: null,
+        // Operations staff must cancel past / waiting bookings; portal keeps policy elsewhere.
+        enforceCancellationPolicy: false,
       });
       return mapDomainBooking(result.booking, tenantId, { paymentStatus: "Unpaid" });
     },

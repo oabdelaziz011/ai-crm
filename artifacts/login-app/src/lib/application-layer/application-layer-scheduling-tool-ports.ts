@@ -1,4 +1,16 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SchedulingToolPorts } from "@workspace/ai-tool-router";
+import {
+  executeCancelBooking,
+  executeCheckInBooking,
+  executeCheckOutBooking,
+  executeCreateBooking,
+  executeRescheduleBooking,
+  executeSearchBookings,
+  type BookingDomainServicePort,
+} from "@workspace/ai-tool-router";
+import { supabase } from "@/lib/supabase";
+import { getBookingDomainServices } from "@/lib/scheduling/booking-domain";
 import type { LoginAppPortContext } from "./adapters/customer-read-port-adapter.js";
 import {
   buildToolApplicationContext,
@@ -12,11 +24,21 @@ function composeScheduledAt(date: string, slotStart: string): string {
   return new Date(normalized).toISOString();
 }
 
-/** Scheduling AI tools — all operations route through BookingApplicationService. */
+export type CreateApplicationLayerSchedulingToolPortsDeps = {
+  /** Test injection — production uses login-app supabase client. */
+  client?: SupabaseClient;
+  /** Test injection — production uses getBookingDomainServices().bookingDomain. */
+  bookingDomain?: BookingDomainServicePort;
+};
+
+/** Scheduling AI tools — availability/create via Application Layer; search/reschedule/cancel/check-in/out via shared ownership-hardened domain ports. */
 export function createApplicationLayerSchedulingToolPorts(
   portContext: LoginAppPortContext,
+  deps: CreateApplicationLayerSchedulingToolPortsDeps = {},
 ): SchedulingToolPorts {
   const services = createLoginAppApplicationServices(portContext);
+  const client = deps.client ?? supabase;
+  const bookingDomain = deps.bookingDomain ?? getBookingDomainServices().bookingDomain;
 
   return {
     async searchAvailability(input) {
@@ -71,157 +93,62 @@ export function createApplicationLayerSchedulingToolPorts(
     },
 
     async createBooking(input) {
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      try {
-        const result = await services.booking.createBooking(
-          {
-            customerId: input.customerId,
-            scheduledAt: composeScheduledAt(input.date, input.slotStart),
-            serviceId: input.serviceId,
-            employeeId: input.resourceId,
-          },
-          ctx,
-        );
-        const booking = unwrapCommand(result);
-        return {
-          success: true,
-          bookingId: booking.bookingId,
-          status: booking.status,
-          startAt: booking.scheduledAt,
-          endAt: booking.scheduledAt,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          message: error instanceof Error ? error.message : "Booking could not be created.",
-          errors: ["BOOKING_FAILED"],
-        };
+      const result = await executeCreateBooking(bookingDomain, {
+        ...input,
+        companyId: portContext.companyId,
+      });
+      if (result.success && input.conversationId && input.customerId) {
+        await client
+          .from("conversations")
+          .update({ customer_id: input.customerId })
+          .eq("id", input.conversationId)
+          .eq("company_id", portContext.companyId)
+          .is("customer_id", null);
       }
+      return result;
     },
 
     async searchBookings(input) {
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      try {
-        const result = await services.booking.searchBookings(
-          { customerId: input.customerId, daysBack: input.daysBack },
-          ctx,
-        );
-        const data = unwrapQuery(result);
-        return {
-          success: true,
-          bookings: data.bookings.map((booking) => ({
-            bookingId: booking.id,
-            customerId: booking.customerId,
-            customerName: booking.customerName,
-            reference: booking.reference,
-            scheduledAt: booking.scheduledAt,
-            status: booking.status,
-            employeeName: booking.employeeName,
-            serviceName: booking.serviceName,
-          })),
-          total: data.total,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          bookings: [],
-          total: 0,
-          message: error instanceof Error ? error.message : "Bookings could not be searched.",
-        };
-      }
+      return executeSearchBookings(client, {
+        ...input,
+        companyId: portContext.companyId,
+      });
     },
 
     async rescheduleBooking(input) {
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      try {
-        const result = await services.booking.rescheduleBooking(
-          {
-            bookingId: input.bookingId,
-            newScheduledAt: composeScheduledAt(input.date, input.slotStart),
-            reason: input.reason,
-          },
-          ctx,
-        );
-        const booking = unwrapCommand(result);
-        return {
-          success: true,
-          bookingId: booking.bookingId,
-          scheduledAt: booking.scheduledAt,
-          rescheduledAt: booking.rescheduledAt,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          message: error instanceof Error ? error.message : "Booking could not be rescheduled.",
-          errors: ["RESCHEDULE_FAILED"],
-        };
-      }
+      return executeRescheduleBooking(client, bookingDomain, {
+        ...input,
+        companyId: portContext.companyId,
+      });
     },
 
     async cancelBooking(input) {
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      try {
-        const result = await services.booking.cancelBooking(
-          { bookingId: input.bookingId, reason: input.reason },
-          ctx,
-        );
-        const booking = unwrapCommand(result);
-        return {
-          success: true,
-          bookingId: booking.bookingId,
-          cancelledAt: booking.cancelledAt,
-          status: booking.status,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          message: error instanceof Error ? error.message : "Booking could not be cancelled.",
-          errors: ["CANCEL_FAILED"],
-        };
-      }
+      return executeCancelBooking(client, bookingDomain, {
+        ...input,
+        companyId: portContext.companyId,
+      });
     },
 
+    /**
+     * Phase 5L — reuse shared ownership boundary (company + trustedCustomerId)
+     * identical to webhook / Phase 5H executeCheckInBooking.
+     */
     async checkInBooking(input) {
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      try {
-        const result = await services.booking.checkInBooking(
-          { bookingId: input.bookingId, roomId: input.roomId },
-          ctx,
-        );
-        const booking = unwrapCommand(result);
-        return {
-          success: true,
-          bookingId: booking.bookingId,
-          checkedInAt: booking.checkedInAt,
-          status: booking.status,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          message: error instanceof Error ? error.message : "Booking could not be checked in.",
-          errors: ["CHECK_IN_FAILED"],
-        };
-      }
+      return executeCheckInBooking(client, bookingDomain, {
+        ...input,
+        companyId: portContext.companyId,
+      });
     },
 
+    /**
+     * Phase 5L — reuse shared ownership boundary (company + trustedCustomerId)
+     * identical to webhook / Phase 5H executeCheckOutBooking → completeBooking.
+     */
     async checkOutBooking(input) {
-      const ctx = buildToolApplicationContext(portContext, input.userId);
-      try {
-        const result = await services.booking.checkOutBooking({ bookingId: input.bookingId }, ctx);
-        const booking = unwrapCommand(result);
-        return {
-          success: true,
-          bookingId: booking.bookingId,
-          checkedOutAt: booking.checkedOutAt,
-          status: booking.status,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          message: error instanceof Error ? error.message : "Booking could not be checked out.",
-          errors: ["CHECK_OUT_FAILED"],
-        };
-      }
+      return executeCheckOutBooking(client, bookingDomain, {
+        ...input,
+        companyId: portContext.companyId,
+      });
     },
   };
 }

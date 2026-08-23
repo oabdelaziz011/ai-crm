@@ -201,6 +201,7 @@ function createRouterFixtures(handlers: ReturnType<typeof createToolHandlerRegis
         id: conversationId,
         company_id: "company-1",
         state: "collecting_information",
+        customer_id: null,
       };
     },
   };
@@ -222,6 +223,47 @@ describe("create_booking production tool", () => {
     });
     assert.ok(keys.includes(CREATE_BOOKING_TOOL_KEY));
     assert.equal(keys.includes("booking"), false);
+  });
+
+  it("resolves a patient name to the CRM customer UUID before creating the booking", async () => {
+    let capturedCustomerId = "";
+    const tools = createSchedulingAgentTools(
+      createStubSchedulingPorts({
+        async resolveCustomerIdForBooking() {
+          return "1e6e345e-5180-46fc-9f2b-01f832a6a432";
+        },
+        async createBooking(input) {
+          capturedCustomerId = input.customerId;
+          return {
+            success: true,
+            bookingId: "booking-resolved",
+            status: "confirmed",
+            startAt: "2026-08-26T21:15:00.000Z",
+            endAt: "2026-08-26T21:25:00.000Z",
+          };
+        },
+      }),
+    );
+
+    const result = await tools.create_booking.execute(
+      {
+        companyId: "company-1",
+        conversationId: "conv-1",
+        conversationState: "idle",
+        userId: "user-1",
+      },
+      {
+        customerId: "نسمة حسام",
+        serviceId: "service-1",
+        resourceId: "resource-1",
+        date: "2026-08-26",
+        slotStart: "21:15",
+      },
+    );
+
+    assert.equal(result.success, true);
+    assert.equal(result.bookingId, "booking-resolved");
+    assert.equal(capturedCustomerId, "1e6e345e-5180-46fc-9f2b-01f832a6a432");
   });
 
   it("exposes create_booking to the LLM catalog when scheduling ports are wired", () => {
@@ -491,6 +533,7 @@ describe("create_booking production tool", () => {
           id: conversationId,
           company_id: "company-tenant-a",
           state: "collecting_information",
+          customer_id: null,
         };
       },
     };
@@ -513,7 +556,7 @@ describe("create_booking production tool", () => {
         conversationId: "conv-tenant",
         toolKey: CREATE_BOOKING_TOOL_KEY,
         input: {
-          customerId: "customer-other-tenant",
+          customerId: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
           serviceId: "service-1",
           resourceId: "resource-1",
           date: "2026-08-01",
@@ -584,7 +627,7 @@ describe("create_booking production tool", () => {
         conversationId: "conv-1",
         toolKey: CREATE_BOOKING_TOOL_KEY,
         input: {
-          customerId: "customer-1",
+          customerId: "bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb",
           serviceId: "service-1",
           resourceId: "resource-1",
           date: "2026-08-01",
@@ -609,8 +652,13 @@ describe("create_booking production tool", () => {
           status: "succeeded",
           output: {
             success: true,
-            bookingId: "booking-loop-1",
-            status: "confirmed",
+            bookingId: "cccccccc-dddd-4eee-8fff-000000000001",
+            bookingRef: "CCCCCCCC",
+            date: "2026-08-02",
+            slotStart: "10:00",
+            startAt: "2026-08-02T07:00:00.000Z",
+            customerFacingMessage:
+              "تم حجز موعدك بنجاح.\nالموعد: يوم 02-08-2026 الساعة 10:00\nرقم الحجز: CCCCCCCC",
           },
           durationMs: 4,
         };
@@ -696,6 +744,8 @@ describe("create_booking production tool", () => {
       allowedToolKeys: tools.allowedToolKeys(),
     });
 
-    assert.match(result.response.text, /confirmed/i);
+    assert.match(result.response.text, /تم حجز موعدك بنجاح/);
+    assert.match(result.response.text, /يوم 02-08-2026 الساعة 10:00/);
+    assert.match(result.response.text, /رقم الحجز: CCCCCCCC/);
   });
 });

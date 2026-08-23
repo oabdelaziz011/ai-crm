@@ -237,6 +237,7 @@ describe("search_availability production tool", () => {
           id: conversationId,
           company_id: "company-1",
           state: "collecting_information",
+          customer_id: null,
         };
       },
     };

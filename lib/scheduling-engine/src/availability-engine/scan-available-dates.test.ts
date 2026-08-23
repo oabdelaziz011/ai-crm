@@ -110,6 +110,24 @@ describe("availability-scanner", () => {
     assert.equal(result.emptyResult, undefined);
   });
 
+  it("keeps a requested singleDate even when it is outside daysAhead", async () => {
+    const result = await scanAvailableDates(engines, {
+      companyId: "company-1",
+      serviceId: "service-1",
+      durationMinutes: 30,
+      resources: [{ resourceId: "resource-1", resourceName: "Dr. Ada", capacity: 1 }],
+      startDate: "2026-07-29",
+      daysAhead: 1,
+      singleDate: "2026-07-31",
+      timezone: "UTC",
+      referenceNow: new Date("2026-07-29T10:00:00.000Z"),
+    });
+
+    assert.deepEqual(result.availableDates, ["2026-07-31"]);
+    assert.equal(result.resources[0]?.slots.length, 1);
+    assert.equal(result.emptyResult, undefined);
+  });
+
   it("returns structured empty results when nothing is bookable", async () => {
     const blockedEngines: AvailabilityScanEnginePort = {
       async resolveAvailability() {

@@ -136,13 +136,15 @@ export class BookingDomainService {
     const booking = await this.requireBooking(input.companyId, input.bookingId);
     BookingLifecycleService.assertTransition(booking.status, "cancelled");
 
-    const policyCheck = await this.validationService.validateCancellation({
-      companyId: input.companyId,
-      booking,
-      referenceNow: input.referenceNow,
-    });
-    if (!policyCheck.valid) {
-      throw new BookingDomainError(policyCheck.errors);
+    if (input.enforceCancellationPolicy !== false) {
+      const policyCheck = await this.validationService.validateCancellation({
+        companyId: input.companyId,
+        booking,
+        referenceNow: input.referenceNow,
+      });
+      if (!policyCheck.valid) {
+        throw new BookingDomainError(policyCheck.errors);
+      }
     }
 
     const cancellationNote = buildCancellationNote(input.reason, input.notes, booking.notes);

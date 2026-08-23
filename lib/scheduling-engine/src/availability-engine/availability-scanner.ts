@@ -202,12 +202,16 @@ export async function scanAvailableDates(
       resourceName: resource.resourceName,
       durationMinutes,
       capacity: resource.capacity,
-      availableDates: filterAvailableDates(resourceAvailableDates, input.startDate, searchedWindow),
+      availableDates: input.singleDate
+        ? [...new Set(resourceAvailableDates)].sort()
+        : filterAvailableDates(resourceAvailableDates, input.startDate, searchedWindow),
       slots,
     });
   }
 
-  const availableDates = filterAvailableDates(availableDatesSet, input.startDate, searchedWindow);
+  const availableDates = input.singleDate
+    ? [...availableDatesSet].sort()
+    : filterAvailableDates(availableDatesSet, input.startDate, searchedWindow);
   const result: ScanAvailableDatesResult = {
     availableDates,
     resources,

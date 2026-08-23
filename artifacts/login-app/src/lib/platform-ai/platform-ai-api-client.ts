@@ -4,6 +4,13 @@ import {
   resolveAuthenticatedApiBase,
 } from "@/lib/api-server/normalize-api-base";
 
+/** Platform AI proxy can be slow on cold runtime; avoid indefinite UI hangs. */
+export const PLATFORM_AI_REQUEST_TIMEOUT_MS = 120_000;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 async function buildAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const { data } = await supabase.auth.getSession();
@@ -22,12 +29,28 @@ async function postPlatformAiApi<T>(path: string, body: Record<string, unknown>)
     );
   }
 
-  const response = await fetch(`${base}/platform-ai${path}`, {
-    method: "POST",
-    headers: await buildAuthHeaders(),
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PLATFORM_AI_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${base}/platform-ai${path}`, {
+      method: "POST",
+      headers: await buildAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(
+        "Platform AI request timed out. The server may be restarting — please try again.",
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   let payload: T & { error?: string; message?: string; code?: string };
   try {

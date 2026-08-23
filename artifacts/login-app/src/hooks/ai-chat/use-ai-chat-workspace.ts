@@ -4,11 +4,19 @@ import { useAuth } from "@/context/auth-context";
 import { useAiAssistantSettings } from "@/hooks/use-ai-assistant-settings";
 import { useChannelPlatformServices } from "@/lib/channel-platform";
 import { useConversationServices } from "@/lib/ai-conversation";
+import { useAiEmployee } from "@/lib/ai-employees/hooks";
 import { readAiEmployeeIdFromPageContext } from "@/lib/ai-employees/utilities/merge-employee-page-context";
+import { resolveAiEmployeeWelcomeMessage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import { prepareEmployeeChatRuntime } from "@/lib/ai-employees/utilities/prepare-employee-chat-runtime";
 import { rehydrateConversationExecutionContextFromMetadata } from "@/lib/ai-employees/utilities/conversation-employee-context-hydrator";
+import {
+  appendSchedulingCatalogPrompt,
+  buildSchedulingCatalogPromptAddon,
+} from "@/lib/ai-employees/utilities/scheduling-catalog-prompt";
+import { supabase } from "@/lib/supabase";
 import { useRuntimeChatConfig } from "./use-runtime-chat-config";
 import { useWebChatCompanyChannel } from "./use-web-chat-company-channel";
+import { shouldClearStreamingBeforeRefresh, buildDisplayMessages, hasPersistedOutgoingForPending } from "./streaming-refresh-lifecycle";
 import i18n from "@/i18n";
 
 const CONVERSATION_STORAGE_PREFIX = "vault-ai-chat-conversation";
@@ -92,13 +100,19 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [pendingAssistantContent, setPendingAssistantContent] = useState<string | null>(null);
   const streamingRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
+  const [suppressSyntheticWelcome, setSuppressSyntheticWelcome] = useState(false);
 
   const assistantName =
     assistantSettings?.assistant_name?.trim() ||
     i18n.t("dashboard.ai.name", { ns: "common" });
-  const welcomeMessage = assistantSettings?.welcome_message?.trim() || "";
+  const pageContextEmployeeId = readAiEmployeeIdFromPageContext(getPageContext?.());
+  const { data: boundEmployee } = useAiEmployee(companyId, pageContextEmployeeId);
+  const welcomeMessage = pageContextEmployeeId
+    ? resolveAiEmployeeWelcomeMessage(boundEmployee?.welcomeMessage)
+    : assistantSettings?.welcome_message?.trim() || "";
 
   useEffect(() => {
     if (!companyId || !assistantSettings?.id) return;
@@ -178,23 +192,25 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
 
   const displayMessages = useMemo(() => {
     const loaded = messagesQuery.data ?? [];
-    if (loaded.length > 0) return loaded;
-    if (welcomeMessage) {
-      return [
-        {
-          id: "welcome",
-          role: "assistant" as const,
-          content: welcomeMessage,
-          createdAt: new Date().toISOString(),
-        },
-      ];
+    return buildDisplayMessages({
+      loaded,
+      welcomeMessage,
+      suppressSyntheticWelcome,
+      pendingAssistantContent,
+    });
+  }, [messagesQuery.data, welcomeMessage, pendingAssistantContent, suppressSyntheticWelcome]);
+
+  useEffect(() => {
+    if (!pendingAssistantContent?.trim()) return;
+    const loaded = messagesQuery.data ?? [];
+    if (hasPersistedOutgoingForPending(loaded, pendingAssistantContent)) {
+      setPendingAssistantContent(null);
     }
-    return [];
-  }, [messagesQuery.data, welcomeMessage]);
+  }, [messagesQuery.data, pendingAssistantContent]);
 
   const refreshMessages = useCallback(async () => {
     if (!conversationId) return;
-    await queryClient.invalidateQueries({ queryKey: aiChatMessagesQueryKey(conversationId) });
+    await queryClient.refetchQueries({ queryKey: aiChatMessagesQueryKey(conversationId) });
   }, [conversationId, queryClient]);
 
   const startNewConversation = useCallback(async () => {
@@ -217,7 +233,9 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
     setConversationMetadata(created.metadata ?? {});
     setStreamingContent("");
     streamingRef.current = "";
-    await queryClient.invalidateQueries({ queryKey: aiChatMessagesQueryKey(created.id) });
+    setPendingAssistantContent(null);
+    setSuppressSyntheticWelcome(false);
+    await queryClient.refetchQueries({ queryKey: aiChatMessagesQueryKey(created.id) });
   }, [
     assistantSettings?.id,
     companyId,
@@ -247,16 +265,22 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
       setIsSending(true);
       setStreamingContent("");
       streamingRef.current = "";
+      setSuppressSyntheticWelcome(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
 
       try {
         const basePageContext = getPageContext?.() ?? {};
+        const schedulingCatalogPrompt = await buildSchedulingCatalogPromptAddon(supabase, companyId);
+        const pageContextWithCatalog = appendSchedulingCatalogPrompt({
+          ...basePageContext,
+          ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
+        });
         const employeeRuntime = await prepareEmployeeChatRuntime({
           companyId,
           conversationId,
-          basePageContext,
+          basePageContext: pageContextWithCatalog,
           conversationMetadata,
         });
 
@@ -283,7 +307,12 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
               }
             : undefined);
 
-        await channelPlatformServices.router.routeInbound(channelPlatformContext, {
+        const pageContext = appendSchedulingCatalogPrompt({
+          ...employeeRuntime.pageContext,
+          ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
+        });
+
+        const routeResult = await channelPlatformServices.router.routeInbound(channelPlatformContext, {
           companyId,
           companyChannelId: webChatChannel.id,
           channelKey: "web_chat",
@@ -295,7 +324,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           executeAi: true,
           runtimeConfig: {
             providerConnectionId,
-            pageContext: employeeRuntime.pageContext,
+            pageContext,
             knowledgeRetrieval,
             executionPolicy: runtimeOverrides?.executionPolicy ?? { streaming: true },
           },
@@ -306,9 +335,27 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
           abortSignal: controller.signal,
         });
 
+        const responseContent = routeResult.responseContent?.trim() ?? "";
+        if (responseContent) {
+          setPendingAssistantContent(responseContent);
+        }
+
+        const hasRenderableAssistantResponse = Boolean(responseContent);
+
+        if (
+          shouldClearStreamingBeforeRefresh({
+            isSending: true,
+            hasStreamingContent: Boolean(streamingRef.current),
+            hasRenderableAssistantResponse,
+          })
+        ) {
+          setStreamingContent("");
+          streamingRef.current = "";
+        }
         await refreshMessages();
       } catch (error) {
         if (controller.signal.aborted) return;
+        setPendingAssistantContent(null);
         setSendError(
           error instanceof Error && !error.message.includes("_")
             ? error.message

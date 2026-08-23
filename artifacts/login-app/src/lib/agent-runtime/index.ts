@@ -16,6 +16,7 @@ import {
   readAgentEmployeeExecutionContext,
 } from "@/lib/ai-employees/utilities/agent-employee-execution-context";
 import { applyToolScopeBeforeRoute } from "@/lib/ai-employees/utilities/scoped-runtime-tool-port";
+import { createRpcCommercialEntitlementPort } from "@/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate";
 import { runWithEmployeeToolScope } from "@/lib/ai-employees/utilities/tool-scope-context";
 
 export function useAgentRuntimeServices() {
@@ -28,6 +29,10 @@ export function useAgentRuntimeServices() {
   const companyId = profile?.company_id ?? null;
   const { data: runtimeConfig } = useRuntimeChatConfig(companyId, false, undefined);
   const { data: webChatChannel } = useWebChatCompanyChannel(companyId);
+  const commercialEntitlement = useMemo(
+    () => createRpcCommercialEntitlementPort(supabase),
+    [],
+  );
 
   const context = useMemo<ServiceContext>(
     () => ({
@@ -96,6 +101,7 @@ export function useAgentRuntimeServices() {
             },
             ctx,
             input,
+            { commercialEntitlement },
           );
           return {
             executionId: result.executionId,
@@ -181,6 +187,7 @@ export function useAgentRuntimeServices() {
     runtimeConfig?.knowledgeRetrieval?.collectionId,
     runtimeConfig?.knowledgeRetrieval?.embeddingConnectionId,
     runtimeConfig?.knowledgeRetrieval?.vectorStoreConnectionId,
+    commercialEntitlement,
   ]);
 
   return { services, context };

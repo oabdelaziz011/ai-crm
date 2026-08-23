@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage } from "@/hooks/ai-chat/use-ai-chat-workspace";
+import { TURN_ASSISTANT_PENDING_ID } from "@/hooks/ai-chat/streaming-refresh-lifecycle";
 
 type AiChatMessageListProps = {
   messages: ChatMessage[];
@@ -65,6 +66,13 @@ export function AiChatMessageList({
   }, [messages, streamingContent, isSending]);
 
   const showStreaming = Boolean(isSending && streamingContent);
+  const hasVisibleAssistantTurn =
+    showStreaming ||
+    messages.some(
+      (message) =>
+        message.id === TURN_ASSISTANT_PENDING_ID ||
+        (message.role === "assistant" && message.pending),
+    );
 
   return (
     <ScrollArea className="flex-1 min-h-0">
@@ -86,7 +94,7 @@ export function AiChatMessageList({
           />
         )}
 
-        {isSending && !streamingContent && (
+        {isSending && !hasVisibleAssistantTurn && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 text-primary animate-pulse" />

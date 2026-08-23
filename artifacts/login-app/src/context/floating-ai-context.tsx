@@ -267,9 +267,39 @@ export function FloatingAiProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const NOOP_FLOATING_AI_PAGE: FloatingAiPageContextValue = {
+  pageContext: {
+    page: "home",
+    route: "/dashboard",
+    companyId: null,
+    companyName: null,
+    userId: null,
+    userName: null,
+  },
+  setPageContext: () => {},
+  registerPageContext: () => {},
+  clearPageSpecificContext: () => {},
+};
+
+const NOOP_FLOATING_AI_UI: FloatingAiUiContextValue = {
+  notificationCount: 0,
+  setNotificationCount: () => {},
+  incrementNotifications: () => {},
+  composerFocusRef: { current: null },
+  requestComposerFocus: () => {},
+  pendingFocusOnOpen: false,
+  consumePendingFocus: () => {},
+  setPendingFocusOnOpen: () => {},
+  pendingComposerDraft: null,
+  setPendingComposerDraft: () => {},
+  consumePendingComposerDraft: () => null,
+};
+
 export function useFloatingAiPageContext(): FloatingAiPageContextValue {
   const ctx = useContext(FloatingAiPageContext);
   if (!ctx) {
+    // Vite HMR can briefly remount consumers before the provider — avoid error boundary.
+    if (import.meta.hot) return NOOP_FLOATING_AI_PAGE;
     throw new Error("useFloatingAiPageContext must be used within FloatingAiProvider");
   }
   return ctx;
@@ -278,6 +308,7 @@ export function useFloatingAiPageContext(): FloatingAiPageContextValue {
 export function useFloatingAiUi(): FloatingAiUiContextValue {
   const ctx = useContext(FloatingAiUiContext);
   if (!ctx) {
+    if (import.meta.hot) return NOOP_FLOATING_AI_UI;
     throw new Error("useFloatingAiUi must be used within FloatingAiProvider");
   }
   return ctx;
@@ -291,13 +322,16 @@ export function useFloatingAi(): FloatingAiContextValue {
   };
 }
 
-/** Register rich page context from module pages — clears entity fields on unmount only */
+/** Register rich page context from module pages — clears entity fields on unmount only.
+ * Tolerates missing provider during Vite HMR remounts (avoids full-page error boundary). */
 export function useRegisterFloatingAiContext(context: Partial<FloatingAiPageContext> | null) {
-  const { registerPageContext, clearPageSpecificContext } = useFloatingAiPageContext();
+  const ctx = useContext(FloatingAiPageContext);
+  const registerPageContext = ctx?.registerPageContext;
+  const clearPageSpecificContext = ctx?.clearPageSpecificContext;
   const lastRegistrationRef = useRef<Partial<FloatingAiPageContext> | null>(null);
 
   useLayoutEffect(() => {
-    if (!context) return;
+    if (!registerPageContext || !context) return;
     if (floatingAiRegistrationEqual(lastRegistrationRef.current, context)) {
       return;
     }
@@ -306,6 +340,7 @@ export function useRegisterFloatingAiContext(context: Partial<FloatingAiPageCont
   });
 
   useEffect(() => {
+    if (!clearPageSpecificContext) return;
     return () => {
       lastRegistrationRef.current = null;
       clearPageSpecificContext();

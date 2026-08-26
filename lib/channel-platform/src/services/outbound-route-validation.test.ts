@@ -36,6 +36,42 @@ describe("validateOutboundRoute", () => {
       assert.equal(result.issue.code, "missing_session");
     }
   });
+
+  it("refuses outbound when request thread is a different customer phone than the session sender", () => {
+    const result = validateOutboundRoute(
+      {
+        id: "session-1",
+        company_channel_id: "cc-1",
+        external_thread_id: "201099988877",
+        channel_key: "whatsapp",
+      },
+      {
+        ...target,
+        // Existing CRM customer B phone — must NEVER replace inbound sender A.
+        externalThreadId: "201011404300",
+      },
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.issue.code, "recipient_thread_mismatch");
+    }
+  });
+
+  it("allows Egypt local vs WA international forms of the same sender", () => {
+    const result = validateOutboundRoute(
+      {
+        id: "session-1",
+        company_channel_id: "cc-1",
+        external_thread_id: "201099988877",
+        channel_key: "whatsapp",
+      },
+      {
+        ...target,
+        externalThreadId: "01099988877",
+      },
+    );
+    assert.equal(result.ok, true);
+  });
 });
 
 describe("requiresServerOutboundDispatch", () => {

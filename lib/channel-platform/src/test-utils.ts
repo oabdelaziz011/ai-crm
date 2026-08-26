@@ -88,7 +88,9 @@ export function createTestEnvironment(options?: {
   const outgoingMessages: ConversationMessageSummary[] = [];
   const conversations: Array<{ id: string; companyChannelId: string }> = [];
   const conversationMetadataById = new Map<string, Record<string, unknown>>();
+  const conversationCustomerIdById = new Map<string, string>();
   const incomingMessageMetadata: Array<Record<string, unknown> | undefined> = [];
+  const incomingExternalMessageIds: Array<string | null> = [];
   const telemetryEvents: Array<Record<string, unknown>> = [];
   let runtimeCalls = 0;
   let automationCalls = 0;
@@ -302,7 +304,36 @@ export function createTestEnvironment(options?: {
       }
       return { id: record.id };
     },
-    addIncomingMessage: async (input) => {
+    async addIncomingMessage(input) {
+      const correlationId =
+        typeof input.metadata?.correlationId === "string" && input.metadata.correlationId.trim()
+          ? input.metadata.correlationId.trim()
+          : null;
+      if (correlationId) {
+        for (let index = 0; index < incomingMessages.length; index += 1) {
+          const message = incomingMessages[index]!;
+          const metadata = incomingMessageMetadata[index];
+          if (
+            message.conversationId === input.conversationId &&
+            metadata?.correlationId === correlationId
+          ) {
+            return { ...message, reused: true };
+          }
+        }
+      }
+      if (input.externalMessageId) {
+        for (let index = 0; index < incomingMessages.length; index += 1) {
+          const message = incomingMessages[index]!;
+          const externalId = incomingExternalMessageIds[index];
+          if (
+            message.conversationId === input.conversationId &&
+            externalId === input.externalMessageId
+          ) {
+            return { ...message, reused: true };
+          }
+        }
+      }
+
       const record: ConversationMessageSummary = {
         id: `msg-in-${incomingMessages.length + 1}`,
         conversationId: input.conversationId,
@@ -311,8 +342,24 @@ export function createTestEnvironment(options?: {
         createdAt: new Date().toISOString(),
       };
       incomingMessages.push(record);
-      incomingMessageMetadata.push(input.metadata);
+      incomingMessageMetadata.push(input.metadata ?? {});
+      incomingExternalMessageIds.push(input.externalMessageId ?? null);
       return record;
+    },
+    findIncomingMessageForInboundEvent: async (input) => {
+      for (let index = 0; index < incomingMessages.length; index += 1) {
+        const message = incomingMessages[index]!;
+        if (message.conversationId !== input.conversationId) continue;
+        const metadata = incomingMessageMetadata[index];
+        if (metadata?.correlationId === input.inboundEventId) {
+          return message;
+        }
+        const externalId = incomingExternalMessageIds[index];
+        if (input.externalMessageId && externalId === input.externalMessageId) {
+          return message;
+        }
+      }
+      return null;
     },
     addOutgoingMessage: async (input) => {
       const record: ConversationMessageSummary = {
@@ -331,6 +378,12 @@ export function createTestEnvironment(options?: {
       outgoingMessages.some((message) => message.conversationId === conversationId),
     updateConversationMetadata: async (input) => {
       conversationMetadataById.set(input.conversationId, { ...input.metadata });
+    },
+    getConversationCustomerId: async (conversationId) =>
+      conversationCustomerIdById.get(conversationId) ?? null,
+    linkConversationCustomerIfEmpty: async (input) => {
+      if (conversationCustomerIdById.has(input.conversationId)) return;
+      conversationCustomerIdById.set(input.conversationId, input.customerId);
     },
   };
 
@@ -460,6 +513,7 @@ export function createTestEnvironment(options?: {
     outgoingMessages,
     conversations,
     conversationMetadataById,
+    conversationCustomerIdById,
     telemetryEvents,
     companyChannel,
     ports,

@@ -143,3 +143,188 @@ describe("InboundMessagePipeline duplicate webhook retry", () => {
     assert.equal(env.outgoingMessages.length, 0);
   });
 });
+
+describe("InboundMessagePipeline inbound idempotency", () => {
+  const workflowBinding = {
+    companyId: "company-1",
+    companyChannelId: "company-channel-1",
+    automationFlowId: "flow-1",
+  };
+
+  function buildWorkflowRequest(
+    env: ReturnType<typeof createTestEnvironment>,
+    overrides: Record<string, unknown> = {},
+  ) {
+    return {
+      companyId: "company-1",
+      companyChannelId: env.companyChannel.id,
+      channelKey: "web_chat",
+      source: "webhook" as const,
+      idempotencyKey: "wamid.retry-1",
+      externalThreadId: "thread-retry",
+      externalMessageId: "wamid.retry-1",
+      payload: { text: "Hello workflow" },
+      executeAi: true,
+      aiAssistantId: "assistant-1",
+      runtimeConfig: { providerConnectionId: "provider-1" },
+      ...overrides,
+    };
+  }
+
+  it("creates exactly one incoming message and executes automation once for a new inbound", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const response = await env.router.routeInbound(ctx, buildWorkflowRequest(env));
+    assert.equal(response.duplicate, undefined);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.automationCalls, 1);
+    assert.equal(env.inboundEvents[0]?.incoming_message_id, env.incomingMessages[0]?.id);
+    assert.equal(env.incomingMessageMetadata[0]?.correlationId, env.inboundEvents[0]?.id);
+  });
+
+  it("reuses the correlation-linked message on stale webhook retry without inserting a duplicate", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const request = buildWorkflowRequest(env, { payload: { text: "هاي" } });
+
+    await env.router.routeInbound(ctx, request);
+    assert.equal(env.incomingMessages.length, 1);
+
+    const staleEvent = env.inboundEvents[0]!;
+    staleEvent.processing_status = "processing";
+    staleEvent.incoming_message_id = null;
+    staleEvent.runtime_execution_id = null;
+    staleEvent.processed_at = null;
+    staleEvent.received_at = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    staleEvent.updated_at = staleEvent.received_at;
+
+    await env.router.routeInbound(ctx, request);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.automationCalls, 2);
+    assert.equal(env.inboundEvents[0]?.incoming_message_id, env.incomingMessages[0]?.id);
+  });
+
+  it("reuses the wamid-linked message on stale webhook retry without inserting a duplicate", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const request = buildWorkflowRequest(env, {
+      idempotencyKey: "wamid.same-text-a",
+      externalMessageId: "wamid.same-text-a",
+      payload: { text: "هاي" },
+    });
+
+    await env.router.routeInbound(ctx, request);
+    const staleEvent = env.inboundEvents[0]!;
+    staleEvent.processing_status = "processing";
+    staleEvent.incoming_message_id = null;
+    staleEvent.runtime_execution_id = null;
+    staleEvent.processed_at = null;
+    staleEvent.received_at = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    staleEvent.updated_at = staleEvent.received_at;
+
+    await env.router.routeInbound(ctx, request);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.automationCalls, 2);
+  });
+
+  it("processes two different wamids with identical text independently", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+
+    await env.router.routeInbound(
+      ctx,
+      buildWorkflowRequest(env, {
+        idempotencyKey: "wamid.same-text-a",
+        externalMessageId: "wamid.same-text-a",
+        externalThreadId: "thread-a",
+        payload: { text: "هاي" },
+      }),
+    );
+    await env.router.routeInbound(
+      ctx,
+      buildWorkflowRequest(env, {
+        idempotencyKey: "wamid.same-text-b",
+        externalMessageId: "wamid.same-text-b",
+        externalThreadId: "thread-b",
+        payload: { text: "هاي" },
+      }),
+    );
+
+    assert.equal(env.incomingMessages.length, 2);
+    assert.equal(env.inboundEvents.length, 2);
+    assert.equal(env.automationCalls, 2);
+  });
+
+  it("does not execute automation again when the inbound already has a runtime execution id", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const request = buildWorkflowRequest(env);
+
+    await env.router.routeInbound(ctx, request);
+    assert.equal(env.automationCalls, 1);
+
+    const staleEvent = env.inboundEvents[0]!;
+    staleEvent.processing_status = "processing";
+    staleEvent.incoming_message_id = null;
+    staleEvent.runtime_execution_id = "runtime-exec-existing";
+    staleEvent.processed_at = null;
+    staleEvent.received_at = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    staleEvent.updated_at = staleEvent.received_at;
+
+    const retry = await env.router.routeInbound(ctx, request);
+    assert.equal(retry.duplicate, true);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.automationCalls, 1);
+  });
+
+  it("retries automation when the incoming message persisted but runtime had not completed", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const request = buildWorkflowRequest(env);
+
+    await env.router.routeInbound(ctx, request);
+    const failedEvent = env.inboundEvents[0]!;
+    failedEvent.processing_status = "failed";
+    failedEvent.error_message = "simulated timeout before processed marker";
+    failedEvent.processed_at = new Date().toISOString();
+    failedEvent.runtime_execution_id = null;
+
+    await env.router.routeInbound(ctx, request);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.automationCalls, 2);
+    assert.equal(env.inboundEvents[0]?.processing_status, "processed");
+  });
+
+  it("returns duplicate without re-executing automation when the inbound is already processed", async () => {
+    const env = createTestEnvironment({
+      automationResponse: "Workflow reply",
+      workflowBinding,
+    });
+    const ctx = createContext();
+    const request = buildWorkflowRequest(env);
+
+    await env.router.routeInbound(ctx, request);
+    const retry = await env.router.routeInbound(ctx, request);
+    assert.equal(retry.duplicate, true);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.automationCalls, 1);
+  });
+});

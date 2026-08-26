@@ -93,6 +93,13 @@ export type ChannelConversationPort = {
     metadata?: Record<string, unknown>;
   }): Promise<ConversationMessageSummary>;
 
+  /** Resolve an already-persisted incoming row for a retried inbound webhook event. */
+  findIncomingMessageForInboundEvent?(input: {
+    conversationId: string;
+    inboundEventId: string;
+    externalMessageId?: string;
+  }): Promise<ConversationMessageSummary | null>;
+
   addOutgoingMessage(input: {
     conversationId: string;
     content: string;
@@ -137,6 +144,25 @@ export type ChannelCustomerIdentityPort = {
     customerId: string | null;
     trustedCustomerName: string | null;
   }>;
+
+  /**
+   * Load a company-scoped CRM customer by id (name hydration / consistency checks).
+   * Optional — fail closed (no hydration) when absent.
+   */
+  getCustomerById?(input: {
+    companyId: string;
+    customerId: string;
+  }): Promise<{ id: string; name: string | null; phone: string | null } | null>;
+
+  /**
+   * True when the CRM customer's phone is consistent with the WhatsApp sender id.
+   * Optional — fail closed (treat as inconsistent) when absent.
+   */
+  customerMatchesWhatsAppSender?(input: {
+    companyId: string;
+    customerId: string;
+    senderExternalId: string | null | undefined;
+  }): Promise<{ matches: boolean; name: string | null }>;
 };
 
 export type ChannelRuntimePort = {

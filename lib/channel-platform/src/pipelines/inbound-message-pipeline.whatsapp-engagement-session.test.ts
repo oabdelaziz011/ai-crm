@@ -166,7 +166,8 @@ describe("InboundMessagePipeline WhatsApp engagement session", () => {
     assert.equal(first.conversationId, conversationId);
     assert.notEqual(secondEngagement?.startedAt, firstEngagement?.startedAt);
     assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا بعودتك").length, 2);
-    assert.equal(env.runtimeCalls, 2);
+    // First: "إلغاء" → welcome + AI. Second: "هاي" greeting-only after welcome → skip AI.
+    assert.equal(env.runtimeCalls, 1);
   });
 
   it("does not write engagement metadata for web_chat", async () => {

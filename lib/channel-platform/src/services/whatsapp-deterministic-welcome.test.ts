@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildWelcomeDeliveredMetadataPatch,
+  isGreetingOnlyInboundText,
   readWelcomeDeliveredAt,
   shouldAttemptWhatsAppDeterministicWelcome,
 } from "./whatsapp-deterministic-welcome.js";
@@ -43,5 +44,14 @@ describe("whatsapp deterministic welcome helpers", () => {
       false,
     );
     assert.equal(shouldAttemptWhatsAppDeterministicWelcome({ engagement: null }), false);
+  });
+
+  it("detects greeting-only inbound text covered by deterministic welcome", () => {
+    assert.equal(isGreetingOnlyInboundText("مساء الخير"), true);
+    assert.equal(isGreetingOnlyInboundText("صباح الخير"), true);
+    assert.equal(isGreetingOnlyInboundText("السلام عليكم"), true);
+    assert.equal(isGreetingOnlyInboundText("hello"), true);
+    assert.equal(isGreetingOnlyInboundText("عايز أحجز عيادة"), false);
+    assert.equal(isGreetingOnlyInboundText("مساء الخير عايز أحجز"), false);
   });
 });

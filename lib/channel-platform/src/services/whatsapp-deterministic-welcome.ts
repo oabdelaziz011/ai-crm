@@ -25,3 +25,15 @@ export function shouldAttemptWhatsAppDeterministicWelcome(input: {
   if (!input.engagement) return false;
   return !hasEngagementWelcomeDelivered(input.engagement);
 }
+
+/**
+ * Pure greetings that are fully covered by the configured deterministic welcome.
+ * After welcome is delivered on this turn, skip a second AI greeting reply.
+ */
+export function isGreetingOnlyInboundText(text: string | null | undefined): boolean {
+  const trimmed = typeof text === "string" ? text.trim() : "";
+  if (!trimmed || trimmed.length > 48) return false;
+  return /^(?:مساء\s*الخير|صباح\s*الخير|السلام\s*عليكم(?:\s*ورحمة\s*الله(?:\s*وبركاته)?)?|سلام|أهلاً?(?:\s*بك)?|اهلا(?:\s*بيك)?|مرحبا(?:ً)?|هاي|hello|hi|hey)[!!.؟?\s]*$/iu.test(
+    trimmed,
+  );
+}

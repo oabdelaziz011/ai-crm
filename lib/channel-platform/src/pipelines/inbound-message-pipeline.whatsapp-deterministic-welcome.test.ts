@@ -198,7 +198,7 @@ async function routeWhatsApp(
 }
 
 describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
-  it("A. known customer sends exact personalized welcome then AI reply", async () => {
+  it("A. greeting-only inbound sends configured welcome once and skips AI greeting", async () => {
     const customWelcome = "أهلاً وسهلاً بك 👋\nكيف يمكنني مساعدتك اليوم؟";
     const adapter = new StubWhatsAppAdapter();
     const env = whatsAppChannelEnv({
@@ -221,13 +221,49 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     const response = await routeWhatsApp(env, { externalThreadId: "wa-known-1" });
     const expectedWelcome = resolveTestWelcome(customWelcome, "عمر مجدي");
 
+    assert.equal(adapter.sentTexts.length, 1);
+    assert.equal(adapter.sentTexts[0], expectedWelcome);
+    assert.equal(env.outgoingMessages.length, 1);
+    assert.equal(env.outgoingMessages[0]?.content, expectedWelcome);
+    assert.equal(response.responseContent, expectedWelcome);
+    assert.equal(env.runtimeCalls, 0);
+    assert.ok(readAiEmployeeEngagement(env.sessions[0]?.metadata)?.welcomeDeliveredAt);
+  });
+
+  it("A2. non-greeting after welcome still runs AI once with suppressWelcomePrompt", async () => {
+    const customWelcome = "أهلاً وسهلاً بك 👋\nكيف يمكنني مساعدتك اليوم؟";
+    const adapter = new StubWhatsAppAdapter();
+    const capturePrepare: { suppressWelcomePrompt?: boolean | null } = {};
+    const env = whatsAppChannelEnv({
+      adapter,
+      employeeRuntime: createWhatsAppEmployeeRuntime({
+        storedWelcome: customWelcome,
+        capturePrepare,
+      }),
+    });
+
+    env.ports.customerIdentity = {
+      async resolveTrustedCustomer() {
+        return {
+          status: "known",
+          customerId: "cust-1",
+          trustedCustomerName: "عمر مجدي",
+        };
+      },
+    };
+
+    const response = await routeWhatsApp(env, {
+      externalThreadId: "wa-known-non-greet",
+      text: "عايز أحجز عيادة",
+    });
+    const expectedWelcome = resolveTestWelcome(customWelcome, "عمر مجدي");
+
     assert.equal(adapter.sentTexts.length, 2);
     assert.equal(adapter.sentTexts[0], expectedWelcome);
     assert.equal(adapter.sentTexts[1], "مساء النور! كيف يمكنني مساعدتك؟");
-    assert.equal(env.outgoingMessages.length, 1);
-    assert.equal(env.outgoingMessages[0]?.content, expectedWelcome);
     assert.equal(response.responseContent, "مساء النور! كيف يمكنني مساعدتك؟");
-    assert.ok(readAiEmployeeEngagement(env.sessions[0]?.metadata)?.welcomeDeliveredAt);
+    assert.equal(capturePrepare.suppressWelcomePrompt, true);
+    assert.equal(env.runtimeCalls, 1);
   });
 
   it("B. unknown customer sends configured welcome without CRM name", async () => {
@@ -266,12 +302,12 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
       text: "سؤال ثاني",
     });
 
-    assert.equal(adapter.sendCalls, 3);
+    assert.equal(adapter.sendCalls, 2);
     assert.equal(
       adapter.sentTexts.filter((text) => text.startsWith("أهلاً") || text.startsWith("مرحب")).length,
       1,
     );
-    assert.equal(env.runtimeCalls, 2);
+    assert.equal(env.runtimeCalls, 1);
   });
 
   it("D. webhook retry does not duplicate welcome", async () => {
@@ -307,7 +343,8 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
 
     assert.equal(first.conversationId, second.conversationId);
     assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا").length, 1);
-    assert.equal(env.runtimeCalls, 2);
+    // First turn: greeting-only after welcome → skip AI. Retry: welcome already marked → AI once.
+    assert.equal(env.runtimeCalls, 1);
   });
 
   it("E. suppresses LLM welcome prompt after deterministic welcome", async () => {
@@ -319,7 +356,10 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
       }),
     });
 
-    await routeWhatsApp(env, { externalThreadId: "wa-suppress-1" });
+    await routeWhatsApp(env, {
+      externalThreadId: "wa-suppress-1",
+      text: "عايز أحجز",
+    });
     assert.equal(capturePrepare.suppressWelcomePrompt, true);
   });
 
@@ -353,25 +393,29 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     assert.match(adapter.sentTexts[0] ?? "", /أهلاً يا سارة 👋/);
   });
 
-  it("welcome dispatch failure does not block AI runtime", async () => {
+  it("welcome Meta send failure still stamps engagement and skips AI on greeting-only", async () => {
     const adapter = new StubWhatsAppAdapter("fail-welcome");
-    const capturePrepare: { suppressWelcomePrompt?: boolean | null } = {};
     const env = whatsAppChannelEnv({
       adapter,
       employeeRuntime: createWhatsAppEmployeeRuntime({
         storedWelcome: "مرحبًا",
-        capturePrepare,
       }),
     });
 
     const response = await routeWhatsApp(env, { externalThreadId: "wa-welcome-fail-1" });
+    // Greeting-only: do not stack an AI greeting after a persisted-but-undelivered welcome.
+    assert.equal(env.runtimeCalls, 0);
+    assert.equal(response.responseContent, "مرحبًا");
+    assert.ok(readAiEmployeeEngagement(env.sessions[0]?.metadata)?.welcomeDeliveredAt);
+
+    // Next inbound in the same engagement must not re-attempt deterministic welcome.
+    await routeWhatsApp(env, {
+      externalThreadId: "wa-welcome-fail-1",
+      idempotencyKey: "wamid.welcome-fail-2",
+      text: "عايز أحجز",
+    });
+    assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا").length, 1);
     assert.equal(env.runtimeCalls, 1);
-    assert.equal(response.responseContent, "مساء النور! كيف يمكنني مساعدتك؟");
-    assert.equal(capturePrepare.suppressWelcomePrompt, false);
-    assert.equal(
-      env.conversationMetadataById.get(response.conversationId ?? "")?.welcomeDeliveredAt,
-      undefined,
-    );
   });
 
   it("welcome success with AI outbound failure keeps welcome persisted and skips resend on retry", async () => {
@@ -391,7 +435,7 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
       externalThreadId: "wa-ai-fail-1",
       externalMessageId: "wamid.ai-fail-retry",
       payload: {
-        text: "مساء الخير",
+        text: "عايز أحجز عيادة",
         externalThreadId: "wa-ai-fail-1",
         senderExternalId: "wa-ai-fail-1",
       },
@@ -400,6 +444,7 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     const first = await routeWhatsApp(env, {
       externalThreadId: "wa-ai-fail-1",
       idempotencyKey: "wamid.ai-fail-retry",
+      text: "عايز أحجز عيادة",
     });
     assert.ok(first.outboundError);
     assert.equal(env.outgoingMessages.filter((message) => message.content === "مرحبًا").length, 1);

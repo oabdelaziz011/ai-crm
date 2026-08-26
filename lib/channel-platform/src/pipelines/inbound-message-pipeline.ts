@@ -55,7 +55,10 @@ import {
   resolveAiEmployeeEngagement,
   type AiEmployeeEngagementState,
 } from "../services/ai-employee-engagement-session.js";
-import { shouldAttemptWhatsAppDeterministicWelcome } from "../services/whatsapp-deterministic-welcome.js";
+import {
+  isGreetingOnlyInboundText,
+  shouldAttemptWhatsAppDeterministicWelcome,
+} from "../services/whatsapp-deterministic-welcome.js";
 import {
   claimInteractiveReplyDedupe,
   extractInteractiveReplyContextIdFromPayload,
@@ -135,6 +138,29 @@ function shouldSkipDuplicateInbound(duplicate: {
     return true;
   }
   return false;
+}
+
+/** Runtime already ran for this inbound event — do not execute AI/outbound again on stale retries. */
+function shouldSkipInboundRuntimeRetry(inboundEvent: {
+  runtime_execution_id?: string | null;
+}): boolean {
+  return Boolean(
+    typeof inboundEvent.runtime_execution_id === "string" && inboundEvent.runtime_execution_id.trim(),
+  );
+}
+
+function buildInboundIncomingMetadata(
+  inboundEventId: string,
+  request: InboundRouteRequestDto,
+  normalized: { attachments?: unknown; metadata?: Record<string, unknown> },
+): Record<string, unknown> {
+  return {
+    channelKey: request.channelKey,
+    source: request.source,
+    correlationId: inboundEventId,
+    attachments: normalized.attachments,
+    ...(normalized.metadata ?? {}),
+  };
 }
 
 export class InboundMessagePipeline {
@@ -933,6 +959,46 @@ export class InboundMessagePipeline {
       }
 
       let incomingMessageId: string | undefined = inboundEvent.incoming_message_id ?? undefined;
+      incomingMessageId = await this.resolveInboundIncomingMessageId({
+        inboundEvent,
+        conversationId: session.conversation_id,
+        externalMessageId: normalized.externalMessageId,
+        request,
+        normalized,
+        inboundText,
+        useWorkflow,
+        incomingMessageId,
+      });
+
+      if (shouldSkipInboundRuntimeRetry(inboundEvent)) {
+        request.trace?.step("webhook.inbound_runtime_retry_skipped", {
+          inboundEventId: inboundEvent.id,
+          runtimeExecutionId: inboundEvent.runtime_execution_id,
+          incomingMessageId: incomingMessageId ?? null,
+        });
+        if (incomingMessageId && !inboundEvent.incoming_message_id) {
+          await this.inboundRepository.updateEvent({
+            inboundEventId: inboundEvent.id,
+            processingStatus: "processed",
+            conversationId: session.conversation_id,
+            channelSessionId: session.id,
+            incomingMessageId,
+            runtimeExecutionId: inboundEvent.runtime_execution_id ?? undefined,
+            processedAt: new Date().toISOString(),
+          });
+        }
+        return {
+          inboundEventId: inboundEvent.id,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: incomingMessageId ?? "",
+          runtimeExecutionId: inboundEvent.runtime_execution_id ?? undefined,
+          duplicate: true,
+          emailRoutingClassification,
+          emailRoutingDecision,
+          emailRoutingTicket,
+        };
+      }
 
       if (!incomingMessageId && (!request.executeAi || useWorkflow)) {
         const incomingMessage = await waPerfMeasure("Database writes: add incoming message", () =>
@@ -940,12 +1006,7 @@ export class InboundMessagePipeline {
             conversationId: session.conversation_id,
             content: inboundText,
             externalMessageId: normalized.externalMessageId,
-            metadata: {
-              channelKey: request.channelKey,
-              source: request.source,
-              attachments: normalized.attachments,
-              ...(normalized.metadata ?? {}),
-            },
+            metadata: buildInboundIncomingMetadata(inboundEvent.id, request, normalized),
           }),
         );
         incomingMessageId = incomingMessage.id;
@@ -953,14 +1014,29 @@ export class InboundMessagePipeline {
           request.trace?.step("webhook.inbound_message_reused", {
             incomingMessageId,
             externalMessageId: normalized.externalMessageId,
+            source: "conversation_port",
+          });
+        }
+        if (!inboundEvent.incoming_message_id) {
+          await this.inboundRepository.updateEvent({
+            inboundEventId: inboundEvent.id,
+            processingStatus: "processing",
+            incomingMessageId,
           });
         }
       } else if (incomingMessageId) {
         request.trace?.step("webhook.inbound_message_reused", {
           incomingMessageId,
           inboundEventId: inboundEvent.id,
-          source: "inbound_event",
+          source: inboundEvent.incoming_message_id ? "inbound_event" : "lookup",
         });
+        if (!inboundEvent.incoming_message_id) {
+          await this.inboundRepository.updateEvent({
+            inboundEventId: inboundEvent.id,
+            processingStatus: "processing",
+            incomingMessageId,
+          });
+        }
       }
 
       if (
@@ -1204,6 +1280,8 @@ export class InboundMessagePipeline {
       ) {
         let runtimeConfig = request.runtimeConfig;
         let suppressWelcomePrompt = false;
+        let skipAiAfterDeterministicWelcome = false;
+        let deterministicWelcomeText: string | null = null;
 
         try {
         if (aiEmployeeId && this.ports.employeeRuntime) {
@@ -1254,11 +1332,17 @@ export class InboundMessagePipeline {
                     buildEngagementMetadataPatch(deliveredEngagement),
                   );
                   suppressWelcomePrompt = true;
+                  deterministicWelcomeText = resolvedWelcome.welcomeText;
+                  // Same-turn pure greetings are already answered by the configured welcome.
+                  if (isGreetingOnlyInboundText(inboundText)) {
+                    skipAiAfterDeterministicWelcome = true;
+                  }
 
                   request.trace?.step("webhook.whatsapp_deterministic_welcome_sent", {
                     aiEmployeeId,
                     conversationId: session.conversation_id,
                     engagementStartedAt: deliveredEngagement.startedAt,
+                    skipAiAfterGreeting: skipAiAfterDeterministicWelcome,
                   });
                   logWhatsApp("Deterministic welcome sent", {
                     companyId: request.companyId,
@@ -1267,6 +1351,7 @@ export class InboundMessagePipeline {
                     aiEmployeeId,
                     phoneNumber: normalized.senderExternalId,
                     engagementStartedAt: deliveredEngagement.startedAt,
+                    skipAiAfterGreeting: skipAiAfterDeterministicWelcome,
                   });
                 } catch (error) {
                   const welcomeError =
@@ -1282,9 +1367,74 @@ export class InboundMessagePipeline {
                     aiEmployeeId,
                     phoneNumber: normalized.senderExternalId,
                   });
+                  // Outbound persists the conversation message before Meta send. When Meta
+                  // auth/delivery fails after persist, still stamp the engagement so we do
+                  // not re-welcome every turn and do not stack a second AI greeting on
+                  // greeting-only inbounds.
+                  try {
+                    const deliveredEngagement = markEngagementWelcomeDelivered(aiEmployeeEngagement!);
+                    aiEmployeeEngagement = deliveredEngagement;
+                    session = await this.sessionRepository.updateSessionMetadata(
+                      session.id,
+                      buildEngagementMetadataPatch(deliveredEngagement),
+                    );
+                    suppressWelcomePrompt = true;
+                    deterministicWelcomeText = resolvedWelcome.welcomeText;
+                    if (isGreetingOnlyInboundText(inboundText)) {
+                      skipAiAfterDeterministicWelcome = true;
+                    }
+                    request.trace?.step("webhook.whatsapp_deterministic_welcome_stamped_after_dispatch_error", {
+                      aiEmployeeId,
+                      conversationId: session.conversation_id,
+                      engagementStartedAt: deliveredEngagement.startedAt,
+                      skipAiAfterGreeting: skipAiAfterDeterministicWelcome,
+                      dispatchError: welcomeError,
+                    });
+                  } catch {
+                    // Never fail the inbound turn because secondary welcome stamping threw.
+                  }
                 }
               }
             }
+          }
+
+          if (skipAiAfterDeterministicWelcome) {
+            if (!incomingMessageId) {
+              incomingMessageId = await this.resolveInboundIncomingMessageId({
+                inboundEvent,
+                conversationId: session.conversation_id,
+                externalMessageId: normalized.externalMessageId,
+                request,
+                normalized,
+                inboundText,
+                useWorkflow,
+                incomingMessageId,
+                lookupOnly: true,
+              });
+            }
+
+            await this.inboundRepository.updateEvent({
+              inboundEventId: inboundEvent.id,
+              processingStatus: "processed",
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId,
+              processedAt: new Date().toISOString(),
+            });
+
+            request.trace?.step("webhook.whatsapp_deterministic_welcome_skip_ai", {
+              aiEmployeeId,
+              conversationId: session.conversation_id,
+              reason: "greeting_only_after_deterministic_welcome",
+            });
+
+            return {
+              inboundEventId: inboundEvent.id,
+              conversationId: session.conversation_id,
+              channelSessionId: session.id,
+              incomingMessageId: incomingMessageId ?? "",
+              responseContent: deterministicWelcomeText ?? undefined,
+            };
           }
 
           const prepared = await this.ports.employeeRuntime.prepareForConversation({
@@ -1298,6 +1448,7 @@ export class InboundMessagePipeline {
               channelKey: request.channelKey,
               companyChannelId: request.companyChannelId,
               conversationId: session.conversation_id,
+              channelIdentityStatus: trustedChannelIdentity.status,
               ...(trustedChannelIdentity.customerId
                 ? {
                     trustedCustomerId: trustedChannelIdentity.customerId,
@@ -1395,6 +1546,20 @@ export class InboundMessagePipeline {
 
         runtimeExecutionId = runtimeResult.executionId;
         responseContent = runtimeResult.responseContent;
+
+        if (!incomingMessageId) {
+          incomingMessageId = await this.resolveInboundIncomingMessageId({
+            inboundEvent,
+            conversationId: session.conversation_id,
+            externalMessageId: normalized.externalMessageId,
+            request,
+            normalized,
+            inboundText,
+            useWorkflow,
+            incomingMessageId,
+            lookupOnly: true,
+          });
+        }
 
         await this.inboundRepository.updateEvent({
           inboundEventId: inboundEvent.id,
@@ -1612,6 +1777,48 @@ export class InboundMessagePipeline {
     }
   }
 
+  private async resolveInboundIncomingMessageId(input: {
+    inboundEvent: { id: string; incoming_message_id?: string | null };
+    conversationId: string;
+    externalMessageId?: string;
+    request: InboundRouteRequestDto;
+    normalized: { attachments?: unknown; metadata?: Record<string, unknown> };
+    inboundText: string;
+    useWorkflow: boolean;
+    incomingMessageId?: string;
+    lookupOnly?: boolean;
+  }): Promise<string | undefined> {
+    if (input.incomingMessageId?.trim()) {
+      return input.incomingMessageId.trim();
+    }
+    if (input.inboundEvent.incoming_message_id?.trim()) {
+      return input.inboundEvent.incoming_message_id.trim();
+    }
+
+    const finder = this.ports.conversation.findIncomingMessageForInboundEvent;
+    if (finder) {
+      const existing = await finder({
+        conversationId: input.conversationId,
+        inboundEventId: input.inboundEvent.id,
+        externalMessageId: input.externalMessageId,
+      });
+      if (existing?.id) {
+        return existing.id;
+      }
+    }
+
+    if (input.lookupOnly) {
+      return undefined;
+    }
+
+    if (!input.useWorkflow && input.request.executeAi) {
+      // executeAi path persists the incoming row inside runtime; idempotent add handles retries.
+      return undefined;
+    }
+
+    return undefined;
+  }
+
   private async classifyInboundEmailRouting(input: {
     companyId: string;
     subject: string | null;
@@ -1712,8 +1919,11 @@ export class InboundMessagePipeline {
   }
 
   /**
-   * Phase 2 — resolve WhatsApp sender → CRM customer and bind conversation.customer_id
-   * only when empty. Fail closed on ambiguity. Never trusts senderName / LLM ids.
+   * Phase 2 — resolve WhatsApp sender → CRM customer.
+   * WhatsApp phone is authoritative. Never silently trust a stale conversation.customer_id
+   * that conflicts with the sender. Never overwrite customer_id on conflict/ambiguous.
+   * Stamp metadata.trustedChannelCustomerId so tool-router/execute prefer WA identity.
+   * Never trusts senderName / LLM ids.
    */
   private async resolveAndBindTrustedChannelCustomer(input: {
     companyId: string;
@@ -1731,27 +1941,9 @@ export class InboundMessagePipeline {
     if (!this.ports.customerIdentity) return empty;
     if (input.channelKey !== "whatsapp") return empty;
 
-    // Prefer existing trusted conversation.customer_id — skip CRM lookup.
-    if (this.ports.conversation.getConversationCustomerId) {
-      const existing = await this.ports.conversation.getConversationCustomerId(input.conversationId);
-      if (existing) {
-        // Load CRM name from metadata if previously stored; otherwise leave name null
-        // (welcome stays generic but tools still get trustedCustomerId).
-        const meta = this.ports.conversation.getConversationMetadata
-          ? await this.ports.conversation.getConversationMetadata(input.conversationId)
-          : null;
-        const trustedName =
-          typeof meta?.trustedCustomerName === "string" && meta.trustedCustomerName.trim()
-            ? meta.trustedCustomerName.trim()
-            : null;
-        input.trace?.step("webhook.channel_identity", {
-          status: "reused",
-          conversationId: input.conversationId,
-          customerId: existing,
-        });
-        return { customerId: existing, trustedCustomerName: trustedName, status: "reused" };
-      }
-    }
+    const existing = this.ports.conversation.getConversationCustomerId
+      ? await this.ports.conversation.getConversationCustomerId(input.conversationId)
+      : null;
 
     const resolved = await this.ports.customerIdentity.resolveTrustedCustomer({
       companyId: input.companyId,
@@ -1763,45 +1955,167 @@ export class InboundMessagePipeline {
       status: resolved.status,
       conversationId: input.conversationId,
       customerId: resolved.customerId,
+      existingCustomerId: existing,
       hasTrustedName: Boolean(resolved.trustedCustomerName),
     });
 
-    if (resolved.status === "known" && resolved.customerId) {
-      await this.ports.conversation.linkConversationCustomerIfEmpty?.({
-        conversationId: input.conversationId,
-        customerId: resolved.customerId,
-        companyId: input.companyId,
-      });
-
+    const persistIdentityStamp = async (stamp: {
+      status: string;
+      trustedChannelCustomerId: string | null;
+      trustedCustomerName?: string | null;
+    }) => {
       if (
-        resolved.trustedCustomerName &&
-        this.ports.conversation.updateConversationMetadata &&
-        this.ports.conversation.getConversationMetadata
+        !this.ports.conversation.updateConversationMetadata ||
+        !this.ports.conversation.getConversationMetadata
       ) {
-        const currentMeta =
-          (await this.ports.conversation.getConversationMetadata(input.conversationId)) ?? {};
-        await this.ports.conversation.updateConversationMetadata({
-          conversationId: input.conversationId,
-          metadata: {
-            ...currentMeta,
-            trustedCustomerName: resolved.trustedCustomerName,
-            // Never store WhatsApp profile senderName as CRM identity.
-          },
-        });
+        return;
       }
+      const currentMeta =
+        (await this.ports.conversation.getConversationMetadata(input.conversationId)) ?? {};
+      const nextMeta: Record<string, unknown> = {
+        ...currentMeta,
+        channelIdentityStatus: stamp.status,
+        // Explicit null is intentional — tells tool-router not to trust conversation.customer_id.
+        trustedChannelCustomerId: stamp.trustedChannelCustomerId,
+      };
+      if (stamp.trustedCustomerName?.trim()) {
+        nextMeta.trustedCustomerName = stamp.trustedCustomerName.trim();
+      }
+      await this.ports.conversation.updateConversationMetadata({
+        conversationId: input.conversationId,
+        metadata: nextMeta,
+      });
+    };
 
+    const hydrateNameForExisting = async (
+      customerId: string,
+      preferredName: string | null,
+    ): Promise<string | null> => {
+      if (preferredName?.trim()) return preferredName.trim();
+      const meta = this.ports.conversation.getConversationMetadata
+        ? await this.ports.conversation.getConversationMetadata(input.conversationId)
+        : null;
+      const fromMeta =
+        typeof meta?.trustedCustomerName === "string" && meta.trustedCustomerName.trim()
+          ? meta.trustedCustomerName.trim()
+          : null;
+      if (fromMeta) return fromMeta;
+      const row = this.ports.customerIdentity?.getCustomerById
+        ? await this.ports.customerIdentity.getCustomerById({
+            companyId: input.companyId,
+            customerId,
+          })
+        : null;
+      return typeof row?.name === "string" && row.name.trim() ? row.name.trim() : null;
+    };
+
+    // Ambiguous / invalid sender — fail closed. Do not overwrite or reuse stale bind.
+    if (
+      resolved.status === "ambiguous" ||
+      resolved.status === "invalid_sender" ||
+      resolved.status === "unsupported_channel"
+    ) {
+      await persistIdentityStamp({
+        status: resolved.status,
+        trustedChannelCustomerId: null,
+      });
       return {
-        customerId: resolved.customerId,
-        trustedCustomerName: resolved.trustedCustomerName,
-        status: "known",
+        customerId: null,
+        trustedCustomerName: null,
+        status: resolved.status,
       };
     }
 
-    // unknown / ambiguous / invalid — leave customer_id null (fail closed).
+    // Exactly one CRM match for WhatsApp sender.
+    if (resolved.status === "known" && resolved.customerId) {
+      const conflict = Boolean(existing && existing !== resolved.customerId);
+      if (conflict) {
+        // Stale bind conflicts with authoritative WhatsApp identity — do not overwrite
+        // conversation.customer_id, but stamp/use the WA-resolved customer for tools.
+        input.trace?.step("webhook.channel_identity_conflict", {
+          conversationId: input.conversationId,
+          existingCustomerId: existing,
+          resolvedCustomerId: resolved.customerId,
+        });
+      } else if (!existing) {
+        await this.ports.conversation.linkConversationCustomerIfEmpty?.({
+          conversationId: input.conversationId,
+          customerId: resolved.customerId,
+          companyId: input.companyId,
+        });
+      }
+
+      const trustedName = await hydrateNameForExisting(
+        resolved.customerId,
+        resolved.trustedCustomerName,
+      );
+      const status = conflict
+        ? "conflict_stale_bind"
+        : existing
+          ? "reused_consistent"
+          : "known";
+      await persistIdentityStamp({
+        status,
+        trustedChannelCustomerId: resolved.customerId,
+        trustedCustomerName: trustedName,
+      });
+      return {
+        customerId: resolved.customerId,
+        trustedCustomerName: trustedName,
+        status,
+      };
+    }
+
+    // Zero CRM phone matches.
+    if (existing) {
+      const consistency = this.ports.customerIdentity.customerMatchesWhatsAppSender
+        ? await this.ports.customerIdentity.customerMatchesWhatsAppSender({
+            companyId: input.companyId,
+            customerId: existing,
+            senderExternalId: input.senderExternalId,
+          })
+        : { matches: false, name: null };
+
+      if (consistency.matches) {
+        const trustedName = await hydrateNameForExisting(existing, consistency.name);
+        await persistIdentityStamp({
+          status: "reused_phone_consistent",
+          trustedChannelCustomerId: existing,
+          trustedCustomerName: trustedName,
+        });
+        return {
+          customerId: existing,
+          trustedCustomerName: trustedName,
+          status: "reused_phone_consistent",
+        };
+      }
+
+      // Existing bind is not consistent with WhatsApp sender — fail closed (no overwrite).
+      input.trace?.step("webhook.channel_identity_conflict", {
+        conversationId: input.conversationId,
+        existingCustomerId: existing,
+        resolvedCustomerId: null,
+        reason: "zero_match_stale_bind",
+      });
+      await persistIdentityStamp({
+        status: "conflict_stale_bind",
+        trustedChannelCustomerId: null,
+      });
+      return {
+        customerId: null,
+        trustedCustomerName: null,
+        status: "conflict_stale_bind",
+      };
+    }
+
+    await persistIdentityStamp({
+      status: "unknown",
+      trustedChannelCustomerId: null,
+    });
     return {
       customerId: null,
       trustedCustomerName: null,
-      status: resolved.status,
+      status: "unknown",
     };
   }
 

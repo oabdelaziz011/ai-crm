@@ -39,14 +39,17 @@ function formatBookingTimeForCustomer(slotStart: string): string {
   return `${match[1]!.padStart(2, "0")}:${match[2]}`;
 }
 
-function formatBookingReference(bookingId: string): string {
-  const compact = bookingId.replace(/-/g, "").trim().toUpperCase();
-  if (compact.length >= 8) return compact.slice(0, 8);
-  return bookingId.trim();
+function formatBookingReference(confirmationNumber: string | null | undefined, bookingId: string): string {
+  const confirmation = typeof confirmationNumber === "string" ? confirmationNumber.trim() : "";
+  if (confirmation) return confirmation;
+  throw new Error(
+    `Missing authoritative confirmation_number for booking ${bookingId.trim() || "(unknown)"}.`,
+  );
 }
 
 function buildBookingConfirmationMessage(input: {
   bookingId: string;
+  confirmationNumber: string;
   date: string;
   slotStart: string;
   customerName?: string | null;
@@ -285,6 +288,7 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
       const date = String(input.date);
       const slotStart = String(input.slotStart);
       const bookingId = String(result.bookingId ?? "");
+      const confirmationNumber = formatBookingReference(result.confirmationNumber, bookingId);
       const resolvedCustomerName =
         typeof result.customerName === "string"
           ? result.customerName
@@ -293,6 +297,7 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
             : null;
       const customerFacingMessage = buildBookingConfirmationMessage({
         bookingId,
+        confirmationNumber,
         date,
         slotStart,
         customerName: resolvedCustomerName,
@@ -302,7 +307,8 @@ function createCreateBookingTool(ports: SchedulingToolPorts): Tool {
       return {
         success: true,
         bookingId,
-        bookingRef: formatBookingReference(bookingId),
+        bookingRef: confirmationNumber,
+        confirmationNumber,
         status: result.status,
         startAt: result.startAt,
         endAt: result.endAt,
@@ -361,7 +367,8 @@ function isCancellableBookingStatus(status: string | undefined): boolean {
     normalized === "completed" ||
     normalized === "checked_out" ||
     normalized === "no_show" ||
-    normalized === "rescheduled"
+    normalized === "rescheduled" ||
+    normalized === "expired"
   );
 }
 
@@ -747,9 +754,16 @@ export function createCheckInBookingTool(ports: SchedulingToolPorts): Tool {
       return {
         success: true,
         bookingId: result.bookingId,
+        confirmationNumber: formatBookingReference(
+          result.confirmationNumber,
+          result.bookingId ?? bookingId,
+        ),
         checkedInAt: result.checkedInAt,
         status: result.status,
-        customerFacingMessage: `تم تسجيل الحضور للحجز ${bookingReference || result.bookingId} بنجاح.`,
+        customerFacingMessage: `تم تسجيل الحضور للحجز ${formatBookingReference(
+          result.confirmationNumber,
+          result.bookingId ?? bookingId,
+        )} بنجاح.`,
       };
     },
   };
@@ -820,9 +834,16 @@ export function createCheckOutBookingTool(ports: SchedulingToolPorts): Tool {
       return {
         success: true,
         bookingId: result.bookingId,
+        confirmationNumber: formatBookingReference(
+          result.confirmationNumber,
+          result.bookingId ?? bookingId,
+        ),
         checkedOutAt: result.checkedOutAt,
         status: result.status,
-        customerFacingMessage: `تم تسجيل الانصراف للحجز ${bookingReference || result.bookingId} بنجاح.`,
+        customerFacingMessage: `تم تسجيل الانصراف للحجز ${formatBookingReference(
+          result.confirmationNumber,
+          result.bookingId ?? bookingId,
+        )} بنجاح.`,
       };
     },
   };

@@ -1076,6 +1076,10 @@ export async function executeCreateBooking(
     return {
       success: true,
       bookingId: result.booking.id,
+      confirmationNumber:
+        result.booking.confirmation_number == null
+          ? null
+          : String(result.booking.confirmation_number).trim() || null,
       status: result.booking.status,
       startAt: result.booking.start_at,
       endAt: result.booking.end_at,
@@ -1278,7 +1282,10 @@ export async function executeSearchBookings(
   const trusted = typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
 
   let customerIds: string[] = [];
-  if (phone) {
+  // Trusted conversation customer wins over raw WhatsApp phone lookup.
+  if (trusted) {
+    customerIds = [trusted];
+  } else if (phone) {
     customerIds = await resolveCustomerIdsByPhone(client, input.companyId, phone);
     if (customerIds.length === 0) {
       return {
@@ -1297,8 +1304,6 @@ export async function executeSearchBookings(
         .eq("id", input.conversationId.trim())
         .is("customer_id", null);
     }
-  } else if (trusted) {
-    customerIds = [trusted];
   } else {
     return {
       success: false,
@@ -1379,7 +1384,7 @@ export async function executeSearchBookings(
       bookingId: String(row.id),
       customerId,
       customerName: customerNames.get(customerId) ?? "Customer",
-      reference: confirmation || String(row.id).replace(/-/g, "").slice(0, 8).toUpperCase(),
+      reference: confirmation || undefined,
       scheduledAt: String(row.start_at),
       status: String(row.status),
       employeeName: resourceId ? resourceNames.get(resourceId) || undefined : undefined,
@@ -1619,6 +1624,21 @@ export async function executeCancelBooking(
     };
   }
 
+  const existingStatus = String(booking.status ?? "").trim().toLowerCase();
+  const confirmationEarly =
+    booking.confirmation_number == null ? null : String(booking.confirmation_number).trim();
+  const referenceHint = confirmationEarly || "الحجز";
+  if (existingStatus === "cancelled" || existingStatus === "canceled") {
+    return {
+      success: false,
+      errors: ["already_cancelled"],
+      message: "Booking is already cancelled.",
+      customerFacingMessage: confirmationEarly
+        ? `الحجز ${referenceHint} ملغي بالفعل. مش هنلغي تاني.`
+        : "الحجز ملغي بالفعل. مش هنلغي تاني.",
+    };
+  }
+
   const ownership = await assertCancelBookingOwnership(client, {
     companyId: input.companyId,
     bookingCustomerId: booking.customer_id,
@@ -1646,9 +1666,10 @@ export async function executeCancelBooking(
     });
     const confirmation =
       booking.confirmation_number == null ? null : String(booking.confirmation_number).trim();
-    const reference =
-      confirmation || String(result.booking.id).replace(/-/g, "").slice(0, 8).toUpperCase();
-    const customerFacingMessage = `تم إلغاء الحجز ${reference} بنجاح.`;
+    const reference = confirmation || undefined;
+    const customerFacingMessage = reference
+      ? `تم إلغاء الحجز ${reference} بنجاح.`
+      : "تم إلغاء الحجز بنجاح.";
     return {
       success: true,
       bookingId: result.booking.id,
@@ -1680,6 +1701,9 @@ export async function executeCancelBooking(
 }
 
 function customerFacingMessageForCancelErrors(codes: string[]): string {
+  if (codes.includes("already_cancelled")) {
+    return "الحجز ده ملغي بالفعل. مش هنلغي تاني.";
+  }
   if (codes.includes("cancellation_window_expired")) {
     return "موعد الإلغاء عدّى على الحجز ده — مش هنقدر نلغيه. اختاري موعد لسه قدام من القائمة.";
   }
@@ -1769,6 +1793,8 @@ export async function executeCheckInBooking(
     return {
       success: true,
       bookingId: result.booking.id,
+      confirmationNumber:
+        booking.confirmation_number == null ? null : String(booking.confirmation_number).trim(),
       checkedInAt: result.booking.updated_at ?? new Date().toISOString(),
       status: result.booking.status,
     };
@@ -1895,6 +1921,8 @@ export async function executeCheckOutBooking(
     return {
       success: true,
       bookingId: result.booking.id,
+      confirmationNumber:
+        booking.confirmation_number == null ? null : String(booking.confirmation_number).trim(),
       checkedOutAt: result.booking.updated_at ?? new Date().toISOString(),
       status: result.booking.status,
     };

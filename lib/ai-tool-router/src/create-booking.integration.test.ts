@@ -237,6 +237,7 @@ describe("create_booking production tool", () => {
           return {
             success: true,
             bookingId: "booking-resolved",
+            confirmationNumber: "BK-000101",
             status: "confirmed",
             startAt: "2026-08-26T21:15:00.000Z",
             endAt: "2026-08-26T21:25:00.000Z",
@@ -263,6 +264,9 @@ describe("create_booking production tool", () => {
 
     assert.equal(result.success, true);
     assert.equal(result.bookingId, "booking-resolved");
+    assert.equal(result.bookingRef, "BK-000101");
+    assert.equal(result.confirmationNumber, "BK-000101");
+    assert.match(String(result.customerFacingMessage ?? ""), /رقم الحجز: BK-000101/);
     assert.equal(capturedCustomerId, "1e6e345e-5180-46fc-9f2b-01f832a6a432");
   });
 
@@ -291,6 +295,7 @@ describe("create_booking production tool", () => {
             start_at: "2026-08-01T09:00:00.000Z",
             end_at: "2026-08-01T09:30:00.000Z",
             company_id: input.companyId,
+            confirmation_number: "BK-000001",
           },
         };
       },
@@ -308,6 +313,7 @@ describe("create_booking production tool", () => {
 
     assert.equal(result.success, true);
     assert.equal(result.bookingId, "booking-1");
+    assert.equal(result.confirmationNumber, "BK-000001");
     assert.equal(domainCalls.length, 1);
     assert.equal(domainCalls[0]?.source, "ai_assistant");
     assert.equal(domainCalls[0]?.createdBy, "user-1");
@@ -602,6 +608,7 @@ describe("create_booking production tool", () => {
             start_at: "2026-08-01T10:00:00.000Z",
             end_at: "2026-08-01T10:30:00.000Z",
             company_id: "company-1",
+            confirmation_number: "BK-000042",
           },
         };
       },
@@ -639,6 +646,8 @@ describe("create_booking production tool", () => {
 
     assert.equal(result.status, "succeeded");
     assert.equal(result.output?.bookingId, "booking-llm-1");
+    assert.equal(result.output?.bookingRef, "BK-000042");
+    assert.equal(result.output?.confirmationNumber, "BK-000042");
     assert.deepEqual(domainCalls, ["createBooking"]);
     assert.equal(domainCalls.includes("booking-mock-1" as never), false);
   });
@@ -653,12 +662,13 @@ describe("create_booking production tool", () => {
           output: {
             success: true,
             bookingId: "cccccccc-dddd-4eee-8fff-000000000001",
-            bookingRef: "CCCCCCCC",
+            bookingRef: "BK-000088",
+            confirmationNumber: "BK-000088",
             date: "2026-08-02",
             slotStart: "10:00",
             startAt: "2026-08-02T07:00:00.000Z",
             customerFacingMessage:
-              "تم حجز موعدك بنجاح.\nالموعد: يوم 02-08-2026 الساعة 10:00\nرقم الحجز: CCCCCCCC",
+              "تم حجز موعدك بنجاح.\nالموعد: يوم 02-08-2026 الساعة 10:00\nرقم الحجز: BK-000088",
           },
           durationMs: 4,
         };
@@ -692,37 +702,48 @@ describe("create_booking production tool", () => {
 
     const gateway: RuntimeGatewayPort = {
       async chatCompletion(input) {
-        if (!input.messages.some((message) => message.role === "tool")) {
+        if (input.tools?.length) {
+          if (!input.messages.some((message) => message.role === "tool")) {
+            return {
+              text: "",
+              model: "mock",
+              providerKey: "mock",
+              finishReason: "tool_calls",
+              usage: { inputTokens: 1, outputTokens: 0, totalTokens: 1 },
+              latencyMs: 1,
+              toolCalls: [
+                {
+                  id: "call-1",
+                  name: CREATE_BOOKING_TOOL_KEY,
+                  arguments: {
+                    customerId: "bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb",
+                    serviceId: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+                    resourceId: "cccccccc-1111-4111-8111-cccccccccccc",
+                    date: "2026-08-02",
+                    slotStart: "10:00",
+                  },
+                },
+              ],
+            };
+          }
+
           return {
-            text: "",
+            text: "Booking confirmed.",
             model: "mock",
             providerKey: "mock",
-            finishReason: "tool_calls",
-            usage: { inputTokens: 1, outputTokens: 0, totalTokens: 1 },
-            latencyMs: 1,
-            toolCalls: [
-              {
-                id: "call-1",
-                name: CREATE_BOOKING_TOOL_KEY,
-                arguments: {
-                  customerId: "customer-1",
-                  serviceId: "service-1",
-                  resourceId: "resource-1",
-                  date: "2026-08-02",
-                  slotStart: "10:00",
-                },
-              },
-            ],
+            finishReason: "stop",
+            usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 },
+            latencyMs: 2,
           };
         }
 
         return {
-          text: "Booking confirmed.",
+          text: "unexpected",
           model: "mock",
           providerKey: "mock",
           finishReason: "stop",
-          usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 },
-          latencyMs: 2,
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
         };
       },
     };
@@ -737,8 +758,13 @@ describe("create_booking production tool", () => {
       },
       conversationId: "conv-1",
       gatewayRequest: {
-        messages: [{ role: "user", content: "Book 10am tomorrow" }],
+        messages: [
+          { role: "user", content: "احجز 2026-08-02 10:00" },
+          { role: "user", content: "أحمد محمد 01012345678" },
+        ],
+        providerKey: "mock",
         model: "mock",
+        context: { companyId: "company-1", conversationId: "conv-1", userId: "user-1" },
       },
       tools: tools.listLlmTools(),
       allowedToolKeys: tools.allowedToolKeys(),
@@ -746,6 +772,6 @@ describe("create_booking production tool", () => {
 
     assert.match(result.response.text, /تم حجز موعدك بنجاح/);
     assert.match(result.response.text, /يوم 02-08-2026 الساعة 10:00/);
-    assert.match(result.response.text, /رقم الحجز: CCCCCCCC/);
+    assert.match(result.response.text, /رقم الحجز: BK-000088/);
   });
 });

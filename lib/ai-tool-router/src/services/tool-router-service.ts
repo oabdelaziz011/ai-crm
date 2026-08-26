@@ -17,6 +17,7 @@ import type { ToolHandlerRegistry } from "../tools/tool-contract.js";
 import type { RouteToolInput, ServiceContext, ToolRouteResult } from "../types.js";
 import { sleep, supportsConversationState, validateAgainstSchema, withTimeout } from "../utils/tool-utils.js";
 import { logToolEvent } from "../utils/tool-logger.js";
+import { readTrustedCustomerIdFromConversation } from "../utils/resolve-trusted-channel-customer.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -142,7 +143,11 @@ export class ToolRouterService {
       conversationId: conversation.id,
       conversationState: conversation.state,
       userId: ctx.userId,
-      trustedCustomerId: conversation.customer_id,
+      // Prefer stamped WhatsApp channel identity over a possibly-stale conversation.customer_id.
+      trustedCustomerId: readTrustedCustomerIdFromConversation({
+        customerId: conversation.customer_id,
+        metadata: conversation.metadata,
+      }),
     };
 
     const maxAttempts = Math.max(1, definition.retry_policy.maxAttempts);

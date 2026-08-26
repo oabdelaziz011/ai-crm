@@ -57,6 +57,8 @@ export function buildAvailabilityCustomerSummary(input: {
 
 export function buildBookingConfirmationMessageAr(input: {
   bookingId: string;
+  /** Authoritative Operations reference (e.g. BK-000044). Required for customer-facing رقم الحجز. */
+  confirmationNumber?: string | null;
   date: string;
   slotStart: string;
   customerName?: string | null;
@@ -65,11 +67,14 @@ export function buildBookingConfirmationMessageAr(input: {
 }): string {
   const dateLabel = formatArabicWeekdayDate(input.date, input.timezone);
   const timeLabel = formatArabicTime12h(input.slotStart, input.timezone);
-  const bookingRef = input.bookingId.replace(/-/g, "").trim().toUpperCase().slice(0, 8);
+  const confirmation = typeof input.confirmationNumber === "string" ? input.confirmationNumber.trim() : "";
+  if (!confirmation) {
+    throw new Error("confirmationNumber is required for customer-facing booking confirmation.");
+  }
   const greeting = input.customerName?.trim() ? `تم حجز موعدك بنجاح يا ${input.customerName.trim()} ✅` : "تم حجز موعدك بنجاح ✅";
   const lines = [greeting];
   if (input.serviceName?.trim()) lines.push(`الخدمة: ${input.serviceName.trim()}`);
-  lines.push(`اليوم: ${dateLabel}`, `الساعة: ${timeLabel}`, `رقم الحجز: ${bookingRef}`);
+  lines.push(`اليوم: ${dateLabel}`, `الساعة: ${timeLabel}`, `رقم الحجز: ${confirmation}`);
   return lines.join("\n");
 }
 

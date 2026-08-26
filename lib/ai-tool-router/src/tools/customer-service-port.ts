@@ -34,5 +34,12 @@ export type ToolCustomerServicePort = {
   linkConversationCustomer?(input: {
     conversationId: string;
     customerId: string;
+    /** When set, stamps trustedChannelCustomerId + known status on conversation metadata. */
+    customerName?: string | null;
+    stampTrustedIdentity?: boolean;
   }): Promise<void>;
+  /** WhatsApp inbound sender (externalThreadId / senderExternalId) for the conversation. */
+  getConversationWhatsAppSender?(input: {
+    conversationId: string;
+  }): Promise<string | null>;
 };

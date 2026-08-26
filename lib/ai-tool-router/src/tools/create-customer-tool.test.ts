@@ -125,4 +125,78 @@ describe("createCreateCustomerTool", () => {
     assert.equal(output.existing, true);
     assert.match(String(output.customerGreeting), /عمر مجدي/);
   });
+
+  it("rejects first-name-only Arabic name and asks for full name", async () => {
+    const tool = createCreateCustomerTool({
+      async findCustomer() {
+        throw new Error("should not lookup");
+      },
+      async createCustomer() {
+        throw new Error("should not create");
+      },
+    });
+    const output = await tool.execute(
+      { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
+      { name: "عمر", phone: "01011404109" },
+    );
+    assert.equal(output.success, false);
+    assert.equal(output.errorCode, "INCOMPLETE_FULL_NAME");
+    assert.match(String(output.customerFacingMessage ?? ""), /الاسم الكامل/);
+  });
+
+  it("rejects CRM phone that does not match the WhatsApp sender (isolation)", async () => {
+    const tool = createCreateCustomerTool({
+      async findCustomer() {
+        throw new Error("should not lookup on mismatch");
+      },
+      async createCustomer() {
+        throw new Error("should not create on mismatch");
+      },
+      async getConversationWhatsAppSender() {
+        return "201099988877";
+      },
+    });
+    const output = await tool.execute(
+      { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
+      { name: "عميل تجريبي", phone: "01011404300" },
+    );
+    assert.equal(output.success, false);
+    assert.equal(output.errorCode, "PHONE_SENDER_MISMATCH");
+  });
+
+  it("stamps trusted identity after create so same-turn booking can proceed", async () => {
+    const links: Array<Record<string, unknown>> = [];
+    const tool = createCreateCustomerTool({
+      async findCustomer() {
+        return { status: "not_found", count: 0 };
+      },
+      async createCustomer(input) {
+        return {
+          customer: {
+            id: "cust-new-1",
+            name: input.name,
+            email: null,
+            phone: input.phone,
+          },
+        };
+      },
+      async getConversationWhatsAppSender() {
+        return "201012345678";
+      },
+      async linkConversationCustomer(input) {
+        links.push(input as unknown as Record<string, unknown>);
+      },
+    });
+
+    const output = await tool.execute(
+      { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
+      { name: "عميل تجريبي", phone: "01012345678" },
+    );
+
+    assert.equal(output.success, true);
+    assert.equal(output.customerId, "cust-new-1");
+    assert.equal(links.length, 1);
+    assert.equal(links[0]?.stampTrustedIdentity, true);
+    assert.equal(links[0]?.customerId, "cust-new-1");
+  });
 });

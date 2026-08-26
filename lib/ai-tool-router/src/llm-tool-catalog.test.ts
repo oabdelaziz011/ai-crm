@@ -10,7 +10,7 @@ import { listRegisteredToolHandlerKeys as listHandlerKeys } from "./tool-handler
 
 describe("llm-tool-catalog", () => {
   it("registers every known tool with a classification", () => {
-    assert.equal(TOOL_REGISTRY.length, 45);
+    assert.equal(TOOL_REGISTRY.length, 46);
     for (const entry of TOOL_REGISTRY) {
       assert.ok(entry.key);
       assert.ok(entry.classification);
@@ -25,6 +25,7 @@ describe("llm-tool-catalog", () => {
       ticketAgentPorts: {} as never,
       leadAgentPorts: {} as never,
       handoffAgentPorts: {} as never,
+      workflowTransferPorts: {} as never,
     });
 
     const exposure = resolveLlmToolExposure(registered);
@@ -40,7 +41,7 @@ describe("llm-tool-catalog", () => {
     const registered = listHandlerKeys({ customerService: {} as never });
     const exposure = resolveLlmToolExposure(registered);
     assert.deepEqual(exposure.allowedToolKeys, [CREATE_CUSTOMER_TOOL_KEY]);
-    assert.equal(exposure.gaps.length, 35);
+    assert.equal(exposure.gaps.length, 36);
   });
 
   it("builds audit report with newly exposed tools", () => {
@@ -51,6 +52,7 @@ describe("llm-tool-catalog", () => {
       ticketAgentPorts: {} as never,
       leadAgentPorts: {} as never,
       handoffAgentPorts: {} as never,
+      workflowTransferPorts: {} as never,
     });
     const report = buildToolRouterAuditReport(registered);
     assert.ok(report.llmExposure.exposedCount >= 24);

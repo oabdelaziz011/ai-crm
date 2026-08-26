@@ -2,6 +2,10 @@ import {
   normalizeEgyptMobilePhone,
   validateEgyptMobilePhone,
 } from "./customer-phone-normalization.js"; // reuse existing Egypt mobile helpers — do not add a second normalizer
+import {
+  lookupWhatsAppSenderTrustedCustomerOverride,
+  resolveTrustedCustomerWelcomeDisplayName,
+} from "./whatsapp-trusted-identity-overrides.js";
 
 export type TrustedChannelCustomerMatch = {
   id: string;
@@ -52,6 +56,7 @@ export function buildWhatsAppSenderPhoneLookupVariants(
     const variants = new Set<string>([digits]);
     if (digits.startsWith("20") && digits.length >= 12) {
       variants.add(`0${digits.slice(2)}`);
+      variants.add(`+${digits}`);
     }
     return [...variants];
   }
@@ -61,7 +66,50 @@ export function buildWhatsAppSenderPhoneLookupVariants(
   if (validated.local.startsWith("0") && validated.local.length === 11) {
     variants.add(validated.local.slice(1));
   }
+  // CRM rows sometimes store E.164 with explicit '+'.
+  if (validated.normalized.startsWith("20")) {
+    variants.add(`+${validated.normalized}`);
+  }
   return [...variants];
+}
+
+/**
+ * True when a CRM phone string is one of the WhatsApp sender lookup variants.
+ * Used to decide whether an existing conversation.customer_id is consistent with the sender.
+ */
+export function customerPhoneMatchesWhatsAppSender(
+  customerPhone: string | null | undefined,
+  senderExternalId: string | null | undefined,
+): boolean {
+  const phone = typeof customerPhone === "string" ? customerPhone.trim() : "";
+  const sender = typeof senderExternalId === "string" ? senderExternalId.trim() : "";
+  if (!phone || !sender) return false;
+  const senderVariants = new Set(buildWhatsAppSenderPhoneLookupVariants(sender));
+  if (senderVariants.has(phone)) return true;
+  // Also accept CRM phone's own normalized variants overlapping sender variants.
+  for (const variant of buildWhatsAppSenderPhoneLookupVariants(phone)) {
+    if (senderVariants.has(variant)) return true;
+  }
+  return false;
+}
+
+/**
+ * Prefer stamped WhatsApp channel identity over a possibly-stale conversation.customer_id.
+ * When metadata.trustedChannelCustomerId is present (including explicit null), it wins.
+ * When absent (dashboard / pre-stamp), fall back to conversation.customer_id.
+ */
+export function readTrustedCustomerIdFromConversation(input: {
+  customerId: string | null | undefined;
+  metadata?: Record<string, unknown> | null;
+}): string | null {
+  const meta = input.metadata ?? {};
+  if (Object.prototype.hasOwnProperty.call(meta, "trustedChannelCustomerId")) {
+    const stamped = meta.trustedChannelCustomerId;
+    if (typeof stamped === "string" && stamped.trim()) return stamped.trim();
+    return null;
+  }
+  const existing = typeof input.customerId === "string" ? input.customerId.trim() : "";
+  return existing || null;
 }
 
 /**
@@ -105,14 +153,32 @@ export async function resolveTrustedChannelCustomer(
   }
 
   if (foundById.size === 0) return { status: "unknown" };
-  if (foundById.size > 1) {
-    return { status: "ambiguous", matchCount: foundById.size };
+
+  let only: { customer: TrustedChannelCustomerMatch; matchedPhone: string } | undefined;
+
+  if (foundById.size === 1) {
+    only = [...foundById.values()][0]!;
+  } else {
+    // Multiple phone matches — fail closed unless an admin override picks one
+    // customer that is already in the match set (no invent / no merge).
+    const overrideCustomerId = lookupWhatsAppSenderTrustedCustomerOverride({
+      companyId,
+      senderExternalId: sender,
+    });
+    if (overrideCustomerId && foundById.has(overrideCustomerId)) {
+      only = foundById.get(overrideCustomerId)!;
+    } else {
+      return { status: "ambiguous", matchCount: foundById.size };
+    }
   }
 
-  const only = [...foundById.values()][0]!;
-  const name = only.customer.name?.trim() ?? "";
-  if (!name) {
-    // CRM record without a name is still a trusted id, but welcome must stay generic.
+  const displayName = resolveTrustedCustomerWelcomeDisplayName(
+    only.customer.id,
+    only.customer.name,
+  );
+  if (!displayName) {
+    // CRM record without a name (and no display override) is still a trusted id,
+    // but welcome must stay generic.
     return {
       status: "known",
       customerId: only.customer.id,
@@ -124,7 +190,7 @@ export async function resolveTrustedChannelCustomer(
   return {
     status: "known",
     customerId: only.customer.id,
-    trustedCustomerName: name,
+    trustedCustomerName: displayName,
     matchedPhone: only.matchedPhone,
   };
 }

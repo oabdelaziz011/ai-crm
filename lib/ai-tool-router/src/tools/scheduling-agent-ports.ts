@@ -121,6 +121,8 @@ export type CreateBookingInput = {
 export type CreateBookingResult = {
   success: boolean;
   bookingId?: string;
+  /** Authoritative scheduling_bookings.confirmation_number (e.g. BK-000044). */
+  confirmationNumber?: string | null;
   status?: string;
   startAt?: string;
   endAt?: string;
@@ -241,6 +243,8 @@ export type CheckInBookingInput = {
 export type CheckInBookingResult = {
   success: boolean;
   bookingId?: string;
+  /** Authoritative BK-… confirmation — never a UUID. */
+  confirmationNumber?: string | null;
   checkedInAt?: string;
   status?: string;
   errors?: string[];
@@ -262,6 +266,8 @@ export type CheckOutBookingInput = {
 export type CheckOutBookingResult = {
   success: boolean;
   bookingId?: string;
+  /** Authoritative BK-… confirmation — never a UUID. */
+  confirmationNumber?: string | null;
   checkedOutAt?: string;
   status?: string;
   errors?: string[];

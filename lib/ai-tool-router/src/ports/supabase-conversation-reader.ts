@@ -7,7 +7,7 @@ export function createSupabaseConversationReader(client: SupabaseClient): Conver
     async findById(conversationId: string): Promise<ConversationSnapshot | null> {
       const { data, error } = await client
         .from("conversations")
-        .select("id, company_id, state, customer_id")
+        .select("id, company_id, state, customer_id, metadata")
         .eq("id", conversationId)
         .is("deleted_at", null)
         .maybeSingle();
@@ -20,6 +20,10 @@ export function createSupabaseConversationReader(client: SupabaseClient): Conver
         company_id: data.company_id as string,
         state: data.state as ConversationSnapshot["state"],
         customer_id: data.customer_id == null ? null : String(data.customer_id),
+        metadata:
+          data.metadata && typeof data.metadata === "object"
+            ? (data.metadata as Record<string, unknown>)
+            : null,
       };
     },
   };

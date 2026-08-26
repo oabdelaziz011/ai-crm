@@ -71,6 +71,7 @@ export * from "./tools/ticket-tool-definitions.js";
 export * from "./tools/ticket-update-field-normalizer.js";
 export * from "./utils/customer-phone-normalization.js";
 export * from "./utils/resolve-trusted-channel-customer.js";
+export * from "./utils/whatsapp-trusted-identity-overrides.js";
 export * from "./utils/scheduling-customer-display.js";
 export * from "./adapters/supabase-ticket-agent-tool-ports.js";
 export * from "./tools/lead-agent-ports.js";

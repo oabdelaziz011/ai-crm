@@ -34,9 +34,10 @@ describe("scheduling-customer-display", () => {
     assert.ok(summary?.includes("•"));
   });
 
-  it("builds booking confirmation from stored values", () => {
+  it("builds booking confirmation from stored confirmation number", () => {
     const message = buildBookingConfirmationMessageAr({
-      bookingId: "bk-12345678-abcd",
+      bookingId: "927aa3f5-4812-4dd5-8666-db7610fb6cdf",
+      confirmationNumber: "BK-000044",
       date: "2026-08-23",
       slotStart: "19:00",
       customerName: "عمر مجدي",
@@ -44,6 +45,17 @@ describe("scheduling-customer-display", () => {
     });
     assert.match(message, /عمر مجدي/);
     assert.match(message, /العيادة/);
-    assert.match(message, /BK123456|12345678/i);
+    assert.match(message, /رقم الحجز: BK-000044/);
+    assert.doesNotMatch(message, /927AA3F5/i);
+  });
+
+  it("rejects confirmation without authoritative confirmation number", () => {
+    assert.throws(() =>
+      buildBookingConfirmationMessageAr({
+        bookingId: "927aa3f5-4812-4dd5-8666-db7610fb6cdf",
+        date: "2026-08-23",
+        slotStart: "19:00",
+      }),
+    );
   });
 });

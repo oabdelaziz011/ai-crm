@@ -218,7 +218,41 @@ describe("Phase 3B scheduling mutation ports", () => {
     assert.equal(result.bookings.length, 0);
   });
 
-  it("search_bookings by phone returns that patient's bookings", async () => {
+  it("search_bookings prefers trustedCustomerId over a different phone lookup", async () => {
+    const { client } = createMemoryClient({
+      bookings: [
+        baseBooking({
+          id: "b-patient",
+          customer_id: "customer-patient",
+          start_at: "2026-08-12T09:00:00.000Z",
+          confirmation_number: "BK-000055",
+        }),
+        baseBooking({
+          id: "b-trusted",
+          customer_id: "customer-a",
+          start_at: "2026-08-13T09:00:00.000Z",
+          confirmation_number: "BK-000056",
+        }),
+      ],
+      customers: [
+        { id: "customer-a", company_id: "company-a", name: "Ada", phone: "201000000001" },
+        { id: "customer-patient", company_id: "company-a", name: "Mona", phone: "201021232123" },
+      ],
+    });
+
+    const result = await executeSearchBookings(client, {
+      companyId: "company-a",
+      userId: "user-1",
+      trustedCustomerId: "customer-a",
+      phone: "01021232123",
+      daysBack: 90,
+    });
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.bookings.map((b) => b.bookingId), ["b-trusted"]);
+  });
+
+  it("search_bookings by phone returns that patient's bookings when no trusted customer", async () => {
     const { client } = createMemoryClient({
       bookings: [
         baseBooking({
@@ -242,16 +276,47 @@ describe("Phase 3B scheduling mutation ports", () => {
     const result = await executeSearchBookings(client, {
       companyId: "company-a",
       userId: "user-1",
-      trustedCustomerId: "customer-a",
+      trustedCustomerId: null,
       phone: "01021232123",
       daysBack: 90,
     });
 
     assert.equal(result.success, true);
-    assert.deepEqual(
-      result.bookings.map((b) => b.bookingId),
-      ["b-patient"],
-    );
+    assert.deepEqual(result.bookings.map((b) => b.bookingId), ["b-patient"]);
+  });
+
+  it("search_bookings with trusted customer finds future booking for cancel even when WhatsApp phone differs", async () => {
+    const futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { client } = createMemoryClient({
+      bookings: [
+        baseBooking({
+          id: "b-future",
+          customer_id: "customer-trusted",
+          start_at: futureStart,
+          confirmation_number: "BK-000200",
+          status: "confirmed",
+        }),
+      ],
+      customers: [
+        {
+          id: "customer-trusted",
+          company_id: "company-a",
+          name: "Trusted",
+          phone: "01013363637",
+        },
+      ],
+    });
+
+    const result = await executeSearchBookings(client, {
+      companyId: "company-a",
+      userId: "user-1",
+      trustedCustomerId: "customer-trusted",
+      phone: "201011404109",
+      daysBack: 90,
+    });
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.bookings.map((b) => b.bookingId), ["b-future"]);
   });
 
   it("search_bookings collapses digit-equivalent phone duplicates and binds conversation", async () => {
@@ -449,6 +514,20 @@ describe("Phase 3B scheduling mutation ports", () => {
     assert.equal(ok.status, "cancelled");
     assert.equal(cancelCalls, 1);
 
+    const { client: clientCancelled } = createMemoryClient({
+      bookings: [baseBooking({ status: "cancelled", confirmation_number: "BK-000001" })],
+    });
+    const alreadyCancelled = await executeCancelBooking(clientCancelled, domain, {
+      companyId: "company-a",
+      userId: "user-1",
+      bookingReference: "BK-000001",
+      trustedCustomerId: "customer-a",
+    });
+    assert.equal(alreadyCancelled.success, false);
+    assert.deepEqual(alreadyCancelled.errors, ["already_cancelled"]);
+    assert.match(String(alreadyCancelled.customerFacingMessage ?? ""), /ملغي بالفعل/);
+    assert.equal(cancelCalls, 1);
+
     const wrongCustomer = await executeCancelBooking(client, domain, {
       companyId: "company-a",
       userId: "user-1",
@@ -612,7 +691,45 @@ describe("Phase 5H check_in / check_out ownership + domain", () => {
     });
     assert.equal(result.success, true);
     assert.equal(result.status, "checked_in");
+    assert.equal(result.confirmationNumber, "CNF-A");
     assert.equal(domainCalled, true);
+  });
+
+  it("check_in returns authoritative confirmation_number (never UUID substring)", async () => {
+    const booking = {
+      ...bookingA,
+      confirmation_number: "BK-000123",
+    };
+    const { client } = createMemoryClient({ bookings: [booking] });
+    const domain: BookingDomainServicePort = {
+      async createBooking() {
+        throw new Error("unused");
+      },
+      async checkInBooking() {
+        return {
+          booking: {
+            id: booking.id,
+            status: "checked_in",
+            start_at: booking.start_at,
+            company_id: "company-a",
+            customer_id: "customer-a",
+            confirmation_number: "BK-000123",
+            updated_at: "2026-08-20T10:05:00.000Z",
+          },
+        };
+      },
+    };
+    const result = await executeCheckInBooking(client, domain, {
+      companyId: "company-a",
+      userId: "user-1",
+      bookingId: "booking-a",
+      trustedCustomerId: "customer-a",
+    });
+    assert.equal(result.confirmationNumber, "BK-000123");
+    assert.notEqual(
+      result.confirmationNumber,
+      String(booking.id).replace(/-/g, "").slice(0, 8).toUpperCase(),
+    );
   });
 
   it("check_out succeeds via completeBooking for in_progress booking", async () => {
@@ -803,11 +920,23 @@ describe("Phase 5H check_in / check_out ownership + domain", () => {
     const ports = {
       async checkInBooking(input: Record<string, unknown>) {
         calls.push(input);
-        return { success: true, bookingId: "booking-a", status: "checked_in", checkedInAt: "t" };
+        return {
+          success: true,
+          bookingId: "booking-a",
+          confirmationNumber: "BK-000015",
+          status: "checked_in",
+          checkedInAt: "t",
+        };
       },
       async checkOutBooking(input: Record<string, unknown>) {
         calls.push(input);
-        return { success: true, bookingId: "booking-a", status: "completed", checkedOutAt: "t" };
+        return {
+          success: true,
+          bookingId: "booking-a",
+          confirmationNumber: "BK-000015",
+          status: "completed",
+          checkedOutAt: "t",
+        };
       },
     } as unknown as SchedulingToolPorts;
 
@@ -836,6 +965,9 @@ describe("Phase 5H check_in / check_out ownership + domain", () => {
       { bookingId: "booking-a", companyId: "company-b" },
     );
     assert.equal(ok.success, true);
+    assert.equal(ok.confirmationNumber, "BK-000015");
+    assert.match(String(ok.customerFacingMessage ?? ""), /BK-000015/);
+    assert.doesNotMatch(String(ok.customerFacingMessage ?? ""), /[0-9A-F]{8}/i);
     assert.equal(calls[0]?.companyId, "company-a");
     assert.equal(calls[0]?.trustedCustomerId, "customer-a");
   });

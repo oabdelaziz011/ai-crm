@@ -98,6 +98,8 @@ export type ConversationSnapshot = {
   state: ConversationState;
   /** Trusted CRM customer linked to the conversation — never from LLM tool args. */
   customer_id: string | null;
+  /** Optional metadata (channel identity stamps). Absent on legacy readers. */
+  metadata?: Record<string, unknown> | null;
 };
 
 export type ServiceContext = {

@@ -10,6 +10,10 @@ import {
   buildExistingCustomerGreetingAr,
   buildNewCustomerGreetingAr,
 } from "../utils/scheduling-customer-display.js";
+import {
+  buildWhatsAppSenderPhoneLookupVariants,
+  customerPhoneMatchesWhatsAppSender,
+} from "../utils/resolve-trusted-channel-customer.js";
 
 const INPUT_SCHEMA = {
   type: "object",
@@ -20,6 +24,20 @@ const INPUT_SCHEMA = {
   },
   required: ["name", "phone"],
 } as const;
+
+const INCOMPLETE_FULL_NAME_MESSAGE_AR =
+  "محتاجين الاسم الكامل للعميل (مش الاسم الأول فقط). ممكن تقوليلي الاسم بالكامل؟";
+
+const PHONE_SENDER_MISMATCH_MESSAGE_AR =
+  "رقم الموبايل لازم يكون نفس رقم واتساب اللي بيتكلم منه العميل دلوقتي.";
+
+function isCompleteCustomerFullName(name: string): boolean {
+  const normalized = name.trim().replace(/\s+/g, " ");
+  if (!normalized) return false;
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return false;
+  return tokens.every((token) => /[\u0600-\u06FFa-zA-Z]{2,}/.test(token));
+}
 
 const SUPPORTED_STATES: ConversationState[] = [
   "idle",
@@ -59,6 +77,47 @@ function normalizeEmail(value: unknown): string | null {
   return email.toLowerCase();
 }
 
+async function findCustomerByPhoneVariants(
+  customerService: ToolCustomerServicePort,
+  context: ToolExecutionContext,
+  phone: string,
+) {
+  const variants = buildWhatsAppSenderPhoneLookupVariants(phone);
+  let duplicate = false;
+  for (const variant of variants) {
+    const result = await customerService.findCustomer({
+      companyId: context.companyId,
+      userId: context.userId!,
+      lookupBy: "phone",
+      lookupValue: variant,
+    });
+    if (result.status === "found" && result.customer) {
+      return result;
+    }
+    if (result.status === "duplicate") {
+      duplicate = true;
+    }
+  }
+  if (duplicate) {
+    return { status: "duplicate" as const, count: 2 };
+  }
+  return { status: "not_found" as const, count: 0 as const };
+}
+
+async function linkAndStampTrusted(
+  customerService: ToolCustomerServicePort,
+  conversationId: string,
+  customerId: string,
+  customerName: string,
+) {
+  await customerService.linkConversationCustomer?.({
+    conversationId,
+    customerId,
+    customerName,
+    stampTrustedIdentity: true,
+  });
+}
+
 export function createCreateCustomerTool(customerService: ToolCustomerServicePort): Tool {
   return {
     supports(state: ConversationState) {
@@ -71,6 +130,14 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
     },
     async execute(context: ToolExecutionContext, input: Record<string, unknown>) {
       const name = readRequiredString(input.name, "Name");
+      if (!isCompleteCustomerFullName(name)) {
+        return {
+          success: false,
+          errorCode: "INCOMPLETE_FULL_NAME",
+          message: "Customer full name is required (first + family name).",
+          customerFacingMessage: INCOMPLETE_FULL_NAME_MESSAGE_AR,
+        };
+      }
       const phone = normalizePhone(readRequiredString(input.phone, "Phone"));
       const email = normalizeEmail(input.email);
 
@@ -82,19 +149,36 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
         };
       }
 
-      const duplicateCheck = await customerService.findCustomer({
-        companyId: context.companyId,
-        userId: context.userId,
-        lookupBy: "phone",
-        lookupValue: phone,
+      // WhatsApp: CRM phone must match the current inbound sender — never another customer's number.
+      const channelSender = await customerService.getConversationWhatsAppSender?.({
+        conversationId: context.conversationId,
       });
+      if (
+        channelSender &&
+        !customerPhoneMatchesWhatsAppSender(phone, channelSender)
+      ) {
+        return {
+          success: false,
+          errorCode: "PHONE_SENDER_MISMATCH",
+          message: "Customer phone must match the WhatsApp sender for this conversation.",
+          customerFacingMessage: PHONE_SENDER_MISMATCH_MESSAGE_AR,
+        };
+      }
+
+      const duplicateCheck = await findCustomerByPhoneVariants(
+        customerService,
+        context,
+        phone,
+      );
 
       if (duplicateCheck.status === "found" && duplicateCheck.customer) {
         const customer = duplicateCheck.customer;
-        await customerService.linkConversationCustomer?.({
-          conversationId: context.conversationId,
-          customerId: customer.id,
-        });
+        await linkAndStampTrusted(
+          customerService,
+          context.conversationId,
+          customer.id,
+          customer.name,
+        );
         return {
           success: true,
           customerId: customer.id,
@@ -138,10 +222,12 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
         email,
       });
 
-      await customerService.linkConversationCustomer?.({
-        conversationId: context.conversationId,
-        customerId: created.customer.id,
-      });
+      await linkAndStampTrusted(
+        customerService,
+        context.conversationId,
+        created.customer.id,
+        created.customer.name,
+      );
 
       return {
         success: true,
@@ -161,7 +247,7 @@ export const CREATE_CUSTOMER_LLM_TOOL_DEFINITION = {
   function: {
     name: CREATE_CUSTOMER_TOOL_KEY,
     description:
-      "Create or resolve a customer in the CRM for booking. Requires customer name and mobile phone. If the phone already exists, returns that customerId and preserves the existing CRM name. If the phone is new, creates a customer profile.",
+      "Create or resolve a customer in the CRM for booking. Requires customer name and mobile phone. If the phone already exists, returns that customerId and preserves the existing CRM name. If the phone is new, creates a customer profile. On WhatsApp, phone must match the current sender.",
     parameters: {
       type: "object",
       properties: {

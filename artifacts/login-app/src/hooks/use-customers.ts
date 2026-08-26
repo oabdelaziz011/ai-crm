@@ -137,3 +137,48 @@ export function useDeleteCustomer() {
     },
   });
 }
+
+import {
+  buildCustomerDeleteWarningAr,
+  type CustomerDeleteDependencySummary,
+} from "@/lib/customers-list/customer-delete-warning";
+
+export type { CustomerDeleteDependencySummary };
+
+/** Preflight counts for delete warnings — does not mutate. */
+export async function fetchCustomerDeleteDependencies(
+  customerId: string,
+): Promise<CustomerDeleteDependencySummary> {
+  const nowIso = new Date().toISOString();
+  const [bookingsRes, futureRes, ticketsRes] = await Promise.all([
+    supabase
+      .from("scheduling_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", customerId)
+      .is("deleted_at", null),
+    supabase
+      .from("scheduling_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", customerId)
+      .is("deleted_at", null)
+      .in("status", ["pending", "confirmed"])
+      .gte("start_at", nowIso),
+    supabase
+      .from("support_tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", customerId)
+      .in("status", ["open", "in_progress", "waiting_customer"]),
+  ]);
+
+  if (bookingsRes.error) throw new Error(bookingsRes.error.message);
+  if (futureRes.error) throw new Error(futureRes.error.message);
+  if (ticketsRes.error) throw new Error(ticketsRes.error.message);
+
+  return {
+    bookingCount: bookingsRes.count ?? 0,
+    futureBookingCount: futureRes.count ?? 0,
+    openTicketCount: ticketsRes.count ?? 0,
+  };
+}
+
+export { buildCustomerDeleteWarningAr };

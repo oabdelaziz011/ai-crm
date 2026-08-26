@@ -9,7 +9,13 @@ import { DashboardErrorBanner } from "@/components/dashboard/ui";
 import { Can } from "@/components/rbac/permission-guard";
 import { useHasPermission } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
-import { useCustomers, useDeleteCustomer } from "@/hooks/use-customers";
+import {
+  buildCustomerDeleteWarningAr,
+  fetchCustomerDeleteDependencies,
+  useCustomers,
+  useDeleteCustomer,
+  type CustomerDeleteDependencySummary,
+} from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
 import { useUser } from "@/context/auth-context";
@@ -103,6 +109,8 @@ export function CustomersListWorkspace() {
 
   const [modal, setModal] = useState<{ open: boolean; customer?: Customer | null }>({ open: false });
   const [del, setDel] = useState<Customer | null>(null);
+  const [deleteDeps, setDeleteDeps] = useState<CustomerDeleteDependencySummary | null>(null);
+  const [deleteDepsLoading, setDeleteDepsLoading] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bookingPrefill, setBookingPrefill] = useState<BookingModalPrefill | null>(null);
   const [invoicePrefill, setInvoicePrefill] = useState<InvoiceModalPrefill | null>(null);
@@ -267,6 +275,25 @@ export function CustomersListWorkspace() {
     [t, toast],
   );
 
+  const openDeleteCustomer = useCallback(async (customer: Customer) => {
+    setDel(customer);
+    setDeleteDeps(null);
+    setDeleteDepsLoading(true);
+    try {
+      const deps = await fetchCustomerDeleteDependencies(customer.id);
+      setDeleteDeps(deps);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: t("dashboard.customerProfile.quickActions.errors.title"),
+        description: error instanceof Error ? error.message : String(error),
+      });
+      setDel(null);
+    } finally {
+      setDeleteDepsLoading(false);
+    }
+  }, [t, toast]);
+
   const handleBulkDelete = useCallback(async () => {
     if (!canDeleteCustomers) return;
     for (const row of selectedRows) {
@@ -396,7 +423,7 @@ export function CustomersListWorkspace() {
               : undefined
           }
           onDeleteCustomer={
-            canDeleteCustomers ? (row) => setDel(row.customer) : undefined
+            canDeleteCustomers ? (row) => void openDeleteCustomer(row.customer) : undefined
           }
           onQuickAction={handleQuickAction}
         />
@@ -445,13 +472,40 @@ export function CustomersListWorkspace() {
 
       <DeleteDialog
         open={!!del}
-        onClose={() => setDel(null)}
-        onConfirm={() => {
-          if (!del || !canDeleteCustomers) return;
-          deleteCustomer.mutate(del.id, { onSuccess: () => setDel(null) });
+        onClose={() => {
+          setDel(null);
+          setDeleteDeps(null);
         }}
-        isPending={deleteCustomer.isPending}
+        onConfirm={() => {
+          if (!del || !canDeleteCustomers || deleteDepsLoading) return;
+          deleteCustomer.mutate(del.id, {
+            onSuccess: () => {
+              setDel(null);
+              setDeleteDeps(null);
+            },
+            onError: (error) => {
+              toast({
+                variant: "destructive",
+                title: t("dashboard.customerProfile.quickActions.errors.title"),
+                description:
+                  error instanceof Error
+                    ? error.message.includes("scheduling_bookings") ||
+                      error.message.toLowerCase().includes("foreign key")
+                      ? "لا يمكن حذف العميل لوجود مواعيد مرتبطة. ألغِ أو انقل المواعيد أولاً."
+                      : error.message
+                    : String(error),
+              });
+            },
+          });
+        }}
+        isPending={deleteCustomer.isPending || deleteDepsLoading}
         itemName={del?.name}
+        description={
+          deleteDepsLoading
+            ? "جاري التحقق من الارتباطات…"
+            : buildCustomerDeleteWarningAr(deleteDeps ?? { bookingCount: 0, futureBookingCount: 0, openTicketCount: 0 })
+              ?? undefined
+        }
       />
 
       <DeleteDialog

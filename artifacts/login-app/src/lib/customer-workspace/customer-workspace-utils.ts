@@ -316,7 +316,8 @@ export function localizeInvoiceStatus(
 
 export function bookingReferenceNumber(booking: Pick<Booking, "id"> & { confirmation_number?: string | null }): string {
   const ref = booking.confirmation_number?.trim();
-  return ref || booking.id.slice(0, 8).toUpperCase();
+  // Authoritative BK-… only — never a UUID substring.
+  return ref || "—";
 }
 
 export function invoiceReferenceNumber(invoice: Pick<Invoice, "id"> & { invoice_number?: string | null }): string {

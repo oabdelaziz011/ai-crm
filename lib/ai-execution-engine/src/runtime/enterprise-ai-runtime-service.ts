@@ -27,7 +27,7 @@ import type {
 import type { RuntimeRegistryBundle } from "../registries/runtime-registries.js";
 import { RuntimeObservability } from "../observability/runtime-observability.js";
 import { ExecutionSessionService } from "./execution-session-service.js";
-import { ToolCallLoopService } from "./tool-call-loop-service.js";
+import { ToolCallLoopService, type ToolCallLoopResult } from "./tool-call-loop-service.js";
 import { StreamingRuntimeService } from "./streaming-runtime-service.js";
 import type { AIExecutionPolicyService } from "../services/ai-execution-policy-service.js";
 import type { AiTokensCommercialPort } from "../ports/ai-tokens-commercial-port.js";
@@ -384,6 +384,11 @@ export class EnterpriseAIRuntimeService {
         typeof input.promptContext?.trustedCustomerId === "string"
           ? input.promptContext.trustedCustomerId.trim()
           : null;
+      const priorSchedulingToolExecutions = Array.isArray(
+        input.promptContext?.priorSchedulingToolExecutions,
+      )
+        ? (input.promptContext.priorSchedulingToolExecutions as ToolCallLoopResult["toolExecutions"])
+        : [];
       const loopResult = await this.toolLoop.runWithOptionalStreaming({
         ctx,
         conversationId: input.conversationId!,
@@ -391,6 +396,7 @@ export class EnterpriseAIRuntimeService {
         tools: llmTools,
         allowedToolKeys: this.deps.tools!.allowedToolKeys(),
         trustedCustomerId: trustedCustomerId || null,
+        priorSchedulingToolExecutions,
         onStreamChunk: input.stream ? input.onStreamChunk : undefined,
       });
       gatewayLatencyMs = Date.now() - gatewayStarted;

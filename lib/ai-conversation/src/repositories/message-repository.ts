@@ -11,5 +11,9 @@ export interface MessageRepository {
     conversationId: string,
     externalMessageId: string,
   ): Promise<ConversationMessageRecord | null>;
+  findByConversationAndInboundCorrelationId(
+    conversationId: string,
+    correlationId: string,
+  ): Promise<ConversationMessageRecord | null>;
   list(filter: ListMessagesFilter): Promise<ConversationMessageRecord[]>;
 }

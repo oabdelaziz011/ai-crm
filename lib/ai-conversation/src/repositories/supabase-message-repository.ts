@@ -120,6 +120,22 @@ export function createSupabaseMessageRepository(client: SupabaseClient): Message
       return mapRow(data as Record<string, unknown>);
     },
 
+    async findByConversationAndInboundCorrelationId(conversationId, correlationId) {
+      const { data, error } = await client
+        .from(TABLE)
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .eq("message_type", "incoming")
+        .eq("metadata->>correlationId", correlationId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return null;
+      return mapRow(data as Record<string, unknown>);
+    },
+
     async list(filter: ListMessagesFilter): Promise<ConversationMessageRecord[]> {
       const limit = filter.limit;
       const offset = filter.offset ?? 0;

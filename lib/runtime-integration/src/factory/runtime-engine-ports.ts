@@ -15,6 +15,23 @@ import {
   mapRetrievalSnapshotToKnowledgeContext,
 } from "../utils/runtime-utils.js";
 
+/**
+ * Prefer stamped WhatsApp channel identity over a possibly-stale conversation.customer_id.
+ * Kept local to avoid a runtime-integration ↔ ai-tool-router dependency cycle.
+ */
+function readTrustedCustomerIdFromConversation(input: {
+  customerId: string | null | undefined;
+  metadata?: Record<string, unknown> | null;
+}): string | null {
+  const meta = input.metadata ?? {};
+  if (Object.prototype.hasOwnProperty.call(meta, "trustedChannelCustomerId")) {
+    const stamped = meta.trustedChannelCustomerId;
+    if (typeof stamped === "string" && stamped.trim()) return stamped.trim();
+    return null;
+  }
+  const existing = typeof input.customerId === "string" ? input.customerId.trim() : "";
+  return existing || null;
+}
 export type RuntimeEngineDependencies = {
   conversation: ConversationServices;
   intent: IntentEngineServices;
@@ -31,6 +48,19 @@ export type RuntimeEnginePortOptions = {
   resolveActorUserId?: (companyId: string) => Promise<string | null>;
   /** Dashboard chat uses conversation orchestration + tools; webhooks use template-only builds. */
   promptMode?: "webhook" | "dashboard";
+  /** Load prior scheduling tool executions for cross-turn booking slot binding. */
+  loadConversationSchedulingToolSeed?: (
+    conversationId: string,
+  ) => Promise<
+    Array<{
+      toolKey: string;
+      executionId: string;
+      status: string;
+      input?: Record<string, unknown> | null;
+      output: Record<string, unknown> | null;
+      durationMs: number;
+    }>
+  >;
 };
 
 function readSenderHint(
@@ -82,12 +112,16 @@ export function createRuntimeEnginePorts(deps: RuntimeEngineDependencies): Runti
         throw new Error("listRecentMessages requires ServiceContext.");
       },
       async addIncomingMessage(ctx, input) {
-        const message = await deps.conversation.messages.addMessage(asConversationContext(ctx), {
-          conversationId: input.conversationId,
-          messageType: "incoming",
-          content: input.content,
-          metadata: input.metadata,
-        });
+        const { message } = await deps.conversation.messages.addIncomingMessageIdempotent(
+          asConversationContext(ctx),
+          {
+            conversationId: input.conversationId,
+            messageType: "incoming",
+            contentType: "text",
+            content: input.content,
+            metadata: input.metadata,
+          },
+        );
         return {
           id: message.id,
           role: "customer",
@@ -504,7 +538,7 @@ export function createRuntimeEnginePortsWithContext(
           })),
           conversationWindow:
             options.promptMode === "webhook"
-              ? { maxMessages: 6, tokenBudget: 1800 }
+              ? { maxMessages: 12, tokenBudget: 2400 }
               : { maxMessages: 20, tokenBudget: 4096 },
         });
 
@@ -533,16 +567,37 @@ export function createRuntimeEnginePortsWithContext(
             asConversationContext(executionCtx),
             input.conversationId,
           );
-          trustedCustomerId = conversationRecord.customer_id
-            ? String(conversationRecord.customer_id)
-            : null;
           const meta = (conversationRecord.metadata ?? {}) as Record<string, unknown>;
+          // Webhook: prefer stamped WhatsApp identity over a possibly-stale conversation.customer_id.
+          // Dashboard: same helper — stamp absent → fall back to conversation.customer_id.
+          trustedCustomerId = readTrustedCustomerIdFromConversation({
+            customerId: conversationRecord.customer_id,
+            metadata: meta,
+          });
           trustedCustomerName =
             typeof meta.trustedCustomerName === "string" && meta.trustedCustomerName.trim()
               ? meta.trustedCustomerName.trim()
               : null;
         } catch {
           // Fail closed — no trusted identity if conversation cannot be loaded.
+        }
+
+        let priorSchedulingToolExecutions: Array<{
+          toolKey: string;
+          executionId: string;
+          status: string;
+          input?: Record<string, unknown> | null;
+          output: Record<string, unknown> | null;
+          durationMs: number;
+        }> = [];
+        if (options.loadConversationSchedulingToolSeed) {
+          try {
+            priorSchedulingToolExecutions = await options.loadConversationSchedulingToolSeed(
+              input.conversationId,
+            );
+          } catch {
+            priorSchedulingToolExecutions = [];
+          }
         }
 
         const result = await runtime.execute(asConversationContext(executionCtx), {
@@ -566,6 +621,9 @@ export function createRuntimeEnginePortsWithContext(
           promptContext: {
             ...(trustedCustomerId ? { trustedCustomerId } : {}),
             ...(trustedCustomerName ? { trustedCustomerName } : {}),
+            ...(priorSchedulingToolExecutions.length > 0
+              ? { priorSchedulingToolExecutions }
+              : {}),
           },
         });
 

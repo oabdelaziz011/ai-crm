@@ -154,10 +154,49 @@ export class MessageService {
     return this.messageRepository.findByConversationAndExternalMessageId(conversationId, externalMessageId);
   }
 
+  async findByConversationAndInboundCorrelationId(
+    ctx: ServiceContext,
+    conversationId: string,
+    correlationId: string,
+  ): Promise<ConversationMessageRecord | null> {
+    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
+    await this.getReadableConversation(ctx, conversationId);
+    return this.messageRepository.findByConversationAndInboundCorrelationId(
+      conversationId,
+      correlationId,
+    );
+  }
+
   async addIncomingMessageIdempotent(
     ctx: ServiceContext,
     input: AddMessageInput,
   ): Promise<{ message: ConversationMessageRecord; reused: boolean }> {
+    const correlationId =
+      typeof input.metadata?.correlationId === "string" && input.metadata.correlationId.trim()
+        ? input.metadata.correlationId.trim()
+        : null;
+    if (correlationId) {
+      const existingByCorrelation = await this.findByConversationAndInboundCorrelationId(
+        ctx,
+        input.conversationId,
+        correlationId,
+      );
+      if (existingByCorrelation) {
+        return { message: existingByCorrelation, reused: true };
+      }
+    }
+
+    if (input.externalMessageId) {
+      const existingByExternal = await this.findByConversationAndExternalMessageId(
+        ctx,
+        input.conversationId,
+        input.externalMessageId,
+      );
+      if (existingByExternal) {
+        return { message: existingByExternal, reused: true };
+      }
+    }
+
     try {
       return { message: await this.addMessage(ctx, input), reused: false };
     } catch (error) {

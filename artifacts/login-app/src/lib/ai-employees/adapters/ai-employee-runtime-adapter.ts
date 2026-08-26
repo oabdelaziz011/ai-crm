@@ -15,6 +15,7 @@ import {
   buildWelcomeMessagePromptAddon,
   resolveAiEmployeeWelcomeMessage,
 } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
+import { employeeHasSchedulingActionTools } from "@/lib/ai-employees/utilities/scheduling-catalog-prompt";
 import {
   buildTicketToolPromptHint,
   isTicketToolKey,
@@ -47,20 +48,7 @@ export function buildAgentRuntimeConfiguration(
   if (transferableFlowId && !enabledKeys.includes("transfer_to_workflow")) {
     enabledKeys = [...enabledKeys, "transfer_to_workflow"];
   }
-  const hasSchedulingTools = enabledKeys.some((key) =>
-    [
-      "create_booking",
-      "search_availability",
-      "find_next_available",
-      "recommend_appointment",
-      "search_bookings",
-      "booking_search",
-      "reschedule_booking",
-      "cancel_booking",
-      "check_in",
-      "check_out",
-    ].includes(key),
-  );
+  const hasSchedulingTools = employeeHasSchedulingActionTools(enabledKeys);
   const enabledTicketTools = enabledKeys.filter(isTicketToolKey);
   const ticketToolPromptHint = buildTicketToolPromptHint(enabledTicketTools);
   const bookingActionPromptAddon = hasSchedulingTools

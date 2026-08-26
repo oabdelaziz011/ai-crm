@@ -138,7 +138,11 @@ export function useConversationAutoScroll({
     }
 
     if (change === "replace") {
-      scrollAfterRender(scrollToBottom);
+      // Refetch / React Query replace must NOT yank the viewport back to bottom
+      // (or an old unread position). Only stick to bottom when already near it.
+      if (isNearBottomRef.current) {
+        scrollAfterRender(scrollToBottom);
+      }
       previousMessageIdsRef.current = messageIds;
     }
   }, [isHistoryLoading, messageIds, scrollToBottom]);

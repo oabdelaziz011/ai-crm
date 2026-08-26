@@ -1,5 +1,43 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** Tools that require service/resource UUID catalog text in the system prompt. */
+export const SCHEDULING_CATALOG_TOOL_KEYS = [
+  "search_availability",
+  "find_next_available",
+  "recommend_appointment",
+  "create_booking",
+  "search_bookings",
+  "reschedule_booking",
+  "cancel_booking",
+  "check_in",
+  "check_out",
+] as const;
+
+/** Tools that receive CRITICAL BOOKING ACTION RULES (includes read-only CRM history). */
+export const SCHEDULING_ACTION_TOOL_KEYS = [
+  ...SCHEDULING_CATALOG_TOOL_KEYS,
+  "booking_search",
+] as const;
+
+export function employeeHasSchedulingCatalogTools(enabledToolKeys: readonly string[]): boolean {
+  const enabled = new Set(enabledToolKeys.map((key) => key.trim()).filter(Boolean));
+  return SCHEDULING_CATALOG_TOOL_KEYS.some((key) => enabled.has(key));
+}
+
+export function employeeHasSchedulingActionTools(enabledToolKeys: readonly string[]): boolean {
+  const enabled = new Set(enabledToolKeys.map((key) => key.trim()).filter(Boolean));
+  return SCHEDULING_ACTION_TOOL_KEYS.some((key) => enabled.has(key));
+}
+
+export async function resolveSchedulingCatalogPromptForEmployee(
+  client: SupabaseClient,
+  companyId: string,
+  enabledToolKeys: readonly string[],
+): Promise<string | null> {
+  if (!employeeHasSchedulingCatalogTools(enabledToolKeys)) return null;
+  return buildSchedulingCatalogPromptAddon(client, companyId);
+}
+
 type CatalogRow = Readonly<{ id: string; name: string }>;
 
 async function listActiveServices(client: SupabaseClient, companyId: string): Promise<CatalogRow[]> {

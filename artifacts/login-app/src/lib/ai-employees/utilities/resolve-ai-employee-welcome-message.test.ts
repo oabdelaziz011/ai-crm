@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildWelcomeMessagePromptAddon,
+  applyPostWelcomeSystemPrompt,
   DEFAULT_AI_EMPLOYEE_WELCOME_MESSAGE,
   normalizeAiEmployeeWelcomeMessageForStorage,
   resolveAiEmployeeWelcomeMessage,
@@ -40,6 +41,18 @@ describe("resolveAiEmployeeWelcomeMessage", () => {
     });
     assert.equal(personalized.split("\n")[0], "أهلاً يا عمر 👋");
     assert.doesNotMatch(personalized, /WhatsApp|senderName/i);
+  });
+
+  it("customer-id scoped display name renders عمر عبدالعزيز welcome", () => {
+    const stored =
+      "أهلاً وسهلاً بك 👋\nأنا المساعد الذكي الخاص بعيادات النور، كيف يمكنني مساعدتك اليوم؟";
+    const personalized = resolvePersonalizedWelcomeMessage({
+      storedWelcome: stored,
+      trustedCustomerName: "عمر عبدالعزيز",
+    });
+    assert.equal(personalized.split("\n")[0], "أهلاً يا عمر عبدالعزيز 👋");
+    assert.match(personalized, /عيادات النور/);
+    assert.doesNotMatch(personalized, /عمر مجدي/);
   });
 
   it("unknown welcome stays generic / configured", () => {
@@ -81,5 +94,15 @@ describe("resolveAiEmployeeWelcomeMessage", () => {
     assert.doesNotMatch(stripped, /Configured welcome message/);
     assert.match(stripped, /CRITICAL BOOKING ACTION RULES/);
     assert.match(stripped, /You are helpful/);
+  });
+
+  it("applyPostWelcomeSystemPrompt strips first-contact rules and adds anti-greet rules", () => {
+    const addon = buildWelcomeMessagePromptAddon("مرحبًا");
+    const prompt = ["You are helpful.", addon, "CRITICAL BOOKING ACTION RULES:", "- Rule 1"].join("\n\n");
+    const next = applyPostWelcomeSystemPrompt(prompt);
+    assert.doesNotMatch(next, /CRITICAL FIRST-CONTACT WELCOME RULES/);
+    assert.match(next, /CRITICAL POST-WELCOME RULES/);
+    assert.match(next, /Do NOT send another welcome/i);
+    assert.match(next, /CRITICAL BOOKING ACTION RULES/);
   });
 });

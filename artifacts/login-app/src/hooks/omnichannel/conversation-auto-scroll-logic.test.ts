@@ -1,34 +1,42 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
   CONVERSATION_NEAR_BOTTOM_THRESHOLD_PX,
   detectMessageListChange,
   isNearScrollBottom,
-} from "@/hooks/omnichannel/conversation-auto-scroll-logic";
+} from "./conversation-auto-scroll-logic.js";
 
 describe("isNearScrollBottom", () => {
   it("returns true when within threshold of the bottom", () => {
-    expect(isNearScrollBottom(900, 1000, 100, CONVERSATION_NEAR_BOTTOM_THRESHOLD_PX)).toBe(true);
+    assert.equal(
+      isNearScrollBottom(900, 1000, 100, CONVERSATION_NEAR_BOTTOM_THRESHOLD_PX),
+      true,
+    );
   });
 
   it("returns false when scrolled away from the bottom", () => {
-    expect(isNearScrollBottom(100, 1000, 100, CONVERSATION_NEAR_BOTTOM_THRESHOLD_PX)).toBe(false);
+    assert.equal(isNearScrollBottom(100, 1000, 100, CONVERSATION_NEAR_BOTTOM_THRESHOLD_PX), false);
   });
 });
 
 describe("detectMessageListChange", () => {
   it("detects appended messages", () => {
-    expect(detectMessageListChange(["a", "b"], ["a", "b", "c"])).toBe("append");
+    assert.equal(detectMessageListChange(["a", "b"], ["a", "b", "c"]), "append");
   });
 
   it("detects prepended history", () => {
-    expect(detectMessageListChange(["b", "c"], ["a", "b", "c"])).toBe("prepend");
+    assert.equal(detectMessageListChange(["b", "c"], ["a", "b", "c"]), "prepend");
   });
 
   it("detects full replacement", () => {
-    expect(detectMessageListChange(["a"], ["x", "y"])).toBe("replace");
+    assert.equal(detectMessageListChange(["a"], ["x", "y"]), "replace");
   });
 
   it("returns none when ids are unchanged", () => {
-    expect(detectMessageListChange(["a", "b"], ["a", "b"])).toBe("none");
+    assert.equal(detectMessageListChange(["a", "b"], ["a", "b"]), "none");
+  });
+
+  it("treats reorder/refetch with overlapping ids as replace (scroll must not force-jump)", () => {
+    assert.equal(detectMessageListChange(["a", "b", "c"], ["a", "c", "b"]), "replace");
   });
 });

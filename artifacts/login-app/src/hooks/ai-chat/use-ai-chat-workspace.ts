@@ -11,7 +11,7 @@ import { prepareEmployeeChatRuntime } from "@/lib/ai-employees/utilities/prepare
 import { rehydrateConversationExecutionContextFromMetadata } from "@/lib/ai-employees/utilities/conversation-employee-context-hydrator";
 import {
   appendSchedulingCatalogPrompt,
-  buildSchedulingCatalogPromptAddon,
+  resolveSchedulingCatalogPromptForEmployee,
 } from "@/lib/ai-employees/utilities/scheduling-catalog-prompt";
 import { supabase } from "@/lib/supabase";
 import { useRuntimeChatConfig } from "./use-runtime-chat-config";
@@ -272,17 +272,23 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
 
       try {
         const basePageContext = getPageContext?.() ?? {};
-        const schedulingCatalogPrompt = await buildSchedulingCatalogPromptAddon(supabase, companyId);
-        const pageContextWithCatalog = appendSchedulingCatalogPrompt({
-          ...basePageContext,
-          ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
-        });
         const employeeRuntime = await prepareEmployeeChatRuntime({
           companyId,
           conversationId,
-          basePageContext: pageContextWithCatalog,
+          basePageContext,
           conversationMetadata,
         });
+
+        const enabledToolKeys = Array.isArray(employeeRuntime.pageContext?.allowedToolKeys)
+          ? employeeRuntime.pageContext.allowedToolKeys.filter(
+              (key): key is string => typeof key === "string" && key.trim().length > 0,
+            )
+          : [];
+        const schedulingCatalogPrompt = await resolveSchedulingCatalogPromptForEmployee(
+          supabase,
+          companyId,
+          enabledToolKeys,
+        );
 
         if (employeeRuntime.metadataPatch && employeeRuntime.executionContext) {
           const updated = await conversationServices.conversations.updateMetadata(conversationContext, {

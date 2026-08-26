@@ -102,3 +102,23 @@ export function stripWelcomePromptFromSystemPrompt(systemPrompt: string): string
 
   return [before, remainder].filter(Boolean).join("\n\n").trim();
 }
+
+/**
+ * After deterministic welcome was delivered for this engagement, stop the LLM
+ * from producing another first-contact greeting (e.g. "مساء النور! كيف يمكنني...").
+ */
+export function buildPostWelcomePromptAddon(): string {
+  return [
+    "CRITICAL POST-WELCOME RULES:",
+    "- The configured first-contact welcome was already delivered for this engagement.",
+    "- Do NOT send another welcome or greeting opener (no أهلاً / مساء النور / صباح النور / كيف يمكنني مساعدتك اليوم as a welcome).",
+    "- If the customer only greets, reply with one short acknowledgment that invites their actual request — without repeating first-contact welcome style.",
+  ].join("\n");
+}
+
+/** Strip first-contact welcome instructions and attach post-welcome anti-greet rules. */
+export function applyPostWelcomeSystemPrompt(systemPrompt: string): string {
+  const stripped = stripWelcomePromptFromSystemPrompt(systemPrompt);
+  if (stripped.includes("CRITICAL POST-WELCOME RULES:")) return stripped;
+  return [stripped, buildPostWelcomePromptAddon()].filter(Boolean).join("\n\n").trim();
+}

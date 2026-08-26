@@ -33,7 +33,18 @@ export function extractContactIdentityFromMetadata(
       "companyName",
       "company_name",
     ),
-    phone: readMetadataString(source, "phone", "phoneNumber", "phone_number", "wa_id"),
+    // WhatsApp unknown senders store the sender under senderExternalId / externalThreadId.
+    phone: readMetadataString(
+      source,
+      "phone",
+      "phoneNumber",
+      "phone_number",
+      "wa_id",
+      "senderExternalId",
+      "sender_external_id",
+      "externalThreadId",
+      "external_thread_id",
+    ),
     email: readMetadataString(source, "email", "senderEmail", "sender_email"),
     channelUsername: readMetadataString(
       source,
@@ -108,6 +119,11 @@ export function buildContactDisplayInput(
         channelUsername: null,
       };
 
+  const channelPhone =
+    metadataIdentity.phone?.trim() ||
+    conversation?.externalThreadId?.trim() ||
+    null;
+
   return {
     name: headerCustomer?.name ?? conversation?.customer?.name ?? null,
     businessName: metadataIdentity.businessName,
@@ -116,7 +132,7 @@ export function buildContactDisplayInput(
     channelUsername: metadataIdentity.channelUsername,
     channel: conversation?.channel ?? null,
     conversationId: conversation?.id ?? null,
-    metadataPhone: metadataIdentity.phone,
+    metadataPhone: channelPhone,
     visitorLabel,
   };
 }

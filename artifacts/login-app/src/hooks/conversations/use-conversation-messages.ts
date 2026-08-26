@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConversationServices } from "@/lib/ai-conversation";
 import { auditTranscriptMessagesFromRecords } from "@/lib/omnichannel/debug/omni-transcript-messages-audit";
+import { useUser } from "@/context/auth-context";
 
 export function conversationMessagesQueryKey(conversationId: string | null) {
   return ["conversation-messages", conversationId] as const;
@@ -8,6 +9,9 @@ export function conversationMessagesQueryKey(conversationId: string | null) {
 
 export function useConversationMessages(conversationId: string | null) {
   const { services, context } = useConversationServices();
+  const { profile } = useUser();
+  const queryClient = useQueryClient();
+  const companyId = profile?.company_id ?? null;
   const queryKey = conversationMessagesQueryKey(conversationId);
 
   return useQuery({
@@ -19,6 +23,8 @@ export function useConversationMessages(conversationId: string | null) {
       const rows = await services.messages.listMessages(context, {
         conversationId,
         limit: 200,
+        // Opening the transcript is an explicit read — clear employee unread in DB.
+        markEmployeeRead: true,
       });
       auditTranscriptMessagesFromRecords(conversationId, rows, {
         stage: "useConversationMessages.ReactQuery.result",
@@ -30,6 +36,8 @@ export function useConversationMessages(conversationId: string | null) {
         orderBy: "sequence_number DESC, created_at DESC → reversed to ASC",
         limit: 200,
       });
+      // Refresh inbox badges after unread reset.
+      void queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
       return rows;
     },
   });

@@ -3,7 +3,10 @@ import {
   createSupabaseCustomerServicePort,
   resolveCompanyActorUserId,
 } from "@workspace/automation-platform";
-import { resolveTrustedChannelCustomer } from "@workspace/ai-tool-router";
+import {
+  customerPhoneMatchesWhatsAppSender,
+  resolveTrustedChannelCustomer,
+} from "@workspace/ai-tool-router";
 import type { ChannelCustomerIdentityPort } from "@workspace/channel-platform";
 
 /**
@@ -16,6 +19,27 @@ export function createWebhookChannelCustomerIdentityPort(
   const customerService = createSupabaseCustomerServicePort(client, {
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });
+
+  async function getCustomerById(input: {
+    companyId: string;
+    customerId: string;
+  }): Promise<{ id: string; name: string | null; phone: string | null } | null> {
+    const companyId = input.companyId.trim();
+    const customerId = input.customerId.trim();
+    if (!companyId || !customerId) return null;
+    const { data, error } = await client
+      .from("customers")
+      .select("id, name, phone")
+      .eq("company_id", companyId)
+      .eq("id", customerId)
+      .maybeSingle();
+    if (error || !data?.id) return null;
+    return {
+      id: String(data.id),
+      name: typeof data.name === "string" ? data.name : null,
+      phone: typeof data.phone === "string" ? data.phone : null,
+    };
+  }
 
   return {
     async resolveTrustedCustomer(input) {
@@ -74,6 +98,21 @@ export function createWebhookChannelCustomerIdentityPort(
         return { status: "invalid_sender", customerId: null, trustedCustomerName: null };
       }
       return { status: "unknown", customerId: null, trustedCustomerName: null };
+    },
+
+    getCustomerById,
+
+    async customerMatchesWhatsAppSender(input) {
+      const row = await getCustomerById({
+        companyId: input.companyId,
+        customerId: input.customerId,
+      });
+      if (!row) return { matches: false, name: null };
+      const matches = customerPhoneMatchesWhatsAppSender(row.phone, input.senderExternalId);
+      return {
+        matches,
+        name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,
+      };
     },
   };
 }

@@ -10,18 +10,25 @@ import {
 import { resolveEmployeeChannelRuntime } from "@login-app/lib/ai-employees/services/resolve-employee-channel-runtime.js";
 import { prepareEmployeeChatRuntime } from "@login-app/lib/ai-employees/utilities/prepare-employee-chat-runtime.js";
 import {
+  applyPostWelcomeSystemPrompt,
   resolvePersonalizedWelcomeMessage,
-  stripWelcomePromptFromSystemPrompt,
 } from "@login-app/lib/ai-employees/utilities/resolve-ai-employee-welcome-message.js";
 import { createAiEmployeeServices } from "@login-app/lib/ai-employees/index.js";
 import { DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION } from "@login-app/lib/ai-employees/adapters/ai-employee-runtime-types.js";
 import {
   appendSchedulingCatalogPrompt,
-  buildSchedulingCatalogPromptAddon,
+  resolveSchedulingCatalogPromptForEmployee,
 } from "@login-app/lib/ai-employees/utilities/scheduling-catalog-prompt.js";
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+    .filter(Boolean);
 }
 
 
@@ -61,7 +68,7 @@ function applyTrustedChannelIdentityPromptOverrides(
       ].join("\n");
     }
   } else if (options?.suppressWelcomePrompt && systemPrompt) {
-    next.systemPrompt = stripWelcomePromptFromSystemPrompt(systemPrompt);
+    next.systemPrompt = applyPostWelcomeSystemPrompt(systemPrompt);
   }
 
   if (trustedCustomerId) {
@@ -78,6 +85,22 @@ function applyTrustedChannelIdentityPromptOverrides(
     const prompt = typeof next.systemPrompt === "string" ? next.systemPrompt : "";
     if (!prompt.includes("CRITICAL TRUSTED CHANNEL IDENTITY")) {
       next.systemPrompt = [prompt, identityAddon].filter(Boolean).join("\n\n");
+    }
+  } else if (
+    pageContext.channelIdentityStatus === "ambiguous" ||
+    pageContext.channelIdentityStatus === "conflict_stale_bind"
+  ) {
+    const blockAddon = [
+      "CRITICAL CHANNEL IDENTITY BLOCK:",
+      "- WhatsApp sender identity cannot be trusted for customer-sensitive mutations yet.",
+      "- Do NOT pick a CRM customer arbitrarily.",
+      "- Do NOT create a new customer automatically for this phone.",
+      "- Do NOT book, cancel, or reschedule using an unverified customerId.",
+      "- Ask the customer to clarify identity with support, or wait until CRM duplicates are resolved.",
+    ].join("\n");
+    const prompt = typeof next.systemPrompt === "string" ? next.systemPrompt : "";
+    if (!prompt.includes("CRITICAL CHANNEL IDENTITY BLOCK")) {
+      next.systemPrompt = [prompt, blockAddon].filter(Boolean).join("\n\n");
     }
   }
 
@@ -120,20 +143,11 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
     },
 
     async prepareForConversation(input) {
-      const schedulingCatalogPrompt = await buildSchedulingCatalogPromptAddon(
-        client,
-        input.companyId,
-      );
-      const basePageContext = appendSchedulingCatalogPrompt({
-        ...(input.basePageContext ?? {}),
-        ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
-      });
-
       const prepared = await prepareEmployeeChatRuntime({
         companyId: input.companyId,
         conversationId: input.conversationId,
         aiEmployeeId: input.aiEmployeeId,
-        basePageContext,
+        basePageContext: input.basePageContext ?? {},
         conversationMetadata: input.conversationMetadata,
         // Re-resolve only when the stored binding snapshot is incomplete.
         preferFreshBinding: true,
@@ -145,8 +159,18 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
         return null;
       }
 
+      const enabledToolKeys = readStringArray(prepared.pageContext?.allowedToolKeys);
+      const schedulingCatalogPrompt = await resolveSchedulingCatalogPromptForEmployee(
+        client,
+        input.companyId,
+        enabledToolKeys,
+      );
+
       const pageContext = applyTrustedChannelIdentityPromptOverrides(
-        appendSchedulingCatalogPrompt(prepared.pageContext),
+        appendSchedulingCatalogPrompt({
+          ...prepared.pageContext,
+          ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
+        }),
         { suppressWelcomePrompt: input.suppressWelcomePrompt === true },
       );
 
@@ -154,7 +178,7 @@ export function createWebhookEmployeeRuntimePort(client: SupabaseClient): Channe
         const systemPrompt =
           typeof pageContext.systemPrompt === "string" ? pageContext.systemPrompt : "";
         if (systemPrompt) {
-          pageContext.systemPrompt = stripWelcomePromptFromSystemPrompt(systemPrompt);
+          pageContext.systemPrompt = applyPostWelcomeSystemPrompt(systemPrompt);
         }
       }
 

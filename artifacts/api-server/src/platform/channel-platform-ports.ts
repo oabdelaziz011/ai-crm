@@ -281,6 +281,42 @@ export function createChannelConversationPort(
       };
     },
 
+    async findIncomingMessageForInboundEvent(input) {
+      if (input.externalMessageId) {
+        const byExternal = await services.messages.findByConversationAndExternalMessageId(
+          ctx,
+          input.conversationId,
+          input.externalMessageId,
+        );
+        if (byExternal) {
+          return {
+            id: byExternal.id,
+            conversationId: byExternal.conversation_id,
+            messageType: byExternal.message_type,
+            content: byExternal.content,
+            createdAt: byExternal.created_at,
+            reused: true,
+          };
+        }
+      }
+
+      const byCorrelation = await services.messages.findByConversationAndInboundCorrelationId(
+        ctx,
+        input.conversationId,
+        input.inboundEventId,
+      );
+      if (!byCorrelation) return null;
+
+      return {
+        id: byCorrelation.id,
+        conversationId: byCorrelation.conversation_id,
+        messageType: byCorrelation.message_type,
+        content: byCorrelation.content,
+        createdAt: byCorrelation.created_at,
+        reused: true,
+      };
+    },
+
     async addOutgoingMessage(input) {
       const message = await services.messages.addMessage(ctx, {
         conversationId: input.conversationId,

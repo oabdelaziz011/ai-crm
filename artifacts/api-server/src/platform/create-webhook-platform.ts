@@ -259,6 +259,31 @@ export function getWebhookPlatform(): WebhookPlatform {
       knowledgeRuntimeProvider,
       resolveActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),
       promptMode: "webhook",
+      loadConversationSchedulingToolSeed: async (conversationId) => {
+        const { data, error } = await client
+          .from("tool_executions")
+          .select("id, tool_key, status, input, output")
+          .eq("conversation_id", conversationId)
+          .in("tool_key", ["search_availability", "find_next_available", "recommend_appointment"])
+          .eq("status", "succeeded")
+          .order("started_at", { ascending: false })
+          .limit(3);
+        if (error || !data?.length) return [];
+        return data.map((row) => ({
+          toolKey: String(row.tool_key ?? ""),
+          executionId: String(row.id ?? ""),
+          status: String(row.status ?? "succeeded"),
+          input:
+            row.input && typeof row.input === "object" && !Array.isArray(row.input)
+              ? (row.input as Record<string, unknown>)
+              : null,
+          output:
+            row.output && typeof row.output === "object" && !Array.isArray(row.output)
+              ? (row.output as Record<string, unknown>)
+              : null,
+          durationMs: 0,
+        }));
+      },
     },
   );
 

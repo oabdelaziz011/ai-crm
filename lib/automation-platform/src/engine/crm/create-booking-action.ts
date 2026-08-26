@@ -195,10 +195,14 @@ function buildCreatedBookingVariablePatch(input: {
     readRecordString(input.scope.selected_slot, "timezone") ??
     readRecordString(input.scope.selected_date, "timezone");
   const confirmationNumber =
-    (typeof input.confirmationNumber === "string" && input.confirmationNumber.trim()
+    typeof input.confirmationNumber === "string" && input.confirmationNumber.trim()
       ? input.confirmationNumber.trim()
-      : null) ??
-    `BK-${input.bookingId.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+      : null;
+  if (!confirmationNumber) {
+    throw new Error(
+      "Booking confirmation_number is required from the scheduling domain — refusing UUID-derived fallback.",
+    );
+  }
 
   const booking = {
     exists: true,

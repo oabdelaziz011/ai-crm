@@ -21,7 +21,7 @@ function mapDomainBooking(
     customerId: booking.customer_id,
     customerName: extras?.customerName ?? "Customer",
     reference:
-      booking.confirmation_number?.trim() || booking.id.slice(0, 8).toUpperCase(),
+      booking.confirmation_number?.trim() || "—",
     scheduledAt: booking.start_at,
     status: booking.status,
     paymentStatus: extras?.paymentStatus ?? "Unpaid",

@@ -132,8 +132,7 @@ export function OperationsBookingDrawer({
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <p dir="ltr" className="font-mono text-[12px] text-muted-foreground">
-            {booking.confirmationNumber?.trim() ||
-              booking.id.slice(0, 8).toUpperCase()}
+            {booking.confirmationNumber?.trim() || "—"}
           </p>
           <SheetTitle>{booking.customer?.name ?? t("scheduling.operations.drawer.title")}</SheetTitle>
         </SheetHeader>
@@ -152,8 +151,7 @@ export function OperationsBookingDrawer({
             <DetailRow
               label={t("scheduling.operations.drawer.referenceNumber")}
               value={
-                booking.confirmationNumber?.trim() ||
-                booking.id.slice(0, 8).toUpperCase()
+                booking.confirmationNumber?.trim() || "—"
               }
               mono
             />

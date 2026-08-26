@@ -225,6 +225,11 @@ export class BookingDomainService {
       throw new BookingDomainError(validation.errors);
     }
 
+    const preservedConfirmation =
+      typeof existing.confirmation_number === "string" && existing.confirmation_number.trim()
+        ? existing.confirmation_number.trim()
+        : null;
+
     const previousBooking = await this.bookingRepo.updateStatus(
       existing.id,
       input.companyId,
@@ -245,6 +250,9 @@ export class BookingDomainService {
       source: previousBooking.source,
       notes: previousBooking.notes,
       rescheduled_from_id: previousBooking.id,
+      // Keep the SAME customer-facing BK on the replacement row (partial unique index
+      // excludes status=rescheduled). Trigger skips assignment when this is set.
+      ...(preservedConfirmation ? { confirmation_number: preservedConfirmation } : {}),
       created_by: input.updatedBy ?? previousBooking.created_by,
       updated_by: input.updatedBy ?? null,
     });

@@ -73,6 +73,8 @@ export type SchedulingBookingInsert = {
   source: SchedulingBookingSource;
   notes?: string | null;
   rescheduled_from_id?: string | null;
+  /** When set (reschedule transfer), trigger preserves this exact BK reference. */
+  confirmation_number?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
 };

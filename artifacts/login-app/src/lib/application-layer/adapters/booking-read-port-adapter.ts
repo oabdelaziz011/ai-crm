@@ -66,7 +66,7 @@ function mapBookingViewToReadModel(
     customerId: booking.customerId ?? "",
     customerName: booking.customer?.name ?? "Customer",
     reference:
-      booking.confirmationNumber?.trim() || booking.id.slice(0, 8).toUpperCase(),
+      booking.confirmationNumber?.trim() || "—",
     scheduledAt: booking.startAt,
     status: booking.status,
     paymentStatus,

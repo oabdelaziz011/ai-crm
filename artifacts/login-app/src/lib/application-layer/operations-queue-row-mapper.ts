@@ -155,7 +155,7 @@ export function mapOperationsBookingToRow(
     priority: priorityFromVisitType(visitType),
     tags: visitType === "VIP" ? ["VIP"] : [],
     values: {
-      reference: booking.confirmationNumber?.trim() || booking.id.slice(0, 8).toUpperCase(),
+      reference: booking.confirmationNumber?.trim() || "—",
       customer: booking.customer?.name ?? "—",
       phone: booking.customer?.phone ?? null,
       service: booking.service?.name ?? "—",

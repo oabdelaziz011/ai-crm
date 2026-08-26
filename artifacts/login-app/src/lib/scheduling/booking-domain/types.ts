@@ -101,6 +101,7 @@ export type SchedulingBookingInsert = {
   source: SchedulingBookingSource;
   notes?: string | null;
   rescheduled_from_id?: string | null;
+  confirmation_number?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
   amount_cents?: number;

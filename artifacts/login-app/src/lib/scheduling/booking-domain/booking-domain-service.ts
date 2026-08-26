@@ -312,6 +312,11 @@ export class BookingDomainService {
       input.updatedBy ?? null,
     );
 
+    const preservedConfirmation =
+      typeof existing.confirmation_number === "string" && existing.confirmation_number.trim()
+        ? existing.confirmation_number.trim()
+        : null;
+
     const booking = await this.bookingRepo.create({
       company_id: input.companyId,
       branch_id: previousBooking.branch_id,
@@ -325,6 +330,7 @@ export class BookingDomainService {
       source: previousBooking.source,
       notes: previousBooking.notes,
       rescheduled_from_id: previousBooking.id,
+      ...(preservedConfirmation ? { confirmation_number: preservedConfirmation } : {}),
       created_by: input.updatedBy ?? previousBooking.created_by,
       updated_by: input.updatedBy ?? null,
     });

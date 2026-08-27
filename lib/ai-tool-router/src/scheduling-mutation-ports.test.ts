@@ -732,6 +732,52 @@ describe("Phase 5H check_in / check_out ownership + domain", () => {
     );
   });
 
+  it("check_in by BK reference prefers the active row over a rescheduled twin", async () => {
+    let checkedId = "";
+    const rescheduled = {
+      ...bookingA,
+      id: "booking-old",
+      confirmation_number: "BK-000083",
+      status: "rescheduled",
+      start_at: "2026-08-27T04:15:00.000Z",
+    };
+    const active = {
+      ...bookingA,
+      id: "booking-new",
+      confirmation_number: "BK-000083",
+      status: "confirmed",
+      start_at: "2026-08-27T06:00:00.000Z",
+    };
+    const { client } = createMemoryClient({ bookings: [rescheduled, active] });
+    const domain: BookingDomainServicePort = {
+      async createBooking() {
+        throw new Error("unused");
+      },
+      async checkInBooking(input) {
+        checkedId = input.bookingId;
+        return {
+          booking: {
+            id: input.bookingId,
+            status: "checked_in",
+            start_at: active.start_at,
+            company_id: "company-a",
+            customer_id: "customer-a",
+            confirmation_number: "BK-000083",
+            updated_at: "2026-08-27T06:05:00.000Z",
+          },
+        };
+      },
+    };
+    const result = await executeCheckInBooking(client, domain, {
+      companyId: "company-a",
+      userId: "user-1",
+      bookingReference: "BK-000083",
+      trustedCustomerId: "customer-a",
+    });
+    assert.equal(result.success, true);
+    assert.equal(checkedId, "booking-new");
+  });
+
   it("check_out succeeds via completeBooking for in_progress booking", async () => {
     let domainCalled = false;
     const { client } = createMemoryClient({

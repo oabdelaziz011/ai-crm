@@ -1257,7 +1257,11 @@ async function loadCompanyBookingByReference(
     };
   }
 
-  const row = rows[0]!;
+  const row =
+    rows.find((candidate) => {
+      const status = String(candidate.status ?? "");
+      return status !== "rescheduled" && status !== "cancelled";
+    }) ?? rows[0]!;
   return {
     id: String(row.id),
     company_id: String(row.company_id),

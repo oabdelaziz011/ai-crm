@@ -22,7 +22,7 @@ describe("scheduling operation intent", () => {
     assert.equal(resolveSchedulingOperationIntent([{ role: "user", content: "ليه؟" }]), "none");
     assert.equal(
       resolveSchedulingOperationIntent([
-        { role: "user", content: "e2e-ci-leh 123 ليه؟" },
+        { role: "user", content: "e2e-ci-leh 1787793596429 ليه؟" },
       ]),
       "none",
     );

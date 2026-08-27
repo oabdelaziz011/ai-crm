@@ -14,6 +14,7 @@ function invalidateBillingCompany(qc: ReturnType<typeof useQueryClient>, company
   qc.invalidateQueries({ queryKey: ["billing", "payments", companyId] });
   qc.invalidateQueries({ queryKey: ["billing", "receipts", companyId] });
   qc.invalidateQueries({ queryKey: ["notifications", "list", companyId] });
+  qc.invalidateQueries({ queryKey: ["billing", "company-subscription-review", companyId] });
   qc.invalidateQueries({ queryKey: COMPANIES_KEY });
 }
 

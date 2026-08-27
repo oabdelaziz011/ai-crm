@@ -96,6 +96,7 @@ export * from "./types.js";
 export * from "./repositories/automation-repositories.js";
 export * from "./repositories/supabase-automation-repositories.js";
 export * from "./services/automation-flow-service.js";
+export * from "./provisioning/rahla-kamila-deep-clone.js";
 export * from "./engine/automation-engine.js";
 export * from "./engine/execution-context.js";
 export * from "./engine/node-registry.js";

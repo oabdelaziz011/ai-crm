@@ -1000,7 +1000,10 @@ export class InboundMessagePipeline {
         };
       }
 
-      if (!incomingMessageId && (!request.executeAi || useWorkflow)) {
+      // Always persist inbound before welcome/AI so Web Chat, last_message_at, and unread
+      // stay in sync even when AI is skipped or runtime fails later. Idempotent by
+      // externalMessageId / correlationId.
+      if (!incomingMessageId) {
         const incomingMessage = await waPerfMeasure("Database writes: add incoming message", () =>
           this.ports.conversation.addIncomingMessage({
             conversationId: session.conversation_id,
@@ -1296,6 +1299,14 @@ export class InboundMessagePipeline {
           ) {
             suppressWelcomePrompt = hasEngagementWelcomeDelivered(aiEmployeeEngagement);
 
+            // Engagement already welcomed: greeting-only must not trigger a second AI greeting.
+            if (
+              hasEngagementWelcomeDelivered(aiEmployeeEngagement) &&
+              isGreetingOnlyInboundText(inboundText)
+            ) {
+              skipAiAfterDeterministicWelcome = true;
+            }
+
             if (
               shouldAttemptWhatsAppDeterministicWelcome({
                 engagement: aiEmployeeEngagement,
@@ -1400,7 +1411,9 @@ export class InboundMessagePipeline {
 
           if (skipAiAfterDeterministicWelcome) {
             if (!incomingMessageId) {
-              incomingMessageId = await this.resolveInboundIncomingMessageId({
+              // Greeting-only / post-welcome skip never reaches runtime persistence — persist here
+              // so the customer's first inbound appears in Web Chat.
+              const existingId = await this.resolveInboundIncomingMessageId({
                 inboundEvent,
                 conversationId: session.conversation_id,
                 externalMessageId: normalized.externalMessageId,
@@ -1411,6 +1424,24 @@ export class InboundMessagePipeline {
                 incomingMessageId,
                 lookupOnly: true,
               });
+              if (existingId) {
+                incomingMessageId = existingId;
+              } else {
+                const incomingMessage = await this.ports.conversation.addIncomingMessage({
+                  conversationId: session.conversation_id,
+                  content: inboundText,
+                  externalMessageId: normalized.externalMessageId,
+                  metadata: buildInboundIncomingMetadata(inboundEvent.id, request, normalized),
+                });
+                incomingMessageId = incomingMessage.id;
+                if (incomingMessage.reused) {
+                  request.trace?.step("webhook.inbound_message_reused", {
+                    incomingMessageId,
+                    externalMessageId: normalized.externalMessageId,
+                    source: "conversation_port_welcome_skip",
+                  });
+                }
+              }
             }
 
             await this.inboundRepository.updateEvent({
@@ -1425,7 +1456,9 @@ export class InboundMessagePipeline {
             request.trace?.step("webhook.whatsapp_deterministic_welcome_skip_ai", {
               aiEmployeeId,
               conversationId: session.conversation_id,
-              reason: "greeting_only_after_deterministic_welcome",
+              reason: hasEngagementWelcomeDelivered(aiEmployeeEngagement)
+                ? "greeting_only_after_welcome_already_delivered"
+                : "greeting_only_after_deterministic_welcome",
             });
 
             return {

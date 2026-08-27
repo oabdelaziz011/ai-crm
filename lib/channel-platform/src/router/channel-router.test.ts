@@ -32,7 +32,9 @@ describe("ChannelRouter", () => {
     assert.equal(env.inboundEvents[0]?.processing_status, "processed");
     assert.equal(env.deliveryEvents.length, 1);
     assert.equal(env.deliveryEvents[0]?.delivery_status, "sent");
-    assert.equal(env.incomingMessages.length, 0);
+    // Inbound is persisted before AI so last_message_at / Web Chat stay consistent.
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.incomingMessages[0]?.content, "Hello channel platform");
     assert.equal(env.outgoingMessages.length, 0);
     assert.equal(env.telemetryEvents.length, 2);
   });

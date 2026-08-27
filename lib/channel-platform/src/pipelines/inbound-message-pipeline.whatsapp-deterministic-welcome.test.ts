@@ -193,6 +193,7 @@ async function routeWhatsApp(
       text: overrides?.text ?? "مساء الخير",
       externalThreadId: overrides?.externalThreadId ?? "201011404300",
       senderExternalId: overrides?.externalThreadId ?? "201011404300",
+      externalMessageId: overrides?.idempotencyKey ?? `wamid.${Date.now()}-${Math.random()}`,
     },
   });
 }
@@ -228,6 +229,9 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
     assert.equal(response.responseContent, expectedWelcome);
     assert.equal(env.runtimeCalls, 0);
     assert.ok(readAiEmployeeEngagement(env.sessions[0]?.metadata)?.welcomeDeliveredAt);
+    assert.ok(response.incomingMessageId, "greeting-only must persist inbound for Web Chat");
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.incomingMessages[0]?.content, "مساء الخير");
   });
 
   it("A2. non-greeting after welcome still runs AI once with suppressWelcomePrompt", async () => {
@@ -343,8 +347,41 @@ describe("InboundMessagePipeline WhatsApp deterministic welcome", () => {
 
     assert.equal(first.conversationId, second.conversationId);
     assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا").length, 1);
-    // First turn: greeting-only after welcome → skip AI. Retry: welcome already marked → AI once.
-    assert.equal(env.runtimeCalls, 1);
+    // Greeting-only retry after welcome is already stamped must still skip AI (no second greeting).
+    assert.equal(env.runtimeCalls, 0);
+    assert.ok(first.incomingMessageId);
+    assert.equal(first.incomingMessageId, second.incomingMessageId);
+    assert.equal(env.incomingMessages.length, 1);
+    assert.equal(env.incomingMessages[0]?.content, "مساء الخير");
+  });
+
+  it("greeting-only after welcome already delivered skips AI and persists inbound", async () => {
+    const adapter = new StubWhatsAppAdapter();
+    const env = whatsAppChannelEnv({
+      adapter,
+      employeeRuntime: createWhatsAppEmployeeRuntime({ storedWelcome: "مرحبًا" }),
+    });
+    const thread = "wa-greet-followup-1";
+
+    await routeWhatsApp(env, {
+      externalThreadId: thread,
+      idempotencyKey: "wamid.greet-1",
+      text: "مساء الخير",
+    });
+    const second = await routeWhatsApp(env, {
+      externalThreadId: thread,
+      idempotencyKey: "wamid.greet-2",
+      text: "صباح الخير",
+    });
+
+    assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا").length, 1);
+    assert.equal(env.runtimeCalls, 0);
+    assert.ok(second.incomingMessageId);
+    assert.equal(env.incomingMessages.length, 2);
+    assert.deepEqual(
+      env.incomingMessages.map((message) => message.content),
+      ["مساء الخير", "صباح الخير"],
+    );
   });
 
   it("E. suppresses LLM welcome prompt after deterministic welcome", async () => {

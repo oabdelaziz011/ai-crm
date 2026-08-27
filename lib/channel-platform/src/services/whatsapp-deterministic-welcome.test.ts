@@ -53,5 +53,6 @@ describe("whatsapp deterministic welcome helpers", () => {
     assert.equal(isGreetingOnlyInboundText("hello"), true);
     assert.equal(isGreetingOnlyInboundText("عايز أحجز عيادة"), false);
     assert.equal(isGreetingOnlyInboundText("مساء الخير عايز أحجز"), false);
+    assert.equal(isGreetingOnlyInboundText("حجز"), false);
   });
 });

@@ -68,12 +68,18 @@ export function resolveAiEmployeeEngagement(input: {
   const isNewEngagement = isFirstEverInbound || inactivityExceeded || employeeChanged;
 
   if (isNewEngagement) {
+    const preserveWelcome =
+      !isFirstEverInbound &&
+      !employeeChanged &&
+      hasEngagementWelcomeDelivered(input.previousEngagement);
     return {
       isNewEngagement: true,
       engagement: {
         startedAt: input.now.toISOString(),
         aiEmployeeId: input.aiEmployeeId,
-        welcomeDeliveredAt: null,
+        welcomeDeliveredAt: preserveWelcome
+          ? input.previousEngagement!.welcomeDeliveredAt ?? null
+          : null,
       },
     };
   }

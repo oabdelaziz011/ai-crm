@@ -55,7 +55,7 @@ describe("ai employee engagement session", () => {
       },
     });
     assert.equal(result.isNewEngagement, true);
-    assert.equal(result.engagement.welcomeDeliveredAt, null);
+    assert.equal(result.engagement.welcomeDeliveredAt, "2026-08-21T12:00:00.000Z");
   });
 
   it("does not rotate at the exact timeout boundary", () => {

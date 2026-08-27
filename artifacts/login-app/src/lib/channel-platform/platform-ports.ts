@@ -171,15 +171,20 @@ export function createChannelConversationPort(
     resolveCompanyAssistantId: options?.resolveCompanyAssistantId,
 
     async createConversation(input) {
+      const meta = (input.metadata ?? {}) as Record<string, unknown>;
+      const externalThreadId =
+        (typeof meta.externalThreadId === "string" && meta.externalThreadId.trim()) ||
+        (typeof meta.senderExternalId === "string" && meta.senderExternalId.trim()) ||
+        null;
       const created = await services.conversations.createConversation(ctx, {
         companyId: input.companyId,
         aiAssistantId: input.aiAssistantId,
         companyChannelId: input.companyChannelId,
         channelType: input.channelType as ConversationChannelType,
         metadata: input.metadata,
+        externalThreadId,
       });
 
-      const meta = (input.metadata ?? {}) as Record<string, unknown>;
       void import("@/lib/lead-intelligence/conversation-event-publisher.js")
         .then(({ publishConversationStarted }) =>
           publishConversationStarted({
@@ -188,8 +193,7 @@ export function createChannelConversationPort(
             channelType: String(input.channelType ?? created.channel_type ?? "unknown"),
             externalUserId:
               typeof meta.senderExternalId === "string" ? meta.senderExternalId : null,
-            externalThreadId:
-              typeof meta.externalThreadId === "string" ? meta.externalThreadId : null,
+            externalThreadId,
             phone: typeof meta.phone === "string" ? meta.phone : null,
             email: typeof meta.email === "string" ? meta.email : null,
             actorUserId: ctx.userId ?? null,

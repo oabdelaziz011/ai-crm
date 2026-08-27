@@ -169,7 +169,8 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
       return;
     }
 
-    const userId = user?.id;
+    // Prefer auth user id; profiles.id matches auth.users.id in this schema.
+    const userId = user?.id ?? profile.id;
     if (!userId) {
       toast({
         title: t("profiles.saveFailedTitle"),

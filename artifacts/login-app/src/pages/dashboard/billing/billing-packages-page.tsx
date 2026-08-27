@@ -19,6 +19,19 @@ import { canEditBilling, canViewBilling } from "@/lib/billing/billing-permission
 import { formatPackageMonthlyAndYearly, normalizePackagePricingMode } from "@/lib/billing/package-pricing";
 import type { Plan } from "@/lib/types";
 
+function packageDisplayName(
+  t: (key: string, options?: { defaultValue?: string }) => string,
+  pkg: Plan,
+): string {
+  const code = pkg.code?.trim().toLowerCase();
+  if (code) {
+    return t(`companies.commercial.packageNames.${code}`, {
+      defaultValue: pkg.display_name || pkg.name || code,
+    });
+  }
+  return pkg.display_name || pkg.name || "—";
+}
+
 export function BillingPackagesPage() {
   const { t } = useTranslation("common");
   const { hasPermission, isSuperAdmin } = useAuthUser();
@@ -29,23 +42,27 @@ export function BillingPackagesPage() {
   const [editing, setEditing] = useState<Plan | null>(null);
 
   const rows = useMemo(() => packages, [packages]);
+  const priceLabels = useMemo(
+    () => ({
+      free: t("billing.packages.pricingMode.free"),
+      custom: t("billing.packages.pricingMode.customShort"),
+    }),
+    [t],
+  );
 
   if (!canView) {
-    return <DashboardErrorBanner message={t("billing.packages.accessDenied", "Billing access required")} />;
+    return <DashboardErrorBanner message={t("billing.packages.accessDenied")} />;
   }
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="text-start">
           <h1 className="text-xl font-semibold tracking-tight">
-            {t("billing.packages.title", "Packages")}
+            {t("billing.packages.title")}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            {t(
-              "billing.packages.subtitle",
-              "Sellable feature bundles. Packages provision existing feature grants — they are not a second entitlement system.",
-            )}
+            {t("billing.packages.subtitle")}
           </p>
         </div>
         {canEdit ? (
@@ -57,7 +74,7 @@ export function BillingPackagesPage() {
             }}
           >
             <Plus className="size-4" />
-            {t("billing.packages.create", "Create package")}
+            {t("billing.packages.create")}
           </Button>
         ) : null}
       </div>
@@ -70,18 +87,18 @@ export function BillingPackagesPage() {
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
             <Package className="size-8 opacity-50" />
-            {t("billing.packages.empty", "No packages yet")}
+            {t("billing.packages.empty")}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("billing.packages.columns.package", "Package")}</TableHead>
-                <TableHead>{t("billing.packages.columns.code", "Code")}</TableHead>
-                <TableHead>{t("billing.packages.columns.pricing", "Pricing")}</TableHead>
-                <TableHead>{t("billing.packages.columns.monthly", "Monthly list")}</TableHead>
-                <TableHead>{t("billing.packages.columns.yearly", "Annual list")}</TableHead>
-                <TableHead>{t("billing.packages.columns.status", "Status")}</TableHead>
+                <TableHead className="text-start">{t("billing.packages.columns.package")}</TableHead>
+                <TableHead className="text-start">{t("billing.packages.columns.code")}</TableHead>
+                <TableHead className="text-start">{t("billing.packages.columns.pricing")}</TableHead>
+                <TableHead className="text-start">{t("billing.packages.columns.monthly")}</TableHead>
+                <TableHead className="text-start">{t("billing.packages.columns.yearly")}</TableHead>
+                <TableHead className="text-start">{t("billing.packages.columns.status")}</TableHead>
                 <TableHead className="w-[100px]" />
               </TableRow>
             </TableHeader>
@@ -92,16 +109,16 @@ export function BillingPackagesPage() {
                   pkg.price_monthly,
                   pkg.price_yearly,
                 );
-                const prices = formatPackageMonthlyAndYearly(pkg);
+                const prices = formatPackageMonthlyAndYearly(pkg, undefined, priceLabels);
                 return (
                 <TableRow key={pkg.id}>
-                  <TableCell>
+                  <TableCell className="text-start">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{pkg.display_name || pkg.name}</span>
+                      <span className="font-medium">{packageDisplayName(t, pkg)}</span>
                       {pkg.is_highlighted ? (
                         <Badge variant="secondary" className="gap-1 text-[10px]">
                           <Sparkles className="size-3" />
-                          {t("billing.packages.highlighted", "Featured")}
+                          {t("billing.packages.highlighted")}
                         </Badge>
                       ) : null}
                     </div>
@@ -109,23 +126,23 @@ export function BillingPackagesPage() {
                       <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{pkg.description}</p>
                     ) : null}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{pkg.code}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[10px] capitalize">
+                  <TableCell className="text-start font-mono text-xs">{pkg.code}</TableCell>
+                  <TableCell className="text-start">
+                    <Badge variant="outline" className="text-[10px]">
                       {mode === "custom"
-                        ? t("billing.packages.pricingMode.customShort", "Custom")
+                        ? t("billing.packages.pricingMode.customShort")
                         : mode === "free"
-                          ? t("billing.packages.pricingMode.free", "Free")
-                          : t("billing.packages.pricingMode.fixedShort", "Fixed")}
+                          ? t("billing.packages.pricingMode.free")
+                          : t("billing.packages.pricingMode.fixedShort")}
                     </Badge>
                   </TableCell>
-                  <TableCell>{prices.monthly}</TableCell>
-                  <TableCell>{prices.yearly}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-start">{prices.monthly}</TableCell>
+                  <TableCell className="text-start">{prices.yearly}</TableCell>
+                  <TableCell className="text-start">
                     <Badge variant={pkg.is_active ? "default" : "outline"}>
                       {pkg.is_active
-                        ? t("billing.packages.active", "Active")
-                        : t("billing.packages.inactive", "Inactive")}
+                        ? t("billing.packages.active")
+                        : t("billing.packages.inactive")}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -140,7 +157,7 @@ export function BillingPackagesPage() {
                         }}
                       >
                         <Pencil className="size-3.5" />
-                        {t("billing.packages.edit", "Edit")}
+                        {t("billing.packages.edit")}
                       </Button>
                     ) : null}
                   </TableCell>

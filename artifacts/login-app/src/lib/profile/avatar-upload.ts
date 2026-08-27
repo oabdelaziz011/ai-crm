@@ -42,15 +42,18 @@ export function getAvatarPublicUrl(avatarUrl: string): string {
   return data.publicUrl;
 }
 
-function resolveSupabaseUrl(): string {
-  const url = (supabase as unknown as { supabaseUrl?: string }).supabaseUrl;
-  if (url) return url.replace(/\/$/, "");
-  const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  if (!envUrl) throw new AvatarUploadError("missing_key", "Supabase URL unavailable");
-  return envUrl.replace(/\/$/, "");
+function classifyStorageError(message: string, status?: number): AvatarUploadErrorCode {
+  const detail = message || "";
+  if (status === 401 || /jwt|not authenticated|session/i.test(detail)) {
+    return "unauthenticated";
+  }
+  if (status === 403 || /row-level security|unauthorized|permission|forbidden|policy/i.test(detail)) {
+    return "forbidden";
+  }
+  return "upload_failed";
 }
 
-async function resolveAuthenticatedUploadToken(expectedUserId: string): Promise<string> {
+async function resolveAuthenticatedUserId(expectedUserId?: string): Promise<string> {
   let authResult = await supabase.auth.getUser();
   if (authResult.error || !authResult.data.user) {
     await supabase.auth.refreshSession();
@@ -62,73 +65,26 @@ async function resolveAuthenticatedUploadToken(expectedUserId: string): Promise<
     throw new AvatarUploadError("unauthenticated");
   }
 
-  if (authUser.id !== expectedUserId) {
+  if (expectedUserId && authUser.id !== expectedUserId) {
     throw new AvatarUploadError("forbidden", "Profile user mismatch");
   }
 
   const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) {
+  if (!sessionData.session?.access_token) {
     throw new AvatarUploadError("unauthenticated");
   }
 
-  return token;
-}
-
-async function uploadAvatarObject(input: {
-  objectPath: string;
-  file: File;
-  contentType: string;
-  accessToken: string;
-}): Promise<void> {
-  const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-  if (!apikey) {
-    throw new AvatarUploadError("missing_key");
-  }
-
-  const endpoint = `${resolveSupabaseUrl()}/storage/v1/object/${AVATAR_STORAGE_BUCKET}/${input.objectPath}`;
-
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", endpoint);
-    xhr.setRequestHeader("Authorization", `Bearer ${input.accessToken}`);
-    xhr.setRequestHeader("apikey", apikey);
-    xhr.setRequestHeader("Content-Type", input.contentType);
-    xhr.setRequestHeader("x-upsert", "true");
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-        return;
-      }
-
-      let detail = xhr.responseText || `Upload failed (${xhr.status})`;
-      try {
-        const parsed = JSON.parse(xhr.responseText) as { message?: string; error?: string };
-        detail = parsed.message || parsed.error || detail;
-      } catch {
-        /* keep raw response */
-      }
-
-      if (xhr.status === 403 || /row-level security|unauthorized|jwt/i.test(detail)) {
-        reject(new AvatarUploadError("forbidden", detail));
-        return;
-      }
-      if (xhr.status === 401) {
-        reject(new AvatarUploadError("unauthenticated", detail));
-        return;
-      }
-      reject(new AvatarUploadError("upload_failed", detail));
-    };
-    xhr.onerror = () => reject(new AvatarUploadError("network"));
-    xhr.send(input.file);
-  });
+  return authUser.id;
 }
 
 /**
  * Upload a profile photo to the public `avatars` bucket.
  * Returns the storage path stored in `profiles.avatar_url` (`avatars/{userId}/…`).
+ *
+ * Uses a unique object path (no upsert) so INSERT-only RLS is enough; still
+ * requires the caller to own `{auth.uid()}/…` under the avatars bucket.
  */
-export async function uploadProfileAvatar(file: File, userId: string): Promise<string> {
+export async function uploadProfileAvatar(file: File, userId?: string): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new AvatarUploadError("unsupported_type");
   }
@@ -140,23 +96,31 @@ export async function uploadProfileAvatar(file: File, userId: string): Promise<s
     throw new AvatarUploadError("too_large");
   }
 
+  const authUserId = await resolveAuthenticatedUserId(userId);
+
   const ext =
     file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
     (file.type === "image/png" ? "png" : "jpg");
-  const storagePath = buildStorageAvatarPath(userId, `avatar-${Date.now()}.${ext}`);
+  const storagePath = buildStorageAvatarPath(authUserId, `avatar-${Date.now()}.${ext}`);
   const objectPath = avatarStorageObjectPath(storagePath);
 
   if (!isStorageAvatarPath(storagePath)) {
     throw new AvatarUploadError("invalid_path");
   }
 
-  const accessToken = await resolveAuthenticatedUploadToken(userId);
-  await uploadAvatarObject({
-    objectPath,
-    file,
+  const { error } = await supabase.storage.from(AVATAR_STORAGE_BUCKET).upload(objectPath, file, {
+    cacheControl: "3600",
+    upsert: false,
     contentType: file.type || "image/jpeg",
-    accessToken,
   });
+
+  if (error) {
+    const status =
+      typeof (error as { statusCode?: string | number }).statusCode !== "undefined"
+        ? Number((error as { statusCode?: string | number }).statusCode)
+        : undefined;
+    throw new AvatarUploadError(classifyStorageError(error.message, status), error.message);
+  }
 
   return storagePath;
 }

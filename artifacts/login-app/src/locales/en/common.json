@@ -864,6 +864,22 @@
       "unknownServerError": "Something went wrong. Please try again."
     }
   },
+  "documentTitle": {
+    "login": "Login",
+    "register": "Register",
+    "forgotPassword": "Forgot Password",
+    "resetPassword": "Reset Password",
+    "authCallback": "Signing In",
+    "dashboard": "Dashboard",
+    "notFound": "Page Not Found",
+    "accessDenied": "Access Denied",
+    "booking": "Book Appointment",
+    "bookingFlow": "Booking",
+    "portal": "Customer Portal",
+    "portalLogin": "Portal Login",
+    "checkIn": "Check In",
+    "workflowDebug": "Workflow Builder"
+  },
   "pages": {
     "accessDenied": {
       "title": "Access denied",
@@ -1034,7 +1050,9 @@
       "plan": "Subscription Plan *",
       "planRequired": "Subscription plan is required",
       "planPlaceholder": "Pro",
+      "planMirrorHint": "Display mirror of the assigned package. Change packages from Billing → Assign plan.",
       "expiresAt": "Expiration Date",
+      "expiresMirrorHint": "Synced from subscription period/trial dates — not edited here.",
       "editSubtitle": "Update company identity, contact details, location, and plan."
     }
   },
@@ -7976,6 +7994,56 @@
       "reports": "Reports",
       "settings": "Billing Settings",
       "audit": "Billing Audit Log"
+    },
+    "packages": {
+      "title": "Packages",
+      "subtitle": "Sellable feature bundles. Packages provision existing feature grants — they are not a second entitlement system.",
+      "create": "Create package",
+      "edit": "Edit",
+      "empty": "No packages yet",
+      "accessDenied": "Billing access required",
+      "highlighted": "Featured",
+      "active": "Active",
+      "inactive": "Inactive",
+      "saved": "Package saved",
+      "savedHint": "Package details and included features were updated.",
+      "saveFailed": "Could not save package",
+      "editTitle": "Edit package",
+      "createTitle": "Create package",
+      "columns": {
+        "package": "Package",
+        "code": "Code",
+        "pricing": "Pricing",
+        "monthly": "Monthly list",
+        "yearly": "Annual list",
+        "status": "Status"
+      },
+      "pricingMode": {
+        "fixed": "Fixed list price",
+        "fixedShort": "Fixed",
+        "free": "Free",
+        "custom": "Custom / Contact sales",
+        "customShort": "Custom"
+      },
+      "fields": {
+        "code": "Code",
+        "name": "Name",
+        "displayName": "Display name",
+        "description": "Description",
+        "pricingMode": "Pricing mode",
+        "pricingModeHint": "List pricing only. Prices do not grant features — assignment provisions entitlements separately.",
+        "monthly": "Monthly list price",
+        "monthlyHint": "Amount per month. Currency comes from billing settings (default_currency).",
+        "yearly": "Annual list price",
+        "yearlyHint": "Annual total billed upfront (not monthly×12). Typically a discounted yearly total.",
+        "annualSavings": "Annual savings vs 12× monthly",
+        "active": "Active",
+        "highlighted": "Highlighted",
+        "features": "Included features",
+        "featuresHint": "Select which feature grants this package should provision when assigned.",
+        "coreBadge": "core",
+        "commercialBadge": "commercial"
+      }
     },
     "actions": {
       "export": "Export CSV",

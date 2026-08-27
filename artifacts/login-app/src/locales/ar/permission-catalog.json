@@ -33,7 +33,7 @@
     "billing": {
       "icon": "💰",
       "order": 60,
-      "label": "الفوترة والاشتراكات"
+      "label": "الفاتورة والاشتراكات"
     },
     "users": {
       "icon": "👤",
@@ -378,28 +378,28 @@
       "group": "bookings"
     },
     "billing.audit.export": {
-      "name": "تصدير سجل تدقيق الفوترة",
-      "description": "يسمح بتصدير سجلات تدقيق الفوترة.",
+      "name": "تصدير سجل تدقيق الفاتورة",
+      "description": "يسمح بتصدير سجلات تدقيق الفاتورة.",
       "group": "billing"
     },
     "billing.audit.view": {
-      "name": "عرض سجل تدقيق الفوترة",
-      "description": "يسمح بعرض سجل تدقيق الفوترة.",
+      "name": "عرض سجل تدقيق الفاتورة",
+      "description": "يسمح بعرض سجل تدقيق الفاتورة.",
       "group": "billing"
     },
     "billing.contact.edit_own": {
-      "name": "تعديل جهة الفوترة",
-      "description": "يسمح بتعديل بيانات جهة الاتصال للفوترة.",
+      "name": "تعديل جهة الفاتورة",
+      "description": "يسمح بتعديل بيانات جهة الاتصال للفاتورة.",
       "group": "billing"
     },
     "billing.documents.download_own": {
-      "name": "تنزيل مستندات الفوترة",
+      "name": "تنزيل مستندات الفاتورة",
       "description": "يسمح بتنزيل فواتير الاشتراك والإيصالات.",
       "group": "billing"
     },
     "billing.edit": {
-      "name": "إدارة الفوترة (المنصة)",
-      "description": "يسمح بتعديل الاشتراكات وجهات الفوترة وإجراءات الإيقاف أو الاستعادة.",
+      "name": "إدارة الفاتورة (المنصة)",
+      "description": "يسمح بتعديل الاشتراكات وجهات الفاتورة وإجراءات الإيقاف أو الاستعادة.",
       "group": "billing"
     },
     "billing.features.edit": {
@@ -418,13 +418,13 @@
       "group": "billing"
     },
     "billing.health.manage": {
-      "name": "إدارة صحة الفوترة",
-      "description": "يسمح بإدارة مهام صحة الفوترة وإعادة المحاولات.",
+      "name": "إدارة صحة الفاتورة",
+      "description": "يسمح بإدارة مهام صحة الفاتورة وإعادة المحاولات.",
       "group": "billing"
     },
     "billing.health.view": {
-      "name": "عرض صحة الفوترة",
-      "description": "يسمح بعرض لوحة صحة الفوترة والتنبيهات.",
+      "name": "عرض صحة الفاتورة",
+      "description": "يسمح بعرض لوحة صحة الفاتورة والتنبيهات.",
       "group": "billing"
     },
     "billing.manage_own": {
@@ -448,38 +448,38 @@
       "group": "billing"
     },
     "billing.settings.edit": {
-      "name": "تعديل إعدادات الفوترة",
-      "description": "يسمح بتعديل إعدادات الفوترة.",
+      "name": "تعديل إعدادات الفاتورة",
+      "description": "يسمح بتعديل إعدادات الفاتورة.",
       "group": "billing"
     },
     "billing.settings.view": {
-      "name": "عرض إعدادات الفوترة",
-      "description": "يسمح بعرض إعدادات الفوترة.",
+      "name": "عرض إعدادات الفاتورة",
+      "description": "يسمح بعرض إعدادات الفاتورة.",
       "group": "billing"
     },
     "billing.view": {
-      "name": "عرض الفوترة (المنصة)",
-      "description": "يسمح بعرض نظرة عامة على الفوترة والاشتراكات والمدفوعات على مستوى المنصة.",
+      "name": "عرض الفاتورة (المنصة)",
+      "description": "يسمح بعرض نظرة عامة على الفاتورة والاشتراكات والمدفوعات على مستوى المنصة.",
       "group": "billing"
     },
     "billing.view_own": {
-      "name": "عرض الفوترة الخاصة",
-      "description": "يسمح بعرض اشتراك شركتك وخدمات الفوترة الذاتية.",
+      "name": "عرض الفاتورة الخاصة",
+      "description": "يسمح بعرض اشتراك شركتك وخدمات الفاتورة الذاتية.",
       "group": "billing"
     },
     "billing.view_reports": {
-      "name": "عرض تقارير الفوترة",
-      "description": "يسمح بعرض تحليلات الفوترة وتقارير الإيرادات.",
+      "name": "عرض تقارير الفاتورة",
+      "description": "يسمح بعرض تحليلات الفاتورة وتقارير الإيرادات.",
       "group": "billing"
     },
     "billing.webhooks.manage": {
-      "name": "إدارة webhooks الفوترة",
-      "description": "يسمح بإدارة webhooks الفوترة الصادرة.",
+      "name": "إدارة webhooks الفاتورة",
+      "description": "يسمح بإدارة webhooks الفاتورة الصادرة.",
       "group": "billing"
     },
     "billing.webhooks.view": {
-      "name": "عرض webhooks الفوترة",
-      "description": "يسمح بعرض نقاط webhook الصادرة للفوترة.",
+      "name": "عرض webhooks الفاتورة",
+      "description": "يسمح بعرض نقاط webhook الصادرة للفاتورة.",
       "group": "billing"
     },
     "bookings.create": {
@@ -894,7 +894,7 @@
     },
     "invoices.view": {
       "name": "عرض الفواتير",
-      "description": "يسمح بعرض الفواتير ومستندات الفوترة.",
+      "description": "يسمح بعرض الفواتير ومستندات الفاتورة.",
       "group": "invoices"
     },
     "knowledge.import": {
@@ -1354,12 +1354,12 @@
     },
     "subscriptions.edit": {
       "name": "تعديل الاشتراكات (قديم)",
-      "description": "صلاحية قديمة؛ يُفضّل استخدام إدارة الفوترة.",
+      "description": "صلاحية قديمة؛ يُفضّل استخدام إدارة الفاتورة.",
       "group": "billing"
     },
     "subscriptions.view": {
       "name": "عرض الاشتراكات (قديم)",
-      "description": "صلاحية قديمة؛ يُفضّل استخدام عرض الفوترة.",
+      "description": "صلاحية قديمة؛ يُفضّل استخدام عرض الفاتورة.",
       "group": "billing"
     },
     "tasks.assign": {

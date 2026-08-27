@@ -575,7 +575,7 @@ export default function ChannelsPage() {
                     const typeEntitled = isChannelEntitled(type.key);
                     return (
                       <SelectItem key={type.id} value={type.id} disabled={!typeEntitled}>
-                        {type.display_name}
+                        {channelTypeLabel(t, type.key, type.display_name)}
                         {!typeEntitled
                           ? ` — ${t("dashboard.channels.featureNotEntitledBadge")}`
                           : ""}

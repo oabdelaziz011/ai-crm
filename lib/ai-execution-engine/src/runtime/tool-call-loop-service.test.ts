@@ -3,6 +3,39 @@ import { describe, it } from "node:test";
 import { ToolCallLoopService } from "./tool-call-loop-service.js";
 import type { RuntimeGatewayPort } from "../ports/runtime-ports.js";
 
+function cairoCalendarYmd(offsetDays = 0): string {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  if (offsetDays === 0) return today;
+  const [year, month, day] = today.split("-").map((part) => Number(part));
+  const utc = new Date(Date.UTC(year!, month! - 1, day! + offsetDays));
+  return utc.toISOString().slice(0, 10);
+}
+
+function cairoJsWeekday(isoDate: string): number | null {
+  const label = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Cairo",
+    weekday: "short",
+  }).format(new Date(`${isoDate}T12:00:00Z`));
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[label] ?? null;
+}
+
+function nextCairoYmdForWeekday(targetWeekday: number): string {
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const ymd = cairoCalendarYmd(offset);
+    if (cairoJsWeekday(ymd) === targetWeekday) return ymd;
+  }
+  throw new Error(`no Cairo weekday ${targetWeekday} within 7 days`);
+}
+
+/** Africa/Cairo next (or today) Wednesday — used by relative "الأربعاء" binding. */
+const NEXT_CAIRO_WEDNESDAY = nextCairoYmdForWeekday(3);
+
 describe("ToolCallLoopService", () => {
   it("synthesizes a final reply when the tool loop ends without assistant text", async () => {
     let completionCalls = 0;
@@ -2626,6 +2659,64 @@ describe("ToolCallLoopService", () => {
     );
   });
 
+  it("ticket intent after check-out does not force check_out", async () => {
+    const routed: string[] = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "tool_calls",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+          toolCalls: [{ id: "call-ticket", name: "create_ticket", arguments: { subject: "شكوى" } }],
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["check_out", "create_ticket"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${req.toolKey}`,
+          status: "succeeded",
+          output: {
+            success: true,
+            ticketNumber: "TKT-000090",
+            customerFacingMessage: "تم فتح الشكوى رقم TKT-000090",
+          },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-ticket-after-checkout",
+      trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "أسجل انصراف BK-000083" },
+          { role: "assistant", content: "تم تسجيل الانصراف." },
+          { role: "user", content: "عايز أفتح شكوى" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-ticket-after-checkout", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "check_out" } },
+        { type: "function", function: { name: "create_ticket" } },
+      ],
+      allowedToolKeys: ["check_out", "create_ticket"],
+    });
+    assert.equal(routed.includes("check_out"), false);
+    assert.equal(routed.includes("create_ticket"), true);
+    assert.match(result.response.text, /TKT-000090/);
+  });
+
   it("cancel after prior check-in: does not force check_in on ألغي BK-…", async () => {
     const routed: Array<{ toolKey: string; input: Record<string, unknown> }> = [];
     const gateway: RuntimeGatewayPort = {
@@ -5219,7 +5310,7 @@ describe("ToolCallLoopService", () => {
 
     const createBooking = routed.find((entry) => entry.toolKey === "create_booking");
     assert.ok(createBooking, "embedded weekday intent must reach create_booking after full name+phone");
-    assert.equal(createBooking.input.date, "2026-08-26");
+    assert.equal(createBooking.input.date, NEXT_CAIRO_WEDNESDAY);
     assert.equal(createBooking.input.slotStart, "21:15");
     assert.match(result.response.text, /BK-000099/);
   });
@@ -5342,7 +5433,7 @@ describe("ToolCallLoopService", () => {
       createBooking,
       "must force create_booking when prior search_availability exists only in DB, not gateway history",
     );
-    assert.equal(createBooking.input.date, "2026-08-26");
+    assert.equal(createBooking.input.date, NEXT_CAIRO_WEDNESDAY);
     assert.equal(createBooking.input.slotStart, "21:15");
     assert.match(result.response.text, /BK-000088/);
   });
@@ -5822,6 +5913,1328 @@ describe("ToolCallLoopService", () => {
     );
     assert.equal(routed[1]?.input.bookingId, "sooner-id");
     assert.match(result.response.text, /BK-000079/);
+  });
+
+  it("WA regression: bare حجز / عايز حجز variants deny search_bookings and cancel_booking", async () => {
+    const phrases = ["حجز", "عايز حجز", "عايز احجز", "محتاج احجز", "احجزلي", "انا عايز احجزززز"];
+    for (const phrase of phrases) {
+      const routed: string[] = [];
+      const gateway: RuntimeGatewayPort = {
+        async chatCompletion(input) {
+          if (input.tools?.length) {
+            return {
+              text: "",
+              model: "mock-gpt",
+              providerKey: "mock",
+              finishReason: "tool_calls",
+              usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+              latencyMs: 1,
+              toolCalls: [
+                {
+                  id: "call-search",
+                  name: "search_bookings",
+                  arguments: { purpose: "cancel" },
+                },
+                {
+                  id: "call-cancel",
+                  name: "cancel_booking",
+                  arguments: { bookingReference: "حجز" },
+                },
+              ],
+            };
+          }
+          return {
+            text: "تمام، هعرضلك المواعيد المتاحة.",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "stop",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+          };
+        },
+      };
+      const tools = {
+        allowedToolKeys: () => [
+          "search_bookings",
+          "cancel_booking",
+          "search_availability",
+          "create_booking",
+        ],
+        route: async (_ctx: unknown, req: { toolKey: string }) => {
+          routed.push(req.toolKey);
+          return {
+            toolKey: req.toolKey,
+            executionId: `exec-${routed.length}`,
+            status: "succeeded",
+            output: {
+              success: false,
+              customerFacingMessage: "ما لقيناش الحجز ده. تأكدي من رقم الحجز.",
+            },
+            durationMs: 1,
+          };
+        },
+      };
+      const loop = new ToolCallLoopService({ gateway, tools });
+      const result = await loop.run({
+        ctx: {
+          userId: "user-1",
+          companyId: "company-1",
+          isSuperAdmin: false,
+          hasPermission: () => true,
+        },
+        conversationId: `conversation-create-intent-${phrase}`,
+        trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+        gatewayRequest: {
+          messages: [
+            {
+              role: "assistant",
+              content: "لقيت 1 موعد ممكن إلغاؤه:\n1) رقم الحجز: BK-000033\nقولّي أنهي موعد تلغي؟",
+            },
+            { role: "user", content: phrase },
+          ],
+          providerKey: "mock",
+          model: "mock-gpt",
+          context: {
+            companyId: "company-1",
+            conversationId: `conversation-create-intent-${phrase}`,
+            userId: "user-1",
+          },
+        },
+        tools: [
+          { type: "function", function: { name: "search_bookings" } },
+          { type: "function", function: { name: "cancel_booking" } },
+          { type: "function", function: { name: "search_availability" } },
+        ],
+        allowedToolKeys: [
+          "search_bookings",
+          "cancel_booking",
+          "search_availability",
+          "create_booking",
+        ],
+      });
+
+      assert.equal(
+        routed.includes("search_bookings"),
+        false,
+        `${phrase}: must not execute search_bookings`,
+      );
+      assert.equal(
+        routed.includes("cancel_booking"),
+        false,
+        `${phrase}: must not execute cancel_booking`,
+      );
+      assert.doesNotMatch(
+        result.response.text,
+        /ما لقيناش الحجز ده|تأكدي من رقم الحجز/,
+        `${phrase}: must not surface cancel-not-found copy`,
+      );
+    }
+  });
+
+  it("WA regression: النهارده الساعة 9 / 9 مساء binds offered evening slot and creates booking", async () => {
+    const todayCairo = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Cairo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const offerFacing =
+      "المواعيد المتاحة مع ADAM:\n\nالأربعاء ٢٦ أغسطس ٢٠٢٦\n• 09:00 مساءً\n• 09:45 مساءً";
+    const phrases = ["النهارده الساعة 9", "النهارده الساعه ٩", "الساعة 9", "9 مساء"];
+
+    for (const phrase of phrases) {
+      const routed: Array<{ toolKey: string; input: Record<string, unknown> }> = [];
+      const gateway: RuntimeGatewayPort = {
+        async chatCompletion() {
+          return {
+            text: "محتاجين اسم العميل.",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "stop",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+          };
+        },
+      };
+      const tools = {
+        allowedToolKeys: () => ["create_booking", "search_availability", "create_customer"],
+        route: async (_ctx: unknown, req: { toolKey: string; input: Record<string, unknown> }) => {
+          routed.push({ toolKey: req.toolKey, input: req.input });
+          return {
+            toolKey: req.toolKey,
+            executionId: `exec-${routed.length}`,
+            status: "succeeded",
+            output: {
+              success: true,
+              bookingId: "booking-wa-slot-210",
+              reference: "BK-000210",
+              customerFacingMessage: "تم حجز موعدك بنجاح.\nرقم الحجز: BK-000210",
+            },
+            durationMs: 1,
+          };
+        },
+      };
+      const loop = new ToolCallLoopService({ gateway, tools });
+      const result = await loop.run({
+        ctx: {
+          userId: "user-1",
+          companyId: "company-1",
+          isSuperAdmin: false,
+          hasPermission: () => true,
+        },
+        conversationId: `conversation-slot-today-${phrase}`,
+        trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+        gatewayRequest: {
+          messages: [
+            { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+            { role: "user", content: "حجز" },
+            {
+              role: "assistant",
+              content: offerFacing,
+              toolCalls: [
+                {
+                  id: "call-avail-today",
+                  name: "search_availability",
+                  arguments: {
+                    serviceId: CLINIC_SERVICE_ID,
+                    resourceId: ADAM_RESOURCE_ID,
+                    date: todayCairo,
+                  },
+                },
+              ],
+            },
+            {
+              role: "tool",
+              toolCallId: "call-avail-today",
+              content: JSON.stringify({
+                success: true,
+                serviceId: CLINIC_SERVICE_ID,
+                resources: [
+                  {
+                    resourceId: ADAM_RESOURCE_ID,
+                    slots: [
+                      { date: todayCairo, start: "21:00" },
+                      { date: todayCairo, start: "21:45" },
+                    ],
+                  },
+                ],
+                customerSummary: offerFacing,
+              }),
+            },
+            { role: "user", content: phrase },
+          ],
+          providerKey: "mock",
+          model: "mock-gpt",
+          context: {
+            companyId: "company-1",
+            conversationId: `conversation-slot-today-${phrase}`,
+            userId: "user-1",
+          },
+        },
+        tools: [{ type: "function", function: { name: "create_booking" } }],
+        allowedToolKeys: ["create_booking", "search_availability", "create_customer"],
+      });
+
+      const createBooking = routed.find((entry) => entry.toolKey === "create_booking");
+      assert.ok(createBooking, `${phrase}: expected create_booking`);
+      assert.equal(createBooking.input.date, todayCairo, `${phrase}: date`);
+      assert.equal(createBooking.input.slotStart, "21:00", `${phrase}: evening slot`);
+      assert.equal(createBooking.input.serviceId, CLINIC_SERVICE_ID);
+      assert.equal(createBooking.input.resourceId, ADAM_RESOURCE_ID);
+      assert.match(result.response.text, /BK-000210|تم حجز/);
+    }
+  });
+
+  it("WA regression: unavailable slot selection does not cancel or lose create intent", async () => {
+    const todayCairo = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Cairo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const offerFacing =
+      "المواعيد المتاحة مع ADAM:\n\nالأربعاء ٢٦ أغسطس ٢٠٢٦\n• 09:00 مساءً\n• 09:45 مساءً";
+    const routed: string[] = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion(input) {
+        if (input.tools?.length) {
+          return {
+            text: "",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "tool_calls",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+            toolCalls: [
+              {
+                id: "call-search",
+                name: "search_bookings",
+                arguments: { purpose: "cancel" },
+              },
+            ],
+          };
+        }
+        return {
+          text: "الموعد الساعة 10 مساءً مش ضمن المواعيد المتاحة. اختار من 09:00 أو 09:45 مساءً.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_bookings", "create_booking", "search_availability"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${routed.length}`,
+          status: "succeeded",
+          output: { success: true },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-unavailable-slot",
+      trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+          { role: "user", content: "حجز" },
+          {
+            role: "assistant",
+            content: offerFacing,
+            toolCalls: [
+              {
+                id: "call-avail",
+                name: "search_availability",
+                arguments: { serviceId: CLINIC_SERVICE_ID, resourceId: ADAM_RESOURCE_ID },
+              },
+            ],
+          },
+          {
+            role: "tool",
+            toolCallId: "call-avail",
+            content: JSON.stringify({
+              success: true,
+              serviceId: CLINIC_SERVICE_ID,
+              resources: [
+                {
+                  resourceId: ADAM_RESOURCE_ID,
+                  slots: [
+                    { date: todayCairo, start: "21:00" },
+                    { date: todayCairo, start: "21:45" },
+                  ],
+                },
+              ],
+              customerSummary: offerFacing,
+            }),
+          },
+          { role: "user", content: "النهارده الساعة 10 مساء" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: {
+          companyId: "company-1",
+          conversationId: "conversation-unavailable-slot",
+          userId: "user-1",
+        },
+      },
+      tools: [
+        { type: "function", function: { name: "search_bookings" } },
+        { type: "function", function: { name: "create_booking" } },
+      ],
+      allowedToolKeys: ["search_bookings", "create_booking", "search_availability"],
+    });
+
+    assert.equal(routed.includes("search_bookings"), false);
+    assert.equal(routed.includes("create_booking"), false);
+    assert.doesNotMatch(result.response.text, /ما لقيناش الحجز|تم إلغاء/);
+  });
+
+  it("WA regression: bare ايوه without cancel list does not force cancel lookup", async () => {
+    const routed: string[] = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "تمام، قولي عايز تحجز ولا حاجة تانية؟",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_bookings", "cancel_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${routed.length}`,
+          status: "succeeded",
+          output: {
+            success: true,
+            customerFacingMessage: "مفيش مواعيد قابلة للإلغاء على الرقم ده حالياً.",
+          },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-bare-yes",
+      trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+      gatewayRequest: {
+        messages: [
+          { role: "assistant", content: "هل تود الحجز لموعد؟" },
+          { role: "user", content: "ايوه" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: {
+          companyId: "company-1",
+          conversationId: "conversation-bare-yes",
+          userId: "user-1",
+        },
+      },
+      tools: [
+        { type: "function", function: { name: "search_bookings" } },
+        { type: "function", function: { name: "cancel_booking" } },
+      ],
+      allowedToolKeys: ["search_bookings", "cancel_booking"],
+    });
+
+    assert.deepEqual(routed, []);
+    assert.doesNotMatch(result.response.text, /قابلة للإلغاء|تم إلغاء/);
+  });
+
+  it("bare حجز after a stale past slot does not create_booking and searches availability", async () => {
+    const routed: Array<{ toolKey: string; input: Record<string, unknown> }> = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion(input) {
+        if (input.tools?.length) {
+          return {
+            text: "",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "tool_calls",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+            toolCalls: [
+              {
+                id: "call-create",
+                name: "create_booking",
+                arguments: {
+                  date: "2026-08-26",
+                  slotStart: "21:45",
+                  serviceId: CLINIC_SERVICE_ID,
+                  resourceId: ADAM_RESOURCE_ID,
+                },
+              },
+            ],
+          };
+        }
+        return {
+          text: "تمام، هعرضلك المواعيد المتاحة.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_availability", "create_booking", "search_bookings"],
+      route: async (_ctx: unknown, req: { toolKey: string; input: Record<string, unknown> }) => {
+        routed.push({ toolKey: req.toolKey, input: req.input });
+        if (req.toolKey === "search_availability") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-search-availability",
+            status: "succeeded",
+            output: {
+              success: true,
+              serviceId: CLINIC_SERVICE_ID,
+              message: "المواعيد المتاحة مع ADAM:\n\nالخميس ٢٧ أغسطس ٢٠٢٦\n• 07:00 صباحًا\n• 07:15 صباحًا",
+              customerSummary: "المواعيد المتاحة مع ADAM:\n\nالخميس ٢٧ أغسطس ٢٠٢٦\n• 07:00 صباحًا",
+            },
+            durationMs: 1,
+          };
+        }
+        throw new Error(`unexpected tool ${req.toolKey}`);
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-fresh-hajz",
+      trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+      priorSchedulingToolExecutions: [
+        {
+          toolKey: "search_availability",
+          executionId: "prior-search-availability",
+          status: "succeeded",
+          input: { serviceId: CLINIC_SERVICE_ID, resourceId: ADAM_RESOURCE_ID, date: "2026-08-26" },
+          output: {
+            success: true,
+            message: "المواعيد المتاحة مع ADAM:\n\nالأربعاء ٢٦ أغسطس ٢٠٢٦\n• 09:00 مساءً\n• 09:45 مساءً",
+          },
+          durationMs: 0,
+        },
+      ],
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+          { role: "user", content: "عايز احجز" },
+          { role: "assistant", content: "المواعيد المتاحة مع ADAM:\n\nالأربعاء ٢٦ أغسطس ٢٠٢٦\n• 09:00 مساءً\n• 09:45 مساءً" },
+          { role: "user", content: "09:45 مساء" },
+          { role: "assistant", content: "الموعد ده محجوز أو غير متاح. اختار معاد تاني." },
+          { role: "user", content: "حجز" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-fresh-hajz", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "search_availability" } },
+        { type: "function", function: { name: "create_booking" } },
+        { type: "function", function: { name: "search_bookings" } },
+      ],
+      allowedToolKeys: ["search_availability", "create_booking", "search_bookings"],
+    });
+
+    assert.equal(routed.some((entry) => entry.toolKey === "create_booking"), false);
+    assert.equal(routed.some((entry) => entry.toolKey === "search_bookings"), false);
+    assert.equal(routed.some((entry) => entry.toolKey === "search_availability"), true);
+    assert.doesNotMatch(result.response.text, /BK-|حجوزات مسجّلة|09:45/);
+  });
+
+  it("عايز احجز بكره الساعة 7 الصبح resolves Cairo tomorrow 07:00", async () => {
+    const routed: Array<{ toolKey: string; input: Record<string, unknown> }> = [];
+    const todayCairo = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Cairo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const [year, month, day] = todayCairo.split("-").map(Number);
+    const tomorrowCairo = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_availability", "create_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string; input: Record<string, unknown> }) => {
+        routed.push({ toolKey: req.toolKey, input: req.input });
+        if (req.toolKey === "search_availability") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-search-tomorrow",
+            status: "succeeded",
+            output: {
+              success: true,
+              serviceId: CLINIC_SERVICE_ID,
+              resources: [
+                {
+                  resourceId: ADAM_RESOURCE_ID,
+                  slots: [{ date: tomorrowCairo, start: "07:00" }],
+                },
+              ],
+              message: `المواعيد المتاحة مع ADAM:\n\n• 07:00 صباحًا`,
+            },
+            durationMs: 1,
+          };
+        }
+        if (req.toolKey === "create_booking") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-create-tomorrow",
+            status: "succeeded",
+            output: {
+              success: true,
+              bookingId: "booking-tomorrow-7",
+              confirmationNumber: "BK-000199",
+              customerFacingMessage: "تم حجز موعدك بنجاح.\nرقم الحجز: BK-000199",
+            },
+            durationMs: 1,
+          };
+        }
+        throw new Error(`unexpected tool ${req.toolKey}`);
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-bokrah",
+      trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-bokrah", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "search_availability" } },
+        { type: "function", function: { name: "create_booking" } },
+      ],
+      allowedToolKeys: ["search_availability", "create_booking"],
+    });
+
+    const search = routed.find((entry) => entry.toolKey === "search_availability");
+    assert.ok(search, "must search availability for tomorrow 07:00");
+    assert.equal(search.input.date, tomorrowCairo);
+    const create = routed.find((entry) => entry.toolKey === "create_booking");
+    assert.ok(create, "must create the requested tomorrow 07:00 slot when available");
+    assert.equal(create.input.date, tomorrowCairo);
+    assert.equal(create.input.slotStart, "07:00");
+    assert.match(result.response.text, /BK-000199/);
+  });
+
+  it("بكره 07:00 searches tomorrow and does not ask trusted customers for name when 07:00 is unoffered", async () => {
+    const routed: Array<{ toolKey: string; input: Record<string, unknown> }> = [];
+    const todayCairo = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Cairo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const [year, month, day] = todayCairo.split("-").map(Number);
+    const tomorrowCairo = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "الموعد الساعة 7 الصبح غير متاح. أقرب وقت بكره 07:15.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_availability", "create_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string; input: Record<string, unknown> }) => {
+        routed.push({ toolKey: req.toolKey, input: req.input });
+        if (req.toolKey === "search_availability") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-search",
+            status: "succeeded",
+            output: {
+              success: true,
+              serviceId: CLINIC_SERVICE_ID,
+              resources: [
+                {
+                  resourceId: ADAM_RESOURCE_ID,
+                  resourceName: "ADAM",
+                  slots: [{ date: tomorrowCairo, start: "07:15", end: "07:45" }],
+                },
+              ],
+            },
+            durationMs: 1,
+          };
+        }
+        if (req.toolKey === "create_booking") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-create",
+            status: "succeeded",
+            output: {
+              success: true,
+              bookingId: "booking-715",
+              confirmationNumber: "BK-000215",
+              customerFacingMessage: "تم حجز موعدك بنجاح.\nرقم الحجز: BK-000215",
+            },
+            durationMs: 1,
+          };
+        }
+        throw new Error(`unexpected tool ${req.toolKey}`);
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-bokrah-unoffered",
+      trustedCustomerId: "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-bokrah-unoffered", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "search_availability" } },
+        { type: "function", function: { name: "create_booking" } },
+      ],
+      allowedToolKeys: ["search_availability", "create_booking"],
+    });
+    const search = routed.find((entry) => entry.toolKey === "search_availability");
+    assert.ok(search);
+    assert.equal(search.input.date, tomorrowCairo);
+    const create = routed.find((entry) => entry.toolKey === "create_booking");
+    if (create) {
+      assert.equal(create.input.date, tomorrowCairo);
+      assert.ok(["07:00", "07:15"].includes(String(create.input.slotStart)));
+    }
+    assert.doesNotMatch(result.response.text, /اسم العميل ورقم موبايل/);
+  });
+
+  it("does not overwrite a ticket reply with booking name intake", async () => {
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "تم فتح الشكوى رقم TKT-000088",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_ticket", "search_availability", "create_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => ({
+        toolKey: req.toolKey,
+        executionId: `exec-${req.toolKey}`,
+        status: "succeeded",
+        output: {
+          success: true,
+          ticketNumber: "TKT-000088",
+          customerFacingMessage: "تم فتح الشكوى رقم TKT-000088",
+        },
+        durationMs: 1,
+      }),
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-ticket-after-slot",
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+          { role: "assistant", content: "المواعيد المتاحة مع ADAM:\n- 2026-08-27: 07:15, 07:30" },
+          { role: "user", content: "عايز أفتح شكوى" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-ticket-after-slot", userId: "user-1" },
+      },
+      tools: [{ type: "function", function: { name: "create_ticket" } }],
+      allowedToolKeys: ["create_ticket", "search_availability", "create_booking"],
+    });
+    assert.doesNotMatch(result.response.text, /اسم العميل ورقم موبايل/);
+    assert.match(result.response.text, /TKT-000088/);
+  });
+
+  it("does not replace a full-name intake turn with the availability list", async () => {
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "تمام، سجلنا الاسم. ابعت رقم الموبايل.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_availability", "create_booking"],
+      route: async () => ({
+        toolKey: "search_availability",
+        executionId: "exec-search",
+        status: "succeeded",
+        output: {
+          success: true,
+          customerSummary: "المواعيد المتاحة مع ADAM:\n\nالخميس ٢٧ أغسطس ٢٠٢٦\n• 07:15 صباحًا",
+        },
+        durationMs: 1,
+      }),
+    };
+    const loop = new ToolCallLoopService({
+      gateway,
+      tools,
+    });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-fullname",
+      priorSchedulingToolExecutions: [
+        {
+          toolKey: "search_availability",
+          executionId: "prior-search",
+          status: "succeeded",
+          output: {
+            success: true,
+            customerSummary: "المواعيد المتاحة مع ADAM:\n\nالخميس ٢٧ أغسطس ٢٠٢٦\n• 07:15 صباحًا",
+          },
+          durationMs: 0,
+        },
+      ],
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "عايز احجز" },
+          { role: "assistant", content: "المواعيد المتاحة مع ADAM:\n• 07:15 صباحًا" },
+          { role: "user", content: "محمد أحمد علي التجريبي" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-fullname", userId: "user-1" },
+      },
+      tools: [{ type: "function", function: { name: "search_availability" } }],
+      allowedToolKeys: ["search_availability", "create_booking"],
+    });
+    assert.doesNotMatch(result.response.text, /المواعيد المتاحة مع ADAM/);
+    assert.match(result.response.text, /سجلنا الاسم|موبايل/);
+  });
+
+  it("does not create_ticket when the user says عايز احجز then tomorrow 7am", async () => {
+    const routed: string[] = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion(input) {
+        if (input.tools?.length) {
+          return {
+            text: "",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "tool_calls",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+            toolCalls: [
+              {
+                id: "call-ticket",
+                name: "create_ticket",
+                arguments: { subject: "حجز موعد", description: "عايز احجز بكره الساعة 7 الصبح" },
+              },
+            ],
+          };
+        }
+        return {
+          text: "هبحث عن المواعيد المتاحة.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_ticket", "search_availability", "create_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${req.toolKey}`,
+          status: "succeeded",
+          output: { success: true, ticketNumber: "TKT-SHOULD-NOT" },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-no-ticket",
+      trustedCustomerId: "cust-trusted",
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+          { role: "user", content: "عايز احجز" },
+          { role: "assistant", content: "أقرب موعد متاح بكره 07:00." },
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-no-ticket", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "create_ticket" } },
+        { type: "function", function: { name: "search_availability" } },
+        { type: "function", function: { name: "create_booking" } },
+      ],
+      allowedToolKeys: ["create_ticket", "search_availability", "create_booking"],
+    });
+    assert.equal(routed.includes("create_ticket"), false);
+    assert.doesNotMatch(result.response.text, /TKT-/);
+  });
+
+  it("still creates a ticket for explicit complaint intent", async () => {
+    const routed: string[] = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion(input) {
+        if (input.tools?.length) {
+          return {
+            text: "",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "tool_calls",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+            toolCalls: [{ id: "call-ticket", name: "create_ticket", arguments: { subject: "شكوى تأخير" } }],
+          };
+        }
+        return {
+          text: "تم فتح الشكوى رقم TKT-000077",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_ticket"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: "exec-ticket",
+          status: "succeeded",
+          output: {
+            success: true,
+            ticketNumber: "TKT-000077",
+            customerFacingMessage: "تم فتح الشكوى رقم TKT-000077",
+          },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-ticket",
+      trustedCustomerId: "cust-trusted",
+      gatewayRequest: {
+        messages: [{ role: "user", content: "عايز أفتح شكوى" }],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-ticket", userId: "user-1" },
+      },
+      tools: [{ type: "function", function: { name: "create_ticket" } }],
+      allowedToolKeys: ["create_ticket"],
+    });
+    assert.equal(routed.includes("create_ticket"), true);
+    assert.match(result.response.text, /TKT-000077/);
+  });
+
+  it("explicit ticket intent does not force create_booking from leftover availability", async () => {
+    const routed: string[] = [];
+    const clinicServiceId = "a8a6403e-4c88-48ae-aa46-d204ea8ef49d";
+    const adamResourceId = "1c766372-7726-4cb6-b660-b88ae85fb49c";
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion(input) {
+        if (input.tools?.length) {
+          const names = (input.tools ?? []).map((tool) =>
+            "function" in tool ? tool.function?.name : undefined,
+          );
+          if (names.includes("create_ticket")) {
+            return {
+              text: "",
+              model: "mock-gpt",
+              providerKey: "mock",
+              finishReason: "tool_calls",
+              usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+              latencyMs: 1,
+              toolCalls: [{ id: "call-ticket", name: "create_ticket", arguments: { subject: "شكوى" } }],
+            };
+          }
+          return {
+            text: "",
+            model: "mock-gpt",
+            providerKey: "mock",
+            finishReason: "tool_calls",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            latencyMs: 1,
+            toolCalls: [
+              {
+                id: "call-book",
+                name: "create_booking",
+                arguments: {
+                  serviceId: clinicServiceId,
+                  resourceId: adamResourceId,
+                  date: cairoCalendarYmd(1),
+                  slotStart: "07:00",
+                },
+              },
+            ],
+          };
+        }
+        return {
+          text: "تم فتح الشكوى رقم TKT-000099",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_ticket", "create_booking", "search_availability"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        if (req.toolKey === "create_ticket") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-ticket",
+            status: "succeeded",
+            output: {
+              success: true,
+              ticketNumber: "TKT-000099",
+              customerFacingMessage: "تم فتح الشكوى رقم TKT-000099",
+            },
+            durationMs: 1,
+          };
+        }
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${req.toolKey}`,
+          status: "succeeded",
+          output: { success: true, confirmationNumber: "BK-SHOULD-NOT" },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-ticket-after-slot",
+      trustedCustomerId: "7285bfa4-bfd4-496f-b5fb-1c3a99511925",
+      priorSchedulingToolExecutions: [
+        {
+          toolKey: "search_availability",
+          executionId: "prior-avail",
+          status: "succeeded",
+          input: { serviceId: clinicServiceId, resourceId: adamResourceId, date: cairoCalendarYmd(1) },
+          output: {
+            success: true,
+            serviceId: clinicServiceId,
+            resources: [{ resourceId: adamResourceId, slots: [{ date: cairoCalendarYmd(1), slotStart: "07:15" }] }],
+          },
+          durationMs: 0,
+        },
+      ],
+      gatewayRequest: {
+        messages: [
+          { role: "system", content: SCHEDULING_CATALOG_SYSTEM },
+          { role: "user", content: "عايز احجز" },
+          { role: "assistant", content: "المواعيد المتاحة مع ADAM:\n• 07:15 صباحًا" },
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+          { role: "assistant", content: "اختَر أو أكّد المعاد المناسب من المواعيد المتاحة." },
+          { role: "user", content: "عايز أفتح شكوى" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: {
+          companyId: "company-1",
+          conversationId: "conversation-ticket-after-slot",
+          userId: "user-1",
+        },
+      },
+      tools: [
+        { type: "function", function: { name: "create_ticket" } },
+        { type: "function", function: { name: "create_booking" } },
+        { type: "function", function: { name: "search_availability" } },
+      ],
+      allowedToolKeys: ["create_ticket", "create_booking", "search_availability"],
+    });
+    assert.equal(routed.includes("create_booking"), false);
+    assert.equal(routed.includes("create_ticket"), true);
+    assert.match(result.response.text, /TKT-000099/);
+  });
+
+  it("forces create_ticket when explicit complaint only asks for details", async () => {
+    const routed: string[] = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "ما هي تفاصيل الشكوى التي تود تقديمها؟",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_ticket", "create_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: "exec-forced-ticket",
+          status: "succeeded",
+          output: {
+            success: true,
+            ticketNumber: "TKT-000103",
+            customerFacingMessage: "تم فتح التذكرة بنجاح.\nرقم التذكرة: TKT-000103",
+          },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-force-ticket",
+      trustedCustomerId: "7285bfa4-bfd4-496f-b5fb-1c3a99511925",
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+          { role: "assistant", content: "الموعد غير متوفر. اختار معاد تاني." },
+          { role: "user", content: "عايز أفتح شكوى" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-force-ticket", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "create_ticket" } },
+        { type: "function", function: { name: "create_booking" } },
+      ],
+      allowedToolKeys: ["create_ticket", "create_booking"],
+    });
+    assert.equal(routed.includes("create_booking"), false);
+    assert.equal(routed.includes("create_ticket"), true);
+    assert.match(result.response.text, /TKT-000103/);
+  });
+
+  it("does not force create_booking from leftover slot on a non-booking follow-up", async () => {
+    const routed: string[] = [];
+    const clinicServiceId = "a8a6403e-4c88-48ae-aa46-d204ea8ef49d";
+    const adamResourceId = "1c766372-7726-4cb6-b660-b88ae85fb49c";
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "حاضر.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_booking", "create_ticket"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${req.toolKey}`,
+          status: "succeeded",
+          output: { success: true, confirmationNumber: "BK-SHOULD-NOT", ticketNumber: "TKT-SHOULD-NOT" },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-no-force-followup",
+      trustedCustomerId: "7285bfa4-bfd4-496f-b5fb-1c3a99511925",
+      priorSchedulingToolExecutions: [
+        {
+          toolKey: "search_availability",
+          executionId: "prior-avail",
+          status: "succeeded",
+          input: { serviceId: clinicServiceId, resourceId: adamResourceId, date: cairoCalendarYmd(0) },
+          output: {
+            success: true,
+            serviceId: clinicServiceId,
+            resources: [{ resourceId: adamResourceId, slots: [{ date: cairoCalendarYmd(0), start: "07:15" }] }],
+          },
+          durationMs: 0,
+        },
+      ],
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "عايز احجز بكره الساعة 7 الصبح" },
+          { role: "assistant", content: "الموعد غير متوفر." },
+          { role: "user", content: "idem-123" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-no-force-followup", userId: "user-1" },
+      },
+      tools: [{ type: "function", function: { name: "create_booking" } }],
+      allowedToolKeys: ["create_booking", "create_ticket"],
+    });
+    assert.equal(routed.includes("create_booking"), false);
+    assert.equal(routed.includes("create_ticket"), false);
+  });
+
+  it("status lookup with BK reference must not call cancel_booking", async () => {
+    const routed: Array<{ toolKey: string; input?: Record<string, unknown> }> = [];
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["search_bookings", "cancel_booking"],
+      route: async (_ctx: unknown, req: { toolKey: string; input: Record<string, unknown> }) => {
+        routed.push({ toolKey: req.toolKey, input: req.input });
+        if (req.toolKey === "search_bookings") {
+          return {
+            toolKey: req.toolKey,
+            executionId: "exec-search",
+            status: "succeeded",
+            output: {
+              success: true,
+              bookings: [
+                {
+                  reference: "BK-000088",
+                  status: "confirmed",
+                  scheduledAt: "2026-08-28T07:15:00+03:00",
+                },
+              ],
+            },
+            durationMs: 1,
+          };
+        }
+        return {
+          toolKey: req.toolKey,
+          executionId: "exec-cancel",
+          status: "succeeded",
+          output: {
+            success: true,
+            reference: "BK-000088",
+            customerFacingMessage: "تم إلغاء الحجز BK-000088 بنجاح.",
+          },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    const result = await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-status-bk",
+      trustedCustomerId: "7285bfa4-bfd4-496f-b5fb-1c3a99511925",
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "01039399960" },
+          { role: "user", content: "عايزة أعرف حالة الحجز BK-000088" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-status-bk", userId: "user-1" },
+      },
+      tools: [
+        { type: "function", function: { name: "search_bookings" } },
+        { type: "function", function: { name: "cancel_booking" } },
+      ],
+      allowedToolKeys: ["search_bookings", "cancel_booking"],
+    });
+    assert.equal(routed.some((entry) => entry.toolKey === "cancel_booking"), false);
+    assert.equal(routed.some((entry) => entry.toolKey === "search_bookings"), true);
+    assert.match(result.response.text, /BK-000088/);
+    assert.match(result.response.text, /الحالة:/);
+    assert.doesNotMatch(result.response.text, /تم إلغاء/);
+  });
+
+  it("ليه؟ must not force create_booking from stale scheduling seed", async () => {
+    const routed: string[] = [];
+    const clinicServiceId = "a8a6403e-4c88-48ae-aa46-d204ea8ef49d";
+    const adamResourceId = "1c766372-7726-4cb6-b660-b88ae85fb49c";
+    const gateway: RuntimeGatewayPort = {
+      async chatCompletion() {
+        return {
+          text: "حالة الحجز الحالية مش بتسمح بتغيير الميعاد.",
+          model: "mock-gpt",
+          providerKey: "mock",
+          finishReason: "stop",
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          latencyMs: 1,
+        };
+      },
+    };
+    const tools = {
+      allowedToolKeys: () => ["create_booking", "search_bookings"],
+      route: async (_ctx: unknown, req: { toolKey: string }) => {
+        routed.push(req.toolKey);
+        return {
+          toolKey: req.toolKey,
+          executionId: `exec-${req.toolKey}`,
+          status: "succeeded",
+          output: {
+            success: true,
+            confirmationNumber: "BK-000088",
+            customerFacingMessage: "تم حجز موعدك بنجاح.",
+          },
+          durationMs: 1,
+        };
+      },
+    };
+    const loop = new ToolCallLoopService({ gateway, tools });
+    await loop.run({
+      ctx: { userId: "user-1", companyId: "company-1", isSuperAdmin: false, hasPermission: () => true },
+      conversationId: "conversation-leh-no-create",
+      trustedCustomerId: "7285bfa4-bfd4-496f-b5fb-1c3a99511925",
+      priorSchedulingToolExecutions: [
+        {
+          toolKey: "search_availability",
+          executionId: "prior-avail",
+          status: "succeeded",
+          input: { serviceId: clinicServiceId, resourceId: adamResourceId, date: cairoCalendarYmd(1) },
+          output: {
+            success: true,
+            serviceId: clinicServiceId,
+            resources: [{ resourceId: adamResourceId, slots: [{ date: cairoCalendarYmd(1), start: "07:00" }] }],
+          },
+          durationMs: 0,
+        },
+      ],
+      gatewayRequest: {
+        messages: [
+          { role: "user", content: "عايزة أغير الميعاد" },
+          { role: "assistant", content: "حالة الحجز الحالية مش بتسمح بتغيير الميعاد." },
+          { role: "user", content: "ليه؟" },
+        ],
+        providerKey: "mock",
+        model: "mock-gpt",
+        context: { companyId: "company-1", conversationId: "conversation-leh-no-create", userId: "user-1" },
+      },
+      tools: [{ type: "function", function: { name: "create_booking" } }],
+      allowedToolKeys: ["create_booking", "search_bookings"],
+    });
+    assert.equal(routed.includes("create_booking"), false);
   });
 
 });

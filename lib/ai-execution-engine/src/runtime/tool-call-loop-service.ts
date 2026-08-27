@@ -16,6 +16,15 @@ import {
   createToolNotAllowedDenial,
   serializeRuntimeToolDenial,
 } from "./runtime-tool-denial-factory.js";
+import {
+  customerWantsBookingStatusByReference,
+  customerWantsBookingStatusFromText,
+  formatBookingStatusReply,
+  isNonMutatingFollowUpMessage,
+  resolveSchedulingOperationIntent,
+  schedulingIntentAllowsTool,
+  shouldInvalidatePriorSchedulingSeed,
+} from "./scheduling-operation-intent.js";
 
 const MAX_TOOL_ITERATIONS = 4;
 
@@ -223,8 +232,14 @@ function indexOfLastBookingAttemptStart(
     const message = messages[index];
     if (message?.role !== "user") continue;
     const text = String(message.content ?? "").trim();
+    // New booking-attempt starts only. Do NOT treat mid-flow confirms like "احجز لي"
+    // as a fresh attempt — that would drop the prior availability offer window.
+    if (/^احجز\s+لي\b/iu.test(text)) continue;
     if (
-      /^(?:عايز\s*(?:ة|ه)?\s*احجز|أ?حجز(?:\s+موعد)?|book(?:ing)?\b|احجز\b)/i.test(text)
+      /^(?:حجز)[!.؟?\s]*$/iu.test(text) ||
+      /^(?:عايز\s*(?:ة|ه)?\s*(?:احجز|أحجز|حجز)ز*|محتاج(?:ة)?\s*(?:احجز|أحجز|حجز)ز*|أنا?\s+عايز(?:ة|ه)?\s+احجزز*|أ?حجز(?:ز*)?(?:\s+موعد)?|احجزلي|book(?:ing)?\b|احجزز*\b)/iu.test(
+        text,
+      )
     ) {
       lastStart = index;
     }
@@ -307,7 +322,7 @@ function latestUserWantsCreateBooking(
   messages: RuntimeGatewayChatRequest["messages"],
 ): boolean {
   const latest = latestUserTextFromMessages(messages).trim();
-  if (!latest) return false;
+  if (!latest || isNonMutatingFollowUpMessage(latest)) return false;
   if (latestUserExplicitBookingLookup(messages)) return false;
   if (customerWantsRescheduleFromText(latest)) return false;
   if (
@@ -318,9 +333,10 @@ function latestUserWantsCreateBooking(
     return false;
   }
   if (/(?:الغي|ألغي|الغى|الغاء|إلغاء|cancel)/i.test(latest)) return false;
-  // Explicit create verbs / confirm-booking phrasing.
+  // Explicit create verbs / soft create nouns ("حجز", "عايز حجز", elongated احجزززز).
   if (
-    /(?:^|\s)(?:احجز|أحجز|هحجز|احجزي|أحجزي)(?:\s|$)|عايز(?:ة|ه)?\s*احجز|حجز\s*جديد|book(?:\s+me|\s+an|\s+a)?\b/i.test(
+    /^(?:حجز|احجزلي|احجز\s*لي)[!.؟?\s]*$/iu.test(latest) ||
+    /(?:^|\s)(?:احجز|أحجز|هحجز|احجزي|أحجزي)ز*(?:\s|$)|(?:عايز(?:ة|ه)?|محتاج(?:ة)?|أنا?\s+عايز(?:ة|ه)?)\s*(?:ان\s+)?(?:احجز|أحجز|حجز)ز*|احجز(?:ز*)?\s*لي|حجز\s*جديد|book(?:\s+me|\s+an|\s+a)?\b/iu.test(
       latest,
     )
   ) {
@@ -544,6 +560,9 @@ function requiresBookingIntakeBeforeCustomerTools(
   trustedCustomerId?: string | null,
 ): boolean {
   if (hasTrustedBookingIdentity(trustedCustomerId)) return false;
+  if (customerWantsCreateTicket(sourceMessages) || customerWantsAnyTicketFlow(sourceMessages)) {
+    return false;
+  }
   if (latestUserExplicitBookingLookup(sourceMessages)) return false;
   return (
     hasUserSelectedBookingSlot(sourceMessages, toolExecutions) &&
@@ -615,8 +634,10 @@ function isSlotPickMessage(text: string): boolean {
   if (hasDate && hasTime) return true;
   // Arabic weekday + time (الأحد ٩ مساء) — selection against an offered slot.
   if (parseArabicWeekdayAndTime(trimmed) !== null) return true;
-  // Bare clock like "٩:١٥" / "9:15" after a fresh availability list.
-  return /^(?:الساعة\s*)?\d{1,2}:\d{2}\s*(?:صباح|صباحا|صباحًا|مساء|مساءً)?\.?$/i.test(
+  // Relative Arabic date+time ("النهارده الساعة 9") binds against offered slots.
+  if (parseRelativeArabicBookingSlot(trimmed) !== null) return true;
+  // Bare clock: "٩:١٥", "9:15", "الساعة 9", "9 مساء" after a fresh availability list.
+  return /^(?:الساعة\s*)?\d{1,2}(?::\d{2})?\s*(?:صباح|صباحا|صباحًا|صبح|الصبح|مساء|مساءً)?\.?$/i.test(
     ascii.trim(),
   );
 }
@@ -869,6 +890,16 @@ function shouldSkipAvailabilityRestart(
   messages: RuntimeGatewayChatRequest["messages"],
   toolExecutions: ToolCallLoopResult["toolExecutions"],
 ): boolean {
+  const relative = parseRelativeArabicBookingSlot(latestUserTextFromMessages(messages));
+  if (relative?.date) {
+    const alreadySearchedRequestedDate = toolExecutions.some(
+      (execution) =>
+        execution.toolKey === "search_availability" &&
+        String((execution.input as { date?: unknown } | undefined)?.date ?? "").trim() === relative.date,
+    );
+    if (alreadySearchedRequestedDate) return true;
+  }
+  if (shouldDropPriorSchedulingSeed(messages)) return false;
   if (readResolvedCustomerId(toolExecutions, messages)) return true;
   return lastUserMessageIsBookingNudge(messages);
 }
@@ -1194,6 +1225,25 @@ function arabicWeekdayTokenToJs(token: string): number | null {
   return map[key] ?? null;
 }
 
+const ARABIC_TODAY_RE = /النهارده|النهاردة|اليوم(?!\s*ال)/i;
+const ARABIC_TOMORROW_RE = /بكره|بكرا|غداً|غدا|غدًا/i;
+const ARABIC_MORNING_RE = /صباح|صباحا|صباحًا|صبح|الصبح/i;
+const ARABIC_PERIOD_RE = /صباح|صباحا|صباحًا|صبح|الصبح|مساء|مساءً|ظهر|ظهرا|ظهرًا/i;
+
+function foldArabicRelativeDateText(text: string): string {
+  return convertArabicDigitsToAscii(text)
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه");
+}
+
+function hasArabicTomorrowToken(text: string): boolean {
+  return ARABIC_TOMORROW_RE.test(foldArabicRelativeDateText(text));
+}
+
+function hasArabicTodayToken(text: string): boolean {
+  return ARABIC_TODAY_RE.test(foldArabicRelativeDateText(text));
+}
+
 function parseArabicClockToSlotStart(text: string): string | null {
   const normalized = convertArabicDigitsToAscii(text);
   let hour: number | null = null;
@@ -1204,20 +1254,20 @@ function parseArabicClockToSlotStart(text: string): string | null {
     hour = Number(hhmm[1]);
     minute = Number(hhmm[2]);
     if (/مساء|مساءً/i.test(normalized) && hour > 0 && hour < 12) hour += 12;
-    if (/صباح|صباحا|صباحًا/i.test(normalized) && hour === 12) hour = 0;
+    if (ARABIC_MORNING_RE.test(normalized) && hour === 12) hour = 0;
   } else {
     const clock =
-      /(?:الساعة\s*)?(\d{1,2})\s*(?:و\s*)?(?:نص|نصف)?\s*(صباح|صباحا|صباحًا|مساء|مساءً|ظهر|ظهرا|ظهرًا)?/i.exec(
+      /(?:الساعة|الساعه)\s*(\d{1,2})\s*(?:و\s*)?(?:نص|نصف)?\s*(صباح|صباحا|صباحًا|صبح|الصبح|مساء|مساءً|ظهر|ظهرا|ظهرًا)?|(\d{1,2})\s*(?:و\s*)?(?:نص|نصف)?\s*(صباح|صباحا|صباحًا|صبح|الصبح|مساء|مساءً|ظهر|ظهرا|ظهرًا)/i.exec(
         normalized,
       );
     if (clock) {
-      hour = Number(clock[1]);
+      hour = Number(clock[1] ?? clock[3]);
       if (/نص|نصف/i.test(normalized)) minute = 30;
-      const period = clock[2] ?? "";
+      const period = clock[2] ?? clock[4] ?? "";
       if (/مساء|ظهر/i.test(period) && hour > 0 && hour < 12) hour += 12;
-      if (/صباح/i.test(period) && hour === 12) hour = 0;
+      if (ARABIC_MORNING_RE.test(period) && hour === 12) hour = 0;
       if (!period && /مساء|مساءً/i.test(normalized) && hour > 0 && hour < 12) hour += 12;
-      if (!period && /صباح/i.test(normalized) && hour === 12) hour = 0;
+      if (!period && ARABIC_MORNING_RE.test(normalized) && hour === 12) hour = 0;
     }
   }
 
@@ -1251,7 +1301,7 @@ function parseArabicWeekdayAndTime(
 
   const slotStart = parseArabicClockToSlotStart(normalized);
   if (!slotStart) return null;
-  const hasExplicitPeriod = /(?:صباح|صباحا|صباحًا|مساء|مساءً|ظهر|ظهرا|ظهرًا)/i.test(normalized);
+  const hasExplicitPeriod = ARABIC_PERIOD_RE.test(normalized);
   // Require an explicit period or HH:mm so bare "الأحد" alone does not select.
   if (!/\d{1,2}:\d{2}/.test(normalized) && !hasExplicitPeriod) {
     return null;
@@ -1273,11 +1323,44 @@ function parseRelativeArabicBookingSlot(
   const dmy = /\b(\d{2})-(\d{2})-(20\d{2})\b/.exec(normalized);
   if (iso?.[1]) date = iso[1];
   else if (dmy) date = `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
-  else if (/النهاردة|النهارده|اليوم(?!\s*ال)/i.test(normalized)) date = cairoCalendarYmd(0);
-  else if (/بكرة|بكرا|غداً|غدا|غدًا/i.test(normalized)) date = cairoCalendarYmd(1);
+  else if (hasArabicTodayToken(normalized)) date = cairoCalendarYmd(0);
+  else if (hasArabicTomorrowToken(normalized)) date = cairoCalendarYmd(1);
 
   if (!date) return null;
   return { date, slotStart };
+}
+
+function latestUserMessageHasBookingSlot(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return (
+    parseRelativeArabicBookingSlot(trimmed) !== null ||
+    parseArabicWeekdayAndTime(trimmed) !== null ||
+    parseArabicTimeOnlySelection(trimmed) !== null ||
+    isSlotPickMessage(trimmed)
+  );
+}
+
+function isBareCreateBookingOpener(text: string): boolean {
+  return /^(?:حجز|عايز(?:ة|ه)?\s*(?:احجز|أحجز|حجز)ز*|محتاج(?:ة)?\s*(?:احجز|أحجز|حجز)ز*|أنا?\s+عايز(?:ة|ه)?\s+(?:احجز|أحجز|حجز)ز*|احجزلي)[!.؟?\s]*$/iu.test(
+    text.trim(),
+  );
+}
+
+function isFreshCreateBookingStartWithoutSlot(
+  messages: RuntimeGatewayChatRequest["messages"],
+): boolean {
+  const latest = latestUserTextFromMessages(messages).trim();
+  if (!isBareCreateBookingOpener(latest)) return false;
+  return !latestUserMessageHasBookingSlot(latest);
+}
+
+function shouldDropPriorSchedulingSeed(
+  messages: RuntimeGatewayChatRequest["messages"],
+): boolean {
+  if (shouldInvalidatePriorSchedulingSeed(messages)) return true;
+  if (isFreshCreateBookingStartWithoutSlot(messages)) return true;
+  return parseRelativeArabicBookingSlot(latestUserTextFromMessages(messages)) !== null;
 }
 
 function parseAllSlotsFromSearchAvailabilityOutput(
@@ -1568,8 +1651,7 @@ function readMostRecentOfferedSlotsContext(
   }
 
   const fromCurrentTurn = readOfferedSlotsFromToolExecutions(toolExecutions, messages);
-  if (fromCurrentTurn.length > 0) {
-    // No assistant/tool message anchor in history — do not block earlier user slot picks.
+  if (fromCurrentTurn.length > 0 && !shouldDropPriorSchedulingSeed(messages)) {
     return { slots: fromCurrentTurn, messageIndex: -1 };
   }
 
@@ -1667,14 +1749,19 @@ function parseArabicTimeOnlySelection(
   if (/\b(20\d{2}-\d{2}-\d{2})\b/.test(normalized) || /\b\d{2}-\d{2}-(20\d{2})\b/.test(normalized)) {
     return null;
   }
+  // Reject relative date phrases here — resolveCanonicalSelectedSlot handles them via
+  // parseRelativeArabicBookingSlot so "النهارده الساعة 9" can bind against evening offers.
+  if (hasArabicTodayToken(normalized) || hasArabicTomorrowToken(normalized)) {
+    return null;
+  }
   if (
-    !/^(?:الساعة\s*)?\d{1,2}:\d{2}\s*(?:صباح|صباحا|صباحًا|مساء|مساءً)?\.?$/i.test(normalized)
+    !/^(?:الساعة\s*)?\d{1,2}(?::\d{2})?\s*(?:صباح|صباحا|صباحًا|صبح|الصبح|مساء|مساءً)?\.?$/i.test(normalized)
   ) {
     return null;
   }
   const slotStart = parseArabicClockToSlotStart(normalized);
   if (!slotStart) return null;
-  const hasExplicitPeriod = /(?:صباح|صباحا|صباحًا|مساء|مساءً|ظهر|ظهرا|ظهرًا)/i.test(normalized);
+  const hasExplicitPeriod = ARABIC_PERIOD_RE.test(normalized);
   return { slotStart, hasExplicitPeriod };
 }
 
@@ -1687,8 +1774,12 @@ function parseExplicitSelectedBookingSlot(
 ): { date: string; slotStart: string } | null {
   let date: string | null = null;
   let slotStart: string | null = null;
-  for (const message of messages) {
-    if (message.role !== "user") continue;
+  const attemptStart = isFreshCreateBookingStartWithoutSlot(messages)
+    ? indexOfLastBookingAttemptStart(messages)
+    : 0;
+  for (let index = attemptStart; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (message?.role !== "user") continue;
     const text = typeof message.content === "string" ? message.content : "";
     const iso = /\b(20\d{2}-\d{2}-\d{2})\b/.exec(text);
     const dmy = /\b(\d{2})-(\d{2})-(20\d{2})\b/.exec(text);
@@ -1723,13 +1814,13 @@ function resolveCanonicalSelectedSlot(
 ): CanonicalSchedulingSlot | null {
   const offeredContext = readMostRecentOfferedSlotsContext(messages, toolExecutions);
   const offered = offeredContext.slots;
-  // Bind only to the CURRENT offered-slot generation. Prior selections (including a
-  // failed create_booking slot) are invalidated once fresher availability is shown.
   const offerBoundary = offeredContext.messageIndex;
-
+  const attemptStart = isFreshCreateBookingStartWithoutSlot(messages)
+    ? indexOfLastBookingAttemptStart(messages)
+    : 0;
   let weekdayMatch: CanonicalSchedulingSlot | null = null;
   let timeOnlyMatch: CanonicalSchedulingSlot | null = null;
-  for (let index = 0; index < messages.length; index += 1) {
+  for (let index = attemptStart; index < messages.length; index += 1) {
     if (offerBoundary >= 0 && index <= offerBoundary) continue;
     const message = messages[index];
     if (message?.role !== "user") continue;
@@ -1782,7 +1873,10 @@ function resolveCanonicalSelectedSlot(
       const relative = parseRelativeArabicBookingSlot(content);
       const hasIso =
         /\b(20\d{2}-\d{2}-\d{2})\b/.test(content) || /\b\d{2}-\d{2}-(20\d{2})\b/.test(content);
-      const hasTime = /\d{1,2}:\d{2}/.test(convertArabicDigitsToAscii(content));
+      const asciiContent = convertArabicDigitsToAscii(content);
+      const hasTime =
+        /\d{1,2}:\d{2}/.test(asciiContent) ||
+        /(?:الساعة\s*)?\d{1,2}\s*(?:صباح|صباحا|صباحًا|صبح|الصبح|مساء|مساءً)?/i.test(asciiContent);
       if (relative || (hasIso && hasTime)) {
         explicitAfterOffer = true;
         break;
@@ -1795,6 +1889,29 @@ function resolveCanonicalSelectedSlot(
     (slot) => slot.date === explicit.date && slot.slotStart === explicit.slotStart,
   );
   if (exactOffer) return exactOffer;
+
+  // "النهارده الساعة 9" without مساء/صباح parses as 09:00 — bind uniquely to offered
+  // evening 21:00 on that date when the 12-hour clock matches one offered slot.
+  if (offered.length > 0) {
+    let hasExplicitPeriod = false;
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (offerBoundary >= 0 && index <= offerBoundary) break;
+      const message = messages[index];
+      if (message?.role !== "user") continue;
+      const content = typeof message.content === "string" ? message.content : "";
+      const relative = parseRelativeArabicBookingSlot(content);
+      if (!relative) continue;
+      if (relative.date !== explicit.date || relative.slotStart !== explicit.slotStart) continue;
+      hasExplicitPeriod = ARABIC_PERIOD_RE.test(content);
+      break;
+    }
+    const sameDayOffers = offered.filter((slot) => slot.date === explicit.date);
+    const ambiguous = matchTimeOnlySelectionToOfferedSlots(
+      { slotStart: explicit.slotStart, hasExplicitPeriod },
+      sameDayOffers.length > 0 ? sameDayOffers : offered,
+    );
+    if (ambiguous) return ambiguous;
+  }
 
   // Fresh offer set present: never book a slot that is not in it.
   if (offered.length > 0) return null;
@@ -1816,6 +1933,12 @@ function parseSelectedBookingSlot(
   const canonical = resolveCanonicalSelectedSlot(messages, toolExecutions);
   if (canonical) return { date: canonical.date, slotStart: canonical.slotStart };
   // Reschedule and similar flows need date/time even when service/resource ids are absent.
+  // When a fresh availability offer exists, never treat an off-offer explicit time as selected —
+  // that would book unavailable slots like "النهارده الساعة 10" against a 21:00/21:45 list.
+  const offered = readMostRecentOfferedSlotsContext(messages, toolExecutions).slots;
+  if (offered.length > 0 && !customerWantsRescheduleBooking(messages)) {
+    return null;
+  }
   return parseExplicitSelectedBookingSlot(messages);
 }
 
@@ -2022,16 +2145,32 @@ function isActiveCreateBookingTurn(
   messages: RuntimeGatewayChatRequest["messages"],
   toolExecutions: ToolCallLoopResult["toolExecutions"] = [],
 ): boolean {
+  if (isNonMutatingFollowUpMessage(latestUserTextFromMessages(messages))) return false;
+  if (customerWantsBookingStatusByReference(messages)) return false;
   if (customerWantsCancelBooking(messages)) return false;
   if (customerWantsCheckInOrOut(messages)) return false;
   if (customerWantsRescheduleBooking(messages)) return false;
+  if (customerWantsCreateTicket(messages) || customerWantsAnyTicketFlow(messages)) return false;
   if (latestUserExplicitBookingLookup(messages)) return false;
+
+  // Fresh create intent ("حجز" / "عايز احجز") is an active create turn even before a slot
+  // is selected — blocks search_bookings/cancel from stealing the conversation.
+  if (latestUserWantsCreateBooking(messages)) return true;
+
+  // After availability was shown, slot picks (available or not) stay in create flow.
+  if (
+    conversationShowsRecentBookingAvailability(messages) &&
+    (isSlotPickMessage(latestUserTextFromMessages(messages)) ||
+      parseRelativeArabicBookingSlot(latestUserTextFromMessages(messages)) !== null)
+  ) {
+    return true;
+  }
+
   if (!hasSelectedBookingSlotContext(messages, toolExecutions)) return false;
 
   const latest = latestUserTextFromMessages(messages);
   const intake = readPatientIntakeFromConversation(messages);
   if (intake?.name?.trim() || intake?.phone?.trim()) return true;
-  if (latestUserWantsCreateBooking(messages)) return true;
   return (
     looksLikeBookingIntent(latest) ||
     isSlotPickMessage(latest) ||
@@ -2058,6 +2197,24 @@ function isUuid(value: string): boolean {
  * Replace invented service/resource ids (e.g. service-id-12345) with catalog UUIDs
  * from the conversation prompt / prior real tool calls.
  */
+function rewriteAvailabilitySearchDate(
+  args: Record<string, unknown>,
+  messages: RuntimeGatewayChatRequest["messages"],
+): Record<string, unknown> {
+  const next = { ...args };
+  const today = cairoCalendarYmd(0);
+  const relative = parseRelativeArabicBookingSlot(latestUserTextFromMessages(messages));
+  if (relative?.date) {
+    next.date = relative.date;
+    return next;
+  }
+  const requested = typeof next.date === "string" ? next.date.trim() : "";
+  if (requested && requested < today) {
+    delete next.date;
+  }
+  return next;
+}
+
 function rewriteSchedulingCatalogArgs(
   args: Record<string, unknown> | undefined,
   messages: RuntimeGatewayChatRequest["messages"],
@@ -2066,7 +2223,7 @@ function rewriteSchedulingCatalogArgs(
   const serviceId = String(next.serviceId ?? "").trim();
   const resourceId = String(next.resourceId ?? "").trim();
   if (isUuid(serviceId) && (!resourceId || isUuid(resourceId))) {
-    return next;
+    return rewriteAvailabilitySearchDate(next, messages);
   }
 
   const catalogBlob = messages.map((message) => String(message.content ?? "")).join("\n");
@@ -2099,7 +2256,7 @@ function rewriteSchedulingCatalogArgs(
     if (!isUuid(String(next.serviceId ?? ""))) next.serviceId = catalog.serviceId;
     if (resourceId && !isUuid(String(next.resourceId ?? ""))) next.resourceId = catalog.resourceId;
   }
-  return next;
+  return rewriteAvailabilitySearchDate(next, messages);
 }
 
 function rewriteCreateBookingCustomerId(
@@ -2140,7 +2297,7 @@ function rewriteCreateBookingArgs(
     return next;
   }
 
-  const userSlot = parseSelectedBookingSlot(sourceMessages);
+  const userSlot = parseSelectedBookingSlot(sourceMessages, toolExecutions);
   if (userSlot) {
     next.date = userSlot.date;
     next.slotStart = userSlot.slotStart;
@@ -2226,6 +2383,40 @@ function customerWantsCreateTicket(
 ): boolean {
   const latest = latestUserTextFromMessages(messages);
   return /(?:عايز|أ?فتح|create|open|file).{0,40}(?:شكو|تذكر|complaint|ticket)/i.test(latest);
+}
+
+const TICKET_TOOL_KEYS = new Set([
+  "search_ticket",
+  "create_ticket",
+  "add_ticket_comment",
+  "assign_ticket",
+  "change_ticket_priority",
+  "change_ticket_status",
+  "update_ticket",
+  "close_ticket",
+]);
+
+/**
+ * Booking phrases must never open a ticket. Explicit ticket/complaint on the
+ * latest turn still wins so "عايز أفتح شكوى" keeps working.
+ */
+function shouldDenyTicketToolsDuringBookingIntent(
+  messages: RuntimeGatewayChatRequest["messages"],
+): boolean {
+  if (customerWantsCreateTicket(messages)) return false;
+  if (customerWantsTicketMutation(messages) && !latestUserWantsCreateBooking(messages)) return false;
+  if (
+    (customerWantsTicketStatus(messages) || customerWantsTicketList(messages)) &&
+    !latestUserWantsCreateBooking(messages) &&
+    !isFreshCreateBookingStartWithoutSlot(messages)
+  ) {
+    return false;
+  }
+  return (
+    latestUserWantsCreateBooking(messages) ||
+    isFreshCreateBookingStartWithoutSlot(messages) ||
+    parseRelativeArabicBookingSlot(latestUserTextFromMessages(messages)) !== null
+  );
 }
 
 function customerWantsCloseTicket(
@@ -2576,9 +2767,10 @@ async function forceSearchTicketIfNeeded(input: {
 function latestUserTextFromMessages(
   messages: RuntimeGatewayChatRequest["messages"],
 ): string {
-  return String(
+  const raw = String(
     [...messages].reverse().find((message) => message.role === "user")?.content ?? "",
   ).trim();
+  return raw.replace(/^(?:e2e-(?:rt|ci|wa)-\S+\s+|idem-\S+\s+)/i, "").trim();
 }
 
 function customerWantsCheckInOrOut(
@@ -2590,6 +2782,7 @@ function customerWantsCheckInOrOut(
   if (/(?:الغي|ألغي|الغى|الغاء|إلغاء|cancel)/i.test(latest)) return false;
   if (customerWantsRescheduleFromText(latest)) return false;
   if (latestUserWantsCreateBooking(messages)) return false;
+  if (customerWantsCreateTicket(messages) || customerWantsAnyTicketFlow(messages)) return false;
 
   // Scan recent user turns — phone-only follow-ups must keep check-in/out intent.
   for (const message of [...messages].reverse().slice(0, 8)) {
@@ -2844,6 +3037,66 @@ async function forceFindNextAvailableIfReady(input: {
   }
 }
 
+async function forceSearchAvailabilityIfReady(input: {
+  tools: RuntimeToolPort;
+  ctx: ServiceContext;
+  conversationId: string;
+  allowedToolKeys: string[];
+  sourceMessages: RuntimeGatewayChatRequest["messages"];
+  toolExecutions: ToolCallLoopResult["toolExecutions"];
+}): Promise<void> {
+  if (customerWantsCancelBooking(input.sourceMessages)) return;
+  if (customerWantsFindNextAvailable(input.sourceMessages)) return;
+  if (hasSuccessfulCreateBooking(input.toolExecutions)) return;
+  if (lastUsableAvailability(input.toolExecutions)) return;
+
+  const latest = latestUserTextFromMessages(input.sourceMessages);
+  const relative = parseRelativeArabicBookingSlot(latest);
+  const freshStart = isFreshCreateBookingStartWithoutSlot(input.sourceMessages);
+  if (!freshStart && !relative) return;
+
+  if (
+    input.toolExecutions.some(
+      (execution) =>
+        execution.toolKey === "search_availability" && execution.status !== "denied",
+    )
+  ) {
+    return;
+  }
+
+  const allowed = new Set([
+    ...input.allowedToolKeys,
+    ...(typeof input.tools.allowedToolKeys === "function" ? input.tools.allowedToolKeys() : []),
+  ]);
+  if (!allowed.has("search_availability")) return;
+
+  const serviceId = readSchedulingServiceId(input.sourceMessages);
+  if (!serviceId) return;
+  const catalog = readSchedulingCatalogIds(input.sourceMessages, input.toolExecutions);
+
+  try {
+    const routed = await input.tools.route(input.ctx, {
+      conversationId: input.conversationId,
+      toolKey: "search_availability",
+      input: {
+        serviceId,
+        ...(catalog?.resourceId ? { resourceId: catalog.resourceId } : {}),
+        ...(relative?.date ? { date: relative.date } : {}),
+      },
+      triggeredBy: "agent",
+    });
+    input.toolExecutions.push({
+      toolKey: routed.toolKey,
+      executionId: routed.executionId,
+      status: routed.status,
+      output: routed.output,
+      durationMs: routed.durationMs,
+    });
+  } catch {
+    // Reply fallbacks handle an empty availability result.
+  }
+}
+
 /** Topic change: newest user turn is clearly not continuing cancel selection. */
 function latestUserSwitchedAwayFromCancel(text: string): boolean {
   const trimmed = text.trim();
@@ -2854,7 +3107,7 @@ function latestUserSwitchedAwayFromCancel(text: string): boolean {
   if (/^\+?\d[\d\s-]{7,}$/.test(trimmed.replace(/\s/g, ""))) return false;
   if (isSlotPickMessage(trimmed) || looksLikeBookingIntent(trimmed)) return true;
   if (/اسم(?:\s*المريض)?\s*[:：]/i.test(trimmed) && extractPhoneFromText(trimmed)) return true;
-  return /(?:أقرب موعد|موعد متاح|المواعيد المتاحة|availability|find[_ ]?next|recommend|اقترح|أنسب ميعاد|عايز أحجز|عايزة أحجز|احجز|حجز جديد|search_availability|check[_\s-]?in|check[_\s-]?out|تسجيل حضور|تسجيل انصراف|أسجل حضور|أسجل انصراف|حجوزاتي|اعرف حجوز|what bookings)/i.test(
+  return /(?:أقرب موعد|موعد متاح|المواعيد المتاحة|availability|find[_ ]?next|recommend|اقترح|أنسب ميعاد|عايز أحجز|عايزة أحجز|عايز حجز|عايزة حجز|محتاج احجز|محتاجة احجز|احجز|حجز(?:\s+جديد)?|^حجز$|search_availability|check[_\s-]?in|check[_\s-]?out|تسجيل حضور|تسجيل انصراف|أسجل حضور|أسجل انصراف|حجوزاتي|اعرف حجوز|what bookings)/i.test(
     trimmed,
   );
 }
@@ -2886,6 +3139,10 @@ function customerWantsCancelBooking(
   // Bare Arabic cancel confirmation always wins over stale create-booking slot context
   // (e.g. prior "الثلاثاء 08:30" in the same conversation after BK-000045 was created).
   if (isBareCancelConfirmationText(latestUserText)) return true;
+  // نعم/ايوه only continue cancel when an assistant cancel-list was offered.
+  if (isBareAffirmativeConfirmationText(latestUserText) && assistantOfferedCancelList(messages)) {
+    return true;
+  }
   if (customerWantsCancelLastBookingFromText(latestUserText)) return true;
 
   // Active create-booking slot/intake must never inherit cancel purpose.
@@ -3078,11 +3335,12 @@ function resolveSelectedCancelBookingId(
     return typeof bookingId === "string" && bookingId.trim() ? bookingId.trim() : null;
   }
 
-  if (bookings.length === 1 && isBareCancelConfirmationText(latestUserText)) {
+  if (bookings.length === 1 && (
+    isBareCancelConfirmationText(latestUserText) ||
+    isBareAffirmativeConfirmationText(latestUserText)
+  )) {
     // Require prior cancel-list (or explicit نعم) — first bare "ألغي" only lists.
-    const isExplicitYes = /^(?:نعم|ايوه|أيوه|موافق|ok|yes|confirm|confirmed)$/i.test(
-      latestUserText,
-    );
+    const isExplicitYes = isBareAffirmativeConfirmationText(latestUserText);
     if (!isExplicitYes && !conversationAwaitingCancelSelection(messages)) {
       return null;
     }
@@ -3168,22 +3426,45 @@ function isBareCancelConfirmationText(text: string): boolean {
   if (customerWantsRescheduleFromText(trimmed)) return false;
   if (/\bBK-\d+\b/i.test(trimmed)) return false;
   if (/^\s*[1-8]\s*$/.test(trimmed)) return false;
-  if (
-    /^(?:الغي|ألغي|الغى|الغاء|إلغاء)(?:\s+(?:الميعاد|الموعد|الحجز|ميعاد|موعد))?$/i.test(
-      trimmed,
-    )
-  ) {
-    return true;
-  }
+  // Bare cancel verbs only. Affirmatives (نعم/ايوه) require an offered cancel list —
+  // see assistantOfferedCancelList in customerWantsCancelBooking.
+  return /^(?:الغي|ألغي|الغى|الغاء|إلغاء)(?:\s+(?:الميعاد|الموعد|الحجز|ميعاد|موعد))?$/i.test(
+    trimmed,
+  );
+}
+
+function isBareAffirmativeConfirmationText(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (customerWantsRescheduleFromText(trimmed)) return false;
+  if (latestUserWantsCreateBooking([{ role: "user", content: trimmed }])) return false;
   return /^(?:نعم|ايوه|أيوه|موافق|ok|yes|confirm|confirmed)$/i.test(trimmed);
+}
+
+function assistantOfferedCancelList(
+  messages: RuntimeGatewayChatRequest["messages"],
+): boolean {
+  return messages
+    .filter((message) => message.role === "assistant")
+    .slice(-8)
+    .map((message) => String(message.content ?? ""))
+    .some((text) =>
+      /أنهي موعد|ممكن إلغاؤه|موعد تلغي|ده الموعد الوحيد|قولّي\s*"?ألغي|قولي\s*"?ألغي|مش هألغي غير بعد ما تختاري|which appointment|select.*(?:cancel|booking)/i.test(
+        text,
+      ),
+    );
 }
 
 function isCancelSelectionMessage(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) return false;
+  if (customerWantsBookingStatusFromText(trimmed)) return false;
   // Reschedule (BK + new slot) must not be treated as cancel selection.
   if (customerWantsRescheduleFromText(trimmed)) return false;
-  if (/\bBK-\d+\b/i.test(trimmed)) return true;
+  if (/\bBK-\d+\b/i.test(trimmed)) {
+    if (/(?:الغي|ألغي|الغى|الغاء|إلغاء|cancel)/i.test(trimmed)) return true;
+    return /^\s*BK-\d+\s*$/i.test(trimmed);
+  }
   if (/^\s*[1-8]\s*$/.test(trimmed)) return true;
   return false;
 }
@@ -3242,14 +3523,17 @@ function canProceedWithCancelSelection(
   const latestUserText = latestUserTextFromMessages(messages);
   if (isCancelSelectionMessage(latestUserText)) return true;
   if (resolveSelectedCancelBookingId(messages, toolExecutions) != null) return true;
-  if (!isBareCancelConfirmationText(latestUserText)) return false;
+  if (
+    !isBareCancelConfirmationText(latestUserText) &&
+    !isBareAffirmativeConfirmationText(latestUserText)
+  ) {
+    return false;
+  }
   if (!customerWantsCancelBooking(messages)) return false;
   const active = readActiveCancellableBookings(toolExecutions);
   // This-turn search found exactly one booking — cancel only after list was shown / نعم.
   if (active.length === 1) {
-    const isExplicitYes = /^(?:نعم|ايوه|أيوه|موافق|ok|yes|confirm|confirmed)$/i.test(
-      latestUserText,
-    );
+    const isExplicitYes = isBareAffirmativeConfirmationText(latestUserText);
     return isExplicitYes || conversationAwaitingCancelSelection(messages);
   }
   if (!conversationAwaitingCancelSelection(messages)) return false;
@@ -3583,6 +3867,44 @@ function applyRescheduleBookingReplyFallback(
   return response;
 }
 
+function applyNonMutatingFollowUpGuard(
+  response: RuntimeGatewayChatResponse,
+  messages: RuntimeGatewayChatRequest["messages"],
+): RuntimeGatewayChatResponse {
+  const latest = latestUserTextFromMessages(messages).trim();
+  if (!isNonMutatingFollowUpMessage(latest)) return response;
+  const text = response.text.trim();
+  if (!/المواعيد المتاحة|اختاري الموعد|حجز موعدك|create_booking/i.test(text)) return response;
+
+  let priorUser = "";
+  let seenLatest = false;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role !== "user") continue;
+    const content = String(message.content ?? "").trim();
+    if (!seenLatest) {
+      seenLatest = true;
+      continue;
+    }
+    priorUser = content;
+    break;
+  }
+
+  if (customerWantsRescheduleFromText(priorUser)) {
+    return {
+      ...response,
+      text: "عشان نغيّر الميعاد، محتاجين نحدد الحجز واليوم والساعة الجديدة (مثل BK-000088 يوم 24-08-2026 الساعة 08:00).",
+      finishReason: response.finishReason ?? "stop",
+    };
+  }
+
+  return {
+    ...response,
+    text: "ممكن توضحي أكتر إيه اللي محتاجة توضيحه؟",
+    finishReason: response.finishReason ?? "stop",
+  };
+}
+
 /** Prevent create-booking intake copy from leaking into an active reschedule turn. */
 function applyRescheduleTopicGuard(
   response: RuntimeGatewayChatResponse,
@@ -3805,6 +4127,18 @@ async function forceSearchBookingsIfNeeded(input: {
     return;
   }
   if (isActiveCreateBookingTurn(input.sourceMessages, input.toolExecutions)) return;
+  // Slot-pick / post-availability create flow must not fall into booking lookup.
+  if (
+    conversationShowsRecentBookingAvailability(input.sourceMessages) &&
+    !customerWantsCancelBooking(input.sourceMessages) &&
+    !latestUserExplicitBookingLookup(input.sourceMessages) &&
+    (latestUserWantsCreateBooking(input.sourceMessages) ||
+      isSlotPickMessage(latestUserText) ||
+      parseRelativeArabicBookingSlot(latestUserText) !== null ||
+      looksLikeBookingIntent(latestUserText))
+  ) {
+    return;
+  }
   if (readInvalidPhoneDuringBookingIntake(input.sourceMessages, input.toolExecutions)) return;
   if (
     hasSelectedBookingSlotContext(input.sourceMessages, input.toolExecutions) &&
@@ -3864,6 +4198,85 @@ async function forceSearchBookingsIfNeeded(input: {
   });
 }
 
+async function forceBookingStatusLookupIfNeeded(input: {
+  tools: RuntimeToolPort;
+  ctx: ServiceContext;
+  conversationId: string;
+  allowedToolKeys: string[];
+  sourceMessages: RuntimeGatewayChatRequest["messages"];
+  toolExecutions: ToolCallLoopResult["toolExecutions"];
+}): Promise<void> {
+  if (!customerWantsBookingStatusByReference(input.sourceMessages)) return;
+  if (hasSuccessfulSearchBookings(input.toolExecutions)) return;
+  const allowed = new Set([
+    ...input.allowedToolKeys,
+    ...(typeof input.tools.allowedToolKeys === "function" ? input.tools.allowedToolKeys() : []),
+  ]);
+  if (!allowed.has("search_bookings")) return;
+  const phone = readPhoneForBookingSearch(input.sourceMessages);
+  if (!phone) return;
+  const routed = await input.tools.route(input.ctx, {
+    conversationId: input.conversationId,
+    toolKey: "search_bookings",
+    input: { phone, daysBack: 90 },
+    triggeredBy: "agent",
+  });
+  input.toolExecutions.push({
+    toolKey: routed.toolKey,
+    executionId: routed.executionId,
+    status: routed.status,
+    output: routed.output,
+    durationMs: routed.durationMs,
+  });
+}
+
+function applyBookingStatusReplyFallback(
+  response: RuntimeGatewayChatResponse,
+  toolExecutions: ToolCallLoopResult["toolExecutions"],
+  messages: RuntimeGatewayChatRequest["messages"],
+): RuntimeGatewayChatResponse {
+  if (!customerWantsBookingStatusByReference(messages)) return response;
+  const requestedReference =
+    extractBookingReferenceFromStatusMessage(latestUserTextFromMessages(messages));
+  const bookings = readLastSearchBookings(toolExecutions);
+  const matched =
+    requestedReference != null
+      ? bookings.find(
+          (booking) =>
+            String(booking.reference ?? booking.confirmationNumber ?? "")
+              .trim()
+              .toUpperCase() === requestedReference,
+        )
+      : bookings[0];
+  if (matched) {
+    return {
+      ...response,
+      text: formatBookingStatusReply(matched),
+      finishReason: response.finishReason ?? "stop",
+    };
+  }
+  const text = response.text.trim();
+  if (
+    !text ||
+    /تم\s*إلغاء\s*(?:الحجز|الموعد)/i.test(text) ||
+    /create_booking|cancel_booking/i.test(text)
+  ) {
+    return {
+      ...response,
+      text: requestedReference
+        ? `ما لقيناش حجز ${requestedReference} مرتبط بحسابك. تأكدي من رقم الحجز.`
+        : "ما لقيناش حجز يطابق طلبك. ابعتي رقم الحجز (مثل BK-000088).",
+      finishReason: response.finishReason ?? "stop",
+    };
+  }
+  return response;
+}
+
+function extractBookingReferenceFromStatusMessage(text: string): string | null {
+  const match = text.match(/\bBK-\d+\b/i);
+  return match?.[0]?.toUpperCase() ?? null;
+}
+
 async function forceCancelBookingIfSelected(input: {
   tools: RuntimeToolPort;
   ctx: ServiceContext;
@@ -3872,6 +4285,8 @@ async function forceCancelBookingIfSelected(input: {
   sourceMessages: RuntimeGatewayChatRequest["messages"];
   toolExecutions: ToolCallLoopResult["toolExecutions"];
 }): Promise<void> {
+  // Booking status lookup must never cancel.
+  if (customerWantsBookingStatusByReference(input.sourceMessages)) return;
   // Ticket close/update must never inherit booking cancel selection.
   if (customerWantsTicketMutation(input.sourceMessages)) return;
   // Never cancel when the customer is checking in/out (BK + phone looks like cancel selection).
@@ -4017,7 +4432,11 @@ async function forceBareTrustedCancelLookupIfNeeded(input: {
   const latestUserText = latestUserTextFromMessages(input.sourceMessages);
   if (
     !isBareCancelConfirmationText(latestUserText) &&
-    !customerWantsCancelLastBookingFromText(latestUserText)
+    !customerWantsCancelLastBookingFromText(latestUserText) &&
+    !(
+      isBareAffirmativeConfirmationText(latestUserText) &&
+      assistantOfferedCancelList(input.sourceMessages)
+    )
   ) {
     return;
   }
@@ -4108,6 +4527,34 @@ function hasCreateBookingAttempt(toolExecutions: ToolCallLoopResult["toolExecuti
   return toolExecutions.some((execution) => execution.toolKey === "create_booking");
 }
 
+function latestUserAllowsForcedCreateBooking(
+  messages: RuntimeGatewayChatRequest["messages"],
+  trustedCustomerId?: string | null,
+): boolean {
+  if (customerWantsCreateTicket(messages)) return false;
+  if (customerWantsCancelBooking(messages) || customerWantsCheckInOrOut(messages)) return false;
+  if (customerWantsRescheduleBooking(messages)) return false;
+  const latest = latestUserTextFromMessages(messages).trim();
+  if (!latest || isNonMutatingFollowUpMessage(latest)) return false;
+  if (/^e2e-rt-|^idem-/i.test(latest)) return false;
+  if (customerWantsBookingStatusByReference(messages)) return false;
+  const intent = resolveSchedulingOperationIntent(messages);
+  if (
+    intent === "booking_status" ||
+    intent === "ticket" ||
+    intent === "cancel" ||
+    intent === "reschedule" ||
+    intent === "check_in_out"
+  ) {
+    return false;
+  }
+  if (latestUserWantsCreateBooking(messages)) return true;
+  if (isSlotPickMessage(latest) || parseRelativeArabicBookingSlot(latest) !== null) return true;
+  if (extractPhoneFromText(latest) || looksLikePatientName(latest, messages)) return true;
+  if (hasTrustedBookingIdentity(trustedCustomerId)) return false;
+  return false;
+}
+
 async function forceCreateBookingIfReady(input: {
   tools: RuntimeToolPort;
   ctx: ServiceContext;
@@ -4119,9 +4566,12 @@ async function forceCreateBookingIfReady(input: {
   trustedCustomerId?: string | null;
 }): Promise<void> {
   if (hasSuccessfulCreateBooking(input.toolExecutions)) return;
+  if (isFreshCreateBookingStartWithoutSlot(input.sourceMessages)) return;
   // Same-turn create_booking already attempted (incl. slot_unavailable) — do not hammer again.
   if (hasCreateBookingAttempt(input.toolExecutions)) return;
   if (customerWantsCancelBooking(input.sourceMessages)) return;
+  if (customerWantsCreateTicket(input.sourceMessages) || customerWantsAnyTicketFlow(input.sourceMessages)) return;
+  if (!latestUserAllowsForcedCreateBooking(input.sourceMessages, input.trustedCustomerId)) return;
   if (!input.allowedToolKeys.includes("create_booking")) return;
   const intake = readPatientIntakeFromConversation(input.sourceMessages);
   // Phase 2 — trustedCustomerId satisfies identity; conversational name/phone not required.
@@ -4161,6 +4611,46 @@ async function forceCreateBookingIfReady(input: {
     toolKey: "create_booking",
     input: rewriteCreateBookingArgs(bookingInput, input.sourceMessages, input.toolExecutions, input.trustedCustomerId),
     triggeredBy: "llm",
+  });
+  input.toolExecutions.push({
+    toolKey: routed.toolKey,
+    executionId: routed.executionId,
+    status: routed.status,
+    output: routed.output,
+    durationMs: routed.durationMs,
+  });
+}
+
+async function forceCreateTicketIfReady(input: {
+  tools: RuntimeToolPort;
+  ctx: ServiceContext;
+  conversationId: string;
+  allowedToolKeys: string[];
+  sourceMessages: RuntimeGatewayChatRequest["messages"];
+  toolExecutions: ToolCallLoopResult["toolExecutions"];
+  trustedCustomerId?: string | null;
+}): Promise<void> {
+  if (!customerWantsCreateTicket(input.sourceMessages)) return;
+  if (hasSuccessfulCreateTicket(input.toolExecutions)) return;
+  if (latestUserWantsCreateBooking(input.sourceMessages)) return;
+  const allowed = new Set([
+    ...input.allowedToolKeys,
+    ...(typeof input.tools.allowedToolKeys === "function" ? input.tools.allowedToolKeys() : []),
+  ]);
+  if (!allowed.has("create_ticket")) return;
+  const latest = latestUserTextFromMessages(input.sourceMessages).trim();
+  const routed = await input.tools.route(input.ctx, {
+    conversationId: input.conversationId,
+    toolKey: "create_ticket",
+    input: {
+      subject: "شكوى",
+      description: latest || "عايز أفتح شكوى",
+      priority: "normal",
+      ...(hasTrustedBookingIdentity(input.trustedCustomerId)
+        ? { customerId: input.trustedCustomerId!.trim() }
+        : {}),
+    },
+    triggeredBy: "agent",
   });
   input.toolExecutions.push({
     toolKey: routed.toolKey,
@@ -4383,6 +4873,16 @@ function applySearchAvailabilityReplyFallback(
 ): RuntimeGatewayChatResponse {
   // Booking outcome wins. Never re-send slot lists after create_booking ran in this turn.
   if (hasCreateBookingAttempt(toolExecutions)) return response;
+  if (customerWantsCreateTicket(messages) || customerWantsAnyTicketFlow(messages)) return response;
+  const latest = latestUserTextFromMessages(messages).trim();
+  if (isNonMutatingFollowUpMessage(latest)) return response;
+  if (
+    isCompleteCustomerFullName(latest) &&
+    !latestUserMessageHasBookingSlot(latest) &&
+    !latestUserWantsCreateBooking(messages)
+  ) {
+    return response;
+  }
   if (shouldSkipAvailabilityRestart(messages, toolExecutions)) {
     const text = response.text.trim();
     if (
@@ -4465,12 +4965,15 @@ export class ToolCallLoopService {
     const sourceMessages = input.gatewayRequest.messages;
     // Mutable: promote after successful create_customer so same-turn scheduling tools see trust.
     let trustedCustomerId = input.trustedCustomerId?.trim() || null;
-    const priorSchedulingToolExecutions = (input.priorSchedulingToolExecutions ?? []).map(
-      (execution, index) => ({
-        ...execution,
-        executionId: execution.executionId || `prior-scheduling-${index}-${execution.toolKey}`,
-      }),
-    );
+    const dropPriorSeed = shouldDropPriorSchedulingSeed(input.gatewayRequest.messages);
+    const priorSchedulingToolExecutions = dropPriorSeed
+      ? []
+      : (input.priorSchedulingToolExecutions ?? []).map(
+          (execution, index) => ({
+            ...execution,
+            executionId: execution.executionId || `prior-scheduling-${index}-${execution.toolKey}`,
+          }),
+        );
     const toolExecutions: ToolCallLoopResult["toolExecutions"] = [...priorSchedulingToolExecutions];
     let response: RuntimeGatewayChatResponse | null = null;
 
@@ -4508,6 +5011,7 @@ export class ToolCallLoopService {
         );
         if (
           hasTicketTools &&
+          !shouldDenyTicketToolsDuringBookingIntent(sourceMessages) &&
           (customerWantsAnyTicketFlow(sourceMessages) || ticketCustomerIntakeIsComplete(intake))
         ) {
           await forceEnsureCustomerProfile({
@@ -4565,10 +5069,37 @@ export class ToolCallLoopService {
         // Never fail the turn because forced find-next threw.
       }
 
+      try {
+        await forceSearchAvailabilityIfReady({
+          tools: this.deps.tools,
+          ctx: input.ctx,
+          conversationId: input.conversationId,
+          allowedToolKeys: input.allowedToolKeys,
+          sourceMessages,
+          toolExecutions,
+        });
+      } catch {
+        // Never fail the turn because forced availability search threw.
+      }
+
+      try {
+        await forceBookingStatusLookupIfNeeded({
+          tools: this.deps.tools,
+          ctx: input.ctx,
+          conversationId: input.conversationId,
+          allowedToolKeys: input.allowedToolKeys,
+          sourceMessages,
+          toolExecutions,
+        });
+      } catch {
+        // Never fail the turn because forced booking-status lookup threw.
+      }
+
       if (
         !hasSuccessfulCheckIn(toolExecutions) &&
         !hasSuccessfulCheckOut(toolExecutions) &&
-        !hasSuccessfulRescheduleBooking(toolExecutions)
+        !hasSuccessfulRescheduleBooking(toolExecutions) &&
+        !customerWantsBookingStatusByReference(sourceMessages)
       ) {
         try {
           await forceBareTrustedCancelLookupIfNeeded({
@@ -4658,6 +5189,27 @@ export class ToolCallLoopService {
         }
       }
 
+      const earlyStatus = customerWantsBookingStatusByReference(sourceMessages)
+        ? [...toolExecutions].reverse().find((execution) => execution.toolKey === "search_bookings")
+        : null;
+      if (earlyStatus?.status === "succeeded" && earlyStatus.output?.success === true) {
+        const earlyResponse = applyBookingStatusReplyFallback(
+          {
+            text: "",
+            model: input.gatewayRequest.model ?? "unknown",
+            providerKey: input.gatewayRequest.providerKey ?? "unknown",
+            finishReason: "stop",
+            usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+            latencyMs: 0,
+          },
+          toolExecutions,
+          sourceMessages,
+        );
+        if (earlyResponse.text.trim()) {
+          return { response: earlyResponse, messages, toolExecutions };
+        }
+      }
+
       const earlyCancel = [...toolExecutions]
         .reverse()
         .find((execution) => execution.toolKey === "cancel_booking");
@@ -4725,6 +5277,8 @@ export class ToolCallLoopService {
         if (
           pendingCustomerId &&
           intakeComplete &&
+          isActiveCreateBookingTurn(sourceMessages, toolExecutions) &&
+          latestUserAllowsForcedCreateBooking(sourceMessages, trustedCustomerId) &&
           !hasSuccessfulCreateBooking(toolExecutions) &&
           !hasCreateBookingAttempt(toolExecutions) &&
           iteration < MAX_TOOL_ITERATIONS - 1
@@ -4780,6 +5334,20 @@ export class ToolCallLoopService {
           continue;
         }
 
+        const schedulingIntent = resolveSchedulingOperationIntent(sourceMessages);
+        if (!schedulingIntentAllowsTool(schedulingIntent, toolCall.name)) {
+          messages.push({
+            role: "tool",
+            content: JSON.stringify({
+              success: false,
+              skipped: true,
+              message: `Tool ${toolCall.name} is not allowed for the current customer intent (${schedulingIntent}).`,
+            }),
+            toolCallId: toolCall.id,
+          });
+          continue;
+        }
+
         if (hasSuccessfulCreateBooking(toolExecutions) && toolCall.name === "search_availability") {
           messages.push({
             role: "tool",
@@ -4793,6 +5361,58 @@ export class ToolCallLoopService {
           continue;
         }
 
+        if (
+          toolCall.name === "create_ticket" &&
+          (latestUserWantsCreateBooking(sourceMessages) ||
+            /^e2e-rt-|^idem-/i.test(latestUserTextFromMessages(sourceMessages).trim()))
+        ) {
+          messages.push({
+            role: "tool",
+            content: JSON.stringify({
+              success: false,
+              skipped: true,
+              message: "Latest customer message is not a ticket/complaint. Do not create a ticket.",
+            }),
+            toolCallId: toolCall.id,
+          });
+          continue;
+        }
+
+        if (
+          (toolCall.name === "create_booking" ||
+            toolCall.name === "search_availability" ||
+            toolCall.name === "find_next_available") &&
+          customerWantsCreateTicket(sourceMessages)
+        ) {
+          messages.push({
+            role: "tool",
+            content: JSON.stringify({
+              success: false,
+              skipped: true,
+              message:
+                "Customer wants to open a ticket/complaint, not a booking. Do not call booking tools. Use create_ticket.",
+            }),
+            toolCallId: toolCall.id,
+          });
+          continue;
+        }
+
+        if (
+          TICKET_TOOL_KEYS.has(toolCall.name) &&
+          shouldDenyTicketToolsDuringBookingIntent(sourceMessages)
+        ) {
+          messages.push({
+            role: "tool",
+            content: JSON.stringify({
+              success: false,
+              skipped: true,
+              message:
+                "Customer wants to create a booking, not a ticket. Do not call ticket tools. Use search_availability / find_next_available then create_booking.",
+            }),
+            toolCallId: toolCall.id,
+          });
+          continue;
+        }
         if (hasSuccessfulCreateTicket(toolExecutions) && toolCall.name === "create_ticket") {
           const existing = readSuccessfulCreateTicket(toolExecutions);
           const ticketNumber =
@@ -4861,9 +5481,10 @@ export class ToolCallLoopService {
 
         if (
           toolCall.name === "create_booking" &&
-          !hasUserSelectedBookingSlot(sourceMessages) &&
-          !customerWantsCancelBooking(sourceMessages) &&
-          !customerWantsRescheduleBooking(sourceMessages)
+          (isFreshCreateBookingStartWithoutSlot(sourceMessages) ||
+            (!hasUserSelectedBookingSlot(sourceMessages) &&
+              !customerWantsCancelBooking(sourceMessages) &&
+              !customerWantsRescheduleBooking(sourceMessages)))
         ) {
           messages.push({
             role: "tool",
@@ -5228,7 +5849,13 @@ export class ToolCallLoopService {
         }
         if (
           toolCall.name === "search_bookings" &&
-          isActiveCreateBookingTurn(sourceMessages, toolExecutions)
+          (isActiveCreateBookingTurn(sourceMessages, toolExecutions) ||
+            (conversationShowsRecentBookingAvailability(sourceMessages) &&
+              !customerWantsCancelBooking(sourceMessages) &&
+              !latestUserExplicitBookingLookup(sourceMessages) &&
+              (latestUserWantsCreateBooking(sourceMessages) ||
+                isSlotPickMessage(latestUserText) ||
+                parseRelativeArabicBookingSlot(latestUserText) !== null)))
         ) {
           messages.push({
             role: "tool",
@@ -5236,7 +5863,24 @@ export class ToolCallLoopService {
               success: false,
               skipped: true,
               message:
-                "Customer is creating a new booking. Do not call search_bookings. Call create_customer (if needed) then create_booking with the selected date/time and catalog serviceId/resourceId.",
+                "Customer is creating a new booking. Do not call search_bookings. Call search_availability / find_next_available, then create_customer (if needed) and create_booking with the selected date/time and catalog serviceId/resourceId.",
+            }),
+            toolCallId: toolCall.id,
+          });
+          continue;
+        }
+        if (
+          toolCall.name === "cancel_booking" &&
+          latestUserWantsCreateBooking(sourceMessages) &&
+          !customerWantsCancelBooking(sourceMessages)
+        ) {
+          messages.push({
+            role: "tool",
+            content: JSON.stringify({
+              success: false,
+              skipped: true,
+              message:
+                "Customer wants to create a new booking, not cancel. Do not call cancel_booking. Offer availability / create_booking instead.",
             }),
             toolCallId: toolCall.id,
           });
@@ -5448,7 +6092,11 @@ export class ToolCallLoopService {
 
     if (
       this.deps.tools &&
+      isActiveCreateBookingTurn(sourceMessages, toolExecutions) &&
       !customerWantsCancelBooking(sourceMessages) &&
+      !customerWantsCreateTicket(sourceMessages) &&
+      !customerWantsAnyTicketFlow(sourceMessages) &&
+      latestUserAllowsForcedCreateBooking(sourceMessages, trustedCustomerId) &&
       readResolvedCustomerId(toolExecutions, sourceMessages, trustedCustomerId) &&
       bookingIdentityIsSatisfied(
         readPatientIntakeFromConversation(sourceMessages),
@@ -5587,6 +6235,19 @@ export class ToolCallLoopService {
         // Never fail the customer reply because a forced search threw.
       }
       try {
+        await forceCreateTicketIfReady({
+          tools: this.deps.tools,
+          ctx: input.ctx,
+          conversationId: input.conversationId,
+          allowedToolKeys: input.allowedToolKeys,
+          sourceMessages,
+          toolExecutions,
+          trustedCustomerId,
+        });
+      } catch {
+        // Never fail the customer reply because a forced ticket threw.
+      }
+      try {
         await forceSearchBookingsIfNeeded({
           tools: this.deps.tools,
           ctx: input.ctx,
@@ -5636,6 +6297,19 @@ export class ToolCallLoopService {
       } catch {
         // Never fail the turn because forced find-next threw.
       }
+
+      try {
+        await forceSearchAvailabilityIfReady({
+          tools: this.deps.tools,
+          ctx: input.ctx,
+          conversationId: input.conversationId,
+          allowedToolKeys: input.allowedToolKeys,
+          sourceMessages,
+          toolExecutions,
+        });
+      } catch {
+        // Never fail the turn because forced availability search threw.
+      }
       try {
         await forceCancelBookingIfSelected({
           tools: this.deps.tools,
@@ -5674,12 +6348,14 @@ export class ToolCallLoopService {
       toolExecutions,
       input.gatewayRequest.messages,
     );
+    response = applyNonMutatingFollowUpGuard(response, input.gatewayRequest.messages);
     response = applyBookingReplyFallback(response, toolExecutions, input.gatewayRequest.messages);
     response = applyTicketReplyFallback(response, toolExecutions);
     response = applyCloseTicketReplyFallback(response, toolExecutions);
     response = applyTicketSearchReplyFallback(response, toolExecutions);
     response = applyAskTicketNumberFallback(response, sourceMessages, toolExecutions);
     response = applySearchBookingsReplyFallback(response, toolExecutions, sourceMessages);
+    response = applyBookingStatusReplyFallback(response, toolExecutions, sourceMessages);
     response = applyCancelBookingReplyFallback(response, toolExecutions);
     response = applyCheckInOutReplyFallback(response, toolExecutions);
     response = applyRescheduleBookingReplyFallback(response, toolExecutions);
@@ -5688,7 +6364,8 @@ export class ToolCallLoopService {
     response = applyAskBookingPhoneFallback(response, sourceMessages, toolExecutions, trustedCustomerId);
 
     // Trusted WhatsApp identity: never re-ask name/phone — including cancel/check-in/reschedule turns.
-    if (hasTrustedBookingIdentity(trustedCustomerId)) {
+    // Do not rewrite a successful booking confirmation into the "choose a slot" continue message.
+    if (hasTrustedBookingIdentity(trustedCustomerId) && !hasSuccessfulCreateBooking(toolExecutions)) {
       const normalizedTrusted = normalizePatientIntakeReply(
         response.text,
         input.gatewayRequest.messages,
@@ -5744,6 +6421,8 @@ export class ToolCallLoopService {
           trustedCustomerId,
         ) &&
         !hasSuccessfulCreateBooking(toolExecutions) &&
+        !customerWantsCreateTicket(sourceMessages) &&
+        !customerWantsAnyTicketFlow(sourceMessages) &&
         !/اسم (?:المريض|العميل)/.test(response.text)
       ) {
         response = {

@@ -31,6 +31,7 @@ import {
   CompanyApprovalWizardStepper,
   type WizardStepId,
 } from "@/components/companies/approval/wizard/company-approval-wizard-stepper";
+import { CompanyApprovalAdminAccessPanel } from "@/components/companies/approval/company-approval-admin-access-panel";
 import { useToast } from "@/hooks/use-toast";
 import {
   useApproveCompany,
@@ -56,6 +57,15 @@ import { occupancyDisplayRow, occupancyRatioLabel } from "@/lib/companies/compan
 import { useBillingSettingValue } from "@/hooks/billing/use-billing-setting-value";
 import { filterCompanyFeatureEntitlementsForDisplay } from "@/lib/billing/company-feature-catalog-display";
 import { groupEntitlementsByModule } from "@/lib/billing/entitlement-module-groups";
+import {
+  canDirectRevokeEntitlementSource,
+  isCommercialEntitlement,
+  isEntitlementConfiguredOn,
+  isGrantableCommercialEntitlement,
+  isManagedEntitlementSource,
+  normalizeEntitlementSource,
+} from "@/lib/billing/entitlement-display";
+import { localizedFeatureLabel } from "@/lib/billing/custom-package-config";
 import { useFeaturePermissionMap } from "@/hooks/billing/use-feature-definition-permissions";
 import {
   resolveCompanyPayablePreview,
@@ -70,6 +80,10 @@ import {
 import { formatBillingCurrency } from "@/lib/billing/format";
 import { formatPackageListPrice } from "@/lib/billing/package-pricing";
 import type { Company } from "@/lib/types";
+import {
+  resolveReviewSelectedPlanId,
+  shouldAssignPackageDuringReview,
+} from "@/lib/companies/company-approval-package-selection";
 import { cn } from "@/lib/utils";
 
 export type CommercialPath = "trial" | "package" | "custom" | "reject";
@@ -281,7 +295,13 @@ export function CompanyApprovalWorkspace({
   const billingCycle = ((subscription as { billing_cycle?: "monthly" | "yearly" } | null)?.billing_cycle ??
     company.billing_cycle ??
     "monthly") as "monthly" | "yearly";
-  const selectedPlanId = (subscription as { plan_id?: string | null } | null)?.plan_id ?? company.plan_id;
+  const subscriptionPlanId = (subscription as { plan_id?: string | null; status?: string | null } | null)?.plan_id ?? null;
+  const subscriptionStatus = (subscription as { status?: string | null } | null)?.status ?? null;
+  const selectedPlanId = resolveReviewSelectedPlanId({
+    pending,
+    subscriptionPlanId,
+    companyPlanId: company.plan_id,
+  });
 
   const packageFeaturesQuery = usePackageFeatures(selectedPlanId ?? null, Boolean(selectedPlanId));
 
@@ -436,19 +456,25 @@ export function CompanyApprovalWorkspace({
 
   async function handleSelectPlan(planId: string) {
     try {
-      if (selectedPlanId) {
-        await changePackage.mutateAsync({
-          companyId,
-          planId,
-          reason: "Configured during company review",
-        });
-      } else {
+      const useAssign = shouldAssignPackageDuringReview({
+        pending,
+        subscriptionStatus,
+        subscriptionPlanId: selectedPlanId,
+      });
+      if (useAssign) {
         await assignPlan.mutateAsync({
           companyId,
           planId,
           billingCycle,
         });
+      } else {
+        await changePackage.mutateAsync({
+          companyId,
+          planId,
+          reason: "Configured during company review",
+        });
       }
+      await subscriptionQuery.refetch();
       toast({ title: t("companies.approval.packageAssigned") });
     } catch (error) {
       toast({
@@ -460,6 +486,13 @@ export function CompanyApprovalWorkspace({
   }
 
   async function toggleFeature(code: string, enable: boolean) {
+    const row = (entitlementsQuery.data ?? []).find((entry) => entry.feature_code === code);
+    if (!row) return;
+    const configuredOn = isEntitlementConfiguredOn(row, { pendingReview: pending });
+    if (enable && configuredOn) return;
+    if (!enable && !configuredOn) return;
+    if (enable && !isGrantableCommercialEntitlement(row)) return;
+    if (!enable && !canDirectRevokeEntitlementSource(row.source)) return;
     try {
       if (enable) {
         await setGrant.mutateAsync({ companyId, featureCode: code, enabled: true, source: "manual" });
@@ -722,6 +755,34 @@ export function CompanyApprovalWorkspace({
                 </section>
               ) : null}
 
+              {commercialPath === "package" && selectedPlanId ? (
+                <section>
+                  <h4 className="text-sm font-semibold">{t("companies.approval.wizard.packageIncludedTitle")}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("companies.approval.wizard.packageIncludedHint")}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {packageFeaturesQuery.data && packageFeaturesQuery.data.length > 0 ? (
+                      packageFeaturesQuery.data.map((row) => (
+                        <Badge key={row.feature_code} variant="outline">
+                          {localizedFeatureLabel(t, row.feature_code, row.label)}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{t("companies.approval.wizard.emptyFeatures")}</span>
+                    )}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="space-y-3">
+                <div>
+                  <h4 className="text-sm font-semibold">{t("companies.approval.wizard.entitlementsSectionTitle")}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("companies.approval.wizard.entitlementsSectionHint")}
+                  </p>
+                </div>
+
               <Input
                 value={featureQuery}
                 onChange={(event) => setFeatureQuery(event.target.value)}
@@ -761,7 +822,19 @@ export function CompanyApprovalWorkspace({
                               </p>
                             </td>
                             <td className="px-2 py-2">
-                              {row.enabled ? t("companies.features.enabled") : t("companies.features.disabled")}
+                              {isEntitlementConfiguredOn(row, { pendingReview: pending })
+                                ? t("companies.features.enabled")
+                                : t("companies.features.disabled")}
+                              {pending &&
+                              row.is_commercial &&
+                              isEntitlementConfiguredOn(row, { pendingReview: true }) &&
+                              !row.enabled ? (
+                                <p className="text-[11px] text-muted-foreground">
+                                  {t("companies.approval.wizard.activatesOnApproval", {
+                                    defaultValue: "Activates on approval",
+                                  })}
+                                </p>
+                              ) : null}
                             </td>
                             <td className="px-2 py-2">
                               {translateCode(t, "billing.workspace.features.featureSources", row.source)}
@@ -773,12 +846,30 @@ export function CompanyApprovalWorkspace({
                               {formatGrantDate(row.expires_at, localeTag, emptyDateLabel)}
                             </td>
                             <td className="px-2 py-2 text-end">
-                              <Switch
-                                checked={row.enabled}
-                                onCheckedChange={(checked) => void toggleFeature(row.feature_code, checked)}
-                                disabled={setGrant.isPending || revokeGrant.isPending}
-                                aria-label={row.label || row.feature_code}
-                              />
+                              {isManagedEntitlementSource(row.source) ? (
+                                <span className="text-[11px] text-muted-foreground">
+                                  {normalizeEntitlementSource(row.source) === "trial"
+                                    ? t("companies.features.managedByTrial")
+                                    : normalizeEntitlementSource(row.source) === "system"
+                                      ? t("companies.features.managedBySystem")
+                                      : t("companies.features.managedByPackage")}
+                                </span>
+                              ) : !isCommercialEntitlement(row) ? (
+                                <span className="text-[11px] text-muted-foreground">—</span>
+                              ) : (
+                                <Switch
+                                  checked={isEntitlementConfiguredOn(row, { pendingReview: pending })}
+                                  onCheckedChange={(checked) => void toggleFeature(row.feature_code, checked)}
+                                  disabled={
+                                    setGrant.isPending ||
+                                    revokeGrant.isPending ||
+                                    (isEntitlementConfiguredOn(row, { pendingReview: pending })
+                                      ? !canDirectRevokeEntitlementSource(row.source)
+                                      : !isGrantableCommercialEntitlement(row))
+                                  }
+                                  aria-label={row.label || row.feature_code}
+                                />
+                              )}
                             </td>
                           </tr>
                         )),
@@ -787,7 +878,9 @@ export function CompanyApprovalWorkspace({
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-muted-foreground">{t("companies.features.employeeRbacHint")}</p>
+              </section>
+
+              <CompanyApprovalAdminAccessPanel companyId={companyId} />
             </div>
           ) : null}
 

@@ -35,9 +35,20 @@ type Props = {
   selected: string[];
   onChange: (codes: string[]) => void;
   disabled?: boolean;
+  /**
+   * parent = expand into the surrounding page/dialog scroller (no nested overflow).
+   * contained = keep an internal overflow-y region (role dialogs with fixed height).
+   */
+  scrollMode?: "parent" | "contained";
 };
 
-export function RolePermissionSelector({ permissions, selected, onChange, disabled }: Props) {
+export function RolePermissionSelector({
+  permissions,
+  selected,
+  onChange,
+  disabled,
+  scrollMode = "contained",
+}: Props) {
   const { t } = useTranslation("common");
   usePermissionCatalogLanguageVersion();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -176,7 +187,10 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
   return (
     <div
       ref={containerRef}
-      className="flex min-h-0 flex-col gap-3"
+      className={cn(
+        "flex flex-col gap-3",
+        scrollMode === "contained" ? "min-h-0 flex-1" : undefined,
+      )}
       onKeyDown={handlePermissionAreaKeyDown}
       tabIndex={-1}
     >
@@ -194,15 +208,38 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm">
+          {/*
+            Do NOT wrap Radix Checkbox in <label>: label activation + onCheckedChange
+            double-fires and individual toggles appear as no-ops.
+          */}
+          <div
+            role="checkbox"
+            aria-checked={globalTriState === "indeterminate" ? "mixed" : globalTriState}
+            tabIndex={disabled || allCodes.length === 0 ? -1 : 0}
+            className={cn(
+              "flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm",
+              (disabled || allCodes.length === 0) && "cursor-not-allowed opacity-50",
+            )}
+            onClick={() => {
+              if (!disabled && allCodes.length > 0) handleGlobalSelectAll();
+            }}
+            onKeyDown={(event) => {
+              if (disabled || allCodes.length === 0) return;
+              if (event.key === " " || event.key === "Enter") {
+                event.preventDefault();
+                handleGlobalSelectAll();
+              }
+            }}
+          >
             <Checkbox
               checked={globalTriState}
-              onCheckedChange={handleGlobalSelectAll}
               disabled={disabled || allCodes.length === 0}
-              aria-label={t("roles.permissions.selectAll")}
+              tabIndex={-1}
+              className="pointer-events-none"
+              aria-hidden
             />
             <span className="font-medium">{t("roles.permissions.selectAll")}</span>
-          </label>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -235,14 +272,19 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
           </Button>
           <span className="ms-auto text-xs text-muted-foreground tabular-nums">
             {t("roles.permissions.selectedCounter", {
-              selected: selected.length,
+              selected: selectedVisibleCount,
               total: allCodes.length,
             })}
           </span>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pe-1">
+      <div
+        className={cn(
+          "pe-1",
+          scrollMode === "contained" ? "min-h-0 flex-1 overflow-y-auto" : "overflow-visible",
+        )}
+      >
         {filteredGroups.length === 0 ? (
           <div className="rounded-xl border border-dashed border-white/10 px-4 py-10 text-center text-sm text-muted-foreground">
             {t("roles.permissions.noResults")}
@@ -298,21 +340,37 @@ export function RolePermissionSelector({ permissions, selected, onChange, disabl
                         const code = permission.code ?? permission.id;
                         const checked = selected.includes(code);
                         return (
-                          <label
+                          <div
                             key={permission.id}
+                            role="checkbox"
+                            aria-checked={checked}
+                            tabIndex={disabled ? -1 : 0}
+                            data-permission-code={code}
                             className={cn(
                               "flex cursor-pointer items-start gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm transition-colors",
                               checked && "border-primary/30 bg-primary/5",
+                              disabled && "cursor-not-allowed opacity-50",
                             )}
+                            onClick={() => {
+                              if (!disabled) togglePermission(code);
+                            }}
+                            onKeyDown={(event) => {
+                              if (disabled) return;
+                              if (event.key === " " || event.key === "Enter") {
+                                event.preventDefault();
+                                togglePermission(code);
+                              }
+                            }}
                           >
                             <Checkbox
                               checked={checked}
-                              onCheckedChange={() => togglePermission(code)}
                               disabled={disabled}
-                              className="mt-0.5"
+                              tabIndex={-1}
+                              className="pointer-events-none mt-0.5"
+                              aria-hidden
                             />
                             <PermissionLabel code={code} permission={permission} showDescription={false} />
-                          </label>
+                          </div>
                         );
                       })}
                     </div>

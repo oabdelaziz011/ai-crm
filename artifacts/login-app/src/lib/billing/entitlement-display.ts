@@ -42,6 +42,30 @@ export function isGrantableCommercialEntitlement(row: CompanyEntitlement): boole
   return !isManagedEntitlementSource(row.source);
 }
 
+/**
+ * Review / configuration UI checked state.
+ * Runtime `enabled` is false for commercial features while approval_status=pending
+ * (migration 306 gate), even when a manual/package grant is already configured.
+ * Prefer override_state + managed sources for "configured on" during pending review.
+ */
+export function isEntitlementConfiguredOn(
+  row: CompanyEntitlement | Record<string, unknown>,
+  options?: { pendingReview?: boolean },
+): boolean {
+  const rec = row as Record<string, unknown>;
+  if (rec.enabled === true || (row as CompanyEntitlement).enabled === true) return true;
+  if (!options?.pendingReview) return false;
+
+  const overrideState = String(rec.override_state ?? "").trim().toLowerCase();
+  if (overrideState === "enabled") return true;
+  if (overrideState === "disabled") return false;
+
+  const source = normalizeEntitlementSource(
+    (rec.source as string | null | undefined) ?? (row as CompanyEntitlement).source,
+  );
+  return source === "package" || source === "trial" || source === "system" || source === "contract";
+}
+
 export function entitlementSourceToneClass(source: string | null | undefined): string {
   switch (normalizeEntitlementSource(source)) {
     case "package":

@@ -21,6 +21,9 @@ interface Props {
   itemName?: string;
   title?: string;
   description?: string;
+  /** When true, hide/disable destructive confirm (e.g. FK-blocked delete). */
+  confirmDisabled?: boolean;
+  confirmLabel?: string;
 }
 
 export function DeleteDialog({
@@ -32,6 +35,8 @@ export function DeleteDialog({
   itemName,
   title,
   description,
+  confirmDisabled = false,
+  confirmLabel,
 }: Props) {
   const { t } = useTranslation("common");
   const loading = isPending ?? pending ?? false;
@@ -43,19 +48,21 @@ export function DeleteDialog({
             {title ??
               t("dialogs.delete.title", { item: itemName ?? t("dialogs.delete.defaultItem") })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-muted-foreground">
+          <AlertDialogDescription className="text-muted-foreground whitespace-pre-line">
             {description ?? t("dialogs.delete.description")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="border-white/10 hover:bg-white/5">{t("buttons.cancel")}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            disabled={loading}
-            className="bg-destructive/20 border border-destructive/30 text-destructive hover:bg-destructive/30"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("buttons.delete")}
-          </AlertDialogAction>
+          {!confirmDisabled ? (
+            <AlertDialogAction
+              onClick={onConfirm}
+              disabled={loading}
+              className="bg-destructive/20 border border-destructive/30 text-destructive hover:bg-destructive/30"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (confirmLabel ?? t("buttons.delete"))}
+            </AlertDialogAction>
+          ) : null}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

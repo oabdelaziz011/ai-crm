@@ -6,12 +6,12 @@ import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
-import { Can } from "@/components/rbac/permission-guard";
 import { useHasPermission } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
 import {
   buildCustomerDeleteWarningAr,
   fetchCustomerDeleteDependencies,
+  isCustomerDeleteBlockedByBookings,
   useCustomers,
   useDeleteCustomer,
   type CustomerDeleteDependencySummary,
@@ -466,9 +466,9 @@ export function CustomersListWorkspace() {
         }
       />
 
-      <Can permission="customers.create">
+      {(canCreateCustomers || canEditCustomers) && (
         <CustomerModal open={modal.open} onClose={() => setModal({ open: false })} customer={modal.customer} />
-      </Can>
+      )}
 
       <DeleteDialog
         open={!!del}
@@ -478,6 +478,7 @@ export function CustomersListWorkspace() {
         }}
         onConfirm={() => {
           if (!del || !canDeleteCustomers || deleteDepsLoading) return;
+          if (deleteDeps && isCustomerDeleteBlockedByBookings(deleteDeps)) return;
           deleteCustomer.mutate(del.id, {
             onSuccess: () => {
               setDel(null);
@@ -500,11 +501,18 @@ export function CustomersListWorkspace() {
         }}
         isPending={deleteCustomer.isPending || deleteDepsLoading}
         itemName={del?.name}
+        confirmDisabled={Boolean(deleteDeps && isCustomerDeleteBlockedByBookings(deleteDeps))}
         description={
           deleteDepsLoading
             ? "جاري التحقق من الارتباطات…"
-            : buildCustomerDeleteWarningAr(deleteDeps ?? { bookingCount: 0, futureBookingCount: 0, openTicketCount: 0 })
-              ?? undefined
+            : buildCustomerDeleteWarningAr(
+                deleteDeps ?? {
+                  bookingCount: 0,
+                  futureBookingCount: 0,
+                  openTicketCount: 0,
+                  blockingBookingCount: 0,
+                },
+              ) ?? undefined
         }
       />
 

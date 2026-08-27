@@ -3,11 +3,19 @@ import { supabase } from "@/lib/supabase";
 import { useSession, useUser } from "@/context/auth-context";
 import { CUSTOMER_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
 import { CRM_ENRICHMENT_MAX_ROWS, CRM_LIST_MAX_ROWS, CRM_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
+import {
+  buildCustomerDeleteWarningAr,
+  isCustomerDeleteBlockedByBookings,
+  type CustomerDeleteDependencySummary,
+} from "@/lib/customers-list/customer-delete-warning";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { flattenInfinitePages } from "@/lib/react-query/infinite-utils";
 import type { Customer, CustomerInsert, CustomerUpdate } from "@/lib/types";
 import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
 import { customerKey } from "./use-customer";
+
+export type { CustomerDeleteDependencySummary };
+export { buildCustomerDeleteWarningAr, isCustomerDeleteBlockedByBookings };
 
 export const CUSTOMERS_KEY = ["customers"] as const;
 
@@ -128,8 +136,16 @@ export function useDeleteCustomer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("customers").delete().eq("id", id);
+      const { data, error } = await supabase
+        .from("customers")
+        .delete()
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!data?.id) {
+        throw new Error("Customer delete was blocked or the customer was not found.");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
@@ -138,19 +154,12 @@ export function useDeleteCustomer() {
   });
 }
 
-import {
-  buildCustomerDeleteWarningAr,
-  type CustomerDeleteDependencySummary,
-} from "@/lib/customers-list/customer-delete-warning";
-
-export type { CustomerDeleteDependencySummary };
-
 /** Preflight counts for delete warnings — does not mutate. */
 export async function fetchCustomerDeleteDependencies(
   customerId: string,
 ): Promise<CustomerDeleteDependencySummary> {
   const nowIso = new Date().toISOString();
-  const [bookingsRes, futureRes, ticketsRes] = await Promise.all([
+  const [bookingsRes, futureRes, ticketsRes, blockingRes] = await Promise.all([
     supabase
       .from("scheduling_bookings")
       .select("id", { count: "exact", head: true })
@@ -168,17 +177,22 @@ export async function fetchCustomerDeleteDependencies(
       .select("id", { count: "exact", head: true })
       .eq("customer_id", customerId)
       .in("status", ["open", "in_progress", "waiting_customer"]),
+    // FK ON DELETE RESTRICT blocks even soft-deleted booking rows.
+    supabase
+      .from("scheduling_bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", customerId),
   ]);
 
   if (bookingsRes.error) throw new Error(bookingsRes.error.message);
   if (futureRes.error) throw new Error(futureRes.error.message);
   if (ticketsRes.error) throw new Error(ticketsRes.error.message);
+  if (blockingRes.error) throw new Error(blockingRes.error.message);
 
   return {
     bookingCount: bookingsRes.count ?? 0,
     futureBookingCount: futureRes.count ?? 0,
     openTicketCount: ticketsRes.count ?? 0,
+    blockingBookingCount: blockingRes.count ?? 0,
   };
 }
-
-export { buildCustomerDeleteWarningAr };

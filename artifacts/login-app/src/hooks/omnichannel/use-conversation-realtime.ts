@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -25,8 +25,17 @@ function recordId(payload: { new?: unknown; old?: unknown }): string | null {
   return row?.id ?? null;
 }
 
+function recordConversationId(payload: { new?: unknown; old?: unknown }): string | null {
+  const row = (payload.new ?? payload.old) as { id?: string; conversation_id?: string } | null | undefined;
+  const fromConversationId = row?.conversation_id?.trim();
+  if (fromConversationId) return fromConversationId;
+  return row?.id ?? null;
+}
+
 export function useConversationRealtime(companyId: string | null, conversationId: string | null) {
   const queryClient = useQueryClient();
+  const selectedConversationIdRef = useRef(conversationId);
+  selectedConversationIdRef.current = conversationId;
 
   useEffect(() => {
     if (!companyId) {
@@ -35,7 +44,7 @@ export function useConversationRealtime(companyId: string | null, conversationId
     }
 
     const channelName = `omnichannel:${companyId}`;
-    rtLog("effect.mount", { channelName, companyId, conversationId });
+    rtLog("effect.mount", { channelName, companyId });
 
     const channel = supabase
       .channel(channelName)
@@ -48,15 +57,17 @@ export function useConversationRealtime(companyId: string | null, conversationId
           filter: `company_id=eq.${companyId}`,
         },
         (payload) => {
+          const updatedConversationId = recordConversationId(payload);
           rtLog("postgres_changes", {
             schema: "public",
             table: "conversations",
             eventType: payload.eventType,
             recordId: recordId(payload),
+            conversationId: updatedConversationId,
           });
           invalidateOmnichannelQueries(queryClient, {
             companyId,
-            conversationId: conversationId ?? undefined,
+            conversationId: updatedConversationId ?? undefined,
             source: "conversations",
           });
         },
@@ -74,7 +85,7 @@ export function useConversationRealtime(companyId: string | null, conversationId
             && payload.new
             && "conversation_id" in payload.new
               ? String((payload.new as { conversation_id?: string }).conversation_id ?? "")
-              : conversationId;
+              : selectedConversationIdRef.current;
           const row = (payload.new ?? payload.old) as {
             id?: string;
             status?: string;
@@ -88,7 +99,7 @@ export function useConversationRealtime(companyId: string | null, conversationId
               file: "use-conversation-realtime.ts",
               function: "postgres_changes",
               line: 69,
-              conversationId: nextConversationId || conversationId,
+              conversationId: nextConversationId || selectedConversationIdRef.current,
               messageId: row.id ?? null,
               statusBefore: typeof payload.old === "object" && payload.old && "status" in payload.old
                 ? String((payload.old as { status?: string }).status ?? "")
@@ -103,7 +114,7 @@ export function useConversationRealtime(companyId: string | null, conversationId
               layer: 11,
               stage: "Realtime.conversation_messages",
               success: true,
-              conversationId: nextConversationId || conversationId,
+              conversationId: nextConversationId || selectedConversationIdRef.current,
               messageId: row.id ?? null,
               statusAfter: row.status ?? null,
             });
@@ -114,18 +125,18 @@ export function useConversationRealtime(companyId: string | null, conversationId
             && row?.message_type === "incoming"
             && nextConversationId
           ) {
-            notifyDeskIncomingCustomerAlert(nextConversationId, conversationId);
+            notifyDeskIncomingCustomerAlert(nextConversationId, selectedConversationIdRef.current);
           }
           rtLog("postgres_changes", {
             schema: "public",
             table: "conversation_messages",
             eventType: payload.eventType,
             recordId: recordId(payload),
-            conversationId: nextConversationId || conversationId,
+            conversationId: nextConversationId || selectedConversationIdRef.current,
           });
           invalidateOmnichannelQueries(queryClient, {
             companyId,
-            conversationId: nextConversationId || conversationId || undefined,
+            conversationId: nextConversationId || selectedConversationIdRef.current || undefined,
             source: "conversation_messages",
           });
         },
@@ -139,15 +150,17 @@ export function useConversationRealtime(companyId: string | null, conversationId
           filter: `company_id=eq.${companyId}`,
         },
         (payload) => {
+          const updatedConversationId = recordConversationId(payload);
           rtLog("postgres_changes", {
             schema: "public",
             table: "channel_sessions",
             eventType: payload.eventType,
             recordId: recordId(payload),
+            conversationId: updatedConversationId,
           });
           invalidateOmnichannelQueries(queryClient, {
             companyId,
-            conversationId: conversationId ?? undefined,
+            conversationId: updatedConversationId ?? selectedConversationIdRef.current ?? undefined,
             source: "channel_sessions",
           });
         },
@@ -160,7 +173,7 @@ export function useConversationRealtime(companyId: string | null, conversationId
       rtLog("effect.cleanup", { channelName });
       void supabase.removeChannel(channel);
     };
-  }, [companyId, conversationId, queryClient]);
+  }, [companyId, queryClient]);
 }
 
 export function useOmnichannelAccess() {

@@ -72,6 +72,7 @@ export const SessionIdentityStrip = memo(function SessionIdentityStrip({
     name: header.customer.name,
     phone: header.customer.phone,
     email: header.customer.email,
+    channel: header.channel,
     conversationId,
     visitorLabel,
   });

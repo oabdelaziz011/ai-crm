@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { useConversationServices } from "@/lib/ai-conversation";
 import { auditTranscriptMessagesFromRecords } from "@/lib/omnichannel/debug/omni-transcript-messages-audit";
 import { useUser } from "@/context/auth-context";
@@ -13,18 +14,31 @@ export function useConversationMessages(conversationId: string | null) {
   const queryClient = useQueryClient();
   const companyId = profile?.company_id ?? null;
   const queryKey = conversationMessagesQueryKey(conversationId);
+  const markedReadFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!conversationId || !context.userId) return;
+    if (markedReadFor.current === conversationId) return;
+    markedReadFor.current = conversationId;
+    void services.conversations.resetEmployeeUnread(context, conversationId).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
+    }).catch(() => {
+      markedReadFor.current = null;
+    });
+  }, [companyId, context, conversationId, queryClient, services.conversations]);
 
   return useQuery({
     queryKey,
     enabled: Boolean(conversationId),
-    staleTime: 5_000,
+    staleTime: 0,
     queryFn: async () => {
       if (!conversationId) return [];
       const rows = await services.messages.listMessages(context, {
         conversationId,
         limit: 200,
-        // Opening the transcript is an explicit read — clear employee unread in DB.
-        markEmployeeRead: true,
+        // Realtime/cache refetches must never mark the thread read. Opening the
+        // conversation is handled in the effect above.
+        markEmployeeRead: false,
       });
       auditTranscriptMessagesFromRecords(conversationId, rows, {
         stage: "useConversationMessages.ReactQuery.result",
@@ -36,8 +50,6 @@ export function useConversationMessages(conversationId: string | null) {
         orderBy: "sequence_number DESC, created_at DESC → reversed to ASC",
         limit: 200,
       });
-      // Refresh inbox badges after unread reset.
-      void queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
       return rows;
     },
   });

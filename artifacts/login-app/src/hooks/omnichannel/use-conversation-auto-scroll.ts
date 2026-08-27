@@ -38,8 +38,10 @@ export function useConversationAutoScroll({
 }: UseConversationAutoScrollOptions): ConversationAutoScrollController {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const isNearBottomRef = useRef(true);
+  const followLatestRef = useRef(true);
   const previousMessageIdsRef = useRef<readonly string[]>([]);
   const previousScrollHeightRef = useRef(0);
+  const previousScrollTopRef = useRef(0);
   const pendingInitialScrollRef = useRef(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
 
@@ -54,6 +56,9 @@ export function useConversationAutoScroll({
     if (!node) return;
     scrollNodeToBottom(node);
     isNearBottomRef.current = true;
+    followLatestRef.current = true;
+    previousScrollHeightRef.current = node.scrollHeight;
+    previousScrollTopRef.current = node.scrollTop;
     setHasNewMessages(false);
   }, []);
 
@@ -69,8 +74,29 @@ export function useConversationAutoScroll({
   }, [readNearBottom]);
 
   const onScroll = useCallback(() => {
-    isNearBottomRef.current = readNearBottom();
-    if (isNearBottomRef.current) {
+    const node = scrollContainerRef.current;
+    if (!node) return;
+    const movedUp = node.scrollTop + 8 < previousScrollTopRef.current;
+    const heightGrew = node.scrollHeight > previousScrollHeightRef.current + 1;
+    previousScrollTopRef.current = node.scrollTop;
+    previousScrollHeightRef.current = node.scrollHeight;
+    if (movedUp) {
+      followLatestRef.current = false;
+      isNearBottomRef.current = false;
+      return;
+    }
+    if (heightGrew && followLatestRef.current) {
+      scrollNodeToBottom(node);
+      isNearBottomRef.current = true;
+      previousScrollTopRef.current = node.scrollTop;
+      previousScrollHeightRef.current = node.scrollHeight;
+      setHasNewMessages(false);
+      return;
+    }
+    const near = readNearBottom();
+    isNearBottomRef.current = near;
+    followLatestRef.current = near;
+    if (near) {
       setHasNewMessages(false);
     }
   }, [readNearBottom]);
@@ -87,8 +113,37 @@ export function useConversationAutoScroll({
     previousMessageIdsRef.current = [];
     pendingInitialScrollRef.current = true;
     isNearBottomRef.current = true;
+    followLatestRef.current = true;
     setHasNewMessages(false);
   }, [conversationId]);
+
+  useEffect(() => {
+    const node = scrollContainerRef.current;
+    if (!node) return;
+
+    const pinToLatestIfFollowing = () => {
+      if (pendingInitialScrollRef.current) return;
+      if (!followLatestRef.current) return;
+      scrollNodeToBottom(node);
+      isNearBottomRef.current = true;
+      previousScrollHeightRef.current = node.scrollHeight;
+      previousScrollTopRef.current = node.scrollTop;
+    };
+
+    const resizeObserver = new ResizeObserver(pinToLatestIfFollowing);
+    resizeObserver.observe(node);
+    const observeSpacer = () => {
+      const spacer = node.firstElementChild;
+      if (spacer) resizeObserver.observe(spacer);
+    };
+    observeSpacer();
+    const mutationObserver = new MutationObserver(observeSpacer);
+    mutationObserver.observe(node, { childList: true });
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [conversationId, messageIds.length]);
 
   useEffect(() => {
     if (isHistoryLoading) {
@@ -128,7 +183,7 @@ export function useConversationAutoScroll({
     }
 
     if (change === "append") {
-      if (isNearBottomRef.current) {
+      if (followLatestRef.current) {
         scrollAfterRender(scrollToBottom);
       } else {
         setHasNewMessages(true);
@@ -140,7 +195,7 @@ export function useConversationAutoScroll({
     if (change === "replace") {
       // Refetch / React Query replace must NOT yank the viewport back to bottom
       // (or an old unread position). Only stick to bottom when already near it.
-      if (isNearBottomRef.current) {
+      if (followLatestRef.current) {
         scrollAfterRender(scrollToBottom);
       }
       previousMessageIdsRef.current = messageIds;

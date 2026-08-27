@@ -127,7 +127,7 @@ export function buildContactDisplayInput(
   return {
     name: headerCustomer?.name ?? conversation?.customer?.name ?? null,
     businessName: metadataIdentity.businessName,
-    phone: headerCustomer?.phone ?? conversation?.customer?.phone ?? null,
+    phone: headerCustomer?.phone ?? conversation?.customer?.phone ?? channelPhone,
     email: headerCustomer?.email ?? conversation?.customer?.email ?? null,
     channelUsername: metadataIdentity.channelUsername,
     channel: conversation?.channel ?? null,

@@ -114,7 +114,7 @@ export class ConversationAggregator {
       channel: conversation.channel_type,
       channelLabel: resolveChannelLabel(conversation.channel_type, channelLabels),
       lastMessage: conversation.last_message_preview,
-      lastActivityAt: conversation.last_message_at ?? conversation.updated_at,
+      lastActivityAt: conversation.last_message_at ?? conversation.created_at ?? conversation.updated_at,
       assignedAgent,
       handlerMode: lifecycle.handlerMode,
       lifecycleState: lifecycle.lifecycleState,

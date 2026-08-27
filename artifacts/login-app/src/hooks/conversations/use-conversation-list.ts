@@ -38,7 +38,7 @@ export function useConversationList(
   return useQuery({
     queryKey: [...conversationListQueryKey(companyId, filters), "bounded", pageSize],
     enabled: Boolean(companyId),
-    staleTime: 15_000,
+    staleTime: 0,
     queryFn: async () => {
       if (!companyId) return [];
       return services.conversations.listConversations(context, {
@@ -75,7 +75,7 @@ export function useConversationListInfinite(
   const query = useInfiniteQuery({
     queryKey,
     enabled: Boolean(companyId),
-    staleTime: 15_000,
+    staleTime: 0,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const listInput = {

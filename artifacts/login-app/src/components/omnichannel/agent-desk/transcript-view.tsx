@@ -231,8 +231,21 @@ export const TranscriptView = memo(
     useEffect(() => {
       const node = containerRef.current;
       if (!node) return;
-      setViewportHeight(node.clientHeight);
-    }, [containerRef, rows.length]);
+    const applyViewport = () => {
+      const nextHeight = node.clientHeight;
+      const nextScrollTop = node.scrollTop;
+      if (nextHeight > 0) {
+        setViewportHeight((current) => (Math.abs(current - nextHeight) < 2 ? current : nextHeight));
+      }
+      setScrollTop((current) => (Math.abs(current - nextScrollTop) < 2 ? current : nextScrollTop));
+    };
+    applyViewport();
+    const observer = new ResizeObserver(applyViewport);
+    observer.observe(node);
+    const spacer = node.firstElementChild;
+    if (spacer) observer.observe(spacer);
+    return () => observer.disconnect();
+    }, [containerRef, conversationId, rows.length]);
 
     useEffect(() => {
       if (activeMatchId) scrollToMessage(activeMatchId);
@@ -242,8 +255,12 @@ export const TranscriptView = memo(
       autoScroll.onScroll();
       const node = containerRef.current;
       if (!node) return;
-      setScrollTop(node.scrollTop);
-      setViewportHeight(node.clientHeight);
+      const nextScrollTop = node.scrollTop;
+      const nextHeight = node.clientHeight;
+      setScrollTop((current) => (Math.abs(current - nextScrollTop) < 2 ? current : nextScrollTop));
+      if (nextHeight > 0) {
+        setViewportHeight((current) => (Math.abs(current - nextHeight) < 2 ? current : nextHeight));
+      }
     }, [autoScroll, containerRef]);
 
     const addFiles = useCallback((files: FileList | File[]) => {
@@ -348,6 +365,7 @@ export const TranscriptView = memo(
 
         <div
           ref={containerRef}
+          data-testid="omnichannel-transcript"
           className={`agent-desk__grid-bg min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:px-3 ${dragOver ? "ring-2 ring-inset ring-[var(--ad-accent)]/30" : ""}`}
           onScroll={handleScroll}
           onKeyDown={handleKeyDown}

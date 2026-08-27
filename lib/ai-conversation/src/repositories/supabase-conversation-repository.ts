@@ -445,16 +445,39 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         input.preview,
       ]);
 
+      const baseUpdate: Record<string, unknown> = {
+        last_message_at: input.messageAt,
+        last_message_preview: input.preview,
+        last_participant_type: input.participantType,
+        search_text: searchText,
+      };
+
+      // Only patch unread columns that actually change. Outgoing messages increment
+      // customer unread only; writing employee unread with a stale read of 0 was wiping
+      // concurrent inbound increments.
+      if (unreadDelta.employee !== 0 || unreadDelta.customer !== 0) {
+        const { data: current, error: readError } = await client
+          .from(TABLE)
+          .select("unread_count_employee, unread_count_customer")
+          .eq("id", input.conversationId)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (readError) throw readError;
+        if (unreadDelta.employee !== 0) {
+          baseUpdate.unread_count_employee =
+            Number(current?.unread_count_employee ?? input.currentUnreadEmployee ?? 0) +
+            unreadDelta.employee;
+        }
+        if (unreadDelta.customer !== 0) {
+          baseUpdate.unread_count_customer =
+            Number(current?.unread_count_customer ?? input.currentUnreadCustomer ?? 0) +
+            unreadDelta.customer;
+        }
+      }
+
       const { error } = await client
         .from(TABLE)
-        .update({
-          last_message_at: input.messageAt,
-          last_message_preview: input.preview,
-          last_participant_type: input.participantType,
-          search_text: searchText,
-          unread_count_employee: input.currentUnreadEmployee + unreadDelta.employee,
-          unread_count_customer: input.currentUnreadCustomer + unreadDelta.customer,
-        })
+        .update(baseUpdate)
         .eq("id", input.conversationId)
         .is("deleted_at", null);
 
@@ -462,6 +485,8 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
     },
 
     async resetEmployeeUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord> {
+      // Skip no-op updates: writing unread=0 when already 0 still emits
+      // postgres_changes and storms the omnichannel realtime loop.
       const { data, error } = await client
         .from(TABLE)
         .update({
@@ -470,12 +495,21 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         })
         .eq("id", conversationId)
         .is("deleted_at", null)
+        .gt("unread_count_employee", 0)
         .select("*")
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      if (!data) throw new ConversationNotFoundError(conversationId);
-      return mapRow(data as Record<string, unknown>);
+      if (data) return mapRow(data as Record<string, unknown>);
+      const current = await client
+        .from(TABLE)
+        .select("*")
+        .eq("id", conversationId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (current.error) throw current.error;
+      if (!current.data) throw new ConversationNotFoundError(conversationId);
+      return mapRow(current.data as Record<string, unknown>);
     },
 
     async resetCustomerUnread(conversationId: string, updatedBy?: string | null): Promise<ConversationRecord> {
@@ -487,12 +521,21 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         })
         .eq("id", conversationId)
         .is("deleted_at", null)
+        .gt("unread_count_customer", 0)
         .select("*")
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      if (!data) throw new ConversationNotFoundError(conversationId);
-      return mapRow(data as Record<string, unknown>);
+      if (data) return mapRow(data as Record<string, unknown>);
+      const current = await client
+        .from(TABLE)
+        .select("*")
+        .eq("id", conversationId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (current.error) throw current.error;
+      if (!current.data) throw new ConversationNotFoundError(conversationId);
+      return mapRow(current.data as Record<string, unknown>);
     },
 
     async applyStateTransition(input: ApplyStateTransitionInput): Promise<ConversationRecord> {

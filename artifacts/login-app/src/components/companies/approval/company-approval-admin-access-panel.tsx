@@ -152,9 +152,14 @@ export function CompanyApprovalAdminAccessPanel({ companyId }: Props) {
                 <div className="min-w-0">
                   <p className="truncate font-medium">{owner.full_name || owner.email || owner.id}</p>
                   {owner.email ? (
-                    <p dir="ltr" className="truncate text-xs text-muted-foreground">
-                      {owner.email}
-                    </p>
+                    <div className="mt-0.5 min-w-0">
+                      <p className="text-[11px] text-muted-foreground">
+                        {t("companies.approval.wizard.adminAccess.loginEmail")}
+                      </p>
+                      <p dir="ltr" className="truncate text-xs text-muted-foreground">
+                        {owner.email}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
               </div>

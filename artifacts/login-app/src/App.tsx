@@ -21,6 +21,7 @@ import {
 } from "@/lib/auth-redirect";
 import { usePermissions } from "@/hooks/use-rbac";
 import { Loader2 } from "lucide-react";
+import { DocumentTitleManager } from "@/components/document-title-manager";
 
 const DashboardApp = lazy(() => import("@/pages/dashboard"));
 const WorkflowBuilderDebugPage = lazy(() => import("@/pages/debug/workflow-builder-debug-page"));
@@ -166,6 +167,7 @@ function App() {
           <AppThemeProvider>
             <TooltipProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <DocumentTitleManager />
                 <Router />
                 <Toaster />
               </WouterRouter>

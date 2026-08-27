@@ -4,6 +4,11 @@ import { formatCompanyLocation } from "@/components/companies/company-onboarding
 import { useCompanyEntitlements } from "@/hooks/billing/use-company-entitlements";
 import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
 import {
+  translateBillingCycle,
+  translateSubscriptionStatus,
+} from "@/lib/billing/billing-display-i18n";
+import type { BillingSubscriptionStatus } from "@/lib/billing/types";
+import {
   companyAccessReason,
   companyInternalFlag,
 } from "@/lib/companies/company-access-state";
@@ -15,6 +20,7 @@ import {
   type CompanyRowActionId,
 } from "@/lib/companies/company-row-actions";
 import { companyPackageDisplaySource } from "@/lib/companies/company-table-query";
+import { resolveGeoDisplayLabel } from "@/lib/companies/geo";
 import type { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,13 +42,34 @@ function primaryBranch(company: Company) {
 
 function Field({ label, value, ltr = false }: { label: string; value: string; ltr?: boolean }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p dir={ltr ? "ltr" : undefined} className="mt-0.5 truncate text-sm font-medium text-foreground">
-        {value}
+    <div className="min-w-0 text-start">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className="mt-0.5 truncate text-start text-sm font-medium text-foreground">
+        {/* Keep LTR content readable without pulling the value away from the RTL caption. */}
+        {ltr ? <bdi dir="ltr">{value}</bdi> : value}
       </p>
     </div>
   );
+}
+
+function translateCompanyType(
+  t: (key: string, options?: { defaultValue?: string }) => string,
+  company: Company,
+  dash: string,
+): string {
+  const businessType = company.business_type?.trim();
+  if (businessType) {
+    return t(`companyOnboarding.businessTypes.${businessType}`, {
+      defaultValue: businessType,
+    });
+  }
+  const companyType = company.company_type?.trim();
+  if (!companyType || companyType === "tenant" || companyType === "platform") {
+    return dash;
+  }
+  return t(`companyOnboarding.businessTypes.${companyType}`, {
+    defaultValue: companyType,
+  });
 }
 
 export function CompanyDetailsWorkspace({
@@ -65,24 +92,42 @@ export function CompanyDetailsWorkspace({
   const unlimited = t("companies.details.unlimited");
   const actions = visibleCompanyRowActions(company, capabilities).filter((action) => action.id !== "view");
   const commercialFeatures = (entitlementsQuery.data ?? []).filter((row) => row.enabled);
+  const language = i18n.language ?? "en";
 
   function formatDate(value: string | null | undefined) {
     if (!value) return dash;
-    return new Date(value).toLocaleDateString(i18n.language?.startsWith("ar") ? "ar" : "en");
+    return new Date(value).toLocaleDateString(language.startsWith("ar") ? "ar" : "en");
   }
 
   const packageLabel = pkg.key
     ? t(`companies.packages.${pkg.key}`, { defaultValue: pkg.rawLabel || dash })
     : t("companies.packages.none");
 
+  const countryLabel =
+    resolveGeoDisplayLabel(branch?.country, language) ?? dash;
+  const cityLabel =
+    resolveGeoDisplayLabel(branch?.city, language, { countryValue: branch?.country }) ?? dash;
+  const addressLabel =
+    branch?.address_line1?.trim() ||
+    billing?.address?.trim() ||
+    formatCompanyLocation(company, language) ||
+    dash;
+
+  const subscriptionStatusLabel = company.subscription_status
+    ? translateSubscriptionStatus(t, company.subscription_status as BillingSubscriptionStatus)
+    : dash;
+  const billingCycleLabel = company.billing_cycle
+    ? translateBillingCycle(t, company.billing_cycle)
+    : dash;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="shrink-0 border-b border-border px-6 py-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-start text-xs font-medium text-muted-foreground">
           {t("companies.details.eyebrow")}
         </p>
         <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-xl font-semibold tracking-tight">{company.name}</h2>
+          <h2 className="text-start text-xl font-semibold tracking-tight">{company.name}</h2>
           <div className="flex flex-wrap gap-2">
             {actions.map((action) => (
               <Button
@@ -103,7 +148,7 @@ export function CompanyDetailsWorkspace({
           </div>
         </div>
         {flag ? (
-          <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-start text-sm text-destructive">
             <p className="font-semibold">
               {flag === "suspended" ? t("companies.flags.suspended") : t("companies.flags.rejected")}
             </p>
@@ -118,13 +163,13 @@ export function CompanyDetailsWorkspace({
 
       <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 py-5">
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">{t("companies.details.overview")}</h3>
+          <h3 className="text-start text-sm font-semibold">{t("companies.details.overview")}</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t("companies.table.name")} value={company.name} />
             <Field label={t("companies.details.legalName")} value={billing?.legal_name || dash} />
             <Field
               label={t("companies.details.companyType")}
-              value={company.business_type || company.company_type || dash}
+              value={translateCompanyType(t, company, dash)}
             />
             <Field
               label={t("companies.details.operationalStatus")}
@@ -135,8 +180,8 @@ export function CompanyDetailsWorkspace({
               value={t(`companies.approval.status.${approval}`)}
             />
             <Field label={t("companies.table.plan")} value={packageLabel} />
-            <Field label={t("companies.details.subscriptionStatus")} value={company.subscription_status || dash} />
-            <Field label={t("companies.details.billingCycle")} value={company.billing_cycle || dash} />
+            <Field label={t("companies.details.subscriptionStatus")} value={subscriptionStatusLabel} />
+            <Field label={t("companies.details.billingCycle")} value={billingCycleLabel} />
             <Field label={t("companies.details.subscriptionExpires")} value={formatDate(company.subscription_expires_at)} />
             <Field label={t("companies.table.created")} value={formatDate(company.created_at)} />
             <Field label={t("companies.table.updated")} value={formatDate(company.updated_at)} />
@@ -144,17 +189,14 @@ export function CompanyDetailsWorkspace({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">{t("companies.details.contact")}</h3>
+          <h3 className="text-start text-sm font-semibold">{t("companies.details.contact")}</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t("companies.table.email")} value={company.contact_email || dash} ltr />
             <Field label={t("companies.table.phone")} value={company.contact_phone || dash} ltr />
             <Field label={t("companies.table.owner")} value={company.contact_person || dash} />
-            <Field label={t("companies.details.country")} value={branch?.country || dash} />
-            <Field label={t("companies.details.city")} value={branch?.city || dash} />
-            <Field
-              label={t("companies.details.address")}
-              value={branch?.address_line1 || billing?.address || formatCompanyLocation(company) || dash}
-            />
+            <Field label={t("companies.details.country")} value={countryLabel} />
+            <Field label={t("companies.details.city")} value={cityLabel} />
+            <Field label={t("companies.details.address")} value={addressLabel} />
             <Field label={t("companies.details.taxId")} value={billing?.tax_id || dash} />
             <Field
               label={t("companies.details.registration")}
@@ -164,16 +206,16 @@ export function CompanyDetailsWorkspace({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">{t("companies.details.resources")}</h3>
+          <h3 className="text-start text-sm font-semibold">{t("companies.details.resources")}</h3>
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[520px] text-sm">
-              <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/40 text-xs text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-start">{t("companies.details.resource")}</th>
-                  <th className="px-3 py-2 text-start">{t("companies.details.current")}</th>
-                  <th className="px-3 py-2 text-start">{t("companies.details.limit")}</th>
-                  <th className="px-3 py-2 text-start">{t("companies.details.remaining")}</th>
-                  <th className="px-3 py-2 text-start">{t("companies.details.state")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{t("companies.details.resource")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{t("companies.details.current")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{t("companies.details.limit")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{t("companies.details.remaining")}</th>
+                  <th className="px-3 py-2 text-start font-medium">{t("companies.details.state")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -182,13 +224,13 @@ export function CompanyDetailsWorkspace({
                   { key: "branches", row: branches, label: t("companies.details.branches") },
                 ].map((item) => (
                   <tr key={item.key}>
-                    <td className="px-3 py-2 font-medium">{item.label}</td>
-                    <td className="px-3 py-2 tabular-nums">{item.row.used}</td>
-                    <td className="px-3 py-2 tabular-nums">{item.row.unlimited ? unlimited : item.row.limit}</td>
-                    <td className="px-3 py-2 tabular-nums">
+                    <td className="px-3 py-2 text-start font-medium">{item.label}</td>
+                    <td className="px-3 py-2 text-start tabular-nums">{item.row.used}</td>
+                    <td className="px-3 py-2 text-start tabular-nums">{item.row.unlimited ? unlimited : item.row.limit}</td>
+                    <td className="px-3 py-2 text-start tabular-nums">
                       {item.row.unlimited ? unlimited : item.row.remaining}
                     </td>
-                    <td className={cn("px-3 py-2", item.row.overLimit && "font-semibold text-destructive")}>
+                    <td className={cn("px-3 py-2 text-start", item.row.overLimit && "font-semibold text-destructive")}>
                       {item.row.overLimit
                         ? t("companies.details.overLimit")
                         : occupancyRatioLabel(item.row, unlimited)}
@@ -201,10 +243,10 @@ export function CompanyDetailsWorkspace({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">{t("companies.details.commercial")}</h3>
+          <h3 className="text-start text-sm font-semibold">{t("companies.details.commercial")}</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label={t("companies.table.plan")} value={packageLabel} />
-            <Field label={t("companies.details.subscriptionStatus")} value={company.subscription_status || dash} />
+            <Field label={t("companies.details.subscriptionStatus")} value={subscriptionStatusLabel} />
             <Field
               label={t("companies.details.trial")}
               value={company.status === "Trial" ? t("companies.details.yes") : t("companies.details.no")}
@@ -212,7 +254,7 @@ export function CompanyDetailsWorkspace({
           </div>
           <div className="flex flex-wrap gap-2">
             {commercialFeatures.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("companies.details.noCommercialFeatures")}</p>
+              <p className="text-start text-sm text-muted-foreground">{t("companies.details.noCommercialFeatures")}</p>
             ) : (
               commercialFeatures.slice(0, 24).map((row) => (
                 <span key={row.feature_code} className="rounded-full border border-border px-2.5 py-1 text-xs">

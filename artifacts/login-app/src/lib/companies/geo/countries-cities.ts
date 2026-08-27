@@ -191,6 +191,40 @@ export function findGeoCountry(countryValue: string): GeoCountry | undefined {
   );
 }
 
+export function findGeoCity(
+  cityValue: string,
+  countryValue?: string | null,
+): GeoLabeledValue | undefined {
+  const trimmed = cityValue.trim();
+  if (!trimmed) return undefined;
+  const needle = trimmed.toLowerCase();
+  const scoped = countryValue ? getCitiesForCountry(countryValue) : null;
+  const cities = scoped && scoped.length > 0
+    ? scoped
+    : COMPANY_GEO_COUNTRIES.flatMap((country) => country.cities);
+  return cities.find(
+    (city) =>
+      city.value.toLowerCase() === needle ||
+      city.labelEn.toLowerCase() === needle ||
+      city.labelAr === trimmed,
+  );
+}
+
+/** Resolve a stored country/city value to the label for the active UI language. */
+export function resolveGeoDisplayLabel(
+  value: string | null | undefined,
+  language: string,
+  options?: { countryValue?: string | null },
+): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const country = findGeoCountry(trimmed);
+  if (country) return geoLabel(country, language);
+  const city = findGeoCity(trimmed, options?.countryValue);
+  if (city) return geoLabel(city, language);
+  return trimmed;
+}
+
 export function getCitiesForCountry(countryValue: string): readonly GeoLabeledValue[] {
   return findGeoCountry(countryValue)?.cities ?? [];
 }

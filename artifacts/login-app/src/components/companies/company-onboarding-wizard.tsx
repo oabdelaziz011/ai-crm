@@ -38,6 +38,7 @@ import {
   COMPANY_GEO_COUNTRIES,
   geoLabel,
   getCitiesForCountry,
+  resolveGeoDisplayLabel,
   withLegacyOption,
 } from "@/lib/companies/geo";
 import type { Company } from "@/lib/types";
@@ -876,9 +877,11 @@ export function CompanyOnboardingWizard({
   );
 }
 
-export function formatCompanyLocation(company: Company): string {
+export function formatCompanyLocation(company: Company, language = "en"): string {
   const branch = resolvePrimaryBranch(company);
-  const parts = [branch?.city, branch?.country].filter(Boolean);
+  const city = resolveGeoDisplayLabel(branch?.city, language, { countryValue: branch?.country });
+  const country = resolveGeoDisplayLabel(branch?.country, language);
+  const parts = [city, country].filter(Boolean);
   if (parts.length > 0) return parts.join(", ");
   const profile = resolveBillingProfile(company);
   return profile?.address?.trim() || "";

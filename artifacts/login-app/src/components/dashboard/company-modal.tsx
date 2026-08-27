@@ -36,6 +36,8 @@ import {
   withLegacyOption,
 } from "@/lib/companies/geo";
 import { useTranslation } from "react-i18next";
+import { companyPackageDisplaySource } from "@/lib/companies/company-table-query";
+import { translatePlanName } from "@/lib/billing/billing-display-i18n";
 
 type FormValues = {
   name: string;
@@ -160,6 +162,18 @@ export function CompanyModal({ open, onClose, company }: Props) {
   const selectedCity = form.watch("city");
   const countryOptions = withLegacyOption(COMPANY_GEO_COUNTRIES, selectedCountry);
   const cityOptions = withLegacyOption(getCitiesForCountry(selectedCountry), selectedCity);
+  const packageSource = companyPackageDisplaySource(company);
+  const planDisplayLabel = packageSource.key
+    ? t(`companies.commercial.packageNames.${packageSource.key}`, {
+        defaultValue: t(`companies.packages.${packageSource.key}`, {
+          defaultValue: packageSource.rawLabel || company.subscription_plan || "",
+        }),
+      })
+    : translatePlanName(t, {
+        code: company.subscription_plan,
+        name: company.subscription_plan,
+        display_name: company.subscription_plan,
+      });
 
   const onSubmit = (values: FormValues) => {
     update.mutate(
@@ -486,17 +500,19 @@ export function CompanyModal({ open, onClose, company }: Props) {
                 <FormField
                   control={form.control}
                   name="subscription_plan"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormLabel>{t("forms.company.plan")}</FormLabel>
                       <FormControl>
-                        <Input className="rounded-xl" {...field} disabled readOnly />
+                        <Input
+                          className="rounded-xl"
+                          value={planDisplayLabel}
+                          disabled
+                          readOnly
+                        />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground">
-                        {t(
-                          "forms.company.planMirrorHint",
-                          "Display mirror of the assigned package. Change packages from Billing → Assign plan.",
-                        )}
+                      <p className="text-start text-[11px] text-muted-foreground">
+                        {t("forms.company.planMirrorHint")}
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -518,11 +534,8 @@ export function CompanyModal({ open, onClose, company }: Props) {
                           readOnly
                         />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground">
-                        {t(
-                          "forms.company.expiresMirrorHint",
-                          "Synced from subscription period/trial dates — not edited here.",
-                        )}
+                      <p className="text-start text-[11px] text-muted-foreground">
+                        {t("forms.company.expiresMirrorHint")}
                       </p>
                       <FormMessage />
                     </FormItem>

@@ -129,6 +129,7 @@ export function formatPackageListPrice(
 export function formatPackageMonthlyAndYearly(
   pricing: PackagePricingInput,
   currency?: string,
+  labels?: { free?: string; custom?: string },
 ): { monthly: string; yearly: string; savings: AnnualSavings } {
   const mode = normalizePackagePricingMode(
     pricing.pricing_mode,
@@ -136,9 +137,11 @@ export function formatPackageMonthlyAndYearly(
     pricing.price_yearly,
   );
   const savings = calculateAnnualSavings(pricing.price_monthly, pricing.price_yearly);
+  const freeLabel = labels?.free ?? "Free";
+  const customLabel = labels?.custom ?? "Custom";
 
   if (mode === "free") {
-    return { monthly: "Free", yearly: "Free", savings };
+    return { monthly: freeLabel, yearly: freeLabel, savings };
   }
   if (mode === "custom") {
     const monthlyAmount = Number(pricing.price_monthly ?? 0);
@@ -147,9 +150,9 @@ export function formatPackageMonthlyAndYearly(
       monthly:
         monthlyAmount > 0
           ? formatBillingCurrency(monthlyAmount, currency)
-          : "Custom",
+          : customLabel,
       yearly:
-        yearlyAmount > 0 ? formatBillingCurrency(yearlyAmount, currency) : "Custom",
+        yearlyAmount > 0 ? formatBillingCurrency(yearlyAmount, currency) : customLabel,
       savings,
     };
   }

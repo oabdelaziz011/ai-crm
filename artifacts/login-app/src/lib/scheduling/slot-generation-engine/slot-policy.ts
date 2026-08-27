@@ -43,12 +43,12 @@ export class SlotPolicy {
       return slots;
     }
 
-    const minNotice = options.minBookingNoticeMinutes ?? 0;
+    const minNotice = Math.max(0, options.minBookingNoticeMinutes ?? 0);
     const timezone = options.timezone;
     const date = options.date;
     const referenceNow = options.referenceNow ?? new Date();
 
-    if (minNotice <= 0 || !timezone || !date) {
+    if (!timezone || !date) {
       return slots;
     }
 
@@ -58,7 +58,7 @@ export class SlotPolicy {
     }
 
     const nowMinutes = AvailabilityPolicy.minutesSinceMidnight(referenceNow, timezone);
-    const earliestStart = nowMinutes + minNotice;
+    const earliestStart = nowMinutes + Math.max(minNotice, 1);
 
     return slots.filter((slot) => parseTimeToMinutes(slot) >= earliestStart);
   }

@@ -2770,7 +2770,16 @@ function latestUserTextFromMessages(
   const raw = String(
     [...messages].reverse().find((message) => message.role === "user")?.content ?? "",
   ).trim();
-  return raw.replace(/^(?:e2e-(?:rt|ci|wa)-\S+\s+|idem-\S+\s+)/i, "").trim();
+  let cleaned = raw;
+  for (let i = 0; i < 4; i += 1) {
+    const next = cleaned
+      .replace(/^(?:e2e-(?:rt|ci|wa)-\S+\s+|idem-\S+\s+)/i, "")
+      .replace(/^\d{10,}\s+/, "")
+      .trim();
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  return cleaned;
 }
 
 function customerWantsCheckInOrOut(
@@ -3428,7 +3437,8 @@ function isBareCancelConfirmationText(text: string): boolean {
   if (/^\s*[1-8]\s*$/.test(trimmed)) return false;
   // Bare cancel verbs only. Affirmatives (نعم/ايوه) require an offered cancel list —
   // see assistantOfferedCancelList in customerWantsCancelBooking.
-  return /^(?:الغي|ألغي|الغى|الغاء|إلغاء)(?:\s+(?:الميعاد|الموعد|الحجز|ميعاد|موعد))?$/i.test(
+  // Allow "عايزة ألغي الحجز" / "عايز الغي" as bare cancel openers (no BK reference).
+  return /^(?:عايز(?:ة|ه)?\s+)?(?:الغي|ألغي|الغى|الغاء|إلغاء)(?:\s+(?:الميعاد|الموعد|الحجز|ميعاد|موعد))?$/i.test(
     trimmed,
   );
 }
@@ -4205,6 +4215,7 @@ async function forceBookingStatusLookupIfNeeded(input: {
   allowedToolKeys: string[];
   sourceMessages: RuntimeGatewayChatRequest["messages"];
   toolExecutions: ToolCallLoopResult["toolExecutions"];
+  trustedCustomerId?: string | null;
 }): Promise<void> {
   if (!customerWantsBookingStatusByReference(input.sourceMessages)) return;
   if (hasSuccessfulSearchBookings(input.toolExecutions)) return;
@@ -4214,11 +4225,17 @@ async function forceBookingStatusLookupIfNeeded(input: {
   ]);
   if (!allowed.has("search_bookings")) return;
   const phone = readPhoneForBookingSearch(input.sourceMessages);
-  if (!phone) return;
+  const trustedCustomerId = input.trustedCustomerId?.trim() || null;
+  if (!phone && !hasTrustedBookingIdentity(trustedCustomerId)) return;
   const routed = await input.tools.route(input.ctx, {
     conversationId: input.conversationId,
     toolKey: "search_bookings",
-    input: { phone, daysBack: 90 },
+    input: {
+      daysBack: 90,
+      purpose: "status",
+      ...(phone ? { phone } : {}),
+      ...(trustedCustomerId ? { trustedCustomerId } : {}),
+    },
     triggeredBy: "agent",
   });
   input.toolExecutions.push({
@@ -5090,6 +5107,7 @@ export class ToolCallLoopService {
           allowedToolKeys: input.allowedToolKeys,
           sourceMessages,
           toolExecutions,
+          trustedCustomerId,
         });
       } catch {
         // Never fail the turn because forced booking-status lookup threw.
@@ -6348,7 +6366,6 @@ export class ToolCallLoopService {
       toolExecutions,
       input.gatewayRequest.messages,
     );
-    response = applyNonMutatingFollowUpGuard(response, input.gatewayRequest.messages);
     response = applyBookingReplyFallback(response, toolExecutions, input.gatewayRequest.messages);
     response = applyTicketReplyFallback(response, toolExecutions);
     response = applyCloseTicketReplyFallback(response, toolExecutions);
@@ -6363,9 +6380,26 @@ export class ToolCallLoopService {
     response = applyFindNextAvailableReplyFallback(response, toolExecutions, sourceMessages);
     response = applyAskBookingPhoneFallback(response, sourceMessages, toolExecutions, trustedCustomerId);
 
-    // Trusted WhatsApp identity: never re-ask name/phone — including cancel/check-in/reschedule turns.
-    // Do not rewrite a successful booking confirmation into the "choose a slot" continue message.
-    if (hasTrustedBookingIdentity(trustedCustomerId) && !hasSuccessfulCreateBooking(toolExecutions)) {
+    // Trusted WhatsApp identity: never re-ask name/phone on active booking turns.
+    // Never rewrite cancel / status / ticket / "ليه؟" turns into booking-continue copy.
+    const latestForIntent = latestUserTextFromMessages(sourceMessages);
+    const allowTrustedBookingContinue =
+      !isNonMutatingFollowUpMessage(latestForIntent) &&
+      !customerWantsCancelBooking(sourceMessages) &&
+      !customerWantsBookingStatusByReference(sourceMessages) &&
+      !customerWantsCreateTicket(sourceMessages) &&
+      !customerWantsRescheduleBooking(sourceMessages) &&
+      !customerWantsCheckInOrOut(sourceMessages) &&
+      (latestUserWantsCreateBooking(sourceMessages) ||
+        isSlotPickMessage(latestForIntent) ||
+        parseRelativeArabicBookingSlot(latestForIntent) !== null ||
+        conversationInActiveBookingFlow(sourceMessages, toolExecutions));
+
+    if (
+      hasTrustedBookingIdentity(trustedCustomerId) &&
+      !hasSuccessfulCreateBooking(toolExecutions) &&
+      allowTrustedBookingContinue
+    ) {
       const normalizedTrusted = normalizePatientIntakeReply(
         response.text,
         input.gatewayRequest.messages,
@@ -6383,7 +6417,9 @@ export class ToolCallLoopService {
       !customerWantsCancelBooking(sourceMessages) &&
       !customerWantsCheckInOrOut(sourceMessages) &&
       !customerWantsRescheduleBooking(sourceMessages) &&
-      !customerWantsRecommendationOrAvailability(sourceMessages)
+      !customerWantsRecommendationOrAvailability(sourceMessages) &&
+      !customerWantsBookingStatusByReference(sourceMessages) &&
+      !isNonMutatingFollowUpMessage(latestForIntent)
     ) {
       const normalizedReply = normalizePatientIntakeReply(
         response.text,
@@ -6413,24 +6449,27 @@ export class ToolCallLoopService {
           finishReason: response.finishReason ?? "stop",
         };
       }
+    }
 
-      if (
-        requiresBookingIntakeBeforeCustomerTools(
-          input.gatewayRequest.messages,
-          toolExecutions,
-          trustedCustomerId,
-        ) &&
-        !hasSuccessfulCreateBooking(toolExecutions) &&
-        !customerWantsCreateTicket(sourceMessages) &&
-        !customerWantsAnyTicketFlow(sourceMessages) &&
-        !/اسم (?:المريض|العميل)/.test(response.text)
-      ) {
-        response = {
-          ...response,
-          text: bookingIntakePromptForMessages(input.gatewayRequest.messages, toolExecutions),
-          finishReason: response.finishReason ?? "stop",
-        };
-      }
+    response = applyNonMutatingFollowUpGuard(response, input.gatewayRequest.messages);
+
+    if (
+      allowTrustedBookingContinue &&
+      requiresBookingIntakeBeforeCustomerTools(
+        input.gatewayRequest.messages,
+        toolExecutions,
+        trustedCustomerId,
+      ) &&
+      !hasSuccessfulCreateBooking(toolExecutions) &&
+      !customerWantsCreateTicket(sourceMessages) &&
+      !customerWantsAnyTicketFlow(sourceMessages) &&
+      !/اسم (?:المريض|العميل)/.test(response.text)
+    ) {
+      response = {
+        ...response,
+        text: bookingIntakePromptForMessages(input.gatewayRequest.messages, toolExecutions),
+        finishReason: response.finishReason ?? "stop",
+      };
     }
 
     if (latestUserExplicitBookingLookup(sourceMessages)) {

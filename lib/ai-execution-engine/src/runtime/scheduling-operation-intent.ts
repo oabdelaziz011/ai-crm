@@ -12,7 +12,17 @@ export type SchedulingOperationIntent =
 const BOOKING_REFERENCE_PATTERN = /\bBK-\d+\b/i;
 
 export function stripLiveTestMarker(text: string): string {
-  return text.replace(/^(?:e2e-(?:rt|ci|wa)-\S+\s+|idem-\S+\s+)/i, "").trim();
+  let cleaned = text.trim();
+  // Remove one or more leading e2e/idem tokens, then optional numeric run IDs.
+  for (let i = 0; i < 4; i += 1) {
+    const next = cleaned
+      .replace(/^(?:e2e-(?:rt|ci|wa)-\S+\s+|idem-\S+\s+)/i, "")
+      .replace(/^\d{10,}\s+/, "")
+      .trim();
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  return cleaned;
 }
 
 export function extractBookingReference(text: string): string | null {

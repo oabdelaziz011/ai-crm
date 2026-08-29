@@ -146,7 +146,7 @@ export function isApiServerProcess(commandLine) {
   return /(?:dist[\\/]main\.mjs|start-with-env\.mjs)/i.test(commandLine ?? "");
 }
 
-function isProjectApiServerProcess(commandLine, projectRoot) {
+export function isProjectApiServerProcess(commandLine, projectRoot) {
   if (!isApiServerProcess(commandLine)) return false;
   const normalized = (commandLine ?? "").replace(/\\/g, "/");
   const apiServerRoot = resolve(projectRoot, "artifacts/api-server").replace(/\\/g, "/");
@@ -155,6 +155,159 @@ function isProjectApiServerProcess(commandLine, projectRoot) {
     normalized.includes("artifacts/api-server") ||
     /(?:^|\s)(?:--enable-source-maps\s+)?dist\/main\.mjs(?:\s|$)/i.test(normalized)
   );
+}
+
+export function isDevWatchCommandLine(commandLine) {
+  return /dev-watch\.mjs/i.test((commandLine ?? "").replace(/\\/g, "/"));
+}
+
+export function isWebhookOwnedApiCommandLine(commandLine) {
+  return /start-with-env\.mjs/i.test((commandLine ?? "").replace(/\\/g, "/"));
+}
+
+export function getParentPid(pid) {
+  if (!pid || !Number.isFinite(pid)) return null;
+
+  if (process.platform === "win32") {
+    try {
+      const output = execFileSync(
+        "powershell",
+        [
+          "-NoProfile",
+          "-Command",
+          `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").ParentProcessId`,
+        ],
+        { encoding: "utf8", shell: false },
+      ).trim();
+      const parentPid = Number(output);
+      return Number.isFinite(parentPid) && parentPid > 0 ? parentPid : null;
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const output = execFileSync("ps", ["-p", String(pid), "-o", "ppid="], {
+      encoding: "utf8",
+      shell: false,
+    }).trim();
+    const parentPid = Number(output);
+    return Number.isFinite(parentPid) && parentPid > 0 ? parentPid : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Classify a single listener on the API port.
+ * @returns {'project_api_dev_watch'|'project_api_webhook'|'project_api'|'unrelated'}
+ */
+export function classifyApiPortListener({ commandLine, parentCommandLine, projectRoot }) {
+  if (!isProjectApiServerProcess(commandLine, projectRoot)) {
+    return "unrelated";
+  }
+  if (isDevWatchCommandLine(parentCommandLine) || isDevWatchCommandLine(commandLine)) {
+    return "project_api_dev_watch";
+  }
+  if (isWebhookOwnedApiCommandLine(commandLine)) {
+    return "project_api_webhook";
+  }
+  return "project_api";
+}
+
+/**
+ * Inspect who (if anyone) owns the API listen port.
+ * @returns {{
+ *   status: 'none'|'project_api'|'unrelated',
+ *   ownership: 'dev_watch'|'webhook'|'unknown'|null,
+ *   protected: boolean,
+ *   pid: number|null,
+ *   commandLine: string,
+ *   parentPid: number|null,
+ *   parentCommandLine: string,
+ *   kind: string|null,
+ * }}
+ */
+export function findListeningProjectApiServer(port, projectRoot, deps = {}) {
+  const listPids = deps.getListeningPids ?? getListeningPids;
+  const readCommandLine = deps.getProcessCommandLine ?? getProcessCommandLine;
+  const readParentPid = deps.getParentPid ?? getParentPid;
+
+  const listeners = listPids(port);
+  if (listeners.length === 0) {
+    return {
+      status: "none",
+      ownership: null,
+      protected: false,
+      pid: null,
+      commandLine: "",
+      parentPid: null,
+      parentCommandLine: "",
+      kind: null,
+    };
+  }
+
+  for (const pid of listeners) {
+    const commandLine = readCommandLine(pid);
+    const parentPid = readParentPid(pid);
+    const parentCommandLine = parentPid ? readCommandLine(parentPid) : "";
+    const kind = classifyApiPortListener({ commandLine, parentCommandLine, projectRoot });
+
+    if (kind === "unrelated") continue;
+
+    const ownership =
+      kind === "project_api_dev_watch"
+        ? "dev_watch"
+        : kind === "project_api_webhook"
+          ? "webhook"
+          : "unknown";
+
+    return {
+      status: "project_api",
+      ownership,
+      protected: ownership === "dev_watch",
+      pid,
+      commandLine,
+      parentPid,
+      parentCommandLine,
+      kind,
+    };
+  }
+
+  const firstPid = listeners[0];
+  return {
+    status: "unrelated",
+    ownership: null,
+    protected: false,
+    pid: firstPid,
+    commandLine: readCommandLine(firstPid),
+    parentPid: null,
+    parentCommandLine: "",
+    kind: "unrelated",
+  };
+}
+
+/**
+ * Pure decision for webhook stack API lifecycle.
+ * @returns {{ action: 'spawn'|'reuse'|'fail', reason: string, inspection: object }}
+ */
+export function resolveWebhookApiLifecycle(inspection) {
+  if (!inspection || inspection.status === "none") {
+    return { action: "spawn", reason: "no_listener", inspection };
+  }
+  if (inspection.status === "project_api") {
+    return {
+      action: "reuse",
+      reason:
+        inspection.ownership === "dev_watch"
+          ? "dev_watch_owned"
+          : inspection.ownership === "webhook"
+            ? "webhook_owned"
+            : "project_api",
+      inspection,
+    };
+  }
+  return { action: "fail", reason: "unrelated_process", inspection };
 }
 
 export function isProjectCloudflaredProcess(commandLine, projectRoot) {
@@ -243,16 +396,35 @@ export function reclaimStaleApiServerPort(port, projectRoot) {
   const listeners = getListeningPids(port);
   if (listeners.length === 0) return;
 
-  const apiServerRoot = resolve(projectRoot, "artifacts/api-server").replace(/\\/g, "/");
   const stale = [];
+  const protectedListeners = [];
 
   for (const pid of listeners) {
-    const commandLine = getProcessCommandLine(pid).replace(/\\/g, "/");
-    if (!isProjectApiServerProcess(commandLine, projectRoot)) continue;
+    const commandLine = getProcessCommandLine(pid);
+    const parentPid = getParentPid(pid);
+    const parentCommandLine = parentPid ? getProcessCommandLine(parentPid) : "";
+    const kind = classifyApiPortListener({ commandLine, parentCommandLine, projectRoot });
+
+    if (kind === "unrelated") continue;
+
+    if (kind === "project_api_dev_watch") {
+      protectedListeners.push({ pid, commandLine, parentPid, parentCommandLine });
+      continue;
+    }
+
     stale.push({ pid, commandLine });
   }
 
-  if (stale.length === 0) {
+  if (protectedListeners.length > 0 && stale.length === 0) {
+    const details = protectedListeners
+      .map((entry) => `  pid ${entry.pid}: ${entry.commandLine || "(unknown command)"}`)
+      .join("\n");
+    throw new Error(
+      `Port ${port} is held by a live API owned by artifacts/api-server/scripts/dev-watch.mjs.\n${details}\nDo not reclaim this process. Reuse it (pnpm dev:webhook) or stop pnpm dev:api first.`,
+    );
+  }
+
+  if (stale.length === 0 && protectedListeners.length === 0) {
     const blockers = listeners.map((pid) => ({ pid, commandLine: getProcessCommandLine(pid) }));
     const details = blockers
       .map((entry) => `  pid ${entry.pid}: ${entry.commandLine || "(unknown command)"}`)
@@ -262,8 +434,10 @@ export function reclaimStaleApiServerPort(port, projectRoot) {
     );
   }
 
+  if (stale.length === 0) return;
+
   console.warn(
-    `Port ${port} is held by stale api-server process(es) from a previous dev:webhook run. Reclaiming port...`,
+    `Port ${port} is held by stale api-server process(es) from a previous run. Reclaiming port...`,
   );
   for (const entry of stale) {
     debugLog("reclaim stale api-server", entry);
@@ -271,7 +445,18 @@ export function reclaimStaleApiServerPort(port, projectRoot) {
   }
 
   const remaining = getListeningPids(port);
-  if (remaining.length > 0) {
+  const remainingProtected = remaining.filter((pid) => {
+    const commandLine = getProcessCommandLine(pid);
+    const parentPid = getParentPid(pid);
+    const parentCommandLine = parentPid ? getProcessCommandLine(parentPid) : "";
+    return (
+      classifyApiPortListener({ commandLine, parentCommandLine, projectRoot }) ===
+      "project_api_dev_watch"
+    );
+  });
+  const remainingBlocking = remaining.filter((pid) => !remainingProtected.includes(pid));
+
+  if (remainingBlocking.length > 0) {
     throw new Error(`Port ${port} is still in use after reclaiming stale api-server process(es).`);
   }
 }

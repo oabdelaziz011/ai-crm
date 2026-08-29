@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 /**
  * Dev stack for WhatsApp webhook ingress:
- *   - api-server on PORT (default 3000)
- *   - named Cloudflare Tunnel (stable hostname)
+ *   - reuse existing project API on PORT when healthy (e.g. pnpm dev:api / dev-watch)
+ *   - otherwise start api-server on PORT (default 3000)
+ *   - named Cloudflare Tunnel (stable hostname → localhost:PORT)
  */
 import { PROJECT_ROOT } from "./env-utils.mjs";
 import { loadProjectEnv, validateApiServerEnv, formatMissingEnvHelp } from "../lib/load-project-env.mjs";
 import {
   debugLog,
+  findListeningProjectApiServer,
   killProcessTree,
   reclaimStaleApiServerPort,
   reclaimStaleCloudflaredProcesses,
   resolveApiServerStartLaunch,
   resolveCloudflaredLaunch,
+  resolveWebhookApiLifecycle,
   runPnpmSync,
   snapshotProcessTree,
   spawnLogged,
@@ -30,6 +33,7 @@ if (!validation.ok) {
 }
 
 const port = envMap.PORT ?? process.env.PORT ?? "3000";
+const portNumber = Number(port);
 const children = [];
 
 function start(label, launch, extraEnv = {}) {
@@ -79,16 +83,40 @@ debugLog("start-webhook-stack boot", {
 console.log("Building api-server...");
 runPnpmSync(["--dir", "artifacts/api-server", "run", "build"], { cwd: PROJECT_ROOT });
 
-reclaimStaleApiServerPort(Number(port), PROJECT_ROOT);
+const inspection = findListeningProjectApiServer(portNumber, PROJECT_ROOT);
+const lifecycle = resolveWebhookApiLifecycle(inspection);
+debugLog("webhook api lifecycle", lifecycle);
+
+if (lifecycle.action === "fail") {
+  const details = `  pid ${inspection.pid}: ${inspection.commandLine || "(unknown command)"}`;
+  throw new Error(
+    `Port ${port} is already in use by a non-api-server process.\n${details}\nStop that process, then rerun pnpm dev:webhook.`,
+  );
+}
+
 reclaimStaleCloudflaredProcesses(PROJECT_ROOT);
 
-console.log(`Starting api-server on port ${port}...`);
-const apiLaunch = resolveApiServerStartLaunch(PROJECT_ROOT);
-start("api-server", apiLaunch, {
-  ...envMap,
-  PORT: port,
-  NODE_ENV: envMap.NODE_ENV ?? "development",
-});
+if (lifecycle.action === "reuse") {
+  const owner =
+    inspection.ownership === "dev_watch"
+      ? "dev-watch"
+      : inspection.ownership === "webhook"
+        ? "webhook stack"
+        : "project";
+  console.log(
+    `Reusing existing project API on port ${port} (pid ${inspection.pid}, owned by ${owner}).`,
+  );
+  console.log("Skipping API reclaim/spawn — Cloudflare tunnel will target the existing server.");
+} else {
+  reclaimStaleApiServerPort(portNumber, PROJECT_ROOT);
+  console.log(`Starting api-server on port ${port}...`);
+  const apiLaunch = resolveApiServerStartLaunch(PROJECT_ROOT);
+  start("api-server", apiLaunch, {
+    ...envMap,
+    PORT: port,
+    NODE_ENV: envMap.NODE_ENV ?? "development",
+  });
+}
 
 console.log("Starting named Cloudflare Tunnel...");
 start("cloudflared", resolveCloudflaredLaunch(PROJECT_ROOT));

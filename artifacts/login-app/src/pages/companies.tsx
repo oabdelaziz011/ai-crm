@@ -69,6 +69,7 @@ import type { CompanySubscription } from "@/lib/billing/types";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import { CompanyColumnFilter } from "@/components/companies/table/company-column-filter";
 import { CompanyRowActionsMenu } from "@/components/companies/table/company-row-actions-menu";
+import { ResetCompanyAdminPasswordDialog } from "@/components/companies/reset-company-admin-password-dialog";
 import {
   useCompanies,
   useDeleteCompany,
@@ -185,6 +186,7 @@ export function CompaniesPage() {
   const [convertCompany, setConvertCompany] = useState<Company | null>(null);
   const [packageSubscription, setPackageSubscription] = useState<CompanySubscription | null>(null);
   const [convertSubscription, setConvertSubscription] = useState<CompanySubscription | null>(null);
+  const [resetAdminPasswordCompany, setResetAdminPasswordCompany] = useState<Company | null>(null);
 
   const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
   const dash = t("companies.table.dash");
@@ -195,6 +197,7 @@ export function CompaniesPage() {
     canCommercial,
     canViewBilling: canViewBillingAccess,
     canEditBilling: canEditBillingAccess,
+    canResetAdminPassword: Boolean(isSuperAdmin),
   };
 
   const workspaceRows = useMemo(
@@ -340,6 +343,9 @@ export function CompaniesPage() {
         break;
       case "delete":
         setPendingDelete(company);
+        break;
+      case "resetAdminPassword":
+        setResetAdminPasswordCompany(company);
         break;
       default:
         break;
@@ -838,6 +844,13 @@ export function CompaniesPage() {
           deleteCompany.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) });
         }}
         isPending={deleteCompany.isPending}
+      />
+      <ResetCompanyAdminPasswordDialog
+        company={resetAdminPasswordCompany}
+        open={Boolean(resetAdminPasswordCompany)}
+        onOpenChange={(open) => {
+          if (!open) setResetAdminPasswordCompany(null);
+        }}
       />
       <CompanySubscriptionManageDialog
         company={subscriptionCompany}

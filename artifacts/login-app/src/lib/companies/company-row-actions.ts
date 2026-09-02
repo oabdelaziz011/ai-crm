@@ -11,6 +11,7 @@ export type CompanyRowActionId =
   | "changePackage"
   | "convertTrial"
   | "retryProvisioning"
+  | "resetAdminPassword"
   | "suspend"
   | "restore"
   | "reject"
@@ -23,6 +24,8 @@ export type CompanyRowActionCapabilities = {
   canCommercial: boolean;
   canViewBilling: boolean;
   canEditBilling: boolean;
+  /** Platform Super Admin only — never grant to tenant Company Admins. */
+  canResetAdminPassword: boolean;
 };
 
 export type CompanyRowAction = {
@@ -40,6 +43,7 @@ const ACTION_ORDER: CompanyRowActionId[] = [
   "changePackage",
   "convertTrial",
   "retryProvisioning",
+  "resetAdminPassword",
   "suspend",
   "restore",
   "reject",
@@ -53,6 +57,7 @@ const CONFIRM_IDS = new Set<CompanyRowActionId>([
   "delete",
   "changePackage",
   "convertTrial",
+  "resetAdminPassword",
 ]);
 
 export function visibleCompanyRowActions(
@@ -79,6 +84,7 @@ export function visibleCompanyRowActions(
   if (caps.canEditBilling && approved && !trial && !suspended) visible.add("changePackage");
   if (caps.canEditBilling && trial) visible.add("convertTrial");
   if (caps.canEdit && failedProvisioning) visible.add("retryProvisioning");
+  if (caps.canResetAdminPassword) visible.add("resetAdminPassword");
   if (caps.canEditBilling && activeOrTrial) visible.add("suspend");
   if (caps.canEditBilling && suspended) visible.add("restore");
   if (caps.canCommercial && pending) visible.add("reject");

@@ -16,7 +16,12 @@ import {
   type CompanyRowActionId,
 } from "@/lib/companies/company-row-actions";
 
-const DESTRUCTIVE_ACTIONS = new Set<CompanyRowActionId>(["delete", "reject", "suspend"]);
+const DESTRUCTIVE_ACTIONS = new Set<CompanyRowActionId>([
+  "delete",
+  "reject",
+  "suspend",
+  "resetAdminPassword",
+]);
 
 export function CompanyRowActionsMenu({
   company,

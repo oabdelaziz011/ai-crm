@@ -102,8 +102,24 @@ function commercial(
   };
 }
 
+function channelEntitlement(
+  allowed: boolean,
+  featureCode = "whatsapp_channel",
+): import("../ports/channel-commercial-entitlement-port.js").ChannelCommercialEntitlementPort {
+  return {
+    async checkAccess() {
+      return {
+        allowed,
+        reason: allowed ? "entitled" : "not_entitled",
+        featureCode,
+      };
+    },
+  };
+}
+
 function buildPipelineHarness(input: {
   commercial?: WhatsAppMessagesCommercialPort;
+  channelCommercial?: import("../ports/channel-commercial-entitlement-port.js").ChannelCommercialEntitlementPort;
   whatsAppMode?: StubWhatsAppSendMode;
 }) {
   const companyChannel: ResolvedCompanyChannel = {
@@ -227,6 +243,8 @@ function buildPipelineHarness(input: {
         }),
       },
       whatsappMessagesCommercial: input.commercial,
+      channelCommercialEntitlement:
+        input.channelCommercial ?? channelEntitlement(true),
     },
     createChannelAdapterRegistry([createStubWebChatAdapter(), whatsAppAdapter]),
     new DeliveryTrackingEngine(deliveryRepository),

@@ -17,6 +17,8 @@ import {
 } from "@workspace/channel-platform";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
+import { HttpError } from "../middleware/error-handler.js";
+import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
 
 const router: IRouter = Router();
 
@@ -66,6 +68,7 @@ router.post("/whatsapp/test-message", async (req, res, next) => {
       res.status(400).json({ error: "recipientPhone required" });
       return;
     }
+    await assertRouteCommercialFeature(companyId, "whatsapp_channel");
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.sendTestMessage(companyId, recipientPhone);

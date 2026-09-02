@@ -152,7 +152,13 @@ export type ChannelCustomerIdentityPort = {
   getCustomerById?(input: {
     companyId: string;
     customerId: string;
-  }): Promise<{ id: string; name: string | null; phone: string | null } | null>;
+  }): Promise<{
+    id: string;
+    name: string | null;
+    phone: string | null;
+    /** Phase D2 — optional canonical E.164 when available. */
+    phoneE164?: string | null;
+  } | null>;
 
   /**
    * True when the CRM customer's phone is consistent with the WhatsApp sender id.
@@ -227,6 +233,8 @@ export type ChannelPlatformPorts = {
   aiEmployeeEmailCommercial?: import("./ai-employee-email-commercial-port.js").AiEmployeeEmailCommercialPort;
   /** Sprint 6G: whatsapp_channel entitlement + usage for WhatsApp outbound sends. */
   whatsappMessagesCommercial?: import("./whatsapp-messages-commercial-port.js").WhatsAppMessagesCommercialPort;
+  /** B1.1: per-channel commercial entitlement for inbound/outbound sellable channels. */
+  channelCommercialEntitlement?: import("./channel-commercial-entitlement-port.js").ChannelCommercialEntitlementPort;
 };
 
 export type ChannelRouterPort = {

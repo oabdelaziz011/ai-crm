@@ -15,6 +15,7 @@ import type { ChannelPlatformPorts } from "./ports/channel-platform-ports.js";
 import type { ChannelWorkflowResolver } from "./services/channel-workflow-resolver.js";
 import { NoopChannelTelemetryPort, type ChannelTelemetryPort } from "./ports/telemetry-port.js";
 import type { EmailRoutingClassifierPort, EmailRoutingEnginePort } from "./ports/email-routing-classifier-port.js";
+import type { CampaignDeliveryReconcilePort } from "./ports/campaign-delivery-reconcile-port.js";
 import { ChannelRouter } from "./router/channel-router.js";
 import {
   createSupabaseChannelDeliveryEventRepository,
@@ -50,6 +51,11 @@ export type ChannelPlatformServicesOptions = {
   emailRoutingClassifier?: EmailRoutingClassifierPort;
   /** Inbound email-only AI Email Routing engine (Sprint 4). */
   emailRoutingEngine?: EmailRoutingEnginePort;
+  /**
+   * Optional: campaign WhatsApp delivery / quoted-reply reconciliation
+   * (marketing_campaign_recipients). Does not create conversations.
+   */
+  campaignDeliveryReconciler?: CampaignDeliveryReconcilePort;
 };
 
 export type ChannelPlatformServices = {
@@ -125,6 +131,7 @@ export function createChannelPlatformServices(
     options.whatsAppDirectOutboundBypass,
     options.emailRoutingClassifier,
     options.emailRoutingEngine,
+    options.campaignDeliveryReconciler,
   );
 
   const router = new ChannelRouter(
@@ -133,6 +140,7 @@ export function createChannelPlatformServices(
     adapterRegistry,
     options.ports,
     telemetry,
+    options.campaignDeliveryReconciler,
   );
 
   return { router, dispatcher, inboundPipeline, outboundPipeline, deliveryStatusPipeline };

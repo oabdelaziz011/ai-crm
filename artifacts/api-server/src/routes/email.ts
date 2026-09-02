@@ -15,6 +15,7 @@ import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase
 import { HttpError } from "../middleware/error-handler.js";
 import { resolveAgentDispatchContext } from "../platform/resolve-agent-dispatch-context.js";
 import { logger } from "../lib/logger.js";
+import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
 
 const router: IRouter = Router();
 
@@ -69,6 +70,7 @@ router.post("/email/test-connection", async (req, res, next) => {
       res.status(400).json({ error: "recipientEmail required" });
       return;
     }
+    await assertRouteCommercialFeature(companyId, "email_channel");
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.testConnection(companyId, recipientEmail);
@@ -102,6 +104,8 @@ router.post("/email/templates/test-send", async (req, res, next) => {
     if (!templateId) {
       throw new HttpError(400, "templateId is required.", "validation_error");
     }
+
+    await assertRouteCommercialFeature(companyId, "email_channel");
 
     const client = getServiceClient();
     const ctx = await resolveAgentDispatchContext(client, req, companyId);

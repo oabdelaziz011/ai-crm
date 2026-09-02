@@ -10,6 +10,13 @@ import { HttpError } from "../middleware/error-handler.js";
 
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 
+import {
+  FeatureNotEntitledError,
+  requireCompanyFeature,
+  resolveChannelCommercialFeatureCode,
+} from "../lib/require-company-feature.js";
+import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
+
 import { resolveAgentDispatchContext } from "../platform/resolve-agent-dispatch-context.js";
 
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
@@ -423,41 +430,41 @@ router.post("/omnichannel/outbound/dispatch", async (req, res, next) => {
 
     passOutboundValidation("routeHandler.readDispatchBody");
 
-    const channelFeatureCode = resolveChannelCommercialFeatureCode(input.channelKey);
-    if (channelFeatureCode) {
-      try {
-        await requireCompanyFeature(input.companyId, channelFeatureCode);
-      } catch (err) {
-        if (err instanceof FeatureNotEntitledError) {
-          throw new HttpError(403, err.message, "FEATURE_NOT_ENTITLED");
-        }
-        throw err;
-      }
+    if (!input.companyId?.trim()) {
+      throw new HttpError(403, "No company context.", "forbidden");
     }
 
-
-
-    enterOutboundValidation({
-
-      validationName: "resolveAgentDispatchContext",
-
-      layer: "route.handler",
-
-      file: "omnichannel.ts",
-
-      function: "resolveAgentDispatchContext",
-
-      line: 207,
-
-      requestPayload: { companyId: input.companyId },
-
-    });
+    try {
+      await requireCompanyFeature(input.companyId, "omnichannel");
+    } catch (err) {
+      if (err instanceof FeatureNotEntitledError) {
+        throw new HttpError(403, err.message, "FEATURE_NOT_ENTITLED");
+      }
+      throw err;
+    }
 
     const platform = getWebhookPlatform();
 
     const ctx = await resolveAgentDispatchContext(platform.client, req, input.companyId);
 
     passOutboundValidation("resolveAgentDispatchContext");
+
+    if (!ctx.isSuperAdmin && !ctx.hasPermission("conversation.reply")) {
+      throw new HttpError(403, "conversation.reply permission is required.", "forbidden");
+    }
+
+    const channelFeatureCode = resolveChannelCommercialFeatureCode(input.channelKey);
+    if (!channelFeatureCode) {
+      throw new HttpError(403, "Channel is not commercially entitled.", "FEATURE_NOT_ENTITLED");
+    }
+    try {
+      await requireCompanyFeature(input.companyId, channelFeatureCode);
+    } catch (err) {
+      if (err instanceof FeatureNotEntitledError) {
+        throw new HttpError(403, err.message, "FEATURE_NOT_ENTITLED");
+      }
+      throw err;
+    }
 
 
 

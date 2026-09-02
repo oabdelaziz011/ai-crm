@@ -19,6 +19,7 @@ import {
   waTraceNoteError,
   waTraceRegisterOutboundExternalId,
 } from "../debug/whatsapp-conversation-trace-bridge.js";
+import { assertOutboundChannelCommercialAccess } from "../services/assert-channel-commercial-access.js";
 
 export class OutboundMessagePipeline {
   constructor(
@@ -151,7 +152,15 @@ export class OutboundMessagePipeline {
     waPerfEnd("Message formatting", { channelKey: request.channelKey });
 
     try {
-      if (request.channelKey === "whatsapp" && this.ports.whatsappMessagesCommercial) {
+      await assertOutboundChannelCommercialAccess(this.ports.channelCommercialEntitlement, {
+        companyId: request.companyId,
+        channelKey: request.channelKey,
+      });
+
+      if (request.channelKey === "whatsapp") {
+        if (!this.ports.whatsappMessagesCommercial) {
+          throw new DeliveryFailedError("WhatsApp commercial access unavailable.");
+        }
         const access = await this.ports.whatsappMessagesCommercial.checkAccess({
           companyId: request.companyId,
         });

@@ -30,6 +30,7 @@ import type { WhatsAppDirectOutboundBypassOptions } from "../adapters/whatsapp/w
 import {
   sendWhatsAppDirectOutboundBypass,
   WHATSAPP_DIRECT_OUTBOUND_BYPASS_PAYLOAD,
+  isWhatsAppDirectOutboundBypassAllowed,
 } from "../adapters/whatsapp/whatsapp-direct-outbound-bypass.js";
 import { logWhatsApp, logWhatsAppError } from "../debug/whatsapp-ai-pipeline-log.js";
 import {
@@ -75,6 +76,7 @@ import {
   type EmailRoutingEnginePort,
 } from "../ports/email-routing-classifier-port.js";
 import type { EmailRoutingTicketActionRuntimeResult } from "../ports/email-routing-ticket-action-port.js";
+import type { CampaignDeliveryReconcilePort } from "../ports/campaign-delivery-reconcile-port.js";
 
 const IN_FLIGHT_INBOUND_TTL_MS = 2 * 60 * 1000;
 
@@ -175,6 +177,7 @@ export class InboundMessagePipeline {
     private readonly whatsAppDirectOutboundBypass?: WhatsAppDirectOutboundBypassOptions,
     private readonly emailRoutingClassifier?: EmailRoutingClassifierPort,
     private readonly emailRoutingEngine?: EmailRoutingEnginePort,
+    private readonly campaignDeliveryReconciler?: CampaignDeliveryReconcilePort,
   ) {}
 
   async process(ctx: ServiceContext, request: InboundRouteRequestDto): Promise<InboundRouteResponseDto> {
@@ -185,6 +188,19 @@ export class InboundMessagePipeline {
     const idempotencyKey = request.idempotencyKey ?? randomUUID();
     const interactiveReplyId = extractInteractiveReplyIdFromPayload(request.payload);
     const interactiveReplyContextId = extractInteractiveReplyContextIdFromPayload(request.payload);
+
+    // Campaign quoted-reply attribution (company_id + context.id → provider_message_id).
+    // Free-text without context.id is intentionally ignored.
+    if (this.campaignDeliveryReconciler && interactiveReplyContextId) {
+      try {
+        await this.campaignDeliveryReconciler.reconcileQuotedReply({
+          companyId: request.companyId,
+          contextMessageId: interactiveReplyContextId,
+        });
+      } catch {
+        // Non-fatal — inbound conversation path continues.
+      }
+    }
 
     const duplicate = await this.inboundRepository.findByIdempotencyKey(
       request.companyChannelId,
@@ -1044,6 +1060,7 @@ export class InboundMessagePipeline {
 
       if (
         this.whatsAppDirectOutboundBypass?.enabled &&
+        isWhatsAppDirectOutboundBypassAllowed() &&
         request.channelKey === "whatsapp" &&
         this.whatsAppDirectOutboundBypass.credentialsLoader
       ) {

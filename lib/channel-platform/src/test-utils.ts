@@ -61,6 +61,7 @@ export function createTestEnvironment(options?: {
   employeeRuntime?: ChannelPlatformPorts["employeeRuntime"];
   aiEmployeeEmailCommercial?: ChannelPlatformPorts["aiEmployeeEmailCommercial"];
   whatsappMessagesCommercial?: ChannelPlatformPorts["whatsappMessagesCommercial"];
+  channelCommercialEntitlement?: ChannelPlatformPorts["channelCommercialEntitlement"];
   aiEmailRoutingCommercial?: ChannelPlatformPorts["aiEmailRoutingCommercial"];
   workflowBinding?: {
     companyId: string;
@@ -429,6 +430,9 @@ export function createTestEnvironment(options?: {
   }
   if (options?.whatsappMessagesCommercial) {
     ports.whatsappMessagesCommercial = options.whatsappMessagesCommercial;
+  }
+  if (options?.channelCommercialEntitlement) {
+    ports.channelCommercialEntitlement = options.channelCommercialEntitlement;
   }
 
   const workflowResolver = options?.workflowBinding

@@ -17,6 +17,11 @@ import {
 } from "../debug/webhook-adapter-classification.js";
 import { waTraceOnDeliveryStatus } from "../debug/whatsapp-conversation-trace-bridge.js";
 import { assertWebhookCompanyChannel } from "../webhooks/webhook-channel-guards.js";
+import type { CampaignDeliveryReconcilePort } from "../ports/campaign-delivery-reconcile-port.js";
+import {
+  assertInboundChannelCommercialAccess,
+  ChannelCommercialNotEntitledError,
+} from "../services/assert-channel-commercial-access.js";
 
 export type WebhookRouteSingleResponse =
   | { kind: "inbound"; result: InboundRouteResponseDto }
@@ -54,6 +59,7 @@ export class ChannelRouter {
     private readonly adapterRegistry: ChannelAdapterRegistryPort,
     private readonly ports: ChannelPlatformPorts,
     private readonly telemetry: ChannelTelemetryPort,
+    private readonly campaignDeliveryReconciler?: CampaignDeliveryReconcilePort,
   ) {}
 
   async routeInbound(ctx: ServiceContext, request: InboundRouteRequestDto): Promise<InboundRouteResponseDto> {
@@ -91,6 +97,21 @@ export class ChannelRouter {
   ): Promise<WebhookRouteResponse> {
     const companyChannel = await this.ports.registry.getCompanyChannel(request.companyChannelId);
     assertWebhookCompanyChannel(companyChannel, request.channelKey);
+
+    try {
+      await assertInboundChannelCommercialAccess(this.ports.channelCommercialEntitlement, {
+        companyId: request.companyId,
+        channelKey: request.channelKey,
+      });
+    } catch (error) {
+      if (error instanceof ChannelCommercialNotEntitledError) {
+        return {
+          kind: "ignored",
+          reason: "channel_not_entitled",
+        };
+      }
+      throw error;
+    }
 
     const adapter = this.adapterRegistry.require(request.channelKey);
     let envelopes: WebhookEnvelopeDto[];
@@ -151,6 +172,20 @@ export class ChannelRouter {
           errorMessage:
             typeof envelope.payload.errorMessage === "string" ? envelope.payload.errorMessage : undefined,
         });
+
+        // Campaign WhatsApp path: reconcile marketing_campaign_recipients by
+        // company_id + provider_message_id. Never creates conversations.
+        if (this.campaignDeliveryReconciler && envelope.externalMessageId?.trim()) {
+          try {
+            await this.campaignDeliveryReconciler.reconcileDeliveryStatus({
+              companyId: request.companyId,
+              providerMessageId: envelope.externalMessageId,
+              status,
+            });
+          } catch {
+            // Non-fatal — conversational delivery status already applied above.
+          }
+        }
 
         // Observability only: correlate delivery/read back to the inbound TRACE.
         waTraceOnDeliveryStatus(envelope.externalMessageId, status);

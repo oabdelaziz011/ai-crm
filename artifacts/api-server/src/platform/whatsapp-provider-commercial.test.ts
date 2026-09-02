@@ -75,7 +75,7 @@ function queueItem(companyId: string, id = "queue-1"): NotificationQueueItem {
     scheduledAt: new Date().toISOString(),
     processedAt: null,
     lastError: null,
-    payload: { event: "generic_system", params: { phone: "+15551234567" } },
+    payload: { event: "generic_system", params: { phone_e164: "+966500000001" } },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -102,7 +102,7 @@ function commercial(
 
 function buildProvider(input: {
   transport: StubTransport;
-  commercial?: WhatsAppMessagesCommercialPort;
+  commercial: WhatsAppMessagesCommercialPort;
   updates?: QueueUpdate[];
 }) {
   const updates = input.updates ?? [];

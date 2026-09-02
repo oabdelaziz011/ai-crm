@@ -7,6 +7,7 @@ import {
 } from "@workspace/channel-platform";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
+import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
 
 const router: IRouter = Router();
 
@@ -55,6 +56,8 @@ router.post("/email/poll", async (req, res, next) => {
       res.status(400).json({ error: "companyChannelId is required" });
       return;
     }
+
+    await assertRouteCommercialFeature(companyId, "email_channel");
 
     const platform = getWebhookPlatform();
     const channel = await platform.ports.registry.getCompanyChannel(companyChannelId);

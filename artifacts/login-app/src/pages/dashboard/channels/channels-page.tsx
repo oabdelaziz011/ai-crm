@@ -27,6 +27,7 @@ import {
 } from "@/hooks/channels/use-channel-workflow-binding";
 import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
 import { resolveChannelCommercialFeatureCode } from "@/lib/billing/feature-code-map";
+import { isChannelManagementUiSupported } from "@/lib/billing/channel-management-entitlement";
 import { useToast } from "@/hooks/use-toast";
 import { cancelActiveAutomationSessionsForFlow, formatChannelWorkflowBindingError } from "@/lib/channel-workflow-binding/channel-workflow-binding-repository";
 import type { SaveChannelWorkflowBindingResult } from "@/lib/channel-workflow-binding/types";
@@ -133,10 +134,16 @@ export default function ChannelsPage() {
   }, [workflowBindings]);
 
   const isChannelEntitled = (channelKey: string | undefined): boolean => {
+    if (!isChannelManagementUiSupported(channelKey)) return false;
     const featureCode = resolveChannelCommercialFeatureCode(channelKey);
     if (!featureCode) return true;
     return commercialFeatureEnabled(featureCode) === true;
   };
+
+  const creatableChannelTypes = useMemo(
+    () => channelTypes.filter((type) => isChannelManagementUiSupported(type.key)),
+    [channelTypes],
+  );
 
   // If workflow binding is already off, cancel leftover waiting sessions so old
   // interactive WhatsApp steps cannot keep looking like "automation is still answering".
@@ -571,7 +578,7 @@ export default function ChannelsPage() {
                   <SelectValue placeholder={t("dashboard.channels.selectType")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {channelTypes.map((type) => {
+                  {creatableChannelTypes.map((type) => {
                     const typeEntitled = isChannelEntitled(type.key);
                     return (
                       <SelectItem key={type.id} value={type.id} disabled={!typeEntitled}>

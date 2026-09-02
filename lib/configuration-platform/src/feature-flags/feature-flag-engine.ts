@@ -97,8 +97,16 @@ function passesRollout(row: FeatureFlagRow, subjectId?: string | null): boolean 
   return hash < row.rolloutPercentage;
 }
 
+function denyDefault(featureKey: string): FeatureFlagResolution {
+  return Object.freeze({ featureKey, enabled: false, source: "default" });
+}
+
 export class FeatureFlagEngine {
   resolve(featureKey: string, rows: readonly FeatureFlagRow[], ctx: FeatureFlagResolutionContext): FeatureFlagResolution {
+    if (!featureKey?.trim()) {
+      return denyDefault(featureKey ?? "");
+    }
+
     const now = ctx.now ?? new Date();
     const candidates = rows
       .filter(
@@ -112,7 +120,7 @@ export class FeatureFlagEngine {
 
     const winner = candidates[0];
     if (!winner) {
-      return Object.freeze({ featureKey, enabled: true, source: "default" });
+      return denyDefault(featureKey);
     }
 
     const prerequisitesMet = winner.prerequisites.every((key) =>

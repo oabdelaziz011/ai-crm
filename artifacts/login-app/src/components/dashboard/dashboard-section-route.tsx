@@ -24,6 +24,9 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
   if (route.commercialFeatureCode && commercialLoading && !isSuperAdmin) {
     return <DashboardPageFallback />;
   }
+  if (route.requiresAnyChannelEntitlement && commercialLoading && !isSuperAdmin) {
+    return <DashboardPageFallback />;
+  }
 
   const permitted = isDashboardRoutePermitted(
     route,
@@ -34,10 +37,10 @@ export function DashboardSectionRoute({ route }: DashboardSectionRouteProps) {
   );
 
   if (!permitted) {
-    if (route.commercialFeatureCode) {
+    if (route.commercialFeatureCode || route.requiresAnyChannelEntitlement) {
       return (
         <AccessDeniedPage
-          requiredPermission={route.permission ?? route.commercialFeatureCode}
+          requiredPermission={route.permission ?? route.commercialFeatureCode ?? "channels"}
         />
       );
     }

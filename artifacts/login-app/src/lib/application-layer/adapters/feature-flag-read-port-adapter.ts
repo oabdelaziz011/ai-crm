@@ -7,6 +7,18 @@ import {
 } from "@workspace/configuration-platform";
 import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
 
+class FeatureFlagReadError extends Error {
+  readonly name = "FeatureFlagReadError";
+}
+
+function denyOnReadFailure(featureKey: string) {
+  return Object.freeze({
+    featureKey,
+    enabled: false,
+    source: "default" as const,
+  });
+}
+
 type FeatureFlagDbRow = {
   feature_key: string;
   scope_type: string;
@@ -75,18 +87,39 @@ export function createLoginAppFeatureFlagReadPort(
         )
         .or(buildScopeFilter(tenantId, { ...context, companyId: tenantId }));
 
-      if (error || !data) return [];
+      if (error) {
+        throw new FeatureFlagReadError(error.message);
+      }
+      if (!data) {
+        throw new FeatureFlagReadError("Feature flag read returned no data");
+      }
       return Object.freeze((data as FeatureFlagDbRow[]).map(mapRow));
     },
 
     async resolve(tenantId, featureKey, context) {
-      const rows = await this.listApplicable(tenantId, context);
-      return featureFlagEngine.resolve(featureKey, rows, { ...context, companyId: tenantId });
+      try {
+        const rows = await this.listApplicable(tenantId, context);
+        return featureFlagEngine.resolve(featureKey, rows, { ...context, companyId: tenantId });
+      } catch (error) {
+        if (error instanceof FeatureFlagReadError) {
+          return denyOnReadFailure(featureKey);
+        }
+        throw error;
+      }
     },
 
     async resolveMany(tenantId, featureKeys, context) {
-      const rows = await this.listApplicable(tenantId, context);
-      return featureFlagEngine.resolveMany(featureKeys, rows, { ...context, companyId: tenantId });
+      try {
+        const rows = await this.listApplicable(tenantId, context);
+        return featureFlagEngine.resolveMany(featureKeys, rows, { ...context, companyId: tenantId });
+      } catch (error) {
+        if (error instanceof FeatureFlagReadError) {
+          return Object.freeze(
+            Object.fromEntries(featureKeys.map((key) => [key, false])),
+          );
+        }
+        throw error;
+      }
     },
   };
 }

@@ -41,6 +41,15 @@ export const PLATFORM_FEATURE_KEYS = [
 
 export type PlatformFeatureKey = (typeof PLATFORM_FEATURE_KEYS)[number];
 
+const PLATFORM_FEATURE_KEY_SET = new Set<string>(PLATFORM_FEATURE_KEYS);
+
+/** True when the key is a registered platform feature flag (runtime/security-sensitive). */
+export function isRegisteredPlatformFeatureKey(
+  featureKey: string,
+): featureKey is PlatformFeatureKey {
+  return PLATFORM_FEATURE_KEY_SET.has(featureKey);
+}
+
 /** Maps legacy platform_ai_feature_flags keys to unified keys. */
 export const LEGACY_AI_FEATURE_KEY_MAP: Readonly<Record<string, PlatformFeatureKey>> = Object.freeze({
   knowledge: "knowledge.platform",

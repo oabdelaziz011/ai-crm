@@ -8,9 +8,23 @@ import {
 } from "@/lib/application-layer/application-layer-bootstrap";
 import { isCommercialBillingMappedKey } from "@/lib/billing/feature-code-map";
 import {
+  isRegisteredPlatformFeatureKey,
   LEGACY_AI_FEATURE_KEY_MAP,
   type PlatformFeatureKey,
 } from "@workspace/configuration-platform";
+
+function isRuntimeSensitivePlatformFlag(featureKey: string): boolean {
+  return isCommercialBillingMappedKey(featureKey) || isRegisteredPlatformFeatureKey(featureKey);
+}
+
+function resolveRuntimeSensitiveEnabled(
+  enabled: boolean | undefined,
+  fetched: boolean,
+  errored: boolean,
+): boolean {
+  if (!fetched || errored) return false;
+  return enabled === true;
+}
 
 export function featureFlagQueryKey(companyId: string | null, featureKey: string) {
   return ["feature-flag", companyId, featureKey] as const;
@@ -26,6 +40,7 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
   const companyId = company?.id ?? null;
   const unifiedKey = resolveUnifiedFeatureKey(featureKey);
   const commercialMapped = isCommercialBillingMappedKey(unifiedKey);
+  const runtimeSensitive = isRuntimeSensitivePlatformFlag(unifiedKey);
 
   const query = useQuery({
     queryKey: featureFlagQueryKey(companyId, unifiedKey),
@@ -34,7 +49,7 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
     queryFn: async () => {
       if (!companyId || !user?.id) {
         return {
-          enabled: !commercialMapped,
+          enabled: runtimeSensitive ? false : true,
           source: "default" as const,
           licenseBlocked: commercialMapped,
         };
@@ -59,7 +74,7 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
       );
 
       return result.data ?? {
-        enabled: !commercialMapped,
+        enabled: runtimeSensitive ? false : true,
         featureKey: unifiedKey,
         source: "default" as const,
         licenseBlocked: commercialMapped,
@@ -67,10 +82,14 @@ export function useFeatureFlag(featureKey: PlatformFeatureKey | string) {
     },
   });
 
+  const effectiveEnabled = runtimeSensitive
+    ? resolveRuntimeSensitiveEnabled(query.data?.enabled, query.isFetched, query.isError)
+    : (query.data?.enabled ?? true);
+
   return {
     isLoading: query.isLoading,
-    /** Commercial modules default false while loading; unmapped flags keep legacy true. */
-    isEnabled: query.data?.enabled ?? (commercialMapped ? false : true),
+    /** Runtime/platform flags deny until an explicit enabled=true fetch completes. */
+    isEnabled: effectiveEnabled,
     resolvedEnabled: query.isFetched ? query.data?.enabled : undefined,
     licenseBlocked: query.data?.licenseBlocked ?? false,
     licenseReason:

@@ -8,8 +8,8 @@ import { PLATFORM_AI_FEATURE_KEY, type PlatformAIFeatureKey } from "./feature-ke
  * without scattering magic booleans.
  *
  * ### Runtime layer — `platform_ai_feature_enabled()` (Supabase RPC)
- * - **Model:** opt-out (enabled unless explicitly disabled).
- * - **Missing DB row:** `true`.
+ * - **Model:** fail-closed kill-switch (explicit row required).
+ * - **Missing DB row:** `false`.
  * - **Used by:** `PlatformAIProviderService.isFeatureEnabled`, `platform_resolve_ai_runtime_config`.
  *
  * ### Catalog layer — Company AI Access resolver (login-app)
@@ -23,8 +23,8 @@ import { PLATFORM_AI_FEATURE_KEY, type PlatformAIFeatureKey } from "./feature-ke
  * from runtime guards until a dedicated migration sprint aligns product policy.
  */
 
-/** Mirrors `coalesce(..., true)` in `platform_ai_feature_enabled()`. */
-export const PLATFORM_AI_RUNTIME_MISSING_ROW_DEFAULT = true as const;
+/** Mirrors fail-closed default in `platform_ai_feature_enabled()` (migration 345). */
+export const PLATFORM_AI_RUNTIME_MISSING_ROW_DEFAULT = false as const;
 
 export type PlatformAIFeatureFlagRow = {
   is_enabled: boolean;

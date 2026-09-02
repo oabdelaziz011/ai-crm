@@ -33,9 +33,11 @@ import {
   Workflow,
   ScrollText,
   Mail,
+  Megaphone,
 } from "lucide-react";
 import type { PlatformAIFeatureKey } from "@workspace/platform-ai-provider";
 import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
+import { isAnyChannelManagementEntitled } from "@/lib/billing/channel-management-entitlement";
 
 export const DASHBOARD_BASE_PATH = "/dashboard";
 
@@ -56,6 +58,7 @@ export type DashboardSectionId =
   | "products"
   | "quotes"
   | "communication"
+  | "campaigns"
   | "email"
   | "invoices"
   | "financial"
@@ -105,6 +108,11 @@ export type DashboardRouteDefinition = {
    * Do NOT set for core non-commercial modules (customers / core_crm).
    */
   commercialFeatureCode?: string;
+  /**
+   * When set: requires RBAC and at least one sellable channel transport SKU
+   * (whatsapp/facebook/instagram/email). Omnichannel alone does not satisfy.
+   */
+  requiresAnyChannelEntitlement?: boolean;
   Page: LazyExoticComponent<ComponentType>;
 };
 
@@ -193,7 +201,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.channels",
     icon: Radio,
     permission: "channels.view",
-    // Workspace shell: per-channel actions enforce whatsapp_channel / facebook_channel / etc.
+    requiresAnyChannelEntitlement: true,
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/channels/channels-page")),
   },
@@ -210,6 +218,16 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
       () => import("@/pages/dashboard/communication/communication-center-page"),
       "CommunicationCenterPage",
     ),
+  },
+  {
+    id: "campaigns",
+    path: "/dashboard/campaigns",
+    nestedPath: "/campaigns",
+    titleKey: "navigation.campaigns",
+    icon: Megaphone,
+    permission: "campaigns.view",
+    commercialFeatureCode: "campaigns",
+    Page: lazyNamed(() => import("@/pages/campaigns"), "CampaignsPage"),
   },
   {
     id: "email",
@@ -229,6 +247,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.aiUsage",
     icon: Coins,
     permission: "ai.costs.view",
+    commercialFeatureCode: "advanced_reports",
     sidebarGroup: "ai-platform",
     Page: lazyPage(() => import("@/pages/dashboard/ai/ai-usage-page")),
   },
@@ -301,6 +320,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     nestedPath: "/operations",
     titleKey: "navigation.universalOperations",
     icon: Briefcase,
+    permission: "operations.read",
     commercialFeatureCode: "operations",
     Page: lazyNamed(() => import("@/pages/dashboard/operations/operations-page"), "OperationsPage"),
   },
@@ -334,6 +354,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.products",
     icon: Package,
     permission: "products.view",
+    commercialFeatureCode: "opportunities",
     Page: lazyNamed(() => import("@/pages/dashboard/products-page"), "ProductsPage"),
   },
   {
@@ -343,6 +364,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.quotes",
     icon: FileText,
     permission: "quotes.view",
+    commercialFeatureCode: "opportunities",
     Page: lazyNamed(() => import("@/pages/dashboard/quotes-page"), "QuotesPage"),
   },
   {
@@ -352,6 +374,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.financialWorkspace",
     icon: FileText,
     permission: "invoices.view",
+    commercialFeatureCode: "finance",
     Page: lazyPage(() => import("@/pages/dashboard/invoices-page")),
   },
   {
@@ -361,6 +384,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.financialWorkspace",
     icon: Coins,
     permission: "invoices.view",
+    commercialFeatureCode: "finance",
     /** Hidden from sidebar — redirects into unified invoices workspace. */
     Page: lazyNamed(
       () => import("@/pages/dashboard/financial/financial-billing-dashboard-page"),
@@ -374,6 +398,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.executive",
     icon: BarChart3,
     permission: "executive.view",
+    commercialFeatureCode: "operations",
     Page: lazyNamed(
       () => import("@/pages/dashboard/executive/executive-dashboard-page"),
       "ExecutiveDashboardPage",
@@ -386,6 +411,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.organization",
     icon: GitBranch,
     permission: "organization.view",
+    commercialFeatureCode: "operations",
     sidebarGroup: "company-hub",
     Page: lazyNamed(
       () => import("@/pages/dashboard/organization/organization-dashboard-page"),
@@ -412,6 +438,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.marketplace",
     icon: Store,
     permission: "marketplace.view",
+    commercialFeatureCode: "api_access",
     Page: lazyNamed(
       () => import("@/pages/dashboard/marketplace/marketplace-dashboard-page"),
       "MarketplaceDashboardPage",
@@ -547,6 +574,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     icon: BookOpen,
     permission: "knowledge.view",
     platformFeatureKey: PLATFORM_AI_FEATURE_KEY.KNOWLEDGE,
+    commercialFeatureCode: "ai_employee",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/knowledge"), "KnowledgePage"),
   },
@@ -557,6 +585,7 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     titleKey: "navigation.prompts",
     icon: ScrollText,
     permission: "prompts.view",
+    commercialFeatureCode: "ai_employee",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/prompts"), "PromptPage"),
   },
@@ -616,6 +645,7 @@ export const DASHBOARD_SIDEBAR_ORDER: readonly (
   { type: "route", id: "tickets" },
   { type: "route", id: "universal-operations" },
   { type: "route", id: "leads" },
+  { type: "route", id: "campaigns" },
   { type: "route", id: "opportunities" },
   { type: "route", id: "products" },
   { type: "route", id: "quotes" },
@@ -726,7 +756,8 @@ export function isDashboardRoutePermitted(
 
   if (route.platformFeatureKey) {
     const enabled = platformFeatureEnabled?.(route.platformFeatureKey);
-    if (enabled === false) {
+    // Fail closed: undefined (loading/error/missing) and false both deny.
+    if (enabled !== true) {
       return false;
     }
   }
@@ -735,6 +766,12 @@ export function isDashboardRoutePermitted(
     const entitled = commercialFeatureEnabled?.(route.commercialFeatureCode);
     // Fail closed: undefined (loading/error) and false both deny.
     if (entitled !== true) {
+      return false;
+    }
+  }
+
+  if (route.requiresAnyChannelEntitlement) {
+    if (!isAnyChannelManagementEntitled(commercialFeatureEnabled)) {
       return false;
     }
   }

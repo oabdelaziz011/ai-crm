@@ -45,8 +45,8 @@ describe("Platform AI feature keys", () => {
 });
 
 describe("Platform AI unified defaults", () => {
-  it("runtime missing row defaults to enabled (RPC parity)", () => {
-    assert.equal(resolveRuntimeFeatureEnabled(undefined), true);
+  it("runtime missing row defaults to disabled (RPC parity, migration 345)", () => {
+    assert.equal(resolveRuntimeFeatureEnabled(undefined), false);
     assert.equal(resolveRuntimeFeatureEnabled({ is_enabled: false }), false);
     assert.equal(resolveRuntimeFeatureEnabled({ is_enabled: true }), true);
   });

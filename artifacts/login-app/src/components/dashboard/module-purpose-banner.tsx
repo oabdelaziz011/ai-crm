@@ -17,6 +17,8 @@ type ModulePurposeBannerProps = {
   title: string;
   body: string;
   points?: string[];
+  stepsTitle?: string;
+  steps?: string[];
   links?: ModulePurposeLink[];
   className?: string;
 };
@@ -26,6 +28,8 @@ export function ModulePurposeBanner({
   title,
   body,
   points = [],
+  stepsTitle,
+  steps = [],
   links = [],
   className,
 }: ModulePurposeBannerProps) {
@@ -46,6 +50,18 @@ export function ModulePurposeBanner({
                 <li key={point}>{point}</li>
               ))}
             </ul>
+          )}
+          {steps.length > 0 && (
+            <div className="space-y-1">
+              {stepsTitle ? (
+                <p className="text-xs font-semibold text-foreground">{stepsTitle}</p>
+              ) : null}
+              <ol className="list-decimal space-y-1 ps-5 text-xs text-muted-foreground">
+                {steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            </div>
           )}
           {links.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">

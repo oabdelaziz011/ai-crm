@@ -71,7 +71,7 @@ export function DashboardOutlet() {
                 </Suspense>
               </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" || route.id === "campaigns" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>

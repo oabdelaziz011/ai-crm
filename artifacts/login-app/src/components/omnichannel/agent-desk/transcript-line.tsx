@@ -289,7 +289,11 @@ export const TranscriptLine = memo(function TranscriptLine({
 
           <MessageBody text={displayBody} searchQuery={searchQuery} />
           {attachmentLabels && messageAttachments.length > 0 ? (
-            <MessageAttachmentDisplay attachments={messageAttachments} labels={attachmentLabels} />
+            <MessageAttachmentDisplay
+              attachments={messageAttachments}
+              conversationId={message.conversationId}
+              labels={attachmentLabels}
+            />
           ) : null}
           {linkPreview ? <LinkPreviewCard preview={linkPreview} /> : null}
           {reaction ? <ReactionBadge emoji={reaction} /> : null}

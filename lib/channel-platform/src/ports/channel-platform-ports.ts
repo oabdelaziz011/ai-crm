@@ -235,6 +235,11 @@ export type ChannelPlatformPorts = {
   whatsappMessagesCommercial?: import("./whatsapp-messages-commercial-port.js").WhatsAppMessagesCommercialPort;
   /** B1.1: per-channel commercial entitlement for inbound/outbound sellable channels. */
   channelCommercialEntitlement?: import("./channel-commercial-entitlement-port.js").ChannelCommercialEntitlementPort;
+  /**
+   * H3: resolve internal conversation-attachments to ephemeral signed URLs
+   * immediately before provider formatting. Optional — when absent, attachments pass through.
+   */
+  conversationAttachmentUrl?: import("../services/conversation-attachment-url.js").ConversationAttachmentUrlPort;
 };
 
 export type ChannelRouterPort = {

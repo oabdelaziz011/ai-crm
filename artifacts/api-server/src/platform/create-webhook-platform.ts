@@ -45,6 +45,7 @@ import {
   createChannelConversationPort,
   createChannelRuntimePort,
 } from "./channel-platform-ports.js";
+import { createSupabaseConversationAttachmentUrlPort } from "./conversation-attachment-url-port.js";
 import { createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
@@ -342,6 +343,7 @@ export function getWebhookPlatform(): WebhookPlatform {
   ports.aiEmployeeEmailCommercial = createAiEmployeeEmailCommercialPort(client);
   ports.whatsappMessagesCommercial = createWhatsAppMessagesCommercialPort(client);
   ports.channelCommercialEntitlement = createChannelCommercialEntitlementPort(client);
+  ports.conversationAttachmentUrl = createSupabaseConversationAttachmentUrlPort(client);
 
   const whatsAppCredentialsLoader = createSupabaseWhatsAppCredentialsLoader(client, {
     onDiagnostic: (detail) =>

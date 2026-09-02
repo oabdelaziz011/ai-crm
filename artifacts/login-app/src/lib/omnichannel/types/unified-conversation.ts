@@ -91,7 +91,10 @@ export type UnifiedMessage = {
 
 export type UnifiedMessageAttachment = {
   type: string;
+  /** Resolved/ephemeral display URL — not authoritative for internal objects. */
   url: string | null;
+  /** Canonical path for conversation-attachments; when set, UI remints via resolver. */
+  storagePath?: string | null;
   mimeType: string | null;
   fileSize: number | null;
   name?: string | null;

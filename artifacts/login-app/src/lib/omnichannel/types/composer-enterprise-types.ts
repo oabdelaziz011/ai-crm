@@ -19,7 +19,9 @@ export type ComposerPendingAttachment = {
 export type ComposerUploadedAttachment = {
   id: string;
   name: string;
-  url: string;
+  /** Ephemeral only — never the durable source of truth (H3). */
+  url?: string | null;
+  /** Canonical durable reference for conversation-attachments objects. */
   storagePath: string;
   mimeType: string;
   fileSize: number;

@@ -117,6 +117,8 @@ export class OutboundMessagePipeline {
       outboundMessageId = outboundMessage.id;
     }
 
+    const attachmentsForDelivery = request.attachments ?? [];
+
     const delivery = await this.deliveryEngine.createPendingDelivery({
       companyId: request.companyId,
       companyChannelId: request.companyChannelId,
@@ -127,29 +129,12 @@ export class OutboundMessagePipeline {
       externalThreadId: request.externalThreadId,
       payload: {
         text,
-        attachments: request.attachments ?? [],
+        // Persist storagePath-bearing originals; signed URLs are not durable.
+        attachments: attachmentsForDelivery,
         outboundPayload: request.outboundPayload ?? null,
         metadata: request.metadata ?? {},
       },
     });
-
-    waPerfStart("Message formatting", { channelKey: request.channelKey });
-    const formatted = adapter.formatOutbound(
-      { companyChannel },
-      {
-        conversationId: request.conversationId,
-        companyChannelId: request.companyChannelId,
-        channelKey: request.channelKey,
-        externalThreadId: request.externalThreadId,
-        text,
-        attachments: request.attachments,
-        metadata: {
-          ...(request.metadata ?? {}),
-          outboundPayload: request.outboundPayload,
-        },
-      },
-    );
-    waPerfEnd("Message formatting", { channelKey: request.channelKey });
 
     try {
       await assertOutboundChannelCommercialAccess(this.ports.channelCommercialEntitlement, {
@@ -174,6 +159,36 @@ export class OutboundMessagePipeline {
           );
         }
       }
+
+      // H3: remint internal conversation-attachments from storagePath once per attempt,
+      // after commercial gates and immediately before provider formatting.
+      let attachmentsForProvider = attachmentsForDelivery;
+      if (attachmentsForDelivery.length > 0 && this.ports.conversationAttachmentUrl) {
+        attachmentsForProvider = await this.ports.conversationAttachmentUrl.resolveOutboundAttachments({
+          companyId: request.companyId,
+          conversationId: request.conversationId,
+          attachments: attachmentsForDelivery,
+          ctx,
+        });
+      }
+
+      waPerfStart("Message formatting", { channelKey: request.channelKey });
+      const formatted = adapter.formatOutbound(
+        { companyChannel },
+        {
+          conversationId: request.conversationId,
+          companyChannelId: request.companyChannelId,
+          channelKey: request.channelKey,
+          externalThreadId: request.externalThreadId,
+          text,
+          attachments: attachmentsForProvider,
+          metadata: {
+            ...(request.metadata ?? {}),
+            outboundPayload: request.outboundPayload,
+          },
+        },
+      );
+      waPerfEnd("Message formatting", { channelKey: request.channelKey });
 
       traceOutboundValidationEnter({
         validationName: "WhatsAppCloudAdapter.sendOutbound",

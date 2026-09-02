@@ -45,7 +45,8 @@ function mapAttachmentsForDispatch(attachments: ComposerUploadedAttachment[]) {
   return attachments.map((attachment) => ({
     attachmentId: attachment.id,
     type: attachment.kind === "image" ? ("image" as const) : ("document" as const),
-    url: attachment.url,
+    // H3: do not send persisted/long-lived signed URLs — pipeline remints from storagePath.
+    url: undefined,
     mimeType: attachment.mimeType,
     filename: attachment.name,
     metadata: { storagePath: attachment.storagePath, kind: attachment.kind },

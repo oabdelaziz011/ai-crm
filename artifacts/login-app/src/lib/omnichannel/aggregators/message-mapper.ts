@@ -22,11 +22,31 @@ function readMetadataAttachments(metadata: Record<string, unknown>): UnifiedMess
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
     const record = entry as Record<string, unknown>;
-    const url = typeof record.url === "string" ? record.url : null;
-    if (!url) continue;
+    const storagePath =
+      typeof record.storagePath === "string" && record.storagePath.trim()
+        ? record.storagePath.trim()
+        : null;
+    const rawUrl = typeof record.url === "string" ? record.url : null;
+
+    // H3: storagePath wins for internal objects — persisted signed URL is not authoritative.
+    if (storagePath) {
+      results.push({
+        type: typeof record.type === "string" ? record.type : "file",
+        url: null,
+        storagePath,
+        mimeType: typeof record.mimeType === "string" ? record.mimeType : null,
+        fileSize: typeof record.fileSize === "number" ? record.fileSize : null,
+        name: typeof record.name === "string" ? record.name : null,
+      });
+      continue;
+    }
+
+    // External / inbound media URL (or legacy signed URL without storagePath).
+    if (!rawUrl) continue;
     results.push({
       type: typeof record.type === "string" ? record.type : "file",
-      url,
+      url: rawUrl,
+      storagePath: null,
       mimeType: typeof record.mimeType === "string" ? record.mimeType : null,
       fileSize: typeof record.fileSize === "number" ? record.fileSize : null,
       name: typeof record.name === "string" ? record.name : null,
@@ -40,10 +60,14 @@ function buildAttachments(message: ConversationMessageRecord): UnifiedMessageAtt
   const fromMetadata = readMetadataAttachments(metadata);
   if (fromMetadata.length > 0) return fromMetadata;
   if (!message.attachment_url && !message.attachment_type) return [];
+
+  const legacyUrl = message.attachment_url;
+  // Without storagePath, legacy attachment_url is fallback-only (may be expired signed URL).
   return [
     {
       type: message.attachment_type ?? "file",
-      url: message.attachment_url,
+      url: legacyUrl,
+      storagePath: null,
       mimeType: message.mime_type,
       fileSize: message.file_size,
       name: null,

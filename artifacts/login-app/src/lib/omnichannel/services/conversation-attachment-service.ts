@@ -5,8 +5,14 @@ import type {
   ComposerUploadedAttachment,
 } from "@/lib/omnichannel/types/composer-enterprise-types";
 import { COMPOSER_MAX_ATTACHMENTS } from "@/lib/omnichannel/types/composer-enterprise-types";
+import {
+  CONVERSATION_ATTACHMENTS_BUCKET,
+  getConversationAttachmentSignedUrlSeconds,
+  resolveConversationAttachmentUrl as resolveSharedConversationAttachmentUrl,
+  type ServiceContext,
+} from "@workspace/channel-platform/client";
 
-const BUCKET = "conversation-attachments";
+const BUCKET = CONVERSATION_ATTACHMENTS_BUCKET;
 
 const ALLOWED_MIME: Record<string, ComposerAttachmentKind> = {
   "image/jpeg": "image",
@@ -47,6 +53,83 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[^\w.\-()+\s]/g, "_").slice(0, 120);
 }
 
+/**
+ * Authoritative conversation ownership check before building a storage path.
+ * Does not trust client companyId/conversationId alone — verifies the live row.
+ * Storage RLS (migration 347) remains the enforcement boundary for PostgREST.
+ */
+export async function assertConversationAttachmentUploadTarget(input: {
+  companyId: string;
+  conversationId: string;
+}): Promise<void> {
+  const companyId = input.companyId?.trim();
+  const conversationId = input.conversationId?.trim();
+  if (!companyId || !conversationId) {
+    throw new Error("Conversation context required for attachment upload.");
+  }
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("id, company_id, deleted_at")
+    .eq("id", conversationId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data?.id) {
+    throw new Error("Conversation not found or not accessible for attachment upload.");
+  }
+  if (String(data.company_id) !== companyId) {
+    throw new Error("Conversation does not belong to the active company.");
+  }
+}
+
+function createBrowserAttachmentAuthz() {
+  return {
+    async loadLiveConversation(conversationId: string) {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("id, company_id")
+        .eq("id", conversationId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data?.id || !data.company_id) return null;
+      return { id: String(data.id), companyId: String(data.company_id) };
+    },
+    async createSignedUrl(storagePath: string, expiresInSeconds: number) {
+      // User JWT → H2 storage SELECT policy (ai.conversations.view) applies naturally.
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(storagePath, expiresInSeconds);
+      if (error) throw new Error(error.message);
+      if (!data?.signedUrl) throw new Error("Failed to sign conversation attachment URL.");
+      return data.signedUrl;
+    },
+  };
+}
+
+/**
+ * H3: mint an ephemeral signed URL after authorization.
+ * Prefer user JWT so migration 347 storage RLS applies.
+ */
+export async function resolveConversationAttachmentUrl(input: {
+  companyId: string;
+  conversationId: string;
+  storagePath: string;
+  ctx: ServiceContext;
+  expiresInSeconds?: number;
+}): Promise<string> {
+  return resolveSharedConversationAttachmentUrl({
+    companyId: input.companyId,
+    conversationId: input.conversationId,
+    storagePath: input.storagePath,
+    ctx: input.ctx,
+    authz: createBrowserAttachmentAuthz(),
+    expiresInSeconds: input.expiresInSeconds ?? getConversationAttachmentSignedUrlSeconds(),
+  });
+}
+
 export async function uploadConversationAttachment(input: {
   companyId: string;
   conversationId: string;
@@ -56,8 +139,13 @@ export async function uploadConversationAttachment(input: {
   const kind = resolveAttachmentKind(input.file);
   if (!kind) throw new Error("Unsupported attachment type");
 
+  await assertConversationAttachmentUploadTarget({
+    companyId: input.companyId,
+    conversationId: input.conversationId,
+  });
+
   const attachmentId = crypto.randomUUID();
-  const path = `${input.companyId}/${input.conversationId}/${attachmentId}-${sanitizeFileName(input.file.name)}`;
+  const path = `${input.companyId.trim()}/${input.conversationId.trim()}/${attachmentId}-${sanitizeFileName(input.file.name)}`;
 
   input.onProgress?.(10);
 
@@ -71,20 +159,13 @@ export async function uploadConversationAttachment(input: {
 
   if (uploadError) throw new Error(uploadError.message);
 
-  input.onProgress?.(85);
-
-  const { data: signed, error: signError } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
-
-  if (signError || !signed?.signedUrl) throw new Error(signError?.message ?? "Failed to sign attachment URL");
-
   input.onProgress?.(100);
 
+  // H3: storagePath is canonical. Do not mint/persist a durable signed URL at upload.
   return {
     id: attachmentId,
     name: input.file.name,
-    url: signed.signedUrl,
+    url: null,
     storagePath: path,
     mimeType: input.file.type || "application/octet-stream",
     fileSize: input.file.size,
@@ -111,6 +192,10 @@ export async function uploadPendingAttachments(input: {
   return uploaded;
 }
 
+/**
+ * Persist storagePath as canonical. Do not persist long-lived signed URLs.
+ * attachment_url stays null for new internal attachments (schema retained for legacy).
+ */
 export function buildAttachmentMessageFields(attachments: ComposerUploadedAttachment[]) {
   if (attachments.length === 0) {
     return {
@@ -129,13 +214,12 @@ export function buildAttachmentMessageFields(attachments: ComposerUploadedAttach
   return {
     contentType,
     attachmentType: primary.kind,
-    attachmentUrl: primary.url,
+    attachmentUrl: null,
     mimeType: primary.mimeType,
     fileSize: primary.fileSize,
     metadataAttachments: attachments.map((attachment) => ({
       id: attachment.id,
       name: attachment.name,
-      url: attachment.url,
       storagePath: attachment.storagePath,
       mimeType: attachment.mimeType,
       fileSize: attachment.fileSize,

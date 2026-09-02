@@ -44,6 +44,7 @@ export * from "./ports/whatsapp-messages-commercial-port.js";
 export * from "./ports/emails-sent-commercial-port.js";
 export * from "./ports/channel-commercial-entitlement-port.js";
 export * from "./services/assert-channel-commercial-access.js";
+export * from "./services/conversation-attachment-url.js";
 export * from "./ports/telemetry-port.js";
 export * from "./adapters/channel-adapter-registry.js";
 export * from "./adapters/stub-web-chat-adapter.js";

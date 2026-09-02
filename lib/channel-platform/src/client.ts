@@ -26,3 +26,4 @@ export * from "./router/channel-router.js";
 export * from "./dispatcher/channel-dispatcher.js";
 export * from "./services/outbound-route-validation.js";
 export * from "./services/server-outbound-channels.js";
+export * from "./services/conversation-attachment-url.js";

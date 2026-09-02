@@ -8,6 +8,8 @@ import {
   resolveWebhookApiLifecycle,
   isDevWatchCommandLine,
   isWebhookOwnedApiCommandLine,
+  resolveCloudflaredConfigPath,
+  isProjectCloudflaredProcess,
 } from "./spawn-utils.mjs";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -107,5 +109,75 @@ describe("webhook API reuse classification", () => {
     });
     assert.equal(lifecycle.action, "reuse");
     assert.notEqual(lifecycle.action, "spawn");
+  });
+});
+
+describe("CLOUDFLARE_TUNNEL_CONFIG profile override", () => {
+  const defaultConfig = resolve(PROJECT_ROOT, "infra/cloudflare/config.yml").replace(/\\/g, "/");
+  const omarRelative = "infra/cloudflare/config.omar.yml";
+  const omarAbsolute = resolve(PROJECT_ROOT, omarRelative);
+
+  it("no CLOUDFLARE_TUNNEL_CONFIG => default config", () => {
+    const path = resolveCloudflaredConfigPath(PROJECT_ROOT, {});
+    assert.equal(path.replace(/\\/g, "/"), defaultConfig);
+  });
+
+  it("relative override => project-relative config", () => {
+    const path = resolveCloudflaredConfigPath(PROJECT_ROOT, {
+      CLOUDFLARE_TUNNEL_CONFIG: omarRelative,
+    });
+    assert.equal(path.replace(/\\/g, "/"), omarAbsolute.replace(/\\/g, "/"));
+  });
+
+  it("absolute override => absolute config", () => {
+    const path = resolveCloudflaredConfigPath(PROJECT_ROOT, {
+      CLOUDFLARE_TUNNEL_CONFIG: omarAbsolute,
+    });
+    assert.equal(path.replace(/\\/g, "/"), omarAbsolute.replace(/\\/g, "/"));
+  });
+
+  it("selected override is recognized as project cloudflared process", () => {
+    const env = { CLOUDFLARE_TUNNEL_CONFIG: omarRelative };
+    const cmd = `cloudflared tunnel --config ${omarAbsolute} run`;
+    assert.equal(isProjectCloudflaredProcess(cmd, PROJECT_ROOT, env), true);
+  });
+
+  it("default config remains recognized when override is absent", () => {
+    const cmd = `cloudflared tunnel --config ${defaultConfig} run`;
+    assert.equal(isProjectCloudflaredProcess(cmd, PROJECT_ROOT, {}), true);
+    assert.equal(
+      isProjectCloudflaredProcess(
+        `cloudflared.exe --config ${defaultConfig} # via scripts/cloudflare/run-tunnel.mjs`,
+        PROJECT_ROOT,
+        {},
+      ),
+      true,
+    );
+  });
+
+  it("unrelated cloudflared process remains unrelated", () => {
+    const env = { CLOUDFLARE_TUNNEL_CONFIG: omarRelative };
+    const other = "cloudflared tunnel --config C:/other-dev/infra/cloudflare/config.yml run";
+    assert.equal(isProjectCloudflaredProcess(other, PROJECT_ROOT, env), false);
+    assert.equal(isProjectCloudflaredProcess(other, PROJECT_ROOT, {}), false);
+  });
+
+  it("dev-watch API reuse behavior remains passing with override env present", () => {
+    const inspection = findListeningProjectApiServer(3000, PROJECT_ROOT, {
+      getListeningPids: () => [20088],
+      getProcessCommandLine: (pid) => {
+        if (pid === 20088) return `node --enable-source-maps ${API_MAIN}`;
+        if (pid === 31940) return `node ${DEV_WATCH}`;
+        return "";
+      },
+      getParentPid: (pid) => (pid === 20088 ? 31940 : null),
+    });
+    assert.equal(resolveWebhookApiLifecycle(inspection).action, "reuse");
+    assert.equal(
+      resolveCloudflaredConfigPath(PROJECT_ROOT, {
+        CLOUDFLARE_TUNNEL_CONFIG: omarRelative,
+      }).replace(/\\/g, "/"),
+      omarAbsolute.replace(/\\/g, "/"),
+    );
   });
 });

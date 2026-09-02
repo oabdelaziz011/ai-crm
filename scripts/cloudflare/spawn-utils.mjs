@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEBUG = process.env.WEBHOOK_STACK_DEBUG === "1";
@@ -310,9 +310,17 @@ export function resolveWebhookApiLifecycle(inspection) {
   return { action: "fail", reason: "unrelated_process", inspection };
 }
 
-export function isProjectCloudflaredProcess(commandLine, projectRoot) {
+export function resolveCloudflaredConfigPath(projectRoot, env = process.env) {
+  const raw = typeof env?.CLOUDFLARE_TUNNEL_CONFIG === "string" ? env.CLOUDFLARE_TUNNEL_CONFIG.trim() : "";
+  if (!raw) {
+    return resolve(projectRoot, "infra/cloudflare/config.yml");
+  }
+  return isAbsolute(raw) ? resolve(raw) : resolve(projectRoot, raw);
+}
+
+export function isProjectCloudflaredProcess(commandLine, projectRoot, env = process.env) {
   const normalized = (commandLine ?? "").replace(/\\/g, "/");
-  const configPath = resolve(projectRoot, "infra/cloudflare/config.yml").replace(/\\/g, "/");
+  const configPath = resolveCloudflaredConfigPath(projectRoot, env).replace(/\\/g, "/");
   return (
     /cloudflared(?:\.exe)?/i.test(normalized) &&
     (normalized.includes(configPath) || normalized.includes("scripts/cloudflare/run-tunnel.mjs"))

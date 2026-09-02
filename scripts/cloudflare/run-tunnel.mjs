@@ -4,14 +4,13 @@
  *
  * Modes:
  *   1. CLOUDFLARE_TUNNEL_TOKEN in .env  -> cloudflared tunnel run --token ...
- *   2. infra/cloudflare/config.yml        -> cloudflared tunnel --config ... run
+ *   2. CLOUDFLARE_TUNNEL_CONFIG (optional) or infra/cloudflare/config.yml
+ *      -> cloudflared tunnel --config ... run
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
-import path from "node:path";
 import { PROJECT_ROOT, readEnvFile } from "./env-utils.mjs";
-
-const CONFIG_PATH = path.join(PROJECT_ROOT, "infra/cloudflare/config.yml");
+import { resolveCloudflaredConfigPath } from "./spawn-utils.mjs";
 
 function fail(message) {
   console.error(message);
@@ -21,15 +20,27 @@ function fail(message) {
 function main() {
   const envFile = readEnvFile();
   const token = envFile.values.get("CLOUDFLARE_TUNNEL_TOKEN")?.trim();
+  const configPath = resolveCloudflaredConfigPath(PROJECT_ROOT);
 
   let args;
   if (token) {
     console.log("Starting named Cloudflare Tunnel (token mode)...");
     args = ["tunnel", "run", "--token", token];
-  } else if (fs.existsSync(CONFIG_PATH)) {
-    console.log(`Starting named Cloudflare Tunnel using ${CONFIG_PATH} ...`);
-    args = ["tunnel", "--config", CONFIG_PATH, "run"];
+  } else if (fs.existsSync(configPath)) {
+    console.log(`Starting named Cloudflare Tunnel using ${configPath} ...`);
+    args = ["tunnel", "--config", configPath, "run"];
   } else {
+    const override = process.env.CLOUDFLARE_TUNNEL_CONFIG?.trim();
+    if (override) {
+      fail(
+        [
+          `Named tunnel config not found: ${configPath}`,
+          "",
+          "CLOUDFLARE_TUNNEL_CONFIG is set but the file does not exist.",
+          "Fix the path, or unset CLOUDFLARE_TUNNEL_CONFIG to use infra/cloudflare/config.yml.",
+        ].join("\n"),
+      );
+    }
     fail(
       [
         "Named tunnel is not configured.",
@@ -44,6 +55,9 @@ function main() {
         "  1. Create a named tunnel + public hostname in Cloudflare Zero Trust",
         "  2. Set CLOUDFLARE_TUNNEL_TOKEN in .env",
         "  3. pnpm tunnel:run",
+        "",
+        "Option C — Local profile override (not shared .env):",
+        "  set CLOUDFLARE_TUNNEL_CONFIG=infra/cloudflare/config.omar.yml",
         "",
         "Do NOT use: cloudflared tunnel --url http://localhost:3000",
       ].join("\n"),

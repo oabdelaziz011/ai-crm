@@ -75,3 +75,5 @@ docs/architecture/rc3-*.json
 docs/architecture/sprint-ai3-*.json
 docs/architecture/book-workflow-*.json
 docs/architecture/production-booking-flow-e2e-report.json
+
+infra/cloudflare/config.*.yml

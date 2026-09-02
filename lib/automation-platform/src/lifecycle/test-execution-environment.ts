@@ -30,6 +30,9 @@ export function createVersionGraphTestContext(): ServiceContext {
     isSuperAdmin: false,
     hasPermission: (code) =>
       ["automation.execute", "automation.view", "automation.publish"].includes(code),
+    // Test-only default: success-path version-graph e2e expects Workflow AI enabled.
+    // Deny/guard unit tests build their own ctx and do not use this helper.
+    isWorkflowFeatureEnabled: () => true,
   };
 }
 

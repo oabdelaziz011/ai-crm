@@ -37,6 +37,23 @@ import type {
   RuntimeExecutionSummary,
   ServiceContext,
 } from "./types.js";
+import {
+  resolveChannelCommercialFeatureCode,
+  type ChannelCommercialEntitlementPort,
+} from "./ports/channel-commercial-entitlement-port.js";
+
+/** Test-only default: allow sellable channels so success-path harnesses match production wiring. */
+function allowAllChannelCommercialEntitlement(): ChannelCommercialEntitlementPort {
+  return {
+    async checkAccess(input) {
+      const featureCode = resolveChannelCommercialFeatureCode(input.channelKey);
+      if (!featureCode) {
+        return { allowed: true, reason: "not_applicable", featureCode: null };
+      }
+      return { allowed: true, reason: "entitled", featureCode };
+    },
+  };
+}
 
 export function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
   return {
@@ -430,10 +447,21 @@ export function createTestEnvironment(options?: {
   }
   if (options?.whatsappMessagesCommercial) {
     ports.whatsappMessagesCommercial = options.whatsappMessagesCommercial;
+  } else {
+    // Test-only default: success-path WhatsApp flows need metering/entitlement port present.
+    // Explicit deny/unavailable ports in commercial tests still override via options.
+    ports.whatsappMessagesCommercial = {
+      async checkAccess() {
+        return { allowed: true, reason: "entitled" as const };
+      },
+      async recordUsage() {
+        return { recorded: true, reason: "recorded" };
+      },
+    };
   }
-  if (options?.channelCommercialEntitlement) {
-    ports.channelCommercialEntitlement = options.channelCommercialEntitlement;
-  }
+  // Default allow-all for success-path tests; explicit deny ports still override.
+  ports.channelCommercialEntitlement =
+    options?.channelCommercialEntitlement ?? allowAllChannelCommercialEntitlement();
 
   const workflowResolver = options?.workflowBinding
     ? new ChannelWorkflowResolver({

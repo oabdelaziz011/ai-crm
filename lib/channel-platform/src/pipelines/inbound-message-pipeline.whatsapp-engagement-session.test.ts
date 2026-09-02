@@ -165,7 +165,9 @@ describe("InboundMessagePipeline WhatsApp engagement session", () => {
     assert.equal(second.conversationId, conversationId);
     assert.equal(first.conversationId, conversationId);
     assert.notEqual(secondEngagement?.startedAt, firstEngagement?.startedAt);
-    assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا بعودتك").length, 2);
+    // Timeout rotates engagement but preserves welcomeDeliveredAt (see resolveAiEmployeeEngagement).
+    // Welcome is once per delivered engagement stamp — not resent on inactivity rotation alone.
+    assert.equal(adapter.sentTexts.filter((text) => text === "مرحبًا بعودتك").length, 1);
     // First: "إلغاء" → welcome + AI. Second: "هاي" greeting-only after welcome → skip AI.
     assert.equal(env.runtimeCalls, 1);
   });

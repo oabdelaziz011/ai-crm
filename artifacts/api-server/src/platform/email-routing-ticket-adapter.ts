@@ -4,24 +4,58 @@ import {
   type EmailRoutingTicketPort,
 } from "@workspace/ai-intent-engine";
 import type { EmailRoutingTicketActionPort } from "@workspace/channel-platform";
-import { createTicketPlatformServices } from "@workspace/ticket-platform";
+import { createTicketPlatformServices, TICKET_PERMISSIONS } from "@workspace/ticket-platform";
 
 export type EmailRoutingTicketAdapterOptions = {
   resolveActorUserIdForCompany: (companyId: string) => Promise<string | null>;
 };
 
-function serviceContext(companyId: string, actorUserId: string) {
+/** Narrow permissions used by AI Email Routing ticket create/reuse/assign only. */
+export const EMAIL_ROUTING_TICKET_PERMISSIONS: ReadonlySet<string> = new Set([
+  TICKET_PERMISSIONS.view,
+  TICKET_PERMISSIONS.create,
+  TICKET_PERMISSIONS.assign,
+]);
+
+export type EmailRoutingTicketServiceContext = {
+  userId: string;
+  companyId: string;
+  isSuperAdmin: false;
+  hasPermission: (permissionCode: string) => boolean;
+};
+
+/**
+ * Company-scoped machine context for email-routing → ticket bridge.
+ * Never fabricates isSuperAdmin / hasPermission allow-all.
+ * Actor is the resolved company technical user (existing resolveCompanyActorUserId path).
+ */
+export function buildEmailRoutingTicketServiceContext(
+  companyId: string | null | undefined,
+  actorUserId: string | null | undefined,
+): EmailRoutingTicketServiceContext {
+  const scopedCompany = typeof companyId === "string" ? companyId.trim() : "";
+  const scopedActor = typeof actorUserId === "string" ? actorUserId.trim() : "";
+  if (!scopedCompany) {
+    throw new Error("Company context is required for email routing ticket operations.");
+  }
+  if (!scopedActor) {
+    throw new Error("An authenticated user is required for ticket operations.");
+  }
+
   return {
-    userId: actorUserId,
-    companyId,
-    isSuperAdmin: true,
-    hasPermission: () => true,
+    userId: scopedActor,
+    companyId: scopedCompany,
+    isSuperAdmin: false,
+    hasPermission(permissionCode: string): boolean {
+      return EMAIL_ROUTING_TICKET_PERMISSIONS.has(permissionCode.trim());
+    },
   };
 }
 
 /**
  * Adapts existing TicketCommandService / TicketReadPort for Sprint 5 AI Email Routing.
  * Reuses company-scoped create + assign; does not invent teams or bypass assignee resolution.
+ * Commercial email-routing entitlement remains upstream (inbound pipeline).
  */
 export function createEmailRoutingTicketActionPort(
   client: SupabaseClient,
@@ -30,7 +64,11 @@ export function createEmailRoutingTicketActionPort(
   const platform = createTicketPlatformServices(client);
 
   async function resolveActor(companyId: string): Promise<string> {
-    const actor = await options.resolveActorUserIdForCompany(companyId);
+    const scopedCompany = companyId?.trim() ?? "";
+    if (!scopedCompany) {
+      throw new Error("Company context is required for email routing ticket operations.");
+    }
+    const actor = await options.resolveActorUserIdForCompany(scopedCompany);
     if (!actor?.trim()) {
       throw new Error("An authenticated user is required for ticket operations.");
     }
@@ -40,13 +78,11 @@ export function createEmailRoutingTicketActionPort(
   const ticketPort: EmailRoutingTicketPort = {
     async listByConversation(input) {
       const actorUserId = await resolveActor(input.companyId);
-      const { tickets } = await platform.reads.listConversationTickets(
-        serviceContext(input.companyId, actorUserId),
-        {
-          companyId: input.companyId,
-          conversationId: input.conversationId,
-        },
-      );
+      const ctx = buildEmailRoutingTicketServiceContext(input.companyId, actorUserId);
+      const { tickets } = await platform.reads.listConversationTickets(ctx, {
+        companyId: ctx.companyId,
+        conversationId: input.conversationId,
+      });
       return tickets.map((ticket) => ({
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
@@ -56,16 +92,14 @@ export function createEmailRoutingTicketActionPort(
 
     async createTicket(input) {
       const actorUserId = await resolveActor(input.companyId);
-      const result = await platform.commands.createTicket(
-        serviceContext(input.companyId, actorUserId),
-        {
-          companyId: input.companyId,
-          subject: input.subject,
-          description: input.description,
-          conversationId: input.conversationId,
-          metadata: input.metadata,
-        },
-      );
+      const ctx = buildEmailRoutingTicketServiceContext(input.companyId, actorUserId);
+      const result = await platform.commands.createTicket(ctx, {
+        companyId: ctx.companyId,
+        subject: input.subject,
+        description: input.description,
+        conversationId: input.conversationId,
+        metadata: input.metadata,
+      });
       return {
         id: result.ticket.id,
         ticketNumber: result.ticket.ticketNumber,
@@ -76,14 +110,12 @@ export function createEmailRoutingTicketActionPort(
 
     async assignEmployee(input) {
       const actorUserId = await resolveActor(input.companyId);
-      const result = await platform.commands.assignTicket(
-        serviceContext(input.companyId, actorUserId),
-        {
-          companyId: input.companyId,
-          ticketId: input.ticketId,
-          assigneeUserId: input.assigneeUserId,
-        },
-      );
+      const ctx = buildEmailRoutingTicketServiceContext(input.companyId, actorUserId);
+      const result = await platform.commands.assignTicket(ctx, {
+        companyId: ctx.companyId,
+        ticketId: input.ticketId,
+        assigneeUserId: input.assigneeUserId,
+      });
       return {
         id: result.ticket.id,
         ticketNumber: result.ticket.ticketNumber,

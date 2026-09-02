@@ -148,6 +148,17 @@ export class NotificationService {
   }
 
   async createNotification(input: CreateNotificationInput): Promise<Notification[]> {
+    const deliveries = await this.createNotificationDeliveries(input);
+    return deliveries.map((d) => d.notification);
+  }
+
+  /**
+   * Same as createNotification, but also returns notification_queue ids created
+   * for each delivery (needed by callers that must track queued vs sent).
+   */
+  async createNotificationDeliveries(
+    input: CreateNotificationInput,
+  ): Promise<Array<{ notification: Notification; queueId: string; channel: NotificationChannel }>> {
     const template = notificationTemplateRegistry.resolve(input.event);
     if (!template) {
       throw new Error(`Unknown notification event: ${input.event}`);
@@ -162,7 +173,8 @@ export class NotificationService {
     });
 
     const preferences = await this.preferenceService.list(input.companyId);
-    const created: Notification[] = [];
+    const created: Array<{ notification: Notification; queueId: string; channel: NotificationChannel }> =
+      [];
 
     for (const recipient of input.recipients) {
       for (const channel of channels) {
@@ -191,7 +203,6 @@ export class NotificationService {
         });
 
         const notification = await this.repository.create(row);
-        created.push(notification);
 
         const queueItem = await this.queueService.enqueueDelivery({
           companyId: input.companyId,
@@ -203,6 +214,8 @@ export class NotificationService {
         if (channel === "in_app") {
           await this.queueService.markCompleted(input.companyId, queueItem.id);
         }
+
+        created.push({ notification, queueId: queueItem.id, channel });
       }
     }
 

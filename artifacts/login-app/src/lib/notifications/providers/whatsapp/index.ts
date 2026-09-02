@@ -3,6 +3,7 @@ import { MetaWhatsAppTransport } from "@/lib/notifications/providers/whatsapp/ad
 import { StubWhatsAppTransport } from "@/lib/notifications/providers/whatsapp/adapter/stub-whatsapp-transport";
 import { WhatsAppRenderer } from "@/lib/notifications/providers/whatsapp/renderer/whatsapp-renderer";
 import { createWhatsAppProvider } from "@/lib/notifications/providers/whatsapp/services/whatsapp-provider";
+import { createLoginAppWhatsAppMessagesCommercialPort } from "@/lib/notifications/providers/whatsapp/services/whatsapp-messages-commercial-port";
 import { WhatsAppDeliveryLogRepository } from "@/lib/notifications/providers/whatsapp/services/whatsapp-delivery-log-repository";
 import { WhatsAppSettingsRepository } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
 import type { WhatsAppTransport } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
@@ -25,7 +26,9 @@ export function createWhatsAppProviderServices(
   renderer: WhatsAppRenderer = defaultRenderer,
 ): WhatsAppProviderServices {
   return {
-    provider: createWhatsAppProvider(client, transport, renderer),
+    provider: createWhatsAppProvider(client, transport, renderer, {
+      whatsappMessagesCommercial: createLoginAppWhatsAppMessagesCommercialPort(client),
+    }),
     settings: new WhatsAppSettingsRepository(client),
     deliveryLog: new WhatsAppDeliveryLogRepository(client),
   };

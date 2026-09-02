@@ -4,6 +4,7 @@ import { WhatsAppDeliveryLogRepository } from "@/lib/notifications/providers/wha
 import { WhatsAppQueueConsumer } from "@/lib/notifications/providers/whatsapp/services/whatsapp-queue-consumer";
 import { validateRecipientPhone } from "@/lib/notifications/providers/whatsapp/services/whatsapp-phone-validator";
 import { resolveRecipientPhone } from "@/lib/notifications/providers/whatsapp/services/whatsapp-recipient-resolver";
+import { resolveWhatsAppOutboundPhone } from "@/lib/notifications/providers/whatsapp/services/whatsapp-outbound-phone";
 import { WhatsAppRetryPolicy } from "@/lib/notifications/providers/whatsapp/services/whatsapp-retry-policy";
 import { WhatsAppSettingsRepository } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
 import type {
@@ -16,9 +17,11 @@ import type {
 import { WHATSAPP_PROVIDER } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
 import type { WhatsAppMessagesCommercialPort } from "@workspace/channel-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reconcileCampaignRecipientSendSuccess } from "@/lib/campaigns/reconcile-campaign-recipient-delivery";
 
 export type WhatsAppProviderOptions = {
-  whatsappMessagesCommercial?: WhatsAppMessagesCommercialPort;
+  /** Required — callers cannot construct a production-capable sender without commercial enforcement. */
+  whatsappMessagesCommercial: WhatsAppMessagesCommercialPort;
 };
 
 export type WhatsAppProviderProcessResult = {
@@ -37,8 +40,27 @@ export class WhatsAppProvider {
     private readonly queueConsumer: WhatsAppQueueConsumer,
     private readonly settingsRepository: WhatsAppSettingsRepository,
     private readonly deliveryLogRepository: WhatsAppDeliveryLogRepository,
-    private readonly whatsappMessagesCommercial?: WhatsAppMessagesCommercialPort,
+    private readonly whatsappMessagesCommercial: WhatsAppMessagesCommercialPort,
   ) {}
+
+  private async assertCommercialAccess(companyId: string): Promise<void> {
+    const scopedCompanyId = companyId?.trim();
+    if (!scopedCompanyId) {
+      throw new Error("WhatsApp commercial access unavailable.");
+    }
+    const access = await this.whatsappMessagesCommercial.checkAccess({
+      companyId: scopedCompanyId,
+    });
+    if (!access.allowed) {
+      throw new Error(
+        access.reason === "quota_exceeded"
+          ? "WhatsApp message quota exceeded."
+          : access.reason === "not_entitled"
+            ? "WhatsApp channel is not entitled."
+            : "WhatsApp commercial access unavailable.",
+      );
+    }
+  }
 
   async healthCheck(
     companyId: string,
@@ -58,6 +80,7 @@ export class WhatsAppProvider {
   }
 
   async sendTestMessage(companyId: string, recipientPhone: string): Promise<WhatsAppDeliveryResult> {
+    await this.assertCommercialAccess(companyId);
     const settings = await this.settingsRepository.getSecure(companyId);
     if (!settings?.enabled) {
       throw new Error("WhatsApp provider is disabled");
@@ -70,7 +93,11 @@ export class WhatsAppProvider {
       settings.defaultLanguage,
     );
 
-    const phoneValidation = validateRecipientPhone(recipientPhone);
+    // D5.1 — test messages use canonical outbound resolution (no Egypt-guess).
+    const outbound = resolveWhatsAppOutboundPhone({ phone: recipientPhone });
+    const phoneValidation = outbound.ok
+      ? validateRecipientPhone(outbound.phone)
+      : { valid: false as const, normalized: null, error: outbound.reason };
     if (!phoneValidation.valid || !phoneValidation.normalized) {
       throw new Error(`Invalid recipient phone: ${phoneValidation.error ?? "invalid"}`);
     }
@@ -168,7 +195,10 @@ export class WhatsAppProvider {
     try {
       this.assertCredentialsSendable(settings);
 
-      const recipient = await resolveRecipientPhone(this.client, params);
+      const recipient = await resolveRecipientPhone(this.client, {
+        ...params,
+        companyId: params.companyId || item.companyId,
+      });
       if (!recipient.phone) {
         const reason = recipient.validation.error ?? recipient.optIn.reason ?? "no_recipient";
         throw new Error(`Recipient phone unavailable: ${reason}`);
@@ -177,41 +207,36 @@ export class WhatsAppProvider {
       const languageCode = params.language ?? params.locale ?? settings.defaultLanguage;
       const rendered = this.renderer.renderEvent(event, params, languageCode);
 
-      if (this.whatsappMessagesCommercial) {
-        const access = await this.whatsappMessagesCommercial.checkAccess({
+      try {
+        await this.assertCommercialAccess(item.companyId);
+      } catch (commercialError) {
+        const denialMessage =
+          commercialError instanceof Error
+            ? commercialError.message
+            : "WhatsApp commercial access unavailable.";
+        await this.queueConsumer.markFailed(
+          item.companyId,
+          item.id,
+          denialMessage,
+          settings.maxRetryCount,
+          undefined,
+        );
+        const denied: WhatsAppDeliveryResult = {
+          queueId: item.id,
+          notificationId: item.notificationId,
           companyId: item.companyId,
-        });
-        if (!access.allowed) {
-          const denialMessage =
-            access.reason === "quota_exceeded"
-              ? "WhatsApp message quota exceeded."
-              : access.reason === "not_entitled"
-                ? "WhatsApp channel is not entitled."
-                : "WhatsApp commercial access unavailable.";
-          await this.queueConsumer.markFailed(
-            item.companyId,
-            item.id,
-            denialMessage,
-            settings.maxRetryCount,
-            undefined,
-          );
-          const denied: WhatsAppDeliveryResult = {
-            queueId: item.id,
-            notificationId: item.notificationId,
-            companyId: item.companyId,
-            provider: WHATSAPP_PROVIDER,
-            status: "failed",
-            durationMs: Date.now() - started,
-            attempts,
-            lastError: denialMessage,
-            recipientPhone: recipient.phone,
-            messageId: null,
-            templateKey: rendered.templateKey,
-            timestamp: new Date().toISOString(),
-          };
-          await this.deliveryLogRepository.append(denied);
-          return denied;
-        }
+          provider: WHATSAPP_PROVIDER,
+          status: "failed",
+          durationMs: Date.now() - started,
+          attempts,
+          lastError: denialMessage,
+          recipientPhone: recipient.phone,
+          messageId: null,
+          templateKey: rendered.templateKey,
+          timestamp: new Date().toISOString(),
+        };
+        await this.deliveryLogRepository.append(denied);
+        return denied;
       }
 
       const sendResult = await this.transport.send(
@@ -233,17 +258,15 @@ export class WhatsAppProvider {
 
       await this.queueConsumer.markCompleted(item.companyId, item.id);
 
-      if (this.whatsappMessagesCommercial) {
-        await this.whatsappMessagesCommercial
-          .recordUsage({
-            companyId: item.companyId,
-            externalMessageId: messageId,
-            usageSource: "notification_queue",
-            referenceType: "notification_queue",
-            referenceId: item.id,
-          })
-          .catch(() => undefined);
-      }
+      await this.whatsappMessagesCommercial
+        .recordUsage({
+          companyId: item.companyId,
+          externalMessageId: messageId,
+          usageSource: "notification_queue",
+          referenceType: "notification_queue",
+          referenceId: item.id,
+        })
+        .catch(() => undefined);
 
       const result: WhatsAppDeliveryResult = {
         queueId: item.id,
@@ -260,6 +283,13 @@ export class WhatsAppProvider {
         timestamp: new Date().toISOString(),
       };
       await this.deliveryLogRepository.append(result);
+      // Campaign WhatsApp: link Meta wamid onto marketing_campaign_recipients
+      // via company_id + notification_queue_id (no phone matching).
+      await reconcileCampaignRecipientSendSuccess(this.client, {
+        companyId: item.companyId,
+        queueId: item.id,
+        providerMessageId: messageId,
+      }).catch(() => undefined);
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -351,8 +381,13 @@ export function createWhatsAppProvider(
   client: SupabaseClient,
   transport: WhatsAppTransport,
   renderer: WhatsAppRenderer,
-  options: WhatsAppProviderOptions = {},
+  options: WhatsAppProviderOptions,
 ): WhatsAppProvider {
+  if (!options?.whatsappMessagesCommercial) {
+    throw new Error(
+      "WhatsAppMessagesCommercialPort is required — cannot construct WhatsApp sender without commercial enforcement.",
+    );
+  }
   return new WhatsAppProvider(
     client,
     transport,

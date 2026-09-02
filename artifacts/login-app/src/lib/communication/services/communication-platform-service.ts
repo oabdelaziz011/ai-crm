@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { CommunicationDispatcher } from "@/lib/communication/dispatcher/communication-dispatcher";
+import { createAssertCommunicationChannelCommercialAccess } from "@/lib/communication/dispatcher/assert-communication-channel-commercial";
 import { CommunicationPreferenceService } from "@/lib/communication/preferences/communication-preference-service";
 import { CustomerCommunicationPreferencesRepository } from "@/lib/communication/preferences/customer-communication-preferences-repository";
 import { CommunicationQueueEngine, CommunicationQueueRepository } from "@/lib/communication/queue/communication-queue-engine";
@@ -21,7 +22,10 @@ export type CommunicationPlatformServices = {
 export function createCommunicationPlatform(client: SupabaseClient = supabase): CommunicationPlatformServices {
   const customerPreferences = new CustomerCommunicationPreferencesRepository(client);
   const preferenceService = new CommunicationPreferenceService(client, customerPreferences);
-  const dispatcher = new CommunicationDispatcher(preferenceService);
+  const dispatcher = new CommunicationDispatcher(
+    preferenceService,
+    createAssertCommunicationChannelCommercialAccess(client),
+  );
 
   for (const provider of createDefaultCommunicationProviders()) {
     dispatcher.register(provider);

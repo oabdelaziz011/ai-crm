@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { EmailSettingsRepository } from "@/lib/notifications/providers/email/services/email-settings-repository";
 import { EmailDeliveryLogRepository } from "@/lib/notifications/providers/email/services/email-delivery-log-repository";
+import { createLoginAppEmailsSentCommercialPort } from "@/lib/notifications/providers/email/services/emails-sent-commercial-port";
 
 export type EmailProviderServices = {
   provider: ReturnType<typeof createEmailProvider>;
@@ -24,7 +25,9 @@ export function createEmailProviderServices(
   renderer: EmailRenderer = defaultRenderer,
 ): EmailProviderServices {
   return {
-    provider: createEmailProvider(client, transport, renderer),
+    provider: createEmailProvider(client, transport, renderer, {
+      emailsSentCommercial: createLoginAppEmailsSentCommercialPort(client),
+    }),
     settings: new EmailSettingsRepository(client),
     deliveryLog: new EmailDeliveryLogRepository(client),
   };

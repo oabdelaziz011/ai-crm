@@ -16,7 +16,8 @@ import type { EmailsSentCommercialPort } from "@workspace/channel-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type EmailProviderOptions = {
-  emailsSentCommercial?: EmailsSentCommercialPort;
+  /** Required — callers cannot construct a production-capable sender without commercial enforcement. */
+  emailsSentCommercial: EmailsSentCommercialPort;
 };
 
 export type EmailProviderProcessResult = {
@@ -35,8 +36,27 @@ export class EmailProvider {
     private readonly queueConsumer: EmailQueueConsumer,
     private readonly settingsRepository: EmailSettingsRepository,
     private readonly deliveryLogRepository: EmailDeliveryLogRepository,
-    private readonly emailsSentCommercial?: EmailsSentCommercialPort,
+    private readonly emailsSentCommercial: EmailsSentCommercialPort,
   ) {}
+
+  private async assertCommercialAccess(companyId: string): Promise<void> {
+    const scopedCompanyId = companyId?.trim();
+    if (!scopedCompanyId) {
+      throw new Error("Email commercial access unavailable.");
+    }
+    const access = await this.emailsSentCommercial.checkAccess({
+      companyId: scopedCompanyId,
+    });
+    if (!access.allowed) {
+      throw new Error(
+        access.reason === "quota_exceeded"
+          ? "Email send quota exceeded."
+          : access.reason === "not_entitled"
+            ? "Email channel is not entitled."
+            : "Email commercial access unavailable.",
+      );
+    }
+  }
 
   async healthCheck(companyId: string): Promise<EmailTransportHealthResult & { enabled: boolean }> {
     const settings = await this.settingsRepository.getSecure(companyId);
@@ -87,6 +107,8 @@ export class EmailProvider {
     if (!settings.smtpHost || !settings.fromEmail) {
       throw new Error("Outbound email is not configured");
     }
+
+    await this.assertCommercialAccess(companyId);
 
     const queueId = message.queueId ?? "direct";
     const started = Date.now();
@@ -191,40 +213,35 @@ export class EmailProvider {
 
       const rendered = this.renderer.renderEvent(event, params);
 
-      if (this.emailsSentCommercial) {
-        const access = await this.emailsSentCommercial.checkAccess({
+      try {
+        await this.assertCommercialAccess(item.companyId);
+      } catch (commercialError) {
+        const denialMessage =
+          commercialError instanceof Error
+            ? commercialError.message
+            : "Email commercial access unavailable.";
+        await this.queueConsumer.markFailed(
+          item.companyId,
+          item.id,
+          denialMessage,
+          maxRetryCount,
+          undefined,
+        );
+        const denied: EmailDeliveryResult = {
+          queueId: item.id,
+          notificationId: item.notificationId,
           companyId: item.companyId,
-        });
-        if (!access.allowed) {
-          const denialMessage =
-            access.reason === "quota_exceeded"
-              ? "Email send quota exceeded."
-              : access.reason === "not_entitled"
-                ? "Email channel is not entitled."
-                : "Email commercial access unavailable.";
-          await this.queueConsumer.markFailed(
-            item.companyId,
-            item.id,
-            denialMessage,
-            maxRetryCount,
-            undefined,
-          );
-          const denied: EmailDeliveryResult = {
-            queueId: item.id,
-            notificationId: item.notificationId,
-            companyId: item.companyId,
-            provider: EMAIL_PROVIDER,
-            status: "failed",
-            durationMs: Date.now() - started,
-            attempts,
-            lastError: denialMessage,
-            recipientEmail,
-            subject: rendered.subject,
-            timestamp: new Date().toISOString(),
-          };
-          await this.deliveryLogRepository.append(denied);
-          return denied;
-        }
+          provider: EMAIL_PROVIDER,
+          status: "failed",
+          durationMs: Date.now() - started,
+          attempts,
+          lastError: denialMessage,
+          recipientEmail,
+          subject: rendered.subject,
+          timestamp: new Date().toISOString(),
+        };
+        await this.deliveryLogRepository.append(denied);
+        return denied;
       }
 
       await this.transport.send(
@@ -239,14 +256,12 @@ export class EmailProvider {
 
       await this.queueConsumer.markCompleted(item.companyId, item.id);
 
-      if (this.emailsSentCommercial) {
-        await this.emailsSentCommercial
-          .recordUsage({
-            companyId: item.companyId,
-            queueId: item.id,
-          })
-          .catch(() => undefined);
-      }
+      await this.emailsSentCommercial
+        .recordUsage({
+          companyId: item.companyId,
+          queueId: item.id,
+        })
+        .catch(() => undefined);
 
       const result: EmailDeliveryResult = {
         queueId: item.id,
@@ -329,8 +344,11 @@ export function createEmailProvider(
   client: SupabaseClient,
   transport: EmailTransport,
   renderer: EmailRenderer,
-  options: EmailProviderOptions = {},
+  options: EmailProviderOptions,
 ): EmailProvider {
+  if (!options.emailsSentCommercial) {
+    throw new Error("EmailProvider requires emailsSentCommercial for commercial enforcement.");
+  }
   return new EmailProvider(
     client,
     transport,

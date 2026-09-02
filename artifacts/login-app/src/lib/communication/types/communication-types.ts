@@ -30,7 +30,11 @@ export type CommunicationSendRequest = {
 export type CommunicationSendResult = {
   messageIds: string[];
   queueIds: string[];
+  /** Queue ids keyed by channel (WhatsApp vs email must not be conflated). */
+  channelQueueIds?: Partial<Record<CommunicationChannel, string>>;
   skippedChannels: CommunicationChannel[];
+  /** Channels whose provider.send returned status=failed. */
+  failedChannels?: CommunicationChannel[];
   deduplicated: boolean;
 };
 

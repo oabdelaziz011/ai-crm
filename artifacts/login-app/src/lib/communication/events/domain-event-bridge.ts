@@ -1,10 +1,16 @@
 import type { DomainEventName } from "@/lib/communication/types";
 import type { CommunicationTemplateKey } from "@/lib/communication/types";
-import type { CommunicationSendRequest } from "@/lib/communication/types/communication-types";
+import type {
+  CommunicationSendRequest,
+  CommunicationSendResult,
+} from "@/lib/communication/types/communication-types";
 import type { CommunicationDispatcher } from "@/lib/communication/dispatcher/communication-dispatcher";
 import type { ReminderScheduler } from "@/lib/communication/scheduler/reminder-scheduler";
-import type { BookingDomainEvent } from "@/lib/scheduling/booking-domain/events";
-import type { BookingEventPublisher } from "@/lib/scheduling/booking-domain/events";
+import type {
+  BookingDomainEvent,
+  BookingEventPublisher,
+  BookingPublishOutcome,
+} from "@/lib/scheduling/booking-domain/events";
 
 const DOMAIN_TEMPLATE_MAP: Record<string, CommunicationTemplateKey> = {
   "booking.created": "booking_created",
@@ -44,6 +50,23 @@ function formatAppointmentVars(booking: {
   };
 }
 
+function toPublishOutcome(result: CommunicationSendResult | null | undefined): BookingPublishOutcome {
+  if (!result) {
+    return { ok: false, whatsappQueueIds: [], whatsappSkipped: true, error: "no_send_result" };
+  }
+  const whatsappSkipped = result.skippedChannels.includes("whatsapp") || result.deduplicated;
+  const whatsappQueueId = result.channelQueueIds?.whatsapp;
+  const whatsappQueueIds = whatsappQueueId ? [whatsappQueueId] : [];
+  const whatsappFailed = (result.failedChannels ?? []).includes("whatsapp");
+  return {
+    // ok reflects WhatsApp enqueue specifically; other channels (email) may fail independently.
+    ok: whatsappSkipped || whatsappQueueIds.length > 0 || !whatsappFailed,
+    whatsappQueueIds,
+    whatsappSkipped,
+    error: whatsappFailed && whatsappQueueIds.length === 0 ? "whatsapp_enqueue_failed" : undefined,
+  };
+}
+
 /** Maps domain events to communication sends — providers unchanged when events grow. */
 export class CommunicationDomainEventBridge {
   constructor(
@@ -51,11 +74,14 @@ export class CommunicationDomainEventBridge {
     private readonly reminderScheduler: ReminderScheduler,
   ) {}
 
-  async handleDomainEvent(name: DomainEventName, request: Omit<CommunicationSendRequest, "templateKey">): Promise<void> {
+  async handleDomainEvent(
+    name: DomainEventName,
+    request: Omit<CommunicationSendRequest, "templateKey">,
+  ): Promise<CommunicationSendResult | null> {
     const templateKey = DOMAIN_TEMPLATE_MAP[name];
-    if (!templateKey) return;
+    if (!templateKey) return null;
 
-    await this.dispatcher.send({
+    return this.dispatcher.send({
       ...request,
       templateKey,
       sourceEvent: name,
@@ -63,20 +89,22 @@ export class CommunicationDomainEventBridge {
     });
   }
 
-  async handleBookingEvent(event: BookingDomainEvent, context: {
-    customerName: string;
-    customerEmail: string | null;
-    customerPhone: string | null;
-    serviceName: string;
-    resourceName: string;
-  }): Promise<void> {
+  async handleBookingEvent(
+    event: BookingDomainEvent,
+    context: {
+      customerName: string;
+      customerEmail: string | null;
+      customerPhone: string | null;
+      serviceName: string;
+      resourceName: string;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<CommunicationSendResult | null> {
     const domainName = BOOKING_EVENT_MAP[event.type];
-    if (!domainName) return;
+    if (!domainName) return null;
 
     const booking =
-      event.type === "BookingRescheduled"
-        ? event.payload.booking
-        : event.payload.booking;
+      event.type === "BookingRescheduled" ? event.payload.booking : event.payload.booking;
 
     const variables = formatAppointmentVars(
       booking,
@@ -85,11 +113,23 @@ export class CommunicationDomainEventBridge {
       context.resourceName,
     );
 
-    if (event.type === "BookingCancelled" && event.payload.reason) {
-      variables.reason = event.payload.reason;
+    if (event.type === "BookingCancelled") {
+      const customerMessage =
+        typeof event.payload.customerMessage === "string"
+          ? event.payload.customerMessage.trim()
+          : "";
+      const reason =
+        typeof event.payload.reason === "string" ? event.payload.reason.trim() : "";
+      // Prefer explicit customer-facing message (apology comment) over internal reason codes.
+      variables.reason = customerMessage || reason;
     }
 
-    await this.handleDomainEvent(domainName, {
+    const metadata: Record<string, unknown> = {
+      bookingId: booking.id,
+      ...(context.metadata ?? {}),
+    };
+
+    const sendResult = await this.handleDomainEvent(domainName, {
       companyId: booking.company_id,
       channels: ["whatsapp", "email"],
       recipient: {
@@ -100,7 +140,7 @@ export class CommunicationDomainEventBridge {
       },
       variables,
       idempotencyKey: `${event.type}:${booking.id}:${booking.updated_at}`,
-      metadata: { bookingId: booking.id },
+      metadata,
     });
 
     if (event.type === "BookingCreated" || event.type === "BookingRescheduled") {
@@ -131,19 +171,24 @@ export class CommunicationDomainEventBridge {
         );
       }
     }
+
+    return sendResult;
   }
 }
 
 export class CommunicationBookingEventPublisher implements BookingEventPublisher {
   constructor(private readonly bridge: CommunicationDomainEventBridge) {}
 
-  async publish(event: BookingDomainEvent): Promise<void> {
-    await this.bridge.handleBookingEvent(event, {
+  async publish(event: BookingDomainEvent): Promise<BookingPublishOutcome> {
+    const result = await this.bridge.handleBookingEvent(event, {
       customerName: "Customer",
       customerEmail: null,
       customerPhone: null,
       serviceName: "",
       resourceName: "",
     });
+    return toPublishOutcome(result);
   }
 }
+
+export { toPublishOutcome };

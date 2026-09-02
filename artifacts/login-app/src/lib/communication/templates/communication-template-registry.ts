@@ -27,7 +27,7 @@ export const COMMUNICATION_TEMPLATE_REGISTRY: Record<string, CommunicationTempla
     category: "booking",
     version: 1,
     supportedChannels: ["whatsapp", "email", "sms"],
-    variableKeys: ["customerName", "service", "date", "reason"],
+    variableKeys: ["customerName", "service", "date", "time", "reason"],
     titleKey: "communication.templates.bookingCancelled.title",
     bodyKey: "communication.templates.bookingCancelled.body",
   },

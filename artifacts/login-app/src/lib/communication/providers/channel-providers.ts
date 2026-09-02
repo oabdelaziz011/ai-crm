@@ -11,6 +11,11 @@ const CHANNEL_MAP: Record<string, NotificationChannel> = {
   push: "push",
 };
 
+function metadataString(metadata: Record<string, unknown> | undefined, key: string): string {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
 /** Delegates to NotificationService — no duplicate transport logic. */
 export class NotificationChannelCommunicationProvider implements CommunicationProvider {
   constructor(
@@ -26,17 +31,26 @@ export class NotificationChannelCommunicationProvider implements CommunicationPr
 
     try {
       const services = getNotificationServices();
+      const bookingId = metadataString(context.metadata, "bookingId");
+      const businessExceptionItemId = metadataString(context.metadata, "businessExceptionItemId");
+      // D5.1 — when recipient.phone is already E.164, also set phoneE164 so the
+      // worker prefers canonical identity over any legacy params.phone override.
+      const recipientPhone = context.recipient.phone ?? "";
       const params = {
         ...context.renderedVariables,
+        companyId: context.companyId,
         customerId: context.recipient.customerId ?? "",
         email: context.recipient.email ?? "",
-        phone: context.recipient.phone ?? "",
+        phone: recipientPhone,
+        ...(recipientPhone.startsWith("+") ? { phoneE164: recipientPhone } : {}),
         customerName: context.recipient.name ?? "",
         customerEmail: context.recipient.email ?? "",
-        customerPhone: context.recipient.phone ?? "",
+        customerPhone: recipientPhone,
+        ...(bookingId ? { bookingId } : {}),
+        ...(businessExceptionItemId ? { businessExceptionItemId } : {}),
       };
 
-      const created = await services.notifications.createNotification({
+      const deliveries = await services.notifications.createNotificationDeliveries({
         companyId: context.companyId,
         event: context.notificationEvent as NotificationEvent,
         channels: [notificationChannel],
@@ -45,10 +59,18 @@ export class NotificationChannelCommunicationProvider implements CommunicationPr
         priority: "normal",
       });
 
-      const notification = created[0];
+      const delivery = deliveries[0];
+      if (!delivery) {
+        return {
+          status: "failed",
+          error: "notification_not_created",
+        };
+      }
+
       return {
         status: "queued",
-        notificationId: notification?.id,
+        notificationId: delivery.notification.id,
+        queueId: delivery.queueId,
         providerMessageId: null,
       };
     } catch (error) {
@@ -100,6 +122,9 @@ export async function processCommunicationQueue(
     const { createWhatsAppProvider } = await import(
       "@/lib/notifications/providers/whatsapp/services/whatsapp-provider"
     );
+    const { createLoginAppWhatsAppMessagesCommercialPort } = await import(
+      "@/lib/notifications/providers/whatsapp/services/whatsapp-messages-commercial-port"
+    );
     const { WhatsAppRenderer } = await import(
       "@/lib/notifications/providers/whatsapp/renderer/whatsapp-renderer"
     );
@@ -107,6 +132,9 @@ export async function processCommunicationQueue(
       client,
       new MetaWhatsAppTransport(),
       new WhatsAppRenderer((k, p) => `${k} ${Object.values(p).join(" ")}`),
+      {
+        whatsappMessagesCommercial: createLoginAppWhatsAppMessagesCommercialPort(client),
+      },
     );
     const result = await provider.processPending(companyId, limit);
     return { processed: result.processed, failed: result.failed };

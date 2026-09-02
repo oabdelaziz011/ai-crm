@@ -65,6 +65,9 @@ importers:
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../../lib/embedding-platform
+      '@workspace/human-handoff-platform':
+        specifier: workspace:*
+        version: link:../../lib/human-handoff-platform
       '@workspace/knowledge-runtime':
         specifier: workspace:*
         version: link:../../lib/knowledge-runtime

@@ -105,6 +105,7 @@ export interface HandoffRepository {
   countQueueWaiting(companyId: string, queueId: string): Promise<number>;
   listQueueMembers(companyId: string, queueId: string): Promise<QueueMemberRecord[]>;
   incrementMemberAssignment(queueId: string, userId: string): Promise<void>;
+  syncMemberActiveConversationCount(companyId: string, userId: string): Promise<void>;
 
   upsertPresence(input: {
     companyId: string;

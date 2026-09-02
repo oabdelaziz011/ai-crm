@@ -106,6 +106,17 @@ export type ChannelConversationPort = {
     metadata?: Record<string, unknown>;
   }): Promise<ConversationMessageSummary>;
 
+  /**
+   * After provider send succeeds for a pre-persisted outgoing row, confirm
+   * delivery fields (status / external id / outboundPhase). Optional so test
+   * doubles without DB can omit it.
+   */
+  confirmOutgoingDelivery?(input: {
+    messageId: string;
+    status: string;
+    externalMessageId?: string | null;
+  }): Promise<void>;
+
   updateConversationMetadata?(input: {
     conversationId: string;
     metadata: Record<string, unknown>;
@@ -217,6 +228,23 @@ export type ChannelAutomationPort = {
   }): Promise<boolean>;
 };
 
+/**
+ * Human Handoff inbound gate — when wired, inbound AI/workflow automated replies
+ * must respect ownership / pause / assignee. Absent → legacy allow (tests only).
+ */
+export type ChannelInboundAutomationGateDecision = {
+  allowAutomatedReply: boolean;
+  reason: string;
+  source: string;
+};
+
+export type ChannelInboundAutomationGatePort = {
+  evaluate(input: {
+    companyId: string;
+    conversationId: string;
+  }): Promise<ChannelInboundAutomationGateDecision>;
+};
+
 export type ChannelPlatformPorts = {
   registry: ChannelRegistryPort;
   conversation: ChannelConversationPort;
@@ -225,6 +253,11 @@ export type ChannelPlatformPorts = {
   automation?: ChannelAutomationPort;
   /** Phase 2 — WhatsApp trusted CRM identity (optional; fail closed when absent). */
   customerIdentity?: ChannelCustomerIdentityPort;
+  /**
+   * Human Handoff: skip AI Employee + sticky automation when conversation is
+   * human-owned, queued, paused, or transferred.
+   */
+  inboundAutomationGate?: ChannelInboundAutomationGatePort;
   /** Sprint 5: AI Email Routing → existing ticket create/assign. */
   emailRoutingTickets?: import("./email-routing-ticket-action-port.js").EmailRoutingTicketActionPort;
   /** Sprint 6: ai_email_routing entitlement + usage metering. */

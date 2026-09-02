@@ -322,6 +322,37 @@ router.post(
   }),
 );
 
+router.post(
+  "/conversations/:id/handoff/pause",
+  requireScopes("handoff.write"),
+  withAudit(async (req, res) => {
+    const result = await getIntegrationServices().gateway.pauseConversation(
+      req.apiAuth!,
+      req.params.id,
+      req.body ?? {},
+    );
+    res.json(result);
+  }),
+);
+
+router.post(
+  "/conversations/:id/handoff/resume",
+  requireScopes("handoff.write"),
+  withAudit(async (req, res) => {
+    const result = await getIntegrationServices().gateway.resumeConversation(req.apiAuth!, req.params.id);
+    res.json(result);
+  }),
+);
+
+router.post(
+  "/handoff/queues/:id/route-next",
+  requireScopes("handoff.write"),
+  withAudit(async (req, res) => {
+    const result = await getIntegrationServices().gateway.routeNextInQueue(req.apiAuth!, req.params.id);
+    res.json(result);
+  }),
+);
+
 router.get(
   "/conversations/:id/handoff/ownership",
   requireScopes("handoff.read"),

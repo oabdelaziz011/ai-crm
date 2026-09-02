@@ -160,13 +160,16 @@ function main() {
   });
 
   const publicBase = `https://${CLOUDFLARE_TUNNEL_HOSTNAME}`;
+  // Public tunnel hostname is for Meta → webhook ingress only.
+  // Browser → api-server (Test Connection, etc.) should stay on the local/dev API origin.
   upsertEnvVars({
     CLOUDFLARE_TUNNEL_ID: tunnel.id,
-    VITE_API_SERVER_URL: publicBase,
+    WEBHOOK_BASE_URL: publicBase,
+    VITE_WEBHOOK_BASE_URL: publicBase,
   });
   upsertEnvVars(
     {
-      VITE_API_SERVER_URL: publicBase,
+      VITE_WEBHOOK_BASE_URL: publicBase,
     },
     path.join(PROJECT_ROOT, "artifacts/login-app/.env.local"),
   );
@@ -176,6 +179,7 @@ function main() {
   console.log(`  Hostname:   ${CLOUDFLARE_TUNNEL_HOSTNAME}`);
   console.log(`  Upstream:   http://localhost:${port}`);
   console.log(`  Webhook:    ${publicBase}/api/webhooks/whatsapp`);
+  console.log("  Keep VITE_API_SERVER_URL pointed at the browser-reachable API (e.g. http://localhost:3000).");
   console.log("\nStart the stack:");
   console.log("  pnpm dev:webhook");
   console.log("\nRegister this webhook URL in Meta Developer Console (stable across restarts).");

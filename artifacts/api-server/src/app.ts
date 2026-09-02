@@ -10,6 +10,7 @@ import { globalRateLimiter } from "./middleware/rate-limit.js";
 import { requestContextMiddleware } from "./middleware/request-context.js";
 import { metricsMiddleware } from "./middleware/metrics.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
+import { authEmailRedirectMiddleware } from "./middleware/auth-email-redirect.js";
 import { loadPlatformEnv } from "./config/env.js";
 
 const env = loadPlatformEnv();
@@ -19,6 +20,8 @@ const app: Express = express();
 app.set("trust proxy", 1);
 // CORS first so preflight always gets ACAO headers even if later middleware fails.
 app.use(apiCorsMiddleware);
+// Misconfigured Supabase Site URL may send recovery/invite codes to api-server:3000.
+app.use(authEmailRedirectMiddleware);
 applySecurityMiddleware(app);
 app.use(requestContextMiddleware);
 app.use(metricsMiddleware);

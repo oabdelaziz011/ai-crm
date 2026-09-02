@@ -12,6 +12,8 @@ const TOOLBAR_ORDER: LifecycleActionUiId[] = [
   "assign",
   "take_over",
   "return_to_ai",
+  "pause_ai",
+  "resume_ai",
   "escalate",
   "resolve",
   "close",
@@ -28,6 +30,7 @@ type WorkspaceActionToolbarProps = {
   escalated?: boolean;
   isClosed?: boolean;
   showLinkCustomer?: boolean;
+  aiPaused?: boolean;
   canPerform: (action: LifecycleAction) => boolean;
   toolbarLabel: string;
   labels: Record<string, string>;
@@ -38,6 +41,8 @@ type WorkspaceActionToolbarProps = {
   onAssign: () => void;
   onOpenAssignment: () => void;
   onRelease: () => void;
+  onPauseAi?: () => void;
+  onResumeAi?: () => void;
   onClose: () => void;
   onResolve?: () => void;
   onReopen?: () => void;
@@ -56,8 +61,16 @@ export const WorkspaceActionToolbar = memo(function WorkspaceActionToolbar(props
         isClosed: Boolean(props.isClosed),
         canPerform: props.canPerform,
         showLinkCustomer: props.showLinkCustomer,
+        aiPaused: props.aiPaused,
       }),
-    [props.lifecycleState, props.escalated, props.isClosed, props.canPerform, props.showLinkCustomer],
+    [
+      props.lifecycleState,
+      props.escalated,
+      props.isClosed,
+      props.canPerform,
+      props.showLinkCustomer,
+      props.aiPaused,
+    ],
   );
 
   const visibleSet = useMemo(
@@ -78,6 +91,8 @@ export const WorkspaceActionToolbar = memo(function WorkspaceActionToolbar(props
       transfer: props.onOpenAssignment,
       escalate: props.onEscalate,
       return_to_ai: props.onRelease,
+      pause_ai: () => props.onPauseAi?.(),
+      resume_ai: () => props.onResumeAi?.(),
       resolve: () => props.onResolve?.(),
       close: props.onClose,
       reopen: () => props.onReopen?.(),
@@ -99,6 +114,8 @@ export const WorkspaceActionToolbar = memo(function WorkspaceActionToolbar(props
       transfer: "transfer",
       escalate: "escalate",
       return_to_ai: "returnToAi",
+      pause_ai: "pauseAi",
+      resume_ai: "resumeAi",
       resolve: "resolve",
       close: "close",
       reopen: "reopen",

@@ -70,6 +70,7 @@ const ACTION_PERMISSION_MAP: Partial<Record<LifecycleAction, string>> = {
   queue_assign: CONVERSATION_LIFECYCLE_PERMISSIONS.assign,
   return_to_ai: CONVERSATION_LIFECYCLE_PERMISSIONS.returnToAi,
   ai_release: CONVERSATION_LIFECYCLE_PERMISSIONS.returnToAi,
+  ai_resume: CONVERSATION_LIFECYCLE_PERMISSIONS.returnToAi,
   escalate: CONVERSATION_LIFECYCLE_PERMISSIONS.escalate,
   return: CONVERSATION_LIFECYCLE_PERMISSIONS.escalate,
   escalation_accept: CONVERSATION_LIFECYCLE_PERMISSIONS.escalate,
@@ -99,7 +100,7 @@ const ROLE_ACTION_MATRIX: Record<LifecycleRole, readonly LifecycleAction[]> = {
     "escalation_cancel",
   ],
   agent: [
-    "take_over", "assign", "reply", "internal_note", "return_to_ai", "escalate",
+    "take_over", "assign", "reply", "internal_note", "return_to_ai", "ai_resume", "escalate",
     "resolve", "close", "reopen",
   ],
   ai_employee: [

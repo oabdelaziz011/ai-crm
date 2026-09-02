@@ -60,6 +60,19 @@ On transfer/escalation, `handoff_context_snapshots` stores:
 | `queue_joined` | `conversation.queue_joined` |
 | `owner_changed` | `conversation.owner_changed` |
 
+## Inbound AI Gate
+
+When a conversation is human-owned, queued, paused, or transferred, the channel inbound pipeline must **not** run AI Employee replies or sticky automation.
+
+| Component | Location |
+|-----------|----------|
+| Pure decision | `evaluateInboundAiGate` — `src/services/inbound-ai-gate.ts` |
+| Supabase port | `createSupabaseInboundAiGatePort` — `src/adapters/supabase-inbound-ai-gate.ts` |
+| Channel wiring | `ChannelPlatformPorts.inboundAutomationGate` |
+| Pipeline enforcement | `InboundMessagePipeline.resolveInboundAutomationGate` |
+
+Webhook platform wires the gate in `artifacts/api-server/src/platform/create-webhook-platform.ts`.
+
 ## Wiring (login-app)
 
 | Component | File |

@@ -43,6 +43,10 @@ const webhookBaseUrl =
   rootEnv.VITE_WEBHOOK_BASE_URL ||
   rootEnv.WEBHOOK_BASE_URL ||
   existingLocal.VITE_WEBHOOK_BASE_URL;
+const appOrigin =
+  rootEnv.VITE_APP_ORIGIN ||
+  existingLocal.VITE_APP_ORIGIN ||
+  "http://localhost:5173";
 
 if (!supabaseUrl || !supabaseKey) {
   console.error(
@@ -54,6 +58,7 @@ if (!supabaseUrl || !supabaseKey) {
 const lines = [
   `VITE_SUPABASE_URL=${supabaseUrl}`,
   `VITE_SUPABASE_PUBLISHABLE_KEY=${supabaseKey}`,
+  `VITE_APP_ORIGIN=${appOrigin}`,
 ];
 if (apiServerUrl) {
   lines.push(`VITE_API_SERVER_URL=${apiServerUrl}`);

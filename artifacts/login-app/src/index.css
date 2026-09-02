@@ -203,6 +203,29 @@
 }
 
 @layer utilities {
+  /* Force form captions to follow document / ancestor direction. */
+  [dir="rtl"] label,
+  [dir="rtl"] .ui-field-label {
+    text-align: right;
+  }
+
+  [dir="ltr"] label,
+  [dir="ltr"] .ui-field-label {
+    text-align: left;
+  }
+
+  [dir="rtl"] input:not([type="checkbox"]):not([type="radio"]),
+  [dir="rtl"] textarea,
+  [dir="rtl"] select {
+    text-align: right;
+  }
+
+  [dir="ltr"] input:not([type="checkbox"]):not([type="radio"]),
+  [dir="ltr"] textarea,
+  [dir="ltr"] select {
+    text-align: left;
+  }
+
   .shell-canvas {
     background-color: hsl(var(--background));
     background-image:

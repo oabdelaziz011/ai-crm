@@ -4,6 +4,9 @@ export { AgentWorkspace } from "@/components/omnichannel/workspace-v2/agent-work
 export type { AgentWorkspaceProps } from "@/components/omnichannel/workspace-v2/agent-workspace";
 export {
   WORKSPACE_NAV_ORDER,
+  WORKSPACE_NAV_ORDER_AGENT,
+  workspaceNavOrderForAccess,
+  coerceWorkspaceNavForAccess,
   workspaceNavToFilters,
   filtersToWorkspaceNav,
   countWorkspaceNav,

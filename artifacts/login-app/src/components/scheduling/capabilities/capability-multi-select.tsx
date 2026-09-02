@@ -60,15 +60,15 @@ export function CapabilityMultiSelect({
 
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label className="block text-start">{label}</Label>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={searchPlaceholder ?? t("scheduling.capabilities.searchPlaceholder")}
           disabled={disabled || isLoading}
-          className="pl-9 bg-background border-border/60"
+          className="ps-9 bg-background border-border/60 text-start"
         />
       </div>
       <div className="rounded-xl border border-border/60 bg-background max-h-48 overflow-y-auto divide-y divide-border/40">
@@ -86,14 +86,14 @@ export function CapabilityMultiSelect({
             return (
               <label
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/10 cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/10 cursor-pointer text-start"
               >
                 <Checkbox
                   checked={checked}
                   disabled={disabled}
                   onCheckedChange={(value) => toggle(item.id, value === true)}
                 />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 text-start">
                   <p className="text-sm font-medium truncate">{item.label}</p>
                   {item.meta && (
                     <p className="text-xs text-muted-foreground truncate">{item.meta}</p>

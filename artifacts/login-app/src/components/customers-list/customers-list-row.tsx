@@ -56,15 +56,15 @@ const STATUS_STYLES = {
 
 const COLUMN_VISIBILITY_CLASS: Partial<Record<CustomerColumnId, string>> = {
   tags: "hidden lg:flex",
-  company: "hidden md:block",
-  phone: "hidden lg:block",
-  email: "hidden xl:block",
-  assigned: "hidden xl:block",
-  nextAppointment: "hidden lg:block",
-  outstanding: "hidden md:block",
-  ltv: "hidden md:block",
+  company: "hidden md:flex",
+  phone: "hidden lg:flex",
+  email: "hidden xl:flex",
+  assigned: "hidden xl:flex",
+  nextAppointment: "hidden lg:flex",
+  outstanding: "hidden md:flex",
+  ltv: "hidden md:flex",
   status: "hidden sm:flex",
-  lastActivity: "hidden xl:block",
+  lastActivity: "hidden xl:flex",
 };
 
 export const CustomersListRow = memo(function CustomersListRow({
@@ -101,7 +101,7 @@ export const CustomersListRow = memo(function CustomersListRow({
     <div
       role="row"
       className={cn(
-        "group flex w-max min-w-full items-stretch border-b border-border/40 transition-colors",
+        "group flex w-max min-w-full items-center border-b border-border/40 transition-colors",
         "hover:bg-primary/5",
         selected && "bg-primary/8 hover:bg-primary/10",
       )}
@@ -158,7 +158,7 @@ export const CustomersListRow = memo(function CustomersListRow({
           return (
             <div
               key={columnId}
-              className={cn("min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2", visibilityClass)}
+              className={cn("flex min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2", visibilityClass)}
               style={widthStyle}
             >
               {row.tags.length === 0 ? (
@@ -239,7 +239,7 @@ export const CustomersListRow = memo(function CustomersListRow({
           return (
             <div
               key={columnId}
-              className={cn("min-w-0 shrink-0 items-center overflow-hidden px-2", visibilityClass)}
+              className={cn("flex min-w-0 shrink-0 items-center overflow-hidden px-2", visibilityClass)}
               style={widthStyle}
             >
               <Badge variant="outline" className={cn("capitalize", STATUS_STYLES[row.status])}>

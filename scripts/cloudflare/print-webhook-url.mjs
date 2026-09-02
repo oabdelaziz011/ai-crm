@@ -7,13 +7,18 @@ const metaPath = path.join(PROJECT_ROOT, "infra/cloudflare/tunnel-meta.json");
 const env = readEnvFile().values;
 
 const base =
-  env.get("VITE_API_SERVER_URL")?.trim() ||
+  env.get("VITE_WEBHOOK_BASE_URL")?.trim() ||
+  env.get("WEBHOOK_BASE_URL")?.trim() ||
   (env.get("CLOUDFLARE_TUNNEL_HOSTNAME")?.trim()
     ? `https://${env.get("CLOUDFLARE_TUNNEL_HOSTNAME").trim()}`
-    : "");
+    : "") ||
+  env.get("VITE_API_SERVER_URL")?.trim() ||
+  "";
 
 if (!base) {
-  console.error("Webhook URL unknown. Set VITE_API_SERVER_URL or run pnpm tunnel:setup.");
+  console.error(
+    "Webhook URL unknown. Set VITE_WEBHOOK_BASE_URL / WEBHOOK_BASE_URL or run pnpm tunnel:setup.",
+  );
   process.exit(1);
 }
 

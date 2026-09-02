@@ -49,6 +49,7 @@ import { createSupabaseConversationAttachmentUrlPort } from "./conversation-atta
 import { createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
+import { createSupabaseInboundAiGatePort } from "@workspace/human-handoff-platform";
 import { createTicketPlatformServices } from "@workspace/ticket-platform";
 import { createLeadPlatformServices } from "@workspace/lead-platform";
 import { createKnowledgeRuntimeProvider, createCrmRagKnowledgeRetriever } from "@workspace/knowledge-runtime";
@@ -336,6 +337,20 @@ export function getWebhookPlatform(): WebhookPlatform {
       resolveRuntimeActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),
     },
   );
+  ports.inboundAutomationGate = createSupabaseInboundAiGatePort(client, {
+    getConversation: async (companyId, conversationId) => {
+      try {
+        const record = await conversation.conversations.getConversation(SYSTEM_CONTEXT, conversationId);
+        if (record.company_id !== companyId) return null;
+        return {
+          assignedUserId: record.assigned_user_id ?? null,
+          state: record.state ?? null,
+        };
+      } catch {
+        return null;
+      }
+    },
+  });
   ports.emailRoutingTickets = createEmailRoutingTicketActionPort(client, {
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });

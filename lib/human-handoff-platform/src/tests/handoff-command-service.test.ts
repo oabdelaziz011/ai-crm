@@ -118,6 +118,7 @@ function createMemoryRepo(): HandoffRepository {
     countQueueWaiting: async () => 0,
     listQueueMembers: async () => [],
     incrementMemberAssignment: async () => {},
+    syncMemberActiveConversationCount: async () => {},
     upsertPresence: async (input) => ({
       id: "pres-1",
       companyId: input.companyId,

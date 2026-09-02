@@ -158,10 +158,10 @@ export function RolesPage() {
     companyGate.isFeatureEnabled,
   ]);
 
-  // Tenant Role Management lists CUSTOM roles only (no fixed Admin/Manager/Employee catalog).
+  // Tenant Role Management lists CUSTOM roles only (DEFAULT/PLATFORM are provisioning-owned).
   const managedRoles = useMemo(
-    () => filterRolesForTenantManagement(roles, { includeProtected: isSuperAdmin }),
-    [roles, isSuperAdmin],
+    () => filterRolesForTenantManagement(roles, { includeProtected: false }),
+    [roles],
   );
 
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
@@ -220,6 +220,22 @@ export function RolesPage() {
     }
   };
 
+  const resolveRoleMutationError = (message: string) => {
+    switch (message) {
+      case "ROLE_NAME_ALREADY_EXISTS":
+        return t("roles.toast.nameAlreadyExists");
+      case "ROLE_PROTECTED_READ_ONLY":
+        return t("roles.toast.protectedReadOnly");
+      case "ROLE_NOT_FOUND":
+        return t("roles.toast.notFound");
+      case "ROLE_NAME_REQUIRED":
+      case "ROLE_ID_REQUIRED":
+        return t("roles.toast.invalidRequest");
+      default:
+        return message;
+    }
+  };
+
   const handleCreate = () => {
     createRole.mutate(
       {
@@ -238,7 +254,7 @@ export function RolesPage() {
         onError: (error) => {
           toast({
             title: t("roles.toast.createFailedTitle"),
-            description: error.message,
+            description: resolveRoleMutationError(error.message),
             variant: "destructive",
           });
         },
@@ -266,7 +282,7 @@ export function RolesPage() {
         onError: (error) => {
           toast({
             title: t("roles.toast.updateFailedTitle"),
-            description: error.message,
+            description: resolveRoleMutationError(error.message),
             variant: "destructive",
           });
         },
@@ -347,7 +363,9 @@ export function RolesPage() {
             {managedRoles.map((role) => {
               const isProtectedRole =
                 role.role_type === "DEFAULT" || role.role_type === "PLATFORM";
-              const canEditThisRole = canEditRoles && (!isProtectedRole || isSuperAdmin);
+              // DEFAULT/PLATFORM roles are provisioning-owned (Company Admin, Human Handoff Agent, …).
+              // Only CUSTOM roles are editable from this page — including for Super Admin.
+              const canEditThisRole = canEditRoles && !isProtectedRole;
               const canDeleteThisRole = canDeleteRoles && role.role_type === "CUSTOM";
               const isExpanded = expandedRoleId === role.id;
 

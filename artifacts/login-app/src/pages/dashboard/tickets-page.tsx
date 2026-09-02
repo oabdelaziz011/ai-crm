@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Loader2, Plus, Search, Ticket, UserPlus } from "lucide-react";
+import { Loader2, Plus, Search, Ticket, UserPlus } from "lucide-react";
+import { ListPagination } from "@/components/ui/list-pagination";
 import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
@@ -54,6 +55,10 @@ import type { TicketInboxRow } from "@/lib/tickets/enrich-ticket-rows";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
+
+/** Shared inbox grid: min widths keep Arabic headers/values from colliding. */
+const TICKET_INBOX_GRID_COLS =
+  "xl:grid-cols-[100px_minmax(180px,1.5fr)_minmax(140px,1fr)_minmax(130px,0.85fr)_100px_110px_100px_minmax(130px,1fr)_88px_130px_130px_108px]";
 
 export function TicketsPage() {
   const { t, i18n } = useTranslation("common");
@@ -409,69 +414,57 @@ export function TicketsPage() {
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
-          <div className="hidden grid-cols-[110px_minmax(0,1.2fr)_minmax(0,0.75fr)_120px_90px_105px_88px_minmax(0,0.7fr)_84px_110px_110px_88px] gap-2 border-b border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground xl:grid">
-            <span>{t("tickets.columns.number")}</span>
-            <span>{t("tickets.columns.subject")}</span>
-            <span>{t("tickets.columns.customer")}</span>
-            <span>{t("tickets.columns.phone")}</span>
-            <span>{t("tickets.columns.channel")}</span>
-            <span>{t("tickets.columns.status")}</span>
-            <span>{t("tickets.columns.priority")}</span>
-            <span>{t("tickets.columns.assignee")}</span>
-            <span>{t("tickets.columns.sla")}</span>
-            <span>{t("tickets.createdAt")}</span>
-            <span>{t("tickets.columns.updated")}</span>
-            <span>{t("tickets.columns.actions")}</span>
-          </div>
-          <ul className="divide-y divide-border/50">
-            {(list.data?.tickets ?? []).map((row) => (
-              <TicketInboxRowItem
-                key={row.id}
-                ticket={row}
-                locale={i18n.language}
-                canAssign={canAssign}
-                onOpen={() => setSelectedId(row.id)}
-                onAssign={() => openAssign(row.id)}
-                t={t}
-              />
-            ))}
-          </ul>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 px-4 py-3">
-            <p className="text-xs text-muted-foreground">
-              {t("tickets.pagination.summary", {
-                from: (page - 1) * PAGE_SIZE + 1,
-                to: Math.min(page * PAGE_SIZE, total),
-                total,
-              })}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="rounded-lg"
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
+          <div className="overflow-x-auto">
+            <div className="min-w-[1400px]">
+              <div
+                className={cn(
+                  "hidden gap-3 border-b border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground xl:grid",
+                  TICKET_INBOX_GRID_COLS,
+                )}
               >
-                <ChevronLeft className="size-4" aria-hidden />
-                {t("tickets.pagination.prev")}
-              </Button>
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {t("tickets.pagination.page", { page, totalPages })}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="rounded-lg"
-                disabled={page >= totalPages}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              >
-                {t("tickets.pagination.next")}
-                <ChevronRight className="size-4" aria-hidden />
-              </Button>
+                <span className="min-w-0 truncate">{t("tickets.columns.number")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.subject")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.customer")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.phone")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.channel")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.status")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.priority")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.assignee")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.sla")}</span>
+                <span className="min-w-0 truncate">{t("tickets.createdAt")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.updated")}</span>
+                <span className="min-w-0 truncate">{t("tickets.columns.actions")}</span>
+              </div>
+              <ul className="divide-y divide-border/50">
+                {(list.data?.tickets ?? []).map((row) => (
+                  <TicketInboxRowItem
+                    key={row.id}
+                    ticket={row}
+                    locale={i18n.language}
+                    canAssign={canAssign}
+                    onOpen={() => setSelectedId(row.id)}
+                    onAssign={() => openAssign(row.id)}
+                    t={t}
+                  />
+                ))}
+              </ul>
             </div>
           </div>
+          <ListPagination
+            className="border-t border-border/50 px-4 py-3"
+            page={page}
+            totalPages={totalPages}
+            summaryLabel={t("tickets.pagination.summary", {
+              from: (page - 1) * PAGE_SIZE + 1,
+              to: Math.min(page * PAGE_SIZE, total),
+              total,
+            })}
+            pageInfoLabel={t("tickets.pagination.page", { page, totalPages })}
+            previousLabel={t("tickets.pagination.prev")}
+            nextLabel={t("tickets.pagination.next")}
+            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+            onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+          />
         </div>
       )}
 
@@ -654,52 +647,69 @@ function TicketInboxRowItem({
         }}
         className={cn(
           "grid w-full cursor-pointer gap-2 px-4 py-3 text-start transition-colors hover:bg-muted/25",
-          "xl:grid-cols-[110px_minmax(0,1.2fr)_minmax(0,0.75fr)_120px_90px_105px_88px_minmax(0,0.7fr)_84px_110px_110px_88px] xl:items-center xl:gap-2",
+          "xl:items-center xl:gap-3",
+          TICKET_INBOX_GRID_COLS,
         )}
       >
-        <span className="font-mono text-xs text-muted-foreground">{ticket.ticketNumber}</span>
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+          {ticket.ticketNumber}
+        </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium">{ticket.subject}</span>
+          <span className="block truncate text-sm font-medium" title={ticket.subject}>
+            {ticket.subject}
+          </span>
           <span className="mt-0.5 block truncate text-xs text-muted-foreground xl:hidden">
             {[ticket.customerName, ticket.customerPhone].filter(Boolean).join(" · ") ||
               t("tickets.360.noCustomer")}
           </span>
         </span>
-        <span className="hidden truncate text-sm text-muted-foreground xl:block">{customerLabel}</span>
-        <span className="hidden truncate font-mono text-sm text-muted-foreground xl:block" dir="ltr">
+        <span
+          className="hidden min-w-0 truncate text-sm text-muted-foreground xl:block"
+          title={customerLabel}
+        >
+          {customerLabel}
+        </span>
+        <span
+          className="hidden min-w-0 truncate font-mono text-sm text-muted-foreground xl:block"
+          dir="ltr"
+          title={phoneLabel}
+        >
           {phoneLabel}
         </span>
-        <span className="hidden text-sm text-muted-foreground xl:block">
+        <span className="hidden min-w-0 truncate text-sm text-muted-foreground xl:block">
           {ticket.channelType
             ? t(`tickets.channels.${ticket.channelType}`, { defaultValue: ticket.channelType })
             : "—"}
         </span>
-        <span>
+        <span className="min-w-0 overflow-hidden">
           <TicketStatusBadge status={ticket.status} label={t(`tickets.status.${ticket.status}`)} />
         </span>
-        <span>
+        <span className="min-w-0 overflow-hidden">
           <TicketPriorityBadge priority={ticket.priority} label={t(`tickets.priority.${ticket.priority}`)} />
         </span>
-        <span className="hidden truncate text-sm text-muted-foreground xl:block">
+        <span
+          className="hidden min-w-0 truncate text-sm text-muted-foreground xl:block"
+          title={ticket.assignedUserName || t("tickets.filter.unassigned")}
+        >
           {ticket.assignedUserName || t("tickets.filter.unassigned")}
         </span>
-        <span className="hidden xl:block">
+        <span className="hidden min-w-0 overflow-hidden xl:block">
           <TicketSlaBadge state={ticket.slaState} label={t(`tickets.sla.${ticket.slaState}`)} />
         </span>
-        <span className="hidden text-xs text-muted-foreground xl:block">
+        <span className="hidden min-w-0 truncate text-xs text-muted-foreground xl:block">
           {formatTicketDateTime(ticket.createdAt, locale)}
         </span>
-        <span className="hidden text-xs text-muted-foreground xl:block">
+        <span className="hidden min-w-0 truncate text-xs text-muted-foreground xl:block">
           {formatTicketDateTime(ticket.updatedAt, locale)}
         </span>
-        <span className="flex items-center justify-end gap-2 text-xs text-muted-foreground xl:justify-start">
-          <span className="xl:hidden">{formatTicketDateTime(ticket.updatedAt, locale)}</span>
+        <span className="flex min-w-0 items-center justify-end gap-2 text-xs text-muted-foreground xl:justify-start">
+          <span className="truncate xl:hidden">{formatTicketDateTime(ticket.updatedAt, locale)}</span>
           {canAssign ? (
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 gap-1 rounded-lg px-2"
+              className="h-8 shrink-0 gap-1 rounded-lg px-2"
               onClick={(event) => {
                 event.stopPropagation();
                 onAssign();

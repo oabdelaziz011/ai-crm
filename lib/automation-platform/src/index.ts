@@ -46,6 +46,7 @@ export function createAutomationPlatformServices(
   options?: {
     registry?: ReturnType<typeof createDefaultAutomationNodeRegistry>;
     actionDeps?: AutomationActionDeps;
+    resolveSessionTimeoutMs?: (companyId: string) => Promise<number | null | undefined>;
   },
 ): AutomationPlatformServices {
   const flowRepository = createSupabaseAutomationFlowRepository(client);
@@ -70,6 +71,21 @@ export function createAutomationPlatformServices(
     registry: options?.registry ?? registry,
   });
 
+  const resolveTimeoutMs =
+    options?.resolveSessionTimeoutMs ??
+    (async (companyId: string) => {
+      const { data, error } = await client
+        .from("ai_assistant_settings")
+        .select("conversation_timeout_minutes")
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) return null;
+      const minutes = Number(data?.conversation_timeout_minutes);
+      if (!Number.isFinite(minutes) || minutes <= 0) return null;
+      return minutes * 60_000;
+    });
+
   return {
     flows: new AutomationFlowService(flowRepository),
     lifecycle: new WorkflowLifecycleService(flowRepository, versionRepository, audit),
@@ -85,6 +101,7 @@ export function createAutomationPlatformServices(
       messages: messageRepository,
       customers: new InMemoryCustomerResolver(),
       engine,
+      resolveTimeoutMs,
     }),
   };
 }
@@ -205,6 +222,7 @@ export * from "./ports/customer-service-port.js";
 export * from "./ports/lookup-options-port.js";
 export * from "./ports/business-calendar-port.js";
 export * from "./ports/ticket-service-port.js";
+export * from "./ports/handoff-service-port.js";
 export * from "./runtime/list-lookup-resolver.js";
 export * from "./runtime/lookup-filter-resolver.js";
 export * from "./runtime/date-picker-validation.js";

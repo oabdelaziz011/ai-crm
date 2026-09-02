@@ -6,15 +6,50 @@ import {
   assertPermissionsAreDelegable,
   assertRolePermissionsAreDelegable,
 } from "@/lib/rbac/permission-delegation";
+import { mapRoleWriteError } from "@/lib/rbac/role-write-errors";
 
 export interface RoleRecord {
   id: string;
   name: string | null;
   description: string | null;
+  company_id?: string | null;
   role_type?: "PLATFORM" | "DEFAULT" | "CUSTOM" | null;
   template_key?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export { mapRoleWriteError } from "@/lib/rbac/role-write-errors";
+
+async function assertRoleNameAvailable(options: {
+  name: string;
+  companyId: string | null;
+  excludeRoleId?: string;
+}): Promise<void> {
+  const trimmed = options.name.trim();
+  if (!trimmed) {
+    throw new Error("ROLE_NAME_REQUIRED");
+  }
+
+  let query = supabase.from("roles").select("id").eq("name", trimmed).limit(1);
+
+  if (options.companyId) {
+    query = query.eq("company_id", options.companyId);
+  } else {
+    query = query.is("company_id", null);
+  }
+
+  if (options.excludeRoleId) {
+    query = query.neq("id", options.excludeRoleId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error && error.code !== "PGRST116") {
+    throw new Error(mapRoleWriteError(error.message));
+  }
+  if (data?.id) {
+    throw new Error("ROLE_NAME_ALREADY_EXISTS");
+  }
 }
 
 export interface PermissionRecord {
@@ -142,7 +177,7 @@ export function useRoles() {
     queryFn: async (): Promise<RoleRecord[]> => {
       const { data, error } = await supabase
         .from("roles")
-        .select("id, name, description, role_type, template_key, created_at, updated_at")
+        .select("id, name, description, company_id, role_type, template_key, created_at, updated_at")
         .order("created_at", { ascending: false });
       if (error) {
         console.warn("Roles table unavailable, using empty state", error.message);
@@ -222,12 +257,14 @@ export function useCreateRole() {
 
       assertPermissionsAreDelegable(permissions, hasPermission, isSuperAdmin);
 
+      await assertRoleNameAvailable({ name, companyId });
+
       // Tenant roles must be CUSTOM + scoped to current company for RLS
       // (roles_insert_policy + role_permissions_* policies).
       const { data: roleData, error: roleError } = await supabase
         .from("roles")
         .insert({
-          name,
+          name: name.trim(),
           description: description || null,
           company_id: companyId,
           is_system: false,
@@ -236,7 +273,7 @@ export function useCreateRole() {
         })
         .select()
         .single();
-      if (roleError) throw new Error(roleError.message);
+      if (roleError) throw new Error(mapRoleWriteError(roleError.message));
 
       if (permissions.length > 0) {
         const { data: permissionRows, error: permissionError } = await supabase
@@ -278,15 +315,50 @@ export function useUpdateRole() {
       description: string;
       permissions: string[];
     }) => {
+      if (!id?.trim()) {
+        throw new Error("ROLE_ID_REQUIRED");
+      }
+
       assertPermissionsAreDelegable(permissions, hasPermission, isSuperAdmin);
+
+      const { data: existing, error: existingError } = await supabase
+        .from("roles")
+        .select("id, name, company_id, role_type")
+        .eq("id", id)
+        .maybeSingle();
+      if (existingError) throw new Error(mapRoleWriteError(existingError.message));
+      if (!existing?.id) {
+        throw new Error("ROLE_NOT_FOUND");
+      }
+
+      const roleType = existing.role_type ?? "CUSTOM";
+      const isProtectedRole = roleType === "DEFAULT" || roleType === "PLATFORM";
+      // DEFAULT/PLATFORM names are provisioning-owned. Super Admin may still sync
+      // permissions (e.g. company approval admin access); never rename them here.
+      if (isProtectedRole && !isSuperAdmin) {
+        throw new Error("ROLE_PROTECTED_READ_ONLY");
+      }
+
+      const nextName = isProtectedRole ? (existing.name ?? name.trim()) : name.trim();
+      if (!isProtectedRole) {
+        await assertRoleNameAvailable({
+          name: nextName,
+          companyId: existing.company_id ?? null,
+          excludeRoleId: id,
+        });
+      }
 
       const { data, error } = await supabase
         .from("roles")
-        .update({ name, description: description || null })
+        .update(
+          isProtectedRole
+            ? { description: description || null }
+            : { name: nextName, description: description || null },
+        )
         .eq("id", id)
         .select()
         .single();
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(mapRoleWriteError(error.message));
 
       const { error: deleteError } = await supabase.from("role_permissions").delete().eq("role_id", id);
       if (deleteError) throw new Error(deleteError.message);

@@ -8,6 +8,7 @@ import {
   extractWhatsAppPhoneNumberId,
   previewRawBody,
   probeWhatsAppPhoneNumberChannel,
+  reconcileCompanyWhatsAppPhoneNumberId,
   resolveWhatsAppWebhookCompanyChannelId,
   summarizeWebhookHeaders,
   summarizeWhatsAppWebhookPayload,
@@ -330,24 +331,41 @@ async function processWhatsAppWebhookPost(
           ? channel.configuration.phoneNumberId
           : null;
 
-      await platform.ports.registry.syncWhatsAppPhoneNumberId(
-        companyChannelId,
-        reconciledPhoneNumberId,
-      );
+      if (!channel?.companyId) {
+        await platform.ports.registry.syncWhatsAppPhoneNumberId(
+          companyChannelId,
+          reconciledPhoneNumberId,
+        );
+      } else {
+        // Keep company_whatsapp_settings + all WA channel refs aligned with Meta's
+        // inbound phone_number_id so settings upsert / notification send cannot diverge.
+        await reconcileCompanyWhatsAppPhoneNumberId({
+          client: platform.client,
+          companyId: channel.companyId,
+          companyChannelId,
+          phoneNumberId: reconciledPhoneNumberId,
+          syncChannelPhoneNumberId: (id, phoneId) =>
+            platform.ports.registry.syncWhatsAppPhoneNumberId(id, phoneId),
+        });
+      }
 
       trace.step("webhook.routing_resolved", {
         stage: "phone_number_id_reconciled",
         companyChannelId,
+        companyId: channel?.companyId ?? null,
         previousPhoneNumberId,
         phoneNumberId: reconciledPhoneNumberId,
+        settingsSynced: Boolean(channel?.companyId),
       });
 
       logger.warn(
         {
           requestId,
           companyChannelId,
+          companyId: channel?.companyId ?? null,
           previousPhoneNumberId,
           phoneNumberId: reconciledPhoneNumberId,
+          settingsSynced: Boolean(channel?.companyId),
         },
         "WhatsApp phone number ID reconciled from inbound webhook metadata",
       );

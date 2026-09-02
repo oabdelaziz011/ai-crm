@@ -4,6 +4,7 @@ import { getPasswordSetupCallbackUrl } from "@/lib/auth-redirect";
 import { translateAuthErrorMessage } from "@/lib/auth-errors";
 import {
   translateProvisionUserErrorMessage,
+  readProvisionUserErrorPayload,
 } from "@/lib/provision-user-errors";
 import {
   CompanyHasNoRolesError,
@@ -277,8 +278,10 @@ export function useCreateManagedUser() {
         },
       });
 
-      if (invokeError || data?.error) {
-        throw new Error(translateProvisionUserErrorMessage(invokeError, data));
+      const payload = await readProvisionUserErrorPayload(invokeError, data);
+
+      if (invokeError || payload?.error) {
+        throw new Error(translateProvisionUserErrorMessage(invokeError, payload));
       }
 
       if (!data?.ok) {

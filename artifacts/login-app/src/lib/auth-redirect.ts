@@ -1,9 +1,25 @@
+/** Prefer explicit app origin so auth emails never target the api-server port. */
+function resolveAuthOrigin(): string {
+  const configured = String(import.meta.env.VITE_APP_ORIGIN ?? "").trim().replace(/\/$/, "");
+  if (configured) {
+    return configured;
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const { origin, port } = window.location;
+    // Guard: if the SPA is somehow opened via the API host, still point emails at Vite.
+    if (port === "3000") {
+      return "http://localhost:5173";
+    }
+    return origin;
+  }
+  return "http://localhost:5173";
+}
+
 /** Build an absolute redirect URL for Supabase auth emails (works on mobile browsers). */
 export function getAuthRedirectUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}${basePath}${normalizedPath}`;
+  return `${resolveAuthOrigin()}${basePath}${normalizedPath}`;
 }
 
 export const AUTH_CALLBACK_PATH = "/auth/callback";

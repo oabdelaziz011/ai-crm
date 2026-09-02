@@ -21,8 +21,10 @@ import { applyConversationQueue } from "@/lib/omnichannel/services/conversation-
 import { OMNICHANNEL_LIST_STALE_MS } from "@/lib/omnichannel/cache/query-keys";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
 import {
+  canViewAllOmnichannelConversations,
   canViewOmnichannelConsole,
   filterConversationsByChannelPermission,
+  filterConversationsByOwnership,
 } from "@/lib/omnichannel/permissions";
 import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-conversation";
 import { useConversationRealtime, useOmnichannelAccess } from "@/hooks/omnichannel/use-conversation-realtime";
@@ -33,12 +35,15 @@ import { auditOmniListPipeline } from "@/lib/omnichannel/debug/omni-list-pipelin
 import { traceDomRenderStage } from "@/lib/omnichannel/debug/omni-dom-render-audit";
 import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 
-function mapListFilters(filters: OmnichannelListFilters) {
+function mapListFilters(
+  filters: OmnichannelListFilters,
+  options?: { forceAssignedUserId?: string | null },
+) {
   return {
     searchQuery: filters.search,
     channelType: filters.channel,
     state: filters.status,
-    assignedUserId: filters.assignedUserId,
+    assignedUserId: options?.forceAssignedUserId ?? filters.assignedUserId,
     hasEmployeeUnread: filters.unreadOnly,
   };
 }
@@ -49,9 +54,14 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
   const { user, profile } = useAuth();
   const companyId = access?.companyId ?? null;
   const canView = canViewOmnichannelConsole(access);
+  const canViewAll = canViewAllOmnichannelConversations(access);
   const { data: aiAssistantSettings } = useAiAssistantSettings(companyId);
 
-  const listQuery = useConversationListInfinite(mapListFilters(filters));
+  const listQuery = useConversationListInfinite(
+    mapListFilters(filters, {
+      forceAssignedUserId: !canViewAll && access?.userId ? access.userId : undefined,
+    }),
+  );
   const flatConversations = useMemo(
     () => listQuery.data?.pages.flatMap((page) => page.rows) ?? [],
     [listQuery.data?.pages],
@@ -115,9 +125,20 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     });
     const supported = conversationAggregator.filterBySupportedChannels(unified);
     const filtered = conversationAggregator.applyFilters(supported, filters);
-    const effectiveQueue = filters.queue ?? "all";
-    return applyConversationQueue(filtered, effectiveQueue, user?.id);
-  }, [flatConversations, customersById, agentsById, profilesByUserId, filters, access, user?.id, ownershipLabels]);
+    const effectiveQueue = !canViewAll ? (filters.queue ?? "mine") : (filters.queue ?? "all");
+    const queued = applyConversationQueue(filtered, effectiveQueue, user?.id);
+    return filterConversationsByOwnership(queued, access, !canViewAll);
+  }, [
+    flatConversations,
+    customersById,
+    agentsById,
+    profilesByUserId,
+    filters,
+    access,
+    user?.id,
+    ownershipLabels,
+    canViewAll,
+  ]);
 
   const visibleConversations = useMemo(() => {
     const result = filterConversationsByChannelPermission(aggregated, OMNICHANNEL_PRIMARY_CHANNELS);
@@ -144,11 +165,19 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       ownershipLabels,
     });
     const supported = conversationAggregator.filterBySupportedChannels(unified);
-    return filterConversationsByChannelPermission(
-      conversationAggregator.applyFilters(supported, filters),
-      OMNICHANNEL_PRIMARY_CHANNELS,
-    );
-  }, [flatConversations, customersById, agentsById, profilesByUserId, filters, access, ownershipLabels]);
+    const filtered = conversationAggregator.applyFilters(supported, filters);
+    const scoped = filterConversationsByOwnership(filtered, access, !canViewAll);
+    return filterConversationsByChannelPermission(scoped, OMNICHANNEL_PRIMARY_CHANNELS);
+  }, [
+    flatConversations,
+    customersById,
+    agentsById,
+    profilesByUserId,
+    filters,
+    access,
+    ownershipLabels,
+    canViewAll,
+  ]);
 
   const selectedConversation =
     visibleConversations.find((conversation) => conversation.id === selectedId)
@@ -303,6 +332,7 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
   return {
     access,
     canView,
+    canViewAll,
     companyId,
     flatRowCount: flatConversations.length,
     conversations: visibleConversations,

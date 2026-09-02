@@ -42,7 +42,7 @@ describe("ai employee engagement session", () => {
     assert.deepEqual(result.engagement, previousEngagement);
   });
 
-  it("starts a new engagement when inactivity exceeds timeout", () => {
+  it("starts a new engagement when inactivity exceeds timeout and clears welcome", () => {
     const result = resolveAiEmployeeEngagement({
       previousLastInboundAt: "2026-08-21T12:00:00.000Z",
       now,
@@ -55,7 +55,7 @@ describe("ai employee engagement session", () => {
       },
     });
     assert.equal(result.isNewEngagement, true);
-    assert.equal(result.engagement.welcomeDeliveredAt, "2026-08-21T12:00:00.000Z");
+    assert.equal(result.engagement.welcomeDeliveredAt, null);
   });
 
   it("does not rotate at the exact timeout boundary", () => {

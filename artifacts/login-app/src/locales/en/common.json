@@ -3,6 +3,14 @@
     "name": "VaultOS",
     "dashboard": "Dashboard"
   },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {{page}} of {{totalPages}}",
+    "navLabel": "Pagination",
+    "previousAria": "Go to previous page",
+    "nextAria": "Go to next page"
+  },
   "appShell": {
     "sidebar": {
       "label": "Main navigation",
@@ -550,13 +558,22 @@
         "providerTwilio": "Twilio WhatsApp (coming soon)",
         "provider360Dialog": "360dialog (coming soon)",
         "accessToken": "Access token",
+        "accessTokenHint": "Paste a permanent System User token from Meta that can access the Phone Number ID below. Temporary user tokens expire and break send + webhook probe.",
+        "secretKeepPlaceholder": "Saved — leave blank to keep",
+        "secretLeaveBlankHint": "Leave blank to keep the existing saved secret. Paste a new value only when you want to replace it.",
         "phoneNumberId": "Phone number ID",
+        "phoneNumberIdHint": "Copy from Meta → WhatsApp → API Setup (Phone number ID). Must match the number Meta sends on inbound webhooks.",
         "businessAccountId": "Business account ID",
+        "businessAccountIdHint": "WhatsApp Business Account ID (WABA) from Meta → WhatsApp → API Setup.",
         "webhookVerifyToken": "Webhook verify token",
         "webhookFutureHint": "Used for Meta webhook subscription verification.",
+        "webhookVerifyHint": "Generate a secret string, save it here, and enter the identical value in Meta → WhatsApp → Configuration → Verify token.",
+        "webhookCallbackUrl": "Webhook callback URL",
+        "webhookCallbackHint": "Use this exact URL in Meta → WhatsApp → Configuration → Callback URL. Keep an enabled WhatsApp channel under Channels.",
         "apiVersion": "Graph API version",
         "appSecret": "App secret",
-        "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256).",
+        "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256). Copy from Meta App → Settings → Basic → App secret.",
+        "channelRequiredHint": "Inbound routing and outbound replies require at least one enabled WhatsApp channel under Channels (credentials live here in Settings).",
         "defaultLanguage": "Default template language",
         "saved": "WhatsApp settings saved",
         "saveFailed": "Could not save WhatsApp settings",
@@ -564,6 +581,8 @@
         "healthOk": "WhatsApp connection healthy ({{ms}} ms)",
         "healthFailed": "WhatsApp check failed: {{error}}",
         "credentialWarning": "WhatsApp credentials need attention ({{status}}). Outbound sends are blocked until the token is refreshed.",
+        "credentialRemediation": "Update Access Token, Phone Number ID, and WABA ID from Meta’s current API Setup, Save, then run Test Connection. Also confirm Meta’s webhook verify token matches the value stored here.",
+        "tokenStatusStaleHint": "Stored token status still says Valid, but the live Meta probe failed. Treat the stored column as stale until Test Connection passes.",
         "tokenStatusLabel": "Token status",
         "tokenStatus": {
           "valid": "Valid",
@@ -6863,7 +6882,14 @@
       "cancelEscalationSuccess": "Escalation cancelled",
       "cancelEscalationFailed": "Cancel escalation failed",
       "escalateSuccess": "Conversation escalated",
-      "escalateFailed": "Escalation failed"
+      "escalateFailed": "Escalation failed",
+      "pauseAi": "Pause AI",
+      "resumeAi": "Resume AI",
+      "pauseAiReason": "Paused by agent",
+      "pauseAiSuccess": "AI paused for this conversation",
+      "pauseAiFailed": "Could not pause AI",
+      "resumeAiSuccess": "AI resumed for this conversation",
+      "resumeAiFailed": "Could not resume AI"
     },
     "customer": {
       "createCustomer": "Create Customer",
@@ -6883,7 +6909,12 @@
       "noTeams": "No teams are configured yet. Assign to an agent instead.",
       "noQueues": "No routing queues are configured yet.",
       "noAiEmployees": "No published AI employees are available.",
-      "history": "Assignment history"
+      "history": "Assignment history",
+      "noHandoffQueues": "No handoff queues configured yet.",
+      "queuesLoadFailed": "Could not load handoff queues.",
+      "routingStrategy": "Routing: {{strategy}}",
+      "onlineMembers": "{{count}}/{{total}} online",
+      "activeWorkload": "{{count}} active"
     },
     "escalation": {
       "defaultReason": "Escalated from omnichannel workspace",
@@ -7381,6 +7412,29 @@
       "queueSecondary": "Clear filters",
       "transcriptSecondary": "Focus composer",
       "insightSecondary": "Create customer"
+    },
+    "agentPresence": {
+      "label": "Presence",
+      "loading": "Loading presence…",
+      "permissionDenied": "You do not have permission to manage presence.",
+      "states": {
+        "online": "Online",
+        "busy": "Busy",
+        "away": "Away",
+        "offline": "Offline"
+      }
+    },
+    "handoffOwnership": {
+      "ai": "AI handling",
+      "human": "Human agent",
+      "queue": "In queue",
+      "system": "System",
+      "paused": "AI paused",
+      "aiAllowed": "AI can reply",
+      "aiBlocked": "AI replies blocked",
+      "assignee": "Assignee",
+      "queueLabel": "Queue",
+      "lifecycle": "Lifecycle"
     }
   },
   "organization": {
@@ -9216,6 +9270,10 @@
           "disabled": "Disabled conversation memory"
         },
         "conversation_timeout_minutes": "Changed conversation timeout",
+        "session_idle_warning_message": "Changed session idle warning message",
+        "session_ended_message": "Changed session ended message",
+        "session_idle_warning_messages": "Changed bilingual session idle warning messages",
+        "session_ended_messages": "Changed bilingual session ended messages",
         "max_conversation_age": "Changed maximum conversation duration",
         "is_enabled": {
           "enabled": "Enabled AI",
@@ -10161,7 +10219,11 @@
       "updateSuccessDescription": "\"{{name}}\" was saved successfully.",
       "updateFailedTitle": "Could not update role",
       "deleteSuccessTitle": "Role deleted",
-      "deleteSuccessDescription": "\"{{name}}\" was removed."
+      "deleteSuccessDescription": "\"{{name}}\" was removed.",
+      "nameAlreadyExists": "A role with this name already exists in your company. Choose a different name.",
+      "protectedReadOnly": "System roles (Company Admin, Human Handoff Agent, etc.) cannot be edited here.",
+      "notFound": "This role no longer exists.",
+      "invalidRequest": "Please check the role name and try again."
     }
   },
   "permissions": {
@@ -10770,11 +10832,18 @@
       "rememberConversation": "Remember conversation",
       "rememberConversationDesc": "Keep conversation context available for returning visitors.",
       "timeout": "Conversation timeout",
-      "timeoutDesc": "End the session after this many minutes of inactivity.",
+      "timeoutDesc": "End the WhatsApp session after this many minutes from the customer's last message. Set 0 to disable.",
+      "idleTimelineHint": "At {{warn}} min: send warning. At {{end}} min: send ended message and close the session.",
+      "idleWarningMessage": "Session ending soon (warning)",
+      "idleWarningMessageDesc": "WhatsApp text sent automatically at half the timeout, in the customer's conversation language.",
+      "sessionEndedMessage": "Session ended message",
+      "sessionEndedMessageDesc": "WhatsApp text sent when the full timeout elapses. Sent in Arabic or English based on how the customer is chatting.",
+      "messageArabic": "Arabic",
+      "messageEnglish": "English",
       "maxDuration": "Maximum conversation duration",
       "maxDurationDesc": "Hard limit on how long a single conversation may last.",
       "minutes": "min",
-      "note": "Conversation settings apply per company and will be used by future AI channels."
+      "note": "Idle timeout applies to WhatsApp workflow sessions. Warning fires at half the timeout; the session ends at the full timeout. Message language follows the customer (ar/en)."
     },
     "businessRules": {
       "allowAutoBooking": "Allow automatic booking",
@@ -10830,7 +10899,11 @@
       "assistantName": "Vault Assistant",
       "personality": "helpful",
       "welcomeMessage": "Hello! I'm your AI assistant. How can I help you today?",
-      "fallbackMessage": "I'm sorry, I didn't understand that. Could you please rephrase your question?"
+      "fallbackMessage": "I'm sorry, I didn't understand that. Could you please rephrase your question?",
+      "sessionIdleWarningMessageAr": "تنبيه: جلسة المحادثة ستنتهي قريباً. يرجى الرد سريعاً لاستكمال المحادثة.",
+      "sessionIdleWarningMessageEn": "Reminder: this conversation session will end soon. Please reply quickly to continue.",
+      "sessionEndedMessageAr": "انتهت جلسة المحادثة بسبب عدم الرد. يمكنك إرسال رسالة جديدة لبدء جلسة جديدة.",
+      "sessionEndedMessageEn": "This conversation session has ended due to inactivity. Send a new message to start again."
     },
     "save": {
       "button": "Save settings",

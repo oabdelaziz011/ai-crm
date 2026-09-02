@@ -54,6 +54,7 @@ export class ConversationOrchestrator {
       customers: CustomerResolverPort;
       engine: AutomationEngine;
       policy?: SessionPolicyConfig;
+      resolveTimeoutMs?: (companyId: string) => Promise<number | null | undefined>;
     },
   ) {
     this.resolver = new ConversationResolver({
@@ -62,6 +63,7 @@ export class ConversationOrchestrator {
       messages: deps.messages,
       customers: deps.customers,
       policy: deps.policy,
+      resolveTimeoutMs: deps.resolveTimeoutMs,
     });
     this.dispatcher = new TriggerDispatcher({
       flows: deps.flows,

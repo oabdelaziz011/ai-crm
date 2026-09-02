@@ -25,6 +25,25 @@ export const WORKSPACE_NAV_ORDER: WorkspaceNavId[] = [
   "archived",
 ];
 
+/** Agents without full-inbox access only navigate owned / closed / archived scopes. */
+export const WORKSPACE_NAV_ORDER_AGENT: WorkspaceNavId[] = [
+  "mine",
+  "closed",
+  "archived",
+];
+
+export function workspaceNavOrderForAccess(canViewAll: boolean): WorkspaceNavId[] {
+  return canViewAll ? WORKSPACE_NAV_ORDER : WORKSPACE_NAV_ORDER_AGENT;
+}
+
+export function coerceWorkspaceNavForAccess(
+  nav: WorkspaceNavId,
+  canViewAll: boolean,
+): WorkspaceNavId {
+  if (canViewAll) return nav;
+  return WORKSPACE_NAV_ORDER_AGENT.includes(nav) ? nav : "mine";
+}
+
 export function workspaceNavToFilters(nav: WorkspaceNavId): OmnichannelListFilters {
   switch (nav) {
     case "inbox":

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ValidationError } from "../../errors.js";
 import { WA_REQUEST_CACHE_NS, waRequestGetOrLoad } from "../../debug/whatsapp-request-scope.js";
 import type { WhatsAppChannelConfiguration, WhatsAppChannelReferences } from "./whatsapp-config.js";
+import { fingerprintWhatsAppAccessToken } from "./whatsapp-token-fingerprint.js";
 
 export const WHATSAPP_CREDENTIALS_SOURCE = "company_whatsapp_settings" as const;
 
@@ -113,6 +114,7 @@ async function loadCompanyWhatsAppCredentialsDecryptedUncached(
 
   if (!rpcError && rpcRecord) {
     const mapped = mapDecryptedSettings(rpcRecord);
+    const tokenFp = fingerprintWhatsAppAccessToken(mapped?.accessToken);
     diag("canonical.load.rpc.mapped", {
       mapped: Boolean(mapped),
       accessTokenPresent: Boolean(mapped?.accessToken.trim()),
@@ -120,7 +122,9 @@ async function loadCompanyWhatsAppCredentialsDecryptedUncached(
       businessAccountIdPresent: Boolean(mapped?.businessAccountId?.trim()),
       webhookVerifyTokenPresent: Boolean(mapped?.verifyToken.trim()),
       appSecretPresent: Boolean(mapped?.appSecret?.trim()),
-      source: "company_whatsapp_settings.rpc",
+      source: "company_whatsapp_settings.get_company_whatsapp_settings_decrypted",
+      tokenFrom: "database",
+      tokenFingerprint: tokenFp,
     });
     if (mapped?.accessToken.trim()) {
       return mapped;
@@ -159,15 +163,17 @@ async function loadCompanyWhatsAppCredentialsDecryptedUncached(
     return null;
   }
 
-  if (
-    !settingsRow.access_token?.trim() &&
-    settingsRow.access_token_encrypted &&
-    rpcError
-  ) {
+  // Never fall back to legacy plaintext when an encrypted blob exists — that path
+  // can diverge from get_company_whatsapp_settings_decrypted (audit / Test Connection).
+  if (settingsRow.access_token_encrypted) {
     diag("canonical.load.encrypted_only", {
       mapped: false,
-      reason: "access_token_encrypted_requires_decrypted_rpc",
-      rpcError: rpcError.message,
+      reason: rpcError
+        ? "access_token_encrypted_requires_decrypted_rpc"
+        : "decrypt_rpc_returned_empty_access_token",
+      rpcError: rpcError?.message ?? null,
+      tokenFrom: "database",
+      tokenSource: "company_whatsapp_settings.access_token_encrypted",
     });
     return null;
   }
@@ -181,6 +187,7 @@ async function loadCompanyWhatsAppCredentialsDecryptedUncached(
     app_secret: settingsRow.app_secret ?? "",
   });
 
+  const tokenFp = fingerprintWhatsAppAccessToken(mapped?.accessToken);
   diag("canonical.load.table.mapped", {
     mapped: Boolean(mapped),
     accessTokenPresent: Boolean(mapped?.accessToken.trim()),
@@ -188,7 +195,9 @@ async function loadCompanyWhatsAppCredentialsDecryptedUncached(
     businessAccountIdPresent: Boolean(mapped?.businessAccountId?.trim()),
     webhookVerifyTokenPresent: Boolean(mapped?.verifyToken.trim()),
     appSecretPresent: Boolean(mapped?.appSecret?.trim()),
-    source: "company_whatsapp_settings.table",
+    source: "company_whatsapp_settings.table_plaintext_legacy",
+    tokenFrom: "database",
+    tokenFingerprint: tokenFp,
   });
 
   return mapped;
@@ -257,12 +266,25 @@ async function resolveWhatsAppRuntimeConfigurationUncached(
   }
 
   // Prefer the company-channel phone number when present. Inbound reconciliation
-  // updates channel.configuration.phoneNumberId to the number Meta delivers on;
-  // company_whatsapp_settings can lag with a stale id and would send replies from
-  // a different WhatsApp Business number (Meta 200 OK, customer never sees it).
+  // updates channel.configuration.phoneNumberId AND company_whatsapp_settings so
+  // they stay aligned; channel preference preserves continuity if a race leaves
+  // settings briefly behind the live Meta phone_number_id.
   const channelPhoneNumberId = channelReferences.phoneNumberId?.trim() || "";
   const settingsPhoneNumberId = credentials.phoneNumberId.trim();
   const phoneNumberId = channelPhoneNumberId || settingsPhoneNumberId || "";
+
+  if (
+    channelPhoneNumberId &&
+    settingsPhoneNumberId &&
+    channelPhoneNumberId !== settingsPhoneNumberId
+  ) {
+    diag("canonical.resolve.phone_number_mismatch", {
+      channelPhoneNumberId,
+      settingsPhoneNumberId,
+      using: channelPhoneNumberId,
+      hint: "Inbound reconcile should sync settings; if this persists, re-save WhatsApp settings from Meta API Setup.",
+    });
+  }
 
   if (!phoneNumberId) {
     diag("canonical.resolve.failed", { reason: "phone_number_id_missing" });

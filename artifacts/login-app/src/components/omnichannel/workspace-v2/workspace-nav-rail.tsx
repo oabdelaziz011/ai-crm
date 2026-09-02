@@ -28,6 +28,7 @@ type WorkspaceNavRailProps = {
   counts: Record<WorkspaceNavId, number>;
   labels: Record<WorkspaceNavId, string>;
   ariaLabel: string;
+  navOrder?: readonly WorkspaceNavId[];
 };
 
 export const WorkspaceNavRail = memo(function WorkspaceNavRail({
@@ -36,13 +37,14 @@ export const WorkspaceNavRail = memo(function WorkspaceNavRail({
   counts,
   labels,
   ariaLabel,
+  navOrder = WORKSPACE_NAV_ORDER,
 }: WorkspaceNavRailProps) {
   return (
     <nav
       className="ws-nav-rail flex h-full min-h-0 w-[var(--ws-nav-width)] shrink-0 flex-col items-center gap-0.5 border-e border-[var(--ws-border)] bg-[var(--ws-surface)] py-2"
       aria-label={ariaLabel}
     >
-      {WORKSPACE_NAV_ORDER.map((navId) => {
+      {navOrder.map((navId) => {
         const Icon = NAV_ICONS[navId];
         const active = activeNav === navId;
         const count = counts[navId];

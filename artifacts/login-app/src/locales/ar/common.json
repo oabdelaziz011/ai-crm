@@ -3,6 +3,14 @@
     "name": "VaultOS",
     "dashboard": "لوحة التحكم"
   },
+  "pagination": {
+    "previous": "السابق",
+    "next": "التالي",
+    "pageInfo": "صفحة {{page}} من {{totalPages}}",
+    "navLabel": "التنقل بين الصفحات",
+    "previousAria": "الانتقال إلى الصفحة السابقة",
+    "nextAria": "الانتقال إلى الصفحة التالية"
+  },
   "appShell": {
     "sidebar": {
       "label": "التنقل الرئيسي",
@@ -433,13 +441,22 @@
         "providerTwilio": "Twilio WhatsApp (قريباً)",
         "provider360Dialog": "360dialog (قريباً)",
         "accessToken": "رمز الوصول",
+        "accessTokenHint": "الصق رمز System User دائم من Meta يملك صلاحية على Phone Number ID أدناه. رموز المستخدم المؤقتة تنتهي وتكسر الإرسال وفحص الـ webhook.",
+        "secretKeepPlaceholder": "محفوظ — اتركه فارغًا للإبقاء عليه",
+        "secretLeaveBlankHint": "اترك الحقل فارغًا للإبقاء على السر المحفوظ. الصق قيمة جديدة فقط عندما تريد استبدالها.",
         "phoneNumberId": "معرّف رقم الهاتف",
+        "phoneNumberIdHint": "انسخه من Meta → WhatsApp → API Setup (Phone number ID). لازم يطابق الرقم اللي Meta تبعته في الـ webhooks الواردة.",
         "businessAccountId": "معرّف حساب الأعمال",
+        "businessAccountIdHint": "معرّف WhatsApp Business Account (WABA) من Meta → WhatsApp → API Setup.",
         "webhookVerifyToken": "رمز التحقق من Webhook",
         "webhookFutureHint": "يُستخدم للتحقق من اشتراك Meta webhook.",
+        "webhookVerifyHint": "أنشئ سراً واحفظه هنا، وأدخل نفس القيمة في Meta → WhatsApp → Configuration → Verify token.",
+        "webhookCallbackUrl": "رابط Callback للـ Webhook",
+        "webhookCallbackHint": "استخدم هذا الرابط بالضبط في Meta → WhatsApp → Configuration → Callback URL. وتأكد إن فيه قناة واتساب مفعّلة تحت القنوات.",
         "apiVersion": "إصدار Graph API",
         "appSecret": "سر التطبيق",
-        "appSecretHint": "يُستخدم للتحقق من توقيع Meta webhook (x-hub-signature-256).",
+        "appSecretHint": "للتحقق من توقيع Meta webhook (x-hub-signature-256). انسخه من Meta App → Settings → Basic → App secret.",
+        "channelRequiredHint": "التوجيه الوارد والردود الصادرة يحتاجوا قناة واتساب مفعّلة واحدة على الأقل تحت القنوات (بيانات الاعتماد محفوظة هنا في الإعدادات).",
         "defaultLanguage": "اللغة الافتراضية للقوالب",
         "saved": "تم حفظ إعدادات واتساب",
         "saveFailed": "تعذر حفظ إعدادات واتساب",
@@ -447,6 +464,8 @@
         "healthOk": "اتصال واتساب سليم ({{ms}} مللي ثانية)",
         "healthFailed": "فشل فحص واتساب: {{error}}",
         "credentialWarning": "بيانات اعتماد واتساب تحتاج إلى مراجعة ({{status}}). يتم إيقاف الإرسال الصادر حتى يتم تحديث الرمز.",
+        "credentialRemediation": "حدّث Access Token و Phone Number ID و WABA ID من إعدادات Meta الحالية، احفظ، ثم شغّل Test Connection. وتأكد إن Verify token في Meta مطابق للقيمة المحفوظة هنا.",
+        "tokenStatusStaleHint": "حالة الرمز المحفوظة ما زالت «صالح»، لكن فحص Meta المباشر فشل. اعتبر العمود المخزّن قديماً حتى ينجح Test Connection.",
         "tokenStatusLabel": "حالة الرمز",
         "tokenStatus": {
           "valid": "صالح",
@@ -4938,9 +4957,9 @@
       "selectedCount": "{{count}} محدد",
       "statusLifecycleHint": "تتحول الحالة إلى منشور فقط عبر دورة الحياة ← نشر.",
       "knowledgeEmpty": "لا توجد مصادر معرفة بعد. يمكنك المتابعة وتعيينها لاحقًا.",
-      "knowledgeEmptyHint": "افتح المعرفة لإنشاء مصدر واستيراد المستندات، ثم ارجع هنا.",
-      "knowledgeManageHint": "محتاج مصادر أو مستندات زيادة؟ أدرها من وحدة المعرفة.",
-      "openKnowledgeModule": "فتح وحدة المعرفة",
+      "knowledgeEmptyHint": "افتح موديول المعرفة لإنشاء مصدر واستيراد المستندات، ثم عد هنا.",
+      "knowledgeManageHint": "تحتاج مصادر أو مستندات إضافية؟ أدِرها من موديول المعرفة.",
+      "openKnowledgeModule": "فتح موديول المعرفة",
       "toolsEmpty": "لا توجد أدوات بعد. يمكنك المتابعة وتعيين الأدوات لاحقًا.",
       "toolsEmptyEntitled": "لا توجد قدرات متاحة لهذه الباقة وسطح القناة الحالي. حدّث الاستحقاقات أو عدّل وسوم توجيه القناة.",
       "toolsAiEmployeeRequired": "ميزة الموظف الذكي غير مفعّلة لهذه الشركة. لا يمكن تعيين أدوات تجارية حتى تُفعَّل الباقة.",
@@ -6616,7 +6635,14 @@
       "cancelEscalationSuccess": "تم إلغاء التصعيد",
       "cancelEscalationFailed": "فشل إلغاء التصعيد",
       "escalateSuccess": "تم تصعيد المحادثة",
-      "escalateFailed": "فشل التصعيد"
+      "escalateFailed": "فشل التصعيد",
+      "pauseAi": "إيقاف الذكاء الاصطناعي",
+      "resumeAi": "استئناف الذكاء الاصطناعي",
+      "pauseAiReason": "تم الإيقاف بواسطة الموظف",
+      "pauseAiSuccess": "تم إيقاف ردود الذكاء الاصطناعي لهذه المحادثة",
+      "pauseAiFailed": "تعذر إيقاف الذكاء الاصطناعي",
+      "resumeAiSuccess": "تم استئناف ردود الذكاء الاصطناعي لهذه المحادثة",
+      "resumeAiFailed": "تعذر استئناف الذكاء الاصطناعي"
     },
     "customer": {
       "createCustomer": "إنشاء عميل",
@@ -6635,7 +6661,12 @@
       "noTeams": "لم يتم تهيئة فرق بعد. اسند إلى وكيل بدلاً من ذلك.",
       "noQueues": "لم يتم تهيئة قوائم توجيه بعد.",
       "noAiEmployees": "لا يوجد موظفو ذكاء اصطناعي منشورون.",
-      "history": "سجل الإسناد"
+      "history": "سجل الإسناد",
+      "noHandoffQueues": "لا توجد طوابير تحويل مُعدّة بعد.",
+      "queuesLoadFailed": "تعذر تحميل طوابير التحويل.",
+      "routingStrategy": "التوجيه: {{strategy}}",
+      "onlineMembers": "{{count}}/{{total}} متصل",
+      "activeWorkload": "{{count}} نشطة"
     },
     "escalation": {
       "defaultReason": "تم التصعيد من وحدة القنوات الموحدة",
@@ -7133,6 +7164,29 @@
       "queueSecondary": "مسح الفلاتر",
       "transcriptSecondary": "التركيز على المحرر",
       "insightSecondary": "إنشاء عميل"
+    },
+    "agentPresence": {
+      "label": "الحالة",
+      "loading": "جاري تحميل الحالة…",
+      "permissionDenied": "ليس لديك صلاحية إدارة الحالة.",
+      "states": {
+        "online": "متصل",
+        "busy": "مشغول",
+        "away": "بعيد",
+        "offline": "غير متصل"
+      }
+    },
+    "handoffOwnership": {
+      "ai": "الذكاء الاصطناعي يتولى",
+      "human": "موظف بشري",
+      "queue": "في الطابور",
+      "system": "النظام",
+      "paused": "الذكاء الاصطناعي متوقف",
+      "aiAllowed": "يمكن للذكاء الاصطناعي الرد",
+      "aiBlocked": "ردود الذكاء الاصطناعي موقوفة",
+      "assignee": "المُسند إليه",
+      "queueLabel": "الطابور",
+      "lifecycle": "دورة الحياة"
     }
   },
   "organization": {
@@ -8990,6 +9044,10 @@
           "disabled": "تم تعطيل تذكر المحادثة"
         },
         "conversation_timeout_minutes": "تم تغيير مهلة المحادثة",
+        "session_idle_warning_message": "تم تغيير رسالة إنذار انتهاء الجلسة",
+        "session_ended_message": "تم تغيير رسالة انتهاء الجلسة",
+        "session_idle_warning_messages": "تم تغيير رسائل إنذار انتهاء الجلسة (عربي/إنجليزي)",
+        "session_ended_messages": "تم تغيير رسائل انتهاء الجلسة (عربي/إنجليزي)",
         "max_conversation_age": "تم تغيير الحد الأقصى لمدة المحادثة",
         "is_enabled": {
           "enabled": "تم تفعيل الذكاء الاصطناعي",
@@ -9935,7 +9993,11 @@
       "updateSuccessDescription": "تم حفظ \"{{name}}\" بنجاح.",
       "updateFailedTitle": "تعذر تحديث الدور",
       "deleteSuccessTitle": "تم حذف الدور",
-      "deleteSuccessDescription": "تمت إزالة \"{{name}}\"."
+      "deleteSuccessDescription": "تمت إزالة \"{{name}}\".",
+      "nameAlreadyExists": "يوجد دور بنفس الاسم في شركتك بالفعل. اختر اسماً مختلفاً.",
+      "protectedReadOnly": "أدوار النظام (مثل Company Admin و Human Handoff Agent) لا يمكن تعديلها من هنا.",
+      "notFound": "هذا الدور لم يعد موجوداً.",
+      "invalidRequest": "تحقق من اسم الدور ثم حاول مرة أخرى."
     }
   },
   "permissions": {
@@ -10247,11 +10309,18 @@
       "rememberConversation": "تذكر المحادثة",
       "rememberConversationDesc": "الاحتفاظ بسياق المحادثة للزوار العائدين.",
       "timeout": "مهلة المحادثة",
-      "timeoutDesc": "إنهاء الجلسة بعد هذه الدقائق من عدم النشاط.",
+      "timeoutDesc": "إنهاء جلسة واتساب بعد هذه الدقائق من آخر رسالة للعميل. ضع 0 للتعطيل.",
+      "idleTimelineHint": "بعد {{warn}} دقيقة: رسالة إنذار. بعد {{end}} دقيقة: رسالة إنهاء الجلسة وإغلاقها.",
+      "idleWarningMessage": "رسالة إنذار اقتراب انتهاء الجلسة",
+      "idleWarningMessageDesc": "تُرسل تلقائياً على واتساب عند بلوغ نصف المهلة، بلغة العميل (عربي أو إنجليزي).",
+      "sessionEndedMessage": "رسالة انتهاء الجلسة",
+      "sessionEndedMessageDesc": "تُرسل على واتساب عند اكتمال المهلة. اللغة حسب لغة محادثة العميل.",
+      "messageArabic": "العربية",
+      "messageEnglish": "الإنجليزية",
       "maxDuration": "الحد الأقصى لمدة المحادثة",
       "maxDurationDesc": "حد أقصى لمدة المحادثة الواحدة.",
       "minutes": "دقيقة",
-      "note": "تطبق إعدادات المحادثة على كل شركة وستُستخدم في قنوات الذكاء الاصطناعي المستقبلية."
+      "note": "مهلة الخمول تُطبَّق على جلسات واتساب/سير العمل. الإنذار عند نصف المهلة، والإنهاء عند اكتمالها. لغة الرسالة تتبع لغة العميل."
     },
     "businessRules": {
       "allowAutoBooking": "السماح بالحجز التلقائي",
@@ -10307,7 +10376,11 @@
       "assistantName": "مساعد Vault",
       "personality": "helpful",
       "welcomeMessage": "مرحباً! أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟",
-      "fallbackMessage": "عذراً، لم أفهم ذلك. هل يمكنك إعادة صياغة سؤالك؟"
+      "fallbackMessage": "عذراً، لم أفهم ذلك. هل يمكنك إعادة صياغة سؤالك؟",
+      "sessionIdleWarningMessageAr": "تنبيه: جلسة المحادثة ستنتهي قريباً. يرجى الرد سريعاً لاستكمال المحادثة.",
+      "sessionIdleWarningMessageEn": "Reminder: this conversation session will end soon. Please reply quickly to continue.",
+      "sessionEndedMessageAr": "انتهت جلسة المحادثة بسبب عدم الرد. يمكنك إرسال رسالة جديدة لبدء جلسة جديدة.",
+      "sessionEndedMessageEn": "This conversation session has ended due to inactivity. Send a new message to start again."
     },
     "save": {
       "button": "حفظ الإعدادات",

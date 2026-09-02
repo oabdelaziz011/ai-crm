@@ -48,16 +48,16 @@ const HEADER_LABEL_KEYS: Record<CustomerColumnId, string> = {
 
 /** Must stay in sync with CustomersListRow visibility so headers never drift from cells. */
 const COLUMN_VISIBILITY_CLASS: Partial<Record<CustomerColumnId, string>> = {
-  tags: "hidden lg:block",
-  company: "hidden md:block",
-  phone: "hidden lg:block",
-  email: "hidden xl:block",
-  assigned: "hidden xl:block",
-  nextAppointment: "hidden lg:block",
-  outstanding: "hidden md:block",
-  ltv: "hidden md:block",
-  status: "hidden sm:block",
-  lastActivity: "hidden xl:block",
+  tags: "hidden lg:flex",
+  company: "hidden md:flex",
+  phone: "hidden lg:flex",
+  email: "hidden xl:flex",
+  assigned: "hidden xl:flex",
+  nextAppointment: "hidden lg:flex",
+  outstanding: "hidden md:flex",
+  ltv: "hidden md:flex",
+  status: "hidden sm:flex",
+  lastActivity: "hidden xl:flex",
 };
 
 export const CustomersListGrid = memo(function CustomersListGrid({
@@ -158,7 +158,7 @@ export const CustomersListGrid = memo(function CustomersListGrid({
             return (
               <div
                 key={columnId}
-                className={cn("relative shrink-0 truncate px-2", visibilityClass)}
+                className={cn("relative flex shrink-0 items-center truncate px-2", visibilityClass)}
                 style={{ width, minWidth: width, maxWidth: width }}
               >
                 {t(HEADER_LABEL_KEYS[columnId])}

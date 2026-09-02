@@ -202,7 +202,7 @@ export function InviteManagedUserDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-border/60 bg-card text-foreground">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-border/60 bg-card text-foreground">
           <DialogHeader>
             <DialogTitle>{t("companyWorkspace.employees.inviteTitle")}</DialogTitle>
           </DialogHeader>

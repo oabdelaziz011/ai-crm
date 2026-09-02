@@ -345,6 +345,10 @@ export type AiAssistantSettings = {
   remember_conversation: boolean;
   conversation_timeout_minutes: number;
   max_conversation_age: number;
+  session_idle_warning_message: string;
+  session_ended_message: string;
+  session_idle_warning_messages: { ar: string; en: string };
+  session_ended_messages: { ar: string; en: string };
   is_enabled: boolean;
   provider: AiAssistantProvider;
   model: string;

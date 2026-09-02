@@ -30,6 +30,7 @@ import type { BookingServicePort } from "../ports/booking-service-port.js";
 import type { CustomerServicePort } from "../ports/customer-service-port.js";
 import type { ConversationCustomerLinkPort } from "../ports/conversation-customer-link-port.js";
 import type { TicketServicePort } from "../ports/ticket-service-port.js";
+import type { HandoffServicePort } from "../ports/handoff-service-port.js";
 import { executeCreateBookingAction } from "./crm/create-booking-action.js";
 import { executeFindBookingAction } from "./crm/find-booking-action.js";
 import { executeCancelBookingAction, executeUpdateBookingAction } from "./crm/update-booking-action.js";
@@ -37,6 +38,10 @@ import { executeCreateCustomerAction, executeUpdateCustomerAction } from "./crm/
 import { executeFindCustomerAction } from "./crm/find-customer-action.js";
 import { executeAssignTicketAction, executeCreateTicketAction } from "./crm/create-ticket-action.js";
 import { executeFindTicketAction } from "./crm/find-ticket-action.js";
+import {
+  executeHandoffToHumanAction,
+  validateHandoffToHumanConfig,
+} from "./handoff/handoff-to-human-action.js";
 import type { AutomationNodeHandler, ExecutionContext, NodeExecutionResult } from "./execution-context.js";
 import { mergeVariables } from "./execution-context.js";
 import { traceIfNodeEntered, traceLegacyIfNodeEvaluation, executeIfRuleSetWithTrace } from "../debug/if-node-trace-debug.js";
@@ -75,6 +80,7 @@ export type AutomationActionDeps = {
   lookupOptions?: LookupOptionsPort;
   businessCalendar?: BusinessCalendarPort;
   ticketService?: TicketServicePort;
+  handoffService?: HandoffServicePort;
 };
 
 function readString(value: unknown): string | null {
@@ -615,6 +621,9 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
     validate(context) {
       const action = readString(context.currentNode.config.action);
       if (!action) throw new ValidationError("Action node requires config.action.");
+      if (action === "handoff_to_human") {
+        validateHandoffToHumanConfig(context.currentNode.config);
+      }
     },
     async execute(context): Promise<NodeExecutionResult> {
       const action = readString(context.currentNode.config.action)!;
@@ -858,6 +867,12 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           throw new ValidationError("Assign ticket action requires a ticket service.");
         }
         return executeAssignTicketAction(context, context.currentNode.config, deps.ticketService);
+      }
+      if (action === "handoff_to_human") {
+        if (!deps?.handoffService) {
+          throw new ValidationError("handoff_to_human action requires a handoff service.");
+        }
+        return executeHandoffToHumanAction(context, context.currentNode.config, deps.handoffService);
       }
       if (action === "return_to_main_menu") {
         findPrimaryMenuNode(context.nodes);

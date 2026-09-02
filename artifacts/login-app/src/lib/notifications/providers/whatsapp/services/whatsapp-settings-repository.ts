@@ -4,6 +4,10 @@ import type {
   WhatsAppProviderKind,
   WhatsAppTokenStatus,
 } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
+import {
+  normalizeWhatsAppSecretForUpsert,
+  whatsappSecretInputMeta,
+} from "@/lib/notifications/providers/whatsapp/services/whatsapp-secret-input";
 
 function mapTokenStatus(value: unknown): WhatsAppTokenStatus {
   const status = String(value ?? "unknown");
@@ -24,12 +28,13 @@ function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettin
     companyId: String(record.company_id),
     enabled: Boolean(record.enabled),
     provider: (record.provider as WhatsAppProviderKind) ?? "meta_cloud",
-    accessToken: String(record.access_token ?? ""),
+    // Never expose masked secrets into editable form state — empty means "keep existing".
+    accessToken: "",
     phoneNumberId: String(record.phone_number_id ?? ""),
     businessAccountId: String(record.business_account_id ?? ""),
-    webhookVerifyToken: String(record.webhook_verify_token ?? ""),
+    webhookVerifyToken: "",
     apiVersion: String(record.api_version ?? "v21.0"),
-    appSecret: String(record.app_secret ?? ""),
+    appSecret: "",
     defaultLanguage: String(record.default_language ?? "en"),
     maxRetryCount: Number(record.max_retry_count ?? 3),
     hasAccessToken: Boolean(record.has_access_token),
@@ -110,18 +115,38 @@ export class WhatsAppSettingsRepository {
   }
 
   async upsert(companyId: string, settings: WhatsAppSettingsDraft): Promise<CompanyWhatsAppSettings> {
+    const accessToken = normalizeWhatsAppSecretForUpsert(settings.accessToken);
+    const webhookVerifyToken = normalizeWhatsAppSecretForUpsert(settings.webhookVerifyToken);
+    const appSecret = normalizeWhatsAppSecretForUpsert(settings.appSecret);
+
+    // Safe diagnostics only — never log plaintext secrets.
+    console.info("[whatsapp-settings.upsert]", {
+      at: new Date().toISOString(),
+      companyId,
+      tokenSource: "request.body.accessToken",
+      tokenFrom: "request",
+      accessToken: whatsappSecretInputMeta(settings.accessToken),
+      accessTokenWillReplace: Boolean(accessToken),
+      webhookVerifyToken: whatsappSecretInputMeta(settings.webhookVerifyToken),
+      webhookVerifyTokenWillReplace: Boolean(webhookVerifyToken),
+      appSecret: whatsappSecretInputMeta(settings.appSecret),
+      appSecretWillReplace: Boolean(appSecret),
+      phoneNumberId: settings.phoneNumberId?.trim() || null,
+      businessAccountId: settings.businessAccountId?.trim() || null,
+    });
+
     const { data, error } = await this.client.rpc("upsert_company_whatsapp_settings", {
       p_company_id: companyId,
       p_enabled: settings.enabled,
       p_provider: settings.provider,
-      p_access_token: settings.accessToken,
+      p_access_token: accessToken,
       p_phone_number_id: settings.phoneNumberId,
       p_business_account_id: settings.businessAccountId,
-      p_webhook_verify_token: settings.webhookVerifyToken,
+      p_webhook_verify_token: webhookVerifyToken,
       p_default_language: settings.defaultLanguage,
       p_max_retry_count: settings.maxRetryCount,
       p_api_version: settings.apiVersion,
-      p_app_secret: settings.appSecret,
+      p_app_secret: appSecret,
     });
     if (error) throw new Error(error.message);
     return mapPublicRecord(data as Record<string, unknown>);

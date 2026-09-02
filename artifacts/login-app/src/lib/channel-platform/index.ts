@@ -9,6 +9,7 @@ import { useAIExecutionServices } from "@/lib/ai-execution-engine";
 import { useUnifiedAIRuntime } from "@/lib/application-layer/use-unified-ai-runtime";
 import { supabase } from "@/lib/supabase";
 import { createChannelPlatformPortsWithContext } from "./platform-ports";
+import { createSupabaseInboundAiGatePort } from "@workspace/human-handoff-platform";
 
 /**
  * Factory hook for Enterprise Channel Platform services.
@@ -37,8 +38,8 @@ export function useChannelPlatformServices() {
   );
 
   const ports = useMemo(
-    () =>
-      createChannelPlatformPortsWithContext(
+    () => {
+      const next = createChannelPlatformPortsWithContext(
         {
           channelRegistry: channelRegistryServices,
           conversation: conversationServices,
@@ -80,7 +81,28 @@ export function useChannelPlatformServices() {
             };
           },
         },
-      ),
+      );
+
+      next.inboundAutomationGate = createSupabaseInboundAiGatePort(supabase, {
+        getConversation: async (companyId, conversationId) => {
+          try {
+            const record = await conversationServices.conversations.getConversation(
+              conversationContext,
+              conversationId,
+            );
+            if (record.company_id !== companyId) return null;
+            return {
+              assignedUserId: record.assigned_user_id ?? null,
+              state: record.state ?? null,
+            };
+          } catch {
+            return null;
+          }
+        },
+      });
+
+      return next;
+    },
     [
       channelRegistryServices,
       channelRegistryContext,

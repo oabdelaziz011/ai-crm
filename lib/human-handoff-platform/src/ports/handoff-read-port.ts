@@ -34,6 +34,11 @@ export interface HandoffReadPort {
     input: { companyId: string; activeOnly?: boolean },
   ): Promise<{ queues: HandoffQueueRecord[] }>;
 
+  listQueueMembers(
+    access: HandoffReadAccessContext,
+    input: { companyId: string; queueId: string },
+  ): Promise<{ members: import("../types/handoff-types.js").QueueMemberRecord[] }>;
+
   getQueuePosition(
     access: HandoffReadAccessContext,
     input: { companyId: string; conversationId: string; queueId: string },

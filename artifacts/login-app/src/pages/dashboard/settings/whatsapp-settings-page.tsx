@@ -30,6 +30,10 @@ import type {
   WhatsAppProviderKind,
   WhatsAppTokenStatus,
 } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
+import {
+  buildWhatsAppWebhookUrl,
+  resolveChannelWebhookBaseUrl,
+} from "@/lib/channels/whatsapp-channel-utils";
 
 const EMPTY_SETTINGS: WhatsAppSettingsDraft = {
   enabled: false,
@@ -92,25 +96,33 @@ export function SettingsWhatsAppPage() {
   } | null>(null);
 
   useEffect(() => {
-    if (settings) {
-      setDraft({
-        enabled: settings.enabled,
-        provider: settings.provider,
-        accessToken: settings.accessToken,
-        phoneNumberId: settings.phoneNumberId,
-        businessAccountId: settings.businessAccountId,
-        webhookVerifyToken: settings.webhookVerifyToken,
-        apiVersion: settings.apiVersion,
-        appSecret: settings.appSecret,
-        defaultLanguage: settings.defaultLanguage,
-        maxRetryCount: settings.maxRetryCount,
-      });
-    }
+    if (!settings) return;
+    setDraft((prev) => ({
+      enabled: settings.enabled,
+      provider: settings.provider,
+      // Keep in-progress secret edits; never reload masked RPC values into the inputs.
+      accessToken: prev.accessToken,
+      phoneNumberId: settings.phoneNumberId,
+      businessAccountId: settings.businessAccountId,
+      webhookVerifyToken: prev.webhookVerifyToken,
+      apiVersion: settings.apiVersion,
+      appSecret: prev.appSecret,
+      defaultLanguage: settings.defaultLanguage,
+      maxRetryCount: settings.maxRetryCount,
+    }));
   }, [settings]);
 
   const onSave = () => {
     updateSettings.mutate(draft, {
-      onSuccess: () => toast({ title: t("notifications.whatsapp.settings.saved") }),
+      onSuccess: () => {
+        setDraft((prev) => ({
+          ...prev,
+          accessToken: "",
+          webhookVerifyToken: "",
+          appSecret: "",
+        }));
+        toast({ title: t("notifications.whatsapp.settings.saved") });
+      },
       onError: (error) =>
         toast({
           title: t("notifications.whatsapp.settings.saveFailed"),
@@ -139,6 +151,18 @@ export function SettingsWhatsAppPage() {
             error: null,
             tokenStatus: report.tokenStatus === "unknown" ? "valid" : report.tokenStatus,
           });
+          const fp = report.diagnostics?.tokenFingerprint;
+          console.info("[whatsapp.settings.test-connection]", {
+            at: report.diagnostics?.checkedAt ?? new Date().toISOString(),
+            companyId,
+            phoneNumberId: report.diagnostics?.phoneNumberId ?? null,
+            tokenSource: report.diagnostics?.tokenSource ?? null,
+            tokenFrom: report.diagnostics?.tokenFrom ?? null,
+            tokenLength: fp?.length ?? null,
+            tokenFingerprint: fp?.sha256_12 ?? null,
+            tokenPrefix: fp?.prefix ?? null,
+            ok: true,
+          });
           toast({ title: t("notifications.whatsapp.settings.connectionTestSuccess") });
           return;
         }
@@ -149,6 +173,19 @@ export function SettingsWhatsAppPage() {
           ok: false,
           latencyMs: report.latencyMs,
           error: detail,
+          tokenStatus: report.tokenStatus,
+        });
+        const fp = report.diagnostics?.tokenFingerprint;
+        console.info("[whatsapp.settings.test-connection]", {
+          at: report.diagnostics?.checkedAt ?? new Date().toISOString(),
+          companyId,
+          phoneNumberId: report.diagnostics?.phoneNumberId ?? null,
+          tokenSource: report.diagnostics?.tokenSource ?? null,
+          tokenFrom: report.diagnostics?.tokenFrom ?? null,
+          tokenLength: fp?.length ?? null,
+          tokenFingerprint: fp?.sha256_12 ?? null,
+          tokenPrefix: fp?.prefix ?? null,
+          ok: false,
           tokenStatus: report.tokenStatus,
         });
         toast({
@@ -187,15 +224,25 @@ export function SettingsWhatsAppPage() {
     });
   };
 
-  const tokenStatus = latestConnectionTest?.tokenStatus ?? settings?.tokenStatus ?? "unknown";
+  const tokenStatus: WhatsAppTokenStatus = (() => {
+    if (latestConnectionTest) return latestConnectionTest.tokenStatus;
+    // Prefer live health over the stored lifecycle column (can remain "valid" after Graph expiry).
+    if (health && health.ok === false) {
+      const err = String(health.error ?? "");
+      if (/session has expired|token.*(expired|expire)|error validating access token/i.test(err)) {
+        return "expired";
+      }
+      return "invalid";
+    }
+    return settings?.tokenStatus ?? "unknown";
+  })();
   const lastAuthError =
     latestConnectionTest?.ok === true
       ? null
-      : (latestConnectionTest?.error ?? settings?.lastAuthError ?? null);
-  const showCredentialWarning =
-    latestConnectionTest?.ok !== true &&
-    (tokenStatus === "expired" || tokenStatus === "invalid" || tokenStatus === "missing");
-
+      : (latestConnectionTest?.error ??
+        (health?.ok === false ? health.error : null) ??
+        settings?.lastAuthError ??
+        null);
   const healthOk = latestConnectionTest ? latestConnectionTest.ok : Boolean(health?.ok);
   const healthLatencyMs = latestConnectionTest?.latencyMs ?? health?.latencyMs ?? 0;
   const healthError =
@@ -204,6 +251,19 @@ export function SettingsWhatsAppPage() {
       : latestConnectionTest?.ok === true
         ? null
         : (health?.error ?? null);
+  // Stored token_status can stay "valid" after the encrypted secret expires.
+  // Prefer live Test Connection / health probe over the lifecycle column alone.
+  const showCredentialWarning =
+    latestConnectionTest?.ok === false ||
+    (latestConnectionTest == null && health?.ok === false) ||
+    tokenStatus === "expired" ||
+    tokenStatus === "invalid" ||
+    tokenStatus === "missing";
+  const webhookCallbackUrl = buildWhatsAppWebhookUrl(resolveChannelWebhookBaseUrl());
+  const storedStatusMayBeStale =
+    (settings?.tokenStatus === "valid" || settings?.tokenStatus === "unknown") &&
+    ((latestConnectionTest == null && health?.ok === false) ||
+      latestConnectionTest?.ok === false);
 
   if (!companyId) {
     return (
@@ -282,9 +342,20 @@ export function SettingsWhatsAppPage() {
                 <Input
                   type="password"
                   value={draft.accessToken}
-                  placeholder={settings?.hasAccessToken ? "********" : ""}
+                  autoComplete="new-password"
+                  placeholder={
+                    settings?.hasAccessToken
+                      ? t("notifications.whatsapp.settings.secretKeepPlaceholder")
+                      : ""
+                  }
                   onChange={(event) => setDraft((prev) => ({ ...prev, accessToken: event.target.value }))}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.accessTokenHint")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.secretLeaveBlankHint")}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>{t("notifications.whatsapp.settings.phoneNumberId")}</Label>
@@ -292,6 +363,9 @@ export function SettingsWhatsAppPage() {
                   value={draft.phoneNumberId}
                   onChange={(event) => setDraft((prev) => ({ ...prev, phoneNumberId: event.target.value }))}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.phoneNumberIdHint")}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>{t("notifications.whatsapp.settings.businessAccountId")}</Label>
@@ -301,6 +375,9 @@ export function SettingsWhatsAppPage() {
                     setDraft((prev) => ({ ...prev, businessAccountId: event.target.value }))
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.businessAccountIdHint")}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>{t("notifications.whatsapp.settings.apiVersion")}</Label>
@@ -315,11 +392,19 @@ export function SettingsWhatsAppPage() {
                 <Input
                   type="password"
                   value={draft.appSecret}
-                  placeholder={settings?.hasAppSecret ? "********" : ""}
+                  autoComplete="new-password"
+                  placeholder={
+                    settings?.hasAppSecret
+                      ? t("notifications.whatsapp.settings.secretKeepPlaceholder")
+                      : ""
+                  }
                   onChange={(event) => setDraft((prev) => ({ ...prev, appSecret: event.target.value }))}
                 />
                 <p className="text-xs text-muted-foreground">
                   {t("notifications.whatsapp.settings.appSecretHint")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.secretLeaveBlankHint")}
                 </p>
               </div>
               <div className="space-y-2 sm:col-span-2">
@@ -327,13 +412,31 @@ export function SettingsWhatsAppPage() {
                 <Input
                   type="password"
                   value={draft.webhookVerifyToken}
-                  placeholder={settings?.hasWebhookVerifyToken ? "********" : ""}
+                  autoComplete="new-password"
+                  placeholder={
+                    settings?.hasWebhookVerifyToken
+                      ? t("notifications.whatsapp.settings.secretKeepPlaceholder")
+                      : ""
+                  }
                   onChange={(event) =>
                     setDraft((prev) => ({ ...prev, webhookVerifyToken: event.target.value }))
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t("notifications.whatsapp.settings.webhookFutureHint")}
+                  {t("notifications.whatsapp.settings.webhookVerifyHint")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.secretLeaveBlankHint")}
+                </p>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>{t("notifications.whatsapp.settings.webhookCallbackUrl")}</Label>
+                <Input value={webhookCallbackUrl} readOnly />
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.webhookCallbackHint")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("notifications.whatsapp.settings.channelRequiredHint")}
                 </p>
               </div>
             </div>
@@ -366,6 +469,14 @@ export function SettingsWhatsAppPage() {
                 {lastAuthError ? (
                   <p className="mt-1 text-xs text-rose-300/90">{lastAuthError}</p>
                 ) : null}
+                {storedStatusMayBeStale ? (
+                  <p className="mt-1 text-xs text-amber-200/90">
+                    {t("notifications.whatsapp.settings.tokenStatusStaleHint")}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs text-rose-100/90">
+                  {t("notifications.whatsapp.settings.credentialRemediation")}
+                </p>
               </div>
             ) : null}
 

@@ -8,6 +8,7 @@ export function createHandoffReadPort(queries: HandoffQueryService): HandoffRead
     getOwnershipHistory: (access, input) => queries.getOwnershipHistory(access, input),
     getAgentWorkspace: (access, input) => queries.getAgentWorkspace(access, input),
     listQueues: (access, input) => queries.listQueues(access, input),
+    listQueueMembers: (access, input) => queries.listQueueMembers(access, input),
     getQueuePosition: (access, input) => queries.getQueuePosition(access, input),
     listPendingRequests: (access, input) => queries.listPendingRequests(access, input),
     getAgentPresence: (access, input) => queries.getAgentPresence(access, input),

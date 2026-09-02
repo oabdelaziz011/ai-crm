@@ -24,10 +24,21 @@ const HANDOFF_ACTIONS = new Set<LifecycleAction>([
   "ai_request_human",
   "ai_return",
   "ai_escalate",
+  "ai_resume",
   "escalate",
   "queue_enqueue",
+  "queue_assign",
   "close",
 ]);
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Soft inbox filters (unassigned/escalated/…) must never be sent as handoff_queues FKs. */
+export function asHandoffQueueId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return UUID_RE.test(value.trim()) ? value.trim() : null;
+}
 
 export function isHandoffLifecycleAction(action: LifecycleAction): boolean {
   return HANDOFF_ACTIONS.has(action);
@@ -49,11 +60,12 @@ export async function executeHandoffLifecycleBridge(
     conversationId: input.conversationId,
     reason: input.reason,
   };
+  const queueId = asHandoffQueueId(input.queueId);
 
   switch (input.action) {
     case "transfer":
-      if (input.queueId) {
-        await platform.commands.queueConversation(ctx, { ...base, queueId: input.queueId });
+      if (queueId) {
+        await platform.commands.queueConversation(ctx, { ...base, queueId });
         return;
       }
       if (input.assigneeUserId) {
@@ -67,6 +79,11 @@ export async function executeHandoffLifecycleBridge(
     case "assign":
     case "reassign":
     case "take_over":
+    case "queue_assign":
+      if (queueId && !input.assigneeUserId) {
+        await platform.commands.queueConversation(ctx, { ...base, queueId });
+        return;
+      }
       if (input.assigneeUserId) {
         await platform.commands.assignConversation(ctx, {
           ...base,
@@ -91,10 +108,10 @@ export async function executeHandoffLifecycleBridge(
 
     case "ai_request_human":
     case "queue_enqueue":
-      if (input.queueId) {
+      if (queueId) {
         await platform.commands.queueConversation(ctx, {
           ...base,
-          queueId: input.queueId,
+          queueId,
           requestedByAiAssistantId: input.aiAssistantId ?? undefined,
         });
       } else {
@@ -111,9 +128,13 @@ export async function executeHandoffLifecycleBridge(
       await platform.commands.escalateConversation(ctx, {
         ...base,
         triggerCode: input.escalationTrigger ?? "manual",
-        targetQueueId: input.queueId ?? undefined,
+        targetQueueId: queueId ?? undefined,
         requestedByAiAssistantId: input.aiAssistantId ?? undefined,
       });
+      return;
+
+    case "ai_resume":
+      await platform.commands.resumeConversation(ctx, base);
       return;
 
     case "close":

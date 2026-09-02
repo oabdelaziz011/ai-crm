@@ -24,6 +24,7 @@
     "@workspace/channel-platform": "workspace:*",
     "@workspace/channel-registry": "workspace:*",
     "@workspace/customer-360": "workspace:*",
+    "@workspace/human-handoff-platform": "workspace:*",
     "@workspace/knowledge-runtime": "workspace:*",
     "@workspace/lead-platform": "workspace:*",
     "@workspace/application-layer": "workspace:*",

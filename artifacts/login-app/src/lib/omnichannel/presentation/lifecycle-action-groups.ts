@@ -9,6 +9,8 @@ export type LifecycleActionUiId =
   | "transfer"
   | "escalate"
   | "return_to_ai"
+  | "pause_ai"
+  | "resume_ai"
   | "resolve"
   | "close"
   | "reopen"
@@ -41,6 +43,10 @@ function mapUiToLifecycle(action: LifecycleActionUiId): LifecycleAction | null {
       return "escalate";
     case "return_to_ai":
       return "return_to_ai";
+    case "pause_ai":
+      return "return_to_ai";
+    case "resume_ai":
+      return "ai_resume";
     case "resolve":
       return "resolve";
     case "close":
@@ -72,8 +78,9 @@ export function isToolbarActionVisible(input: {
   isClosed: boolean;
   canPerform: (action: LifecycleAction) => boolean;
   showLinkCustomer?: boolean;
+  aiPaused?: boolean;
 }): boolean {
-  const { actionId, lifecycleState, escalated, isClosed, canPerform, showLinkCustomer } = input;
+  const { actionId, lifecycleState, escalated, isClosed, canPerform, showLinkCustomer, aiPaused } = input;
   const terminal = isClosed || TERMINAL_STATES.includes(lifecycleState);
   const aiOwned = AI_OWNED_STATES.includes(lifecycleState);
 
@@ -84,6 +91,10 @@ export function isToolbarActionVisible(input: {
       return allowed(actionId, canPerform) && aiOwned && !terminal;
     case "return_to_ai":
       return allowed(actionId, canPerform) && !aiOwned && !terminal;
+    case "pause_ai":
+      return allowed(actionId, canPerform) && !aiOwned && !terminal && !aiPaused;
+    case "resume_ai":
+      return allowed(actionId, canPerform) && !terminal && Boolean(aiPaused);
     case "reply":
     case "internal_note":
       return allowed(actionId, canPerform) && !terminal;
@@ -115,6 +126,7 @@ export function resolveLifecycleActionGroups(input: {
   isClosed: boolean;
   canPerform: (action: LifecycleAction) => boolean;
   showLinkCustomer?: boolean;
+  aiPaused?: boolean;
 }): LifecycleActionGroup {
   const visible = (id: LifecycleActionUiId) =>
     isToolbarActionVisible({ ...input, actionId: id });
@@ -129,6 +141,8 @@ export function resolveLifecycleActionGroups(input: {
     "assign",
     "take_over",
     "return_to_ai",
+    "pause_ai",
+    "resume_ai",
     "escalate",
     "resolve",
     "close",

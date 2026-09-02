@@ -1,61 +1,97 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { OrganizationRepository } from "@/lib/organization/repositories/organization-repository";
-import { OMNICHANNEL_QUEUE_IDS, type OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
+import type { HandoffQueueRecord, PresenceState } from "@workspace/human-handoff-platform";
+import { useAuth } from "@/context/auth-context";
+import { usePermissions } from "@/hooks/use-rbac";
+import {
+  buildHandoffServiceContext,
+  getLoginAppHandoffPlatformServices,
+} from "@/lib/human-handoff-platform/handoff-read-port-adapter";
 
 export type AssignmentTargetOption = {
   targetType: "team" | "queue";
   targetId: string;
   targetLabel: string;
+  routingStrategy?: string;
+  memberCount?: number;
+  onlineMemberCount?: number;
+  totalActiveConversations?: number;
 };
 
-const ROUTING_QUEUE_IDS: OmnichannelQueueId[] = [
-  "unassigned",
-  "escalated",
-  "waiting_customer",
-  "waiting_ai",
-];
-
-const QUEUE_LABEL_KEYS: Record<OmnichannelQueueId, string> = {
-  unassigned: "omnichannel.queues.unassigned",
-  mine: "omnichannel.queues.mine",
-  escalated: "omnichannel.queues.escalated",
-  waiting_customer: "omnichannel.queues.waitingCustomer",
-  waiting_ai: "omnichannel.queues.waitingAi",
-  resolved: "omnichannel.queues.resolved",
-  closed: "omnichannel.queues.closed",
+export type HandoffQueueAssignmentOption = AssignmentTargetOption & {
+  targetType: "queue";
+  queue: HandoffQueueRecord;
 };
 
-export function queueAssignmentLabelKey(queueId: OmnichannelQueueId): string {
-  return QUEUE_LABEL_KEYS[queueId];
-}
-
+/**
+ * Assignment targets for Human Handoff.
+ * Queues come from canonical `handoff_queues` (UUID), never soft inbox filters.
+ */
 export function useAssignmentTargets(companyId: string | null) {
+  const { user, isSuperAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
+
   return useQuery({
-    queryKey: ["assignment-targets", companyId],
+    queryKey: ["assignment-targets", "handoff-queues", companyId],
     enabled: Boolean(companyId),
-    staleTime: 60_000,
-    queryFn: async (): Promise<{ teams: AssignmentTargetOption[]; queues: AssignmentTargetOption[] }> => {
+    staleTime: 30_000,
+    queryFn: async (): Promise<{
+      teams: AssignmentTargetOption[];
+      queues: HandoffQueueAssignmentOption[];
+    }> => {
       if (!companyId) return { teams: [], queues: [] };
 
-      const repo = new OrganizationRepository(supabase);
-      const branchGroups = await repo.listBranchGroups(companyId);
+      const canList =
+        isSuperAdmin ||
+        hasPermission("handoff.view") ||
+        hasPermission("handoff.assign") ||
+        hasPermission("handoff.queue");
+      if (!canList) return { teams: [], queues: [] };
 
-      const teams: AssignmentTargetOption[] = branchGroups.map((group) => ({
-        targetType: "team",
-        targetId: group.id,
-        targetLabel: group.name?.trim() || group.id,
-      }));
+      const platform = getLoginAppHandoffPlatformServices();
+      const ctx = buildHandoffServiceContext({
+        companyId,
+        actorUserId: user?.id ?? null,
+        isSuperAdmin,
+        hasPermission,
+      });
 
-      const queues: AssignmentTargetOption[] = ROUTING_QUEUE_IDS.filter((id) =>
-        OMNICHANNEL_QUEUE_IDS.includes(id),
-      ).map((queueId) => ({
-        targetType: "queue",
-        targetId: queueId,
-        targetLabel: queueId,
-      }));
+      const [{ queues }, presence] = await Promise.all([
+        platform.queries.listQueues(ctx, { companyId, activeOnly: true }),
+        platform.queries.listAgentPresence(ctx, {
+          companyId,
+          states: ["online"] as PresenceState[],
+        }),
+      ]);
+      const onlineIds = new Set(presence.agents.map((row) => row.userId));
 
-      return { teams, queues };
+      const enriched: HandoffQueueAssignmentOption[] = [];
+      for (const queue of queues) {
+        const { members } = await platform.queries.listQueueMembers(ctx, {
+          companyId,
+          queueId: queue.id,
+        });
+        const activeMembers = members.filter((member) => member.isActive);
+        enriched.push({
+          targetType: "queue",
+          targetId: queue.id,
+          targetLabel: queue.name?.trim() || queue.slug || queue.id,
+          routingStrategy: queue.routingStrategy,
+          memberCount: activeMembers.length,
+          onlineMemberCount: activeMembers.filter((member) => onlineIds.has(member.userId)).length,
+          totalActiveConversations: activeMembers.reduce(
+            (sum, member) => sum + (member.activeConversationCount || 0),
+            0,
+          ),
+          queue,
+        });
+      }
+
+      return { teams: [], queues: enriched };
     },
   });
+}
+
+/** Soft inbox filter i18n keys — not used for handoff_queues assignment targets. */
+export function queueAssignmentLabelKey(queueId: string): string {
+  return `omnichannel.queues.${queueId}`;
 }

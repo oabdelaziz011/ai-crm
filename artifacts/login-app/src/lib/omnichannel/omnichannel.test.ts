@@ -8,10 +8,13 @@ import { buildSuggestedReplyGenerationPrompt } from "./services/suggested-reply-
 import { resolveSuggestedReplyTargetLanguage } from "./services/conversation-language-detector.js";
 import { computeConversationListWindow } from "./virtualization/conversation-list-window.js";
 import {
+  canViewAllOmnichannelConversations,
   canViewOmnichannelConsole,
   filterConversationsByChannelPermission,
+  filterConversationsByOwnership,
 } from "./permissions.js";
 import { OMNICHANNEL_PRIMARY_CHANNELS } from "./types/unified-conversation.js";
+import type { UnifiedConversation } from "./types/unified-conversation.js";
 
 function conversation(partial: Partial<ConversationRecord> & Pick<ConversationRecord, "id">): ConversationRecord {
   return {
@@ -329,8 +332,8 @@ describe("message mapping", () => {
 describe("permissions and performance", () => {
   it("filters by channel permission and access", () => {
     const rows = [
-      { channel: "whatsapp" },
-      { channel: "telegram" },
+      { channel: "whatsapp", id: "1" },
+      { channel: "telegram", id: "2" },
     ];
     const allowed = filterConversationsByChannelPermission(rows, OMNICHANNEL_PRIMARY_CHANNELS);
     assert.equal(allowed.length, 1);
@@ -344,6 +347,43 @@ describe("permissions and performance", () => {
       }),
       true,
     );
+  });
+
+  it("allows full inbox for admins and scopes agents to owned chats", () => {
+    const adminAccess = {
+      userId: "admin-1",
+      companyId: "c1",
+      isSuperAdmin: false,
+      hasPermission: (code: string) =>
+        code === "ai.conversations.view" || code === "handoff.manage" || code === "users.view",
+    };
+    const agentAccess = {
+      userId: "agent-1",
+      companyId: "c1",
+      isSuperAdmin: false,
+      hasPermission: (code: string) => code === "ai.conversations.view" || code === "handoff.view",
+    };
+
+    assert.equal(canViewAllOmnichannelConversations(adminAccess), true);
+    assert.equal(canViewAllOmnichannelConversations(agentAccess), false);
+
+    const rows = [
+      {
+        id: "mine",
+        source: { assigned_user_id: "agent-1", metadata: {} },
+        assignedAgent: { id: "agent-1", name: "Me" },
+      },
+      {
+        id: "other",
+        source: { assigned_user_id: "agent-2", metadata: {} },
+        assignedAgent: { id: "agent-2", name: "Other" },
+      },
+    ] as unknown as UnifiedConversation[];
+
+    const scoped = filterConversationsByOwnership(rows, agentAccess, true);
+    assert.equal(scoped.length, 1);
+    assert.equal(scoped[0]?.id, "mine");
+    assert.equal(filterConversationsByOwnership(rows, adminAccess, false).length, 2);
   });
 
   it("virtualizes large conversation lists", () => {

@@ -30,14 +30,17 @@ import {
   useIntelligenceSidebarLabels,
 } from "@/hooks/omnichannel/use-omnichannel-labels";
 import { useConversationLifecycleActions } from "@/hooks/conversations/use-conversation-lifecycle-actions";
+import { useConversationHandoffOwnership } from "@/hooks/omnichannel/use-conversation-handoff-ownership";
 import {
   mergeInternalNotesForDisplay,
   useInternalNotesManagement,
 } from "@/hooks/conversations/use-internal-notes-management";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
 import {
+  coerceWorkspaceNavForAccess,
   countWorkspaceNav,
   filtersToWorkspaceNav,
+  workspaceNavOrderForAccess,
   workspaceNavToFilters,
   type WorkspaceNavId,
 } from "@/components/omnichannel/workspace-v2/workspace-nav";
@@ -76,6 +79,7 @@ function navForAssignmentTarget(
   if (targetType === "user") return "mine";
   if (targetType === "team" || targetType === "department") return "assigned";
   if (targetType === "queue") {
+    // Soft inbox filters keep mapped nav; canonical handoff_queues UUIDs go to inbox/waiting.
     const queueNav: Partial<Record<OmnichannelQueueId, WorkspaceNavId>> = {
       unassigned: "inbox",
       mine: "mine",
@@ -85,7 +89,10 @@ function navForAssignmentTarget(
       closed: "closed",
       resolved: "closed",
     };
-    return queueNav[targetId as OmnichannelQueueId] ?? "inbox";
+    if (queueNav[targetId as OmnichannelQueueId]) {
+      return queueNav[targetId as OmnichannelQueueId]!;
+    }
+    return "waiting";
   }
   return "inbox";
 }
@@ -152,6 +159,17 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
   }, [selectedId, filters]);
 
   const consoleState = useOmnichannelConsole(filters, selectedId);
+  const canViewAll = consoleState.canViewAll;
+
+  // Agents without full-inbox access stay on owned scopes (default: My Conversations).
+  useEffect(() => {
+    if (canViewAll) return;
+    const currentNav = filtersToWorkspaceNav(filters);
+    const nextNav = coerceWorkspaceNavForAccess(currentNav, false);
+    if (nextNav === currentNav) return;
+    setFilters((current) => ({ ...current, ...workspaceNavToFilters(nextNav) }));
+  }, [canViewAll, filters.queue, filters.assignedOnly, filters.archived]);
+
   const { applyViewState, markConversationViewedById } = useInboxViewState(
     consoleState.inboxConversations,
     initialSession.selectedId,
@@ -255,6 +273,11 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
     [user, consoleState.agentsById, consoleState.profilesByUserId],
   );
 
+  const handoffOwnership = useConversationHandoffOwnership(
+    consoleState.companyId,
+    selectedRecord?.id ?? null,
+  );
+
   const operationalState = useMemo(
     () =>
       selectedRecord
@@ -271,8 +294,9 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
   );
 
   const navigateToNav = useCallback((nav: WorkspaceNavId) => {
-    setFilters((current) => ({ ...current, ...workspaceNavToFilters(nav) }));
-  }, []);
+    const nextNav = coerceWorkspaceNavForAccess(nav, canViewAll);
+    setFilters((current) => ({ ...current, ...workspaceNavToFilters(nextNav) }));
+  }, [canViewAll]);
 
   const requireSelected = useCallback(() => {
     if (!selectedRecord) throw new Error("No conversation selected");
@@ -342,6 +366,35 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
       });
     }
   }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
+
+
+  const handlePauseAi = useCallback(async () => {
+    const record = requireSelected();
+    try {
+      await lifecycle.pauseAi(record, t("omnichannel.actions.pauseAiReason"));
+      toast({ title: t("omnichannel.actions.pauseAiSuccess") });
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.pauseAiFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, toast, t]);
+
+  const handleResumeAi = useCallback(async () => {
+    const record = requireSelected();
+    try {
+      await lifecycle.resumeAi(record);
+      toast({ title: t("omnichannel.actions.resumeAiSuccess") });
+    } catch (error) {
+      toast({
+        title: t("omnichannel.actions.resumeAiFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [lifecycle, requireSelected, toast, t]);
 
   const handleClose = useCallback(async () => {
     const record = requireSelected();
@@ -579,6 +632,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
         activeNav={activeNav}
         onNavChange={navigateToNav}
         navAriaLabel={chromeLabels.navAria}
+        navOrder={workspaceNavOrderForAccess(canViewAll)}
         inboxTitle={inboxTitle}
         conversations={displayConversations}
         selectedId={selected?.id ?? selectedId}
@@ -689,6 +743,8 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
           onAssign: handleOpenAssignment,
           onOpenAssignment: handleOpenAssignment,
           onRelease: handleReturnToAi,
+          onPauseAi: handlePauseAi,
+          onResumeAi: handleResumeAi,
           onClose: handleClose,
           onResolve: handleResolve,
           onReopen: handleReopen,
@@ -756,6 +812,8 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
       <AssignmentSheet
         open={assignmentOpen}
         companyId={consoleState.companyId}
+        handoffAiPaused={Boolean(handoffOwnership.ownership?.isPaused)}
+        handoffOwnership={handoffOwnership}
         profiles={consoleState.profiles}
         lifecycleSnapshot={lifecycleSnapshot}
         onOpenChange={setAssignmentOpen}

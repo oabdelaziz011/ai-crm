@@ -68,18 +68,14 @@ export function resolveAiEmployeeEngagement(input: {
   const isNewEngagement = isFirstEverInbound || inactivityExceeded || employeeChanged;
 
   if (isNewEngagement) {
-    const preserveWelcome =
-      !isFirstEverInbound &&
-      !employeeChanged &&
-      hasEngagementWelcomeDelivered(input.previousEngagement);
+    // After idle/session expiry, welcome must be allowed again on the next customer message.
+    // Only first-ever inbound / employee change previously cleared welcome; inactivity must too.
     return {
       isNewEngagement: true,
       engagement: {
         startedAt: input.now.toISOString(),
         aiEmployeeId: input.aiEmployeeId,
-        welcomeDeliveredAt: preserveWelcome
-          ? input.previousEngagement!.welcomeDeliveredAt ?? null
-          : null,
+        welcomeDeliveredAt: null,
       },
     };
   }

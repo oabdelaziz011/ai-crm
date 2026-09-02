@@ -85,9 +85,9 @@ export function ServicePricingRulesEditor({
   const typesUnavailable = !typesLoading && (typesError || types.length === 0);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 text-start">
       <div className="flex items-center justify-between gap-2">
-        <div>
+        <div className="min-w-0 text-start">
           <h4 className="text-sm font-semibold">
             {t("scheduling.services.pricing.title", { defaultValue: "Pricing Rules" })}
           </h4>
@@ -139,7 +139,7 @@ export function ServicePricingRulesEditor({
         <div className="overflow-x-auto rounded-md border border-border/60">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border/60 bg-muted/30 text-left text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border/60 bg-muted/30 text-start text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                 <th className="px-2 py-2">
                   {t("scheduling.services.pricing.columns.type", { defaultValue: "Type" })}
                 </th>

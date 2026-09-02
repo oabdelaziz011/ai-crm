@@ -5,6 +5,7 @@ import { AuditLogDetailsDialog } from "@/components/audit-logs/audit-log-details
 import { AuditOperationBadge } from "@/components/audit-logs/audit-operation-badge";
 import { AuditStatusBadge } from "@/components/audit-logs/audit-status-badge";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { EmployeeIdentityCard } from "@/components/employee-identity/employee-identity-card";
 import {
   Table,
@@ -395,35 +396,20 @@ export function AuditLogsPage() {
               </Table>
             </div>
 
-            <div className="p-4 border-t border-white/5 flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                {t("auditLogs.pagination.pageInfo", {
-                  page: safePage,
-                  totalPages,
-                  total: filtered.length,
-                })}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10"
-                  disabled={safePage <= 1}
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                >
-                  {t("auditLogs.pagination.previous")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                >
-                  {t("auditLogs.pagination.next")}
-                </Button>
-              </div>
-            </div>
+            <ListPagination
+              className="border-t border-white/5 p-4"
+              page={safePage}
+              totalPages={totalPages}
+              summaryLabel={t("auditLogs.pagination.pageInfo", {
+                page: safePage,
+                totalPages,
+                total: filtered.length,
+              })}
+              previousLabel={t("auditLogs.pagination.previous")}
+              nextLabel={t("auditLogs.pagination.next")}
+              onPrevious={() => setPage((prev) => Math.max(1, prev - 1))}
+              onNext={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            />
           </>
         )}
       </div>

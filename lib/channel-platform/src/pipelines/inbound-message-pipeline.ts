@@ -1116,6 +1116,61 @@ export class InboundMessagePipeline {
       let outboundDeliveryIds: string[] | undefined;
       let responseContent: string | undefined;
 
+      // Human Handoff: after inbound is persisted, skip AI + sticky automation when
+      // ownership is human/queue/paused (or conversation is transferred/assigned).
+      const automationGate = await this.resolveInboundAutomationGate({
+        companyId: request.companyId,
+        conversationId: session.conversation_id,
+        request,
+      });
+      request.trace?.step("webhook.inbound_automation_gate", {
+        conversationId: session.conversation_id,
+        allowAutomatedReply: automationGate.allowAutomatedReply,
+        reason: automationGate.reason,
+        source: automationGate.source,
+      });
+
+      if (!automationGate.allowAutomatedReply) {
+        await this.inboundRepository.updateEvent({
+          inboundEventId: inboundEvent.id,
+          processingStatus: "processed",
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId,
+          processedAt: new Date().toISOString(),
+        });
+
+        request.trace?.step("webhook.inbound_automation_skipped", {
+          conversationId: session.conversation_id,
+          reason: automationGate.reason,
+          source: automationGate.source,
+          executeAiRequested: Boolean(request.executeAi),
+          useWorkflow,
+        });
+
+        if (request.channelKey === "whatsapp") {
+          logWhatsApp("Inbound automation skipped (human handoff gate)", {
+            companyId: request.companyId,
+            companyChannelId: request.companyChannelId,
+            conversationId: session.conversation_id,
+            reason: automationGate.reason,
+            source: automationGate.source,
+          });
+          waPerfNoteSkipped("inbound_automation_gate", automationGate.reason);
+        }
+
+        return {
+          inboundEventId: inboundEvent.id,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: incomingMessageId ?? "",
+          responseContent: undefined,
+          emailRoutingClassification,
+          emailRoutingDecision,
+          emailRoutingTicket,
+        };
+      }
+
       if (useWorkflow && resolvedWorkflow && this.ports.automation) {
         const automation = this.ports.automation;
         request.trace?.step("webhook.automation_started", {
@@ -1824,6 +1879,45 @@ export class InboundMessagePipeline {
         processedAt: new Date().toISOString(),
       });
       throw error;
+    }
+  }
+
+  private async resolveInboundAutomationGate(input: {
+    companyId: string;
+    conversationId: string;
+    request: InboundRouteRequestDto;
+  }): Promise<{ allowAutomatedReply: boolean; reason: string; source: string }> {
+    if (!this.ports.inboundAutomationGate) {
+      return {
+        allowAutomatedReply: true,
+        reason: "gate_not_configured",
+        source: "default_allow",
+      };
+    }
+
+    try {
+      const decision = await this.ports.inboundAutomationGate.evaluate({
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+      });
+      return {
+        allowAutomatedReply: Boolean(decision.allowAutomatedReply),
+        reason: decision.reason || "unspecified",
+        source: decision.source || "handoff_ownership",
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message.slice(0, 160) : "inbound_automation_gate_failed";
+      input.request.trace?.step("webhook.inbound_automation_gate_error", {
+        conversationId: input.conversationId,
+        error: message,
+      });
+      // Fail closed when the gate is wired but fails — prefer silence over AI talking over a human.
+      return {
+        allowAutomatedReply: false,
+        reason: "handoff_gate_error",
+        source: "handoff_ownership",
+      };
     }
   }
 

@@ -1,4 +1,4 @@
-import { forwardRef, memo } from "react";
+import { forwardRef, memo, type ReactNode } from "react";
 import { Bell, BellOff, Search } from "lucide-react";
 
 export type WorkspaceTenantContext = {
@@ -28,12 +28,14 @@ type WorkspaceTopBarProps = {
   onSearchChange: (value: string) => void;
   tenant?: WorkspaceTenantContext | null;
   deskChrome?: WorkspaceDeskChromeProps | null;
+  /** Human Handoff agent presence control (canonical agent_presence). */
+  presenceControl?: ReactNode;
 };
 
 /** Workspace-local toolbar — not a second application shell. */
 export const WorkspaceTopBar = memo(
   forwardRef<HTMLInputElement, WorkspaceTopBarProps>(function WorkspaceTopBar(
-    { title, searchValue, searchPlaceholder, onSearchChange, tenant, deskChrome },
+    { title, searchValue, searchPlaceholder, onSearchChange, tenant, deskChrome, presenceControl },
     ref,
   ) {
     return (
@@ -53,7 +55,10 @@ export const WorkspaceTopBar = memo(
                 </span>
               ) : null}
               {tenant.developerMode && tenant.companyId ? (
-                <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400" title={tenant.companyId}>
+                <span
+                  className="font-mono text-[10px] text-amber-600 dark:text-amber-400"
+                  title={tenant.companyId}
+                >
                   {tenant.companyId}
                 </span>
               ) : null}
@@ -74,32 +79,35 @@ export const WorkspaceTopBar = memo(
           />
         </div>
 
-        {deskChrome ? (
-          <div className="ms-auto flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              className={`ws-btn ws-btn--ghost p-1.5 ${deskChrome.soundEnabled ? "text-[var(--ws-accent)]" : "text-[var(--ws-muted)] opacity-70"}`}
-              aria-label={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
-              title={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
-              aria-pressed={deskChrome.soundEnabled}
-              onClick={deskChrome.onToggleSound}
-            >
-              {deskChrome.soundEnabled ? <Bell className="size-3.5" /> : <BellOff className="size-3.5" />}
-            </button>
-            <button
-              type="button"
-              className={`ws-btn ws-btn--ghost p-1.5 ${deskChrome.conversationExpanded ? "text-[var(--ws-accent)]" : ""}`}
-              aria-label={deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel}
-              title={deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel}
-              aria-pressed={deskChrome.conversationExpanded}
-              onClick={deskChrome.onToggleExpand}
-            >
-              <span className="text-xs leading-none" aria-hidden>
-                ●
-              </span>
-            </button>
-          </div>
-        ) : null}
+        <div className="ms-auto flex shrink-0 items-center gap-2">
+          {presenceControl}
+          {deskChrome ? (
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                className="ws-icon-btn"
+                aria-label={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
+                title={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
+                onClick={deskChrome.onToggleSound}
+              >
+                {deskChrome.soundEnabled ? <Bell className="size-4" /> : <BellOff className="size-4" />}
+              </button>
+              <button
+                type="button"
+                className="ws-icon-btn hidden sm:inline-flex"
+                aria-label={
+                  deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel
+                }
+                title={deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel}
+                onClick={deskChrome.onToggleExpand}
+              >
+                <span className="text-[11px] font-medium">
+                  {deskChrome.conversationExpanded ? "⤡" : "⤢"}
+                </span>
+              </button>
+            </div>
+          ) : null}
+        </div>
       </header>
     );
   }),

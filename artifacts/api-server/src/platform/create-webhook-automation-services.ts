@@ -15,6 +15,7 @@ import { createBusinessCalendarPort } from "@login-app/lib/scheduling/business-c
 import { createSchedulingAwareBookingServicePort } from "@login-app/lib/booking/automation-booking-adapter.js";
 import { createAutomationTicketServicePort } from "@login-app/lib/tickets/automation-ticket-adapter.js";
 import { createWebhookAIWorkflowAutomationRegistry } from "./webhook-ai-workflow-bridge.js";
+import { createWebhookHandoffPlatformServices } from "./create-webhook-handoff-platform.js";
 
 export type WebhookAutomationAIOptions = {
   enterpriseRuntime: EnterpriseRuntimeLike;
@@ -52,6 +53,10 @@ export function createWebhookAutomationPlatformServices(
     resolveActorUserIdForCompany: resolveActor,
   });
 
+  const { handoffService } = createWebhookHandoffPlatformServices(client, {
+    resolveActorUserIdForCompany: resolveActor,
+  });
+
   const actionDeps = {
     customerService,
     bookingService,
@@ -59,6 +64,7 @@ export function createWebhookAutomationPlatformServices(
     lookupOptions,
     businessCalendar,
     ticketService,
+    handoffService,
   };
 
   if (!ai?.enterpriseRuntime) {
@@ -87,6 +93,7 @@ export const WEBHOOK_RUNTIME_FEATURES = {
   lookupOptions: true,
   businessCalendar: true,
   ticketService: true,
+  handoffService: true,
   aiWorkflowNodes: true,
   factory: "createWebhookAutomationPlatformServices",
 } as const;

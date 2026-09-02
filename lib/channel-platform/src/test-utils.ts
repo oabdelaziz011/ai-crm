@@ -80,6 +80,7 @@ export function createTestEnvironment(options?: {
   whatsappMessagesCommercial?: ChannelPlatformPorts["whatsappMessagesCommercial"];
   channelCommercialEntitlement?: ChannelPlatformPorts["channelCommercialEntitlement"];
   aiEmailRoutingCommercial?: ChannelPlatformPorts["aiEmailRoutingCommercial"];
+  inboundAutomationGate?: ChannelPlatformPorts["inboundAutomationGate"];
   workflowBinding?: {
     companyId: string;
     companyChannelId: string;
@@ -462,6 +463,9 @@ export function createTestEnvironment(options?: {
   // Default allow-all for success-path tests; explicit deny ports still override.
   ports.channelCommercialEntitlement =
     options?.channelCommercialEntitlement ?? allowAllChannelCommercialEntitlement();
+  if (options?.inboundAutomationGate) {
+    ports.inboundAutomationGate = options.inboundAutomationGate;
+  }
 
   const workflowResolver = options?.workflowBinding
     ? new ChannelWorkflowResolver({

@@ -32,6 +32,8 @@ export class ConversationResolver {
       messages: ConversationMessageRepository;
       customers: CustomerResolverPort;
       policy?: SessionPolicyConfig;
+      /** Per-company idle timeout override (ms). Null/undefined keeps policy.timeoutMs. */
+      resolveTimeoutMs?: (companyId: string) => Promise<number | null | undefined>;
     },
   ) {}
 
@@ -108,6 +110,13 @@ export class ConversationResolver {
     const companyId = this.linkCompany(ctx, inbound.companyId);
     const customerId = await this.resolveCustomer(inbound);
     const policy = this.deps.policy ?? DEFAULT_SESSION_POLICY;
+    let timeoutMs = policy.timeoutMs;
+    if (this.deps.resolveTimeoutMs) {
+      const resolved = await this.deps.resolveTimeoutMs(companyId);
+      if (typeof resolved === "number" && resolved > 0) {
+        timeoutMs = resolved;
+      }
+    }
 
     let session = await this.findActiveSession({
       companyId,
@@ -116,7 +125,7 @@ export class ConversationResolver {
     });
     let expired = false;
 
-    if (session && policy.expireInactiveSessions && isSessionExpired(session, new Date(), policy.timeoutMs)) {
+    if (session && policy.expireInactiveSessions && isSessionExpired(session, new Date(), timeoutMs)) {
       await this.expireSession(session);
       expired = true;
       session = null;

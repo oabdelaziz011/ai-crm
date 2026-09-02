@@ -1,5 +1,7 @@
 import { CONVERSATION_PERMISSIONS } from "@workspace/ai-conversation";
 import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
+import { resolveAssignedToUserId } from "@/lib/omnichannel/presentation/conversation-ownership";
+import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
 
 export const OMNICHANNEL_PERMISSIONS = {
   view: CONVERSATION_PERMISSIONS.view,
@@ -10,6 +12,9 @@ export const OMNICHANNEL_PERMISSIONS = {
   customersView: "customers.view",
   knowledgeView: "knowledge.view",
   aiExecutionView: "ai.execution.view",
+  /** Company Admin routing/config — not granted to Human Handoff Agent. */
+  handoffManage: "handoff.manage",
+  usersView: "users.view",
 } as const;
 
 export type OmnichannelAccess = {
@@ -22,6 +27,21 @@ export type OmnichannelAccess = {
 export function canViewOmnichannelConsole(access: OmnichannelAccess | null | undefined): boolean {
   if (!access) return false;
   return access.isSuperAdmin || access.hasPermission(OMNICHANNEL_PERMISSIONS.view);
+}
+
+/**
+ * Full-tenant inbox (all owners). Super Admin / Company Admin only.
+ * Desk agents (e.g. human_handoff_agent) must only see conversations they own.
+ */
+export function canViewAllOmnichannelConversations(
+  access: OmnichannelAccess | null | undefined,
+): boolean {
+  if (!access) return false;
+  if (access.isSuperAdmin) return true;
+  return (
+    access.hasPermission(OMNICHANNEL_PERMISSIONS.handoffManage)
+    || access.hasPermission(OMNICHANNEL_PERMISSIONS.usersView)
+  );
 }
 
 export function canReplyToConversation(access: OmnichannelAccess | null | undefined): boolean {
@@ -38,13 +58,13 @@ export function canAssignConversation(
   return assignedUserId != null && assignedUserId === access.userId;
 }
 
-export function filterConversationsByOwnership<T extends { assignedAgent?: { id: string } | null }>(
-  conversations: T[],
+export function filterConversationsByOwnership(
+  conversations: UnifiedConversation[],
   access: OmnichannelAccess,
   mineOnly: boolean,
-): T[] {
+): UnifiedConversation[] {
   if (!mineOnly) return conversations;
-  return conversations.filter((item) => item.assignedAgent?.id === access.userId);
+  return conversations.filter((item) => resolveAssignedToUserId(item) === access.userId);
 }
 
 export function filterConversationsByChannelPermission<T extends { channel: string; id: string }>(

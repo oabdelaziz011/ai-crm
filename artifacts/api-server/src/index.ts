@@ -21,6 +21,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 let lifecycleWorker: { stop: () => void } | null = null;
+let sessionIdleTimeoutWorker: { stop: () => void } | null = null;
 
 const server = app.listen(port, (err) => {
   if (err) {
@@ -49,11 +50,21 @@ const server = app.listen(port, (err) => {
     .catch((workerErr) => {
       logger.warn({ err: workerErr }, "Billing lifecycle worker failed to start");
     });
+
+  // Proactive WhatsApp idle warning (50%) + session end (100%) from AI Assistant timeout.
+  void import("./services/session-idle-timeout-worker.js")
+    .then(({ startSessionIdleTimeoutWorker }) => {
+      sessionIdleTimeoutWorker = startSessionIdleTimeoutWorker();
+    })
+    .catch((workerErr) => {
+      logger.warn({ err: workerErr }, "Session idle timeout worker failed to start");
+    });
 });
 
 function shutdown(signal: string): void {
   logger.info({ signal }, "Shutting down");
   lifecycleWorker?.stop();
+  sessionIdleTimeoutWorker?.stop();
   server.close((err) => {
     if (err) {
       logger.error({ err }, "Error during shutdown");

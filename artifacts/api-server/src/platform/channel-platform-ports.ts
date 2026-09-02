@@ -339,6 +339,20 @@ export function createChannelConversationPort(
       };
     },
 
+    async confirmOutgoingDelivery(input) {
+      if (!options?.supabaseClient || !input.messageId?.trim()) {
+        return;
+      }
+      const { error } = await options.supabaseClient.rpc("confirm_conversation_message_outbound", {
+        p_message_id: input.messageId,
+        p_status: input.status,
+        p_external_message_id: input.externalMessageId ?? null,
+      });
+      if (error) {
+        throw error;
+      }
+    },
+
     async updateConversationMetadata(input) {
       await services.conversations.updateMetadata(ctx, {
         conversationId: input.conversationId,

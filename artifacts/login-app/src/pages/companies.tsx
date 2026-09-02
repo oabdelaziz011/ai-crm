@@ -40,6 +40,7 @@ import {
 } from "@/lib/companies/company-table-query";
 import type { CompanyRowActionId } from "@/lib/companies/company-row-actions";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -720,23 +721,20 @@ export function CompaniesPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-4 py-3">
-              <p className="text-xs text-muted-foreground">
-                {t("companies.pagination.pageInfo", {
-                  page: pagination.page,
-                  totalPages: pagination.totalPages,
-                  total: filtered.length,
-                })}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="rounded-xl" disabled={pagination.page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-                  {t("companies.pagination.previous")}
-                </Button>
-                <Button variant="outline" size="sm" className="rounded-xl" disabled={pagination.page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)}>
-                  {t("companies.pagination.next")}
-                </Button>
-              </div>
-            </div>
+            <ListPagination
+              className="border-t border-border/60 px-4 py-3"
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              summaryLabel={t("companies.pagination.pageInfo", {
+                page: pagination.page,
+                totalPages: pagination.totalPages,
+                total: filtered.length,
+              })}
+              previousLabel={t("companies.pagination.previous")}
+              nextLabel={t("companies.pagination.next")}
+              onPrevious={() => setPage((value) => Math.max(1, value - 1))}
+              onNext={() => setPage((value) => value + 1)}
+            />
           </>
         )}
       </div>

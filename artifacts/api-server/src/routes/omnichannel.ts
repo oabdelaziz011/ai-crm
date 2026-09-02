@@ -24,6 +24,12 @@ import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 import { dispatchOmnichannelOutboundMessage } from "../services/omnichannel-outbound-dispatch.js";
 
 import {
+  FeatureNotEntitledError,
+  requireCompanyFeature,
+  resolveChannelCommercialFeatureCode,
+} from "../lib/require-company-feature.js";
+
+import {
 
   beginOutbound400Audit,
 

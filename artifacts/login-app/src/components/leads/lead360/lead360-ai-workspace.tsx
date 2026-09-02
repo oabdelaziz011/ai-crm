@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -518,29 +519,16 @@ function Lead360AuditDialog({
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-between gap-2 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page <= 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            {t("leads360.ai.pagination.previous")}
-          </Button>
-          <span className="text-[12px] text-muted-foreground">
-            {page + 1} / {pages}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page >= pages - 1}
-            onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
-          >
-            {t("leads360.ai.pagination.next")}
-          </Button>
-        </div>
+        <ListPagination
+          className="justify-between gap-2 pt-2"
+          page={page + 1}
+          totalPages={pages}
+          pageInfoLabel={`${page + 1} / ${pages}`}
+          previousLabel={t("leads360.ai.pagination.previous")}
+          nextLabel={t("leads360.ai.pagination.next")}
+          onPrevious={() => setPage((p) => Math.max(0, p - 1))}
+          onNext={() => setPage((p) => Math.min(pages - 1, p + 1))}
+        />
       </DialogContent>
     </Dialog>
   );

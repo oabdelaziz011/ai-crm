@@ -14,11 +14,7 @@ import type { Profile } from "@/lib/types";
 import type { LifecycleSnapshot } from "@/lib/conversation-lifecycle";
 import type { OperationalAssignmentRecord } from "@/lib/conversation-lifecycle";
 import { useAiEmployees } from "@/lib/ai-employees/hooks/use-ai-employees";
-import {
-  queueAssignmentLabelKey,
-  useAssignmentTargets,
-} from "@/hooks/omnichannel/use-assignment-targets";
-import type { OmnichannelQueueId } from "@/lib/omnichannel/services/conversation-queues";
+import { useAssignmentTargets } from "@/hooks/omnichannel/use-assignment-targets";
 import { cn } from "@/lib/utils";
 
 type AssignmentTarget = {
@@ -78,13 +74,7 @@ export const AssignmentSheet = memo(function AssignmentSheet({
     }));
   }, [targetsQuery.data?.teams]);
 
-  const queues = useMemo(() => {
-    return (targetsQuery.data?.queues ?? []).map((queue) => ({
-      targetType: "queue" as const,
-      targetId: queue.targetId,
-      targetLabel: t(queueAssignmentLabelKey(queue.targetId as OmnichannelQueueId)),
-    }));
-  }, [targetsQuery.data?.queues, t]);
+  const queues = targetsQuery.data?.queues ?? [];
 
   const history = lifecycleSnapshot?.assignmentHistory ?? [];
 
@@ -118,6 +108,7 @@ export const AssignmentSheet = memo(function AssignmentSheet({
                   key={agent.targetId}
                   icon={User}
                   label={agent.targetLabel}
+                  assignLabel={t("omnichannel.actions.assign")}
                   onClick={() => handleAssign(agent)}
                 />
               ))
@@ -135,6 +126,7 @@ export const AssignmentSheet = memo(function AssignmentSheet({
                   key={target.targetId}
                   icon={Users}
                   label={target.targetLabel}
+                  assignLabel={t("omnichannel.actions.assign")}
                   onClick={() => handleAssign(target)}
                 />
               ))
@@ -146,17 +138,52 @@ export const AssignmentSheet = memo(function AssignmentSheet({
           <TabsContent value="queues" className="mt-3 flex-1 space-y-2 overflow-y-auto">
             {targetsQuery.isLoading ? (
               <p className="text-xs text-muted-foreground">{t("status.loading")}</p>
+            ) : targetsQuery.isError ? (
+              <EmptyTargets
+                message={
+                  targetsQuery.error instanceof Error
+                    ? targetsQuery.error.message
+                    : t("omnichannel.assignment.queuesLoadFailed")
+                }
+              />
             ) : queues.length > 0 ? (
               queues.map((target) => (
                 <TargetCard
                   key={target.targetId}
                   icon={Layers}
                   label={target.targetLabel}
-                  onClick={() => handleAssign(target)}
+                  assignLabel={t("omnichannel.actions.assign")}
+                  meta={[
+                    target.routingStrategy
+                      ? t("omnichannel.assignment.routingStrategy", {
+                          strategy: target.routingStrategy,
+                        })
+                      : null,
+                    typeof target.onlineMemberCount === "number"
+                      ? t("omnichannel.assignment.onlineMembers", {
+                          count: target.onlineMemberCount,
+                          total: target.memberCount ?? 0,
+                        })
+                      : null,
+                    typeof target.totalActiveConversations === "number"
+                      ? t("omnichannel.assignment.activeWorkload", {
+                          count: target.totalActiveConversations,
+                        })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  onClick={() =>
+                    handleAssign({
+                      targetType: "queue",
+                      targetId: target.targetId,
+                      targetLabel: target.targetLabel,
+                    })
+                  }
                 />
               ))
             ) : (
-              <EmptyTargets message={t("omnichannel.assignment.noQueues")} />
+              <EmptyTargets message={t("omnichannel.assignment.noHandoffQueues")} />
             )}
           </TabsContent>
 
@@ -170,6 +197,7 @@ export const AssignmentSheet = memo(function AssignmentSheet({
                   icon={Bot}
                   label={target.targetLabel}
                   tone="ai"
+                  assignLabel={t("omnichannel.actions.assign")}
                   onClick={() => handleAssign(target)}
                 />
               ))
@@ -210,12 +238,16 @@ function EmptyTargets({ message }: { message: string }) {
 function TargetCard({
   icon: Icon,
   label,
+  meta,
   tone,
+  assignLabel,
   onClick,
 }: {
   icon: typeof User;
   label: string;
+  meta?: string;
   tone?: "ai";
+  assignLabel: string;
   onClick: () => void;
 }) {
   return (
@@ -237,9 +269,10 @@ function TargetCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{label}</p>
+        {meta ? <p className="truncate text-[11px] text-muted-foreground">{meta}</p> : null}
       </div>
       <Button size="sm" variant="secondary" className="h-7 shrink-0 text-xs">
-        Assign
+        {assignLabel}
       </Button>
     </button>
   );

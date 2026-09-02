@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Loader2 } from "lucide-react";
@@ -28,6 +28,7 @@ import {
   SCHEDULING_RESOURCE_TYPES,
   type Branch,
   type SchedulingResource,
+  type SchedulingService,
 } from "@/lib/scheduling/types";
 
 const COMMON_TIMEZONES = [
@@ -38,6 +39,8 @@ const COMMON_TIMEZONES = [
   "America/New_York",
   "America/Los_Angeles",
 ];
+
+const EMPTY_SERVICES: SchedulingService[] = [];
 
 export type ResourceFormSubmitPayload = {
   values: ResourceFormValues;
@@ -67,16 +70,24 @@ export function ResourceFormDialog({
   isPending,
   onSubmit,
 }: Props) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const isEdit = Boolean(resource);
+  const resourceId = resource?.id ?? null;
+  const isRtl = i18n.language?.toLowerCase().startsWith("ar") || i18n.dir() === "rtl";
+  const direction = isRtl ? "rtl" : "ltr";
+  const alignClass = isRtl ? "text-right" : "text-left";
+  const fieldAlignStyle = { textAlign: isRtl ? ("right" as const) : ("left" as const) };
 
-  const { data: allServices = [], isLoading: servicesLoading } = useSchedulingServices(companyId);
-  const { data: mappedServices = [], isLoading: mappedLoading } = useResourceCapabilities(
+  const { data: allServices = EMPTY_SERVICES, isLoading: servicesLoading } =
+    useSchedulingServices(companyId);
+  const { data: mappedServicesData, isLoading: mappedLoading } = useResourceCapabilities(
     companyId,
-    resource?.id ?? null,
+    resourceId,
   );
+  const mappedServices = mappedServicesData ?? EMPTY_SERVICES;
 
   const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const hydratedMappedForResourceRef = useRef<string | null>(null);
 
   const form = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
@@ -90,19 +101,32 @@ export function ResourceFormDialog({
     },
   });
 
+  // Reset only when the dialog opens or the edited resource changes — never on
+  // every render (unstable `data ?? []` defaults were wiping in-progress input).
   useEffect(() => {
-    if (open) {
-      form.reset({
-        name: resource?.name ?? "",
-        resource_type: resource?.resource_type ?? "employee",
-        branch_id: resource?.branch_id ?? null,
-        status: resource?.status ?? "active",
-        timezone: resource?.timezone ?? defaultTimezone,
-        description: resource?.description ?? "",
-      });
-      setServiceIds(isEdit ? mappedServices.map((service) => service.id) : []);
+    if (!open) {
+      hydratedMappedForResourceRef.current = null;
+      return;
     }
-  }, [open, resource, defaultTimezone, form, isEdit, mappedServices]);
+
+    form.reset({
+      name: resource?.name ?? "",
+      resource_type: resource?.resource_type ?? "employee",
+      branch_id: resource?.branch_id ?? null,
+      status: resource?.status ?? "active",
+      timezone: resource?.timezone ?? defaultTimezone,
+      description: resource?.description ?? "",
+    });
+    setServiceIds([]);
+    hydratedMappedForResourceRef.current = null;
+  }, [open, resourceId, defaultTimezone, form, resource]);
+
+  useEffect(() => {
+    if (!open || !isEdit || !resourceId || mappedLoading) return;
+    if (hydratedMappedForResourceRef.current === resourceId) return;
+    hydratedMappedForResourceRef.current = resourceId;
+    setServiceIds(mappedServices.map((service) => service.id));
+  }, [open, isEdit, resourceId, mappedLoading, mappedServices]);
 
   const serviceItems = useMemo<CapabilitySelectItem[]>(
     () =>
@@ -121,35 +145,52 @@ export function ResourceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-lg border-border/60 bg-card max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent
+        className="sm:max-w-lg border-border/60 bg-card max-h-[90vh] overflow-y-auto"
+        dir={direction}
+        style={{ direction }}
+      >
+        <DialogHeader className={alignClass}>
+          <DialogTitle style={fieldAlignStyle}>
             {isEdit
               ? t("scheduling.resources.editTitle")
               : t("scheduling.resources.createTitle")}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className={`space-y-4 ${alignClass}`}
+          dir={direction}
+          style={{ direction }}
+        >
           <div className="space-y-2">
-            <Label htmlFor="resource-name">{t("scheduling.resources.fields.name")}</Label>
+            <Label htmlFor="resource-name" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+              {t("scheduling.resources.fields.name")}
+            </Label>
             <Input
               id="resource-name"
               disabled={!canEdit}
               {...form.register("name")}
-              className="bg-background border-border/60"
+              className={`bg-background border-border/60 ${alignClass}`}
+              style={fieldAlignStyle}
             />
             {form.formState.errors.name && (
-              <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+              <p className={`text-xs text-destructive ${alignClass}`} style={fieldAlignStyle}>
+                {form.formState.errors.name.message}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="resource-type">{t("scheduling.resources.fields.type")}</Label>
+            <Label htmlFor="resource-type" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+              {t("scheduling.resources.fields.type")}
+            </Label>
             <select
               id="resource-type"
               disabled={!canEdit}
-              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
+              className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
+              style={fieldAlignStyle}
               {...form.register("resource_type")}
             >
               {SCHEDULING_RESOURCE_TYPES.map((type) => (
@@ -161,11 +202,14 @@ export function ResourceFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="resource-branch">{t("scheduling.resources.fields.branch")}</Label>
+            <Label htmlFor="resource-branch" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+              {t("scheduling.resources.fields.branch")}
+            </Label>
             <select
               id="resource-branch"
               disabled={!canEdit}
-              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
+              className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
+              style={fieldAlignStyle}
               value={form.watch("branch_id") ?? ""}
               onChange={(e) =>
                 form.setValue("branch_id", e.target.value ? e.target.value : null)
@@ -182,11 +226,14 @@ export function ResourceFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="resource-status">{t("scheduling.resources.fields.status")}</Label>
+              <Label htmlFor="resource-status" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+                {t("scheduling.resources.fields.status")}
+              </Label>
               <select
                 id="resource-status"
                 disabled={!canEdit}
-                className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
+                className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
+                style={fieldAlignStyle}
                 {...form.register("status")}
               >
                 {SCHEDULING_RESOURCE_STATUSES.map((status) => (
@@ -197,11 +244,14 @@ export function ResourceFormDialog({
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="resource-timezone">{t("scheduling.resources.fields.timezone")}</Label>
+              <Label htmlFor="resource-timezone" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+                {t("scheduling.resources.fields.timezone")}
+              </Label>
               <select
                 id="resource-timezone"
                 disabled={!canEdit}
-                className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
+                className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
+                style={fieldAlignStyle}
                 {...form.register("timezone")}
               >
                 {COMMON_TIMEZONES.map((tz) => (
@@ -214,14 +264,15 @@ export function ResourceFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="resource-description">
+            <Label htmlFor="resource-description" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
               {t("scheduling.resources.fields.description")}
             </Label>
             <textarea
               id="resource-description"
               disabled={!canEdit}
               rows={3}
-              className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm resize-none"
+              className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm resize-none ${alignClass}`}
+              style={fieldAlignStyle}
               {...form.register("description")}
             />
           </div>

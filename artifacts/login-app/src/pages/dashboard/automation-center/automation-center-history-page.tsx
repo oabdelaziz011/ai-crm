@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { DashboardCard } from "@/components/dashboard/ui";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -58,21 +59,20 @@ export function AutomationCenterHistoryPage() {
               </table>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                {t("notifications.pagination.previous")}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {t("notifications.pagination.pageInfo", {
-                  page,
-                  totalPages: Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 20))),
-                  total: data?.total ?? 0,
-                })}
-              </span>
-              <Button size="sm" variant="outline" disabled={!data?.hasMore} onClick={() => setPage((p) => p + 1)}>
-                {t("notifications.pagination.next")}
-              </Button>
-            </div>
+            <ListPagination
+              page={page}
+              totalPages={Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 20)))}
+              pageInfoLabel={t("notifications.pagination.pageInfo", {
+                page,
+                totalPages: Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 20))),
+                total: data?.total ?? 0,
+              })}
+              previousLabel={t("notifications.pagination.previous")}
+              nextLabel={t("notifications.pagination.next")}
+              canNext={Boolean(data?.hasMore)}
+              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => p + 1)}
+            />
           </>
         )}
       </DashboardCard>

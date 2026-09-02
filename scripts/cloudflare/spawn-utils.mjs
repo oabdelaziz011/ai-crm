@@ -380,9 +380,39 @@ export function reclaimStaleCloudflaredProcesses(projectRoot) {
   }
 }
 
-export function killProcessTree(pid) {
+function sleepMs(ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    // Busy-wait: reclaim runs synchronously before stack spawn.
+  }
+}
+
+function listChildPids(pid) {
+  if (process.platform === "win32") return [];
+  try {
+    const output = execFileSync("pgrep", ["-P", String(pid)], {
+      encoding: "utf8",
+      shell: false,
+    }).trim();
+    if (!output) return [];
+    return [...new Set(output.split(/\s+/).map((value) => Number(value)).filter(Number.isFinite))];
+  } catch {
+    return [];
+  }
+}
+
+export function waitForPortFree(port, timeoutMs = 8000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (getListeningPids(port).length === 0) return true;
+    sleepMs(200);
+  }
+  return getListeningPids(port).length === 0;
+}
+
+export function killProcessTree(pid, signal = "SIGTERM") {
   if (!pid) return;
-  debugLog("killProcessTree", { pid });
+  debugLog("killProcessTree", { pid, signal });
 
   if (process.platform === "win32") {
     try {
@@ -393,10 +423,85 @@ export function killProcessTree(pid) {
     }
   }
 
+  for (const childPid of listChildPids(pid)) {
+    killProcessTree(childPid, signal);
+  }
+
   try {
-    process.kill(pid, "SIGTERM");
+    process.kill(pid, signal);
   } catch {
     // Process may already be gone.
+  }
+}
+
+function isProjectWebhookStackProcess(commandLine, projectRoot) {
+  const normalized = (commandLine ?? "").replace(/\\/g, "/");
+  const stackScript = resolve(projectRoot, "scripts/cloudflare/start-webhook-stack.mjs").replace(/\\/g, "/");
+  return (
+    normalized.includes(stackScript) ||
+    normalized.includes("scripts/cloudflare/start-webhook-stack.mjs")
+  );
+}
+
+export function listProjectWebhookStackProcesses(projectRoot) {
+  if (process.platform === "win32") {
+    try {
+      const output = execFileSync(
+        "powershell",
+        [
+          "-NoProfile",
+          "-Command",
+          "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'start-webhook-stack\\.mjs' } | Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress",
+        ],
+        { encoding: "utf8", shell: false },
+      ).trim();
+      if (!output) return [];
+      const parsed = JSON.parse(output);
+      const rows = Array.isArray(parsed) ? parsed : [parsed];
+      return rows.filter((row) => isProjectWebhookStackProcess(row.CommandLine, projectRoot));
+    } catch {
+      return [];
+    }
+  }
+
+  try {
+    const output = execFileSync("pgrep", ["-fl", "start-webhook-stack.mjs"], {
+      encoding: "utf8",
+      shell: false,
+    }).trim();
+    if (!output) return [];
+    return output
+      .split("\n")
+      .map((line) => {
+        const match = line.match(/^(\d+)\s+(.*)$/);
+        if (!match) return null;
+        return { ProcessId: Number(match[1]), CommandLine: match[2] };
+      })
+      .filter((row) => row && isProjectWebhookStackProcess(row.CommandLine, projectRoot));
+  } catch {
+    return [];
+  }
+}
+
+export function reclaimStaleWebhookStackProcesses(projectRoot, currentPid = process.pid, port = 3000) {
+  const stale = listProjectWebhookStackProcesses(projectRoot).filter(
+    (entry) => entry.ProcessId !== currentPid,
+  );
+  if (stale.length === 0) return;
+
+  console.warn(
+    `Found ${stale.length} stale dev:webhook stack process(es) from a previous run. Reclaiming...`,
+  );
+  for (const entry of stale) {
+    debugLog("reclaim stale webhook stack", entry);
+    killProcessTree(entry.ProcessId, "SIGTERM");
+  }
+
+  if (!waitForPortFree(Number(port), 3000)) {
+    for (const entry of stale) {
+      killProcessTree(entry.ProcessId, "SIGKILL");
+    }
+    waitForPortFree(Number(port), 2000);
   }
 }
 
@@ -449,8 +554,17 @@ export function reclaimStaleApiServerPort(port, projectRoot) {
   );
   for (const entry of stale) {
     debugLog("reclaim stale api-server", entry);
-    killProcessTree(entry.pid);
+    killProcessTree(entry.pid, "SIGTERM");
   }
+
+  if (waitForPortFree(port, 8000)) return;
+
+  for (const entry of stale) {
+    debugLog("force reclaim stale api-server", entry);
+    killProcessTree(entry.pid, "SIGKILL");
+  }
+
+  if (waitForPortFree(port, 3000)) return;
 
   const remaining = getListeningPids(port);
   const remainingProtected = remaining.filter((pid) => {
@@ -464,9 +578,14 @@ export function reclaimStaleApiServerPort(port, projectRoot) {
   });
   const remainingBlocking = remaining.filter((pid) => !remainingProtected.includes(pid));
 
-  if (remainingBlocking.length > 0) {
-    throw new Error(`Port ${port} is still in use after reclaiming stale api-server process(es).`);
-  }
+  if (remainingBlocking.length === 0) return;
+
+  const details = remainingBlocking
+    .map((pid) => `  pid ${pid}: ${getProcessCommandLine(pid) || "(unknown command)"}`)
+    .join("\n");
+  throw new Error(
+    `Port ${port} is still in use after reclaiming stale api-server process(es).\n${details}\nStop that process, then rerun pnpm dev:webhook.`,
+  );
 }
 
 export function resolveApiServerStartLaunch(projectRoot) {

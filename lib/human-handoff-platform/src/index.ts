@@ -82,6 +82,21 @@ export { HandoffQueryService } from "./services/handoff-query-service.js";
 export { selectQueueAgent, estimateWaitTimeSeconds } from "./services/queue-routing-engine.js";
 export { resolveEscalationRule } from "./services/escalation-engine.js";
 export {
+  evaluateInboundAiGate,
+  createInboundAiGateEvaluator,
+  isBlockingLifecycleState,
+  type InboundAiGateDecision,
+  type InboundAiGateDecisionSource,
+  type InboundAiGateOwnershipSnapshot,
+  type InboundAiGateConversationSnapshot,
+  type InboundAiGateEvaluatorDeps,
+} from "./services/inbound-ai-gate.js";
+export {
+  createSupabaseInboundAiGatePort,
+  type SupabaseInboundAiGatePort,
+} from "./adapters/supabase-inbound-ai-gate.js";
+export { createSupabaseHandoffRepository } from "./repositories/supabase-handoff-repositories.js";
+export {
   createNoopHandoffAgentResolverPort,
   createNoopHandoffAuditPort,
   createNoopHandoffContextAssemblyPort,

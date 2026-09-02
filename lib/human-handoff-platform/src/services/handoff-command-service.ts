@@ -21,6 +21,7 @@ import type {
 import type { HandoffRepository } from "../repositories/handoff-repository-port.js";
 import { applyPriorityBoost, resolveEscalationRule } from "./escalation-engine.js";
 import { estimateWaitTimeSeconds, isWithinBusinessHours, selectQueueAgent } from "./queue-routing-engine.js";
+import { isBlockingLifecycleState } from "./inbound-ai-gate.js";
 import type {
   ConversationOwner,
   EscalationTrigger,
@@ -280,6 +281,13 @@ export class HandoffCommandService {
       actorUserId,
     });
 
+    if (current.assignedUserId) {
+      await this.deps.handoff.syncMemberActiveConversationCount(
+        input.companyId,
+        current.assignedUserId,
+      );
+    }
+
     await this.deps.events.publish(
       createConversationReturnedToAiEvent({
         companyId: input.companyId,
@@ -294,9 +302,15 @@ export class HandoffCommandService {
 
   async assignConversation(
     ctx: HandoffServiceContext,
-    input: { companyId: string; conversationId: string; assigneeUserId: string; reason?: string },
+    input: {
+      companyId: string;
+      conversationId: string;
+      assigneeUserId: string;
+      reason?: string;
+      requestedByAiAssistantId?: string;
+    },
   ): Promise<{ ownership: ConversationOwner }> {
-    const actorUserId = assertHandoffActor(ctx);
+    const actorUserId = input.requestedByAiAssistantId ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.assign);
 
@@ -645,6 +659,112 @@ export class HandoffCommandService {
     return { ownership: toConversationOwner(ownership), request };
   }
 
+  async requestCustomerHandoff(
+    ctx: HandoffServiceContext,
+    input: {
+      companyId: string;
+      conversationId: string;
+      triggerCode?: EscalationTrigger;
+      queueId?: string;
+      reason?: string;
+      requestedByAiAssistantId?: string;
+    },
+  ): Promise<{
+    ownership: ConversationOwner;
+    assigned: boolean;
+    queued: boolean;
+    assigneeUserId?: string;
+    queueId?: string;
+    idempotent?: boolean;
+    request?: HandoffRequestRecord | null;
+  }> {
+    assertHandoffCompanyAccess(ctx, input.companyId);
+    assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.escalate);
+
+    const conversation = await this.requireConversation(input.companyId, input.conversationId);
+    const current = await this.ensureOwnership(input.companyId, input.conversationId, conversation);
+
+    if (this.isAlreadyHandedOff(current)) {
+      return {
+        ownership: toConversationOwner(current),
+        assigned: current.ownerType === "human_agent",
+        queued: current.ownerType === "queue",
+        assigneeUserId: current.assignedUserId ?? undefined,
+        queueId: current.queueId ?? undefined,
+        idempotent: true,
+        request: null,
+      };
+    }
+
+    const triggerCode = input.triggerCode ?? "customer_requested";
+    const reason = readOptionalString(input.reason) ?? "Customer requested human support";
+    const targetQueueId = await this.resolveCustomerHandoffQueue(
+      input.companyId,
+      input.queueId,
+      triggerCode,
+    );
+
+    if (!targetQueueId) {
+      const escalated = await this.escalateConversation(ctx, {
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        triggerCode,
+        reason,
+        requestedByAiAssistantId: input.requestedByAiAssistantId,
+      });
+      return {
+        ownership: escalated.ownership,
+        assigned: false,
+        queued: false,
+        request: escalated.request,
+      };
+    }
+
+    const queue = await this.deps.handoff.getQueue(input.companyId, targetQueueId);
+    if (!queue) throw new HandoffNotFoundError("Queue", targetQueueId);
+
+    const members = await this.deps.handoff.listQueueMembers(input.companyId, targetQueueId);
+    const presence = await this.deps.handoff.listPresence(input.companyId, ["online"]);
+    const presenceByUserId = new Map(presence.map((row) => [row.userId, row]));
+    const agent = selectQueueAgent({ queue, members, presenceByUserId });
+
+    if (agent) {
+      const assigned = await this.assignConversation(ctx, {
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        assigneeUserId: agent.userId,
+        reason,
+        requestedByAiAssistantId: input.requestedByAiAssistantId,
+      });
+      await this.deps.handoff.incrementMemberAssignment(targetQueueId, agent.userId);
+      return {
+        ownership: assigned.ownership,
+        assigned: true,
+        queued: false,
+        assigneeUserId: agent.userId,
+        queueId: targetQueueId,
+        request: null,
+      };
+    }
+
+    const escalated = await this.escalateConversation(ctx, {
+      companyId: input.companyId,
+      conversationId: input.conversationId,
+      triggerCode,
+      reason,
+      targetQueueId,
+      requestedByAiAssistantId: input.requestedByAiAssistantId,
+    });
+
+    return {
+      ownership: escalated.ownership,
+      assigned: false,
+      queued: true,
+      queueId: targetQueueId,
+      request: escalated.request,
+    };
+  }
+
   async updatePresence(
     ctx: HandoffServiceContext,
     input: {
@@ -845,18 +965,29 @@ export class HandoffCommandService {
       contextSnapshotId: input.contextSnapshotId,
     });
 
-    await this.deps.events.publish(
-      createOwnerChangedEvent({
+    try {
+      await this.deps.events.publish(
+        createOwnerChangedEvent({
+          companyId: input.companyId,
+          conversationId: input.conversationId,
+          previousOwnerType: input.previous?.ownerType ?? null,
+          previousOwnerId: input.previous?.ownerId ?? null,
+          newOwnerType: input.ownerType,
+          newOwnerId: input.ownerId,
+          action: input.action,
+          actorUserId: input.actorUserId,
+        }),
+      );
+    } catch (error) {
+      // Side-effect only: never block ownership/conversation assign on event bus failures
+      // (e.g. publishable-client "permission denied for function current_company_id").
+      console.error("[human-handoff] owner_changed event publish failed", {
         companyId: input.companyId,
         conversationId: input.conversationId,
-        previousOwnerType: input.previous?.ownerType ?? null,
-        previousOwnerId: input.previous?.ownerId ?? null,
-        newOwnerType: input.ownerType,
-        newOwnerId: input.ownerId,
         action: input.action,
-        actorUserId: input.actorUserId,
-      }),
-    );
+        error,
+      });
+    }
 
     if (input.actorUserId) {
       await this.writeAudit(input.companyId, input.actorUserId, "UPDATE", "handoff_ownership", ownership.id, {
@@ -954,6 +1085,36 @@ export class HandoffCommandService {
     };
   }
 
+  private isAlreadyHandedOff(ownership: OwnershipRecord): boolean {
+    if (ownership.isPaused) return true;
+    if (ownership.ownerType === "human_agent" || ownership.ownerType === "queue") return true;
+    if (ownership.assignedUserId) return true;
+    return isBlockingLifecycleState(ownership.lifecycleState);
+  }
+
+  private async resolveCustomerHandoffQueue(
+    companyId: string,
+    explicitQueueId: string | undefined,
+    triggerCode: EscalationTrigger,
+  ): Promise<string | null> {
+    if (explicitQueueId?.trim()) {
+      const queue = await this.deps.handoff.getQueue(companyId, explicitQueueId.trim());
+      if (!queue || !queue.isActive) {
+        throw new HandoffValidationError("Configured handoff queue is not available.");
+      }
+      return queue.id;
+    }
+
+    const rules = await this.deps.handoff.listEscalationRules(companyId, true);
+    const rule = resolveEscalationRule({ triggerCode, rules });
+    if (rule?.targetQueueId) return rule.targetQueueId;
+
+    const queues = await this.deps.handoff.listQueues(companyId, true);
+    const supportQueue = queues.find((entry) => entry.slug === "support");
+    if (supportQueue) return supportQueue.id;
+    return queues[0]?.id ?? null;
+  }
+
   private async notifyAgent(
     kind: "transfer" | "assignment",
     companyId: string,
@@ -961,13 +1122,24 @@ export class HandoffCommandService {
     recipientUserId: string,
     actorUserId: string | null,
   ): Promise<void> {
-    await this.deps.notifications.notify({
-      kind,
-      companyId,
-      conversationId,
-      actorUserId,
-      recipientUserId,
-    });
+    try {
+      await this.deps.notifications.notify({
+        kind,
+        companyId,
+        conversationId,
+        actorUserId,
+        recipientUserId,
+      });
+    } catch (error) {
+      // Side-effect only: assignment must succeed even if in-app notify fails.
+      console.error("[human-handoff] agent notification failed", {
+        kind,
+        companyId,
+        conversationId,
+        recipientUserId,
+        error,
+      });
+    }
   }
 
   private async writeAudit(

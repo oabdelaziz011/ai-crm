@@ -1,5 +1,6 @@
 import type { WorkflowGraphSnapshot, WorkflowPublishValidationIssue } from "./types.js";
 import { validateExecutionPaths } from "./path-validation.js";
+import { validateHandoffToHumanConfig } from "../engine/handoff/handoff-to-human-action.js";
 
 function readBuilderType(node: WorkflowGraphSnapshot["nodes"][number]): string | null {
   const builderType = node.config.builderType;
@@ -141,6 +142,20 @@ export function validateWorkflowSnapshot(snapshot: WorkflowGraphSnapshot): Workf
         message: `${nodeLabel(node)} has incomplete configuration.`,
         severity: "error",
       });
+    }
+    if (node.type === "action" && action === "handoff_to_human") {
+      try {
+        validateHandoffToHumanConfig(node.config);
+      } catch (error) {
+        issues.push({
+          id: `${node.id}-invalid-handoff`,
+          message:
+            error instanceof Error
+              ? `Human handoff step is invalid: ${error.message}`
+              : "Human handoff step has invalid configuration.",
+          severity: "error",
+        });
+      }
     }
   }
 

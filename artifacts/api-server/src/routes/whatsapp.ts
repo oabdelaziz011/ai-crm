@@ -14,6 +14,7 @@ import {
   createSupabaseWhatsAppCredentialsLoader,
   createSupabaseWhatsAppCredentialLifecycle,
   resolveWhatsAppRuntimeConfiguration,
+  fingerprintWhatsAppAccessToken,
 } from "@workspace/channel-platform";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
@@ -52,9 +53,45 @@ router.post("/whatsapp/health", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
     const client = getServiceClient();
+    const credentialsLoader = createSupabaseWhatsAppCredentialsLoader(client);
+    const credentials = companyId
+      ? await credentialsLoader.loadByCompanyId(companyId)
+      : null;
+    const tokenFp = credentials
+      ? fingerprintWhatsAppAccessToken(credentials.accessToken)
+      : null;
+    if (credentials && tokenFp) {
+      console.info("[whatsapp.health]", {
+        at: new Date().toISOString(),
+        companyId,
+        phoneNumberId: credentials.phoneNumberId || null,
+        businessAccountId: credentials.businessAccountId || null,
+        tokenSource: "company_whatsapp_settings.get_company_whatsapp_settings_decrypted",
+        tokenFrom: "database",
+        ...tokenFp,
+      });
+    }
     const provider = createProvider(client);
     const result = await provider.healthCheck(companyId);
-    res.json(result);
+    console.info("[whatsapp.health.result]", {
+      at: new Date().toISOString(),
+      companyId,
+      ok: result.ok,
+      tokenFingerprint: tokenFp?.sha256_12 ?? null,
+      tokenLength: tokenFp?.length ?? null,
+    });
+    res.json({
+      ...result,
+      diagnostics: credentials && tokenFp
+        ? {
+            tokenSource: "company_whatsapp_settings.get_company_whatsapp_settings_decrypted",
+            tokenFrom: "database",
+            tokenFingerprint: tokenFp,
+            phoneNumberId: credentials.phoneNumberId || null,
+            checkedAt: new Date().toISOString(),
+          }
+        : undefined,
+    });
   } catch (error) {
     next(error);
   }
@@ -155,6 +192,17 @@ router.post("/whatsapp/test-connection", async (req, res, next) => {
       return;
     }
 
+    const tokenFp = fingerprintWhatsAppAccessToken(credentials.accessToken);
+    console.info("[whatsapp.test-connection]", {
+      at: new Date().toISOString(),
+      companyId,
+      phoneNumberId: credentials.phoneNumberId || null,
+      businessAccountId: credentials.businessAccountId || null,
+      tokenSource: "company_whatsapp_settings.get_company_whatsapp_settings_decrypted",
+      tokenFrom: "database",
+      ...tokenFp,
+    });
+
     const report = await performWhatsAppConnectionTest({
       runtimeConfig: {
         phoneNumberId: credentials.phoneNumberId,
@@ -167,13 +215,34 @@ router.post("/whatsapp/test-connection", async (req, res, next) => {
       appSecret: credentials.appSecret,
     });
 
+    console.info("[whatsapp.test-connection.result]", {
+      at: new Date().toISOString(),
+      companyId,
+      phoneNumberId: credentials.phoneNumberId || null,
+      ok: report.ok,
+      tokenStatus: report.tokenStatus,
+      metaErrorCode: report.metaErrorCode ?? null,
+      metaErrorSubcode: report.metaErrorSubcode ?? null,
+      tokenFingerprint: tokenFp.sha256_12,
+      tokenLength: tokenFp.length,
+    });
+
     await persistConnectionTestResult({
       companyId,
       lifecycle,
       report,
     });
 
-    res.json(report);
+    res.json({
+      ...report,
+      diagnostics: {
+        tokenSource: "company_whatsapp_settings.get_company_whatsapp_settings_decrypted",
+        tokenFrom: "database",
+        tokenFingerprint: tokenFp,
+        phoneNumberId: credentials.phoneNumberId || null,
+        checkedAt: new Date().toISOString(),
+      },
+    });
   } catch (error) {
     next(error);
   }

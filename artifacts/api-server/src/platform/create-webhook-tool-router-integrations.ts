@@ -18,6 +18,7 @@ import {
 } from "@workspace/ticket-platform";
 import { createLoginAppLeadPlatformServices } from "@login-app/lib/lead-platform/lead-platform-factory.js";
 import { createWebhookToolCustomerServicePort } from "./webhook-tool-customer-service-port.js";
+import { createWebhookHandoffPlatformForTools } from "./create-webhook-handoff-platform.js";
 import { createWebhookSchedulingToolPorts } from "./webhook-scheduling-tool-ports.js";
 import type { WorkflowTransferToolPorts } from "@workspace/ai-tool-router";
 
@@ -50,6 +51,7 @@ export function createWebhookToolRouterIntegrations(
     }),
   );
   const handoffAgentPorts = createHandoffAgentToolPorts(client, {
+    platform: createWebhookHandoffPlatformForTools(client),
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });
   const leadAgentPorts = createLeadAgentToolPortsFromPlatform(

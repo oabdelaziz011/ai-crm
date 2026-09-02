@@ -13,6 +13,7 @@ import {
   killProcessTree,
   reclaimStaleApiServerPort,
   reclaimStaleCloudflaredProcesses,
+  reclaimStaleWebhookStackProcesses,
   resolveApiServerStartLaunch,
   resolveCloudflaredLaunch,
   resolveWebhookApiLifecycle,
@@ -108,6 +109,7 @@ if (lifecycle.action === "reuse") {
   );
   console.log("Skipping API reclaim/spawn — Cloudflare tunnel will target the existing server.");
 } else {
+  reclaimStaleWebhookStackProcesses(PROJECT_ROOT, process.pid, Number(port));
   reclaimStaleApiServerPort(portNumber, PROJECT_ROOT);
   console.log(`Starting api-server on port ${port}...`);
   const apiLaunch = resolveApiServerStartLaunch(PROJECT_ROOT);

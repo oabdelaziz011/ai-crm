@@ -641,6 +641,74 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
 
 
+  const pauseAi = useCallback(
+
+    async (record: ConversationRecord, reason?: string) => {
+
+      if (!companyId) throw new Error("Company required");
+
+      if (!(context.isSuperAdmin || context.hasPermission("handoff.transfer"))) {
+
+        throw new Error('Permission "handoff.transfer" is required');
+
+      }
+
+      const platform = getLoginAppHandoffPlatformServices();
+
+      const result = await platform.commands.pauseConversation(
+
+        buildHandoffServiceContext({
+
+          companyId,
+
+          actorUserId: context.userId,
+
+          isSuperAdmin: context.isSuperAdmin,
+
+          hasPermission: context.hasPermission,
+
+        }),
+
+        { companyId, conversationId: record.id, reason },
+
+      );
+
+      void invalidate(record.id, record.customer_id);
+
+      return result;
+
+    },
+
+    [companyId, context, invalidate],
+
+  );
+
+
+
+  const resumeAi = useCallback(
+
+    async (record: ConversationRecord) => {
+
+      if (!companyId) throw new Error("Company required");
+
+      await transitionMutation.mutateAsync({
+
+        record,
+
+        action: "ai_resume",
+
+        payload: {},
+
+      });
+
+    },
+
+    [companyId, transitionMutation],
+
+  );
+
+
+
   const isPending =
 
     transitionMutation.isPending ||
@@ -684,6 +752,10 @@ export function useConversationLifecycleActions(companyId: string | null) {
     closeConversation,
 
     reopenConversation,
+
+    pauseAi,
+
+    resumeAi,
 
     linkCustomer,
 

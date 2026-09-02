@@ -417,6 +417,32 @@ export class IntegrationApiGatewayService {
     });
   }
 
+  async pauseConversation(
+    ctx: ApiAuthContext,
+    conversationId: string,
+    body: { reason?: string },
+  ) {
+    return this.handoffPlatform.commands.pauseConversation(this.handoffContext(ctx), {
+      companyId: ctx.companyId,
+      conversationId,
+      reason: body.reason,
+    });
+  }
+
+  async resumeConversation(ctx: ApiAuthContext, conversationId: string) {
+    return this.handoffPlatform.commands.resumeConversation(this.handoffContext(ctx), {
+      companyId: ctx.companyId,
+      conversationId,
+    });
+  }
+
+  async routeNextInQueue(ctx: ApiAuthContext, queueId: string) {
+    return this.handoffPlatform.commands.routeNextInQueue(this.handoffContext(ctx), {
+      companyId: ctx.companyId,
+      queueId,
+    });
+  }
+
   async getHandoffOwnership(ctx: ApiAuthContext, conversationId: string) {
     return this.handoffPlatform.reads.getOwnership(this.handoffContext(ctx), {
       companyId: ctx.companyId,
@@ -763,6 +789,9 @@ export const ENDPOINT_SCOPES: Record<string, ApiScope[]> = {
   "POST /conversations/:id/handoff/queue": ["handoff.write"],
   "POST /conversations/:id/handoff/escalate": ["handoff.write"],
   "POST /conversations/:id/handoff/return-to-ai": ["handoff.write"],
+  "POST /conversations/:id/handoff/pause": ["handoff.write"],
+  "POST /conversations/:id/handoff/resume": ["handoff.write"],
+  "POST /handoff/queues/:id/route-next": ["handoff.write"],
   "GET /conversations/:id/handoff/ownership": ["handoff.read"],
   "GET /conversations/:id/handoff/history": ["handoff.read"],
   "GET /conversations/:id/handoff/workspace": ["handoff.read"],

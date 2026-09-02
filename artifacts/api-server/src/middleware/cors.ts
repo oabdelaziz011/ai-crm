@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 /** Browser origins permitted to call authenticated /api/* endpoints with credentials. */
 export const API_CORS_ALLOWED_ORIGINS = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "https://valueor.org",
   "https://app.valueor.org",
 ] as const;

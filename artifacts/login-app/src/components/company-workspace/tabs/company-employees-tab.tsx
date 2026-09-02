@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -871,39 +872,20 @@ export function CompanyEmployeesTab({
           </table>
         </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2.5">
-              <p className="text-xs text-muted-foreground">
-                {t("users.pagination.pageInfo", {
-                  page: safePage,
-                  totalPages,
-                  total: filtered.length,
-                })}
-              </p>
-              <div className="flex items-center gap-2">
-                {safePage > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    {t("users.pagination.previous")}
-                  </Button>
-                ) : null}
-                {safePage < totalPages ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    {t("users.pagination.next")}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
+            <ListPagination
+              className="border-t border-border/50 px-3 py-2.5"
+              page={safePage}
+              totalPages={totalPages}
+              summaryLabel={t("users.pagination.pageInfo", {
+                page: safePage,
+                totalPages,
+                total: filtered.length,
+              })}
+              previousLabel={t("users.pagination.previous")}
+              nextLabel={t("users.pagination.next")}
+              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+            />
           </div>
         </div>
       </div>

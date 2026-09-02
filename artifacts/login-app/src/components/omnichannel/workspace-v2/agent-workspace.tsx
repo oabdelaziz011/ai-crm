@@ -11,6 +11,7 @@ import { nestedSectionHref } from "@/lib/routing";
 import "@/components/omnichannel/workspace-v2/workspace.css";
 
 import { WorkspaceTopBar, type WorkspaceTenantContext } from "@/components/omnichannel/workspace-v2/workspace-top-bar";
+import { AgentPresenceControl } from "@/components/omnichannel/agent-presence-control";
 import { OmnichannelTenantBanner } from "@/components/omnichannel/tenant/omnichannel-tenant-banner";
 
 import { WorkspaceNavRail } from "@/components/omnichannel/workspace-v2/workspace-nav-rail";
@@ -103,6 +104,8 @@ export type AgentWorkspaceProps = {
   onNavChange: (nav: WorkspaceNavId) => void;
 
   navAriaLabel: string;
+
+  navOrder?: readonly WorkspaceNavId[];
 
   inboxTitle: string;
 
@@ -200,9 +203,19 @@ export type AgentWorkspaceProps = {
 
   retrySendLabel?: string;
 
+  companyId?: string | null;
+
+  handoffAiPaused?: boolean;
+
+  handoffOwnership?: import("@/hooks/omnichannel/use-conversation-handoff-ownership").HandoffOwnershipView | null;
+
   sessionActions: {
 
     onTakeOver: () => void;
+
+    onPauseAi?: () => void;
+
+    onResumeAi?: () => void;
 
     onAssign: () => void;
 
@@ -487,6 +500,18 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
 
         deskChrome={deskChrome}
 
+        presenceControl={
+
+          <AgentPresenceControl
+
+            companyId={props.companyId ?? props.tenantContext?.companyId ?? null}
+
+            compact
+
+          />
+
+        }
+
       />
 
       {props.tenantBannerMessage ? (
@@ -509,6 +534,8 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
           labels={props.navLabels}
 
           ariaLabel={props.navAriaLabel}
+
+          navOrder={props.navOrder}
 
         />
 
@@ -647,6 +674,13 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
           onOpenAssignment={props.sessionActions.onOpenAssignment}
 
           onRelease={props.sessionActions.onRelease}
+
+          onPauseAi={props.sessionActions.onPauseAi}
+
+          onResumeAi={props.sessionActions.onResumeAi}
+
+          aiPaused={props.handoffAiPaused}
+          handoffOwnership={props.handoffOwnership}
 
           onClose={props.sessionActions.onClose}
 

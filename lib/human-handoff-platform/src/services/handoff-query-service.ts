@@ -111,6 +111,16 @@ export class HandoffQueryService {
     return { queues };
   }
 
+  async listQueueMembers(
+    ctx: HandoffServiceContext,
+    input: { companyId: string; queueId: string },
+  ) {
+    assertHandoffCompanyAccess(ctx, input.companyId);
+    assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.view);
+    const members = await this.deps.handoff.listQueueMembers(input.companyId, input.queueId);
+    return { members };
+  }
+
   async getQueuePosition(
     ctx: HandoffServiceContext,
     input: { companyId: string; conversationId: string; queueId: string },

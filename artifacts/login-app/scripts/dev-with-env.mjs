@@ -38,6 +38,12 @@ const viteEnv = {
     existingLocal.VITE_SUPABASE_PUBLISHABLE_KEY,
   VITE_API_SERVER_URL:
     rootEnv.VITE_API_SERVER_URL || existingLocal.VITE_API_SERVER_URL,
+  VITE_WEBHOOK_BASE_URL:
+    rootEnv.VITE_WEBHOOK_BASE_URL ||
+    rootEnv.WEBHOOK_BASE_URL ||
+    existingLocal.VITE_WEBHOOK_BASE_URL,
+  VITE_APP_ORIGIN:
+    rootEnv.VITE_APP_ORIGIN || existingLocal.VITE_APP_ORIGIN || "http://localhost:5173",
 };
 
 if (!viteEnv.VITE_SUPABASE_URL || !viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY) {
@@ -53,6 +59,10 @@ writeFileSync(
     `VITE_SUPABASE_URL=${viteEnv.VITE_SUPABASE_URL}`,
     `VITE_SUPABASE_PUBLISHABLE_KEY=${viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     ...(viteEnv.VITE_API_SERVER_URL ? [`VITE_API_SERVER_URL=${viteEnv.VITE_API_SERVER_URL}`] : []),
+    ...(viteEnv.VITE_WEBHOOK_BASE_URL
+      ? [`VITE_WEBHOOK_BASE_URL=${viteEnv.VITE_WEBHOOK_BASE_URL}`]
+      : []),
+    `VITE_APP_ORIGIN=${viteEnv.VITE_APP_ORIGIN}`,
   ].join("\n") + "\n",
   "utf8",
 );

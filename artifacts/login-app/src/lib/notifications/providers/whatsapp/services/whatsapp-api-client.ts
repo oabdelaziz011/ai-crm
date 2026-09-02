@@ -94,6 +94,18 @@ export type WhatsAppConnectionTestResponse = {
     wabaPhoneNumberIds?: string[];
     detail: string;
   };
+  diagnostics?: {
+    tokenSource: string;
+    tokenFrom: string;
+    phoneNumberId: string | null;
+    checkedAt: string;
+    tokenFingerprint: {
+      present: boolean;
+      length: number;
+      prefix: string | null;
+      sha256_12: string | null;
+    };
+  };
 };
 
 export function fetchWhatsAppHealth(companyId: string): Promise<WhatsAppHealthResponse> {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Loader2 } from "lucide-react";
@@ -32,6 +32,7 @@ import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import {
   COMPANY_DEFAULT_CURRENCY,
   SCHEDULING_SERVICE_STATUSES,
+  type SchedulingResource,
   type SchedulingService,
 } from "@/lib/scheduling/types";
 import {
@@ -40,6 +41,8 @@ import {
   type PricingRuleFormValues,
   type ServiceGeneralFormValues,
 } from "@/lib/scheduling/validation/service-schemas";
+
+const EMPTY_RESOURCES: SchedulingResource[] = [];
 
 export type ServiceFormSubmitPayload = {
   values: ServiceGeneralFormValues;
@@ -71,18 +74,26 @@ export function ServiceFormDialog({
   isPending,
   onSubmit,
 }: Props) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const isEdit = Boolean(service);
+  const serviceId = service?.id ?? null;
+  const isRtl = i18n.language?.toLowerCase().startsWith("ar") || i18n.dir() === "rtl";
+  const direction = isRtl ? "rtl" : "ltr";
+  const alignClass = isRtl ? "text-right" : "text-left";
+  const fieldAlignStyle = { textAlign: isRtl ? ("right" as const) : ("left" as const) };
   const [tab, setTab] = useState<"general" | "pricing" | "resources">("general");
   const [resourceIds, setResourceIds] = useState<string[]>([]);
   const [pricingRules, setPricingRules] = useState<PricingRuleFormValues[]>([]);
   const [pricingError, setPricingError] = useState<string | null>(null);
+  const hydratedMappedForServiceRef = useRef<string | null>(null);
 
-  const { data: allResources = [], isLoading: resourcesLoading } = useSchedulingResources(companyId);
-  const { data: mappedResources = [], isLoading: mappedLoading } = useServiceResources(
+  const { data: allResourcesData, isLoading: resourcesLoading } = useSchedulingResources(companyId);
+  const allResources = allResourcesData ?? EMPTY_RESOURCES;
+  const { data: mappedResourcesData, isLoading: mappedLoading } = useServiceResources(
     companyId,
-    service?.id ?? null,
+    serviceId,
   );
+  const mappedResources = mappedResourcesData ?? EMPTY_RESOURCES;
   const {
     data: types = [],
     isLoading: typesLoading,
@@ -90,7 +101,7 @@ export function ServiceFormDialog({
   } = usePricingRuleTypes(companyId);
   const { data: existingRules = [], isLoading: rulesLoading } = useServicePricingRules(
     companyId,
-    service?.id ?? null,
+    serviceId,
   );
   const { currency: companyCurrency } = useCompanyLocaleContext();
 
@@ -105,7 +116,10 @@ export function ServiceFormDialog({
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hydratedMappedForServiceRef.current = null;
+      return;
+    }
     // Edit opens on Pricing (not Resources / General).
     setTab(isEdit ? "pricing" : "general");
     setPricingError(null);
@@ -115,12 +129,16 @@ export function ServiceFormDialog({
       description: service?.description ?? "",
       status: service?.status ?? "active",
     });
-  }, [open, service, form, isEdit]);
+    setResourceIds([]);
+    hydratedMappedForServiceRef.current = null;
+  }, [open, serviceId, form, isEdit, service]);
 
   useEffect(() => {
-    if (!open) return;
-    setResourceIds(isEdit ? mappedResources.map((resource) => resource.id) : []);
-  }, [open, isEdit, mappedResources]);
+    if (!open || !isEdit || !serviceId || mappedLoading) return;
+    if (hydratedMappedForServiceRef.current === serviceId) return;
+    hydratedMappedForServiceRef.current = serviceId;
+    setResourceIds(mappedResources.map((resource) => resource.id));
+  }, [open, isEdit, serviceId, mappedLoading, mappedResources]);
 
   useEffect(() => {
     if (!open || typesLoading) return;
@@ -204,18 +222,22 @@ export function ServiceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-3xl border-border/60 bg-card max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent
+        className="sm:max-w-3xl border-border/60 bg-card max-h-[90vh] overflow-y-auto"
+        dir={direction}
+        style={{ direction }}
+      >
+        <DialogHeader className={alignClass}>
+          <DialogTitle style={fieldAlignStyle}>
             {isEdit
               ? t("scheduling.services.editTitle")
               : t("scheduling.services.createTitle")}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-            <TabsList className="grid h-9 w-full grid-cols-3">
+        <form onSubmit={handleSubmit} className={`space-y-4 ${alignClass}`} style={{ direction }} dir={direction}>
+          <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)} dir={direction}>
+            <TabsList className="grid h-9 w-full grid-cols-3" dir={direction} style={{ direction }}>
               <TabsTrigger value="general">
                 {t("scheduling.services.tabs.general", { defaultValue: "General" })}
               </TabsTrigger>
@@ -227,34 +249,41 @@ export function ServiceFormDialog({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="general" className="mt-4 space-y-4">
+            <TabsContent value="general" className="mt-4 space-y-4" dir={direction}>
               <div className="space-y-2">
-                <Label htmlFor="service-name">{t("scheduling.services.fields.name")}</Label>
+                <Label htmlFor="service-name" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+                  {t("scheduling.services.fields.name")}
+                </Label>
                 <Input
                   id="service-name"
                   disabled={!canEdit}
                   {...form.register("name")}
-                  className="bg-background border-border/60"
+                  className={`bg-background border-border/60 ${alignClass}`}
+                  style={fieldAlignStyle}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="service-category">
+                  <Label htmlFor="service-category" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
                     {t("scheduling.services.fields.category", { defaultValue: "Category" })}
                   </Label>
                   <Input
                     id="service-category"
                     disabled={!canEdit}
                     {...form.register("category")}
-                    className="bg-background border-border/60"
+                    className={`bg-background border-border/60 ${alignClass}`}
+                    style={fieldAlignStyle}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="service-status">{t("scheduling.services.fields.status")}</Label>
+                  <Label htmlFor="service-status" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
+                    {t("scheduling.services.fields.status")}
+                  </Label>
                   <select
                     id="service-status"
                     disabled={!canEdit}
-                    className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm"
+                    className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm ${alignClass}`}
+                    style={fieldAlignStyle}
                     {...form.register("status")}
                   >
                     {SCHEDULING_SERVICE_STATUSES.map((status) => (
@@ -266,20 +295,21 @@ export function ServiceFormDialog({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="service-description">
+                <Label htmlFor="service-description" className={`ui-field-label ${alignClass}`} style={fieldAlignStyle}>
                   {t("scheduling.services.fields.description")}
                 </Label>
                 <textarea
                   id="service-description"
                   disabled={!canEdit}
                   rows={3}
-                  className="w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm resize-none"
+                  className={`w-full rounded-xl bg-background border border-border/60 px-3 py-2.5 text-sm resize-none ${alignClass}`}
+                  style={fieldAlignStyle}
                   {...form.register("description")}
                 />
               </div>
             </TabsContent>
 
-            <TabsContent value="pricing" className="mt-4">
+            <TabsContent value="pricing" className="mt-4" dir={direction}>
               <ServicePricingRulesEditor
                 rules={pricingRules}
                 types={types}
@@ -295,7 +325,7 @@ export function ServiceFormDialog({
               />
             </TabsContent>
 
-            <TabsContent value="resources" className="mt-4">
+            <TabsContent value="resources" className="mt-4" dir={direction}>
               <div className="rounded-xl border border-border/60 bg-background p-3 space-y-3">
                 <CapabilityMultiSelect
                   label={t("scheduling.capabilities.serviceResourcesTitle")}
@@ -307,7 +337,10 @@ export function ServiceFormDialog({
                   emptyMessage={t("scheduling.capabilities.noResourcesAvailable")}
                 />
                 {resourceIds.length === 0 && (
-                  <p className="text-xs text-amber-400/90 flex items-start gap-2 leading-relaxed">
+                  <p
+                    className={`text-xs text-amber-400/90 flex items-start gap-2 leading-relaxed ${alignClass}`}
+                    style={fieldAlignStyle}
+                  >
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     {t("scheduling.capabilities.serviceNoResourcesWarning")}
                   </p>
@@ -316,7 +349,7 @@ export function ServiceFormDialog({
             </TabsContent>
           </Tabs>
 
-          <DialogFooter>
+          <DialogFooter className={`gap-2 ${isRtl ? "sm:justify-start" : "sm:justify-end"}`}>
             <Button type="button" variant="outline" onClick={onClose} className="border-border/60">
               {t("buttons.cancel")}
             </Button>

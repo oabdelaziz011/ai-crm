@@ -50,9 +50,14 @@ function selectRoundRobin(members: QueueMemberRecord[]): QueueMemberRecord {
 }
 
 function selectLeastBusy(members: QueueMemberRecord[]): QueueMemberRecord {
-  return [...members].sort(
-    (left, right) => left.activeConversationCount - right.activeConversationCount,
-  )[0];
+  return [...members].sort((left, right) => {
+    const countDiff = left.activeConversationCount - right.activeConversationCount;
+    if (countDiff !== 0) return countDiff;
+    const leftTs = left.lastAssignedAt ? Date.parse(left.lastAssignedAt) : 0;
+    const rightTs = right.lastAssignedAt ? Date.parse(right.lastAssignedAt) : 0;
+    if (leftTs !== rightTs) return leftTs - rightTs;
+    return left.userId.localeCompare(right.userId);
+  })[0];
 }
 
 function selectSkillsBased(members: QueueMemberRecord[], requiredSkills: string[]): QueueMemberRecord {

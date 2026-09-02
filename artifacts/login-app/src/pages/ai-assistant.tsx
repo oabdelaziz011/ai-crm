@@ -66,6 +66,10 @@ type SettingsDraft = {
   remember_conversation: boolean;
   conversation_timeout_minutes: number;
   max_conversation_age: number;
+  session_idle_warning_message_ar: string;
+  session_idle_warning_message_en: string;
+  session_ended_message_ar: string;
+  session_ended_message_en: string;
 };
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -76,7 +80,26 @@ function Card({ children, className = "" }: { children: ReactNode; className?: s
   );
 }
 
+function readLocalizedMessageMap(
+  messages: { ar?: string; en?: string } | null | undefined,
+  legacy: string | null | undefined,
+): { ar: string; en: string } {
+  const legacyText = typeof legacy === "string" ? legacy : "";
+  return {
+    ar: messages?.ar?.trim() || legacyText,
+    en: messages?.en?.trim() || legacyText,
+  };
+}
+
 function settingsToDraft(settings: AiAssistantSettings): SettingsDraft {
+  const warning = readLocalizedMessageMap(
+    settings.session_idle_warning_messages,
+    settings.session_idle_warning_message,
+  );
+  const ended = readLocalizedMessageMap(
+    settings.session_ended_messages,
+    settings.session_ended_message,
+  );
   return {
     is_enabled: settings.is_enabled,
     provider: settings.provider,
@@ -100,6 +123,10 @@ function settingsToDraft(settings: AiAssistantSettings): SettingsDraft {
     remember_conversation: settings.remember_conversation,
     conversation_timeout_minutes: settings.conversation_timeout_minutes,
     max_conversation_age: settings.max_conversation_age,
+    session_idle_warning_message_ar: warning.ar,
+    session_idle_warning_message_en: warning.en,
+    session_ended_message_ar: ended.ar,
+    session_ended_message_en: ended.en,
   };
 }
 
@@ -127,10 +154,22 @@ function buildDefaultDraft(t: (key: string) => string): SettingsDraft {
     remember_conversation: true,
     conversation_timeout_minutes: 30,
     max_conversation_age: 1440,
+    session_idle_warning_message_ar: t("aiAssistant.defaults.sessionIdleWarningMessageAr"),
+    session_idle_warning_message_en: t("aiAssistant.defaults.sessionIdleWarningMessageEn"),
+    session_ended_message_ar: t("aiAssistant.defaults.sessionEndedMessageAr"),
+    session_ended_message_en: t("aiAssistant.defaults.sessionEndedMessageEn"),
   };
 }
 
 function draftToUpdate(draft: SettingsDraft): AiAssistantSettingsUpdate {
+  const warningMessages = {
+    ar: draft.session_idle_warning_message_ar.trim().slice(0, 1000),
+    en: draft.session_idle_warning_message_en.trim().slice(0, 1000),
+  };
+  const endedMessages = {
+    ar: draft.session_ended_message_ar.trim().slice(0, 1000),
+    en: draft.session_ended_message_en.trim().slice(0, 1000),
+  };
   return {
     is_enabled: draft.is_enabled,
     provider: draft.provider,
@@ -154,6 +193,11 @@ function draftToUpdate(draft: SettingsDraft): AiAssistantSettingsUpdate {
     remember_conversation: draft.remember_conversation,
     conversation_timeout_minutes: draft.conversation_timeout_minutes,
     max_conversation_age: draft.remember_conversation ? draft.max_conversation_age : 0,
+    session_idle_warning_messages: warningMessages,
+    session_ended_messages: endedMessages,
+    // Keep legacy text columns populated for older readers / audits.
+    session_idle_warning_message: warningMessages.ar || warningMessages.en,
+    session_ended_message: endedMessages.ar || endedMessages.en,
   };
 }
 
@@ -262,6 +306,16 @@ export function AiAssistantPage() {
           remember_conversation: defaults.remember_conversation,
           conversation_timeout_minutes: defaults.conversation_timeout_minutes,
           max_conversation_age: defaults.max_conversation_age,
+          session_idle_warning_message: defaults.session_idle_warning_message_ar,
+          session_ended_message: defaults.session_ended_message_ar,
+          session_idle_warning_messages: {
+            ar: defaults.session_idle_warning_message_ar,
+            en: defaults.session_idle_warning_message_en,
+          },
+          session_ended_messages: {
+            ar: defaults.session_ended_message_ar,
+            en: defaults.session_ended_message_en,
+          },
         },
         {
           onError: (mutationError) => {
@@ -712,6 +766,125 @@ export function AiAssistantPage() {
                   <span className="text-xs text-muted-foreground">{t("aiAssistant.conversation.minutes")}</span>
                 </div>
               </SettingRow>
+              {draft.conversation_timeout_minutes > 0 ? (
+                <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+                  {t("aiAssistant.conversation.idleTimelineHint", {
+                    warn:
+                      draft.conversation_timeout_minutes === 1
+                        ? "0.5"
+                        : Math.floor(draft.conversation_timeout_minutes / 2),
+                    end: draft.conversation_timeout_minutes,
+                  })}
+                </p>
+              ) : null}
+              <div
+                className={`space-y-3 rounded-xl border border-white/10 bg-black/20 p-4 ${
+                  !canEdit || draft.conversation_timeout_minutes <= 0 ? "opacity-60" : ""
+                }`}
+              >
+                <div>
+                  <p className="text-sm font-medium">{t("aiAssistant.conversation.idleWarningMessage")}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t("aiAssistant.conversation.idleWarningMessageDesc")}
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="session-idle-warning-message-ar">
+                      {t("aiAssistant.conversation.messageArabic")}
+                    </Label>
+                    <Textarea
+                      id="session-idle-warning-message-ar"
+                      dir="rtl"
+                      value={draft.session_idle_warning_message_ar}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          session_idle_warning_message_ar: event.target.value,
+                        }))
+                      }
+                      disabled={!canEdit || draft.conversation_timeout_minutes <= 0}
+                      maxLength={1000}
+                      rows={3}
+                      className="min-h-[80px] border-white/10 bg-black/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="session-idle-warning-message-en">
+                      {t("aiAssistant.conversation.messageEnglish")}
+                    </Label>
+                    <Textarea
+                      id="session-idle-warning-message-en"
+                      dir="ltr"
+                      value={draft.session_idle_warning_message_en}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          session_idle_warning_message_en: event.target.value,
+                        }))
+                      }
+                      disabled={!canEdit || draft.conversation_timeout_minutes <= 0}
+                      maxLength={1000}
+                      rows={3}
+                      className="min-h-[80px] border-white/10 bg-black/20"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div
+                className={`space-y-3 rounded-xl border border-white/10 bg-black/20 p-4 ${
+                  !canEdit || draft.conversation_timeout_minutes <= 0 ? "opacity-60" : ""
+                }`}
+              >
+                <div>
+                  <p className="text-sm font-medium">{t("aiAssistant.conversation.sessionEndedMessage")}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t("aiAssistant.conversation.sessionEndedMessageDesc")}
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="session-ended-message-ar">
+                      {t("aiAssistant.conversation.messageArabic")}
+                    </Label>
+                    <Textarea
+                      id="session-ended-message-ar"
+                      dir="rtl"
+                      value={draft.session_ended_message_ar}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          session_ended_message_ar: event.target.value,
+                        }))
+                      }
+                      disabled={!canEdit || draft.conversation_timeout_minutes <= 0}
+                      maxLength={1000}
+                      rows={3}
+                      className="min-h-[80px] border-white/10 bg-black/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="session-ended-message-en">
+                      {t("aiAssistant.conversation.messageEnglish")}
+                    </Label>
+                    <Textarea
+                      id="session-ended-message-en"
+                      dir="ltr"
+                      value={draft.session_ended_message_en}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          session_ended_message_en: event.target.value,
+                        }))
+                      }
+                      disabled={!canEdit || draft.conversation_timeout_minutes <= 0}
+                      maxLength={1000}
+                      rows={3}
+                      className="min-h-[80px] border-white/10 bg-black/20"
+                    />
+                  </div>
+                </div>
+              </div>
               <SettingRow
                 label={t("aiAssistant.conversation.maxDuration")}
                 description={t("aiAssistant.conversation.maxDurationDesc")}

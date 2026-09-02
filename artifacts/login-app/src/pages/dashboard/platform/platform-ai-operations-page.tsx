@@ -37,6 +37,7 @@ import { OpsFeatureFlags } from "@/components/platform-ai-operations/ops-feature
 import { OpsAuditLog } from "@/components/platform-ai-operations/ops-audit-log";
 import { OpsAlertsBanner } from "@/components/platform-ai-operations/ops-alerts-banner";
 import { OpsGlobalSearch } from "@/components/platform-ai-operations/ops-global-search";
+import { ListPagination } from "@/components/ui/list-pagination";
 
 const OpsTrendChart = lazy(() =>
   import("@/components/platform-ai-operations/charts/ops-trend-chart").then((module) => ({
@@ -139,27 +140,19 @@ export function PlatformAiOperationsPage() {
 
         <TabsContent value="requests" className="space-y-4">
           <OpsRequestMonitor rows={requests.data ?? []} loading={requests.isLoading} />
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-              disabled={requestPage === 0}
-              onClick={() => setRequestPage((p) => Math.max(0, p - 1))}
-            >
-              {t("platformAiOps.pagination.prev")}
-            </button>
-            <span className="text-xs text-muted-foreground">
-              {t("platformAiOps.pagination.page", { page: requestPage + 1 })}
-            </span>
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-              disabled={(requests.data?.length ?? 0) < 50}
-              onClick={() => setRequestPage((p) => p + 1)}
-            >
-              {t("platformAiOps.pagination.next")}
-            </button>
-          </div>
+          <ListPagination
+            className="justify-end"
+            page={requestPage + 1}
+            totalPages={requestPage + 1 + ((requests.data?.length ?? 0) >= 50 ? 1 : 0)}
+            pageInfoLabel={t("platformAiOps.pagination.page", { page: requestPage + 1 })}
+            previousLabel={t("platformAiOps.pagination.prev")}
+            nextLabel={t("platformAiOps.pagination.next")}
+            canPrevious={requestPage > 0}
+            canNext={(requests.data?.length ?? 0) >= 50}
+            onPrevious={() => setRequestPage((p) => Math.max(0, p - 1))}
+            onNext={() => setRequestPage((p) => p + 1)}
+            size="sm"
+          />
         </TabsContent>
 
         <TabsContent value="tools">

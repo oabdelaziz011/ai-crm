@@ -235,6 +235,16 @@ export class OutboundMessagePipeline {
           .catch(() => undefined);
       }
 
+      if (outboundMessageId && this.ports.conversation.confirmOutgoingDelivery) {
+        await this.ports.conversation
+          .confirmOutgoingDelivery({
+            messageId: outboundMessageId,
+            status: updated.delivery_status,
+            externalMessageId: updated.external_message_id ?? sendResult.externalMessageId ?? null,
+          })
+          .catch(() => undefined);
+      }
+
       traceOutboundValidationPass("OutboundMessagePipeline.process", {
         deliveryStatus: updated.delivery_status,
       });
@@ -252,6 +262,15 @@ export class OutboundMessagePipeline {
         delivery.id,
         error instanceof Error ? error.message : "Outbound delivery failed",
       );
+      if (outboundMessageId && this.ports.conversation.confirmOutgoingDelivery) {
+        await this.ports.conversation
+          .confirmOutgoingDelivery({
+            messageId: outboundMessageId,
+            status: "failed",
+            externalMessageId: null,
+          })
+          .catch(() => undefined);
+      }
       throw error;
     }
   }

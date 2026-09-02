@@ -415,6 +415,14 @@ export function createSupabaseHandoffRepository(client: SupabaseClient): Handoff
       }
     },
 
+    async syncMemberActiveConversationCount(companyId, userId) {
+      const { error } = await client.rpc("handoff_sync_member_active_conversation_count", {
+        p_company_id: companyId,
+        p_user_id: userId,
+      });
+      if (error) throw new Error(error.message);
+    },
+
     async upsertPresence(input) {
       const now = new Date().toISOString();
       const { data, error } = await client

@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
 import { ConversationHeaderBar } from "@/components/omnichannel/workspace-v2/conversation-header-bar";
 import { WorkspaceActionToolbar } from "@/components/omnichannel/workspace-v2/workspace-action-toolbar";
+import { HandoffOwnershipBadge } from "@/components/omnichannel/handoff-ownership-badge";
+import type { HandoffOwnershipView } from "@/hooks/omnichannel/use-conversation-handoff-ownership";
 import { TranscriptView, type TranscriptViewHandle } from "@/components/omnichannel/agent-desk/transcript-view";
 import { ComposePanel, type ComposePanelHandle } from "@/components/omnichannel/agent-desk/compose-panel";
 import { getComposerPlaceholder, getKeyboardHint, getToneLabel, getTranslationToggleLabels } from "@/lib/omnichannel/services/omnichannel-productivity-library";
@@ -56,6 +58,10 @@ type ConversationPaneProps = {
   onAssign: () => void;
   onOpenAssignment: () => void;
   onRelease: () => void;
+  onPauseAi?: () => void;
+  onResumeAi?: () => void;
+  aiPaused?: boolean;
+  handoffOwnership?: HandoffOwnershipView | null;
   onClose: () => void;
   onResolve?: () => void;
   onReopen?: () => void;
@@ -109,6 +115,10 @@ export const ConversationPane = memo(function ConversationPane({
   onAssign,
   onOpenAssignment,
   onRelease,
+  onPauseAi,
+  onResumeAi,
+  aiPaused,
+  handoffOwnership,
   onClose,
   onResolve,
   onReopen,
@@ -260,6 +270,12 @@ export const ConversationPane = memo(function ConversationPane({
         />
       ) : null}
 
+      {handoffOwnership ? (
+        <div className="border-b border-[var(--ws-border-subtle)] px-3 py-1.5">
+          <HandoffOwnershipBadge view={handoffOwnership} />
+        </div>
+      ) : null}
+
       <WorkspaceActionToolbar
         lifecycleState={lifecycleState}
         disabled={actionsPending}
@@ -276,6 +292,9 @@ export const ConversationPane = memo(function ConversationPane({
         onAssign={onAssign}
         onOpenAssignment={onOpenAssignment}
         onRelease={onRelease}
+        onPauseAi={onPauseAi}
+        onResumeAi={onResumeAi}
+        aiPaused={aiPaused}
         onClose={onClose}
         onResolve={onResolve}
         onReopen={onReopen}

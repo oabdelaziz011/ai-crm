@@ -42,6 +42,49 @@ describe("loadCompanyWhatsAppCredentialsDecrypted", () => {
     assert.equal(credentials?.phoneNumberId, "1214681355059951");
     assert.ok(diagnostics.some((entry) => entry.stage === "canonical.load.table.mapped"));
   });
+
+  it("does not fall back to plaintext when encrypted blob exists but decrypt RPC is empty", async () => {
+    const diagnostics: Array<Record<string, unknown>> = [];
+    const client = {
+      rpc: async () => ({
+        data: {
+          access_token: "",
+          phone_number_id: "1285847481276306",
+          business_account_id: "1419087680143420",
+          webhook_verify_token: "",
+          has_access_token: false,
+        },
+        error: null,
+      }),
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: {
+                access_token: "stale-plaintext-token",
+                access_token_encrypted: "cipher-blob",
+                phone_number_id: "1285847481276306",
+                business_account_id: "1419087680143420",
+                webhook_verify_token: "",
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+
+    const credentials = await loadCompanyWhatsAppCredentialsDecrypted(
+      client as never,
+      "company-1",
+      {
+        onDiagnostic: (detail) => diagnostics.push(detail),
+      },
+    );
+
+    assert.equal(credentials, null);
+    assert.ok(diagnostics.some((entry) => entry.stage === "canonical.load.encrypted_only"));
+  });
 });
 
 describe("resolveWhatsAppRuntimeConfiguration", () => {

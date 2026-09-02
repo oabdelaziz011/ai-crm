@@ -424,6 +424,8 @@ export function useConversationViewLabels() {
       aiAssist: t("omnichannel.actions.aiAssist"),
       release: t("omnichannel.actions.release"),
       returnToAi: t("omnichannel.actions.returnToAi"),
+      pauseAi: t("omnichannel.actions.pauseAi"),
+      resumeAi: t("omnichannel.actions.resumeAi"),
       returnConversation: t("omnichannel.actions.returnConversation"),
       cancelEscalation: t("omnichannel.actions.cancelEscalation"),
       more: t("omnichannel.actions.more"),

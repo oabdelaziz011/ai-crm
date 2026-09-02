@@ -78,6 +78,7 @@ export function useWhatsAppConnectionTest(companyId: string | null) {
         };
       });
 
+      // Refetch public settings so stored token_status / last_auth_error match DB.
       void qc.invalidateQueries({ queryKey: whatsappSettingsKey(companyId) });
     },
   });

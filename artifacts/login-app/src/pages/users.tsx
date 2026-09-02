@@ -37,6 +37,7 @@ import {
 import { BranchAssignmentMultiSelect } from "@/lib/company/branches/components";
 import { useBranches, useUserBranchAssignmentMap } from "@/lib/company/branches/hooks";
 import { Button } from "@/components/ui/button";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -654,35 +655,20 @@ export function UsersPage() {
               })}
             </div>
 
-            <div className="p-4 border-t border-white/5 flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                {t("users.pagination.pageInfo", {
-                  page: safePage,
-                  totalPages,
-                  total: visibleUsers.length,
-                })}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10"
-                  disabled={safePage <= 1}
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                >
-                  {t("users.pagination.previous")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                >
-                  {t("users.pagination.next")}
-                </Button>
-              </div>
-            </div>
+            <ListPagination
+              className="border-t border-white/5 p-4"
+              page={safePage}
+              totalPages={totalPages}
+              summaryLabel={t("users.pagination.pageInfo", {
+                page: safePage,
+                totalPages,
+                total: visibleUsers.length,
+              })}
+              previousLabel={t("users.pagination.previous")}
+              nextLabel={t("users.pagination.next")}
+              onPrevious={() => setPage((prev) => Math.max(1, prev - 1))}
+              onNext={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            />
           </>
         )}
       </div>

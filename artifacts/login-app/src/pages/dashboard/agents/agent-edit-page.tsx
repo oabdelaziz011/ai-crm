@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
@@ -10,7 +10,10 @@ import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-fea
 import { ModulePurposeBanner } from "@/components/dashboard/module-purpose-banner";
 import { DashboardErrorBanner, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
-import { AiEmployeeEditSections } from "@/lib/ai-employees/components/ai-employee-form-sections";
+import {
+  AiEmployeeFormSections,
+  type AiEmployeeWizardStep,
+} from "@/lib/ai-employees/components/ai-employee-form-sections";
 import {
   formatAiEmployeeError,
   useAiEmployee,
@@ -27,10 +30,22 @@ import { agentDetailHref } from "@/config/agents-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import type { AiEmployeeFormValues } from "@/lib/ai-employees/types";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Same Control Center step order as create/continue — edit never creates a duplicate. */
+const STEPS: AiEmployeeWizardStep[] = [
+  "general",
+  "prompt",
+  "intelligence",
+  "knowledge",
+  "tools",
+  "channels",
+  "review",
+];
 
 export function AgentEditPage() {
   const { t } = useTranslation("common");
@@ -51,15 +66,15 @@ export function AgentEditPage() {
   });
   const canEdit = hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
 
-  const { data: employee, isLoading, error } = useAiEmployee(
-    companyId,
-    validAgentId,
-  );
+  const { data: employee, isLoading, error } = useAiEmployee(companyId, validAgentId);
   const updateEmployee = useUpdateAiEmployee(companyId, validAgentId ?? null);
   const { data: toolOptions = [] } = useAiEmployeeToolOptions();
   const { data: knowledgeOptions = [] } = useAiEmployeeKnowledgeOptions(companyId);
 
   const [values, setValues] = useState<AiEmployeeFormValues | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
+  const topAnchorRef = useRef<HTMLDivElement>(null);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const ownersQuery = useQuery({
     queryKey: ["ai-employees", "owners", companyId],
@@ -84,7 +99,13 @@ export function AgentEditPage() {
     }
   }, [employee]);
 
+  useEffect(() => {
+    topAnchorRef.current?.scrollIntoView({ block: "start" });
+  }, [stepIndex]);
+
   const ownerOptions = useMemo(() => ownersQuery.data ?? [], [ownersQuery.data]);
+  const step = STEPS[stepIndex]!;
+  const isLastStep = stepIndex === STEPS.length - 1;
 
   const floatingAiContext = useMemo(
     () =>
@@ -100,13 +121,14 @@ export function AgentEditPage() {
   );
   useRegisterFloatingAiContext(floatingAiContext);
 
-  const handleSave = async () => {
-    if (!values) return;
+  const handleSave = async (navigateAfter: boolean) => {
+    if (!values || !validAgentId) return;
     try {
+      // Update existing row only — never create.
       await updateEmployee.mutateAsync(values);
       toast({ title: t("aiEmployees.updated") });
-      if (agentId) {
-        setLocation(nestedSectionHref(agentDetailHref(agentId)));
+      if (navigateAfter) {
+        setLocation(nestedSectionHref(agentDetailHref(validAgentId)));
       }
     } catch (saveError) {
       toast({
@@ -115,6 +137,15 @@ export function AgentEditPage() {
         description: formatAiEmployeeError(saveError),
       });
     }
+  };
+
+  const handleNext = async () => {
+    if (isLastStep) {
+      await handleSave(true);
+      return;
+    }
+    await handleSave(false);
+    setStepIndex((current) => Math.min(STEPS.length - 1, current + 1));
   };
 
   if (!canAccess || !canEdit) {
@@ -134,21 +165,25 @@ export function AgentEditPage() {
   }
 
   return (
-    <div className="w-full space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => setLocation(nestedSectionHref(agentDetailHref(agentId)))}>
+    <div ref={topAnchorRef} className="w-full scroll-mt-4 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-xl"
+          onClick={() => setLocation(nestedSectionHref(agentDetailHref(agentId)))}
+        >
           <ArrowLeft className="me-2 size-4" />
           {t("aiEmployees.backToDetail")}
         </Button>
-        <Button className="rounded-xl" disabled={updateEmployee.isPending} onClick={() => void handleSave()}>
-          <Save className="me-2 size-4" />
-          {t("aiEmployees.save")}
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          {t("aiEmployees.wizard.stepOf", { current: stepIndex + 1, total: STEPS.length })}
+        </p>
       </div>
 
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t("aiEmployees.edit.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{employee.displayName}</p>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{employee.displayName}</p>
       </div>
 
       <ModulePurposeBanner
@@ -161,16 +196,88 @@ export function AgentEditPage() {
         className="shadow-none"
       />
 
-      <section className="space-y-6 rounded-2xl border border-border/50 bg-transparent p-5 sm:p-6">
-        <AiEmployeeEditSections
+      <nav aria-label={t("aiEmployees.wizard.stepsNav")} className="overflow-x-auto">
+        <ol className="flex w-full min-w-max items-stretch justify-between gap-1 border-b border-border/60 pb-px lg:min-w-0">
+          {STEPS.map((wizardStep, index) => {
+            const active = index === stepIndex;
+            const done = index < stepIndex;
+            return (
+              <li key={wizardStep} className="flex-1">
+                <button
+                  type="button"
+                  onClick={() => setStepIndex(index)}
+                  className={cn(
+                    "relative w-full px-2 py-2.5 text-start text-xs transition-colors sm:text-sm",
+                    active ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span className="block truncate">{t(`aiEmployees.wizard.steps.${wizardStep}`)}</span>
+                  {active ? (
+                    <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
+                  ) : null}
+                  {done && !active ? (
+                    <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-muted-foreground/40" />
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+
+      <div className="space-y-3">
+        <h2 ref={stepHeadingRef} className="text-lg font-semibold scroll-mt-4">
+          {t(`aiEmployees.wizard.steps.${step}`)}
+        </h2>
+        <p className="text-sm text-muted-foreground">{t(`aiEmployees.wizard.stepHints.${step}`)}</p>
+        <AiEmployeeFormSections
+          step={step}
           values={values}
           companyId={companyId}
           ownerOptions={ownerOptions}
           knowledgeOptions={knowledgeOptions}
           toolOptions={toolOptions}
           onChange={(patch) => setValues((current) => (current ? { ...current, ...patch } : current))}
+          reviewContext={{
+            employeeId: validAgentId,
+            transferableFlowId: employee.runtimeConfiguration?.transferableFlowId ?? null,
+          }}
         />
-      </section>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-xl"
+          disabled={stepIndex === 0 || updateEmployee.isPending}
+          onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
+        >
+          <ArrowLeft className="me-2 size-4" />
+          {t("aiEmployees.wizard.back")}
+        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            disabled={updateEmployee.isPending}
+            onClick={() => void handleSave(false)}
+          >
+            <Save className="me-2 size-4" />
+            {t("aiEmployees.save")}
+          </Button>
+          <Button
+            type="button"
+            className="rounded-xl"
+            disabled={updateEmployee.isPending}
+            onClick={() => void handleNext()}
+          >
+            {isLastStep ? t("aiEmployees.save") : t("aiEmployees.wizard.next")}
+            {!isLastStep ? <ArrowRight className="ms-2 size-4" /> : null}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

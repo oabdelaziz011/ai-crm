@@ -10,6 +10,7 @@ import type {
   RollbackAiEmployeeInput,
 } from "@/lib/ai-employees/types";
 import type { AiEmployeeConfigurationService } from "./ai-employee-configuration-service";
+import { assertAiEmployeeSafeToDelete, isActiveAiEmployeeStatus } from "./assert-ai-employee-safe-to-archive";
 import { AiEmployeeLifecycleError } from "./ai-employee-lifecycle-errors";
 import {
   buildReadinessScore,
@@ -149,10 +150,40 @@ export class AiEmployeeLifecycleService {
   }
 
   async archive(employeeId: string, companyId: string, actorId?: string | null) {
-    await this.employees.update(employeeId, companyId, {
-      status: "archived",
-      updated_by: actorId ?? null,
-    });
+    const safety = await assertAiEmployeeSafeToDelete(this.employees.client, companyId, employeeId);
+    if (!safety.canDelete) {
+      if (safety.alreadyArchived) {
+        throw new AiEmployeeLifecycleError(
+          "This AI Employee is already archived. Restore it from Lifecycle if you need it again.",
+          "already_archived",
+          safety,
+        );
+      }
+      throw new AiEmployeeLifecycleError(
+        safety.isActiveEmployee
+          ? "This AI Employee is active and must be disabled before it can be deleted."
+          : "Cannot delete this AI Employee.",
+        "delete_blocked",
+        safety,
+      );
+    }
+    const freshEmployee = await this.employees.getById(employeeId, companyId);
+    if (!freshEmployee) {
+      throw new AiEmployeeLifecycleError("AI Employee not found", "not_found");
+    }
+    if (isActiveAiEmployeeStatus(freshEmployee.status)) {
+      const freshSafety = await assertAiEmployeeSafeToDelete(
+        this.employees.client,
+        companyId,
+        employeeId,
+      );
+      throw new AiEmployeeLifecycleError(
+        "This AI Employee is active and must be disabled before it can be deleted.",
+        "delete_blocked",
+        freshSafety,
+      );
+    }
+    await this.employees.softDelete(employeeId, companyId, actorId);
     await this.lifecycle.recordChangeEvent({
       companyId,
       employeeId,

@@ -35,6 +35,7 @@ import {
   AiEmployeeStatusBadge,
   AgentConfigurationWorkspace,
   ChannelInboundBindingPanel,
+  ReadinessScoreCard,
 } from "@/lib/ai-employees/components";
 import {
   formatAiEmployeeError,
@@ -57,6 +58,7 @@ import {
   useTestAiSkill,
   useToggleAiSkillFavorite,
   useArchiveAiEmployee,
+  useCheckAiEmployeeDeleteDependencies,
   useDeleteAiEmployee,
   useDisableAiEmployee,
   usePublishAiEmployee,
@@ -79,7 +81,12 @@ import {
   hasAiEmployeesSkillsViewPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
+import type { AiEmployeeDeleteDependencyResult } from "@/lib/ai-employees/services/assert-ai-employee-safe-to-archive";
 import { agentContinueHref, agentEditHref } from "@/config/agents-route-registry";
+import {
+  isAiEmployeeReadOnlyViewMode,
+} from "@/lib/ai-employees/utilities/ai-employee-row-actions";
+import type { AgentConfigurationTabId } from "@/lib/ai-employees/components/configuration/agent-configuration-workspace";
 import {
   formatEmployeeDepartmentLabel,
   formatEmployeeProviderLabel,
@@ -154,6 +161,26 @@ function readDetailTab(search: string): DetailTab {
   return DETAIL_TABS.includes(value as DetailTab) ? (value as DetailTab) : "overview";
 }
 
+const SETUP_CONFIG_TABS: AgentConfigurationTabId[] = [
+  "general",
+  "provider",
+  "model",
+  "prompt",
+  "knowledge",
+  "tools",
+  "runtime",
+  "limits",
+  "preview",
+];
+
+function readSetupConfigTab(search: string): AgentConfigurationTabId | undefined {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const value = params.get("config");
+  return SETUP_CONFIG_TABS.includes(value as AgentConfigurationTabId)
+    ? (value as AgentConfigurationTabId)
+    : undefined;
+}
+
 export function AgentDetailPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
@@ -162,6 +189,8 @@ export function AgentDetailPage() {
   const params = useParams<{ agentId: string }>();
   const agentId = params.agentId;
   const [activeTab, setActiveTab] = useState<DetailTab>(() => readDetailTab(search));
+  const isReadOnlyView = isAiEmployeeReadOnlyViewMode(search);
+  const setupConfigTab = readSetupConfigTab(search);
 
   useEffect(() => {
     setActiveTab(readDetailTab(search));
@@ -170,7 +199,12 @@ export function AgentDetailPage() {
   const goToTab = (tab: DetailTab) => {
     setActiveTab(tab);
     const base = location.split("?")[0] ?? location;
-    setLocation(tab === "overview" ? base : `${base}?tab=${tab}`);
+    const next = new URLSearchParams();
+    if (isReadOnlyView) next.set("mode", "view");
+    if (tab !== "overview") next.set("tab", tab);
+    if (tab === "setup" && setupConfigTab) next.set("config", setupConfigTab);
+    const qs = next.toString();
+    setLocation(qs ? `${base}?${qs}` : base);
   };
   const { company, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
@@ -182,20 +216,32 @@ export function AgentDetailPage() {
     hasPermission,
     agentsFeatureEnabled,
   });
-  const canEdit = hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
-  const canDelete = hasAiEmployeesDeletePermission(hasPermission, isSuperAdmin);
-  const canPublish = hasAiEmployeesPublishPermission(hasPermission, isSuperAdmin);
-  const canRollback = hasAiEmployeesRollbackPermission(hasPermission, isSuperAdmin);
+  const canEditPermission = hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
+  const canDeletePermission = hasAiEmployeesDeletePermission(hasPermission, isSuperAdmin);
+  const canPublishPermission = hasAiEmployeesPublishPermission(hasPermission, isSuperAdmin);
+  const canRollbackPermission = hasAiEmployeesRollbackPermission(hasPermission, isSuperAdmin);
+  // View Details (`mode=view`) forces a genuine read-only Control Center — even for editors.
+  const canEdit = canEditPermission && !isReadOnlyView;
+  const canDelete = canDeletePermission && !isReadOnlyView;
+  const canPublish = canPublishPermission && !isReadOnlyView;
+  const canRollback = canRollbackPermission && !isReadOnlyView;
   const canViewOperations = hasAiEmployeesOperationsViewPermission(hasPermission, isSuperAdmin);
   const canViewMemory = hasAiEmployeesMemoryViewPermission(hasPermission, isSuperAdmin);
   const canViewSkills = hasAiEmployeesSkillsViewPermission(hasPermission, isSuperAdmin);
   const canViewCollaboration = hasAiEmployeesCollaborationViewPermission(hasPermission, isSuperAdmin);
   const canViewGovernance = hasAiEmployeesGovernanceViewPermission(hasPermission, isSuperAdmin);
   const canViewAdministration = hasAiEmployeesAdministrationViewPermission(hasPermission, isSuperAdmin);
-  const canEditSkills = hasAiEmployeesSkillsEditPermission(hasPermission, isSuperAdmin);
-  const canControlOperations = hasAiEmployeesOperationsControlPermission(hasPermission, isSuperAdmin);
+  const canEditSkills =
+    hasAiEmployeesSkillsEditPermission(hasPermission, isSuperAdmin) && !isReadOnlyView;
+  const canControlOperations =
+    hasAiEmployeesOperationsControlPermission(hasPermission, isSuperAdmin) && !isReadOnlyView;
 
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [dependencyResult, setDependencyResult] = useState<AiEmployeeDeleteDependencyResult | null>(
+    null,
+  );
+  const [checkError, setCheckError] = useState<string | null>(null);
+
   const validAgentId = agentId && UUID_PATTERN.test(agentId) ? agentId : null;
   const { data: employee, isLoading, error } = useAiEmployee(companyId, validAgentId);
   const configState = useAiEmployeeConfigurationState(companyId, validAgentId);
@@ -220,6 +266,7 @@ export function AgentDetailPage() {
   const restoreEmployee = useRestoreAiEmployee(companyId, validAgentId);
   const disableEmployee = useDisableAiEmployee(companyId, validAgentId);
   const deleteEmployee = useDeleteAiEmployee(companyId);
+  const checkDependencies = useCheckAiEmployeeDeleteDependencies(companyId);
 
   const floatingAiContext = useMemo(
     () =>
@@ -235,11 +282,26 @@ export function AgentDetailPage() {
   );
   useRegisterFloatingAiContext(floatingAiContext);
 
+  const runDeleteCheck = async (employeeId: string) => {
+    setCheckError(null);
+    setDependencyResult(null);
+    try {
+      const result = await checkDependencies.mutateAsync(employeeId);
+      setDependencyResult(result);
+    } catch (error) {
+      setCheckError(formatAiEmployeeError(error));
+    }
+  };
+
   const handleDelete = async () => {
     if (!employee) return;
     try {
+      const fresh = await checkDependencies.mutateAsync(employee.id);
+      setDependencyResult(fresh);
+      if (!fresh.canDelete) return;
       await deleteEmployee.mutateAsync(employee.id);
       toast({ title: t("aiEmployees.deleted") });
+      setDeleteOpen(false);
       setLocation(NEST_INDEX);
     } catch (deleteError) {
       toast({
@@ -267,6 +329,7 @@ export function AgentDetailPage() {
   }
 
   const isDraft = employee.status === "draft";
+  const isArchived = employee.status === "archived";
   const runtimeLabel =
     employee.status !== "published"
       ? t("aiEmployees.workspace.overview.runtimeNotPublished")
@@ -301,13 +364,35 @@ export function AgentDetailPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold">{employee.displayName}</h1>
                 <AiEmployeeStatusBadge status={employee.status} />
+                {isReadOnlyView ? (
+                  <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                    {t("aiEmployees.controlCenter.readOnlyBadge")}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t(`aiEmployees.workspace.overview.${statusCopyKey}`)}
               </p>
+              {isReadOnlyView ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t("aiEmployees.controlCenter.readOnlyHint")}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {isReadOnlyView && canEditPermission ? (
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setLocation(nestedSectionHref(agentEditHref(employee.id)))}
+              >
+                <Pencil className="me-2 size-4" />
+                {t("aiEmployees.actions.edit")}
+              </Button>
+            ) : null}
+            {!isReadOnlyView ? (
+              <>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button type="button" variant="outline" className="rounded-xl">
@@ -333,13 +418,28 @@ export function AgentDetailPage() {
                 <DropdownMenuItem onSelect={() => goToTab("lifecycle")}>
                   {t("aiEmployees.actions.openLifecycle")}
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => goToTab("channels")}>
+                  {t("aiEmployees.actions.manageChannels")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    const base = location.split("?")[0] ?? location;
+                    setLocation(`${base}?tab=setup&config=tools`);
+                    setActiveTab("setup");
+                  }}
+                >
+                  {t("aiEmployees.actions.manageCapabilities")}
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setLocation("~/dashboard/channels")}>
                   {t("aiEmployees.actions.openChannels")}
                 </DropdownMenuItem>
-                {canDelete ? (
+                {canDelete && !isArchived ? (
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
-                    onSelect={() => setDeleteOpen(true)}
+                    onSelect={() => {
+                      setDeleteOpen(true);
+                      if (employee) void runDeleteCheck(employee.id);
+                    }}
                   >
                     <Trash2 className="me-2 size-4" />
                     {t("aiEmployees.actions.delete")}
@@ -372,6 +472,8 @@ export function AgentDetailPage() {
                 <Pencil className="me-2 size-4" />
                 {t("aiEmployees.workspace.overview.ctaEdit")}
               </Button>
+            ) : null}
+              </>
             ) : null}
           </div>
         </div>
@@ -419,7 +521,11 @@ export function AgentDetailPage() {
                 <NextStepRow
                   done={Boolean(employee.provider && employee.model && employee.systemPromptSummary)}
                   label={t("aiEmployees.workspace.overview.stepContinue")}
-                  onClick={() => (isDraft ? setLocation(agentContinueHref(employee.id)) : goToTab("setup"))}
+                  onClick={() =>
+                    isReadOnlyView || !isDraft
+                      ? goToTab("setup")
+                      : setLocation(agentContinueHref(employee.id))
+                  }
                 />
                 <NextStepRow
                   done={(employee.tags ?? []).some((tag) => tag.startsWith("channel:"))}
@@ -437,6 +543,7 @@ export function AgentDetailPage() {
                   onClick={() => goToTab("lifecycle")}
                 />
               </ol>
+              {!isReadOnlyView ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 {isDraft && canEdit ? (
                   <Button size="sm" className="rounded-xl" onClick={() => setLocation(agentContinueHref(employee.id))}>
@@ -452,6 +559,66 @@ export function AgentDetailPage() {
                   </Button>
                 ) : null}
               </div>
+              ) : null}
+            </DashboardCard>
+
+            <ReadinessScoreCard
+              readiness={lifecycleState.readiness}
+              isLoading={lifecycleState.isLoading}
+            />
+
+            <DashboardCard className="space-y-3 border-border/50 bg-transparent p-5 shadow-none">
+              <h2 className="text-sm font-semibold">{t("aiEmployees.controlCenter.overviewTitle")}</h2>
+              <p className="text-xs text-muted-foreground">{t("aiEmployees.controlCenter.overviewBody")}</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <DetailRow
+                  label={t("aiEmployees.controlCenter.fields.status")}
+                  value={t(`aiEmployees.status.${employee.status}`)}
+                />
+                <DetailRow
+                  label={t("aiEmployees.controlCenter.fields.readiness")}
+                  value={
+                    lifecycleState.readiness
+                      ? `${lifecycleState.readiness.score}%`
+                      : t("aiEmployees.detail.noData")
+                  }
+                />
+                <DetailRow
+                  label={t("aiEmployees.table.provider")}
+                  value={formatEmployeeProviderLabel(t, employee.provider)}
+                />
+                <DetailRow label={t("aiEmployees.table.model")} value={employee.model} />
+                <DetailRow
+                  label={t("aiEmployees.detail.knowledge")}
+                  value={localizeEmployeeSummary(
+                    t,
+                    employee.knowledgeSummary,
+                    "aiEmployees.detail.emptyKnowledge",
+                  )}
+                />
+                <DetailRow
+                  label={t("aiEmployees.detail.tools")}
+                  value={localizeEmployeeSummary(t, employee.toolSummary, "aiEmployees.detail.emptyTools")}
+                />
+                <DetailRow
+                  label={t("aiEmployees.table.channels")}
+                  value={
+                    (employee.tags ?? []).filter((tag) => tag.startsWith("channel:")).length > 0
+                      ? (employee.tags ?? [])
+                          .filter((tag) => tag.startsWith("channel:") || tag === "capability:omnichannel")
+                          .map((tag) => formatEmployeeTagLabel(t, tag))
+                          .join(" · ")
+                      : t("aiEmployees.form.channelRouting.noneSelected")
+                  }
+                />
+                <DetailRow
+                  label={t("aiEmployees.controlCenter.fields.updated")}
+                  value={new Date(employee.updatedAt).toLocaleString()}
+                />
+              </div>
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                {t("aiEmployees.controlCenter.permissionsNote")}
+              </p>
             </DashboardCard>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -531,8 +698,10 @@ export function AgentDetailPage() {
             employee={employee}
             preview={configState.preview}
             canEdit={canEdit}
+            initialTab={setupConfigTab}
             isSaving={updateConfiguration.isPending || configState.isLoading}
             onSave={(patch) => {
+              if (!canEdit) return;
               void updateConfiguration.mutateAsync(patch).catch((saveError) => {
                 toast({
                   variant: "destructive",
@@ -550,6 +719,7 @@ export function AgentDetailPage() {
             canEdit={canEdit}
             isSaving={updateConfiguration.isPending}
             onSave={(patch) => {
+              if (!canEdit) return;
               void updateConfiguration.mutateAsync(patch).catch((saveError) => {
                 toast({
                   variant: "destructive",
@@ -673,16 +843,8 @@ export function AgentDetailPage() {
                   }
                 }}
                 onArchive={async () => {
-                  try {
-                    await archiveEmployee.mutateAsync();
-                    toast({ title: t("aiEmployees.deleted") });
-                  } catch (archiveError) {
-                    toast({
-                      variant: "destructive",
-                      title: t("aiEmployees.errors.title"),
-                      description: formatAiEmployeeLifecycleError(archiveError),
-                    });
-                  }
+                  setDeleteOpen(true);
+                  if (employee) void runDeleteCheck(employee.id);
                 }}
                 onRestore={async () => {
                   try {
@@ -789,9 +951,21 @@ export function AgentDetailPage() {
       <AiEmployeeDeleteDialog
         employee={employee}
         open={deleteOpen}
-        isDeleting={deleteEmployee.isPending}
-        onOpenChange={setDeleteOpen}
+        isDeleting={deleteEmployee.isPending || checkDependencies.isPending}
+        isChecking={checkDependencies.isPending && !dependencyResult && !checkError}
+        dependencyResult={dependencyResult}
+        checkError={checkError}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) {
+            setDependencyResult(null);
+            setCheckError(null);
+          }
+        }}
         onConfirm={handleDelete}
+        onRecheck={() => {
+          if (employee) void runDeleteCheck(employee.id);
+        }}
       />
     </>
   );

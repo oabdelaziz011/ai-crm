@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useMemo, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DashboardCard, DashboardPageFallback } from "@/components/dashboard/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -69,6 +69,8 @@ type AgentConfigurationWorkspaceProps = {
   canEdit: boolean;
   isSaving: boolean;
   onSave: (patch: AiEmployeeConfigurationUpdate) => void;
+  /** Optional initial nested tab (e.g. deep-link Capabilities & tools → tools). */
+  initialTab?: AgentConfigurationTabId;
 };
 
 const TAB_ORDER: AgentConfigurationTabId[] = [
@@ -83,15 +85,28 @@ const TAB_ORDER: AgentConfigurationTabId[] = [
   "preview",
 ];
 
+function resolveInitialTab(value: AgentConfigurationTabId | undefined): AgentConfigurationTabId {
+  return value && TAB_ORDER.includes(value) ? value : "general";
+}
+
 export const AgentConfigurationWorkspace = memo(function AgentConfigurationWorkspace({
   employee,
   preview,
   canEdit,
   isSaving,
   onSave,
+  initialTab,
 }: AgentConfigurationWorkspaceProps) {
   const { t } = useTranslation("common");
-  const [activeTab, setActiveTab] = useState<AgentConfigurationTabId>("general");
+  const [activeTab, setActiveTab] = useState<AgentConfigurationTabId>(() =>
+    resolveInitialTab(initialTab),
+  );
+
+  useEffect(() => {
+    if (initialTab && TAB_ORDER.includes(initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const issueCount = preview?.validationIssues.filter((issue) => issue.severity === "error").length ?? 0;
 

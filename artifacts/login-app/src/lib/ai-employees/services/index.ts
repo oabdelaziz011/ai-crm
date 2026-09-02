@@ -23,3 +23,22 @@ export {
   buildInboundEmployeeConversationMetadata,
   resolveInboundChannelEmployee,
 } from "./resolve-inbound-channel-employee";
+export {
+  assertAiEmployeeSafeToDelete,
+  assertAiEmployeeSafeToArchive,
+  employeeHasChannelRoutingTags,
+  emptyDeleteDependencyResult,
+  emptyArchiveDependencyResult,
+  isTerminalConversationState,
+  isTerminalHandoffLifecycleState,
+  readAiEmployeeIdFromWorkflowMemory,
+  readTransferableFlowId,
+  scoreEmployeeTagsForChannel,
+  type AiEmployeeDeleteDependencyItem,
+  type AiEmployeeDeleteDependencyResult,
+  type AiEmployeeDeleteDependencyType,
+  type AiEmployeeArchiveDependencyItem,
+  type AiEmployeeArchiveDependencyResult,
+  type AiEmployeeArchiveDependencyType,
+  type AssertAiEmployeeSafeToDeleteOptions,
+} from "./assert-ai-employee-safe-to-archive";

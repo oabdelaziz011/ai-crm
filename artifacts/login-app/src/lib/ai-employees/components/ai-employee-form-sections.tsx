@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
@@ -41,16 +41,19 @@ import {
   AI_EMPLOYEE_PROMPT_TEMPLATE_KEYS,
   type AiEmployeePromptTemplateKey,
 } from "@/lib/ai-employees/utilities/prompt-templates";
+import { agentDetailHref, agentManageChannelsHref } from "@/config/agents-route-registry";
 import { pickDefaultConnection } from "@/lib/runtime-integration/chat-config";
 import { cn } from "@/lib/utils";
 
 export type AiEmployeeWizardStep =
   | "general"
+  | "prompt"
+  | "intelligence"
   | "provider"
   | "model"
-  | "prompt"
   | "knowledge"
   | "tools"
+  | "channels"
   | "review";
 
 type AiEmployeeFormSectionsProps = {
@@ -61,6 +64,11 @@ type AiEmployeeFormSectionsProps = {
   knowledgeOptions: KnowledgeSourceOption[];
   toolOptions: ToolDefinitionOption[];
   onChange: (patch: Partial<AiEmployeeFormValues>) => void;
+  /** Optional review extras from persisted employee (never invented). */
+  reviewContext?: {
+    employeeId?: string | null;
+    transferableFlowId?: string | null;
+  };
 };
 
 export function AiEmployeeFormSections({
@@ -71,6 +79,7 @@ export function AiEmployeeFormSections({
   knowledgeOptions,
   toolOptions,
   onChange,
+  reviewContext,
 }: AiEmployeeFormSectionsProps) {
   const { t } = useTranslation("common");
   const { data: connections = [] } = useAiProviderConnectionsAdmin(companyId);
@@ -265,12 +274,43 @@ export function AiEmployeeFormSections({
             <p className="text-xs text-muted-foreground">{t("aiEmployees.form.welcomeMessageHint")}</p>
           </Field>
         </div>
-        <div className="md:col-span-2 xl:col-span-3">
-          <ChannelRoutingTagsField
-            tags={values.tags}
-            onChange={(nextTags) => onChange({ tags: nextTags })}
-          />
-        </div>
+      </div>
+    );
+  }
+
+  if (step === "channels") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">{t("aiEmployees.wizard.stepHints.channels")}</p>
+        <ChannelRoutingTagsField
+          tags={values.tags}
+          onChange={(nextTags) => onChange({ tags: nextTags })}
+        />
+      </div>
+    );
+  }
+
+  if (step === "intelligence") {
+    return (
+      <div className="space-y-8">
+        <AiEmployeeFormSections
+          step="provider"
+          values={values}
+          companyId={companyId}
+          ownerOptions={ownerOptions}
+          knowledgeOptions={knowledgeOptions}
+          toolOptions={toolOptions}
+          onChange={onChange}
+        />
+        <AiEmployeeFormSections
+          step="model"
+          values={values}
+          companyId={companyId}
+          ownerOptions={ownerOptions}
+          knowledgeOptions={knowledgeOptions}
+          toolOptions={toolOptions}
+          onChange={onChange}
+        />
       </div>
     );
   }
@@ -625,46 +665,104 @@ export function AiEmployeeFormSections({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <ReviewItem label={t("aiEmployees.form.displayName")} value={values.displayName} />
-        <ReviewItem label={t("aiEmployees.form.internalName")} value={values.name} />
-        <ReviewItem
-          label={t("aiEmployees.form.department")}
-          value={formatEmployeeDepartmentLabel(t, values.department)}
+      <p className="text-sm text-muted-foreground">{t("aiEmployees.wizard.review.intro")}</p>
+      <div className="grid gap-3 md:grid-cols-2">
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.general")}
+          state={values.displayName.trim() ? "configured" : "missing"}
+          detail={values.displayName || "—"}
         />
-        <ReviewItem
-          label={t("aiEmployees.form.provider")}
-          value={formatEmployeeProviderLabel(t, values.provider)}
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.prompt")}
+          state={values.systemPrompt.trim() ? "configured" : "missing"}
+          detail={values.systemPrompt.trim() ? values.systemPrompt.slice(0, 120) : undefined}
         />
-        <ReviewItem label={t("aiEmployees.form.model")} value={values.model} />
-        <ReviewItem
-          label={t("aiEmployees.form.systemPrompt")}
-          value={values.systemPrompt.slice(0, 120)}
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.provider")}
+          state={values.provider?.trim() ? "configured" : "warning"}
+          detail={formatEmployeeProviderLabel(t, values.provider) || "—"}
         />
-        <ReviewItem
-          label={t("aiEmployees.form.knowledge")}
-          value={t("aiEmployees.form.selectedCount", { count: values.knowledgeSourceIds.length })}
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.model")}
+          state={values.model?.trim() ? "configured" : "warning"}
+          detail={values.model?.trim() || "—"}
         />
-        <ReviewItem
-          label={t("aiEmployees.form.tools")}
-          value={t("aiEmployees.form.selectedCount", { count: values.allowedToolKeys.length })}
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.knowledge")}
+          state={values.knowledgeSourceIds.length > 0 ? "configured" : "optional"}
+          detail={t("aiEmployees.form.selectedCount", { count: values.knowledgeSourceIds.length })}
         />
-        <ReviewItem
-          label={t("aiEmployees.form.status")}
-          value={t(`aiEmployees.status.${values.status}`, { defaultValue: values.status })}
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.tools")}
+          state={values.allowedToolKeys.length > 0 ? "configured" : "optional"}
+          detail={t("aiEmployees.form.selectedCount", { count: values.allowedToolKeys.length })}
         />
-        <ReviewItem
-          label={t("aiEmployees.form.channelRouting.title")}
-          value={
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.steps.channels")}
+          state={
+            values.tags.some((tag) => tag.startsWith("channel:")) ? "configured" : "warning"
+          }
+          detail={
             values.tags.length > 0
               ? values.tags.map((tag) => formatEmployeeTagLabel(t, tag)).join(" · ")
               : t("aiEmployees.form.channelRouting.noneSelected")
           }
         />
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.review.workflows")}
+          state={
+            reviewContext?.transferableFlowId?.trim() ? "configured" : "optional"
+          }
+          detail={
+            reviewContext?.transferableFlowId?.trim()
+              ? t("aiEmployees.wizard.review.workflowsConfigured", {
+                  id: reviewContext.transferableFlowId.trim(),
+                })
+              : t("aiEmployees.wizard.review.workflowsEmpty")
+          }
+          action={
+            reviewContext?.employeeId ? (
+              <Button asChild variant="outline" size="sm" className="mt-2 rounded-lg">
+                <Link href={agentManageChannelsHref(reviewContext.employeeId)}>
+                  <ExternalLink className="me-1.5 size-3.5" />
+                  {t("aiEmployees.wizard.review.configureWorkflows")}
+                </Link>
+              </Button>
+            ) : null
+          }
+        />
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.review.runtime")}
+          state="optional"
+          detail={t("aiEmployees.wizard.review.runtimeHint")}
+          action={
+            reviewContext?.employeeId ? (
+              <Button asChild variant="outline" size="sm" className="mt-2 rounded-lg">
+                <Link
+                  href={agentDetailHref(reviewContext.employeeId, {
+                    tab: "setup",
+                    config: "limits",
+                  })}
+                >
+                  <ExternalLink className="me-1.5 size-3.5" />
+                  {t("aiEmployees.wizard.review.configureRuntime")}
+                </Link>
+              </Button>
+            ) : null
+          }
+        />
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.review.lifecycle")}
+          state={values.status === "published" ? "configured" : "warning"}
+          detail={t(`aiEmployees.status.${values.status}`, {
+            defaultValue: values.status,
+          })}
+        />
       </div>
       <p className="rounded-xl border border-primary/20 bg-transparent px-4 py-3 text-xs text-muted-foreground">
         {t("aiEmployees.form.channelRouting.publishHint")}
       </p>
+      <p className="text-xs text-muted-foreground">{t("aiEmployees.wizard.review.lifecycleReminder")}</p>
     </div>
   );
 }
@@ -703,6 +801,41 @@ function Field({
   );
 }
 
+function ReviewStatusCard({
+  label,
+  state,
+  detail,
+  action,
+}: {
+  label: string;
+  state: "configured" | "missing" | "warning" | "optional";
+  detail?: string;
+  action?: ReactNode;
+}) {
+  const { t } = useTranslation("common");
+  const tone =
+    state === "configured"
+      ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+      : state === "missing"
+        ? "border-destructive/40 text-destructive"
+        : state === "warning"
+          ? "border-amber-500/40 text-amber-800 dark:text-amber-200"
+          : "border-border/50 text-muted-foreground";
+
+  return (
+    <div className={cn("rounded-xl border bg-transparent p-4", tone)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide">{label}</p>
+        <span className="text-[11px] font-medium">
+          {t(`aiEmployees.wizard.review.state.${state}`)}
+        </span>
+      </div>
+      {detail ? <p className="mt-2 break-all text-sm text-foreground">{detail}</p> : null}
+      {action}
+    </div>
+  );
+}
+
 function ReviewItem({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="rounded-xl border border-border/50 bg-transparent p-4">
@@ -717,17 +850,15 @@ export function AiEmployeeEditSections(props: Omit<AiEmployeeFormSectionsProps, 
     <div className="space-y-8">
       <section className="space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {props.values.displayName}
+          {tSafeDisplayName(props.values.displayName)}
         </h3>
         <AiEmployeeFormSections {...props} step="general" />
       </section>
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold">{/* provider */}</h3>
-        <AiEmployeeFormSections {...props} step="provider" />
-        <AiEmployeeFormSections {...props} step="model" />
+        <AiEmployeeFormSections {...props} step="prompt" />
       </section>
       <section className="space-y-4">
-        <AiEmployeeFormSections {...props} step="prompt" />
+        <AiEmployeeFormSections {...props} step="intelligence" />
       </section>
       <section className="space-y-4">
         <AiEmployeeFormSections {...props} step="knowledge" />
@@ -735,6 +866,13 @@ export function AiEmployeeEditSections(props: Omit<AiEmployeeFormSectionsProps, 
       <section className="space-y-4">
         <AiEmployeeFormSections {...props} step="tools" />
       </section>
+      <section className="space-y-4">
+        <AiEmployeeFormSections {...props} step="channels" />
+      </section>
     </div>
   );
+}
+
+function tSafeDisplayName(name: string): string {
+  return name.trim() || "—";
 }

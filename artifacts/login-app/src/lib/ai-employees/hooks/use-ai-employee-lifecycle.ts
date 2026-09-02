@@ -197,6 +197,14 @@ export function useDisableAiEmployee(companyId: string | null, agentId: string |
 
 export function formatAiEmployeeLifecycleError(error: unknown): string {
   if (error instanceof AiEmployeeLifecycleError) {
+    if (error.code === "delete_blocked" || error.code === "archive_blocked") {
+      const details = error.details as { blockers?: Array<{ reason?: string }> } | undefined;
+      const first = details?.blockers?.[0]?.reason;
+      return first || error.message;
+    }
+    if (error.code === "already_archived") {
+      return error.message;
+    }
     return error.message;
   }
   if (error instanceof Error) {

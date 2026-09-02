@@ -9,8 +9,10 @@ import {
   upsertAiEmployeeInListCaches,
 } from "@/lib/ai-employees/cache";
 import { getAiEmployeeServices } from "@/lib/ai-employees";
+import { assertAiEmployeeSafeToDelete } from "@/lib/ai-employees/services/assert-ai-employee-safe-to-archive";
 import { AiEmployeeRegistryError } from "@/lib/ai-employees/services";
 import type { AiEmployeeFormValues, AiEmployeeListFilter } from "@/lib/ai-employees/types";
+import { supabase } from "@/lib/supabase";
 
 const services = getAiEmployeeServices();
 
@@ -112,12 +114,36 @@ export function useDeleteAiEmployee(companyId: string | null) {
 
 export function formatAiEmployeeError(error: unknown): string {
   if (error instanceof AiEmployeeRegistryError) {
+    if (error.code === "delete_blocked" || error.code === "archive_blocked") {
+      const first = error.details?.blockers?.[0]?.reason;
+      return first || error.message;
+    }
+    if (error.code === "already_archived") {
+      return error.message;
+    }
+    if (error.code === "invalid_state") {
+      return error.message;
+    }
     return error.message;
   }
   if (error instanceof Error) {
     return error.message;
   }
   return "An unexpected error occurred";
+}
+
+export function useCheckAiEmployeeDeleteDependencies(companyId: string | null) {
+  return useMutation({
+    mutationFn: async (agentId: string) => {
+      if (!companyId) throw new Error("Company required");
+      return assertAiEmployeeSafeToDelete(supabase, companyId, agentId);
+    },
+  });
+}
+
+/** @deprecated Use useCheckAiEmployeeDeleteDependencies */
+export function useCheckAiEmployeeArchiveDependencies(companyId: string | null) {
+  return useCheckAiEmployeeDeleteDependencies(companyId);
 }
 
 export { invalidateAiEmployeeQueries };

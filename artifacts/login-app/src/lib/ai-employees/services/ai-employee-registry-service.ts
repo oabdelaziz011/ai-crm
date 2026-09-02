@@ -15,6 +15,7 @@ import {
   resolveAiEmployeeInternalName,
 } from "@/lib/ai-employees/validators";
 import { aiEmployeesTrace } from "@/lib/ai-employees/debug/ai-employees-trace";
+import { assertAiEmployeeSafeToDelete, isActiveAiEmployeeStatus } from "./assert-ai-employee-safe-to-archive";
 import { AiEmployeeRegistryError } from "./ai-employee-errors";
 
 export class AiEmployeeRegistryService {
@@ -103,6 +104,36 @@ export class AiEmployeeRegistryService {
     const existing = await this.repository.getById(id, companyId);
     if (!existing) {
       throw new AiEmployeeRegistryError("AI Employee not found", "not_found");
+    }
+    const safety = await assertAiEmployeeSafeToDelete(this.repository.client, companyId, id);
+    if (!safety.canDelete) {
+      if (safety.alreadyArchived) {
+        throw new AiEmployeeRegistryError(
+          "This AI Employee is already archived. Restore it from Lifecycle if you need it again.",
+          "already_archived",
+          safety,
+        );
+      }
+      throw new AiEmployeeRegistryError(
+        safety.isActiveEmployee
+          ? "This AI Employee is active and must be disabled before it can be deleted."
+          : "Cannot delete this AI Employee.",
+        "delete_blocked",
+        safety,
+      );
+    }
+    // Race: re-read lifecycle status immediately before mutation.
+    const freshRow = await this.repository.getById(id, companyId);
+    if (!freshRow) {
+      throw new AiEmployeeRegistryError("AI Employee not found", "not_found");
+    }
+    if (isActiveAiEmployeeStatus(freshRow.status)) {
+      const freshSafety = await assertAiEmployeeSafeToDelete(this.repository.client, companyId, id);
+      throw new AiEmployeeRegistryError(
+        "This AI Employee is active and must be disabled before it can be deleted.",
+        "delete_blocked",
+        freshSafety,
+      );
     }
     await this.repository.softDelete(id, companyId, actorId);
   }

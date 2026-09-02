@@ -20,7 +20,7 @@ function readUuidArray(value: unknown): string[] {
 }
 
 export class AiEmployeeRepository {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(readonly client: SupabaseClient) {}
 
   async listByCompany(companyId: string, filter: AiEmployeeListFilter = {}): Promise<AiEmployeeDbRow[]> {
     let query = this.client
@@ -28,6 +28,7 @@ export class AiEmployeeRepository {
       .select("*")
       .eq("company_id", companyId)
       .is("deleted_at", null)
+      .neq("status", "archived")
       .order("updated_at", { ascending: false });
 
     if (filter.status && filter.status !== "all") {
@@ -81,6 +82,7 @@ export class AiEmployeeRepository {
       .select("*")
       .eq("company_id", companyId)
       .is("deleted_at", null)
+      .neq("status", "archived")
       .order("updated_at", { ascending: false })
       .limit(PAGE_SIZE + 1);
 
@@ -181,32 +183,20 @@ export class AiEmployeeRepository {
     return data as AiEmployeeDbRow;
   }
 
-  async softDelete(id: string, companyId: string, actorId?: string | null): Promise<void> {
-    const { error } = await this.client
-      .from("ai_employees")
-      .update({
-        status: "archived",
-        updated_by: actorId ?? null,
-      })
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .is("deleted_at", null);
+  async softDelete(id: string, companyId: string, _actorId?: string | null): Promise<void> {
+    const { error } = await this.client.rpc("archive_ai_employee", {
+      p_employee_id: id,
+      p_company_id: companyId,
+    });
 
     if (error) throw new Error(error.message);
   }
 
-  async restoreArchived(id: string, companyId: string, actorId?: string | null): Promise<AiEmployeeDbRow> {
-    const { data, error } = await this.client
-      .from("ai_employees")
-      .update({
-        deleted_at: null,
-        status: "draft",
-        updated_by: actorId ?? null,
-      })
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .select("*")
-      .single();
+  async restoreArchived(id: string, companyId: string, _actorId?: string | null): Promise<AiEmployeeDbRow> {
+    const { data, error } = await this.client.rpc("restore_ai_employee", {
+      p_employee_id: id,
+      p_company_id: companyId,
+    });
 
     if (error) throw new Error(error.message);
     return data as AiEmployeeDbRow;

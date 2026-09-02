@@ -6,6 +6,8 @@ export {
   useAiEmployees,
   useAiEmployeesInfinite,
   useAiEmployeeToolOptions,
+  useCheckAiEmployeeDeleteDependencies,
+  useCheckAiEmployeeArchiveDependencies,
   useCreateAiEmployee,
   useDeleteAiEmployee,
   useUpdateAiEmployee,

@@ -16,16 +16,21 @@ import {
 import {
   formatAiEmployeeError,
   useAiEmployees,
+  useCheckAiEmployeeDeleteDependencies,
   useDeleteAiEmployee,
 } from "@/lib/ai-employees/hooks";
 import type { AiEmployeeListFilter, AiEmployeeRecord } from "@/lib/ai-employees/types";
+import type { AiEmployeeDeleteDependencyResult } from "@/lib/ai-employees/services/assert-ai-employee-safe-to-archive";
 import {
   hasAiEmployeesCreatePermission,
   hasAiEmployeesDeletePermission,
   hasAiEmployeesEditPermission,
+  hasAiEmployeesPublishPermission,
+  hasAiEmployeesViewPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
 import { agentNewHref } from "@/config/agents-route-registry";
+import type { AiEmployeeRowActionCapabilities } from "@/lib/ai-employees/utilities/ai-employee-row-actions";
 import { nestedSectionHref, NEST_INDEX } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
 import { AgentCreateWizardPage } from "@/pages/dashboard/agents/agent-create-wizard-page";
@@ -72,12 +77,35 @@ export function AgentsListPage() {
   const canCreate = hasAiEmployeesCreatePermission(hasPermission, isSuperAdmin);
   const canEdit = hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
   const canDelete = hasAiEmployeesDeletePermission(hasPermission, isSuperAdmin);
+  const canPublish = hasAiEmployeesPublishPermission(hasPermission, isSuperAdmin);
+  const rowCapabilities: AiEmployeeRowActionCapabilities = {
+    canView: hasAiEmployeesViewPermission(hasPermission, isSuperAdmin) || canAccess,
+    canEdit,
+    canDelete,
+    canPublish,
+  };
 
   const [filter, setFilter] = useState<AiEmployeeListFilter>({});
   const [deleteTarget, setDeleteTarget] = useState<AiEmployeeRecord | null>(null);
+  const [dependencyResult, setDependencyResult] = useState<AiEmployeeDeleteDependencyResult | null>(
+    null,
+  );
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const { data: employees = [], isLoading, error } = useAiEmployees(companyId, filter);
   const deleteEmployee = useDeleteAiEmployee(companyId);
+  const checkDependencies = useCheckAiEmployeeDeleteDependencies(companyId);
+
+  const runDeleteCheck = async (employee: AiEmployeeRecord) => {
+    setCheckError(null);
+    setDependencyResult(null);
+    try {
+      const result = await checkDependencies.mutateAsync(employee.id);
+      setDependencyResult(result);
+    } catch (error) {
+      setCheckError(formatAiEmployeeError(error));
+    }
+  };
 
   const ownerOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -95,12 +123,22 @@ export function AgentsListPage() {
     return { total: employees.length, published, draft };
   }, [employees]);
 
+  const handleDeleteTarget = (employee: AiEmployeeRecord) => {
+    setDeleteTarget(employee);
+    void runDeleteCheck(employee);
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
+      // Re-check immediately before delete — never trust a stale prior result.
+      const fresh = await checkDependencies.mutateAsync(deleteTarget.id);
+      setDependencyResult(fresh);
+      if (!fresh.canDelete) return;
       await deleteEmployee.mutateAsync(deleteTarget.id);
       toast({ title: t("aiEmployees.deleted") });
       setDeleteTarget(null);
+      setDependencyResult(null);
     } catch (deleteError) {
       toast({
         variant: "destructive",
@@ -151,6 +189,7 @@ export function AgentsListPage() {
             t("aiEmployees.listGuide.points.create"),
             t("aiEmployees.listGuide.points.publish"),
             t("aiEmployees.listGuide.points.channels"),
+            t("aiEmployees.listGuide.points.controlCenter"),
           ]}
           className="shadow-none"
         />
@@ -179,9 +218,8 @@ export function AgentsListPage() {
           ) : (
             <AiEmployeeTable
               employees={employees}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              onDelete={setDeleteTarget}
+              capabilities={rowCapabilities}
+              onDelete={handleDeleteTarget}
             />
           )}
         </div>
@@ -190,11 +228,21 @@ export function AgentsListPage() {
       <AiEmployeeDeleteDialog
         employee={deleteTarget}
         open={Boolean(deleteTarget)}
-        isDeleting={deleteEmployee.isPending}
+        isDeleting={deleteEmployee.isPending || checkDependencies.isPending}
+        isChecking={checkDependencies.isPending && !dependencyResult && !checkError}
+        dependencyResult={dependencyResult}
+        checkError={checkError}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
+          if (!open) {
+            setDeleteTarget(null);
+            setDependencyResult(null);
+            setCheckError(null);
+          }
         }}
         onConfirm={handleDelete}
+        onRecheck={() => {
+          if (deleteTarget) void runDeleteCheck(deleteTarget);
+        }}
       />
     </>
   );

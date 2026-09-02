@@ -2,7 +2,7 @@ import { memo } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { Eye, ListRestart, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, ListRestart, MoreHorizontal, Pencil, Radio, Rocket, RotateCcw, Shield, Ban, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AiEmployeeStatusBadge } from "@/lib/ai-employees/components/ai-employee-status-badge";
 import type { AiEmployeeRecord } from "@/lib/ai-employees/types";
-import { agentContinueHref, agentDetailHref, agentEditHref } from "@/config/agents-route-registry";
+import {
+  agentContinueHref,
+  agentEditHref,
+  agentLifecycleHref,
+  agentManageChannelsHref,
+  agentManageCapabilitiesHref,
+  agentViewDetailsHref,
+} from "@/config/agents-route-registry";
+import {
+  visibleAiEmployeeRowActions,
+  type AiEmployeeRowActionCapabilities,
+  type AiEmployeeRowActionId,
+} from "@/lib/ai-employees/utilities/ai-employee-row-actions";
 import {
   formatEmployeeDepartmentLabel,
   formatEmployeeProviderLabel,
@@ -24,8 +36,7 @@ import { cn } from "@/lib/utils";
 
 type AiEmployeeTableProps = {
   employees: AiEmployeeRecord[];
-  canEdit: boolean;
-  canDelete: boolean;
+  capabilities: AiEmployeeRowActionCapabilities;
   onDelete: (employee: AiEmployeeRecord) => void;
 };
 
@@ -48,26 +59,85 @@ function channelTagsLabel(t: TFunction<"common">, tags: string[] | undefined): s
     .join(" · ");
 }
 
+function actionIcon(id: AiEmployeeRowActionId) {
+  switch (id) {
+    case "view":
+      return Eye;
+    case "continue":
+      return ListRestart;
+    case "edit":
+      return Pencil;
+    case "manageChannels":
+      return Radio;
+    case "manageCapabilities":
+      return Shield;
+    case "publish":
+      return Rocket;
+    case "disable":
+      return Ban;
+    case "restore":
+      return RotateCcw;
+    case "delete":
+      return Trash2;
+    default:
+      return Eye;
+  }
+}
+
+function navigateForAction(
+  id: AiEmployeeRowActionId,
+  employee: AiEmployeeRecord,
+  setLocation: (href: string) => void,
+  onDelete: (employee: AiEmployeeRecord) => void,
+) {
+  switch (id) {
+    case "view":
+      setLocation(nestedSectionHref(agentViewDetailsHref(employee.id)));
+      break;
+    case "continue":
+      setLocation(agentContinueHref(employee.id));
+      break;
+    case "edit":
+      setLocation(nestedSectionHref(agentEditHref(employee.id)));
+      break;
+    case "manageChannels":
+      setLocation(nestedSectionHref(agentManageChannelsHref(employee.id)));
+      break;
+    case "manageCapabilities":
+      setLocation(nestedSectionHref(agentManageCapabilitiesHref(employee.id)));
+      break;
+    case "publish":
+    case "disable":
+    case "restore":
+      setLocation(nestedSectionHref(agentLifecycleHref(employee.id)));
+      break;
+    case "delete":
+      onDelete(employee);
+      break;
+    default:
+      break;
+  }
+}
+
 const AiEmployeeRow = memo(function AiEmployeeRow({
   employee,
-  canEdit,
-  canDelete,
+  capabilities,
   onDelete,
 }: {
   employee: AiEmployeeRecord;
-  canEdit: boolean;
-  canDelete: boolean;
+  capabilities: AiEmployeeRowActionCapabilities;
   onDelete: (employee: AiEmployeeRecord) => void;
 }) {
   const { t } = useTranslation("common");
   const [, setLocation] = useLocation();
+  const actions = visibleAiEmployeeRowActions(employee, capabilities);
 
   return (
     <div className="grid grid-cols-[minmax(0,2fr)_repeat(7,minmax(0,1fr))_auto] items-center gap-3 border-b border-border/40 px-4 py-3 last:border-b-0 hover:bg-primary/[0.03]">
       <button
         type="button"
         className="flex min-w-0 items-center gap-3 text-start"
-        onClick={() => setLocation(nestedSectionHref(agentDetailHref(employee.id)))}
+        onClick={() => setLocation(nestedSectionHref(agentViewDetailsHref(employee.id)))}
       >
         <Avatar className="size-9 shrink-0">
           {employee.avatar ? <AvatarImage src={employee.avatar} alt={employee.displayName} /> : null}
@@ -95,18 +165,6 @@ const AiEmployeeRow = memo(function AiEmployeeRow({
       <CellText value={new Date(employee.updatedAt).toLocaleDateString()} muted />
 
       <div className="flex items-center justify-end gap-1">
-        {canEdit && employee.status === "draft" ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 rounded-lg px-2 text-xs"
-            onClick={() => setLocation(agentContinueHref(employee.id))}
-          >
-            <ListRestart className="me-1 size-3.5" />
-            {t("aiEmployees.actions.continue")}
-          </Button>
-        ) : null}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -120,35 +178,21 @@ const AiEmployeeRow = memo(function AiEmployeeRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="z-[80] rounded-xl" sideOffset={6}>
-            <DropdownMenuItem
-              onSelect={() => setLocation(nestedSectionHref(agentDetailHref(employee.id)))}
-            >
-              <Eye className="me-2 size-4" />
-              {t("aiEmployees.actions.view")}
-            </DropdownMenuItem>
-            {canEdit && employee.status === "draft" ? (
-              <DropdownMenuItem onSelect={() => setLocation(agentContinueHref(employee.id))}>
-                <ListRestart className="me-2 size-4" />
-                {t("aiEmployees.actions.continue")}
-              </DropdownMenuItem>
-            ) : null}
-            {canEdit ? (
-              <DropdownMenuItem
-                onSelect={() => setLocation(nestedSectionHref(agentEditHref(employee.id)))}
-              >
-                <Pencil className="me-2 size-4" />
-                {t("aiEmployees.actions.edit")}
-              </DropdownMenuItem>
-            ) : null}
-            {canDelete ? (
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onSelect={() => onDelete(employee)}
-              >
-                <Trash2 className="me-2 size-4" />
-                {t("aiEmployees.actions.delete")}
-              </DropdownMenuItem>
-            ) : null}
+            {actions.map((action) => {
+              const Icon = actionIcon(action.id);
+              return (
+                <DropdownMenuItem
+                  key={action.id}
+                  className={
+                    action.destructive ? "text-destructive focus:text-destructive" : undefined
+                  }
+                  onSelect={() => navigateForAction(action.id, employee, setLocation, onDelete)}
+                >
+                  <Icon className="me-2 size-4" />
+                  {t(`aiEmployees.actions.${action.id}`)}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -172,8 +216,7 @@ const CellText = memo(function CellText({
 
 export const AiEmployeeTable = memo(function AiEmployeeTable({
   employees,
-  canEdit,
-  canDelete,
+  capabilities,
   onDelete,
 }: AiEmployeeTableProps) {
   const { t } = useTranslation("common");
@@ -197,8 +240,7 @@ export const AiEmployeeTable = memo(function AiEmployeeTable({
           <AiEmployeeRow
             key={employee.id}
             employee={employee}
-            canEdit={canEdit}
-            canDelete={canDelete}
+            capabilities={capabilities}
             onDelete={onDelete}
           />
         ))}

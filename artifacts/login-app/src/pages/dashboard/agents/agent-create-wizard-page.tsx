@@ -31,7 +31,11 @@ import {
   hasAiEmployeesCreatePermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
-import { agentContinueHref, agentDetailHref } from "@/config/agents-route-registry";
+import { AiEmployeeRegistryError } from "@/lib/ai-employees/services";
+import { isArchivedAiEmployeeStatus } from "@/lib/ai-employees/services/assert-ai-employee-safe-to-archive";
+import { inferAiEmployeeWizardResumeStepIndex } from "@/lib/ai-employees/utilities/infer-ai-employee-wizard-resume-step";
+import { agentContinueHref, agentDetailHref, agentNewHref } from "@/config/agents-route-registry";
+import { resolveWizardDraftPersistDecision } from "@/lib/ai-employees/utilities/ai-employee-wizard-draft-persistence";
 import { nestedSectionHref, NEST_INDEX } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -43,11 +47,11 @@ const UUID_PATTERN =
 
 const STEPS: AiEmployeeWizardStep[] = [
   "general",
-  "provider",
-  "model",
   "prompt",
+  "intelligence",
   "knowledge",
   "tools",
+  "channels",
   "review",
 ];
 
@@ -109,15 +113,6 @@ function readDraftIdFromUrl(): string | null {
   return draft && UUID_PATTERN.test(draft) ? draft : null;
 }
 
-/** Resume at the first incomplete required step. */
-function inferResumeStepIndex(values: AiEmployeeFormValues): number {
-  if (!values.displayName.trim()) return 0;
-  if (!values.provider?.trim()) return 1;
-  if (!values.model?.trim()) return 2;
-  if (!values.systemPrompt.trim()) return 3;
-  return 4;
-}
-
 function buildPayload(values: AiEmployeeFormValues): AiEmployeeFormValues {
   return {
     ...values,
@@ -129,7 +124,7 @@ function buildPayload(values: AiEmployeeFormValues): AiEmployeeFormValues {
 export function AgentCreateWizardPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { company, isSuperAdmin, user } = useAuth();
   const { hasPermission } = usePermissions();
   const { resolvedEnabled: agentsFeatureEnabled } = useAgentsFeatureEnabled();
@@ -143,6 +138,8 @@ export function AgentCreateWizardPage() {
   const canCreate = hasAiEmployeesCreatePermission(hasPermission, isSuperAdmin);
 
   const [draftId, setDraftId] = useState<string | null>(() => readDraftIdFromUrl());
+  const urlDraftId = useMemo(() => readDraftIdFromUrl(), [location]);
+  const effectiveDraftId = urlDraftId ?? draftId;
   const [stepIndex, setStepIndex] = useState(0);
   const [nameTouched, setNameTouched] = useState(false);
   const [values, setValues] = useState<AiEmployeeFormValues>({
@@ -155,8 +152,8 @@ export function AgentCreateWizardPage() {
   const hydratedDraftRef = useRef<string | null>(null);
 
   const createEmployee = useCreateAiEmployee(companyId);
-  const updateEmployee = useUpdateAiEmployee(companyId, draftId);
-  const draftQuery = useAiEmployee(companyId, draftId);
+  const updateEmployee = useUpdateAiEmployee(companyId, effectiveDraftId);
+  const draftQuery = useAiEmployee(companyId, effectiveDraftId);
   const { data: toolOptions = [] } = useAiEmployeeToolOptions();
   const { data: knowledgeOptions = [] } = useAiEmployeeKnowledgeOptions(companyId);
 
@@ -187,14 +184,26 @@ export function AgentCreateWizardPage() {
   }, [stepIndex]);
 
   useEffect(() => {
-    if (!draftId || !draftQuery.data) return;
-    if (hydratedDraftRef.current === draftId) return;
+    if (urlDraftId !== draftId) {
+      if (!urlDraftId && draftId) {
+        setValues({ ...DEFAULT_AI_EMPLOYEE_FORM, ownerId: user?.id ?? null });
+        setStepIndex(0);
+        setNameTouched(false);
+      }
+      setDraftId(urlDraftId);
+      hydratedDraftRef.current = null;
+    }
+  }, [location, urlDraftId, draftId, user?.id]);
+
+  useEffect(() => {
+    if (!effectiveDraftId || !draftQuery.data) return;
+    if (hydratedDraftRef.current === effectiveDraftId) return;
     const formValues = recordToFormValues(draftQuery.data);
     setValues(formValues);
     setNameTouched(Boolean(formValues.name.trim()));
-    setStepIndex(inferResumeStepIndex(formValues));
-    hydratedDraftRef.current = draftId;
-  }, [draftId, draftQuery.data]);
+    setStepIndex(inferAiEmployeeWizardResumeStepIndex(formValues));
+    hydratedDraftRef.current = effectiveDraftId;
+  }, [effectiveDraftId, draftQuery.data]);
 
   const goToStep = (nextIndex: number) => {
     setStepIndex(nextIndex);
@@ -222,23 +231,53 @@ export function AgentCreateWizardPage() {
     if (step === "general") {
       return Boolean(values.displayName.trim());
     }
-    if (step === "provider") {
-      return Boolean(values.provider?.trim());
-    }
-    if (step === "model") {
-      return Boolean(values.model?.trim());
-    }
     if (step === "prompt") {
       return Boolean(values.systemPrompt.trim());
+    }
+    if (step === "intelligence") {
+      return Boolean(values.provider?.trim() && values.model?.trim());
     }
     return true;
   };
 
   const persistDraft = async (nextValues: AiEmployeeFormValues): Promise<string> => {
     const payload = buildPayload(nextValues);
-    if (draftId) {
+    const decision = resolveWizardDraftPersistDecision({
+      urlDraftId,
+      stateDraftId: draftId,
+      loadedDraft: draftQuery.data,
+      isDraftLoading: draftQuery.isLoading,
+    });
+
+    if (decision.mode === "blocked") {
+      if (decision.reason === "draft_not_found") {
+        throw new AiEmployeeRegistryError(
+          "Draft employee not found. Start a new employee instead of creating a duplicate.",
+          "not_found",
+        );
+      }
+      if (decision.reason === "archived") {
+        throw new AiEmployeeRegistryError(
+          "This employee is archived. Restore it from Lifecycle before continuing setup.",
+          "invalid_state",
+        );
+      }
+      throw new AiEmployeeRegistryError("Draft is still loading.", "validation");
+    }
+
+    if (decision.mode === "update") {
       await updateEmployee.mutateAsync(payload);
-      return draftId;
+      if (decision.draftId !== draftId) {
+        setDraftId(decision.draftId);
+      }
+      return decision.draftId;
+    }
+
+    if (!canCreate) {
+      throw new AiEmployeeRegistryError(
+        "You do not have permission to create AI employees.",
+        "validation",
+      );
     }
     const created = await createEmployee.mutateAsync(payload);
     setDraftId(created.id);
@@ -316,12 +355,55 @@ export function AgentCreateWizardPage() {
     return <DashboardErrorBanner message={t("aiEmployees.accessDenied")} />;
   }
 
-  if (draftId && draftQuery.isLoading) {
+  const resumeMode = Boolean(urlDraftId ?? draftId);
+  const persistBlocked =
+    resumeMode &&
+    (draftQuery.isLoading ||
+      !draftQuery.data ||
+      (effectiveDraftId != null && draftQuery.data?.id !== effectiveDraftId) ||
+      (draftQuery.data != null && isArchivedAiEmployeeStatus(draftQuery.data.status)));
+
+  if (resumeMode && draftQuery.isLoading) {
     return <DashboardPageFallback />;
   }
 
-  if (draftId && draftQuery.error) {
-    return <DashboardErrorBanner message={draftQuery.error.message} />;
+  if (resumeMode && draftQuery.error) {
+    return (
+      <div className="space-y-4">
+        <DashboardErrorBanner message={draftQuery.error.message} />
+        <Button variant="outline" className="rounded-xl" onClick={() => setLocation(agentNewHref())}>
+          {t("aiEmployees.wizard.startNewEmployee")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (resumeMode && !draftQuery.isLoading && !draftQuery.data) {
+    return (
+      <div className="space-y-4">
+        <DashboardErrorBanner message={t("aiEmployees.wizard.draftNotFound")} />
+        <Button variant="outline" className="rounded-xl" onClick={() => setLocation(agentNewHref())}>
+          {t("aiEmployees.wizard.startNewEmployee")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (resumeMode && draftQuery.data && isArchivedAiEmployeeStatus(draftQuery.data.status)) {
+    return (
+      <div className="space-y-4">
+        <DashboardErrorBanner message={t("aiEmployees.wizard.archivedDraftBlocked")} />
+        <Button
+          variant="outline"
+          className="rounded-xl"
+          onClick={() =>
+            setLocation(nestedSectionHref(agentDetailHref(draftQuery.data!.id)))
+          }
+        >
+          {t("aiEmployees.wizard.viewArchivedEmployee")}
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -337,7 +419,7 @@ export function AgentCreateWizardPage() {
           {t("aiEmployees.backToList")}
         </Button>
         <div className="flex items-center gap-3">
-          {draftId ? (
+          {effectiveDraftId ? (
             <p className="text-xs text-muted-foreground">{t("aiEmployees.wizard.draftBadge")}</p>
           ) : null}
           <p className="text-xs text-muted-foreground">
@@ -422,6 +504,10 @@ export function AgentCreateWizardPage() {
           knowledgeOptions={knowledgeOptions}
           toolOptions={toolOptions}
           onChange={onChange}
+          reviewContext={{
+            employeeId: effectiveDraftId,
+            transferableFlowId: draftQuery.data?.runtimeConfiguration?.transferableFlowId ?? null,
+          }}
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
@@ -437,7 +523,7 @@ export function AgentCreateWizardPage() {
             <Button
               variant="ghost"
               className="rounded-xl"
-              disabled={busy || !values.displayName.trim()}
+              disabled={busy || !values.displayName.trim() || persistBlocked}
               onClick={() => void handleSaveAndExit()}
             >
               {t("aiEmployees.wizard.saveDraftExit")}
@@ -446,16 +532,16 @@ export function AgentCreateWizardPage() {
           {isLastStep ? (
             <Button
               className="rounded-xl"
-              disabled={busy || !canProceed()}
+              disabled={busy || !canProceed() || persistBlocked}
               onClick={() => void handleFinish()}
             >
               <Check className="me-2 size-4" />
-              {draftId ? t("aiEmployees.wizard.finish") : t("aiEmployees.wizard.create")}
+              {effectiveDraftId ? t("aiEmployees.wizard.finish") : t("aiEmployees.wizard.create")}
             </Button>
           ) : (
             <Button
               className="rounded-xl"
-              disabled={busy || !canProceed()}
+              disabled={busy || !canProceed() || persistBlocked}
               onClick={() => void handleNext()}
             >
               {t("aiEmployees.wizard.next")}

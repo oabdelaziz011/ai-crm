@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import type { EnrichedAuditLog } from "@/lib/types";
 import type { AuditOperation, AuditStatus } from "@/lib/audit-log/constants";
 import {
+  getEntityLabelKey,
   normalizeRoleKey,
   readMetadataRecord,
   readMetadataString,
@@ -166,7 +167,8 @@ export function buildAuditRowViews(
       (log.user_id ? t("auditLogs.fallbacks.deletedUser") : t("auditLogs.fallbacks.systemUser"));
     const userEmail = log.profile?.email?.trim() ?? null;
     const companyName = resolveCompanyName(log);
-    const entityName = log.entityDisplayName;
+    const entityName =
+      log.entityDisplayName?.trim() || t(getEntityLabelKey(log.entity));
     const entityResolved = isEntityResolved(log);
 
     return {

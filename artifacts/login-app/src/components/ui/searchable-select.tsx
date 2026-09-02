@@ -27,6 +27,7 @@ type SearchableSelectProps = {
   emptyLabel?: string;
   disabled?: boolean;
   className?: string;
+  id?: string;
 };
 
 export function SearchableSelect({
@@ -38,6 +39,7 @@ export function SearchableSelect({
   emptyLabel,
   disabled = false,
   className,
+  id,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
 
@@ -50,6 +52,7 @@ export function SearchableSelect({
     <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           type="button"
           variant="outline"
           role="combobox"

@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { EnrichedAuditLog } from "@/lib/types";
 import {
+  getEntityLabelKey,
   readMetadataRecord,
   readMetadataString,
   readMetadataStringArray,
@@ -95,6 +96,11 @@ function getTargetName(
       readMetadataString(metadata, "customer_name") ??
       readMetadataString(newValues ?? {}, "customer_name");
     if (customerHint) return customerHint;
+  }
+
+  // Known entity types: use localized entity label rather than "—" / raw keys.
+  if (log.entity) {
+    return t(getEntityLabelKey(log.entity));
   }
 
   return t("auditLogs.fallbacks.unavailable");
@@ -888,6 +894,90 @@ export function buildActivitySummary(
     if (primaryEvent === "fallback_provider_used") {
       return t("auditLogs.activity.fallbackProviderUsed", { actor, target: providerKey, model: model ?? t("auditLogs.fallbacks.unknown") });
     }
+  }
+
+  if (log.entity === "business_appointment_exceptions") {
+    const scope = readMetadataString(log.metadata ?? {}, "scope");
+    const exceptionDate = readMetadataString(log.metadata ?? {}, "exception_date");
+    const status = readMetadataString(log.metadata ?? {}, "status");
+    const entityLabel = t(getEntityLabelKey(log.entity));
+
+    // Pre-327 rows may have empty metadata — prefer entity-label summaries over raw i18n keys.
+    if (operation === "CREATE") {
+      if (scope && exceptionDate) {
+        return t("auditLogs.activity.businessExceptionCreated", {
+          actor,
+          scope,
+          date: exceptionDate,
+        });
+      }
+      return t("auditLogs.activity.recordCreated", { actor, target: entityLabel });
+    }
+    if (operation === "DELETE") {
+      if (exceptionDate) {
+        return t("auditLogs.activity.businessExceptionDeleted", { actor, date: exceptionDate });
+      }
+      return t("auditLogs.activity.recordDeleted", { actor, target: entityLabel });
+    }
+    if (exceptionDate && status) {
+      return t("auditLogs.activity.businessExceptionUpdated", {
+        actor,
+        date: exceptionDate,
+        status,
+      });
+    }
+    return t("auditLogs.activity.recordUpdated", { actor, target: entityLabel });
+  }
+
+  if (log.entity === "business_appointment_exception_items") {
+    const notifyStatus = readMetadataString(log.metadata ?? {}, "notification_status");
+    const cancelStatus = readMetadataString(log.metadata ?? {}, "cancellation_status");
+    const entityLabel = t(getEntityLabelKey(log.entity));
+    if (cancelStatus && notifyStatus) {
+      if (operation === "CREATE") {
+        return t("auditLogs.activity.businessExceptionItemCreated", {
+          actor,
+          cancelStatus,
+          notifyStatus,
+        });
+      }
+      return t("auditLogs.activity.businessExceptionItemUpdated", {
+        actor,
+        cancelStatus,
+        notifyStatus,
+      });
+    }
+    if (operation === "CREATE") {
+      return t("auditLogs.activity.recordCreated", { actor, target: entityLabel });
+    }
+    if (operation === "DELETE") {
+      return t("auditLogs.activity.recordDeleted", { actor, target: entityLabel });
+    }
+    return t("auditLogs.activity.recordUpdated", { actor, target: entityLabel });
+  }
+
+  if (log.entity === "scheduling_bookings") {
+    const source = readMetadataString(log.metadata ?? {}, "source");
+    const newStatus =
+      readMetadataString(log.metadata ?? {}, "new_status") ??
+      readMetadataString(readMetadataRecord(log.metadata ?? {}, "new") ?? {}, "status");
+    if (source === "business_appointment_exception" && newStatus === "cancelled") {
+      return t("auditLogs.activity.schedulingBookingCancelledByException", { actor, target });
+    }
+    if (operation === "CREATE") {
+      return t("auditLogs.activity.bookingCreated", { actor, target });
+    }
+    if (newStatus === "cancelled" || operation === "DELETE") {
+      return t("auditLogs.activity.bookingCancelled", { actor, target });
+    }
+    if (newStatus) {
+      return t("auditLogs.activity.bookingStatusChanged", {
+        actor,
+        target,
+        status: formatStatusValue(newStatus, t),
+      });
+    }
+    return appendChangeHints(t("auditLogs.activity.bookingUpdated", { actor, target }), changes, [], t);
   }
 
   if (operation === "CREATE") {

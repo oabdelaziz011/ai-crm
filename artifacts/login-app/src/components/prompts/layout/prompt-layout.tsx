@@ -30,6 +30,15 @@ export function PromptLayout() {
           t("prompts.purpose.point1"),
           t("prompts.purpose.point2"),
           t("prompts.purpose.point3"),
+          t("prompts.purpose.point4"),
+        ]}
+        stepsTitle={t("prompts.purpose.stepsTitle")}
+        steps={[
+          t("prompts.purpose.step1"),
+          t("prompts.purpose.step2"),
+          t("prompts.purpose.step3"),
+          t("prompts.purpose.step4"),
+          t("prompts.purpose.step5"),
         ]}
         links={[
           {

@@ -26,10 +26,13 @@ import {
   canPublishPrompts,
   canRollbackPrompts,
 } from "@/lib/prompts/prompt-permissions";
-import type { PromptSectionConfig, PromptSectionKey } from "@workspace/ai-prompt-orchestrator";
 import {
+  translatePromptSection,
+  translatePromptTemplateDescription,
   translatePromptTemplateName,
+  translatePromptType,
 } from "@/lib/prompts/prompt-i18n";
+import type { PromptSectionConfig, PromptSectionKey } from "@workspace/ai-prompt-orchestrator";
 
 export function PromptEditorPage() {
   const { t } = useTranslation("common");
@@ -135,7 +138,15 @@ export function PromptEditorPage() {
           <h2 className="text-lg font-semibold">
             {translatePromptTemplateName(t, template.key, template.display_name)}
           </h2>
-          <p className="text-sm text-muted-foreground">{template.key}</p>
+          <p className="text-sm text-muted-foreground">
+            {translatePromptTemplateDescription(t, template.key, template.description || "")}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("prompts.library.meta", {
+              type: translatePromptType(t, template.template_type),
+              key: template.key,
+            })}
+          </p>
           {isSystemTemplate ? (
             <p className="text-sm text-muted-foreground">{t("prompts.editor.systemReadOnly")}</p>
           ) : null}
@@ -185,7 +196,7 @@ export function PromptEditorPage() {
                 return (
                   <div key={key} className="rounded-lg border p-3 space-y-2">
                     <p className="font-medium text-sm">
-                      {t(`prompts.sections.${key}`, { defaultValue: key })}
+                      {translatePromptSection(t, key)}
                     </p>
                     <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{section.content}</pre>
                   </div>

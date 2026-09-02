@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { DashboardCard } from "@/components/dashboard/ui";
 import type { PromptSectionConfig, PromptSectionKey } from "@workspace/ai-prompt-orchestrator";
+import { translatePromptSection } from "@/lib/prompts/prompt-i18n";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -32,7 +33,7 @@ export function PromptSectionEditor({ sections, sectionOrder, onChange }: Props)
         return (
           <div key={key} className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <Label className="font-medium">{t(`prompts.sections.${key}`, { defaultValue: key })}</Label>
+              <Label className="font-medium">{translatePromptSection(t, key)}</Label>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{t("prompts.editor.enabled")}</span>
                 <Switch

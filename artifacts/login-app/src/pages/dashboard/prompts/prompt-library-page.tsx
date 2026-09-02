@@ -11,6 +11,13 @@ import { useCreatePromptFromPreset } from "@/hooks/prompts/use-prompt-mutations"
 import { usePromptTemplates } from "@/hooks/prompts/use-prompt-templates";
 import { usePermissions } from "@/hooks/use-rbac";
 import { canManagePrompts, canViewPrompts } from "@/lib/prompts/prompt-permissions";
+import {
+  translatePromptPresetDescription,
+  translatePromptPresetName,
+  translatePromptTemplateDescription,
+  translatePromptTemplateName,
+  translatePromptType,
+} from "@/lib/prompts/prompt-i18n";
 import { nestedSectionHref } from "@/lib/routing";
 
 export function PromptLibraryPage() {
@@ -63,7 +70,11 @@ export function PromptLibraryPage() {
         sectionOrder: [...preset.sectionOrder],
         sections: preset.sections,
       });
-      toast.success(t("prompts.library.created", { name: preset.displayName }));
+      toast.success(
+        t("prompts.library.created", {
+          name: translatePromptPresetName(t, preset.key, preset.displayName),
+        }),
+      );
       setLocation(nestedSectionHref(`/editor/${result.template.id}`));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("prompts.errors.createFailed"));
@@ -87,19 +98,28 @@ export function PromptLibraryPage() {
           <div className="space-y-3">
             {templates.map((template) => {
               const isSystem = template.company_id === null;
+              const displayName = translatePromptTemplateName(t, template.key, template.display_name);
+              const description = translatePromptTemplateDescription(
+                t,
+                template.key,
+                template.description || "",
+              );
+              const typeLabel = translatePromptType(t, template.template_type);
               return (
                 <div key={template.id} className="rounded-lg border p-4 flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="w-4 h-4 text-muted-foreground" />
-                      <p className="font-medium">{template.display_name}</p>
+                      <p className="font-medium">{displayName}</p>
                       {!template.is_enabled ? <Badge variant="secondary">{t("prompts.status.disabled")}</Badge> : null}
                       {isSystem ? <Badge variant="outline">{t("prompts.status.system")}</Badge> : null}
                       {!isSystem ? <Badge variant="secondary">{t("prompts.status.company")}</Badge> : null}
                     </div>
-                    <p className="text-sm text-muted-foreground">{template.description || template.key}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {description || t("prompts.library.noDescription")}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {template.key} · {template.template_type}
+                      {t("prompts.library.meta", { type: typeLabel, key: template.key })}
                     </p>
                   </div>
                   {canManage ? (
@@ -125,11 +145,13 @@ export function PromptLibraryPage() {
         <div className="space-y-3">
           {presets.map((preset) => {
             const alreadyCreated = existingKeys.has(preset.key);
+            const presetName = translatePromptPresetName(t, preset.key, preset.displayName);
+            const presetDescription = translatePromptPresetDescription(t, preset.key, preset.description);
             return (
               <div key={preset.key} className="rounded-lg border p-3 space-y-3">
                 <div>
-                  <p className="font-medium">{preset.displayName}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{preset.description}</p>
+                  <p className="font-medium">{presetName}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{presetDescription}</p>
                 </div>
                 {canManage ? (
                   <Button

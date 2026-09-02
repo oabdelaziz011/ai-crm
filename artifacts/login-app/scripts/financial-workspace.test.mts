@@ -76,6 +76,8 @@ describe("financial workspace navigation", () => {
     assert.equal(financial!.titleKey, "navigation.financialWorkspace");
     assert.equal(invoices!.permission, "invoices.view");
     assert.equal(financial!.permission, "invoices.view");
+    assert.equal(invoices!.commercialFeatureCode, "finance");
+    assert.equal(financial!.commercialFeatureCode, "finance");
   });
 
   it("financial billing page redirects into invoices workspace", () => {

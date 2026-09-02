@@ -2,6 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WebhookEventType } from "@/lib/integration/types";
 import { createModulePublisher, type PlatformEventType } from "@workspace/platform-events";
 import { getLoginAppPlatformEventBus } from "@/lib/application-layer/platform-event-bus-factory";
+import type {
+  BookingDomainEvent,
+  BookingEventPublisher,
+  BookingPublishOutcome,
+} from "@/lib/scheduling/booking-domain/events";
 
 const WEBHOOK_TO_PLATFORM: Readonly<Partial<Record<WebhookEventType, PlatformEventType>>> = Object.freeze({
   "lead.created": "LeadCreated",
@@ -62,61 +67,64 @@ export function bookingEventToBusType(eventType: string): WebhookEventType | nul
   return map[eventType] ?? null;
 }
 
-export class IntegrationBookingEventPublisher {
-  constructor(private readonly inner?: { publish(event: unknown): Promise<void> }) {}
+export class IntegrationBookingEventPublisher implements BookingEventPublisher {
+  constructor(private readonly inner?: BookingEventPublisher) {}
 
-  async publish(event: {
-    type: string;
-    payload: {
-      booking: {
-        id: string;
-        company_id: string;
-        customer_id?: string;
-        start_at?: string;
-        updated_at?: string;
-        cancelled_at?: string | null;
-        completed_at?: string | null;
-      };
-    };
-  }): Promise<void> {
+  async publish(event: BookingDomainEvent): Promise<void | BookingPublishOutcome> {
+    let outcome: void | BookingPublishOutcome = undefined;
+    let innerFailure: BookingPublishOutcome | undefined;
+
     try {
-      if (this.inner) await this.inner.publish(event);
+      if (this.inner) {
+        outcome = await this.inner.publish(event);
+      }
     } catch (error) {
       console.warn(
         "[booking-side-effects] inner publisher failed; booking create continues",
         error instanceof Error ? error.message : error,
       );
+      innerFailure = {
+        ok: false,
+        whatsappQueueIds: [],
+        whatsappSkipped: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
 
     const busType = bookingEventToBusType(event.type);
-    if (!busType) return;
-
-    const booking = event.payload.booking;
-    const nowIso = new Date().toISOString();
-    try {
-      await getEnterpriseEventPublisher().publish({
-        companyId: booking.company_id,
-        eventType: busType,
-        eventId: `${booking.id}:${event.type}:${Date.now()}`,
-        payload: {
-          bookingId: booking.id,
-          customerId: booking.customer_id ?? "",
-          eventType: event.type,
-          scheduledAt: booking.start_at ?? nowIso,
-          cancelledAt: booking.cancelled_at ?? booking.updated_at ?? nowIso,
-          completedAt: booking.completed_at ?? booking.updated_at ?? nowIso,
-        },
-      });
-    } catch (error) {
-      console.warn(
-        "[booking-side-effects] platform event publish failed; booking create continues",
-        error instanceof Error ? error.message : error,
-      );
+    if (busType) {
+      const booking =
+        event.type === "BookingRescheduled" ? event.payload.booking : event.payload.booking;
+      const nowIso = new Date().toISOString();
+      try {
+        await getEnterpriseEventPublisher().publish({
+          companyId: booking.company_id,
+          eventType: busType,
+          eventId: `${booking.id}:${event.type}:${Date.now()}`,
+          payload: {
+            bookingId: booking.id,
+            customerId: booking.customer_id ?? "",
+            eventType: event.type,
+            scheduledAt: booking.start_at ?? nowIso,
+            cancelledAt: booking.updated_at ?? nowIso,
+            completedAt: booking.updated_at ?? nowIso,
+          },
+        });
+      } catch (error) {
+        console.warn(
+          "[booking-side-effects] platform event publish failed; booking create continues",
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
+
+    return innerFailure ?? outcome;
   }
 }
 
-export async function checkPlatformHealth(client: SupabaseClient): Promise<{ ready: boolean; checks: Record<string, boolean> }> {
+export async function checkPlatformHealth(
+  client: SupabaseClient,
+): Promise<{ ready: boolean; checks: Record<string, boolean> }> {
   const { data, error } = await client.rpc("platform_health_check_v1");
   if (error) return { ready: false, checks: {} };
   const result = data as { status?: string; checks?: Record<string, boolean> } | null;

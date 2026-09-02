@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BookingDomainEvent, BookingEventPublisher } from "@/lib/scheduling/booking-domain/events";
+import type {
+  BookingDomainEvent,
+  BookingEventPublisher,
+  BookingPublishOutcome,
+} from "@/lib/scheduling/booking-domain/events";
 import type { InvoiceEngineService } from "@/lib/billing/invoices/invoice-engine-service";
 import { PricingEngineService } from "@/lib/billing/pricing/pricing-engine-service";
 
@@ -15,8 +19,12 @@ export class BookingBillingBridge implements BookingEventPublisher {
     this.pricing = new PricingEngineService(client);
   }
 
-  async publish(event: BookingDomainEvent): Promise<void> {
-    if (this.inner) await this.inner.publish(event);
+  async publish(event: BookingDomainEvent): Promise<void | BookingPublishOutcome> {
+    // Preserve communication publish outcome (WhatsApp queue ids) for callers such as apology.
+    let outcome: void | BookingPublishOutcome = undefined;
+    if (this.inner) {
+      outcome = await this.inner.publish(event);
+    }
 
     try {
       await this.maybeAutoInvoice(event);
@@ -26,6 +34,8 @@ export class BookingBillingBridge implements BookingEventPublisher {
         error instanceof Error ? error.message : error,
       );
     }
+
+    return outcome;
   }
 
   private async maybeAutoInvoice(event: BookingDomainEvent): Promise<void> {
@@ -103,9 +113,14 @@ export class BookingBillingBridge implements BookingEventPublisher {
 export class CompositeBookingEventPublisher implements BookingEventPublisher {
   constructor(private readonly publishers: BookingEventPublisher[]) {}
 
-  async publish(event: BookingDomainEvent): Promise<void> {
+  async publish(event: BookingDomainEvent): Promise<void | BookingPublishOutcome> {
+    let outcome: void | BookingPublishOutcome = undefined;
     for (const publisher of this.publishers) {
-      await publisher.publish(event);
+      const result = await publisher.publish(event);
+      if (result && typeof result === "object" && "whatsappQueueIds" in result) {
+        outcome = result;
+      }
     }
+    return outcome;
   }
 }

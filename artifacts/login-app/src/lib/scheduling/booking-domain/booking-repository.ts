@@ -45,6 +45,10 @@ export class BookingRepository {
     status: SchedulingBookingStatus,
     updatedBy: string | null,
     notes?: string | null,
+    exceptionLink?: {
+      businessExceptionId?: string | null;
+      businessExceptionItemId?: string | null;
+    } | null,
   ): Promise<SchedulingBooking> {
     const payload: Record<string, unknown> = {
       status,
@@ -52,6 +56,12 @@ export class BookingRepository {
     };
     if (notes !== undefined) {
       payload.notes = notes;
+    }
+    if (exceptionLink?.businessExceptionId) {
+      payload.business_exception_id = exceptionLink.businessExceptionId;
+    }
+    if (exceptionLink?.businessExceptionItemId) {
+      payload.business_exception_item_id = exceptionLink.businessExceptionItemId;
     }
 
     const { data, error } = await this.client

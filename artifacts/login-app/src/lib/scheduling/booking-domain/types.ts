@@ -76,6 +76,9 @@ export type SchedulingBooking = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  /** Set only when cancelled via Business Appointment Exception. */
+  business_exception_id?: string | null;
+  business_exception_item_id?: string | null;
   invoice_id?: string | null;
   /** Service price snapshot at create time (minor units). */
   amount_cents?: number;
@@ -150,6 +153,15 @@ export type CancelBookingInput = BookingMutationContext & {
   reason?: string | null;
   notes?: string | null;
   /**
+   * Customer-facing message for outbound notifications (e.g. business apology comment).
+   * Does not change internal cancellation reason codes.
+   */
+  customerMessage?: string | null;
+  /** Parent Business Appointment Exception id (apology cancel only). */
+  businessExceptionId?: string | null;
+  /** When set, WhatsApp queue params include this for exception-item reconcile. */
+  businessExceptionItemId?: string | null;
+  /**
    * When false, skip customer-facing cancellation notice windows.
    * Staff operations (queue cancel) must be able to clear past/waiting bookings.
    * Customer portal should keep the default (true).
@@ -202,6 +214,8 @@ export type CreateBookingResult = {
 
 export type CancelBookingResult = {
   booking: SchedulingBooking;
+  /** Present when the event publisher is communication-backed. */
+  publishOutcome?: import("./events").BookingPublishOutcome | null;
 };
 
 export type CompleteBookingResult = {

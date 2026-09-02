@@ -16,6 +16,13 @@ export type BookingCancelledEvent = {
   payload: {
     booking: SchedulingBooking;
     reason?: string | null;
+    /**
+     * Optional customer-facing cancellation message (e.g. business apology comment).
+     * When set, communication templates should prefer this over `reason`.
+     */
+    customerMessage?: string | null;
+    /** Links outbound WhatsApp queue rows back to a business-exception item. */
+    businessExceptionItemId?: string | null;
   };
 };
 
@@ -73,8 +80,16 @@ export type BookingDomainEvent =
   | BookingStatusChangedEvent;
 
 export interface BookingEventPublisher {
-  publish(event: BookingDomainEvent): void | Promise<void>;
+  publish(event: BookingDomainEvent): void | Promise<void | BookingPublishOutcome>;
 }
+
+/** Optional outcome from communication-backed publishers (noop publishers omit this). */
+export type BookingPublishOutcome = {
+  ok: boolean;
+  whatsappQueueIds: string[];
+  whatsappSkipped: boolean;
+  error?: string;
+};
 
 /** Default no-op publisher until messaging is wired (S4.6+). */
 export class NoOpBookingEventPublisher implements BookingEventPublisher {
@@ -106,11 +121,20 @@ export function createBookingCreatedEvent(booking: SchedulingBooking): BookingCr
 export function createBookingCancelledEvent(
   booking: SchedulingBooking,
   reason?: string | null,
+  customerMessage?: string | null,
+  businessExceptionItemId?: string | null,
 ): BookingCancelledEvent {
   return {
     type: "BookingCancelled",
     occurredAt: new Date().toISOString(),
-    payload: { booking, reason },
+    payload: {
+      booking,
+      reason,
+      customerMessage: customerMessage?.trim() ? customerMessage.trim() : null,
+      businessExceptionItemId: businessExceptionItemId?.trim()
+        ? businessExceptionItemId.trim()
+        : null,
+    },
   };
 }
 

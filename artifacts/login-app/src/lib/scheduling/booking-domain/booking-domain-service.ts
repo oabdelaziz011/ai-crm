@@ -148,6 +148,12 @@ export class BookingDomainService {
     }
 
     const cancellationNote = buildCancellationNote(input.reason, input.notes, booking.notes);
+    const exceptionId = input.businessExceptionId?.trim() || null;
+    const exceptionItemId = input.businessExceptionItemId?.trim() || null;
+    const exceptionLink =
+      exceptionId && exceptionItemId
+        ? { businessExceptionId: exceptionId, businessExceptionItemId: exceptionItemId }
+        : null;
 
     const updated = await this.bookingRepo.updateStatus(
       booking.id,
@@ -155,12 +161,22 @@ export class BookingDomainService {
       "cancelled",
       input.updatedBy ?? null,
       cancellationNote,
+      exceptionLink,
     );
 
-    await this.eventPublisher.publish(
-      createBookingCancelledEvent(updated, input.reason ?? input.notes ?? null),
+    const publishOutcome = await this.eventPublisher.publish(
+      createBookingCancelledEvent(
+        updated,
+        input.reason ?? input.notes ?? null,
+        input.customerMessage ?? null,
+        exceptionItemId,
+      ),
     );
-    return { booking: updated };
+    return {
+      booking: updated,
+      publishOutcome:
+        publishOutcome && typeof publishOutcome === "object" ? publishOutcome : null,
+    };
   }
 
   async checkInBooking(input: BookingMutationContext): Promise<CheckInBookingResult> {

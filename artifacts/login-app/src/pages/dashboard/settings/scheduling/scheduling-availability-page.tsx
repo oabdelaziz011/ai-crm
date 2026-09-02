@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BusinessApologyExceptionCard } from "@/components/scheduling/business-apology-exception-card";
 
 function trimTime(value: string | null | undefined): string {
   if (!value) return "";
@@ -465,6 +466,8 @@ export function SchedulingAvailabilityPage() {
           </div>
         )}
       </div>
+
+      <BusinessApologyExceptionCard />
 
       <Dialog open={exceptionOpen} onOpenChange={setExceptionOpen}>
         <DialogContent className="sm:max-w-md border-border/60 bg-card">

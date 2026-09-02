@@ -180,6 +180,7 @@
     "products": "Products",
     "quotes": "Quotes",
     "communication": "Outbound Queue",
+    "campaigns": "Campaigns",
     "invoices": "Invoices & Financial Billing",
     "financialWorkspace": "Invoices & Financial Billing",
     "financial": "Financial Billing",
@@ -950,6 +951,14 @@
       "invalidEmail": "Invalid email",
       "phone": "Phone",
       "phonePlaceholder": "+1 555 000 0000",
+      "phoneCountry": "Country",
+      "phoneCountryPlaceholder": "Country / region",
+      "phoneCountrySearch": "Search country or code…",
+      "phoneCountryEmpty": "No country found",
+      "phoneInternational": "International",
+      "phoneRegionRequired": "Select a country/region for this local phone number.",
+      "invalidPhone": "Enter a valid phone number.",
+      "duplicatePhone": "This phone number already belongs to another customer in this company.",
       "age": "Age",
       "agePlaceholder": "e.g. 32",
       "invalidAge": "Age must be a whole number between 0 and 150",
@@ -1429,7 +1438,9 @@
           "notifications": "Notifications",
           "automation": "Automation",
           "email": "Email",
-          "ai": "AI"
+          "ai": "AI",
+          "tickets": "Tickets",
+          "payments": "Payments"
         },
         "groupModes": {
           "day": "Day",
@@ -1547,6 +1558,10 @@
       "backToList": "All customers",
       "workspaceLabel": "Customer workspace",
       "tabsLabel": "Customer workspace sections",
+      "accessDenied": {
+        "title": "Not included in your plan",
+        "body": "This section is not available for your company subscription or your role."
+      },
       "memberSince": "Member since {{date}}",
       "ltv": "Lifetime value",
       "status": "Status",
@@ -1606,6 +1621,7 @@
         "files": "Files",
         "ai": "AI",
         "history": "History",
+        "campaigns": "Campaigns",
         "more": "More"
       },
       "bookingStatus": {
@@ -1634,6 +1650,81 @@
           "waiting": "Waiting customer"
         }
       },
+      "campaigns": {
+        "title": "Campaign & message history",
+        "subtitle": "All marketing campaigns and messages sent to this customer.",
+        "emptyTitle": "No campaigns for this customer",
+        "emptyDescription": "Campaign and marketing message history will appear here when campaigns are sent to this customer.",
+        "noPermissionTitle": "Campaigns unavailable",
+        "noPermissionBody": "You need campaigns.view permission to see this customer's campaign history.",
+        "summary": {
+          "total": "Total campaigns",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "read": "Read",
+          "replied": "Replied",
+          "failed": "Failed",
+          "sentHint": "Messages recorded"
+        },
+        "filters": {
+          "period": "Period",
+          "status": "Message status",
+          "channel": "Channel"
+        },
+        "period": {
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "90d": "Last 90 days",
+          "all": "All time"
+        },
+        "statusFilter": {
+          "all": "All",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "read": "Read",
+          "replied": "Replied",
+          "failed": "Failed",
+          "pending": "Pending",
+          "skipped": "Skipped"
+        },
+        "channelFilter": {
+          "all": "All channels"
+        },
+        "displayStatus": {
+          "delivered": "Delivered",
+          "read": "Read",
+          "replied": "Replied"
+        },
+        "columns": {
+          "campaign": "Campaign",
+          "message": "Campaign message",
+          "channel": "Channel",
+          "sentAt": "Sent",
+          "status": "Status",
+          "delivered": "Delivered",
+          "read": "Read"
+        },
+        "pagination": "Page {{page}} of {{pages}} · {{total}} total",
+        "detail": {
+          "subtitle": "Recipient delivery details for this customer.",
+          "campaignId": "Campaign ID",
+          "sentAt": "Sent time",
+          "reply": "Reply",
+          "failure": "Failure reason",
+          "providerId": "Provider / message ID",
+          "timeline": "Message timeline"
+        },
+        "timeline": {
+          "created": "Message created",
+          "queued": "Queued",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "read": "Read",
+          "replied": "Replied",
+          "failed": "Failed",
+          "skipped": "Skipped"
+        }
+      },
       "commerce": {
         "navLabel": "Commerce sections",
         "bookings": "Bookings",
@@ -1657,8 +1748,15 @@
         "healthy": "Relationship is healthy — maintain regular touchpoints."
       },
       "timeline": {
-        "subtitle": "Bookings, payments, invoices, messages, emails, notes, and AI events — newest first.",
-        "viewDetails": "View details"
+        "subtitle": "All interactions and activities linked to this customer",
+        "viewDetails": "View details",
+        "empty": "No activity for this customer yet",
+        "emptyDescription": "Only operational events deterministically linked to this customer are shown here. Campaign delivery lives under Campaigns; audit changes live under History.",
+        "errors": {
+          "customerNotFoundInTenant": "Customer not found in tenant.",
+          "customerNotFoundInTenantHint": "This customer does not belong to the active company, or company context could not be resolved.",
+          "queryFailed": "Could not load activity for this customer."
+        }
       },
       "overview": {
         "snapshotEyebrow": "Relationship snapshot",
@@ -1787,15 +1885,92 @@
         "applyAction": "View recommended next step"
       },
       "history": {
+        "title": "History",
+        "subtitle": "All persisted changes and events recorded for this customer",
         "auditTitle": "Audit log",
         "systemTitle": "System identifiers",
         "noPermission": "You do not have permission to view audit logs.",
-        "emptyTitle": "No audit events",
-        "emptyDescription": "Changes to this customer profile will appear here.",
+        "emptyTitle": "No recorded events for this customer",
+        "emptyDescription": "Only persisted audit events for this customer are shown here.",
         "colAction": "Action",
         "colActor": "By",
         "colEntity": "Entity",
-        "colWhen": "When"
+        "colWhen": "When",
+        "before": "Before",
+        "after": "After",
+        "showDetails": "Show details",
+        "hideDetails": "Hide details",
+        "pagination": "Page {{page}} of {{pages}} · {{total}} events",
+        "filters": {
+          "period": "Period",
+          "event": "Event type",
+          "source": "Source"
+        },
+        "period": {
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "90d": "Last 90 days",
+          "all": "All time"
+        },
+        "eventFilter": {
+          "all": "All events",
+          "customer": "Customer",
+          "booking": "Bookings",
+          "ticket": "Tickets",
+          "invoice": "Invoices",
+          "campaign": "Campaigns",
+          "other": "Other"
+        },
+        "sourceFilter": {
+          "all": "All sources",
+          "crm": "CRM",
+          "marketing_campaign": "Campaigns",
+          "system": "System",
+          "unknown": "Unknown"
+        },
+        "source": {
+          "crm": "CRM",
+          "marketing_campaign": "Marketing campaign",
+          "system": "System"
+        },
+        "actor": {
+          "system": "System",
+          "userUnknown": "User"
+        },
+        "fields": {
+          "name": "Name",
+          "email": "Email",
+          "phone": "Phone",
+          "status": "Status",
+          "service": "Service",
+          "amount": "Amount",
+          "priority": "Priority",
+          "subject": "Subject",
+          "generic": "Field"
+        },
+        "events": {
+          "customerCreated": "Customer created",
+          "customerUpdated": "Customer updated",
+          "customerDeleted": "Customer deleted",
+          "customerNameChanged": "Customer name changed",
+          "customerEmailChanged": "Email changed",
+          "customerPhoneChanged": "Phone number changed",
+          "customerStatusChanged": "Customer status changed",
+          "bookingCreated": "Booking created",
+          "bookingUpdated": "Booking updated",
+          "bookingDeleted": "Booking deleted",
+          "ticketCreated": "Ticket created",
+          "ticketUpdated": "Ticket updated",
+          "ticketDeleted": "Ticket deleted",
+          "invoiceCreated": "Invoice created",
+          "invoiceUpdated": "Invoice updated",
+          "invoiceDeleted": "Invoice deleted",
+          "campaignRecipientCreated": "Customer added to a campaign",
+          "campaignRecipientUpdated": "Campaign message status updated",
+          "genericCreated": "Record created",
+          "genericUpdated": "Record updated",
+          "genericDeleted": "Record deleted"
+        }
       }
     },
     "bookings": {
@@ -2433,6 +2608,10 @@
       "draftSaved": "Draft saved — continue anytime from the library",
       "draftSaveFailed": "Could not save draft.",
       "draftNeedsName": "Enter a display name before saving a draft.",
+      "draftNotFound": "This draft employee was not found or is no longer available. Go back to the list and start a new employee — do not create a duplicate.",
+      "startNewEmployee": "Start new employee",
+      "archivedDraftBlocked": "This employee is archived and cannot be edited from Continue Setup. Restore it from Lifecycle first.",
+      "viewArchivedEmployee": "View archived employee",
       "draftBadge": "Draft autosave on",
       "finish": "Create & save",
       "skipUpload": "Skip upload for now",
@@ -2755,16 +2934,203 @@
       }
     }
   },
+  "campaigns": {
+    "title": "Campaigns",
+    "subtitle": "Send multi-channel marketing campaigns to eligible customers.",
+    "noPermission": "You do not have permission to view campaigns.",
+    "noPermissionCreate": "You do not have permission to create campaigns.",
+    "noPermissionSend": "You do not have permission to send campaigns.",
+    "nav": {
+      "list": "Campaigns",
+      "create": "Create campaign",
+      "detail": "Campaign details"
+    },
+    "purpose": {
+      "title": "What is this page?",
+      "body": "Campaigns send WhatsApp, Instagram, and Messenger messages to marketing-eligible customers using existing communication channels.",
+      "point1": "Audience is always resolved on the server — browser selections are revalidated.",
+      "point2": "Each channel is independent: a customer may be queued on WhatsApp and skipped on Instagram.",
+      "point3": "Queued is not the same as sent for WhatsApp notification delivery.",
+      "stepsTitle": "How to run a campaign",
+      "step1": "Choose the audience.",
+      "step2": "Select available channels.",
+      "step3": "Write the campaign content.",
+      "step4": "Review eligibility and confirm send."
+    },
+    "status": {
+      "draft": "Draft",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "partial": "Partial success",
+      "unknown": "Unknown"
+    },
+    "recipientStatus": {
+      "pending": "Pending",
+      "queued": "Queued",
+      "sent": "Sent",
+      "failed": "Failed",
+      "skipped": "Skipped",
+      "unknown": "Unknown"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "messenger": "Messenger",
+      "unknown": "Channel"
+    },
+    "audienceType": {
+      "all": "All customers",
+      "filtered": "Filtered customers",
+      "manual": "Manual selection"
+    },
+    "skipReasons": {
+      "noPhone": "No phone number",
+      "marketingOptOut": "Customer opted out of marketing messages",
+      "noInstagramConversation": "No eligible Instagram conversation",
+      "noMessengerConversation": "No eligible Messenger conversation",
+      "missingIgsid": "Missing Instagram identity",
+      "missingPsid": "Missing Messenger identity",
+      "messagingWindow": "Messaging window expired",
+      "channelUnavailable": "Channel unavailable",
+      "preferences": "Blocked by communication preferences",
+      "generic": "Not eligible for this channel"
+    },
+    "list": {
+      "title": "Campaign list",
+      "subtitle": "Track draft, running, and completed campaigns.",
+      "create": "Create campaign",
+      "emptyTitle": "No campaigns yet",
+      "empty": "Create a campaign to reach eligible customers on WhatsApp, Instagram, or Messenger.",
+      "filters": {
+        "status": "Status",
+        "channel": "Channel",
+        "allStatuses": "All statuses",
+        "allChannels": "All channels"
+      },
+      "columns": {
+        "name": "Name",
+        "created": "Created",
+        "createdBy": "Created by",
+        "audience": "Audience",
+        "channels": "Channels",
+        "status": "Status",
+        "total": "Total",
+        "queued": "Queued",
+        "sent": "Sent",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      },
+      "dateFrom": "From date",
+      "dateTo": "To date"
+    },
+    "wizard": {
+      "title": "Create campaign",
+      "subtitle": "Four steps — nothing is sent until you confirm.",
+      "cancel": "Cancel",
+      "back": "Back",
+      "next": "Next",
+      "confirmSend": "Confirm & Send",
+      "sending": "Sending…",
+      "executeSuccess": "Campaign finished: {{queued}} queued, {{sent}} sent, {{skipped}} skipped, {{failed}} failed.",
+      "executeFailed": "Campaign execution failed.",
+      "steps": {
+        "1": "1. Audience",
+        "2": "2. Channels",
+        "3": "3. Content",
+        "4": "4. Review"
+      },
+      "audience": {
+        "title": "Audience",
+        "all": "All customers",
+        "filtered": "Filter customers",
+        "manual": "Select customers manually",
+        "search": "Search",
+        "gender": "Gender",
+        "genderAll": "All",
+        "genderMale": "Male",
+        "genderFemale": "Female",
+        "ageMin": "Minimum age",
+        "ageMax": "Maximum age",
+        "serverSideNote": "Audience counts and marketing eligibility are resolved on the server before send. Customers without marketing consent are excluded."
+      },
+      "channels": {
+        "title": "Channels",
+        "subtitle": "SMS is not available. Select one or more supported channels.",
+        "connected": "Connected",
+        "unavailable": "Unavailable for this company",
+        "sessionLimitation": "Some customers may be skipped because they do not have an eligible conversation/session (or messaging window).",
+        "eligibleCount": "{{eligible}} eligible · {{skipped}} skipped",
+        "calculating": "Calculating eligibility…",
+        "selectToPreview": "Select a channel to preview eligibility."
+      },
+      "eligibility": {
+        "audience": "Marketing-eligible audience: {{count}}",
+        "optOut": "Excluded by marketing preference: {{count}}",
+        "totalAudience": "Total audience (before marketing filter): {{count}}"
+      },
+      "content": {
+        "title": "Content",
+        "name": "Campaign name",
+        "campaignTitle": "Campaign title",
+        "detail": "Message / details",
+        "titlePlaceholder": "Campaign title",
+        "detailPlaceholder": "Message details",
+        "whatsappPreviewHint": "WhatsApp uses the marketing_campaign template variables.",
+        "plainPreviewHint": "Instagram/Messenger use plain text."
+      },
+      "review": {
+        "title": "Review & send",
+        "skipExplain": "Customers who are not eligible for a selected channel will be skipped for that channel.",
+        "confirmLabel": "I understand this will enqueue/send campaign messages on the selected channels."
+      },
+      "errors": {
+        "manualEmpty": "Select at least one customer.",
+        "channelsRequired": "Select at least one channel.",
+        "contentRequired": "Campaign name and title are required.",
+        "confirmRequired": "Confirm before sending."
+      }
+    },
+    "detail": {
+      "notFound": "Campaign not found.",
+      "back": "Back to list",
+      "createdAt": "Created {{date}}",
+      "overview": "Overview",
+      "content": "Content",
+      "channelSummary": "Channel summary",
+      "recipients": "Recipient results",
+      "recipientsEmpty": "No recipient rows yet.",
+      "queuedVsSent": "WhatsApp queued means the notification queue accepted the job. Sent means the provider later confirmed Meta submission.",
+      "totals": "Total {{total}} · Queued {{queued}} · Sent {{sent}} · Failed {{failed}} · Skipped {{skipped}}",
+      "channelCounts": "Total {{total}} · Queued {{queued}} · Sent {{sent}} · Failed {{failed}} · Skipped {{skipped}}",
+      "columns": {
+        "customer": "Customer",
+        "channel": "Channel",
+        "status": "Status",
+        "reason": "Reason",
+        "providerId": "Provider / queue ID",
+        "updated": "Updated"
+      }
+    }
+  },
   "prompts": {
     "title": "AI Prompt Templates",
     "subtitle": "Write and manage the instruction templates used by AI steps inside workflows.",
     "noPermission": "You do not have permission to view prompts.",
     "purpose": {
       "title": "What is this page?",
-      "body": "This is not financial claims. This page manages AI prompt templates — the written instructions the AI follows when a workflow runs a decision, summary, extraction, or similar step.",
+      "body": "This page manages AI instruction templates — the written rules the system follows when a workflow runs an intelligence step (classify a message, summarize, extract data, or make a decision). This is not the same as an AI Employee conversation prompt.",
       "point1": "Create or edit company templates here, then publish them.",
       "point2": "In Workflow Builder, each AI step picks a template from this library.",
       "point3": "System templates are read-only; add a company copy from a preset to customize.",
+      "point4": "Published templates appear in workflow AI steps for your company only.",
+      "stepsTitle": "How to use it",
+      "step1": "Pick a preset on the right and click “Add to company”.",
+      "step2": "Open the editor and adjust the instruction text for your policies.",
+      "step3": "Save a draft, then publish the template.",
+      "step4": "Go to Workflows and add an AI step to your automation.",
+      "step5": "In that step, select the published template from this library.",
       "openWorkflows": "Open Workflows"
     },
     "nav": {
@@ -2785,7 +3151,9 @@
       "openPreview": "Preview",
       "createFromPreset": "Add to company",
       "alreadyAdded": "Already added",
-      "created": "Created template “{{name}}”"
+      "created": "Created template “{{name}}”",
+      "meta": "Type: {{type}} · Key: {{key}}",
+      "noDescription": "No description for this template."
     },
     "templates": {
       "title": "Template Presets",
@@ -4485,7 +4853,7 @@
     "cancel": "Cancel",
     "created": "AI Employee created",
     "updated": "AI Employee updated",
-    "deleted": "AI Employee archived",
+    "deleted": "AI Employee deleted",
     "empty": "No AI Employees yet. Create your first profile to get started.",
     "accessDenied": "You do not have permission to access the AI Employee workspace.",
     "notFound": "AI Employee not found",
@@ -4504,11 +4872,12 @@
     },
     "listGuide": {
       "title": "How AI Employees work",
-      "body": "This list is your home. Open any employee to manage Overview, Setup, Channels, Knowledge & tools, Lifecycle, and Activity tabs.",
+      "body": "This list is your Control Center home. Open any employee to manage Overview, Setup, Channels, Knowledge, Lifecycle, and Activity.",
       "points": {
         "create": "Create a draft with the wizard, then open the profile workspace (tabs) — not only the wizard.",
         "publish": "Publish from the Lifecycle tab — drafts never answer customers.",
-        "channels": "Use the Channels tab so WhatsApp / Messenger / Instagram match the right employee."
+        "channels": "Use Manage Channels so WhatsApp / Messenger / Instagram match the right employee.",
+        "controlCenter": "Use Actions for View Details (read-only), Edit, Continue Setup, Channels, Capabilities & tools, Publish, or Disable."
       }
     },
     "filters": {
@@ -4534,18 +4903,51 @@
       "channels": "Channels"
     },
     "actions": {
-      "view": "View",
+      "view": "View Details",
       "edit": "Edit",
-      "continue": "Continue setup",
-      "delete": "Archive",
+      "continue": "Continue Setup",
+      "manageChannels": "Manage Channels",
+      "manageCapabilities": "Capabilities & tools",
+      "publish": "Publish",
+      "disable": "Disable",
+      "restore": "Restore",
+      "delete": "Delete",
       "menu": "Actions",
       "openLifecycle": "Open lifecycle & publish",
       "openChannels": "Open messaging channels"
     },
+    "controlCenter": {
+      "readOnlyBadge": "Read-only",
+      "readOnlyHint": "You are viewing configuration only. No changes can be saved in this mode.",
+      "overviewTitle": "Control Center overview",
+      "overviewBody": "Reliable summary from the current employee record and readiness score. Metrics are not fabricated.",
+      "permissionsNote": "“Capabilities & tools” edits what this AI Employee may use (tools/knowledge scope). Who may administer AI Employees is controlled by agents.* RBAC — a separate concept.",
+      "fields": {
+        "status": "Status",
+        "readiness": "Setup readiness",
+        "updated": "Last update"
+      }
+    },
     "delete": {
-      "title": "Archive AI Employee",
-      "description": "Archive {{name}}? This soft-deletes the profile without affecting runtime execution history.",
-      "confirm": "Archive"
+      "title": "Delete AI Employee",
+      "description": "Are you sure you want to delete {{name}}?",
+      "confirm": "Delete",
+      "deleting": "Deleting…",
+      "archiving": "Deleting…",
+      "checking": "Checking…",
+      "close": "Close",
+      "blockedTitle": "Cannot delete this AI Employee",
+      "notFoundDescription": "This AI Employee was not found in your company.",
+      "activeBlockedTitle": "Cannot delete this employee",
+      "activeBlockedDescription": "This employee is currently active and must be disabled before it can be deleted.",
+      "connectedChannelsLabel": "Currently connected channels:",
+      "disableFirstHint": "Disable the employee first, then you can delete it.",
+      "archivedBlockedTitle": "Employee already archived",
+      "archivedBlockedDescription": "This employee is already archived. Use Restore from Lifecycle if you need it again — it cannot be deleted again.",
+      "recheck": "Try again",
+      "actions": {
+        "openLifecycle": "Open Lifecycle"
+      }
     },
     "errors": {
       "title": "AI Employee error"
@@ -4562,6 +4964,10 @@
       "draftFinished": "Saved",
       "draftBadge": "Draft autosave on",
       "draftNeedsName": "Enter a display name before saving a draft.",
+      "draftNotFound": "This draft employee was not found or is no longer available. Go back to the list and start a new employee — do not create a duplicate.",
+      "startNewEmployee": "Start new employee",
+      "archivedDraftBlocked": "This employee is archived and cannot be edited from Continue Setup. Restore it from Lifecycle first.",
+      "viewArchivedEmployee": "View archived employee",
       "stepOf": "Step {{current}} of {{total}}",
       "stepsNav": "Wizard steps",
       "guide": {
@@ -4575,22 +4981,45 @@
         }
       },
       "stepHints": {
-        "general": "Name the employee, assign an owner, and choose which WhatsApp / Messenger / Instagram traffic can route to them.",
+        "general": "Name the employee, assign an owner, and set the profile basics.",
+        "prompt": "Describe role, tone, language, and what the employee must / must not do. Starter templates only fill text — tools stay unrestricted.",
+        "intelligence": "Pick the AI provider type and chat model (temperature / max tokens included).",
         "provider": "Pick the AI provider type (e.g. OpenAI). Runtime uses the company default connection for that type.",
         "model": "Choose the chat model id (e.g. gpt-4.1) plus temperature and max tokens for replies.",
-        "prompt": "Describe role, tone, language, and what the employee must / must not do. Starter templates only fill text — tools stay unrestricted.",
         "knowledge": "Optional: attach company knowledge sources the employee may search when answering.",
-        "tools": "Optional: allow system actions for tickets, CRM, bookings, leads, and knowledge search. Retrieval check is in Knowledge — here pick runtime tools for chat.",
-        "review": "Confirm the draft. After create, publish from Lifecycle before customers can talk to it."
+        "tools": "Optional: allow system actions (capabilities) for tickets, CRM, bookings, leads, and knowledge search.",
+        "channels": "Choose which WhatsApp / Messenger / Instagram traffic can route to this employee (channel tags).",
+        "review": "Confirm the draft. Workflows and runtime limits stay in Setup after save. Publish from Lifecycle before customers can talk to it."
       },
       "steps": {
-        "general": "General",
+        "general": "Basic information",
+        "prompt": "Personality & instructions",
+        "intelligence": "Intelligence",
         "provider": "Provider",
         "model": "Model",
-        "prompt": "Prompt",
         "knowledge": "Knowledge",
-        "tools": "Tools",
+        "tools": "Capabilities & tools",
+        "channels": "Channels",
         "review": "Review"
+      },
+      "review": {
+        "intro": "Summary of this draft. Values come only from what you configured — nothing is fabricated.",
+        "workflows": "Workflows",
+        "workflowsHint": "Transferable automation flow is configured in Channels / Setup after save — workflows remain an independent domain.",
+        "workflowsEmpty": "No transferable workflow linked yet.",
+        "workflowsConfigured": "Transferable flow: {{id}}",
+        "configureWorkflows": "Configure in Channels",
+        "runtime": "Runtime / limits",
+        "runtimeHint": "Session timeout and runtime limits are configured in Setup → Limits after save.",
+        "configureRuntime": "Open Setup → Limits",
+        "lifecycle": "Lifecycle / status",
+        "lifecycleReminder": "Saving here keeps status = draft. Activation remains Lifecycle → Publish.",
+        "state": {
+          "configured": "Configured",
+          "missing": "Not configured",
+          "warning": "Needs attention",
+          "optional": "Optional / later"
+        }
       }
     },
     "edit": {
@@ -7310,7 +7739,7 @@
       },
       "bookingCancelled": {
         "title": "Booking Cancelled",
-        "body": "Your appointment was cancelled."
+        "body": "Hello {{customerName}},\n\nWe apologize — your appointment for {{service}} on {{date}} at {{time}} has been cancelled.\n\nReason:\n{{reason}}\n\nWe apologize for any inconvenience."
       },
       "bookingRescheduled": {
         "title": "Booking Rescheduled",
@@ -7775,6 +8204,55 @@
         "4": "Thursday",
         "5": "Friday",
         "6": "Saturday"
+      }
+    },
+    "apology": {
+      "title": "Submit an apology",
+      "subtitle": "Cancel appointments for a specific service for a full day or selected hours and notify customers automatically.",
+      "submit": "Submit apology",
+      "fields": {
+        "date": "Date",
+        "service": "Service",
+        "servicePlaceholder": "Select a service",
+        "scope": "Exception scope",
+        "fullDay": "Full day",
+        "hours": "Specific hours",
+        "startTime": "Start time",
+        "endTime": "End time",
+        "comment": "Comment / reason",
+        "commentPlaceholder": "Explain why appointments must be cancelled…"
+      },
+      "confirm": {
+        "title": "Confirm apology",
+        "warning": "This will cancel {{appointments}} appointment(s) and notify {{customers}} affected customer(s) via WhatsApp.",
+        "cancel": "Cancel",
+        "confirm": "Confirm and submit apology"
+      },
+      "result": {
+        "successTitle": "Apology submitted successfully",
+        "affected": "Affected appointments",
+        "cancelled": "Cancelled appointments",
+        "whatsappQueued": "WhatsApp messages queued",
+        "whatsappSent": "WhatsApp messages sent",
+        "whatsappFailed": "WhatsApp messages failed",
+        "whatsappSkipped": "WhatsApp messages skipped",
+        "zeroAffected": "No matching appointments were found for the selected criteria.",
+        "queuedDetail": "{{cancelled}} appointment(s) cancelled. {{queued}} WhatsApp message(s) were queued for sending. Delivery status will update as messages are processed.",
+        "partial": "Some WhatsApp notifications failed. Review the counts above."
+      },
+      "errors": {
+        "dateRequired": "Date is required",
+        "serviceRequired": "Service is required",
+        "commentRequired": "Comment is required",
+        "hoursRequired": "Start and end time are required",
+        "invalidTimeRange": "Start time must be before end time",
+        "unauthorized": "You do not have permission to submit a business apology.",
+        "generic": "Could not submit the apology",
+        "unauthorized_code": "Not authorized",
+        "invalid_input": "Invalid input",
+        "invalid_time_range": "Invalid time range",
+        "service_not_found": "Service not found",
+        "duplicate_in_progress": "This apology is already being processed"
       }
     },
     "bookingRules": {
@@ -8520,7 +8998,9 @@
       "subscriptionPlans": "Subscription Plans",
       "customers": "Customers",
       "bookings": "Bookings",
-      "schedulingBookings": "Scheduling Bookings",
+      "schedulingBookings": "Booking",
+      "businessAppointmentExceptions": "Business Appointment Exception",
+      "businessAppointmentExceptionItems": "Exception Item",
       "invoices": "Invoices",
       "roles": "Roles",
       "permissions": "Permissions",
@@ -8598,6 +9078,12 @@
       "bookingUpdated": "{{actor}} updated a booking for {{target}}.",
       "bookingCancelled": "{{actor}} cancelled the booking for {{target}}.",
       "bookingStatusChanged": "{{actor}} changed the booking for {{target}} to {{status}}.",
+      "schedulingBookingCancelledByException": "{{actor}} cancelled scheduling booking {{target}} via a business appointment exception.",
+      "businessExceptionCreated": "{{actor}} created a business appointment exception ({{scope}}) for {{date}}.",
+      "businessExceptionUpdated": "{{actor}} updated a business appointment exception for {{date}} (status: {{status}}).",
+      "businessExceptionDeleted": "{{actor}} deleted a business appointment exception for {{date}}.",
+      "businessExceptionItemCreated": "{{actor}} recorded an exception item (cancel: {{cancelStatus}}, notify: {{notifyStatus}}).",
+      "businessExceptionItemUpdated": "{{actor}} updated an exception item (cancel: {{cancelStatus}}, notify: {{notifyStatus}}).",
       "permissionsUpdated": "{{actor}} updated permissions for {{target}}.",
       "aiAssistantCreated": "{{actor}} created AI Assistant settings for {{target}}.",
       "aiAssistantUpdated": "{{actor}} updated AI Assistant settings for {{target}}.",
@@ -8858,6 +9344,7 @@
     "fallbacks": {
       "deletedUser": "Deleted User",
       "systemUser": "System",
+      "unknown": "Unknown",
       "unknownCompany": "Unknown company",
       "noRole": "No role",
       "unavailable": "—",
@@ -9057,10 +9544,36 @@
       "changePackage": "Change package",
       "convertTrial": "Convert trial to paid subscription",
       "retryProvisioning": "Retry tenant provisioning",
+      "resetAdminPassword": "Reset Admin Password",
       "suspend": "Suspend company",
       "restore": "Restore company",
       "reject": "Reject company",
       "delete": "Delete company"
+    },
+    "resetAdminPassword": {
+      "title": "Reset Admin Password",
+      "description": "Set a new password for this company's administrator login account.",
+      "administrator": "Administrator",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "policyHint": "Use at least 8 characters with uppercase, lowercase, and a number.",
+      "sessionWarning": "The administrator will be signed out of current sessions and the old password will no longer work.",
+      "submit": "Reset Password",
+      "success": "Administrator password reset successfully",
+      "failed": "Could not reset administrator password",
+      "errors": {
+        "required": "Enter and confirm the new password.",
+        "password_mismatch": "Passwords do not match.",
+        "password_policy": "Password does not meet the required strength.",
+        "unauthorized": "You are not allowed to perform this action.",
+        "admin_not_found": "No active company administrator login account was found.",
+        "company_not_found": "Company was not found.",
+        "auth_provider_failure": "Authentication service could not update the password.",
+        "session_invalidation_failure": "Password was updated but sessions could not be revoked. Contact support.",
+        "generic": "The password reset could not be completed."
+      }
     },
     "flags": {
       "suspended": "Suspended",

@@ -1,4 +1,7 @@
-import { TimelineEntityAccessError } from "@workspace/activity-timeline";
+import {
+  CustomerNotFoundInTenantError,
+  TimelineEntityAccessError,
+} from "@workspace/activity-timeline";
 import type { TimelineEntityAccessPort } from "@workspace/activity-timeline";
 import { supabase } from "@/lib/supabase";
 
@@ -8,15 +11,22 @@ export const customerTimelineEntityAccess: TimelineEntityAccessPort = {
       throw new TimelineEntityAccessError("Unsupported timeline entity type.");
     }
 
+    if (!scope.companyId?.trim() || !scope.entityId?.trim()) {
+      throw new CustomerNotFoundInTenantError();
+    }
+
     const { data, error } = await supabase
       .from("customers")
-      .select("id")
+      .select("id, company_id")
       .eq("id", scope.entityId)
       .eq("company_id", scope.companyId)
       .maybeSingle();
 
-    if (error || !data) {
-      throw new TimelineEntityAccessError("Customer not found in tenant.");
+    if (error) {
+      throw new TimelineEntityAccessError(error.message);
+    }
+    if (!data) {
+      throw new CustomerNotFoundInTenantError();
     }
   },
 };

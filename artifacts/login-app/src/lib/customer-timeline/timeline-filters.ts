@@ -36,13 +36,17 @@ const AI_TYPES = new Set<TimelineEventType>([
   "automation_finished",
 ]);
 
+const TICKET_TYPES = new Set<TimelineEventType>(["ticket_created", "ticket_closed"]);
+
 export function timelineEventFilterGroup(type: TimelineEventType): TimelineFilterId {
   if (MESSAGE_TYPES.has(type)) return "messages";
   if (BOOKING_TYPES.has(type)) return "bookings";
+  if (type === "payment_received") return "payments";
   if (INVOICE_TYPES.has(type)) return "invoices";
   if (NOTE_TYPES.has(type)) return "notes";
   if (CALL_TYPES.has(type)) return "calls";
   if (AI_TYPES.has(type)) return "ai";
+  if (TICKET_TYPES.has(type)) return "tickets";
   return "all";
 }
 
@@ -108,10 +112,10 @@ export const TIMELINE_FILTERS: TimelineFilterId[] = [
   "messages",
   "bookings",
   "invoices",
+  "payments",
+  "tickets",
   "notes",
   "calls",
-  "notifications",
   "automation",
-  "email",
   "ai",
 ];

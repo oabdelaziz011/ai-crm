@@ -1,34 +1,34 @@
 import { supabase } from "@/lib/supabase";
 import type { TimelineActivity, TimelineActivitySource, TimelineFetchInput } from "@/lib/customer-timeline/types";
+import {
+  automationContextBelongsToCustomer,
+  buildAutomationCustomerOrFilter,
+} from "./automation-customer-scope";
 
+const CUSTOMER_SCOPED_LIMIT = 200;
+
+/**
+ * Customer Activity source for automation executions.
+ * Server-side company_id + jsonb customer UUID linkage — never company-wide latest-N.
+ */
 export class AutomationExecutionsTimelineAggregator implements TimelineActivitySource {
   readonly sourceId = "automation";
 
   async collect({ customerId, companyId }: TimelineFetchInput): Promise<TimelineActivity[]> {
-    if (!companyId) return [];
+    if (!companyId?.trim() || !customerId?.trim()) return [];
 
     const { data, error } = await supabase
       .from("automation_executions")
       .select("id, workflow_id, status, trigger_event, context, created_at, completed_at, error")
       .eq("company_id", companyId)
+      .or(buildAutomationCustomerOrFilter(customerId))
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(CUSTOMER_SCOPED_LIMIT);
 
     if (error || !data) return [];
 
     return data
-      .filter((row) => {
-        const context = row.context as Record<string, unknown> | null;
-        const params =
-          context?.params != null &&
-          typeof context.params === "object" &&
-          !Array.isArray(context.params)
-            ? (context.params as Record<string, unknown>)
-            : undefined;
-        const ctxCustomer =
-          context?.customerId ?? context?.customer_id ?? params?.customerId;
-        return String(ctxCustomer ?? "") === customerId;
-      })
+      .filter((row) => automationContextBelongsToCustomer(row.context, customerId))
       .flatMap((row) => {
         const activities: TimelineActivity[] = [
           {

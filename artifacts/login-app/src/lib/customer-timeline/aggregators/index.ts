@@ -4,15 +4,22 @@ import { BookingsTimelineProvider } from "../providers/bookings-timeline-provide
 import { CustomerLifecycleTimelineProvider } from "../providers/customer-lifecycle-provider";
 import { InvoicesTimelineProvider } from "../providers/invoices-timeline-provider";
 import { WhatsappTimelineProvider } from "../providers/whatsapp-timeline-provider";
-import { NotificationsTimelineAggregator } from "./notifications-timeline-aggregator";
-import { EmailDeliveryTimelineAggregator } from "./email-delivery-timeline-aggregator";
-import { WhatsAppDeliveryTimelineAggregator } from "./whatsapp-delivery-timeline-aggregator";
 import { AutomationExecutionsTimelineAggregator } from "./automation-executions-timeline-aggregator";
 import { TicketsTimelineAggregator } from "./tickets-timeline-aggregator";
 
 let bootstrapped = false;
 
-/** Idempotent registration of all timeline activity sources. */
+/**
+ * Idempotent registration of Activity sources.
+ *
+ * Intentionally excluded (unsafe / non-deterministic customer linkage):
+ * - WhatsAppDeliveryTimelineAggregator — phone / suffix matching
+ * - EmailDeliveryTimelineAggregator — email matching
+ * - NotificationsTimelineAggregator — customers.user_id is creator, not customer identity
+ * - audit_logs (History tab owns audit trail)
+ *
+ * Campaign lifecycle remains on the Campaigns tab — not registered here.
+ */
 export function ensureTimelineAggregators(): void {
   if (bootstrapped) return;
 
@@ -22,9 +29,6 @@ export function ensureTimelineAggregators(): void {
   timelineAggregator.registerLegacyProvider(new InvoicesTimelineProvider());
   timelineAggregator.registerLegacyProvider(new AgentActivityTimelineProvider());
 
-  timelineAggregator.registerSource(new NotificationsTimelineAggregator());
-  timelineAggregator.registerSource(new EmailDeliveryTimelineAggregator());
-  timelineAggregator.registerSource(new WhatsAppDeliveryTimelineAggregator());
   timelineAggregator.registerSource(new AutomationExecutionsTimelineAggregator());
   timelineAggregator.registerSource(new TicketsTimelineAggregator());
 

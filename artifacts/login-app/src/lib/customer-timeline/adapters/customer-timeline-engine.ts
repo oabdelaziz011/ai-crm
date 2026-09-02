@@ -8,22 +8,24 @@ import type { TimelineAggregator } from "@/lib/customer-timeline/aggregators/tim
 import { createLegacySourcePublisher } from "@/lib/customer-timeline/adapters/activity-timeline-bridge";
 
 const SOURCE_MODULE_PERMISSIONS: Record<string, string[]> = {
-  bookings: ["customers.view"],
-  calendar: ["customers.view"],
-  notifications: ["customers.view"],
-  email: ["customers.view"],
-  whatsapp: ["customers.view"],
+  bookings: ["bookings.view"],
+  calendar: ["bookings.view"],
+  whatsapp: ["whatsapp.view", "channels.view"],
   automation: ["customers.view"],
-  invoices: ["customers.view"],
-  payments: ["customers.view"],
-  notes: ["customers.view"],
-  lifecycle: ["customers.view"],
-  agent: ["customers.view"],
-  ai: ["customers.view"],
-  calls: ["customers.view"],
-  documents: ["customers.view"],
+  invoices: ["invoices.view"],
+  payments: ["invoices.view"],
   tickets: ["tickets.view"],
   workflows: ["agents.view"],
+  lifecycle: ["customers.view"],
+  "customer-lifecycle": ["customers.view"],
+  "agent-activity": ["whatsapp.view", "channels.view"],
+  agent: ["whatsapp.view", "channels.view"],
+  notes: ["customers.view"],
+  notifications: ["customers.view"],
+  email: ["channels.view"],
+  ai: ["ai_assistant.view"],
+  calls: ["customers.view"],
+  documents: ["entity.files.read"],
 };
 
 function resolveRequiredPermissions(sourceId: string): string[] {

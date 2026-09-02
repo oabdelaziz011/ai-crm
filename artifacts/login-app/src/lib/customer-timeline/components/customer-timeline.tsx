@@ -1,5 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  ActivityQueryFailedError,
+  CustomerNotFoundInTenantError,
+  TimelineError,
+} from "@workspace/activity-timeline";
 import type { TimelineFilterId, TimelineGroupMode } from "@/lib/customer-timeline/types";
 import {
   useTimelineActivities,
@@ -19,6 +24,45 @@ type CustomerTimelineProps = {
   cardVariant?: "default" | "workspace";
   fillHeight?: boolean;
 };
+
+function resolveTimelineErrorMessage(
+  error: unknown,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): { title: string; hint?: string; kind: "not_found" | "failed" } {
+  if (error instanceof CustomerNotFoundInTenantError) {
+    return {
+      kind: "not_found",
+      title: t("dashboard.customerWorkspace.timeline.errors.customerNotFoundInTenant"),
+      hint: t("dashboard.customerWorkspace.timeline.errors.customerNotFoundInTenantHint"),
+    };
+  }
+  if (error instanceof ActivityQueryFailedError || error instanceof TimelineError) {
+    if (error.code === "CUSTOMER_NOT_FOUND_IN_TENANT") {
+      return {
+        kind: "not_found",
+        title: t("dashboard.customerWorkspace.timeline.errors.customerNotFoundInTenant"),
+        hint: t("dashboard.customerWorkspace.timeline.errors.customerNotFoundInTenantHint"),
+      };
+    }
+    return {
+      kind: "failed",
+      title: t("dashboard.customerWorkspace.timeline.errors.queryFailed"),
+      hint: error.message,
+    };
+  }
+  if (error instanceof Error && /not found in tenant/i.test(error.message)) {
+    return {
+      kind: "not_found",
+      title: t("dashboard.customerWorkspace.timeline.errors.customerNotFoundInTenant"),
+      hint: t("dashboard.customerWorkspace.timeline.errors.customerNotFoundInTenantHint"),
+    };
+  }
+  return {
+    kind: "failed",
+    title: t("dashboard.customerWorkspace.timeline.errors.queryFailed"),
+    hint: error instanceof Error ? error.message : undefined,
+  };
+}
 
 export function CustomerTimelinePanel({
   customerId,
@@ -66,16 +110,21 @@ export function CustomerTimelinePanel({
   }
 
   if (query.error) {
+    const mapped = resolveTimelineErrorMessage(query.error, t);
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center",
+          "flex items-center justify-center rounded-2xl border p-8 text-center",
+          mapped.kind === "not_found"
+            ? "border-destructive/20 bg-destructive/5"
+            : "border-destructive/20 bg-destructive/5",
           fillHeight && "min-h-0 flex-1",
         )}
       >
-        <p className="text-sm text-destructive">
-          {query.error.message || t("dashboard.customerProfile.timeline.loadError")}
-        </p>
+        <div className="max-w-md space-y-1">
+          <p className="text-sm font-semibold text-destructive">{mapped.title}</p>
+          {mapped.hint ? <p className="text-xs text-muted-foreground">{mapped.hint}</p> : null}
+        </div>
       </div>
     );
   }
@@ -119,7 +168,12 @@ export function CustomerTimelinePanel({
           emptyMessage={
             debouncedSearch
               ? t("dashboard.customerProfile.timeline.emptySearch")
-              : t("dashboard.customerProfile.timeline.empty")
+              : t("dashboard.customerWorkspace.timeline.empty")
+          }
+          emptyDescription={
+            debouncedSearch
+              ? undefined
+              : t("dashboard.customerWorkspace.timeline.emptyDescription")
           }
           loadMoreLabel={t("dashboard.customerProfile.timeline.loadMore")}
           cardVariant={cardVariant}

@@ -1,4 +1,9 @@
-import { TimelineEntityAccessError, TimelinePermissionDeniedError, TimelineTenantIsolationError } from "./errors.js";
+import {
+  CustomerNotFoundInTenantError,
+  TimelineEntityAccessError,
+  TimelinePermissionDeniedError,
+  TimelineTenantIsolationError,
+} from "./errors.js";
 import type {
   TimelineAccessContext,
   TimelineEntityAccessPort,
@@ -55,7 +60,11 @@ export async function assertTimelineEntityAccess(
   try {
     await entityAccess.assertEntityAccess(ctx, scope);
   } catch (error) {
-    if (error instanceof TimelineEntityAccessError || error instanceof TimelineTenantIsolationError) {
+    if (
+      error instanceof CustomerNotFoundInTenantError ||
+      error instanceof TimelineEntityAccessError ||
+      error instanceof TimelineTenantIsolationError
+    ) {
       throw error;
     }
     throw new TimelineEntityAccessError(

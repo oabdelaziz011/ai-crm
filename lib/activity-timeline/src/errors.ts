@@ -24,8 +24,22 @@ export class TimelineTenantIsolationError extends TimelineError {
 }
 
 export class TimelineEntityAccessError extends TimelineError {
-  constructor(message = "Entity access denied.") {
-    super("TIMELINE_ENTITY_ACCESS_DENIED", message);
+  constructor(message = "Entity access denied.", code = "TIMELINE_ENTITY_ACCESS_DENIED") {
+    super(code, message);
+  }
+}
+
+/** Customer id exists for the viewer but does not belong to the requested company. */
+export class CustomerNotFoundInTenantError extends TimelineEntityAccessError {
+  constructor(message = "Customer not found in tenant.") {
+    super(message, "CUSTOMER_NOT_FOUND_IN_TENANT");
+  }
+}
+
+/** Activity aggregation/query failed after access checks. */
+export class ActivityQueryFailedError extends TimelineError {
+  constructor(message = "Activity query failed.") {
+    super("ACTIVITY_QUERY_FAILED", message);
   }
 }
 

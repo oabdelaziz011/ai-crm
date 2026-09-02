@@ -13,6 +13,7 @@ type Props = {
   canEdit: boolean;
   onQuickAction: (action: CustomerProfileQuickAction) => void;
   isActionPending?: (action: CustomerProfileQuickAction) => boolean;
+  canWhatsapp?: boolean;
 };
 
 export function WorkspaceCommunicationTab({
@@ -20,6 +21,7 @@ export function WorkspaceCommunicationTab({
   canEdit,
   onQuickAction,
   isActionPending,
+  canWhatsapp = false,
 }: Props) {
   const { t } = useTranslation("common");
   const pending = (action: CustomerProfileQuickAction) => isActionPending?.(action) ?? false;
@@ -34,7 +36,7 @@ export function WorkspaceCommunicationTab({
           <ChannelButton
             icon={MessageCircle}
             label="WhatsApp"
-            disabled={!customer.phone?.trim()}
+            disabled={!canWhatsapp || !customer.phone?.trim()}
             pending={pending("whatsapp")}
             onClick={() => onQuickAction("whatsapp")}
           />

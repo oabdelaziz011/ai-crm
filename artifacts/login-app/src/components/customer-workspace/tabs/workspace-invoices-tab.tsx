@@ -23,6 +23,7 @@ type Props = {
   invoices: Invoice[];
   loading?: boolean;
   onNewInvoice: () => void;
+  canNewInvoice?: boolean;
 };
 
 function invoiceTone(status: string): "muted" | "success" | "warning" | "danger" {
@@ -33,7 +34,7 @@ function invoiceTone(status: string): "muted" | "success" | "warning" | "danger"
   return "muted";
 }
 
-export function WorkspaceInvoicesTab({ customer, invoices, loading, onNewInvoice }: Props) {
+export function WorkspaceInvoicesTab({ customer, invoices, loading, onNewInvoice, canNewInvoice = false }: Props) {
   const { t, i18n } = useTranslation("common");
   const rows = useMemo(() => {
     return filterInvoicesForCustomer(invoices, customer.id).sort(
@@ -53,10 +54,12 @@ export function WorkspaceInvoicesTab({ customer, invoices, loading, onNewInvoice
           : t("dashboard.customerWorkspace.invoices.emptyDescription")
       }
       action={
+        canNewInvoice ? (
         <Button size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={onNewInvoice}>
           <Plus className="size-3.5" />
           {t("buttons.newInvoice")}
         </Button>
+        ) : undefined
       }
     >
       {rows.length === 0 ? (

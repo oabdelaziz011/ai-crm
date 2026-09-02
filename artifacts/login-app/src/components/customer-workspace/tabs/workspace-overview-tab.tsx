@@ -34,6 +34,10 @@ import {
   type WorkspaceAiInsight,
 } from "@/lib/customer-workspace/customer-workspace-utils";
 import type { Booking, Customer, Invoice } from "@/lib/types";
+import {
+  formatCustomerPhoneDisplay,
+  localizedCountryName,
+} from "@/lib/customers/customer-phone-form";
 
 type Props = {
   customer: Customer;
@@ -46,6 +50,11 @@ type Props = {
   allInvoices: Invoice[];
   onNavigateTab: (tab: CustomerProfileTab) => void;
   aiInsights: WorkspaceAiInsight[];
+  showBookings?: boolean;
+  showFinance?: boolean;
+  showAi?: boolean;
+  canNewBooking?: boolean;
+  canNewInvoice?: boolean;
 };
 
 export function WorkspaceOverviewTab({
@@ -59,6 +68,11 @@ export function WorkspaceOverviewTab({
   allInvoices,
   onNavigateTab,
   aiInsights,
+  showBookings = false,
+  showFinance = false,
+  showAi = false,
+  canNewBooking = false,
+  canNewInvoice = false,
 }: Props) {
   const { t, i18n } = useTranslation("common");
   const customerBookings = filterBookingsForCustomer(allBookings, customer.id);
@@ -67,11 +81,20 @@ export function WorkspaceOverviewTab({
   const lastPayment = lastPaidInvoice(customerInvoices);
   const latestInvoice = recentInvoice(customerInvoices);
   const recent = buildCustomerActivityTimeline(customer, customerBookings, customerInvoices, 6);
-  const loading = bookingsLoading || invoicesLoading;
+  const loading = (showBookings && bookingsLoading) || (showFinance && invoicesLoading);
   const cancelled = customerBookings.filter((b) => b.status === "Cancelled").length;
   const overdue = customerInvoices.filter((inv) => inv.status === "Overdue").length;
   const health = computeCustomerHealth(ltv, outstanding, cancelled, overdue);
   const lang = i18n.language;
+  const phoneDisplay = formatCustomerPhoneDisplay(customer);
+  const phoneSummary = phoneDisplay.primary
+    ? phoneDisplay.countryIso
+      ? `${phoneDisplay.primary} · ${localizedCountryName(
+          phoneDisplay.countryIso,
+          lang?.startsWith("ar") ? "ar" : "en",
+        )}`
+      : phoneDisplay.primary
+    : null;
 
   return (
     <WorkspaceTabFrame
@@ -85,46 +108,58 @@ export function WorkspaceOverviewTab({
             health={health}
             customerName={customer.name}
             subtitle={
-              customer.phone || customer.email
-                ? [customer.phone, customer.email].filter(Boolean).join(" · ")
+              phoneSummary || customer.email
+                ? [phoneSummary, customer.email].filter(Boolean).join(" · ")
                 : t("dashboard.customerWorkspace.overview.summaryEmpty")
             }
           />
           <div className="lg:col-span-8">
+            {showAi ? (
             <WorkspaceAiInsights
               insights={aiInsights.length ? aiInsights : deriveWorkspaceAiInsights(customer, allBookings, allInvoices)}
               onInsightAction={(insight) => {
                 if (insight.actionTab) onNavigateTab(insight.actionTab);
               }}
             />
+            ) : null}
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile
-            label={t("dashboard.customerWorkspace.ltv")}
-            value={loading ? "—" : fmtCurrency(ltv)}
-            icon={DollarSign}
-          />
-          <StatTile
-            label={t("dashboard.customerWorkspace.outstandingShort")}
-            value={loading ? "—" : fmtCurrency(outstanding)}
-            icon={CreditCard}
-            warn={outstanding > 0}
-          />
-          <StatTile
-            label={t("dashboard.customerProfile.metrics.bookings")}
-            value={loading ? "—" : String(customerBookings.length)}
-            icon={CalendarDays}
-          />
-          <StatTile
-            label={t("dashboard.customerProfile.metrics.invoices")}
-            value={loading ? "—" : String(customerInvoices.length)}
-            icon={CreditCard}
-          />
+          {showFinance ? (
+            <>
+              <StatTile
+                label={t("dashboard.customerWorkspace.ltv")}
+                value={loading ? "—" : fmtCurrency(ltv)}
+                icon={DollarSign}
+              />
+              <StatTile
+                label={t("dashboard.customerWorkspace.outstandingShort")}
+                value={loading ? "—" : fmtCurrency(outstanding)}
+                icon={CreditCard}
+                warn={outstanding > 0}
+              />
+            </>
+          ) : null}
+          {showBookings ? (
+            <StatTile
+              label={t("dashboard.customerProfile.metrics.bookings")}
+              value={loading ? "—" : String(customerBookings.length)}
+              icon={CalendarDays}
+            />
+          ) : null}
+          {showFinance ? (
+            <StatTile
+              label={t("dashboard.customerProfile.metrics.invoices")}
+              value={loading ? "—" : String(customerInvoices.length)}
+              icon={CreditCard}
+            />
+          ) : null}
         </div>
 
+        {(showBookings || showFinance) && (
         <div className="grid gap-3 lg:grid-cols-2">
+          {showBookings ? (
           <section className="rounded-xl border border-border/60 bg-background p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold">{t("dashboard.customerWorkspace.overview.upcomingTitle")}</p>
@@ -157,12 +192,14 @@ export function WorkspaceOverviewTab({
                 icon={CalendarDays}
                 title={t("dashboard.customerWorkspace.overview.noUpcoming")}
                 description={t("dashboard.customerWorkspace.overview.noUpcomingHint")}
-                actionLabel={t("dashboard.customerWorkspace.header.newBooking")}
-                onAction={() => onQuickAction("new-booking")}
+                actionLabel={canNewBooking ? t("dashboard.customerWorkspace.header.newBooking") : undefined}
+                onAction={canNewBooking ? () => onQuickAction("new-booking") : undefined}
               />
             )}
           </section>
+          ) : null}
 
+          {showFinance ? (
           <section className="rounded-xl border border-border/60 bg-background p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold">{t("dashboard.customerWorkspace.overview.recentInvoiceTitle")}</p>
@@ -195,13 +232,16 @@ export function WorkspaceOverviewTab({
                 icon={CreditCard}
                 title={t("dashboard.customerWorkspace.invoices.emptyTitle")}
                 description={t("dashboard.customerWorkspace.invoices.emptyDescription")}
-                actionLabel={t("buttons.newInvoice")}
-                onAction={() => onQuickAction("new-invoice")}
+                actionLabel={canNewInvoice ? t("buttons.newInvoice") : undefined}
+                onAction={canNewInvoice ? () => onQuickAction("new-invoice") : undefined}
               />
             )}
           </section>
+          ) : null}
         </div>
+        )}
 
+        {(showBookings || showFinance) && (
         <section className="rounded-xl border border-border/60 bg-background p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-semibold">{t("dashboard.customerWorkspace.overview.recentTitle")}</p>
@@ -236,7 +276,9 @@ export function WorkspaceOverviewTab({
             </div>
           )}
         </section>
+        )}
 
+        {showAi && aiInsights.length > 0 ? (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-background px-3 py-3">
           <div className="flex items-start gap-2">
             <Sparkles className="mt-0.5 size-4 text-primary" />
@@ -247,10 +289,13 @@ export function WorkspaceOverviewTab({
               )}
             </p>
           </div>
+          {canNewBooking ? (
           <Button size="sm" className="h-8 rounded-lg text-xs" onClick={() => onQuickAction("new-booking")}>
             {t("dashboard.customerWorkspace.overview.takeAction")}
           </Button>
+          ) : null}
         </section>
+        ) : null}
       </div>
     </WorkspaceTabFrame>
   );

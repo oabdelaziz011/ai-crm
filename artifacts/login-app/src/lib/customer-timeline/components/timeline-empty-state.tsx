@@ -3,10 +3,11 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   message: string;
+  description?: string;
   fillHeight?: boolean;
 };
 
-export function TimelineEmptyState({ message, fillHeight }: Props) {
+export function TimelineEmptyState({ message, description, fillHeight }: Props) {
   return (
     <div
       className={cn(
@@ -18,6 +19,9 @@ export function TimelineEmptyState({ message, fillHeight }: Props) {
         <Inbox className="size-6 text-muted-foreground" />
       </div>
       <p className="mt-4 max-w-sm text-sm font-medium text-foreground">{message}</p>
+      {description ? (
+        <p className="mt-1.5 max-w-sm text-xs text-muted-foreground">{description}</p>
+      ) : null}
     </div>
   );
 }

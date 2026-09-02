@@ -46,10 +46,12 @@ function attachActor(
 export class InvoicesTimelineProvider implements TimelineEventProvider {
   readonly providerId = "invoices";
 
-  async getEvents({ customerId }: TimelineFetchInput): Promise<TimelineEvent[]> {
+  async getEvents({ customerId, companyId }: TimelineFetchInput): Promise<TimelineEvent[]> {
+    if (!companyId) return [];
     const { data, error } = await supabase
       .from("invoices")
       .select("id, amount, status, invoice_date, created_at, updated_at, user_id")
+      .eq("company_id", companyId)
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false });
 

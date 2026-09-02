@@ -9,11 +9,13 @@ import { fetchActorNames } from "../provider-utils";
 export class CustomerLifecycleTimelineProvider implements TimelineEventProvider {
   readonly providerId = "customer-lifecycle";
 
-  async getEvents({ customerId }: TimelineFetchInput): Promise<TimelineEvent[]> {
+  async getEvents({ customerId, companyId }: TimelineFetchInput): Promise<TimelineEvent[]> {
+    if (!companyId) return [];
     const { data, error } = await supabase
       .from("customers")
-      .select("id, created_at, user_id")
+      .select("id, created_at, user_id, company_id")
       .eq("id", customerId)
+      .eq("company_id", companyId)
       .maybeSingle();
 
     if (error || !data) return [];

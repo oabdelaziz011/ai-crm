@@ -12,6 +12,7 @@ type Props = {
   isFetchingMore?: boolean;
   onLoadMore?: () => void;
   emptyMessage: string;
+  emptyDescription?: string;
   loadMoreLabel: string;
   cardVariant?: "default" | "workspace";
   fillHeight?: boolean;
@@ -26,6 +27,7 @@ export function TimelineList({
   isFetchingMore,
   onLoadMore,
   emptyMessage,
+  emptyDescription,
   loadMoreLabel,
   cardVariant,
   fillHeight,
@@ -66,7 +68,13 @@ export function TimelineList({
   }, [hasMore, isFetchingMore, onLoadMore]);
 
   if (groups.length === 0) {
-    return <TimelineEmptyState message={emptyMessage} fillHeight={fillHeight} />;
+    return (
+      <TimelineEmptyState
+        message={emptyMessage}
+        description={emptyDescription}
+        fillHeight={fillHeight}
+      />
+    );
   }
 
   return (

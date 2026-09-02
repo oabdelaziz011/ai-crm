@@ -3,7 +3,6 @@ import {
   Activity,
   ArrowLeft,
   CalendarDays,
-  ChevronDown,
   ChevronRight,
   Clock,
   Copy,
@@ -12,6 +11,7 @@ import {
   History,
   LayoutGrid,
   Mail,
+  Megaphone,
   MessageSquare,
   MoreHorizontal,
   Paperclip,
@@ -40,76 +40,86 @@ import {
   type WorkspaceAiInsight,
 } from "@/lib/customer-workspace/customer-workspace-utils";
 import {
-  moreTabToProfileTab,
   resolveWorkspaceNavigation,
-  WORKSPACE_MORE_TABS,
-  WORKSPACE_PRIMARY_TABS,
-  type WorkspaceMoreTab,
-  type WorkspacePrimaryTab,
+  workspaceTopTabToProfileTab,
+  type WorkspaceTopTab,
 } from "@/lib/customer-workspace/workspace-navigation";
 import { cn } from "@/lib/utils";
+import { formatCustomerPhoneDisplay, localizedCountryName } from "@/lib/customers/customer-phone-form";
 
-const PRIMARY_ICONS: Record<WorkspacePrimaryTab, ElementType> = {
+const TOP_TAB_ICONS: Record<WorkspaceTopTab, ElementType> = {
   overview: LayoutGrid,
   activity: Activity,
   bookings: CalendarDays,
   invoices: FileText,
-  tickets: Ticket,
   communication: MessageSquare,
-};
-
-const MORE_ICONS: Record<WorkspaceMoreTab, ElementType> = {
+  tickets: Ticket,
   payments: Wallet,
   files: Paperclip,
   ai: Sparkles,
+  campaigns: Megaphone,
   history: History,
-};
-
-const PRIMARY_TO_TAB: Record<WorkspacePrimaryTab, CustomerProfileTab> = {
-  overview: "overview",
-  activity: "timeline",
-  bookings: "bookings",
-  invoices: "invoices",
-  tickets: "tickets",
-  communication: "communication",
 };
 
 export type CustomerWorkspaceShellProps = {
   customer: Customer;
   activeTab: CustomerProfileTab;
+  accessibleTabs: WorkspaceTopTab[];
   onTabChange: (tab: CustomerProfileTab) => void;
   onBack: () => void;
   onQuickAction: (action: CustomerProfileQuickAction) => void;
   isQuickActionPending?: (action: CustomerProfileQuickAction) => boolean;
+  canNewBooking?: boolean;
+  canWhatsapp?: boolean;
+  canCall?: boolean;
   ltv: number;
   outstanding: number;
   tags: string[];
   nextBooking: Booking | null;
   lastVisit: Booking | null;
   aiInsights: WorkspaceAiInsight[];
+  showFinanceKpis?: boolean;
+  showBookingKpis?: boolean;
+  showAiInsights?: boolean;
   children: ReactNode;
 };
 
 export function CustomerWorkspaceShell({
   customer,
   activeTab,
+  accessibleTabs,
   onTabChange,
   onBack,
   onQuickAction,
   isQuickActionPending,
+  canNewBooking = false,
+  canWhatsapp = false,
+  canCall = false,
   ltv,
   outstanding,
   tags,
   nextBooking,
   lastVisit,
   aiInsights,
+  showFinanceKpis = false,
+  showBookingKpis = false,
+  showAiInsights = false,
   children,
 }: CustomerWorkspaceShellProps) {
   const { t, i18n } = useTranslation("common");
   const nav = resolveWorkspaceNavigation(activeTab);
-  const statusDue = outstanding > 0;
+  const activeTopTab = nav.primary;
+  const statusDue = showFinanceKpis && outstanding > 0;
   const isVip = tags.includes("vip");
-  const phone = customer.phone?.trim() || null;
+  const phoneDisplay = formatCustomerPhoneDisplay(customer);
+  const phone = phoneDisplay.primary || null;
+  const phoneCountry =
+    phoneDisplay.countryIso != null
+      ? localizedCountryName(
+          phoneDisplay.countryIso,
+          i18n.language?.startsWith("ar") ? "ar" : "en",
+        )
+      : null;
   const email = customer.email?.trim() || null;
   const lang = i18n.language;
 
@@ -161,7 +171,13 @@ export function CustomerWorkspaceShell({
 
             <SidebarSection title={t("dashboard.customerWorkspace.sections.contact")}>
               {phone ? (
-                <SidebarField icon={Phone} label={t("forms.customer.phone")} value={phone} dir="ltr" emphasis />
+                <SidebarField
+                  icon={Phone}
+                  label={t("forms.customer.phone")}
+                  value={phoneCountry ? `${phone} · ${phoneCountry}` : phone}
+                  dir="ltr"
+                  emphasis
+                />
               ) : null}
               {email ? (
                 <SidebarField icon={Mail} label={t("forms.customer.email")} value={email} dir="ltr" />
@@ -198,23 +214,32 @@ export function CustomerWorkspaceShell({
                 {t("dashboard.customerWorkspace.sections.value")}
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <ValueTile label={t("dashboard.customerWorkspace.ltv")} value={fmtCurrency(ltv)} tone="primary" />
-                <ValueTile
-                  label={t("dashboard.customerWorkspace.outstandingShort")}
-                  value={fmtCurrency(outstanding)}
-                  tone={outstanding > 0 ? "warning" : "muted"}
-                />
-                <ValueTile
-                  label={t("dashboard.customerWorkspace.profile.nextBooking")}
-                  value={nextBooking ? fmtDate(nextBooking.booking_date, lang) : "—"}
-                />
-                <ValueTile
-                  label={t("dashboard.customerWorkspace.profile.lastVisit")}
-                  value={lastVisit ? fmtDate(lastVisit.booking_date, lang) : "—"}
-                />
+                {showFinanceKpis ? (
+                  <>
+                    <ValueTile label={t("dashboard.customerWorkspace.ltv")} value={fmtCurrency(ltv)} tone="primary" />
+                    <ValueTile
+                      label={t("dashboard.customerWorkspace.outstandingShort")}
+                      value={fmtCurrency(outstanding)}
+                      tone={outstanding > 0 ? "warning" : "muted"}
+                    />
+                  </>
+                ) : null}
+                {showBookingKpis ? (
+                  <>
+                    <ValueTile
+                      label={t("dashboard.customerWorkspace.profile.nextBooking")}
+                      value={nextBooking ? fmtDate(nextBooking.booking_date, lang) : "—"}
+                    />
+                    <ValueTile
+                      label={t("dashboard.customerWorkspace.profile.lastVisit")}
+                      value={lastVisit ? fmtDate(lastVisit.booking_date, lang) : "—"}
+                    />
+                  </>
+                ) : null}
               </div>
             </div>
 
+            {showAiInsights ? (
             <div className="mt-auto border-t border-border/60 p-3">
               <WorkspaceAiInsights
                 insights={aiInsights}
@@ -224,6 +249,7 @@ export function CustomerWorkspaceShell({
                 }}
               />
             </div>
+            ) : null}
           </div>
         </aside>
 
@@ -259,7 +285,7 @@ export function CustomerWorkspaceShell({
                   )}
                 </div>
 
-                {/* One actions control — booking / message / call (invoice lives under Invoices tab) */}
+                {(canNewBooking || canWhatsapp || canCall) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold">
@@ -268,6 +294,7 @@ export function CustomerWorkspaceShell({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52">
+                    {canNewBooking ? (
                     <DropdownMenuItem
                       onClick={() => onQuickAction("new-booking")}
                       disabled={isQuickActionPending?.("new-booking")}
@@ -275,7 +302,9 @@ export function CustomerWorkspaceShell({
                       <CalendarDays className="me-2 size-4" />
                       {t("dashboard.customerWorkspace.header.newBooking")}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    ) : null}
+                    {canNewBooking && (canWhatsapp || canCall) ? <DropdownMenuSeparator /> : null}
+                    {canWhatsapp ? (
                     <DropdownMenuItem
                       onClick={() => onQuickAction("whatsapp")}
                       disabled={!phone || isQuickActionPending?.("whatsapp")}
@@ -283,6 +312,8 @@ export function CustomerWorkspaceShell({
                       <MessageSquare className="me-2 size-4" />
                       {t("dashboard.customerWorkspace.header.message")}
                     </DropdownMenuItem>
+                    ) : null}
+                    {canCall ? (
                     <DropdownMenuItem
                       onClick={() => onQuickAction("call")}
                       disabled={!phone || isQuickActionPending?.("call")}
@@ -290,84 +321,64 @@ export function CustomerWorkspaceShell({
                       <Phone className="me-2 size-4" />
                       {t("dashboard.customerWorkspace.profile.call")}
                     </DropdownMenuItem>
+                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                )}
               </div>
 
+              {(showFinanceKpis || showBookingKpis) && (
               <div className="grid grid-cols-2 gap-2 lg:hidden">
+                {showFinanceKpis ? (
                 <HeaderKpi
                   icon={DollarSign}
                   label={t("dashboard.customerWorkspace.outstandingShort")}
                   value={fmtCurrency(outstanding)}
                   tone={outstanding > 0 ? "warning" : undefined}
                 />
+                ) : null}
+                {showBookingKpis ? (
                 <HeaderKpi
                   icon={CalendarDays}
                   label={t("dashboard.customerWorkspace.profile.nextBooking")}
                   value={nextBooking ? fmtDate(nextBooking.booking_date, lang) : "—"}
                 />
+                ) : null}
               </div>
+              )}
 
-              {/* Pill tab strip — short list + More */}
+              {/* Flat top-level tab strip — horizontal scroll when needed (no More menu). */}
               <div
-                className="flex flex-wrap items-center gap-1 rounded-xl border border-border/60 bg-background p-1"
+                className="overflow-x-auto overscroll-x-contain rounded-xl border border-border/60 bg-background p-1 [scrollbar-width:thin]"
                 role="tablist"
                 aria-label={t("dashboard.customerWorkspace.tabsLabel")}
               >
-                {WORKSPACE_PRIMARY_TABS.map((tab) => {
-                  const Icon = PRIMARY_ICONS[tab];
-                  const active = nav.primary === tab;
-                  return (
-                    <button
-                      key={tab}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => onTabChange(PRIMARY_TO_TAB[tab])}
-                      className={cn(
-                        "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition-colors",
-                        active
-                          ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
-                          : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
-                      )}
-                    >
-                      <Icon className="size-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">{t(`dashboard.customerWorkspace.tabs.${tab}`)}</span>
-                    </button>
-                  );
-                })}
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-[11px] font-semibold transition-colors",
-                        nav.primary === "more"
-                          ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
-                          : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
-                      )}
-                    >
-                      {t("dashboard.customerWorkspace.tabs.more")}
-                      <ChevronDown className="size-3.5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    {WORKSPACE_MORE_TABS.map((tab) => {
-                      const Icon = MORE_ICONS[tab];
-                      return (
-                        <DropdownMenuItem
-                          key={tab}
-                          onClick={() => onTabChange(moreTabToProfileTab(tab))}
-                          className={cn(nav.more === tab && "bg-accent")}
-                        >
-                          <Icon className="me-2 size-4" />
+                <div className="flex w-max min-w-full flex-nowrap items-center gap-1">
+                  {accessibleTabs.map((tab) => {
+                    const Icon = TOP_TAB_ICONS[tab];
+                    const active = activeTopTab === tab;
+                    return (
+                      <button
+                        key={tab}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => onTabChange(workspaceTopTabToProfileTab(tab))}
+                        className={cn(
+                          "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition-colors",
+                          active
+                            ? "bg-card text-foreground shadow-sm ring-1 ring-border/70"
+                            : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+                        )}
+                      >
+                        <Icon className="size-3.5 shrink-0" />
+                        <span className="whitespace-nowrap">
                           {t(`dashboard.customerWorkspace.tabs.${tab}`)}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </header>

@@ -10,11 +10,20 @@ export function truncateText(value: string | null | undefined, max = 120): strin
 export async function fetchCustomerConversationIds(
   customerId: string,
   channelType?: string,
+  companyId?: string | null,
 ): Promise<string[]> {
+  const trimmedCustomerId = customerId?.trim();
+  const trimmedCompanyId = companyId?.trim();
+  if (!trimmedCustomerId || !trimmedCompanyId) {
+    // Fail closed: never return company-wide or cross-tenant conversation ids.
+    return [];
+  }
+
   let query = supabase
     .from("conversations")
     .select("id")
-    .eq("customer_id", customerId)
+    .eq("customer_id", trimmedCustomerId)
+    .eq("company_id", trimmedCompanyId)
     .is("deleted_at", null);
 
   if (channelType) {

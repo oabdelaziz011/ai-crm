@@ -22,6 +22,7 @@ type Props = {
   bookings: Booking[];
   loading?: boolean;
   onNewBooking: () => void;
+  canNewBooking?: boolean;
 };
 
 function bookingSortKey(booking: Booking): number {
@@ -42,7 +43,7 @@ function groupLabel(booking: Booking): "current" | "upcoming" | "past" | "cancel
   return "past";
 }
 
-export function WorkspaceBookingsTab({ customer, bookings, loading, onNewBooking }: Props) {
+export function WorkspaceBookingsTab({ customer, bookings, loading, onNewBooking, canNewBooking = false }: Props) {
   const { t, i18n } = useTranslation("common");
   const rows = useMemo(() => {
     return filterBookingsForCustomer(bookings, customer.id).sort(
@@ -57,10 +58,12 @@ export function WorkspaceBookingsTab({ customer, bookings, loading, onNewBooking
       title={t("dashboard.customerWorkspace.tabs.bookings")}
       subtitle={t("dashboard.customers.list.rowCount", { count: rows.length })}
       action={
+        canNewBooking ? (
         <Button size="sm" className="h-8 gap-1.5 rounded-lg text-xs" onClick={onNewBooking}>
           <Plus className="size-3.5" />
           {t("buttons.newBooking")}
         </Button>
+        ) : undefined
       }
     >
       {rows.length === 0 ? (

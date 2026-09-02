@@ -1,7 +1,12 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { usePermissions } from "@/hooks/use-rbac";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
+import {
+  isActivitySourceAccessible,
+  type CustomerWorkspaceAccessContext,
+} from "@/lib/customer-workspace/workspace-feature-access";
 import type { TimelineAccess } from "@/lib/customer-timeline/types";
 import {
   customerTimelineKey,
@@ -23,19 +28,42 @@ ensureCustomerTimelineProviders();
 
 function useTimelineAccess(companyId: string | null | undefined): TimelineAccess | undefined {
   const { user, isSuperAdmin } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasCompanyPermission } = useCompanyPermissionAuth();
+  const { lookup, isResolved } = useCommercialFeatureLookup();
+
+  const workspaceCtx: CustomerWorkspaceAccessContext = useMemo(
+    () => ({
+      isSuperAdmin: Boolean(isSuperAdmin),
+      hasPermission: hasCompanyPermission,
+      isModuleEnabled: lookup,
+      entitlementResolved: isResolved || Boolean(isSuperAdmin),
+    }),
+    [hasCompanyPermission, isResolved, isSuperAdmin, lookup],
+  );
 
   return useMemo(
     () =>
-      user?.id && companyId
+      user?.id && companyId && (isResolved || isSuperAdmin)
         ? {
             userId: user.id,
             companyId,
             isSuperAdmin: Boolean(isSuperAdmin),
-            hasPermission,
+            hasPermission: hasCompanyPermission,
+            isModuleEnabled: lookup,
+            entitlementResolved: isResolved || Boolean(isSuperAdmin),
+            canAccessActivitySource: (sourceId: string) =>
+              isActivitySourceAccessible(sourceId, workspaceCtx),
           }
         : undefined,
-    [user?.id, companyId, isSuperAdmin, hasPermission],
+    [
+      companyId,
+      hasCompanyPermission,
+      isResolved,
+      isSuperAdmin,
+      lookup,
+      user?.id,
+      workspaceCtx,
+    ],
   );
 }
 

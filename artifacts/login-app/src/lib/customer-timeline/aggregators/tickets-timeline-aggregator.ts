@@ -3,13 +3,17 @@ import {
   buildTicketReadAccess,
   createLoginAppTicketReadPort,
 } from "@/lib/ticket-platform/ticket-read-port-adapter";
-import type { TimelineActivity, TimelineActivitySource, TimelineFetchInput } from "@/lib/customer-timeline/types";
+import type { TimelineActivity, TimelineActivitySource, TimelineProviderFetchInput } from "@/lib/customer-timeline/types";
 import { truncateText } from "@/lib/customer-timeline/provider-utils";
 
 export class TicketsTimelineAggregator implements TimelineActivitySource {
   readonly sourceId = "tickets";
 
-  async collect({ customerId, companyId, access }: TimelineFetchInput): Promise<TimelineActivity[]> {
+  async collect({
+    customerId,
+    companyId,
+    access,
+  }: TimelineProviderFetchInput): Promise<TimelineActivity[]> {
     if (!companyId || !customerId || !access) return [];
     if (!access.hasPermission("tickets.view")) return [];
 

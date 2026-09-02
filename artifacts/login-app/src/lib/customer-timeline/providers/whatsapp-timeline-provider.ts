@@ -82,8 +82,9 @@ function messageDetail(message: MessageRow): string | null {
 export class WhatsappTimelineProvider implements TimelineEventProvider {
   readonly providerId = "whatsapp";
 
-  async getEvents({ customerId }: TimelineFetchInput): Promise<TimelineEvent[]> {
-    const conversationIds = await fetchCustomerConversationIds(customerId, "whatsapp");
+  async getEvents({ customerId, companyId }: TimelineFetchInput): Promise<TimelineEvent[]> {
+    if (!companyId) return [];
+    const conversationIds = await fetchCustomerConversationIds(customerId, "whatsapp", companyId);
     if (conversationIds.length === 0) return [];
 
     const { data, error } = await supabase

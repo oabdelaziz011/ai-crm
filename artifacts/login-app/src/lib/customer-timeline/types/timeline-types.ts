@@ -113,11 +113,18 @@ export type TimelineAccess = {
   companyId: string;
   isSuperAdmin: boolean;
   hasPermission: (code: string) => boolean;
+  /** Commercial module lookup — required for Activity source gating. */
+  isModuleEnabled?: (featureCode: string) => boolean | undefined;
+  entitlementResolved?: boolean;
+  /** Returns false when source is denied by entitlement ∧ RBAC. */
+  canAccessActivitySource?: (sourceId: string) => boolean;
 };
 
 export type TimelineProviderFetchInput = {
   customerId: string;
   companyId?: string | null;
+  /** Verified RBAC/tenant access — required by sources such as tickets. */
+  access?: TimelineAccess | null;
 };
 
 export type TimelineFetchInput = TimelineProviderFetchInput & {
@@ -211,7 +218,9 @@ export type TimelineFilterId =
   | "ai"
   | "notifications"
   | "automation"
-  | "email";
+  | "email"
+  | "tickets"
+  | "payments";
 
 export type TimelineActivity = {
   id: string;

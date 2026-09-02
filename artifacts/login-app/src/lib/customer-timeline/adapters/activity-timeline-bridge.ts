@@ -6,6 +6,31 @@ import type {
 } from "@workspace/activity-timeline";
 import type { TimelineActivity, TimelineActivitySource } from "@/lib/customer-timeline/types";
 
+type ExtendedTimelineAccessContext = TimelineAccessContext & {
+  isModuleEnabled?: (featureCode: string) => boolean | undefined;
+  entitlementResolved?: boolean;
+  canAccessActivitySource?: (sourceId: string) => boolean;
+};
+
+function asExtendedAccess(ctx: TimelineAccessContext): ExtendedTimelineAccessContext {
+  return ctx as ExtendedTimelineAccessContext;
+}
+
+function publisherAllowed(
+  sourceId: string,
+  access?: {
+    isSuperAdmin?: boolean;
+    hasPermission: (code: string) => boolean;
+    canAccessActivitySource?: (sourceId: string) => boolean;
+  },
+): boolean {
+  if (!access) return false;
+  if (access.canAccessActivitySource) {
+    return access.canAccessActivitySource(sourceId);
+  }
+  return access.isSuperAdmin || access.hasPermission("customers.view");
+}
+
 function mapActor(activity: TimelineActivity): TimelineEvent["actor"] {
   if (activity.actor) {
     return activity.actor;
@@ -101,14 +126,35 @@ export function createLegacySourcePublisher(
     entityTypes: ["customer", "account"],
     supportedEventTypes: options?.supportedEventTypes ?? ["system_event"],
     requiredPermissions: options?.requiredPermissions,
-    collect: async (_ctx, input: TimelineCollectInput) => {
+    collect: async (ctx, input: TimelineCollectInput) => {
       if (input.entityType !== "customer") {
+        return [];
+      }
+
+      const sourceId = String(source.sourceId);
+      const extended = asExtendedAccess(ctx);
+      if (
+        !publisherAllowed(sourceId, {
+          isSuperAdmin: extended.isSuperAdmin,
+          hasPermission: extended.hasPermission,
+          canAccessActivitySource: extended.canAccessActivitySource,
+        })
+      ) {
         return [];
       }
 
       const activities = await source.collect({
         customerId: input.entityId,
         companyId: input.companyId,
+        access: {
+          userId: extended.userId,
+          companyId: extended.companyId,
+          isSuperAdmin: extended.isSuperAdmin,
+          hasPermission: extended.hasPermission,
+          isModuleEnabled: extended.isModuleEnabled,
+          entitlementResolved: extended.entitlementResolved,
+          canAccessActivitySource: extended.canAccessActivitySource,
+        },
       });
 
       return activities.map((activity) =>

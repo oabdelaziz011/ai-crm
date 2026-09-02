@@ -15,6 +15,9 @@ export type TimelineRequestAccess = {
   companyId: string;
   isSuperAdmin: boolean;
   hasPermission: (code: string) => boolean;
+  isModuleEnabled?: (featureCode: string) => boolean | undefined;
+  entitlementResolved?: boolean;
+  canAccessActivitySource?: (sourceId: string) => boolean;
 };
 
 export function requireTimelineAccess(input: {
@@ -39,7 +42,10 @@ export function toTimelineAccessContext(access: TimelineRequestAccess): Timeline
     companyId: access.companyId,
     isSuperAdmin: access.isSuperAdmin,
     hasPermission: access.hasPermission,
-  };
+    isModuleEnabled: access.isModuleEnabled,
+    entitlementResolved: access.entitlementResolved,
+    canAccessActivitySource: access.canAccessActivitySource,
+  } as TimelineAccessContext;
 }
 
 export function createPortalTimelineAccess(customerId: string, companyId: string): TimelineRequestAccess {

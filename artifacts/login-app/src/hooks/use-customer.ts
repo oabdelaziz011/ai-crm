@@ -14,7 +14,7 @@ export function useCustomer(customerId: string | null | undefined) {
     queryFn: async (): Promise<Customer> => {
       const { data, error } = await supabase
         .from("customers")
-        .select("*")
+        .select("id, user_id, company_id, name, email, phone, phone_e164, phone_country_iso, phone_region_source, phone_national, age, gender, notes, created_at, updated_at")
         .eq("id", customerId!)
         .single();
       if (error) throw new Error(error.message);

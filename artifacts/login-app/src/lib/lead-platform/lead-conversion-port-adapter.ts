@@ -3,6 +3,10 @@ import {
   createSupabaseCustomerServicePort,
   resolveCompanyActorUserId,
 } from "@workspace/automation-platform";
+import {
+  isImportPhoneWritable,
+  resolveImportPhoneIdentity,
+} from "@workspace/ai-tool-router";
 import type { LeadConversionPort } from "@workspace/lead-platform";
 
 function formatPreservedNotes(payload: Record<string, unknown>): string {
@@ -47,13 +51,35 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
         (input.companyName || "").trim() ||
         "Customer";
 
+      const phone = input.phone?.trim() || null;
+      const region =
+        typeof input.preservedPayload.phoneRegion === "string"
+          ? input.preservedPayload.phoneRegion
+          : typeof input.preservedPayload.phone_country_iso === "string"
+            ? input.preservedPayload.phone_country_iso
+            : null;
+      const phonePreview = resolveImportPhoneIdentity({
+        phone,
+        rowRegion: region,
+        source: "explicit",
+      });
+      // Fail closed for local without region — do not invent company country.
+      if (phone && !isImportPhoneWritable(phonePreview)) {
+        throw new Error(
+          phonePreview.code === "phone_region_required"
+            ? "PHONE_REGION_REQUIRED: Lead phone is local; provide ISO-2 region or E.164 before convert."
+            : `INVALID_PHONE: Lead phone could not be resolved (${phonePreview.code}).`,
+        );
+      }
+
       const { customer } = await customerService.resolveCustomerForLeadConversion({
         companyId: input.companyId,
         userId: ownerUserId,
         name: customerName,
         email: input.email ?? undefined,
-        phone: input.phone ?? undefined,
+        phone: phone ?? undefined,
         notes,
+        phoneIdentity: phonePreview.identity ?? undefined,
       });
 
       if (input.preservedPayload.conversationId && typeof input.preservedPayload.conversationId === "string") {

@@ -42,6 +42,8 @@ export type CrmAgentToolPorts = {
     customerId: string;
     field: string;
     value: string;
+    /** ISO-2 when field is phone and value is local/national. Never company country. */
+    region?: string | null;
   }): Promise<{ customer: CrmCustomerSummary }>;
 
   findDuplicateCustomers(input: {
@@ -60,9 +62,30 @@ export type CrmAgentToolPorts = {
   importCustomers(input: {
     companyId: string;
     userId: string;
-    rows: Array<{ name: string; phone?: string; email?: string }>;
+    rows: Array<{
+      name: string;
+      phone?: string;
+      email?: string;
+      /** Per-row ISO-2 override. */
+      region?: string | null;
+      country?: string | null;
+      phone_country_iso?: string | null;
+    }>;
+    /** Explicit operator-selected default ISO-2 for local numbers. Never inferred. */
+    defaultRegion?: string | null;
     confirmed: boolean;
-  }): Promise<{ imported: number; skipped: number; errors: string[] }>;
+  }): Promise<{
+    imported: number;
+    skipped: number;
+    errors: string[];
+    /** Optional per-row outcomes for operator review. */
+    rowResults?: Array<{
+      index: number;
+      status: "imported" | "skipped" | "duplicate" | "manual_review" | "invalid";
+      code?: string;
+      phoneE164?: string | null;
+    }>;
+  }>;
 
   searchInvoices(input: {
     companyId: string;

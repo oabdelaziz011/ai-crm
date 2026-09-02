@@ -12,6 +12,10 @@ import {
   type RecommendationResourceContext,
 } from "@workspace/scheduling-engine";
 import { buildAvailabilityCustomerSummary } from "../utils/scheduling-customer-display.js";
+import {
+  companyScopedPhoneE164Lookup,
+  planCustomerPhoneSearch,
+} from "../utils/customer-phone-search.js";
 import type {
   BookingDomainServicePort,
   CancelBookingInput,
@@ -1430,12 +1434,30 @@ async function resolveCustomerIdsByPhone(
   companyId: string,
   phone: string,
 ): Promise<string[]> {
+  // Phase D3 — prefer company-scoped phone_e164 before legacy last-9 scan.
+  const plan = planCustomerPhoneSearch({ query: phone, source: "explicit" });
+  const scoped = companyScopedPhoneE164Lookup({
+    companyId,
+    phoneE164: plan.phoneE164,
+  });
+  if (scoped) {
+    const { data: e164Data, error: e164Error } = await client
+      .from("customers")
+      .select("id, phone, phone_e164")
+      .eq("company_id", scoped.companyId)
+      .eq("phone_e164", scoped.phoneE164)
+      .limit(5);
+    if (e164Error) throw new Error(e164Error.message);
+    const e164Ids = [...new Set((e164Data ?? []).map((row) => String(row.id)).filter(Boolean))];
+    if (e164Ids.length >= 1) return e164Ids;
+  }
+
   const target = normalizeBookingPhoneDigits(phone);
   if (!target) return [];
 
   const { data, error } = await client
     .from("customers")
-    .select("id, phone")
+    .select("id, phone, phone_e164")
     .eq("company_id", companyId)
     .limit(2000);
   if (error) throw new Error(error.message);
@@ -1445,6 +1467,7 @@ async function resolveCustomerIdsByPhone(
     .map((row) => ({
       id: String(row.id),
       phoneDigits: normalizeBookingPhoneDigits(String(row.phone)),
+      phoneE164: typeof row.phone_e164 === "string" ? row.phone_e164 : null,
     }))
     .filter((row) => row.id && row.phoneDigits);
 
@@ -1452,8 +1475,14 @@ async function resolveCustomerIdsByPhone(
     return matched.map((row) => row.id);
   }
 
+  // Exact e164 within matched set beats last-9 collapse.
+  if (scoped?.phoneE164) {
+    const e164Exact = matched.filter((row) => row.phoneE164 === scoped.phoneE164);
+    if (e164Exact.length === 1) return [e164Exact[0]!.id];
+  }
+
   // Same national number stored as 010… and 2010… must collapse to one trusted customer.
-  // Otherwise conversation binding is skipped and search_bookings merges cross-customer rows.
+  // Legacy last-9 compatibility fallback only.
   const last9Groups = new Map<string, typeof matched>();
   for (const row of matched) {
     const key = row.phoneDigits!.slice(-9);

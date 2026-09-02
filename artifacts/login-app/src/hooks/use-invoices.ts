@@ -35,14 +35,15 @@ async function fetchInvoicesPage(offset: number, limit: number): Promise<Invoice
   };
 }
 
-export function useInvoices(maxRows = CRM_LIST_MAX_ROWS) {
+export function useInvoices(maxRows = CRM_LIST_MAX_ROWS, options?: { enabled?: boolean }) {
   const { user } = useSession();
   const { profile } = useUser();
   const companyId = profile?.company_id ?? null;
+  const enabled = (options?.enabled ?? true) && Boolean(user);
 
   return useQuery({
     queryKey: [...invoicesListKey(companyId), "bounded", maxRows],
-    enabled: Boolean(user),
+    enabled,
     staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Invoice[]> => {
       const page = await fetchInvoicesPage(0, maxRows);

@@ -1,6 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseCustomerServicePort } from "@workspace/automation-platform";
 import type { CrmAgentToolPorts, CrmCustomerSummary } from "../tools/crm-agent-ports.js";
+import { buildCustomerPhoneIdentityColumns } from "../utils/customer-phone-identity-dual-write.js";
+import {
+  isImportPhoneWritable,
+  resolveImportPhoneIdentity,
+} from "../utils/import-phone-identity.js";
+import {
+  companyScopedPhoneE164Lookup,
+  planCustomerPhoneSearch,
+  queryLooksLikePhoneSearch,
+} from "../utils/customer-phone-search.js";
+import { resolvePhoneIdentity } from "../utils/phone-identity-resolver.js";
 
 export type CrmKnowledgeRetriever = (input: {
   companyId: string;
@@ -30,9 +41,37 @@ function normalizePhoneKey(phone: string | null | undefined): string | null {
   return digits.length >= 7 ? digits : null;
 }
 
+/** Prefer canonical e164 for dedup grouping; fall back to full digits (not last-9). */
+function normalizeDedupPhoneKey(
+  phone: string | null | undefined,
+  phoneE164?: string | null,
+): string | null {
+  const e164 =
+    (typeof phoneE164 === "string" && phoneE164.trim()) ||
+    (() => {
+      const r = resolvePhoneIdentity({ phone, source: "explicit" });
+      return r.status === "resolved" ? r.phoneE164 : null;
+    })();
+  if (e164) return `e164:${e164}`;
+  const digits = normalizePhoneKey(phone);
+  return digits ? `digits:${digits}` : null;
+}
+
 function normalizeEmailKey(email: string | null | undefined): string | null {
   const trimmed = email?.trim().toLowerCase();
   return trimmed || null;
+}
+
+function mergeCustomerSummaries(
+  preferred: CrmCustomerSummary[],
+  fallback: CrmCustomerSummary[],
+): CrmCustomerSummary[] {
+  const byId = new Map<string, CrmCustomerSummary>();
+  for (const row of preferred) byId.set(row.id, row);
+  for (const row of fallback) {
+    if (!byId.has(row.id)) byId.set(row.id, row);
+  }
+  return [...byId.values()];
 }
 
 function requireTrustedCompanyId(companyId: string | null | undefined): string {
@@ -176,28 +215,52 @@ export function createSupabaseCrmAgentToolPorts(
 
   return {
     async searchCustomers(input) {
+      const companyId = requireTrustedCompanyId(input.companyId);
+      let e164Customers: CrmCustomerSummary[] = [];
+      const term = input.query?.trim() ?? "";
+
+      if (term && queryLooksLikePhoneSearch(term)) {
+        const plan = planCustomerPhoneSearch({ query: term, source: "explicit" });
+        const scoped = companyScopedPhoneE164Lookup({
+          companyId,
+          phoneE164: plan.phoneE164,
+        });
+        if (scoped) {
+          const { data: e164Data, error: e164Error } = await client
+            .from("customers")
+            .select("id, name, email, phone, phone_e164, created_at")
+            .eq("company_id", scoped.companyId)
+            .eq("phone_e164", scoped.phoneE164)
+            .limit(100);
+          if (e164Error) throw new Error(e164Error.message);
+          e164Customers = (e164Data ?? []).map((row) => mapCustomer(row as Record<string, unknown>));
+        }
+      }
+
       let query = client
         .from("customers")
-        .select("id, name, email, phone, created_at", { count: "exact" })
-        .eq("company_id", input.companyId)
+        .select("id, name, email, phone, phone_e164, created_at", { count: "exact" })
+        .eq("company_id", companyId)
         .order("created_at", { ascending: false })
         .limit(100);
 
-      if (input.query?.trim()) {
-        const term = input.query.trim();
+      if (term) {
         query = query.or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
       }
 
       const { data, error, count } = await query;
       if (error) throw new Error(error.message);
 
-      let customers = (data ?? []).map((row) => mapCustomer(row as Record<string, unknown>));
+      let customers = mergeCustomerSummaries(
+        e164Customers,
+        (data ?? []).map((row) => mapCustomer(row as Record<string, unknown>)),
+      );
 
       if (input.inactiveDays && input.inactiveDays > 0) {
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - input.inactiveDays);
         const [scheduling, legacy] = await Promise.all([
-          listSchedulingBookings(client, input.companyId),
+          listSchedulingBookings(client, companyId),
           listLegacyBookings(client, input.userId),
         ]);
         const activeCustomerIds = new Set(
@@ -220,12 +283,34 @@ export function createSupabaseCrmAgentToolPorts(
       // Company-scoped CRM: LLM may choose customerId as data, but it must belong to trusted company.
       await assertCustomerOwnedByCompany(client, companyId, input.customerId, "Target");
 
+      let phoneIdentity = undefined as ReturnType<typeof buildCustomerPhoneIdentityColumns> | undefined;
+      if (input.field === "phone") {
+        const preview = resolveImportPhoneIdentity({
+          phone: input.value,
+          rowRegion: input.region,
+          source: "explicit",
+        });
+        if (!isImportPhoneWritable(preview) || !preview.identity) {
+          if (preview.code === "phone_region_required") {
+            throw new Error(
+              "PHONE_REGION_REQUIRED: Provide an ISO-2 region for local phone numbers, or use E.164 (+...).",
+            );
+          }
+          if (preview.code === "ambiguous_phone") {
+            throw new Error("AMBIGUOUS_PHONE: Phone number is ambiguous; provide ISO-2 region or E.164.");
+          }
+          throw new Error("INVALID_PHONE: Enter a valid phone number in E.164 or local+region form.");
+        }
+        phoneIdentity = preview.identity;
+      }
+
       const result = await customerService.updateCustomer({
         companyId,
         userId: input.userId,
         customerId: input.customerId.trim(),
         field: input.field,
         value: input.value,
+        phoneIdentity,
       });
       return {
         customer: {
@@ -238,18 +323,24 @@ export function createSupabaseCrmAgentToolPorts(
     },
 
     async findDuplicateCustomers(input) {
+      const companyId = requireTrustedCompanyId(input.companyId);
       const { data, error } = await client
         .from("customers")
-        .select("id, name, email, phone, created_at")
-        .eq("company_id", input.companyId)
+        .select("id, name, email, phone, phone_e164, created_at")
+        .eq("company_id", companyId)
         .limit(500);
       if (error) throw new Error(error.message);
 
-      const customers = (data ?? []).map((row) => mapCustomer(row as Record<string, unknown>));
       const groups = new Map<string, CrmCustomerSummary[]>();
 
-      for (const customer of customers) {
-        const phoneKey = normalizePhoneKey(customer.phone);
+      for (const row of data ?? []) {
+        const customer = mapCustomer(row as Record<string, unknown>);
+        const phoneKey = normalizeDedupPhoneKey(
+          customer.phone,
+          typeof (row as { phone_e164?: unknown }).phone_e164 === "string"
+            ? String((row as { phone_e164: string }).phone_e164)
+            : null,
+        );
         if (phoneKey) {
           const key = `phone:${phoneKey}`;
           groups.set(key, [...(groups.get(key) ?? []), customer]);
@@ -352,25 +443,75 @@ export function createSupabaseCrmAgentToolPorts(
       let imported = 0;
       let skipped = 0;
       const errors: string[] = [];
+      const rowResults: Array<{
+        index: number;
+        status: "imported" | "skipped" | "duplicate" | "manual_review" | "invalid";
+        code?: string;
+        phoneE164?: string | null;
+      }> = [];
 
-      for (const row of input.rows) {
+      for (let index = 0; index < input.rows.length; index += 1) {
+        const row = input.rows[index]!;
         const name = row.name?.trim();
         if (!name) {
           skipped += 1;
-          errors.push("Skipped row with empty name.");
+          errors.push(`Row ${index}: skipped empty name.`);
+          rowResults.push({ index, status: "skipped", code: "empty_name" });
           continue;
         }
 
         try {
-          if (row.phone?.trim()) {
+          const phone = row.phone?.trim() || null;
+          const preview = resolveImportPhoneIdentity({
+            phone,
+            rowRegion: row.region ?? row.country ?? row.phone_country_iso,
+            defaultRegion: input.defaultRegion,
+            source: "import",
+          });
+
+          if (phone && !isImportPhoneWritable(preview)) {
+            skipped += 1;
+            const code = preview.code;
+            errors.push(`Row ${index}: ${code} (${phone})`);
+            rowResults.push({
+              index,
+              status:
+                code === "phone_region_required" || code === "phone_identity_unresolved"
+                  ? "manual_review"
+                  : "invalid",
+              code,
+              phoneE164: null,
+            });
+            continue;
+          }
+
+          if (preview.phoneE164) {
+            const existingE164 = await customerService.findCustomer({
+              companyId,
+              userId: input.userId,
+              lookupBy: "phone_e164",
+              lookupValue: preview.phoneE164,
+            });
+            if (existingE164.status === "found" || existingE164.status === "duplicate") {
+              skipped += 1;
+              rowResults.push({
+                index,
+                status: "duplicate",
+                code: "duplicate_phone",
+                phoneE164: preview.phoneE164,
+              });
+              continue;
+            }
+          } else if (phone) {
             const existing = await customerService.findCustomer({
               companyId,
               userId: input.userId,
               lookupBy: "phone",
-              lookupValue: row.phone.trim(),
+              lookupValue: phone,
             });
             if (existing.status === "found" || existing.status === "duplicate") {
               skipped += 1;
+              rowResults.push({ index, status: "duplicate", code: "duplicate_phone" });
               continue;
             }
           }
@@ -379,17 +520,30 @@ export function createSupabaseCrmAgentToolPorts(
             companyId,
             userId: input.userId,
             name,
-            phone: row.phone?.trim() || null,
+            phone,
             email: row.email?.trim() || null,
+            phoneIdentity: preview.identity ?? buildCustomerPhoneIdentityColumns({ phone: null }),
           });
           imported += 1;
+          rowResults.push({
+            index,
+            status: "imported",
+            code: preview.code,
+            phoneE164: preview.phoneE164,
+          });
         } catch (err) {
           skipped += 1;
-          errors.push(err instanceof Error ? err.message : String(err));
+          const message = err instanceof Error ? err.message : String(err);
+          errors.push(`Row ${index}: ${message}`);
+          rowResults.push({
+            index,
+            status: /phone_e164|duplicate/i.test(message) ? "duplicate" : "invalid",
+            code: /phone_e164|duplicate/i.test(message) ? "duplicate_phone" : "write_error",
+          });
         }
       }
 
-      return { imported, skipped, errors };
+      return { imported, skipped, errors, rowResults };
     },
 
     async searchInvoices(input) {

@@ -19,6 +19,10 @@ import {
   genderDisplayLabel,
   normalizeGenderStorageValue,
 } from "@/lib/customer-gender";
+import {
+  formatCustomerPhoneDisplay,
+  localizedCountryName,
+} from "@/lib/customers/customer-phone-form";
 
 type Props = {
   customer: Customer;
@@ -85,7 +89,7 @@ export function OverviewTab({
   onQuickAction,
   isQuickActionPending,
 }: Props) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const canCreateBookings = useHasPermission("bookings.create");
   const canCreateInvoices = useHasPermission("invoices.create");
   const { data: metrics, isLoading: metricsLoading } = useCustomerProfileMetrics(
@@ -104,6 +108,15 @@ export function OverviewTab({
   const normalizedGender = normalizeGenderStorageValue(customer.gender);
   const genderLabel = genderDisplayLabel(customer.gender, genderOptionLabels);
   const notSet = t("forms.customer.notSet");
+  const phoneDisplay = formatCustomerPhoneDisplay(customer);
+  const phoneShown = phoneDisplay.primary
+    ? phoneDisplay.countryIso
+      ? `${phoneDisplay.primary} · ${localizedCountryName(
+          phoneDisplay.countryIso,
+          i18n.language?.startsWith("ar") ? "ar" : "en",
+        )}`
+      : phoneDisplay.primary
+    : notSet;
   const lastInteraction = metrics?.lastInteractionAt
     ? formatDistanceToNow(new Date(metrics.lastInteractionAt), { addSuffix: true })
     : notSet;
@@ -119,8 +132,8 @@ export function OverviewTab({
         </div>
         <div className="min-w-0">
           <h2 className="text-lg font-semibold truncate">{customer.name}</h2>
-          <p className="text-sm text-muted-foreground truncate">
-            {customer.phone?.trim() || notSet}
+          <p className="text-sm text-muted-foreground truncate" dir="ltr">
+            {phoneShown}
           </p>
         </div>
       </div>
@@ -211,7 +224,9 @@ export function OverviewTab({
             label={t("forms.customer.phone")}
             field="phone"
             customerId={customer.id}
+            customer={customer}
             value={customer.phone ?? ""}
+            displayValue={phoneShown === notSet ? notSet : phoneDisplay.primary}
             inputType="tel"
             canEdit={canEdit}
           />

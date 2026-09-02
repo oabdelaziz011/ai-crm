@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createCreateCustomerTool } from "./create-customer-tool.js";
 
-describe("createCreateCustomerTool", () => {
-  it("creates a customer when phone is unique", async () => {
+describe("createCreateCustomerTool — D5.1 global phone", () => {
+  it("creates a customer when E.164 phone is unique", async () => {
     const created: Array<Record<string, unknown>> = [];
     const tool = createCreateCustomerTool({
       async findCustomer() {
         return { status: "not_found", count: 0 };
       },
       async createCustomer(input) {
-        created.push(input);
+        created.push(input as unknown as Record<string, unknown>);
         return {
           customer: {
             id: "cust-1",
@@ -24,12 +24,86 @@ describe("createCreateCustomerTool", () => {
 
     const output = await tool.execute(
       { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
-      { name: "Ahmed Mohamed", phone: "01012345678", email: "ahmed@example.com" },
+      { name: "Ahmed Mohamed", phone: "+201012345678", email: "ahmed@example.com" },
     );
 
     assert.equal(output.success, true);
     assert.equal(output.customerId, "cust-1");
     assert.equal(created.length, 1);
+    assert.equal((created[0]?.phoneIdentity as { phone_e164?: string })?.phone_e164, "+201012345678");
+  });
+
+  it("creates Saudi E.164 without EG assumption", async () => {
+    const created: Array<Record<string, unknown>> = [];
+    const tool = createCreateCustomerTool({
+      async findCustomer() {
+        return { status: "not_found", count: 0 };
+      },
+      async createCustomer(input) {
+        created.push(input as unknown as Record<string, unknown>);
+        return {
+          customer: {
+            id: "cust-sa",
+            name: input.name,
+            email: null,
+            phone: input.phone,
+          },
+        };
+      },
+    });
+
+    const output = await tool.execute(
+      { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
+      { name: "Sara Ali", phone: "+966551234567" },
+    );
+    assert.equal(output.success, true);
+    assert.equal((created[0]?.phoneIdentity as { phone_country_iso?: string })?.phone_country_iso, "SA");
+  });
+
+  it("local national without region fails closed (never invents EG)", async () => {
+    const tool = createCreateCustomerTool({
+      async findCustomer() {
+        return { status: "not_found", count: 0 };
+      },
+      async createCustomer() {
+        throw new Error("Should not create.");
+      },
+    });
+
+    const output = await tool.execute(
+      { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
+      { name: "Ahmed Mohamed", phone: "01012345678" },
+    );
+    assert.equal(output.success, false);
+    assert.equal(output.errorCode, "PHONE_REGION_REQUIRED");
+  });
+
+  it("local national with explicit region resolves", async () => {
+    const created: Array<Record<string, unknown>> = [];
+    const tool = createCreateCustomerTool({
+      async findCustomer() {
+        return { status: "not_found", count: 0 };
+      },
+      async createCustomer(input) {
+        created.push(input as unknown as Record<string, unknown>);
+        return {
+          customer: {
+            id: "cust-eg",
+            name: input.name,
+            email: null,
+            phone: input.phone,
+          },
+        };
+      },
+    });
+
+    const output = await tool.execute(
+      { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
+      { name: "Ahmed Mohamed", phone: "01012345678", region: "EG" },
+    );
+    assert.equal(output.success, true);
+    assert.equal((created[0]?.phoneIdentity as { phone_e164?: string })?.phone_e164, "+201012345678");
+    assert.equal(created[0]?.phone, "01012345678");
   });
 
   it("returns existing customer id when phone already exists", async () => {
@@ -38,7 +112,7 @@ describe("createCreateCustomerTool", () => {
         return {
           status: "found",
           count: 1,
-          customer: { id: "existing-1", name: "Existing", email: null, phone: "01012345678" },
+          customer: { id: "existing-1", name: "Existing", email: null, phone: "201012345678" },
         };
       },
       async createCustomer() {
@@ -48,7 +122,7 @@ describe("createCreateCustomerTool", () => {
 
     const output = await tool.execute(
       { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
-      { name: "Ahmed Mohamed", phone: "01012345678" },
+      { name: "Ahmed Mohamed", phone: "201012345678" },
     );
 
     assert.equal(output.success, true);
@@ -70,7 +144,7 @@ describe("createCreateCustomerTool", () => {
         throw new Error("Should not create when duplicate exists.");
       },
       async updateCustomerName(input) {
-        updates.push(input);
+        updates.push(input as unknown as Record<string, unknown>);
         throw new Error("Should not update CRM name during normal booking intake.");
       },
     });
@@ -98,17 +172,17 @@ describe("createCreateCustomerTool", () => {
 
     assert.throws(
       () => tool.validate({ name: "Ahmed", phone: "123" }),
-      /غير مكتمل|11 رقم/,
+      /دولية|غير صالح|region|E\.164|ISO/i,
     );
   });
 
-  it("accepts Arabic-Indic phone digits and returns existing customer greeting", async () => {
+  it("accepts Arabic-Indic international digits", async () => {
     const tool = createCreateCustomerTool({
       async findCustomer() {
         return {
           status: "found",
           count: 1,
-          customer: { id: "existing-1", name: "عمر مجدي", email: null, phone: "01012345678" },
+          customer: { id: "existing-1", name: "عمر مجدي", email: null, phone: "201012345678" },
         };
       },
       async createCustomer() {
@@ -118,7 +192,7 @@ describe("createCreateCustomerTool", () => {
 
     const output = await tool.execute(
       { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
-      { name: "عمر مجدي", phone: "٠١٠١٢٣٤٥٦٧٨" },
+      { name: "عمر مجدي", phone: "٢٠١٠١٢٣٤٥٦٧٨" },
     );
 
     assert.equal(output.success, true);
@@ -137,7 +211,7 @@ describe("createCreateCustomerTool", () => {
     });
     const output = await tool.execute(
       { companyId: "company-1", conversationId: "conv-1", conversationState: "waiting_user", userId: "user-1" },
-      { name: "عمر", phone: "01011404109" },
+      { name: "عمر", phone: "+201011404109" },
     );
     assert.equal(output.success, false);
     assert.equal(output.errorCode, "INCOMPLETE_FULL_NAME");
@@ -164,13 +238,15 @@ describe("createCreateCustomerTool", () => {
     assert.equal(output.errorCode, "PHONE_SENDER_MISMATCH");
   });
 
-  it("stamps trusted identity after create so same-turn booking can proceed", async () => {
+  it("WhatsApp create uses channel sender E.164 (not EG hardcode)", async () => {
+    const created: Array<Record<string, unknown>> = [];
     const links: Array<Record<string, unknown>> = [];
     const tool = createCreateCustomerTool({
       async findCustomer() {
         return { status: "not_found", count: 0 };
       },
       async createCustomer(input) {
+        created.push(input as unknown as Record<string, unknown>);
         return {
           customer: {
             id: "cust-new-1",
@@ -195,8 +271,9 @@ describe("createCreateCustomerTool", () => {
 
     assert.equal(output.success, true);
     assert.equal(output.customerId, "cust-new-1");
-    assert.equal(links.length, 1);
+    assert.equal((created[0]?.phoneIdentity as { phone_e164?: string })?.phone_e164, "+201012345678");
+    assert.equal((created[0]?.phoneIdentity as { phone_region_source?: string })?.phone_region_source, "channel");
+    assert.equal(created[0]?.phone, "01012345678");
     assert.equal(links[0]?.stampTrustedIdentity, true);
-    assert.equal(links[0]?.customerId, "cust-new-1");
   });
 });

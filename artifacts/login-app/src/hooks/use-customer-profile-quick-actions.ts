@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { refreshCustomerProfileCache } from "@/lib/customer-profile/refresh-customer-profile";
 import {
   BookingProfileService,
@@ -23,6 +24,7 @@ type UseCustomerProfileQuickActionsOptions = {
   context?: CustomerProfileContext;
   onCloseProfile?: () => void;
   onOpenNotesTab?: () => void;
+  canExecuteAction?: (action: CustomerProfileQuickAction) => boolean;
 };
 
 function resolveQuickActionErrorMessage(
@@ -46,11 +48,13 @@ export function useCustomerProfileQuickActions({
   context,
   onCloseProfile,
   onOpenNotesTab,
+  canExecuteAction,
 }: UseCustomerProfileQuickActionsOptions) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { hasCompanyPermission } = useCompanyPermissionAuth();
 
   const [pendingAction, setPendingAction] = useState<CustomerProfileQuickAction | null>(
     null,
@@ -101,6 +105,8 @@ export function useCustomerProfileQuickActions({
     async (action: CustomerProfileQuickAction) => {
       if (!customer) return;
 
+      if (canExecuteAction && !canExecuteAction(action)) return;
+
       if (action === "add-note") {
         onOpenNotesTab?.();
         return;
@@ -135,6 +141,7 @@ export function useCustomerProfileQuickActions({
             profileContext: context,
             navigate: setLocation,
             onCloseProfile,
+            hasPermission: hasCompanyPermission,
           });
           return;
         }
@@ -148,7 +155,7 @@ export function useCustomerProfileQuickActions({
         setPendingAction(null);
       }
     },
-    [context, customer, onCloseProfile, onOpenNotesTab, setLocation, t, toast],
+    [canExecuteAction, context, customer, hasCompanyPermission, onCloseProfile, onOpenNotesTab, setLocation, t, toast],
   );
 
   const isActionPending = useCallback(

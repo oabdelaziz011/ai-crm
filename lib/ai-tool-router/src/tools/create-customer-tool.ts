@@ -3,23 +3,27 @@ import type { Tool, ToolExecutionContext } from "./tool-contract.js";
 import type { ToolCustomerServicePort } from "./customer-service-port.js";
 import { validateAgainstSchema } from "../utils/tool-utils.js";
 import {
-  INCOMPLETE_EGYPT_MOBILE_MESSAGE_AR,
-  validateEgyptMobilePhone,
-} from "../utils/customer-phone-normalization.js";
-import {
   buildExistingCustomerGreetingAr,
   buildNewCustomerGreetingAr,
 } from "../utils/scheduling-customer-display.js";
 import {
   buildWhatsAppSenderPhoneLookupVariants,
   customerPhoneMatchesWhatsAppSender,
+  resolveWhatsAppSenderPhoneE164,
 } from "../utils/resolve-trusted-channel-customer.js";
+import {
+  buildCustomerPhoneIdentityColumns,
+  type CustomerPhoneIdentityColumns,
+} from "../utils/customer-phone-identity-dual-write.js";
+import { resolvePhoneIdentity } from "../utils/phone-identity-resolver.js";
 
 const INPUT_SCHEMA = {
   type: "object",
   properties: {
     name: { type: "string", minLength: 1 },
     phone: { type: "string", minLength: 7 },
+    /** Optional ISO-2 when phone is a local/national number. Never company country. */
+    region: { type: "string", minLength: 2, maxLength: 2 },
     email: { type: "string" },
   },
   required: ["name", "phone"],
@@ -30,6 +34,11 @@ const INCOMPLETE_FULL_NAME_MESSAGE_AR =
 
 const PHONE_SENDER_MISMATCH_MESSAGE_AR =
   "رقم الموبايل لازم يكون نفس رقم واتساب اللي بيتكلم منه العميل دلوقتي.";
+
+const PHONE_REGION_REQUIRED_MESSAGE_AR =
+  "محتاجين رقم الموبايل بالصيغة الدولية (مثال +966...) أو تحديد الدولة صراحة.";
+
+const PHONE_INVALID_MESSAGE_AR = "رقم الموبايل غير صالح. ممكن تبعت الرقم بالصيغة الدولية؟";
 
 function isCompleteCustomerFullName(name: string): boolean {
   const normalized = name.trim().replace(/\s+/g, " ");
@@ -56,15 +65,69 @@ function readRequiredString(value: unknown, label: string): string {
   return normalized;
 }
 
-function normalizePhone(value: string): string {
-  const validated = validateEgyptMobilePhone(value);
-  if (!validated.valid) {
-    if (validated.reason === "incomplete") {
-      throw new Error(INCOMPLETE_EGYPT_MOBILE_MESSAGE_AR);
-    }
-    throw new Error("Phone must be a valid Egyptian mobile number (11 digits starting with 01).");
+function readOptionalRegion(value: unknown): string | null {
+  if (value == null) return null;
+  const region = typeof value === "string" ? value.trim().toUpperCase() : String(value).trim().toUpperCase();
+  if (!region) return null;
+  if (!/^[A-Z]{2}$/.test(region)) {
+    throw new Error("Phone region must be a 2-letter ISO country code when provided.");
   }
-  return validated.local;
+  return region;
+}
+
+/**
+ * D5.1 — global create_customer phone identity.
+ * Never assumes EG. Local nationals require explicit region or WhatsApp channel sender.
+ */
+function resolveCreateCustomerPhone(input: {
+  phone: string;
+  region?: string | null;
+  channelSender?: string | null;
+}): { phoneForStorage: string; phoneIdentity: CustomerPhoneIdentityColumns } {
+  const phone = input.phone.trim();
+  const region = input.region?.trim() ? input.region.trim().toUpperCase() : null;
+  const channelSender = input.channelSender?.trim() || null;
+
+  if (channelSender) {
+    if (!customerPhoneMatchesWhatsAppSender(phone, channelSender)) {
+      throw new Error(PHONE_SENDER_MISMATCH_MESSAGE_AR);
+    }
+    const senderE164 = resolveWhatsAppSenderPhoneE164(channelSender);
+    if (!senderE164) {
+      throw new Error(PHONE_INVALID_MESSAGE_AR);
+    }
+    // Resolve from Meta sender digits (source=channel) — never invent EG / company country.
+    const phoneIdentity = buildCustomerPhoneIdentityColumns({
+      phone: channelSender,
+      source: "channel",
+    });
+    if (!phoneIdentity.phone_e164 || phoneIdentity.phone_e164 !== senderE164) {
+      throw new Error(PHONE_INVALID_MESSAGE_AR);
+    }
+    return { phoneForStorage: phone, phoneIdentity };
+  }
+
+  const resolved = resolvePhoneIdentity({
+    phone,
+    region,
+    source: "explicit",
+  });
+  if (resolved.status !== "resolved") {
+    if (resolved.reason === "missing_region") {
+      throw new Error(PHONE_REGION_REQUIRED_MESSAGE_AR);
+    }
+    throw new Error(PHONE_INVALID_MESSAGE_AR);
+  }
+
+  const phoneIdentity = buildCustomerPhoneIdentityColumns({
+    phone,
+    region,
+    source: "explicit",
+  });
+  if (!phoneIdentity.phone_e164) {
+    throw new Error(PHONE_INVALID_MESSAGE_AR);
+  }
+  return { phoneForStorage: phone, phoneIdentity };
 }
 
 function normalizeEmail(value: unknown): string | null {
@@ -81,7 +144,28 @@ async function findCustomerByPhoneVariants(
   customerService: ToolCustomerServicePort,
   context: ToolExecutionContext,
   phone: string,
+  phoneE164Hint?: string | null,
 ) {
+  // Prefer company-scoped phone_e164 before legacy phone variants. Never invent EG.
+  const phoneE164 =
+    phoneE164Hint?.trim() ||
+    resolveWhatsAppSenderPhoneE164(phone) ||
+    buildCustomerPhoneIdentityColumns({ phone, source: "explicit" }).phone_e164;
+  if (phoneE164) {
+    const e164Result = await customerService.findCustomer({
+      companyId: context.companyId,
+      userId: context.userId!,
+      lookupBy: "phone_e164",
+      lookupValue: phoneE164,
+    });
+    if (e164Result.status === "found" && e164Result.customer) {
+      return e164Result;
+    }
+    if (e164Result.status === "duplicate") {
+      return { status: "duplicate" as const, count: e164Result.count };
+    }
+  }
+
   const variants = buildWhatsAppSenderPhoneLookupVariants(phone);
   let duplicate = false;
   for (const variant of variants) {
@@ -125,7 +209,10 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
     },
     validate(input: Record<string, unknown>) {
       validateAgainstSchema(INPUT_SCHEMA, input);
-      normalizePhone(readRequiredString(input.phone, "Phone"));
+      resolveCreateCustomerPhone({
+        phone: readRequiredString(input.phone, "Phone"),
+        region: readOptionalRegion(input.region),
+      });
       normalizeEmail(input.email);
     },
     async execute(context: ToolExecutionContext, input: Record<string, unknown>) {
@@ -138,8 +225,8 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
           customerFacingMessage: INCOMPLETE_FULL_NAME_MESSAGE_AR,
         };
       }
-      const phone = normalizePhone(readRequiredString(input.phone, "Phone"));
       const email = normalizeEmail(input.email);
+      const region = readOptionalRegion(input.region);
 
       if (!context.userId) {
         return {
@@ -149,19 +236,44 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
         };
       }
 
-      // WhatsApp: CRM phone must match the current inbound sender — never another customer's number.
+      // WhatsApp: identity from Meta sender E.164; CRM phone must match sender.
       const channelSender = await customerService.getConversationWhatsAppSender?.({
         conversationId: context.conversationId,
       });
-      if (
-        channelSender &&
-        !customerPhoneMatchesWhatsAppSender(phone, channelSender)
-      ) {
+
+      let phone: string;
+      let phoneIdentity: CustomerPhoneIdentityColumns;
+      try {
+        const resolved = resolveCreateCustomerPhone({
+          phone: readRequiredString(input.phone, "Phone"),
+          region,
+          channelSender: channelSender ?? null,
+        });
+        phone = resolved.phoneForStorage;
+        phoneIdentity = resolved.phoneIdentity;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message === PHONE_SENDER_MISMATCH_MESSAGE_AR) {
+          return {
+            success: false,
+            errorCode: "PHONE_SENDER_MISMATCH",
+            message: "Customer phone must match the WhatsApp sender for this conversation.",
+            customerFacingMessage: PHONE_SENDER_MISMATCH_MESSAGE_AR,
+          };
+        }
+        if (message === PHONE_REGION_REQUIRED_MESSAGE_AR) {
+          return {
+            success: false,
+            errorCode: "PHONE_REGION_REQUIRED",
+            message: "Phone requires E.164 or an explicit ISO-2 region.",
+            customerFacingMessage: PHONE_REGION_REQUIRED_MESSAGE_AR,
+          };
+        }
         return {
           success: false,
-          errorCode: "PHONE_SENDER_MISMATCH",
-          message: "Customer phone must match the WhatsApp sender for this conversation.",
-          customerFacingMessage: PHONE_SENDER_MISMATCH_MESSAGE_AR,
+          errorCode: "INVALID_PHONE",
+          message: "Phone identity could not be resolved.",
+          customerFacingMessage: PHONE_INVALID_MESSAGE_AR,
         };
       }
 
@@ -169,6 +281,7 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
         customerService,
         context,
         phone,
+        phoneIdentity.phone_e164,
       );
 
       if (duplicateCheck.status === "found" && duplicateCheck.customer) {
@@ -214,28 +327,64 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
         }
       }
 
-      const created = await customerService.createCustomer({
-        companyId: context.companyId,
-        userId: context.userId,
-        name,
-        phone,
-        email,
-      });
+      try {
+        const created = await customerService.createCustomer({
+          companyId: context.companyId,
+          userId: context.userId,
+          name,
+          phone,
+          email,
+          phoneIdentity,
+        });
 
-      await linkAndStampTrusted(
-        customerService,
-        context.conversationId,
-        created.customer.id,
-        created.customer.name,
-      );
+        await linkAndStampTrusted(
+          customerService,
+          context.conversationId,
+          created.customer.id,
+          created.customer.name,
+        );
 
-      return {
-        success: true,
-        customerId: created.customer.id,
-        customerName: created.customer.name,
-        customerGreeting: buildNewCustomerGreetingAr(name),
-        message: "Customer created successfully",
-      };
+        return {
+          success: true,
+          customerId: created.customer.id,
+          customerName: created.customer.name,
+          customerGreeting: buildNewCustomerGreetingAr(name),
+          message: "Customer created successfully",
+        };
+      } catch (error) {
+        // Concurrency: UNIQUE(company_id, phone_e164) — loser re-resolves existing customer.
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : "";
+        if (/phone_e164|company_phone_e164/i.test(message) || /unique constraint/i.test(message)) {
+          const raced = await findCustomerByPhoneVariants(
+            customerService,
+            context,
+            phone,
+            phoneIdentity.phone_e164,
+          );
+          if (raced.status === "found" && raced.customer) {
+            await linkAndStampTrusted(
+              customerService,
+              context.conversationId,
+              raced.customer.id,
+              raced.customer.name,
+            );
+            return {
+              success: true,
+              customerId: raced.customer.id,
+              existing: true,
+              customerName: raced.customer.name,
+              customerGreeting: buildExistingCustomerGreetingAr(raced.customer.name),
+              message: "Customer already exists. Use this customerId for create_booking.",
+            };
+          }
+        }
+        throw error;
+      }
     },
   };
 }
@@ -247,12 +396,20 @@ export const CREATE_CUSTOMER_LLM_TOOL_DEFINITION = {
   function: {
     name: CREATE_CUSTOMER_TOOL_KEY,
     description:
-      "Create or resolve a customer in the CRM for booking. Requires customer name and mobile phone. If the phone already exists, returns that customerId and preserves the existing CRM name. If the phone is new, creates a customer profile. On WhatsApp, phone must match the current sender.",
+      "Create or resolve a customer in the CRM for booking. Requires customer name and phone (E.164 preferred, or local national with optional ISO-2 region). Never invents country from company locale. If the phone already exists, returns that customerId and preserves the existing CRM name. On WhatsApp, phone must match the current sender; identity uses the Meta sender E.164.",
     parameters: {
       type: "object",
       properties: {
         name: { type: "string", description: "Full customer name" },
-        phone: { type: "string", description: "Customer phone number" },
+        phone: {
+          type: "string",
+          description:
+            "Customer phone. Prefer E.164 (+966…). Local nationals require region (ISO-2) unless WhatsApp sender identity is available.",
+        },
+        region: {
+          type: "string",
+          description: "Optional ISO-3166-1 alpha-2 region for local/national numbers. Never company country.",
+        },
         email: { type: "string", description: "Optional customer email" },
       },
       required: ["name", "phone"],

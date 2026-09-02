@@ -18,13 +18,14 @@ import {
 
 export const BOOKINGS_KEY = ["bookings"] as const;
 
-export function useBookings() {
+export function useBookings(options?: { enabled?: boolean }) {
   const { profile, user } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const enabled = (options?.enabled ?? true) && Boolean(user && companyId);
 
   return useQuery({
     queryKey: bookingsListKey(companyId),
-    enabled: Boolean(user && companyId),
+    enabled,
     staleTime: APP_QUERY_STALE_MS,
     queryFn: async (): Promise<Booking[]> => {
       if (!companyId || !user) return [];

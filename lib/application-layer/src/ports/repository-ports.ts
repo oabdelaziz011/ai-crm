@@ -50,7 +50,15 @@ export type CustomerCreateInput = Readonly<{
   displayName: string;
   email?: string;
   phone?: string;
+  /** Explicit ISO-2 for local phone numbers. Never company/locale-inferred. */
+  phoneRegion?: string | null;
   leadSource?: string;
+  phoneIdentity?: {
+    phone_e164: string | null;
+    phone_country_iso: string | null;
+    phone_region_source: "explicit" | "e164" | "channel" | "import" | "unresolved" | null;
+    phone_national: string | null;
+  } | null;
 }>;
 
 export type LeadQueueFilter = Readonly<{

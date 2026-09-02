@@ -9,7 +9,8 @@ export type CustomerProfileTab =
   | "files"
   | "ai-summary"
   | "history"
-  | "tickets";
+  | "tickets"
+  | "campaigns";
 
 /** @deprecated Use `ai-summary` */
 export type LegacyCustomerProfileTab = "ai-insights" | "system";
@@ -45,6 +46,7 @@ export const CUSTOMER_PROFILE_TABS: CustomerProfileTab[] = [
   "files",
   "ai-summary",
   "history",
+  "campaigns",
 ];
 
 export { normalizeWorkspaceRouteTab as normalizeCustomerProfileTab } from "@/lib/customer-workspace/workspace-navigation";

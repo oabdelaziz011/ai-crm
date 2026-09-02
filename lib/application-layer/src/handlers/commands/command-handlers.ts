@@ -93,6 +93,7 @@ export async function handleCreateCustomer(
     displayName: request.displayName,
     email: request.email,
     phone: request.phone,
+    phoneRegion: request.phoneRegion,
     leadSource: request.leadSource,
   });
   const eventId = await deps.infra.events.publishCustomerCreated({

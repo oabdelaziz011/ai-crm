@@ -70,13 +70,18 @@ const UPDATE_CUSTOMER_LLM: LlmFunctionToolDefinition = {
   type: "function",
   function: {
     name: "update_customer",
-    description: "Update a single field on an existing CRM customer. Requires customerId, field name, and new value.",
+    description:
+      "Update a single field on an existing CRM customer. Requires customerId, field name, and new value. For phone updates, prefer E.164 (+...) or supply ISO-2 region for local numbers — never invent country from company/locale.",
     parameters: {
       type: "object",
       properties: {
         customerId: { type: "string" },
         field: { type: "string", description: "Field to update (e.g. name, phone, email)" },
         value: { type: "string", description: "New value for the field" },
+        region: {
+          type: "string",
+          description: "Optional ISO-3166-1 alpha-2 when field=phone and value is a local/national number",
+        },
       },
       required: ["customerId", "field", "value"],
       additionalProperties: false,
@@ -670,7 +675,8 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     category: "crm",
     classification: "requires_confirmation",
     handlerSource: "crm_agent",
-    description: "Bulk imports customers after explicit confirmation.",
+    description:
+      "Bulk imports customers after explicit confirmation. Supports optional defaultRegion (ISO-2) and per-row region; local phones without region are manual_review. Dry-run returns phonePreview.",
     requiredPermissions: ["tools.execute", "customers.create"],
     exclusionReason: "Requires explicit user confirmation — agent workflow only",
   },

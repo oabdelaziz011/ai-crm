@@ -25,6 +25,7 @@ import {
   customerInitials,
   fmtDate,
 } from "@/lib/customer-workspace/customer-workspace-utils";
+import { formatCustomerPhoneDisplay } from "@/lib/customers/customer-phone-form";
 import {
   formatMoney,
   type CustomerColumnId,
@@ -182,9 +183,10 @@ export const CustomersListRow = memo(function CustomersListRow({
         }
 
         if (columnId === "phone") {
+          const phoneDisplay = formatCustomerPhoneDisplay(customer);
           return (
             <Cell key={columnId} style={widthStyle} className={cn("text-sm text-muted-foreground", visibilityClass)}>
-              <span dir="ltr">{customer.phone?.trim() ? customer.phone : "—"}</span>
+              <span dir="ltr">{phoneDisplay.primary || "—"}</span>
             </Cell>
           );
         }

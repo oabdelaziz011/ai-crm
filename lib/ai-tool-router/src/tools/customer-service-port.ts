@@ -15,7 +15,7 @@ export type ToolCustomerServicePort = {
   findCustomer(input: {
     companyId: string;
     userId: string;
-    lookupBy: "phone" | "email";
+    lookupBy: "phone" | "email" | "phone_e164";
     lookupValue: string;
   }): Promise<ToolFindCustomerResult>;
   createCustomer(input: {
@@ -24,6 +24,12 @@ export type ToolCustomerServicePort = {
     name: string;
     phone: string;
     email?: string | null;
+    phoneIdentity?: {
+      phone_e164: string | null;
+      phone_country_iso: string | null;
+      phone_region_source: "explicit" | "e164" | "channel" | "import" | "unresolved" | null;
+      phone_national: string | null;
+    } | null;
   }): Promise<{ customer: ToolCustomerRecord }>;
   updateCustomerName?(input: {
     companyId: string;

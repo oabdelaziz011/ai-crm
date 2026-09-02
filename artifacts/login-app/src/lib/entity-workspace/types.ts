@@ -137,6 +137,10 @@ export type EntityNoteCreateInput = Readonly<{
   text: string;
   title?: string | null;
   operationId?: string | null;
+  /** When set, overrides default related_entity_type inference from operationId. */
+  relatedEntityType?: string | null;
+  /** When set, overrides default related_entity_id (defaults to operationId for bookings). */
+  relatedEntityId?: string | null;
   createdBy: string;
   createdByName?: string | null;
   createdByRole?: string | null;

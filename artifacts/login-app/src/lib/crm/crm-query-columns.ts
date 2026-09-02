@@ -1,7 +1,7 @@
 /** Shared Supabase column projections for CRM list queries (avoid select *). */
 
 export const CUSTOMER_LIST_COLUMNS =
-  "id, user_id, company_id, name, email, phone, age, gender, notes, created_at, updated_at";
+  "id, user_id, company_id, name, email, phone, phone_e164, phone_country_iso, phone_national, phone_region_source, age, gender, notes, created_at, updated_at";
 
 export const INVOICE_LIST_COLUMNS = `
   id,

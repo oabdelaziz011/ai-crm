@@ -3,6 +3,8 @@ export type CreateCustomerRequestDto = Readonly<{
   displayName: string;
   email?: string;
   phone?: string;
+  /** Explicit ISO-2 when phone is local/national. Never company country. */
+  phoneRegion?: string;
   leadSource?: string;
 }>;
 

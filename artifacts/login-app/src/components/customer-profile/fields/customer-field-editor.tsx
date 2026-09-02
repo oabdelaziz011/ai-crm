@@ -10,9 +10,14 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useUpdateCustomer } from "@/hooks/use-customers";
+import {
+  customerPhoneErrorI18nKey,
+  useUpdateCustomer,
+} from "@/hooks/use-customers";
 import type { Customer } from "@/lib/types";
 import { normalizeGenderStorageValue } from "@/lib/customer-gender";
+import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
+import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
 
 export type CustomerFieldKey = "name" | "phone" | "email" | "age" | "gender" | "notes";
 
@@ -22,6 +27,7 @@ type Props = {
   displayValue?: string;
   field: CustomerFieldKey;
   customerId: string;
+  customer?: Pick<Customer, "phone" | "phone_country_iso" | "phone_e164"> | null;
   inputType?: "text" | "tel" | "number" | "email";
   multiline?: boolean;
   hideLabel?: boolean;
@@ -36,6 +42,7 @@ export function CustomerFieldEditor({
   displayValue,
   field,
   customerId,
+  customer = null,
   inputType = "text",
   multiline = false,
   hideLabel = false,
@@ -47,27 +54,34 @@ export function CustomerFieldEditor({
   const update = useUpdateCustomer();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [phoneRegion, setPhoneRegion] = useState<string | null>(
+    customer?.phone_country_iso ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!editing) setDraft(value);
-  }, [editing, value]);
+    if (!editing) {
+      setDraft(value);
+      setPhoneRegion(customer?.phone_country_iso ?? null);
+    }
+  }, [editing, value, customer?.phone_country_iso]);
 
   useEffect(() => {
     if (forceEditing && canEdit) setEditing(true);
   }, [forceEditing, canEdit]);
 
   useEffect(() => {
-    if (!editing) return;
+    if (!editing || field === "phone") return;
     const target = multiline ? textareaRef.current : inputRef.current;
     target?.focus();
     if (target && "select" in target) target.select();
-  }, [editing, multiline]);
+  }, [editing, multiline, field]);
 
   const cancel = () => {
     setDraft(value);
+    setPhoneRegion(customer?.phone_country_iso ?? null);
     setError(null);
     setEditing(false);
   };
@@ -89,6 +103,44 @@ export function CustomerFieldEditor({
         return;
       }
     }
+
+    if (field === "phone") {
+      const validation = validateCustomerPhoneFormInput({
+        phone: trimmed || null,
+        region: phoneRegion,
+      });
+      if (validation.code === "phone_region_required") {
+        setError(t("forms.customer.phoneRegionRequired"));
+        return;
+      }
+      if (validation.code === "invalid_phone") {
+        setError(t("forms.customer.invalidPhone"));
+        return;
+      }
+      update.mutate(
+        {
+          id: customerId,
+          values: {
+            phone: trimmed || null,
+            phone_country_iso: phoneRegion,
+          },
+          previous: customer ?? {
+            phone: value,
+            phone_country_iso: null,
+            phone_e164: null,
+          },
+        },
+        {
+          onSuccess: () => cancel(),
+          onError: (e) => {
+            const key = customerPhoneErrorI18nKey(e);
+            setError(key ? t(key) : e.message);
+          },
+        },
+      );
+      return;
+    }
+
     if (trimmed === value.trim()) {
       cancel();
       return;
@@ -134,8 +186,16 @@ export function CustomerFieldEditor({
                 canEdit ? "hover:text-primary transition-colors cursor-pointer" : "cursor-default"
               }`}
             >
-              {shown}
+              <span dir={field === "phone" ? "ltr" : undefined}>{shown}</span>
             </button>
+          ) : field === "phone" ? (
+            <CustomerPhoneInput
+              phone={draft}
+              region={phoneRegion}
+              onPhoneChange={setDraft}
+              onRegionChange={setPhoneRegion}
+              disabled={update.isPending}
+            />
           ) : selectOptions ? (
             <Select
               value={draft || "__empty__"}

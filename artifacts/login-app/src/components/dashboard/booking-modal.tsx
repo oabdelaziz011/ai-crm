@@ -26,7 +26,7 @@ import {
   useUpdateBooking,
   formatBookingDomainError,
 } from "@/hooks/use-bookings";
-import { useCreateCustomer } from "@/hooks/use-customers";
+import { useCreateCustomer, customerPhoneErrorI18nKey } from "@/hooks/use-customers";
 import { useSchedulingServices } from "@/hooks/scheduling/use-scheduling-services";
 import { useServiceResources } from "@/hooks/scheduling/use-resource-capabilities";
 import {
@@ -40,6 +40,8 @@ import { toDashboardAbsolutePath } from "@/lib/routing";
 import { BranchSelector } from "@/lib/company/branches/components";
 import { useCurrentUserBranches } from "@/lib/company/branches/hooks";
 import { cn } from "@/lib/utils";
+import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
+import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
 
 const LEGACY_STATUSES: BookingStatus[] = ["Pending", "Confirmed", "Cancelled"];
 
@@ -147,6 +149,7 @@ export function BookingModal({
   const { data: userBranches = [] } = useCurrentUserBranches(companyId);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [customerMode, setCustomerMode] = useState<CustomerEntryMode>("existing");
+  const [newCustomerPhoneRegion, setNewCustomerPhoneRegion] = useState<string | null>(null);
   const customerModeRef = useRef<CustomerEntryMode>(customerMode);
   customerModeRef.current = customerMode;
 
@@ -318,6 +321,7 @@ export function BookingModal({
     if (!open) return;
 
     setCustomerMode("existing");
+    setNewCustomerPhoneRegion(null);
 
     if (isSchedulingCreate || isSchedulingEdit) {
       schedulingForm.reset({
@@ -408,10 +412,26 @@ export function BookingModal({
 
     if (customerMode === "new" && allowNewCustomer) {
       try {
+        const phone = values.new_customer_phone?.trim() || null;
+        const region = newCustomerPhoneRegion;
+        const phoneValidation = validateCustomerPhoneFormInput({ phone, region });
+        if (phoneValidation.code === "phone_region_required") {
+          schedulingForm.setError("new_customer_phone", {
+            message: t("forms.customer.phoneRegionRequired"),
+          });
+          return;
+        }
+        if (phoneValidation.code === "invalid_phone") {
+          schedulingForm.setError("new_customer_phone", {
+            message: t("forms.customer.invalidPhone"),
+          });
+          return;
+        }
         linkedCustomer = await createCustomer.mutateAsync({
           name: values.new_customer_name.trim(),
           email: values.new_customer_email?.trim() || null,
-          phone: values.new_customer_phone?.trim() || null,
+          phone,
+          phone_country_iso: region,
           age: values.new_customer_age?.trim()
             ? Number.parseInt(values.new_customer_age.trim(), 10)
             : null,
@@ -420,8 +440,13 @@ export function BookingModal({
         });
         customerId = linkedCustomer.id;
       } catch (error) {
+        const key = customerPhoneErrorI18nKey(error);
         schedulingForm.setError("root", {
-          message: error instanceof Error ? error.message : t("forms.booking.customerRequired"),
+          message: key
+            ? t(key)
+            : error instanceof Error
+              ? error.message
+              : t("forms.booking.customerRequired"),
         });
         return;
       }
@@ -511,13 +536,15 @@ export function BookingModal({
           control={schedulingForm.control}
           name="new_customer_phone"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="sm:col-span-2">
               <FormLabel>{t("forms.customer.phone")}</FormLabel>
               <FormControl>
-                <Input
-                  placeholder={t("forms.customer.phonePlaceholder")}
-                  className="bg-background/50 border-white/10"
-                  {...field}
+                <CustomerPhoneInput
+                  phone={field.value ?? ""}
+                  region={newCustomerPhoneRegion}
+                  onPhoneChange={field.onChange}
+                  onRegionChange={setNewCustomerPhoneRegion}
+                  disabled={isPending}
                 />
               </FormControl>
               <FormMessage />

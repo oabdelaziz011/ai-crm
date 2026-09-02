@@ -211,6 +211,14 @@ export function createEntityNotesService(
         mentions: input.mentions ?? [],
       });
 
+      const relatedEntityType =
+        input.relatedEntityType?.trim() ||
+        (input.operationId && !input.relatedEntityId ? "booking" : undefined);
+      const relatedEntityId =
+        input.relatedEntityId?.trim() ||
+        (relatedEntityType === "booking" ? input.operationId?.trim() : undefined) ||
+        undefined;
+
       const row = await write.create({
         tenantId: input.tenantId,
         entityType: input.entityType,
@@ -220,8 +228,8 @@ export function createEntityNotesService(
         body: text,
         actorId: input.createdBy,
         actorName: input.createdByName ?? undefined,
-        relatedEntityType: input.operationId ? "booking" : undefined,
-        relatedEntityId: input.operationId ?? undefined,
+        relatedEntityType,
+        relatedEntityId,
         attachments: [meta],
         actorUserId: input.createdBy,
       });

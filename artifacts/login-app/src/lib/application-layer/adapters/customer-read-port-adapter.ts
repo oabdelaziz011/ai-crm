@@ -1,9 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CustomerReadPort, CustomerReadModel } from "@workspace/application-layer";
+import {
+  companyScopedPhoneE164Lookup,
+  planCustomerPhoneSearch,
+  queryLooksLikePhoneSearch,
+} from "@workspace/ai-tool-router";
 import { SupabaseCustomerRepository } from "@/lib/crm/supabase-customer-repository";
 import { CustomerInvoiceRepository } from "@/lib/billing/repositories/customer-invoice-repository";
 
-const CUSTOMER_SEARCH_COLUMNS = "id, name, email, phone, age, gender, notes, created_at, updated_at, company_id";
+const CUSTOMER_SEARCH_COLUMNS =
+  "id, name, email, phone, phone_e164, age, gender, notes, created_at, updated_at, company_id";
 
 /**
  * Port context for product operations.
@@ -50,6 +56,23 @@ async function computeOutstandingBalance(
     }, 0);
 }
 
+function mergeCustomerRows(
+  preferred: Record<string, unknown>[],
+  fallback: Record<string, unknown>[],
+  limit: number,
+): Record<string, unknown>[] {
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const row of preferred) {
+    const id = String(row.id ?? "");
+    if (id) byId.set(id, row);
+  }
+  for (const row of fallback) {
+    const id = String(row.id ?? "");
+    if (id && !byId.has(id)) byId.set(id, row);
+  }
+  return [...byId.values()].slice(0, limit);
+}
+
 export function createLoginAppCustomerReadPort(
   client: SupabaseClient,
   ctx: LoginAppPortContext,
@@ -94,6 +117,27 @@ export function createLoginAppCustomerReadPort(
       const q = query.trim();
       if (!q) return [];
 
+      // Phase D3 — canonical company-scoped phone_e164 when safely resolvable.
+      let e164Rows: Record<string, unknown>[] = [];
+      if (queryLooksLikePhoneSearch(q)) {
+        const plan = planCustomerPhoneSearch({ query: q, source: "explicit" });
+        const scoped = companyScopedPhoneE164Lookup({
+          companyId: tenantId,
+          phoneE164: plan.phoneE164,
+        });
+        if (scoped) {
+          const { data, error } = await client
+            .from("customers")
+            .select(CUSTOMER_SEARCH_COLUMNS)
+            .eq("company_id", scoped.companyId)
+            .eq("phone_e164", scoped.phoneE164)
+            .limit(limit);
+          if (error) throw new Error(error.message);
+          e164Rows = (data ?? []) as Record<string, unknown>[];
+        }
+      }
+
+      // Legacy tenant-scoped fallback (name / email / phone ilike). Always company-scoped.
       const { data, error } = await client
         .from("customers")
         .select(CUSTOMER_SEARCH_COLUMNS)
@@ -102,7 +146,9 @@ export function createLoginAppCustomerReadPort(
         .limit(limit);
 
       if (error) throw new Error(error.message);
-      return (data ?? []).map((row) => mapCustomer(row as Record<string, unknown>, tenantId));
+      const legacyRows = (data ?? []) as Record<string, unknown>[];
+      const merged = mergeCustomerRows(e164Rows, legacyRows, limit);
+      return merged.map((row) => mapCustomer(row, tenantId));
     },
   };
 }

@@ -447,7 +447,7 @@ describe("Phase 5J.1 customer mutation ownership", () => {
       });
       const tools = createCrmAgentTools(ports);
       const result = await tools.import_customers.execute(baseContext({ companyId: COMPANY_A }), {
-        rows: [{ name: "New Cust", phone: "5551234567" }],
+        rows: [{ name: "New Cust", phone: "+14155552671" }],
         confirmed: true,
         companyId: COMPANY_B,
       });

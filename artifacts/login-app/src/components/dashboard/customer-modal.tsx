@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,13 +17,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Customer } from "@/lib/types";
-import { useCreateCustomer, useUpdateCustomer } from "@/hooks/use-customers";
+import {
+  customerPhoneErrorI18nKey,
+  useCreateCustomer,
+  useUpdateCustomer,
+} from "@/hooks/use-customers";
 import { useTranslation } from "react-i18next";
+import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
+import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
 
 type FormValues = {
   name: string;
   email?: string;
   phone?: string;
+  phone_country_iso?: string;
   age?: string;
   gender?: string;
   notes?: string;
@@ -43,11 +50,13 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
   const isPending = create.isPending || update.isPending;
+  const [phoneRegion, setPhoneRegion] = useState<string | null>(null);
 
   const schema = z.object({
     name: z.string().min(1, t("forms.customer.nameRequired")),
     email: z.string().email(t("forms.customer.invalidEmail")).or(z.literal("")).optional(),
     phone: z.string().optional(),
+    phone_country_iso: z.string().optional(),
     age: z.string().optional().refine(
       (value) => !value?.trim() || (/^\d+$/.test(value.trim()) && Number.parseInt(value, 10) >= 0 && Number.parseInt(value, 10) <= 150),
       t("forms.customer.invalidAge"),
@@ -58,15 +67,26 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", email: "", phone: "", age: "", gender: "", notes: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      phone_country_iso: "",
+      age: "",
+      gender: "",
+      notes: "",
+    },
   });
 
   useEffect(() => {
     if (open) {
+      const region = customer?.phone_country_iso ?? "";
+      setPhoneRegion(region || null);
       form.reset({
-        name:  customer?.name  ?? "",
+        name: customer?.name ?? "",
         email: customer?.email ?? "",
         phone: customer?.phone ?? defaultPhone ?? "",
+        phone_country_iso: region,
         age: customer?.age == null ? "" : String(customer.age),
         gender: customer?.gender ?? "",
         notes: customer?.notes ?? "",
@@ -74,21 +94,53 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
     }
   }, [open, customer, defaultPhone, form]);
 
+  const mapError = (error: unknown) => {
+    const key = customerPhoneErrorI18nKey(error);
+    return key ? t(key) : error instanceof Error ? error.message : String(error);
+  };
+
   const onSubmit = (values: FormValues) => {
+    const phone = values.phone?.trim() || null;
+    const region = phoneRegion;
+    const phoneValidation = validateCustomerPhoneFormInput({ phone, region });
+    if (phoneValidation.code === "phone_region_required") {
+      form.setError("phone", { message: t("forms.customer.phoneRegionRequired") });
+      return;
+    }
+    if (phoneValidation.code === "invalid_phone") {
+      form.setError("phone", { message: t("forms.customer.invalidPhone") });
+      return;
+    }
+
     const payload = {
-      name:  values.name,
+      name: values.name,
       email: values.email || null,
-      phone: values.phone || null,
+      phone,
+      phone_country_iso: region,
       age: values.age?.trim() ? Number.parseInt(values.age.trim(), 10) : null,
       gender: values.gender?.trim() || null,
       notes: values.notes || null,
     };
 
     if (isEdit && customer) {
-      update.mutate({ id: customer.id, values: payload }, {
-        onSuccess: () => { onClose(); form.reset(); },
-        onError: (e) => form.setError("root", { message: e.message }),
-      });
+      update.mutate(
+        {
+          id: customer.id,
+          values: payload,
+          previous: {
+            phone: customer.phone,
+            phone_country_iso: customer.phone_country_iso,
+            phone_e164: customer.phone_e164,
+          },
+        },
+        {
+          onSuccess: () => {
+            onClose();
+            form.reset();
+          },
+          onError: (e) => form.setError("root", { message: mapError(e) }),
+        },
+      );
     } else {
       create.mutate(payload, {
         onSuccess: (created) => {
@@ -96,7 +148,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
           onClose();
           form.reset();
         },
-        onError: (e) => form.setError("root", { message: e.message }),
+        onError: (e) => form.setError("root", { message: mapError(e) }),
       });
     }
   };
@@ -132,15 +184,28 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="phone" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("forms.customer.phone")}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t("forms.customer.phonePlaceholder")} className="bg-background/50 border-white/10" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("forms.customer.phone")}</FormLabel>
+                  <FormControl>
+                    <CustomerPhoneInput
+                      phone={field.value ?? ""}
+                      region={phoneRegion}
+                      onPhoneChange={field.onChange}
+                      onRegionChange={(next) => {
+                        setPhoneRegion(next);
+                        form.setValue("phone_country_iso", next ?? "");
+                      }}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="age" render={({ field }) => (
                 <FormItem>

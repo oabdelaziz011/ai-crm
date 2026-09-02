@@ -1,4 +1,5 @@
 import { createConversationServices, type ServiceContext } from "@workspace/ai-conversation";
+import { requireCompanyFeature } from "@/lib/billing/require-company-feature";
 import { supabase } from "@/lib/supabase";
 import type { CustomerProfileContext } from "@/components/customer-profile/types";
 import { isWhatsAppCompanyChannel } from "@/lib/omnichannel/tenant/diagnose-inbox-empty-state";
@@ -22,6 +23,7 @@ export type OpenWhatsappConversationInput = {
   profileContext?: CustomerProfileContext;
   navigate: (path: string) => void;
   onCloseProfile?: () => void;
+  hasPermission?: (code: string) => boolean;
 };
 
 async function resolveWhatsappOutboundTargets(companyId: string): Promise<{
@@ -95,7 +97,9 @@ export class ConversationService {
     customerId: string;
     companyId: string;
     phone: string;
+    hasPermission?: (code: string) => boolean;
   }): Promise<string> {
+    await requireCompanyFeature(supabase, input.companyId, "whatsapp_channel");
     const targets = await resolveWhatsappOutboundTargets(input.companyId);
     if (!targets) {
       throw new Error("WHATSAPP_CONVERSATION_NOT_FOUND");
@@ -111,8 +115,7 @@ export class ConversationService {
       userId: user.id,
       companyId: input.companyId,
       isSuperAdmin: false,
-      // CRM outbound compose from customer / booking actions.
-      hasPermission: () => true,
+      hasPermission: input.hasPermission ?? (() => false),
     };
 
     const created = await services.conversations.createConversation(ctx, {
@@ -132,6 +135,11 @@ export class ConversationService {
 
   static async openWhatsappConversation(input: OpenWhatsappConversationInput): Promise<string> {
     const companyId = input.companyId ?? input.profileContext?.companyId ?? null;
+    if (!companyId) {
+      throw new Error("WHATSAPP_CONVERSATION_NOT_FOUND");
+    }
+    await requireCompanyFeature(supabase, companyId, "whatsapp_channel");
+
     const activeConversationId = input.profileContext?.conversationId?.trim();
     let conversationId =
       activeConversationId ??
@@ -147,6 +155,7 @@ export class ConversationService {
         customerId: input.customerId,
         companyId,
         phone,
+        hasPermission: input.hasPermission,
       });
     }
 

@@ -1,9 +1,16 @@
 export type Customer = {
   id: string;
   user_id: string;
+  /** Tenant owner — required for workspace Activity / History / Campaigns scoping. */
+  company_id: string | null;
   name: string;
   email: string | null;
   phone: string | null;
+  /** Additive identity (migration 332). Optional on reads until selected. */
+  phone_e164?: string | null;
+  phone_country_iso?: string | null;
+  phone_region_source?: string | null;
+  phone_national?: string | null;
   age: number | null;
   gender: string | null;
   notes: string | null;

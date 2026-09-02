@@ -13,6 +13,11 @@ import { flattenInfinitePages } from "@/lib/react-query/infinite-utils";
 import type { Customer, CustomerInsert, CustomerUpdate } from "@/lib/types";
 import { SIDEBAR_BADGES_KEY } from "@/hooks/use-sidebar-badge-counts";
 import { customerKey } from "./use-customer";
+import { buildCustomerPhoneIdentityColumns } from "@workspace/ai-tool-router";
+import {
+  didCustomerPhoneChange,
+  validateCustomerPhoneFormInput,
+} from "@/lib/customers/customer-phone-form";
 
 export type { CustomerDeleteDependencySummary };
 export { buildCustomerDeleteWarningAr, isCustomerDeleteBlockedByBookings };
@@ -27,6 +32,90 @@ export type CustomersPage = {
   rows: Customer[];
   nextOffset: number | null;
 };
+
+/** Localized CRM phone mutation errors (map codes → i18n keys in UI). */
+export class CustomerPhoneMutationError extends Error {
+  readonly code:
+    | "phone_region_required"
+    | "invalid_phone"
+    | "duplicate_phone"
+    | "phone_identity_unresolved"
+    | "not_authenticated"
+    | "company_required";
+
+  constructor(
+    code: CustomerPhoneMutationError["code"],
+    message = code,
+  ) {
+    super(message);
+    this.name = "CustomerPhoneMutationError";
+    this.code = code;
+  }
+}
+
+function mapPhoneWriteError(error: { message?: string; code?: string } | null): never {
+  const message = error?.message ?? "unknown";
+  if (/phone_e164|company_phone_e164|idx_customers_company_phone/i.test(message)) {
+    throw new CustomerPhoneMutationError("duplicate_phone", message);
+  }
+  throw new Error(message);
+}
+
+async function assertPhoneE164Available(input: {
+  companyId: string;
+  phoneE164: string;
+  excludeCustomerId?: string;
+}) {
+  let query = supabase
+    .from("customers")
+    .select("id")
+    .eq("company_id", input.companyId)
+    .eq("phone_e164", input.phoneE164)
+    .limit(1);
+  if (input.excludeCustomerId) {
+    query = query.neq("id", input.excludeCustomerId);
+  }
+  const { data, error } = await query.maybeSingle();
+  if (error && error.code !== "PGRST116") {
+    throw new Error(error.message);
+  }
+  if (data?.id) {
+    throw new CustomerPhoneMutationError("duplicate_phone");
+  }
+}
+
+function resolveWritablePhoneIdentity(input: {
+  phone: string | null | undefined;
+  region: string | null | undefined;
+  /** When false, empty phone is allowed (optional). When true and empty → clear identity. */
+  allowEmpty: boolean;
+}) {
+  const validation = validateCustomerPhoneFormInput({
+    phone: input.phone,
+    region: input.region,
+  });
+  if (validation.code === "empty") {
+    if (!input.allowEmpty) {
+      throw new CustomerPhoneMutationError("invalid_phone");
+    }
+    return {
+      phone: null as string | null,
+      identity: buildCustomerPhoneIdentityColumns({ phone: null }),
+    };
+  }
+  if (validation.code === "phone_region_required") {
+    throw new CustomerPhoneMutationError("phone_region_required");
+  }
+  if (validation.code !== "ok" || !validation.identity?.phone_e164) {
+    throw new CustomerPhoneMutationError(
+      validation.code === "invalid_phone" ? "invalid_phone" : "phone_identity_unresolved",
+    );
+  }
+  return {
+    phone: (input.phone ?? "").trim() || null,
+    identity: validation.identity,
+  };
+}
 
 async function fetchCustomersPage(offset: number, limit: number): Promise<CustomersPage> {
   const from = offset;
@@ -91,16 +180,47 @@ export function useCustomersInfiniteRows(pageSize = CRM_LIST_PAGE_SIZE) {
 
 export function useCreateCustomer() {
   const qc = useQueryClient();
+  const { profile } = useUser();
   return useMutation({
     mutationFn: async (values: CustomerInsert) => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new CustomerPhoneMutationError("not_authenticated");
+      const companyId = profile?.company_id ?? null;
+      if (!companyId) throw new CustomerPhoneMutationError("company_required");
+
+      const {
+        phone_e164: _ignoreE164,
+        phone_country_iso: regionFromForm,
+        phone_region_source: _ignoreSource,
+        phone_national: _ignoreNational,
+        ...legacyValues
+      } = values;
+
+      const { phone, identity } = resolveWritablePhoneIdentity({
+        phone: legacyValues.phone ?? null,
+        region: regionFromForm ?? null,
+        allowEmpty: true,
+      });
+
+      if (identity.phone_e164) {
+        await assertPhoneE164Available({
+          companyId,
+          phoneE164: identity.phone_e164,
+        });
+      }
+
       const { data, error } = await supabase
         .from("customers")
-        .insert({ ...values, user_id: user.id })
+        .insert({
+          ...legacyValues,
+          user_id: user.id,
+          company_id: companyId,
+          phone,
+          ...identity,
+        })
         .select()
         .single();
-      if (error) throw new Error(error.message);
+      if (error) mapPhoneWriteError(error);
       return data as Customer;
     },
     onSuccess: (data) => {
@@ -111,17 +231,69 @@ export function useCreateCustomer() {
   });
 }
 
+export type CustomerUpdateMutationInput = {
+  id: string;
+  values: CustomerUpdate;
+  /** Required for phone-change detection when phone is in the patch. */
+  previous?: Pick<Customer, "phone" | "phone_country_iso" | "phone_e164"> | null;
+};
+
 export function useUpdateCustomer() {
   const qc = useQueryClient();
+  const { profile } = useUser();
   return useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: CustomerUpdate }) => {
+    mutationFn: async ({ id, values, previous }: CustomerUpdateMutationInput) => {
+      const companyId = profile?.company_id ?? null;
+      const patch: CustomerUpdate = { ...values };
+
+      // Strip identity columns from generic patches — only recompute when phone intentionally changes.
+      delete (patch as { phone_e164?: unknown }).phone_e164;
+      delete (patch as { phone_region_source?: unknown }).phone_region_source;
+      delete (patch as { phone_national?: unknown }).phone_national;
+
+      const phoneInPatch = Object.prototype.hasOwnProperty.call(values, "phone");
+      if (phoneInPatch) {
+        const nextPhone = values.phone ?? null;
+        const nextRegion = values.phone_country_iso ?? previous?.phone_country_iso ?? null;
+        const changed = didCustomerPhoneChange({
+          previousPhone: previous?.phone,
+          previousRegion: previous?.phone_country_iso,
+          nextPhone,
+          nextRegion,
+        });
+
+        if (!changed) {
+          // Unrelated-looking phone resubmit with same values: do not recompute / clear identity.
+          delete (patch as { phone?: unknown }).phone;
+          delete (patch as { phone_country_iso?: unknown }).phone_country_iso;
+        } else {
+          const { phone, identity } = resolveWritablePhoneIdentity({
+            phone: nextPhone,
+            region: nextRegion,
+            allowEmpty: true,
+          });
+          if (identity.phone_e164) {
+            if (!companyId) throw new CustomerPhoneMutationError("company_required");
+            await assertPhoneE164Available({
+              companyId,
+              phoneE164: identity.phone_e164,
+              excludeCustomerId: id,
+            });
+          }
+          Object.assign(patch, { phone, phone_country_iso: nextRegion, ...identity });
+        }
+      } else {
+        // Non-phone edits must never clear identity via accidental phone_country_iso.
+        delete (patch as { phone_country_iso?: unknown }).phone_country_iso;
+      }
+
       const { data, error } = await supabase
         .from("customers")
-        .update(values)
+        .update(patch)
         .eq("id", id)
         .select()
         .single();
-      if (error) throw new Error(error.message);
+      if (error) mapPhoneWriteError(error);
       return data as Customer;
     },
     onSuccess: (data) => {
@@ -152,6 +324,28 @@ export function useDeleteCustomer() {
       qc.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
     },
   });
+}
+
+/** Map mutation errors to i18n keys under forms.customer.* */
+export function customerPhoneErrorI18nKey(error: unknown): string | null {
+  if (error instanceof CustomerPhoneMutationError) {
+    switch (error.code) {
+      case "phone_region_required":
+        return "forms.customer.phoneRegionRequired";
+      case "invalid_phone":
+      case "phone_identity_unresolved":
+        return "forms.customer.invalidPhone";
+      case "duplicate_phone":
+        return "forms.customer.duplicatePhone";
+      default:
+        return null;
+    }
+  }
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/phone_e164|company_phone_e164|idx_customers_company_phone/i.test(message)) {
+    return "forms.customer.duplicatePhone";
+  }
+  return null;
 }
 
 /** Preflight counts for delete warnings — does not mutate. */

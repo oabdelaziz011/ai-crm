@@ -2,6 +2,7 @@ import type { ConversationState } from "@workspace/ai-conversation";
 import type { Tool, ToolExecutionContext } from "./tool-contract.js";
 import type { CrmAgentToolPorts } from "./crm-agent-ports.js";
 import { validateAgainstSchema } from "../utils/tool-utils.js";
+import { previewImportCustomerPhoneRows } from "../utils/import-phone-identity.js";
 
 const ACTIVE_STATES: ConversationState[] = [
   "idle",
@@ -21,6 +22,16 @@ function requireCompany(context: ToolExecutionContext): string {
   const companyId = typeof context.companyId === "string" ? context.companyId.trim() : "";
   if (!companyId) throw new Error("Company context is required.");
   return companyId;
+}
+
+function readOptionalIso2(value: unknown): string | null {
+  if (value == null) return null;
+  const region = String(value).trim().toUpperCase();
+  if (!region) return null;
+  if (!/^[A-Z]{2}$/.test(region)) {
+    throw new Error("Phone region must be a 2-letter ISO country code when provided.");
+  }
+  return region;
 }
 
 function createSearchCustomerTool(ports: CrmAgentToolPorts): Tool {
@@ -49,7 +60,12 @@ function createUpdateCustomerTool(ports: CrmAgentToolPorts): Tool {
       validateAgainstSchema(
         {
           type: "object",
-          properties: { customerId: { type: "string" }, field: { type: "string" }, value: { type: "string" } },
+          properties: {
+            customerId: { type: "string" },
+            field: { type: "string" },
+            value: { type: "string" },
+            region: { type: "string" },
+          },
           required: ["customerId", "field", "value"],
         },
         input,
@@ -64,6 +80,7 @@ function createUpdateCustomerTool(ports: CrmAgentToolPorts): Tool {
         customerId: String(input.customerId),
         field: String(input.field),
         value: String(input.value),
+        region: readOptionalIso2(input.region),
       });
       return { success: true, customer: result.customer, customerId: result.customer.id };
     },
@@ -109,18 +126,26 @@ function createMergeCustomersTool(ports: CrmAgentToolPorts): Tool {
   };
 }
 
-function parseImportRowsFromGoal(goal: string): Array<{ name: string; phone?: string; email?: string }> {
-  const rows: Array<{ name: string; phone?: string; email?: string }> = [];
+function parseImportRowsFromGoal(goal: string): Array<{
+  name: string;
+  phone?: string;
+  email?: string;
+  region?: string;
+}> {
+  const rows: Array<{ name: string; phone?: string; email?: string; region?: string }> = [];
   const segments = goal.split(/[\n;]+/);
   for (const segment of segments) {
     const trimmed = segment.trim();
-    if (!trimmed || /import/i.test(trimmed) && !trimmed.includes(",")) continue;
+    if (!trimmed || (/import/i.test(trimmed) && !trimmed.includes(","))) continue;
     const parts = trimmed.split(",").map((part) => part.trim()).filter(Boolean);
     if (parts.length === 0) continue;
+    // name,phone,email[,region]
+    const maybeRegion = parts[3] && /^[A-Za-z]{2}$/.test(parts[3]) ? parts[3].toUpperCase() : undefined;
     rows.push({
-      name: parts[0],
+      name: parts[0]!,
       phone: parts[1],
       email: parts[2],
+      region: maybeRegion,
     });
   }
   return rows;
@@ -136,6 +161,7 @@ function createImportCustomersTool(ports: CrmAgentToolPorts): Tool {
           properties: {
             rows: { type: "array" },
             confirmed: { type: "boolean" },
+            defaultRegion: { type: "string" },
           },
           required: ["rows"],
         },
@@ -145,17 +171,52 @@ function createImportCustomersTool(ports: CrmAgentToolPorts): Tool {
     async execute(context, input) {
       const userId = requireUser(context);
       const companyId = requireCompany(context);
-      let rows = (Array.isArray(input.rows) ? input.rows : []) as Array<{ name: string; phone?: string; email?: string }>;
+      let rows = (Array.isArray(input.rows) ? input.rows : []) as Array<{
+        name: string;
+        phone?: string;
+        email?: string;
+        region?: string;
+        country?: string;
+        phone_country_iso?: string;
+      }>;
       if (rows.length === 0 && typeof input.goal === "string") {
         rows = parseImportRowsFromGoal(input.goal);
       }
 
+      const defaultRegion = readOptionalIso2(input.defaultRegion ?? input.region);
+
       if (input.confirmed !== true) {
+        const preview = previewImportCustomerPhoneRows({ rows, defaultRegion });
+        const resolvable = preview.filter((row) => row.writable).length;
+        const needsRegion = preview.filter((row) => row.phoneCode === "phone_region_required").length;
+        const invalid = preview.filter(
+          (row) =>
+            row.phoneCode === "invalid_phone" ||
+            row.phoneCode === "ambiguous_phone" ||
+            row.phoneCode === "phone_identity_unresolved",
+        ).length;
         return {
           success: false,
           requiresConfirmation: true,
           previewCount: rows.length,
-          message: "Import requires explicit user confirmation before execution.",
+          resolvableCount: resolvable,
+          needsRegionCount: needsRegion,
+          invalidPhoneCount: invalid,
+          phonePreview: preview.map((row) => ({
+            index: row.index,
+            name: row.name,
+            phone: row.phone,
+            phoneStatus: row.phoneStatus,
+            phoneCode: row.phoneCode,
+            phoneE164: row.phoneE164,
+            phoneCountryIso: row.phoneCountryIso,
+            phoneNational: row.phoneNational,
+            phoneRegionSource: row.phoneRegionSource,
+            numberType: row.numberType,
+            writable: row.writable,
+          })),
+          message:
+            "Import requires explicit user confirmation before execution. Review phonePreview for resolved/unresolved rows.",
         };
       }
 
@@ -163,6 +224,7 @@ function createImportCustomersTool(ports: CrmAgentToolPorts): Tool {
         companyId,
         userId,
         rows,
+        defaultRegion,
         confirmed: true,
       });
     },

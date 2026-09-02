@@ -48,6 +48,24 @@ export function createToolCustomerServicePort(
         supabase,
       );
 
+      const byPhoneE164 =
+        input.lookupBy === "phone_e164"
+          ? await (async () => {
+              const { data, error } = await supabase
+                .from("customers")
+                .select("id, name, email, phone")
+                .eq("company_id", tenantId)
+                .eq("phone_e164", input.lookupValue.trim())
+                .limit(5);
+              if (error) throw new Error(error.message);
+              return (data ?? []).map((row) => ({
+                id: String(row.id),
+                displayName: typeof row.name === "string" ? row.name : "",
+                email: typeof row.email === "string" ? row.email : null,
+                phone: typeof row.phone === "string" ? row.phone : null,
+              }));
+            })()
+          : [];
       const byPhone =
         input.lookupBy === "phone"
           ? await ports.customerRead.search(tenantId, input.lookupValue, 5)
@@ -56,7 +74,7 @@ export function createToolCustomerServicePort(
         input.lookupBy === "email"
           ? await ports.customerRead.search(tenantId, input.lookupValue, 5)
           : [];
-      const matches = [...byPhone, ...byEmail].filter(
+      const matches = [...byPhoneE164, ...byPhone, ...byEmail].filter(
         (c, i, arr) => arr.findIndex((x) => x.id === c.id) === i,
       );
 
@@ -79,8 +97,26 @@ export function createToolCustomerServicePort(
           tenantId,
           matches.map((m) => m.id),
         );
+        const { data: identityRows } = await supabase
+          .from("customers")
+          .select("id, phone_e164")
+          .eq("company_id", tenantId)
+          .in(
+            "id",
+            matches.map((m) => m.id),
+          );
+        const e164ById = new Map(
+          (identityRows ?? []).map((row) => [
+            String(row.id),
+            typeof row.phone_e164 === "string" ? row.phone_e164 : null,
+          ]),
+        );
         const canonicalId = pickCanonicalCustomerIdFromPhoneMatches(
-          matches.map((m) => ({ id: m.id, phone: m.phone })),
+          matches.map((m) => ({
+            id: m.id,
+            phone: m.phone,
+            phoneE164: e164ById.get(m.id) ?? null,
+          })),
           counts,
         );
         const canonical = matches.find((m) => m.id === canonicalId);
@@ -123,6 +159,7 @@ export function createToolCustomerServicePort(
         displayName: input.name,
         email: input.email ?? undefined,
         phone: input.phone,
+        phoneIdentity: input.phoneIdentity,
       });
 
       return {

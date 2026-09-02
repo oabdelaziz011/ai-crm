@@ -38,7 +38,7 @@ const result = await executeCreateCustomerAction(
   buildContext({
     conversationId: "conv-inbox-1",
     customer_name: "Test again",
-    customer_phone: "01000000001",
+    customer_phone: "+201000000001",
     customer_age: "23",
     customer_gender: "male",
   }),

@@ -5,6 +5,7 @@ import { InMemoryCustomerRepository } from "./customer-repository-port.js";
 
 const sampleCustomer = {
   id: "cust-1",
+  companyId: "company-1",
   name: "Omar",
   email: "omar@example.com",
   phone: "+15550001",
@@ -147,5 +148,119 @@ describe("CustomerService.resolveCustomerForLeadConversion", () => {
         }),
       /Multiple customers share this email/,
     );
+  });
+});
+
+describe("CustomerService phone_e164 dedup (Phase D3)", () => {
+  it("G) rejects create when company already owns phone_e164", async () => {
+    const repository = new InMemoryCustomerRepository();
+    await repository.createCustomer({
+      companyId: "company-a",
+      userId: "user-1",
+      name: "Existing",
+      phone: "01023169075",
+      phoneIdentity: {
+        phone_e164: "+201023169075",
+        phone_country_iso: "EG",
+        phone_region_source: "explicit",
+        phone_national: "010 2316 9075",
+      },
+    });
+    const service = new CustomerService(repository);
+
+    await assert.rejects(
+      () =>
+        service.createCustomer({
+          companyId: "company-a",
+          userId: "user-1",
+          name: "Duplicate",
+          phone: "+201023169075",
+          phoneIdentity: {
+            phone_e164: "+201023169075",
+            phone_country_iso: "EG",
+            phone_region_source: "e164",
+            phone_national: "010 2316 9075",
+          },
+        }),
+      /phone number already exists/i,
+    );
+  });
+
+  it("H) rejects update when another same-company customer owns phone_e164", async () => {
+    const repository = new InMemoryCustomerRepository();
+    const a = await repository.createCustomer({
+      companyId: "company-a",
+      userId: "user-1",
+      name: "A",
+      phone: "01011111111",
+      phoneIdentity: {
+        phone_e164: "+201011111111",
+        phone_country_iso: "EG",
+        phone_region_source: "explicit",
+        phone_national: "010 1111 1111",
+      },
+    });
+    const b = await repository.createCustomer({
+      companyId: "company-a",
+      userId: "user-1",
+      name: "B",
+      phone: "01022222222",
+      phoneIdentity: {
+        phone_e164: "+201022222222",
+        phone_country_iso: "EG",
+        phone_region_source: "explicit",
+        phone_national: "010 2222 2222",
+      },
+    });
+    const service = new CustomerService(repository);
+
+    await assert.rejects(
+      () =>
+        service.updateCustomer({
+          companyId: "company-a",
+          userId: "user-1",
+          customerId: b.id,
+          field: "phone",
+          value: "+201011111111",
+          phoneIdentity: {
+            phone_e164: "+201011111111",
+            phone_country_iso: "EG",
+            phone_region_source: "e164",
+            phone_national: "010 1111 1111",
+          },
+        }),
+      /phone number already exists/i,
+    );
+    assert.equal(a.id !== b.id, true);
+  });
+
+  it("F) allows same phone_e164 in a different company", async () => {
+    const repository = new InMemoryCustomerRepository();
+    await repository.createCustomer({
+      companyId: "company-a",
+      userId: "user-1",
+      name: "A",
+      phone: "+201023169075",
+      phoneIdentity: {
+        phone_e164: "+201023169075",
+        phone_country_iso: "EG",
+        phone_region_source: "e164",
+        phone_national: "010 2316 9075",
+      },
+    });
+    const service = new CustomerService(repository);
+    const created = await service.createCustomer({
+      companyId: "company-b",
+      userId: "user-1",
+      name: "B",
+      phone: "+201023169075",
+      phoneIdentity: {
+        phone_e164: "+201023169075",
+        phone_country_iso: "EG",
+        phone_region_source: "e164",
+        phone_national: "010 2316 9075",
+      },
+    });
+    assert.equal(created.customer.name, "B");
   });
 });

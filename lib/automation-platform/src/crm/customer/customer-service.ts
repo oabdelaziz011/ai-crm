@@ -5,9 +5,11 @@ import type { FindCustomerInput, FindCustomerResult, CustomerRecord } from "../t
 import type { CreateCustomerInput, CreateCustomerResult, UpdateCustomerInput, UpdateCustomerResult } from "../types/customer-mutation-input.js";
 import {
   formatAmbiguousCustomerEmailMessage,
+  formatDuplicateCustomerPhoneMessage,
   normalizeCustomerEmail,
   toCustomerMutationError,
 } from "./customer-email-utils.js";
+import { resolvePhoneIdentityWrite } from "./customer-phone-identity-write.js";
 
 function readRequiredString(value: unknown, label: string): string {
   const normalized = typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
@@ -47,11 +49,50 @@ export class CustomerService {
     return { status: "duplicate", count };
   }
 
+  /**
+   * Phase D3 — reject create when company + phone_e164 already owned.
+   * Soft reuse remains the create_customer tool contract; this service rejects clearly.
+   */
+  private async assertPhoneE164Available(input: {
+    companyId: string;
+    userId: string;
+    phone: string | null | undefined;
+    phoneIdentity: CreateCustomerInput["phoneIdentity"];
+    excludeCustomerId?: string;
+  }): Promise<void> {
+    const identity = resolvePhoneIdentityWrite(input.phone ?? null, input.phoneIdentity ?? null);
+    const phoneE164 = identity.phone_e164?.trim();
+    if (!phoneE164) return;
+
+    const existing = await this.findCustomer({
+      companyId: input.companyId,
+      userId: input.userId,
+      lookupBy: "phone_e164",
+      lookupValue: phoneE164,
+    });
+    if (existing.status === "not_found") return;
+    if (
+      existing.status === "found" &&
+      existing.customer &&
+      input.excludeCustomerId &&
+      existing.customer.id === input.excludeCustomerId
+    ) {
+      return;
+    }
+    throw new ValidationError(formatDuplicateCustomerPhoneMessage());
+  }
+
   async createCustomer(input: CreateCustomerInput): Promise<CreateCustomerResult> {
     readRequiredString(input.companyId, "company");
     readRequiredString(input.userId, "owner");
     const name = readRequiredString(input.name, "name");
     try {
+      await this.assertPhoneE164Available({
+        companyId: input.companyId,
+        userId: input.userId,
+        phone: input.phone,
+        phoneIdentity: input.phoneIdentity,
+      });
       const customer = await this.repository.createCustomer({
         ...input,
         name,
@@ -59,6 +100,7 @@ export class CustomerService {
       });
       return { customer };
     } catch (error) {
+      if (error instanceof ValidationError) throw error;
       throw toCustomerMutationError(error);
     }
   }
@@ -103,7 +145,21 @@ export class CustomerService {
     readRequiredString(input.customerId, "customer id");
     readRequiredString(input.field, "field");
     readRequiredString(input.value, "value");
-    const customer = await this.repository.updateCustomer(input);
-    return { customer };
+    try {
+      if (input.field.trim() === "phone") {
+        await this.assertPhoneE164Available({
+          companyId: input.companyId,
+          userId: input.userId,
+          phone: input.value,
+          phoneIdentity: input.phoneIdentity,
+          excludeCustomerId: input.customerId,
+        });
+      }
+      const customer = await this.repository.updateCustomer(input);
+      return { customer };
+    } catch (error) {
+      if (error instanceof ValidationError) throw error;
+      throw toCustomerMutationError(error);
+    }
   }
 }

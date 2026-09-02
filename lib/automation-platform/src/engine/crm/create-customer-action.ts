@@ -10,6 +10,10 @@ import type { ConversationCustomerLinkPort } from "../../ports/conversation-cust
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
 import { resolveInboxConversationId } from "../../runtime/resolve-inbox-conversation-id.js";
+import {
+  isImportPhoneWritable,
+  resolveImportPhoneIdentity,
+} from "@workspace/ai-tool-router";
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -103,14 +107,39 @@ export async function executeCreateCustomerAction(
   const ageRaw = ageField ? readVariableByKey(scope, ageField) || null : null;
   const genderRaw = genderField ? readVariableByKey(scope, genderField) || null : null;
 
+  const phoneFieldKey = phoneField ? phoneField : "customer_phone";
+  const phone = phoneField ? readVariableByKey(scope, phoneFieldKey) || null : null;
+  const regionField = readString(config.regionField) ?? readString(config.phoneRegionField);
+  const region = regionField
+    ? readVariableByKey(scope, regionField) || null
+    : readString(config.defaultRegion) ?? readString(config.phoneRegion) ?? null;
+
+  const phonePreview = resolveImportPhoneIdentity({
+    phone,
+    rowRegion: region,
+    source: "explicit",
+  });
+  if (phone && !isImportPhoneWritable(phonePreview)) {
+    if (phonePreview.code === "phone_region_required") {
+      throw new ValidationError(
+        "PHONE_REGION_REQUIRED: Local phone numbers require an explicit ISO-2 region (config.regionField / defaultRegion) or E.164.",
+      );
+    }
+    if (phonePreview.code === "ambiguous_phone") {
+      throw new ValidationError("AMBIGUOUS_PHONE: Phone number is ambiguous without an explicit region.");
+    }
+    throw new ValidationError("INVALID_PHONE: Phone number could not be resolved.");
+  }
+
   const result = await customerService.createCustomer({
     companyId: context.company.id,
     userId: resolveActorUserId(context),
     name,
     email: emailField ? readVariableByKey(scope, emailField) || null : null,
-    phone: phoneField ? readVariableByKey(scope, phoneField) || null : null,
+    phone,
     age: parseOptionalAge(ageRaw),
     gender: genderRaw?.trim() || null,
+    phoneIdentity: phonePreview.identity ?? undefined,
   });
 
   const conversationId = resolveInboxConversationId(context.variables);
@@ -148,12 +177,40 @@ export async function executeUpdateCustomerAction(
       ? resolveRequiredFieldBindingAsString(valueBinding, scope, "value")
       : readString(config.value) ?? readVariableByKey(scope, field);
 
+  let phoneIdentity = undefined as
+    | ReturnType<typeof resolveImportPhoneIdentity>["identity"]
+    | undefined;
+  if (field === "phone") {
+    const regionField = readString(config.regionField) ?? readString(config.phoneRegionField);
+    const region = regionField
+      ? readVariableByKey(scope, regionField) || null
+      : readString(config.defaultRegion) ?? readString(config.phoneRegion) ?? null;
+    const phonePreview = resolveImportPhoneIdentity({
+      phone: value,
+      rowRegion: region,
+      source: "explicit",
+    });
+    if (!isImportPhoneWritable(phonePreview) || !phonePreview.identity) {
+      if (phonePreview.code === "phone_region_required") {
+        throw new ValidationError(
+          "PHONE_REGION_REQUIRED: Local phone numbers require an explicit ISO-2 region or E.164.",
+        );
+      }
+      if (phonePreview.code === "ambiguous_phone") {
+        throw new ValidationError("AMBIGUOUS_PHONE: Phone number is ambiguous without an explicit region.");
+      }
+      throw new ValidationError("INVALID_PHONE: Phone number could not be resolved.");
+    }
+    phoneIdentity = phonePreview.identity;
+  }
+
   const result = await customerService.updateCustomer({
     companyId: context.company.id,
     userId: resolveActorUserId(context),
     customerId,
     field,
     value,
+    phoneIdentity: phoneIdentity ?? undefined,
   });
 
   return {

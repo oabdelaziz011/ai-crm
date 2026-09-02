@@ -4,8 +4,10 @@ import type { CustomerRecord } from "../types/find-customer-input.js";
 import type { CreateCustomerInput, UpdateCustomerInput } from "../types/customer-mutation-input.js";
 import type { CustomerRepositoryPort } from "../customer/customer-repository-port.js";
 import { normalizeCustomerEmail } from "../customer/customer-email-utils.js";
+import { resolvePhoneIdentityWrite } from "../customer/customer-phone-identity-write.js";
 
-const CUSTOMER_COLUMNS = "id, name, email, phone, age, gender, notes, created_at, updated_at";
+const CUSTOMER_COLUMNS =
+  "id, name, email, phone, phone_e164, age, gender, notes, created_at, updated_at";
 
 function parseAgeValue(value: string): number | null {
   const trimmed = value.trim();
@@ -68,6 +70,8 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
   }
 
   async createCustomer(input: CreateCustomerInput): Promise<CustomerRecord> {
+    const phone = input.phone?.trim() || null;
+    const identity = resolvePhoneIdentityWrite(phone, input.phoneIdentity);
     const { data, error } = await this.client
       .from("customers")
       .insert({
@@ -75,10 +79,14 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
         company_id: input.companyId,
         name: input.name.trim(),
         email: normalizeCustomerEmail(input.email),
-        phone: input.phone?.trim() || null,
+        phone,
         age: input.age ?? null,
         gender: normalizeGender(input.gender),
         notes: input.notes?.trim() || null,
+        phone_e164: identity.phone_e164,
+        phone_country_iso: identity.phone_country_iso,
+        phone_region_source: identity.phone_region_source,
+        phone_national: identity.phone_national,
       })
       .select(CUSTOMER_COLUMNS)
       .single();
@@ -91,6 +99,27 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
     const field = input.field.trim();
     if (!["name", "email", "phone", "age", "gender", "notes"].includes(field)) {
       throw new Error(`Unsupported customer field: ${field}`);
+    }
+
+    if (field === "phone") {
+      const phone = input.value?.trim() ? input.value.trim() : null;
+      const identity = resolvePhoneIdentityWrite(phone, input.phoneIdentity);
+      const { data, error } = await this.client
+        .from("customers")
+        .update({
+          phone,
+          phone_e164: identity.phone_e164,
+          phone_country_iso: identity.phone_country_iso,
+          phone_region_source: identity.phone_region_source,
+          phone_national: identity.phone_national,
+        })
+        .eq("id", input.customerId)
+        .eq("company_id", input.companyId)
+        .select(CUSTOMER_COLUMNS)
+        .single();
+
+      if (error) throw new Error(error.message);
+      return mapCustomerRecord(data as Record<string, unknown>);
     }
 
     const updateValue =
@@ -117,6 +146,8 @@ function mapLookupColumn(lookupBy: CustomerLookupField): string {
   switch (lookupBy) {
     case "phone":
       return "phone";
+    case "phone_e164":
+      return "phone_e164";
     case "email":
       return "email";
     case "customer_id":
@@ -132,6 +163,7 @@ function mapCustomerRecord(row: Record<string, unknown>): CustomerRecord {
     name: String(row.name),
     email: row.email == null ? null : String(row.email),
     phone: row.phone == null ? null : String(row.phone),
+    phoneE164: row.phone_e164 == null ? null : String(row.phone_e164),
     age: row.age == null ? null : Number(row.age),
     gender: row.gender == null ? null : String(row.gender),
     notes: row.notes == null ? null : String(row.notes),

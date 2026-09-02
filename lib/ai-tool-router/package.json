@@ -16,12 +16,13 @@
     "@workspace/ai-conversation": "workspace:*",
     "@workspace/ai-execution-engine": "workspace:*",
     "@workspace/automation-platform": "workspace:*",
+    "@workspace/human-handoff-platform": "workspace:*",
+    "@workspace/lead-platform": "workspace:*",
     "@workspace/platform-crypto": "workspace:*",
     "@workspace/runtime-integration": "workspace:*",
     "@workspace/scheduling-engine": "workspace:*",
-    "@workspace/human-handoff-platform": "workspace:*",
-    "@workspace/lead-platform": "workspace:*",
-    "@workspace/ticket-platform": "workspace:*"
+    "@workspace/ticket-platform": "workspace:*",
+    "libphonenumber-js": "^1.13.12"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

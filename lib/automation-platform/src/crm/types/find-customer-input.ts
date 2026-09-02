@@ -5,6 +5,8 @@ export type CustomerRecord = {
   name: string;
   email: string | null;
   phone: string | null;
+  /** Canonical identity when loaded from DB (optional for older callers). */
+  phoneE164?: string | null;
   age: number | null;
   gender: string | null;
   notes: string | null;

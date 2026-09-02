@@ -5,6 +5,13 @@ import type {
   PortalSession,
 } from "@/lib/customer-portal/types";
 import type { PortalAuthMethod } from "@/lib/customer-portal/types/portal-enums";
+import {
+  planCustomerPhoneSearch,
+  companyScopedPhoneE164Lookup,
+  resolveImportPhoneIdentity,
+  isImportPhoneWritable,
+  buildCustomerPhoneIdentityColumns,
+} from "@workspace/ai-tool-router";
 
 export class PortalAuthRepository {
   constructor(private readonly client: SupabaseClient) {}
@@ -53,9 +60,33 @@ export class PortalAuthRepository {
     companyId: string,
     phone: string,
   ): Promise<{ customerId: string; exists: boolean } | null> {
+    const company = companyId.trim();
+    const rawPhone = phone.trim();
+    if (!company || !rawPhone) return null;
+
+    // Phase D3 — company-scoped phone_e164 when safely resolvable (no OTP change).
+    const plan = planCustomerPhoneSearch({ query: rawPhone, source: "explicit" });
+    const scoped = companyScopedPhoneE164Lookup({
+      companyId: company,
+      phoneE164: plan.phoneE164,
+    });
+    if (scoped) {
+      const { data: e164Row, error: e164Error } = await this.client
+        .from("customers")
+        .select("id")
+        .eq("company_id", scoped.companyId)
+        .eq("phone_e164", scoped.phoneE164)
+        .maybeSingle();
+      if (e164Error) throw new Error(e164Error.message);
+      if (e164Row?.id) {
+        return { customerId: String(e164Row.id), exists: true };
+      }
+    }
+
+    // Legacy exact phone RPC (tenant-scoped). Preserves OTP / challenge isolation.
     const { data, error } = await this.client.rpc("portal_resolve_customer_by_phone", {
-      p_company_id: companyId,
-      p_phone: phone,
+      p_company_id: company,
+      p_phone: rawPhone,
     });
     if (error) throw new Error(error.message);
     if (!data) return null;
@@ -68,6 +99,22 @@ export class PortalAuthRepository {
     customer: PortalCustomerInput,
     ownerUserId?: string | null,
   ): Promise<string> {
+    // Resolve identity before RPC so create is atomic (phone + identity in one INSERT).
+    // No company-country guess — E.164 / explicit region resolve; local without region → unresolved.
+    const preview = resolveImportPhoneIdentity({
+      phone: customer.phone,
+      rowRegion: customer.phoneRegion ?? null,
+      source: "explicit",
+    });
+    const identity =
+      preview.identity ??
+      (isImportPhoneWritable(preview)
+        ? buildCustomerPhoneIdentityColumns({ phone: null })
+        : buildCustomerPhoneIdentityColumns({
+            phone: customer.phone,
+            region: customer.phoneRegion ?? null,
+          }));
+
     const { data, error } = await this.client.rpc("portal_upsert_customer", {
       p_company_id: companyId,
       p_name: customer.name,
@@ -76,6 +123,10 @@ export class PortalAuthRepository {
       p_owner_user_id: ownerUserId ?? null,
       p_preferred_language: customer.preferredLanguage ?? "en",
       p_marketing_consent: customer.marketingConsent ?? false,
+      p_phone_e164: identity.phone_e164,
+      p_phone_country_iso: identity.phone_country_iso,
+      p_phone_region_source: identity.phone_region_source,
+      p_phone_national: identity.phone_national,
     });
     if (error) throw new Error(error.message);
     return String(data);

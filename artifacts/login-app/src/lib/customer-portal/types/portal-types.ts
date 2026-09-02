@@ -66,6 +66,8 @@ export type PortalCustomerInput = {
   name: string;
   email?: string | null;
   phone: string;
+  /** Explicit ISO-2 for local portal phones. Never company/locale-inferred. */
+  phoneRegion?: string | null;
   preferredLanguage?: string;
   marketingConsent?: boolean;
 };

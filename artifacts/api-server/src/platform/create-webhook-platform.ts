@@ -27,9 +27,11 @@ import {
   resolveInstagramCompanyChannel,
   resolveMessengerCompanyChannel,
   resolveEmailCompanyChannel,
+  isWhatsAppDirectOutboundBypassAllowed,
   type ChannelPlatformPorts,
   type ChannelPlatformServices,
 } from "@workspace/channel-platform";
+import { createCampaignDeliveryReconcilePort } from "@login-app/lib/campaigns/reconcile-campaign-recipient-delivery";
 import { createEmbeddingPlatformServices } from "@workspace/embedding-platform";
 import { createRetrievalServices, createRetrievalPlatformPorts } from "@workspace/retrieval-engine";
 import { createRuntimeIntegrationServices, NoopRuntimeTelemetryPort } from "@workspace/runtime-integration";
@@ -43,7 +45,7 @@ import {
   createChannelConversationPort,
   createChannelRuntimePort,
 } from "./channel-platform-ports.js";
-import { createChannelAutomationPortFromClient, createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
+import { createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
 import { createTicketPlatformServices } from "@workspace/ticket-platform";
@@ -53,7 +55,8 @@ import { createEnterpriseRuntimeIntegrations } from "@workspace/ai-execution-eng
 import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { resolveCompanyActorUserId } from "@workspace/automation-platform";
 import { createWebhookToolRouterIntegrations } from "./create-webhook-tool-router-integrations.js";
-import { createWebhookWorkflowTransferPorts } from "./webhook-workflow-transfer-ports.js";
+import { createWebhookWorkflowTransferPorts, buildWebhookWorkflowTransferServiceContext } from "./webhook-workflow-transfer-ports.js";
+import { createWebhookPlatformFeatureResolver } from "./webhook-ai-workflow-bridge.js";
 import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
 import { createWebhookChannelCustomerIdentityPort } from "./webhook-channel-customer-identity-port.js";
 import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
@@ -63,6 +66,7 @@ import { createEmailRoutingTicketActionPort } from "./email-routing-ticket-adapt
 import { createAiEmailRoutingCommercialPort } from "./ai-email-routing-commercial-adapter.js";
 import { createAiEmployeeEmailCommercialPort } from "./ai-employee-email-commercial-adapter.js";
 import { createWhatsAppMessagesCommercialPort } from "./whatsapp-messages-commercial-adapter.js";
+import { createChannelCommercialEntitlementPort } from "./channel-commercial-entitlement-adapter.js";
 import { createAiTokensCommercialPort } from "./ai-tokens-commercial-adapter.js";
 import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
@@ -300,6 +304,15 @@ export function getWebhookPlatform(): WebhookPlatform {
   const employeeRuntime = createWebhookEmployeeRuntimePort(client);
   const customerIdentity = createWebhookChannelCustomerIdentityPort(client);
 
+  // Part 6C: inbound ports.automation must NOT use SYSTEM_CONTEXT.
+  // Per-call company-scoped context = commercial∩platform kill-switch + narrow automation.execute.
+  const resolveInboundAutomationPlatformFeature = createWebhookPlatformFeatureResolver(client);
+  const resolveInboundAutomationServiceContext = (companyId: string) =>
+    buildWebhookWorkflowTransferServiceContext({
+      companyId,
+      resolvePlatformFeatureEnabled: resolveInboundAutomationPlatformFeature,
+    });
+
   const ports = createChannelPlatformPortsWithContext(
     {
       channelRegistry,
@@ -314,7 +327,9 @@ export function getWebhookPlatform(): WebhookPlatform {
       registry: SYSTEM_CONTEXT,
       conversation: SYSTEM_CONTEXT,
       runtime: SYSTEM_CONTEXT,
-      automation: SYSTEM_CONTEXT,
+      automation: {
+        resolveServiceContext: resolveInboundAutomationServiceContext,
+      },
     },
     {
       resolveRuntimeActorUserId: (companyId) => resolveCompanyActorUserId(client, companyId),
@@ -326,6 +341,7 @@ export function getWebhookPlatform(): WebhookPlatform {
   ports.aiEmailRoutingCommercial = createAiEmailRoutingCommercialPort(client);
   ports.aiEmployeeEmailCommercial = createAiEmployeeEmailCommercialPort(client);
   ports.whatsappMessagesCommercial = createWhatsAppMessagesCommercialPort(client);
+  ports.channelCommercialEntitlement = createChannelCommercialEntitlementPort(client);
 
   const whatsAppCredentialsLoader = createSupabaseWhatsAppCredentialsLoader(client, {
     onDiagnostic: (detail) =>
@@ -347,21 +363,21 @@ export function getWebhookPlatform(): WebhookPlatform {
     emailRoutingEngine: createEmailRoutingEngine({
       targetResolver: createSupabaseEmailRoutingTargetResolver(client),
     }),
+    campaignDeliveryReconciler: createCampaignDeliveryReconcilePort(client),
     whatsAppCredentialsLoader,
     whatsAppCredentialLifecycle,
     whatsAppOutboundDiagnostic: (detail) => logger.info({ ...detail, event: "whatsapp.outbound" }, "WhatsApp outbound diagnostic"),
-    whatsAppDirectOutboundBypass:
-      process.env.WHATSAPP_DIRECT_OUTBOUND_BYPASS === "true"
-        ? {
-            enabled: true,
-            credentialsLoader: whatsAppCredentialsLoader,
-            onResponse: (detail) =>
-              logger.info(
-                { ...detail, event: "whatsapp.direct_outbound_bypass" },
-                "WhatsApp direct outbound bypass Graph API response",
-              ),
-          }
-        : undefined,
+    whatsAppDirectOutboundBypass: isWhatsAppDirectOutboundBypassAllowed()
+      ? {
+          enabled: true,
+          credentialsLoader: whatsAppCredentialsLoader,
+          onResponse: (detail) =>
+            logger.info(
+              { ...detail, event: "whatsapp.direct_outbound_bypass" },
+              "WhatsApp direct outbound bypass Graph API response",
+            ),
+        }
+      : undefined,
     instagramCredentialsLoader,
     instagramOutboundDiagnostic: (detail) =>
       logger.info({ ...detail, event: "instagram.outbound" }, "Instagram outbound diagnostic"),

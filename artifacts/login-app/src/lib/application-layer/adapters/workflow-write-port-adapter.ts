@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowWritePort, WorkflowExecutionModel } from "@workspace/application-layer";
 import { createAutomationPlatformServices, type ServiceContext } from "@workspace/automation-platform";
+import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
+import { resolveFeatureEnabledViaApplicationLayer } from "../resolve-feature-flag.js";
 
 type RunRow = {
   id: string;
@@ -35,13 +37,40 @@ function toExecution(run: RunRow): WorkflowExecutionModel {
   });
 }
 
-function buildAutomationContext(ctx: LoginAppPortContext): ServiceContext {
+/**
+ * Resolve platform automation kill-switch via authoritative app-layer resolver
+ * (commercial entitlement AND platform_ai_feature_enabled for Platform AI keys).
+ * Uses trusted LoginAppPortContext.companyId only — never request/LLM company IDs.
+ */
+export async function resolveWorkflowWritePortFeatureEnabled(
+  client: SupabaseClient,
+  ctx: LoginAppPortContext,
+): Promise<boolean> {
+  if (ctx.isSuperAdmin) return true;
+  if (!ctx.companyId?.trim()) return false;
+  try {
+    return (
+      (await resolveFeatureEnabledViaApplicationLayer(
+        ctx,
+        PLATFORM_AI_FEATURE_KEY.AUTOMATION,
+        client,
+      )) === true
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildAutomationContext(
+  ctx: LoginAppPortContext,
+  workflowFeatureEnabled: boolean,
+): ServiceContext {
   return {
     userId: ctx.actorUserId,
     companyId: ctx.companyId,
     isSuperAdmin: ctx.isSuperAdmin,
     hasPermission: ctx.hasPermission,
-    isWorkflowFeatureEnabled: () => true,
+    isWorkflowFeatureEnabled: () => workflowFeatureEnabled === true,
   };
 }
 
@@ -52,14 +81,29 @@ function canExecute(ctx: LoginAppPortContext): boolean {
 export function createLoginAppWorkflowWritePort(client: SupabaseClient, ctx: LoginAppPortContext): WorkflowWritePort {
   const automation = createAutomationPlatformServices(client);
 
+  async function requireWorkflowRuntimeContext(): Promise<ServiceContext> {
+    if (!ctx.companyId?.trim()) {
+      throw new Error("Workflow feature disabled");
+    }
+    if (!canExecute(ctx)) {
+      throw new Error("Permission denied");
+    }
+    const workflowEnabled = await resolveWorkflowWritePortFeatureEnabled(client, ctx);
+    if (workflowEnabled !== true) {
+      throw new Error("Workflow feature disabled");
+    }
+    return buildAutomationContext(ctx, true);
+  }
+
   async function startExecution(
     tenantId: string,
     workflowId: string,
     payload?: Record<string, unknown>,
   ): Promise<WorkflowExecutionModel> {
-    if (tenantId !== ctx.companyId || !canExecute(ctx)) throw new Error("Permission denied");
+    if (tenantId !== ctx.companyId) throw new Error("Permission denied");
+    const serviceCtx = await requireWorkflowRuntimeContext();
 
-    const result = await automation.engine.start(buildAutomationContext(ctx), {
+    const result = await automation.engine.start(serviceCtx, {
       companyId: tenantId,
       flowId: workflowId,
       channel: "api",
@@ -98,9 +142,10 @@ export function createLoginAppWorkflowWritePort(client: SupabaseClient, ctx: Log
     },
 
     async resume(tenantId, executionId, payload) {
-      if (tenantId !== ctx.companyId || !canExecute(ctx)) throw new Error("Permission denied");
+      if (tenantId !== ctx.companyId) throw new Error("Permission denied");
+      const serviceCtx = await requireWorkflowRuntimeContext();
 
-      const result = await automation.engine.resume(buildAutomationContext(ctx), {
+      const result = await automation.engine.resume(serviceCtx, {
         runId: executionId,
         input: payload ?? {},
       });
@@ -119,9 +164,10 @@ export function createLoginAppWorkflowWritePort(client: SupabaseClient, ctx: Log
     },
 
     async cancel(tenantId, executionId) {
-      if (tenantId !== ctx.companyId || !canExecute(ctx)) throw new Error("Permission denied");
+      if (tenantId !== ctx.companyId) throw new Error("Permission denied");
+      const serviceCtx = await requireWorkflowRuntimeContext();
 
-      const result = await automation.engine.cancel(buildAutomationContext(ctx), executionId);
+      const result = await automation.engine.cancel(serviceCtx, executionId);
       return Object.freeze({
         id: result.run.id,
         workflowId: result.run.flow_id,

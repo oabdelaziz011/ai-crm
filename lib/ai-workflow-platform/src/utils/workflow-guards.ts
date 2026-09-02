@@ -37,13 +37,25 @@ export class WorkflowToolLoopFeatureDisabledError extends Error {
   }
 }
 
+/**
+ * Fail-closed feature callback evaluation.
+ * Missing callback / undefined / throw / false → DENY; only explicit true → ALLOW.
+ */
 function readFlag(enabled?: () => boolean): boolean {
-  return enabled?.() ?? true;
+  if (!enabled) return false;
+  try {
+    return enabled() === true;
+  } catch {
+    return false;
+  }
 }
 
 export function assertWorkflowAutomationEnabled(ctx: AIWorkflowServiceContext): void {
   if (ctx.isSuperAdmin) return;
-  if (ctx.isWorkflowFeatureEnabled && !ctx.isWorkflowFeatureEnabled()) {
+  if (!ctx.companyId?.trim()) {
+    throw new WorkflowAiFeatureDisabledError();
+  }
+  if (!readFlag(ctx.isWorkflowFeatureEnabled)) {
     throw new WorkflowAiFeatureDisabledError();
   }
 }

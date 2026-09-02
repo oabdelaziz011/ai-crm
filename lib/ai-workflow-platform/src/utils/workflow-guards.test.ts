@@ -4,6 +4,8 @@ import { AI_KNOWLEDGE_SEARCH_NODE_KEY } from "../nodes/knowledge-search/constant
 import { AI_SUMMARIZER_NODE_KEY } from "../nodes/summarizer/constants.js";
 import {
   assertWorkflowAiNodeExecutionAllowed,
+  assertWorkflowAutomationEnabled,
+  WorkflowAiFeatureDisabledError,
   WorkflowAiNodeFeatureDisabledError,
   WorkflowKnowledgeNodeFeatureDisabledError,
   WorkflowToolLoopFeatureDisabledError,
@@ -29,6 +31,69 @@ function serviceContext(
 }
 
 describe("ai-workflow-platform workflow guards", () => {
+  it("A workflow flag true → ALLOW", () => {
+    assert.doesNotThrow(() => assertWorkflowAutomationEnabled(serviceContext()));
+  });
+
+  it("B workflow flag false → DENY", () => {
+    assert.throws(
+      () => assertWorkflowAutomationEnabled(serviceContext({ isWorkflowFeatureEnabled: () => false })),
+      WorkflowAiFeatureDisabledError,
+    );
+  });
+
+  it("E callback returns undefined → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowAutomationEnabled(
+          serviceContext({ isWorkflowFeatureEnabled: () => undefined as unknown as boolean }),
+        ),
+      WorkflowAiFeatureDisabledError,
+    );
+  });
+
+  it("F callback throws → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowAutomationEnabled(
+          serviceContext({
+            isWorkflowFeatureEnabled: () => {
+              throw new Error("boom");
+            },
+          }),
+        ),
+      WorkflowAiFeatureDisabledError,
+    );
+  });
+
+  it("H AI workflow callback missing → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowAutomationEnabled(
+          serviceContext({ isWorkflowFeatureEnabled: undefined }),
+        ),
+      WorkflowAiFeatureDisabledError,
+    );
+  });
+
+  it("L missing company context → DENY", () => {
+    assert.throws(
+      () => assertWorkflowAutomationEnabled(serviceContext({ companyId: null })),
+      WorkflowAiFeatureDisabledError,
+    );
+  });
+
+  it("AI LLM node feature callbacks: missing → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowAiNodeExecutionAllowed(
+          serviceContext({ isAiChatFeatureEnabled: undefined }),
+          { nodeKey: AI_SUMMARIZER_NODE_KEY, conversationId: "session-1" },
+        ),
+      WorkflowAiNodeFeatureDisabledError,
+    );
+  });
+
   it("allows AI LLM node when automation and ai_chat enabled", () => {
     assert.doesNotThrow(() =>
       assertWorkflowAiNodeExecutionAllowed(serviceContext(), {

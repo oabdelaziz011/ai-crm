@@ -12,7 +12,7 @@ import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContex
 import { createWebhookAiEmployeeServiceContext } from "./webhook-ai-employee-auth-context.js";
 import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext, runWithEmployeeToolScope } from "./employee-runtime-bridge.js";
-import { createChannelAutomationPort, createChannelAutomationPortFromClient } from "./channel-automation-port.js";
+import { createChannelAutomationPort, createChannelAutomationPortFromClient, type ChannelAutomationAuth } from "./channel-automation-port.js";
 import {
   WA_REQUEST_CACHE_NS,
   waRequestCacheDelete,
@@ -469,7 +469,8 @@ export function createChannelPlatformPortsWithContext(
     registry: RegistryServiceContext;
     conversation: ConversationServiceContext;
     runtime: RuntimeServiceContext;
-    automation?: RuntimeServiceContext;
+    /** Fixed company-scoped context or per-call resolver (Part 6C). Never SYSTEM_CONTEXT. */
+    automation?: ChannelAutomationAuth;
   },
   options?: {
     resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;

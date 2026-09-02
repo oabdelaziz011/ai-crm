@@ -50,15 +50,78 @@ function logInboundRoutingDecision(payload: Record<string, unknown>): void {
   console.info(JSON.stringify({ event: "automation.inbound_routing_decision", ...payload }));
 }
 
+/**
+ * Per-call company-scoped AutomationEngine authorization.
+ * Prefer resolveServiceContext for inbound webhook paths (Part 6C).
+ * A fixed ServiceContext is allowed only when already company-scoped (Part 6B transfer).
+ */
+export type ChannelAutomationAuth =
+  | AutomationServiceContext
+  | {
+      resolveServiceContext: (companyId: string) => Promise<AutomationServiceContext>;
+    };
+
+function isChannelAutomationAuthResolver(
+  auth: ChannelAutomationAuth,
+): auth is { resolveServiceContext: (companyId: string) => Promise<AutomationServiceContext> } {
+  return (
+    typeof auth === "object" &&
+    auth !== null &&
+    "resolveServiceContext" in auth &&
+    typeof (auth as { resolveServiceContext?: unknown }).resolveServiceContext === "function"
+  );
+}
+
+/**
+ * Resolve AutomationEngine ServiceContext for start/resume.
+ * Fail-closed on missing company; reject null-company / SYSTEM_CONTEXT-style fixed contexts.
+ */
+export async function resolveChannelAutomationServiceContext(
+  auth: ChannelAutomationAuth,
+  companyId: string | null | undefined,
+): Promise<AutomationServiceContext> {
+  const scoped = typeof companyId === "string" ? companyId.trim() : "";
+  if (!scoped) {
+    throw new Error("Workflow feature disabled");
+  }
+
+  if (isChannelAutomationAuthResolver(auth)) {
+    const ctx = await auth.resolveServiceContext(scoped);
+    const ctxCompany = typeof ctx.companyId === "string" ? ctx.companyId.trim() : "";
+    if (!ctxCompany || ctxCompany !== scoped) {
+      throw new Error("Company context mismatch for workflow transfer.");
+    }
+    if (ctx.isSuperAdmin) {
+      throw new Error("Workflow feature disabled");
+    }
+    return ctx;
+  }
+
+  const fixedCompany = typeof auth.companyId === "string" ? auth.companyId.trim() : "";
+  if (!fixedCompany) {
+    throw new Error("Workflow feature disabled");
+  }
+  if (fixedCompany !== scoped) {
+    throw new Error("Company context mismatch for workflow transfer.");
+  }
+  if (auth.isSuperAdmin) {
+    throw new Error("Workflow feature disabled");
+  }
+  return auth;
+}
+
 export function createChannelAutomationPort(
   engine: AutomationEngine,
-  ctx: AutomationServiceContext,
+  auth: ChannelAutomationAuth,
   deps?: {
     sessions: ReturnType<typeof createSupabaseConversationSessionRepository>;
     runs: ReturnType<typeof createSupabaseAutomationRunRepository>;
   },
 ): ChannelAutomationPort {
   const startWorkflowImpl = async (input: Parameters<ChannelAutomationPort["startWorkflow"]>[0]) => {
+      // Part 6C: authorize before start OR resume (same gate for binding / sticky / intent).
+      const ctx = await resolveChannelAutomationServiceContext(auth, input.companyId);
+
       const channel = mapChannelKey(input.channelKey);
       const resumePayload = {
         ...(input.metadata ?? {}),
@@ -424,10 +487,10 @@ export function createChannelAutomationPort(
 
 export function createChannelAutomationPortFromClient(
   engine: AutomationEngine,
-  ctx: AutomationServiceContext,
+  auth: ChannelAutomationAuth,
   client: SupabaseClient,
 ) {
-  return createChannelAutomationPort(engine, ctx, {
+  return createChannelAutomationPort(engine, auth, {
     sessions: createSupabaseConversationSessionRepository(client),
     runs: createSupabaseAutomationRunRepository(client),
   });

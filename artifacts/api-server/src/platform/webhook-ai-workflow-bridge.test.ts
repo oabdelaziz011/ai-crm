@@ -7,7 +7,12 @@ import {
   patchExtractMetadata,
   toAIWorkflowEngineConfig,
 } from "@workspace/ai-workflow-platform";
-import { createWebhookAIWorkflowAutomationRegistry } from "./webhook-ai-workflow-bridge.js";
+import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
+import {
+  createWebhookAIWorkflowAutomationRegistry,
+  resolveWebhookAiServiceContext,
+  type PlatformFeatureEnabledResolver,
+} from "./webhook-ai-workflow-bridge.js";
 
 function createStubRuntime() {
   return {
@@ -89,6 +94,7 @@ describe("webhook AI workflow bridge", () => {
     const registry = createWebhookAIWorkflowAutomationRegistry({
       actionDeps: {},
       enterpriseRuntime: createStubRuntime(),
+      resolvePlatformFeatureEnabled: async () => true,
     });
     const action = registry.get("action");
     assert.ok(action, "action handler registered");
@@ -144,5 +150,91 @@ describe("webhook AI workflow bridge", () => {
     assert.equal(extractResult.outcome, "continue");
     const extractData = (extractResult.variables as Record<string, any>)?.extract_result?.value?.data;
     assert.equal(extractData?.customer_name, "أحمد");
+  });
+
+  it("denies AI node execution when platform feature resolver returns false", async () => {
+    const registry = createWebhookAIWorkflowAutomationRegistry({
+      actionDeps: {},
+      enterpriseRuntime: createStubRuntime(),
+      resolvePlatformFeatureEnabled: async () => false,
+    });
+    const action = registry.get("action");
+    assert.ok(action);
+    const decisionConfig = toAIWorkflowEngineConfig(
+      patchDecisionMetadata(createDefaultDecisionNodeConfig(), {
+        inputSource: "variable",
+        inputVariable: "lastMessage",
+        outcomes: [{ id: "book", label: "book", description: "Book" }],
+      }),
+    );
+    const result = await action.execute(createActionContext(decisionConfig, { lastMessage: "book" }));
+    assert.equal(result.outcome, "failed");
+    assert.match(String(result.errorMessage ?? ""), /disabled|Workflow AI/i);
+  });
+});
+
+describe("Part 6A — resolveWebhookAiServiceContext matrix", () => {
+  it("C resolver false → DENY workflow flag", async () => {
+    const ctx = await resolveWebhookAiServiceContext("company-1", async () => false);
+    assert.equal(ctx.isWorkflowFeatureEnabled?.(), false);
+    assert.equal(ctx.isSuperAdmin, false);
+  });
+
+  it("D resolver undefined → DENY", async () => {
+    const ctx = await resolveWebhookAiServiceContext(
+      "company-1",
+      async () => undefined as unknown as boolean,
+    );
+    assert.equal(ctx.isWorkflowFeatureEnabled?.(), false);
+  });
+
+  it("E resolver false → DENY", async () => {
+    const ctx = await resolveWebhookAiServiceContext("company-1", async () => false);
+    assert.equal(ctx.isAiChatFeatureEnabled?.(), false);
+  });
+
+  it("F resolver true → ALLOW", async () => {
+    const ctx = await resolveWebhookAiServiceContext("company-1", async () => true);
+    assert.equal(ctx.isWorkflowFeatureEnabled?.(), true);
+    assert.equal(ctx.isAiChatFeatureEnabled?.(), true);
+  });
+
+  it("G resolver throws → DENY", async () => {
+    const ctx = await resolveWebhookAiServiceContext("company-1", async () => {
+      throw new Error("rpc failed");
+    });
+    assert.equal(ctx.isWorkflowFeatureEnabled?.(), false);
+  });
+
+  it("H missing company → DENY (throws)", async () => {
+    await assert.rejects(
+      () => resolveWebhookAiServiceContext("", async () => true),
+      /Missing company context/,
+    );
+    await assert.rejects(
+      () => resolveWebhookAiServiceContext(null, async () => true),
+      /Missing company context/,
+    );
+  });
+
+  it("I/J automation denied while others allowed → workflow DENY", async () => {
+    const resolve: PlatformFeatureEnabledResolver = async (_c, key) => {
+      if (key === PLATFORM_AI_FEATURE_KEY.AUTOMATION) return false;
+      return true;
+    };
+    const ctx = await resolveWebhookAiServiceContext("company-1", resolve);
+    assert.equal(ctx.isWorkflowFeatureEnabled?.(), false);
+    assert.equal(ctx.isAiChatFeatureEnabled?.(), true);
+  });
+
+  it("K valid commercial + platform + tenant → ALLOW", async () => {
+    const ctx = await resolveWebhookAiServiceContext("company-1", async () => true);
+    assert.equal(ctx.companyId, "company-1");
+    assert.equal(ctx.isSuperAdmin, false);
+    assert.equal(ctx.isWorkflowFeatureEnabled?.(), true);
+    assert.equal(ctx.isAiChatFeatureEnabled?.(), true);
+    assert.equal(ctx.isToolCallingFeatureEnabled?.(), true);
+    assert.equal(ctx.isKnowledgeFeatureEnabled?.(), true);
+    assert.equal(ctx.isEmbeddingsFeatureEnabled?.(), true);
   });
 });

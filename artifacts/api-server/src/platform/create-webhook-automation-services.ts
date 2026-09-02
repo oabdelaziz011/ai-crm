@@ -70,6 +70,7 @@ export function createWebhookAutomationPlatformServices(
     actionDeps,
     enterpriseRuntime: ai.enterpriseRuntime,
     knowledge: ai.knowledge,
+    client,
   });
 
   return createAutomationPlatformServices(client, {

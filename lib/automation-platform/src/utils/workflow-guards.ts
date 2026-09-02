@@ -2,9 +2,26 @@ import { AUTOMATION_PERMISSIONS } from "../constants.js";
 import { PermissionDeniedError, WorkflowFeatureDisabledError } from "../errors.js";
 import type { ServiceContext } from "../types.js";
 
+/**
+ * Fail-closed platform kill-switch for workflow/automation.
+ * Only explicit callback() === true allows; missing/undefined/throw → DENY.
+ * Super-admin bypass preserved. Commercial entitlement is enforced separately.
+ */
 export function assertWorkflowFeatureEnabled(ctx: ServiceContext): void {
   if (ctx.isSuperAdmin) return;
-  if (ctx.isWorkflowFeatureEnabled && !ctx.isWorkflowFeatureEnabled()) {
+  if (!ctx.companyId?.trim()) {
+    throw new WorkflowFeatureDisabledError();
+  }
+  if (!ctx.isWorkflowFeatureEnabled) {
+    throw new WorkflowFeatureDisabledError();
+  }
+  let enabled: boolean;
+  try {
+    enabled = ctx.isWorkflowFeatureEnabled();
+  } catch {
+    throw new WorkflowFeatureDisabledError();
+  }
+  if (enabled !== true) {
     throw new WorkflowFeatureDisabledError();
   }
 }

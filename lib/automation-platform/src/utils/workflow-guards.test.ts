@@ -19,34 +19,76 @@ function ctx(overrides?: Partial<ServiceContext>): ServiceContext {
 }
 
 describe("automation-platform workflow guards", () => {
-  it("allows super-admin regardless of feature flag", () => {
+  it("A workflow flag true → ALLOW", () => {
     assert.doesNotThrow(() =>
-      assertWorkflowFeatureEnabled(ctx({ isSuperAdmin: true, isWorkflowFeatureEnabled: () => false })),
+      assertWorkflowFeatureEnabled(ctx({ isWorkflowFeatureEnabled: () => true })),
     );
   });
 
-  it("blocks when workflow feature is disabled", () => {
+  it("B workflow flag false → DENY", () => {
     assert.throws(
       () => assertWorkflowFeatureEnabled(ctx({ isWorkflowFeatureEnabled: () => false })),
       WorkflowFeatureDisabledError,
     );
   });
 
-  it("allows when workflow feature is enabled", () => {
-    assert.doesNotThrow(() =>
-      assertWorkflowFeatureEnabled(ctx({ isWorkflowFeatureEnabled: () => true })),
+  it("E callback returns undefined → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowFeatureEnabled(
+          ctx({ isWorkflowFeatureEnabled: () => undefined as unknown as boolean }),
+        ),
+      WorkflowFeatureDisabledError,
     );
   });
 
-  it("allows missing feature resolver (runtime missing-row semantics)", () => {
-    assert.doesNotThrow(() => assertWorkflowFeatureEnabled(ctx()));
+  it("F callback throws → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowFeatureEnabled(
+          ctx({
+            isWorkflowFeatureEnabled: () => {
+              throw new Error("resolver failed");
+            },
+          }),
+        ),
+      WorkflowFeatureDisabledError,
+    );
   });
 
-  it("requires RBAC for tenant access", () => {
+  it("G automation callback missing → DENY", () => {
+    assert.throws(() => assertWorkflowFeatureEnabled(ctx()), WorkflowFeatureDisabledError);
+  });
+
+  it("L missing company context → DENY", () => {
+    assert.throws(
+      () =>
+        assertWorkflowFeatureEnabled(
+          ctx({ companyId: null, isWorkflowFeatureEnabled: () => true }),
+        ),
+      WorkflowFeatureDisabledError,
+    );
+    assert.throws(
+      () =>
+        assertWorkflowFeatureEnabled(
+          ctx({ companyId: "   ", isWorkflowFeatureEnabled: () => true }),
+        ),
+      WorkflowFeatureDisabledError,
+    );
+  });
+
+  it("allows super-admin regardless of feature flag", () => {
+    assert.doesNotThrow(() =>
+      assertWorkflowFeatureEnabled(ctx({ isSuperAdmin: true, isWorkflowFeatureEnabled: () => false })),
+    );
+    assert.doesNotThrow(() => assertWorkflowFeatureEnabled(ctx({ isSuperAdmin: true })));
+  });
+
+  it("M existing RBAC denial remains DENY", () => {
     assert.throws(
       () =>
         assertWorkflowTenantAccess(
-          ctx({ hasPermission: () => false }),
+          ctx({ hasPermission: () => false, isWorkflowFeatureEnabled: () => true }),
           "company-1",
           "automation.create",
         ),
@@ -54,9 +96,16 @@ describe("automation-platform workflow guards", () => {
     );
   });
 
-  it("allows execution when automation feature enabled", () => {
+  it("N successful path remains ALLOW when all gates are true", () => {
     assert.doesNotThrow(() =>
       assertWorkflowExecutionAllowed(ctx({ isWorkflowFeatureEnabled: () => true })),
+    );
+    assert.doesNotThrow(() =>
+      assertWorkflowTenantAccess(
+        ctx({ isWorkflowFeatureEnabled: () => true }),
+        "company-1",
+        "automation.create",
+      ),
     );
   });
 });

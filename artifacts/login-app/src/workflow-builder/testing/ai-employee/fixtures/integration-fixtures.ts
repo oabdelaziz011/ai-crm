@@ -26,6 +26,7 @@ export function createIntegrationEmployee(
     maxTokens: 2048,
     systemPrompt: "You are Employee A.",
     systemPromptSummary: "You are Employee A.",
+    welcomeMessage: "",
     knowledgeSourceIds: ["kb-integration-1"],
     knowledgeSummary: "1 knowledge source",
     allowedToolKeys: ["search_customer", "knowledge_search"],

@@ -78,6 +78,7 @@ export * from "./utils/import-phone-identity.js";
 export * from "./utils/resolve-trusted-channel-customer.js";
 export * from "./utils/whatsapp-trusted-identity-overrides.js";
 export * from "./utils/scheduling-customer-display.js";
+export * from "./utils/supabase-embedded-row.js";
 export * from "./adapters/supabase-ticket-agent-tool-ports.js";
 export * from "./tools/lead-agent-ports.js";
 export * from "./tools/lead-agent-tools.js";

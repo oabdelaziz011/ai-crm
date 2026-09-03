@@ -1,4 +1,4 @@
-import type { RuntimeGatewayChatRequest } from "../types/runtime-gateway.js";
+import type { RuntimeGatewayChatRequest } from "../ports/runtime-ports.js";
 
 export type SchedulingOperationIntent =
   | "none"

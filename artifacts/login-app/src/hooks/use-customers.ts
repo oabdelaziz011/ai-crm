@@ -45,7 +45,7 @@ export class CustomerPhoneMutationError extends Error {
 
   constructor(
     code: CustomerPhoneMutationError["code"],
-    message = code,
+    message: string = code,
   ) {
     super(message);
     this.name = "CustomerPhoneMutationError";
@@ -280,7 +280,7 @@ export function useUpdateCustomer() {
               excludeCustomerId: id,
             });
           }
-          Object.assign(patch, { phone, phone_country_iso: nextRegion, ...identity });
+          Object.assign(patch, { phone, ...identity });
         }
       } else {
         // Non-phone edits must never clear identity via accidental phone_country_iso.

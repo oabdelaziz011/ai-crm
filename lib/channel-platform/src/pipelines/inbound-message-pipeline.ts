@@ -14,7 +14,10 @@ import {
 import type { ResolvedCompanyChannel, ServiceContext } from "../types.js";
 import { ChannelSessionEngine } from "../engines/channel-session-engine.js";
 import type { InboundRouteRequestDto, InboundRouteResponseDto } from "../dto/channel-dto.js";
-import type { ChannelWorkflowResolver } from "../services/channel-workflow-resolver.js";
+import type {
+  ChannelWorkflowResolution,
+  ChannelWorkflowResolver,
+} from "../services/channel-workflow-resolver.js";
 import { dispatchAutomationOutboundMessages } from "../services/dispatch-automation-outbound.js";
 import { traceParsedInboundMessage } from "../debug/interactive-if-trace-debug.js";
 import {
@@ -474,7 +477,11 @@ export class InboundMessagePipeline {
           )
         : (() => {
             waPerfNoteSkipped("Workflow lookup", "no_workflow_resolver");
-            return { status: "skipped" as const, reason: "no_binding" as const };
+            const fallback: ChannelWorkflowResolution = {
+              status: "skipped",
+              reason: "no_binding",
+            };
+            return fallback;
           })();
 
       const disabledBoundFlowId =
@@ -1624,6 +1631,8 @@ export class InboundMessagePipeline {
           throw new ValidationError("runtimeConfig.providerConnectionId is required when executeAi is true.");
         }
 
+        const resolvedRuntimeConfig = runtimeConfig;
+
         request.trace?.step("webhook.ai_runtime_started", {
           conversationId: session.conversation_id,
           aiEmployeeId: aiEmployeeId ?? null,
@@ -1642,7 +1651,7 @@ export class InboundMessagePipeline {
             companyId: request.companyId,
             conversationId: session.conversation_id,
             messageText: aiMessageText,
-            runtimeConfig,
+            runtimeConfig: resolvedRuntimeConfig,
             correlationId: inboundEvent.id,
             onStreamChunk: request.onStreamChunk,
             abortSignal: request.abortSignal,

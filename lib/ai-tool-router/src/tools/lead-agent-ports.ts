@@ -21,6 +21,7 @@ export type LeadAgentToolPorts = {
     contactName?: string;
     email?: string;
     phone?: string;
+    companyName?: string;
     aiSummary?: string;
     score?: number;
   }): Promise<{ lead: LeadRecord }>;

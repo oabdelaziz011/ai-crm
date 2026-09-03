@@ -105,6 +105,7 @@ export function OperationsPage() {
         {
           companyId,
           date,
+          timezone,
           branchId: filters.branchId,
           resourceIds: filters.resourceIds.length ? filters.resourceIds : undefined,
           serviceIds: filters.serviceIds.length ? filters.serviceIds : undefined,

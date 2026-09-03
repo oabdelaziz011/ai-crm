@@ -7,6 +7,7 @@ import { buildToolMetadataCatalog } from "@/lib/ai-employees/adapters/tool-metad
 import type { AiEmployeeConfigurationUpdate, AiEmployeeRecord } from "@/lib/ai-employees/types";
 import type { RuntimeChatExecutionConfig } from "@/lib/runtime-integration/chat-config";
 import { summarizeKnowledge, summarizeSkills, summarizeSystemPrompt, summarizeTools } from "@/lib/ai-employees/selectors";
+import { normalizeAiEmployeeWelcomeMessageForStorage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import { AiEmployeeRegistryError } from "./ai-employee-errors";
 import type { AiEmployeeRegistryService } from "./ai-employee-registry-service";
 import type { AiEmployeeSkillService } from "./ai-employee-skill-service";

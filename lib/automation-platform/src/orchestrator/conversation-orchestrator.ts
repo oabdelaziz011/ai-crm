@@ -99,10 +99,11 @@ export class ConversationOrchestrator {
       resolution.run &&
       canResumeWaitingRun(resolution.session, resolution.run, this.deps.policy ?? DEFAULT_SESSION_POLICY)
     ) {
+      const run = resolution.run;
       execution = await waPerfMeasure("engine.resume()", () =>
         this.deps.engine.resume(ctx, {
-          runId: resolution.run.id,
-          input: buildResumeInput(resolution.run, inbound.text, inbound.payload),
+          runId: run.id,
+          input: buildResumeInput(run, inbound.text, inbound.payload),
         }),
       );
       outboundMessages.push(...this.buildOutboundMessages(execution, inbound));

@@ -82,6 +82,7 @@ export function buildReadinessScore(preview: AgentRuntimeConfiguration | null): 
     },
     {
       id: "knowledge",
+      label: "knowledge",
       // Assigned sources are enough; vector collection is optional (keyword fallback).
       ready: !knowledgeEnabled || hasKnowledgeSources,
       missing:
@@ -93,6 +94,7 @@ export function buildReadinessScore(preview: AgentRuntimeConfiguration | null): 
     },
     {
       id: "tools",
+      label: "tools",
       // Chat-only employees are allowed to publish without tools.
       ready: true,
       missing: hasTools ? [] : ["tools_optional_empty"],

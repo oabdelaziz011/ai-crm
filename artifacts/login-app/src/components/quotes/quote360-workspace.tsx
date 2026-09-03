@@ -530,12 +530,7 @@ export function Quote360Workspace({
       SUPPORTED_APP_LANGUAGES.map((code) => ({
         code,
         label: t(`languages.${code}`, {
-          defaultValue:
-            code === "ar"
-              ? t("languages.arabic")
-              : code === "en"
-                ? t("languages.english")
-                : code.toUpperCase(),
+          defaultValue: code === "ar" ? t("languages.arabic") : t("languages.english"),
         }),
       })),
     [t],

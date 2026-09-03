@@ -133,7 +133,7 @@ async function loadEnrichmentMaps(
     ...new Set(
       leads
         .map((lead) => lead.assignedUserId)
-        .filter((id): id is string => Boolean(id) && !owners.has(id)),
+        .filter((id): id is string => typeof id === "string" && id.length > 0 && !owners.has(id)),
     ),
   ];
   if (missingOwnerIds.length > 0) {

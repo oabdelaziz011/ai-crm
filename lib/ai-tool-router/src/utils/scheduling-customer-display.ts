@@ -48,7 +48,7 @@ export function buildAvailabilityCustomerSummary(input: {
     const formattedTimes = times
       .slice()
       .sort()
-      .map((time) => `• ${formatArabicTime12h(time, input.timezone)}`);
+      .map((time) => `• ${formatArabicTime12h(time)}`);
     lines.push("", dayLabel, ...formattedTimes);
   }
 
@@ -66,7 +66,7 @@ export function buildBookingConfirmationMessageAr(input: {
   timezone?: string;
 }): string {
   const dateLabel = formatArabicWeekdayDate(input.date, input.timezone);
-  const timeLabel = formatArabicTime12h(input.slotStart, input.timezone);
+  const timeLabel = formatArabicTime12h(input.slotStart);
   const confirmation = typeof input.confirmationNumber === "string" ? input.confirmationNumber.trim() : "";
   if (!confirmation) {
     throw new Error("confirmationNumber is required for customer-facing booking confirmation.");

@@ -88,7 +88,7 @@ export class DefaultEmailRoutingEngine implements EmailRoutingEngine {
         })
       : null;
 
-    if (resolved?.targetId?.trim() && resolved.targetType !== "unresolved") {
+    if (resolved?.targetId?.trim()) {
       return {
         targetType: resolved.targetType,
         targetId: resolved.targetId.trim(),

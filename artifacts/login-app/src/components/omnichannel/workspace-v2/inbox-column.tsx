@@ -135,7 +135,7 @@ export const InboxColumn = memo(function InboxColumn({
 
 }: InboxColumnProps) {
   const spacerRef = useRef<HTMLDivElement>(null);
-  const columnRef = useRef<HTMLSectionElement>(null);
+  const columnRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevConversationsRef = useRef(conversations);
 
@@ -333,7 +333,9 @@ export const InboxColumn = memo(function InboxColumn({
 
     <section
 
-      ref={columnRef}
+      ref={(node) => {
+        columnRef.current = node;
+      }}
 
       className="ws-inbox-column overflow-hidden border-s border-[var(--ws-border)] bg-[var(--ws-surface)]"
 

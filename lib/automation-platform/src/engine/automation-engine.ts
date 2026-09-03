@@ -390,7 +390,7 @@ export class AutomationEngine {
     try {
       nodeResult = await waPerfMeasure(
         `Workflow node: ${currentNode.type} (${currentNode.id})`,
-        () => handler.execute(executionContext),
+        () => Promise.resolve(handler.execute(executionContext)),
         { path: "resume" },
       );
       } catch (error) {
@@ -693,7 +693,7 @@ export class AutomationEngine {
       try {
         nodeResult = await waPerfMeasure(
           `Workflow node: ${currentNode.type} (${currentNode.id})`,
-          () => handler.execute(executionContext),
+          () => Promise.resolve(handler.execute(executionContext)),
           { path: "executeFromNode" },
         );
       } catch (error) {

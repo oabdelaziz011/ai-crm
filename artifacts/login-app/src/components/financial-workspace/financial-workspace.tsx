@@ -13,6 +13,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import type { TFunction } from "i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "wouter";
@@ -147,7 +148,7 @@ function StatusBars({
   title: string;
   slices: Array<{ id: string; labelKey: string; value: number; color: string }>;
   empty: string;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction<"common">;
 }) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   return (
@@ -1149,7 +1150,7 @@ function InvoiceTable({
   rows: CustomerInvoice[];
   customerNameById: Map<string, string>;
   money: (cents: number) => string;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction<"common">;
   onSelect: (inv: CustomerInvoice) => void;
   onPay?: (inv: CustomerInvoice) => void;
   onEdit?: (inv: CustomerInvoice) => void;
@@ -1242,7 +1243,7 @@ function PaymentTable({
   customerNameById: Map<string, string>;
   invoiceNumberById: Map<string, string>;
   money: (cents: number) => string;
-  t: (key: string, fallback?: string) => string;
+  t: TFunction<"common">;
   compact?: boolean;
 }) {
   return (

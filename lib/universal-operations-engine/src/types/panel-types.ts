@@ -13,9 +13,9 @@ export type OperationsMockCustomer = {
 
 export type OperationsMockLead = {
   id: string;
-  source: string;
+  source: string | null;
   campaign: string | null;
-  owner: string;
+  owner: string | null;
   score: number;
   customFields: Record<string, string>;
   convertedAt: string | null;

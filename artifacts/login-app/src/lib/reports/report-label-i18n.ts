@@ -1,8 +1,10 @@
+import type { TFunction } from "i18next";
+
 /**
  * Translate report enum / status labels for display (never invent values — only known maps).
  */
 export function translateReportLabel(
-  t: (key: string, fallback?: string) => string,
+  t: TFunction<"common">,
   raw: string | null | undefined,
 ): string {
   const value = (raw ?? "").trim();

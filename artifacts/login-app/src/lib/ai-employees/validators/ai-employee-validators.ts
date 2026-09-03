@@ -1,4 +1,4 @@
-import type { AiEmployeeFormValues } from "@/lib/ai-employees/types";
+import type { AiEmployeeFormValues, AiEmployeeInsert, AiEmployeeUpdate } from "@/lib/ai-employees/types";
 import { DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION } from "@/lib/ai-employees/adapters";
 import { normalizeAiEmployeeWelcomeMessageForStorage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import {
@@ -41,7 +41,7 @@ export function formValuesToInsert(
   values: AiEmployeeFormValues,
   knowledgeNames: string[],
   actorId?: string | null,
-) {
+): AiEmployeeInsert {
   const name = resolveAiEmployeeInternalName(values.name, values.displayName);
   return {
     company_id: companyId,
@@ -81,9 +81,9 @@ export function formValuesToUpdate(
   values: AiEmployeeFormValues,
   knowledgeNames: string[],
   actorId?: string | null,
-) {
+): AiEmployeeUpdate {
   const name = resolveAiEmployeeInternalName(values.name, values.displayName);
-  const base = {
+  const base: AiEmployeeUpdate = {
     name,
     display_name: values.displayName.trim(),
     description: values.description.trim(),

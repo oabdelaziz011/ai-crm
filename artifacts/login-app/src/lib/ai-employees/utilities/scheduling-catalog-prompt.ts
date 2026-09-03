@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readEmbeddedRow } from "@workspace/ai-tool-router";
 
 /** Tools that require service/resource UUID catalog text in the system prompt. */
 export const SCHEDULING_CATALOG_TOOL_KEYS = [
@@ -83,26 +84,48 @@ async function listServiceResourceLinks(
 
   if (error) return [];
   return (data ?? [])
-    .filter((row) => {
-      const service = row.scheduling_services as { status?: string; deleted_at?: string | null } | null;
-      const resource = row.scheduling_resources as { status?: string; deleted_at?: string | null } | null;
-      return (
-        service?.status === "active" &&
-        !service?.deleted_at &&
-        resource?.status === "active" &&
-        !resource?.deleted_at
-      );
-    })
     .map((row) => {
-      const service = row.scheduling_services as { id: string; name: string };
-      const resource = row.scheduling_resources as { id: string; name: string };
+      const service = readEmbeddedRow(
+        row.scheduling_services as
+          | { id: string; name: string; status?: string; deleted_at?: string | null }
+          | Array<{ id: string; name: string; status?: string; deleted_at?: string | null }>
+          | null
+          | undefined,
+      );
+      const resource = readEmbeddedRow(
+        row.scheduling_resources as
+          | { id: string; name: string; status?: string; deleted_at?: string | null }
+          | Array<{ id: string; name: string; status?: string; deleted_at?: string | null }>
+          | null
+          | undefined,
+      );
+      if (
+        !service ||
+        !resource ||
+        service.status !== "active" ||
+        service.deleted_at ||
+        resource.status !== "active" ||
+        resource.deleted_at
+      ) {
+        return null;
+      }
       return {
         serviceId: String(service.id),
         serviceName: String(service.name),
         resourceId: String(resource.id),
         resourceName: String(resource.name),
       };
-    });
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        serviceId: string;
+        serviceName: string;
+        resourceId: string;
+        resourceName: string;
+      } => entry != null,
+    );
 }
 
 export async function buildSchedulingCatalogPromptAddon(

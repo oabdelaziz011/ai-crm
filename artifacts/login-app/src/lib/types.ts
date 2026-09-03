@@ -275,7 +275,11 @@ export type Invoice = {
   customers?: Pick<Customer, "id" | "name"> | null;
 };
 
-export type CustomerInsert = Omit<Customer, "id" | "user_id" | "created_at" | "updated_at">;
+/** Client create payload — `company_id` / `user_id` are injected by `useCreateCustomer`. */
+export type CustomerInsert = Omit<
+  Customer,
+  "id" | "user_id" | "company_id" | "created_at" | "updated_at"
+>;
 export type CustomerUpdate = Partial<CustomerInsert>;
 
 export type ProfileInsert = Omit<Profile, "id">;

@@ -3,6 +3,7 @@ import { createSupabaseProductRepository } from "./repositories/supabase-product
 import {
   ProductCommandService,
   type ProductEventPublisherPort,
+  type OpportunityHistoryRecorderPort,
 } from "./services/product-command-service.js";
 import { ProductQueryService } from "./services/product-query-service.js";
 
@@ -21,20 +22,6 @@ export function createNoopProductEventPublisher(): ProductEventPublisherPort {
     async publishOpportunityProductsAdded() {},
   };
 }
-
-export type OpportunityHistoryRecorderPort = {
-  addHistory(input: {
-    companyId: string;
-    opportunityId: string;
-    eventType: string;
-    fieldName?: string | null;
-    previousValue?: string | null;
-    newValue?: string | null;
-    summary: string;
-    payload?: Record<string, unknown>;
-    actorUserId: string | null;
-  }): Promise<void>;
-};
 
 export function createProductPlatformServices(
   client: SupabaseClient,

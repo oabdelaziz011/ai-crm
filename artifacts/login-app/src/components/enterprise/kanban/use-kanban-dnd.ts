@@ -3,7 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
-  type DragEvent,
+  type DragEvent as ReactDragEvent,
   type RefObject,
 } from "react";
 
@@ -70,7 +70,7 @@ export function useKanbanDnd({ onMove, onMoveSuccess, scrollContainerRef }: UseK
     return () => window.removeEventListener("dragover", onMovePointer);
   }, [drag.isDragging]);
 
-  const onCardDragStart = useCallback((cardId: string, columnId: string, event: DragEvent) => {
+  const onCardDragStart = useCallback((cardId: string, columnId: string, event: ReactDragEvent) => {
     event.dataTransfer.setData("text/kanban-card-id", cardId);
     event.dataTransfer.setData("text/kanban-from-column", columnId);
     event.dataTransfer.effectAllowed = "move";
@@ -82,7 +82,7 @@ export function useKanbanDnd({ onMove, onMoveSuccess, scrollContainerRef }: UseK
     });
   }, []);
 
-  const onColumnDragOver = useCallback((columnId: string, event: DragEvent) => {
+  const onColumnDragOver = useCallback((columnId: string, event: ReactDragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     pointerX.current = event.clientX;
@@ -94,7 +94,7 @@ export function useKanbanDnd({ onMove, onMoveSuccess, scrollContainerRef }: UseK
   }, []);
 
   const onColumnDrop = useCallback(
-    (columnId: string, event: DragEvent) => {
+    (columnId: string, event: ReactDragEvent) => {
       event.preventDefault();
       const cardId =
         event.dataTransfer.getData("text/kanban-card-id") ||

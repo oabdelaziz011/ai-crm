@@ -126,6 +126,9 @@ export type CreateBookingResult = {
   status?: string;
   startAt?: string;
   endAt?: string;
+  /** Optional display enrichment when the create path already resolved them. */
+  customerName?: string | null;
+  serviceName?: string | null;
   errors?: string[];
   message?: string;
   customerFacingMessage?: string;
@@ -154,7 +157,8 @@ export type SearchBookingsResult = {
     bookingId: string;
     customerId: string;
     customerName: string;
-    reference: string;
+    /** Confirmation number when present on the booking row. */
+    reference?: string;
     scheduledAt: string;
     status: string;
     employeeName?: string;

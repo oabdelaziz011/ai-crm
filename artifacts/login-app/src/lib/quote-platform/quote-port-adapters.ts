@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { QuoteReadPort, QuoteWritePort } from "@workspace/application-layer";
 import type { QuoteServiceContext, QuoteStatus } from "@workspace/quote-platform";
-import type { LoginAppPortContext } from "../adapters/customer-read-port-adapter.js";
+import type { LoginAppPortContext } from "../application-layer/adapters/customer-read-port-adapter.js";
 import {
   createLoginAppQuotePlatformServices,
   mapQuote,

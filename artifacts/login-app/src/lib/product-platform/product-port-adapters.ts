@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProductReadPort, ProductWritePort } from "@workspace/application-layer";
 import type { ProductServiceContext, ProductType } from "@workspace/product-platform";
-import type { LoginAppPortContext } from "../adapters/customer-read-port-adapter.js";
+import type { LoginAppPortContext } from "../application-layer/adapters/customer-read-port-adapter.js";
 import {
   createLoginAppProductPlatformServices,
   mapCatalogProduct,

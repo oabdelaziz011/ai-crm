@@ -5,7 +5,7 @@ import type {
   OpportunityWritePort,
 } from "@workspace/application-layer";
 import type { OpportunityServiceContext } from "@workspace/opportunity-platform";
-import type { LoginAppPortContext } from "../adapters/customer-read-port-adapter.js";
+import type { LoginAppPortContext } from "../application-layer/adapters/customer-read-port-adapter.js";
 import {
   createLoginAppOpportunityPlatformServices,
   mapOpportunityRecordToReadModel,

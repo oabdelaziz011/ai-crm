@@ -124,7 +124,7 @@ export function computeCampaignDeliveryStatusPatch(
 
   if (input.status === "failed") {
     if (!current.failed_at) patch.failed_at = at;
-    if (current.status !== "failed" && current.status !== "skipped") {
+    if (current.status !== "failed") {
       patch.status = "failed";
     }
     // Never erase sent/delivered/read timestamps.

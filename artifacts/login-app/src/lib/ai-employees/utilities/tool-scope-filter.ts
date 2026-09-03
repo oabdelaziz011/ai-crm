@@ -15,7 +15,11 @@ export { EMPLOYEE_TOOL_SCOPE_DENIED_CODE };
 /** Phase 2 assignment denial reason (structured). Legacy code remains for older harnesses. */
 export const TOOL_NOT_ASSIGNED_CODE = "TOOL_NOT_ASSIGNED" as const;
 
-export type EmployeeToolScopeDenial = RuntimeToolDenial & {
+/**
+ * Assignment denials use TOOL_NOT_ASSIGNED (Phase 2 / login-app taxonomy).
+ * Shared runtime denials use EMPLOYEE_TOOL_SCOPE_DENIED; this shape remaps at the boundary.
+ */
+export type EmployeeToolScopeDenial = Omit<RuntimeToolDenial, "errorCode"> & {
   errorCode: typeof TOOL_NOT_ASSIGNED_CODE | typeof EMPLOYEE_TOOL_SCOPE_DENIED_CODE;
   denialReason: typeof TOOL_NOT_ASSIGNED_CODE;
   employeeId: string;
@@ -53,6 +57,7 @@ export function createEmployeeToolScopeDenial(input: {
     ...base,
     errorCode: TOOL_NOT_ASSIGNED_CODE,
     denialReason: TOOL_NOT_ASSIGNED_CODE,
+    employeeId: input.employeeId,
     message: safeReason,
     reason: safeReason,
   };

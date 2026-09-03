@@ -116,6 +116,7 @@ export const QUERY_TYPES = [
   "KnowledgeSearch",
   "AssembleAIContext",
   "TicketSearch",
+  "TicketGet",
   "OpportunityGet",
   "OpportunityList",
   "OpportunityPipelines",

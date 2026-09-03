@@ -7,7 +7,8 @@ export class AiEmployeeLifecycleError extends Error {
       | "validation"
       | "permission"
       | "delete_blocked"
-      | "archive_blocked",
+      | "archive_blocked"
+      | "already_archived",
     readonly details?: unknown,
   ) {
     super(message);

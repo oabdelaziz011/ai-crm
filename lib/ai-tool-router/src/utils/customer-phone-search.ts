@@ -91,7 +91,7 @@ export function planCustomerPhoneSearch(input: {
   return {
     phoneE164: null,
     strategy: "legacy_fallback",
-    reason: primary.status !== "resolved" ? primary.reason : "unresolved",
+    reason: primary.reason,
   };
 }
 

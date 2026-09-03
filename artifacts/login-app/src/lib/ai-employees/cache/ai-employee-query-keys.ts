@@ -113,7 +113,7 @@ export function upsertAiEmployeeInListCaches(
   if (!companyId) return;
   queryClient.setQueriesData<unknown>(
     { queryKey: [...AI_EMPLOYEES_KEY, "list", companyId] },
-    (current) => {
+    (current: unknown) => {
       if (!Array.isArray(current)) return current;
       const list = current as Array<{ id: string }>;
       const index = list.findIndex((row) => row.id === employee.id);

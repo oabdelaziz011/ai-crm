@@ -147,7 +147,6 @@ function WorkflowNodeCardComponent({ id, data, selected }: NodeProps) {
                 className={`!h-3.5 !w-3.5 !border-2 !border-background ${tokens.handle}`}
                 title={port.label}
                 aria-label={port.label}
-                maxConnections={1}
               />
             );
           })}

@@ -51,6 +51,12 @@ describe("opportunityFormDraftToCreateFromLeadInput", () => {
       stageId: "stage-1",
       ownerUserId: "user-1",
       pipelineId: "pipe-1",
+      probabilityMode: "auto",
+      probabilityPercent: "25",
+      tags: [],
+      notes: "",
+      expectedProductIds: [],
+      priority: "",
     });
 
     assert.deepEqual(payload, {
@@ -64,6 +70,7 @@ describe("opportunityFormDraftToCreateFromLeadInput", () => {
       expectedCloseDate: "2026-06-30",
       stageId: "stage-1",
       pipelineId: "pipe-1",
+      probabilityPercent: 25,
     });
   });
 });
@@ -81,6 +88,12 @@ describe("validateOpportunityFormDraft", () => {
         stageId: "",
         ownerUserId: "",
         pipelineId: "",
+        probabilityMode: "auto",
+        probabilityPercent: "",
+        tags: [],
+        notes: "",
+        expectedProductIds: [],
+        priority: "",
       },
       t,
     );
@@ -103,6 +116,12 @@ describe("validateOpportunityFormDraft", () => {
         stageId: "stage-1",
         ownerUserId: "user-1",
         pipelineId: "pipe-1",
+        probabilityMode: "auto",
+        probabilityPercent: "25",
+        tags: [],
+        notes: "",
+        expectedProductIds: [],
+        priority: "medium",
       },
       t,
     );

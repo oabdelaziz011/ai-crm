@@ -1,4 +1,14 @@
-import type pg from "pg";
+/** Minimal DB client surface used by archived-employee permanent cleanup (no `pg` dependency). */
+type PgQueryResult<T = Record<string, unknown>> = {
+  rows: T[];
+};
+
+type PgClient = {
+  query<T = Record<string, unknown>>(
+    text: string,
+    params?: readonly unknown[],
+  ): Promise<PgQueryResult<T>>;
+};
 
 /** Companies that must never be touched by bulk archived cleanup. */
 export const PROTECTED_COMPANY_NAME_PATTERNS = [
@@ -85,53 +95,53 @@ export function assertEligibleForPermanentPurge(row: {
 }
 
 async function countDependencies(
-  client: pg.Client,
+  client: PgClient,
   employeeId: string,
   companyId: string,
 ): Promise<ArchivedEmployeeDependencyCounts> {
   const queries = await Promise.all([
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_employee_versions where employee_id=$1 and company_id=$2`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_employee_deployments where employee_id=$1 and company_id=$2`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_employee_change_events where employee_id=$1 and company_id=$2`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_employee_group_members where employee_id=$1 and company_id=$2`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_employee_handovers
        where company_id=$2 and (source_employee_id=$1 or destination_employee_id=$1)`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_employee_collaboration_events
        where company_id=$2 and employee_id=$1`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_governance_audit_events
        where company_id=$2 and employee_id=$1`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.ai_governance_approvals
        where company_id=$2 and entity_type='employee' and entity_id=$1`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.conversations
        where company_id=$2 and metadata->>'aiEmployeeId' = $1 and deleted_at is null`,
       [employeeId, companyId],
     ),
-    client.query(
+    client.query<{ c: number }>(
       `select count(*)::int as c from public.agent_workflows
        where company_id=$2
          and memory #>> '{executionState,pageContext,aiEmployeeId}' = $1
@@ -175,7 +185,7 @@ function evaluateBlockers(
 }
 
 export async function dryRunArchivedEmployeePermanentCleanup(
-  client: pg.Client,
+  client: PgClient,
 ): Promise<ArchivedEmployeeCleanupDryRun> {
   const archived = await client.query<ArchivedEmployeeRow>(
     `select e.id, e.company_id, c.name as company_name, e.name, e.display_name, e.status,
@@ -224,7 +234,7 @@ export async function dryRunArchivedEmployeePermanentCleanup(
 }
 
 export async function permanentlyPurgeEligibleArchivedEmployees(
-  client: pg.Client,
+  client: PgClient,
   options?: { employeeIds?: string[]; execute?: boolean },
 ): Promise<PermanentPurgeResult> {
   const dryRun = await dryRunArchivedEmployeePermanentCleanup(client);

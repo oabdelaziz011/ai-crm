@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { cn } from "@/lib/utils";
 import { translateLeadLifecycleStatus } from "@/lib/i18n/workspace-mock-labels";
 
@@ -56,7 +57,7 @@ export function buildLeadsCrmMetrics(
   });
 }
 
-function metricLabel(t: (key: string) => string, id: LeadsCrmMetricId): string {
+function metricLabel(t: TFunction<"common">, id: LeadsCrmMetricId): string {
   if (id === "all") return t("leads.workspace.filterAll");
   if (id === "won") return t("leads.lifecycle.won");
   if (id === "proposal") return t("leads.lifecycle.proposal");

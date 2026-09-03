@@ -7,8 +7,10 @@ import {
   processWhatsAppQueue,
   sendWhatsAppTestMessage,
   testWhatsAppConnection,
+  type WhatsAppHealthResponse,
 } from "@/lib/notifications/providers/whatsapp/services/whatsapp-api-client";
 import type { WhatsAppSettingsDraft } from "@/lib/notifications/providers/whatsapp/services/whatsapp-settings-repository";
+import type { CompanyWhatsAppSettings } from "@/lib/notifications/providers/whatsapp/types/whatsapp-types";
 
 export const whatsappSettingsKey = (companyId: string | null) =>
   ["whatsapp", "settings", companyId] as const;
@@ -22,7 +24,7 @@ export function useWhatsAppSettings(companyId: string | null) {
   return useQuery({
     queryKey: whatsappSettingsKey(companyId),
     enabled: Boolean(companyId),
-    queryFn: () => settings.getPublic(companyId!),
+    queryFn: (): Promise<CompanyWhatsAppSettings> => settings.getPublic(companyId!),
   });
 }
 
@@ -55,9 +57,10 @@ export function useWhatsAppConnectionTest(companyId: string | null) {
         latencyMs: report.latencyMs,
         enabled: report.ok ? true : undefined,
         error: report.ok ? undefined : report.error,
-      });
+      } satisfies Partial<WhatsAppHealthResponse> &
+        Pick<WhatsAppHealthResponse, "ok" | "provider" | "latencyMs">);
 
-      qc.setQueryData(whatsappSettingsKey(companyId), (current) => {
+      qc.setQueryData<CompanyWhatsAppSettings>(whatsappSettingsKey(companyId), (current) => {
         if (!current) return current;
         if (report.ok) {
           return {
@@ -92,7 +95,7 @@ export function useWhatsAppHealth(companyId: string | null) {
     queryKey: whatsappHealthKey(companyId),
     enabled: Boolean(companyId) && isAdmin && isWhatsAppApiConfigured(),
     staleTime: 30_000,
-    queryFn: () => fetchWhatsAppHealth(companyId!),
+    queryFn: (): Promise<WhatsAppHealthResponse> => fetchWhatsAppHealth(companyId!),
   });
 }
 

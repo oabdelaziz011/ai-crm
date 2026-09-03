@@ -55,10 +55,10 @@ export function resolveAiEmployeeEngagement(input: {
   aiEmployeeId: string;
   previousEngagement: AiEmployeeEngagementState | null;
 }): { engagement: AiEmployeeEngagementState; isNewEngagement: boolean } {
-  const isFirstEverInbound = input.previousLastInboundAt == null;
-  const previousInboundMs = isFirstEverInbound
-    ? Number.NaN
-    : new Date(input.previousLastInboundAt).getTime();
+  const previousLastInboundAt = input.previousLastInboundAt;
+  const isFirstEverInbound = previousLastInboundAt == null;
+  const previousInboundMs =
+    previousLastInboundAt == null ? Number.NaN : new Date(previousLastInboundAt).getTime();
   const elapsedMs = isFirstEverInbound ? Number.POSITIVE_INFINITY : input.now.getTime() - previousInboundMs;
   const timeoutMs = Math.max(1, input.sessionTimeoutMinutes) * 60_000;
   const inactivityExceeded = !isFirstEverInbound && elapsedMs > timeoutMs;

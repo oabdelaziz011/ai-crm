@@ -16,6 +16,7 @@ import {
   companyScopedPhoneE164Lookup,
   planCustomerPhoneSearch,
 } from "../utils/customer-phone-search.js";
+import { readEmbeddedRow } from "../utils/supabase-embedded-row.js";
 import type {
   BookingDomainServicePort,
   CancelBookingInput,
@@ -270,14 +271,18 @@ async function listServicesForResource(
 
     if (error) return [];
     return (data ?? [])
-      .filter((row) => {
-        const service = row.scheduling_services as { status?: string; deleted_at?: string | null } | null;
-        return service?.status === "active" && !service?.deleted_at;
-      })
       .map((row) => {
-        const service = row.scheduling_services as { id: string; name: string };
+        const service = readEmbeddedRow(
+          row.scheduling_services as
+            | { id: string; name: string; status?: string; deleted_at?: string | null }
+            | Array<{ id: string; name: string; status?: string; deleted_at?: string | null }>
+            | null
+            | undefined,
+        );
+        if (!service || service.status !== "active" || service.deleted_at) return null;
         return { id: String(service.id), name: String(service.name) };
-      });
+      })
+      .filter((entry): entry is IdSuggestion => entry != null);
   } catch {
     return [];
   }

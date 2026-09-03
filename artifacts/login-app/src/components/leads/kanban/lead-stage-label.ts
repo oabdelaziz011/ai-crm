@@ -34,7 +34,7 @@ const ENGLISH_NAME_TO_KEY: Record<string, string> = {
  */
 export function translateLeadStageLabel(
   t: TFunction,
-  stage: { name: string; slug?: string; lifecycleStatus?: string },
+  stage: { name: string; slug?: string | null; lifecycleStatus?: string | null },
 ): string {
   const candidates = [
     stage.slug ? normalizeLeadStageKey(stage.slug) : "",

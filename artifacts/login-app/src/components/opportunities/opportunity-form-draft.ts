@@ -7,6 +7,13 @@ import { resolveDefaultOpportunityNameFromLead } from "@workspace/opportunity-pl
 import type { LeadReadModel } from "@workspace/application-layer";
 import type { LeadWorkspaceRow } from "@workspace/universal-operations-engine";
 
+export type OpportunityLeadAiSeed = Readonly<{
+  score?: number | null;
+  winProbability?: number | null;
+  suggestedNextStep?: string | null;
+  suggestedStage?: string | null;
+}>;
+
 export type OpportunityLeadSeedSource = Readonly<{
   id: string;
   name: string;
@@ -19,6 +26,13 @@ export type OpportunityLeadSeedSource = Readonly<{
   currency: string;
   expectedCloseDate: string | null;
   stage: string;
+  /** Optional richer lead context for from-lead create UI (display-only). */
+  ai?: OpportunityLeadAiSeed | null;
+  customerId?: string | null;
+  customerName?: string | null;
+  saleId?: string | null;
+  whatsapp?: string | null;
+  leadSource?: string | null;
 }>;
 
 export function leadWorkspaceRowToOpportunitySeed(row: LeadWorkspaceRow): OpportunityLeadSeedSource {
@@ -34,6 +48,9 @@ export function leadWorkspaceRowToOpportunitySeed(row: LeadWorkspaceRow): Opport
     currency: row.currency,
     expectedCloseDate: row.expectedCloseDate,
     stage: row.stage,
+    customerId: row.customerId,
+    leadSource: row.source,
+    ai: { score: row.score },
   };
 }
 
@@ -50,8 +67,21 @@ export function leadReadModelToOpportunitySeed(lead: LeadReadModel): Opportunity
     currency: lead.currency,
     expectedCloseDate: lead.expectedCloseDate,
     stage: lead.stage,
+    customerId: lead.customerId,
+    leadSource: lead.source,
+    ai: { score: lead.score },
   };
 }
+
+export type OpportunityProbabilityMode = "auto" | "manual";
+
+export type OpportunityPriority = "low" | "medium" | "high" | "critical" | "";
+
+export type OpportunityStageOption = {
+  id: string;
+  label: string;
+  defaultProbabilityPercent: number | null;
+};
 
 export type OpportunityFormDraft = {
   name: string;
@@ -63,6 +93,12 @@ export type OpportunityFormDraft = {
   stageId: string;
   ownerUserId: string;
   pipelineId: string;
+  probabilityMode: OpportunityProbabilityMode;
+  probabilityPercent: string;
+  tags: string[];
+  notes: string;
+  expectedProductIds: string[];
+  priority: OpportunityPriority;
 };
 
 export const EMPTY_OPPORTUNITY_FORM_DRAFT: OpportunityFormDraft = {
@@ -75,6 +111,12 @@ export const EMPTY_OPPORTUNITY_FORM_DRAFT: OpportunityFormDraft = {
   stageId: "",
   ownerUserId: "",
   pipelineId: "",
+  probabilityMode: "auto",
+  probabilityPercent: "",
+  tags: [],
+  notes: "",
+  expectedProductIds: [],
+  priority: "",
 };
 
 export type OpportunityFormOption = {
@@ -84,9 +126,37 @@ export type OpportunityFormOption = {
 
 export type OpportunityFormFieldErrors = Partial<Record<keyof OpportunityFormDraft | "form", string>>;
 
+export type OpportunityFormSeedDefaults = {
+  companyCurrency: string;
+  defaultOwnerUserId?: string;
+  defaultStageId?: string;
+  defaultPipelineId?: string;
+  defaultProbabilityPercent?: number | null;
+};
+
+function resolveSeedProbability(input: OpportunityFormSeedDefaults): Pick<
+  OpportunityFormDraft,
+  "probabilityMode" | "probabilityPercent"
+> {
+  return {
+    probabilityMode: "auto",
+    probabilityPercent:
+      input.defaultProbabilityPercent != null ? String(input.defaultProbabilityPercent) : "",
+  };
+}
+
+function parseDraftProbabilityPercent(draft: OpportunityFormDraft): number | undefined {
+  const raw = draft.probabilityPercent.trim();
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return undefined;
+  return value;
+}
+
 export function validateOpportunityFormDraft(
   draft: OpportunityFormDraft,
   t: (key: string) => string,
+  _stageById?: Map<string, OpportunityStageOption>,
 ): OpportunityFormFieldErrors {
   const errors: OpportunityFormFieldErrors = {};
   if (!draft.name.trim()) errors.name = t("opportunities.createForm.errors.nameRequired");
@@ -107,29 +177,20 @@ export function hasOpportunityFormErrors(errors: OpportunityFormFieldErrors): bo
   return Object.keys(errors).length > 0;
 }
 
-export function buildManualOpportunityFormSeed(input: {
-  companyCurrency: string;
-  defaultOwnerUserId?: string;
-  defaultStageId?: string;
-  defaultPipelineId?: string;
-}): OpportunityFormDraft {
+export function buildManualOpportunityFormSeed(input: OpportunityFormSeedDefaults): OpportunityFormDraft {
   return {
     ...EMPTY_OPPORTUNITY_FORM_DRAFT,
     currency: input.companyCurrency,
     ownerUserId: input.defaultOwnerUserId ?? "",
     stageId: input.defaultStageId ?? "",
     pipelineId: input.defaultPipelineId ?? "",
+    ...resolveSeedProbability(input),
   };
 }
 
 export function buildLeadOpportunityFormSeed(
   lead: OpportunityLeadSeedSource,
-  input: {
-    companyCurrency: string;
-    defaultOwnerUserId?: string;
-    defaultStageId?: string;
-    defaultPipelineId?: string;
-  },
+  input: OpportunityFormSeedDefaults,
 ): OpportunityFormDraft {
   const resolvedCurrency = input.companyCurrency.trim().toUpperCase();
 
@@ -147,10 +208,15 @@ export function buildLeadOpportunityFormSeed(
     ownerUserId: lead.ownerId ?? input.defaultOwnerUserId ?? "",
     stageId: input.defaultStageId ?? "",
     pipelineId: input.defaultPipelineId ?? "",
+    ...resolveSeedProbability(input),
   };
 }
 
-export function opportunityFormDraftToManualCreateInput(draft: OpportunityFormDraft) {
+export function opportunityFormDraftToManualCreateInput(
+  draft: OpportunityFormDraft,
+  _stageById?: Map<string, OpportunityStageOption>,
+) {
+  const probabilityPercent = parseDraftProbabilityPercent(draft);
   return {
     name: draft.name.trim(),
     companyName: draft.companyName.trim() || undefined,
@@ -161,13 +227,17 @@ export function opportunityFormDraftToManualCreateInput(draft: OpportunityFormDr
     expectedCloseDate: draft.expectedCloseDate.trim() || null,
     stageId: draft.stageId,
     pipelineId: draft.pipelineId || undefined,
+    ...(probabilityPercent != null ? { probabilityPercent } : {}),
   };
 }
 
 export function opportunityFormDraftToCreateFromLeadInput(
   leadId: string,
   draft: OpportunityFormDraft,
+  _stageById?: Map<string, OpportunityStageOption>,
+  options?: { forceCreate?: boolean },
 ) {
+  const probabilityPercent = parseDraftProbabilityPercent(draft);
   return {
     leadId,
     name: draft.name.trim(),
@@ -179,5 +249,7 @@ export function opportunityFormDraftToCreateFromLeadInput(
     expectedCloseDate: draft.expectedCloseDate.trim() || null,
     stageId: draft.stageId,
     pipelineId: draft.pipelineId || undefined,
+    ...(options?.forceCreate != null ? { forceCreate: options.forceCreate } : {}),
+    ...(probabilityPercent != null ? { probabilityPercent } : {}),
   };
 }

@@ -738,6 +738,9 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
             : undefined
         }
         retrySendLabel={t("omnichannel.composer.retrySend")}
+        companyId={consoleState.companyId}
+        handoffAiPaused={Boolean(handoffOwnership.ownership?.isPaused)}
+        handoffOwnership={handoffOwnership}
         sessionActions={{
           onTakeOver: handleTakeOver,
           onAssign: handleOpenAssignment,

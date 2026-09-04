@@ -11,6 +11,8 @@ const PRIMARY_ORDER: LifecycleActionUiId[] = [
   "assign",
   "take_over",
   "return_to_ai",
+  "pause_ai",
+  "resume_ai",
   "transfer",
   "escalate",
   "resolve",
@@ -31,6 +33,7 @@ type SessionCommandStripProps = {
   disabled?: boolean;
   escalated?: boolean;
   isClosed?: boolean;
+  aiPaused?: boolean;
   canPerform: (action: LifecycleAction) => boolean;
   toolbarLabel: string;
   labels: Record<string, string>;
@@ -41,6 +44,8 @@ type SessionCommandStripProps = {
   onAssign: () => void;
   onOpenAssignment: () => void;
   onRelease: () => void;
+  onPauseAi?: () => void;
+  onResumeAi?: () => void;
   onClose: () => void;
   onResolve?: () => void;
   onReopen?: () => void;
@@ -59,8 +64,9 @@ export const SessionCommandStrip = memo(function SessionCommandStrip(props: Sess
         escalated: Boolean(props.escalated),
         isClosed: Boolean(props.isClosed),
         canPerform: props.canPerform,
+        aiPaused: props.aiPaused,
       }),
-    [props.lifecycleState, props.escalated, props.isClosed, props.canPerform],
+    [props.lifecycleState, props.escalated, props.isClosed, props.canPerform, props.aiPaused],
   );
 
   const allowed = useMemo(() => {
@@ -85,6 +91,8 @@ export const SessionCommandStrip = memo(function SessionCommandStrip(props: Sess
       transfer: props.onOpenAssignment,
       escalate: props.onEscalate,
       return_to_ai: props.onRelease,
+      pause_ai: () => props.onPauseAi?.(),
+      resume_ai: () => props.onResumeAi?.(),
       resolve: () => props.onResolve?.(),
       close: props.onClose,
       reopen: () => props.onReopen?.(),
@@ -106,6 +114,8 @@ export const SessionCommandStrip = memo(function SessionCommandStrip(props: Sess
       transfer: "transfer",
       escalate: "escalate",
       return_to_ai: "returnToAi",
+      pause_ai: "pauseAi",
+      resume_ai: "resumeAi",
       resolve: "resolve",
       close: "close",
       reopen: "reopen",

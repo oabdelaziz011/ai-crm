@@ -15,6 +15,7 @@ import type { LifecycleSnapshot } from "@/lib/conversation-lifecycle";
 import type { OperationalAssignmentRecord } from "@/lib/conversation-lifecycle";
 import { useAiEmployees } from "@/lib/ai-employees/hooks/use-ai-employees";
 import { useAssignmentTargets } from "@/hooks/omnichannel/use-assignment-targets";
+import type { useConversationHandoffOwnership } from "@/hooks/omnichannel/use-conversation-handoff-ownership";
 import { cn } from "@/lib/utils";
 
 type AssignmentTarget = {
@@ -26,6 +27,9 @@ type AssignmentTarget = {
 type AssignmentSheetProps = {
   open: boolean;
   companyId: string | null;
+  /** CVP handoff pause state — same boolean used by workspace pause/resume controls. */
+  handoffAiPaused?: boolean;
+  handoffOwnership?: ReturnType<typeof useConversationHandoffOwnership>;
   profiles: Profile[];
   lifecycleSnapshot?: LifecycleSnapshot | null;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +39,8 @@ type AssignmentSheetProps = {
 export const AssignmentSheet = memo(function AssignmentSheet({
   open,
   companyId,
+  handoffAiPaused: _handoffAiPaused,
+  handoffOwnership: _handoffOwnership,
   profiles,
   lifecycleSnapshot,
   onOpenChange,

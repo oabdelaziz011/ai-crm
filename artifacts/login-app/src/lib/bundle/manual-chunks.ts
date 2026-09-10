@@ -51,9 +51,6 @@ export function resolveManualChunk(id: string): string | undefined {
   ) {
     return "ai-chat";
   }
-  if (normalized.includes("@radix-ui")) {
-    return "vendor-radix";
-  }
   if (normalized.includes("date-fns") || normalized.includes("react-day-picker")) {
     return "vendor-dates";
   }
@@ -66,15 +63,10 @@ export function resolveManualChunk(id: string): string | undefined {
   if (normalized.includes("lucide-react")) {
     return "vendor-icons";
   }
-  if (
-    normalized.includes("/react/")
-    || normalized.includes("/react-dom/")
-    || normalized.includes("scheduler")
-    || normalized.includes("@tanstack/react-query")
-    || normalized.includes("wouter")
-  ) {
-    return "vendor-react";
-  }
 
-  return "vendor-misc";
+  // Remaining node_modules, including React and Radix, share one chunk.
+  // A separate vendor-radix/vendor-misc split created a circular init cycle
+  // (radix → react → misc → radix), so React was undefined when Radix ran
+  // forwardRef/createContext at module scope.
+  return "vendor-react";
 }

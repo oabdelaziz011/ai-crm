@@ -1,3 +1,5 @@
+import { isPublicLegalPath } from "@/lib/legal/public-legal-paths";
+
 /** Prefer explicit app origin so auth emails never target the api-server port. */
 function resolveAuthOrigin(): string {
   const configured = String(import.meta.env.VITE_APP_ORIGIN ?? "").trim().replace(/\/$/, "");
@@ -123,4 +125,9 @@ export function isPublicAuthPath(path: string): boolean {
     path === AUTH_CALLBACK_PATH ||
     path === RESET_PASSWORD_PATH
   );
+}
+
+/** Auth screens plus public legal pages (privacy, terms, data deletion). */
+export function isPublicUnauthenticatedPath(path: string): boolean {
+  return isPublicAuthPath(path) || isPublicLegalPath(path);
 }

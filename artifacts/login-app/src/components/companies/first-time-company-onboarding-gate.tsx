@@ -20,7 +20,7 @@ import {
 } from "@/lib/companies/onboarding";
 import { persistPreferredLanguage } from "@/lib/i18n/persist-preferred-language";
 import { resolveBootstrapAppLanguage } from "@/lib/i18n/resolve-app-language";
-import { isPublicAuthPath, RESET_PASSWORD_PATH } from "@/lib/auth-redirect";
+import { isPublicUnauthenticatedPath, RESET_PASSWORD_PATH } from "@/lib/auth-redirect";
 
 /**
  * Only for users who signed up but never got a company (e.g. email-confirm path).
@@ -84,7 +84,7 @@ export function FirstTimeCompanyOnboardingGate({
       setPendingBusy(false);
       return;
     }
-    if (isPublicAuthPath(location) || location === RESET_PASSWORD_PATH) {
+    if (isPublicUnauthenticatedPath(location) || location === RESET_PASSWORD_PATH) {
       return;
     }
 
@@ -187,7 +187,7 @@ export function FirstTimeCompanyOnboardingGate({
   ]);
 
   if (Boolean(user) && (isLoading || isRefreshing) && !profile?.company_id && !isSuperAdminUser) {
-    if (isPublicAuthPath(location) || location === RESET_PASSWORD_PATH) {
+    if (isPublicUnauthenticatedPath(location) || location === RESET_PASSWORD_PATH) {
       return <>{children}</>;
     }
     return (
@@ -201,7 +201,7 @@ export function FirstTimeCompanyOnboardingGate({
     return <>{children}</>;
   }
 
-  if (isPublicAuthPath(location) || location === RESET_PASSWORD_PATH) {
+  if (isPublicUnauthenticatedPath(location) || location === RESET_PASSWORD_PATH) {
     return <>{children}</>;
   }
 

@@ -11,6 +11,9 @@ export type DocumentTitleTranslate = (
 type StaticTitleRule = {
   match: (pathname: string) => boolean;
   titleKey: string;
+  descriptionKey?: string;
+  /** Use the translated title as the full document title (already includes brand). */
+  useAsFullTitle?: boolean;
 };
 
 const STATIC_TITLE_RULES: readonly StaticTitleRule[] = [
@@ -19,6 +22,22 @@ const STATIC_TITLE_RULES: readonly StaticTitleRule[] = [
   { match: (path) => path === "/forgot-password", titleKey: "documentTitle.forgotPassword" },
   { match: (path) => path === "/reset-password", titleKey: "documentTitle.resetPassword" },
   { match: (path) => path === "/auth/callback", titleKey: "documentTitle.authCallback" },
+  {
+    match: (path) => path === "/privacy-policy",
+    titleKey: "documentTitle.privacyPolicy",
+    descriptionKey: "documentMeta.privacyPolicy",
+    useAsFullTitle: true,
+  },
+  {
+    match: (path) => path === "/data-deletion",
+    titleKey: "documentTitle.dataDeletion",
+    descriptionKey: "documentMeta.dataDeletion",
+  },
+  {
+    match: (path) => path === "/terms",
+    titleKey: "documentTitle.terms",
+    descriptionKey: "documentMeta.terms",
+  },
   { match: (path) => path === "/debug/workflow-builder", titleKey: "documentTitle.workflowDebug" },
   { match: (path) => /^\/book\/[^/]+\/flow$/.test(path), titleKey: "documentTitle.bookingFlow" },
   { match: (path) => /^\/book\/[^/]+$/.test(path), titleKey: "documentTitle.booking" },
@@ -77,6 +96,10 @@ function resolveDashboardPageName(nestedPath: string, t: DocumentTitleTranslate)
   return label || t("documentTitle.dashboard");
 }
 
+function findStaticTitleRule(path: string): StaticTitleRule | undefined {
+  return STATIC_TITLE_RULES.find((rule) => rule.match(path));
+}
+
 /** Resolve the human-readable page name (without brand suffix) for a route. */
 export function resolveDocumentPageName(
   pathname: string,
@@ -88,10 +111,9 @@ export function resolveDocumentPageName(
     return t("documentTitle.login");
   }
 
-  for (const rule of STATIC_TITLE_RULES) {
-    if (rule.match(path)) {
-      return t(rule.titleKey);
-    }
+  const staticRule = findStaticTitleRule(path);
+  if (staticRule) {
+    return t(staticRule.titleKey);
   }
 
   if (path === DASHBOARD_BASE_PATH || path.startsWith(`${DASHBOARD_BASE_PATH}/`)) {
@@ -106,5 +128,27 @@ export function resolveDocumentTitle(
   pathname: string,
   t: DocumentTitleTranslate,
 ): string {
+  const path = normalizePathname(pathname);
+  const staticRule = findStaticTitleRule(path);
+  if (staticRule?.useAsFullTitle) {
+    return t(staticRule.titleKey);
+  }
   return formatDocumentTitle(resolveDocumentPageName(pathname, t));
+}
+
+const DEFAULT_DESCRIPTION_KEY = "documentMeta.default";
+
+/** Meta description for the active route (legal pages + default product copy). */
+export function resolveDocumentDescription(
+  pathname: string,
+  t: DocumentTitleTranslate,
+): string {
+  const path = normalizePathname(pathname);
+  const staticRule = findStaticTitleRule(path);
+  if (staticRule?.descriptionKey) {
+    return t(staticRule.descriptionKey);
+  }
+  return t(DEFAULT_DESCRIPTION_KEY, {
+    defaultValue: "ValueOR — AI-powered CRM and operations platform.",
+  });
 }

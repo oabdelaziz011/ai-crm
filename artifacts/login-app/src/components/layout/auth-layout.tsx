@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { ValueOrLogo } from "@/components/brand/valueor-logo";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,7 @@ export function AuthLayout({
   /** Wider card for multi-step registration / onboarding. */
   wide?: boolean;
 }) {
+  const { t } = useTranslation("common");
   const showTitle = Boolean(title?.trim());
 
   return (
@@ -67,6 +70,21 @@ export function AuthLayout({
         >
           {children}
         </motion.div>
+
+        <nav
+          className="relative z-10 mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-xs text-muted-foreground"
+          aria-label={t("legal.navLabel")}
+        >
+          <Link href="/privacy-policy" className="text-primary hover:text-primary/80 font-medium">
+            {t("legal.nav.privacy")}
+          </Link>
+          <Link href="/terms" className="text-primary hover:text-primary/80 font-medium">
+            {t("legal.nav.terms")}
+          </Link>
+          <Link href="/data-deletion" className="text-primary hover:text-primary/80 font-medium">
+            {t("legal.nav.dataDeletion")}
+          </Link>
+        </nav>
       </div>
     </div>
   );

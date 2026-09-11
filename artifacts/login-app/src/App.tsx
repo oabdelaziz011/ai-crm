@@ -12,11 +12,12 @@ import AuthCallback from "@/pages/auth-callback";
 import ResetPassword from "@/pages/reset-password";
 import AccessDeniedPage from "@/pages/access-denied";
 import { PUBLIC_BOOKING_ROUTES } from "@/config/customer-portal-route-registry";
+import { PUBLIC_LEGAL_ROUTES } from "@/config/public-legal-route-registry";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import { AppThemeProvider } from "@/components/theme/theme-provider";
 import {
   hasPendingPasswordSetupIntent,
-  isPublicAuthPath,
+  isPublicUnauthenticatedPath,
   RESET_PASSWORD_PATH,
 } from "@/lib/auth-redirect";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -121,7 +122,7 @@ function AuthFlowGuard({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    if (isLoading || !user || isPublicAuthPath(location)) {
+    if (isLoading || !user || isPublicUnauthenticatedPath(location)) {
       return;
     }
 
@@ -143,6 +144,9 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/reset-password" component={ResetPassword} />
+        {PUBLIC_LEGAL_ROUTES.map(({ path, Page }) => (
+          <Route key={path} path={path} component={Page} />
+        ))}
         <Route path="/debug/workflow-builder" component={() => <LazyRoute component={WorkflowBuilderDebugPage} />} />
         {PUBLIC_BOOKING_ROUTES.map(({ path, Page }) => (
           <Route key={path} path={path} component={Page} />

@@ -10,6 +10,7 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0 --port 4173",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:routing": "tsx scripts/nested-routing.test.mts",
+    "test:public-legal": "tsx --test src/lib/legal/public-legal-paths.test.ts src/lib/legal/privacy-contact.test.ts src/lib/document-title/resolve-document-title.test.ts scripts/public-legal-routing.test.mts",
     "test:nav-i18n": "tsx scripts/billing-nav-dom-i18n-verify.mts",
     "test:language-authority": "tsx scripts/language-authority.test.mts",
     "test:profile-language-propagation": "tsx scripts/profile-language-propagation.test.mts",

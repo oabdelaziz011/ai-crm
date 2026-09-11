@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { formatDocumentTitle } from "./format-document-title.ts";
-import { resolveDocumentPageName, resolveDocumentTitle } from "./resolve-document-title.ts";
+import {
+  resolveDocumentDescription,
+  resolveDocumentPageName,
+  resolveDocumentTitle,
+} from "./resolve-document-title.ts";
 
 const LABELS: Record<string, string> = {
   "documentTitle.login": "Login",
@@ -17,6 +21,15 @@ const LABELS: Record<string, string> = {
   "documentTitle.portalLogin": "Portal Login",
   "documentTitle.checkIn": "Check In",
   "documentTitle.workflowDebug": "Workflow Builder",
+  "documentTitle.privacyPolicy": "ValueOR Privacy Policy",
+  "documentTitle.dataDeletion": "Data Deletion",
+  "documentTitle.terms": "Terms of Service",
+  "documentMeta.default": "ValueOR — AI-powered CRM and operations platform.",
+  "documentMeta.privacyPolicy":
+    "ValueOR Privacy Policy: how we collect, use, and protect personal data, including WhatsApp and Instagram messaging data.",
+  "documentMeta.dataDeletion":
+    "Request deletion of your ValueOR personal data, including data processed through WhatsApp and Instagram integrations.",
+  "documentMeta.terms": "ValueOR Terms of Service for the CRM, automation, and messaging platform.",
   "navigation.customers": "Customers",
   "navigation.tickets": "Tickets",
   "navigation.bookings": "Bookings",
@@ -70,6 +83,18 @@ describe("resolveDocumentTitle", () => {
       resolveDocumentTitle("/dashboard/notifications/abc", t),
       "Notifications | ValueOR",
     );
+  });
+
+  it("resolves public legal routes without requiring authentication", () => {
+    assert.equal(resolveDocumentTitle("/privacy-policy", t), "ValueOR Privacy Policy");
+    assert.equal(resolveDocumentTitle("/data-deletion", t), "Data Deletion | ValueOR");
+    assert.equal(resolveDocumentTitle("/terms", t), "Terms of Service | ValueOR");
+  });
+
+  it("resolves legal meta descriptions", () => {
+    assert.match(resolveDocumentDescription("/privacy-policy", t), /WhatsApp and Instagram/);
+    assert.match(resolveDocumentDescription("/data-deletion", t), /deletion/);
+    assert.match(resolveDocumentDescription("/terms", t), /Terms of Service/);
   });
 
   it("resolves portal and booking routes", () => {

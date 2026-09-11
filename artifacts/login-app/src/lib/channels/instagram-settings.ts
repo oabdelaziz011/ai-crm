@@ -3,6 +3,7 @@ import {
   isAuthenticatedApiConfigured,
   resolveAuthenticatedApiBase,
 } from "@/lib/api-server/normalize-api-base";
+import { mapInstagramApiNetworkError } from "@/lib/channels/instagram-api-network-error";
 
 export type CompanyInstagramSettings = {
   companyId: string;
@@ -114,14 +115,25 @@ async function postInstagramApi<T>(path: string, body: Record<string, unknown>):
     throw new Error("VITE_API_SERVER_URL is not configured");
   }
 
-  const response = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers: await buildAuthHeaders(),
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
+  const url = `${base}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: await buildAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    throw mapInstagramApiNetworkError(error, url);
+  }
 
-  const payload = (await response.json()) as T & { error?: string; message?: string };
+  let payload: T & { error?: string; message?: string };
+  try {
+    payload = (await response.json()) as T & { error?: string; message?: string };
+  } catch {
+    throw new Error(`Instagram API returned non-JSON (${response.status}) from ${url}`);
+  }
   if (!response.ok) {
     throw new Error(payload.message ?? payload.error ?? `Instagram API failed (${response.status})`);
   }

@@ -99,6 +99,10 @@ export async function requireSupabaseAuth(
 export function requireCompanyScope(field = "companyId") {
   return (req: Request, _res: Response, next: NextFunction): void => {
     try {
+      if (req.method === "OPTIONS") {
+        next();
+        return;
+      }
       if (isInternalApiAuthorized(req)) {
         next();
         return;

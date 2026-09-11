@@ -4,6 +4,7 @@ import { logger } from "../lib/logger.js";
 const limiterDefaults = {
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req: { method?: string }) => req.method === "OPTIONS",
 } as const;
 
 export const globalRateLimiter = rateLimit({
@@ -39,6 +40,7 @@ export const webhookRateLimiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === "OPTIONS",
   message: { error: "webhook_rate_limit_exceeded" },
   handler: (req, res, _next, options) => {
     logger.warn(

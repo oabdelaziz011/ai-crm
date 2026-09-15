@@ -8,6 +8,7 @@ export type WebhookProcessingStep =
   | "webhook.signature_rejected"
   | "webhook.handler_started"
   | "webhook.adapter_parsed"
+  | "webhook.ignored_non_routable"
   | "webhook.inbound_event_created"
   | "webhook.inbound_message_reused"
   | "webhook.message_normalized"

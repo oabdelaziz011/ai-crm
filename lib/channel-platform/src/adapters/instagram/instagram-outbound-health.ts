@@ -1,4 +1,9 @@
-import { instagramGraphBaseUrl } from "./instagram-config.js";
+import {
+  instagramMeUrl,
+  instagramMessagesUrl,
+  instagramUserLookupUrl,
+  readInstagramLoginUserId,
+} from "./instagram-config.js";
 import type { InstagramChannelConfiguration } from "./instagram-config.js";
 
 export type InstagramHealthCheckDetail = {
@@ -40,6 +45,13 @@ function readMetaError(body: { error?: { message?: string; code?: number } }): {
   };
 }
 
+function matchesConfiguredInstagramId(
+  body: { user_id?: string; id?: string },
+  configuredId: string,
+): boolean {
+  return readInstagramLoginUserId(body) === configuredId || body.id === configuredId;
+}
+
 export type InstagramOutboundHealthInput = {
   companyId: string;
   runtimeConfig: InstagramChannelConfiguration;
@@ -53,7 +65,7 @@ export async function performInstagramOutboundHealthCheck(
   const started = Date.now();
   const config = input.runtimeConfig;
   const apiVersion = config.apiVersion ?? "v21.0";
-  const endpoint = `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}/messages`;
+  const endpoint = instagramMessagesUrl(config);
 
   const report: InstagramOutboundHealthReport = {
     ok: false,
@@ -73,30 +85,36 @@ export async function performInstagramOutboundHealthCheck(
   };
 
   try {
-    const meRes = await fetchFn(`${instagramGraphBaseUrl(apiVersion)}/me?fields=id,name`, {
+    const meRes = await fetchFn(instagramMeUrl(apiVersion), {
       headers: { Authorization: `Bearer ${config.accessToken}` },
     });
-    const meBody = (await meRes.json()) as { id?: string; name?: string; error?: { message?: string; code?: number } };
+    const meBody = (await meRes.json()) as {
+      id?: string;
+      user_id?: string;
+      name?: string;
+      username?: string;
+      error?: { message?: string; code?: number };
+    };
     if (!meRes.ok) {
       const err = readMetaError(meBody);
       report.error = err.message;
       report.metaErrorCode = err.code;
     } else {
       report.accessToken.valid = true;
-      report.accessToken.ownerId = meBody.id;
-      report.accessToken.ownerName = meBody.name;
+      report.accessToken.ownerId = readInstagramLoginUserId(meBody);
+      report.accessToken.ownerName = meBody.name ?? meBody.username;
     }
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error);
   }
 
   try {
-    const accountRes = await fetchFn(
-      `${instagramGraphBaseUrl(apiVersion)}/${encodeURIComponent(config.instagramBusinessAccountId)}?fields=id,username,name`,
-      { headers: { Authorization: `Bearer ${config.accessToken}` } },
-    );
+    const accountRes = await fetchFn(instagramUserLookupUrl(config), {
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+    });
     const accountBody = (await accountRes.json()) as {
       id?: string;
+      user_id?: string;
       username?: string;
       name?: string;
       error?: { message?: string; code?: number };
@@ -105,14 +123,12 @@ export async function performInstagramOutboundHealthCheck(
       const err = readMetaError(accountBody);
       report.instagramAccount = { ok: false, error: err.message, metaErrorCode: err.code };
     } else {
+      const matched = matchesConfiguredInstagramId(accountBody, config.instagramBusinessAccountId);
       report.instagramAccount = {
-        ok: accountBody.id === config.instagramBusinessAccountId,
+        ok: matched,
         username: accountBody.username,
         name: accountBody.name,
-        error:
-          accountBody.id === config.instagramBusinessAccountId
-            ? undefined
-            : "Instagram Business Account ID mismatch",
+        error: matched ? undefined : "Instagram Business Account ID mismatch",
       };
     }
   } catch (error) {

@@ -1,11 +1,12 @@
 import { DEFAULT_SESSION_TIMEOUT_MS } from "../constants.js";
 import { isIfNodeTraceEnabled } from "../debug/runtime-trace-flags.js";
+import { extractInteractiveSelection, INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
+import { isGreetingOnlyUtterance } from "../runtime/greeting-utterance.js";
 import {
-  extractInteractiveSelection,
-  INTERACTIVE_SELECTION_INPUT_KEY,
-} from "../runtime/conversation-variables.js";
-import { resolveFreeTextSelectionId } from "../runtime/bilingual-selection-aliases.js";
-import { readLatestOutbound } from "../runtime/outbound-queue.js";
+  isCancelOrRescheduleSelectionId,
+  resolveFreeTextSelectionId,
+} from "../runtime/bilingual-selection-aliases.js";
+import { outboundOffersSelectionId, readLatestOutbound } from "../runtime/outbound-queue.js";
 import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
 
 export type SessionPolicyConfig = {
@@ -191,8 +192,12 @@ export function buildResumeInput(
     } else {
       // Free-text while waiting on Buttons/List — map known intents (pricing/book/…)
       // so "اسعار وتكلفة" routes to pricing instead of default/"وضح طلبك".
+      // Cancel/reschedule only map when the current menu actually offers that id;
+      // otherwise the inbound router restarts into the cancel/reschedule branch.
       const freeTextId = resolveFreeTextSelectionId(inboundText);
-      if (freeTextId) {
+      const outbound = readLatestOutbound(run.variables);
+      const offered = freeTextId ? outboundOffersSelectionId(outbound, freeTextId) : false;
+      if (freeTextId && (!isCancelOrRescheduleSelectionId(freeTextId) || offered)) {
         input.replyId = freeTextId;
         input.title = inboundText.trim() || freeTextId;
         input[INTERACTIVE_SELECTION_INPUT_KEY] = freeTextId;
@@ -238,4 +243,62 @@ export function buildResumeInput(
   }
 
   return input;
+}
+
+function isIntentAskWaitingFor(waitingFor: string | null): boolean {
+  return waitingFor === INTERACTIVE_SELECTION_INPUT_KEY || waitingFor === "customer_intent";
+}
+
+export function shouldReenterOperationIntent(
+  run: AutomationRunRecord,
+  inboundText: string,
+): boolean {
+  const waitingFor =
+    typeof run.variables.__waitingFor === "string" ? run.variables.__waitingFor : null;
+  if (!isIntentAskWaitingFor(waitingFor)) return false;
+  const intentId = resolveFreeTextSelectionId(inboundText);
+  if (!isCancelOrRescheduleSelectionId(intentId)) return false;
+  if (waitingFor === INTERACTIVE_SELECTION_INPUT_KEY) {
+    const outbound = readLatestOutbound(run.variables);
+    // "تأكيد الإلغاء" contains the word إلغاء, but it is a reply to the
+    // confirmation checkpoint—not a request to restart the cancel flow.
+    if (
+      outboundOffersSelectionId(outbound, "confirm_cancel") ||
+      outboundOffersSelectionId(outbound, "keep_booking")
+    ) {
+      return false;
+    }
+    return !outboundOffersSelectionId(outbound, intentId ?? "");
+  }
+  return true;
+}
+
+/** At the intent question only — never abandon a mid-booking wait onto a new published graph. */
+export function shouldRestartStalePublishedVersion(input: {
+  run: AutomationRunRecord;
+  publishedVersionId: string | null | undefined;
+}): boolean {
+  const published =
+    typeof input.publishedVersionId === "string" ? input.publishedVersionId.trim() : "";
+  const pinned = typeof input.run.flow_version_id === "string" ? input.run.flow_version_id.trim() : "";
+  if (!published || !pinned || published === pinned) return false;
+  const waitingFor =
+    typeof input.run.variables.__waitingFor === "string" ? input.run.variables.__waitingFor : null;
+  return waitingFor === "customer_intent";
+}
+
+/**
+ * Greetings must not be swallowed.
+ * - Held "running" sessions (e.g. a stuck AI Decision) currently return no outbound.
+ * - Interactive waits would re-send the same buttons, which Instagram often drops.
+ * Start a fresh welcome instead.
+ */
+export function shouldRestartGreetingSession(input: {
+  inboundText: string;
+  waitingFor?: string | null;
+  routeMode?: string | null;
+}): boolean {
+  if (!isGreetingOnlyUtterance(input.inboundText)) return false;
+  if (input.routeMode === "hold_active_session") return true;
+  return input.waitingFor === INTERACTIVE_SELECTION_INPUT_KEY;
 }

@@ -19,6 +19,10 @@ import type {
   ChannelWorkflowResolver,
 } from "../services/channel-workflow-resolver.js";
 import { dispatchAutomationOutboundMessages } from "../services/dispatch-automation-outbound.js";
+import {
+  buildChannelSenderIdentityVariables,
+  buildWorkflowCustomerIdentityVariables,
+} from "../runtime/channel-sender-identity.js";
 import { traceParsedInboundMessage } from "../debug/interactive-if-trace-debug.js";
 import {
   hasValidInboundContent,
@@ -1185,6 +1189,18 @@ export class InboundMessagePipeline {
         });
 
         waPerfMarkInboundExecution("workflow");
+        const workflowIdentityVariables = {
+          ...buildChannelSenderIdentityVariables({
+            channelKey: request.channelKey,
+            externalUserId: normalized.senderExternalId ?? normalized.externalThreadId,
+          }),
+          ...(await this.buildWorkflowCustomerIdentityVariables({
+            companyId: request.companyId,
+            channelKey: request.channelKey,
+            conversationId: session.conversation_id,
+            trustedCustomerId: trustedChannelIdentity.customerId,
+          })),
+        };
         const automationResult = await waPerfMeasure("Workflow resume", () =>
           automation.startWorkflow({
             companyId: request.companyId,
@@ -1198,6 +1214,7 @@ export class InboundMessagePipeline {
               companyChannelId: request.companyChannelId,
               conversationId: session.conversation_id,
               channelSessionId: session.id,
+              ...workflowIdentityVariables,
             },
             metadata: {
               inboundEventId: inboundEvent.id,
@@ -2068,6 +2085,41 @@ export class InboundMessagePipeline {
         success: false,
       });
       return runtime;
+    }
+  }
+
+  /**
+   * Seed workflow customer identity for cancel/find booking.
+   * WhatsApp uses the trusted phone match; Instagram uses the conversation customer
+   * linked during create_customer on the same inbox thread.
+   */
+  private async buildWorkflowCustomerIdentityVariables(input: {
+    companyId: string;
+    channelKey: string;
+    conversationId: string;
+    trustedCustomerId: string | null;
+  }): Promise<Record<string, unknown>> {
+    try {
+      let customerId = typeof input.trustedCustomerId === "string" ? input.trustedCustomerId.trim() : "";
+      if (!customerId && this.ports.conversation.getConversationCustomerId) {
+        const linked = await this.ports.conversation.getConversationCustomerId(input.conversationId);
+        customerId = typeof linked === "string" ? linked.trim() : "";
+      }
+      if (!customerId || !this.ports.customerIdentity?.getCustomerById) return {};
+
+      const row = await this.ports.customerIdentity.getCustomerById({
+        companyId: input.companyId,
+        customerId,
+      });
+      if (!row?.id) return { customer: { id: customerId } };
+      return buildWorkflowCustomerIdentityVariables({
+        id: row.id,
+        name: row.name,
+        phone: row.phone,
+        phoneE164: row.phoneE164 ?? null,
+      });
+    } catch {
+      return {};
     }
   }
 

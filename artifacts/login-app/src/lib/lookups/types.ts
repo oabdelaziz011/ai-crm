@@ -9,6 +9,7 @@ export const LOOKUP_ENTITY_IDS = [
   "available_slots",
   "available_dates",
   "recommended_appointments",
+  "customer_bookings",
 ] as const;
 
 export type LookupEntityId = (typeof LOOKUP_ENTITY_IDS)[number];

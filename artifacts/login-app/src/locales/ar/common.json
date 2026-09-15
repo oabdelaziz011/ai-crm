@@ -532,7 +532,7 @@
         "generateVerifyToken": "إنشاء رمز تحقق",
         "apiVersion": "إصدار Graph API",
         "appSecret": "سر التطبيق",
-        "appSecretHint": "يُستخدم للتحقق من توقيع Meta webhook (x-hub-signature-256).",
+        "appSecretHint": "يجب أن يكون App settings → Basic → App secret لتطبيق Meta الذي يملك اشتراك Instagram webhook (Instagram → API setup with Instagram login). سر تطبيق Meta آخر أو سر واتساب/صفحة أو Instagram App Secret الخاص بتبادل OAuth لن يطابق x-hub-signature-256.",
         "webhookUrl": "رابط Webhook",
         "webhookUrlGlobal": "Webhook عام (توجيه برمز التحقق)",
         "webhookUrlChannel": "Webhook للقناة (لكل اتصال)",

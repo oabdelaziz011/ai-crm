@@ -1,5 +1,6 @@
 import { InteractiveResumeValidationError } from "../errors.js";
 import { INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
+import { EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE } from "../runtime/empty-doctor-lookup-recovery.js";
 import { readLatestOutbound } from "../runtime/outbound-queue.js";
 import type { AutomationNodeRecord, AutomationRunRecord } from "../types.js";
 
@@ -52,6 +53,10 @@ export function validateInteractiveResumeInput(input: {
   const waitingFor =
     typeof input.run.variables.__waitingFor === "string" ? input.run.variables.__waitingFor : null;
   if (waitingFor !== INTERACTIVE_SELECTION_INPUT_KEY) {
+    return;
+  }
+  // Empty doctor-list recovery sends buttons from a send_list wait node.
+  if (input.run.variables[EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE] === true) {
     return;
   }
 

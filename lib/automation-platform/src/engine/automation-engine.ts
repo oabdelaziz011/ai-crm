@@ -48,6 +48,11 @@ import { validateNodeVariableContract } from "./workflow-variable-contracts.js";
 import { appendOutboundQueueEntry } from "../runtime/outbound-queue.js";
 import { resetOutboundQueue } from "../runtime/outbound-queue.js";
 import { findPrimaryMenuNode } from "../runtime/main-menu.js";
+
+function readExplicitRedirectNodeId(output?: Record<string, unknown>): string | null {
+  const value = output?.redirectToNodeId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 import { ensureConversationLanguage } from "../runtime/conversation-language.js";
 import { INTERACTIVE_SELECTION_INPUT_KEY } from "../runtime/conversation-variables.js";
 import {
@@ -434,6 +439,34 @@ export class AutomationEngine {
       });
     }
 
+    const explicitRedirectNodeId = readExplicitRedirectNodeId(nodeResult.output);
+    if (nodeResult.outcome === "continue" && nodeResult.output?.redirectToPrimaryMenu === true) {
+      return this.executeFromNode(ctx, {
+        companyId: claimedRun.company_id,
+        flow,
+        run: claimedRun,
+        session,
+        flowVersionId: pinnedVersionId,
+        nodes,
+        edges,
+        startNodeId: findPrimaryMenuNode(nodes).id,
+        variables,
+      });
+    }
+    if (nodeResult.outcome === "continue" && explicitRedirectNodeId) {
+      return this.executeFromNode(ctx, {
+        companyId: claimedRun.company_id,
+        flow,
+        run: claimedRun,
+        session,
+        flowVersionId: pinnedVersionId,
+        nodes,
+        edges,
+        startNodeId: explicitRedirectNodeId,
+        variables,
+      });
+    }
+
     const nextNodeId =
       nodeResult.outcome === "completed"
         ? null
@@ -738,6 +771,12 @@ export class AutomationEngine {
 
       if (nodeResult.output?.redirectToPrimaryMenu === true) {
         currentNode = findPrimaryMenuNode(input.nodes);
+        input.userInput = undefined;
+        continue;
+      }
+      const explicitRedirectNodeId = readExplicitRedirectNodeId(nodeResult.output);
+      if (explicitRedirectNodeId) {
+        currentNode = findNodeById(explicitRedirectNodeId, input.nodes);
         input.userInput = undefined;
         continue;
       }

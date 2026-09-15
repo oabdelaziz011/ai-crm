@@ -6,20 +6,27 @@ import { BookingDomainError } from "@/lib/scheduling/booking-domain";
 import type { CreateBookingInput as DomainCreateInput } from "@/lib/scheduling/booking-domain";
 import { SchedulingServiceCatalogRepository } from "@/lib/scheduling/repositories/service-catalog-repository";
 import type { CreateBookingInput, CreateBookingResult } from "@workspace/automation-platform";
+import type { CancelBookingInput, CancelBookingResult } from "@workspace/automation-platform";
+import type { FindBookingInput, FindBookingResult } from "@workspace/automation-platform";
 import type { SupabaseBookingServicePortOptions } from "@workspace/automation-platform";
 import { wxRecordDependencyConstruction, wxRecordServiceResolution } from "@workspace/automation-platform";
 
 import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
+import {
+  findSchedulingBookingsForLookup,
+  mapSchedulingBookingToRecord,
+} from "@/lib/booking/scheduling-booking-lookup";
 
 async function resolveActorUserId(
-  input: CreateBookingInput,
+  companyId: string,
+  userId: string | null | undefined,
   options: SupabaseBookingServicePortOptions,
 ): Promise<string | null> {
-  if (input.userId?.trim()) return input.userId.trim();
+  if (userId?.trim()) return userId.trim();
   const fromGetter = options.getActorUserId?.();
   if (fromGetter?.trim()) return fromGetter.trim();
   if (options.resolveActorUserIdForCompany) {
-    return options.resolveActorUserIdForCompany(input.companyId);
+    return options.resolveActorUserIdForCompany(companyId);
   }
   return null;
 }
@@ -85,7 +92,7 @@ function resolveDomainSlotInput(input: CreateBookingInput): {
 
   // Instant appointment times without structured slot still map onto the domain path.
   if (input.appointmentTime.includes("T") && UUID_PATTERN.test(doctorId)) {
-    const timezone = "UTC";
+    const timezone = input.schedulingSlot?.timezone?.trim() || "UTC";
     const { date, slotStart } = resolveLocalSlotFromInstant(input.appointmentTime, timezone);
     return {
       resourceId: doctorId,
@@ -119,13 +126,73 @@ export function createSchedulingAwareBookingServicePort(
     typeof options === "function" ? { getActorUserId: options } : options;
   wxRecordDependencyConstruction("createSupabaseBookingServicePort");
   const legacyPort = createSupabaseBookingServicePort(client, portOptions);
-  // CRITICAL: use the injected client — never the browser singleton (RLS would block lookups).
-  const domain = BookingFactory.create(client).bookingDomain;
+  const domainServices = BookingFactory.create(client);
+  const domain = domainServices.bookingDomain;
   wxRecordDependencyConstruction("SchedulingServiceCatalogRepository");
   const serviceCatalog = new SchedulingServiceCatalogRepository(client);
 
   return {
     ...legacyPort,
+    async findBooking(input: FindBookingInput): Promise<FindBookingResult> {
+      wxRecordServiceResolution("bookingService.findBooking");
+      const companyId = input.companyId?.trim() ?? "";
+      const lookupValue = input.lookupValue?.trim() ?? "";
+      if (!companyId || !lookupValue) {
+        return { status: "not_found", count: 0 };
+      }
+
+      try {
+        const bookings = await findSchedulingBookingsForLookup({
+          client,
+          companyId,
+          lookupBy: input.lookupBy,
+          lookupValue,
+          userId: input.userId,
+        });
+        if (bookings.length === 0) {
+          if (input.lookupBy === "phone" || input.lookupBy === "customer_id") {
+            return { status: "not_found", count: 0 };
+          }
+          return legacyPort.findBooking(input);
+        }
+        if (bookings.length === 1 && bookings[0]) {
+          return { status: "found", count: 1, booking: bookings[0] };
+        }
+        return { status: "duplicate", count: bookings.length };
+      } catch {
+        return { status: "not_found", count: 0 };
+      }
+    },
+    async cancelBooking(input: CancelBookingInput): Promise<CancelBookingResult> {
+      wxRecordServiceResolution("bookingService.cancelBooking");
+      const companyId = input.companyId?.trim() ?? "";
+      const bookingId = input.bookingId?.trim() ?? "";
+      if (!companyId || !bookingId) {
+        return legacyPort.cancelBooking(input);
+      }
+
+      const userId = await resolveActorUserId(companyId, input.userId, portOptions);
+
+      try {
+        const result = await domain.cancelBooking({
+          companyId,
+          bookingId,
+          updatedBy: userId,
+          reason: "customer_request",
+          enforceCancellationPolicy: false,
+        });
+        return { booking: mapSchedulingBookingToRecord(result.booking, userId) };
+      } catch (error) {
+        if (error instanceof BookingDomainError) {
+          try {
+            return await legacyPort.cancelBooking(input);
+          } catch {
+            throw new Error(error.message);
+          }
+        }
+        throw error instanceof Error ? error : new Error("Clinic scheduling booking cancel failed.");
+      }
+    },
     async createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
       wxRecordServiceResolution("bookingService.createBooking");
       const companyId = input.companyId?.trim();
@@ -136,7 +203,7 @@ export function createSchedulingAwareBookingServicePort(
         return legacyPort.createBooking(input);
       }
 
-      const userId = await resolveActorUserId(input, portOptions);
+      const userId = await resolveActorUserId(companyId, input.userId, portOptions);
       if (!userId) {
         if (isSchedulingCapableInput(input)) {
           throw new Error("Create booking requires an actor userId for clinic scheduling bookings.");

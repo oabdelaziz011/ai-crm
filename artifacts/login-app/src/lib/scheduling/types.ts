@@ -70,7 +70,7 @@ export type SchedulingResource = {
   created_by: string | null;
   updated_by: string | null;
   deleted_at: string | null;
-  branches?: Pick<Branch, "id" | "name"> | null;
+  branches?: Pick<Branch, "id" | "name" | "timezone"> | null;
 };
 
 export type ResourceWeeklyHours = {

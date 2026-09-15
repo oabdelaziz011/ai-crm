@@ -15,11 +15,28 @@ import {
   ensureConversationLanguage,
   readConversationLanguage,
 } from "../runtime/conversation-language.js";
+import {
+  isGreetingOnlyUtterance,
+  promptAfterGreetingOnlyInput,
+} from "../runtime/greeting-utterance.js";
 import { localizeMessageText, localizeNodeConfigForLanguage } from "../runtime/localize-node-config.js";
+import {
+  ANOTHER_DOCTOR_SELECTION_ID,
+  EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE,
+  END_CHAT_SELECTION_ID,
+  emptyDoctorCatalogGoodbye,
+  emptyDoctorCatalogMessage,
+  emptyDoctorCatalogRecoveryOutbound,
+  emptyDoctorLookupRetryPatch,
+  findPrecedingServicesListNode,
+  isDoctorCatalogLookup,
+  resolveEmptyDoctorLookupRecoveryId,
+} from "../runtime/empty-doctor-lookup-recovery.js";
 import {
   buildInteractiveMenuOutbound,
   findPrimaryMenuNode,
 } from "../runtime/main-menu.js";
+import { withSelectionDisplayVariables } from "../runtime/selection-display-fields.js";
 import {
   appendOutboundQueueEntry,
   clearLatestOutboundSlot,
@@ -243,6 +260,59 @@ async function executeInteractiveMessageAction(
   };
   const language = readConversationLanguage(context.variables);
 
+  const recoveryArmed = context.variables[EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE] === true;
+  if (recoveryArmed && (selection || inboundText)) {
+    const recoveryId = resolveEmptyDoctorLookupRecoveryId({
+      replyId: selection?.last_button_id,
+      title: selection?.last_button_title,
+      lastMessage: inboundText,
+    });
+    if (recoveryId === ANOTHER_DOCTOR_SELECTION_ID) {
+      const servicesNode = findPrecedingServicesListNode(
+        context.currentNode.id,
+        context.nodes,
+        context.edges,
+      );
+      return {
+        outcome: "continue",
+        variables: mergeVariables(context.variables, {
+          ...emptyDoctorLookupRetryPatch(),
+          __waitingFor: null,
+          __prompt: null,
+          ...clearLatestOutboundSlot(),
+          ...clearInteractiveListPaginationState(),
+        }),
+        output: servicesNode
+          ? { redirectToNodeId: servicesNode.id }
+          : { redirectToPrimaryMenu: true },
+      };
+    }
+    if (recoveryId === END_CHAT_SELECTION_ID) {
+      const goodbye = emptyDoctorCatalogGoodbye(language);
+      return {
+        outcome: "completed",
+        variables: mergeVariables(context.variables, {
+          ...appendOutboundQueueEntry(context.variables, { kind: "text", text: goodbye }),
+          [EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE]: null,
+          __waitingFor: null,
+          __prompt: goodbye,
+        }),
+        output: { endedConversation: true },
+      };
+    }
+    const retryPrompt = emptyDoctorCatalogRecoveryOutbound(language);
+    return {
+      outcome: "waiting_input",
+      variables: mergeVariables(context.variables, {
+        ...appendOutboundQueueEntry(context.variables, retryPrompt),
+        __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+        __prompt: retryPrompt.text,
+        [EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE]: true,
+      }),
+      output: { waitingFor: INTERACTIVE_SELECTION_INPUT_KEY, outbound: retryPrompt },
+    };
+  }
+
   if (selection) {
     const replyId = selection.last_button_id ?? "";
 
@@ -279,7 +349,10 @@ async function executeInteractiveMessageAction(
         ...context.currentNode,
         config: buildListConfigWithSections(context.currentNode.config, sections),
       };
-      const { outbound, prompt } = buildInteractiveMenuOutbound(menuNode, { language });
+      const { outbound, prompt } = buildInteractiveMenuOutbound(menuNode, {
+        language,
+        variables: context.variables,
+      });
       const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
       const nextVariables = mergeVariables(context.variables, {
         ...mergeConversationVariables(context.variables, selection),
@@ -393,7 +466,10 @@ async function executeInteractiveMessageAction(
             ...context.currentNode,
             config: buildListConfigWithSections(context.currentNode.config, sections),
           };
-          const rebuilt = buildInteractiveMenuOutbound(menuNode, { language });
+          const rebuilt = buildInteractiveMenuOutbound(menuNode, {
+            language,
+            variables: context.variables,
+          });
           reofferOutbound = rebuilt.outbound;
           reofferPrompt = `${resolved.userMessage}\n\n${rebuilt.prompt ?? ""}`.trim();
         } else {
@@ -473,6 +549,8 @@ async function executeInteractiveMessageAction(
 
   let emptyAvailableDates = false;
   let emptyLookupCatalog = false;
+  let emptyDoctorCatalogRecovery = false;
+  let emptyDoctorCatalogNotice: string | null = null;
   let paginationStatePatch: Record<string, unknown> | undefined;
 
   const sendListMessage = async () => {
@@ -495,18 +573,29 @@ async function executeInteractiveMessageAction(
         emptyAvailableDates = true;
         return;
       }
+      if (sections.length === 0 && lookupConfig && isDoctorCatalogLookup(lookupConfig.lookup)) {
+        const emptyMessage = emptyDoctorCatalogMessage(language);
+        outbound = emptyDoctorCatalogRecoveryOutbound(language);
+        prompt = outbound.text ?? emptyMessage;
+        emptyDoctorCatalogRecovery = true;
+        emptyDoctorCatalogNotice = emptyMessage;
+        return;
+      }
       if (
         sections.length === 0 &&
         (lookupConfig?.lookup === "services" ||
-          lookupConfig?.lookup === "resources" ||
-          lookupConfig?.lookup === "staff" ||
-          lookupConfig?.lookup === "branches")
+          lookupConfig?.lookup === "branches" ||
+          lookupConfig?.lookup === "customer_bookings")
       ) {
         const language = readConversationLanguage(context.variables);
         const emptyMessage =
-          language === "en"
-            ? "No options are available right now. Please try again later or contact support."
-            : "لا توجد خيارات متاحة حالياً. من فضلك حاول لاحقاً أو تواصل مع الدعم.";
+          lookupConfig.lookup === "customer_bookings"
+            ? language === "en"
+              ? "I couldn't find an upcoming appointment under that number."
+              : "مش لاقي ميعاد قادم باسم حضرتك."
+            : language === "en"
+              ? "No options are available right now. Please try again later or contact support."
+              : "لا توجد خيارات متاحة حالياً. من فضلك حاول لاحقاً أو تواصل مع الدعم.";
         outbound = { kind: "text", text: emptyMessage };
         prompt = emptyMessage;
         emptyLookupCatalog = true;
@@ -533,7 +622,10 @@ async function executeInteractiveMessageAction(
       }
     }
 
-    ({ outbound, prompt } = buildInteractiveMenuOutbound(menuNode, { language }));
+    ({ outbound, prompt } = buildInteractiveMenuOutbound(menuNode, {
+      language,
+      variables: context.variables,
+    }));
   };
 
   if (action === "send_list") {
@@ -543,22 +635,30 @@ async function executeInteractiveMessageAction(
         `send_list node ${context.currentNode.id} did not produce outbound payload (lookup=${String(context.currentNode.config.lookup ?? "static")}).`,
       );
     }
-    const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
     // Clear this list's prior selection when (re)offering options so a previous
     // branch (e.g. pricing) cannot poison booking via the alreadyApplied path.
     const listOutputVariable = readInteractiveListOutputVariable(context.currentNode.config);
     const clearPriorSelection =
       !emptyAvailableDates &&
       !emptyLookupCatalog &&
+      !emptyDoctorCatalogRecovery &&
       listOutputVariable
         ? { [listOutputVariable]: null }
         : {};
+    const queuedVariables = emptyDoctorCatalogRecovery && emptyDoctorCatalogNotice
+      ? appendOutboundQueueEntry(
+          appendOutboundQueueEntry(context.variables, { kind: "text", text: emptyDoctorCatalogNotice }),
+          outbound,
+        )
+      : appendOutboundQueueEntry(context.variables, outbound);
     const nextVariables = mergeVariables(context.variables, {
-      ...queuePatch,
+      ...queuedVariables,
       ...(paginationStatePatch ?? {}),
       ...clearPriorSelection,
-      __waitingFor: emptyAvailableDates || emptyLookupCatalog ? null : INTERACTIVE_SELECTION_INPUT_KEY,
+      __waitingFor:
+        emptyAvailableDates || emptyLookupCatalog ? null : INTERACTIVE_SELECTION_INPUT_KEY,
       __prompt: prompt,
+      ...(emptyDoctorCatalogRecovery ? { [EMPTY_DOCTOR_LOOKUP_RECOVERY_VARIABLE]: true } : {}),
     });
 
     if (listVisitIndex !== undefined) {
@@ -573,8 +673,19 @@ async function executeInteractiveMessageAction(
       });
     }
 
+    const emptyCustomerBookings =
+      emptyLookupCatalog &&
+      isListLookupMode(context.currentNode.config) &&
+      readListLookupRuntimeConfig(context.currentNode.config).lookup === "customer_bookings";
+
     return {
-      outcome: emptyAvailableDates || emptyLookupCatalog ? "continue" : "waiting_input",
+      // Never follow an empty appointment list into cancel_booking. Ending this
+      // run is safer than letting a stale booking variable cancel a prior item.
+      outcome: emptyCustomerBookings
+        ? "completed"
+        : emptyAvailableDates || emptyLookupCatalog
+          ? "continue"
+          : "waiting_input",
       variables: nextVariables,
       output: emptyAvailableDates || emptyLookupCatalog
         ? { sent: true, message: prompt, outbound: outbound! }
@@ -582,10 +693,14 @@ async function executeInteractiveMessageAction(
     };
   }
 
-  ({ outbound, prompt } = buildInteractiveMenuOutbound(context.currentNode, { language }));
+  const displayVariables = withSelectionDisplayVariables(context.variables);
+  ({ outbound, prompt } = buildInteractiveMenuOutbound(context.currentNode, {
+    language,
+    variables: displayVariables,
+  }));
 
-  const queuePatch = appendOutboundQueueEntry(context.variables, outbound);
-  const nextVariables = mergeVariables(context.variables, {
+  const queuePatch = appendOutboundQueueEntry(displayVariables, outbound);
+  const nextVariables = mergeVariables(displayVariables, {
     ...queuePatch,
     __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
     __prompt: prompt,
@@ -649,12 +764,50 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
         const prefilled =
           resumeValue === null &&
           context.variables.__reentryConsumeIntent === true &&
+          inputKey === "customer_intent" &&
           context.variables[inputKey] !== undefined &&
           context.variables[inputKey] !== null &&
           String(context.variables[inputKey]).trim() !== ""
             ? context.variables[inputKey]
             : null;
         const resolvedInput = resumeValue !== null ? resumeValue : prefilled;
+        const language = readConversationLanguage(context.variables);
+        const localized = localizeNodeConfigForLanguage(context.currentNode.config, language);
+        const prompt =
+          localizeMessageText(localized, language) ??
+          localized.prompt ??
+          context.currentNode.config.prompt ??
+          null;
+        const promptText = typeof prompt === "string" ? prompt.trim() : "";
+        // Greetings are not an intent. Consuming them sends AI Decision to "other"
+        // → "وضح طلبك". Stay on the ask (or a help prompt if this node is clarify).
+        if (resolvedInput !== null && isGreetingOnlyUtterance(String(resolvedInput))) {
+          const nextPrompt = promptAfterGreetingOnlyInput({
+            currentPrompt: promptText,
+            language,
+            inputKey,
+          });
+          const queuePatch = nextPrompt
+            ? appendOutboundQueueEntry(context.variables, { kind: "text", text: nextPrompt })
+            : {};
+          return {
+            outcome: "waiting_input",
+            variables: mergeVariables(
+              ensureConversationLanguage(context.variables, {
+                text: String(resolvedInput),
+              }),
+              {
+                ...queuePatch,
+                [inputKey]: null,
+                __waitingFor: inputKey,
+                __prompt: nextPrompt,
+                __reentryConsumeIntent: null,
+                __reentrySkipWelcome: null,
+              },
+            ),
+            output: { waitingFor: inputKey, ignoredGreeting: true },
+          };
+        }
         if (resolvedInput !== null) {
           return {
             outcome: "continue",
@@ -672,14 +825,6 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
             ),
           };
         }
-        const language = readConversationLanguage(context.variables);
-        const localized = localizeNodeConfigForLanguage(context.currentNode.config, language);
-        const prompt =
-          localizeMessageText(localized, language) ??
-          localized.prompt ??
-          context.currentNode.config.prompt ??
-          null;
-        const promptText = typeof prompt === "string" ? prompt.trim() : "";
         // Queue the ask text so it is sent together with any earlier send_message
         // outbound (welcome → question) instead of being dropped by queue-only extract.
         const queuePatch = promptText
@@ -711,7 +856,14 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
       if (action === "send_message") {
         // Re-entry after a finished run: skip the welcome send_message once, then continue
         // into intent ask / AI decision using the customer's new message.
-        if (context.variables.__reentrySkipWelcome === true) {
+        // Greetings must still receive the welcome — skipping them feeds "مرحبا" into
+        // AI Decision as "other" and the flow asks "وضح طلبك".
+        const reentryInbound =
+          (typeof context.input?.lastMessage === "string" && context.input.lastMessage) ||
+          (typeof context.variables.lastMessage === "string" && context.variables.lastMessage) ||
+          (typeof context.variables.customer_intent === "string" && context.variables.customer_intent) ||
+          "";
+        if (context.variables.__reentrySkipWelcome === true && !isGreetingOnlyUtterance(reentryInbound)) {
           return {
             outcome: "continue",
             variables: mergeVariables(context.variables, {
@@ -733,7 +885,8 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           readString(localizedConfig.message) ??
           readString(localizedConfig.text);
         if (!rawMessage) throw new ValidationError("send_message action requires config.message.");
-        const message = interpolateTemplateString(rawMessage, context.variables);
+        const displayVariables = withSelectionDisplayVariables(context.variables);
+        const message = interpolateTemplateString(rawMessage, displayVariables);
         const imageUrl = readString(localizedConfig.url) ?? readString(localizedConfig.imageUrl);
         const outbound: OutboundQueueEntry = imageUrl
           ? {
@@ -748,15 +901,16 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
         return {
           outcome: "continue",
           variables: mergeVariables(
-            ensureConversationLanguage(context.variables, {
+            ensureConversationLanguage(displayVariables, {
               text:
                 (typeof context.input?.text === "string" && context.input.text) ||
                 (typeof context.variables.lastMessage === "string" && context.variables.lastMessage) ||
                 null,
             }),
             {
-              ...appendOutboundQueueEntry(context.variables, outbound),
+              ...appendOutboundQueueEntry(displayVariables, outbound),
               __prompt: message,
+              __reentrySkipWelcome: null,
             },
           ),
           output: { sent: true, message },

@@ -649,7 +649,7 @@
         "generateVerifyToken": "Generate verify token",
         "apiVersion": "Graph API version",
         "appSecret": "App secret",
-        "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256).",
+        "appSecretHint": "Must be App settings → Basic → App secret of the Meta app that owns this Instagram webhook (Instagram → API setup with Instagram login). A different Meta app’s secret, a WhatsApp/Page secret, or the Instagram App Secret used only for Business Login OAuth will fail x-hub-signature-256.",
         "webhookUrl": "Webhook URL",
         "webhookUrlGlobal": "Global webhook (verify-token routing)",
         "webhookUrlChannel": "Channel webhook (per connection)",
@@ -10933,7 +10933,8 @@
       "tags": "Tags",
       "availableSlots": "Available Slots",
       "availableDates": "Available Dates",
-      "recommendedAppointments": "Recommended Appointments"
+      "recommendedAppointments": "Recommended Appointments",
+      "customerBookings": "Customer Bookings"
     },
     "fields": {
       "name": "Name",
@@ -10945,6 +10946,8 @@
       "resourceType": "Resource type",
       "code": "Code",
       "durationMinutes": "Duration",
+      "priceCents": "Price (cents)",
+      "priceDisplay": "Price",
       "status": "Status",
       "branchId": "Branch ID",
       "displayTime": "Display time",
@@ -10963,7 +10966,9 @@
       "endAt": "End",
       "serviceId": "Service ID",
       "resourceId": "Resource ID",
-      "timezone": "Timezone"
+      "timezone": "Timezone",
+      "confirmationNumber": "Confirmation number",
+      "customerId": "Customer ID"
     },
     "outputVariables": {
       "selectedService": "Selected Service",
@@ -10975,13 +10980,15 @@
       "selectedTag": "Selected Tag",
       "selectedSlot": "Selected Slot",
       "selectedDate": "Selected Date",
-      "selectedRecommendation": "Selected Recommendation"
+      "selectedRecommendation": "Selected Recommendation",
+      "selectedBooking": "Selected Booking"
     },
     "filters": {
       "status": "Status",
       "branch": "Branch ID",
       "resourceType": "Resource type",
       "service": "Service ID",
+      "customer": "Customer ID",
       "date": "Date",
       "daysAhead": "Search window (days)",
       "daysAhead7": "Next 7 days",

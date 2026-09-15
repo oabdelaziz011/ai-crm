@@ -81,6 +81,25 @@ export function createDefaultListLookupConfig(lookup: LookupEntityId = "services
     };
   }
 
+  if (lookup === "customer_bookings") {
+    return {
+      ...base,
+      filters: {
+        phone: "{{customer_phone}}",
+        customer_id: "{{customer.id}}",
+      },
+    };
+  }
+
+  if (lookup === "resources" || lookup === "staff") {
+    return {
+      ...base,
+      filters: {
+        service_id: "{{selected_service.id}}",
+      },
+    };
+  }
+
   return base;
 }
 

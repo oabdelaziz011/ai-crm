@@ -9,6 +9,7 @@ import {
 } from "../meta/meta-messaging-webhook.js";
 import type { InstagramChannelConfiguration } from "./instagram-config.js";
 import { instagramMessagesUrl } from "./instagram-config.js";
+import { normalizeInstagramWebhookPayload } from "./instagram-webhook-payload.js";
 import type {
   InstagramSendMessagePayload,
   InstagramSendMessageResponse,
@@ -62,7 +63,9 @@ export class InstagramApiClient {
       instagramBusinessAccountId: config.instagramBusinessAccountId,
       pageId: config.pageId,
       accessTokenSource: options?.accessTokenSource ?? "company_instagram_settings",
-      messageType: payload.message.attachment?.type ?? (payload.message.text ? "text" : "unknown"),
+      messageType: payload.message.quick_replies
+        ? "quick_replies"
+        : payload.message.attachment?.type ?? (payload.message.text ? "text" : "unknown"),
       httpStatus: response.status,
       metaErrorCode: body.error?.code,
       metaErrorMessage: body.error?.error_user_msg ?? body.error?.message,
@@ -82,14 +85,16 @@ export const verifyInstagramWebhookChallenge = verifyMetaWebhookChallenge;
 export const verifyInstagramWebhookSignature = verifyMetaWebhookSignature;
 
 export function extractInstagramBusinessAccountId(rawPayload: Record<string, unknown>): string | null {
-  return extractMetaMessagingAccountId(rawPayload, "instagram");
+  return extractMetaMessagingAccountId(normalizeInstagramWebhookPayload(rawPayload), "instagram");
 }
 
 export function parseInstagramWebhookEvents(rawPayload: Record<string, unknown>) {
-  return parseMetaMessagingWebhookEvents(rawPayload, "instagram").map((event) => ({
-    ...event,
-    instagramBusinessAccountId: event.kind !== "status" ? event.accountId : undefined,
-  }));
+  return parseMetaMessagingWebhookEvents(normalizeInstagramWebhookPayload(rawPayload), "instagram").map(
+    (event) => ({
+      ...event,
+      instagramBusinessAccountId: event.kind !== "status" ? event.accountId : undefined,
+    }),
+  );
 }
 
 export function summarizeInstagramWebhookPayload(rawPayload: Record<string, unknown>) {
@@ -101,3 +106,5 @@ export function summarizeInstagramWebhookPayload(rawPayload: Record<string, unkn
     messagingCount: summary.messagingCount,
   };
 }
+
+export { describeInstagramWebhookShape, normalizeInstagramWebhookPayload } from "./instagram-webhook-payload.js";

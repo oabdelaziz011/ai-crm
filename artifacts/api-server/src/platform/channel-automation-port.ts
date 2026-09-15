@@ -10,6 +10,10 @@ import {
   logInboundListNodeRouting,
   resolveInboundAutomationContext,
   resolveInboundAutomationRoute,
+  buildIntentReentryStartVariables,
+  shouldReenterOperationIntent,
+  shouldRestartGreetingSession,
+  shouldRestartStalePublishedVersion,
   traceEngineResumeInput,
   traceInboundRoutingHoldResult,
   traceInboundRoutingLookup,
@@ -43,6 +47,16 @@ function mapChannelKey(channelKey: string): AutomationChannel {
 function readWaitingFor(source: { variables: Record<string, unknown> } | null | undefined): string | null {
   if (!source) return null;
   return typeof source.variables.__waitingFor === "string" ? source.variables.__waitingFor : null;
+}
+
+function readCustomerIdFromVariables(variables: Record<string, unknown>): string | null {
+  const nested = variables.customer;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const id = (nested as { id?: unknown }).id;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+  const dotted = variables["customer.id"];
+  return typeof dotted === "string" && dotted.trim() ? dotted.trim() : null;
 }
 
 function logInboundRoutingDecision(payload: Record<string, unknown>): void {
@@ -116,6 +130,7 @@ export function createChannelAutomationPort(
   deps?: {
     sessions: ReturnType<typeof createSupabaseConversationSessionRepository>;
     runs: ReturnType<typeof createSupabaseAutomationRunRepository>;
+    getPublishedVersionId?: (flowId: string, companyId: string) => Promise<string | null>;
   },
 ): ChannelAutomationPort {
   const startWorkflowImpl = async (input: Parameters<ChannelAutomationPort["startWorkflow"]>[0]) => {
@@ -239,6 +254,31 @@ export function createChannelAutomationPort(
         });
 
         if (routeDecision.mode === "resume" && session && run) {
+          const greetingRestart = shouldRestartGreetingSession({
+            inboundText: input.messageText,
+            waitingFor: readWaitingFor(run) ?? readWaitingFor(session),
+            routeMode: routeDecision.mode,
+          });
+          const operationReentry = shouldReenterOperationIntent(run, input.messageText);
+          const publishedVersionId = deps.getPublishedVersionId
+            ? await deps.getPublishedVersionId(input.flowId, input.companyId)
+            : null;
+          const stalePublished = shouldRestartStalePublishedVersion({ run, publishedVersionId });
+          if (operationReentry || greetingRestart || stalePublished) {
+            await engine.abandonActiveRun(ctx, {
+              runId: run.id,
+              reason: ABANDONED_ACTIVE_RUN_REASON,
+            });
+            route = {
+              ...routeDecision,
+              mode: "abandon_and_start",
+              reason: greetingRestart
+                ? "greeting_restart"
+                : operationReentry
+                  ? "operation_intent_reentry"
+                  : "published_version_changed",
+            };
+          } else {
           logInboundRoutingDecision({
             executionMode: routeDecision.mode,
             routingReason: routeDecision.reason,
@@ -293,6 +333,7 @@ export function createChannelAutomationPort(
             flowVersionId: result.run.flow_version_id ?? undefined,
             resumed: true,
           };
+          }
         }
 
         if (routeDecision.mode === "abandon_and_start" && run) {
@@ -303,6 +344,24 @@ export function createChannelAutomationPort(
         }
 
         if (routeDecision.mode === "hold_active_session") {
+          const greetingRestart = shouldRestartGreetingSession({
+            inboundText: input.messageText,
+            waitingFor: readWaitingFor(run) ?? readWaitingFor(session),
+            routeMode: routeDecision.mode,
+          });
+          if (greetingRestart) {
+            if (run) {
+              await engine.abandonActiveRun(ctx, {
+                runId: run.id,
+                reason: ABANDONED_ACTIVE_RUN_REASON,
+              });
+            }
+            route = {
+              ...routeDecision,
+              mode: "start",
+              reason: "greeting_restart",
+            };
+          } else {
           logInboundRoutingDecision({
             executionMode: routeDecision.mode,
             routingReason: routeDecision.reason,
@@ -343,6 +402,7 @@ export function createChannelAutomationPort(
             flowVersionId: run?.flow_version_id ?? session?.flow_version_id ?? undefined,
             resumed: false,
           };
+          }
         }
       }
 
@@ -379,11 +439,24 @@ export function createChannelAutomationPort(
 
       // After a prior run finished/expired: don't replay welcome — feed the new
       // message straight into customer_intent → AI Decision routing.
+      // Greeting-only text is excluded: it would classify as "other" → "وضح طلبك".
       const inboundText = typeof input.messageText === "string" ? input.messageText.trim() : "";
       const isIntentReentryStart =
         Boolean(inboundText) &&
-        (route?.reason === "prior_session_terminal_or_missing_run" ||
-          route?.reason === "session_expired");
+        (route?.reason === "no_active_session" ||
+          route?.reason === "prior_session_terminal_or_missing_run" ||
+          route?.reason === "session_expired" ||
+          route?.reason === "operation_intent_reentry" ||
+          route?.reason === "published_version_changed");
+      const intentReentryVariables = isIntentReentryStart
+        ? buildIntentReentryStartVariables(inboundText)
+        : null;
+
+      const initialVariables = {
+        ...(input.initialVariables ?? {}),
+        ...(input.metadata ?? {}),
+        ...(intentReentryVariables ?? {}),
+      };
 
       const result = await engine.start(ctx, {
         companyId: input.companyId,
@@ -391,18 +464,8 @@ export function createChannelAutomationPort(
         channel,
         externalUserId: input.externalUserId,
         triggerSource: "inbound_message",
-        initialVariables: {
-          ...(input.initialVariables ?? {}),
-          ...(input.metadata ?? {}),
-          ...(isIntentReentryStart
-            ? {
-                lastMessage: inboundText,
-                customer_intent: inboundText,
-                __reentrySkipWelcome: true,
-                __reentryConsumeIntent: true,
-              }
-            : {}),
-        },
+        customerId: readCustomerIdFromVariables(initialVariables),
+        initialVariables,
       });
 
       const outboundMessages = extractAutomationOutboundMessages(result);
@@ -485,6 +548,22 @@ export function createChannelAutomationPort(
   };
 }
 
+async function loadPublishedVersionId(
+  client: SupabaseClient,
+  flowId: string,
+  companyId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("automation_flows")
+    .select("company_id, active_version_id")
+    .eq("id", flowId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || data.company_id !== companyId) return null;
+  return typeof data.active_version_id === "string" ? data.active_version_id : null;
+}
+
 export function createChannelAutomationPortFromClient(
   engine: AutomationEngine,
   auth: ChannelAutomationAuth,
@@ -493,6 +572,7 @@ export function createChannelAutomationPortFromClient(
   return createChannelAutomationPort(engine, auth, {
     sessions: createSupabaseConversationSessionRepository(client),
     runs: createSupabaseAutomationRunRepository(client),
+    getPublishedVersionId: (flowId, companyId) => loadPublishedVersionId(client, flowId, companyId),
   });
 }
 

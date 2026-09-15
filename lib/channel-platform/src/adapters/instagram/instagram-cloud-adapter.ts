@@ -11,14 +11,15 @@ import type {
 } from "../../dto/channel-dto.js";
 import { AttachmentEngine } from "../../engines/attachment-engine.js";
 import { ValidationError } from "../../errors.js";
+import { mapMetaMessagingEventsToEnvelopes } from "../meta/meta-messaging-adapter.js";
 import {
   InstagramApiClient,
+  parseInstagramWebhookEvents,
 } from "./instagram-api-client.js";
-import { mapMetaMessagingEventsToEnvelopes } from "../meta/meta-messaging-adapter.js";
-import { parseMetaMessagingWebhookEvents } from "../meta/meta-messaging-webhook.js";
 import { parseInstagramChannelReferences } from "./instagram-config.js";
 import { resolveInstagramRuntimeConfiguration } from "./instagram-canonical-credentials.js";
 import type { InstagramCredentialsLoader } from "./instagram-canonical-credentials.js";
+import { formatInstagramInteractiveOutbound } from "./instagram-interactive-outbound.js";
 import type { InstagramSendMessagePayload, InstagramWebhookMessage } from "./instagram-types.js";
 
 export type InstagramCloudAdapterOptions = {
@@ -45,7 +46,7 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
   }
 
   parseWebhookEvents(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto[] {
-    const events = parseMetaMessagingWebhookEvents(rawPayload, "instagram");
+    const events = parseInstagramWebhookEvents(rawPayload);
     return mapMetaMessagingEventsToEnvelopes(ctx, this.channelKey, events, "instagramBusinessAccountId");
   }
 
@@ -102,19 +103,33 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
           : undefined,
     };
 
+    const quickReplyPayload =
+      typeof message.quick_reply?.payload === "string" ? message.quick_reply.payload.trim() : "";
+    if (quickReplyPayload) {
+      metadata.kind = "interactive_reply";
+      metadata.interactionType = "list_reply";
+      metadata.replyId = quickReplyPayload;
+      metadata.title = text || quickReplyPayload;
+    }
+
     return {
       externalThreadId:
         typeof payload.senderExternalId === "string" ? payload.senderExternalId : "",
       externalMessageId: message.mid ?? `${payload.senderExternalId ?? "unknown"}:message`,
       senderExternalId:
         typeof payload.senderExternalId === "string" ? payload.senderExternalId : null,
-      text,
+      text: text || (typeof metadata.title === "string" ? metadata.title : ""),
       attachments,
       metadata,
     };
   }
 
   formatOutbound(_ctx: ChannelAdapterContext, message: OutboundChannelMessageDto): Record<string, unknown> {
+    const interactive = formatInstagramInteractiveOutbound(message);
+    if (interactive) {
+      return { payload: interactive, recipient: message.externalThreadId };
+    }
+
     const attachment = message.attachments?.[0];
     if (attachment?.url) {
       const type =

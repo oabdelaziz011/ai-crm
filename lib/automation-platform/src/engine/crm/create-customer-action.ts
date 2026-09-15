@@ -10,10 +10,17 @@ import type { ConversationCustomerLinkPort } from "../../ports/conversation-cust
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
 import { resolveInboxConversationId } from "../../runtime/resolve-inbox-conversation-id.js";
+import { appendOutboundQueueEntry } from "../../runtime/outbound-queue.js";
+import { readConversationLanguage } from "../../runtime/conversation-language.js";
 import {
   isImportPhoneWritable,
   resolveImportPhoneIdentity,
 } from "@workspace/ai-tool-router";
+
+const PHONE_REGION_PROMPT_AR =
+  "محتاجين رقم الموبايل بالصيغة الدولية (مثال +20...) عشان نكمّل.";
+const PHONE_REGION_PROMPT_EN =
+  "Please send the mobile number in international format (example +20...) so we can continue.";
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -44,6 +51,26 @@ function resolveActorUserId(context: ExecutionContext): string {
   }
 
   return "";
+}
+
+function phoneRegionPrompt(variables: Record<string, unknown>): string {
+  return readConversationLanguage(variables) === "en" ? PHONE_REGION_PROMPT_EN : PHONE_REGION_PROMPT_AR;
+}
+
+function waitForInternationalPhone(
+  context: ExecutionContext,
+  phoneFieldKey: string,
+): NodeExecutionResult {
+  const prompt = phoneRegionPrompt(context.variables);
+  return {
+    outcome: "waiting_input",
+    variables: mergeVariables(context.variables, {
+      ...appendOutboundQueueEntry(context.variables, { kind: "text", text: prompt }),
+      __waitingFor: phoneFieldKey,
+      __prompt: prompt,
+    }),
+    output: { waitingFor: phoneFieldKey, reason: "phone_region_required" },
+  };
 }
 
 function readVariableByKey(scope: Record<string, unknown>, key: string): string {
@@ -108,7 +135,9 @@ export async function executeCreateCustomerAction(
   const genderRaw = genderField ? readVariableByKey(scope, genderField) || null : null;
 
   const phoneFieldKey = phoneField ? phoneField : "customer_phone";
-  const phone = phoneField ? readVariableByKey(scope, phoneFieldKey) || null : null;
+  const resumedPhone = readString(context.input?.[phoneFieldKey]);
+  const storedPhone = phoneField ? readVariableByKey(scope, phoneFieldKey) || null : null;
+  const phone = resumedPhone ?? storedPhone;
   const regionField = readString(config.regionField) ?? readString(config.phoneRegionField);
   const region = regionField
     ? readVariableByKey(scope, regionField) || null
@@ -121,9 +150,7 @@ export async function executeCreateCustomerAction(
   });
   if (phone && !isImportPhoneWritable(phonePreview)) {
     if (phonePreview.code === "phone_region_required") {
-      throw new ValidationError(
-        "PHONE_REGION_REQUIRED: Local phone numbers require an explicit ISO-2 region (config.regionField / defaultRegion) or E.164.",
-      );
+      return waitForInternationalPhone(context, phoneFieldKey);
     }
     if (phonePreview.code === "ambiguous_phone") {
       throw new ValidationError("AMBIGUOUS_PHONE: Phone number is ambiguous without an explicit region.");
@@ -154,7 +181,12 @@ export async function executeCreateCustomerAction(
 
   return {
     outcome: "continue",
-    variables: mergeVariables(context.variables, buildCustomerVariables(result.customer)),
+    variables: mergeVariables(context.variables, {
+      ...buildCustomerVariables(result.customer),
+      [phoneFieldKey]: result.customer.phone ?? phone,
+      __waitingFor: null,
+      __prompt: null,
+    }),
     output: { customerId: result.customer.id },
   };
 }

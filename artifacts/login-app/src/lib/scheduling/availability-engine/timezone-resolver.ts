@@ -21,19 +21,40 @@ export class TimezoneResolver {
     }
   }
 
-  /** Resolve effective IANA timezone: resource → branch → booking rules fallback. */
+  /**
+   * Resolve effective IANA timezone.
+   * Preference: resource → branch → booking rules → UTC.
+   * Resource/branch values of "UTC" are treated as unset so company booking-rules
+   * timezones (e.g. Africa/Cairo) win — resources are often created with UTC default.
+   */
   static resolveEffectiveTimezone(
     resourceTimezone: string | null | undefined,
     branchTimezone: string | null | undefined,
     rulesTimezone: string | null | undefined,
   ): string {
-    const candidates = [resourceTimezone, branchTimezone, rulesTimezone, "UTC"];
+    const candidates = [
+      TimezoneResolver.normalizeConfiguredTimezone(resourceTimezone),
+      TimezoneResolver.normalizeConfiguredTimezone(branchTimezone),
+      TimezoneResolver.normalizeConfiguredTimezone(rulesTimezone, { allowUtc: true }),
+      "UTC",
+    ];
     for (const candidate of candidates) {
       if (candidate && TimezoneResolver.isValid(candidate)) {
         return candidate;
       }
     }
     return "UTC";
+  }
+
+  /** Treat bare UTC on resource/branch as "not configured". */
+  static normalizeConfiguredTimezone(
+    timezone: string | null | undefined,
+    options?: { allowUtc?: boolean },
+  ): string | null {
+    if (!timezone || !timezone.trim()) return null;
+    const trimmed = timezone.trim();
+    if (!options?.allowUtc && trimmed.toUpperCase() === "UTC") return null;
+    return trimmed;
   }
 
   static isValidDateString(date: string): boolean {

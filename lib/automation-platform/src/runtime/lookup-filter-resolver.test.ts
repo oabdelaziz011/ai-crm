@@ -24,6 +24,14 @@ describe("resolveLookupFilterValues", () => {
     });
   });
 
+  it("omits unresolved template filters instead of using them as literals", () => {
+    const resolved = resolveLookupFilterValues(
+      { service_id: "{{selected_service.id}}", status: "active" },
+      {},
+    );
+    assert.deepEqual(resolved, { status: "active" });
+  });
+
   it("passes through literal filter values", () => {
     const resolved = resolveLookupFilterValues(
       { service_id: "svc_static", resource_id: "res_static", date: "2026-08-01" },

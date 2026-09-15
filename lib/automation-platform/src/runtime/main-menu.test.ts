@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildInteractiveMenuOutbound,
   findPrimaryMenuNode,
   isInteractiveMenuNode,
   isPrimaryMenuNode,
@@ -62,5 +63,32 @@ describe("main menu runtime", () => {
   it("detects redirect output from return to main menu", () => {
     assert.equal(shouldRedirectToPrimaryMenu({ redirectToPrimaryMenu: true }), true);
     assert.equal(shouldRedirectToPrimaryMenu({}), false);
+  });
+
+  it("interpolates selected doctor name and price on follow-up buttons", () => {
+    const { outbound, prompt } = buildInteractiveMenuOutbound(
+      {
+        ...BUTTONS_NODE,
+        config: {
+          action: "send_buttons",
+          message: "تحب تحجز ميعاد مع د. {{selected_resource.name}}؟",
+          buttons: [
+            { id: "book", label: "حجز ميعاد" },
+            { id: "no", label: "خلاص، شكراً" },
+          ],
+        },
+      },
+      {
+        language: "ar",
+        variables: {
+          selected_resource: { id: "doc-1", name: "Youssef Kamal" },
+          selected_service: { id: "svc-1", price_cents: 25000 },
+        },
+      },
+    );
+
+    assert.equal(prompt, "تحب تحجز ميعاد مع د. Youssef Kamal؟");
+    assert.equal(outbound.kind, "buttons");
+    assert.equal(outbound.text, "تحب تحجز ميعاد مع د. Youssef Kamal؟");
   });
 });

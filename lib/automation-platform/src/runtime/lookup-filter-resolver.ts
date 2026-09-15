@@ -1,18 +1,5 @@
 import { resolveFieldValue } from "../logic/expression-engine.js";
 
-function readString(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
-      const resolved = resolveFieldValue(trimmed, {});
-      return resolved == null ? trimmed : normalizeLookupFilterValue("", resolved);
-    }
-    return trimmed;
-  }
-  return normalizeLookupFilterValue("", value);
-}
-
 function normalizeLookupFilterValue(key: string, value: unknown): string {
   if (value == null) return "";
   if (typeof value === "string") return value.trim();
@@ -41,11 +28,8 @@ export function resolveLookupFilterValues(
         variables,
       );
       const normalizedValue = normalizeLookupFilterValue(key, resolvedValue);
-      if (normalizedValue) {
+      if (normalizedValue && !normalizedValue.includes("{{")) {
         resolved[key] = normalizedValue;
-      } else {
-        const fallback = readString(value);
-        if (fallback) resolved[key] = fallback;
       }
       continue;
     }

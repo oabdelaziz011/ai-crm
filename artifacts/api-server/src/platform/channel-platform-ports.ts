@@ -388,8 +388,12 @@ export function createChannelConversationPort(
     },
 
     async getConversationCustomerId(conversationId) {
-      const conversation = await services.conversations.getConversation(ctx, conversationId);
-      return conversation.customer_id ? String(conversation.customer_id) : null;
+      try {
+        const conversation = await services.conversations.getConversation(ctx, conversationId);
+        return conversation.customer_id ? String(conversation.customer_id) : null;
+      } catch {
+        return null;
+      }
     },
 
     async linkConversationCustomerIfEmpty(input) {

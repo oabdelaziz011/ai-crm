@@ -5,6 +5,7 @@ import { InMemoryBookingRepository } from "../../crm/booking-repository-port.js"
 import { executeCreateBookingAction } from "./create-booking-action.js";
 import type { ExecutionContext } from "../execution-context.js";
 import { staticBinding, variableBinding } from "../../field-binding/normalize.js";
+import { readOutboundQueue } from "../../runtime/outbound-queue.js";
 
 function createContext(config: Record<string, unknown>, variables: Record<string, unknown> = {}): ExecutionContext {
   return {
@@ -198,5 +199,150 @@ describe("executeCreateBookingAction", () => {
     assert.equal(booking?.display_time, "9:15 PM");
     assert.equal(booking?.customer_name, "Omar");
     assert.equal(booking?.confirmation_code, "BK-000042");
+  });
+
+  it("queues a confirmation before follow-up buttons", async () => {
+    const bookingService = {
+      async findBooking() {
+        return { status: "not_found" as const, booking: null };
+      },
+      async createBooking() {
+        return { bookingId: "sched-booking-1", bookingDate: "2026-08-02T18:15:00.000Z", confirmationNumber: "BK-000042" };
+      },
+      async updateBooking() {
+        return { bookingId: "sched-booking-1" };
+      },
+      async cancelBooking() {
+        return { bookingId: "sched-booking-1", status: "Cancelled" };
+      },
+    };
+
+    const context = createContext(
+      {
+        action: "create_booking",
+        service: staticBinding("Clinic Visit"),
+        doctor: variableBinding("selected_resource.id"),
+        location: staticBinding("main"),
+        appointmentDate: variableBinding("selected_date"),
+        appointmentTime: variableBinding("selected_slot"),
+        customer: variableBinding("customer.id"),
+      },
+      {
+        conversation: { language: "ar" },
+        selected_service: { id: "service-1", name: "عيادة باطنة" },
+        selected_resource: { id: "resource-1", name: "Youssef Kamal" },
+        selected_date: { date: "2026-08-02", display_date: "الأحد، 2 أغسطس" },
+        selected_slot: {
+          start_at: "2026-08-02T18:15:00.000Z",
+          end_at: "2026-08-02T18:45:00.000Z",
+          display_time: "9:15 م",
+          duration_minutes: 30,
+          service_id: "service-1",
+          resource_id: "resource-1",
+          branch_id: null,
+          timezone: "Africa/Cairo",
+        },
+        customer: { id: "cust-1", name: "نسمة" },
+      },
+    );
+    context.nodes = [
+      context.currentNode,
+      {
+        id: "follow-up",
+        flow_id: "flow-1",
+        type: "action",
+        config: { action: "send_buttons", text: "تحب تسألي عن حاجة تانية، ولا خلاص؟" },
+        position_x: 0,
+        position_y: 0,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    context.edges = [
+      {
+        id: "edge-1",
+        flow_id: "flow-1",
+        source_node_id: "node-1",
+        target_node_id: "follow-up",
+        condition: {},
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const result = await executeCreateBookingAction(context, context.currentNode.config, bookingService as never);
+    const queued = readOutboundQueue(result.variables ?? {});
+    const confirmation = queued.find((entry) => entry.kind === "text")?.text ?? "";
+
+    assert.equal(result.outcome, "continue");
+    assert.match(confirmation, /تم حجز موعدك بنجاح يا نسمة/);
+    assert.match(confirmation, /عيادة باطنة/);
+    assert.match(confirmation, /Youssef Kamal/);
+    assert.match(confirmation, /رقم الحجز: BK-000042/);
+  });
+
+  it("does not queue a default confirmation when the next node already sends a message", async () => {
+    const bookingService = {
+      async findBooking() {
+        return { status: "not_found" as const, booking: null };
+      },
+      async createBooking() {
+        return { bookingId: "sched-booking-1", bookingDate: "2026-08-02T18:15:00.000Z", confirmationNumber: "BK-000042" };
+      },
+      async updateBooking() {
+        return { bookingId: "sched-booking-1" };
+      },
+      async cancelBooking() {
+        return { bookingId: "sched-booking-1", status: "Cancelled" };
+      },
+    };
+
+    const context = createContext(
+      {
+        action: "create_booking",
+        service: staticBinding("Clinic Visit"),
+        doctor: variableBinding("selected_resource.id"),
+        location: staticBinding("main"),
+        appointmentDate: variableBinding("selected_date"),
+        appointmentTime: variableBinding("selected_slot"),
+        customer: variableBinding("customer.id"),
+      },
+      {
+        selected_service: { id: "service-1", name: "Clinic Visit" },
+        selected_resource: { id: "resource-1", name: "Adam" },
+        selected_date: { date: "2026-08-02", display_date: "Sun, Aug 2" },
+        selected_slot: {
+          start_at: "2026-08-02T18:15:00.000Z",
+          display_time: "9:15 PM",
+          service_id: "service-1",
+          resource_id: "resource-1",
+          timezone: "Africa/Cairo",
+        },
+        customer: { id: "cust-1", name: "Omar" },
+      },
+    );
+    context.nodes = [
+      context.currentNode,
+      {
+        id: "confirm",
+        flow_id: "flow-1",
+        type: "action",
+        config: { action: "send_message", text: "تم تأكيد الحجز" },
+        position_x: 0,
+        position_y: 0,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    context.edges = [
+      {
+        id: "edge-1",
+        flow_id: "flow-1",
+        source_node_id: "node-1",
+        target_node_id: "confirm",
+        condition: {},
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const result = await executeCreateBookingAction(context, context.currentNode.config, bookingService as never);
+    assert.equal(readOutboundQueue(result.variables ?? {}).length, 0);
   });
 });

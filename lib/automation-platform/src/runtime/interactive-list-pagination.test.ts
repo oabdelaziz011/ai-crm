@@ -59,6 +59,14 @@ describe("interactive-list-pagination", () => {
     });
   });
 
+  it("caps Instagram lists at 13 quick-reply rows", () => {
+    const instagramLimits = resolveInteractiveListLimits("instagram");
+    assert.equal(instagramLimits.maxRowsPerList, 13);
+    assert.equal(instagramLimits.supportsListPagination, true);
+    assert.equal(computeInteractiveListPagePlan(2, instagramLimits).requiresPagination, false);
+    assert.equal(computeInteractiveListPagePlan(14, instagramLimits).requiresPagination, true);
+  });
+
   it("returns one row without navigation for single-row lists", () => {
     const rows = makeRows(1);
     const page = sliceInteractiveListPageRows(rows, 0, whatsappLimits);

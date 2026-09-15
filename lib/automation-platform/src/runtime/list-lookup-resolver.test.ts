@@ -60,4 +60,62 @@ describe("resolveListNodeSections language filter", () => {
 
     assert.equal(seen[0]?.language, "ar");
   });
+
+  it("injects customer identity into customer_bookings filters", async () => {
+    const seen: Array<Record<string, unknown>> = [];
+    const sections = await resolveListNodeSections(
+      {
+        id: "list-bookings",
+        type: "action",
+        config: {
+          action: "send_list",
+          mode: "lookup",
+          lookup: "customer_bookings",
+          displayField: "display_label",
+          valueField: "id",
+          filters: { phone: "{{whatsapp_sender_phone}}" },
+        },
+      } as never,
+      "company-1",
+      {
+        async fetchListOptions(_companyId, config) {
+          seen.push({ ...(config.filters ?? {}) });
+          return [];
+        },
+      },
+      { customer: { id: "cust-9", phone: "01012345678" } },
+    );
+
+    assert.equal(seen[0]?.customer_id, "cust-9");
+    assert.equal(seen[0]?.phone, "01012345678");
+    assert.deepEqual(sections, []);
+  });
+
+  it("uses a collected customer_phone for customer_bookings", async () => {
+    const seen: Array<Record<string, unknown>> = [];
+    await resolveListNodeSections(
+      {
+        id: "list-bookings",
+        type: "action",
+        config: {
+          action: "send_list",
+          mode: "lookup",
+          lookup: "customer_bookings",
+          displayField: "display_label",
+          valueField: "id",
+          filters: { phone: "{{customer_phone}}" },
+        },
+      } as never,
+      "company-1",
+      {
+        async fetchListOptions(_companyId, config) {
+          seen.push({ ...(config.filters ?? {}) });
+          return [];
+        },
+      },
+      { customer_phone: "01011404109" },
+    );
+
+    assert.equal(seen[0]?.phone, "01011404109");
+  });
 });

@@ -1,4 +1,4 @@
-import { isFieldBinding, staticBinding, variableBinding } from "../field-binding/normalize.js";
+import { normalizeFieldBinding, staticBinding, variableBinding } from "../field-binding/normalize.js";
 import type { BookingLookupField } from "./lookup/booking-types.js";
 import { BOOKING_LOOKUP_FIELDS } from "./lookup/booking-types.js";
 
@@ -15,7 +15,7 @@ export function normalizeFindBookingConfig(config: Record<string, unknown>): Fin
     ? (lookupByRaw as BookingLookupField)
     : DEFAULT_LOOKUP_BY;
 
-  const value = isFieldBinding(config.value) ? config.value : staticBinding("");
+  const value = normalizeFieldBinding(config.value, staticBinding(""));
 
   return { lookupBy, value };
 }

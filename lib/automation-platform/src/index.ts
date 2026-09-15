@@ -183,6 +183,7 @@ export {
   type OutboundQueueEntry,
 } from "./runtime/outbound-queue.js";
 export * from "./runtime/main-menu.js";
+export * from "./runtime/booking-reschedule-message.js";
 export * from "./field-binding/types.js";
 export * from "./field-binding/normalize.js";
 export * from "./field-binding/validate.js";

@@ -21,3 +21,19 @@ export type CancelBookingInput = {
 export type CancelBookingResult = {
   booking: BookingRecord;
 };
+
+export type RescheduleBookingInput = {
+  companyId: string;
+  userId: string;
+  bookingId: string;
+  schedulingSlot: {
+    startAt: string;
+    timezone: string;
+  };
+};
+
+export type RescheduleBookingResult = {
+  booking: BookingRecord;
+  previousBookingId: string;
+  confirmationNumber?: string | null;
+};

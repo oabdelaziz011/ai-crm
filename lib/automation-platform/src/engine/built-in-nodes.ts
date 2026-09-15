@@ -50,6 +50,7 @@ import type { TicketServicePort } from "../ports/ticket-service-port.js";
 import type { HandoffServicePort } from "../ports/handoff-service-port.js";
 import { executeCreateBookingAction } from "./crm/create-booking-action.js";
 import { executeFindBookingAction } from "./crm/find-booking-action.js";
+import { executeRescheduleBookingAction } from "./crm/reschedule-booking-action.js";
 import { executeCancelBookingAction, executeUpdateBookingAction } from "./crm/update-booking-action.js";
 import { executeCreateCustomerAction, executeUpdateCustomerAction } from "./crm/create-customer-action.js";
 import { executeFindCustomerAction } from "./crm/find-customer-action.js";
@@ -980,6 +981,31 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           throw new ValidationError("Cancel booking action requires a booking service.");
         }
         return executeCancelBookingAction(context, context.currentNode.config, deps.bookingService);
+      }
+      if (action === "reschedule_booking") {
+        if (!deps?.bookingService) {
+          throw new ValidationError("Reschedule booking action requires a booking service.");
+        }
+        try {
+          return await executeRescheduleBookingAction(
+            context,
+            context.currentNode.config,
+            deps.bookingService,
+          );
+        } catch (error) {
+          const userMessage =
+            "تعذر تغيير الموعد المختار. قد يكون الموعد غير متاح أو انتهت مهلة التغيير؛ من فضلك ابدئي طلب التغيير مرة أخرى.";
+          return {
+            outcome: "completed",
+            variables: mergeVariables(context.variables, {
+              ...appendOutboundQueueEntry(context.variables, { kind: "text", text: userMessage }),
+              __waitingFor: null,
+              __prompt: userMessage,
+            }),
+            errorMessage: error instanceof Error ? error.message : String(error),
+            output: { rescheduleFailed: true },
+          };
+        }
       }
       if (action === "find_customer") {
         if (!deps?.customerService) {

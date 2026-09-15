@@ -8,6 +8,10 @@ import { SchedulingServiceCatalogRepository } from "@/lib/scheduling/repositorie
 import type { CreateBookingInput, CreateBookingResult } from "@workspace/automation-platform";
 import type { CancelBookingInput, CancelBookingResult } from "@workspace/automation-platform";
 import type { FindBookingInput, FindBookingResult } from "@workspace/automation-platform";
+import type {
+  RescheduleBookingInput,
+  RescheduleBookingResult,
+} from "@workspace/automation-platform";
 import type { SupabaseBookingServicePortOptions } from "@workspace/automation-platform";
 import { wxRecordDependencyConstruction, wxRecordServiceResolution } from "@workspace/automation-platform";
 
@@ -191,6 +195,42 @@ export function createSchedulingAwareBookingServicePort(
           }
         }
         throw error instanceof Error ? error : new Error("Clinic scheduling booking cancel failed.");
+      }
+    },
+    async rescheduleBooking(input: RescheduleBookingInput): Promise<RescheduleBookingResult> {
+      wxRecordServiceResolution("bookingService.rescheduleBooking");
+      const companyId = input.companyId?.trim() ?? "";
+      const bookingId = input.bookingId?.trim() ?? "";
+      const startAt = input.schedulingSlot?.startAt?.trim() ?? "";
+      const timezone = input.schedulingSlot?.timezone?.trim() ?? "";
+      if (!companyId || !bookingId || !startAt || !timezone) {
+        throw new Error(
+          "Reschedule booking requires company, booking, slot start, and timezone.",
+        );
+      }
+
+      const userId = await resolveActorUserId(companyId, input.userId, portOptions);
+      const { date, slotStart } = resolveLocalSlotFromInstant(startAt, timezone);
+      try {
+        const result = await domain.rescheduleBooking({
+          companyId,
+          bookingId,
+          date,
+          slotStart,
+          updatedBy: userId,
+        });
+        return {
+          booking: mapSchedulingBookingToRecord(result.booking, userId),
+          previousBookingId: result.previousBooking.id,
+          confirmationNumber: result.booking.confirmation_number ?? null,
+        };
+      } catch (error) {
+        if (error instanceof BookingDomainError) {
+          throw new Error(error.message);
+        }
+        throw error instanceof Error
+          ? error
+          : new Error("Clinic scheduling booking reschedule failed.");
       }
     },
     async createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {

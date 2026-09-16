@@ -19,6 +19,7 @@ const PROFILE_COLUMNS_FULL = `
   avatar_url,
   job_title,
   department,
+  department_id,
   phone,
   bio,
   extension_number,
@@ -139,6 +140,9 @@ function normalizeMyProfile(
     department: options.hasPreferenceColumns
       ? asNullableString(row.department)
       : null,
+    department_id: options.hasPreferenceColumns
+      ? asNullableString(row.department_id)
+      : null,
     phone: options.hasPreferenceColumns
       ? asNullableString(row.phone)
       : null,
@@ -152,7 +156,7 @@ function normalizeMyProfile(
       ? asNullableString(row.preferred_language)
       : null,
     preferred_theme: options.hasPreferenceColumns
-      ? (asNullableString(row.preferred_theme) ?? "system")
+      ? (asNullableString(row.preferred_theme) ?? "light")
       : "system",
     timezone: options.hasPreferenceColumns
       ? (asNullableString(row.timezone) ?? "UTC")
@@ -257,6 +261,8 @@ export function useUpdateMyProfile() {
         p_job_title: values.job_title ?? null,
         p_department: values.department ?? null,
         p_phone: values.phone ?? null,
+        p_department_id: values.department_id ?? null,
+        p_set_department_membership: true,
       });
 
       if (error) {

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Code2, Plus } from "lucide-react";
+import { Code2, Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { RoleFormDialog } from "@/components/roles/role-form-dialog";
+import { RoleFormDialog, type RoleDialogMode } from "@/components/roles/role-form-dialog";
 import type { RoleFormValues } from "@/components/roles/role-form-fields";
-import { PermissionBadge } from "@/components/rbac/permission-badge";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { RolesListSkeleton, RolesListTable } from "@/components/roles/roles-list-table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,8 +15,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ListPagination } from "@/components/ui/list-pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useRbacDeveloperMode } from "@/hooks/use-rbac-developer-mode";
+import { useRoleListCounts } from "@/hooks/use-role-list-counts";
 import {
   fetchRolePermissionCodes,
   useAuthUser,
@@ -29,12 +40,20 @@ import {
   useUpdateRole,
   type RoleRecord,
 } from "@/hooks/use-rbac";
-import { usePermissionCatalogLanguageVersion } from "@/lib/rbac/permission-display-i18n";
-import {
-  filterDelegablePermissionRecords,
-  filterRolesForTenantManagement,
-} from "@/lib/rbac/tenant-role-management";
 import { filterPermissionsAvailableForCompany } from "@/lib/billing/feature-definition-permissions";
+import { useDebouncedValue } from "@/lib/customers-list/use-debounced-value";
+import { filterDelegablePermissionRecords } from "@/lib/rbac/tenant-role-management";
+import {
+  applyRolesListQuery,
+  canMutateRoleFromList,
+  isPlatformSuperAdminRole,
+  listActionsForRole,
+  presentRoleTypeFilters,
+  scopeRolesToWorkspace,
+  summarizeWorkspaceRoles,
+  type RoleSortKey,
+  type RoleTypeFilter,
+} from "@/lib/rbac/roles-list";
 import { useCompanyFeaturePermissionGate } from "@/hooks/billing/use-feature-definition-permissions";
 
 const EMPTY_FORM: RoleFormValues = {
@@ -43,93 +62,14 @@ const EMPTY_FORM: RoleFormValues = {
   permissions: [],
 };
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-2xl border border-white/10 bg-card/40 p-5 backdrop-blur-sm ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-function RolePermissionDetails({
-  roleId,
-  expanded,
-  permissionCatalog,
-}: {
-  roleId: string;
-  expanded: boolean;
-  permissionCatalog: ReturnType<typeof usePermissionCatalog>["data"];
-}) {
-  const { t } = useTranslation("common");
-  const [codes, setCodes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  usePermissionCatalogLanguageVersion();
-
-  const permissionByCode = useMemo(() => {
-    const map = new Map<string, NonNullable<typeof permissionCatalog>[number]>();
-    (permissionCatalog ?? []).forEach((p) => {
-      if (p.code) map.set(p.code, p);
-    });
-    return map;
-  }, [permissionCatalog]);
-
-  useEffect(() => {
-    if (!expanded || loaded) return;
-    let cancelled = false;
-    setLoading(true);
-    void fetchRolePermissionCodes(roleId)
-      .then((result) => {
-        if (!cancelled) {
-          setCodes(result);
-          setLoaded(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [expanded, loaded, roleId]);
-
-  if (!expanded) return null;
-
-  if (loading) {
-    return (
-      <p className="mt-2 text-xs text-muted-foreground">{t("permissions.loading")}</p>
-    );
-  }
-
-  if (codes.length === 0) {
-    return (
-      <p className="mt-2 text-xs text-muted-foreground">{t("roles.roleDetails.noPermissions")}</p>
-    );
-  }
-
-  return (
-    <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
-      {codes.map((code) => (
-        <PermissionBadge
-          key={code}
-          code={code}
-          permission={permissionByCode.get(code) ?? null}
-          title
-        />
-      ))}
-    </div>
-  );
-}
-
-
 export function RolesPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const { isSuperAdmin, hasPermission, profile } = useAuthUser();
   const companyGate = useCompanyFeaturePermissionGate(profile?.company_id ?? null);
   const { developerMode, setDeveloperMode } = useRbacDeveloperMode();
-  const { data: roles = [], isLoading } = useRoles();
+  const rolesQuery = useRoles();
+  const { data: roles = [], isLoading, isError, refetch, isFetching } = rolesQuery;
   const { data: permissionsCatalog = [] } = usePermissionCatalog();
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
@@ -137,8 +77,9 @@ export function RolesPage() {
   const canCreateRoles = useHasPermission("roles.create");
   const canEditRoles = useHasPermission("roles.edit");
   const canDeleteRoles = useHasPermission("roles.delete");
+  const canViewRoles = useHasPermission("roles.view");
+  const direction = (i18n.resolvedLanguage ?? i18n.language ?? "en").startsWith("ar") ? "rtl" : "ltr";
 
-  // Non-Super-Admins: actor-delegable ∩ company-available feature permissions.
   const permissions = useMemo(() => {
     const delegable = filterDelegablePermissionRecords(
       permissionsCatalog,
@@ -158,66 +99,120 @@ export function RolesPage() {
     companyGate.isFeatureEnabled,
   ]);
 
-  // Tenant Role Management lists CUSTOM roles only (DEFAULT/PLATFORM are provisioning-owned).
-  const managedRoles = useMemo(
-    () => filterRolesForTenantManagement(roles, { includeProtected: false }),
-    [roles],
+  const workspaceRoles = useMemo(
+    () => scopeRolesToWorkspace(roles, profile?.company_id ?? null),
+    [roles, profile?.company_id],
+  );
+  const summary = useMemo(() => summarizeWorkspaceRoles(workspaceRoles), [workspaceRoles]);
+  const typeFilterOptions = useMemo(
+    () => presentRoleTypeFilters(workspaceRoles),
+    [workspaceRoles],
+  );
+  const workspaceRoleIds = useMemo(
+    () => workspaceRoles.map((role) => role.id),
+    [workspaceRoles],
+  );
+  const countsQuery = useRoleListCounts(workspaceRoleIds);
+  const counts = countsQuery.data;
+
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 250);
+  const [typeFilter, setTypeFilter] = useState<RoleTypeFilter>("ALL");
+  const [sortKey, setSortKey] = useState<RoleSortKey>("updated_at");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, typeFilter, sortKey]);
+
+  useEffect(() => {
+    if (!typeFilterOptions.includes(typeFilter)) {
+      setTypeFilter("ALL");
+    }
+  }, [typeFilter, typeFilterOptions]);
+
+  const listQuery = useMemo(
+    () =>
+      applyRolesListQuery(workspaceRoles, {
+        search: debouncedSearch,
+        typeFilter,
+        sortKey,
+        sortDirection: sortKey === "name" ? "asc" : "desc",
+        page,
+        counts: {
+          permissionCountByRoleId: counts?.permissionCountByRoleId,
+          userCountByRoleId: counts?.userCountByRoleId,
+        },
+      }),
+    [workspaceRoles, debouncedSearch, typeFilter, sortKey, page, counts],
   );
 
-  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<RoleFormValues>(EMPTY_FORM);
+  useEffect(() => {
+    if (page !== listQuery.page) setPage(listQuery.page);
+  }, [page, listQuery.page]);
 
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState<RoleFormValues | null>(null);
-  const [editPermissionsLoading, setEditPermissionsLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<RoleDialogMode>("create");
+  const [dialogForm, setDialogForm] = useState<RoleFormValues>(EMPTY_FORM);
+  const [dialogPermissionsLoading, setDialogPermissionsLoading] = useState(false);
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     roleId: string | null;
     roleName: string;
-  }>({ open: false, roleId: null, roleName: "" });
+    userCount: number | null;
+  }>({ open: false, roleId: null, roleName: "", userCount: null });
 
-  const closeCreateDialog = () => {
-    setCreateDialogOpen(false);
-    setCreateForm(EMPTY_FORM);
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setDialogForm(EMPTY_FORM);
+    setDialogPermissionsLoading(false);
+    setDialogMode("create");
   };
 
-  const closeEditDialog = () => {
-    setEditDialogOpen(false);
-    setEditForm(null);
-    setEditPermissionsLoading(false);
-  };
-
-  const openCreateDialog = () => {
-    setCreateForm(EMPTY_FORM);
-    setCreateDialogOpen(true);
-  };
-
-  const openEditDialog = async (role: RoleRecord) => {
-    setEditDialogOpen(true);
-    setEditPermissionsLoading(true);
-    setEditForm({
+  const loadRoleCodes = async (role: RoleRecord, mode: Exclude<RoleDialogMode, "create">) => {
+    setDialogMode(mode);
+    setDialogOpen(true);
+    setDialogPermissionsLoading(true);
+    setDialogForm({
       id: role.id,
       name: role.name ?? "",
       description: role.description ?? "",
       permissions: [],
     });
-
     try {
       const permissionCodes = await fetchRolePermissionCodes(role.id);
-      setEditForm({
+      const nextCodes =
+        mode === "view" || isSuperAdmin
+          ? permissionCodes
+          : permissionCodes.filter((code) => hasPermission(code));
+      setDialogForm({
         id: role.id,
         name: role.name ?? "",
         description: role.description ?? "",
-        // Keep only permissions this actor may still delegate (DB also enforces).
-        permissions: isSuperAdmin
-          ? permissionCodes
-          : permissionCodes.filter((code) => hasPermission(code)),
+        permissions: nextCodes,
       });
     } finally {
-      setEditPermissionsLoading(false);
+      setDialogPermissionsLoading(false);
     }
+  };
+
+  const openCreateDialog = () => {
+    setDialogMode("create");
+    setDialogForm(EMPTY_FORM);
+    setDialogOpen(true);
+  };
+
+  const openViewDialog = (role: RoleRecord) => {
+    void loadRoleCodes(role, "view");
+  };
+
+  const openEditDialog = (role: RoleRecord) => {
+    if (!canMutateRoleFromList(role) || isPlatformSuperAdminRole(role)) {
+      void loadRoleCodes(role, "view");
+      return;
+    }
+    void loadRoleCodes(role, "edit");
   };
 
   const resolveRoleMutationError = (message: string) => {
@@ -239,16 +234,16 @@ export function RolesPage() {
   const handleCreate = () => {
     createRole.mutate(
       {
-        name: createForm.name.trim(),
-        description: createForm.description.trim(),
-        permissions: createForm.permissions,
+        name: dialogForm.name.trim(),
+        description: dialogForm.description.trim(),
+        permissions: dialogForm.permissions,
       },
       {
         onSuccess: () => {
-          closeCreateDialog();
+          closeDialog();
           toast({
             title: t("roles.toast.createSuccessTitle"),
-            description: t("roles.toast.createSuccessDescription", { name: createForm.name.trim() }),
+            description: t("roles.toast.createSuccessDescription", { name: dialogForm.name.trim() }),
           });
         },
         onError: (error) => {
@@ -263,20 +258,24 @@ export function RolesPage() {
   };
 
   const handleEdit = () => {
-    if (!editForm?.id) return;
+    if (!dialogForm?.id || dialogMode !== "edit") return;
+    const existing = workspaceRoles.find((role) => role.id === dialogForm.id);
+    if (!existing || !canMutateRoleFromList(existing) || isPlatformSuperAdminRole(existing)) {
+      return;
+    }
     updateRole.mutate(
       {
-        id: editForm.id,
-        name: editForm.name.trim(),
-        description: editForm.description.trim(),
-        permissions: editForm.permissions,
+        id: dialogForm.id,
+        name: dialogForm.name.trim(),
+        description: dialogForm.description.trim(),
+        permissions: dialogForm.permissions,
       },
       {
         onSuccess: () => {
-          closeEditDialog();
+          closeDialog();
           toast({
             title: t("roles.toast.updateSuccessTitle"),
-            description: t("roles.toast.updateSuccessDescription", { name: editForm.name.trim() }),
+            description: t("roles.toast.updateSuccessDescription", { name: dialogForm.name.trim() }),
           });
         },
         onError: (error) => {
@@ -292,194 +291,262 @@ export function RolesPage() {
 
   const handleConfirmDelete = () => {
     if (!deleteDialog.roleId) return;
-    deleteRole.mutate(deleteDialog.roleId, {
+    const roleId = deleteDialog.roleId;
+    const roleName = deleteDialog.roleName;
+    deleteRole.mutate(roleId, {
       onSuccess: () => {
         toast({
           title: t("roles.toast.deleteSuccessTitle"),
-          description: t("roles.toast.deleteSuccessDescription", { name: deleteDialog.roleName }),
+          description: t("roles.toast.deleteSuccessDescription", { name: roleName }),
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: t("roles.toast.deleteFailedTitle"),
+          description: resolveRoleMutationError(error.message),
+          variant: "destructive",
         });
       },
     });
-    setDeleteDialog({ open: false, roleId: null, roleName: "" });
+    setDeleteDialog({ open: false, roleId: null, roleName: "", userCount: null });
   };
 
+  const tableRows = listQuery.items.map((role) => ({
+    role,
+    permissionCount: counts?.permissionCountByRoleId[role.id] ?? null,
+    userCount: counts?.userCountByRoleId[role.id] ?? null,
+    actions: listActionsForRole(role, {
+      canView: canViewRoles,
+      canEdit: canEditRoles,
+      canDelete: canDeleteRoles,
+    }),
+  }));
+
+  const metrics = [
+    summary.platform > 0
+      ? { key: "system", label: t("roles.list.metrics.system"), value: summary.platform }
+      : null,
+    summary.default > 0
+      ? { key: "default", label: t("roles.list.metrics.default"), value: summary.default }
+      : null,
+    { key: "custom", label: t("roles.list.metrics.custom"), value: summary.custom },
+    counts?.assignedUserTotal != null
+      ? {
+          key: "assigned",
+          label: t("roles.list.metrics.assignedUsers"),
+          value: counts.assignedUserTotal,
+        }
+      : null,
+  ].filter((card): card is { key: string; label: string; value: number } => card != null);
+
+  const customFilterEmpty = typeFilter === "CUSTOM" && listQuery.total === 0 && !debouncedSearch.trim();
+  const searchEmpty = listQuery.total === 0 && Boolean(debouncedSearch.trim() || typeFilter !== "ALL");
+  const dialogReadOnly = dialogMode === "view";
+  const dialogPermissions = dialogReadOnly ? permissionsCatalog : permissions;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-row-reverse items-start justify-between gap-4 rtl:flex-row">
-        <div>
-          <h1 className="text-2xl font-bold">{t("roles.title")}</h1>
+    <div className="space-y-4" data-testid="roles-list-page">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{t("roles.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("roles.subtitle")}</p>
         </div>
-        {canCreateRoles && (
-          <Button
-            onClick={openCreateDialog}
-            className="shrink-0 bg-primary/20 text-primary hover:bg-primary/30 gap-2"
-          >
+        {canCreateRoles ? (
+          <Button onClick={openCreateDialog} className="shrink-0 gap-2">
             <Plus className="h-4 w-4" />
             {t("roles.createRole")}
           </Button>
-        )}
+        ) : null}
       </div>
 
-      <Card>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <Code2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{t("roles.permissions.developerMode")}</p>
-              <p className="text-xs text-muted-foreground">{t("roles.permissions.developerModeDescription")}</p>
+      {metrics.length > 0 ? (
+        <div className={`grid gap-2 sm:grid-cols-2 ${metrics.length > 2 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
+          {metrics.map((card) => (
+            <div
+              key={card.key}
+              className="rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-sm"
+            >
+              <p className="text-[11px] font-medium text-muted-foreground">{card.label}</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight" dir="ltr">
+                {card.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border/60 p-3 lg:flex-row lg:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              data-testid="roles-list-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("roles.list.searchPlaceholder")}
+              aria-label={t("roles.list.searchPlaceholder")}
+              dir="auto"
+              className="ps-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={typeFilter}
+              onValueChange={(value) => setTypeFilter(value as RoleTypeFilter)}
+            >
+              <SelectTrigger className="w-[11.5rem]" data-testid="roles-list-type-filter" aria-label={t("roles.list.typeFilterLabel")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {typeFilterOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option === "ALL"
+                      ? t("roles.list.typeFilterAll")
+                      : option === "PLATFORM"
+                        ? t("roles.list.typeFilterPlatform")
+                        : option === "DEFAULT"
+                          ? t("roles.list.typeFilterDefault")
+                          : t("roles.list.typeFilterCustom")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortKey} onValueChange={(value) => setSortKey(value as RoleSortKey)}>
+              <SelectTrigger className="w-[11.5rem]" data-testid="roles-list-sort" aria-label={t("roles.list.sortLabel")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_at">{t("roles.list.sortUpdated")}</SelectItem>
+                <SelectItem value="name">{t("roles.list.sortName")}</SelectItem>
+                <SelectItem value="permission_count">{t("roles.list.sortPermissions")}</SelectItem>
+                <SelectItem value="user_count">{t("roles.list.sortUsers")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2 rounded-lg border border-border/60 px-2 py-1">
+              <Code2 className="size-3.5 text-muted-foreground" aria-hidden />
+              <span className="text-xs text-muted-foreground">{t("roles.permissions.developerMode")}</span>
+              <Switch
+                checked={developerMode}
+                onCheckedChange={setDeveloperMode}
+                aria-label={t("roles.permissions.developerMode")}
+              />
             </div>
           </div>
-          <Switch checked={developerMode} onCheckedChange={setDeveloperMode} aria-label={t("roles.permissions.developerMode")} />
         </div>
-      </Card>
 
-      <Card className="overflow-hidden p-0">
-        <div className="border-b border-white/5 px-5 py-4 text-sm font-semibold">
-          {t("roles.customRolesHeading")}
-        </div>
-        {isLoading ? (
-          <div className="space-y-3 p-6">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-12 animate-pulse rounded-xl bg-white/5" />
-            ))}
+        {isError ? (
+          <div className="p-4" data-testid="roles-list-error">
+            <Alert variant="destructive">
+              <AlertTitle>{t("roles.list.loadError")}</AlertTitle>
+              <AlertDescription className="mt-2 flex items-center gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+                  {t("roles.list.retry")}
+                </Button>
+              </AlertDescription>
+            </Alert>
           </div>
-        ) : managedRoles.length === 0 ? (
-          <div className="px-6 py-16 text-center">
+        ) : isLoading ? (
+          <RolesListSkeleton />
+        ) : customFilterEmpty || (summary.custom === 0 && typeFilter === "ALL" && listQuery.total === 0) ? (
+          <div className="px-6 py-12 text-center" data-testid="roles-list-empty-custom">
             <p className="text-sm font-medium text-foreground">{t("roles.emptyCustomTitle")}</p>
             <p className="mt-2 text-sm text-muted-foreground">{t("roles.emptyCustomDescription")}</p>
             {canCreateRoles ? (
-              <Button
-                onClick={openCreateDialog}
-                className="mt-6 bg-primary/20 text-primary hover:bg-primary/30 gap-2"
-              >
+              <Button onClick={openCreateDialog} className="mt-5 gap-2">
                 <Plus className="h-4 w-4" />
                 {t("roles.createRole")}
               </Button>
             ) : null}
           </div>
-        ) : (
-          <div className="divide-y divide-white/5">
-            {managedRoles.map((role) => {
-              const isProtectedRole =
-                role.role_type === "DEFAULT" || role.role_type === "PLATFORM";
-              // DEFAULT/PLATFORM roles are provisioning-owned (Company Admin, Human Handoff Agent, …).
-              // Only CUSTOM roles are editable from this page — including for Super Admin.
-              const canEditThisRole = canEditRoles && !isProtectedRole;
-              const canDeleteThisRole = canDeleteRoles && role.role_type === "CUSTOM";
-              const isExpanded = expandedRoleId === role.id;
-
-              return (
-              <div key={role.id} className="px-6 py-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{role.name}</p>
-                    <p className="text-xs text-muted-foreground">{role.description || t("roles.noDescription")}</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => setExpandedRoleId(isExpanded ? null : role.id)}
-                    >
-                      {isExpanded ? (
-                        <>
-                          <ChevronUp className="me-1 h-3.5 w-3.5" />
-                          {t("roles.roleDetails.hidePermissions")}
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="me-1 h-3.5 w-3.5" />
-                          {t("roles.roleDetails.showPermissions")}
-                        </>
-                      )}
-                    </Button>
-                    <RolePermissionDetails
-                      roleId={role.id}
-                      expanded={isExpanded}
-                      permissionCatalog={permissions}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    {canEditThisRole && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-white/10"
-                        onClick={() => void openEditDialog(role)}
-                      >
-                        {t("roles.edit")}
-                      </Button>
-                    )}
-                    {canDeleteThisRole && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-white/10"
-                        onClick={() =>
-                          setDeleteDialog({
-                            open: true,
-                            roleId: role.id,
-                            roleName: role.name ?? t("roles.noDescription"),
-                          })
-                        }
-                      >
-                        {t("roles.delete")}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              );
-            })}
+        ) : searchEmpty ? (
+          <div className="px-6 py-12 text-center" data-testid="roles-list-empty-search">
+            <p className="text-sm font-medium">{t("roles.list.noSearchResults")}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("roles.list.noSearchResultsDescription")}</p>
           </div>
+        ) : (
+          <>
+            {summary.custom === 0 && typeFilter === "ALL" ? (
+              <div className="border-b border-border/60 bg-muted/20 px-4 py-3 text-sm">
+                <p className="font-medium">{t("roles.emptyCustomTitle")}</p>
+                <p className="mt-1 text-muted-foreground">{t("roles.emptyCustomDescription")}</p>
+                {canCreateRoles ? (
+                  <Button variant="outline" size="sm" onClick={openCreateDialog} className="mt-3 gap-2">
+                    <Plus className="h-4 w-4" />
+                    {t("roles.createRole")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            <RolesListTable
+              rows={tableRows}
+              onView={openViewDialog}
+              onEdit={openEditDialog}
+              onDelete={(role) =>
+                setDeleteDialog({
+                  open: true,
+                  roleId: role.id,
+                  roleName: role.name ?? t("roles.noDescription"),
+                  userCount: counts?.userCountByRoleId[role.id] ?? null,
+                })
+              }
+              onOpenPermissions={(role) => {
+                if (canEditRoles && canMutateRoleFromList(role)) openEditDialog(role);
+                else openViewDialog(role);
+              }}
+            />
+            <ListPagination
+              className="border-t border-border/60 px-3 py-3"
+              page={listQuery.page}
+              totalPages={listQuery.totalPages}
+              total={listQuery.total}
+              summaryLabel={t("roles.list.summaryRange", {
+                from: listQuery.from,
+                to: listQuery.to,
+                total: listQuery.total,
+              })}
+              previousLabel={t("pagination.previous")}
+              nextLabel={t("pagination.next")}
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => Math.min(listQuery.totalPages, current + 1))}
+            />
+          </>
         )}
-      </Card>
+      </div>
 
       <RoleFormDialog
-        open={createDialogOpen}
+        open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open) closeCreateDialog();
-          else setCreateDialogOpen(true);
+          if (!open) closeDialog();
+          else setDialogOpen(true);
         }}
-        mode="create"
-        values={createForm}
-        onChange={setCreateForm}
-        permissions={permissions}
-        submitting={createRole.isPending}
-        onSubmit={handleCreate}
+        mode={dialogMode}
+        readOnly={dialogReadOnly}
+        values={dialogForm}
+        onChange={setDialogForm}
+        permissions={dialogPermissions}
+        permissionsLoading={dialogPermissionsLoading}
+        submitting={createRole.isPending || updateRole.isPending}
+        onSubmit={dialogMode === "create" ? handleCreate : handleEdit}
       />
-
-      {editForm && (
-        <RoleFormDialog
-          open={editDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) closeEditDialog();
-            else setEditDialogOpen(true);
-          }}
-          mode="edit"
-          values={editForm}
-          onChange={setEditForm}
-          permissions={permissions}
-          permissionsLoading={editPermissionsLoading}
-          submitting={updateRole.isPending}
-          onSubmit={handleEdit}
-        />
-      )}
 
       <AlertDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog((current) => ({ ...current, open }))}
       >
-        <AlertDialogContent className="border-white/10 bg-card text-foreground">
+        <AlertDialogContent dir={direction} className="border-border bg-card text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>{t("roles.confirm.deleteTitle", { role: deleteDialog.roleName })}</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
               {t("roles.confirm.deleteDescription")}
+              {deleteDialog.userCount != null ? (
+                <span className="mt-2 block" dir="ltr">
+                  {t("roles.confirm.deleteAssigned", { count: deleteDialog.userCount })}
+                </span>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 hover:bg-white/5">{t("buttons.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel>{t("buttons.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleConfirmDelete}

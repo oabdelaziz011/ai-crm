@@ -7,6 +7,8 @@ import {
   assertRolePermissionsAreDelegable,
 } from "@/lib/rbac/permission-delegation";
 import { mapRoleWriteError } from "@/lib/rbac/role-write-errors";
+import { assertRoleTypeDeletable } from "@/lib/rbac/roles-list";
+import { ROLE_LIST_COUNTS_QUERY_KEY } from "@/lib/rbac/fetch-role-list-counts";
 
 export interface RoleRecord {
   id: string;
@@ -180,8 +182,7 @@ export function useRoles() {
         .select("id, name, description, company_id, role_type, template_key, created_at, updated_at")
         .order("created_at", { ascending: false });
       if (error) {
-        console.warn("Roles table unavailable, using empty state", error.message);
-        return [];
+        throw error;
       }
       return (data ?? []) as RoleRecord[];
     },
@@ -295,6 +296,7 @@ export function useCreateRole() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
       await qc.invalidateQueries({ queryKey: ["rbac", "permissions-catalog"] });
+      await qc.invalidateQueries({ queryKey: ROLE_LIST_COUNTS_QUERY_KEY });
     },
   });
 }
@@ -383,6 +385,7 @@ export function useUpdateRole() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
       await qc.invalidateQueries({ queryKey: ["rbac", "permissions-catalog"] });
+      await qc.invalidateQueries({ queryKey: ROLE_LIST_COUNTS_QUERY_KEY });
     },
   });
 }
@@ -391,6 +394,16 @@ export function useDeleteRole() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: existing, error: existingError } = await supabase
+        .from("roles")
+        .select("id, role_type")
+        .eq("id", id)
+        .maybeSingle();
+      if (existingError) throw new Error(mapRoleWriteError(existingError.message));
+      if (!existing?.id) {
+        throw new Error("ROLE_NOT_FOUND");
+      }
+      assertRoleTypeDeletable(existing.role_type);
       await supabase.from("role_permissions").delete().eq("role_id", id);
       const { error } = await supabase.from("roles").delete().eq("id", id);
       if (error) throw new Error(error.message);
@@ -398,6 +411,7 @@ export function useDeleteRole() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["rbac", "roles"] });
       await qc.invalidateQueries({ queryKey: ["rbac", "permissions-catalog"] });
+      await qc.invalidateQueries({ queryKey: ROLE_LIST_COUNTS_QUERY_KEY });
     },
   });
 }

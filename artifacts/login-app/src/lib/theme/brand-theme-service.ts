@@ -1,6 +1,5 @@
 import { DEFAULT_BRAND_COLORS } from "@/lib/company-workspace/brand-center/defaults";
 import type { CompanyBrandColors } from "@/lib/company-workspace/brand-center/types";
-import { isPlatformAppearanceActive } from "@/lib/theme/resolve-app-theme";
 import {
   contrastForeground,
   hexToHsl,
@@ -11,6 +10,24 @@ import {
 } from "@/lib/theme/hex-to-hsl";
 
 export type BrandThemeMode = "light" | "dark";
+
+/**
+ * Sidebar chrome is application-neutral (index.css :root / .dark) — never Brand Center.
+ * Company branding must not paint --sidebar* so Light/System-light stay original gray.
+ */
+const SIDEBAR_STYLE_KEYS = [
+  "--sidebar",
+  "--sidebar-background",
+  "--sidebar-foreground",
+  "--sidebar-gradient-end",
+  "--sidebar-primary",
+  "--sidebar-primary-foreground",
+  "--sidebar-primary-border",
+  "--sidebar-accent",
+  "--sidebar-accent-foreground",
+  "--sidebar-border",
+  "--sidebar-ring",
+] as const;
 
 const BRAND_STYLE_KEYS = [
   "--primary",
@@ -42,17 +59,7 @@ const BRAND_STYLE_KEYS = [
   "--muted-foreground",
   "--muted-border",
   "--ring",
-  "--sidebar",
-  "--sidebar-background",
-  "--sidebar-foreground",
-  "--sidebar-gradient-end",
-  "--sidebar-primary",
-  "--sidebar-primary-foreground",
-  "--sidebar-primary-border",
-  "--sidebar-accent",
-  "--sidebar-accent-foreground",
-  "--sidebar-border",
-  "--sidebar-ring",
+  ...SIDEBAR_STYLE_KEYS,
   "--chart-1",
 ] as const;
 
@@ -65,37 +72,9 @@ function channels(hsl: HslChannels): string {
 }
 
 /**
- * Sidebar chrome uses dedicated Brand Center sidebar fields — independent of
- * button/system primary so operators can theme the rail without changing CTAs.
- */
-function buildSidebarChrome(
-  sidebar: HslChannels,
-  sidebarActive: HslChannels,
-  sidebarAccent: HslChannels,
-) {
-  const sidebarBase = sidebar;
-  const sidebarEnd = withLightness(sidebarBase, Math.max(sidebarBase.l - 8, 6));
-  const sidebarHover = sidebarAccent;
-  const sidebarBorder = withLightness(sidebarBase, Math.min(sidebarBase.l + 12, 36));
-
-  return {
-    "--sidebar": channels(sidebarBase),
-    "--sidebar-background": channels(sidebarBase),
-    "--sidebar-foreground": contrastForeground(sidebarBase),
-    "--sidebar-gradient-end": channels(sidebarEnd),
-    "--sidebar-primary": channels(sidebarActive),
-    "--sidebar-primary-foreground": contrastForeground(sidebarActive),
-    "--sidebar-primary-border": `hsl(${channels(sidebarActive)})`,
-    "--sidebar-accent": channels(sidebarHover),
-    "--sidebar-accent-foreground": contrastForeground(sidebarBase),
-    "--sidebar-border": channels(sidebarBorder),
-    "--sidebar-ring": channels(sidebarActive),
-  } as const;
-}
-
-/**
  * Map Brand Center colors → shadcn CSS variables for the active light/dark mode.
  * Values are written on `document.documentElement` so existing Tailwind tokens update live.
+ * Sidebar tokens are intentionally omitted — shell chrome stays stylesheet-neutral.
  */
 export function buildBrandThemeCssVariables(
   colors: Partial<CompanyBrandColors> | null | undefined,
@@ -116,9 +95,6 @@ export function buildBrandThemeCssVariables(
   const danger = resolveColor(palette.danger, DEFAULT_BRAND_COLORS.danger);
   const background = resolveColor(palette.background, DEFAULT_BRAND_COLORS.background);
   const surface = resolveColor(palette.surface, DEFAULT_BRAND_COLORS.surface);
-  const sidebar = resolveColor(palette.sidebar, DEFAULT_BRAND_COLORS.sidebar);
-  const sidebarActive = resolveColor(palette.sidebarActive, DEFAULT_BRAND_COLORS.sidebarActive);
-  const sidebarAccent = resolveColor(palette.sidebarAccent, DEFAULT_BRAND_COLORS.sidebarAccent);
 
   if (mode === "dark") {
     const darkPrimary = withLightness(primary, Math.max(primary.l, 48));
@@ -131,10 +107,6 @@ export function buildBrandThemeCssVariables(
     const darkMuted = withLightness(withSaturation(secondary, Math.min(secondary.s, 30)), 13);
     const darkBorder = withLightness(withSaturation(secondary, Math.min(secondary.s, 28)), 16);
     const darkPageAccent = withLightness(withSaturation(secondary, Math.min(secondary.s, 44)), 14);
-    const darkSidebar = withLightness(sidebar, Math.min(sidebar.l, 18));
-    const darkSidebarActive = withLightness(sidebarActive, Math.max(sidebarActive.l, 48));
-    const darkSidebarAccent = withLightness(sidebarAccent, Math.min(Math.max(sidebarAccent.l, 22), 36));
-    const sidebarChrome = buildSidebarChrome(darkSidebar, darkSidebarActive, darkSidebarAccent);
 
     return {
       "--primary": channels(darkPrimary),
@@ -166,7 +138,6 @@ export function buildBrandThemeCssVariables(
       "--muted-foreground": "215 14% 58%",
       "--muted-border": `hsl(${channels(darkBorder)})`,
       "--ring": channels(darkPrimary),
-      ...sidebarChrome,
       "--chart-1": channels(darkPrimary),
     };
   }
@@ -176,7 +147,6 @@ export function buildBrandThemeCssVariables(
   // Brand secondary drives muted UI chrome (cards/chips), not the sidebar rail.
   const secondaryUi = withLightness(withSaturation(secondary, Math.min(secondary.s, 20)), 93);
   const accentUi = withLightness(withSaturation(accent, Math.min(accent.s, 30)), 92);
-  const sidebarChrome = buildSidebarChrome(sidebar, sidebarActive, sidebarAccent);
 
   return {
     "--primary": channels(primary),
@@ -208,10 +178,19 @@ export function buildBrandThemeCssVariables(
     "--muted-foreground": "215 16% 40%",
     "--muted-border": `hsl(${channels(border)})`,
     "--ring": channels(primary),
-    ...sidebarChrome,
     "--chart-1": channels(primary),
   };
 }
+
+/** Original light-mode sidebar tokens from index.css :root (neutral chrome). */
+export const ORIGINAL_LIGHT_SIDEBAR_CSS = {
+  "--sidebar": "210 25% 96%",
+  "--sidebar-foreground": "222 35% 18%",
+  "--sidebar-border": "214 20% 88%",
+  "--sidebar-accent": "210 20% 93%",
+  "--sidebar-accent-foreground": "222 47% 11%",
+  "--sidebar-gradient-end": "210 20% 92%",
+} as const;
 
 /** Apply company branding to the document root. Safe to call repeatedly. */
 export function applyBrandTheme(
@@ -219,25 +198,20 @@ export function applyBrandTheme(
   mode: BrandThemeMode = "light",
 ): void {
   if (typeof document === "undefined") return;
-  // Appearance → System must keep stylesheet tokens; ignore brand paint.
-  if (isPlatformAppearanceActive()) {
-    clearBrandThemeInlineStyles();
-    return;
-  }
   const root = document.documentElement;
   const tokens = buildBrandThemeCssVariables(colors, mode);
   for (const [key, value] of Object.entries(tokens)) {
     root.style.setProperty(key, value);
+  }
+  // Keep sidebar on stylesheet tokens — never leave Brand Center inline overrides.
+  for (const key of SIDEBAR_STYLE_KEYS) {
+    root.style.removeProperty(key);
   }
   root.dataset.brandTheme = mode;
 }
 
 /** Reset to ValueOR defaults for the active mode. */
 export function applyDefaultBrandTheme(mode: BrandThemeMode = "light"): void {
-  if (isPlatformAppearanceActive()) {
-    clearBrandThemeInlineStyles();
-    return;
-  }
   applyBrandTheme(DEFAULT_BRAND_COLORS, mode);
 }
 

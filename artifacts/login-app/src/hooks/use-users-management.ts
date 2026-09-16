@@ -27,7 +27,10 @@ export type ManagedUser = {
   full_name: string | null;
   avatar_url: string | null;
   job_title: string | null;
+  /** Legacy/display text — keep in sync with department_id when writing. */
   department: string | null;
+  /** Canonical membership → organization_departments.id */
+  department_id: string | null;
   phone: string | null;
   preferred_language: string | null;
   timezone: string | null;
@@ -46,7 +49,7 @@ export const USERS_MANAGEMENT_KEY = ["users-management"] as const;
 export const USERS_LIST_MAX_ROWS = USERS_LIST_PAGE_SIZE * 20;
 
 const PROFILE_LIST_COLUMNS =
-  "id, email, full_name, avatar_url, job_title, department, phone, preferred_language, timezone, company_id, is_active, is_super_admin, created_at" as const;
+  "id, email, full_name, avatar_url, job_title, department, department_id, phone, preferred_language, timezone, company_id, is_active, is_super_admin, created_at" as const;
 
 export type ManagedUsersScope = {
   companyId?: string | null;
@@ -184,7 +187,10 @@ type CreateUserInput = {
   isActive: boolean;
   branchIds?: string[];
   jobTitle?: string | null;
+  /** Legacy display text — mirrored from canonical department when selected. */
   department?: string | null;
+  /** Canonical organization_departments.id */
+  departmentId?: string | null;
   phone?: string | null;
   avatarUrl?: string | null;
   preferredLanguage?: string | null;
@@ -270,6 +276,7 @@ export function useCreateManagedUser() {
           isActive: input.isActive,
           jobTitle: input.jobTitle ?? null,
           department: input.department ?? null,
+          departmentId: input.departmentId ?? null,
           phone: input.phone ?? null,
           avatarUrl: input.avatarUrl ?? null,
           preferredLanguage: input.preferredLanguage ?? null,
@@ -315,7 +322,10 @@ type UpdateUserInput = {
   roleId?: string;
   branchIds?: string[];
   job_title?: string | null;
+  /** Legacy display text — mirrored from canonical department when selected. */
   department?: string | null;
+  /** Canonical organization_departments.id */
+  department_id?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
   preferred_language?: string | null;
@@ -332,6 +342,36 @@ export function useUpdateManagedUser() {
       const { id, roleId, branchIds, ...profileValues } = input;
 
       if (Object.keys(profileValues).length > 0) {
+        // Canonical department_id is authoritative; mirror organization_departments.name into text.
+        if ("department_id" in profileValues) {
+          const departmentId = profileValues.department_id ?? null;
+          if (departmentId) {
+            const [{ data: dept, error: deptError }, { data: profileRow, error: profileError }] =
+              await Promise.all([
+                supabase
+                  .from("organization_departments")
+                  .select("id, name, company_id")
+                  .eq("id", departmentId)
+                  .maybeSingle(),
+                supabase.from("profiles").select("company_id").eq("id", id).maybeSingle(),
+              ]);
+            if (deptError) throw new Error(deptError.message);
+            if (profileError) throw new Error(profileError.message);
+            const companyId =
+              profileValues.company_id !== undefined
+                ? profileValues.company_id
+                : (profileRow?.company_id ?? null);
+            if (!dept || !companyId || dept.company_id !== companyId) {
+              throw new Error("Department must belong to the same company");
+            }
+            profileValues.department_id = dept.id;
+            profileValues.department = String(dept.name).trim() || null;
+          } else {
+            profileValues.department_id = null;
+            profileValues.department = null;
+          }
+        }
+
         const { error } = await supabase.from("profiles").update(profileValues).eq("id", id);
         if (error) throw new Error(error.message);
       }
@@ -365,6 +405,11 @@ export function useUpdateManagedUser() {
   });
 }
 
+/**
+ * Email recovery link only (forgot-password / resend-invite fallback).
+ * Admin/manager employee password reset must use `useResetEmployeePassword`
+ * → edge function `reset-employee-password` (direct set + RBAC).
+ */
 export function useResetManagedUserPassword() {
   return useMutation({
     mutationFn: async (email: string) => {

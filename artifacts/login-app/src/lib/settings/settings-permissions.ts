@@ -54,6 +54,17 @@ export function isSettingsRoutePermitted(
     if (!(isSuperAdmin || hasPermission("tickets.manage") || hasPermission("settings.edit"))) {
       return false;
     }
+  } else if (route.id === "email" || route.permission === "ai.email.manage") {
+    // Email Settings: connection and/or identity permissions (legacy ai.email.manage still valid).
+    const emailSettingsOk =
+      isSuperAdmin ||
+      hasPermission("ai.email.manage") ||
+      hasPermission("email.settings.manage") ||
+      hasPermission("email.identity.manage") ||
+      hasPermission("email.identity.company.manage");
+    if (!emailSettingsOk) {
+      return false;
+    }
   } else if (!canViewSettings(hasPermission, isSuperAdmin)) {
     return false;
   } else if (!route.permission) {

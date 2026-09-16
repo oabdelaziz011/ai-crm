@@ -46,15 +46,19 @@ export function PermissionLabel({ code, permission, showDescription = false }: P
   const { developerMode } = useRbacDeveloperMode();
   const displayName = resolvePermissionDisplayName(code, permission ?? null);
   const description = resolvePermissionDescription(code, permission ?? null);
+  const showCode = developerMode || showDescription;
 
   return (
     <span className="min-w-0 flex-1">
-      <span className="block font-medium text-foreground">{displayName}</span>
-      {developerMode || showDescription ? (
-        <span className="block text-xs text-muted-foreground">{description}</span>
+      <span className="block font-medium leading-snug text-foreground">{displayName}</span>
+      {showDescription || developerMode ? (
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{description}</span>
       ) : null}
-      {developerMode ? (
-        <span className="block truncate font-mono text-[10px] text-muted-foreground/80" dir="ltr">
+      {showCode ? (
+        <span
+          className="mt-1 block truncate font-mono text-[11px] leading-none text-muted-foreground/70"
+          dir="ltr"
+        >
           {code}
         </span>
       ) : null}

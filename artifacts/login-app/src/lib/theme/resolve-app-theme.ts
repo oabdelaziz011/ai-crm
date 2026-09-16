@@ -4,7 +4,8 @@ export const APP_THEMES = ["system", "light", "dark"] as const;
 
 export type AppTheme = (typeof APP_THEMES)[number];
 
-export const DEFAULT_APP_THEME: AppTheme = "system";
+/** Canonical default when no preference is saved. */
+export const DEFAULT_APP_THEME: AppTheme = "light";
 
 export function isAppTheme(value: string | null | undefined): value is AppTheme {
   return value === "system" || value === "light" || value === "dark";
@@ -20,7 +21,8 @@ export function readCachedAppTheme(): AppTheme | null {
 
 /**
  * Resolve the active theme preference.
- * Authority: profile DB → localStorage cache → default (system).
+ * Authority: profile DB → localStorage cache → default (light).
+ * Does not overwrite an existing saved preference.
  */
 export function resolveAppTheme(profilePreferredTheme: string | null | undefined): AppTheme {
   if (isAppTheme(profilePreferredTheme)) {
@@ -46,17 +48,6 @@ export function cacheAppTheme(theme: AppTheme): void {
   document.documentElement.dataset.appearance = theme;
 }
 
-/** True when Appearance preference is System (platform stylesheet, no Brand Center paint). */
-export function isPlatformAppearanceActive(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  if (document.documentElement.dataset.appearance === "system") {
-    return true;
-  }
-  return readCachedAppTheme() === "system";
-}
-
 export function readSystemPrefersDark(): boolean {
   if (typeof window === "undefined") {
     return false;
@@ -64,6 +55,7 @@ export function readSystemPrefersDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+/** Resolve System → light|dark via OS; Light/Dark pass through. */
 export function resolveEffectiveTheme(theme: AppTheme): "light" | "dark" {
   if (theme === "dark") {
     return "dark";

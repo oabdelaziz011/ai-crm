@@ -13,7 +13,7 @@ export type CompanyLocaleRuntime = {
 };
 
 const DEFAULTS: CompanyLocaleRuntime = {
-  currency: "USD",
+  currency: "EGP",
   language: "en",
   timezone: "UTC",
   intlLocale: "en",

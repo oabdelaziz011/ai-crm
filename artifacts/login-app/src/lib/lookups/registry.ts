@@ -22,6 +22,8 @@ export const LOOKUP_ENTITY_REGISTRY: LookupEntityDefinition[] = [
       outputField("name", "lookups.fields.name"),
       outputField("description", "lookups.fields.description"),
       outputField("duration_minutes", "lookups.fields.durationMinutes", "number"),
+      outputField("price_cents", "lookups.fields.priceCents", "number"),
+      outputField("price_display", "lookups.fields.priceDisplay"),
       outputField("status", "lookups.fields.status"),
     ],
     filters: [
@@ -50,6 +52,8 @@ export const LOOKUP_ENTITY_REGISTRY: LookupEntityDefinition[] = [
       outputField("name", "lookups.fields.name"),
       outputField("resource_type", "lookups.fields.resourceType"),
       outputField("branch_id", "lookups.fields.branchId", "id"),
+      outputField("price_cents", "lookups.fields.priceCents", "number"),
+      outputField("price_display", "lookups.fields.priceDisplay"),
       outputField("status", "lookups.fields.status"),
     ],
     filters: [
@@ -332,6 +336,35 @@ export const LOOKUP_ENTITY_REGISTRY: LookupEntityDefinition[] = [
       { id: "service_id", labelKey: "lookups.filters.service", type: "text" },
       { id: "resource_id", labelKey: "lookups.filters.resource", type: "text" },
       { id: "date", labelKey: "lookups.filters.date", type: "text" },
+    ],
+  },
+  {
+    id: "customer_bookings",
+    labelKey: "lookups.entities.customerBookings",
+    variableName: "booking",
+    displayNameKey: "lookups.outputVariables.selectedBooking",
+    defaultDisplayField: "display_label",
+    defaultValueField: "id",
+    computed: true,
+    displayFields: [
+      field("display_label", "lookups.fields.displayLabel"),
+      field("confirmation_number", "lookups.fields.confirmationNumber"),
+      field("display_time", "lookups.fields.displayTime"),
+    ],
+    valueFields: [field("id", "lookups.fields.id")],
+    outputFields: [
+      outputField("id", "lookups.fields.id", "id"),
+      outputField("confirmation_number", "lookups.fields.confirmationNumber"),
+      outputField("start_at", "lookups.fields.startAt"),
+      outputField("display_label", "lookups.fields.displayLabel"),
+      outputField("resource_id", "lookups.fields.resourceId", "id"),
+      outputField("service_id", "lookups.fields.serviceId", "id"),
+      outputField("status", "lookups.fields.status"),
+      outputField("customer_id", "lookups.fields.customerId", "id"),
+    ],
+    filters: [
+      { id: "phone", labelKey: "lookups.fields.phone", type: "text" },
+      { id: "customer_id", labelKey: "lookups.filters.customer", type: "text" },
     ],
   },
 ];

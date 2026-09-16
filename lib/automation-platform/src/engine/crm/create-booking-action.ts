@@ -11,6 +11,11 @@ import type { BookingServicePort } from "../../ports/booking-service-port.js";
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
 import { waPerfMeasure } from "../../debug/whatsapp-pipeline-perf.js";
+import { appendOutboundQueueEntry } from "../../runtime/outbound-queue.js";
+import {
+  buildDefaultBookingConfirmationText,
+  shouldQueueDefaultBookingConfirmation,
+} from "../../runtime/booking-confirmation-message.js";
 
 function readOptionalDurationMinutes(binding: unknown, scope: Record<string, unknown>): number | null {
   if (binding == null) return null;
@@ -303,9 +308,23 @@ export async function executeCreateBookingAction(
       scope,
     });
 
+    let nextVariables = mergeVariables(context.variables, bookingVariables);
+    if (
+      shouldQueueDefaultBookingConfirmation({
+        currentNodeId: context.currentNode.id,
+        nodes: context.nodes,
+        edges: context.edges,
+      })
+    ) {
+      const confirmationText = buildDefaultBookingConfirmationText(nextVariables);
+      if (confirmationText) {
+        nextVariables = appendOutboundQueueEntry(nextVariables, { kind: "text", text: confirmationText });
+      }
+    }
+
     return {
       outcome: "continue" as const,
-      variables: mergeVariables(context.variables, bookingVariables),
+      variables: nextVariables,
       output: {
         bookingId: result.bookingId,
         bookingDate: result.bookingDate,

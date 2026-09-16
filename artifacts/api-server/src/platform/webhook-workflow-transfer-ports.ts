@@ -2,13 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createWorkflowTransferToolPorts, type WorkflowTransferToolPorts } from "@workspace/ai-tool-router";
 import {
   AUTOMATION_PERMISSIONS,
-  createSupabaseAutomationRunRepository,
-  createSupabaseConversationSessionRepository,
   type AutomationPlatformServices,
   type ServiceContext as AutomationServiceContext,
 } from "@workspace/automation-platform";
 import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
-import { createChannelAutomationPort } from "./channel-automation-port.js";
+import { createChannelAutomationPortFromClient } from "./channel-automation-port.js";
 import {
   createWebhookPlatformFeatureResolver,
   type PlatformFeatureEnabledResolver,
@@ -93,9 +91,6 @@ export function createWebhookWorkflowTransferPorts(
   const resolvePlatformFeatureEnabled =
     options?.resolvePlatformFeatureEnabled ?? createWebhookPlatformFeatureResolver(client);
 
-  const sessions = createSupabaseConversationSessionRepository(client);
-  const runs = createSupabaseAutomationRunRepository(client);
-
   return createWorkflowTransferToolPorts(
     client,
     async (input) => {
@@ -105,10 +100,7 @@ export function createWebhookWorkflowTransferPorts(
         resolvePlatformFeatureEnabled,
       });
 
-      const automation = createChannelAutomationPort(automationEngine, serviceCtx, {
-        sessions,
-        runs,
-      });
+      const automation = createChannelAutomationPortFromClient(automationEngine, serviceCtx, client);
 
       const result = await automation.startWorkflow({
         ...input,

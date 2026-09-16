@@ -134,7 +134,7 @@ export class BookingValidationService {
 
     const timezone = TimezoneResolver.resolveEffectiveTimezone(
       resource!.timezone,
-      null,
+      resource!.branches?.timezone,
       rules.timezone,
     );
 

@@ -2,13 +2,22 @@ import { BookingService } from "../crm/booking-service.js";
 import type { BookingRepositoryPort } from "../crm/booking-repository-port.js";
 import type { CreateBookingInput, CreateBookingResult } from "../crm/types/create-booking-input.js";
 import type { FindBookingInput, FindBookingResult } from "../crm/types/find-booking-input.js";
-import type { CancelBookingInput, CancelBookingResult, UpdateBookingInput, UpdateBookingResult } from "../crm/types/booking-mutation-input.js";
+import type {
+  CancelBookingInput,
+  CancelBookingResult,
+  RescheduleBookingInput,
+  RescheduleBookingResult,
+  UpdateBookingInput,
+  UpdateBookingResult,
+} from "../crm/types/booking-mutation-input.js";
 
 export interface BookingServicePort {
   findBooking(input: FindBookingInput): Promise<FindBookingResult>;
   createBooking(input: CreateBookingInput): Promise<CreateBookingResult>;
   updateBooking(input: UpdateBookingInput): Promise<UpdateBookingResult>;
   cancelBooking(input: CancelBookingInput): Promise<CancelBookingResult>;
+  /** Scheduling-only mutation; legacy CRM ports intentionally do not implement it. */
+  rescheduleBooking?(input: RescheduleBookingInput): Promise<RescheduleBookingResult>;
 }
 
 export class DefaultBookingServicePort implements BookingServicePort {

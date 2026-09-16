@@ -25,6 +25,9 @@ export type InstagramMessagingEvent = {
 export type InstagramWebhookMessage = {
   mid?: string;
   text?: string;
+  quick_reply?: {
+    payload?: string;
+  };
   attachments?: Array<{
     type?: string;
     payload?: {
@@ -36,13 +39,20 @@ export type InstagramWebhookMessage = {
   is_deleted?: boolean;
 };
 
+export type InstagramQuickReply = {
+  content_type: "text";
+  title: string;
+  payload: string;
+};
+
 export type InstagramSendMessagePayload = {
   recipient: { id: string };
   message: {
     text?: string;
+    quick_replies?: InstagramQuickReply[];
     attachment?: {
-      type: "image" | "video" | "audio" | "file";
-      payload: { url: string; is_reusable?: boolean };
+      type: "image" | "video" | "audio" | "file" | "template";
+      payload: Record<string, unknown> & { url?: string; is_reusable?: boolean };
     };
   };
 };

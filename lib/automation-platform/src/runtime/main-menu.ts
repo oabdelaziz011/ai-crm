@@ -1,8 +1,10 @@
 import { ValidationError } from "../errors.js";
+import { interpolateTemplateString } from "../logic/expression-engine.js";
 import type { AutomationNodeRecord } from "../types.js";
 import type { ConversationLanguage } from "./conversation-language.js";
 import { localizeNodeConfigForLanguage } from "./localize-node-config.js";
 import type { OutboundQueueEntry } from "./outbound-queue.js";
+import { withSelectionDisplayVariables } from "./selection-display-fields.js";
 
 export const PRIMARY_MENU_CONFIG_KEY = "primaryMenu";
 
@@ -74,18 +76,29 @@ export function isPrimaryMenuNode(node: AutomationNodeRecord): boolean {
 
 export function buildInteractiveMenuOutbound(
   menuNode: AutomationNodeRecord,
-  options?: { language?: ConversationLanguage | null },
+  options?: {
+    language?: ConversationLanguage | null;
+    variables?: Record<string, unknown>;
+  },
 ): { outbound: OutboundQueueEntry; prompt: string } {
   const config = localizeNodeConfigForLanguage(menuNode.config, options?.language ?? null);
+  const interpolate = (value: string): string => {
+    if (!options?.variables || !value.includes("{{")) return value;
+    return interpolateTemplateString(value, withSelectionDisplayVariables(options.variables));
+  };
   const action = readString(config.action);
   if (action === "send_buttons") {
     const message = readString(config.message);
     if (!message) throw new ValidationError("Main menu buttons step requires config.message.");
-    const buttons = readInteractiveButtons(config);
+    const buttons = readInteractiveButtons(config).map((button) => ({
+      ...button,
+      label: interpolate(button.label),
+    }));
     if (buttons.length === 0) {
       throw new ValidationError("Main menu buttons step requires at least one button.");
     }
-    return { outbound: { kind: "buttons", text: message, buttons }, prompt: message };
+    const text = interpolate(message);
+    return { outbound: { kind: "buttons", text, buttons }, prompt: text };
   }
 
   if (action === "send_list") {
@@ -99,9 +112,17 @@ export function buildInteractiveMenuOutbound(
     if (sections.length === 0) {
       throw new ValidationError("Main menu list step requires at least one list row.");
     }
+    const interpolatedTitle = interpolate(title);
+    const interpolatedBody = interpolate(body);
     return {
-      outbound: { kind: "list", title, body, buttonLabel, sections },
-      prompt: body,
+      outbound: {
+        kind: "list",
+        title: interpolatedTitle,
+        body: interpolatedBody,
+        buttonLabel: interpolate(buttonLabel),
+        sections,
+      },
+      prompt: interpolatedBody,
     };
   }
 

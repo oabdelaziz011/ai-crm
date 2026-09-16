@@ -1,6 +1,7 @@
 import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
 import {
   createSupabaseInstagramCredentialsLoader,
+  inspectInstagramWebhookAppOwnership,
   parseInstagramChannelReferences,
   performInstagramOutboundHealthCheck,
   resolveInstagramRuntimeConfiguration,
@@ -111,6 +112,74 @@ router.post("/instagram/channel-outbound-health", async (req, res, next) => {
     );
 
     res.status(report.ok ? 200 : 502).json(report);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/instagram/webhook-app-ownership", async (req, res, next) => {
+  try {
+    const companyId = String(req.body?.companyId ?? "");
+    const companyChannelId = String(req.body?.companyChannelId ?? "");
+    if (!companyChannelId) {
+      res.status(400).json({ error: "companyChannelId is required" });
+      return;
+    }
+
+    const platform = getWebhookPlatform();
+    const channel = await platform.ports.registry.getCompanyChannel(companyChannelId);
+    if (!channel || channel.companyId !== companyId || channel.channelKey !== "instagram") {
+      res.status(404).json({ error: "instagram_channel_not_found" });
+      return;
+    }
+
+    const credentialsLoader = createSupabaseInstagramCredentialsLoader(platform.client);
+    const runtimeConfig = await resolveInstagramRuntimeConfiguration(
+      companyId,
+      parseInstagramChannelReferences(channel.configuration),
+      credentialsLoader,
+    );
+
+    const report = await withTimeout(
+      inspectInstagramWebhookAppOwnership({
+        companyId,
+        companyChannelId,
+        instagramBusinessAccountId: runtimeConfig.instagramBusinessAccountId,
+        accessToken: runtimeConfig.accessToken,
+        apiVersion: runtimeConfig.apiVersion,
+      }),
+      INSTAGRAM_OUTBOUND_HEALTH_TIMEOUT_MS,
+      () =>
+        new HttpError(
+          504,
+          "Instagram webhook ownership check timed out before Meta Graph responded.",
+          "instagram_webhook_ownership_timeout",
+        ),
+    );
+
+    logger.info(
+      {
+        instagramWebhookOwnershipDiag: true,
+        companyId,
+        companyChannelId,
+        configuredFacebookAppId: report.configuredFacebookAppId,
+        configuredFacebookAppClassification: report.configuredFacebookAppClassification,
+        envAppIdIsDiagnosticOnly: report.envAppIdIsDiagnosticOnly,
+        hmacDoesNotUseAppId: report.hmacDoesNotUseAppId,
+        envAppSecretPresent: report.envAppSecretPresent,
+        facebookAppSecretCheckOk: report.facebookAppSecretCheck.ok,
+        hasInstagramObject: report.facebookAppSubscriptions.hasInstagramObject,
+        instagramCallbackMatchesThisServer: report.facebookAppSubscriptions.instagramCallbackMatchesThisServer,
+        tokenAppClassification: report.instagramAccessTokenDebug.appClassification,
+        subscribedAppClassifications: report.instagramSubscribedApps.classifications,
+        includesLegacyApp1Ig: report.instagramSubscribedApps.includesLegacyApp1Ig,
+        envSecretBelongsToConfiguredFacebookApp: report.conclusions.envSecretBelongsToConfiguredFacebookApp,
+        configuredAppAppearsToOwnDashboardWebhook: report.conclusions.configuredAppAppearsToOwnDashboardWebhook,
+      },
+      "instagram.webhook-app-ownership finished",
+    );
+
+    res.status(200).json(report);
   } catch (error) {
     next(error);
   }

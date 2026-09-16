@@ -68,6 +68,24 @@ export function clearLatestOutboundSlot(): Record<string, unknown> {
   return { [OUTBOUND_LEGACY_VARIABLE]: null };
 }
 
+export function outboundOffersSelectionId(
+  outbound: OutboundQueueEntry | null | undefined,
+  selectionId: string,
+): boolean {
+  const id = selectionId.trim();
+  if (!id || !outbound) return false;
+  if (Array.isArray(outbound.buttons) && outbound.buttons.some((button) => button.id === id)) {
+    return true;
+  }
+  if (
+    Array.isArray(outbound.sections) &&
+    outbound.sections.some((section) => section.rows.some((row) => row.id === id))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function outboundEntryDisplayText(entry: OutboundQueueEntry): string {
   if (entry.kind === "list") {
     const body = typeof entry.body === "string" ? entry.body.trim() : "";

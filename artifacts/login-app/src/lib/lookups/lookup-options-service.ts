@@ -3,12 +3,13 @@ import { deriveCustomerTags } from "@/lib/customer-workspace/customer-workspace-
 import { CUSTOMER_LIST_COLUMNS } from "@/lib/crm/crm-query-columns";
 import { CRM_LIST_MAX_ROWS } from "@/lib/crm/crm-list-config";
 import { createBranchServices } from "@/lib/company/branches";
-import { wxRecordServiceResolution } from "@workspace/automation-platform";
+import { wxRecordServiceResolution, withServicePriceFields } from "@workspace/automation-platform";
 import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import { fetchAvailableDatesLookupOptions } from "./available-dates/available-dates-lookup-service";
 import { fetchAvailableSlotsLookupOptions } from "./available-slots/available-slots-lookup-service";
 import { fetchRecommendedAppointmentsLookupOptions } from "./recommended-appointments/recommended-appointments-lookup-service";
+import { fetchCustomerBookingsLookupOptions } from "./customer-bookings-lookup-service";
 import { mapRecordsToLookupRows } from "./map-lookup-rows";
 import { getLookupEntityDefinition } from "./registry";
 import type { ListLookupConfig, ListLookupFilters, LookupEntityId, LookupOptionRow } from "./types";
@@ -20,8 +21,18 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 const LOOKUP_META_FILTER_KEYS = new Set(["language", "days_ahead", "daysAhead"]);
+/** Relation keys live on junction tables, not on scheduling_resources rows. */
+const LOOKUP_RELATION_FILTER_KEYS = new Set(["service_id"]);
 
-function applyLookupFilters(
+export function readServiceIdLookupFilter(filters: ListLookupFilters | undefined): string | null {
+  const raw = filters?.service_id;
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  if (!value || value.includes("{{")) return null;
+  return value;
+}
+
+export function applyLookupFilters(
   records: Record<string, unknown>[],
   filters: ListLookupFilters | undefined,
 ): Record<string, unknown>[] {
@@ -31,11 +42,37 @@ function applyLookupFilters(
       if (expected == null || expected === "") return true;
       // Scheduling/display meta (e.g. conversation language) must not filter entity rows.
       if (LOOKUP_META_FILTER_KEYS.has(key)) return true;
+      if (LOOKUP_RELATION_FILTER_KEYS.has(key)) return true;
+      if (typeof expected === "string" && expected.includes("{{")) return true;
       const actual = record[key];
       if (typeof expected === "boolean") return Boolean(actual) === expected;
       return String(actual ?? "") === String(expected);
     }),
   );
+}
+
+type ResourceLookupScheduling = {
+  resources: { list: (companyId: string) => Promise<unknown[]> };
+  capabilities: {
+    listResourcesForService: (
+      serviceId: string,
+      companyId: string,
+      options?: { branchId?: string | null },
+    ) => Promise<unknown[]>;
+  };
+};
+
+export async function fetchResourcesForLookup(
+  companyId: string,
+  filters: ListLookupFilters | undefined,
+  scheduling: ResourceLookupScheduling,
+): Promise<Record<string, unknown>[]> {
+  const serviceId = readServiceIdLookupFilter(filters);
+  const branchId = typeof filters?.branch_id === "string" ? filters.branch_id : null;
+  const rows = serviceId
+    ? await scheduling.capabilities.listResourcesForService(serviceId, companyId, { branchId })
+    : await scheduling.resources.list(companyId);
+  return applyLookupFilters(rows as Record<string, unknown>[], filters);
 }
 
 async function fetchCustomers(companyId: string, client: SupabaseClient): Promise<Record<string, unknown>[]> {
@@ -90,11 +127,15 @@ async function fetchEntityRecords(
   switch (lookup) {
     case "services": {
       const rows = await scheduling.serviceCatalog.list(companyId);
-      return applyLookupFilters(rows as Record<string, unknown>[], filters);
+      return applyLookupFilters(rows as Record<string, unknown>[], filters).map((row) =>
+        withServicePriceFields(row, row),
+      );
     }
     case "resources": {
-      const rows = await scheduling.resources.list(companyId);
-      return applyLookupFilters(rows as Record<string, unknown>[], filters);
+      const rows = await fetchResourcesForLookup(companyId, filters, scheduling);
+      const serviceId = readServiceIdLookupFilter(filters);
+      const service = serviceId ? await scheduling.serviceCatalog.getById(serviceId, companyId) : null;
+      return service ? rows.map((row) => withServicePriceFields(row, service)) : rows;
     }
     case "customers":
       return applyLookupFilters(
@@ -102,12 +143,16 @@ async function fetchEntityRecords(
         filters,
       );
     case "staff": {
-      const resources = (await scheduling.resources.list(companyId)) as Record<string, unknown>[];
-      const staffResources = resources.filter((row) =>
+      const mapped = await fetchResourcesForLookup(companyId, filters, scheduling);
+      const staffResources = mapped.filter((row) =>
         STAFF_RESOURCE_TYPES.has(String(row.resource_type ?? "")),
       );
-      if (staffResources.length > 0) {
-        return applyLookupFilters(staffResources, filters);
+      if (staffResources.length > 0 || readServiceIdLookupFilter(filters)) {
+        const serviceId = readServiceIdLookupFilter(filters);
+        const service = serviceId ? await scheduling.serviceCatalog.getById(serviceId, companyId) : null;
+        return service
+          ? staffResources.map((row) => withServicePriceFields(row, service))
+          : staffResources;
       }
       return applyLookupFilters(await fetchStaffProfiles(companyId, client), filters);
     }
@@ -127,6 +172,7 @@ async function fetchEntityRecords(
     case "available_slots":
     case "recommended_appointments":
     case "available_dates":
+    case "customer_bookings":
       return [];
     default:
       throw new Error(`Unsupported lookup entity: ${lookup satisfies never}`);
@@ -167,6 +213,16 @@ export async function fetchLookupOptions(
 
   if (config.lookup === "available_dates") {
     return fetchAvailableDatesLookupOptions(
+      companyId,
+      config.filters,
+      config.displayField,
+      config.valueField,
+      client,
+    );
+  }
+
+  if (config.lookup === "customer_bookings") {
+    return fetchCustomerBookingsLookupOptions(
       companyId,
       config.filters,
       config.displayField,

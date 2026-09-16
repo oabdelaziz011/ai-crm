@@ -20,6 +20,7 @@ import {
 import { PLATFORM_AI_FEATURE_KEY, type PlatformAIFeatureKey } from "@workspace/platform-ai-provider";
 import type { KnowledgeProvider } from "@workspace/retrieval-engine";
 import { requireCompanyFeature } from "../lib/require-company-feature.js";
+import { isWebhookAiEmployeeToolPermission } from "./webhook-ai-employee-auth-context.js";
 
 /** Legacy Platform AI key → unified key (parity with configuration-platform LEGACY_AI_FEATURE_KEY_MAP). */
 const LEGACY_AI_TO_UNIFIED: Readonly<Record<string, string>> = Object.freeze({
@@ -166,7 +167,11 @@ export async function resolveWebhookAiServiceContext(
     userId: null,
     companyId: scopedCompanyId,
     isSuperAdmin: false,
-    hasPermission: () => false,
+    // Machine/runtime path has no human RBAC session. Feature flags above remain
+    // the commercial∩platform gate. After that pass, grant the same product
+    // allowlist as webhook AI Employee runtime (includes ai.execution.manage)
+    // so enterprise runtime assertAccess succeeds. Never super-admin / never allow-all.
+    hasPermission: (code) => isWebhookAiEmployeeToolPermission(code),
     isWorkflowFeatureEnabled: () => workflow,
     isAiChatFeatureEnabled: () => aiChat,
     isToolCallingFeatureEnabled: () => toolCalling,

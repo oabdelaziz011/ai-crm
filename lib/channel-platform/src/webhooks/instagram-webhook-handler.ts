@@ -1,7 +1,9 @@
 import type { ChannelPlatformServices } from "../index.js";
 import type { ChannelPlatformPorts } from "../ports/channel-platform-ports.js";
 import type { ServiceContext } from "../types.js";
+import { ValidationError } from "../errors.js";
 import { verifyInstagramWebhookChallenge } from "../adapters/instagram/instagram-api-client.js";
+import { describeInstagramWebhookShape } from "../adapters/instagram/instagram-webhook-payload.js";
 
 export type InstagramWebhookHandlerDeps = {
   services: ChannelPlatformServices;
@@ -83,27 +85,40 @@ export function createInstagramWebhookHandler(deps: InstagramWebhookHandlerDeps)
         companyChannelId: input.companyChannelId,
         executeAi: input.executeAi ?? Boolean(runtime),
         runtimeReady: Boolean(runtime),
+        ...describeInstagramWebhookShape(input.rawPayload),
       });
 
-      const response = await deps.services.router.routeWebhook(ctx, {
-        companyId: channel.companyId,
-        companyChannelId: input.companyChannelId,
-        channelKey: "instagram",
-        rawPayload: input.rawPayload,
-        executeAi: input.executeAi ?? Boolean(runtime),
-        aiAssistantId: runtime?.aiAssistantId,
-        requestId: input.requestId ?? null,
-        runtimeConfig: runtime?.providerConnectionId
-          ? {
-              providerConnectionId: runtime.providerConnectionId,
-              ...(runtime.knowledgeRetrieval ? { knowledgeRetrieval: runtime.knowledgeRetrieval } : {}),
-              executionPolicy: { streaming: false },
-            }
-          : undefined,
-        trace: input.trace,
-      });
-
-      return response;
+      try {
+        return await deps.services.router.routeWebhook(ctx, {
+          companyId: channel.companyId,
+          companyChannelId: input.companyChannelId,
+          channelKey: "instagram",
+          rawPayload: input.rawPayload,
+          executeAi: input.executeAi ?? Boolean(runtime),
+          aiAssistantId: runtime?.aiAssistantId,
+          requestId: input.requestId ?? null,
+          runtimeConfig: runtime?.providerConnectionId
+            ? {
+                providerConnectionId: runtime.providerConnectionId,
+                ...(runtime.knowledgeRetrieval ? { knowledgeRetrieval: runtime.knowledgeRetrieval } : {}),
+                executionPolicy: { streaming: false },
+              }
+            : undefined,
+          trace: input.trace,
+        });
+      } catch (error) {
+        if (
+          error instanceof ValidationError &&
+          /did not contain routable events/i.test(error.message)
+        ) {
+          input.trace?.step("webhook.ignored_non_routable", {
+            companyChannelId: input.companyChannelId,
+            reason: "no_routable_events",
+          });
+          return { kind: "ignored", reason: "no_routable_events" };
+        }
+        throw error;
+      }
     },
   };
 }

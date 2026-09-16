@@ -1,8 +1,5 @@
-import {
-  buildActionVariableScope,
-  resolveRequiredFieldBindingAsString,
-} from "../../field-binding/resolver.js";
-import { normalizeFindBookingConfig } from "../../crm/find-booking-config.js";
+import { ValidationError } from "../../errors.js";
+import { buildActionVariableScope } from "../../field-binding/resolver.js";
 import {
   buildBookingEntityFields,
   buildEmptyBookingEntityFields,
@@ -12,6 +9,7 @@ import { buildLookupStateFromStatus } from "../../crm/lookup/build-lookup-state.
 import type { BookingServicePort } from "../../ports/booking-service-port.js";
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
+import { resolveFindBookingLookup } from "../../runtime/find-booking-lookup.js";
 
 function resolveActorUserId(context: ExecutionContext): string {
   const candidates = [
@@ -29,21 +27,47 @@ function resolveActorUserId(context: ExecutionContext): string {
   return "";
 }
 
+function notFoundResult(context: ExecutionContext): NodeExecutionResult {
+  const lookupPatch = buildLookupVariablePatch(buildLookupStateFromStatus("not_found", 0));
+  return {
+    outcome: "continue",
+    variables: mergeVariables(context.variables, {
+      ...lookupPatch,
+      ...buildEmptyBookingEntityFields(),
+    }),
+    output: {
+      lookupStatus: "not_found",
+      lookupCount: 0,
+    },
+  };
+}
+
 export async function executeFindBookingAction(
   context: ExecutionContext,
   config: Record<string, unknown>,
   bookingService: BookingServicePort,
 ): Promise<NodeExecutionResult> {
-  const normalized = normalizeFindBookingConfig(config);
   const scope = buildActionVariableScope(context.variables, context.customer.id);
-  const lookupValue = resolveRequiredFieldBindingAsString(normalized.value, scope, "lookup value");
+  const resolved = resolveFindBookingLookup(context, config, scope);
 
-  const result = await bookingService.findBooking({
-    companyId: context.company.id,
-    userId: resolveActorUserId(context),
-    lookupBy: normalized.lookupBy,
-    lookupValue,
-  });
+  if (!resolved.lookupValue) {
+    return notFoundResult(context);
+  }
+
+  let result;
+  try {
+    result = await bookingService.findBooking({
+      companyId: context.company.id,
+      userId: resolveActorUserId(context),
+      lookupBy: resolved.lookupBy,
+      lookupValue: resolved.lookupValue,
+    });
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return notFoundResult(context);
+    }
+    throw error;
+  }
 
   const lookupState = buildLookupStateFromStatus(result.status, result.count);
   const lookupPatch = buildLookupVariablePatch(lookupState);

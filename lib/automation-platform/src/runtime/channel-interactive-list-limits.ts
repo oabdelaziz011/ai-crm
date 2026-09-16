@@ -15,6 +15,11 @@ export const CHANNEL_INTERACTIVE_LIST_LIMITS: Partial<Record<AutomationChannel, 
     maxSectionsPerList: 10,
     supportsListPagination: true,
   },
+  instagram: {
+    maxRowsPerList: 13,
+    maxSectionsPerList: 1,
+    supportsListPagination: true,
+  },
   web_chat: {
     maxRowsPerList: 100,
     maxSectionsPerList: 10,

@@ -163,6 +163,11 @@ export * from "./logic/index.js";
 export * from "./lifecycle/index.js";
 export * from "./runtime/conversation-variables.js";
 export * from "./runtime/conversation-language.js";
+export * from "./runtime/greeting-utterance.js";
+export * from "./runtime/find-booking-lookup.js";
+export * from "./runtime/booking-confirmation-message.js";
+export * from "./runtime/selection-display-fields.js";
+export * from "./runtime/empty-doctor-lookup-recovery.js";
 export * from "./runtime/bilingual-selection-aliases.js";
 export * from "./runtime/localize-node-config.js";
 export {
@@ -170,6 +175,7 @@ export {
   OUTBOUND_LEGACY_VARIABLE,
   readOutboundQueue,
   readLatestOutbound,
+  outboundOffersSelectionId,
   resetOutboundQueue,
   appendOutboundQueueEntry,
   clearLatestOutboundSlot,
@@ -177,6 +183,7 @@ export {
   type OutboundQueueEntry,
 } from "./runtime/outbound-queue.js";
 export * from "./runtime/main-menu.js";
+export * from "./runtime/booking-reschedule-message.js";
 export * from "./field-binding/types.js";
 export * from "./field-binding/normalize.js";
 export * from "./field-binding/validate.js";

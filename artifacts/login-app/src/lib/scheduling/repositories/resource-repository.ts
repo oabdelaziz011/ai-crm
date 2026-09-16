@@ -28,7 +28,7 @@ export class SchedulingResourceRepository {
   async listByCompany(companyId: string): Promise<SchedulingResource[]> {
     const { data, error } = await this.client
       .from("scheduling_resources")
-      .select("*, branches(id, name)")
+      .select("*, branches(id, name, timezone)")
       .eq("company_id", companyId)
       .is("deleted_at", null)
       .order("name");
@@ -40,7 +40,7 @@ export class SchedulingResourceRepository {
   async getById(id: string, companyId: string): Promise<SchedulingResource | null> {
     const { data, error } = await this.client
       .from("scheduling_resources")
-      .select("*, branches(id, name)")
+      .select("*, branches(id, name, timezone)")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -54,7 +54,7 @@ export class SchedulingResourceRepository {
     const { data, error } = await this.client
       .from("scheduling_resources")
       .insert(values)
-      .select("*, branches(id, name)")
+      .select("*, branches(id, name, timezone)")
       .single();
 
     if (error) throw new Error(error.message);
@@ -72,7 +72,7 @@ export class SchedulingResourceRepository {
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
-      .select("*, branches(id, name)")
+      .select("*, branches(id, name, timezone)")
       .single();
 
     if (error) throw new Error(error.message);

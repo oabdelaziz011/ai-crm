@@ -113,6 +113,30 @@ export async function resolveListNodeSections(
   ) {
     resolvedFilters.language = conversationLanguage;
   }
+  if (lookupConfig.lookup === "customer_bookings") {
+    const customer =
+      variables.customer && typeof variables.customer === "object" && !Array.isArray(variables.customer)
+        ? (variables.customer as Record<string, unknown>)
+        : {};
+    if (!resolvedFilters.customer_id) {
+      const customerId =
+        (typeof customer.id === "string" && customer.id.trim()) ||
+        (typeof variables["customer.id"] === "string" && String(variables["customer.id"]).trim()) ||
+        "";
+      if (customerId) resolvedFilters.customer_id = customerId;
+    }
+    if (!resolvedFilters.phone) {
+      const phone =
+        (typeof variables.customer_phone === "string" && variables.customer_phone.trim()) ||
+        (typeof variables.phone === "string" && variables.phone.trim()) ||
+        (typeof variables.whatsapp_sender_phone === "string" && variables.whatsapp_sender_phone.trim()) ||
+        (typeof variables.sender_phone === "string" && variables.sender_phone.trim()) ||
+        (typeof customer.phone === "string" && customer.phone.trim()) ||
+        (typeof customer.phone_e164 === "string" && customer.phone_e164.trim()) ||
+        "";
+      if (phone) resolvedFilters.phone = phone;
+    }
+  }
   logListNodeLifecycle({
     stage: "before_execute_list_node",
     ...traceBase,
@@ -150,7 +174,8 @@ export async function resolveListNodeSections(
       lookupConfig.lookup === "services" ||
       lookupConfig.lookup === "resources" ||
       lookupConfig.lookup === "staff" ||
-      lookupConfig.lookup === "branches"
+      lookupConfig.lookup === "branches" ||
+      lookupConfig.lookup === "customer_bookings"
     ) {
       logListNodeLifecycle({
         stage: "before_execute_list_node",

@@ -16,6 +16,35 @@ const ALIAS_TO_ID: Record<string, string> = {
   "أريد الحجز": "book",
   "أريد أن أحجز": "book",
   "حجز موعد": "book",
+  cancel: "cancel",
+  "cancel booking": "cancel",
+  "cancel appointment": "cancel",
+  الغي: "cancel",
+  ألغي: "cancel",
+  الغى: "cancel",
+  الغاء: "cancel",
+  إلغاء: "cancel",
+  "الغي الحجز": "cancel",
+  "ألغي الحجز": "cancel",
+  "الغي الميعاد": "cancel",
+  "الغي ميعاد": "cancel",
+  // Explicit workflow reply IDs must win over free-text contains matching.
+  confirm_cancel: "confirm_cancel",
+  keep_booking: "keep_booking",
+  reschedule: "reschedule",
+  "change appointment": "reschedule",
+  أغير: "reschedule",
+  اغير: "reschedule",
+  تأجيل: "reschedule",
+  another_doctor: "another_doctor",
+  "another doctor": "another_doctor",
+  "نحجز مع دكتور تاني": "another_doctor",
+  "دكتور تاني": "another_doctor",
+  end_chat: "end_chat",
+  "end chat": "end_chat",
+  "end conversation": "end_chat",
+  "ننهي المحادثة": "end_chat",
+  "ننهي المحادثه": "end_chat",
   // pricing
   pricing: "pricing",
   prices: "pricing",
@@ -60,6 +89,26 @@ const ALIAS_TO_ID: Record<string, string> = {
 
 /** Longer phrases first so "كام السعر" wins over "سعر". */
 const CONTAINS_KEYWORDS: Array<{ needle: string; id: string }> = [
+  { needle: "نحجز مع دكتور تاني", id: "another_doctor" },
+  { needle: "دكتور تاني", id: "another_doctor" },
+  { needle: "another doctor", id: "another_doctor" },
+  { needle: "ننهي المحادثة", id: "end_chat" },
+  { needle: "ننهي المحادثه", id: "end_chat" },
+  { needle: "end conversation", id: "end_chat" },
+  { needle: "end chat", id: "end_chat" },
+  { needle: "cancel appointment", id: "cancel" },
+  { needle: "cancel booking", id: "cancel" },
+  { needle: "الغي الحجز", id: "cancel" },
+  { needle: "ألغي الحجز", id: "cancel" },
+  { needle: "الغي الميعاد", id: "cancel" },
+  { needle: "ألغي الميعاد", id: "cancel" },
+  { needle: "الغي ميعاد", id: "cancel" },
+  { needle: "عايزه الغي", id: "cancel" },
+  { needle: "عايزة الغي", id: "cancel" },
+  { needle: "عايز الغي", id: "cancel" },
+  { needle: "عايزه ألغي", id: "cancel" },
+  { needle: "عايزة ألغي", id: "cancel" },
+  { needle: "change appointment", id: "reschedule" },
   { needle: "اسعار وتكلفة", id: "pricing" },
   { needle: "أسعار وتكلفة", id: "pricing" },
   { needle: "كام الأسعار", id: "pricing" },
@@ -83,6 +132,14 @@ const CONTAINS_KEYWORDS: Array<{ needle: string; id: string }> = [
   { needle: "price", id: "pricing" },
   { needle: "cost", id: "pricing" },
   { needle: "سعر", id: "pricing" },
+  { needle: "الغي", id: "cancel" },
+  { needle: "ألغي", id: "cancel" },
+  { needle: "الغى", id: "cancel" },
+  { needle: "الغاء", id: "cancel" },
+  { needle: "إلغاء", id: "cancel" },
+  { needle: "cancel", id: "cancel" },
+  { needle: "تأجيل", id: "reschedule" },
+  { needle: "reschedule", id: "reschedule" },
   { needle: "booking", id: "book" },
   { needle: "احجز", id: "book" },
   { needle: "حجز", id: "book" },
@@ -140,6 +197,10 @@ export function canonicalizeSelectionId(
   }
 
   return id || label || null;
+}
+
+export function isCancelOrRescheduleSelectionId(id: string | null | undefined): boolean {
+  return id === "cancel" || id === "reschedule";
 }
 
 /**

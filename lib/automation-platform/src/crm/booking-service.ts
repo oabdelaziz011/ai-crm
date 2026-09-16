@@ -44,13 +44,16 @@ export class BookingService {
 
   async findBooking(input: FindBookingInput): Promise<FindBookingResult> {
     readRequiredString(input.companyId, "company");
-    readRequiredString(input.userId, "owner");
+    const userId = typeof input.userId === "string" ? input.userId.trim() : "";
     const lookupBy = readLookupBy(input.lookupBy);
-    const lookupValue = readRequiredString(input.lookupValue, "lookup value");
+    const lookupValue =
+      typeof input.lookupValue === "string" ? input.lookupValue.trim() : String(input.lookupValue ?? "").trim();
+    if (!lookupValue) return { status: "not_found", count: 0 };
+    if (!userId) return { status: "not_found", count: 0 };
 
     const { count, record } = await this.repository.findBookingsByField({
       companyId: input.companyId,
-      userId: input.userId,
+      userId,
       lookupBy,
       lookupValue,
     });

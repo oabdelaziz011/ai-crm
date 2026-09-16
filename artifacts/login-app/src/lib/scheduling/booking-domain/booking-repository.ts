@@ -213,6 +213,30 @@ export class BookingRepository {
     return result;
   }
 
+  async listUpcomingByCustomerIds(
+    companyId: string,
+    customerIds: string[],
+    referenceNow: Date = new Date(),
+  ): Promise<SchedulingBooking[]> {
+    const ids = customerIds.map((id) => id.trim()).filter(Boolean);
+    if (ids.length === 0) return [];
+
+    const horizon = new Date(referenceNow.getTime() - 30 * 60 * 1000).toISOString();
+    const { data, error } = await this.client
+      .from("scheduling_bookings")
+      .select("*")
+      .eq("company_id", companyId)
+      .in("customer_id", ids)
+      .in("status", ACTIVE_BOOKING_STATUSES)
+      .is("deleted_at", null)
+      .gte("start_at", horizon)
+      .order("start_at", { ascending: true })
+      .limit(50);
+
+    if (error) throw new Error(error.message);
+    return (data as SchedulingBooking[] | null) ?? [];
+  }
+
   static dayQueryBounds(date: string): { startIso: string; endIso: string } {
     const anchor = Date.parse(`${date}T12:00:00.000Z`);
     const start = new Date(anchor - 36 * 60 * 60 * 1000);

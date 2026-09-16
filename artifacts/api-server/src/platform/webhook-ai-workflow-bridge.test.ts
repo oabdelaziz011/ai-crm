@@ -89,6 +89,19 @@ function createActionContext(config: Record<string, unknown>, variables: Record<
   } as never;
 }
 
+function createPermissionAssertingRuntime() {
+  const inner = createStubRuntime();
+  return {
+    buildPrompt: inner.buildPrompt,
+    async execute(ctx: { hasPermission?: (code: string) => boolean }, input: { templateKey?: string }) {
+      if (!ctx.hasPermission?.("ai.execution.manage")) {
+        throw new Error("Missing required permission: ai.execution.manage");
+      }
+      return inner.execute(ctx, input);
+    },
+  };
+}
+
 describe("webhook AI workflow bridge", () => {
   it("executes AI Extract and AI Decision through the webhook action registry", async () => {
     const registry = createWebhookAIWorkflowAutomationRegistry({
@@ -236,5 +249,33 @@ describe("Part 6A — resolveWebhookAiServiceContext matrix", () => {
     assert.equal(ctx.isToolCallingFeatureEnabled?.(), true);
     assert.equal(ctx.isKnowledgeFeatureEnabled?.(), true);
     assert.equal(ctx.isEmbeddingsFeatureEnabled?.(), true);
+    assert.equal(ctx.hasPermission("ai.execution.manage"), true);
+    assert.equal(ctx.hasPermission("ai.execution.view"), true);
+    assert.equal(ctx.hasPermission("platform.admin"), false);
+    assert.equal(ctx.hasPermission("companies.delete"), false);
+  });
+});
+
+describe("webhook AI decision node permission (instagram inbound regression)", () => {
+  it("lets an AI Decision node run when enterprise runtime requires ai.execution.manage", async () => {
+    const registry = createWebhookAIWorkflowAutomationRegistry({
+      actionDeps: {},
+      enterpriseRuntime: createPermissionAssertingRuntime(),
+      resolvePlatformFeatureEnabled: async () => true,
+    });
+    const action = registry.get("action");
+    assert.ok(action);
+    const decisionConfig = toAIWorkflowEngineConfig(
+      patchDecisionMetadata(createDefaultDecisionNodeConfig(), {
+        inputSource: "variable",
+        inputVariable: "lastMessage",
+        outcomes: [{ id: "book", label: "book", description: "Book" }],
+      }),
+    );
+    const result = await action.execute(
+      createActionContext(decisionConfig, { lastMessage: "Hi" }),
+    );
+    assert.equal(result.outcome, "continue");
+    assert.equal(result.errorMessage, undefined);
   });
 });

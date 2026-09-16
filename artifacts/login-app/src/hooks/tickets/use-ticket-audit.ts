@@ -2,6 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useTicketServiceContext } from "@/hooks/tickets/use-ticket-services";
 import { ticketsQueryKey } from "@/hooks/tickets/use-tickets";
+import {
+  assertTicketAuditRowInScope,
+  buildTicketAuditQueryScope,
+} from "@/lib/tickets/ticket360-tab-models";
 
 export type TicketAuditEntry = {
   id: string;
@@ -24,24 +28,37 @@ export function useTicketAuditTrail(ticketId: string | null) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<TicketAuditEntry[]> => {
       if (!companyId || !ticketId) return [];
+      const scope = buildTicketAuditQueryScope(companyId, ticketId);
       const { data, error } = await supabase
         .from("audit_logs")
-        .select("id, user_id, action, entity, entity_id, metadata, created_at")
-        .eq("company_id", companyId)
-        .in("entity", ["support_tickets", "support_ticket_comments"])
-        .eq("entity_id", ticketId)
+        .select("id, user_id, action, entity, entity_id, metadata, created_at, company_id")
+        .eq("company_id", scope.companyId)
+        .in("entity", [...scope.entities])
+        .eq("entity_id", scope.entityId)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw new Error(error.message);
-      return (data ?? []).map((row) => ({
-        id: String(row.id),
-        action: String(row.action ?? ""),
-        entity: String(row.entity ?? ""),
-        entityId: row.entity_id ? String(row.entity_id) : null,
-        userId: row.user_id ? String(row.user_id) : null,
-        createdAt: String(row.created_at),
-        metadata: (row.metadata as Record<string, unknown> | null) ?? null,
-      }));
+      return (data ?? [])
+        .filter((row) =>
+          assertTicketAuditRowInScope(
+            {
+              companyId: row.company_id ? String(row.company_id) : null,
+              entityId: row.entity_id ? String(row.entity_id) : null,
+              entity: row.entity ? String(row.entity) : null,
+            },
+            companyId,
+            ticketId,
+          ),
+        )
+        .map((row) => ({
+          id: String(row.id),
+          action: String(row.action ?? ""),
+          entity: String(row.entity ?? ""),
+          entityId: row.entity_id ? String(row.entity_id) : null,
+          userId: row.user_id ? String(row.user_id) : null,
+          createdAt: String(row.created_at),
+          metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+        }));
     },
   });
 }

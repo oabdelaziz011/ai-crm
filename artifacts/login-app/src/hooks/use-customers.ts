@@ -193,6 +193,7 @@ export function useCreateCustomer() {
         phone_country_iso: regionFromForm,
         phone_region_source: _ignoreSource,
         phone_national: _ignoreNational,
+        avatar_url: _ignoreAvatar,
         ...legacyValues
       } = values;
 
@@ -250,6 +251,8 @@ export function useUpdateCustomer() {
       delete (patch as { phone_e164?: unknown }).phone_e164;
       delete (patch as { phone_region_source?: unknown }).phone_region_source;
       delete (patch as { phone_national?: unknown }).phone_national;
+      // Avatar writes go through dedicated upload/remove helpers (tenant-owned storage only).
+      delete (patch as { avatar_url?: unknown }).avatar_url;
 
       const phoneInPatch = Object.prototype.hasOwnProperty.call(values, "phone");
       if (phoneInPatch) {

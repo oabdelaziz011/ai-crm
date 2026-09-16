@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { TicketSlaState } from "@/lib/tickets/ticket-inbox-metrics";
+import { ticketStatusBadgeClassName } from "@/lib/tickets/ticket-status-badge-styles";
 import { cn } from "@/lib/utils";
 
 export function TicketStatusBadge({
@@ -14,8 +15,14 @@ export function TicketStatusBadge({
       ? "secondary"
       : status === "waiting_customer"
         ? "outline"
-        : "default";
-  return <Badge variant={variant}>{label}</Badge>;
+        : status === "in_progress"
+          ? "outline"
+          : "default";
+  return (
+    <Badge variant={variant} className={ticketStatusBadgeClassName(status)}>
+      {label}
+    </Badge>
+  );
 }
 
 export function TicketPriorityBadge({

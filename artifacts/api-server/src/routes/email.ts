@@ -8,14 +8,21 @@ import { createEmailProvider } from "@login-app/lib/notifications/providers/emai
 import { createEmailsSentCommercialPort } from "../platform/emails-sent-commercial-adapter.js";
 import {
   SendEmailTemplateError,
+  isValidTestRecipientEmail,
   sendEmailTemplate,
 } from "@login-app/lib/email-templates/send-email-template";
+import { mapEmailTestConnectionError } from "./email-test-connection-errors.js";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { resolveAgentDispatchContext } from "../platform/resolve-agent-dispatch-context.js";
 import { logger } from "../lib/logger.js";
 import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
+import { requireRequestCompanyPermission } from "../lib/request-company-permission.js";
+import {
+  EMAIL_CONNECTION_PERMISSION,
+  EMAIL_TEMPLATES_TAB_PERMISSION,
+} from "../lib/email-tab-permissions.js";
 
 const router: IRouter = Router();
 
@@ -53,6 +60,8 @@ function createProvider(client: ReturnType<typeof createClient> | import("@supab
 router.post("/email/health", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
+    await assertRouteCommercialFeature(companyId, "email_channel");
+    await requireRequestCompanyPermission(req, companyId, EMAIL_CONNECTION_PERMISSION);
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.healthCheck(companyId);
@@ -65,24 +74,49 @@ router.post("/email/health", async (req, res, next) => {
 router.post("/email/test-connection", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
-    const recipientEmail = String(req.body?.recipientEmail ?? "");
+    const recipientEmail = String(req.body?.recipientEmail ?? "").trim();
     if (!recipientEmail) {
-      res.status(400).json({ error: "recipientEmail required" });
-      return;
+      throw new HttpError(400, "recipientEmail required", "invalid_recipient");
+    }
+    if (!isValidTestRecipientEmail(recipientEmail)) {
+      throw new HttpError(400, "A valid recipient email is required.", "invalid_recipient");
     }
     await assertRouteCommercialFeature(companyId, "email_channel");
+    await requireRequestCompanyPermission(req, companyId, EMAIL_CONNECTION_PERMISSION);
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.testConnection(companyId, recipientEmail);
+    logger.info(
+      {
+        event: "email_test_connection_sent",
+        companyId,
+        provider: result.provider,
+        status: result.status,
+        requestId: req.requestId,
+      },
+      "Email test connection sent",
+    );
     res.json(result);
   } catch (error) {
-    next(error);
+    const mapped = mapEmailTestConnectionError(error);
+    logger.warn(
+      {
+        event: "email_test_connection_failed",
+        companyId: String(req.body?.companyId ?? ""),
+        provider: "smtp",
+        code: mapped.code,
+        requestId: req.requestId,
+      },
+      mapped.message,
+    );
+    next(mapped);
   }
 });
 
 router.post("/email/process-queue", async (req, res, next) => {
   try {
     const companyId = String(req.body?.companyId ?? "");
+    await requireRequestCompanyPermission(req, companyId, EMAIL_CONNECTION_PERMISSION);
     const client = getServiceClient();
     const provider = createProvider(client);
     const result = await provider.processPending(companyId);
@@ -106,12 +140,10 @@ router.post("/email/templates/test-send", async (req, res, next) => {
     }
 
     await assertRouteCommercialFeature(companyId, "email_channel");
+    await requireRequestCompanyPermission(req, companyId, EMAIL_TEMPLATES_TAB_PERMISSION);
 
     const client = getServiceClient();
     const ctx = await resolveAgentDispatchContext(client, req, companyId);
-    if (!ctx.isSuperAdmin && !ctx.hasPermission("settings.edit")) {
-      throw new HttpError(403, "settings.edit permission is required.", "forbidden");
-    }
 
     const actorKey = `${companyId}:${ctx.userId ?? "unknown"}`;
     const last = testSendCooldown.get(actorKey) ?? 0;

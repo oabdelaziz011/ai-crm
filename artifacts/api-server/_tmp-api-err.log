@@ -1,0 +1,18 @@
+TypeError: fetch failed
+    at Object.processResponse (node:internal/deps/undici/undici:13017:20)
+    at node:internal/deps/undici/undici:13405:23
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at node:internal/deps/undici/undici:17694:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async _handleRequest2 (file:///D:/ValueOR/project/artifacts/api-server/dist/main.mjs:47305:18)
+    at async _request (file:///D:/ValueOR/project/artifacts/api-server/dist/main.mjs:47295:20)
+    at async SupabaseAuthClient._getUser (file:///D:/ValueOR/project/artifacts/api-server/dist/main.mjs:51944:20)
+    at async SupabaseAuthClient.getUser (file:///D:/ValueOR/project/artifacts/api-server/dist/main.mjs:51925:18)
+    at async requireSupabaseAuth (file:///D:/ValueOR/project/artifacts/api-server/dist/main.mjs:304465:38) {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 104.18.38.10:443, 172.64.149.246:443, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:1991:23)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:1957:35)
+      at process.processImmediate (node:internal/timers:504:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}

@@ -3,6 +3,7 @@ import pinoHttp from "pino-http";
 import session from "express-session";
 import router from "./routes/index.js";
 import webhooksRouter from "./routes/webhooks.js";
+import smsWebhooksRouter from "./routes/sms-webhooks.js";
 import { logger } from "./lib/logger.js";
 import { applySecurityMiddleware } from "./middleware/security.js";
 import { apiCorsMiddleware } from "./middleware/cors.js";
@@ -53,7 +54,14 @@ app.use(
 
 app.use(globalRateLimiter);
 
-// Webhook routes require raw body for signature validation.
+// Twilio SMS webhooks are form-urlencoded (not JSON) and need X-Twilio-Signature over POST params.
+app.use(
+  "/api/webhooks/sms",
+  express.urlencoded({ extended: false, limit: "1mb" }),
+  smsWebhooksRouter,
+);
+
+// Other webhook routes require raw body for Meta/signature validation.
 app.use(
   "/api/webhooks",
   express.raw({ type: "application/json", limit: "2mb" }),

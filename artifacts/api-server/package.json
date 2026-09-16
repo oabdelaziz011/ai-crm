@@ -13,6 +13,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
     "@workspace/ai-conversation": "workspace:*",
+    "@workspace/assignment-audit": "workspace:*",
+    "@workspace/assignment-governance": "workspace:*",
     "@workspace/ai-execution-engine": "workspace:*",
     "@workspace/ai-intent-engine": "workspace:*",
     "@workspace/ai-prompt-orchestrator": "workspace:*",

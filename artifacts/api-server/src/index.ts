@@ -22,6 +22,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 let lifecycleWorker: { stop: () => void } | null = null;
 let sessionIdleTimeoutWorker: { stop: () => void } | null = null;
+let emailInboundPollWorker: { stop: () => void } | null = null;
 
 const server = app.listen(port, (err) => {
   if (err) {
@@ -59,18 +60,32 @@ const server = app.listen(port, (err) => {
     .catch((workerErr) => {
       logger.warn({ err: workerErr }, "Session idle timeout worker failed to start");
     });
+
+  // Universal email inbound poll (IMAP + Microsoft Graph) — non-overlapping ticks.
+  void import("./services/email-inbound-poll-worker.js")
+    .then(({ startEmailInboundPollWorker }) => {
+      emailInboundPollWorker = startEmailInboundPollWorker();
+    })
+    .catch((workerErr) => {
+      logger.warn({ err: workerErr }, "Email inbound poll worker failed to start");
+    });
 });
 
 function shutdown(signal: string): void {
   logger.info({ signal }, "Shutting down");
   lifecycleWorker?.stop();
   sessionIdleTimeoutWorker?.stop();
-  server.close((err) => {
-    if (err) {
-      logger.error({ err }, "Error during shutdown");
-      process.exit(1);
-    }
-    process.exit(0);
+  const stopEmail = Promise.resolve(emailInboundPollWorker?.stop()).catch((err) => {
+    logger.warn({ err }, "Email inbound poll worker stop failed");
+  });
+  void stopEmail.finally(() => {
+    server.close((err) => {
+      if (err) {
+        logger.error({ err }, "Error during shutdown");
+        process.exit(1);
+      }
+      process.exit(0);
+    });
   });
 }
 

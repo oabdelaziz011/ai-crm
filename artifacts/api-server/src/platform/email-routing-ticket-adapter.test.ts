@@ -115,6 +115,25 @@ describe("B1.2 MEDIUM-FIX — email routing ticket ServiceContext", () => {
     // Adapter only bridges ticket RBAC narrowly; commercial channel/routing stay outside.
   });
 
+  it("passes trustedCustomerId into TicketCommandService.createTicket and verifies company scope", () => {
+    assert.match(adapterSource, /customerId:\s*input\.customerId/);
+    assert.match(adapterSource, /verifyCustomerCompanyScope/);
+    assert.match(adapterSource, /\.from\("customers"\)/);
+    assert.match(adapterSource, /\.eq\("company_id",\s*scopedCompany\)/);
+    assert.match(adapterSource, /trustedCustomerId:\s*input\.trustedCustomerId/);
+  });
+
+  it("inbound pipeline passes trustedChannelIdentity.customerId as trustedCustomerId", () => {
+    assert.match(inboundSource, /trustedCustomerId:\s*trustedChannelIdentity\.customerId/);
+  });
+
+  it("webhook platform wires Platform AI resolveRuntimeConfig into LlmEmailRoutingClassifier", () => {
+    const webhookSource = readFileSync(resolve(here, "create-webhook-platform.ts"), "utf8");
+    assert.match(webhookSource, /createLlmEmailRoutingClassifier\(provider\.gateway/);
+    assert.match(webhookSource, /resolveRuntimeConfig:\s*async/);
+    assert.match(webhookSource, /platformConfig\.resolve/);
+  });
+
   it("J createEmailRoutingTicketActionPort fails closed when actor missing; empty company skips", async () => {
     const port = createEmailRoutingTicketActionPort({} as never, {
       resolveActorUserIdForCompany: async () => null,

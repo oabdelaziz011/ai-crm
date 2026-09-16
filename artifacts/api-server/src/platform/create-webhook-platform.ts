@@ -14,10 +14,12 @@ import {
   createInstagramWebhookHandler,
   createMessengerWebhookHandler,
   createEmailWebhookHandler,
+  createSmsWebhookHandler,
   createSupabaseWhatsAppCredentialsLoader,
   createSupabaseWhatsAppCredentialLifecycle,
   createSupabaseInstagramCredentialsLoader,
   createSupabaseMessengerCredentialsLoader,
+  createSupabaseSmsCredentialsLoader,
   createSupabaseEmailCredentialsLoader,
   createSupabaseEmailThreadLookup,
   createEmailPollingWorker,
@@ -26,6 +28,7 @@ import {
   resolveWhatsAppCompanyChannel,
   resolveInstagramCompanyChannel,
   resolveMessengerCompanyChannel,
+  resolveSmsCompanyChannel,
   resolveEmailCompanyChannel,
   isWhatsAppDirectOutboundBypassAllowed,
   type ChannelPlatformPorts,
@@ -46,6 +49,7 @@ import {
   createChannelRuntimePort,
 } from "./channel-platform-ports.js";
 import { createSupabaseConversationAttachmentUrlPort } from "./conversation-attachment-url-port.js";
+import { createSupabaseInboundAttachmentStorePort } from "./inbound-email-attachment-store-port.js";
 import { createChannelWorkflowFlowValidator } from "./channel-automation-port.js";
 import { createRuntimeEnginePortsWithContext } from "./runtime-engine-ports.js";
 import { createCustomer360Loader, createSupabaseCustomer360DataPort } from "@workspace/customer-360";
@@ -70,6 +74,8 @@ import { createAiEmployeeEmailCommercialPort } from "./ai-employee-email-commerc
 import { createWhatsAppMessagesCommercialPort } from "./whatsapp-messages-commercial-adapter.js";
 import { createChannelCommercialEntitlementPort } from "./channel-commercial-entitlement-adapter.js";
 import { createAiTokensCommercialPort } from "./ai-tokens-commercial-adapter.js";
+import { createEmailAcknowledgementPorts } from "./email-acknowledgement-port.js";
+import { createResolveEmailDepartmentOwnership } from "./email-conversation-department-ownership-port.js";
 import { fetchImapRuntimeMessages } from "./email-imap-runtime.js";
 import { logger } from "../lib/logger.js";
 import { instrumentSupabaseClientForWhatsAppPerf } from "@workspace/channel-platform/server";
@@ -105,6 +111,7 @@ export type WebhookPlatform = {
   whatsAppHandler: ReturnType<typeof createWhatsAppWebhookHandler>;
   instagramHandler: ReturnType<typeof createInstagramWebhookHandler>;
   messengerHandler: ReturnType<typeof createMessengerWebhookHandler>;
+  smsHandler: ReturnType<typeof createSmsWebhookHandler>;
   emailHandler: ReturnType<typeof createEmailWebhookHandler>;
   emailPollingWorker: ReturnType<typeof createEmailPollingWorker>;
   resolveRuntimeConfig: (companyId: string) => Promise<TenantRuntimeConfig | null>;
@@ -359,6 +366,9 @@ export function getWebhookPlatform(): WebhookPlatform {
   ports.whatsappMessagesCommercial = createWhatsAppMessagesCommercialPort(client);
   ports.channelCommercialEntitlement = createChannelCommercialEntitlementPort(client);
   ports.conversationAttachmentUrl = createSupabaseConversationAttachmentUrlPort(client);
+  ports.inboundAttachmentStore = createSupabaseInboundAttachmentStorePort(client);
+  ports.emailAcknowledgement = createEmailAcknowledgementPorts(client, ports.conversation);
+  ports.resolveEmailDepartmentOwnership = createResolveEmailDepartmentOwnership(client);
 
   const whatsAppCredentialsLoader = createSupabaseWhatsAppCredentialsLoader(client, {
     onDiagnostic: (detail) =>
@@ -370,13 +380,24 @@ export function getWebhookPlatform(): WebhookPlatform {
 
   const messengerCredentialsLoader = createSupabaseMessengerCredentialsLoader(client);
 
+  const smsCredentialsLoader = createSupabaseSmsCredentialsLoader(client);
+
   const emailCredentialsLoader = createSupabaseEmailCredentialsLoader(client);
   const emailThreadLookup = createSupabaseEmailThreadLookup(client);
 
   const channelPlatform = createServerChannelPlatformServices(client, {
     ports,
     workflowResolver,
-    emailRoutingClassifier: createLlmEmailRoutingClassifier(provider.gateway),
+    emailRoutingClassifier: createLlmEmailRoutingClassifier(provider.gateway, {
+      // Same Platform AI runtime key resolution as /platform-ai/chat-completion.
+      // Credentials stay on the server gateway request; never exposed to the browser.
+      resolveRuntimeConfig: async ({ companyId, providerKey, useCase }) =>
+        platformConfig.resolve({
+          companyId,
+          providerKey,
+          useCase: useCase ?? "chat",
+        }),
+    }),
     emailRoutingEngine: createEmailRoutingEngine({
       targetResolver: createSupabaseEmailRoutingTargetResolver(client),
     }),
@@ -401,6 +422,21 @@ export function getWebhookPlatform(): WebhookPlatform {
     messengerCredentialsLoader,
     messengerOutboundDiagnostic: (detail) =>
       logger.info({ ...detail, event: "messenger.outbound" }, "Messenger outbound diagnostic"),
+    smsCredentialsLoader,
+    smsOutboundDiagnostic: (detail) =>
+      logger.info({ ...detail, event: "sms.outbound" }, "SMS outbound diagnostic"),
+    smsStatusCallbackUrlResolver: (companyChannelId) => {
+      const base = (
+        process.env.VITE_WEBHOOK_BASE_URL ||
+        process.env.PUBLIC_WEBHOOK_BASE_URL ||
+        process.env.VITE_API_SERVER_URL ||
+        ""
+      )
+        .trim()
+        .replace(/\/$/, "");
+      if (!base) return null;
+      return `${base}/api/webhooks/sms/${encodeURIComponent(companyChannelId)}`;
+    },
     emailCredentialsLoader,
     emailOutboundDiagnostic: (detail) =>
       logger.info({ ...detail, event: "email.outbound" }, "Email outbound diagnostic"),
@@ -434,6 +470,20 @@ export function getWebhookPlatform(): WebhookPlatform {
     resolveRuntimeConfig: async (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),
   });
 
+  const smsHandler = createSmsWebhookHandler({
+    services: channelPlatform,
+    ports,
+    resolveSystemContext: () => SYSTEM_CONTEXT,
+    resolveCompanyChannel: async (companyChannelId) => {
+      const resolved = await resolveSmsCompanyChannel(
+        ports,
+        companyChannelId,
+        smsCredentialsLoader,
+      );
+      return { companyId: resolved.companyId, channelKey: resolved.channelKey };
+    },
+  });
+
   const emailHandler = createEmailWebhookHandler({
     services: channelPlatform,
     ports,
@@ -454,6 +504,10 @@ export function getWebhookPlatform(): WebhookPlatform {
       fetchImpl: async (input) => fetchImapRuntimeMessages(input),
     }),
     onDiagnostic: (detail) => logger.info({ ...detail, event: "email.poll" }, "Email polling diagnostic"),
+    assertCommercialAccess: async (companyId) => {
+      const { assertRouteCommercialFeature } = await import("../lib/route-commercial-auth.js");
+      await assertRouteCommercialFeature(companyId, "email_channel");
+    },
   });
 
   cachedPlatform = {
@@ -463,6 +517,7 @@ export function getWebhookPlatform(): WebhookPlatform {
     whatsAppHandler,
     instagramHandler,
     messengerHandler,
+    smsHandler,
     emailHandler,
     emailPollingWorker,
     resolveRuntimeConfig: (companyId) => resolveRuntimeConfig(tenantRuntimeConfig, companyId),

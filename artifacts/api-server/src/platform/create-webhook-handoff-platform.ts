@@ -85,6 +85,7 @@ export function createWebhookHandoffPlatformServices(
         queueId: input.queueId,
         reason: input.reason,
         requestedByAiAssistantId: input.aiAssistantId ?? undefined,
+        trustedSystemExecution: true,
       });
 
       return {

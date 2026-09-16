@@ -44,6 +44,10 @@ function enabledSettings(companyId: string): CompanyEmailSettings {
     conversationEnabled: false,
     inboundProvider: "imap",
     outboundProvider: "smtp",
+    mailboxProvider: "imap_smtp",
+    connectionStatus: "connected",
+    connectionLastError: "",
+    connectionLastSyncedAt: null,
     smtpHost: "smtp.example.com",
     smtpPort: 587,
     smtpUsername: "user",
@@ -64,6 +68,7 @@ function enabledSettings(companyId: string): CompanyEmailSettings {
     imapPollIntervalSeconds: 60,
     oauthProvider: null,
     oauthToken: "",
+    oauthExpiresAt: null,
     hasSmtpPassword: true,
     hasImapPassword: false,
     hasOauthToken: false,
@@ -143,6 +148,15 @@ function buildProvider(input: {
     },
   } as unknown as EmailRenderer;
 
+  const commercialPort = (input.commercial ?? {
+    async checkAccess() {
+      return { allowed: true };
+    },
+    async recordUsage() {
+      return { recorded: true };
+    },
+  }) as EmailsSentCommercialPort;
+
   const provider = new EmailProvider(
     {} as never,
     input.transport,
@@ -150,7 +164,7 @@ function buildProvider(input: {
     queueConsumer,
     settingsRepository,
     deliveryLogRepository,
-    input.commercial,
+    commercialPort,
   );
 
   return { provider, updates };
@@ -330,6 +344,31 @@ describe("EmailProvider notification_queue commercial enforcement", () => {
       text: "t",
       queueId: "test",
     });
+    const testResult = await provider.testConnection("company-1", "qa@example.test");
+    assert.equal(transport.sendCalls, 2);
+    assert.equal(recordCalls, 0);
+    assert.equal(testResult.status, "completed");
+    assert.equal(testResult.recipientEmail, "qa@example.test");
+    assert.equal(testResult.queueId, "test");
+  });
+
+  it("testConnection SMTP failure throws and does not record usage", async () => {
+    const transport = new StubTransport();
+    transport.mode = "fail";
+    let recordCalls = 0;
+    const { provider } = buildProvider({
+      transport,
+      commercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" };
+        },
+        async recordUsage() {
+          recordCalls += 1;
+          return { recorded: true };
+        },
+      },
+    });
+    await assert.rejects(() => provider.testConnection("company-1", "qa@example.test"), /SMTP send failed/);
     assert.equal(transport.sendCalls, 1);
     assert.equal(recordCalls, 0);
   });

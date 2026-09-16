@@ -48,6 +48,7 @@ export function createWebhookToolRouterIntegrations(
   const ticketAgentPorts = createTicketAgentToolPortsFromPlatform(
     createTicketPlatformServices(client, {
       audit: createSupabaseTicketAuditPort(client),
+      assignmentGovernance: false,
     }),
   );
   const handoffAgentPorts = createHandoffAgentToolPorts(client, {
@@ -55,7 +56,7 @@ export function createWebhookToolRouterIntegrations(
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });
   const leadAgentPorts = createLeadAgentToolPortsFromPlatform(
-    createLoginAppLeadPlatformServices(client),
+    createLoginAppLeadPlatformServices(client, { assignmentGovernance: false }),
   );
   const createOptions: CreateToolRouterServicesOptions = {
     customerService,

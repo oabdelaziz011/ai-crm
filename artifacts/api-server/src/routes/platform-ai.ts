@@ -5,6 +5,9 @@ import { createAIProviderServices } from "@workspace/ai-provider-layer";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { HttpError } from "../middleware/error-handler.js";
+import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
+import { SUGGESTED_REPLIES_FEATURE_CODE } from "../services/suggested-replies-llm.js";
+import { generateSuggestedRepliesWithLlm } from "../services/generate-suggested-replies.js";
 
 /**
  * Browser-safe Platform AI proxy.
@@ -32,19 +35,64 @@ function readString(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function resolveEffectiveCompanyId(req: {
+  body?: { companyId?: unknown };
+  supabaseIsSuperAdmin?: boolean;
+  supabaseCompanyId?: string | null;
+}): string {
+  const companyId = String(req.body?.companyId ?? "");
+  const effectiveCompanyId =
+    req.supabaseIsSuperAdmin && companyId
+      ? companyId
+      : (req.supabaseCompanyId ?? companyId);
+  if (!effectiveCompanyId) {
+    throw new HttpError(400, "companyId required", "validation_error");
+  }
+  return effectiveCompanyId;
+}
+
+router.post("/suggested-replies", async (req, res, next) => {
+  try {
+    const effectiveCompanyId = resolveEffectiveCompanyId(req);
+    const conversationId = readString(req.body?.conversationId);
+    if (!conversationId) {
+      throw new HttpError(400, "conversationId required", "validation_error");
+    }
+
+    await assertRouteCommercialFeature(effectiveCompanyId, SUGGESTED_REPLIES_FEATURE_CODE);
+
+    const client = getServiceClient();
+    const hintTargetLanguage = readString(req.body?.targetLanguage);
+    const result = await generateSuggestedRepliesWithLlm({
+      client,
+      companyId: effectiveCompanyId,
+      conversationId,
+      userId: req.supabaseUser?.id ?? null,
+      hintTone: readString(req.body?.tone) || null,
+      hintIntent: readString(req.body?.intent) || null,
+      hintTargetLanguage:
+        hintTargetLanguage === "ar" || hintTargetLanguage === "en" ? hintTargetLanguage : null,
+      refreshSeed: typeof req.body?.refreshSeed === "number" ? req.body.refreshSeed : null,
+    });
+
+    res.json({
+      suggestions: result.suggestions.map((text) => ({ text })),
+      targetLanguage: result.targetLanguage,
+      source: result.source,
+      model: result.model,
+      providerKey: result.providerKey,
+      usage: result.usage,
+      latencyMs: result.latencyMs,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/chat-completion", async (req, res, next) => {
   try {
-    const companyId = String(req.body?.companyId ?? "");
-    // Never trust browser companyId alone — requireCompanyScope already enforced
-    // profile company match (or super-admin). Prefer session company when present.
-    const effectiveCompanyId =
-      req.supabaseIsSuperAdmin && companyId
-        ? companyId
-        : (req.supabaseCompanyId ?? companyId);
-
-    if (!effectiveCompanyId) {
-      throw new HttpError(400, "companyId required", "validation_error");
-    }
+    const effectiveCompanyId = resolveEffectiveCompanyId(req);
+    await assertRouteCommercialFeature(effectiveCompanyId, "ai_assistant");
 
     const providerKey = readString(req.body?.providerKey, "openai");
     const useCase = readString(req.body?.useCase, "chat") as "chat" | "tool_calling" | "embeddings";
@@ -88,7 +136,6 @@ router.post("/chat-completion", async (req, res, next) => {
       },
     });
 
-    // Safe response — no credentials
     res.json({
       text: response.text,
       model: response.model,
@@ -107,24 +154,16 @@ router.post("/chat-completion", async (req, res, next) => {
 
 router.post("/embeddings", async (req, res, next) => {
   try {
-    const companyId = String(req.body?.companyId ?? "");
-    const effectiveCompanyId =
-      req.supabaseIsSuperAdmin && companyId
-        ? companyId
-        : (req.supabaseCompanyId ?? companyId);
-
-    if (!effectiveCompanyId) {
-      throw new HttpError(400, "companyId required", "validation_error");
-    }
+    const effectiveCompanyId = resolveEffectiveCompanyId(req);
 
     const providerKey = readString(req.body?.providerKey, "openai");
     const model = readString(req.body?.model) || undefined;
-    const input = req.body?.input;
+    const inputBody = req.body?.input;
     const text =
-      typeof input === "string"
-        ? input
-        : Array.isArray(input)
-          ? input.map(String).join("\n")
+      typeof inputBody === "string"
+        ? inputBody
+        : Array.isArray(inputBody)
+          ? inputBody.map(String).join("\n")
           : "";
     if (!text.trim()) {
       throw new HttpError(400, "input required", "validation_error");

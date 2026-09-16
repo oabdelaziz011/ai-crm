@@ -1,0 +1,51 @@
+{
+  "seeded": {
+    "id": "b6e6e3b7-0641-4d15-9048-623fd031762b",
+    "confirmation_number": "BK-997382",
+    "start_at": "2026-09-10T16:00:00.000Z",
+    "status": "confirmed"
+  },
+  "after": {
+    "id": "b6e6e3b7-0641-4d15-9048-623fd031762b",
+    "confirmation_number": "BK-997382",
+    "customer_id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+    "status": "rescheduled",
+    "start_at": "2026-09-10T16:00:00.000Z",
+    "end_at": "2026-09-10T16:30:00.000Z",
+    "updated_at": "2026-08-26T03:01:15.303Z",
+    "rescheduled_from_id": null
+  },
+  "successor": {
+    "id": "71bb5fb0-4579-4e63-b54c-c00a54eea144",
+    "confirmation_number": "BK-997383",
+    "customer_id": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb",
+    "status": "confirmed",
+    "start_at": "2026-08-27T18:15:00.000Z"
+  },
+  "outs": [
+    "أهلاً يا عمر عبدالعزيز 👋\nأنا المساعد الذكي الخاص بعيادات النور، كيف يمكنني مساعدتك اليوم؟",
+    "تم تغيير ميعاد الحجز BK-997382 بنجاح."
+  ],
+  "parsedIn": {
+    "date": "2026-08-27",
+    "bookingId": "BK-997382",
+    "slotStart": "21:15",
+    "bookingReference": "BK-997382",
+    "trustedCustomerId": "8b810114-c2fe-4a30-bc65-cf4bf084d1fb"
+  },
+  "parsed": {
+    "success": true,
+    "bookingId": "71bb5fb0-4579-4e63-b54c-c00a54eea144",
+    "reference": "BK-997382",
+    "scheduledAt": "2026-08-27T18:15:00+00:00",
+    "rescheduledAt": "2026-08-26T03:01:16.917Z",
+    "customerFacingMessage": "تم تغيير ميعاد الحجز BK-997382 بنجاح."
+  },
+  "checks": {
+    "toolSuccess": true,
+    "dbChanged": true,
+    "stillOmar": true,
+    "sameRef": true
+  },
+  "pass": true
+}

@@ -14,6 +14,7 @@ import {
   isImportPhoneWritable,
   resolveImportPhoneIdentity,
 } from "@workspace/ai-tool-router";
+import { resolveInstagramAutomationPhone } from "./instagram-customer-phone.js";
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -108,15 +109,23 @@ export async function executeCreateCustomerAction(
   const genderRaw = genderField ? readVariableByKey(scope, genderField) || null : null;
 
   const phoneFieldKey = phoneField ? phoneField : "customer_phone";
-  const phone = phoneField ? readVariableByKey(scope, phoneFieldKey) || null : null;
+  const rawPhone = phoneField ? readVariableByKey(scope, phoneFieldKey) || null : null;
   const regionField = readString(config.regionField) ?? readString(config.phoneRegionField);
-  const region = regionField
+  const configuredRegion = regionField
     ? readVariableByKey(scope, regionField) || null
     : readString(config.defaultRegion) ?? readString(config.phoneRegion) ?? null;
+  const resolvedPhone = resolveInstagramAutomationPhone({
+    channel: context.session.channel,
+    phone: rawPhone,
+    configuredRegion,
+  });
+  const phone = resolvedPhone.phone;
+  const region = resolvedPhone.region;
 
   const phonePreview = resolveImportPhoneIdentity({
     phone,
     rowRegion: region,
+    defaultRegion: region,
     source: "explicit",
   });
   if (phone && !isImportPhoneWritable(phonePreview)) {
@@ -154,7 +163,10 @@ export async function executeCreateCustomerAction(
 
   return {
     outcome: "continue",
-    variables: mergeVariables(context.variables, buildCustomerVariables(result.customer)),
+    variables: mergeVariables(context.variables, {
+      ...buildCustomerVariables(result.customer),
+      ...(phone ? { customer_phone: phone } : {}),
+    }),
     output: { customerId: result.customer.id },
   };
 }

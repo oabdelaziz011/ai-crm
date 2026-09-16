@@ -5,12 +5,15 @@ import { DefaultCustomerServicePort } from "../../ports/customer-service-port.js
 import type { ConversationCustomerLinkPort } from "../../ports/conversation-customer-link-port.js";
 import type { ExecutionContext } from "../execution-context.js";
 
-function buildContext(variables: Record<string, unknown>): ExecutionContext {
+function buildContext(
+  variables: Record<string, unknown>,
+  channel: ExecutionContext["session"]["channel"] = "whatsapp",
+): ExecutionContext {
   return {
     company: { id: "company-1" },
     flow: { id: "flow-1", company_id: "company-1", name: "Flow", status: "active" } as ExecutionContext["flow"],
     run: { id: "run-1", metadata: { actorUserId: "user-1" } } as ExecutionContext["run"],
-    session: { id: "session-1", metadata: {} } as ExecutionContext["session"],
+    session: { id: "session-1", metadata: {}, channel } as ExecutionContext["session"],
     variables,
     customer: { id: null },
     currentNode: { id: "node-create", type: "action", config: {} } as ExecutionContext["currentNode"],
@@ -67,5 +70,47 @@ const withoutConversation = await executeCreateCustomerAction(
 
 assert.equal(withoutConversation.output?.customerId, repository.list()[1]?.id);
 assert.equal(links.length, 1);
+
+const instagramLocal = await executeCreateCustomerAction(
+  buildContext(
+    {
+      conversationId: "conv-ig-1",
+      customer_name: "Salma",
+      customer_phone: "01098232123",
+      customer_age: "32",
+      customer_gender: "Female",
+    },
+    "instagram",
+  ),
+  {
+    nameField: "customer_name",
+    phoneField: "customer_phone",
+    ageField: "customer_age",
+    genderField: "customer_gender",
+  },
+  customerService,
+  conversationCustomerLink,
+);
+
+assert.equal(instagramLocal.variables?.customer_phone, "+201098232123");
+assert.equal((instagramLocal.variables?.customer as { phone: string | null }).phone, "+201098232123");
+
+let whatsappLocalFailed = false;
+try {
+  await executeCreateCustomerAction(
+    buildContext({
+      customer_name: "Wa Local",
+      customer_phone: "01098232123",
+    }),
+    {
+      nameField: "customer_name",
+      phoneField: "customer_phone",
+    },
+    customerService,
+  );
+} catch (error) {
+  whatsappLocalFailed = error instanceof Error && error.message.includes("PHONE_REGION_REQUIRED");
+}
+assert.equal(whatsappLocalFailed, true);
 
 console.log("create-customer-action.test.ts: all assertions passed");

@@ -12,6 +12,7 @@ import { buildLookupStateFromStatus } from "../../crm/lookup/build-lookup-state.
 import type { CustomerServicePort } from "../../ports/customer-service-port.js";
 import type { ExecutionContext, NodeExecutionResult } from "../execution-context.js";
 import { mergeVariables } from "../execution-context.js";
+import { resolveInstagramAutomationPhone } from "./instagram-customer-phone.js";
 
 function resolveActorUserId(context: ExecutionContext): string {
   const candidates = [
@@ -36,7 +37,15 @@ export async function executeFindCustomerAction(
 ): Promise<NodeExecutionResult> {
   const normalized = normalizeFindCustomerConfig(config);
   const scope = buildActionVariableScope(context.variables, context.customer.id);
-  const lookupValue = resolveRequiredFieldBindingAsString(normalized.value, scope, "lookup value");
+  const rawLookupValue = resolveRequiredFieldBindingAsString(normalized.value, scope, "lookup value");
+  const resolvedLookup =
+    normalized.lookupBy === "phone" || normalized.lookupBy === "phone_e164"
+      ? resolveInstagramAutomationPhone({
+          channel: context.session.channel,
+          phone: rawLookupValue,
+        })
+      : { phone: rawLookupValue, region: null };
+  const lookupValue = resolvedLookup.phone ?? rawLookupValue;
 
   const result = await customerService.findCustomer({
     companyId: context.company.id,
@@ -73,6 +82,9 @@ export async function executeFindCustomerAction(
     variables: mergeVariables(context.variables, {
       ...lookupPatch,
       ...entityPatch,
+      ...(resolvedLookup.phone && resolvedLookup.phone !== rawLookupValue
+        ? { customer_phone: resolvedLookup.phone }
+        : {}),
     }),
     output: {
       lookupStatus: lookupState.status,

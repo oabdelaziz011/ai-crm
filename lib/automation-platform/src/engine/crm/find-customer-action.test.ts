@@ -78,6 +78,7 @@ describe("executeFindCustomerAction", () => {
     const repository = new InMemoryCustomerRepository();
     repository.seed({
       id: "cust-1",
+      companyId: "company-1",
       name: "Omar",
       email: "omar@example.com",
       phone: "+15550001",
@@ -145,6 +146,7 @@ describe("executeFindCustomerAction", () => {
     const repository = new InMemoryCustomerRepository();
     repository.seed({
       id: "cust-1",
+      companyId: "company-1",
       name: "Omar",
       email: "omar@example.com",
       phone: "+15550001",
@@ -154,6 +156,7 @@ describe("executeFindCustomerAction", () => {
     });
     repository.seed({
       id: "cust-2",
+      companyId: "company-1",
       name: "Omar Duplicate",
       email: "dup@example.com",
       phone: "+15550001",
@@ -207,5 +210,81 @@ describe("executeFindCustomerAction", () => {
     assert.equal(result.outcome, "continue");
     assert.deepEqual(result.variables?.lookup, { status: "duplicate", count: 1 });
     assert.equal((result.variables?.customer as { exists: boolean }).exists, false);
+  });
+
+  it("rewrites Instagram Egyptian local phones before lookup", async () => {
+    const repository = new InMemoryCustomerRepository();
+    repository.seed({
+      id: "cust-eg",
+      companyId: "company-1",
+      name: "Salma",
+      email: null,
+      phone: "+201098232123",
+      notes: null,
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    });
+    const customerService = new DefaultCustomerServicePort(repository);
+    const context = createContext(
+      {
+        action: "find_customer",
+        lookupBy: "phone",
+        value: variableBinding("customer_phone"),
+      },
+      { customer_phone: "01098232123" },
+    );
+    context.session.channel = "instagram";
+
+    const result = await executeFindCustomerAction(
+      context,
+      {
+        action: "find_customer",
+        lookupBy: "phone",
+        value: variableBinding("customer_phone"),
+      },
+      customerService,
+    );
+
+    assert.equal(result.outcome, "continue");
+    assert.deepEqual(result.variables?.lookup, { status: "found", count: 1 });
+    assert.equal(result.variables?.customer_phone, "+201098232123");
+    assert.equal((result.variables?.customer as { id: string }).id, "cust-eg");
+  });
+
+  it("does not rewrite WhatsApp local phones before lookup", async () => {
+    const repository = new InMemoryCustomerRepository();
+    repository.seed({
+      id: "cust-wa",
+      companyId: "company-1",
+      name: "Local WhatsApp",
+      email: null,
+      phone: "01098232123",
+      notes: null,
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    });
+    const customerService = new DefaultCustomerServicePort(repository);
+
+    const result = await executeFindCustomerAction(
+      createContext(
+        {
+          action: "find_customer",
+          lookupBy: "phone",
+          value: variableBinding("customer_phone"),
+        },
+        { customer_phone: "01098232123" },
+      ),
+      {
+        action: "find_customer",
+        lookupBy: "phone",
+        value: variableBinding("customer_phone"),
+      },
+      customerService,
+    );
+
+    assert.equal(result.outcome, "continue");
+    assert.deepEqual(result.variables?.lookup, { status: "found", count: 1 });
+    assert.equal(result.variables?.customer_phone, "01098232123");
+    assert.equal((result.variables?.customer as { id: string }).id, "cust-wa");
   });
 });

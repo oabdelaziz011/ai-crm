@@ -208,6 +208,7 @@ describe("Instagram empty generic template webhook ACK", () => {
         mid: "mid.hello",
         text: "hello instagram",
       }),
+      aiAssistantId: "assistant-1",
     });
 
     assert.equal(response.kind, "inbound");

@@ -4,6 +4,8 @@ export type EmailTemplateVariableKey =
   | "customer.email"
   | "ticket.number"
   | "ticket.subject"
+  | "ticket.status"
+  | "ticket.priority"
   | "booking.reference";
 
 export type EmailTemplateVariableDefinition = {
@@ -39,6 +41,16 @@ export const EMAIL_TEMPLATE_VARIABLES: readonly EmailTemplateVariableDefinition[
     labelKey: "emailModule.templates.variables.ticketSubject",
   },
   {
+    key: "ticket.status",
+    token: "{{ticket.status}}",
+    labelKey: "emailModule.templates.variables.ticketStatus",
+  },
+  {
+    key: "ticket.priority",
+    token: "{{ticket.priority}}",
+    labelKey: "emailModule.templates.variables.ticketPriority",
+  },
+  {
     key: "booking.reference",
     token: "{{booking.reference}}",
     labelKey: "emailModule.templates.variables.bookingReference",
@@ -53,6 +65,8 @@ export const EMAIL_TEMPLATE_PREVIEW_CONTEXT: EmailTemplateRenderContext = {
   "customer.email": "customer@example.com",
   "ticket.number": "TCK-1001",
   "ticket.subject": "Example Support Request",
+  "ticket.status": "in_progress",
+  "ticket.priority": "high",
   "booking.reference": "BK-1001",
 };
 

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Loader2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
@@ -21,6 +21,17 @@ import {
   type CompanyEmailTemplate,
   type EmailTemplateInput,
 } from "@/lib/email-templates";
+import {
+  classifyEmailTemplateCategory,
+  EMAIL_TEMPLATE_CATEGORY_DEFS,
+  type EmailTemplateCategoryId,
+} from "@/lib/email-templates/email-template-categories";
+import {
+  recommendedTemplatesForCategory,
+  type RecommendedEmailTemplate,
+} from "@/lib/email-templates/email-recommended-templates";
+import { EMAIL_TEMPLATES_TAB_PERMISSION } from "@/lib/email-workspace/email-tab-permissions";
+import { generateEmailAiDraft } from "@/lib/email-workspace/email-ai-assist";
 import { isEmailApiConfigured } from "@/lib/notifications/providers/email/services/email-api-client";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
 import { DashboardCard } from "@/components/dashboard/ui";
@@ -47,14 +58,22 @@ const EMPTY_EDITOR: EditorState = {
   enabled: true,
 };
 
+type TemplateAiImproveAction =
+  | "formal"
+  | "friendly"
+  | "shorten"
+  | "improve"
+  | "translate_ar"
+  | "translate_en";
+
 export function EmailTemplatesPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { hasPermission, isSuperAdmin } = useAuthUser();
-  const canEdit = isSuperAdmin || hasPermission("settings.edit");
+  const canEdit = isSuperAdmin || hasPermission(EMAIL_TEMPLATES_TAB_PERMISSION);
 
-  const { data = [], isLoading, isError, error, refetch } = useEmailTemplates(companyId);
+  const { data = [], isLoading, isError, error, refetch } = useEmailTemplates(companyId, canEdit);
   const createMutation = useCreateEmailTemplate(companyId);
   const updateMutation = useUpdateEmailTemplate(companyId);
   const setEnabledMutation = useSetEmailTemplateEnabled(companyId);
@@ -84,6 +103,24 @@ export function EmailTemplatesPage() {
     );
   }, [data, search]);
 
+  const grouped = useMemo(() => {
+    const buckets: Record<EmailTemplateCategoryId, CompanyEmailTemplate[]> = {
+      complaints: [],
+      tickets: [],
+      follow_up: [],
+      customer_service: [],
+      sales: [],
+      operations: [],
+      other: [],
+    };
+    for (const row of filtered) {
+      buckets[classifyEmailTemplateCategory(row)].push(row);
+    }
+    return buckets;
+  }, [filtered]);
+
+  const [aiBusy, setAiBusy] = useState(false);
+
   const preview = useMemo(
     () =>
       renderEmailTemplate(
@@ -99,6 +136,19 @@ export function EmailTemplatesPage() {
   function openCreate() {
     setEditor(EMPTY_EDITOR);
     setCodeTouched(false);
+    setShowPreview(false);
+    setEditorOpen(true);
+  }
+
+  function startFromRecommended(row: RecommendedEmailTemplate) {
+    setEditor({
+      name: row.name,
+      code: row.code,
+      subject: row.subject,
+      body: row.body,
+      enabled: true,
+    });
+    setCodeTouched(true);
     setShowPreview(false);
     setEditorOpen(true);
   }
@@ -123,6 +173,40 @@ export function EmailTemplatesPage() {
       ...prev,
       [field]: `${prev[field] ?? ""}${token}`,
     }));
+  }
+
+  async function improveBodyWithAi(action: TemplateAiImproveAction) {
+    if (!canEdit || !companyId || !editor.body.trim() || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const mappedAction =
+        action === "translate_ar" || action === "translate_en"
+          ? ("translate" as const)
+          : action;
+      const targetLanguage =
+        action === "translate_ar"
+          ? "ar"
+          : action === "translate_en"
+            ? "en"
+            : i18n.language?.toLowerCase().startsWith("ar")
+              ? "ar"
+              : "en";
+      const text = await generateEmailAiDraft({
+        companyId,
+        action: mappedAction,
+        threadText: "",
+        draftText: editor.body,
+        targetLanguage,
+      });
+      if (text.trim()) {
+        setEditor((prev) => ({ ...prev, body: text }));
+        focusField.current = "body";
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("emailModule.workspace.aiError"));
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function handleSave() {
@@ -226,120 +310,198 @@ export function EmailTemplatesPage() {
           className="max-w-md"
         />
 
-        {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {data.length === 0
-              ? t("emailModule.templates.empty")
-              : t("emailModule.templates.noMatches")}
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-border/60">
-            <div className="min-w-[720px]">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.6fr)_5.5rem_auto] items-center gap-3 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
-                <div className="text-start">{t("emailModule.templates.columns.name")}</div>
-                <div className="text-start">{t("emailModule.templates.columns.code")}</div>
-                <div className="text-start">{t("emailModule.templates.columns.subject")}</div>
-                <div className="text-start">{t("emailModule.templates.columns.status")}</div>
-                <div className="text-start">{t("emailModule.templates.columns.actions")}</div>
-              </div>
-              <div>
-                {filtered.map((row) => (
-                  <div
-                    key={row.id}
-                    className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.6fr)_5.5rem_auto] items-center gap-3 border-t border-border/50 px-3 py-2.5 text-sm"
-                  >
-                    <div className="min-w-0 truncate font-medium text-start">{row.name}</div>
-                    <div className="min-w-0 truncate font-mono text-xs text-start">{row.code}</div>
-                    <div className="min-w-0 truncate text-muted-foreground text-start">
-                      {row.subject || "—"}
-                    </div>
-                    <div className="flex items-center justify-start">
-                      {canEdit ? (
-                        <Switch
-                          checked={row.enabled}
-                          disabled={setEnabledMutation.isPending}
-                          onCheckedChange={(enabled) => {
-                            void setEnabledMutation
-                              .mutateAsync({ id: row.id, enabled })
-                              .catch((err) =>
-                                toast.error(
-                                  err instanceof Error
-                                    ? err.message
-                                    : t("emailModule.templates.saveError"),
-                                ),
-                              );
-                          }}
-                          aria-label={
-                            row.enabled
-                              ? t("emailModule.templates.enabled")
-                              : t("emailModule.templates.disabled")
-                          }
-                        />
-                      ) : (
-                        <span
-                          className={
-                            row.enabled
-                              ? "text-xs font-medium text-primary"
-                              : "text-xs font-medium text-muted-foreground"
-                          }
+        {data.length === 0 && !search.trim() ? (
+          <p className="text-sm text-muted-foreground">{t("emailModule.templates.empty")}</p>
+        ) : null}
+
+        <div className="space-y-4">
+          {EMAIL_TEMPLATE_CATEGORY_DEFS.map((category) => {
+            const rows = grouped[category.id];
+            return (
+              <div key={category.id} className="rounded-lg border border-border/60">
+                <div className="border-b border-border/60 bg-muted/30 px-3 py-2">
+                  <h3 className="text-sm font-semibold">{t(category.labelKey)}</h3>
+                </div>
+                {rows.length === 0 ? (
+                  <div className="space-y-2 px-3 py-3">
+                    <p className="text-xs text-muted-foreground">
+                      {t("emailModule.templates.recommended.hint")}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recommendedTemplatesForCategory(category.id).map((rec) => (
+                        <Button
+                          key={rec.code}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={!canEdit}
+                          onClick={() => startFromRecommended(rec)}
                         >
+                          {rec.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[720px]">
+                      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.6fr)_5.5rem_auto] items-center gap-3 border-b bg-muted/20 px-3 py-2 text-xs font-medium text-muted-foreground">
+                        <div className="text-start">{t("emailModule.templates.columns.name")}</div>
+                        <div className="text-start">{t("emailModule.templates.columns.code")}</div>
+                        <div className="text-start">{t("emailModule.templates.columns.subject")}</div>
+                        <div className="text-start">{t("emailModule.templates.columns.status")}</div>
+                        <div className="text-start">{t("emailModule.templates.columns.actions")}</div>
+                      </div>
+                      {rows.map((row) => (
+                        <div
+                          key={row.id}
+                          className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.6fr)_5.5rem_auto] items-center gap-3 border-t border-border/50 px-3 py-2.5 text-sm"
+                        >
+                          <div className="min-w-0 truncate font-medium text-start">{row.name}</div>
+                          <div className="min-w-0 truncate font-mono text-xs text-start">{row.code}</div>
+                          <div className="min-w-0 truncate text-muted-foreground text-start">
+                            {row.subject || "—"}
+                          </div>
+                          <div className="flex items-center justify-start">
+                            {canEdit ? (
+                              <Switch
+                                checked={row.enabled}
+                                disabled={setEnabledMutation.isPending}
+                                onCheckedChange={(enabled) => {
+                                  void setEnabledMutation
+                                    .mutateAsync({ id: row.id, enabled })
+                                    .catch((err) =>
+                                      toast.error(
+                                        err instanceof Error
+                                          ? err.message
+                                          : t("emailModule.templates.saveError"),
+                                      ),
+                                    );
+                                }}
+                                aria-label={
+                                  row.enabled
+                                    ? t("emailModule.templates.enabled")
+                                    : t("emailModule.templates.disabled")
+                                }
+                              />
+                            ) : (
+                              <span
+                                className={
+                                  row.enabled
+                                    ? "text-xs font-medium text-primary"
+                                    : "text-xs font-medium text-muted-foreground"
+                                }
+                              >
+                                {row.enabled
+                                  ? t("emailModule.templates.enabled")
+                                  : t("emailModule.templates.disabled")}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-start gap-0.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEdit(row)}
+                              aria-label={t("emailModule.templates.edit")}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            {canEdit ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={duplicateMutation.isPending}
+                                  onClick={() => {
+                                    void duplicateMutation
+                                      .mutateAsync(row.id)
+                                      .then(() =>
+                                        toast.success(t("emailModule.templates.duplicated")),
+                                      )
+                                      .catch((err) =>
+                                        toast.error(
+                                          err instanceof Error
+                                            ? err.message
+                                            : t("emailModule.templates.saveError"),
+                                        ),
+                                      );
+                                  }}
+                                  aria-label={t("emailModule.templates.duplicate")}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setDeleteTarget(row)}
+                                  aria-label={t("emailModule.templates.delete")}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {grouped.other.length > 0 ? (
+            <div className="rounded-lg border border-border/60">
+              <div className="border-b border-border/60 bg-muted/30 px-3 py-2">
+                <h3 className="text-sm font-semibold">
+                  {t("emailModule.templates.categories.other")}
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <div className="min-w-[720px]">
+                  {grouped.other.map((row) => (
+                    <div
+                      key={row.id}
+                      className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.6fr)_5.5rem_auto] items-center gap-3 border-t border-border/50 px-3 py-2.5 text-sm first:border-t-0"
+                    >
+                      <div className="min-w-0 truncate font-medium text-start">{row.name}</div>
+                      <div className="min-w-0 truncate font-mono text-xs text-start">{row.code}</div>
+                      <div className="min-w-0 truncate text-muted-foreground text-start">
+                        {row.subject || "—"}
+                      </div>
+                      <div className="flex items-center justify-start">
+                        <span className="text-xs text-muted-foreground">
                           {row.enabled
                             ? t("emailModule.templates.enabled")
                             : t("emailModule.templates.disabled")}
                         </span>
-                      )}
+                      </div>
+                      <div className="flex items-center justify-start">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openEdit(row)}
+                          aria-label={t("emailModule.templates.edit")}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-start gap-0.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEdit(row)}
-                        aria-label={t("emailModule.templates.edit")}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {canEdit ? (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            disabled={duplicateMutation.isPending}
-                            onClick={() => {
-                              void duplicateMutation
-                                .mutateAsync(row.id)
-                                .then(() => toast.success(t("emailModule.templates.duplicated")))
-                                .catch((err) =>
-                                  toast.error(
-                                    err instanceof Error
-                                      ? err.message
-                                      : t("emailModule.templates.saveError"),
-                                  ),
-                                );
-                            }}
-                            aria-label={t("emailModule.templates.duplicate")}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setDeleteTarget(row)}
-                            aria-label={t("emailModule.templates.delete")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          ) : null}
+
+          {filtered.length === 0 && search.trim() ? (
+            <p className="text-sm text-muted-foreground">{t("emailModule.templates.noMatches")}</p>
+          ) : null}
+        </div>
       </DashboardCard>
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
@@ -386,6 +548,18 @@ export function EmailTemplatesPage() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <Label>{t("emailModule.templates.category")}</Label>
+              <Input
+                readOnly
+                value={t(
+                  EMAIL_TEMPLATE_CATEGORY_DEFS.find(
+                    (c) => c.id === classifyEmailTemplateCategory(editor),
+                  )?.labelKey ?? "emailModule.templates.categories.other",
+                )}
+              />
+            </div>
+
             <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
               <Label htmlFor="email-tpl-enabled">{t("emailModule.templates.enabled")}</Label>
               <Switch
@@ -421,6 +595,41 @@ export function EmailTemplatesPage() {
                 }}
                 onChange={(e) => setEditor((prev) => ({ ...prev, body: e.target.value }))}
               />
+              {canEdit ? (
+                <div className="space-y-1.5 rounded-md border border-primary/20 bg-primary/[0.03] p-2.5">
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                    {t("emailModule.templates.aiImprove.heading")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("emailModule.templates.aiImprove.hint")}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ["formal", "emailModule.templates.aiImprove.formal"],
+                        ["friendly", "emailModule.templates.aiImprove.friendly"],
+                        ["shorten", "emailModule.templates.aiImprove.shorter"],
+                        ["improve", "emailModule.templates.aiImprove.persuasive"],
+                        ["translate_ar", "emailModule.templates.aiImprove.arabic"],
+                        ["translate_en", "emailModule.templates.aiImprove.english"],
+                      ] as const
+                    ).map(([action, labelKey]) => (
+                      <Button
+                        key={action}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={aiBusy || !editor.body.trim() || !companyId}
+                        onClick={() => void improveBodyWithAi(action)}
+                      >
+                        {aiBusy ? <Loader2 className="me-1 h-3 w-3 animate-spin" /> : null}
+                        {t(labelKey)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-2 rounded-md border border-border/60 p-3">
@@ -459,7 +668,10 @@ export function EmailTemplatesPage() {
               </Button>
               {showPreview ? (
                 <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3 text-sm">
-                  <p className="font-medium">{t("emailModule.templates.previewTitle")}</p>
+                  <p className="font-medium">{t("emailModule.templates.preview")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("emailModule.templates.previewSampleNotice")}
+                  </p>
                   <div>
                     <p className="text-xs text-muted-foreground">
                       {t("emailModule.templates.subject")}

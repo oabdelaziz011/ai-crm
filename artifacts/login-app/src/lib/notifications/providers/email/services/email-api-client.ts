@@ -122,6 +122,23 @@ export function processEmailQueue(companyId: string) {
   return postEmailApi("/email/process-queue", { companyId });
 }
 
+export type EmailWorkspaceChannelResponse = {
+  channel: {
+    id: string;
+    companyId: string;
+    displayName: string | null;
+    isEnabled: boolean;
+    fromEmail: string | null;
+    fromName: string | null;
+  } | null;
+};
+
+export function fetchEmailWorkspaceChannel(
+  companyId: string,
+): Promise<EmailWorkspaceChannelResponse> {
+  return postEmailApi<EmailWorkspaceChannelResponse>("/email/workspace-channel", { companyId });
+}
+
 export function isEmailApiConfigured(): boolean {
   return isAuthenticatedApiConfigured();
 }

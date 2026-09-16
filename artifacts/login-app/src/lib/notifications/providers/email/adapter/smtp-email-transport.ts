@@ -4,9 +4,41 @@ import type {
   EmailTransportHealthResult,
   EmailTransportSendResult,
   SmtpConfig,
-} from "@/lib/notifications/providers/email/types/email-types";
+} from "../types/email-types";
 
-export type { EmailTransport } from "@/lib/notifications/providers/email/types/email-types";
+export type { EmailTransport } from "../types/email-types";
+
+export function buildNotificationSmtpMailPayload(message: EmailMessage, config: SmtpConfig) {
+  return {
+    from: config.fromName ? `"${config.fromName}" <${config.fromEmail}>` : config.fromEmail,
+    to: message.to,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    attachments: (message.attachments ?? []).map((item) => ({
+      filename: item.filename,
+      content: Buffer.from(item.content),
+      contentType: item.contentType,
+    })),
+  };
+}
+
+export function buildNotificationSmtpTransportOptions(config: SmtpConfig) {
+  const secure = config.encryption === "ssl";
+  return {
+    host: config.host,
+    port: config.port,
+    secure,
+    auth: config.username
+      ? {
+          user: config.username,
+          pass: config.password,
+        }
+      : undefined,
+    requireTLS: config.encryption === "starttls",
+    tls: config.encryption === "none" ? { rejectUnauthorized: false } : undefined,
+  };
+}
 
 /**
  * Node-only SMTP transport. Import only from server/worker contexts.
@@ -17,15 +49,9 @@ export class SmtpEmailTransport implements EmailTransport {
 
   async send(message: EmailMessage, config: SmtpConfig): Promise<EmailTransportSendResult> {
     const nodemailer = await import("nodemailer");
-    const transporter = nodemailer.createTransport(this.buildTransportOptions(config));
+    const transporter = nodemailer.createTransport(buildNotificationSmtpTransportOptions(config));
 
-    const result = await transporter.sendMail({
-      from: config.fromName ? `"${config.fromName}" <${config.fromEmail}>` : config.fromEmail,
-      to: message.to,
-      subject: message.subject,
-      html: message.html,
-      text: message.text,
-    });
+    const result = await transporter.sendMail(buildNotificationSmtpMailPayload(message, config));
 
     return {
       messageId: result.messageId ?? null,
@@ -38,7 +64,7 @@ export class SmtpEmailTransport implements EmailTransport {
     const started = Date.now();
     try {
       const nodemailer = await import("nodemailer");
-      const transporter = nodemailer.createTransport(this.buildTransportOptions(config));
+      const transporter = nodemailer.createTransport(buildNotificationSmtpTransportOptions(config));
       await transporter.verify();
       return {
         ok: true,
@@ -53,22 +79,5 @@ export class SmtpEmailTransport implements EmailTransport {
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  }
-
-  private buildTransportOptions(config: SmtpConfig) {
-    const secure = config.encryption === "ssl";
-    return {
-      host: config.host,
-      port: config.port,
-      secure,
-      auth: config.username
-        ? {
-            user: config.username,
-            pass: config.password,
-          }
-        : undefined,
-      requireTLS: config.encryption === "starttls",
-      tls: config.encryption === "none" ? { rejectUnauthorized: false } : undefined,
-    };
   }
 }

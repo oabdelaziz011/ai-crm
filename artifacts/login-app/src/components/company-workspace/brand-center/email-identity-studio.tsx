@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "wouter";
 import {
   Building2,
   Globe,
@@ -10,13 +11,12 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { EmailIdentityPreview } from "@/components/company-workspace/brand-center/email-identity-preview";
-import { EmailSignatureEditor } from "@/components/company-workspace/brand-center/email-signature-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { resolveBrandLogos } from "@/lib/company-workspace/brand-center/resolve-brand-logos";
+import { EMAIL_SETTINGS_IDENTITY_HREF } from "@/lib/email-workspace/email-settings-tabs";
 import type {
   CompanyBrandCenterDocument,
   CompanyBrandEmail,
@@ -31,7 +31,6 @@ type Props = {
   disabled?: boolean;
   highlightFocusId?: string | null;
   onPatchEmail: (patch: Partial<CompanyBrandEmail>) => void;
-  onChangeLogo: () => void;
   onEditCompany: () => void;
 };
 
@@ -56,7 +55,6 @@ export function EmailIdentityStudio({
   disabled,
   highlightFocusId,
   onPatchEmail,
-  onChangeLogo,
   onEditCompany,
 }: Props) {
   const { t } = useTranslation("common");
@@ -68,11 +66,19 @@ export function EmailIdentityStudio({
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
       <div className="space-y-4">
-        {/* Section 1 — Company contact (read-only) */}
         <StudioCard
-          title={t(`${base}.contactTitle`)}
-          description={t(`${base}.contactHint`)}
+          title={t("companyWorkspace.brandCenter.emailIdentityMoved.title")}
+          description={t("companyWorkspace.brandCenter.emailIdentityMoved.body")}
+          dataTestId="brand-center-email-identity-redirect"
         >
+          <Button asChild type="button" size="sm" className="mt-1">
+            <Link href={EMAIL_SETTINGS_IDENTITY_HREF} data-testid="brand-center-go-email-settings">
+              {t("companyWorkspace.brandCenter.emailIdentityMoved.cta")}
+            </Link>
+          </Button>
+        </StudioCard>
+
+        <StudioCard title={t(`${base}.contactTitle`)} description={t(`${base}.contactHint`)}>
           <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/30 p-3">
             <ContactRow
               icon={<Building2 className="size-3.5" />}
@@ -115,45 +121,13 @@ export function EmailIdentityStudio({
           </Button>
         </StudioCard>
 
-        {/* Section 2 — Sender identity */}
         <StudioCard
-          title={t(`${base}.senderTitle`)}
-          description={t(`${base}.senderHint`)}
-          focusId="email-sender"
-          highlighted={highlightFocusId === "email-sender"}
+          title={t(`${base}.logoTitle`)}
+          description={t(`${base}.logoFromAssets`)}
+          focusId="logo-email"
+          highlighted={highlightFocusId === "logo-email"}
+          dataTestId="brand-center-email-logo-readonly"
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              label={t(`${base}.senderName`)}
-              value={email.senderName}
-              disabled={disabled}
-              placeholder={t(`${base}.senderNamePlaceholder`)}
-              onChange={(v) => onPatchEmail({ senderName: v, header: v })}
-            />
-            <Field
-              label={t(`${base}.senderDisplayName`)}
-              value={email.senderDisplayName}
-              disabled={disabled}
-              placeholder={t(`${base}.senderDisplayPlaceholder`)}
-              onChange={(v) => onPatchEmail({ senderDisplayName: v })}
-            />
-          </div>
-          <div className="mt-3 space-y-1.5">
-            <Label>{t("companyWorkspace.brandCenter.replyEmail")}</Label>
-            <Input
-              type="email"
-              value={email.replyEmail}
-              disabled={disabled}
-              placeholder={contact.email || t(`${base}.replyFallbackHint`)}
-              onChange={(e) => onPatchEmail({ replyEmail: e.target.value })}
-              dir="ltr"
-            />
-            <p className="text-[11px] text-muted-foreground">{t(`${base}.replyFallbackHint`)}</p>
-          </div>
-        </StudioCard>
-
-        {/* Section 3 — Email logo (read from Brand Assets — no duplicate upload) */}
-        <StudioCard title={t(`${base}.logoTitle`)} description={t(`${base}.logoFromAssets`)}>
           <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border/50 bg-muted/20 p-3">
             <div className="flex size-16 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card">
               {emailLogo ? (
@@ -171,38 +145,14 @@ export function EmailIdentityStudio({
               </p>
               <p className="text-[11px] text-muted-foreground">{t(`${base}.logoFallback`)}</p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5"
-              onClick={onChangeLogo}
-            >
-              <ImageIcon className="size-3.5" />
-              {t(`${base}.changeLogo`)}
+            <Button asChild type="button" variant="outline" size="sm" className="h-9">
+              <Link href={EMAIL_SETTINGS_IDENTITY_HREF} data-testid="brand-center-go-email-logo">
+                {t("companyWorkspace.brandCenter.emailIdentityMoved.cta")}
+              </Link>
             </Button>
-          </div>
-          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-            <p>
-              <span className="font-medium text-foreground">{t(`${base}.senderName`)}:</span>{" "}
-              {email.senderName.trim() || "—"}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">{t(`${base}.legalTitle`)}:</span>{" "}
-              {email.showLegalFooter && email.legalText.trim() ? t(`${base}.showLegal`) : "—"}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">{t(`${base}.ctaTitle`)}:</span>{" "}
-              {email.ctaEnabled ? email.ctaText || t(`${base}.ctaEnable`) : "—"}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">{t(`${base}.socialTitle`)}:</span>{" "}
-              {Object.values(email.social).filter((v) => v.trim()).length || "—"}
-            </p>
           </div>
         </StudioCard>
 
-        {/* Section 4 — CTA */}
         <StudioCard title={t(`${base}.ctaTitle`)} description={t(`${base}.ctaHint`)}>
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2.5">
             <div>
@@ -256,19 +206,6 @@ export function EmailIdentityStudio({
           ) : null}
         </StudioCard>
 
-        {/* Section 5 — Signature */}
-        <StudioCard
-          title={t("companyWorkspace.brandCenter.emailSignature")}
-          description={t(`${base}.signatureHint`)}
-        >
-          <EmailSignatureEditor
-            value={email.signature}
-            disabled={disabled}
-            onChange={(html) => onPatchEmail({ signature: html })}
-          />
-        </StudioCard>
-
-        {/* Section 6 — Social */}
         <StudioCard title={t(`${base}.socialTitle`)} description={t(`${base}.socialHint`)}>
           <div className="grid gap-3 sm:grid-cols-2">
             {SOCIAL_FIELDS.map((field) => (
@@ -289,65 +226,38 @@ export function EmailIdentityStudio({
           </div>
         </StudioCard>
 
-        {/* Section 7 — Legal footer */}
         <StudioCard
-          title={t(`${base}.legalTitle`)}
-          description={t(`${base}.legalHint`)}
+          title={t("companyWorkspace.brandCenter.emailFooterMoved.title")}
+          description={t("companyWorkspace.brandCenter.emailFooterMoved.body")}
           focusId="email-footer"
           highlighted={highlightFocusId === "email-footer"}
+          dataTestId="brand-center-email-footer-redirect"
         >
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2.5">
-            <p className="text-sm font-medium">{t(`${base}.showLegal`)}</p>
-            <Switch
-              checked={email.showLegalFooter}
-              disabled={disabled}
-              onCheckedChange={(checked) => onPatchEmail({ showLegalFooter: checked })}
-              aria-label={t(`${base}.showLegal`)}
-            />
-          </div>
-          {email.showLegalFooter ? (
-            <div className="mt-3 space-y-1.5">
-              <Label>{t(`${base}.legalText`)}</Label>
-              <Textarea
-                value={email.legalText}
-                disabled={disabled}
-                rows={3}
-                placeholder={t(`${base}.legalPlaceholder`)}
-                onChange={(e) =>
-                  onPatchEmail({ legalText: e.target.value, footer: e.target.value })
-                }
-              />
-            </div>
-          ) : null}
+          <Button asChild type="button" size="sm" className="mt-1">
+            <Link href={`${EMAIL_SETTINGS_IDENTITY_HREF}#email-footer`}>
+              {t("companyWorkspace.brandCenter.emailFooterMoved.cta")}
+            </Link>
+          </Button>
         </StudioCard>
 
-        {/* Section 8 — Layout */}
         <StudioCard title={t(`${base}.layoutTitle`)} description={t(`${base}.layoutHint`)}>
-          <div
-            className="grid gap-2 sm:grid-cols-2"
-            role="radiogroup"
-            aria-label={t(`${base}.layoutTitle`)}
-          >
+          <div className="grid gap-2 sm:grid-cols-2">
             {LAYOUTS.map((layout) => (
               <button
                 key={layout}
                 type="button"
-                role="radio"
-                aria-checked={email.layout === layout}
                 disabled={disabled}
                 onClick={() => onPatchEmail({ layout })}
                 className={cn(
                   "rounded-xl border px-3 py-2.5 text-start transition-colors",
                   email.layout === layout
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border/60 bg-card text-muted-foreground hover:border-border hover:bg-muted/40",
-                  disabled && "pointer-events-none opacity-60",
+                    ? "border-primary bg-primary/5"
+                    : "border-border/60 hover:bg-muted/40",
+                  disabled && "opacity-60",
                 )}
               >
-                <p className="text-sm font-semibold">
-                  {t(`${base}.layouts.${layout}`)}
-                </p>
-                <p className="mt-0.5 text-[11px]">
+                <p className="text-sm font-medium">{t(`${base}.layouts.${layout}`)}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {t(`${base}.layoutDescriptions.${layout}`)}
                 </p>
               </button>
@@ -367,26 +277,27 @@ function StudioCard({
   children,
   focusId,
   highlighted,
+  dataTestId,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   focusId?: string;
   highlighted?: boolean;
+  dataTestId?: string;
 }) {
   return (
     <section
       data-brand-focus={focusId}
+      data-testid={dataTestId}
       className={cn(
-        "space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-shadow",
-        highlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        "space-y-3 rounded-2xl border border-border/60 bg-card p-4 shadow-sm",
+        highlighted && "ring-2 ring-primary/40",
       )}
     >
       <div>
         <h2 className="text-sm font-semibold">{title}</h2>
-        {description ? (
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        ) : null}
+        {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
       </div>
       {children}
     </section>
@@ -404,16 +315,13 @@ function ContactRow({
   value: string | null | undefined;
   ltr?: boolean;
 }) {
-  if (!value?.trim()) return null;
   return (
     <div className="flex items-start gap-2 text-sm">
       <span className="mt-0.5 text-muted-foreground">{icon}</span>
-      <div className="min-w-0">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p className="truncate text-foreground" dir={ltr ? "ltr" : undefined}>
-          {value}
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-muted-foreground">{label}</p>
+        <p className="truncate font-medium" dir={ltr ? "ltr" : undefined}>
+          {value?.trim() || "—"}
         </p>
       </div>
     </div>

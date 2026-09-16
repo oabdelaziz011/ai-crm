@@ -14,6 +14,12 @@ import type {
 import { EMAIL_PROVIDER } from "@/lib/notifications/providers/email/types/email-types";
 import type { EmailsSentCommercialPort } from "@workspace/channel-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CAMPAIGN_ATTACHMENT_BUCKET } from "@/lib/campaigns/campaign-content";
+import {
+  applyCampaignEmailRender,
+  parseCampaignEmailAttachmentsFromParams,
+} from "@/lib/notifications/providers/email/services/campaign-email-payload";
+import type { EmailMessageAttachment } from "@/lib/notifications/providers/email/types/email-types";
 
 export type EmailProviderOptions = {
   /** Required — callers cannot construct a production-capable sender without commercial enforcement. */
@@ -211,7 +217,7 @@ export class EmailProvider {
         throw new Error("No recipient email resolved");
       }
 
-      const rendered = this.renderer.renderEvent(event, params);
+      const rendered = applyCampaignEmailRender(this.renderer.renderEvent(event, params), params);
 
       try {
         await this.assertCommercialAccess(item.companyId);
@@ -244,12 +250,15 @@ export class EmailProvider {
         return denied;
       }
 
+      const attachments = await this.loadCampaignAttachments(item.companyId, params);
+
       await this.transport.send(
         {
           to: recipientEmail,
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,
+          attachments,
         },
         this.toSmtpConfig(settings),
       );
@@ -317,6 +326,32 @@ export class EmailProvider {
     return Object.fromEntries(
       Object.entries(raw as Record<string, unknown>).map(([key, value]) => [key, String(value ?? "")]),
     );
+  }
+
+  private async loadCampaignAttachments(
+    companyId: string,
+    params: Record<string, string>,
+  ): Promise<EmailMessageAttachment[]> {
+    const refs = parseCampaignEmailAttachmentsFromParams(params, companyId);
+    if (refs.length === 0) return [];
+    const storage = this.client.storage;
+    if (!storage?.from) {
+      throw new Error("Campaign attachments could not be loaded.");
+    }
+    const attachments: EmailMessageAttachment[] = [];
+    for (const ref of refs) {
+      const { data, error } = await storage.from(CAMPAIGN_ATTACHMENT_BUCKET).download(ref.storagePath);
+      if (error || !data) {
+        throw new Error(`Campaign attachment unavailable: ${ref.name}`);
+      }
+      const content = new Uint8Array(await data.arrayBuffer());
+      attachments.push({
+        filename: ref.name,
+        content,
+        contentType: ref.mimeType,
+      });
+    }
+    return attachments;
   }
 
   private toSmtpConfig(settings: {

@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveEmailLogoUrl } from "@/lib/company-workspace/brand-center/normalize";
-import { sanitizeEmailHtml } from "@/lib/company-workspace/brand-center/sanitize-email-html";
+import { resolveActiveBrandColors } from "@/lib/company-workspace/brand-center/branding-mode";
+import { renderEmailSignatureHtml } from "@workspace/channel-platform";
 import type {
   CompanyBrandCenterDocument,
   CompanyContactSnapshot,
@@ -66,7 +67,8 @@ export function EmailIdentityPreview({
   embedded = false,
 }: Props) {
   const { t } = useTranslation("common");
-  const { email, logos, colors } = document;
+  const { email, logos } = document;
+  const colors = resolveActiveBrandColors(document);
   const layout = layoutClasses(email.layout);
   const logoUrl = resolveEmailLogoUrl(logos);
   const replyTo = email.replyEmail.trim() || contact.email || "";
@@ -77,7 +79,7 @@ export function EmailIdentityPreview({
     t("companyWorkspace.title");
   const teamLabel = email.senderName.trim() || senderLabel;
   const ctaColor = email.ctaColor || colors.primary;
-  const signatureHtml = sanitizeEmailHtml(email.signature);
+  const signatureHtml = renderEmailSignatureHtml(email.signature);
 
   const social = [
     { key: "linkedin", url: email.social.linkedin, icon: Linkedin, label: "LinkedIn" },
@@ -144,7 +146,7 @@ export function EmailIdentityPreview({
 
             {signatureHtml ? (
               <div
-                className="prose prose-sm dark:prose-invert max-w-none text-[12px] text-muted-foreground [&_a]:text-primary"
+                className="max-w-none text-[12px] [&_a]:no-underline"
                 dangerouslySetInnerHTML={{ __html: signatureHtml }}
               />
             ) : null}

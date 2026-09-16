@@ -51,6 +51,14 @@ export type CompanyBrandColors = Readonly<{
   sidebarAccent: string;
 }>;
 
+/**
+ * Explicit company branding mode.
+ * - official → resolve theme from ValueOR DEFAULT_BRAND_COLORS (#0D9488 primary)
+ * - custom → resolve theme from stored company colors
+ * Stored custom colors are never deleted when switching to official.
+ */
+export type CompanyBrandingMode = "official" | "custom";
+
 export type CompanyBrandDocuments = Readonly<{
   invoiceFooter: string;
   quotationFooter: string;
@@ -70,14 +78,46 @@ export type CompanyBrandEmailSocial = Readonly<{
   tiktok: string;
 }>;
 
+export type EmailAcknowledgementTemplate = Readonly<{
+  language: string;
+  enabled: boolean;
+  body: string;
+}>;
+
+/** Automatic Email Acknowledgement — stored under companies.branding.email.acknowledgement. */
+export type EmailAcknowledgementConfig = Readonly<{
+  enabled: boolean;
+  defaultLanguage: string;
+  templates: ReadonlyArray<EmailAcknowledgementTemplate>;
+}>;
+
+/** Structured Email Signature under companies.branding.email.signature. */
+export type CompanyEmailSignatureColors = Readonly<{
+  name: string;
+  title: string;
+  email: string;
+  website: string;
+}>;
+
+export type CompanyEmailSignature = Readonly<{
+  name: string;
+  title: string;
+  email: string;
+  website: string;
+  colors: CompanyEmailSignatureColors;
+}>;
+
 export type CompanyBrandEmail = Readonly<{
   /** @deprecated Prefer senderName — kept for backward-compatible branding JSON. */
   header: string;
   /** @deprecated Prefer legalText — kept for backward-compatible branding JSON. */
   footer: string;
   replyEmail: string;
-  /** HTML from the signature rich-text editor (no raw HTML UI). */
-  signature: string;
+  /**
+   * Canonical signature SoT: companies.branding.email.signature.
+   * Structured fields; legacy string values are normalized on load.
+   */
+  signature: CompanyEmailSignature;
   senderName: string;
   senderDisplayName: string;
   ctaEnabled: boolean;
@@ -88,6 +128,8 @@ export type CompanyBrandEmail = Readonly<{
   showLegalFooter: boolean;
   legalText: string;
   layout: EmailIdentityLayout;
+  /** Automatic receipt confirmation templates (non-AI). Default OFF. */
+  acknowledgement: EmailAcknowledgementConfig;
 }>;
 
 export type CompanyBrandGeneral = Readonly<{
@@ -102,6 +144,7 @@ export type CompanyBrandGeneral = Readonly<{
 
 /** Canonical Brand Center document stored in companies.branding (+ mirrored company fields). */
 export type CompanyBrandCenterDocument = Readonly<{
+  brandingMode: CompanyBrandingMode;
   general: CompanyBrandGeneral;
   logos: CompanyBrandLogos;
   colors: CompanyBrandColors;

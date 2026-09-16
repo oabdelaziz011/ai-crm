@@ -2,7 +2,14 @@ import {
   createDefaultBrandDocument,
   DEFAULT_BRAND_COLORS,
   emptyBrandEmailSocial,
+  emptyEmailAcknowledgement,
 } from "./defaults";
+import { normalizeBrandingMode, resolveActiveBrandColors } from "./branding-mode";
+import {
+  normalizeEmailSignatureConfig,
+  toPersistedEmailSignature,
+  type EmailSignatureConfig,
+} from "@workspace/channel-platform";
 import type {
   CompanyBrandCenterDocument,
   CompanyBrandColors,
@@ -11,6 +18,9 @@ import type {
   CompanyBrandEmailSocial,
   CompanyBrandGeneral,
   CompanyBrandLogos,
+  CompanyEmailSignature,
+  EmailAcknowledgementConfig,
+  EmailAcknowledgementTemplate,
   EmailIdentityLayout,
 } from "./types";
 
@@ -112,17 +122,53 @@ function normalizeBrandEmailSocial(raw: unknown): CompanyBrandEmailSocial {
   };
 }
 
+function normalizeLanguageCode(raw: unknown): string {
+  const value = asString(raw).trim().toLowerCase().replace(/_/g, "-");
+  if (!value) return "";
+  const primary = value.split("-")[0] ?? "";
+  return /^[a-z]{2}$/.test(primary) ? primary : "";
+}
+
+export function normalizeEmailAcknowledgement(raw: unknown): EmailAcknowledgementConfig {
+  const base = emptyEmailAcknowledgement();
+  const r = readRecord(raw);
+  const byLang = new Map<string, EmailAcknowledgementTemplate>();
+  for (const template of base.templates) {
+    byLang.set(template.language, { ...template });
+  }
+  if (Array.isArray(r.templates)) {
+    for (const item of r.templates) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+      const row = item as Record<string, unknown>;
+      const language = normalizeLanguageCode(row.language);
+      if (!language) continue;
+      const existing = byLang.get(language);
+      byLang.set(language, {
+        language,
+        enabled: asBool(row.enabled, existing?.enabled ?? true),
+        body: asString(row.body, existing?.body ?? "").trim() || (existing?.body ?? ""),
+      });
+    }
+  }
+  return {
+    enabled: asBool(r.enabled, false),
+    defaultLanguage: normalizeLanguageCode(r.defaultLanguage) || base.defaultLanguage,
+    templates: Array.from(byLang.values()),
+  };
+}
+
 export function normalizeBrandEmail(raw: unknown): CompanyBrandEmail {
   const r = readRecord(raw);
   const header = asString(r.header);
   const footer = asString(r.footer);
   const senderName = asString(r.senderName) || header;
   const legalText = asString(r.legalText) || footer;
+  const signature = normalizeEmailSignatureConfig(r.signature) as CompanyEmailSignature;
   return {
     header: senderName,
     footer: legalText,
     replyEmail: asString(r.replyEmail),
-    signature: asString(r.signature),
+    signature,
     senderName,
     senderDisplayName: asString(r.senderDisplayName),
     ctaEnabled: asBool(r.ctaEnabled),
@@ -133,6 +179,7 @@ export function normalizeBrandEmail(raw: unknown): CompanyBrandEmail {
     showLegalFooter: asBool(r.showLegalFooter, Boolean(legalText)),
     legalText,
     layout: asEmailLayout(r.layout),
+    acknowledgement: normalizeEmailAcknowledgement(r.acknowledgement),
   };
 }
 
@@ -258,8 +305,10 @@ export function normalizeBrandCenterDocument(input: {
   });
 
   const general = normalizeBrandGeneral(root.general, columnGeneral);
+  const brandingMode = normalizeBrandingMode(root.brandingMode, colors);
 
   return {
+    brandingMode,
     general,
     logos,
     colors,
@@ -284,6 +333,7 @@ export function toPersistedBrandingPayload(
   document: CompanyBrandCenterDocument,
 ): Record<string, unknown> {
   return {
+    brandingMode: document.brandingMode,
     general: {
       shortName: document.general.shortName,
       website: document.general.website,
@@ -297,16 +347,18 @@ export function toPersistedBrandingPayload(
       // Keep legacy keys mirrored for older email readers (email identity, not company identity).
       header: document.email.senderName || document.email.header,
       footer: document.email.legalText || document.email.footer,
+      signature: toPersistedEmailSignature(document.email.signature as EmailSignatureConfig),
       social: { ...document.email.social },
     },
   };
 }
 
 export function toWorkspaceBrandingSummary(document: CompanyBrandCenterDocument) {
+  const active = resolveActiveBrandColors(document);
   return {
     logoUrl: document.logos.main,
-    primaryColor: document.colors.primary,
-    secondaryColor: document.colors.secondary,
+    primaryColor: active.primary,
+    secondaryColor: active.secondary,
     invoiceLogoUrl: document.logos.invoice,
     emailLogoUrl: document.logos.email,
     watermarkUrl: document.documents.watermarkUrl,

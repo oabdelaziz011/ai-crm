@@ -101,7 +101,7 @@ describe("Decision result validation", () => {
           id: "pricing",
           label: "pricing",
           description: "Ask about prices or cost",
-          examples: ["كام السعر", "اسعار وتكلفة"],
+          examples: ["كام السعر", "اسعار وتكلفة", "اسعار"],
         },
         { id: "other", label: "other", description: "Other" },
       ],
@@ -134,6 +134,14 @@ describe("Decision result validation", () => {
     );
     assert.equal(byExample.value.label, "pricing");
     assert.equal(byExample.usedFallback, false);
+
+    const byLivePhrase = validateDecisionResult(
+      decision.outcomes,
+      decision.confidencePolicy,
+      decision.confidenceThreshold,
+      { label: "عايزة اعرف اسعار دكاترة", confidence: 1 },
+    );
+    assert.equal(byLivePhrase.value.label, "pricing");
   });
 });
 
@@ -210,5 +218,78 @@ describe("AI Decision node execution", () => {
     assert.equal(metadata.decisionConfidence, 0.94);
     assert.ok(services.observability.list().some((event) => event.type === "decision_started"));
     assert.ok(services.observability.list().some((event) => event.type === "decision_validated"));
+  });
+
+  it("routes pricing from Arabic input when the runtime denies ai.execution.manage", async () => {
+    const services = createAIWorkflowPlatformServices({
+      registerBuiltIns: true,
+      runtime: {
+        async buildPrompt() {
+          throw new Error("not used");
+        },
+        async execute() {
+          throw new Error("Missing required permission: ai.execution.manage");
+        },
+      },
+    });
+
+    const config = patchDecisionMetadata(createDefaultDecisionNodeConfig(), {
+      inputSource: "variable",
+      inputVariable: "customer_intent",
+      fallbackOutcomeId: "other",
+      outcomes: [
+        {
+          id: "pricing",
+          label: "pricing",
+          description: "Customer asks about prices",
+          examples: ["أسعار", "اسعار", "تكلفة", "كام السعر"],
+        },
+        { id: "other", label: "other", description: "Unclear intent" },
+      ],
+      confidencePolicy: {
+        minimumConfidence: 0.55,
+        fallbackOutcomeId: "other",
+        retryOnce: false,
+        requireHumanReview: false,
+        emitWarning: true,
+        continueWorkflow: true,
+      },
+    });
+    config.providerKey = "stub";
+
+    const result = await services.executor.execute(
+      {
+        company: { id: "c1" },
+        flow: { id: "flow-1" },
+        run: { id: "run-1" },
+        session: { id: "session-1" },
+        variables: { customer_intent: "عايزة اعرف اسعار دكاترة" },
+        customer: { id: null },
+        currentNode: { config: toAIWorkflowEngineConfig(config) },
+      },
+      {
+        userId: null,
+        companyId: "c1",
+        isSuperAdmin: false,
+        hasPermission: () => false,
+        isWorkflowFeatureEnabled: () => true,
+        isAiChatFeatureEnabled: () => true,
+      },
+    );
+
+    assert.equal(result.outcome, "continue");
+    const decisionResult = (result.variables as Record<string, unknown>).decision_result as {
+      mode: string;
+      value: { label: string };
+    };
+    assert.equal(decisionResult.value.label, "pricing");
+    const metadata = (result.variables as Record<string, unknown>).__aiLastExecution as {
+      status: string;
+      runtimeFallback: boolean;
+      errorMessage: string;
+    };
+    assert.equal(metadata.status, "fallback");
+    assert.equal(metadata.runtimeFallback, true);
+    assert.match(metadata.errorMessage, /ai\.execution\.manage/);
   });
 });

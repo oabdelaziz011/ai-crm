@@ -11,6 +11,8 @@ import {
 import type { AIWorkflowExecutionResult } from "../types/metadata.js";
 import type { AIWorkflowAutomationContext } from "../types/automation-context.js";
 import { BaseAIWorkflowNode } from "../nodes/base-ai-workflow-node.js";
+import { AIDecisionNode } from "../nodes/decision/decision-node.js";
+import { AI_DECISION_NODE_KEY } from "../nodes/decision/constants.js";
 import type { AIWorkflowObservability } from "../observability/ai-workflow-observability.js";
 import { assertWorkflowAiNodeExecutionAllowed } from "../utils/workflow-guards.js";
 
@@ -73,10 +75,14 @@ export class AIWorkflowNodeExecutor {
       return { outcome: "failed", errorMessage: message };
     }
 
+    let preparedConfig: AIWorkflowNodeConfig | null = null;
     try {
-      const preparedConfig = nodeImpl
+      preparedConfig = nodeImpl
         ? nodeImpl.prepareConfig(config, { automation: context, serviceContext })
         : this.deps.registries.configurations.resolve(config.nodeKey, config);
+      if (!preparedConfig) {
+        throw new Error("AI workflow node config is missing.");
+      }
 
       nodeImpl?.onPrepared((event) => this.record(event), preparedConfig, context);
 
@@ -114,7 +120,26 @@ export class AIWorkflowNodeExecutor {
         model: preparedConfig.model ?? null,
       });
 
-      const runtimeResult = await this.deps.adapter.execute(serviceContext, request);
+      let runtimeResult;
+      try {
+        runtimeResult = await this.deps.adapter.execute(serviceContext, request);
+      } catch (error) {
+        const message = readUnknownErrorMessage(error, "AI workflow node execution failed.");
+        const fallback = this.tryDecisionRuntimeFallback(context, preparedConfig, nodeImpl, message);
+        if (fallback) {
+          this.record({
+            type: "node_completed",
+            nodeKey: preparedConfig.nodeKey,
+            workflowId: context.flow.id,
+            executionId: context.run.id,
+            companyId: context.company.id,
+            errorMessage: message,
+            metadata: { runtimeFallback: true },
+          });
+          return fallback;
+        }
+        throw error;
+      }
 
       this.record({
         type: "gateway_completed",
@@ -213,6 +238,18 @@ export class AIWorkflowNodeExecutor {
       });
       return { outcome: "failed", errorMessage: message };
     }
+  }
+
+  private tryDecisionRuntimeFallback(
+    context: AIWorkflowAutomationContext,
+    config: AIWorkflowNodeConfig,
+    nodeImpl: BaseAIWorkflowNode | undefined,
+    errorMessage: string,
+  ): import("../types/automation-context.js").AIWorkflowNodeExecutionResult | null {
+    if (config.nodeKey !== AI_DECISION_NODE_KEY) return null;
+    const decisionNode =
+      nodeImpl instanceof AIDecisionNode ? nodeImpl : new AIDecisionNode();
+    return decisionNode.buildRuntimeFallbackResult(config, context, errorMessage);
   }
 
   private isRetrievalOnlyNode(
@@ -360,7 +397,7 @@ export class AIWorkflowNodeExecutor {
       ).trim();
 
     return {
-      companyId: context.company.id,
+      companyId: typeof context.company.id === "string" ? context.company.id.trim() : context.company.id,
       workflowId: context.flow.id,
       executionId: context.run.id,
       // prompt_builds.conversation_id FKs to public.conversations — never pass automation session ids.

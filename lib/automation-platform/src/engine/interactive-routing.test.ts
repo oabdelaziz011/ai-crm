@@ -119,6 +119,25 @@ describe("interactive-routing", () => {
     assert.equal(result.nextNodeId, "fallback");
   });
 
+  it("falls back to something_else when the selection is not one of the tagged cases", () => {
+    const buttons = node({ id: "buttons", type: "action", config: { action: "send_buttons" } });
+    const ask = node({ id: "ask", type: "action", config: { action: "wait_for_input" } });
+    const done = node({ id: "done", type: "action", config: { action: "send_message" } });
+    const result = resolveInteractiveNextNode(
+      buttons,
+      {
+        nodes: [buttons, ask, done],
+        edges: [
+          edge("buttons", "ask", { case: "something_else", label: "Something else" }),
+          edge("buttons", "done", { case: "no", label: "Done" }),
+        ],
+      },
+      { conversation: { last_button_id: "pricing" } },
+    );
+    assert.equal(result.nextNodeId, "ask");
+    assert.match(result.selectionReason, /continue-like/i);
+  });
+
   it("fails instead of silently choosing outgoing[0] for parallel unconditional branches", () => {
     const buttons = node({ id: "buttons", type: "action", config: { action: "send_buttons" } });
     const ifA = node({ id: "if-a", type: "condition", config: {} });

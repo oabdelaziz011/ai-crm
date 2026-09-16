@@ -109,10 +109,14 @@ function matchContainsAlias(normalized: string): string | null {
   return null;
 }
 
+function isOpaqueSelectionId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9_-]*$/i.test(id);
+}
+
 /**
  * If the inbound id/title is a known AR/EN alias, return the canonical id.
  * Supports exact match and phrase-contains (e.g. "اسعار وتكلفة" → pricing).
- * Otherwise return the original trimmed value.
+ * Opaque ids such as "booking" / "something_else" are not rewritten from titles.
  */
 export function canonicalizeSelectionId(
   replyId: string | null | undefined,
@@ -122,14 +126,16 @@ export function canonicalizeSelectionId(
   const label = typeof title === "string" ? title.trim() : "";
 
   if (id) {
+    if (isOpaqueSelectionId(id)) {
+      const byIdExact = ALIAS_TO_ID[normalizeAliasKey(id)];
+      if (byIdExact && byIdExact === normalizeAliasKey(id)) return byIdExact;
+      return id;
+    }
     const byIdExact = ALIAS_TO_ID[normalizeAliasKey(id)];
     if (byIdExact) return byIdExact;
     const byIdContains = matchContainsAlias(normalizeAliasKey(id));
     if (byIdContains) return byIdContains;
-    // Stable UUID / ISO / opaque ids pass through.
-    if (id.includes("-") || /^\d{4}-\d{2}-\d{2}/.test(id) || id.includes("T")) {
-      return id;
-    }
+    return id;
   }
 
   if (label) {
@@ -139,7 +145,7 @@ export function canonicalizeSelectionId(
     if (byLabelContains) return byLabelContains;
   }
 
-  return id || label || null;
+  return label || null;
 }
 
 /**
@@ -153,4 +159,116 @@ export function resolveFreeTextSelectionId(text: string | null | undefined): str
   const exact = ALIAS_TO_ID[normalizeAliasKey(trimmed)];
   if (exact) return exact;
   return matchContainsAlias(normalizeAliasKey(trimmed));
+}
+
+/** Ids that mean "keep going" rather than a terminal yes/no choice. */
+export const CONTINUE_LIKE_SELECTION_IDS = ["something_else", "other", "continue"] as const;
+
+export type InteractiveMenuOption = {
+  id: string;
+  label: string;
+};
+
+function readOptionId(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readOptionLabel(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/** Button/list choices currently offered by the waiting interactive node. */
+export function collectInteractiveMenuOptions(
+  outbound: {
+    kind?: unknown;
+    buttons?: unknown;
+    sections?: unknown;
+  } | null,
+): InteractiveMenuOption[] {
+  if (!outbound) return [];
+  const options: InteractiveMenuOption[] = [];
+
+  if (Array.isArray(outbound.buttons)) {
+    for (const entry of outbound.buttons) {
+      if (!entry || typeof entry !== "object") continue;
+      const button = entry as { id?: unknown; label?: unknown; title?: unknown };
+      const id = readOptionId(button.id);
+      if (!id) continue;
+      options.push({
+        id,
+        label: readOptionLabel(button.label) || readOptionLabel(button.title) || id,
+      });
+    }
+  }
+
+  if (Array.isArray(outbound.sections)) {
+    for (const section of outbound.sections) {
+      if (!section || typeof section !== "object") continue;
+      const rows = (section as { rows?: unknown }).rows;
+      if (!Array.isArray(rows)) continue;
+      for (const row of rows) {
+        if (!row || typeof row !== "object") continue;
+        const item = row as { id?: unknown; title?: unknown };
+        const id = readOptionId(item.id);
+        if (!id) continue;
+        options.push({ id, label: readOptionLabel(item.title) || id });
+      }
+    }
+  }
+
+  return options;
+}
+
+function optionIds(options: InteractiveMenuOption[]): Set<string> {
+  return new Set(options.map((option) => option.id));
+}
+
+/**
+ * Map free text onto the *current* menu only.
+ * Global aliases like "اسعار" → pricing apply only when that id is actually offered.
+ */
+export function matchFreeTextToInteractiveOptions(
+  text: string | null | undefined,
+  options: InteractiveMenuOption[],
+): string | null {
+  if (options.length === 0) return null;
+  if (typeof text !== "string") return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const normalized = normalizeAliasKey(trimmed);
+  const ids = optionIds(options);
+
+  for (const option of options) {
+    if (normalizeAliasKey(option.id) === normalized) return option.id;
+  }
+
+  for (const option of options) {
+    const label = normalizeAliasKey(option.label);
+    if (!label) continue;
+    if (label === normalized) return option.id;
+    if (label.length >= 3 && (normalized.includes(label) || label.includes(normalized))) {
+      return option.id;
+    }
+  }
+
+  const aliasId = resolveFreeTextSelectionId(trimmed);
+  if (aliasId && ids.has(aliasId)) return aliasId;
+
+  const canonical = canonicalizeSelectionId(null, trimmed);
+  if (canonical && ids.has(canonical)) return canonical;
+
+  return null;
+}
+
+export function resolveContinueLikeSelectionId(options: InteractiveMenuOption[]): string | null {
+  const ids = optionIds(options);
+  for (const id of CONTINUE_LIKE_SELECTION_IDS) {
+    if (ids.has(id)) return id;
+  }
+  return null;
+}
+
+export function isContinueLikeSelectionId(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return (CONTINUE_LIKE_SELECTION_IDS as readonly string[]).includes(value);
 }

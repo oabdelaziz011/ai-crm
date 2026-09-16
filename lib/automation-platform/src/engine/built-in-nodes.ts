@@ -7,6 +7,8 @@ import {
   type SwitchNodeConfig,
 } from "../logic/index.js";
 import {
+  CONSUME_LAST_MESSAGE_AS_INPUT_KEY,
+  CONSUMED_INBOUND_AS_INPUT_VARIABLE,
   extractInteractiveSelection,
   INTERACTIVE_SELECTION_INPUT_KEY,
   mergeConversationVariables,
@@ -438,6 +440,11 @@ async function executeInteractiveMessageAction(
       };
     }
 
+    const consumeInbound = context.input?.[CONSUME_LAST_MESSAGE_AS_INPUT_KEY] === true;
+    const carriedMessage =
+      (typeof context.input?.lastMessage === "string" && context.input.lastMessage.trim()) ||
+      (typeof context.input?.text === "string" && context.input.text.trim()) ||
+      "";
     const nextVariables = mergeVariables(context.variables, {
       ...mergeConversationVariables(context.variables, selection),
       [INTERACTIVE_SELECTION_INPUT_KEY]: selection.last_button_id ?? selection.last_button_title ?? null,
@@ -445,6 +452,12 @@ async function executeInteractiveMessageAction(
       __prompt: null,
       ...clearLatestOutboundSlot(),
       ...clearInteractiveListPaginationState(),
+      ...(consumeInbound && carriedMessage
+        ? {
+            [CONSUME_LAST_MESSAGE_AS_INPUT_KEY]: true,
+            lastMessage: carriedMessage,
+          }
+        : {}),
     });
     traceListSelectionApplied({
       runId: context.run.id,
@@ -654,7 +667,19 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           String(context.variables[inputKey]).trim() !== ""
             ? context.variables[inputKey]
             : null;
-        const resolvedInput = resumeValue !== null ? resumeValue : prefilled;
+        const carryForwardText =
+          resumeValue === null &&
+          prefilled === null &&
+          context.variables[CONSUMED_INBOUND_AS_INPUT_VARIABLE] !== true &&
+          (context.input?.[CONSUME_LAST_MESSAGE_AS_INPUT_KEY] === true ||
+            context.variables[CONSUME_LAST_MESSAGE_AS_INPUT_KEY] === true)
+            ? (typeof context.input?.lastMessage === "string" && context.input.lastMessage.trim()) ||
+              (typeof context.input?.text === "string" && context.input.text.trim()) ||
+              (typeof context.variables.lastMessage === "string" && context.variables.lastMessage.trim()) ||
+              ""
+            : "";
+        const resolvedInput =
+          resumeValue !== null ? resumeValue : prefilled !== null ? prefilled : carryForwardText || null;
         if (resolvedInput !== null) {
           return {
             outcome: "continue",
@@ -668,6 +693,12 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
                 // Prevent stale ask prompts from being re-dispatched if a later node fails.
                 __prompt: null,
                 __reentryConsumeIntent: null,
+                ...(carryForwardText
+                  ? {
+                      [CONSUMED_INBOUND_AS_INPUT_VARIABLE]: true,
+                      [CONSUME_LAST_MESSAGE_AS_INPUT_KEY]: null,
+                    }
+                  : {}),
               },
             ),
           };

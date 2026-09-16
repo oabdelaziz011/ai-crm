@@ -1,4 +1,5 @@
 import { AutomationGraphError } from "../errors.js";
+import { isContinueLikeSelectionId } from "../runtime/bilingual-selection-aliases.js";
 import { readConversationVariables } from "../runtime/conversation-variables.js";
 import type { AutomationEdgeRecord, AutomationNodeRecord } from "../types.js";
 import { readConditionBranch, type AutomationFlowGraph } from "./flow-graph.js";
@@ -116,6 +117,15 @@ export function resolveInteractiveNextNode(
       return {
         nextNodeId: matched.target_node_id,
         selectionReason: `Matched selection-tagged edge for "${selectionId}".`,
+      };
+    }
+
+    const continueEdge =
+      taggedEdges.find((edge) => isContinueLikeSelectionId(readEdgeSelectionId(edge.condition))) ?? null;
+    if (continueEdge) {
+      return {
+        nextNodeId: continueEdge.target_node_id,
+        selectionReason: `Unmatched selection "${selectionId}"; used continue-like branch.`,
       };
     }
   }

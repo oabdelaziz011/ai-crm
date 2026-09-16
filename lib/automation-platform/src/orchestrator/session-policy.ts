@@ -4,7 +4,12 @@ import {
   extractInteractiveSelection,
   INTERACTIVE_SELECTION_INPUT_KEY,
 } from "../runtime/conversation-variables.js";
-import { resolveFreeTextSelectionId } from "../runtime/bilingual-selection-aliases.js";
+import {
+  collectInteractiveMenuOptions,
+  matchFreeTextToInteractiveOptions,
+  resolveContinueLikeSelectionId,
+} from "../runtime/bilingual-selection-aliases.js";
+import { CONSUME_LAST_MESSAGE_AS_INPUT_KEY } from "../runtime/conversation-variables.js";
 import { readLatestOutbound } from "../runtime/outbound-queue.js";
 import type { AutomationRunRecord, ConversationSessionRecord } from "../types.js";
 
@@ -189,15 +194,28 @@ export function buildResumeInput(
           ? payload.replyId.trim()
           : input.title;
     } else {
-      // Free-text while waiting on Buttons/List — map known intents (pricing/book/…)
-      // so "اسعار وتكلفة" routes to pricing instead of default/"وضح طلبك".
-      const freeTextId = resolveFreeTextSelectionId(inboundText);
-      if (freeTextId) {
-        input.replyId = freeTextId;
-        input.title = inboundText.trim() || freeTextId;
-        input[INTERACTIVE_SELECTION_INPUT_KEY] = freeTextId;
+      // Free-text while waiting on Buttons/List. Only map onto options this node
+      // actually offered — "اسعار" must not become pricing on a something_else/no prompt.
+      const outbound = readLatestOutbound(run.variables);
+      const options = collectInteractiveMenuOptions(outbound);
+      const matchedId = matchFreeTextToInteractiveOptions(inboundText, options);
+      if (matchedId) {
+        input.replyId = matchedId;
+        input.title = inboundText.trim() || matchedId;
+        input[INTERACTIVE_SELECTION_INPUT_KEY] = matchedId;
         input.interactionType = "button";
         input.kind = "interactive_reply";
+      } else {
+        const continueId = resolveContinueLikeSelectionId(options);
+        if (continueId) {
+          input.replyId = continueId;
+          input.title = inboundText.trim() || continueId;
+          input[INTERACTIVE_SELECTION_INPUT_KEY] = continueId;
+          input.interactionType = "button";
+          input.kind = "interactive_reply";
+          input[CONSUME_LAST_MESSAGE_AS_INPUT_KEY] = true;
+          input.lastMessage = inboundText.trim();
+        }
       }
     }
 

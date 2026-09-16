@@ -370,7 +370,7 @@ describe("Instagram Login outbound Graph host", () => {
     assert.doesNotMatch(requests[0]?.url ?? "", /graph\.facebook\.com/);
   });
 
-  it("appends button labels to Instagram text because the Send API has no WhatsApp buttons", () => {
+  it("maps Instagram buttons outbound to tappable quick replies", () => {
     const adapter = createInstagramCloudAdapter();
     const formatted = adapter.formatOutbound(instagramCtx, {
       conversationId: "conv-1",
@@ -390,9 +390,64 @@ describe("Instagram Login outbound Graph host", () => {
       },
     });
 
-    const payload = formatted.payload as { message: { text: string } };
-    assert.match(payload.message.text, /حاجة تانية/);
-    assert.match(payload.message.text, /خلاص، شكراً/);
+    const payload = formatted.payload as {
+      message: {
+        text: string;
+        quick_replies?: Array<{ content_type: string; title: string; payload: string }>;
+      };
+    };
+    assert.equal(payload.message.text, "تحب تسألي عن حاجة تانية، ولا خلاص؟");
+    assert.deepEqual(payload.message.quick_replies, [
+      { content_type: "text", title: "حاجة تانية", payload: "something_else" },
+      { content_type: "text", title: "خلاص، شكراً", payload: "no" },
+    ]);
+  });
+
+  it("maps Instagram pricing lists to tappable quick replies instead of body-only text", () => {
+    const adapter = createInstagramCloudAdapter();
+    const formatted = adapter.formatOutbound(instagramCtx, {
+      conversationId: "conv-1",
+      companyChannelId: instagramCtx.companyChannel.id,
+      channelKey: "instagram",
+      externalThreadId: "28312734118386048",
+      text: "اختَر الخيار الأنسب لك.",
+      metadata: {
+        outboundPayload: {
+          kind: "list",
+          title: "اختر خدمة",
+          body: "اختَر الخيار الأنسب لك.",
+          buttonLabel: "عرض الخيارات",
+          sections: [
+            {
+              title: "خدمات",
+              rows: [
+                { id: "a1b2c3d4-1111-4111-8111-111111111111", title: "عياده اسنان" },
+                { id: "a1b2c3d4-2222-4222-8222-222222222222", title: "عياده اطفال" },
+                { id: "a1b2c3d4-3333-4333-8333-333333333333", title: "عياده باطنة" },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    const payload = formatted.payload as {
+      message: {
+        text: string;
+        quick_replies?: Array<{ content_type: string; title: string; payload: string }>;
+      };
+    };
+    assert.equal(payload.message.text, "اختَر الخيار الأنسب لك.");
+    assert.equal(payload.message.quick_replies?.length, 3);
+    assert.deepEqual(
+      payload.message.quick_replies?.map((reply) => reply.title),
+      ["عياده اسنان", "عياده اطفال", "عياده باطنة"],
+    );
+    assert.equal(
+      payload.message.quick_replies?.[0]?.payload,
+      "a1b2c3d4-1111-4111-8111-111111111111",
+    );
+    assert.equal(payload.message.quick_replies?.[0]?.content_type, "text");
   });
 
   it("maps inbound Instagram quick replies to interactive reply ids", () => {
@@ -407,6 +462,75 @@ describe("Instagram Login outbound Graph host", () => {
     assert.equal(normalized.metadata?.kind, "interactive_reply");
     assert.equal(normalized.metadata?.replyId, "something_else");
     assert.equal(normalized.metadata?.interactionType, "quick_reply");
+  });
+
+  it("maps inbound Instagram pricing list taps onto the selected row id", () => {
+    const adapter = createInstagramCloudAdapter();
+    const payload = instagramMessagingPayload({
+      mid: "mid.qr-service",
+      text: "عياده اسنان",
+      quick_reply: {
+        payload: "a1b2c3d4-1111-4111-8111-111111111111",
+        title: "عياده اسنان",
+      },
+    });
+    const envelope = adapter.parseWebhook!(instagramCtx, payload);
+    const normalized = adapter.normalizeInbound(instagramCtx, envelope.payload);
+    assert.equal(envelope.eventType, "message.received");
+    assert.equal(normalized.text, "عياده اسنان");
+    assert.equal(normalized.metadata?.kind, "interactive_reply");
+    assert.equal(normalized.metadata?.replyId, "a1b2c3d4-1111-4111-8111-111111111111");
+    assert.equal(normalized.metadata?.title, "عياده اسنان");
+    assert.equal(normalized.metadata?.interactionType, "quick_reply");
+  });
+
+  it("leaves WhatsApp lists as interactive list payloads", () => {
+    const adapter = createWhatsAppCloudAdapter();
+    const formatted = adapter.formatOutbound(
+      {
+        companyChannel: {
+          id: "cc-wa-1",
+          companyId: "company-1",
+          channelKey: "whatsapp",
+          displayName: "WhatsApp",
+          isEnabled: true,
+          provider: "meta",
+          configuration: {
+            phoneNumberId: "123456789",
+            credentialsSource: "company_whatsapp_settings",
+          },
+        },
+      },
+      {
+        conversationId: "conv-1",
+        companyChannelId: "cc-wa-1",
+        channelKey: "whatsapp",
+        externalThreadId: "15551234567",
+        text: "اختَر الخيار الأنسب لك.",
+        metadata: {
+          outboundPayload: {
+            kind: "list",
+            title: "اختر خدمة",
+            body: "اختَر الخيار الأنسب لك.",
+            buttonLabel: "عرض الخيارات",
+            sections: [
+              {
+                title: "خدمات",
+                rows: [{ id: "svc-1", title: "عياده اسنان" }],
+              },
+            ],
+          },
+        },
+      },
+    );
+
+    const payload = formatted.payload as {
+      type: string;
+      interactive?: { type: string; action?: { button: string } };
+    };
+    assert.equal(payload.type, "interactive");
+    assert.equal(payload.interactive?.type, "list");
+    assert.equal(payload.interactive?.action?.button, "عرض الخيارات");
   });
 
   it("leaves WhatsApp and Messenger on Facebook Graph", () => {

@@ -52,6 +52,20 @@ describe("inbound message content", () => {
     assert.equal(resolveInboundMessageText(message), "dr3");
   });
 
+  it("accepts Instagram quick replies identified by interactionType", () => {
+    const message = normalized({
+      metadata: {
+        replyId: "a1b2c3d4-1111-4111-8111-111111111111",
+        title: "عياده اسنان",
+        interactionType: "quick_reply",
+      },
+    });
+
+    assert.equal(isInteractiveInboundReply(message.metadata), true);
+    assert.equal(hasValidInboundContent(message), true);
+    assert.equal(resolveInboundMessageText(message), "عياده اسنان");
+  });
+
   it("accepts media-only inbound messages", () => {
     const message = normalized({
       attachments: [{ attachmentId: "media-1", type: "image" }],

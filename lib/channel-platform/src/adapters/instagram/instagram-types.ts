@@ -56,10 +56,17 @@ export type InstagramWebhookMessage = {
   is_unsupported?: boolean;
 };
 
+export type InstagramQuickReplyPayload = {
+  content_type: "text";
+  title: string;
+  payload: string;
+};
+
 export type InstagramSendMessagePayload = {
   recipient: { id: string };
   message: {
     text?: string;
+    quick_replies?: InstagramQuickReplyPayload[];
     attachment?: {
       type: "image" | "video" | "audio" | "file";
       payload: { url: string; is_reusable?: boolean };

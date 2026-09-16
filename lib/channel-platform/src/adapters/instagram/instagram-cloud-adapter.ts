@@ -23,6 +23,7 @@ import type {
   InstagramSendMessagePayload,
   InstagramWebhookMessage,
 } from "./instagram-types.js";
+import { formatInstagramInteractiveOutbound } from "./instagram-quick-replies.js";
 
 function readTrimmedString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -86,49 +87,12 @@ function resolveInstagramMessageType(
 
 function readStructuredOutboundPayload(
   message: OutboundChannelMessageDto,
-): Record<string, unknown> | null {
+): Record<string, unknown> | undefined {
   const metadata = message.metadata;
-  if (!metadata || typeof metadata !== "object") return null;
+  if (!metadata || typeof metadata !== "object") return undefined;
   const payload = (metadata as { outboundPayload?: unknown }).outboundPayload;
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return undefined;
   return payload as Record<string, unknown>;
-}
-
-function readInstagramChoiceLabels(payload: Record<string, unknown> | null): string[] {
-  if (!payload) return [];
-  const labels: string[] = [];
-
-  if (Array.isArray(payload.buttons)) {
-    for (const entry of payload.buttons) {
-      if (!entry || typeof entry !== "object") continue;
-      const label = readTrimmedString((entry as { label?: unknown }).label);
-      if (label) labels.push(label);
-    }
-  }
-
-  if (Array.isArray(payload.sections)) {
-    for (const section of payload.sections) {
-      if (!section || typeof section !== "object") continue;
-      const rows = (section as { rows?: unknown }).rows;
-      if (!Array.isArray(rows)) continue;
-      for (const row of rows) {
-        if (!row || typeof row !== "object") continue;
-        const title = readTrimmedString((row as { title?: unknown }).title);
-        if (title) labels.push(title);
-      }
-    }
-  }
-
-  return labels;
-}
-
-function appendInstagramChoiceLabels(text: string, labels: string[]): string {
-  const unique = [...new Set(labels.map((label) => label.trim()).filter(Boolean))];
-  if (unique.length === 0) return text;
-  if (unique.every((label) => text.includes(label))) return text;
-  const body = text.trim();
-  const list = unique.map((label) => `• ${label}`).join("\n");
-  return body ? `${body}\n\n${list}` : list;
 }
 
 function markUnsupportedInstagramEnvelope(envelope: WebhookEnvelopeDto): WebhookEnvelopeDto {
@@ -277,14 +241,18 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
       return { payload, recipient: message.externalThreadId };
     }
 
+    const interactive = formatInstagramInteractiveOutbound(
+      message.externalThreadId,
+      message.text,
+      readStructuredOutboundPayload(message),
+    );
+    if (interactive) {
+      return interactive;
+    }
+
     const payload: InstagramSendMessagePayload = {
       recipient: { id: message.externalThreadId },
-      message: {
-        text: appendInstagramChoiceLabels(
-          message.text,
-          readInstagramChoiceLabels(readStructuredOutboundPayload(message)),
-        ),
-      },
+      message: { text: message.text },
     };
 
     return { payload, recipient: message.externalThreadId };

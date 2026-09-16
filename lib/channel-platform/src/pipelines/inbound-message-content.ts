@@ -1,7 +1,7 @@
 import type { NormalizedInboundMessageDto } from "../dto/channel-dto.js";
 
 const INTERACTIVE_REPLY_KIND = "interactive_reply";
-const INTERACTIVE_REPLY_TYPES = new Set(["list_reply", "button_reply"]);
+const INTERACTIVE_REPLY_TYPES = new Set(["list_reply", "button_reply", "quick_reply", "postback"]);
 
 export function isInteractiveInboundReply(metadata: Record<string, unknown> | undefined): boolean {
   if (!metadata) return false;

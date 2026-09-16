@@ -4,7 +4,14 @@ import { ValidationError } from "../../errors.js";
 import { createContext, createTestEnvironment } from "../../test-utils.js";
 import { createMessengerCloudAdapter } from "../messenger/messenger-cloud-adapter.js";
 import { createWhatsAppCloudAdapter } from "../whatsapp/whatsapp-cloud-adapter.js";
+import { messengerMessagesUrl } from "../messenger/messenger-config.js";
+import { whatsAppMessagesUrl } from "../whatsapp/whatsapp-config.js";
 import { createInstagramCloudAdapter } from "./instagram-cloud-adapter.js";
+import {
+  INSTAGRAM_LOGIN_GRAPH_HOST,
+  instagramGraphBaseUrl,
+  instagramMessagesUrl,
+} from "./instagram-config.js";
 
 const instagramCtx = {
   companyChannel: {
@@ -296,6 +303,91 @@ describe("WhatsApp and Messenger inbound mapping remain unchanged", () => {
       (error: unknown) =>
         error instanceof ValidationError &&
         error.message === "Inbound message must include text, media, or an interactive reply.",
+    );
+  });
+});
+
+describe("Instagram Login outbound Graph host", () => {
+  it("builds the Send API URL on graph.instagram.com, not Facebook Graph", () => {
+    assert.equal(INSTAGRAM_LOGIN_GRAPH_HOST, "https://graph.instagram.com");
+    assert.equal(instagramGraphBaseUrl("v21.0"), "https://graph.instagram.com/v21.0");
+    assert.equal(instagramGraphBaseUrl("  "), "https://graph.instagram.com/v21.0");
+    assert.equal(
+      instagramMessagesUrl({
+        instagramBusinessAccountId: "17841435877386136",
+        accessToken: "IGQW-login-token",
+        verifyToken: "verify",
+        apiVersion: "v21.0",
+      }),
+      "https://graph.instagram.com/v21.0/17841435877386136/messages",
+    );
+    assert.doesNotMatch(instagramGraphBaseUrl("v21.0"), /graph\.facebook\.com/);
+  });
+
+  it("sends with the Instagram Login access token from company_instagram_settings", async () => {
+    const requests: Array<{ url: string; authorization: string | null; body: unknown }> = [];
+    const adapter = createInstagramCloudAdapter({
+      fetchFn: async (url, init) => {
+        const headers = new Headers(init?.headers);
+        requests.push({
+          url: String(url),
+          authorization: headers.get("authorization"),
+          body: JSON.parse(String(init?.body ?? "{}")),
+        });
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ message_id: "mid.outbound-1" }),
+        } as Response;
+      },
+      credentialsLoader: {
+        loadByCompanyId: async () => ({
+          accessToken: "IGQW-login-token",
+          instagramBusinessAccountId: "17841435877386136",
+          verifyToken: "verify",
+          apiVersion: "v21.0",
+        }),
+      },
+    });
+
+    const formatted = adapter.formatOutbound(instagramCtx, {
+      conversationId: "conv-1",
+      companyChannelId: instagramCtx.companyChannel.id,
+      channelKey: "instagram",
+      externalThreadId: "28312734118386048",
+      text: "hello from automation",
+    });
+
+    const result = await adapter.sendOutbound(instagramCtx, formatted);
+    assert.equal(result.externalMessageId, "mid.outbound-1");
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0]?.url, "https://graph.instagram.com/v21.0/17841435877386136/messages");
+    assert.equal(requests[0]?.authorization, "Bearer IGQW-login-token");
+    assert.equal(
+      (requests[0]?.body as { recipient: { id: string }; message: { text: string } }).recipient.id,
+      "28312734118386048",
+    );
+    assert.doesNotMatch(requests[0]?.url ?? "", /graph\.facebook\.com/);
+  });
+
+  it("leaves WhatsApp and Messenger on Facebook Graph", () => {
+    assert.equal(
+      whatsAppMessagesUrl({
+        phoneNumberId: "123456789",
+        accessToken: "EAAB-page-token",
+        verifyToken: "verify",
+        apiVersion: "v21.0",
+      }),
+      "https://graph.facebook.com/v21.0/123456789/messages",
+    );
+    assert.equal(
+      messengerMessagesUrl({
+        pageId: "111222333",
+        accessToken: "EAAB-page-token",
+        verifyToken: "verify",
+        apiVersion: "v21.0",
+      }),
+      "https://graph.facebook.com/v21.0/111222333/messages",
     );
   });
 });

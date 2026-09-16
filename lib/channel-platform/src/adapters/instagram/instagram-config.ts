@@ -13,9 +13,12 @@ export type InstagramChannelConfiguration = {
   apiVersion: string;
 };
 
+/** Instagram API with Instagram Login — Instagram User tokens are invalid on Facebook Graph. */
+export const INSTAGRAM_LOGIN_GRAPH_HOST = "https://graph.instagram.com";
+
 export function instagramGraphBaseUrl(apiVersion: string): string {
   const version = apiVersion.trim() || "v21.0";
-  return `https://graph.facebook.com/${version}`;
+  return `${INSTAGRAM_LOGIN_GRAPH_HOST}/${version}`;
 }
 
 export function instagramMessagesUrl(config: InstagramChannelConfiguration): string {

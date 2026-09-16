@@ -52,7 +52,7 @@ function pushLog(entry: OmniCompanyLogEntry) {
   }
 }
 
-/** Trace companyId at each pipeline stage; flags first VaultOS → demo-tenant drift. */
+/** Trace companyId at each pipeline stage; flags first ValueOR → demo-tenant drift. */
 export function omniCompanyTrace(stage: string, input: OmniCompanyTraceInput): OmniCompanyLogEntry {
   const profileCompanyId = input.profileCompanyId ?? input.companyId ?? null;
   const companyRecordId = input.companyRecordId ?? null;

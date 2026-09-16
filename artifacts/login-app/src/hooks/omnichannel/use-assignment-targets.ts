@@ -6,6 +6,8 @@ import {
   buildHandoffServiceContext,
   getLoginAppHandoffPlatformServices,
 } from "@/lib/human-handoff-platform/handoff-read-port-adapter";
+import { assignmentTargetsQueryKey } from "./agent-presence-realtime";
+import { useAgentPresenceRealtime } from "./use-agent-presence-realtime";
 
 export type AssignmentTargetOption = {
   targetType: "team" | "queue";
@@ -30,9 +32,20 @@ export function useAssignmentTargets(companyId: string | null) {
   const { user, isSuperAdmin } = useAuth();
   const { hasPermission } = usePermissions();
 
+  const canList = Boolean(
+    companyId &&
+      (isSuperAdmin ||
+        hasPermission("handoff.view") ||
+        hasPermission("handoff.assign") ||
+        hasPermission("handoff.queue")),
+  );
+
+  // Keep queue online counts in sync when peer agents change presence.
+  useAgentPresenceRealtime(companyId, canList);
+
   return useQuery({
-    queryKey: ["assignment-targets", "handoff-queues", companyId],
-    enabled: Boolean(companyId),
+    queryKey: assignmentTargetsQueryKey(companyId),
+    enabled: canList,
     staleTime: 30_000,
     queryFn: async (): Promise<{
       teams: AssignmentTargetOption[];
@@ -40,11 +53,6 @@ export function useAssignmentTargets(companyId: string | null) {
     }> => {
       if (!companyId) return { teams: [], queues: [] };
 
-      const canList =
-        isSuperAdmin ||
-        hasPermission("handoff.view") ||
-        hasPermission("handoff.assign") ||
-        hasPermission("handoff.queue");
       if (!canList) return { teams: [], queues: [] };
 
       const platform = getLoginAppHandoffPlatformServices();

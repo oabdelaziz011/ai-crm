@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "conversation-intelligence-panel-width";
-export const INTELLIGENCE_PANEL_MIN = 320;
-export const INTELLIGENCE_PANEL_MAX = 520;
-export const INTELLIGENCE_PANEL_DEFAULT = 360;
+export const INTELLIGENCE_PANEL_MIN = 280;
+export const INTELLIGENCE_PANEL_MAX = 360;
+export const INTELLIGENCE_PANEL_DEFAULT = 300;
 
 function loadWidth(): number {
   try {

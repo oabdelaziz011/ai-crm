@@ -5,12 +5,22 @@ import { EnterpriseCard, EnterpriseCardTitle, EnterpriseMetric } from "@/compone
 import { StatusPill } from "@/components/omnichannel/workspace-v2/intelligence/intelligence-ui";
 import { BiDirText } from "@/components/omnichannel/presentation/bidir-text";
 import { formatSmartTime } from "@/lib/omnichannel/presentation/smart-time";
+import { ConversationIdentityAvatar } from "@/components/omnichannel/workspace-v2/conversation-identity-avatar";
+import {
+  buildConversationIdentityInitials,
+  resolveConversationIdentityAvatar,
+} from "@/lib/omnichannel/presentation/conversation-identity-avatar";
+import { getCompanyCurrency, getCompanyIntlLocale } from "@/lib/company-locale/runtime";
+import { formatCompanyMoney } from "@/lib/currency/format-money";
 
 function formatRevenue(context: ReturnType<typeof useIntelligenceContext>["customerContext"], notAvailable: string): string {
   if (!context?.customer) return notAvailable;
   const est = context.recentBookings * 120 + context.outstandingInvoices * 80;
   if (est <= 0) return notAvailable;
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(est);
+  return formatCompanyMoney(est, getCompanyCurrency(), getCompanyIntlLocale(), {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
 }
 
 export const IntelligenceCrmTab = memo(function IntelligenceCrmTab() {
@@ -29,6 +39,17 @@ export const IntelligenceCrmTab = memo(function IntelligenceCrmTab() {
   const customer = conversation?.customer;
   const crm = labels.crm;
   const isVip = viewModel.v2.healthDashboard.isVip;
+
+  const crmIdentity = useMemo(
+    () =>
+      resolveConversationIdentityAvatar({
+        conversation: conversation ?? null,
+        customer: customer ?? null,
+        visitorLabel: crm.customerName,
+        expectedCompanyId: conversation?.companyId ?? null,
+      }),
+    [conversation, customer, crm.customerName],
+  );
 
   const lastActivity = useMemo(() => {
     if (!conversation?.lastActivityAt) return notAvailable;
@@ -66,12 +87,33 @@ export const IntelligenceCrmTab = memo(function IntelligenceCrmTab() {
     );
   }
 
+  // CRM identity: prefer linked customer name; never treat provider photo as CRM proof.
+  const crmDisplayName = customer.name?.trim() || crmIdentity.customerName || crmIdentity.displayName;
+
   return (
     <div dir={dir}>
       <EnterpriseCard>
         <EnterpriseCardTitle icon={<UserRound className="size-3.5 text-[var(--ws-accent)]" />}>
           {crm.title}
         </EnterpriseCardTitle>
+      <div className="mb-2 flex items-center gap-2.5">
+        <ConversationIdentityAvatar
+          identity={{
+            ...crmIdentity,
+            displayName: crmDisplayName,
+            initials: buildConversationIdentityInitials(crmDisplayName),
+            // Provider channel photos are conversation identity only — CRM panel uses CRM avatar or initials.
+            imageUrl: crmIdentity.source === "crm" ? crmIdentity.imageUrl : null,
+            source: crmIdentity.source === "crm" ? "crm" : "fallback",
+          }}
+          size="md"
+          showChannelMark={false}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[var(--ws-text)]">{crmDisplayName}</p>
+          <p className="truncate text-[10px] text-[var(--ws-muted)]">{conversation?.channelLabel}</p>
+        </div>
+      </div>
       <EnterpriseMetric label={crm.customerName} value={customer.name} />
       <EnterpriseMetric label={crm.company} value={conversation?.channelLabel ?? notAvailable} />
       {customer.phone ? (

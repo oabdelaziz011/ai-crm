@@ -644,6 +644,10 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
             void consoleState.listQuery.fetchNextPage();
           }
         }}
+        onRefreshInbox={() => {
+          void consoleState.listQuery.refetch();
+        }}
+        inboxRefreshing={consoleState.listQuery.isFetching && !consoleState.listQuery.isFetchingNextPage}
         inboxEmptyTitle={inboxEmptyTitle}
         inboxEmptyHint={inboxEmptyHint}
         tenantContext={tenantContext}

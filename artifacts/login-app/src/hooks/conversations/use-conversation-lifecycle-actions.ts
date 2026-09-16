@@ -8,6 +8,8 @@ import type { ConversationRecord } from "@workspace/ai-conversation";
 
 import { useConversationServices } from "@/lib/ai-conversation";
 
+import { supabase } from "@/lib/supabase";
+
 import { useConversationActions } from "@/hooks/conversations/use-conversation-actions";
 
 import { useOmnichannelAccess } from "@/hooks/omnichannel/use-conversation-realtime";
@@ -197,7 +199,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
 
 
-      const result = conversationLifecycleCoordinator.transition(
+      let result = conversationLifecycleCoordinator.transition(
 
         coordinatorInput,
 
@@ -217,7 +219,12 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
 
 
-      await persistLifecycleMetadata(services, context, input.record.id, result.metadata);
+      let metadata = result.metadata;
+
+      // Ticket-centric SLA: conversation reopen must NOT invent lifecycle.slaDueAt.
+      // Ticket reopen (TicketCommandService) remains the only SLA clock reset path.
+
+      await persistLifecycleMetadata(services, context, input.record.id, metadata);
 
 
 
@@ -231,7 +238,7 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
         assignedUserId: result.assignedUserId,
 
-        metadata: result.metadata,
+        metadata,
 
       });
 

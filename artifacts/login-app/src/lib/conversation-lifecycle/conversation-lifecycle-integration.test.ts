@@ -169,7 +169,7 @@ describe("Lifecycle Integration", () => {
       },
     });
     const unified = conversationAggregator.aggregateConversation(
-      { ...record({ id: "1" }), metadata: assigned.metadata! },
+      { ...record({ id: "1", assigned_user_id: "user-2" }), metadata: assigned.metadata! },
       new Map(),
       new Map([["user-2", { id: "user-2", name: "Agent" }]]),
     );

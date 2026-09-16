@@ -34,7 +34,7 @@ export const TranscriptSearchBar = memo(function TranscriptSearchBar({
   labels,
 }: TranscriptSearchBarProps) {
   return (
-    <div className="flex shrink-0 items-center gap-1 border-b border-[var(--ad-border-subtle)]/40 bg-[var(--ad-surface)]/80 px-2 py-1.5 backdrop-blur-sm">
+    <div className="ws-transcript-search flex shrink-0 items-center gap-1 border-b border-[var(--ad-border-subtle)]/40 bg-[var(--ad-surface)]/80 px-2 py-0.5 backdrop-blur-sm">
       <Search className="size-3.5 shrink-0 text-[var(--ad-text-muted)]" aria-hidden />
       <input
         type="search"

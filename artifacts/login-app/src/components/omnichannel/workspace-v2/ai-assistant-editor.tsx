@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef } from "react";
-import { composerDirAttribute } from "@/lib/omnichannel/presentation/text-direction";
+import { composerDirAttribute, composerTextAlign } from "@/lib/omnichannel/presentation/text-direction";
 import type { ResolvedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
 
 export type AiAssistantEditorLabels = {
@@ -63,7 +63,8 @@ export const AiAssistantEditor = memo(function AiAssistantEditor({
     adjustHeight();
   }, [value, adjustHeight]);
 
-  const textDir = composerDirAttribute(value);
+  const textDir = composerDirAttribute(value, panelDir);
+  const textAlign = composerTextAlign(textDir);
   const spellCheckLang = language === "ar" ? "ar" : "en";
 
   return (
@@ -86,8 +87,8 @@ export const AiAssistantEditor = memo(function AiAssistantEditor({
         lang={spellCheckLang}
         dir={textDir}
         rows={3}
-        className="mb-2 w-full resize-none rounded-md border border-border bg-background/40 px-3 py-2 text-sm leading-relaxed outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/40"
-        style={{ minHeight: "4.5rem" }}
+        className="mb-2 w-full resize-none rounded-md border border-border bg-background/40 px-3 py-2 text-sm leading-relaxed outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/40 [unicode-bidi:plaintext]"
+        style={{ minHeight: "4.5rem", direction: textDir, textAlign }}
       />
 
       <div className={`flex flex-wrap gap-1 ${panelDir === "rtl" ? "justify-end" : ""}`}>

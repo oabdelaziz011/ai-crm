@@ -17,10 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AttachmentPreviewStrip } from "@/components/omnichannel/agent-desk/attachment-preview-strip";
 import { ComposerMentionList } from "@/components/omnichannel/agent-desk/composer-mention-list";
 import { ComposerTranslatePopover } from "@/components/omnichannel/agent-desk/composer-translate-popover";
-import {
-  SuggestedReplyChip,
-  type SuggestedReplyExplainLabels,
-} from "@/components/omnichannel/agent-desk/suggested-reply-chip";
+import type { SuggestedReplyExplainLabels } from "@/components/omnichannel/agent-desk/suggested-reply-chip";
+import { ComposerQuickRepliesPopover } from "@/components/omnichannel/agent-desk/composer-quick-replies-popover";
 import { useAuth } from "@/context/auth-context";
 import { useCompanyCapability } from "@/hooks/billing/use-company-feature";
 import { useComposerAttachments } from "@/hooks/omnichannel/use-composer-attachments";
@@ -32,7 +30,8 @@ import {
   type OmnichannelComposerFeature,
 } from "@/lib/omnichannel/config/omnichannel-ui-features";
 import type { ResolvedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
-import { composerDirAttribute } from "@/lib/omnichannel/presentation/text-direction";
+import { composerDirAttribute, composerTextAlign, resolveLocaleTextDirection } from "@/lib/omnichannel/presentation/text-direction";
+import { useTranslation } from "react-i18next";
 import {
   filterSlashCommands,
   filterSnippetCommands,
@@ -76,6 +75,14 @@ type ComposePanelProps = {
   conversationId?: string | null;
   suggestedReplies?: IntelligentSuggestedReply[];
   suggestedReplyExplainLabels?: SuggestedReplyExplainLabels;
+  onBuildSuggestedReplies?: (options: {
+    variantOffset: number;
+  }) => IntelligentSuggestedReply[] | Promise<IntelligentSuggestedReply[]>;
+  suggestionContextFingerprint?: {
+    lastCustomerMessage?: string | null;
+    targetLanguage?: string | null;
+    intent?: string | null;
+  };
   conversationLanguage?: ResolvedConversationLanguage;
   detectedLanguage?: string;
   labels: {
@@ -94,6 +101,12 @@ type ComposePanelProps = {
     translate: string;
     language: string;
     suggestedReplies: string;
+    quickReplies: string;
+    aiSuggestions: string;
+    refreshSuggestions: string;
+    suggestionsUnavailable: string;
+    generatingSuggestions: string;
+    quickRepliesEmpty: string;
     keyboardHint: string;
     mention: string;
     slashCommands: string;
@@ -110,6 +123,8 @@ type ComposePanelProps = {
       english: string;
       arabic: string;
       emptyDraft: string;
+      translating?: string;
+      failed?: string;
     };
     mentionPanel: {
       agents: string;
@@ -140,6 +155,8 @@ export const ComposePanel = memo(
       conversationId,
       suggestedReplies = [],
       suggestedReplyExplainLabels,
+      onBuildSuggestedReplies,
+      suggestionContextFingerprint,
       conversationLanguage = "en",
       detectedLanguage,
       labels,
@@ -153,6 +170,7 @@ export const ComposePanel = memo(
     ref,
   ) {
     const { company, isSuperAdmin } = useAuth();
+    const { i18n } = useTranslation("common");
     const companyId = company?.id ?? null;
     const { enabled: suggestedRepliesEntitled } = useCompanyCapability("ai_suggested_replies", {
       enabled: Boolean(companyId) && !isSuperAdmin,
@@ -166,6 +184,7 @@ export const ComposePanel = memo(
     const [emojiOpen, setEmojiOpen] = useState(false);
     const [templatesOpen, setTemplatesOpen] = useState(false);
     const [savedRepliesOpen, setSavedRepliesOpen] = useState(false);
+    const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
     const [slashOpen, setSlashOpen] = useState(false);
     const [snippetOpen, setSnippetOpen] = useState(false);
     const [slashHighlight, setSlashHighlight] = useState(0);
@@ -182,7 +201,11 @@ export const ComposePanel = memo(
 
     const savedReplies = useMemo(() => getSavedReplies(conversationLanguage), [conversationLanguage]);
     const templates = useMemo(() => getReplyTemplates(conversationLanguage), [conversationLanguage]);
-    const draftDir = composerDirAttribute(draft);
+    const localeFallback = resolveLocaleTextDirection(
+      typeof i18n.dir === "function" ? i18n.dir() : i18n.language,
+    );
+    const draftDir = composerDirAttribute(draft, localeFallback);
+    const draftAlign = composerTextAlign(draftDir);
 
     const slashQuery = useMemo(() => {
       const match = draft.match(/(?:^|\s)(\/[^\s]*)$/);
@@ -213,6 +236,10 @@ export const ComposePanel = memo(
       setSnippetOpen(Boolean(snippetQuery && snippetMatches.length > 0));
       setSnippetHighlight(0);
     }, [snippetQuery, snippetMatches.length]);
+
+    useEffect(() => {
+      setQuickRepliesOpen(false);
+    }, [conversationId]);
 
     useImperativeHandle(ref, () => ({
       focus: () => textareaRef.current?.focus(),
@@ -450,16 +477,24 @@ export const ComposePanel = memo(
       [labels.disabledReasons],
     );
 
-    const showSuggested =
-      (isSuperAdmin || suggestedRepliesEntitled)
-      && isComposerFeatureVisible("suggestedReplies")
-      && suggestedReplies.length > 0
-      && suggestedReplyExplainLabels;
+    const quickRepliesEntitled = isSuperAdmin || suggestedRepliesEntitled;
+    const showQuickRepliesButton =
+      isComposerFeatureVisible("suggestedReplies")
+      || isComposerFeatureVisible("savedReplies");
+
+    const applyQuickReplyText = useCallback(
+      (text: string) => {
+        setDraft(text);
+        onDraftChange?.(text);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+      },
+      [onDraftChange],
+    );
 
     return (
-      <div className="shrink-0 px-1 pb-2 pt-0.5 sm:px-2">
+      <div className="shrink-0 px-1 pb-1 pt-0 sm:px-1.5">
         <div
-          className={`agent-desk-compose relative rounded-xl ${
+          className={`agent-desk-compose relative rounded-lg ${
             mode === "internal_note"
               ? "bg-amber-950/10 ring-1 ring-amber-500/20"
               : "bg-[var(--ad-surface-raised)] ring-1 ring-[var(--ad-border-subtle)]/50"
@@ -476,36 +511,19 @@ export const ComposePanel = memo(
             }
           }}
         >
-          {showSuggested ? (
-            <div className="flex flex-wrap gap-1 border-b border-[var(--ad-border-subtle)]/80 px-2.5 py-1.5">
-              <span className="w-full text-[9px] uppercase tracking-wide text-[var(--ad-text-muted)]">
-                {labels.suggestedReplies}
-              </span>
-              {suggestedReplies.slice(0, 3).map((reply) => (
-                <SuggestedReplyChip
-                  key={reply.id}
-                  reply={reply}
-                  labels={suggestedReplyExplainLabels!}
-                  onSelect={setDraft}
-                  compact
-                />
-              ))}
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-0.5 border-b border-[var(--ad-border-subtle)]/80 px-1.5 py-1">
+          <div className="flex flex-wrap items-center gap-0 border-b border-[var(--ad-border-subtle)]/80 px-1 py-0.5" dir="ltr">
             {isComposerFeatureVisible("emoji") && isComposerFeatureInteractive("emoji") ? (
               <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
                     aria-label={labels.emoji}
-                    className="rounded-md p-1.5 text-[var(--ad-text-muted)] transition-colors duration-[var(--ad-dur-hover)] hover:bg-[var(--ad-accent-dim)] hover:text-[var(--ad-text)]"
+                    className="rounded-md p-1 text-[var(--ad-text-muted)] transition-colors duration-[var(--ad-dur-hover)] hover:bg-[var(--ad-accent-dim)] hover:text-[var(--ad-text)]"
                   >
                     <Smile className="size-3.5" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto border-[var(--ad-border)] bg-[var(--ad-surface-raised)] p-2">
+                <PopoverContent align="start" className="w-auto border border-border bg-popover p-2 text-popover-foreground omni-overlay-surface">
                   <EmojiPickerGrid
                     onSelect={(emoji) => {
                       const node = textareaRef.current;
@@ -551,6 +569,33 @@ export const ComposePanel = memo(
             {isComposerFeatureVisible("voice") ? (
               <Tool icon={<Mic className="size-3.5" />} label={labels.voice} disabled={!isComposerFeatureInteractive("voice")} disabledHint={disabledReason("voice") ?? undefined} />
             ) : null}
+            {showQuickRepliesButton ? (
+              <ComposerQuickRepliesPopover
+                conversationId={conversationId}
+                open={quickRepliesOpen}
+                onOpenChange={setQuickRepliesOpen}
+                entitled={quickRepliesEntitled && isComposerFeatureVisible("suggestedReplies")}
+                suggestedReplies={suggestedReplies}
+                suggestedReplyExplainLabels={suggestedReplyExplainLabels}
+                savedReplies={
+                  isComposerFeatureVisible("savedReplies") && isComposerFeatureInteractive("savedReplies")
+                    ? savedReplies
+                    : []
+                }
+                labels={{
+                  quickReplies: labels.quickReplies,
+                  aiSuggestions: labels.aiSuggestions,
+                  savedReplies: labels.savedReplies,
+                  refreshSuggestions: labels.refreshSuggestions,
+                  suggestionsUnavailable: labels.suggestionsUnavailable,
+                  generatingSuggestions: labels.generatingSuggestions,
+                  emptyState: labels.quickRepliesEmpty,
+                }}
+                onBuildSuggestedReplies={onBuildSuggestedReplies}
+                contextFingerprintParts={suggestionContextFingerprint}
+                onSelectText={applyQuickReplyText}
+              />
+            ) : null}
             {isComposerFeatureVisible("savedReplies") && isComposerFeatureInteractive("savedReplies") ? (
               <Popover open={savedRepliesOpen} onOpenChange={setSavedRepliesOpen}>
                 <PopoverTrigger asChild>
@@ -558,7 +603,7 @@ export const ComposePanel = memo(
                     <Bookmark className="size-3.5" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-72 border-[var(--ad-border)] bg-[var(--ad-surface-raised)] p-1">
+                <PopoverContent align="start" className="w-72 border border-border bg-popover p-1 text-popover-foreground omni-overlay-surface">
                   <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--ad-text-muted)]">{labels.savedReplies}</p>
                   {savedReplies.map((entry) => (
                     <button key={entry.id} type="button" className="flex w-full flex-col rounded-md px-2 py-1.5 text-start hover:bg-[var(--ad-accent-dim)]" onClick={() => applySavedReply(entry.body)}>
@@ -576,7 +621,7 @@ export const ComposePanel = memo(
                     <LayoutTemplate className="size-3.5" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-72 border-[var(--ad-border)] bg-[var(--ad-surface-raised)] p-1">
+                <PopoverContent align="start" className="w-72 border border-border bg-popover p-1 text-popover-foreground omni-overlay-surface">
                   <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--ad-text-muted)]">{labels.templates}</p>
                   {templates.map((entry) => (
                     <button key={entry.id} type="button" className="flex w-full flex-col rounded-md px-2 py-1.5 text-start hover:bg-[var(--ad-accent-dim)]" onClick={() => applyTemplate(entry.body)}>
@@ -601,6 +646,7 @@ export const ComposePanel = memo(
             {isComposerFeatureVisible("translate") && isComposerFeatureInteractive("translate") ? (
               <ComposerTranslatePopover
                 draft={draft}
+                companyId={companyId}
                 agentLanguage={conversationLanguage}
                 labels={labels.translatePanel}
                 onApply={(nextDraft) => {
@@ -672,7 +718,7 @@ export const ComposePanel = memo(
             </p>
           ) : null}
 
-          <div className="relative flex items-end gap-2 p-2">
+          <div className="relative flex items-end gap-1.5 px-1.5 py-1" dir="ltr">
             {slashOpen ? (
               <div className="absolute inset-x-2 bottom-full z-20 mb-1 max-h-44 overflow-y-auto rounded-lg border border-[var(--ad-border-subtle)] bg-[var(--ad-surface-raised)] py-1 shadow-lg" role="listbox" aria-label={labels.slashCommands}>
                 {slashMatches.map((entry, index) => (
@@ -732,6 +778,7 @@ export const ComposePanel = memo(
               placeholder={mode === "internal_note" ? labels.internalNote : labels.placeholder}
               aria-label={mode === "internal_note" ? labels.internalNote : labels.reply}
               dir={draftDir}
+              style={{ direction: draftDir, textAlign: draftAlign }}
               onChange={(event) => {
                 setDraft(event.target.value);
                 setCursor(event.target.selectionStart ?? event.target.value.length);
@@ -850,14 +897,14 @@ export const ComposePanel = memo(
                   handleAddFiles(files);
                 }
               }}
-              className="min-h-[40px] flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-[var(--ad-text-muted)]"
+              className="min-h-[28px] max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent text-sm leading-snug outline-none placeholder:text-[var(--ad-text-muted)] [unicode-bidi:plaintext]"
             />
             <Can permission="ai.conversations.reply">
               <button
                 type="button"
                 disabled={!canSend}
                 onClick={send}
-                className="agent-desk-btn agent-desk-btn--primary shrink-0 px-3 py-2"
+                className="agent-desk-btn agent-desk-btn--primary shrink-0 px-2.5 py-1.5"
                 aria-label={labels.send}
               >
                 {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
@@ -881,7 +928,7 @@ export const ComposePanel = memo(
             />
           ) : null}
 
-          <div className="flex items-center justify-between px-2.5 py-1 text-[10px] text-[var(--ad-text-muted)]">
+          <div className="flex items-center justify-between px-2 py-0.5 text-[10px] leading-tight text-[var(--ad-text-muted)]">
             <span dir="auto" className={mode === "reply" ? "text-[var(--ad-accent)]" : mode === "internal_note" ? "text-[var(--ad-warn)]" : undefined}>
               {mode === "internal_note" ? labels.internalNote : labels.reply}
             </span>
@@ -916,7 +963,7 @@ function Tool({
       title={disabled && disabledHint ? disabledHint : label}
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-md p-1.5 transition-colors duration-[var(--ad-dur-hover)] ${
+      className={`rounded-md p-1 transition-colors duration-[var(--ad-dur-hover)] ${
         disabled
           ? "cursor-not-allowed text-[var(--ad-text-muted)] opacity-40"
           : active

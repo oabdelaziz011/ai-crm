@@ -7,7 +7,7 @@ type InboxResizeHandleProps = {
 };
 
 /**
- * Thin column divider between Conversation and Inbox.
+ * Thin column divider between Inbox and Conversation.
  * Width updates are applied outside React (CSS variable) by the parent hook.
  */
 export const InboxResizeHandle = memo(function InboxResizeHandle({

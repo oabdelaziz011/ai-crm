@@ -77,7 +77,16 @@ export async function fetchConversationTickets(
   companyId: string,
   conversationId: string,
   access: TimelineAccess,
-): Promise<Array<{ id: string; ticketNumber: string; subject: string; status: string; createdAt: string; updatedAt: string }>> {
+): Promise<Array<{
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: string;
+  priority: string;
+  slaDueAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>> {
   if (!access.hasPermission("tickets.view")) return [];
 
   const ticketReads = createLoginAppTicketReadPort(supabase);
@@ -94,6 +103,8 @@ export async function fetchConversationTickets(
     ticketNumber: ticket.ticketNumber,
     subject: ticket.subject,
     status: ticket.status,
+    priority: ticket.priority,
+    slaDueAt: ticket.slaDueAt,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
   }));

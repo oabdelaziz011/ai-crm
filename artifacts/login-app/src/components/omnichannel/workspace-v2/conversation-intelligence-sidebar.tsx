@@ -188,6 +188,8 @@ type ConversationIntelligenceSidebarProps = {
 
 const TAB_ORDER: IntelligenceSidebarTab[] = [
 
+  "crm",
+
   "summary",
 
   "mood",
@@ -199,8 +201,6 @@ const TAB_ORDER: IntelligenceSidebarTab[] = [
   "journey",
 
   "history",
-
-  "crm",
 
 ];
 
@@ -248,7 +248,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
 }: ConversationIntelligenceSidebarProps) {
 
-  const [activeTab, setActiveTab] = useState<IntelligenceSidebarTab>("summary");
+  const [activeTab, setActiveTab] = useState<IntelligenceSidebarTab>("crm");
 
   const panelRef = useRef<HTMLElement>(null);
 
@@ -378,7 +378,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
     return (
 
-      <aside className="ws-intelligence-rail hidden h-full min-h-0 w-10 shrink-0 flex-col items-center border-e border-[var(--ws-border)] bg-[var(--ws-surface)] py-2 xl:flex">
+      <aside className="ws-intelligence-rail hidden h-full min-h-0 w-10 shrink-0 flex-col items-center border-s border-[var(--ws-border)] bg-[var(--ws-surface)] py-2 lg:flex">
 
         <button
 
@@ -410,7 +410,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
       ref={panelRef}
 
-      className={`ws-intelligence-panel relative hidden h-full min-h-0 shrink-0 flex-col border-e border-[var(--ws-border)] bg-[var(--ws-surface)] xl:flex ${
+      className={`ws-intelligence-panel relative hidden h-full min-h-0 shrink-0 flex-col bg-[var(--ws-surface)] lg:flex ${
 
         isResizing ? "select-none" : ""
 
@@ -428,7 +428,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
         aria-label={labels.expandLabel}
 
-        className="absolute end-0 top-0 z-10 flex h-full w-1 cursor-col-resize items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--ws-accent)]/20"
+        className="absolute start-0 top-0 z-10 flex h-full w-1 cursor-col-resize items-center justify-center border-none bg-transparent p-0 hover:bg-[var(--ws-accent)]/20"
 
         onPointerDown={(event) => {
 
@@ -436,7 +436,11 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
           if (!rect) return;
 
-          startResize(event.clientX, rect, "trailing");
+          // Handle is at inline-start (shared edge with Conversation).
+          // LTR: panel on right → leading edge. RTL: panel on left → trailing edge.
+          const shellRtl =
+            panelRef.current?.closest("[data-ws-shell]")?.getAttribute("data-ws-shell") === "rtl";
+          startResize(event.clientX, rect, shellRtl ? "trailing" : "leading");
 
         }}
 
@@ -500,7 +504,7 @@ export const ConversationIntelligenceSidebar = memo(function ConversationIntelli
 
       >
 
-        <div className="flex shrink-0 gap-0.5 overflow-x-auto border-b border-[var(--ws-border-subtle)] p-1.5 ps-3">
+        <div className="flex shrink-0 gap-0.5 overflow-x-auto border-b border-[var(--ws-border-subtle)] p-1.5 ps-3" dir="ltr">
 
           {TAB_ORDER.map((tab) => (
 

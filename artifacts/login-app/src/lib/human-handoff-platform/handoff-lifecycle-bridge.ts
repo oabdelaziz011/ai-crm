@@ -113,23 +113,33 @@ export async function executeHandoffLifecycleBridge(
           ...base,
           queueId,
           requestedByAiAssistantId: input.aiAssistantId ?? undefined,
+          trustedSystemExecution: true,
         });
       } else {
         await platform.commands.escalateConversation(ctx, {
           ...base,
           triggerCode: input.escalationTrigger ?? "customer_requested",
           requestedByAiAssistantId: input.aiAssistantId ?? undefined,
+          trustedSystemExecution: true,
         });
       }
       return;
 
     case "escalate":
+      await platform.commands.escalateConversation(ctx, {
+        ...base,
+        triggerCode: input.escalationTrigger ?? "manual",
+        targetQueueId: queueId ?? undefined,
+      });
+      return;
+
     case "ai_escalate":
       await platform.commands.escalateConversation(ctx, {
         ...base,
         triggerCode: input.escalationTrigger ?? "manual",
         targetQueueId: queueId ?? undefined,
         requestedByAiAssistantId: input.aiAssistantId ?? undefined,
+        trustedSystemExecution: true,
       });
       return;
 

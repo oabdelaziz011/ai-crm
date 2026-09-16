@@ -137,9 +137,10 @@ export const WorkspaceActionToolbar = memo(function WorkspaceActionToolbar(props
 
   return (
     <div
-      className="flex shrink-0 flex-wrap items-center gap-1 border-b border-[var(--ws-border-subtle)] px-2 py-1.5"
+      className="ws-conversation-toolbar flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-[var(--ws-border-subtle)] px-1.5 py-0.5"
       role="toolbar"
       aria-label={props.toolbarLabel}
+      dir="ltr"
     >
       {visible.map((id) => (
         <button

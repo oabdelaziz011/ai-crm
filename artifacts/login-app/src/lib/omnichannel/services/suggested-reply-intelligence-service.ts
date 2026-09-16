@@ -7,7 +7,7 @@ import type {
   OmnichannelCustomerContext,
 } from "@/lib/omnichannel/types/unified-conversation";
 import type { ResolvedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
-import { getSuggestedReplySamples } from "@/lib/omnichannel/services/suggested-reply-catalog";
+import { collectContextualSuggestedReplySamples, getSuggestedReplySamples } from "@/lib/omnichannel/services/suggested-reply-catalog";
 import type {
   IntelligentSuggestedReply,
   SuggestedReplyCatalogBucket,
@@ -23,6 +23,10 @@ export type SuggestedReplyIntelligenceInput = {
   lifecycleState?: LifecycleState;
   knowledgeSuggestions?: string[];
   customerContext?: OmnichannelCustomerContext | null;
+  /** Rotate catalog variants for refresh without repeating the same set. */
+  variantOffset?: number;
+  /** Target number of short drafts (3–5). */
+  limit?: number;
 };
 
 type IntentClassification = {
@@ -255,7 +259,15 @@ export function buildIntelligentSuggestedReplies(
   });
 
   const bucket = catalogBucketForIntent(classification.key, input.customerTone);
-  const samples = getSuggestedReplySamples(input.targetLanguage, bucket).slice(0, 2);
+  const related: SuggestedReplyCatalogBucket[] =
+    bucket === "general" ? ["happy", "confused"] : ["general"];
+  const samples = collectContextualSuggestedReplySamples({
+    language: input.targetLanguage,
+    primaryBucket: bucket,
+    relatedBuckets: related,
+    limit: input.limit ?? 4,
+    variantOffset: input.variantOffset ?? 0,
+  });
 
   const replies = samples.map((text, index) => {
     const scoring = scoreReply({
@@ -291,7 +303,7 @@ export function buildIntelligentSuggestedReplies(
     };
 
     return {
-      id: `${classification.key}-${bucket}-${index}`,
+      id: `${classification.key}-${bucket}-${input.variantOffset ?? 0}-${index}`,
       text,
       confidence: scoring.confidence,
       intent: classification.key,

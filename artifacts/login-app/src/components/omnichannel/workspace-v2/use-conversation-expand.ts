@@ -49,15 +49,8 @@ export function useConversationExpand(getBody: () => HTMLElement | null) {
 
       if (next) {
         body.setAttribute("data-conversation-expanded", "true");
-        const rect = body.getBoundingClientRect();
-        const nav = body.querySelector<HTMLElement>(".ws-nav-rail");
-        const crm = body.querySelector<HTMLElement>(".ws-intelligence-panel, .ws-intelligence-rail");
-        const reserved =
-          (nav?.getBoundingClientRect().width ?? 0) + (crm?.getBoundingClientRect().width ?? 0);
-        const available = Math.max(0, rect.width - reserved);
-        // Inbox ~20% of Conversation+Inbox region; Conversation takes the rest (~80%).
-        const inboxWidth = Math.max(160, Math.round(available * 0.2));
-        body.style.setProperty("--ws-list-width", `${inboxWidth}px`);
+        // True workspace fullscreen: conversation owns the full body width.
+        body.style.setProperty("--ws-list-width", "0px");
       } else {
         body.removeAttribute("data-conversation-expanded");
         const restored =

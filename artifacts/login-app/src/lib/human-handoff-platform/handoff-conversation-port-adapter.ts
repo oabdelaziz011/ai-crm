@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  createConversationServices,
+  ASSIGNMENT_INTERNAL_TRUST,
   type ServiceContext,
 } from "@workspace/ai-conversation";
 import type { HandoffConversationPort } from "@workspace/human-handoff-platform";
@@ -8,6 +8,7 @@ import {
   readLifecycleOverlay,
   writeLifecycleOverlay,
 } from "@/lib/conversation-lifecycle/adapters/backend-state-adapter";
+import { createConversationServicesWithSla } from "@/lib/ai-conversation/create-conversation-services-with-sla";
 
 function handoffConversationContext(companyId: string, userId: string | null): ServiceContext {
   return {
@@ -21,15 +22,27 @@ function handoffConversationContext(companyId: string, userId: string | null): S
 export function createLoginAppHandoffConversationPort(
   client: SupabaseClient,
 ): HandoffConversationPort {
-  const services = createConversationServices(client);
+  const services = createConversationServicesWithSla(client);
 
   return {
     async assignConversation(input) {
       const ctx = handoffConversationContext(input.companyId, input.actorUserId);
-      await services.conversations.assignConversation(ctx, {
+      const base = {
         conversationId: input.conversationId,
         assignedUserId: input.assignedUserId,
-      });
+        assignmentAuditSource: input.assignmentAuditSource,
+      };
+
+      // Skip guards only via Symbol-trusted internal path (not JSON-forgeable).
+      if (input.skipAssignmentGovernance) {
+        await services.conversations.assignConversationInternal(ctx, {
+          ...base,
+          skipAssignmentGovernance: true,
+          internalTrust: ASSIGNMENT_INTERNAL_TRUST,
+        });
+      } else {
+        await services.conversations.assignConversation(ctx, base);
+      }
 
       // Keep lifecycle overlay in sync so Omnichannel Owner chip is not stuck on AI Employee.
       try {
@@ -37,6 +50,7 @@ export function createLoginAppHandoffConversationPort(
         const metadata = (record.metadata as Record<string, unknown>) ?? {};
         const overlay = readLifecycleOverlay(metadata);
         const nextMetadata = writeLifecycleOverlay(metadata, {
+          ...overlay,
           state: "ASSIGNED",
           owner: {
             kind: "user",
@@ -52,6 +66,7 @@ export function createLoginAppHandoffConversationPort(
           assignmentHistory: overlay?.assignmentHistory ?? [],
           migratedAt: overlay?.migratedAt,
           migrationVersion: overlay?.migrationVersion,
+          slaDueAt: overlay?.slaDueAt ?? null,
         });
         await services.conversations.updateMetadata(ctx, {
           conversationId: input.conversationId,

@@ -23,9 +23,14 @@ export class EmailSmtpClient {
     const references =
       payload.references?.map((item) => `<${normalizeEmailMessageId(item)}>`).join(" ") || undefined;
 
+    const cc = (payload.cc ?? []).map((item) => item.trim()).filter(Boolean);
+    const bcc = (payload.bcc ?? []).map((item) => item.trim()).filter(Boolean);
+
     const result = (await transporter.sendMail({
       from: config.fromName ? `"${config.fromName}" <${config.fromEmail}>` : config.fromEmail,
       to: payload.to,
+      cc: cc.length ? cc : undefined,
+      bcc: bcc.length ? bcc : undefined,
       replyTo: payload.replyTo ?? config.replyToEmail ?? config.fromEmail,
       subject: payload.subject,
       text: payload.text,
@@ -34,9 +39,13 @@ export class EmailSmtpClient {
       references,
       attachments: (payload.attachments ?? []).map((attachment) => ({
         filename: attachment.filename,
-        content: attachment.content,
         contentType: attachment.mimeType,
-        path: attachment.url,
+        contentDisposition: "attachment" as const,
+        ...(attachment.content != null
+          ? { content: attachment.content }
+          : attachment.url
+            ? { path: attachment.url }
+            : {}),
       })),
     })) as SMTPTransport.SentMessageInfo;
 

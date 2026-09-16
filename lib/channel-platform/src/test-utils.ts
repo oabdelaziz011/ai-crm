@@ -514,7 +514,13 @@ export function createTestEnvironment(options?: {
   };
 
   const dispatcher = new ChannelDispatcher(outboundPipeline, telemetry);
-  const deliveryStatusPipeline = new DeliveryStatusPipeline(deliveryEngine, deliveryRepository);
+  const deliveryStatusPipeline = new DeliveryStatusPipeline(
+    deliveryEngine,
+    deliveryRepository,
+    ports.conversation.confirmOutgoingDelivery
+      ? (input) => ports.conversation.confirmOutgoingDelivery!(input)
+      : undefined,
+  );
   const inboundPipeline = new InboundMessagePipeline(
     ports,
     adapterRegistry,

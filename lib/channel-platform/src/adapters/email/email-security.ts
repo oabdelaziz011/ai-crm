@@ -10,6 +10,11 @@ const ALLOWED_ATTACHMENT_MIME_PREFIXES = [
   "application/x-zip-compressed",
   "image/",
   "text/plain",
+  // Delivery Status Notifications / bounce reports (must not poison IMAP poll).
+  "text/rfc822-headers",
+  "message/rfc822",
+  "message/delivery-status",
+  "multipart/report",
 ];
 
 export type EmailSecurityValidationResult = {

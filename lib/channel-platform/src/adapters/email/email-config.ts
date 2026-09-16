@@ -22,6 +22,12 @@ export type EmailChannelConfiguration = {
   maxAttachmentBytes?: number;
   inboundProvider?: string;
   outboundProvider?: string;
+  mailboxProvider?: string;
+  connectionStatus?: string;
+  oauthAccessToken?: string;
+  oauthRefreshToken?: string;
+  oauthProvider?: string | null;
+  oauthExpiresAt?: string | null;
   conversationEnabled?: boolean;
   enabled?: boolean;
 };

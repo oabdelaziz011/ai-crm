@@ -1,9 +1,10 @@
 import { AttachmentEngine } from "../../engines/attachment-engine.js";
 import { ValidationError } from "../../errors.js";
-import type { ParsedInboundEmail } from "./email-types.js";
+import type { ParsedEmailAttachment, ParsedInboundEmail } from "./email-types.js";
 import { buildReplySubject, htmlToPlainText, normalizeEmailMessageId, sanitizeEmailHtml } from "./email-html-utils.js";
 import { parseAuthenticationResultsHeader, validateInboundEmailSecurity } from "./email-security.js";
 import type { EmailVirusScanHook } from "./email-security.js";
+import { stashInboundAttachmentBytes } from "../../services/inbound-email-attachment-store.js";
 
 export type EmailInboundAdapterOptions = {
   maxAttachmentBytes?: number;
@@ -51,14 +52,18 @@ export class EmailInboundAdapter {
           ? sanitizeEmailHtml(htmlOriginal)
           : undefined;
 
-    const textPlain =
+    // Empty-string textPlain must not block HTML→plain fallback (Graph often sends
+    // html body with an empty bodyPreview).
+    const rawTextPlain =
       typeof raw.textPlain === "string"
         ? raw.textPlain.trim()
         : typeof raw.text === "string"
           ? raw.text.trim()
-          : htmlOriginal
-            ? htmlToPlainText(htmlOriginal)
-            : "";
+          : "";
+    const textPlain =
+      rawTextPlain ||
+      (htmlSanitized ? htmlToPlainText(htmlSanitized) : "") ||
+      (htmlOriginal ? htmlToPlainText(htmlOriginal) : "");
 
     const references = this.readReferences(raw.references ?? raw.emailReferences);
     const authenticationResults =
@@ -116,16 +121,30 @@ export class EmailInboundAdapter {
 
   buildWebhookPayload(parsed: ParsedInboundEmail, resolvedExternalThreadId: string): Record<string, unknown> {
     const normalizedAttachments = this.attachmentEngine.normalizeAttachments(
-      parsed.attachments.map((attachment, index) => ({
-        attachmentId: attachment.attachmentId || `email-attachment-${index + 1}`,
-        type: this.mapAttachmentType(attachment.mimeType),
-        url: attachment.url,
-        mimeType: attachment.mimeType,
-        filename: attachment.filename,
-        metadata: {
-          sizeBytes: attachment.sizeBytes,
-        },
-      })),
+      parsed.attachments.map((attachment, index) => {
+        const contentRef = attachment.contentRef
+          ? attachment.contentRef
+          : attachment.content && attachment.content.length > 0
+            ? stashInboundAttachmentBytes(attachment.content)
+            : undefined;
+        return {
+          attachmentId: attachment.attachmentId || `email-attachment-${index + 1}`,
+          type: this.mapAttachmentType(attachment.mimeType),
+          url: attachment.url,
+          mimeType: attachment.mimeType,
+          filename: attachment.filename,
+          name: attachment.filename,
+          metadata: {
+            sizeBytes: attachment.sizeBytes,
+            fileSize: attachment.sizeBytes,
+            contentRef,
+            contentBase64: attachment.contentBase64,
+            isInline: attachment.isInline === true,
+            contentId: attachment.contentId,
+            related: attachment.related === true,
+          },
+        };
+      }),
     );
 
     return {
@@ -196,35 +215,82 @@ export class EmailInboundAdapter {
     return value.map((item) => this.readAddress(item)).filter((item) => item.email);
   }
 
+  private readAttachmentBytes(record: Record<string, unknown>): Buffer | undefined {
+    if (Buffer.isBuffer(record.content)) return record.content;
+    if (record.content instanceof Uint8Array) return Buffer.from(record.content);
+    const serialized = record.content as { type?: string; data?: number[] } | undefined;
+    if (serialized && serialized.type === "Buffer" && Array.isArray(serialized.data)) {
+      return Buffer.from(serialized.data);
+    }
+    const base64 =
+      typeof record.contentBase64 === "string"
+        ? record.contentBase64
+        : typeof record.contentBytes === "string"
+          ? record.contentBytes
+          : "";
+    if (base64.trim()) {
+      try {
+        const bytes = Buffer.from(base64, "base64");
+        return bytes.length > 0 ? bytes : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
   private readAttachments(value: unknown): ParsedInboundEmail["attachments"] {
     if (!Array.isArray(value)) return [];
 
-    const attachments: ParsedInboundEmail["attachments"] = [];
+    const attachments: ParsedEmailAttachment[] = [];
     for (const [index, item] of value.entries()) {
       if (!item || typeof item !== "object") continue;
       const record = item as Record<string, unknown>;
+      const nested =
+        record.metadata && typeof record.metadata === "object" && !Array.isArray(record.metadata)
+          ? (record.metadata as Record<string, unknown>)
+          : {};
+      const merged = { ...nested, ...record };
       const filename =
-        typeof record.filename === "string" ? record.filename.trim() : `attachment-${index + 1}`;
+        typeof merged.filename === "string" && merged.filename.trim()
+          ? merged.filename.trim()
+          : typeof merged.name === "string" && merged.name.trim()
+            ? merged.name.trim()
+            : `attachment-${index + 1}`;
       const mimeType =
-        typeof record.mimeType === "string"
-          ? record.mimeType
-          : typeof record.contentType === "string"
-            ? record.contentType
+        typeof merged.mimeType === "string"
+          ? merged.mimeType
+          : typeof merged.contentType === "string"
+            ? merged.contentType
             : "application/octet-stream";
+      const content = this.readAttachmentBytes(merged);
       const sizeBytes =
-        typeof record.sizeBytes === "number"
-          ? record.sizeBytes
-          : typeof record.size === "number"
-            ? record.size
-            : 0;
+        typeof merged.sizeBytes === "number" && merged.sizeBytes > 0
+          ? merged.sizeBytes
+          : typeof merged.size === "number" && merged.size > 0
+            ? merged.size
+            : typeof merged.fileSize === "number" && merged.fileSize > 0
+              ? merged.fileSize
+              : content?.length ?? 0;
 
       attachments.push({
         attachmentId:
-          typeof record.attachmentId === "string" ? record.attachmentId : `email-attachment-${index + 1}`,
+          typeof merged.attachmentId === "string" ? merged.attachmentId : `email-attachment-${index + 1}`,
         filename,
         mimeType,
         sizeBytes,
-        url: typeof record.url === "string" ? record.url : undefined,
+        content,
+        contentBase64: typeof merged.contentBase64 === "string" ? merged.contentBase64 : undefined,
+        contentRef: typeof merged.contentRef === "string" ? merged.contentRef : undefined,
+        url: typeof merged.url === "string" ? merged.url : undefined,
+        isInline: merged.isInline === true,
+        contentId:
+          typeof merged.contentId === "string"
+            ? merged.contentId
+            : typeof merged.cid === "string"
+              ? merged.cid
+              : undefined,
+        related: merged.related === true,
       });
     }
     return attachments;

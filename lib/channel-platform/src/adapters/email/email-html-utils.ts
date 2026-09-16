@@ -84,3 +84,9 @@ export function buildReplySubject(subject: string): string {
   if (/^re:/i.test(trimmed)) return trimmed;
   return `Re: ${trimmed || "(no subject)"}`;
 }
+
+export function buildForwardSubject(subject: string): string {
+  const trimmed = subject.trim();
+  if (/^(fwd|fw):/i.test(trimmed)) return trimmed;
+  return `Fwd: ${trimmed || "(no subject)"}`;
+}

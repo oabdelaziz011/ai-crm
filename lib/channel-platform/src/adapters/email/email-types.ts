@@ -33,7 +33,12 @@ export type ParsedEmailAttachment = {
   mimeType: string;
   sizeBytes: number;
   content?: Buffer;
+  contentBase64?: string;
+  contentRef?: string;
   url?: string;
+  isInline?: boolean;
+  contentId?: string;
+  related?: boolean;
 };
 
 export type ParsedInboundEmail = {
@@ -55,13 +60,18 @@ export type ParsedInboundEmail = {
 };
 
 export type EmailSmtpSendPayload = {
-  to: string;
+  /** Primary To — string or multiple recipients (nodemailer accepts both). */
+  to: string | string[];
   subject: string;
   text: string;
   html?: string;
   replyTo?: string;
   inReplyTo?: string;
   references?: string[];
+  /** Optional carbon-copy recipients (Reply All / Compose). */
+  cc?: string[];
+  /** Optional blind carbon-copy recipients (Compose). */
+  bcc?: string[];
   attachments?: Array<{
     filename: string;
     mimeType?: string;

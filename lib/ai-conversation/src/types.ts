@@ -21,6 +21,8 @@ export type ConversationRecord = {
   external_thread_id: string | null;
   customer_id: string | null;
   assigned_user_id: string | null;
+  /** Durable department ownership (Model D). Snapshot at first create; may be null. */
+  department_id: string | null;
   metadata: Record<string, unknown>;
   priority: ConversationPriority;
   locked_by: string | null;
@@ -85,16 +87,34 @@ export type CreateConversationInput = {
   channelInstanceId?: string | null;
   externalThreadId?: string | null;
   customerId?: string | null;
+  /**
+   * Durable department ownership for first create only.
+   * Omit / null for outbound compose and unclassified inbound.
+   * Must never be used to overwrite an existing conversation.
+   */
+  departmentId?: string | null;
   metadata?: Record<string, unknown>;
   priority?: ConversationPriority;
   initialState?: ConversationState;
   createdBy?: string | null;
 };
 
+/**
+ * Internal list constraint for View Assigned (+ department queue / manager scope).
+ * Built by applyConversationListVisibilityFilter — not a client widening lever.
+ */
+export type ConversationListVisibilityConstraint = {
+  userId: string;
+  departmentId: string | null;
+  managedDepartmentIds: readonly string[];
+};
+
 export type ListConversationsFilter = {
   companyId: string;
   state?: ConversationState;
   channelType?: ConversationChannelType;
+  /** CRM Customer 360 / customer-linked lists. Does not widen visibility. */
+  customerId?: string | null;
   assignedUserId?: string | null;
   priority?: ConversationPriority;
   hasEmployeeUnread?: boolean;
@@ -102,6 +122,11 @@ export type ListConversationsFilter = {
   searchQuery?: string;
   limit?: number;
   offset?: number;
+  /**
+   * Server-applied visibility OR predicate for View Assigned.
+   * Prefer setting via applyConversationListVisibilityFilter only.
+   */
+  visibilityConstraint?: ConversationListVisibilityConstraint | null;
 };
 
 export type AddParticipantInput = {
@@ -138,17 +163,45 @@ export type ListMessagesFilter = {
   markCustomerRead?: boolean;
 };
 
+export type AssignmentAuditSource = "human" | "handoff" | "ai" | "system";
+
+/**
+ * Non-serializable trust token for Assignment Governance / visibility bypass.
+ * JSON/HTTP bodies cannot carry Symbols — client spoofing of skip flags is rejected.
+ */
+export const ASSIGNMENT_INTERNAL_TRUST: unique symbol = Symbol.for(
+  "valueor.assignment.internal.trust",
+);
+
 export type AssignConversationInput = {
   conversationId: string;
   assignedUserId: string;
   updatedBy?: string | null;
   state?: ConversationState;
+  /**
+   * @deprecated Ignored on public assignConversation. Use assignConversationInternal
+   * with ASSIGNMENT_INTERNAL_TRUST for trusted AI/queue/system paths only.
+   */
+  skipAssignmentGovernance?: boolean;
+  /** Defaults to human when unset. */
+  assignmentAuditSource?: AssignmentAuditSource;
+  skipAssignmentAudit?: boolean;
 };
+
+/** Trusted internal assign — requires ASSIGNMENT_INTERNAL_TRUST (not client-forgeable via JSON). */
+export type AssignConversationInternalInput = AssignConversationInput & {
+  internalTrust: typeof ASSIGNMENT_INTERNAL_TRUST;
+  /** When true (and trust token valid), skip AG + visibility compatibility. */
+  skipAssignmentGovernance?: boolean;
+};
+
 
 export type ReleaseConversationInput = {
   conversationId: string;
   updatedBy?: string | null;
   state?: ConversationState;
+  assignmentAuditSource?: AssignmentAuditSource;
+  skipAssignmentAudit?: boolean;
 };
 
 export type CloseConversationInput = {
@@ -198,6 +251,8 @@ export type UpdateConversationPriorityInput = {
   conversationId: string;
   priority: ConversationPriority;
   updatedBy?: string | null;
+  /** When set, written atomically with priority (SLA dueAt refresh). */
+  metadata?: Record<string, unknown>;
 };
 
 export type UpdateConversationMetadataInput = {
@@ -223,4 +278,14 @@ export type ServiceContext = {
   companyId: string | null;
   isSuperAdmin: boolean;
   hasPermission: (permissionCode: string) => boolean;
+  /**
+   * Actor profiles.department_id for View Assigned department unassigned queue.
+   * Optional — when absent/null, department-queue visibility is fail-closed.
+   */
+  departmentId?: string | null;
+  /**
+   * Active organization_departments.id where manager_user_id = actor
+   * (same definition as AssignmentGovernanceDataPort.listManagedDepartmentIds).
+   */
+  managedDepartmentIds?: readonly string[];
 };

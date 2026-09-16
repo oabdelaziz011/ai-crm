@@ -8,10 +8,12 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx/esm --test src/state-machine/transitions.test.ts src/display/parse-conversation-message-view.test.ts src/repositories/message-list-window.test.ts"
+    "test": "node --import tsx/esm --test src/state-machine/transitions.test.ts src/display/parse-conversation-message-view.test.ts src/repositories/message-list-window.test.ts src/services/conversation-priority-sla.test.ts src/services/conversation-service.assign.test.ts src/services/conversation-service.governance.test.ts src/services/assignment-visibility-compatibility.test.ts src/services/assignment-bypass-hardening.test.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.2"
+    "@supabase/supabase-js": "^2.110.2",
+    "@workspace/assignment-governance": "workspace:*",
+    "@workspace/assignment-audit": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

@@ -34,6 +34,7 @@ function mapRow(row: Record<string, unknown>): ConversationRecord {
     external_thread_id: (row.external_thread_id as string | null) ?? null,
     customer_id: (row.customer_id as string | null) ?? null,
     assigned_user_id: (row.assigned_user_id as string | null) ?? null,
+    department_id: (row.department_id as string | null) ?? null,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     priority: (row.priority as ConversationRecord["priority"]) ?? "normal",
     locked_by: (row.locked_by as string | null) ?? null,
@@ -68,6 +69,7 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
           external_thread_id: input.externalThreadId ?? null,
           customer_id: input.customerId ?? null,
           company_channel_id: input.companyChannelId ?? null,
+          department_id: input.departmentId?.trim() ? input.departmentId.trim() : null,
           metadata: input.metadata ?? {},
           priority: input.priority ?? "normal",
           state: input.initialState ?? "idle",
@@ -119,6 +121,7 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
 
       if (filter.state) query = query.eq("state", filter.state);
       if (filter.channelType) query = query.eq("channel_type", filter.channelType);
+      if (filter.customerId) query = query.eq("customer_id", filter.customerId);
       if (filter.priority) query = query.eq("priority", filter.priority);
       if (filter.hasEmployeeUnread) query = query.gt("unread_count_employee", 0);
       if (filter.hasCustomerUnread) query = query.gt("unread_count_customer", 0);
@@ -131,6 +134,23 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         } else {
           query = query.eq("assigned_user_id", filter.assignedUserId);
         }
+      }
+      // View Assigned visibility OR: self-assigned | own-dept unassigned queue | managed depts.
+      // Applied in addition to optional assignedUserId narrowing above.
+      const visibility = filter.visibilityConstraint;
+      if (visibility) {
+        const orParts: string[] = [`assigned_user_id.eq.${visibility.userId}`];
+        const actorDept = visibility.departmentId?.trim() || null;
+        if (actorDept) {
+          orParts.push(`and(assigned_user_id.is.null,department_id.eq.${actorDept})`);
+        }
+        const managed = visibility.managedDepartmentIds
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0);
+        if (managed.length > 0) {
+          orParts.push(`department_id.in.(${managed.join(",")})`);
+        }
+        query = query.or(orParts.join(","));
       }
       if (filter.limit != null) query = query.limit(filter.limit);
       if (filter.offset != null) {
@@ -145,6 +165,7 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         assignedUserId: filter.assignedUserId,
         archived: undefined as boolean | undefined,
         channelType: filter.channelType,
+        customerId: filter.customerId,
         pageSize: filter.limit ?? 50,
         page: filter.offset != null ? Math.floor(filter.offset / (filter.limit ?? 50)) : 0,
         offset: filter.offset ?? 0,
@@ -162,6 +183,7 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         optionalEq: {
           ...(filter.state ? { state: filter.state } : {}),
           ...(filter.channelType ? { channel_type: filter.channelType } : {}),
+          ...(filter.customerId ? { customer_id: filter.customerId } : {}),
           ...(filter.priority ? { priority: filter.priority } : {}),
         },
         optionalGt: {
@@ -184,6 +206,7 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
           `WHERE company_id = '${filter.companyId}' AND deleted_at IS NULL`,
           filter.state ? `AND state = '${filter.state}'` : null,
           filter.channelType ? `AND channel_type = '${filter.channelType}'` : null,
+          filter.customerId ? `AND customer_id = '${filter.customerId}'` : null,
           filter.priority ? `AND priority = '${filter.priority}'` : null,
           filter.hasEmployeeUnread ? "AND unread_count_employee > 0" : null,
           filter.hasCustomerUnread ? "AND unread_count_customer > 0" : null,
@@ -404,12 +427,16 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
     },
 
     async updatePriority(input: UpdateConversationPriorityInput): Promise<ConversationRecord> {
+      const patch: Record<string, unknown> = {
+        priority: input.priority,
+        updated_by: input.updatedBy ?? null,
+      };
+      if (input.metadata !== undefined) {
+        patch.metadata = input.metadata;
+      }
       const { data, error } = await client
         .from(TABLE)
-        .update({
-          priority: input.priority,
-          updated_by: input.updatedBy ?? null,
-        })
+        .update(patch)
         .eq("id", input.conversationId)
         .is("deleted_at", null)
         .select("*")

@@ -22,6 +22,7 @@ import {
   resolveTransition,
   type TransitionTrigger,
 } from "../state-machine/index.js";
+import { assertConversationReadable } from "./conversation-visibility.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -69,12 +70,11 @@ export class ConversationStateService {
     ctx: ServiceContext,
     conversationId: string,
   ): Promise<ConversationRecord> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
-
     const conversation = await this.repository.findById(conversationId);
     if (!conversation) throw new ConversationNotFoundError(conversationId);
 
     assertCompanyAccess(ctx, conversation);
+    assertConversationReadable(ctx, conversation);
     return conversation;
   }
 

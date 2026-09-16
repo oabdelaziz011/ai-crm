@@ -12,6 +12,7 @@ import type {
   ConversationParticipantRecord,
   ServiceContext,
 } from "../types.js";
+import { assertConversationReadable } from "./conversation-visibility.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -38,6 +39,7 @@ export class ParticipantService {
     if (!ctx.isSuperAdmin && conversation.company_id !== ctx.companyId) {
       throw new PermissionDeniedError(CONVERSATION_PERMISSIONS.view);
     }
+    assertConversationReadable(ctx, conversation);
   }
 
   async addParticipant(
@@ -72,7 +74,6 @@ export class ParticipantService {
     ctx: ServiceContext,
     conversationId: string,
   ): Promise<ConversationParticipantRecord[]> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     await this.assertConversationAccess(ctx, conversationId);
 
     return this.participantRepository.listByConversation(conversationId);

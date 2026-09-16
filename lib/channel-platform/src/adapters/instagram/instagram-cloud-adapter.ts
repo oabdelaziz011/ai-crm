@@ -19,7 +19,80 @@ import { parseMetaMessagingWebhookEvents } from "../meta/meta-messaging-webhook.
 import { parseInstagramChannelReferences } from "./instagram-config.js";
 import { resolveInstagramRuntimeConfiguration } from "./instagram-canonical-credentials.js";
 import type { InstagramCredentialsLoader } from "./instagram-canonical-credentials.js";
-import type { InstagramSendMessagePayload, InstagramWebhookMessage } from "./instagram-types.js";
+import type {
+  InstagramSendMessagePayload,
+  InstagramWebhookMessage,
+} from "./instagram-types.js";
+
+function readTrimmedString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function extractInstagramGenericElementText(message: InstagramWebhookMessage): string {
+  const parts: string[] = [];
+
+  for (const attachment of message.attachments ?? []) {
+    for (const element of attachment.payload?.generic?.elements ?? []) {
+      const title = readTrimmedString(element.title);
+      const subtitle = readTrimmedString(element.subtitle);
+      if (title) parts.push(title);
+      if (subtitle) parts.push(subtitle);
+      for (const button of element.buttons ?? []) {
+        const buttonTitle = readTrimmedString(button.title);
+        if (buttonTitle) parts.push(buttonTitle);
+      }
+    }
+  }
+
+  return parts.join("\n");
+}
+
+function extractInstagramQuickReplyText(message: InstagramWebhookMessage): string {
+  const quickReply = message.quick_reply;
+  if (!quickReply) return "";
+  return readTrimmedString(quickReply.title) || readTrimmedString(quickReply.payload);
+}
+
+function instagramMessageHasUsableMediaUrl(message: InstagramWebhookMessage): boolean {
+  return (message.attachments ?? []).some((attachment) =>
+    Boolean(readTrimmedString(attachment.payload?.url)),
+  );
+}
+
+function instagramMessageHasInboundContent(message: InstagramWebhookMessage): boolean {
+  if (readTrimmedString(message.text)) return true;
+  if (instagramMessageHasUsableMediaUrl(message)) return true;
+  if (extractInstagramGenericElementText(message)) return true;
+  if (extractInstagramQuickReplyText(message)) return true;
+  return false;
+}
+
+function resolveInstagramMessageType(
+  message: InstagramWebhookMessage,
+  mediaAttachments: ChannelAttachmentDto[],
+): string {
+  if (message.is_unsupported === true) return "unsupported";
+  if (mediaAttachments.length > 0) {
+    return mediaAttachments[0]?.type ?? "attachment";
+  }
+  const hasTemplate = (message.attachments ?? []).some(
+    (attachment) => attachment.type?.toLowerCase() === "template",
+  );
+  if (hasTemplate) return "template";
+  if (readTrimmedString(message.text)) return "text";
+  if (extractInstagramQuickReplyText(message)) return "quick_reply";
+  return "empty";
+}
+
+function markUnsupportedInstagramEnvelope(envelope: WebhookEnvelopeDto): WebhookEnvelopeDto {
+  if (envelope.eventType !== "message.received") return envelope;
+  if (envelope.payload.postback) return envelope;
+
+  const message = envelope.payload.message as InstagramWebhookMessage | undefined;
+  if (!message || instagramMessageHasInboundContent(message)) return envelope;
+
+  return { ...envelope, eventType: "message.unsupported" };
+}
 
 export type InstagramCloudAdapterOptions = {
   fetchFn?: typeof fetch;
@@ -46,7 +119,12 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
 
   parseWebhookEvents(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto[] {
     const events = parseMetaMessagingWebhookEvents(rawPayload, "instagram");
-    return mapMetaMessagingEventsToEnvelopes(ctx, this.channelKey, events, "instagramBusinessAccountId");
+    return mapMetaMessagingEventsToEnvelopes(
+      ctx,
+      this.channelKey,
+      events,
+      "instagramBusinessAccountId",
+    ).map(markUnsupportedInstagramEnvelope);
   }
 
   parseWebhook(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto {
@@ -93,7 +171,7 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
 
     const { text, attachments } = this.extractMessageContent(message);
     const metadata: Record<string, unknown> = {
-      instagramMessageType: attachments.length > 0 ? attachments[0]?.type ?? "attachment" : "text",
+      instagramMessageType: resolveInstagramMessageType(message, attachments),
       senderExternalId:
         typeof payload.senderExternalId === "string" ? payload.senderExternalId : undefined,
       instagramBusinessAccountId:
@@ -194,12 +272,11 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
     text: string;
     attachments: ChannelAttachmentDto[];
   } {
-    const text = message.text?.trim() ?? "";
     const attachments: ChannelAttachmentDto[] = [];
 
     for (const attachment of message.attachments ?? []) {
       const type = attachment.type?.toLowerCase();
-      const url = attachment.payload?.url;
+      const url = readTrimmedString(attachment.payload?.url);
       if (!url) continue;
 
       attachments.push(
@@ -222,6 +299,11 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
         ]),
       );
     }
+
+    const text =
+      readTrimmedString(message.text) ||
+      extractInstagramGenericElementText(message) ||
+      extractInstagramQuickReplyText(message);
 
     return { text, attachments };
   }

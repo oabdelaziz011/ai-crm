@@ -37,6 +37,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "message.received",
   "message.status",
   "message.read",
+  "message.unsupported",
   "session.opened",
   "session.closed",
 ] as const;

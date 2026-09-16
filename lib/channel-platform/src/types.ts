@@ -94,4 +94,6 @@ export type RuntimeExecutionSummary = {
   executionId: string;
   responseContent: string;
   correlationId: string;
+  /** Server-persisted outgoing conversation_messages.id (for outboundMessageId linking). */
+  outgoingMessageId?: string | null;
 };

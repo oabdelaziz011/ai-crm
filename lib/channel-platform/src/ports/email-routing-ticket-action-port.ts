@@ -22,6 +22,11 @@ export type EmailRoutingTicketActionPort = {
     companyId: string;
     conversationId: string;
     inboundEventId: string;
+    /**
+     * Server-resolved trusted channel customer only.
+     * Never from model output, browser, or request body.
+     */
+    trustedCustomerId?: string | null;
     subject?: string | null;
     bodyPreview?: string | null;
     classification: EmailRoutingClassificationRuntime;

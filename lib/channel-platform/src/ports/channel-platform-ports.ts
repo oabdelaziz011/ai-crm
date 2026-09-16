@@ -84,6 +84,8 @@ export type ChannelConversationPort = {
     companyChannelId: string;
     channelType: string;
     metadata?: Record<string, unknown>;
+    /** Durable department ownership at first create only. Omit/null for outbound. */
+    departmentId?: string | null;
   }): Promise<{ id: string }>;
 
   addIncomingMessage(input: {
@@ -104,6 +106,8 @@ export type ChannelConversationPort = {
     conversationId: string;
     content: string;
     metadata?: Record<string, unknown>;
+    /** Optional stable claim key (e.g. valueor-ack:{inboundMessageId}). */
+    externalMessageId?: string | null;
   }): Promise<ConversationMessageSummary>;
 
   /**
@@ -169,6 +173,8 @@ export type ChannelCustomerIdentityPort = {
     phone: string | null;
     /** Phase D2 — optional canonical E.164 when available. */
     phoneE164?: string | null;
+    /** Exact CRM email when available (email channel identity). */
+    email?: string | null;
   } | null>;
 
   /**
@@ -176,6 +182,16 @@ export type ChannelCustomerIdentityPort = {
    * Optional — fail closed (treat as inconsistent) when absent.
    */
   customerMatchesWhatsAppSender?(input: {
+    companyId: string;
+    customerId: string;
+    senderExternalId: string | null | undefined;
+  }): Promise<{ matches: boolean; name: string | null }>;
+
+  /**
+   * True when the CRM customer's email is consistent with the email sender id.
+   * Exact normalized match only — never phone / never fuzzy.
+   */
+  customerMatchesEmailSender?(input: {
     companyId: string;
     customerId: string;
     senderExternalId: string | null | undefined;
@@ -273,6 +289,25 @@ export type ChannelPlatformPorts = {
    * immediately before provider formatting. Optional — when absent, attachments pass through.
    */
   conversationAttachmentUrl?: import("../services/conversation-attachment-url.js").ConversationAttachmentUrlPort;
+  /**
+   * Persist inbound email attachment bytes to conversation-attachments.
+   * Optional — when absent, inbound files stay metadata-only (name/type, no download).
+   */
+  inboundAttachmentStore?: import("../services/inbound-email-attachment-store.js").InboundAttachmentStorePort;
+  /**
+   * Automatic Email Acknowledgement — branding load + idempotent claim helpers.
+   * Optional: when absent, acknowledgement is skipped without affecting inbound.
+   */
+  emailAcknowledgement?: import("../adapters/email/email-acknowledgement.js").EmailAcknowledgementPorts;
+  /**
+   * Phase 6D: resolve durable department ownership for FIRST email conversation create.
+   * Optional — when absent, department_id remains null (outbound / non-email paths).
+   */
+  resolveEmailDepartmentOwnership?(input: {
+    companyId: string;
+    targetType?: string | null;
+    targetId?: string | null;
+  }): Promise<string | null>;
 };
 
 export type ChannelRouterPort = {

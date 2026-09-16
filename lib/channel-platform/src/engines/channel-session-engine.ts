@@ -110,6 +110,7 @@ export class ChannelSessionEngine {
       aiAssistantId,
       companyChannelId: input.companyChannelId,
       channelType: input.channelKey,
+      departmentId: input.departmentId ?? null,
       metadata: {
         externalThreadId: input.externalThreadId,
         senderExternalId: input.senderExternalId ?? null,

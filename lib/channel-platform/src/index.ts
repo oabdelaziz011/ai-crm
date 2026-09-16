@@ -25,6 +25,12 @@ export function createServerChannelPlatformServices(
       createEmailCloudAdapter({
         credentialsLoader: options.emailCredentialsLoader,
         onOutboundDiagnostic: options.emailOutboundDiagnostic,
+        refreshMicrosoftToken: async (config, companyId) => {
+          const { ensureFreshMicrosoftAccessToken } = await import(
+            "./adapters/email/microsoft-token-refresh.js"
+          );
+          return ensureFreshMicrosoftAccessToken({ config, companyId, client });
+        },
       }),
   });
 }
@@ -45,6 +51,7 @@ export * from "./ports/emails-sent-commercial-port.js";
 export * from "./ports/channel-commercial-entitlement-port.js";
 export * from "./services/assert-channel-commercial-access.js";
 export * from "./services/conversation-attachment-url.js";
+export * from "./services/inbound-email-attachment-store.js";
 export * from "./ports/telemetry-port.js";
 export * from "./adapters/channel-adapter-registry.js";
 export * from "./adapters/stub-web-chat-adapter.js";
@@ -99,6 +106,21 @@ export * from "./adapters/messenger/messenger-config.js";
 export * from "./adapters/messenger/messenger-types.js";
 export * from "./adapters/messenger/messenger-canonical-credentials.js";
 export * from "./adapters/messenger/messenger-outbound-health.js";
+export * from "./webhooks/sms-webhook-handler.js";
+export * from "./webhooks/sms-company-channel.js";
+export * from "./adapters/sms/twilio-sms-adapter.js";
+export * from "./adapters/sms/twilio-sms-api-client.js";
+export * from "./adapters/sms/twilio-sms-config.js";
+export * from "./adapters/sms/twilio-sms-types.js";
+export * from "./adapters/sms/twilio-sms-canonical-credentials.js";
+export * from "./adapters/sms/twilio-sms-signature.js";
+export * from "./adapters/email/email-inbound-auto-reply-guard.js";
+export * from "./adapters/email/email-acknowledgement-config.js";
+export * from "./adapters/email/email-acknowledgement-language.js";
+export * from "./adapters/email/email-acknowledgement-eligibility.js";
+export * from "./adapters/email/email-acknowledgement-html.js";
+export * from "./adapters/email/email-signature-config.js";
+export * from "./adapters/email/email-acknowledgement.js";
 export * from "./adapters/email/email-cloud-adapter.js";
 export * from "./adapters/email/email-inbound-adapter.js";
 export * from "./adapters/email/email-smtp-client.js";
@@ -110,7 +132,14 @@ export * from "./adapters/email/email-outbound-health.js";
 export * from "./adapters/email/email-thread-resolver.js";
 export * from "./adapters/email/email-thread-lookup.js";
 export * from "./adapters/email/email-html-utils.js";
+export * from "./adapters/email/email-composer-headers.js";
 export * from "./adapters/email/email-security.js";
+export * from "./adapters/email/email-provider-contract.js";
+export * from "./adapters/email/email-provider-errors.js";
+export * from "./adapters/email/email-provider-adapter.js";
+export * from "./adapters/email/microsoft-email-oauth.js";
+export * from "./adapters/email/microsoft-token-refresh.js";
+export * from "./adapters/email/microsoft-graph-email-client.js";
 export * from "./webhooks/email-webhook-handler.js";
 export * from "./webhooks/email-webhook-routing.js";
 export * from "./webhooks/email-company-channel.js";

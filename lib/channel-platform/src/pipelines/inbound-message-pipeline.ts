@@ -80,6 +80,12 @@ import {
 } from "../ports/email-routing-classifier-port.js";
 import type { EmailRoutingTicketActionRuntimeResult } from "../ports/email-routing-ticket-action-port.js";
 import type { CampaignDeliveryReconcilePort } from "../ports/campaign-delivery-reconcile-port.js";
+import { trySendEmailAcknowledgement } from "../adapters/email/email-acknowledgement.js";
+import { normalizeEmailAddress } from "../adapters/email/email-inbound-auto-reply-guard.js";
+import {
+  materializeInboundEmailAttachments,
+  stripInboundAttachmentBinaries,
+} from "../services/inbound-email-attachment-store.js";
 
 const IN_FLIGHT_INBOUND_TTL_MS = 2 * 60 * 1000;
 
@@ -308,7 +314,7 @@ export class InboundMessagePipeline {
             externalThreadId: request.externalThreadId,
             externalMessageId: request.externalMessageId,
             senderExternalId: request.senderExternalId,
-            payload: request.payload,
+            payload: stripInboundAttachmentBinaries(request.payload),
           }),
         );
 
@@ -326,7 +332,7 @@ export class InboundMessagePipeline {
 
     const pipelineStartedAt = Date.now();
     try {
-      const normalized = adapter.normalizeInbound({ companyChannel }, request.payload);
+      let normalized = adapter.normalizeInbound({ companyChannel }, request.payload);
 
       if (request.channelKey === "whatsapp") {
         logWhatsApp("Parsed message", {
@@ -765,6 +771,32 @@ export class InboundMessagePipeline {
         }
       }
 
+      let emailDepartmentId: string | null = null;
+      if (request.channelKey === "email" && this.ports.resolveEmailDepartmentOwnership) {
+        try {
+          emailDepartmentId = await this.ports.resolveEmailDepartmentOwnership({
+            companyId: request.companyId,
+            targetType: emailRoutingDecision?.targetType ?? null,
+            targetId: emailRoutingDecision?.targetId ?? null,
+          });
+        } catch {
+          // Fail closed: leave ownership null; never block inbound ingestion.
+          emailDepartmentId = null;
+          request.trace?.step("webhook.email_department_ownership", {
+            inboundEventId: inboundEvent.id,
+            companyId: request.companyId,
+            resolved: false,
+            reason: "resolver_error",
+          });
+        }
+        request.trace?.step("webhook.email_department_ownership", {
+          inboundEventId: inboundEvent.id,
+          companyId: request.companyId,
+          departmentId: emailDepartmentId,
+          sourceTargetType: emailRoutingDecision?.targetType ?? null,
+        });
+      }
+
       let session = await waPerfMeasure("Conversation lookup", () =>
         this.sessionEngine.resolveSession(ctx, {
           companyId: request.companyId,
@@ -779,8 +811,22 @@ export class InboundMessagePipeline {
             (request.channelKey !== "email" || Boolean(aiEmployeeId || legacyAssistantId)),
           employeeConversationMetadata,
           metadata: normalized.metadata,
+          // First-create-wins: only applied when ChannelSessionEngine creates a new conversation.
+          departmentId: emailDepartmentId,
         }),
       );
+
+      if (request.channelKey === "email") {
+        normalized = {
+          ...normalized,
+          attachments: await materializeInboundEmailAttachments({
+            companyId: request.companyId,
+            conversationId: session.conversation_id,
+            attachments: normalized.attachments,
+            store: this.ports.inboundAttachmentStore,
+          }),
+        };
+      }
 
       let aiEmployeeEngagement: AiEmployeeEngagementState | null = null;
 
@@ -927,6 +973,8 @@ export class InboundMessagePipeline {
             companyId: request.companyId,
             conversationId: session.conversation_id,
             inboundEventId: inboundEvent.id,
+            // Trusted identity only — never model/browser customerId.
+            trustedCustomerId: trustedChannelIdentity.customerId,
             subject:
               typeof normalized.metadata?.subject === "string" ? normalized.metadata.subject : null,
             bodyPreview: inboundText.slice(0, 500),
@@ -1026,6 +1074,7 @@ export class InboundMessagePipeline {
       // Always persist inbound before welcome/AI so Web Chat, last_message_at, and unread
       // stay in sync even when AI is skipped or runtime fails later. Idempotent by
       // externalMessageId / correlationId.
+      let inboundMessageWasReused = Boolean(inboundEvent.incoming_message_id);
       if (!incomingMessageId) {
         const incomingMessage = await waPerfMeasure("Database writes: add incoming message", () =>
           this.ports.conversation.addIncomingMessage({
@@ -1036,6 +1085,7 @@ export class InboundMessagePipeline {
           }),
         );
         incomingMessageId = incomingMessage.id;
+        inboundMessageWasReused = Boolean(incomingMessage.reused);
         if (incomingMessage.reused) {
           request.trace?.step("webhook.inbound_message_reused", {
             incomingMessageId,
@@ -1051,6 +1101,7 @@ export class InboundMessagePipeline {
           });
         }
       } else if (incomingMessageId) {
+        inboundMessageWasReused = true;
         request.trace?.step("webhook.inbound_message_reused", {
           incomingMessageId,
           inboundEventId: inboundEvent.id,
@@ -1061,6 +1112,71 @@ export class InboundMessagePipeline {
             inboundEventId: inboundEvent.id,
             processingStatus: "processing",
             incomingMessageId,
+          });
+        }
+      }
+
+      // Automatic Email Acknowledgement — after inbound persist, independent of AI.
+      // Failures must never block IMAP/webhook ingestion or conversation availability.
+      if (
+        request.channelKey === "email" &&
+        incomingMessageId &&
+        this.ports.emailAcknowledgement
+      ) {
+        try {
+          const channelCfg = companyChannel.configuration ?? {};
+          const companyFromEmail =
+            typeof channelCfg.fromEmail === "string"
+              ? channelCfg.fromEmail
+              : typeof channelCfg.from_email === "string"
+                ? channelCfg.from_email
+                : null;
+          const headersRaw =
+            normalized.metadata?.headers &&
+            typeof normalized.metadata.headers === "object" &&
+            !Array.isArray(normalized.metadata.headers)
+              ? (normalized.metadata.headers as Record<string, string>)
+              : null;
+          await trySendEmailAcknowledgement({
+            ctx,
+            dispatcher: this.dispatcher,
+            ports: this.ports.emailAcknowledgement,
+            companyId: request.companyId,
+            companyChannelId: request.companyChannelId,
+            conversationId: session.conversation_id,
+            channelSessionId: session.id,
+            inboundMessageId: incomingMessageId,
+            externalThreadId: normalized.externalThreadId,
+            externalMessageId: normalized.externalMessageId,
+            senderExternalId: normalized.senderExternalId,
+            companyFromEmail: companyFromEmail ? normalizeEmailAddress(companyFromEmail) : null,
+            subject:
+              typeof normalized.metadata?.subject === "string" ? normalized.metadata.subject : null,
+            textPlain: inboundText,
+            html:
+              typeof normalized.metadata?.htmlSanitized === "string"
+                ? normalized.metadata.htmlSanitized
+                : typeof normalized.metadata?.html === "string"
+                  ? normalized.metadata.html
+                  : null,
+            headers: headersRaw,
+            inboundMetadata: normalized.metadata ?? null,
+            inboundMessageReused: inboundMessageWasReused,
+            log: (event, fields) => {
+              request.trace?.step(`email.${event}`, fields);
+              if (request.channelKey === "email") {
+                // Structured observability — never log credentials or full bodies.
+                console.info(`[email.${event}]`, fields);
+              }
+            },
+          });
+        } catch (ackError) {
+          request.trace?.step("email.acknowledgement_failed", {
+            companyId: request.companyId,
+            conversationId: session.conversation_id,
+            inboundMessageId: incomingMessageId,
+            result: "unhandled",
+            error: ackError instanceof Error ? ackError.message : "acknowledgement_error",
           });
         }
       }
@@ -1727,6 +1843,8 @@ export class InboundMessagePipeline {
               correlationId: runtimeResult.correlationId,
               ...outboundMetadata,
             },
+            // Runtime already persisted the outgoing row — link it for confirm, never duplicate.
+            outboundMessageId: runtimeResult.outgoingMessageId ?? undefined,
             persistConversationMessage: false,
           });
 
@@ -2072,10 +2190,10 @@ export class InboundMessagePipeline {
   }
 
   /**
-   * Phase 2 — resolve WhatsApp sender → CRM customer.
-   * WhatsApp phone is authoritative. Never silently trust a stale conversation.customer_id
+   * Phase 2 — resolve channel sender → CRM customer (WhatsApp phone / Email exact).
+   * Channel sender is authoritative. Never silently trust a stale conversation.customer_id
    * that conflicts with the sender. Never overwrite customer_id on conflict/ambiguous.
-   * Stamp metadata.trustedChannelCustomerId so tool-router/execute prefer WA identity.
+   * Stamp metadata.trustedChannelCustomerId so tool-router/execute prefer channel identity.
    * Never trusts senderName / LLM ids.
    */
   private async resolveAndBindTrustedChannelCustomer(input: {
@@ -2092,7 +2210,9 @@ export class InboundMessagePipeline {
     const empty = { customerId: null, trustedCustomerName: null, status: "skipped" as const };
 
     if (!this.ports.customerIdentity) return empty;
-    if (input.channelKey !== "whatsapp") return empty;
+    if (input.channelKey !== "whatsapp" && input.channelKey !== "email" && input.channelKey !== "sms") {
+      return empty;
+    }
 
     const existing = this.ports.conversation.getConversationCustomerId
       ? await this.ports.conversation.getConversationCustomerId(input.conversationId)
@@ -2219,31 +2339,40 @@ export class InboundMessagePipeline {
       };
     }
 
-    // Zero CRM phone matches.
+    // Zero CRM matches for this sender.
     if (existing) {
-      const consistency = this.ports.customerIdentity.customerMatchesWhatsAppSender
-        ? await this.ports.customerIdentity.customerMatchesWhatsAppSender({
-            companyId: input.companyId,
-            customerId: existing,
-            senderExternalId: input.senderExternalId,
-          })
-        : { matches: false, name: null };
+      const consistency =
+        input.channelKey === "email"
+          ? this.ports.customerIdentity.customerMatchesEmailSender
+            ? await this.ports.customerIdentity.customerMatchesEmailSender({
+                companyId: input.companyId,
+                customerId: existing,
+                senderExternalId: input.senderExternalId,
+              })
+            : { matches: false, name: null }
+          : this.ports.customerIdentity.customerMatchesWhatsAppSender
+            ? await this.ports.customerIdentity.customerMatchesWhatsAppSender({
+                companyId: input.companyId,
+                customerId: existing,
+                senderExternalId: input.senderExternalId,
+              })
+            : { matches: false, name: null };
 
       if (consistency.matches) {
         const trustedName = await hydrateNameForExisting(existing, consistency.name);
         await persistIdentityStamp({
-          status: "reused_phone_consistent",
+          status: input.channelKey === "email" ? "reused_email_consistent" : "reused_phone_consistent",
           trustedChannelCustomerId: existing,
           trustedCustomerName: trustedName,
         });
         return {
           customerId: existing,
           trustedCustomerName: trustedName,
-          status: "reused_phone_consistent",
+          status: input.channelKey === "email" ? "reused_email_consistent" : "reused_phone_consistent",
         };
       }
 
-      // Existing bind is not consistent with WhatsApp sender — fail closed (no overwrite).
+      // Existing bind is not consistent with channel sender — fail closed (no overwrite).
       input.trace?.step("webhook.channel_identity_conflict", {
         conversationId: input.conversationId,
         existingCustomerId: existing,

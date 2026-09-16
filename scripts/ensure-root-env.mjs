@@ -86,7 +86,12 @@ let content = readFileSync(envPath, "utf8");
 content = seedFromLoginAppLocal(content);
 writeFileSync(envPath, content, "utf8");
 
-const env = normalizeProjectEnv(loadProjectEnv(projectRoot, { hydrateProcessEnv: false }));
+const env = normalizeProjectEnv(
+  loadProjectEnv(projectRoot, {
+    hydrateProcessEnv: false,
+    mergeProcessEnv: true,
+  }),
+);
 const validation = validateApiServerEnv(env);
 
 if (!validation.ok) {

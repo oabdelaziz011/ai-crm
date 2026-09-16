@@ -8,9 +8,10 @@ export const CAMPAIGN_UI_CHANNELS: MarketingCampaignChannel[] = [
   "whatsapp",
   "instagram",
   "messenger",
+  "email",
+  "sms",
 ];
 
-/** Never include SMS in Campaign UI surfaces. */
 export function isCampaignUiChannel(value: string): value is MarketingCampaignChannel {
   return (CAMPAIGN_UI_CHANNELS as readonly string[]).includes(value);
 }
@@ -57,6 +58,10 @@ export function channelLabelKey(channel: MarketingCampaignChannel): string {
       return "campaigns.channels.instagram";
     case "messenger":
       return "campaigns.channels.messenger";
+    case "email":
+      return "campaigns.channels.email";
+    case "sms":
+      return "campaigns.channels.sms";
     default:
       return "campaigns.channels.unknown";
   }
@@ -68,6 +73,12 @@ export function skipReasonLabelKey(reason: string | null | undefined): string | 
   const code = reason.trim().toLowerCase();
   if (code.includes("no eligible whatsapp") || code.includes("no phone")) {
     return "campaigns.skipReasons.noPhone";
+  }
+  if (code.includes("no eligible email") || code.includes("missing_email") || code.includes("invalid_email") || code.includes("no email")) {
+    return "campaigns.skipReasons.noEmail";
+  }
+  if (code.includes("no eligible sms") || code.includes("sms destination")) {
+    return "campaigns.skipReasons.noSms";
   }
   if (code.includes("receive_marketing") || code.includes("opt")) {
     return "campaigns.skipReasons.marketingOptOut";

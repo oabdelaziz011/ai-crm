@@ -14,12 +14,24 @@ import {
   useCampaignEligibilityPreview,
   useCreateAndExecuteCampaign,
 } from "@/hooks/campaigns/use-campaigns";
-import { useCustomers } from "@/hooks/use-customers";
+import {
+  CampaignContentAttachments,
+  type CampaignPendingAttachment,
+} from "@/components/campaigns/campaign-content-attachments";
+import { CampaignManualAudienceTable } from "@/components/campaigns/campaign-manual-audience-table";
+import { useCampaignCustomerChannelPresence } from "@/hooks/campaigns/use-campaign-customer-channel-presence";
 import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
+import { useCustomers } from "@/hooks/use-customers";
 import type {
   CampaignAudienceDefinition,
   MarketingCampaignChannel,
 } from "@/lib/campaigns";
+import { uploadCampaignContentAttachments } from "@/lib/campaigns/campaign-attachment-upload";
+import {
+  formatCampaignAttachmentSize,
+  renderCampaignOutboundText,
+  validateCampaignAttachmentFiles,
+} from "@/lib/campaigns/campaign-content";
 import {
   clearCampaignSubmissionIdempotencyKey,
   getOrCreateCampaignSubmissionIdempotencyKey,
@@ -28,7 +40,6 @@ import {
   CAMPAIGN_UI_CHANNELS,
   channelLabelKey,
 } from "@/lib/campaigns/campaign-ui-presentation";
-import { renderMetaMessagingCampaignText } from "@/lib/campaigns/thread-eligibility";
 import { cn } from "@/lib/utils";
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -52,6 +63,8 @@ export function CampaignCreateWizardPage() {
   const [name, setName] = useState("");
   const [campaignTitle, setCampaignTitle] = useState("");
   const [detail, setDetail] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<CampaignPendingAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
   /** One stable submission key for this wizard lifecycle (+ sessionStorage across tabs). */
@@ -61,6 +74,7 @@ export function CampaignCreateWizardPage() {
   }, [companyId]);
 
   const { data: customers = [] } = useCustomers(200);
+  const messagingPresenceQuery = useCampaignCustomerChannelPresence(audienceMode === "manual");
   const executeMutation = useCreateAndExecuteCampaign();
 
   const audience: CampaignAudienceDefinition = useMemo(() => {
@@ -81,8 +95,14 @@ export function CampaignCreateWizardPage() {
     return { type: "all" };
   }, [audienceMode, manualIds, search, gender, ageMin, ageMax]);
 
-  const eligibilityEnabled = channels.length > 0;
-  const eligibility = useCampaignEligibilityPreview(audience, channels, eligibilityEnabled);
+  const eligibility = useCampaignEligibilityPreview(audience, CAMPAIGN_UI_CHANNELS, step >= 2);
+  const selectedChannelPreview = useMemo(() => {
+    const rows = (eligibility.data?.byChannel ?? []).filter((row) => channels.includes(row.channel));
+    return {
+      eligible: rows.reduce((sum, row) => sum + row.eligible, 0),
+      skipped: rows.reduce((sum, row) => sum + row.skipped, 0),
+    };
+  }, [eligibility.data, channels]);
 
   if (!canCreate) {
     return <DashboardErrorBanner message={t("campaigns.noPermissionCreate")} />;
@@ -98,6 +118,48 @@ export function CampaignCreateWizardPage() {
     setManualIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  const toggleManualAll = (ids: string[]) => {
+    setManualIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.length > 0 && ids.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of ids) next.delete(id);
+      } else {
+        for (const id of ids) next.add(id);
+      }
+      return [...next];
+    });
+  };
+
+  const addPendingAttachments = (incoming: FileList | File[]) => {
+    const incomingFiles = Array.from(incoming);
+    const nextFiles = [...pendingAttachments.map((item) => item.file), ...incomingFiles];
+    const validation = validateCampaignAttachmentFiles(nextFiles);
+    if (!validation.ok) {
+      setAttachmentError(validation.message);
+      toast.error(t("campaigns.wizard.errors.attachmentInvalid"));
+      return;
+    }
+    setAttachmentError(null);
+    setPendingAttachments((prev) => [
+      ...prev,
+      ...incomingFiles.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
+      })),
+    ]);
+  };
+
+  const removePendingAttachment = (id: string) => {
+    setPendingAttachments((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+    setAttachmentError(null);
+  };
+
   const validateStep = (current: WizardStep): boolean => {
     if (current === 1 && audienceMode === "manual" && manualIds.length === 0) {
       toast.error(t("campaigns.wizard.errors.manualEmpty"));
@@ -110,6 +172,14 @@ export function CampaignCreateWizardPage() {
     if (current === 3) {
       if (!name.trim() || !campaignTitle.trim()) {
         toast.error(t("campaigns.wizard.errors.contentRequired"));
+        return false;
+      }
+      const attachmentCheck = validateCampaignAttachmentFiles(
+        pendingAttachments.map((item) => item.file),
+      );
+      if (!attachmentCheck.ok) {
+        setAttachmentError(attachmentCheck.message);
+        toast.error(t("campaigns.wizard.errors.attachmentInvalid"));
         return false;
       }
     }
@@ -138,11 +208,31 @@ export function CampaignCreateWizardPage() {
       return;
     }
 
+    const pendingFiles = pendingAttachments.map((item) => item.file);
+    const attachmentCheck = validateCampaignAttachmentFiles(pendingFiles);
+    if (!attachmentCheck.ok) {
+      setAttachmentError(attachmentCheck.message);
+      toast.error(t("campaigns.wizard.errors.attachmentInvalid"));
+      return;
+    }
+
     try {
+      const attachments =
+        pendingFiles.length > 0
+          ? await uploadCampaignContentAttachments({
+              companyId,
+              campaignKey: submissionIdempotencyKey,
+              files: pendingFiles,
+            })
+          : [];
       const { draft, result } = await executeMutation.mutateAsync({
         name: name.trim(),
         audience,
-        content: { campaignTitle: campaignTitle.trim(), detail: detail.trim() },
+        content: {
+          campaignTitle: campaignTitle.trim(),
+          detail: detail.trim(),
+          attachments,
+        },
         channels,
         idempotencyKey: submissionIdempotencyKey,
       });
@@ -161,9 +251,11 @@ export function CampaignCreateWizardPage() {
     }
   };
 
-  const plainPreview = renderMetaMessagingCampaignText({
-    campaignTitle: campaignTitle.trim() || t("campaigns.wizard.content.titlePlaceholder"),
-    detail: detail.trim() || t("campaigns.wizard.content.detailPlaceholder"),
+  const previewTitle = campaignTitle.trim();
+  const previewDetail = detail.trim();
+  const outboundPreview = renderCampaignOutboundText({
+    campaignTitle: previewTitle,
+    detail: previewDetail,
   });
 
   return (
@@ -251,18 +343,14 @@ export function CampaignCreateWizardPage() {
           ) : null}
 
           {audienceMode === "manual" ? (
-            <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
-              {customers.map((customer) => (
-                <label key={customer.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={manualIds.includes(customer.id)}
-                    onCheckedChange={() => toggleManualCustomer(customer.id)}
-                  />
-                  <span>{customer.name}</span>
-                  <span className="text-muted-foreground">{customer.phone ?? "—"}</span>
-                </label>
-              ))}
-            </div>
+            <CampaignManualAudienceTable
+              customers={customers}
+              selectedIds={manualIds}
+              onToggle={toggleManualCustomer}
+              onToggleAll={toggleManualAll}
+              messagingPresence={messagingPresenceQuery.data}
+              presenceLoading={messagingPresenceQuery.isLoading}
+            />
           ) : null}
 
           <p className="text-sm text-muted-foreground">{t("campaigns.wizard.audience.serverSideNote")}</p>
@@ -291,17 +379,26 @@ export function CampaignCreateWizardPage() {
       ) : null}
 
       {step === 2 ? (
-        <DashboardCard className="space-y-4 p-6" data-testid="campaign-step-channels">
+        <DashboardCard className="space-y-4 p-6">
+          <div className="space-y-4" data-testid="campaign-step-channels">
           <h3 className="font-semibold">{t("campaigns.wizard.channels.title")}</h3>
           <p className="text-sm text-muted-foreground">{t("campaigns.wizard.channels.subtitle")}</p>
-          <div className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
             {CAMPAIGN_UI_CHANNELS.map((channel) => {
+              const selected = channels.includes(channel);
               const preview = eligibility.data?.byChannel.find((row) => row.channel === channel);
               return (
-                <div key={channel} className="rounded-lg border p-3 space-y-2">
+                <div
+                  key={channel}
+                  className={cn(
+                    "rounded-lg border p-3 space-y-2",
+                    selected && "border-primary/40 bg-primary/5",
+                  )}
+                  data-testid={`campaign-channel-card-${channel}`}
+                >
                   <label className="flex items-center gap-2 font-medium">
                     <Checkbox
-                      checked={channels.includes(channel)}
+                      checked={selected}
                       onCheckedChange={() => toggleChannel(channel)}
                       data-testid={`campaign-channel-${channel}`}
                     />
@@ -314,9 +411,19 @@ export function CampaignCreateWizardPage() {
                       ) : (
                         <p>{t("campaigns.wizard.channels.unavailable")}</p>
                       )}
-                      {channel !== "whatsapp" ? (
+                      {channel === "instagram" || channel === "messenger" ? (
                         <p>{t("campaigns.wizard.channels.sessionLimitation")}</p>
+                      ) : channel === "email" ? (
+                        <p>{t("campaigns.wizard.channels.emailMailboxHint")}</p>
+                      ) : channel === "sms" ? (
+                        <p>{t("campaigns.wizard.channels.smsProviderHint")}</p>
                       ) : null}
+                      <p
+                        className={cn("font-medium text-foreground")}
+                        data-testid={`campaign-channel-eligible-${channel}`}
+                      >
+                        {t("campaigns.wizard.channels.willSend", { count: preview.eligible })}
+                      </p>
                       <p>
                         {t("campaigns.wizard.channels.eligibleCount", {
                           eligible: preview.eligible,
@@ -326,23 +433,23 @@ export function CampaignCreateWizardPage() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground ps-6">
-                      {eligibility.isFetching
-                        ? t("campaigns.wizard.channels.calculating")
-                        : t("campaigns.wizard.channels.selectToPreview")}
+                      {t("campaigns.wizard.channels.calculating")}
                     </p>
                   )}
                 </div>
               );
             })}
           </div>
-          <div className="hidden" data-testid="campaign-channel-sms-absent" aria-hidden>
-            sms-hidden
-          </div>
           {eligibility.data ? (
             <div className="rounded-md bg-muted/40 p-3 text-sm space-y-1">
               <p>
                 {t("campaigns.wizard.eligibility.audience", {
                   count: eligibility.data.marketingEligibleCount,
+                })}
+              </p>
+              <p data-testid="campaign-selected-send-total">
+                {t("campaigns.wizard.channels.selectedSendTotal", {
+                  count: selectedChannelPreview.eligible,
                 })}
               </p>
               <p className="text-muted-foreground">
@@ -352,11 +459,13 @@ export function CampaignCreateWizardPage() {
               </p>
             </div>
           ) : null}
+          </div>
         </DashboardCard>
       ) : null}
 
       {step === 3 ? (
-        <DashboardCard className="space-y-4 p-6" data-testid="campaign-step-content">
+        <DashboardCard className="space-y-4 p-6">
+          <div data-testid="campaign-step-content" className="space-y-4">
           <h3 className="font-semibold">{t("campaigns.wizard.content.title")}</h3>
           <div className="space-y-1">
             <Label>{t("campaigns.wizard.content.name")}</Label>
@@ -370,29 +479,95 @@ export function CampaignCreateWizardPage() {
             <Label>{t("campaigns.wizard.content.detail")}</Label>
             <Textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={5} />
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+          <CampaignContentAttachments
+            files={pendingAttachments}
+            disabled={executeMutation.isPending}
+            error={attachmentError}
+            onAddFiles={addPendingAttachments}
+            onRemove={removePendingAttachment}
+          />
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {channels.includes("whatsapp") ? (
-              <div className="rounded-md border p-3 text-sm space-y-1">
+              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="campaign-whatsapp-preview">
                 <p className="font-medium">{t("campaigns.channels.whatsapp")}</p>
-                <p className="text-muted-foreground">{t("campaigns.wizard.content.whatsappPreviewHint")}</p>
-                <p>{campaignTitle || "…"}</p>
-                <p>{detail || "…"}</p>
+                <p className="text-xs text-muted-foreground">{t("campaigns.wizard.content.whatsappPreviewHint")}</p>
+                {outboundPreview ? (
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{outboundPreview}</pre>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">{t("campaigns.wizard.content.noPreview")}</p>
+                )}
+                {pendingAttachments.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("campaigns.wizard.content.attachmentsTextOnly")}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {channels.includes("email") ? (
+              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="campaign-email-preview">
+                <p className="font-medium">{t("campaigns.channels.email")}</p>
+                <p className="text-xs text-muted-foreground">{t("campaigns.wizard.content.emailPreviewHint")}</p>
+                <div className="rounded-md bg-muted/40 p-2 space-y-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {t("campaigns.wizard.content.emailSubject")}
+                    </p>
+                    <p className="font-medium">{previewTitle || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {t("campaigns.wizard.content.detail")}
+                    </p>
+                    {previewDetail ? (
+                      <pre className="whitespace-pre-wrap font-sans text-sm">{previewDetail}</pre>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground">{t("campaigns.wizard.content.noPreview")}</p>
+                    )}
+                  </div>
+                </div>
+                {pendingAttachments.length > 0 ? (
+                  <ul className="space-y-1 text-xs" data-testid="campaign-email-preview-attachments">
+                    {pendingAttachments.map((item) => (
+                      <li key={item.id} className="truncate text-muted-foreground">
+                        {item.file.name} · {formatCampaignAttachmentSize(item.file.size)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            {channels.includes("sms") ? (
+              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="campaign-sms-preview">
+                <p className="font-medium">{t("campaigns.channels.sms")}</p>
+                <p className="text-xs text-muted-foreground">{t("campaigns.wizard.content.smsPreviewHint")}</p>
+                {outboundPreview ? (
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{outboundPreview}</pre>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">{t("campaigns.wizard.content.noPreview")}</p>
+                )}
               </div>
             ) : null}
             {channels.includes("instagram") ? (
-              <div className="rounded-md border p-3 text-sm space-y-1">
+              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="campaign-instagram-preview">
                 <p className="font-medium">{t("campaigns.channels.instagram")}</p>
-                <p className="text-muted-foreground">{t("campaigns.wizard.content.plainPreviewHint")}</p>
-                <pre className="whitespace-pre-wrap font-sans">{plainPreview}</pre>
+                <p className="text-xs text-muted-foreground">{t("campaigns.wizard.content.plainPreviewHint")}</p>
+                {outboundPreview ? (
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{outboundPreview}</pre>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">{t("campaigns.wizard.content.noPreview")}</p>
+                )}
               </div>
             ) : null}
             {channels.includes("messenger") ? (
-              <div className="rounded-md border p-3 text-sm space-y-1">
+              <div className="rounded-md border p-3 text-sm space-y-2" data-testid="campaign-messenger-preview">
                 <p className="font-medium">{t("campaigns.channels.messenger")}</p>
-                <p className="text-muted-foreground">{t("campaigns.wizard.content.plainPreviewHint")}</p>
-                <pre className="whitespace-pre-wrap font-sans">{plainPreview}</pre>
+                <p className="text-xs text-muted-foreground">{t("campaigns.wizard.content.plainPreviewHint")}</p>
+                {outboundPreview ? (
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{outboundPreview}</pre>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">{t("campaigns.wizard.content.noPreview")}</p>
+                )}
               </div>
             ) : null}
+          </div>
           </div>
         </DashboardCard>
       ) : null}
@@ -412,6 +587,14 @@ export function CampaignCreateWizardPage() {
             <div>
               <dt className="text-muted-foreground">{t("campaigns.wizard.content.campaignTitle")}</dt>
               <dd className="font-medium">{campaignTitle}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">{t("campaigns.wizard.content.attachments")}</dt>
+              <dd className="font-medium">
+                {pendingAttachments.length === 0
+                  ? t("campaigns.detail.noAttachments")
+                  : pendingAttachments.map((item) => item.file.name).join(", ")}
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">{t("campaigns.wizard.channels.title")}</dt>

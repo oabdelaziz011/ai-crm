@@ -141,11 +141,6 @@ export function CampaignListPage() {
           </div>
         </div>
 
-        {/* Explicitly no SMS filter option */}
-        <div className="hidden" data-testid="campaigns-sms-absent" aria-hidden>
-          sms-not-available
-        </div>
-
         {rows.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center space-y-2">
             <p className="font-medium">{t("campaigns.list.emptyTitle")}</p>

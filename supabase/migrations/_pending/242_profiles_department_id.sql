@@ -1,4 +1,8 @@
 -- =============================================================================
+-- SUPERSEDED by supabase/migrations/367_profiles_department_id.sql
+-- Do NOT apply this file. Remote migration version 242 is occupied by
+-- profile_avatars_storage. Phase 1 shipped as 367.
+-- =============================================================================
 -- PENDING — Sprint 3.9.2 Part B: Department normalization (DO NOT APPLY YET)
 -- =============================================================================
 -- Goal: add profiles.department_id FK while KEEPING profiles.department (text).

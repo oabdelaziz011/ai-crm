@@ -12,6 +12,8 @@ export type CompanyCommercialTerms = {
   custom_price_monthly: number | null;
   custom_price_yearly: number | null;
   custom_package_name?: string | null;
+  /** ValueOR SaaS charge currency — independent of company operational currency. */
+  subscription_billing_currency?: string | null;
   notes: string | null;
   configured_at?: string | null;
 };

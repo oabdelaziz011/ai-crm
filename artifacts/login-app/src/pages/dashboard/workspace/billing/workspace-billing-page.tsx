@@ -11,17 +11,20 @@ import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identi
 import { useWorkspaceBillingSummary } from "@/hooks/workspace/use-workspace-billing-summary";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { billingNotAvailable, translateBillingCycle, translateWorkspaceHealth } from "@/lib/billing/billing-display-i18n";
-import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
+import { formatBillingDate, formatBillingSubscriptionCurrency } from "@/lib/billing/format";
+import { useCompanyLocaleContext } from "@/context/company-locale-context";
+import { formatCurrencyOptionLabel } from "@/lib/currency/catalog";
 import { canViewWorkspaceBilling } from "@/lib/workspace/workspace-permissions";
 import type { BillingSubscriptionStatus, CompanySubscription } from "@/lib/billing/types";
 
 export function WorkspaceBillingPage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { company } = useAuth();
   const companyId = company?.id ?? null;
   const { identity, displayName } = useCompanyIdentity(Boolean(companyId));
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const canView = canViewWorkspaceBilling(hasPermission, isSuperAdmin, Boolean(companyId));
+  const { currency: operationalCurrency } = useCompanyLocaleContext();
 
   const { data, isLoading, error } = useWorkspaceBillingSummary(canView);
   const { data: billingContact } = useBillingContact(companyId, canView);
@@ -30,12 +33,18 @@ export function WorkspaceBillingPage() {
   const plan = data?.plan as CompanySubscription["plan"] | null | undefined;
 
   const status = subscription?.status as BillingSubscriptionStatus | undefined;
+  const subscriptionCurrency =
+    (data as { subscription_billing_currency?: string; currency?: string } | undefined)
+      ?.subscription_billing_currency ||
+    (data as { currency?: string } | undefined)?.currency ||
+    (subscription as { billing_currency?: string } | null | undefined)?.billing_currency ||
+    null;
 
   const nextAmountLabel = useMemo(() => {
     if (data?.next_invoice_amount == null) return billingNotAvailable(t);
-    if (!data.currency) return String(data.next_invoice_amount);
-    return formatBillingCurrency(Number(data.next_invoice_amount), data.currency);
-  }, [data?.currency, data?.next_invoice_amount, t]);
+    if (!subscriptionCurrency) return String(data.next_invoice_amount);
+    return formatBillingSubscriptionCurrency(Number(data.next_invoice_amount), subscriptionCurrency);
+  }, [data?.next_invoice_amount, subscriptionCurrency, t]);
 
   if (!canView) {
     return <p className="text-sm text-muted-foreground">{t("workspace.noPermission")}</p>;
@@ -80,6 +89,20 @@ export function WorkspaceBillingPage() {
           ) : null}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
+              <p className="text-muted-foreground">{t("workspace.billing.operationalCurrency")}</p>
+              <p className="font-medium">
+                {formatCurrencyOptionLabel(operationalCurrency, i18n.language)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t("workspace.billing.subscriptionCurrency")}</p>
+              <p className="font-medium">
+                {subscriptionCurrency
+                  ? formatCurrencyOptionLabel(subscriptionCurrency, i18n.language)
+                  : billingNotAvailable(t)}
+              </p>
+            </div>
+            <div>
               <p className="text-muted-foreground">{t("billing.detail.cycle")}</p>
               <p className="font-medium">{translateBillingCycle(t, subscription.billing_cycle)}</p>
             </div>
@@ -109,6 +132,7 @@ export function WorkspaceBillingPage() {
           <p className="text-sm text-muted-foreground">
             {plan?.display_name ?? plan?.name ?? t("billing.plan.unassigned")}
           </p>
+          <p className="text-xs text-muted-foreground">{t("workspace.billing.currencyIndependenceNote")}</p>
         </DashboardCard>
 
         <PlanFeaturesPanel companyId={companyId} />

@@ -23,6 +23,11 @@ import {
 import { usePermissions } from "@/hooks/use-rbac";
 import { Loader2 } from "lucide-react";
 import { DocumentTitleManager } from "@/components/document-title-manager";
+import {
+  clearStaleDynamicImportReloadGuard,
+  isStaleDynamicImportError,
+  recoverStaleDynamicImportOnce,
+} from "@/lib/bundle/stale-dynamic-import";
 
 const DashboardApp = lazy(() => import("@/pages/dashboard"));
 const WorkflowBuilderDebugPage = lazy(() => import("@/pages/debug/workflow-builder-debug-page"));
@@ -57,6 +62,21 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[AppErrorBoundary]", error, errorInfo);
+    if (isStaleDynamicImportError(error) && recoverStaleDynamicImportOnce()) {
+      return;
+    }
+  }
+
+  componentDidMount(): void {
+    if (!this.state.hasError) {
+      clearStaleDynamicImportReloadGuard();
+    }
+  }
+
+  componentDidUpdate(): void {
+    if (!this.state.hasError) {
+      clearStaleDynamicImportReloadGuard();
+    }
   }
 
   render() {

@@ -10,6 +10,8 @@ export type CustomerProfileTab =
   | "ai-summary"
   | "history"
   | "tickets"
+  | "email"
+  | "sms"
   | "campaigns";
 
 /** @deprecated Use `ai-summary` */

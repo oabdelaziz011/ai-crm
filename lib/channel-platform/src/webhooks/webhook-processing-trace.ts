@@ -43,13 +43,23 @@ export type WebhookProcessingStep =
   | "webhook.email_routing_ticket"
   | "webhook.email_routing_classified"
   | "webhook.email_routing_decided"
+  | "webhook.email_department_ownership"
   | "webhook.channel_identity"
   | "webhook.channel_identity_conflict"
   | "webhook.processing_completed"
   | "webhook.processing_failed"
   | "webhook.diag_early_return"
   | "webhook.diag"
-  | "webhook.email_thread_resolved";
+  | "webhook.email_thread_resolved"
+  | "email.acknowledgement_candidate"
+  | "email.acknowledgement_language_detected"
+  | "email.acknowledgement_sent"
+  | "email.acknowledgement_skipped_duplicate"
+  | "email.acknowledgement_skipped_automated"
+  | "email.acknowledgement_skipped_no_template"
+  | "email.acknowledgement_skipped_disabled"
+  | "email.acknowledgement_skipped_ineligible"
+  | "email.acknowledgement_failed";
 
 export type WebhookProcessingTrace = {
   step: (step: WebhookProcessingStep, detail?: Record<string, unknown>) => void;

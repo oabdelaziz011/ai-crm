@@ -13,6 +13,7 @@ import type {
   CompanyBrandCenterDocument,
   CompanyContactSnapshot,
 } from "@/lib/company-workspace/brand-center/types";
+import { resolveActiveBrandColors } from "@/lib/company-workspace/brand-center/branding-mode";
 
 const PREVIEW_ALL_SURFACES: BrandPreviewSurface[] = [
   "crm",
@@ -40,7 +41,7 @@ export function BrandPreviewAllDrawer({
   contact,
 }: Props) {
   const { t } = useTranslation("common");
-  const { colors } = document;
+  const colors = resolveActiveBrandColors(document);
   const shellStyle = {
     ["--brand-primary" as string]: colors.primary,
     ["--brand-secondary" as string]: colors.secondary,

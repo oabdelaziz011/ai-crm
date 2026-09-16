@@ -72,12 +72,37 @@ describe("validateOutboundRoute", () => {
     );
     assert.equal(result.ok, true);
   });
+
+  it("does not apply WhatsApp phone digit mismatch to email Message-ID threads", () => {
+    const result = validateOutboundRoute(
+      {
+        id: "session-email",
+        company_channel_id: "cc-email",
+        external_thread_id: "root-msg-1@example.com",
+        channel_key: "email",
+      },
+      {
+        conversationId: "conv-email",
+        companyChannelId: "cc-email",
+        channelKey: "email",
+        // Different Message-ID string that would confuse digit-only WhatsApp compare
+        externalThreadId: "other-thread-99@example.com",
+      },
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.route.channel_key, "email");
+      // Session thread wins when present
+      assert.equal(result.route.external_thread_id, "root-msg-1@example.com");
+    }
+  });
 });
 
 describe("requiresServerOutboundDispatch", () => {
   it("requires server dispatch for credential channels", () => {
     assert.equal(requiresServerOutboundDispatch("whatsapp"), true);
     assert.equal(requiresServerOutboundDispatch("email"), true);
+    assert.equal(requiresServerOutboundDispatch("sms"), true);
   });
 
   it("allows browser dispatch for web_chat", () => {

@@ -67,6 +67,7 @@ export function createHandoffAgentToolPortsFromPlatform(
         reason: input.reason,
         targetQueueId: input.targetQueueId,
         requestedByAiAssistantId: input.aiAssistantId,
+        trustedSystemExecution: true,
       });
       return {
         ownership: {
@@ -84,6 +85,7 @@ export function createHandoffAgentToolPortsFromPlatform(
         queueId: input.queueId,
         reason: input.reason,
         requestedByAiAssistantId: input.aiAssistantId,
+        trustedSystemExecution: true,
       });
       return {
         queuePosition: result.queuePosition.position,
@@ -136,6 +138,7 @@ export function createHandoffAgentToolPorts(
         reason: input.reason,
         targetQueueId: input.targetQueueId,
         requestedByAiAssistantId: input.aiAssistantId,
+        trustedSystemExecution: true,
       });
       return {
         ownership: {
@@ -154,6 +157,7 @@ export function createHandoffAgentToolPorts(
         queueId: input.queueId,
         reason: input.reason,
         requestedByAiAssistantId: input.aiAssistantId,
+        trustedSystemExecution: true,
       });
       return {
         queuePosition: result.queuePosition.position,

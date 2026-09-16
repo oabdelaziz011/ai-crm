@@ -14,6 +14,7 @@ export type SettingsRouteId =
   | "whatsapp"
   | "messenger"
   | "instagram"
+  | "sms"
   | "calendar"
   | "scheduling"
   | "ticket-sla"
@@ -100,7 +101,7 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     id: "email",
     nestedPath: "/email",
     titleKey: "dashboard.settings.nav.email",
-    permission: "settings.edit",
+    permission: "ai.email.manage",
     commercialFeatureCode: "email_channel",
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/email-settings-page"),
@@ -138,6 +139,17 @@ export const SETTINGS_ROUTE_REGISTRY: readonly SettingsRouteDefinition[] = [
     Page: lazyNamed(
       () => import("@/pages/dashboard/settings/instagram-settings-page"),
       "SettingsInstagramPage",
+    ),
+  },
+  {
+    id: "sms",
+    nestedPath: "/sms",
+    titleKey: "dashboard.settings.nav.sms",
+    permission: "settings.edit",
+    commercialFeatureCode: "sms_channel",
+    Page: lazyNamed(
+      () => import("@/pages/dashboard/settings/sms-settings-page"),
+      "SettingsSmsPage",
     ),
   },
   {

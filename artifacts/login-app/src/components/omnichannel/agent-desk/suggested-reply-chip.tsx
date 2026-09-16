@@ -62,7 +62,7 @@ export const SuggestedReplyChip = memo(function SuggestedReplyChip({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-72 border-[var(--ad-border)] bg-[var(--ad-surface-raised)] p-3 text-xs"
+          className="w-72 border border-border bg-popover p-3 text-xs text-popover-foreground omni-overlay-surface"
         >
           <p className="mb-2 font-semibold text-[var(--ad-text)]" dir="auto">{labels.title}</p>
           <dl className="space-y-2">

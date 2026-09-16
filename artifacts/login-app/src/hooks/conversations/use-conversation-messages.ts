@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import type { ConversationRecord } from "@workspace/ai-conversation";
 import { useConversationServices } from "@/lib/ai-conversation";
 import { auditTranscriptMessagesFromRecords } from "@/lib/omnichannel/debug/omni-transcript-messages-audit";
 import { useUser } from "@/context/auth-context";
@@ -20,8 +21,33 @@ export function useConversationMessages(conversationId: string | null) {
     if (!conversationId || !context.userId) return;
     if (markedReadFor.current === conversationId) return;
     markedReadFor.current = conversationId;
-    void services.conversations.resetEmployeeUnread(context, conversationId).then(() => {
-      void queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
+    void services.conversations.resetEmployeeUnread(context, conversationId).then((updated) => {
+      // Patch unread in place so the list does not need a full refetch to clear badges.
+      // Ordering/bucket must not change on open; avoid depending on a refetch race with draft autosave.
+      if (companyId) {
+        queryClient.setQueriesData<ConversationRecord[]>(
+          { queryKey: ["conversation-list", companyId] },
+          (current) => {
+            if (!Array.isArray(current)) return current;
+            return current.map((row) =>
+              row.id === conversationId
+                ? {
+                    ...row,
+                    unread_count_employee: 0,
+                    // Preserve list activity ordering: do not adopt bumped updated_at from mark-read.
+                    updated_at: row.updated_at,
+                    updated_by: updated.updated_by ?? row.updated_by,
+                  }
+                : row,
+            );
+          },
+        );
+      }
+      void queryClient.invalidateQueries({
+        queryKey: ["conversation-list", companyId],
+        // Refetch in background for consistency, but local patch already cleared unread.
+        refetchType: "active",
+      });
     }).catch(() => {
       markedReadFor.current = null;
     });

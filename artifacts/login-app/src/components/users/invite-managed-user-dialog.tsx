@@ -5,6 +5,7 @@ import {
   DepartmentSearchableSelect,
   type DepartmentOption,
 } from "@/components/users/department-searchable-select";
+import { buildDepartmentMembershipWrite } from "@/lib/organization/department-membership";
 import { JobTitleAutocomplete } from "@/components/users/job-title-autocomplete";
 import { BranchAssignmentMultiSelect, BranchFormDialog } from "@/lib/company/branches/components";
 import { useBranches, useCreateBranch, formatBranchError } from "@/lib/company/branches/hooks";
@@ -12,6 +13,7 @@ import type { BranchFormValues } from "@/lib/company/branches/types";
 import type { BranchFormSchema } from "@/lib/company/branches/validators";
 import { useOrganizationDepartments } from "@/hooks/organization/use-organization-departments";
 import { useCompanyAssignableRoles } from "@/hooks/use-company-assignable-roles";
+import { buildEmployeeRoleOptions } from "@/lib/rbac/employee-role-options";
 import { useCreateManagedUser } from "@/hooks/use-users-management";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -45,7 +47,7 @@ const emptyForm = {
   isActive: true,
   branchIds: [] as string[],
   jobTitle: "",
-  department: "",
+  departmentId: "",
   phone: "",
   preferredLanguage: "en",
   timezone: "UTC",
@@ -78,7 +80,11 @@ export function InviteManagedUserDialog({
     if (providedDepartments) return providedDepartments;
     return fetchedDepartments
       .filter((d) => d.isActive !== false)
-      .map((d) => ({ id: d.id, name: d.name }));
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        branchId: d.branchId,
+      }));
   }, [fetchedDepartments, providedDepartments]);
 
   const {
@@ -95,11 +101,10 @@ export function InviteManagedUserDialog({
 
   const roleOptions = useMemo(
     () =>
-      tenantRoles.map((role) => ({
-        value: role.id,
-        label: role.name ?? t("users.noRole"),
-        description: role.description ?? undefined,
-      })),
+      buildEmployeeRoleOptions({
+        assignableRoles: tenantRoles,
+        currentOnlyLabel: t("users.form.currentRoleUnavailable"),
+      }),
     [tenantRoles, t],
   );
 
@@ -175,6 +180,11 @@ export function InviteManagedUserDialog({
       return;
     }
 
+    const membership = buildDepartmentMembershipWrite(
+      form.departmentId,
+      departmentOptions,
+    );
+
     createUser.mutate(
       {
         email: form.email,
@@ -184,7 +194,8 @@ export function InviteManagedUserDialog({
         isActive: form.isActive,
         branchIds: form.branchIds,
         jobTitle: form.jobTitle.trim() || null,
-        department: form.department.trim() || null,
+        departmentId: membership.department_id,
+        department: membership.department,
         phone: form.phone.trim() || null,
         preferredLanguage: form.preferredLanguage || "en",
         timezone: form.timezone || "UTC",
@@ -272,9 +283,9 @@ export function InviteManagedUserDialog({
                 <label className="text-sm text-muted-foreground">{t("users.form.department")}</label>
                 <DepartmentSearchableSelect
                   companyId={companyId}
-                  value={form.department}
+                  value={form.departmentId}
                   departments={departmentOptions}
-                  onChange={(department) => setForm((c) => ({ ...c, department }))}
+                  onChange={(departmentId) => setForm((c) => ({ ...c, departmentId }))}
                   onCreateDepartment={
                     onNavigateToDepartments
                       ? () => {

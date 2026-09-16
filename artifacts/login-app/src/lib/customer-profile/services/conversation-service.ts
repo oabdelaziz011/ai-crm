@@ -1,4 +1,4 @@
-import { createConversationServices, type ServiceContext } from "@workspace/ai-conversation";
+import { type ServiceContext } from "@workspace/ai-conversation";
 import { requireCompanyFeature } from "@/lib/billing/require-company-feature";
 import { supabase } from "@/lib/supabase";
 import type { CustomerProfileContext } from "@/components/customer-profile/types";
@@ -8,6 +8,7 @@ import {
   queueTeamInboxConversationFocus,
   requestTeamInboxConversationFocus,
 } from "./inbox-navigation";
+import { createConversationServicesWithSla } from "@/lib/ai-conversation/create-conversation-services-with-sla";
 
 export type WhatsappConversationRef = {
   id: string;
@@ -110,7 +111,7 @@ export class ConversationService {
     } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const services = createConversationServices(supabase);
+    const services = createConversationServicesWithSla(supabase);
     const ctx: ServiceContext = {
       userId: user.id,
       companyId: input.companyId,

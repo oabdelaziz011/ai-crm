@@ -205,6 +205,7 @@ export class Customer360Aggregator {
         company: null,
         birthday: null,
         avatarColor: avatarColorFromId(customer.id),
+        avatarUrl: customer.avatarUrl ?? null,
         healthScore,
         customerSince: customer.createdAt,
         notes: customer.notes ?? null,

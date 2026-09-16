@@ -44,7 +44,12 @@ function DashboardLayoutInner({ children }: DashboardLayoutProps) {
   const isOmnichannelConsole = /^\/omnichannel(?:\/|$)/i.test(location);
   const isCustomerWorkspace = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i.test(location);
   const isCalendarPage = /^\/calendar(?:\/|$)/i.test(location);
-  const isEdgeToEdgeWorkspace = isOmnichannelConsole || isCustomerWorkspace || isCalendarPage;
+  const isEmailModule = /^\/email(?:\/|$)/i.test(location);
+  const isEdgeToEdgeWorkspace =
+    isOmnichannelConsole || isCustomerWorkspace || isCalendarPage || isEmailModule;
+  // Shell direction follows the application locale so Omnichannel column order
+  // mirrors: EN Sidebar|Inbox|Conversation|360 — AR 360|Conversation|Inbox|Sidebar.
+  const shellDir = isRtl ? "rtl" : "ltr";
 
   useEffect(() => {
     preloadLikelyNextRoute(activeSectionId);
@@ -65,7 +70,12 @@ function DashboardLayoutInner({ children }: DashboardLayoutProps) {
   }
 
   return (
-      <div className="flex h-dvh max-h-dvh w-full overflow-hidden shell-canvas text-foreground" dir={isRtl ? "rtl" : "ltr"}>
+      <div
+        className="flex h-dvh max-h-dvh w-full overflow-hidden shell-canvas text-foreground"
+        dir={shellDir}
+        data-omnichannel-shell={isOmnichannelConsole ? shellDir : undefined}
+        lang={i18n.language}
+      >
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"

@@ -472,11 +472,6 @@ revoke execute on function public.notify_profile_events() from public;
 revoke execute on function public.notify_role_events() from anon;
 revoke execute on function public.notify_role_events() from public;
 
--- public.notify_role_updated()
--- trigger-backed: client EXECUTE revoked; trigger execution preserved
-revoke execute on function public.notify_role_updated() from anon;
-revoke execute on function public.notify_role_updated() from public;
-
 -- public.notify_subscription_events()
 -- trigger-backed: client EXECUTE revoked; trigger execution preserved
 revoke execute on function public.notify_subscription_events() from anon;

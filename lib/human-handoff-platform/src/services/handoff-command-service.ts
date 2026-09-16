@@ -9,7 +9,13 @@ import {
   createQueueJoinedEvent,
   createQueueLeftEvent,
 } from "../events/handoff-event-factory.js";
-import { HandoffConflictError, HandoffNotFoundError, HandoffValidationError, QueueFullError } from "../errors.js";
+import {
+  HandoffConflictError,
+  HandoffNotFoundError,
+  HandoffPermissionDeniedError,
+  HandoffValidationError,
+  QueueFullError,
+} from "../errors.js";
 import type {
   HandoffAgentResolverPort,
   HandoffAuditPort,
@@ -20,7 +26,12 @@ import type {
 } from "../ports/handoff-platform-ports.js";
 import type { HandoffRepository } from "../repositories/handoff-repository-port.js";
 import { applyPriorityBoost, resolveEscalationRule } from "./escalation-engine.js";
-import { estimateWaitTimeSeconds, isWithinBusinessHours, selectQueueAgent } from "./queue-routing-engine.js";
+import {
+  countEffectivelyAvailableAgents,
+  estimateWaitTimeSeconds,
+  isWithinBusinessHours,
+  selectQueueAgent,
+} from "./queue-routing-engine.js";
 import { isBlockingLifecycleState } from "./inbound-ai-gate.js";
 import type {
   ConversationOwner,
@@ -41,6 +52,10 @@ import {
   readOptionalString,
   readRequiredString,
 } from "../validators/handoff-guards.js";
+import {
+  AssignmentGovernanceError,
+  type AssignmentGovernancePort,
+} from "@workspace/assignment-governance";
 
 export type HandoffCommandServiceDeps = {
   handoff: HandoffRepository;
@@ -50,10 +65,33 @@ export type HandoffCommandServiceDeps = {
   events: HandoffEventPublisherPort;
   notifications: HandoffNotificationPort;
   audit: HandoffAuditPort;
+  assignmentGovernance?: AssignmentGovernancePort | null;
 };
 
 export class HandoffCommandService {
   constructor(private readonly deps: HandoffCommandServiceDeps) {}
+
+  private async assertHumanAssignable(
+    actorUserId: string | null,
+    targetUserId: string,
+    skip?: boolean,
+  ): Promise<void> {
+    if (skip || !actorUserId || !this.deps.assignmentGovernance) return;
+    try {
+      await this.deps.assignmentGovernance.assertCanAssignToEmployee({
+        actorUserId,
+        targetUserId,
+        resource: "handoff",
+      });
+    } catch (error) {
+      if (error instanceof AssignmentGovernanceError) {
+        throw new HandoffPermissionDeniedError(
+          `${HANDOFF_PERMISSIONS.assign} (${error.code}: ${error.message})`,
+        );
+      }
+      throw error;
+    }
+  }
 
   async transferConversation(
     ctx: HandoffServiceContext,
@@ -64,9 +102,13 @@ export class HandoffCommandService {
       toQueueId?: string;
       reason?: string;
       requestedByAiAssistantId?: string;
+      /** Server-only: AI/system tool or webhook established this execution. */
+      trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner; request: HandoffRequestRecord | null }> {
-    const actorUserId = input.requestedByAiAssistantId ? null : assertHandoffActor(ctx);
+    const trustedAi =
+      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
+    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.transfer);
 
@@ -91,6 +133,10 @@ export class HandoffCommandService {
     }
 
     const toUserId = readRequiredString(input.toUserId, "Target agent");
+    // Client-supplied AI id alone is not authority — require trustedSystemExecution.
+    const skipGovernance =
+      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
+    await this.assertHumanAssignable(actorUserId, toUserId, skipGovernance);
     const label = await this.deps.agents.resolveAgentLabel(toUserId);
 
     const ownership = await this.transitionOwnership({
@@ -114,6 +160,7 @@ export class HandoffCommandService {
       conversationId: input.conversationId,
       assignedUserId: toUserId,
       actorUserId,
+      skipAssignmentGovernance: skipGovernance,
     });
 
     await this.deps.events.publish(
@@ -141,6 +188,8 @@ export class HandoffCommandService {
     const actorUserId = assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.accept);
+
+    await this.assertHumanAssignable(actorUserId, actorUserId, false);
 
     const request =
       input.requestId != null
@@ -308,13 +357,24 @@ export class HandoffCommandService {
       assigneeUserId: string;
       reason?: string;
       requestedByAiAssistantId?: string;
+      /** Queue / AI auto-routing only — ignored unless trustedSystemExecution. */
+      skipAssignmentGovernance?: boolean;
+      /** Server-only: AI/system tool, webhook, or internal auto-route. */
+      trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner }> {
-    const actorUserId = input.requestedByAiAssistantId ? null : assertHandoffActor(ctx);
+    const trustedAi =
+      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
+    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.assign);
 
     const assigneeUserId = readRequiredString(input.assigneeUserId, "Assignee");
+    // Client-supplied skip / AI id alone is not authority.
+    const skipGovernance =
+      Boolean(input.trustedSystemExecution) &&
+      (Boolean(input.requestedByAiAssistantId) || Boolean(input.skipAssignmentGovernance));
+    await this.assertHumanAssignable(actorUserId, assigneeUserId, skipGovernance);
     const label = await this.deps.agents.resolveAgentLabel(assigneeUserId);
     const conversation = await this.requireConversation(input.companyId, input.conversationId);
     const current = await this.ensureOwnership(input.companyId, input.conversationId, conversation);
@@ -341,6 +401,12 @@ export class HandoffCommandService {
       conversationId: input.conversationId,
       assignedUserId: assigneeUserId,
       actorUserId,
+      skipAssignmentGovernance: skipGovernance,
+      assignmentAuditSource: input.requestedByAiAssistantId
+        ? "ai"
+        : skipGovernance
+          ? "system"
+          : "handoff",
     });
 
     await this.notifyAgent("assignment", input.companyId, input.conversationId, assigneeUserId, actorUserId);
@@ -365,9 +431,12 @@ export class HandoffCommandService {
       queueId: string;
       reason?: string;
       requestedByAiAssistantId?: string;
+      trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner; request: HandoffRequestRecord; queuePosition: QueuePosition }> {
-    const actorUserId = input.requestedByAiAssistantId ? null : assertHandoffActor(ctx);
+    const trustedAi =
+      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
+    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.queue);
 
@@ -563,9 +632,12 @@ export class HandoffCommandService {
       reason?: string;
       targetQueueId?: string;
       requestedByAiAssistantId?: string;
+      trustedSystemExecution?: boolean;
     },
   ): Promise<{ ownership: ConversationOwner; request: HandoffRequestRecord }> {
-    const actorUserId = input.requestedByAiAssistantId ? null : assertHandoffActor(ctx);
+    const trustedAi =
+      Boolean(input.trustedSystemExecution) && Boolean(input.requestedByAiAssistantId);
+    const actorUserId = trustedAi ? null : assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
     assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.escalate);
 
@@ -668,6 +740,7 @@ export class HandoffCommandService {
       queueId?: string;
       reason?: string;
       requestedByAiAssistantId?: string;
+      trustedSystemExecution?: boolean;
     },
   ): Promise<{
     ownership: ConversationOwner;
@@ -711,6 +784,7 @@ export class HandoffCommandService {
         triggerCode,
         reason,
         requestedByAiAssistantId: input.requestedByAiAssistantId,
+        trustedSystemExecution: input.trustedSystemExecution,
       });
       return {
         ownership: escalated.ownership,
@@ -735,6 +809,8 @@ export class HandoffCommandService {
         assigneeUserId: agent.userId,
         reason,
         requestedByAiAssistantId: input.requestedByAiAssistantId,
+        skipAssignmentGovernance: true,
+        trustedSystemExecution: true,
       });
       await this.deps.handoff.incrementMemberAssignment(targetQueueId, agent.userId);
       return {
@@ -754,6 +830,7 @@ export class HandoffCommandService {
       reason,
       targetQueueId,
       requestedByAiAssistantId: input.requestedByAiAssistantId,
+      trustedSystemExecution: input.trustedSystemExecution ?? true,
     });
 
     return {
@@ -794,13 +871,26 @@ export class HandoffCommandService {
   ): Promise<{ presence: import("../types/handoff-types.js").AgentPresenceRecord }> {
     const actorUserId = assertHandoffActor(ctx);
     assertHandoffCompanyAccess(ctx, input.companyId);
+    assertHandoffPermission(ctx, HANDOFF_PERMISSIONS.presence);
+
+    // Heartbeat is always scoped to the authenticated actor — never another user.
     const existing = await this.deps.handoff.getPresence(input.companyId, actorUserId);
-    const state = existing?.state ?? "online";
-    return this.updatePresence(ctx, {
+    // Preserve current state. Do not invent or promote to online from heartbeat alone.
+    const state = existing?.state ?? "offline";
+    const viewingConversationId =
+      input.viewingConversationId !== undefined
+        ? input.viewingConversationId
+        : (existing?.viewingConversationId ?? null);
+
+    const presence = await this.deps.handoff.upsertPresence({
       companyId: input.companyId,
-      state: state === "offline" ? "online" : state,
-      viewingConversationId: input.viewingConversationId,
+      userId: actorUserId,
+      state,
+      viewingConversationId,
+      lastHeartbeatAt: new Date().toISOString(),
     });
+
+    return { presence };
   }
 
   async routeNextInQueue(
@@ -833,6 +923,8 @@ export class HandoffCommandService {
       conversationId: request.conversationId,
       assigneeUserId: agent.userId,
       reason: `Auto-routed via ${queue.routingStrategy}`,
+      skipAssignmentGovernance: true,
+      trustedSystemExecution: true,
     });
     await this.deps.handoff.incrementMemberAssignment(input.queueId, agent.userId);
     await this.deps.handoff.updateRequestStatus({
@@ -1073,9 +1165,7 @@ export class HandoffCommandService {
     const queueSize = await this.deps.handoff.countQueueWaiting(companyId, queueId);
     const members = await this.deps.handoff.listQueueMembers(companyId, queueId);
     const presence = await this.deps.handoff.listPresence(companyId, ["online"]);
-    const availableAgents = members.filter((member) =>
-      presence.some((row) => row.userId === member.userId),
-    ).length;
+    const availableAgents = countEffectivelyAvailableAgents(members, presence);
 
     return {
       queueId,

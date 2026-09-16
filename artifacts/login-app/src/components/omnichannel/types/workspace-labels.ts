@@ -148,6 +148,12 @@ export type ConversationViewLabels = {
   composerPlaceholder: string;
   languageComposer: string;
   suggestedReplies: string;
+  quickReplies: string;
+  aiSuggestions: string;
+  refreshSuggestions: string;
+  generatingSuggestions: string;
+  suggestionsUnavailable: string;
+  quickRepliesEmpty: string;
   keyboardHint: string;
   emptyTranscript: string;
   emptyTranscriptHint: string;
@@ -212,6 +218,8 @@ export type ConversationViewLabels = {
     english: string;
     arabic: string;
     emptyDraft: string;
+    translating: string;
+    failed: string;
   };
   composerMentionPanel: {
     agents: string;
@@ -229,6 +237,8 @@ export type ConversationViewLabels = {
   assignedAgent: string;
   aiEmployee: string;
   slaBreached: string;
+  slaAtRisk: string;
+  slaCompleted: string;
   noSla: string;
   slaRemainingMinutes: (count: number) => string;
   slaRemainingHours: (count: number) => string;

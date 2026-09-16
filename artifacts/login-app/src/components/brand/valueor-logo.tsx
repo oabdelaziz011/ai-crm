@@ -1,3 +1,7 @@
+import {
+  VALUEOR_OR_PRIMARY,
+  VALUEOR_OR_PRIMARY_ON_DARK,
+} from "@/lib/brand/valueor-brand-colors";
 import { cn } from "@/lib/utils";
 
 type ValueOrLogoProps = {
@@ -91,7 +95,7 @@ export function ValueOrLogo({
         title={title}
         className={className}
         valueColor="#FFFFFF"
-        orColor="#3EE6C8"
+        orColor={VALUEOR_OR_PRIMARY_ON_DARK}
       />
     );
   }
@@ -117,7 +121,7 @@ export function ValueOrLogo({
         title={title}
         className={className}
         valueColor="#0F172A"
-        orColor="#0E9BB5"
+        orColor={VALUEOR_OR_PRIMARY}
       />
     );
   }

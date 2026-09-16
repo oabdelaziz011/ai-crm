@@ -10,9 +10,8 @@ import {
 } from "@workspace/channel-platform";
 import { logger } from "../lib/logger.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
-import { loadPlatformEnv } from "../config/env.js";
+import { resolveEmailInboundPollExecuteAi } from "../services/email-inbound-poll-worker.js";
 
-const env = loadPlatformEnv();
 
 function readJsonBody(req: Request): Record<string, unknown> {
   if (req.body && typeof req.body === "object" && !(req.body instanceof Buffer)) {
@@ -113,7 +112,8 @@ export async function processEmailWebhookPost(
     const response = await platform.emailHandler.handlePost({
       companyChannelId,
       rawPayload: payload,
-      executeAi: env.webhookExecuteAi,
+      // Email inbound auto-send is opt-in (EMAIL_POLL_WORKER_EXECUTE_AI), not WEBHOOK_EXECUTE_AI.
+      executeAi: resolveEmailInboundPollExecuteAi(),
       requestId,
       trace,
     });

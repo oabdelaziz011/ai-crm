@@ -1,5 +1,5 @@
 import { forwardRef, memo, type ReactNode } from "react";
-import { Bell, BellOff, Search } from "lucide-react";
+import { Bell, BellOff, Maximize2, Minimize2, Search } from "lucide-react";
 
 export type WorkspaceTenantContext = {
   companyName: string | null;
@@ -101,9 +101,11 @@ export const WorkspaceTopBar = memo(
                 title={deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel}
                 onClick={deskChrome.onToggleExpand}
               >
-                <span className="text-[11px] font-medium">
-                  {deskChrome.conversationExpanded ? "⤡" : "⤢"}
-                </span>
+                {deskChrome.conversationExpanded ? (
+                  <Minimize2 className="size-4" aria-hidden />
+                ) : (
+                  <Maximize2 className="size-4" aria-hidden />
+                )}
               </button>
             </div>
           ) : null}

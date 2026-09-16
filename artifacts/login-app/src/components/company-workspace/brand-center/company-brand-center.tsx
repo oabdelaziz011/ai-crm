@@ -27,14 +27,18 @@ import {
   createDefaultBrandDocument,
   DEFAULT_BRAND_COLORS,
 } from "@/lib/company-workspace/brand-center/defaults";
+import { VALUEOR_OR_PRIMARY } from "@/lib/brand/valueor-brand-colors";
+import { inferBrandingMode } from "@/lib/company-workspace/brand-center/branding-mode";
 import type {
   BrandLogoSlot,
   BrandPreviewSurface,
   CompanyBrandCenterDocument,
   CompanyBrandColors,
+  CompanyBrandingMode,
   CompanyContactSnapshot,
 } from "@/lib/company-workspace/brand-center/types";
 import { validateBrandCenterIdentity } from "@/lib/company-workspace/company-identity/validate-company-identity";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 
 type CompanyBrandCenterProps = {
@@ -93,8 +97,27 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
     if (!data) return;
     // Hydrate once. Never bind draft to live query cache — optimistic updates /
     // refetch / error rollback were resetting edits and clearing dirty (Save stuck).
-    setDraft((prev) => prev ?? data);
-    setBaseline((prev) => prev ?? data);
+    // Backfill brandingMode if an older in-memory draft predates the field.
+    setDraft((prev) => {
+      if (!prev) return data;
+      if (!prev.brandingMode) {
+        return {
+          ...prev,
+          brandingMode: data.brandingMode ?? inferBrandingMode(prev.colors),
+        };
+      }
+      return prev;
+    });
+    setBaseline((prev) => {
+      if (!prev) return data;
+      if (!prev.brandingMode) {
+        return {
+          ...prev,
+          brandingMode: data.brandingMode ?? inferBrandingMode(prev.colors),
+        };
+      }
+      return prev;
+    });
   }, [data]);
 
   useEffect(() => {
@@ -149,8 +172,18 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
 
   function patchColors(key: keyof CompanyBrandColors, value: string) {
     setDraft((prev) =>
-      prev ? { ...prev, colors: { ...prev.colors, [key]: value } } : prev,
+      prev
+        ? {
+            ...prev,
+            brandingMode: "custom",
+            colors: { ...prev.colors, [key]: value },
+          }
+        : prev,
     );
+  }
+
+  function setBrandingMode(brandingMode: CompanyBrandingMode) {
+    setDraft((prev) => (prev ? { ...prev, brandingMode } : prev));
   }
 
   function patchDocuments(patch: Partial<CompanyBrandCenterDocument["documents"]>) {
@@ -183,7 +216,11 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
 
   async function handleSave() {
     if (!draft || !canEdit || !dirty) return;
-    const issues = validateBrandCenterIdentity(draft);
+    const payload: CompanyBrandCenterDocument = {
+      ...draft,
+      brandingMode: draft.brandingMode ?? inferBrandingMode(draft.colors),
+    };
+    const issues = validateBrandCenterIdentity(payload);
     if (issues.length > 0) {
       toast({
         variant: "destructive",
@@ -193,7 +230,7 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
       return;
     }
     try {
-      const saved = await saveMutation.mutateAsync(draft);
+      const saved = await saveMutation.mutateAsync(payload);
       setBaseline(saved);
       setDraft(saved);
       if (companyId) {
@@ -242,6 +279,8 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
   ];
 
   const fieldDisabled = !canEdit || saveMutation.isPending;
+  const brandingMode: CompanyBrandingMode =
+    draft.brandingMode ?? inferBrandingMode(draft.colors);
 
   return (
     <div className="space-y-4">
@@ -301,11 +340,6 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
           disabled={fieldDisabled}
           highlightFocusId={highlightFocusId}
           onPatchEmail={patchEmail}
-          onChangeLogo={() => {
-            setSection("logos");
-            setSurface("email");
-            setHighlightFocusId("logo-email");
-          }}
           onEditCompany={() => onNavigateToOverview?.()}
         />
       ) : section === "email" ? (
@@ -395,6 +429,75 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
 
           {section === "colors" ? (
             <section className="space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+              <div className="space-y-3 rounded-xl border border-border/50 bg-muted/20 p-3">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-semibold">
+                    {t("companyWorkspace.brandCenter.brandingMode.title")}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {t("companyWorkspace.brandCenter.brandingMode.hint")}
+                  </p>
+                </div>
+                <RadioGroup
+                  value={brandingMode}
+                  disabled={fieldDisabled}
+                  onValueChange={(value) => {
+                    if (value === "official" || value === "custom") {
+                      setBrandingMode(value);
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5 transition-colors",
+                      brandingMode === "official" && "border-primary/40 bg-primary/5",
+                      fieldDisabled && "cursor-not-allowed opacity-70",
+                    )}
+                  >
+                    <RadioGroupItem value="official" className="mt-0.5" />
+                    <span className="min-w-0 space-y-0.5">
+                      <span className="block text-sm font-medium">
+                        {t("companyWorkspace.brandCenter.brandingMode.officialLabel")}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {t("companyWorkspace.brandCenter.brandingMode.officialDescription")}
+                      </span>
+                      <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <span
+                          className="size-3 rounded-full border border-border"
+                          style={{ backgroundColor: VALUEOR_OR_PRIMARY }}
+                          aria-hidden
+                        />
+                        {VALUEOR_OR_PRIMARY}
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5 transition-colors",
+                      brandingMode === "custom" && "border-primary/40 bg-primary/5",
+                      fieldDisabled && "cursor-not-allowed opacity-70",
+                    )}
+                  >
+                    <RadioGroupItem value="custom" className="mt-0.5" />
+                    <span className="min-w-0 space-y-0.5">
+                      <span className="block text-sm font-medium">
+                        {t("companyWorkspace.brandCenter.brandingMode.customLabel")}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {t("companyWorkspace.brandCenter.brandingMode.customDescription")}
+                      </span>
+                    </span>
+                  </label>
+                </RadioGroup>
+                {brandingMode === "official" ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("companyWorkspace.brandCenter.brandingMode.officialPreservesCustom")}
+                  </p>
+                ) : null}
+              </div>
+
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <h2 className="text-sm font-semibold">
@@ -414,6 +517,7 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
                       prev
                         ? {
                             ...prev,
+                            brandingMode: "official",
                             colors: { ...DEFAULT_BRAND_COLORS },
                           }
                         : prev,
@@ -437,7 +541,7 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
                       key={key}
                       colorKey={key}
                       value={draft.colors[key]}
-                      disabled={fieldDisabled}
+                      disabled={fieldDisabled || brandingMode === "official"}
                       highlight={highlightFocusId === `color-${key}`}
                       label={t(`companyWorkspace.brandCenter.color${capitalize(key)}`)}
                       onChange={(value) => patchColors(key, value)}
@@ -459,7 +563,7 @@ export function CompanyBrandCenter({ onNavigateToOverview }: CompanyBrandCenterP
                       key={key}
                       colorKey={key}
                       value={draft.colors[key]}
-                      disabled={fieldDisabled}
+                      disabled={fieldDisabled || brandingMode === "official"}
                       highlight={highlightFocusId === `color-${key}`}
                       label={t(`companyWorkspace.brandCenter.color${capitalize(key)}`)}
                       onChange={(value) => patchColors(key, value)}

@@ -39,7 +39,10 @@ import {
 } from "@/hooks/billing/use-billing-lifecycle";
 import { useCompanyProvisioning } from "@/hooks/billing/use-company-provisioning";
 import { useRecordSubscriptionPayment } from "@/hooks/billing/use-record-subscription-payment";
-import { useBillingSettingValue, parseBillingSettingString } from "@/hooks/billing/use-billing-setting-value";
+import {
+  useCompanyCommercialTerms,
+  useCompanyPayablePreview,
+} from "@/hooks/companies/use-company-commercial-terms";
 import { useSubscriptionEvents } from "@/hooks/billing/use-subscription-events";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthUser } from "@/hooks/use-rbac";
@@ -50,7 +53,8 @@ import {
   canViewBillingAudit,
 } from "@/lib/billing/billing-permissions";
 import { billingNotAvailable, translateBillingCycle, translateCompanyStatus } from "@/lib/billing/billing-display-i18n";
-import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
+import { formatBillingDate, formatBillingSubscriptionCurrency } from "@/lib/billing/format";
+import { resolveSubscriptionBillingCurrency } from "@/lib/currency/resolve";
 import { isUuidSegment } from "@/lib/billing/subscription-status-display";
 import { canManageCompanyCommercialAccess } from "@/lib/companies/company-permissions";
 import { NEST_INDEX } from "@/lib/routing";
@@ -77,11 +81,8 @@ export function SubscriptionDetailPage() {
   } = useCompanyProvisioning(companyId, canView);
 
   const { data: events = [], isLoading: eventsLoading } = useSubscriptionEvents(subscription?.id ?? null, canView);
-  const { data: defaultCurrencySetting, isLoading: currencyLoading, isError: currencyError } = useBillingSettingValue(
-    "default_currency",
-    companyId,
-    Boolean(companyId && canRecord),
-  );
+  const termsQuery = useCompanyCommercialTerms(companyId, Boolean(companyId && canRecord));
+  const payableQuery = useCompanyPayablePreview(companyId, Boolean(companyId && canRecord));
   const recordPayment = useRecordSubscriptionPayment();
   const {
     data: paymentOptions,
@@ -130,11 +131,21 @@ export function SubscriptionDetailPage() {
     }
   }, [paymentMethods, selectedMethodCode]);
 
-  const currency = useMemo(
-    () => parseBillingSettingString(defaultCurrencySetting),
-    [defaultCurrencySetting],
-  );
+  const currency = useMemo(() => {
+    const payableCurrency =
+      typeof payableQuery.data?.currency === "string" ? payableQuery.data.currency : undefined;
+    return resolveSubscriptionBillingCurrency({
+      commercialTermsCurrency: termsQuery.data?.subscription_billing_currency,
+      subscriptionCurrency: (subscription as { billing_currency?: string } | null | undefined)
+        ?.billing_currency,
+      planPricingCurrency: (subscription?.plan as { pricing_currency?: string } | null | undefined)
+        ?.pricing_currency,
+      fallback: payableCurrency,
+    });
+  }, [payableQuery.data, termsQuery.data, subscription]);
 
+  const currencyLoading = termsQuery.isLoading || payableQuery.isLoading;
+  const currencyError = termsQuery.isError || payableQuery.isError;
   const currencyUnavailable = !currencyLoading && (currencyError || !currency);
 
   const showToastError = (message: string) => {
@@ -372,7 +383,7 @@ export function SubscriptionDetailPage() {
                     onClick={() => setRecordPaymentOpen(true)}
                   >
                     {recordPayment.isPending ? t("billing.detail.recording") : t("billing.detail.recordPayment")}
-                    {planPrice && currency ? ` · ${formatBillingCurrency(planPrice, currency)}` : ""}
+                    {planPrice && currency ? ` · ${formatBillingSubscriptionCurrency(planPrice, currency)}` : ""}
                   </Button>
                   <p className="text-[11px] text-muted-foreground">
                     {t(

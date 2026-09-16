@@ -4,6 +4,10 @@ import {
   type EmailRoutingTicketPort,
 } from "@workspace/ai-intent-engine";
 import type { EmailRoutingTicketActionPort } from "@workspace/channel-platform";
+import {
+  AssignmentAuditService,
+  createSupabaseAssignmentAuditDataPort,
+} from "@workspace/assignment-audit";
 import { createTicketPlatformServices, TICKET_PERMISSIONS } from "@workspace/ticket-platform";
 
 export type EmailRoutingTicketAdapterOptions = {
@@ -61,7 +65,13 @@ export function createEmailRoutingTicketActionPort(
   client: SupabaseClient,
   options: EmailRoutingTicketAdapterOptions,
 ): EmailRoutingTicketActionPort {
-  const platform = createTicketPlatformServices(client);
+  const platform = createTicketPlatformServices(client, {
+    // AI email routing must remain independent of human Assignment Governance.
+    assignmentGovernance: false,
+  });
+  const assignmentAudit = new AssignmentAuditService({
+    port: createSupabaseAssignmentAuditDataPort(client),
+  });
 
   async function resolveActor(companyId: string): Promise<string> {
     const scopedCompany = companyId?.trim() ?? "";
@@ -87,6 +97,7 @@ export function createEmailRoutingTicketActionPort(
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
         assignedUserId: ticket.assignedUserId,
+        customerId: ticket.customerId ?? null,
       }));
     },
 
@@ -98,12 +109,14 @@ export function createEmailRoutingTicketActionPort(
         subject: input.subject,
         description: input.description,
         conversationId: input.conversationId,
+        customerId: input.customerId ?? undefined,
         metadata: input.metadata,
       });
       return {
         id: result.ticket.id,
         ticketNumber: result.ticket.ticketNumber,
         assignedUserId: result.ticket.assignedUserId,
+        customerId: result.ticket.customerId ?? null,
         metadata: input.metadata,
       };
     },
@@ -115,18 +128,99 @@ export function createEmailRoutingTicketActionPort(
         companyId: ctx.companyId,
         ticketId: input.ticketId,
         assigneeUserId: input.assigneeUserId,
+        assignmentAuditSource: "ai",
       });
       return {
         id: result.ticket.id,
         ticketNumber: result.ticket.ticketNumber,
         assignedUserId: result.ticket.assignedUserId,
+        customerId: result.ticket.customerId ?? null,
       };
+    },
+
+    async assignConversationEmployee(input) {
+      const scopedCompany = input.companyId?.trim() ?? "";
+      const scopedConversation = input.conversationId?.trim() ?? "";
+      const scopedAssignee = input.assigneeUserId?.trim() ?? "";
+      if (!scopedCompany || !scopedConversation || !scopedAssignee) {
+        throw new Error("Company, conversation, and assignee are required for conversation assignment.");
+      }
+
+      const { data: existing, error: readError } = await client
+        .from("conversations")
+        .select("id, assigned_user_id, channel_type")
+        .eq("id", scopedConversation)
+        .eq("company_id", scopedCompany)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (readError) {
+        throw new Error(readError.message);
+      }
+      if (!existing?.id) {
+        throw new Error("Conversation not found for company-scoped employee assignment.");
+      }
+
+      const { data, error } = await client
+        .from("conversations")
+        .update({
+          assigned_user_id: scopedAssignee,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", scopedConversation)
+        .eq("company_id", scopedCompany)
+        .is("deleted_at", null)
+        .select("id")
+        .maybeSingle();
+      if (error) {
+        throw new Error(error.message);
+      }
+      if (!data?.id) {
+        throw new Error("Conversation not found for company-scoped employee assignment.");
+      }
+
+      const actorUserId = await resolveActor(scopedCompany);
+      await assignmentAudit.recordAssignmentChange({
+        companyId: scopedCompany,
+        actorUserId,
+        resourceType: existing.channel_type === "email" ? "email_conversation" : "conversation",
+        resourceId: scopedConversation,
+        previousAssigneeUserId: existing.assigned_user_id
+          ? String(existing.assigned_user_id)
+          : null,
+        newAssigneeUserId: scopedAssignee,
+        source: "ai",
+      });
+    },
+
+    async verifyCustomerCompanyScope(input) {
+      const scopedCompany = input.companyId?.trim() ?? "";
+      const scopedCustomer = input.customerId?.trim() ?? "";
+      if (!scopedCompany || !scopedCustomer) return false;
+      const { data, error } = await client
+        .from("customers")
+        .select("id")
+        .eq("id", scopedCustomer)
+        .eq("company_id", scopedCompany)
+        .maybeSingle();
+      if (error) {
+        throw new Error(error.message);
+      }
+      return Boolean(data && typeof data.id === "string" && data.id === scopedCustomer);
     },
   };
 
   return {
     async apply(input) {
-      const result = await applyEmailRoutingTicketAction(ticketPort, input);
+      const result = await applyEmailRoutingTicketAction(ticketPort, {
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+        inboundEventId: input.inboundEventId,
+        trustedCustomerId: input.trustedCustomerId,
+        subject: input.subject,
+        bodyPreview: input.bodyPreview,
+        classification: input.classification,
+        decision: input.decision,
+      });
       return {
         status: result.status,
         reason: result.reason,

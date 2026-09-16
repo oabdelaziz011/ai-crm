@@ -10,12 +10,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Profile } from "@/lib/types";
 import type { LifecycleSnapshot } from "@/lib/conversation-lifecycle";
 import type { OperationalAssignmentRecord } from "@/lib/conversation-lifecycle";
 import { useAiEmployees } from "@/lib/ai-employees/hooks/use-ai-employees";
 import { useAssignmentTargets } from "@/hooks/omnichannel/use-assignment-targets";
+import { useAssignableEmployees } from "@/hooks/assignment-governance/use-assignable-employees";
 import type { useConversationHandoffOwnership } from "@/hooks/omnichannel/use-conversation-handoff-ownership";
+import { formatAssignableEmployeeLabel } from "@/lib/assignment-governance/assignable-employees";
 import { cn } from "@/lib/utils";
 
 type AssignmentTarget = {
@@ -30,7 +31,8 @@ type AssignmentSheetProps = {
   /** CVP handoff pause state — same boolean used by workspace pause/resume controls. */
   handoffAiPaused?: boolean;
   handoffOwnership?: ReturnType<typeof useConversationHandoffOwnership>;
-  profiles: Profile[];
+  /** @deprecated Phase 4 — human agents come from Assignment Governance, not profiles dump. */
+  profiles?: unknown;
   lifecycleSnapshot?: LifecycleSnapshot | null;
   onOpenChange: (open: boolean) => void;
   onAssign: (target: AssignmentTarget) => void;
@@ -41,7 +43,6 @@ export const AssignmentSheet = memo(function AssignmentSheet({
   companyId,
   handoffAiPaused: _handoffAiPaused,
   handoffOwnership: _handoffOwnership,
-  profiles,
   lifecycleSnapshot,
   onOpenChange,
   onAssign,
@@ -49,17 +50,19 @@ export const AssignmentSheet = memo(function AssignmentSheet({
   const { t } = useTranslation("common");
   const aiEmployeesQuery = useAiEmployees(companyId, { status: "published" });
   const targetsQuery = useAssignmentTargets(companyId);
+  const assignableQuery = useAssignableEmployees({
+    enabled: Boolean(open && companyId),
+    resource: "handoff",
+  });
 
   const agents = useMemo(
     () =>
-      profiles
-        .filter((profile) => profile.user_id)
-        .map((profile) => ({
-          targetType: "user" as const,
-          targetId: profile.user_id!,
-          targetLabel: profile.full_name?.trim() || profile.email || profile.user_id!,
-        })),
-    [profiles],
+      (assignableQuery.data ?? []).map((employee) => ({
+        targetType: "user" as const,
+        targetId: employee.userId,
+        targetLabel: formatAssignableEmployeeLabel(employee),
+      })),
+    [assignableQuery.data],
   );
 
   const aiEmployees = useMemo(
@@ -108,7 +111,9 @@ export const AssignmentSheet = memo(function AssignmentSheet({
           </TabsList>
 
           <TabsContent value="agents" className="mt-3 flex-1 space-y-2 overflow-y-auto">
-            {agents.length > 0 ? (
+            {assignableQuery.isLoading ? (
+              <p className="text-xs text-muted-foreground">{t("status.loading")}</p>
+            ) : agents.length > 0 ? (
               agents.map((agent) => (
                 <TargetCard
                   key={agent.targetId}
@@ -119,7 +124,11 @@ export const AssignmentSheet = memo(function AssignmentSheet({
                 />
               ))
             ) : (
-              <EmptyTargets message={t("omnichannel.assignment.noAgents")} />
+              <EmptyTargets
+                message={t("omnichannel.assignment.noEligibleAgents", {
+                  defaultValue: t("omnichannel.assignment.noAgents"),
+                })}
+              />
             )}
           </TabsContent>
 

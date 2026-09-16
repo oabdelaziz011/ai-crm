@@ -12,6 +12,8 @@ export type Customer360ProfileDto = Readonly<{
   company: string | null;
   birthday: string | null;
   avatarColor: string;
+  /** CRM-owned customer photo URL when present. */
+  avatarUrl: string | null;
   healthScore: number;
   customerSince: string;
   notes: string | null;

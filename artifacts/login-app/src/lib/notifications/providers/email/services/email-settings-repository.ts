@@ -27,11 +27,36 @@ function parseEncryption(value: unknown, fallback: EmailEncryption): EmailEncryp
 }
 
 function parseInboundProvider(value: unknown): EmailInboundProvider {
-  return value === "webhook" ? "webhook" : "imap";
+  if (value === "webhook") return "webhook";
+  if (value === "microsoft_graph") return "microsoft_graph";
+  if (value === "gmail_api") return "gmail_api";
+  return "imap";
 }
 
 function parseOutboundProvider(value: unknown): EmailOutboundProvider {
-  return value === "smtp" ? "smtp" : "smtp";
+  if (value === "microsoft_graph") return "microsoft_graph";
+  if (value === "gmail_api") return "gmail_api";
+  return "smtp";
+}
+
+function parseMailboxProvider(value: unknown): import("@/lib/notifications/providers/email/types/email-types").EmailMailboxProvider {
+  if (value === "gmail" || value === "microsoft_365" || value === "imap_smtp") return value;
+  return "imap_smtp";
+}
+
+function parseConnectionStatus(
+  value: unknown,
+): import("@/lib/notifications/providers/email/types/email-types").EmailConnectionStatus {
+  if (
+    value === "connected" ||
+    value === "connecting" ||
+    value === "needs_reauthorization" ||
+    value === "connection_error" ||
+    value === "disabled"
+  ) {
+    return value;
+  }
+  return "disabled";
 }
 
 function mapPublicRecord(record: Record<string, unknown>, companyId: string): CompanyEmailSettings {
@@ -41,6 +66,12 @@ function mapPublicRecord(record: Record<string, unknown>, companyId: string): Co
     conversationEnabled: Boolean(record.conversation_enabled),
     inboundProvider: parseInboundProvider(record.inbound_provider),
     outboundProvider: parseOutboundProvider(record.outbound_provider),
+    mailboxProvider: parseMailboxProvider(record.mailbox_provider),
+    connectionStatus: parseConnectionStatus(record.connection_status),
+    connectionLastError: String(record.connection_last_error ?? ""),
+    connectionLastSyncedAt: record.connection_last_synced_at
+      ? String(record.connection_last_synced_at)
+      : null,
     smtpHost: String(record.smtp_host ?? ""),
     smtpPort: Number(record.smtp_port ?? 587),
     smtpUsername: String(record.smtp_username ?? ""),
@@ -61,6 +92,7 @@ function mapPublicRecord(record: Record<string, unknown>, companyId: string): Co
     imapPollIntervalSeconds: Number(record.imap_poll_interval_seconds ?? 60),
     oauthProvider: record.oauth_provider ? String(record.oauth_provider) : null,
     oauthToken: String(record.oauth_token ?? ""),
+    oauthExpiresAt: record.oauth_expires_at ? String(record.oauth_expires_at) : null,
     hasSmtpPassword: Boolean(record.has_smtp_password),
     hasImapPassword: Boolean(record.has_imap_password),
     hasOauthToken: Boolean(record.has_oauth_token),
@@ -74,6 +106,9 @@ export function companyEmailSettingsToDraft(settings: CompanyEmailSettings): Ema
     conversationEnabled: settings.conversationEnabled,
     inboundProvider: settings.inboundProvider,
     outboundProvider: settings.outboundProvider,
+    mailboxProvider: settings.mailboxProvider,
+    connectionStatus: settings.connectionStatus,
+    connectionLastError: settings.connectionLastError,
     smtpHost: settings.smtpHost,
     smtpPort: settings.smtpPort,
     smtpUsername: settings.smtpUsername,
@@ -186,6 +221,18 @@ export class EmailSettingsRepository {
       ...buildUpsertPayload(merged, current),
     });
     if (error) throw new Error(error.message);
-    return mapPublicRecord(data as Record<string, unknown>, companyId);
+
+    if (merged.mailboxProvider) {
+      await this.client
+        .from("company_email_settings")
+        .update({
+          mailbox_provider: merged.mailboxProvider,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("company_id", companyId);
+      await this.client.rpc("sync_email_channel_references", { p_company_id: companyId });
+    }
+
+    return this.getPublic(companyId);
   }
 }

@@ -8,12 +8,7 @@ import {
 } from "@/config/dashboard-route-registry";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { DashboardSectionRoute } from "@/components/dashboard/dashboard-section-route";
-
-const DashboardHomePage = lazy(() =>
-  import("@/pages/dashboard/home-page").then((module) => ({
-    default: module.DashboardHomePage,
-  })),
-);
+import { DashboardHomePage } from "@/pages/dashboard/home-page";
 
 const NotificationDetailPage = lazy(() =>
   import("@/pages/dashboard/notification-detail-page").then((module) => ({
@@ -24,6 +19,8 @@ const NotificationDetailPage = lazy(() =>
 const CUSTOMER_WORKSPACE_PATH = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i;
 const OMNICHANNEL_CONSOLE_PATH = /^\/omnichannel(?:\/|$)/i;
 const CALENDAR_PATH = /^\/calendar(?:\/|$)/i;
+const EMAIL_MODULE_PATH = /^\/email(?:\/|$)/i;
+const SMS_MODULE_PATH = /^\/sms(?:\/|$)/i;
 
 export function DashboardOutlet() {
   const [location] = useLocation();
@@ -31,7 +28,14 @@ export function DashboardOutlet() {
   const isCustomerWorkspace = CUSTOMER_WORKSPACE_PATH.test(location);
   const isOmnichannelConsole = OMNICHANNEL_CONSOLE_PATH.test(location);
   const isCalendarPage = CALENDAR_PATH.test(location);
-  const isFullBleed = isCustomerWorkspace || isOmnichannelConsole || isCalendarPage;
+  const isEmailModule = EMAIL_MODULE_PATH.test(location);
+  const isSmsModule = SMS_MODULE_PATH.test(location);
+  const isFullBleed =
+    isCustomerWorkspace ||
+    isOmnichannelConsole ||
+    isCalendarPage ||
+    isEmailModule ||
+    isSmsModule;
 
   return (
     <main
@@ -71,7 +75,7 @@ export function DashboardOutlet() {
                 </Suspense>
               </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" || route.id === "campaigns" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" || route.id === "sms" || route.id === "campaigns" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>
@@ -82,9 +86,7 @@ export function DashboardOutlet() {
                 ),
               )}
               <Route path="/">
-                <Suspense fallback={<DashboardPageFallback />}>
-                  <DashboardHomePage />
-                </Suspense>
+                <DashboardHomePage />
               </Route>
               <Route>
                 <NotFound />

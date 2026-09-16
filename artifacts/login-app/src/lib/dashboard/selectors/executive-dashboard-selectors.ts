@@ -4,6 +4,8 @@ import type {
   DashboardSnapshot,
   DashboardTimeRangeKey,
 } from "@workspace/dashboard-engine";
+import { getCompanyCurrency, getCompanyIntlLocale } from "@/lib/company-locale/runtime";
+import { formatCompanyMoney } from "@/lib/currency/format-money";
 
 export type DashboardTimeRange = DashboardTimeRangeKey;
 
@@ -174,11 +176,10 @@ function formatMetricValue(metric: DashboardMetric | undefined, fallback = "—"
   if (metric.unit === "currency") {
     const amount = Number(metric.value);
     if (!Number.isFinite(amount)) return fallback;
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: "USD",
+    return formatCompanyMoney(amount, getCompanyCurrency(), getCompanyIntlLocale(), {
       maximumFractionDigits: 0,
-    }).format(amount);
+      minimumFractionDigits: 0,
+    });
   }
   if (metric.unit === "percent") return `${metric.value}%`;
   return String(metric.value);

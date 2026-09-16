@@ -137,6 +137,8 @@
     "@workspace/activity-timeline": "workspace:*",
     "@workspace/agent-runtime": "workspace:*",
     "@workspace/ai-conversation": "workspace:*",
+    "@workspace/assignment-audit": "workspace:*",
+    "@workspace/assignment-governance": "workspace:*",
     "@workspace/ai-execution-engine": "workspace:*",
     "@workspace/ai-intent-engine": "workspace:*",
     "@workspace/ai-observability": "workspace:*",

@@ -124,6 +124,28 @@ export function CampaignDetailPage() {
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
             {typeof content.detail === "string" ? content.detail : "—"}
           </p>
+          {Array.isArray(content.attachments) && content.attachments.length > 0 ? (
+            <div className="space-y-1" data-testid="campaign-detail-attachments">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t("campaigns.detail.attachments")}
+              </p>
+              <ul className="space-y-1 text-sm">
+                {content.attachments.map((item) => {
+                  if (!item || typeof item !== "object") return null;
+                  const row = item as { id?: unknown; name?: unknown; fileSize?: unknown };
+                  const name = typeof row.name === "string" ? row.name : null;
+                  if (!name) return null;
+                  return (
+                    <li key={typeof row.id === "string" ? row.id : name} className="truncate">
+                      {name}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{t("campaigns.detail.noAttachments")}</p>
+          )}
         </DashboardCard>
       </div>
 

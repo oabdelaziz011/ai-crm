@@ -8,6 +8,7 @@ export type TicketCustomerContext = {
   name: string;
   email: string | null;
   phone: string | null;
+  avatarUrl: string | null;
   previousTickets: Array<{
     id: string;
     ticketNumber: string;
@@ -32,7 +33,7 @@ export function useTicketCustomerContext(customerId: string | null | undefined) 
       const [{ data: customer, error: customerError }, previous] = await Promise.all([
         supabase
           .from("customers")
-          .select("id, name, email, phone")
+          .select("id, name, email, phone, avatar_url")
           .eq("company_id", companyId)
           .eq("id", customerId)
           .maybeSingle(),
@@ -51,6 +52,7 @@ export function useTicketCustomerContext(customerId: string | null | undefined) 
         name: String(customer.name ?? "").trim() || customerId,
         email: customer.email ? String(customer.email) : null,
         phone: customer.phone ? String(customer.phone) : null,
+        avatarUrl: customer.avatar_url ? String(customer.avatar_url) : null,
         previousTickets: previous.tickets.map((ticket) => ({
           id: ticket.id,
           ticketNumber: ticket.ticketNumber,

@@ -20,7 +20,15 @@ export function writeLifecycleOverlay(
   metadata: Record<string, unknown>,
   overlay: LifecycleMetadataOverlay,
 ): Record<string, unknown> {
-  return { ...metadata, [LIFECYCLE_METADATA_KEY]: overlay };
+  // Merge with existing overlay so partial writes (owner/state) cannot drop slaDueAt.
+  const existing = readLifecycleOverlay(metadata) ?? {};
+  return {
+    ...metadata,
+    [LIFECYCLE_METADATA_KEY]: {
+      ...existing,
+      ...overlay,
+    },
+  };
 }
 
 /**

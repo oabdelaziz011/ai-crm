@@ -71,12 +71,19 @@ function createPhase2Harness(options?: {
   whatsappChannels?: Array<Record<string, unknown>>;
   instagramChannels?: Array<Record<string, unknown>>;
   messengerChannels?: Array<Record<string, unknown>>;
+  emailChannels?: Array<Record<string, unknown>>;
+  smsChannels?: Array<Record<string, unknown>>;
   whatsappSettings?: Record<string, unknown> | null;
   instagramSettings?: Record<string, unknown> | null;
   messengerSettings?: Record<string, unknown> | null;
+  emailSettings?: Record<string, unknown> | null;
+  smsSettings?: Record<string, unknown> | null;
   features?: Record<string, boolean>;
   channelOutbound?: CampaignChannelOutboundPort;
-  sendImpl?: (customerId: string) => Promise<{
+  sendImpl?: (req: {
+    customerId: string;
+    channels?: string[];
+  }) => Promise<{
     messageIds: string[];
     queueIds: string[];
     channelQueueIds?: Record<string, string>;
@@ -119,6 +126,22 @@ function createPhase2Harness(options?: {
       communication_channels: { key: "messenger" },
     },
   ];
+  const emailChannels = options?.emailChannels ?? [
+    {
+      id: "cc-em-1",
+      is_enabled: true,
+      deleted_at: null,
+      communication_channels: { key: "email" },
+    },
+  ];
+  const smsChannels = options?.smsChannels ?? [
+    {
+      id: "cc-sms-1",
+      is_enabled: true,
+      deleted_at: null,
+      communication_channels: { key: "sms" },
+    },
+  ];
 
   const whatsappSettings = options?.whatsappSettings ?? {
     company_id: "co-1",
@@ -150,25 +173,54 @@ function createPhase2Harness(options?: {
     has_access_token: true,
     page_id: "page-1",
   };
+  const emailSettings = options?.emailSettings ?? {
+    company_id: "co-1",
+    enabled: true,
+    smtp_host: "smtp.gmail.com",
+    smtp_username: "valueor@example.com",
+    from_email: "valueor@example.com",
+    has_smtp_password: true,
+    outbound_provider: "smtp",
+  };
+  const smsSettings = options?.smsSettings ?? {
+    company_id: "co-1",
+    enabled: true,
+    provider: "twilio",
+    account_sid: "ACxxx",
+    from_number: "+15551234567",
+    has_auth_token: true,
+  };
 
   const features = {
     campaigns: true,
     whatsapp_channel: true,
     "channel.instagram": true,
     "channel.facebook": true,
+    email_channel: true,
+    sms_channel: true,
     ...(options?.features ?? {}),
   };
 
   const sendCalls: unknown[] = [];
   const outboundCalls: unknown[] = [];
   const dispatcher = {
-    send: async (req: { recipient?: { customerId?: string } }) => {
+    send: async (req: { recipient?: { customerId?: string }; channels?: string[] }) => {
       sendCalls.push(req);
-      if (options?.sendImpl) return options.sendImpl(req.recipient?.customerId ?? "");
+      if (options?.sendImpl) {
+        return options.sendImpl({
+          customerId: req.recipient?.customerId ?? "",
+          channels: req.channels,
+        });
+      }
+      const channels = req.channels?.length ? req.channels : ["whatsapp"];
+      const channelQueueIds: Record<string, string> = {};
+      for (const channel of channels) {
+        channelQueueIds[channel] = `q-${channel}-${req.recipient?.customerId ?? "x"}`;
+      }
       return {
         messageIds: ["n-1"],
-        queueIds: ["q-1"],
-        channelQueueIds: { whatsapp: `q-${req.recipient?.customerId ?? "x"}` },
+        queueIds: Object.values(channelQueueIds),
+        channelQueueIds,
         skippedChannels: [],
         failedChannels: [],
         deduplicated: false,
@@ -270,7 +322,13 @@ function createPhase2Harness(options?: {
           onrejected?: (e: unknown) => unknown,
         ) =>
           Promise.resolve({
-            data: [...whatsappChannels, ...instagramChannels, ...messengerChannels],
+            data: [
+              ...whatsappChannels,
+              ...instagramChannels,
+              ...messengerChannels,
+              ...emailChannels,
+              ...smsChannels,
+            ],
             error: null,
           }).then(onfulfilled, onrejected);
         return chain;
@@ -285,6 +343,10 @@ function createPhase2Harness(options?: {
           filters[col] = val;
           return chain;
         };
+        chain.in = (col: string, vals: string[]) => {
+          filters[`${col}_in`] = vals;
+          return chain;
+        };
         chain.is = self;
         chain.order = self;
         (chain as { then: typeof Promise.prototype.then }).then = (
@@ -296,6 +358,10 @@ function createPhase2Harness(options?: {
               if (filters.company_id && c.company_id !== filters.company_id) return false;
               if (filters.customer_id && c.customer_id !== filters.customer_id) return false;
               if (filters.channel_type && c.channel_type !== filters.channel_type) return false;
+              const channelIn = filters.channel_type_in as string[] | undefined;
+              if (channelIn && !channelIn.includes(c.channel_type)) return false;
+              const customerIn = filters.customer_id_in as string[] | undefined;
+              if (customerIn && !customerIn.includes(c.customer_id ?? "")) return false;
               if (c.deleted_at) return false;
               return true;
             }),
@@ -499,6 +565,12 @@ function createPhase2Harness(options?: {
       if (name === "get_company_messenger_settings") {
         return { data: messengerSettings, error: null };
       }
+      if (name === "get_company_email_settings") {
+        return { data: emailSettings, error: null };
+      }
+      if (name === "get_company_sms_settings") {
+        return { data: smsSettings, error: null };
+      }
       throw new Error(`unexpected rpc ${name}`);
     },
   };
@@ -558,26 +630,24 @@ function freshMsSession(overrides?: Partial<SessionSeed>): SessionSeed {
 }
 
 describe("Phase 2 channel allow-list", () => {
-  it("normalizes supported channels and drops SMS", () => {
+  it("normalizes supported channels including SMS", () => {
     assert.deepEqual(normalizeCampaignChannels(["whatsapp", "sms", "instagram", "whatsapp"]), [
       "whatsapp",
+      "sms",
       "instagram",
     ]);
   });
 
-  it("rejects SMS on createDraft", async () => {
+  it("accepts SMS on createDraft", async () => {
     const h = createPhase2Harness({ customers: [customer1], prefs: prefsOn });
-    await assert.rejects(
-      () =>
-        h.service.createDraft(ctx(), {
-          name: "X",
-          audience: { type: "all" },
-          content: { campaignTitle: "T", detail: "D" },
-          idempotencyKey: "sms-bad",
-          channels: ["sms" as never],
-        }),
-      (err: unknown) => err instanceof MarketingCampaignError && err.code === "invalid_input",
-    );
+    const draft = await h.service.createDraft(ctx(), {
+      name: "X",
+      audience: { type: "all" },
+      content: { campaignTitle: "T", detail: "D" },
+      idempotencyKey: "sms-ok",
+      channels: ["sms"],
+    });
+    assert.deepEqual(draft.channels, ["sms"]);
   });
 
   it("329 migration widens channel checks", () => {
@@ -1055,6 +1125,262 @@ describe("E/F security + idempotency", () => {
     assert.equal(again.result.reusedExisting, true);
     assert.equal(h.sendCalls.length, 1);
     assert.equal(h.outboundCalls.length, 2);
+  });
+});
+
+describe("Email campaign channel", () => {
+  it("queues email through the communication dispatcher using the customer mailbox address", async () => {
+    const h = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+    });
+    const draft = await h.service.createDraft(ctx(), {
+      name: "Email promo",
+      audience: { type: "manual", customerIds: ["cu-1"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside" },
+      idempotencyKey: "p2-email-ok",
+      channels: ["email"],
+    });
+    const result = await h.service.execute(ctx(), { campaignId: draft.id });
+    assert.equal(result.status, "completed");
+    assert.equal(result.queuedCount, 1);
+    assert.equal(result.sentCount, 0);
+    assert.equal(result.skippedCount, 0);
+    assert.equal(h.recipients[0]?.status, "queued");
+    assert.equal(h.recipients[0]?.channel, "email");
+    const sendReq = h.sendCalls[0] as {
+      channels: string[];
+      recipient: { email?: string };
+      metadata?: Record<string, unknown>;
+    };
+    assert.deepEqual(sendReq.channels, ["email"]);
+    assert.equal(sendReq.recipient.email, "a@ex.com");
+    assert.equal(sendReq.metadata?.source, "marketing_campaign");
+    assert.equal(h.outboundCalls.length, 0);
+  });
+
+  it("attaches campaign files on email send and keeps WhatsApp as text-only", async () => {
+    const attachment = {
+      id: "a1",
+      name: "offer.pdf",
+      mimeType: "application/pdf",
+      fileSize: 2048,
+      storagePath: "co-1/campaigns/p2-email-attach/content/a1-offer.pdf",
+    };
+    const emailHarness = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+    });
+    const emailDraft = await emailHarness.service.createDraft(ctx(), {
+      name: "Email promo",
+      audience: { type: "manual", customerIds: ["cu-1"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside", attachments: [attachment] },
+      idempotencyKey: "p2-email-attach",
+      channels: ["email"],
+    });
+    await emailHarness.service.execute(ctx(), { campaignId: emailDraft.id });
+    const emailReq = emailHarness.sendCalls[0] as {
+      variables?: Record<string, string>;
+    };
+    assert.equal(emailReq.variables?.campaignTitle, "Hello");
+    assert.equal(emailReq.variables?.detail, "Offer inside");
+    assert.match(emailReq.variables?.campaignAttachments ?? "", /offer\.pdf/);
+
+    const waHarness = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+    });
+    const waDraft = await waHarness.service.createDraft(ctx(), {
+      name: "WA promo",
+      audience: { type: "manual", customerIds: ["cu-1"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside", attachments: [attachment] },
+      idempotencyKey: "p2-wa-attach",
+      channels: ["whatsapp"],
+    });
+    await waHarness.service.execute(ctx(), { campaignId: waDraft.id });
+    const waReq = waHarness.sendCalls[0] as {
+      variables?: Record<string, string>;
+    };
+    assert.equal(waReq.variables?.detail, "Hello\n\nOffer inside");
+    assert.equal(waReq.variables?.campaignAttachments, undefined);
+  });
+
+  it("rejects attachments stored outside the company folder", async () => {
+    const h = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+    });
+    await assert.rejects(
+      () =>
+        h.service.createDraft(ctx(), {
+          name: "Email promo",
+          audience: { type: "manual", customerIds: ["cu-1"] },
+          content: {
+            campaignTitle: "Hello",
+            detail: "Offer inside",
+            attachments: [
+              {
+                id: "a1",
+                name: "offer.pdf",
+                mimeType: "application/pdf",
+                fileSize: 2048,
+                storagePath: "../etc/passwd",
+              },
+            ],
+          },
+          idempotencyKey: "p2-email-attach-bad",
+          channels: ["email"],
+        }),
+      /attachments are invalid/,
+    );
+  });
+
+  it("skips customers without an email address", async () => {
+    const noEmail = { ...customer1, id: "cu-no-email", email: null };
+    const h = createPhase2Harness({
+      customers: [noEmail],
+      prefs: [{ customer_id: "cu-no-email", company_id: "co-1", receive_marketing: true }],
+    });
+    const draft = await h.service.createDraft(ctx(), {
+      name: "Email promo",
+      audience: { type: "manual", customerIds: ["cu-no-email"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside" },
+      idempotencyKey: "p2-email-skip",
+      channels: ["email"],
+    });
+    const result = await h.service.execute(ctx(), { campaignId: draft.id });
+    assert.equal(result.queuedCount, 0);
+    assert.equal(result.skippedCount, 1);
+    assert.match(String(h.recipients[0]?.error_message), /email destination/i);
+    assert.equal(h.sendCalls.length, 0);
+  });
+
+  it("fails fast when email is the only channel and mailbox is unavailable", async () => {
+    const h = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+      features: { campaigns: true, email_channel: false },
+    });
+    const draft = await h.service.createDraft(ctx(), {
+      name: "Email promo",
+      audience: { type: "manual", customerIds: ["cu-1"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside" },
+      idempotencyKey: "p2-email-unavail",
+      channels: ["email"],
+    });
+    await assert.rejects(
+      () => h.service.execute(ctx(), { campaignId: draft.id }),
+      /Email is not available/,
+    );
+  });
+
+  it("previews email eligibility independently of WhatsApp", async () => {
+    const noEmail = { ...customer1, id: "cu-phone-only", email: null, phone: "+966500000099" };
+    const h = createPhase2Harness({
+      customers: [customer1, noEmail],
+      prefs: [
+        { customer_id: "cu-1", company_id: "co-1", receive_marketing: true },
+        { customer_id: "cu-phone-only", company_id: "co-1", receive_marketing: true },
+      ],
+    });
+    const preview = await h.service.previewChannelEligibility(
+      ctx(),
+      { type: "manual", customerIds: ["cu-1", "cu-phone-only"] },
+      ["email", "whatsapp"],
+    );
+    const email = preview.byChannel.find((row) => row.channel === "email");
+    const whatsapp = preview.byChannel.find((row) => row.channel === "whatsapp");
+    assert.equal(email?.eligible, 1);
+    assert.equal(email?.skipped, 1);
+    assert.equal(whatsapp?.eligible, 2);
+    assert.equal(whatsapp?.skipped, 0);
+  });
+
+  it("queues SMS through the communication dispatcher using the customer phone", async () => {
+    const h = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+    });
+    const draft = await h.service.createDraft(ctx(), {
+      name: "SMS promo",
+      audience: { type: "manual", customerIds: ["cu-1"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside" },
+      idempotencyKey: "p2-sms-ok",
+      channels: ["sms"],
+    });
+    const result = await h.service.execute(ctx(), { campaignId: draft.id });
+    assert.equal(result.status, "completed");
+    assert.equal(result.queuedCount, 1);
+    assert.equal(result.sentCount, 0);
+    assert.equal(result.skippedCount, 0);
+    assert.equal(h.recipients[0]?.status, "queued");
+    assert.equal(h.recipients[0]?.channel, "sms");
+    const sendReq = h.sendCalls[0] as {
+      channels: string[];
+      recipient: { phone?: string };
+      metadata?: Record<string, unknown>;
+    };
+    assert.deepEqual(sendReq.channels, ["sms"]);
+    assert.equal(sendReq.recipient.phone, "+966500000001");
+    assert.equal(sendReq.metadata?.source, "marketing_campaign");
+    assert.equal(h.outboundCalls.length, 0);
+  });
+
+  it("skips customers without an SMS phone", async () => {
+    const noPhone = { ...customer1, id: "cu-no-phone", phone: null };
+    const h = createPhase2Harness({
+      customers: [noPhone],
+      prefs: [{ customer_id: "cu-no-phone", company_id: "co-1", receive_marketing: true }],
+    });
+    const draft = await h.service.createDraft(ctx(), {
+      name: "SMS promo",
+      audience: { type: "manual", customerIds: ["cu-no-phone"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside" },
+      idempotencyKey: "p2-sms-skip",
+      channels: ["sms"],
+    });
+    const result = await h.service.execute(ctx(), { campaignId: draft.id });
+    assert.equal(result.queuedCount, 0);
+    assert.equal(result.skippedCount, 1);
+    assert.match(String(h.recipients[0]?.error_message), /SMS destination/i);
+    assert.equal(h.sendCalls.length, 0);
+  });
+
+  it("fails fast when SMS is the only channel and it is not entitled", async () => {
+    const h = createPhase2Harness({
+      customers: [customer1],
+      prefs: prefsOn,
+      features: { campaigns: true, sms_channel: false },
+    });
+    const draft = await h.service.createDraft(ctx(), {
+      name: "SMS promo",
+      audience: { type: "manual", customerIds: ["cu-1"] },
+      content: { campaignTitle: "Hello", detail: "Offer inside" },
+      idempotencyKey: "p2-sms-unavail",
+      channels: ["sms"],
+    });
+    await assert.rejects(
+      () => h.service.execute(ctx(), { campaignId: draft.id }),
+      /SMS is not available/,
+    );
+  });
+
+  it("360 migration widens channel checks to SMS", () => {
+    const sql = readFileSync(
+      join(__dirname, "../../../../../supabase/migrations/360_marketing_campaigns_sms_channel.sql"),
+      "utf8",
+    );
+    assert.match(sql, /'sms'/);
+    assert.match(sql, /whatsapp', 'instagram', 'messenger', 'email', 'sms'/);
+  });
+
+  it("359 migration widens channel checks to email", () => {
+    const sql = readFileSync(
+      join(__dirname, "../../../../../supabase/migrations/359_marketing_campaigns_email_channel.sql"),
+      "utf8",
+    );
+    assert.match(sql, /'email'/);
+    assert.match(sql, /whatsapp', 'instagram', 'messenger', 'email'/);
   });
 });
 

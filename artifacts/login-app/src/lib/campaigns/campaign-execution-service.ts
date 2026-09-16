@@ -14,6 +14,7 @@ import {
   runInBatches,
   type CampaignChannelOutboundPort,
 } from "./channel-outbound-port";
+import { buildMessagingPresence } from "./campaign-customer-channel-availability";
 import {
   MetaMessagingCampaignCapabilityChecker,
   type CampaignFeatureEntitlementPort,
@@ -24,6 +25,11 @@ import {
   renderMetaMessagingCampaignText,
   type MetaMessagingChannelKey,
 } from "./thread-eligibility";
+import {
+  campaignEmailChannelVariables,
+  campaignTextChannelVariables,
+  parseCampaignContentDefinition,
+} from "./campaign-content";
 import {
   MarketingCampaignError,
   normalizeCampaignChannels,
@@ -40,6 +46,16 @@ import {
   type MarketingCampaignStatus,
 } from "./types";
 import { WhatsAppCampaignCapabilityChecker } from "./whatsapp-capability";
+import {
+  EmailCampaignCapabilityChecker,
+  hasCampaignOutboundEmail,
+  resolveCampaignOutboundEmail,
+} from "./email-capability";
+import {
+  SmsCampaignCapabilityChecker,
+  hasCampaignOutboundSms,
+  resolveCampaignOutboundSms,
+} from "./sms-capability";
 import { isCompanyFeatureEnabled } from "@/lib/billing/require-company-feature";
 
 export const CAMPAIGNS_FEATURE_CODE = "campaigns" as const;
@@ -132,12 +148,11 @@ function serializeAudience(audience: CampaignAudienceDefinition): {
   };
 }
 
-function parseContent(definition: Record<string, unknown>): CampaignContentDefinition {
-  return {
-    campaignTitle:
-      typeof definition.campaignTitle === "string" ? definition.campaignTitle.trim() : "",
-    detail: typeof definition.detail === "string" ? definition.detail.trim() : "",
-  };
+function parseContent(
+  definition: Record<string, unknown>,
+  companyId?: string,
+): CampaignContentDefinition {
+  return parseCampaignContentDefinition(definition, companyId);
 }
 
 function recipientKey(customerId: string, channel: MarketingCampaignChannel): string {
@@ -148,19 +163,32 @@ function recipientKey(customerId: string, channel: MarketingCampaignChannel): st
  * Map WhatsApp CommunicationDispatcher result → recipient status.
  * queued = notification_queue work created. Never treat queue success as sent.
  */
+function dispatcherMissingDestinationMessage(channel: "whatsapp" | "email" | "sms"): string {
+  if (channel === "email") return "Customer has no eligible email destination";
+  if (channel === "sms") return "Customer has no eligible SMS destination";
+  return "Customer has no eligible WhatsApp destination";
+}
+
+function dispatcherEnqueueFailedMessage(channel: "whatsapp" | "email" | "sms"): string {
+  if (channel === "email") return "email_enqueue_failed";
+  if (channel === "sms") return "sms_enqueue_failed";
+  return "whatsapp_enqueue_failed";
+}
+
 export function mapDispatcherResultToRecipientOutcome(
-  phone: string | null | undefined,
+  destination: string | null | undefined,
   result: CommunicationSendResult | null,
+  channel: "whatsapp" | "email" | "sms" = "whatsapp",
 ): {
   status: "queued" | "failed" | "skipped";
   notification_queue_id: string | null;
   error_message: string | null;
 } {
-  if (!phone?.trim()) {
+  if (!destination?.trim()) {
     return {
       status: "skipped",
       notification_queue_id: null,
-      error_message: "Customer has no eligible WhatsApp destination",
+      error_message: dispatcherMissingDestinationMessage(channel),
     };
   }
 
@@ -172,23 +200,28 @@ export function mapDispatcherResultToRecipientOutcome(
     };
   }
 
-  if (result.skippedChannels.includes("whatsapp") && !result.channelQueueIds?.whatsapp) {
+  if (result.skippedChannels.includes(channel) && !result.channelQueueIds?.[channel]) {
     return {
       status: "skipped",
       notification_queue_id: null,
-      error_message: "WhatsApp channel skipped by preferences or provider",
+      error_message:
+        channel === "email"
+          ? "Email channel skipped by preferences or provider"
+          : channel === "sms"
+            ? "SMS channel skipped by preferences or provider"
+            : "WhatsApp channel skipped by preferences or provider",
     };
   }
 
-  if (result.failedChannels?.includes("whatsapp")) {
+  if (result.failedChannels?.includes(channel)) {
     return {
       status: "failed",
       notification_queue_id: null,
-      error_message: "whatsapp_enqueue_failed",
+      error_message: dispatcherEnqueueFailedMessage(channel),
     };
   }
 
-  const queueId = result.channelQueueIds?.whatsapp ?? result.queueIds[0] ?? null;
+  const queueId = result.channelQueueIds?.[channel] ?? result.queueIds[0] ?? null;
   if (queueId) {
     return {
       status: "queued",
@@ -200,7 +233,7 @@ export function mapDispatcherResultToRecipientOutcome(
   return {
     status: "failed",
     notification_queue_id: null,
-    error_message: "whatsapp_enqueue_failed",
+    error_message: dispatcherEnqueueFailedMessage(channel),
   };
 }
 
@@ -214,13 +247,15 @@ export type MarketingCampaignServiceOptions = {
 
 /**
  * Multi-channel campaign orchestration.
- * WhatsApp: CommunicationDispatcher → notification_queue (Phase 1 preserved).
+ * WhatsApp/Email/SMS: CommunicationDispatcher → notification_queue.
  * Instagram/Messenger: CampaignChannelOutboundPort → channel platform (never adapters).
  */
 export class MarketingCampaignService {
   private readonly repo: MarketingCampaignRepository;
   private readonly audience: CampaignAudienceResolver;
   private readonly whatsappCapability: WhatsAppCampaignCapabilityChecker;
+  private readonly emailCapability: EmailCampaignCapabilityChecker;
+  private readonly smsCapability: SmsCampaignCapabilityChecker;
   private readonly metaCapability: MetaMessagingCampaignCapabilityChecker;
   private readonly threadEligibility: CampaignThreadEligibilityResolver;
   private readonly channelOutbound: CampaignChannelOutboundPort | null;
@@ -235,6 +270,8 @@ export class MarketingCampaignService {
     this.audience = new CampaignAudienceResolver(client);
     this.entitlement = options.entitlement ?? defaultCampaignEntitlement(client);
     this.whatsappCapability = new WhatsAppCampaignCapabilityChecker(client, this.entitlement);
+    this.emailCapability = new EmailCampaignCapabilityChecker(client, this.entitlement);
+    this.smsCapability = new SmsCampaignCapabilityChecker(client, this.entitlement);
     this.metaCapability = new MetaMessagingCampaignCapabilityChecker(
       client,
       this.entitlement,
@@ -259,23 +296,27 @@ export class MarketingCampaignService {
       throw new MarketingCampaignError("Idempotency key is required", "invalid_input");
     }
 
-    const content = {
-      campaignTitle: input.content.campaignTitle.trim(),
-      detail: input.content.detail.trim(),
-    };
+    const content = parseCampaignContentDefinition(
+      {
+        campaignTitle: input.content.campaignTitle,
+        detail: input.content.detail,
+        attachments: input.content.attachments ?? [],
+      },
+      ctx.companyId,
+    );
     if (!content.campaignTitle) {
       throw new MarketingCampaignError("campaignTitle is required", "invalid_input");
+    }
+    if ((input.content.attachments?.length ?? 0) > 0 && content.attachments?.length !== input.content.attachments?.length) {
+      throw new MarketingCampaignError("One or more campaign attachments are invalid", "invalid_input");
     }
 
     const channels = normalizeCampaignChannels(input.channels ?? ["whatsapp"]);
     if (channels.length === 0) {
       throw new MarketingCampaignError(
-        "At least one supported channel is required (whatsapp, instagram, messenger)",
+        "At least one supported channel is required (whatsapp, instagram, messenger, email, sms)",
         "invalid_input",
       );
-    }
-    if ((input.channels ?? []).some((c) => String(c).toLowerCase() === "sms")) {
-      throw new MarketingCampaignError("SMS is not a supported campaign channel", "invalid_input");
     }
 
     const existing = await this.repo.findByIdempotencyKey(ctx.companyId, idempotencyKey);
@@ -332,21 +373,47 @@ export class MarketingCampaignService {
 
     const resolved = await this.audience.resolve(ctx.companyId, audience);
     const availability = await this.resolveChannelAvailability(ctx.companyId, channels);
+    const needsMessagingPresence = channels.some(
+      (channel) => channel === "instagram" || channel === "messenger",
+    );
+    let messagingPresence = new Map<string, Set<"instagram" | "messenger">>();
+    if (needsMessagingPresence && resolved.customers.length > 0) {
+      const { data, error } = await this.client
+        .from("conversations")
+        .select("customer_id, channel_type")
+        .eq("company_id", ctx.companyId)
+        .in("channel_type", ["instagram", "messenger"])
+        .is("deleted_at", null)
+        .in(
+          "customer_id",
+          resolved.customers.map((customer) => customer.id),
+        );
+      if (error) throw new Error(error.message);
+      messagingPresence = buildMessagingPresence(data ?? []);
+    }
     const byChannel: CampaignChannelEligibilityPreview[] = [];
 
     for (const channel of channels) {
       const companyAvailable =
         channel === "whatsapp"
           ? availability.whatsapp
-          : channel === "instagram"
-            ? availability.instagram
-            : availability.messenger;
+          : channel === "email"
+            ? availability.email
+            : channel === "sms"
+              ? availability.sms
+              : channel === "instagram"
+                ? availability.instagram
+                : availability.messenger;
       const unavailableReason =
         channel === "whatsapp"
           ? availability.whatsappReason
-          : channel === "instagram"
-            ? availability.instagramReason
-            : availability.messengerReason;
+          : channel === "email"
+            ? availability.emailReason
+            : channel === "sms"
+              ? availability.smsReason
+              : channel === "instagram"
+                ? availability.instagramReason
+                : availability.messengerReason;
 
       if (!companyAvailable) {
         byChannel.push({
@@ -367,13 +434,24 @@ export class MarketingCampaignService {
           else skipped += 1;
           continue;
         }
-        const thread = await this.threadEligibility.resolveForCustomer({
-          companyId: ctx.companyId,
-          customerId: customer.id,
-          channel,
-        });
-        if (thread.eligible) eligible += 1;
-        else skipped += 1;
+        if (channel === "email") {
+          if (hasCampaignOutboundEmail(customer)) eligible += 1;
+          else skipped += 1;
+          continue;
+        }
+        if (channel === "sms") {
+          if (hasCampaignOutboundSms(customer)) eligible += 1;
+          else skipped += 1;
+          continue;
+        }
+        if (
+          (channel === "instagram" || channel === "messenger") &&
+          messagingPresence.get(customer.id)?.has(channel) === true
+        ) {
+          eligible += 1;
+        } else {
+          skipped += 1;
+        }
       }
 
       byChannel.push({
@@ -481,18 +559,33 @@ export class MarketingCampaignService {
     }
 
     // Company-level capability: per-channel skip later if unavailable (don't abort other channels).
-    // WhatsApp-only campaigns that are unavailable still fail fast (Phase 1 behavior).
-    if (channels.length === 1 && channels[0] === "whatsapp") {
-      const capability = await this.whatsappCapability.check(ctx.companyId);
+    // Single-channel WhatsApp/Email/SMS campaigns that are unavailable still fail fast (Phase 1 behavior).
+    if (
+      channels.length === 1 &&
+      (channels[0] === "whatsapp" || channels[0] === "email" || channels[0] === "sms")
+    ) {
+      const sole = channels[0];
+      const capability =
+        sole === "email"
+          ? await this.emailCapability.check(ctx.companyId)
+          : sole === "sms"
+            ? await this.smsCapability.check(ctx.companyId)
+            : await this.whatsappCapability.check(ctx.companyId);
       if (!capability.available) {
+        const prefix =
+          sole === "email"
+            ? "email_unavailable"
+            : sole === "sms"
+              ? "sms_unavailable"
+              : "whatsapp_unavailable";
         await this.repo.updateCampaign(campaign.id, ctx.companyId, {
           status: "failed",
-          error_message: `whatsapp_unavailable:${capability.reason}`,
+          error_message: `${prefix}:${capability.reason}`,
           completed_at: new Date().toISOString(),
         });
         throw new MarketingCampaignError(
-          `WhatsApp is not available (${capability.reason})`,
-          "whatsapp_unavailable",
+          `${sole === "email" ? "Email" : sole === "sms" ? "SMS" : "WhatsApp"} is not available (${capability.reason})`,
+          sole === "whatsapp" ? "whatsapp_unavailable" : "channel_unavailable",
         );
       }
     }
@@ -523,7 +616,7 @@ export class MarketingCampaignService {
       campaign.audience_definition ?? {},
     );
     const resolved = await this.audience.resolve(ctx.companyId, audience);
-    const content = parseContent(campaign.content_definition ?? {});
+    const content = parseContent(campaign.content_definition ?? {}, ctx.companyId);
     if (!content.campaignTitle.trim()) {
       throw new MarketingCampaignError("campaignTitle is required", "invalid_input");
     }
@@ -539,6 +632,8 @@ export class MarketingCampaignService {
       channel: MarketingCampaignChannel;
     };
     const whatsappWork: WorkItem[] = [];
+    const emailWork: WorkItem[] = [];
+    const smsWork: WorkItem[] = [];
     const metaWork: WorkItem[] = [];
 
     for (const customer of resolved.customers) {
@@ -549,6 +644,8 @@ export class MarketingCampaignService {
           continue;
         }
         if (channel === "whatsapp") whatsappWork.push({ customer, channel });
+        else if (channel === "email") emailWork.push({ customer, channel });
+        else if (channel === "sms") smsWork.push({ customer, channel });
         else metaWork.push({ customer, channel });
       }
     }
@@ -565,6 +662,32 @@ export class MarketingCampaignService {
         byKey,
         channelAvailable: channelAvailability.whatsapp,
         unavailableReason: channelAvailability.whatsappReason,
+      });
+    }
+
+    for (const item of emailWork) {
+      await this.processEmailRecipient({
+        ctx,
+        campaign,
+        customer: item.customer,
+        content,
+        dispatcher,
+        byKey,
+        channelAvailable: channelAvailability.email,
+        unavailableReason: channelAvailability.emailReason,
+      });
+    }
+
+    for (const item of smsWork) {
+      await this.processSmsRecipient({
+        ctx,
+        campaign,
+        customer: item.customer,
+        content,
+        dispatcher,
+        byKey,
+        channelAvailable: channelAvailability.sms,
+        unavailableReason: channelAvailability.smsReason,
       });
     }
 
@@ -620,6 +743,10 @@ export class MarketingCampaignService {
   ): Promise<{
     whatsapp: boolean;
     whatsappReason: string | null;
+    email: boolean;
+    emailReason: string | null;
+    sms: boolean;
+    smsReason: string | null;
     instagram: boolean;
     instagramReason: string | null;
     messenger: boolean;
@@ -628,6 +755,10 @@ export class MarketingCampaignService {
     const result = {
       whatsapp: true,
       whatsappReason: null as string | null,
+      email: true,
+      emailReason: null as string | null,
+      sms: true,
+      smsReason: null as string | null,
       instagram: true,
       instagramReason: null as string | null,
       messenger: true,
@@ -638,6 +769,16 @@ export class MarketingCampaignService {
       const check = await this.whatsappCapability.check(companyId);
       result.whatsapp = check.available;
       result.whatsappReason = check.available ? null : `whatsapp_unavailable:${check.reason}`;
+    }
+    if (channels.includes("email")) {
+      const check = await this.emailCapability.check(companyId);
+      result.email = check.available;
+      result.emailReason = check.available ? null : `email_unavailable:${check.reason}`;
+    }
+    if (channels.includes("sms")) {
+      const check = await this.smsCapability.check(companyId);
+      result.sms = check.available;
+      result.smsReason = check.available ? null : `sms_unavailable:${check.reason}`;
     }
     if (channels.includes("instagram")) {
       const check = await this.metaCapability.check(companyId, "instagram");
@@ -745,11 +886,10 @@ export class MarketingCampaignService {
           phone: outbound.phone,
           email: input.customer.email,
         },
-        variables: {
+        variables: campaignTextChannelVariables({
           customerName: input.customer.name,
-          campaignTitle: input.content.campaignTitle,
-          detail: input.content.detail,
-        },
+          content: input.content,
+        }),
         idempotencyKey: `campaign:${input.campaign.id}:customer:${input.customer.id}:whatsapp`,
         metadata: {
           campaignId: input.campaign.id,
@@ -766,6 +906,172 @@ export class MarketingCampaignService {
     }
 
     const outcome = mapDispatcherResultToRecipientOutcome(outbound.phone, sendResult);
+    await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+      status: outcome.status,
+      notification_queue_id: outcome.notification_queue_id,
+      error_message: outcome.error_message,
+    });
+  }
+
+  private async processEmailRecipient(input: {
+    ctx: LoginAppPortContext;
+    campaign: MarketingCampaignRecord;
+    customer: CampaignAudienceCustomer;
+    content: CampaignContentDefinition;
+    dispatcher: CommunicationDispatcher;
+    byKey: Map<string, MarketingCampaignRecipientRecord>;
+    channelAvailable: boolean;
+    unavailableReason: string | null;
+  }): Promise<void> {
+    const recipient = await this.claimOrResumeRecipient({
+      campaignId: input.campaign.id,
+      companyId: input.ctx.companyId,
+      customerId: input.customer.id,
+      channel: "email",
+      byKey: input.byKey,
+    });
+    if (!recipient) return;
+
+    if (!input.channelAvailable) {
+      await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+        status: "skipped",
+        error_message: input.unavailableReason ?? "email_unavailable",
+      });
+      return;
+    }
+
+    const outbound = resolveCampaignOutboundEmail(input.customer);
+    if (!outbound.ok) {
+      await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+        status: "skipped",
+        notification_queue_id: null,
+        error_message:
+          outbound.reason === "missing_email"
+            ? "Customer has no eligible email destination"
+            : "invalid_email",
+      });
+      return;
+    }
+
+    let sendResult: CommunicationSendResult | null = null;
+    try {
+      sendResult = await input.dispatcher.send({
+        companyId: input.ctx.companyId,
+        templateKey: "marketing_campaign",
+        channels: ["email"],
+        recipient: {
+          customerId: input.customer.id,
+          name: input.customer.name,
+          phone: input.customer.phone,
+          email: outbound.email,
+        },
+        variables: campaignEmailChannelVariables({
+          customerName: input.customer.name,
+          content: input.content,
+          companyId: input.ctx.companyId,
+        }),
+        idempotencyKey: `campaign:${input.campaign.id}:customer:${input.customer.id}:email`,
+        metadata: {
+          source: "marketing_campaign",
+          campaignId: input.campaign.id,
+          campaignRecipientId: recipient.id,
+          channel: "email",
+        },
+      });
+    } catch (error) {
+      await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+        status: "failed",
+        notification_queue_id: null,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+
+    const outcome = mapDispatcherResultToRecipientOutcome(outbound.email, sendResult, "email");
+    await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+      status: outcome.status,
+      notification_queue_id: outcome.notification_queue_id,
+      error_message: outcome.error_message,
+    });
+  }
+
+  private async processSmsRecipient(input: {
+    ctx: LoginAppPortContext;
+    campaign: MarketingCampaignRecord;
+    customer: CampaignAudienceCustomer;
+    content: CampaignContentDefinition;
+    dispatcher: CommunicationDispatcher;
+    byKey: Map<string, MarketingCampaignRecipientRecord>;
+    channelAvailable: boolean;
+    unavailableReason: string | null;
+  }): Promise<void> {
+    const recipient = await this.claimOrResumeRecipient({
+      campaignId: input.campaign.id,
+      companyId: input.ctx.companyId,
+      customerId: input.customer.id,
+      channel: "sms",
+      byKey: input.byKey,
+    });
+    if (!recipient) return;
+
+    if (!input.channelAvailable) {
+      await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+        status: "skipped",
+        error_message: input.unavailableReason ?? "sms_unavailable",
+      });
+      return;
+    }
+
+    const outbound = resolveCampaignOutboundSms({
+      phone: input.customer.phone,
+      phoneE164: input.customer.phoneE164,
+    });
+    if (!outbound.ok) {
+      await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+        status: "skipped",
+        notification_queue_id: null,
+        error_message:
+          outbound.reason === "missing_phone"
+            ? "Customer has no eligible SMS destination"
+            : "phone_identity_unresolved",
+      });
+      return;
+    }
+
+    let sendResult: CommunicationSendResult | null = null;
+    try {
+      sendResult = await input.dispatcher.send({
+        companyId: input.ctx.companyId,
+        templateKey: "marketing_campaign",
+        channels: ["sms"],
+        recipient: {
+          customerId: input.customer.id,
+          name: input.customer.name,
+          phone: outbound.phone,
+          email: input.customer.email,
+        },
+        variables: campaignTextChannelVariables({
+          customerName: input.customer.name,
+          content: input.content,
+        }),
+        idempotencyKey: `campaign:${input.campaign.id}:customer:${input.customer.id}:sms`,
+        metadata: {
+          source: "marketing_campaign",
+          campaignId: input.campaign.id,
+          campaignRecipientId: recipient.id,
+          channel: "sms",
+        },
+      });
+    } catch (error) {
+      await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
+        status: "failed",
+        notification_queue_id: null,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+
+    const outcome = mapDispatcherResultToRecipientOutcome(outbound.phone, sendResult, "sms");
     await this.repo.updateRecipient(recipient.id, input.ctx.companyId, {
       status: outcome.status,
       notification_queue_id: outcome.notification_queue_id,

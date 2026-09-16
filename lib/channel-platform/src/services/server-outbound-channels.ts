@@ -4,6 +4,7 @@ export const SERVER_OUTBOUND_CHANNEL_KEYS = [
   "instagram",
   "messenger",
   "email",
+  "sms",
 ] as const;
 
 export type ServerOutboundChannelKey = (typeof SERVER_OUTBOUND_CHANNEL_KEYS)[number];

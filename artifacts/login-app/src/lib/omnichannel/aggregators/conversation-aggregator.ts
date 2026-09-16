@@ -130,6 +130,7 @@ export class ConversationAggregator {
       conversationNumber: conversation.conversation_number,
       companyChannelId: conversation.company_channel_id,
       externalThreadId: conversation.external_thread_id,
+      ticketContext: null,
       source: conversation,
     };
 

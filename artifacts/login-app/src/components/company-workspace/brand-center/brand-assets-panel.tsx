@@ -26,7 +26,6 @@ const ADVANCED_SLOTS: {
   { slot: "light", labelKey: "logoLight", usageKey: "light", focusId: BRAND_FOCUS.logoLight },
   { slot: "square", labelKey: "logoSquare", usageKey: "square", focusId: BRAND_FOCUS.logoSquare },
   { slot: "invoice", labelKey: "logoInvoice", usageKey: "invoice", focusId: BRAND_FOCUS.logoInvoice },
-  { slot: "email", labelKey: "logoEmail", usageKey: "email", focusId: BRAND_FOCUS.logoEmail },
 ];
 
 const ADVANCED_FOCUS_IDS = new Set(ADVANCED_SLOTS.map((s) => s.focusId));

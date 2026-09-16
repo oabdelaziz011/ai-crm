@@ -7,6 +7,7 @@ const DEFAULT_PROVIDERS: Partial<Record<CommunicationChannelKey, string>> = {
   instagram: "meta",
   telegram: "telegram",
   email: "generic.email",
+  sms: "twilio",
 };
 
 const FIXED_PROVIDER_CHANNEL_KEYS = new Set<CommunicationChannelKey>(["web_chat"]);

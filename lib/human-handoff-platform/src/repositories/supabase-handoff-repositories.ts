@@ -465,11 +465,13 @@ export function createSupabaseHandoffRepository(client: SupabaseClient): Handoff
     },
 
     async expireStalePresence(companyId, cutoffIso) {
+      // Normalize only STALE ONLINE → OFFLINE. Busy/away/break/dnd are left unchanged.
+      // `.lt("last_heartbeat_at", cutoffIso)` prevents overwriting a newer heartbeat (race-safe).
       const { data, error } = await client
         .from("agent_presence")
         .update({ state: "offline", updated_at: new Date().toISOString() })
         .eq("company_id", companyId)
-        .in("state", ["online", "busy", "away"])
+        .eq("state", "online")
         .lt("last_heartbeat_at", cutoffIso)
         .select("id");
       if (error) throw new Error(error.message);

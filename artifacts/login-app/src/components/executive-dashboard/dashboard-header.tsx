@@ -78,7 +78,7 @@ export const DashboardHeader = memo(function DashboardHeader({
     <header className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground">
             {companyName}
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">{title}</h1>

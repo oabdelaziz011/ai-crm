@@ -3,11 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** Exact persistence key required by Sprint 3.10.7. */
 export const INBOX_WIDTH_STORAGE_KEY = "desk.inbox.width";
 
-export const INBOX_PANEL_MIN = 320;
-export const INBOX_PANEL_MAX = 520;
-export const INBOX_PANEL_DEFAULT = 340;
+export const INBOX_PANEL_MIN = 300;
+export const INBOX_PANEL_MAX = 380;
+export const INBOX_PANEL_DEFAULT = 320;
 export const INBOX_RESIZE_MIN_VIEWPORT = 1400;
-export const CONVERSATION_PANEL_MIN = 650;
+export const CONVERSATION_PANEL_MIN = 520;
 
 function clampInboxWidth(width: number, maxAllowed = INBOX_PANEL_MAX): number {
   return Math.min(maxAllowed, Math.max(INBOX_PANEL_MIN, width));
@@ -113,8 +113,12 @@ export function useInboxPanelWidth() {
       const maxAllowed = resolveMaxWidth();
 
       const onMove = (event: PointerEvent) => {
-        // Inbox sits on the trailing (right in LTR shell) edge.
-        const next = clampInboxWidth(bodyRect.right - event.clientX, maxAllowed);
+        // LTR: inbox on the left edge. RTL: inbox on the right edge.
+        const shellRtl = body.getAttribute("data-ws-shell") === "rtl" || body.dir === "rtl";
+        const next = clampInboxWidth(
+          shellRtl ? bodyRect.right - event.clientX : event.clientX - bodyRect.left,
+          maxAllowed,
+        );
         persistedRef.current = next;
         applyWidth(next);
       };

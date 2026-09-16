@@ -62,7 +62,7 @@ export function buildConversationHeader(input: HeaderBuildInput): ConversationHe
       : null);
 
   const tags = overlay?.tags ?? [];
-  const slaDueAt = overlay?.slaDueAt ?? null;
+  // Ticket-centric SLA: conversation metadata is never authoritative for header SLA.
 
   return {
     conversationId: record.id,
@@ -88,9 +88,9 @@ export function buildConversationHeader(input: HeaderBuildInput): ConversationHe
     lifecycleState,
     backendState: record.state,
     sla: {
-      dueAt: slaDueAt,
-      breached: slaDueAt ? new Date(slaDueAt).getTime() < Date.now() : false,
-      label: slaDueAt ? `Due ${new Date(slaDueAt).toLocaleString()}` : null,
+      dueAt: null,
+      breached: false,
+      label: null,
     },
     tags,
     conversationNumber: record.conversation_number,

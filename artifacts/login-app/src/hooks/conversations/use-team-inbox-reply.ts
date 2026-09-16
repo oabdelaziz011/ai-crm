@@ -21,6 +21,7 @@ import type {
   ComposerUploadedAttachment,
 } from "@/lib/omnichannel/types/composer-enterprise-types";
 import { conversationMessagesQueryKey } from "./use-conversation-messages";
+import { supabase } from "@/lib/supabase";
 import {
   beginOmniSendRun,
   detectOmniSendStall,
@@ -39,6 +40,11 @@ export type TeamInboxSendPayload = {
   mode: ReplyMode;
   attachments?: ComposerUploadedAttachment[];
   mentions?: ComposerMention[];
+  /**
+   * Email Workspace — outbound metadata for Reply / Reply All / Forward / Compose.
+   * Merged into dispatch metadata when channelKey is email (never auto-send).
+   */
+  emailOutbound?: Record<string, unknown>;
 };
 
 function mapAttachmentsForDispatch(attachments: ComposerUploadedAttachment[]) {
@@ -53,6 +59,12 @@ function mapAttachmentsForDispatch(attachments: ComposerUploadedAttachment[]) {
   }));
 }
 
+function emailHtmlFromOutbound(emailOutbound?: Record<string, unknown>): string | null {
+  if (!emailOutbound || typeof emailOutbound !== "object") return null;
+  const html = emailOutbound.htmlSanitized;
+  return typeof html === "string" && html.trim() ? html.trim() : null;
+}
+
 function buildOptimisticMessage(
   target: ReplyTarget,
   payload: TeamInboxSendPayload,
@@ -62,6 +74,7 @@ function buildOptimisticMessage(
 ): ConversationMessageRecord {
   const now = new Date().toISOString();
   const attachmentFields = buildAttachmentMessageFields(payload.attachments ?? []);
+  const htmlSanitized = emailHtmlFromOutbound(payload.emailOutbound);
   return {
     id: optimisticId,
     conversation_id: target.conversationId,
@@ -77,6 +90,8 @@ function buildOptimisticMessage(
       attachments: attachmentFields.metadataAttachments,
       [OUTBOUND_METADATA.optimistic]: true,
       [OUTBOUND_METADATA.outboundPhase]: outboundPhase,
+      // Persist outbound HTML so thread rendering can show body → logo → signature.
+      ...(htmlSanitized ? { htmlSanitized } : {}),
     },
     status: "pending",
     external_message_id: null,
@@ -143,6 +158,7 @@ export function useTeamInboxReply(companyId: string | null) {
           extra: { mode: payload.mode },
         });
         const attachmentFields = buildAttachmentMessageFields(attachments);
+        const htmlSanitized = emailHtmlFromOutbound(payload.emailOutbound);
         const messageMetadata = {
           source: payload.mode === "internal_note" ? "omnichannel_internal_note" : "team_inbox",
           agentUserId: profile?.id ?? null,
@@ -160,6 +176,8 @@ export function useTeamInboxReply(companyId: string | null) {
                 ]
               : [],
           ...(payload.mode === "reply" ? { [OUTBOUND_METADATA.outboundPhase]: "preparing" } : {}),
+          // Same HTML passed to SMTP/Graph — required for sent-thread logo rendering.
+          ...(htmlSanitized ? { htmlSanitized } : {}),
         };
 
         if (payload.mode === "reply") {
@@ -314,6 +332,9 @@ export function useTeamInboxReply(companyId: string | null) {
                   source: "team_inbox",
                   conversationMessageId: persisted.id,
                   mentions: payload.mentions ?? [],
+                  ...(route.channel_key === "email" && payload.emailOutbound
+                    ? payload.emailOutbound
+                    : {}),
                 },
               },
             ),
@@ -415,13 +436,63 @@ export function useTeamInboxReply(companyId: string | null) {
         });
         return true;
       } catch (err) {
+        const detail = err instanceof Error ? err.message : "send_failed";
         if (optimisticId) {
-          queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
-            (current ?? []).filter((message) => message.id !== optimisticId),
-          );
+          const persistedId = optimisticId.startsWith("optimistic-") ? null : optimisticId;
+          if (persistedId && payload.mode === "reply") {
+            // Persist failure so outbound does not remain stuck in preparing/dispatching.
+            try {
+              const { data: existing } = await supabase
+                .from("conversation_messages")
+                .select("metadata")
+                .eq("id", persistedId)
+                .eq("conversation_id", target.conversationId)
+                .maybeSingle();
+              const prior =
+                existing?.metadata && typeof existing.metadata === "object"
+                  ? (existing.metadata as Record<string, unknown>)
+                  : {};
+              await supabase
+                .from("conversation_messages")
+                .update({
+                  status: "failed",
+                  metadata: {
+                    ...prior,
+                    [OUTBOUND_METADATA.optimistic]: false,
+                    [OUTBOUND_METADATA.outboundPhase]: "failed",
+                    [OUTBOUND_METADATA.dispatchFailed]: true,
+                    [OUTBOUND_METADATA.dispatchError]: detail.slice(0, 400),
+                    [OUTBOUND_METADATA.dispatchConfirmed]: false,
+                  },
+                })
+                .eq("id", persistedId)
+                .eq("conversation_id", target.conversationId);
+            } catch {
+              // best-effort failure persistence
+            }
+            queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
+              (current ?? []).map((message) =>
+                message.id === persistedId
+                  ? patchOptimisticMessage(message, {
+                      status: "failed",
+                      metadata: {
+                        [OUTBOUND_METADATA.optimistic]: false,
+                        [OUTBOUND_METADATA.outboundPhase]: "failed",
+                        [OUTBOUND_METADATA.dispatchFailed]: true,
+                        [OUTBOUND_METADATA.dispatchError]: detail.slice(0, 400),
+                        [OUTBOUND_METADATA.dispatchConfirmed]: false,
+                      },
+                    })
+                  : message,
+              ),
+            );
+          } else {
+            queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
+              (current ?? []).filter((message) => message.id !== optimisticId),
+            );
+          }
         }
 
-        const detail = err instanceof Error ? err.message : "send_failed";
         setError({
           code: payload.mode === "reply" ? "dispatch_failed" : "send_failed",
           message:

@@ -116,6 +116,7 @@ export function buildAiAssistModel(
     labelLocale?: ResolvedConversationLanguage;
     lifecycleState?: LifecycleState;
     customerContext?: OmnichannelCustomerContext | null;
+    variantOffset?: number;
   },
 ): OmnichannelAiAssistModel {
   const recentCustomerMessages = messages
@@ -160,6 +161,8 @@ export function buildAiAssistModel(
     lifecycleState: options?.lifecycleState,
     knowledgeSuggestions: mergedKnowledge,
     customerContext: options?.customerContext,
+    limit: 4,
+    variantOffset: options?.variantOffset ?? 0,
   });
 
   const translationNote =

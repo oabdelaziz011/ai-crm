@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "VaultOS",
+    "name": "ValueOR",
     "dashboard": "Dashboard"
   },
   "pagination": {
@@ -214,6 +214,7 @@
     "omnichannel": "Omnichannel Console",
     "channels": "Channels",
     "email": "Email",
+    "sms": "SMS",
     "aiUsage": "AI Usage & Cost",
     "aiAnalytics": "AI Analytics",
     "aiAssistant": "AI Assistant",
@@ -668,6 +669,41 @@
         "channelRequired": "Create an Instagram channel before running health checks."
       }
     },
+    "sms": {
+      "settings": {
+        "title": "SMS Settings",
+        "enabled": "Enable SMS",
+        "provider": "Provider",
+        "providerPlaceholder": "Select an SMS provider",
+        "providerNone": "No provider selected",
+        "providerBoundary": "Select a provider to configure SMS credentials. Connection stays Not Connected until a live test succeeds.",
+        "providers": {
+          "twilio": "Twilio"
+        },
+        "accountSid": "Account / Provider Identifier",
+        "fromNumber": "Sender Number",
+        "authToken": "Auth Token",
+        "authTokenHint": "Stored encrypted server-side. Leave blank to keep the existing token.",
+        "webhookUrl": "Webhook",
+        "webhookUrlHelp": "Inbound SMS webhook URL derived from the ValueOR API base. Secrets are never shown here.",
+        "openChannels": "Open Channel Administration",
+        "saved": "SMS settings saved",
+        "saveFailed": "Could not save SMS settings",
+        "status": {
+          "connected": "Connected",
+          "not_connected": "Not Connected",
+          "disabled": "Disabled"
+        },
+        "healthTitle": "Connection Status",
+        "healthIdle": "Run a connection test to verify the configured provider can authenticate.",
+        "healthOk": "SMS connection healthy ({{ms}} ms)",
+        "healthFailed": "SMS check failed: {{error}}",
+        "connectionTest": "Test Connection",
+        "connectionTestSuccess": "SMS connection test passed",
+        "connectionTestFailed": "SMS connection test failed",
+        "apiMissing": "Configure VITE_API_SERVER_URL to run SMS connection tests."
+      }
+    },
     "defaults": {
       "unknown": "Unknown",
       "service": "service",
@@ -773,7 +809,7 @@
       "noAccess": "No access yet?",
       "requestEntry": "Request entry",
       "successTitle": "Access granted",
-      "successDescription": "Welcome to Vault.",
+      "successDescription": "Welcome to ValueOR.",
       "forgotPassword": "Forgot password?"
     },
     "register": {
@@ -1068,6 +1104,7 @@
       "none": "No custom roles yet. Create a role to define permissions for your team.",
       "edit": "Edit role",
       "create": "Create role",
+      "view": "View role",
       "namePlaceholder": "Sales Lead",
       "descriptionPlaceholder": "Can manage customers and bookings"
     },
@@ -1635,6 +1672,8 @@
         "overview": "Overview",
         "activity": "Activity",
         "tickets": "Tickets",
+        "email": "Email",
+        "sms": "SMS",
         "bookings": "Bookings",
         "invoices": "Invoices",
         "payments": "Payments",
@@ -1670,6 +1709,57 @@
           "open": "Open / active",
           "urgent": "High / urgent",
           "waiting": "Waiting customer"
+        }
+      },
+      "email": {
+        "showing": "{{count}} conversation(s)",
+        "emptyTitle": "No email conversations",
+        "emptyDescription": "Inbound and outbound emails linked to this customer will appear here.",
+        "incoming": "Incoming",
+        "outgoing": "Outgoing",
+        "system": "System",
+        "flowIncoming": "Customer → ValueOR",
+        "flowOutgoing": "ValueOR → Customer",
+        "from": "From: {{email}}",
+        "to": "To: {{email}}",
+        "assignedTo": "Assigned to: {{name}}",
+        "sentBy": "Sent by: {{name}}",
+        "openConversation": "Open conversation",
+        "thread": "Thread",
+        "threadEmpty": "No messages in this thread yet.",
+        "noSubject": "No subject",
+        "loadMore": "Load more",
+        "status": {
+          "draft": "Draft",
+          "sending": "Sending",
+          "sent": "Sent",
+          "failed": "Failed"
+        }
+      },
+      "sms": {
+        "showing": "{{count}} conversation(s)",
+        "emptyTitle": "No SMS conversations",
+        "emptyDescription": "Inbound and outbound texts linked to this customer will appear here.",
+        "incoming": "Incoming",
+        "outgoing": "Outgoing",
+        "system": "System",
+        "flowIncoming": "Customer → ValueOR",
+        "flowOutgoing": "ValueOR → Customer",
+        "phone": "Phone: {{phone}}",
+        "unknownPhone": "Unknown phone",
+        "assignedTo": "Assigned to: {{name}}",
+        "unassigned": "Unassigned",
+        "sentBy": "Sent by: {{name}}",
+        "openConversation": "Open in SMS",
+        "thread": "Thread",
+        "threadEmpty": "No messages in this thread yet.",
+        "loadMore": "Load more",
+        "status": {
+          "pending": "Pending",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "failed": "Failed",
+          "read": "Read"
         }
       },
       "campaigns": {
@@ -2067,6 +2157,7 @@
       "disableChannel": "Disable channel",
       "whatsappConfig": "WhatsApp channel",
       "whatsappCredentialsManagedInSettings": "Meta credentials are managed in Settings →",
+      "smsCredentialsManagedInSettings": "SMS credentials are managed in Settings →",
       "phoneNumberIdSyncedHint": "Synced from WhatsApp Provider settings",
       "phoneNumberId": "Phone number ID",
       "accessToken": "Access token",
@@ -2143,6 +2234,7 @@
         "internal": "Internal",
         "meta": "Meta",
         "telegram": "Telegram",
+        "twilio": "Twilio",
         "generic.web_chat": "Internal Web Chat",
         "generic.email": "Internal Email"
       }
@@ -2218,8 +2310,8 @@
       "loading": "Loading conversation…",
       "newConversation": "New conversation",
       "placeholder": "Ask anything about your business…",
-      "name": "Vault AI",
-      "welcome": "Hi! I'm your Vault AI assistant. Ask me anything about your customers, bookings, invoices, or business insights.",
+      "name": "ValueOR AI",
+      "welcome": "Hi! I'm your ValueOR AI assistant. Ask me anything about your customers, bookings, invoices, or business insights.",
       "sampleQuestion": "How many bookings do I have this week?",
       "sampleAnswer": "You have 18 bookings this week — 4 today, 6 tomorrow, and 8 spread across the rest of the week. 7 are still pending confirmation. Want me to send reminders?",
       "demoResponse": "I'm a demo AI — real responses will appear once the AI backend is connected. Your question was: “{{question}}”",
@@ -2496,6 +2588,7 @@
         "whatsapp": "WhatsApp",
         "messenger": "Messenger",
         "instagram": "Instagram",
+        "sms": "SMS",
         "calendar": "Calendar",
         "scheduling": "Scheduling",
         "ticketSla": "Ticket SLA",
@@ -2564,14 +2657,14 @@
       },
       "appearance": {
         "title": "Theme",
-        "description": "Choose how VaultOS looks on this device. Your selection is saved to your profile.",
+        "description": "Choose how ValueOR looks on this device. Your selection is saved to your profile.",
         "recommended": "Recommended",
         "system": "System",
-        "systemDesc": "Follow your device light/dark setting, and restore the original platform UI colors (without Brand Center overrides).",
+        "systemDesc": "Follow your device light/dark setting. Sidebar and brand colors stay the same as Light or Dark.",
         "light": "Light",
-        "lightDesc": "Always use the light theme.",
+        "lightDesc": "Always use the ValueOR light theme.",
         "dark": "Dark",
-        "darkDesc": "Always use the dark theme.",
+        "darkDesc": "Always use the ValueOR dark theme.",
         "saveFailedTitle": "Could not save theme",
         "saveFailedDescription": "Your theme preference could not be saved. Please try again.",
         "colorsResetFailed": "Could not restore the original brand colors. Please try again."
@@ -2837,26 +2930,87 @@
       "resultsEmpty": "Retrieval results will appear here after you run a test."
     }
   },
+  "smsModule": {
+    "title": "SMS",
+    "subtitle": "Company SMS inbox — read customer texts and reply from one place.",
+    "nav": {
+      "inbox": "Inbox",
+      "settings": "Configure SMS"
+    },
+    "setup": {
+      "title": "SMS channel",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "disabled": "Disabled",
+      "configure": "Configure SMS",
+      "notConfiguredHint": "Add your SMS provider credentials and sender number in Settings → SMS before replying.",
+      "disabledHint": "The SMS channel is turned off for this company. Enable it in Settings → SMS."
+    },
+    "workspace": {
+      "loading": "Loading…",
+      "search": "Search conversations or phone numbers…",
+      "assignedTo": "Assigned to",
+      "assigneeAll": "All",
+      "unassigned": "Unassigned",
+      "assigneeSearch": "Search employees…",
+      "assigneeEmpty": "No matching employees.",
+      "assigneeSaved": "Assignment saved",
+      "assigneeSaving": "Saving assignment…",
+      "assigneeSaveFailed": "Assignment could not be saved.",
+      "assigneeUnauthorized": "You do not have permission to assign this conversation.",
+      "assigneeUnavailable": "This conversation is no longer available.",
+      "unread": "Unread",
+      "clearFilters": "Clear filters",
+      "emptyConversations": "No SMS conversations yet. Inbound texts appear here automatically.",
+      "emptyResults": "No conversations match these filters.",
+      "emptyNoConfig": "SMS is not connected yet, so there are no conversations to show.",
+      "noMessages": "No messages in this conversation yet.",
+      "selectConversation": "Select a conversation to read the thread and reply.",
+      "customer": "Customer",
+      "unknownCustomer": "Unknown customer",
+      "phone": "Phone",
+      "crmPhone": "CRM phone",
+      "composer": "Type your SMS reply…",
+      "characterCount": "{{chars}}/{{max}} characters · {{segments}} segment(s)",
+      "send": "Send",
+      "sending": "Sending…",
+      "sendFailed": "The SMS could not be delivered. Please try again.",
+      "listFailed": "Conversations could not be loaded.",
+      "threadFailed": "This conversation could not be loaded.",
+      "channelNotConfigured": "This conversation has no SMS channel attached, so it cannot receive a reply.",
+      "destinationMissing": "No customer phone number is linked to this conversation thread.",
+      "notConfiguredSendBlocked": "Connect SMS in Settings before sending replies.",
+      "connected": "Connected",
+      "notConfigured": "Not connected",
+      "disabled": "Disabled",
+      "configureSms": "Configure SMS"
+    }
+  },
   "emailModule": {
     "title": "Email",
     "subtitle": "Company email inbox, templates, AI routing, and channel settings.",
     "nav": {
       "inbox": "Inbox",
       "sent": "Sent",
-      "drafts": "Drafts",
+      "drafts": "Pending",
       "templates": "Templates",
       "aiRouting": "AI Routing",
       "settings": "Settings"
     },
     "inbox": {
-      "hint": "Inbound and outbound email delivery activity for your company (email channel)."
+      "hint": "Inbound and outbound email delivery activity for your company (email channel).",
+      "showDelivery": "Show delivery log",
+      "hideDelivery": "Hide delivery log",
+      "deliverySecondaryHint": "Delivery events for this company email channel."
     },
     "sent": {
-      "hint": "Sent email deliveries from the existing communication queue."
+      "hint": "Outbound conversations you sent from Email Workspace."
     },
     "drafts": {
-      "title": "Drafts",
-      "empty": "No email draft store is available yet. Compose and send through existing email channel settings."
+      "title": "Pending",
+      "empty": "Conversations with an unsent draft appear here until you send or discard them.",
+      "noneFound": "No pending drafts.",
+      "openInWorkspace": "Open in Email Workspace"
     },
     "templates": {
       "title": "Templates",
@@ -2912,7 +3066,22 @@
       "testSendError": "Unable to send test email.",
       "testSendSaveFirst": "Save the template before sending a test.",
       "testSendDisabled": "Enable the template before sending a test.",
-      "testSendNotConfigured": "Outbound email is not configured. Configure SMTP in Email Settings first."
+      "testSendNotConfigured": "Outbound email is not configured. Configure SMTP in Email Settings first.",
+      "category": "Category",
+      "previewSampleNotice": "Preview uses sample variables — real sends use live customer data.",
+      "aiImprove": {
+        "heading": "Improve with AI",
+        "hint": "Suggest clearer wording. Never sends email."
+      },
+      "recommended": {
+        "hint": "Suggested starter templates. Save a copy before editing."
+      },
+      "categories": {
+        "other": "Other",
+        "complaints": "Complaints",
+        "tickets": "Support / Tickets",
+        "followUp": "Follow-up"
+      }
     },
     "aiRouting": {
       "title": "AI Email Routing",
@@ -2939,7 +3108,8 @@
         "category": "Category",
         "enabled": "Enabled",
         "targetType": "Target Type",
-        "target": "Target"
+        "target": "Target",
+        "ticketAction": "Ticket action"
       },
       "targetTypes": {
         "department": "Department",
@@ -2953,6 +3123,467 @@
         "complaint": "Complaint",
         "hr": "HR",
         "generalInquiry": "General Inquiry"
+      },
+      "neverAutoSend": "AI does not send email automatically and does not create tickets at random.",
+      "confidenceTitle": "AI confidence and fallback",
+      "confidenceHint": "Low-confidence messages stay available for manual review.",
+      "confidence": {
+        "high": "High confidence",
+        "highBody": "Route automatically using the configured rule.",
+        "low": "Low confidence",
+        "lowBody": "Below {{percent}}% goes to manual review. The threshold is fixed by the routing engine.",
+        "unavailable": "AI unavailable",
+        "unavailableBody": "Deterministic fallback and safe unresolved routing apply."
+      },
+      "ticketTitle": "Email → Ticket",
+      "ticketBody": "Tickets are created or reused only after a routing target is resolved. The LLM cannot create tickets by itself.",
+      "ticket": {
+        "create": "Create a new ticket when no conversation ticket exists.",
+        "reuse": "Reuse the existing conversation ticket when one is already linked.",
+        "none": "Do not create a ticket when the route is unresolved.",
+        "manual": "Unresolved or low-confidence mail stays available for manual handling.",
+        "createOrReuse": "Create or reuse ticket",
+        "manualShort": "Manual review"
+      },
+      "flowTitle": "Routing flow",
+      "flowBody": "Classify → match a rule → assign a target → optionally create or reuse a ticket."
+    },
+    "controlCenter": {
+      "title": "Email Control Center",
+      "body": "Receive customer emails, route them to the right team, create tickets when needed, and use AI to write replies and save time.",
+      "readyBanner": "Email is ready to use.",
+      "collapsedNeedsSetup": "Email still needs setup before it is fully ready.",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "healthy": "Healthy",
+      "needsAttention": "Needs attention",
+      "actions": {
+        "configure": "Configure",
+        "fix": "Fix",
+        "upgrade": "Upgrade",
+        "view": "View"
+      },
+      "cards": {
+        "inbound": "Inbound email",
+        "outbound": "Outbound email",
+        "aiRouting": "AI routing",
+        "tickets": "Tickets",
+        "templates": "Templates",
+        "routing": "AI routing"
+      }
+    },
+    "connect": {
+      "title": "Connect Email",
+      "subtitle": "Choose how this company connects its mailbox. The Email Workspace stays the same for every provider.",
+      "currentProvider": "Provider",
+      "presetApplied": "Provider defaults applied",
+      "applyFailed": "Could not apply provider settings",
+      "connectMicrosoft": "Connect with Microsoft",
+      "microsoftConnected": "Microsoft 365 connected",
+      "microsoftFailed": "Microsoft connection failed",
+      "microsoftNotConfigured": "Microsoft OAuth is not configured on the server yet.",
+      "providers": {
+        "gmail": "Gmail / Google Workspace",
+        "microsoft_365": "Outlook / Microsoft 365",
+        "imap_smtp": "Other Email / IMAP + SMTP"
+      },
+      "providerHints": {
+        "gmail": "App Password over IMAP/SMTP (smtp.gmail.com / imap.gmail.com).",
+        "microsoft_365": "Sign in with Microsoft — passwords are never stored.",
+        "imap_smtp": "Corporate or custom IMAP and SMTP servers."
+      },
+      "status": {
+        "connected": "Connected",
+        "connecting": "Connecting",
+        "needs_reauthorization": "Needs reauthorization",
+        "connection_error": "Connection error",
+        "disabled": "Disabled"
+      }
+    },
+    "settingsHub": {
+      "intro": "Configure the email connection and the identity recipients see.",
+      "tabsNav": "Email settings sections",
+      "tabs": {
+        "connection": "Connection",
+        "identity": "Email Identity"
+      },
+      "connection": {
+        "title": "Connection",
+        "pageDescription": "Connect your mailbox and configure technical sending and receiving settings.",
+        "saveHint": "Save after updating SMTP or inbound settings.",
+        "permissionHint": "You need email connection permission to change these settings.",
+        "readOnlyBanner": "Connection settings are read-only for your role.",
+        "sections": {
+          "provider": "Connect mailbox",
+          "providerHint": "Choose Gmail, Microsoft 365, or custom IMAP/SMTP.",
+          "smtp": "Outbound SMTP",
+          "smtpHint": "Technical delivery settings used to send email.",
+          "inbound": "Inbound & receiving",
+          "inboundHint": "How ValueOR receives and processes inbound mail.",
+          "health": "Health & diagnostics",
+          "healthHint": "Test connectivity and review delivery health."
+        }
+      },
+      "sending": {
+        "title": "Sending",
+        "body": "Outbound SMTP delivery settings."
+      },
+      "identity": {
+        "title": "Email Identity",
+        "description": "Manage the email identity, logo, sender information, and signature shown to recipients.",
+        "saveChanges": "Save Changes",
+        "saveHint": "Save identity, signature, and footer changes together.",
+        "saved": "Email identity saved",
+        "saveFailed": "Could not save email identity",
+        "switchSaved": "Sending account updated",
+        "switchFailed": "Could not switch sending account",
+        "brandingPermissionHint": "You need company branding permission to edit sender identity and signature.",
+        "logo": {
+          "title": "Email Logo",
+          "description": "Choose the logo displayed in new emails sent from the workspace.",
+          "helper": "This logo appears in new emails sent from the workspace."
+        },
+        "emailSwitch": {
+          "title": "Email Account",
+          "description": "Choose the email account used to send messages.",
+          "helper": "Choose the email account used to send messages.",
+          "empty": "No connected email account is available yet. Connect a mailbox first.",
+          "openConnection": "Open Connection"
+        },
+        "senderIdentity": {
+          "title": "Sender Identity",
+          "description": "Define the sender information recipients will see when they receive your email.",
+          "senderNameHelper": "This name appears in the From field for the recipient.",
+          "senderDisplayHelper": "This display name appears next to the email address in apps such as Gmail and Outlook.",
+          "replyToHelper": "Replies to the email will be directed to this address."
+        },
+        "signature": {
+          "title": "Email Signature",
+          "description": "This signature is automatically added to outgoing emails.",
+          "nameLabel": "Signature Name",
+          "namePlaceholder": "e.g. ValueOR Support",
+          "titleLabel": "Signature Title",
+          "titlePlaceholder": "e.g. Customer Success Team",
+          "emailLabel": "Signature Email",
+          "emailPlaceholder": "e.g. support@valueor.com",
+          "websiteLabel": "Signature Website",
+          "websitePlaceholder": "e.g. www.valueor.com",
+          "colorLabel": "Color for {{field}}",
+          "previewLabel": "Preview",
+          "previewEmpty": "No signature configured.",
+          "invalidEmail": "Enter a valid signature email or leave it blank.",
+          "invalidWebsite": "Enter a valid signature website or leave it blank."
+        },
+        "acknowledgement": {
+          "title": "Automatic Email Acknowledgement",
+          "description": "Automatically confirm receipt of new incoming emails using a predefined message in the customer's language. This does not answer the customer's request.",
+          "enableLabel": "Enable automatic acknowledgement",
+          "defaultLanguage": "Default Language",
+          "templatesTitle": "Acknowledgement Templates",
+          "templateEnabled": "Enabled",
+          "templateDisabled": "Disabled",
+          "templateBody": "Template",
+          "languageEn": "English",
+          "languageAr": "Arabic",
+          "languageFr": "French",
+          "languageDe": "German"
+        },
+        "footer": {
+          "title": "Email Footer",
+          "description": "Optional legal or company disclaimer shown under the signature in outgoing emails.",
+          "helper": "When enabled, this footer is added below the signature for recipients.",
+          "showLabel": "Show email footer",
+          "textLabel": "Footer text",
+          "textHelper": "Use this for privacy notices, registration details, or company disclaimers.",
+          "placeholder": "e.g. This message is confidential and intended only for the recipient."
+        },
+        "personal": {
+          "title": "👤 My Email Identity",
+          "description": "Your personal details shown when you send messages from your account.",
+          "jobTitleLabel": "Job Title",
+          "jobTitleHelper": "Shown in your personal signature when configured.",
+          "signatureTitle": "Personal Email Signature",
+          "signatureDescription": "Used on your outbound emails. If empty, the company default signature is used.",
+          "saveChanges": "Save Personal Identity",
+          "saved": "Personal email identity saved",
+          "saveFailed": "Could not save personal email identity",
+          "permissionHint": "You need personal email identity permission to edit these fields."
+        },
+        "company": {
+          "title": "🏢 Company Email Identity",
+          "description": "Shared company details managed by the company and used as email defaults.",
+          "signatureTitle": "Company Default Signature",
+          "signatureDescription": "Company default signature used when a sender has no personal signature.",
+          "permissionHint": "You need company email identity permission to edit these fields."
+        }
+      }
+    },
+    "workspace": {
+      "logoLabel": "Email logo",
+      "signatureLabel": "Signature",
+      "newEmail": "New Email",
+      "composeStarting": "Opening composer…",
+      "saveDraft": "Save Draft",
+      "send": "Send",
+      "sending": "Sending…",
+      "sendSuccess": "Sent",
+      "sendError": "Send failed. Your draft was kept.",
+      "toRequired": "Add at least one recipient in To.",
+      "invalidRecipient": "Enter a valid email address.",
+      "subjectRequired": "Add a subject before sending.",
+      "bodyRequired": "Add a message or attachment before sending.",
+      "fromNotConfigured": "Company outbound email is not configured.",
+      "composeErrorUnauthenticated": "Sign in to compose email.",
+      "composeErrorNoCompany": "No company is associated with this session.",
+      "composeErrorEntitlement": "Email is not included in your plan.",
+      "composeErrorRbac": "You do not have permission to send email.",
+      "composeErrorNoChannel": "The company Email channel is not available.",
+      "composeErrorNoAssistant": "A company AI assistant record is required to start a conversation.",
+      "composeErrorGeneric": "Could not start a new email. Your previous drafts were kept.",
+      "draftSaving": "Saving draft…",
+      "draftSaved": "Draft saved",
+      "fields": {
+        "from": "From",
+        "to": "To",
+        "cc": "Cc",
+        "bcc": "Bcc",
+        "subject": "Subject",
+        "body": "Body"
+      },
+      "ai": {
+        "neverSendHint": "AI suggests and edits the draft only. Email is never sent without your confirmation.",
+        "assistantExplain": "AI Copilot helps you write and improve the draft. Email is never sent without your confirmation.",
+        "writeWithAi": "Write with AI",
+        "improveWithAi": "Improve with AI",
+        "suggestionsHeading": "Suggested replies",
+        "refreshSuggestions": "Refresh",
+        "summaryTitle": "Thread summary",
+        "generate_reply": "Generate reply",
+        "suggestions": "Suggestions",
+        "improve": "Improve",
+        "formal": "More formal",
+        "friendly": "More friendly",
+        "shorten": "Shorten",
+        "expand": "Expand",
+        "rewrite": "Rewrite",
+        "translate": "Translate",
+        "change_tone": "Change tone",
+        "copilot": "✨ AI Copilot",
+        "summarize": "Summarize thread",
+        "draft_from_context": "Draft from context"
+      },
+      "aiWrite": {
+        "title": "AI Email Assistant",
+        "promptLabel": "What do you want to say?",
+        "promptPlaceholder": "e.g. Tell the customer we apologize for the delay and the order will be ready tomorrow…",
+        "examples": "Examples: apologize for delay in English · Tell the customer the order is ready · Make it formal and concise · Rewrite this email professionally",
+        "mode": "Mode",
+        "modeGenerate": "Generate",
+        "modeRewrite": "Rewrite",
+        "language": "Email language",
+        "languageAuto": "Auto detect",
+        "languageEn": "English",
+        "languageAr": "Arabic",
+        "languageFr": "French",
+        "languageDe": "German",
+        "languageEs": "Spanish",
+        "tone": "Tone",
+        "toneProfessional": "Professional",
+        "toneFormal": "Formal",
+        "toneFriendly": "Friendly",
+        "toneConcise": "Concise",
+        "generate": "Generate",
+        "working": "AI is writing…",
+        "insert": "Insert into Email",
+        "replace": "Replace",
+        "insertBelow": "Insert below",
+        "regenerate": "Regenerate",
+        "cancel": "Cancel",
+        "instructionRequired": "Please enter what you want to say.",
+        "error": "AI couldn't generate the email. Please try again.",
+        "neverSendHint": "AI only prepares a draft. Nothing is sent until you click Send.",
+        "sessionExpired": "Your session expired. Sign out and sign in again, then retry."
+      },
+      "messageTranslation": {
+        "translate": "Translate",
+        "hide": "Hide translation",
+        "show": "Show translation",
+        "popoverTitle": "Translate message",
+        "sourceLanguage": "Source language",
+        "targetLanguage": "Translate to",
+        "selectLanguage": "Select language",
+        "searchLanguage": "Search language…",
+        "noLanguage": "No language found",
+        "unknownLanguage": "Unknown",
+        "translating": "Translating…",
+        "error": "Unable to translate this message. Please try again.",
+        "retry": "Retry",
+        "copy": "Copy",
+        "resultTitle": "Translation to {{language}}",
+        "truncatedNotice": "Only the beginning of this long message was translated."
+      },
+      "title": "Email Workspace",
+      "subtitle": "Conversational email threads for your company email channel.",
+      "searchPlaceholder": "Search email conversations…",
+      "filterUnread": "Unread only",
+      "filterAssignedTo": "Assigned to",
+      "filterAssigneeAll": "All",
+      "filterAssigneeUnassigned": "Unassigned",
+      "emptyUnassignedList": "No unassigned conversations.",
+      "emptyAssigneeList": "No conversations assigned to this user.",
+      "loading": "Loading…",
+      "emptyThread": "No messages in this thread yet.",
+      "selectConversation": "Select a conversation to view the thread.",
+      "noPreview": "No preview",
+      "noSubject": "(no subject)",
+      "hasDraft": "Draft",
+      "incoming": "Incoming",
+      "outgoing": "Outgoing",
+      "internalNote": "Internal note",
+      "close": "Close",
+      "aiWorking": "Working…",
+      "aiError": "AI assist failed. Try again.",
+      "assigneeLabel": "Assignee",
+      "assigneeUnassigned": "Unassigned",
+      "assigneeSearch": "Search employees…",
+      "assigneeEmpty": "No employees available",
+      "assigneeNoEligible": "No eligible employees",
+      "assigneeSaving": "Saving…",
+      "assigneeSaved": "Conversation assigned",
+      "assigneeSaveFailed": "Could not assign conversation",
+      "assigneeUnauthorized": "You do not have permission to assign this conversation",
+      "assigneeUnavailable": "This conversation is no longer available",
+      "customerTitle": "Customer",
+      "noCustomer": "No linked customer",
+      "ticketTitle": "Ticket",
+      "noTicket": "No active ticket",
+      "ticketStatus": "Status",
+      "ticketPriority": "Priority",
+      "ticketSla": "SLA due",
+      "deliveryHeading": "Delivery activity",
+      "emptyListTitle": "No messages yet",
+      "emptyListBody": "When customer emails arrive they appear here, and AI can classify and route them automatically.",
+      "contextPanel": "Customer 360",
+      "insertTemplate": "Insert template",
+      "openTicket360": "Open Ticket 360",
+      "draftSavedAgo": "Autosaved {{seconds}}s ago",
+      "linkedTicket": "Linked to {{number}}",
+      "attach": "Attach",
+      "attachmentUploading": "Uploading…",
+      "attachmentUploaded": "Uploaded",
+      "attachmentFailed": "Upload failed",
+      "removeAttachment": "Remove attachment",
+      "attachmentTooLarge": "File is too large (maximum 25 MB).",
+      "tooManyAttachments": "You can attach up to 10 files.",
+      "unsupportedAttachment": "This file type is not allowed.",
+      "dangerousAttachment": "This file type is not allowed for security reasons.",
+      "invalidAttachmentName": "That file name is not allowed.",
+      "attachmentUploadError": "Could not upload the file. The draft was kept and nothing was sent.",
+      "attachmentEntitlementDenied": "Email attachments are not available for this company.",
+      "dropAttachments": "Drop files to attach",
+      "attachmentDownload": "Download",
+      "attachmentOpenPreview": "Open preview",
+      "attachmentClosePreview": "Close preview",
+      "discard": "Discard",
+      "discarding": "Discarding…",
+      "discardConfirm": "Discard this draft? Attachments for this draft will be removed.",
+      "unlinkCustomer": "Unlink customer",
+      "removeRecipient": "Remove recipient",
+      "showCcBcc": "Cc / Bcc",
+      "hideCcBcc": "Hide Cc / Bcc",
+      "unresolvedTemplate": "Resolve template variables before sending: {{tokens}}",
+      "linkCustomer": "Link Existing Customer",
+      "createCustomer": "Create Customer",
+      "openCustomer360": "Open Customer 360",
+      "selectTicket": "Select ticket",
+      "selectTicketPlaceholder": "Choose a ticket…",
+      "recipientSuggestPlaceholder": "Type an email address…",
+      "recipientSuggestLoading": "Searching contacts…",
+      "recipientLimit": "You can add up to {{count}} recipients.",
+      "invalidRecipientList": "One or more recipient addresses are invalid.",
+      "modes": {
+        "compose": "New Email",
+        "reply": "Reply",
+        "replyAll": "Reply All",
+        "forward": "Forward"
+      },
+      "lifecycle": {
+        "received": "Received",
+        "classified": "Classified",
+        "assigned": "Assigned",
+        "ticket": "Ticket",
+        "drafted": "Reply drafted",
+        "sent": "Sent",
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "reused": "Reused"
+      },
+      "richText": {
+        "toolbar": "Formatting",
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline",
+        "bulletList": "Bullet list",
+        "numberedList": "Numbered list",
+        "link": "Link",
+        "linkPrompt": "Enter link URL",
+        "undo": "Undo",
+        "redo": "Redo"
+      },
+      "notificationSound": "Notification sound",
+      "notificationSoundOn": "On",
+      "notificationSoundOff": "Off",
+      "notificationSoundHelper": "Play a short sound when a new email arrives.",
+      "notificationSoundAriaOn": "Notification sound on",
+      "notificationSoundAriaOff": "Notification sound off"
+    },
+    "howItWorks": {
+      "title": "How does Email work?",
+      "caption": "AI helps your team understand messages and write replies, while the final decision and send stay with the employee.",
+      "steps": {
+        "receive": "Receive the message",
+        "identify": "Identify the customer",
+        "classify": "Understand and classify",
+        "route": "Route to the right employee",
+        "ticket": "Create or reuse a ticket when needed",
+        "review": "Employee reviews the request",
+        "copilot": "AI helps write the reply",
+        "send": "Send the email"
+      }
+    },
+    "setup": {
+      "cta": "Set up Email",
+      "toggle": "Collapse or expand email setup explanation"
+    },
+    "metrics": {
+      "incoming": "Incoming",
+      "sent": "Sent",
+      "pending": "Pending",
+      "failed": "Failed",
+      "aiRouted": "AI Routed",
+      "ticketsCreated": "Tickets Created",
+      "tablistAria": "Email workspace metrics",
+      "filterAria": "Show {{label}} in Email Workspace"
+    },
+    "aiCapabilities": {
+      "routing": "AI Email Routing",
+      "composer": "AI Composer",
+      "suggested_replies": "Suggested Replies",
+      "summary": "AI Summary",
+      "unknown": "Checking entitlement…",
+      "locked": "Not included in your plan. Contact an admin to enable this AI feature."
+    },
+    "firstTime": {
+      "title": "Get started with Email",
+      "body": "Connect your company mailbox before the inbox can receive customer messages.",
+      "steps": {
+        "connect": "Connect email",
+        "sendReceive": "Set up receive and send",
+        "routing": "Enable AI routing",
+        "tickets": "Set ticket rules",
+        "reply": "Send the first reply"
       }
     }
   },
@@ -2969,10 +3600,10 @@
     },
     "purpose": {
       "title": "What is this page?",
-      "body": "Campaigns send WhatsApp, Instagram, and Messenger messages to marketing-eligible customers using existing communication channels.",
+      "body": "Campaigns send WhatsApp, Instagram, Messenger, and Email messages to marketing-eligible customers using existing communication channels.",
       "point1": "Audience is always resolved on the server — browser selections are revalidated.",
       "point2": "Each channel is independent: a customer may be queued on WhatsApp and skipped on Instagram.",
-      "point3": "Queued is not the same as sent for WhatsApp notification delivery.",
+      "point3": "Queued is not the same as sent for WhatsApp and Email notification delivery.",
       "stepsTitle": "How to run a campaign",
       "step1": "Choose the audience.",
       "step2": "Select available channels.",
@@ -3000,6 +3631,8 @@
       "whatsapp": "WhatsApp",
       "instagram": "Instagram",
       "messenger": "Messenger",
+      "email": "Email",
+      "sms": "SMS",
       "unknown": "Channel"
     },
     "audienceType": {
@@ -3009,6 +3642,8 @@
     },
     "skipReasons": {
       "noPhone": "No phone number",
+      "noEmail": "No email address",
+      "noSms": "No SMS number",
       "marketingOptOut": "Customer opted out of marketing messages",
       "noInstagramConversation": "No eligible Instagram conversation",
       "noMessengerConversation": "No eligible Messenger conversation",
@@ -3024,7 +3659,7 @@
       "subtitle": "Track draft, running, and completed campaigns.",
       "create": "Create campaign",
       "emptyTitle": "No campaigns yet",
-      "empty": "Create a campaign to reach eligible customers on WhatsApp, Instagram, or Messenger.",
+      "empty": "Create a campaign to reach eligible customers on WhatsApp, Instagram, Messenger, Email, or SMS.",
       "filters": {
         "status": "Status",
         "channel": "Channel",
@@ -3075,14 +3710,34 @@
         "genderFemale": "Female",
         "ageMin": "Minimum age",
         "ageMax": "Maximum age",
-        "serverSideNote": "Audience counts and marketing eligibility are resolved on the server before send. Customers without marketing consent are excluded."
+        "serverSideNote": "Audience counts and marketing eligibility are resolved on the server before send. Customers without marketing consent are excluded.",
+        "table": {
+          "name": "Name",
+          "phone": "Mobile",
+          "email": "Email",
+          "messenger": "Messenger",
+          "whatsapp": "WhatsApp",
+          "instagram": "Instagram",
+          "emailChannel": "Email",
+          "sms": "SMS",
+          "search": "Search by name, mobile, or email",
+          "selectedCount": "{{count}} selected",
+          "selectAll": "Select all visible customers",
+          "empty": "No customers match this search.",
+          "available": "Available",
+          "unavailable": "Not available"
+        }
       },
       "channels": {
         "title": "Channels",
-        "subtitle": "SMS is not available. Select one or more supported channels.",
+        "subtitle": "Select one or more channels. Each channel only sends to customers who can receive on it.",
         "connected": "Connected",
         "unavailable": "Unavailable for this company",
         "sessionLimitation": "Some customers may be skipped because they do not have an eligible conversation/session (or messaging window).",
+        "emailMailboxHint": "Sends through the company Email mailbox (same SMTP used by Email Workspace).",
+        "smsProviderHint": "Sends through the company SMS channel to customers with a valid mobile number.",
+        "willSend": "{{count}} will receive on this channel",
+        "selectedSendTotal": "Selected channels will reach {{count}} available recipient(s).",
         "eligibleCount": "{{eligible}} eligible · {{skipped}} skipped",
         "calculating": "Calculating eligibility…",
         "selectToPreview": "Select a channel to preview eligibility."
@@ -3099,8 +3754,18 @@
         "detail": "Message / details",
         "titlePlaceholder": "Campaign title",
         "detailPlaceholder": "Message details",
-        "whatsappPreviewHint": "WhatsApp uses the marketing_campaign template variables.",
-        "plainPreviewHint": "Instagram/Messenger use plain text."
+        "whatsappPreviewHint": "WhatsApp sends this text to the customer.",
+        "emailPreviewHint": "Email uses the company mailbox. Subject is the campaign title; the body is the details below.",
+        "smsPreviewHint": "SMS sends this text to the customer mobile number.",
+        "plainPreviewHint": "Instagram and Messenger send this text in the existing conversation.",
+        "emailSubject": "Subject",
+        "noPreview": "Add a title or message to preview what the customer will receive.",
+        "attachments": "Attachments",
+        "attachmentsHint": "PDF, DOCX, XLSX, JPG, PNG, or WEBP. Up to 5 files, 10 MB each.",
+        "attachmentsChannelNote": "Email recipients receive the files. WhatsApp, SMS, Instagram, and Messenger send the text only.",
+        "attachmentsTextOnly": "Files are not sent on this channel.",
+        "addAttachments": "Add files",
+        "removeAttachment": "Remove file"
       },
       "review": {
         "title": "Review & send",
@@ -3111,7 +3776,9 @@
         "manualEmpty": "Select at least one customer.",
         "channelsRequired": "Select at least one channel.",
         "contentRequired": "Campaign name and title are required.",
-        "confirmRequired": "Confirm before sending."
+        "confirmRequired": "Confirm before sending.",
+        "attachmentInvalid": "One or more attachments are not allowed.",
+        "attachmentUploadFailed": "Could not upload campaign attachments."
       }
     },
     "detail": {
@@ -3120,10 +3787,12 @@
       "createdAt": "Created {{date}}",
       "overview": "Overview",
       "content": "Content",
+      "attachments": "Attachments",
+      "noAttachments": "No files attached.",
       "channelSummary": "Channel summary",
       "recipients": "Recipient results",
       "recipientsEmpty": "No recipient rows yet.",
-      "queuedVsSent": "WhatsApp queued means the notification queue accepted the job. Sent means the provider later confirmed Meta submission.",
+      "queuedVsSent": "WhatsApp and Email queued means the notification queue accepted the job. Sent means the provider later confirmed delivery. Instagram and Messenger mark sent when the channel platform accepts the outbound message.",
       "totals": "Total {{total}} · Queued {{queued}} · Sent {{sent}} · Failed {{failed}} · Skipped {{skipped}}",
       "channelCounts": "Total {{total}} · Queued {{queued}} · Sent {{sent}} · Failed {{failed}} · Skipped {{skipped}}",
       "columns": {
@@ -6909,6 +7578,7 @@
       "aiEmployee": "AI Employee",
       "queue": "Queue",
       "noAgents": "No agents available for assignment.",
+      "noEligibleAgents": "No eligible employees",
       "noTeams": "No teams are configured yet. Assign to an agent instead.",
       "noQueues": "No routing queues are configured yet.",
       "noAiEmployees": "No published AI employees are available.",
@@ -8408,7 +9078,7 @@
     "noPermission": "You do not have permission to view billing.",
     "health": {
       "title": "Billing platform configuration required",
-      "subtitle": "VaultOS billing cannot operate until the following platform requirements are resolved.",
+      "subtitle": "ValueOR billing cannot operate until the following platform requirements are resolved.",
       "mutationsBlocked": "All billing mutations are blocked until configuration is corrected.",
       "issues": {
         "migration_104_missing": {
@@ -9500,6 +10170,7 @@
       "rolePlaceholder": "Select a role",
       "roleSearchPlaceholder": "Search roles…",
       "noRolesAvailable": "No roles are available.",
+      "currentRoleUnavailable": "Current role — no longer in the assignable catalog",
       "activeOnCreate": "Activate user immediately",
       "inviteNote": "An invitation email will be sent so the user can set their password."
     },
@@ -10155,35 +10826,89 @@
     }
   },
   "roles": {
-    "title": "Roles",
-    "subtitle": "Create company-specific roles and assign only the permissions you can delegate.",
+    "title": "Roles & Permissions",
+    "subtitle": "Manage user roles and permissions in this workspace.",
     "noDescription": "No description",
     "edit": "Edit",
     "delete": "Delete",
+    "view": "View",
+    "viewOnly": "View only",
+    "close": "Close",
+    "systemRole": "System role",
     "createRole": "Create Role",
     "customRolesHeading": "Company roles",
-    "emptyCustomTitle": "No custom roles yet",
-    "emptyCustomDescription": "Create a role to define permissions for your team.",
+    "emptyCustomTitle": "No custom roles",
+    "emptyCustomDescription": "Create a custom role to define the right permissions for your team.",
+    "list": {
+      "searchPlaceholder": "Search roles…",
+      "typeFilterLabel": "Role type",
+      "typeFilterAll": "All types",
+      "typeFilterPlatform": "System roles",
+      "typeFilterDefault": "Default roles",
+      "typeFilterCustom": "Custom roles",
+      "sortLabel": "Sort",
+      "sortUpdated": "Last updated",
+      "sortName": "Name",
+      "sortPermissions": "Permissions",
+      "sortUsers": "Users",
+      "typePlatform": "System",
+      "typeDefault": "Default",
+      "typeCustom": "Custom",
+      "columns": {
+        "name": "Role name",
+        "type": "Type",
+        "description": "Description",
+        "permissions": "Permissions",
+        "users": "Users",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "permissionCount": "{{count}} permissions",
+      "userCount": "{{count}} users",
+      "summaryRange": "Showing {{from}}–{{to}} of {{total}} roles",
+      "actionsMenu": "Role actions",
+      "loadError": "Could not load roles.",
+      "retry": "Retry",
+      "noSearchResults": "No roles match your search.",
+      "noSearchResultsDescription": "Try a different name or description, or clear the filters.",
+      "metrics": {
+        "system": "System roles",
+        "default": "Default roles",
+        "custom": "Custom roles",
+        "assignedUsers": "Assigned users"
+      }
+    },
+    "families": {
+      "aiPlatform": "AI Platform",
+      "crm": "CRM",
+      "company": "Company & administration",
+      "finance": "Finance & reporting",
+      "operations": "Integrations & operations"
+    },
     "confirm": {
       "deleteTitle": "Delete role \"{{role}}\"?",
-      "deleteDescription": "This will permanently remove the role and its permission assignments. Users assigned to this role will lose those permissions."
+      "deleteDescription": "This will permanently remove the role and its permission assignments. Users assigned to this role will lose those permissions.",
+      "deleteAssigned": "This role is assigned to {{count}} users. Deleting it removes that assignment."
     },
     "permissions": {
-      "title": "Permission Management",
-      "selectAll": "Select all you can delegate",
-      "clearAll": "Clear All",
-      "expandAll": "Expand All",
-      "collapseAll": "Collapse All",
-      "searchPlaceholder": "Search permissions...",
-      "selectedCounter": "Selected: {{selected}} / {{total}} delegable permissions",
-      "groupCounter": "{{selected}} / {{total}}",
+      "title": "Permissions",
+      "selectAll": "Select all",
+      "clearAll": "Clear all",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "searchPlaceholder": "Search by name, description, or permission code",
+      "selectedCounter": "{{selected}} / {{total}} selected",
+      "groupCounter": "{{selected}} / {{total}} permissions",
+      "familyCounter": "{{selected}} / {{total}}",
       "groupSelectAll": "Select all permissions in {{group}}",
+      "moduleSelectAll": "Select module",
+      "moduleClear": "Clear module",
       "noResults": "No permissions match your search.",
       "partialSelectionHint": "Some permissions are selected.",
       "assignedSummary": "Assigned permissions ({{count}})",
       "developerMode": "Developer mode",
-      "developerModeDescription": "Show permission codes and descriptions for debugging. Hidden from normal users.",
-      "developerModeHint": "Developer mode is on — permission codes and descriptions are visible."
+      "developerModeDescription": "Show extra technical detail for administrators who are diagnosing access issues.",
+      "developerModeHint": "Developer mode is on — permission codes remain visible on cards."
     },
     "roleDetails": {
       "showPermissions": "Show permissions",
@@ -10223,8 +10948,9 @@
       "updateFailedTitle": "Could not update role",
       "deleteSuccessTitle": "Role deleted",
       "deleteSuccessDescription": "\"{{name}}\" was removed.",
+      "deleteFailedTitle": "Could not delete role",
       "nameAlreadyExists": "A role with this name already exists in your company. Choose a different name.",
-      "protectedReadOnly": "System roles (Company Admin, Human Handoff Agent, etc.) cannot be edited here.",
+      "protectedReadOnly": "System roles such as Company Admin cannot be edited on this page.",
       "notFound": "This role no longer exists.",
       "invalidRequest": "Please check the role name and try again."
     }
@@ -10899,7 +11625,7 @@
       }
     },
     "defaults": {
-      "assistantName": "Vault Assistant",
+      "assistantName": "ValueOR Assistant",
       "personality": "helpful",
       "welcomeMessage": "Hello! I'm your AI assistant. How can I help you today?",
       "fallbackMessage": "I'm sorry, I didn't understand that. Could you please rephrase your question?",
@@ -13367,6 +14093,7 @@
     "assignTitle": "Assign ticket",
     "assignHint": "Choose any active user in your company.",
     "noAssignees": "No active users available to assign.",
+    "noEligibleAssignees": "No eligible employees",
     "detailTitle": "Ticket details",
     "noDescription": "No description provided.",
     "createdAt": "Created",
@@ -14193,10 +14920,33 @@
         "bulkDeleteTitle": "Delete {{count}} employees?",
         "bulkDeleteDescription": "Selected employees will be removed from the company, and their roles and branch assignments will be cleared."
       },
+      "resetPassword": {
+        "title": "Reset employee password",
+        "description": "Set a new password for this employee's login account.",
+        "employee": "Employee",
+        "loginEmail": "Login email",
+        "newPassword": "New password",
+        "confirmPassword": "Confirm new password",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password",
+        "policyHint": "Use at least 8 characters with uppercase, lowercase, and a number.",
+        "sessionWarning": "The employee will be signed out of current sessions and the old password will no longer work.",
+        "submit": "Reset password",
+        "errors": {
+          "required": "Enter and confirm the new password.",
+          "password_mismatch": "Passwords do not match.",
+          "password_policy": "Password does not meet the required strength.",
+          "unauthorized": "You are not allowed to perform this action.",
+          "target_not_found": "This employee account was not found.",
+          "target_is_super_admin": "Only a platform administrator can reset this account.",
+          "auth_provider_failure": "Authentication service could not update the password.",
+          "generic": "The password reset could not be completed."
+        }
+      },
       "toasts": {
         "errorTitle": "Action failed",
-        "resetPasswordTitle": "Password reset sent",
-        "resetPasswordDescription": "A password reset email was sent to the employee.",
+        "resetPasswordTitle": "Password updated",
+        "resetPasswordDescription": "The employee can sign in with the new password immediately.",
         "resendTitle": "Invitation resent",
         "resendDescription": "An invitation or account-setup email was sent.",
         "suspendTitle": "Employee suspended",
@@ -14534,7 +15284,7 @@
         "replyFallbackHint": "If empty, company email from Overview is used.",
         "logoTitle": "Email logo",
         "logoHint": "Primary logo used in outbound email. Falls back to the company primary logo.",
-        "logoFromAssets": "Read-only from Brand Assets. Change the logo there — never upload twice.",
+        "logoFromAssets": "Managed only in Email Settings → Email Identity. This preview is read-only.",
         "currentEmailLogo": "Current email logo",
         "changeLogo": "Change logo",
         "primaryEmailLogo": "Primary email logo",
@@ -14639,6 +15389,16 @@
         "mime_rejected": "This file type is not allowed.",
         "network": "Upload failed — check your connection and try again.",
         "unknown": "Upload failed."
+      },
+      "emailIdentityMoved": {
+        "title": "Email identity moved",
+        "body": "Manage sender name, logo, signature, and email footer in Email Settings → Email Identity.",
+        "cta": "Open Email Identity"
+      },
+      "emailFooterMoved": {
+        "title": "Email footer moved",
+        "body": "Manage the email footer in Email Settings → Email Identity.",
+        "cta": "Open Email Identity"
       }
     },
     "subscription": {

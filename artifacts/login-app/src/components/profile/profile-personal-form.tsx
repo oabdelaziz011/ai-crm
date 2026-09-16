@@ -18,6 +18,7 @@ import { isValidAvatarUrl } from "@/lib/avatar-url";
 import { AvatarUploadError, uploadProfileAvatar } from "@/lib/profile/avatar-upload";
 import { ProfileCurrencyField } from "@/components/profile/profile-currency-field";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { DepartmentSearchableSelect } from "@/components/users/department-searchable-select";
 
 type ProfileFormValues = {
   full_name: string;
@@ -25,7 +26,7 @@ type ProfileFormValues = {
   preferred_language: string;
   timezone: string;
   job_title: string;
-  department: string;
+  department_id: string;
   phone: string;
 };
 
@@ -52,7 +53,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         preferred_language: z.enum(["en", "ar"]),
         timezone: z.string().min(1),
         job_title: z.string().max(120).optional(),
-        department: z.string().max(120).optional(),
+        department_id: z.string().uuid().optional().or(z.literal("")),
         phone: z.string().max(40).optional(),
       }),
     [t],
@@ -66,7 +67,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
       preferred_language: "en",
       timezone: "UTC",
       job_title: "",
-      department: "",
+      department_id: "",
       phone: "",
     },
   });
@@ -86,7 +87,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         : resolveAppLanguage(profile?.preferred_language),
       timezone: profile?.timezone?.trim() || "UTC",
       job_title: profile?.job_title ?? "",
-      department: profile?.department ?? "",
+      department_id: profile?.department_id ?? "",
       phone: profile?.phone ?? "",
     });
   }, [
@@ -95,7 +96,7 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
     profile?.full_name,
     profile?.avatar_url,
     profile?.job_title,
-    profile?.department,
+    profile?.department_id,
     profile?.phone,
     profile?.preferred_language,
     profile?.timezone,
@@ -114,10 +115,11 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
       full_name: values.full_name.trim() || profile.full_name || "User",
       avatar_url: avatarUrl,
       preferred_language: values.preferred_language,
-      preferred_theme: profile.preferred_theme ?? "system",
+      preferred_theme: profile.preferred_theme ?? "light",
       timezone: values.timezone,
       job_title: values.job_title.trim() || null,
-      department: values.department.trim() || null,
+      department_id: values.department_id.trim() || null,
+      department: null,
       phone: values.phone.trim() || null,
     });
     form.setValue("avatar_url", avatarUrl ?? "", { shouldDirty: false });
@@ -130,10 +132,11 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
         full_name: values.full_name.trim(),
         avatar_url: values.avatar_url.trim() || null,
         preferred_language: values.preferred_language,
-        preferred_theme: profile.preferred_theme ?? "system",
+        preferred_theme: profile.preferred_theme ?? "light",
         timezone: values.timezone,
         job_title: values.job_title.trim() || null,
-        department: values.department.trim() || null,
+        department_id: values.department_id.trim() || null,
+        department: null,
         phone: values.phone.trim() || null,
       });
 
@@ -314,12 +317,20 @@ export function ProfilePersonalForm({ profile }: ProfilePersonalFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="profile-department">{t("profiles.fields.department")}</Label>
-            <Input
-              id="profile-department"
-              className="bg-background/50 border-white/10"
-              placeholder={t("profiles.fields.departmentPlaceholder")}
-              {...form.register("department")}
-            />
+            {profile.company_id ? (
+              <DepartmentSearchableSelect
+                companyId={profile.company_id}
+                value={form.watch("department_id")}
+                onChange={(departmentId) =>
+                  form.setValue("department_id", departmentId, { shouldDirty: true })
+                }
+                disabled={updateProfile.isPending || avatarUploading}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("profiles.fields.departmentPlaceholder")}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2 md:col-span-2">

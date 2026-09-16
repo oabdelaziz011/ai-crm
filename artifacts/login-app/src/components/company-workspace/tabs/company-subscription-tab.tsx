@@ -16,9 +16,11 @@ import {
   translateSubscriptionStatus,
   translateWorkspaceHealth,
 } from "@/lib/billing/billing-display-i18n";
-import { formatBillingCurrency, formatBillingDate } from "@/lib/billing/format";
+import { formatBillingDate, formatBillingSubscriptionCurrency } from "@/lib/billing/format";
 import { formatResourceOccupancy, occupancyDisplayUsed } from "@/lib/billing/company-resource-limits";
 import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
+import { useCompanyLocaleContext } from "@/context/company-locale-context";
+import { formatCurrencyOptionLabel } from "@/lib/currency/catalog";
 import type { BillingSubscriptionStatus, CompanySubscription } from "@/lib/billing/types";
 
 function Field({
@@ -49,17 +51,24 @@ function Field({
  * Online Pay starts checkout via api-server; settlement remains webhook + Part 3.
  */
 export function CompanySubscriptionTab() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { company } = useAuth();
   const { bundle, permissions } = useCompanyWorkspace();
   /** Tenant isolation: always the authenticated company — never a URL/query company id. */
   const companyId = company?.id ?? bundle?.companyId ?? null;
   const { data, isLoading, error } = useWorkspaceBillingSummary(permissions.canSubscription);
   const occupancyQuery = useCompanyResourceOccupancy(companyId, permissions.canSubscription);
+  const { currency: operationalCurrency } = useCompanyLocaleContext();
 
   const subscription = data?.subscription as CompanySubscription | null | undefined;
   const plan = (data?.plan ?? subscription?.plan) as CompanySubscription["plan"] | null | undefined;
   const status = subscription?.status as BillingSubscriptionStatus | undefined;
+  const subscriptionCurrency =
+    (data as { subscription_billing_currency?: string; currency?: string } | undefined)
+      ?.subscription_billing_currency ||
+    data?.currency ||
+    (subscription as { billing_currency?: string } | null | undefined)?.billing_currency ||
+    null;
 
   const tenantAligned = useMemo(() => {
     if (!companyId) return false;
@@ -75,14 +84,13 @@ export function CompanySubscriptionTab() {
     const amount =
       subscription?.billing_cycle === "yearly" ? plan.price_yearly : plan.price_monthly;
     if (amount == null || Number.isNaN(Number(amount))) return null;
-    const currency = data?.currency ?? undefined;
-    return formatBillingCurrency(Number(amount), currency);
-  }, [plan, subscription?.billing_cycle, data?.currency]);
+    return formatBillingSubscriptionCurrency(Number(amount), subscriptionCurrency);
+  }, [plan, subscription?.billing_cycle, subscriptionCurrency]);
 
   const nextAmountLabel = useMemo(() => {
     if (data?.next_invoice_amount == null) return null;
-    return formatBillingCurrency(Number(data.next_invoice_amount), data.currency ?? undefined);
-  }, [data?.currency, data?.next_invoice_amount]);
+    return formatBillingSubscriptionCurrency(Number(data.next_invoice_amount), subscriptionCurrency);
+  }, [data?.next_invoice_amount, subscriptionCurrency]);
 
   const isTrialing = status === "trialing";
   const showGraceEnd = status === "grace_period" || Boolean(subscription?.grace_period_ends_at);
@@ -216,8 +224,17 @@ export function CompanySubscriptionTab() {
             showWhenEmpty
           />
           <Field
-            label={t("companyWorkspace.subscription.currency", "Currency")}
-            value={data?.currency ?? null}
+            label={t("workspace.billing.operationalCurrency")}
+            value={formatCurrencyOptionLabel(operationalCurrency, i18n.language)}
+            showWhenEmpty
+          />
+          <Field
+            label={t("workspace.billing.subscriptionCurrency")}
+            value={
+              subscriptionCurrency
+                ? formatCurrencyOptionLabel(subscriptionCurrency, i18n.language)
+                : null
+            }
             showWhenEmpty
           />
           <Field
@@ -311,7 +328,7 @@ export function CompanySubscriptionTab() {
         companyId={companyId}
         subscription={subscription}
         plan={plan}
-        currency={data?.currency ?? null}
+        currency={subscriptionCurrency}
         assignedAmount={data?.next_invoice_amount ?? null}
         listAmount={data?.list_price_amount ?? null}
         onlineCheckoutAllowed={data?.online_checkout_allowed ?? true}

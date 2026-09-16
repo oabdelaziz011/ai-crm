@@ -64,6 +64,11 @@ export type ResolveSessionInput = {
   requireAiAssistant?: boolean;
   employeeConversationMetadata?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  /**
+   * Durable department ownership for FIRST conversation create only.
+   * Ignored when reusing an existing session/conversation (first-create-wins).
+   */
+  departmentId?: string | null;
 };
 
 export type ChannelSessionRepository = {

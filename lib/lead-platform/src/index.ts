@@ -1,4 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  AssignmentGovernanceService,
+  createAssignmentGovernancePort,
+  createSupabaseAssignmentGovernanceDataPort,
+} from "@workspace/assignment-governance";
+import {
+  AssignmentAuditService,
+  createAssignmentAuditPort,
+  createNoopAssignmentAuditPort,
+  createSupabaseAssignmentAuditDataPort,
+  type AssignmentAuditPort,
+} from "@workspace/assignment-audit";
 import { InMemoryLeadQueryCache } from "./cache/in-memory-lead-query-cache.js";
 import type { LeadQueryCachePort } from "./cache/lead-query-cache-port.js";
 import { createLeadReadPort } from "./adapters/lead-query-read-port.js";
@@ -34,6 +46,10 @@ export type CreateLeadPlatformServicesOptions = {
   notifications?: LeadNotificationPort;
   audit?: LeadAuditPort;
   cache?: LeadQueryCachePort;
+  /** When false, skip Assignment Governance (tests only). Default: enabled. */
+  assignmentGovernance?: boolean | null;
+  /** When false, skip assignment audit (tests only). Default: enabled. */
+  assignmentAudit?: boolean | AssignmentAuditPort | null;
 };
 
 export function createLeadPlatformServices(
@@ -47,8 +63,38 @@ export function createLeadPlatformServices(
   const notifications = options.notifications ?? createNoopLeadNotificationPort();
   const audit = options.audit ?? createNoopLeadAuditPort();
   const cache = options.cache ?? new InMemoryLeadQueryCache();
+  const assignmentGovernance =
+    options.assignmentGovernance === false
+      ? null
+      : createAssignmentGovernancePort(
+          new AssignmentGovernanceService({
+            port: createSupabaseAssignmentGovernanceDataPort(client),
+          }),
+        );
 
-  const commands = new LeadCommandService({ leads, assignees, conversion, events, notifications, audit });
+  const assignmentAudit: AssignmentAuditPort | null =
+    options.assignmentAudit === false
+      ? null
+      : typeof options.assignmentAudit === "object" && options.assignmentAudit
+        ? options.assignmentAudit
+        : options?.assignmentAudit === null
+          ? createNoopAssignmentAuditPort()
+          : createAssignmentAuditPort(
+              new AssignmentAuditService({
+                port: createSupabaseAssignmentAuditDataPort(client),
+              }),
+            );
+
+  const commands = new LeadCommandService({
+    leads,
+    assignees,
+    conversion,
+    events,
+    notifications,
+    audit,
+    assignmentGovernance,
+    assignmentAudit,
+  });
   const queries = new LeadQueryService({ leads, cache });
   const reads = createLeadReadPort(queries);
 

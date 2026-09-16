@@ -17,13 +17,19 @@ import {
 } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 import { ChannelBadge } from "@/components/omnichannel/channel-badge";
+import { ConversationIdentityAvatar } from "@/components/omnichannel/workspace-v2/conversation-identity-avatar";
+import { SlaBadge } from "@/components/omnichannel/workspace-v2/sla-badge";
+import { resolveConversationSlaPresentation } from "@/lib/omnichannel/presentation/conversation-sla-presentation";
+import { useSlaNow } from "@/hooks/omnichannel/use-sla-now";
 import { buildContactDisplayInput } from "@/lib/omnichannel/presentation/conversation-contact-identity";
 import { resolveContactDisplayName } from "@/lib/omnichannel/presentation/contact-display";
+import { resolveConversationIdentityAvatar } from "@/lib/omnichannel/presentation/conversation-identity-avatar";
 import { resolveInboxAssigneeDisplay } from "@/lib/omnichannel/presentation/inbox-assignee-display";
 import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
 import type { OwnershipTier } from "@/lib/omnichannel/presentation/conversation-ownership";
 import { omniRenderTrace, OMNI_RENDER_TARGET_ID } from "@/lib/omnichannel/debug/omni-render-audit";
 import { traceDomQueueCardMount } from "@/lib/omnichannel/debug/omni-dom-render-audit";
+import { useTranslation } from "react-i18next";
 
 export const AGENT_DESK_QUEUE_ROW_HEIGHT = 76;
 
@@ -71,10 +77,6 @@ function AssigneeLine({ tier, label }: { tier: OwnershipTier; label: string }) {
   );
 }
 
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-}
-
 function formatTime(timestamp: string | null): string {
   if (!timestamp) return "";
   const date = new Date(timestamp);
@@ -91,16 +93,38 @@ export const QueueCard = memo(function QueueCard({
   ownershipTier,
   unreadOverflowLabel = "9+",
 }: QueueCardProps) {
+  const { t } = useTranslation("common");
+  const slaNow = useSlaNow();
   const ref = useRef<HTMLDivElement>(null);
   const [flags, setFlags] = useState(() => getConversationFlags(conversation.id));
   const name = resolveContactDisplayName(
     buildContactDisplayInput(conversation, conversation.customer, labels.visitorLabel),
   );
+  const identity = resolveConversationIdentityAvatar({
+    conversation,
+    customer: conversation.customer,
+    visitorLabel: labels.visitorLabel,
+    expectedCompanyId: conversation.companyId,
+  });
   const preview = conversation.lastMessage?.trim() || labels.noPreview;
   const tier = ownershipTier ?? conversation.ownershipTier;
   const assignee = resolveInboxAssigneeDisplay(ownerLabel ?? conversation.ownerLabel, tier, {
     aiEmployee: labels.aiEmployee,
     unassigned: labels.unassigned,
+  });
+  const activeTicket = conversation.ticketContext?.isActive ? conversation.ticketContext : null;
+  const slaPresentation = resolveConversationSlaPresentation({
+    dueAt: activeTicket?.slaDueAt ?? null,
+    now: slaNow,
+    labels: {
+      prefix: t("omnichannel.header.sla"),
+      remainingMinutes: (count) => t("omnichannel.header.slaRemainingMinutes", { count }),
+      remainingHours: (count) => t("omnichannel.header.slaRemainingHours", { count }),
+      breached: t("omnichannel.header.slaBreached"),
+      atRisk: t("omnichannel.header.slaAtRisk", { defaultValue: "At risk" }),
+      notSet: t("omnichannel.header.noSla"),
+      completed: t("omnichannel.header.slaCompleted", { defaultValue: "Completed" }),
+    },
   });
 
   const showPinned = conversation.isPinned || flags.pinned;
@@ -199,9 +223,7 @@ export const QueueCard = memo(function QueueCard({
           data-attention={attention}
         >
           <div className="relative shrink-0 self-start pt-0.5">
-            <div className="flex size-9 items-center justify-center rounded-full bg-[var(--ad-surface-raised)] text-xs font-semibold">
-              {initials(name)}
-            </div>
+            <ConversationIdentityAvatar identity={identity} size="sm" />
             {showUnreadBadge ? (
               <span className="absolute -end-1 -top-1 flex min-w-[1.125rem] items-center justify-center rounded-full bg-[var(--ad-accent)] px-1 text-[14px] font-bold leading-none text-primary-foreground">
                 {flags.markedUnread && conversation.unreadCount <= 0
@@ -252,6 +274,16 @@ export const QueueCard = memo(function QueueCard({
                 ·
               </span>
               <ChannelBadge channel={conversation.channel} size="sm" className="!px-1.5 !py-0 !text-[12px]" />
+              {activeTicket ? (
+                <span
+                  className="truncate text-[11px] font-medium tabular-nums text-[var(--ad-text-muted)]"
+                  dir="ltr"
+                  title={activeTicket.subject || activeTicket.ticketNumber}
+                >
+                  {activeTicket.ticketNumber}
+                </span>
+              ) : null}
+              <SlaBadge presentation={slaPresentation} hideWhenUnavailable className="ms-auto" />
             </div>
           </div>
         </div>

@@ -50,9 +50,6 @@ export function computeBrandHealth(document: CompanyBrandCenterDocument): BrandH
       document.email.legalText.trim() ||
       document.email.footer.trim(),
   );
-  const hasSender = Boolean(
-    document.email.senderName.trim() || document.email.senderDisplayName.trim(),
-  );
 
   const items: BrandHealthItem[] = [
     {
@@ -83,7 +80,7 @@ export function computeBrandHealth(document: CompanyBrandCenterDocument): BrandH
       labelKey: "emailLogo",
       status: logoStatus(document.logos.email, primary, false),
       weight: 8,
-      target: { section: "logos", focusId: "logo-email" },
+      target: { section: "email", focusId: "logo-email" },
       fallbackKey: "usingPrimaryLogo",
     },
     {
@@ -106,13 +103,6 @@ export function computeBrandHealth(document: CompanyBrandCenterDocument): BrandH
       status: hasEmailFooter ? "ready" : "optional_missing",
       weight: 10,
       target: { section: "email", focusId: "email-footer" },
-    },
-    {
-      id: "senderIdentity",
-      labelKey: "senderIdentity",
-      status: hasSender ? "ready" : "optional_missing",
-      weight: 8,
-      target: { section: "email", focusId: "email-sender" },
     },
   ];
 

@@ -403,6 +403,15 @@ describe("text direction", () => {
     assert.equal(composerDirAttribute("أهلا"), "rtl");
   });
 
+  it("uses first strong character for mixed drafts", async () => {
+    const { composerDirAttribute, detectFirstStrongDirection } = await import(
+      "./presentation/text-direction.js"
+    );
+    assert.equal(detectFirstStrongDirection("Hello أحمد"), "ltr");
+    assert.equal(composerDirAttribute("أهلاً John"), "rtl");
+    assert.equal(composerDirAttribute("", "rtl"), "rtl");
+  });
+
   it("keeps phone numbers ltr", async () => {
     const { dirAttributeForField } = await import("./presentation/text-direction.js");
     assert.equal(dirAttributeForField("+966501234567", "phone"), "ltr");

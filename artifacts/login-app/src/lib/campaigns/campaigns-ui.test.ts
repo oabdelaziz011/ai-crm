@@ -68,19 +68,28 @@ const dashboardRegistrySrc = readFileSync(
 );
 const hooksSrc = readFileSync(join(loginAppSrc, "hooks/campaigns/use-campaigns.ts"), "utf8");
 
-describe("campaigns UI channels (SMS hidden)", () => {
-  it("exposes only WhatsApp, Instagram, Messenger", () => {
-    assert.deepEqual([...CAMPAIGN_UI_CHANNELS], ["whatsapp", "instagram", "messenger"]);
-    assert.equal(isCampaignUiChannel("sms"), false);
+describe("campaigns UI channels", () => {
+  it("exposes WhatsApp, Instagram, Messenger, Email, and SMS", () => {
+    assert.deepEqual([...CAMPAIGN_UI_CHANNELS], [
+      "whatsapp",
+      "instagram",
+      "messenger",
+      "email",
+      "sms",
+    ]);
+    assert.equal(isCampaignUiChannel("sms"), true);
     assert.equal(isCampaignUiChannel("whatsapp"), true);
+    assert.equal(isCampaignUiChannel("email"), true);
   });
 
-  it("does not list SMS even if domain ever widened", () => {
-    assert.ok(!(MARKETING_CAMPAIGN_CHANNELS as readonly string[]).includes("sms"));
-    assert.ok(!/campaign-channel-sms(?!-absent)/.test(wizardSrc));
-    assert.ok(listSrc.includes("campaigns-sms-absent"));
-    assert.ok(wizardSrc.includes("campaign-channel-sms-absent"));
-    assert.ok(!CAMPAIGN_UI_CHANNELS.includes("sms" as never));
+  it("lists SMS as a first-class campaign channel", () => {
+    assert.ok((MARKETING_CAMPAIGN_CHANNELS as readonly string[]).includes("sms"));
+    assert.ok(CAMPAIGN_UI_CHANNELS.includes("sms"));
+    assert.ok(wizardSrc.includes("smsProviderHint"));
+    assert.ok(wizardSrc.includes("willSend"));
+    assert.ok(wizardSrc.includes("selectedSendTotal"));
+    assert.ok(!wizardSrc.includes("campaign-channel-sms-absent"));
+    assert.ok(!listSrc.includes("campaigns-sms-absent"));
   });
 });
 
@@ -103,10 +112,14 @@ describe("campaigns presentation labels", () => {
     assert.equal(channelLabelKey("whatsapp"), "campaigns.channels.whatsapp");
     assert.equal(channelLabelKey("instagram"), "campaigns.channels.instagram");
     assert.equal(channelLabelKey("messenger"), "campaigns.channels.messenger");
+    assert.equal(channelLabelKey("email"), "campaigns.channels.email");
+    assert.equal(channelLabelKey("sms"), "campaigns.channels.sms");
   });
 
   it("maps skip reasons to safe keys (no raw secrets)", () => {
     assert.equal(skipReasonLabelKey("No eligible WhatsApp phone"), "campaigns.skipReasons.noPhone");
+    assert.equal(skipReasonLabelKey("Customer has no eligible email destination"), "campaigns.skipReasons.noEmail");
+    assert.equal(skipReasonLabelKey("Customer has no eligible SMS destination"), "campaigns.skipReasons.noSms");
     assert.equal(
       skipReasonLabelKey("receive_marketing false"),
       "campaigns.skipReasons.marketingOptOut",
@@ -171,7 +184,11 @@ describe("campaigns EN/AR localization", () => {
   });
 
   it("has skip reason Arabic copy", () => {
+    assertLocaleString("campaigns.channels.email", "Email", "البريد الإلكتروني");
+    assertLocaleString("campaigns.channels.sms", "SMS", "اس ام اس");
     assertLocaleString("campaigns.skipReasons.noPhone", "No phone number", "لا يوجد رقم هاتف");
+    assertLocaleString("campaigns.skipReasons.noEmail", "No email address", "لا يوجد بريد إلكتروني");
+    assertLocaleString("campaigns.skipReasons.noSms", "No SMS number", "لا يوجد رقم لإرسال رسالة نصية");
     assertLocaleString(
       "campaigns.skipReasons.marketingOptOut",
       "Customer opted out of marketing messages",
@@ -243,7 +260,8 @@ describe("campaigns wizard execution safety (source contract)", () => {
     assert.ok(wizardSrc.includes("mutateAsync"));
     assert.ok(wizardSrc.includes("getOrCreateCampaignSubmissionIdempotencyKey"));
     assert.ok(wizardSrc.includes("submissionIdempotencyKey"));
-    assert.ok(!wizardSrc.includes("crypto.randomUUID()"));
+    assert.ok(!wizardSrc.includes("idempotencyKey: crypto.randomUUID()"));
+    // Pending attachment ids may use randomUUID; the campaign submit key must not.
     // Preview/eligibility must not call execute/createDraft
     assert.ok(!wizardSrc.includes("service.execute"));
     assert.ok(hooksSrc.includes("previewChannelEligibility"));
@@ -267,10 +285,61 @@ describe("campaigns wizard execution safety (source contract)", () => {
     }
   });
 
+  it("manual audience picker is a table with identity + channel availability columns", () => {
+    const tableSrc = readFileSync(
+      join(loginAppSrc, "components/campaigns/campaign-manual-audience-table.tsx"),
+      "utf8",
+    );
+    assert.ok(wizardSrc.includes("CampaignManualAudienceTable"));
+    assert.ok(wizardSrc.includes("toggleManualAll"));
+    assert.ok(wizardSrc.includes("useCampaignCustomerChannelPresence"));
+    assert.ok(tableSrc.includes("formatCampaignPickerPhone"));
+    assert.ok(tableSrc.includes("campaign-manual-audience-grid"));
+    assert.ok(tableSrc.includes("<bdi"));
+    assert.ok(tableSrc.includes("IdentityValue"));
+    assert.ok(tableSrc.includes("text-start"));
+    assert.ok(!tableSrc.includes("max-w-0"));
+    assert.ok(!tableSrc.includes("table-fixed"));
+    assert.ok(tableSrc.includes("CAMPAIGN_PICKER_CHANNEL_COLUMNS"));
+    assert.ok(tableSrc.includes("campaigns.wizard.audience.table.messenger"));
+    assert.ok(tableSrc.includes("campaigns.wizard.audience.table.whatsapp"));
+    assert.ok(tableSrc.includes("campaigns.wizard.audience.table.instagram"));
+    assert.ok(tableSrc.includes("campaigns.wizard.audience.table.emailChannel"));
+    assert.ok(tableSrc.includes("campaigns.wizard.audience.table.sms"));
+    assertLocaleString("campaigns.wizard.audience.table.name", "Name", "الاسم");
+    assertLocaleString("campaigns.wizard.audience.table.phone", "Mobile", "رقم الموبايل");
+    assertLocaleString("campaigns.wizard.audience.table.email", "Email", "الإيميل");
+    assertLocaleString("campaigns.wizard.audience.table.messenger", "Messenger", "مسنجر");
+    assertLocaleString("campaigns.wizard.audience.table.whatsapp", "WhatsApp", "واتساب");
+    assertLocaleString("campaigns.wizard.audience.table.instagram", "Instagram", "إنستجرام");
+    assertLocaleString("campaigns.wizard.audience.table.emailChannel", "Email", "إيميل");
+    assertLocaleString("campaigns.wizard.audience.table.sms", "SMS", "اس ام اس");
+  });
+
   it("shows per-channel content previews", () => {
     assert.ok(wizardSrc.includes("whatsappPreviewHint"));
+    assert.ok(wizardSrc.includes("smsPreviewHint"));
+    assert.ok(wizardSrc.includes("emailMailboxHint"));
+    assert.ok(wizardSrc.includes("smsProviderHint"));
+    assert.ok(wizardSrc.includes("emailPreviewHint"));
     assert.ok(wizardSrc.includes("plainPreviewHint"));
-    assert.ok(wizardSrc.includes("renderMetaMessagingCampaignText"));
+    assert.ok(wizardSrc.includes("renderCampaignOutboundText"));
+    assert.ok(wizardSrc.includes("campaign-whatsapp-preview"));
+    assert.ok(wizardSrc.includes("campaign-email-preview"));
+    assert.ok(wizardSrc.includes("CampaignContentAttachments"));
+    assert.ok(wizardSrc.includes("uploadCampaignContentAttachments"));
+    assert.ok(!wizardSrc.includes("marketing_campaign"));
+    assert.ok(!String(dig(en, "campaigns.wizard.content.whatsappPreviewHint")).includes("marketing_campaign"));
+    assert.ok(!String(dig(ar, "campaigns.wizard.content.whatsappPreviewHint")).includes("marketing_campaign"));
+    assert.ok(!String(dig(en, "campaigns.wizard.content.smsPreviewHint")).includes("marketing_campaign"));
+    assertLocaleString(
+      "campaigns.wizard.content.whatsappPreviewHint",
+      "WhatsApp sends this text to the customer.",
+      "واتساب يرسل هذا النص للعميل.",
+    );
+    assertLocaleString("campaigns.wizard.content.attachments", "Attachments", "مرفقات");
+    assertLocaleString("campaigns.wizard.content.addAttachments", "Add files", "إضافة ملفات");
+    assertLocaleString("campaigns.detail.noAttachments", "No files attached.", "لا توجد ملفات مرفقة.");
   });
 
   it("lists and details distinguish queued vs sent", () => {

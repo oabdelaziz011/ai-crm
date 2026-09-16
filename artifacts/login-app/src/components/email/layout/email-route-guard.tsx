@@ -12,7 +12,7 @@ export function EmailRouteGuard({ route, Page }: Props) {
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
 
-  if (route.commercialFeatureCode) {
+  if (route.commercialFeatureCode && !isSuperAdmin) {
     if (commercialFeatureEnabled(route.commercialFeatureCode) !== true) {
       return (
         <AccessDeniedPage requiredPermission={route.commercialFeatureCode} />

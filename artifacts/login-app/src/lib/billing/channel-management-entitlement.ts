@@ -2,19 +2,21 @@ export type CommercialFeatureEnabledLookup = (featureCode: string) => boolean | 
 
 /**
  * Sellable channel SKUs that unlock the Channels management dashboard.
- * Excludes omnichannel (inbox-only) and sms (no management UI/transport).
+ * Excludes omnichannel (inbox-only). SMS uses System Settings for credentials
+ * and may appear here as a company_channels row for enable/disable.
  */
 export const CHANNEL_MANAGEMENT_ENTITLEMENT_CODES = [
   "whatsapp_channel",
   "facebook_channel",
   "instagram_channel",
   "email_channel",
+  "sms_channel",
 ] as const;
 
 export type ChannelManagementEntitlementCode =
   (typeof CHANNEL_MANAGEMENT_ENTITLEMENT_CODES)[number];
 
-/** Channel catalog keys with an active management surface (excludes SMS stub). */
+/** Channel catalog keys with an active management surface (SMS credentials in Settings). */
 export const CHANNEL_MANAGEMENT_UI_CHANNEL_KEYS = new Set([
   "whatsapp",
   "messenger",
@@ -22,6 +24,7 @@ export const CHANNEL_MANAGEMENT_UI_CHANNEL_KEYS = new Set([
   "instagram",
   "email",
   "web_chat",
+  "sms",
 ]);
 
 /**

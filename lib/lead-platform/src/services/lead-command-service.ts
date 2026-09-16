@@ -10,7 +10,7 @@ import {
   createLeadStageChangedEvent,
   createLeadUpdatedEvent,
 } from "../events/lead-event-factory.js";
-import { LeadNotFoundError, LeadValidationError } from "../errors.js";
+import { LeadNotFoundError, LeadPermissionDeniedError, LeadValidationError } from "../errors.js";
 import type {
   LeadAssigneeResolverPort,
   LeadAuditPort,
@@ -34,6 +34,11 @@ import {
   readRequiredString,
 } from "../validators/lead-guards.js";
 import { assertStageTransition, selectAssignmentCandidate } from "../validators/stage-transition-validator.js";
+import {
+  AssignmentGovernanceError,
+  type AssignmentGovernancePort,
+} from "@workspace/assignment-governance";
+import type { AssignmentAuditPort, AssignmentAuditSource } from "@workspace/assignment-audit";
 
 export type LeadCommandServiceDeps = {
   leads: LeadRepository;
@@ -42,10 +47,30 @@ export type LeadCommandServiceDeps = {
   events: LeadEventPublisherPort;
   notifications: LeadNotificationPort;
   audit: LeadAuditPort;
+  assignmentGovernance?: AssignmentGovernancePort | null;
+  assignmentAudit?: AssignmentAuditPort | null;
 };
 
 export class LeadCommandService {
   constructor(private readonly deps: LeadCommandServiceDeps) {}
+
+  private async assertAssignableEmployee(actorUserId: string, targetUserId: string): Promise<void> {
+    if (!this.deps.assignmentGovernance) return;
+    try {
+      await this.deps.assignmentGovernance.assertCanAssignToEmployee({
+        actorUserId,
+        targetUserId,
+        resource: "lead",
+      });
+    } catch (error) {
+      if (error instanceof AssignmentGovernanceError) {
+        throw new LeadPermissionDeniedError(
+          `${LEAD_PERMISSIONS.assign} (${error.code}: ${error.message})`,
+        );
+      }
+      throw error;
+    }
+  }
 
   async createLead(
     ctx: LeadServiceContext,
@@ -94,6 +119,9 @@ export class LeadCommandService {
     }
 
     const nowIso = new Date().toISOString();
+    if (input.assignedUserId) {
+      await this.assertAssignableEmployee(actorUserId, input.assignedUserId);
+    }
     const record = await this.deps.leads.createLead({
       companyId: input.companyId,
       pipelineId,
@@ -159,6 +187,18 @@ export class LeadCommandService {
     await this.deps.events.publish(createLeadCreatedEvent(record, actorUserId));
     await this.writeAudit(input.companyId, actorUserId, "CREATE", "lead", record.id, { title: record.title });
 
+    if (input.assignedUserId && this.deps.assignmentAudit) {
+      await this.deps.assignmentAudit.recordAssignmentChange({
+        companyId: input.companyId,
+        actorUserId,
+        resourceType: "lead",
+        resourceId: record.id,
+        previousAssigneeUserId: null,
+        newAssigneeUserId: input.assignedUserId,
+        source: "human",
+      });
+    }
+
     return { lead: record };
   }
 
@@ -189,7 +229,11 @@ export class LeadCommandService {
     const actorUserId = assertLeadActor(ctx);
     assertLeadCompanyAccess(ctx, input.companyId);
     assertLeadPermission(ctx, LEAD_PERMISSIONS.edit);
-    await this.requireLead(input.companyId, input.leadId);
+    const existing = await this.requireLead(input.companyId, input.leadId);
+
+    if (input.assignedUserId) {
+      await this.assertAssignableEmployee(actorUserId, input.assignedUserId);
+    }
 
     let lifecycleStatus: LeadRecord["lifecycleStatus"] | undefined;
     if (input.stageId) {
@@ -263,6 +307,19 @@ export class LeadCommandService {
 
     await this.deps.events.publish(createLeadUpdatedEvent(record, actorUserId, input));
     await this.writeAudit(input.companyId, actorUserId, "UPDATE", "lead", input.leadId, { patch: input });
+
+    if (input.assignedUserId !== undefined && this.deps.assignmentAudit) {
+      await this.deps.assignmentAudit.recordAssignmentChange({
+        companyId: input.companyId,
+        actorUserId,
+        resourceType: "lead",
+        resourceId: input.leadId,
+        previousAssigneeUserId: existing.assignedUserId,
+        newAssigneeUserId: input.assignedUserId,
+        source: "human",
+      });
+    }
+
     return { lead: record };
   }
 
@@ -290,6 +347,8 @@ export class LeadCommandService {
       leadId: string;
       assigneeUserId?: string;
       method?: AssignmentMethod;
+      assignmentAuditSource?: AssignmentAuditSource;
+      skipAssignmentAudit?: boolean;
     },
   ): Promise<{ lead: LeadRecord }> {
     const actorUserId = assertLeadActor(ctx);
@@ -311,6 +370,8 @@ export class LeadCommandService {
     }
 
     if (!assigneeUserId) throw new LeadValidationError("No assignee available.");
+
+    await this.assertAssignableEmployee(actorUserId, assigneeUserId);
 
     const isReassign = Boolean(existing.assignedUserId);
     await this.deps.leads.createAssignment({
@@ -346,6 +407,18 @@ export class LeadCommandService {
       actorUserId,
       recipientUserId: assigneeUserId,
     });
+
+    if (this.deps.assignmentAudit && !input.skipAssignmentAudit) {
+      await this.deps.assignmentAudit.recordAssignmentChange({
+        companyId: input.companyId,
+        actorUserId,
+        resourceType: "lead",
+        resourceId: input.leadId,
+        previousAssigneeUserId: existing.assignedUserId,
+        newAssigneeUserId: assigneeUserId,
+        source: input.assignmentAuditSource ?? (method === "manual" ? "human" : "system"),
+      });
+    }
 
     return { lead: record };
   }

@@ -62,3 +62,17 @@ export class ConversationStateConflictError extends ConversationDomainError {
     );
   }
 }
+
+/**
+ * Target would not be able to read the conversation after assignment
+ * under Phase 6D visibility rules. Message intentionally non-specific
+ * (no permission / department oracle).
+ */
+export class AssignmentTargetCannotReadConversationError extends ConversationDomainError {
+  constructor() {
+    super(
+      "ASSIGNMENT_TARGET_CANNOT_READ_CONVERSATION",
+      "Assignment target cannot access this conversation.",
+    );
+  }
+}

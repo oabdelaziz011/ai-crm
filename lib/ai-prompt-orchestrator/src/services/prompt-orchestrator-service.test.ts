@@ -92,7 +92,7 @@ function createSampleContext(): PromptContextInput {
     conversationId: "conv-1",
     language: "English",
     tone: "professional",
-    assistantProfile: { name: "Vault Assistant", personality: "helpful" },
+    assistantProfile: { name: "ValueOR Assistant", personality: "helpful" },
     conversationState: "waiting_user",
     recentMessages: [{ role: "customer", content: "What are your hours?" }],
     intentDecision: {
@@ -213,7 +213,7 @@ describe("Prompt builders", () => {
       context,
     );
 
-    assert.ok(sections.system_instructions?.content.includes("VaultOS"));
+    assert.ok(sections.system_instructions?.content.includes("ValueOR"));
     assert.ok(sections.recent_messages?.content.includes("What are your hours?"));
     assert.ok(sections.intent_decision?.content.includes("faq"));
     assert.ok(sections.tool_results?.content.includes("9am-5pm"));

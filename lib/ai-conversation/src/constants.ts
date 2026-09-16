@@ -57,7 +57,13 @@ export const MESSAGE_STATUSES = ["pending", "sent", "delivered", "failed", "read
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 
 export const CONVERSATION_PERMISSIONS = {
+  /** View all company conversations (View All). */
   view: "ai.conversations.view",
+  /**
+   * View only conversations assigned to the current user
+   * (`conversations.assigned_user_id`). Unassigned → View All only.
+   */
+  viewAssigned: "ai.conversations.view_assigned",
   reply: "ai.conversations.reply",
   takeover: "ai.conversations.takeover",
   release: "ai.conversations.release",

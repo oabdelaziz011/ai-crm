@@ -7,6 +7,7 @@ import {
   type BrandHealthTarget,
 } from "@/lib/company-workspace/brand-center/brand-health";
 import { resolveBrandLogos } from "@/lib/company-workspace/brand-center/resolve-brand-logos";
+import { resolveActiveBrandColors } from "@/lib/company-workspace/brand-center/branding-mode";
 import { cn } from "@/lib/utils";
 import type {
   BrandPreviewSurface,
@@ -44,7 +45,8 @@ export function BrandLivePreview({
   companyContact,
 }: BrandLivePreviewProps) {
   const { t } = useTranslation("common");
-  const { colors, general } = document;
+  const { general } = document;
+  const colors = resolveActiveBrandColors(document);
   const contact: CompanyContactSnapshot = companyContact ?? {
     companyName: general.companyName || null,
     phone: general.supportPhone || null,
@@ -148,14 +150,6 @@ function pickGuidance(
         messageKey: "companyWorkspace.brandCenter.emptyStates.emailFooter",
         ctaKey: "companyWorkspace.brandCenter.emptyStates.openEmail",
         target: footer.target,
-      };
-    }
-    const sender = byId.senderIdentity;
-    if (sender && sender.status !== "ready") {
-      return {
-        messageKey: "companyWorkspace.brandCenter.emptyStates.senderIdentity",
-        ctaKey: "companyWorkspace.brandCenter.emptyStates.openEmail",
-        target: sender.target,
       };
     }
   }

@@ -20,6 +20,7 @@ import {
   waTraceRegisterOutboundExternalId,
 } from "../debug/whatsapp-conversation-trace-bridge.js";
 import { assertOutboundChannelCommercialAccess } from "../services/assert-channel-commercial-access.js";
+import { confirmOutgoingDeliveryWithRetry } from "../services/confirm-outgoing-delivery.js";
 
 export class OutboundMessagePipeline {
   constructor(
@@ -235,24 +236,61 @@ export class OutboundMessagePipeline {
           .catch(() => undefined);
       }
 
+      let conversationConfirmStatus: OutboundDispatchResponseDto["conversationConfirmStatus"] = "skipped";
       if (outboundMessageId && this.ports.conversation.confirmOutgoingDelivery) {
-        await this.ports.conversation
-          .confirmOutgoingDelivery({
-            messageId: outboundMessageId,
-            status: updated.delivery_status,
+        const confirmFn = this.ports.conversation.confirmOutgoingDelivery.bind(this.ports.conversation);
+        const emailAutomation =
+          request.metadata?.emailAutomation &&
+          typeof request.metadata.emailAutomation === "object" &&
+          !Array.isArray(request.metadata.emailAutomation)
+            ? (request.metadata.emailAutomation as Record<string, unknown>)
+            : null;
+        // Keep valueor-ack:{inboundId} claim key so concurrent workers cannot insert a second ack.
+        const preserveClaimExternalId =
+          emailAutomation?.type === "acknowledgement" && emailAutomation.preserveClaimExternalId === true;
+        const confirmResult = await confirmOutgoingDeliveryWithRetry(confirmFn, {
+          messageId: outboundMessageId,
+          status: updated.delivery_status,
+          externalMessageId: preserveClaimExternalId
+            ? null
+            : (updated.external_message_id ?? sendResult.externalMessageId ?? null),
+        }, {
+          onAttemptError: (error, attempt) => {
+            console.error("[OUTBOUND_CONFIRM] confirmOutgoingDelivery failed", {
+              attempt,
+              outboundMessageId,
+              deliveryEventId: updated.id,
+              externalMessageId: updated.external_message_id ?? sendResult.externalMessageId ?? null,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          },
+        });
+        conversationConfirmStatus = confirmResult.ok ? "confirmed" : "failed";
+        if (!confirmResult.ok) {
+          // Provider already succeeded — do not resend WhatsApp; surface confirm gap only.
+          console.error("[OUTBOUND_CONFIRM] conversation message left unconfirmed after provider send", {
+            outboundMessageId,
+            deliveryEventId: updated.id,
             externalMessageId: updated.external_message_id ?? sendResult.externalMessageId ?? null,
-          })
-          .catch(() => undefined);
+            attempts: confirmResult.attempts,
+            error:
+              confirmResult.error instanceof Error
+                ? confirmResult.error.message
+                : String(confirmResult.error),
+          });
+        }
       }
 
       traceOutboundValidationPass("OutboundMessagePipeline.process", {
         deliveryStatus: updated.delivery_status,
+        conversationConfirmStatus,
       });
 
       return {
         deliveryEventId: updated.id,
         deliveryStatus: updated.delivery_status,
         externalMessageId: updated.external_message_id ?? undefined,
+        conversationConfirmStatus,
       };
     } catch (error) {
       waTraceNoteError(
@@ -263,13 +301,28 @@ export class OutboundMessagePipeline {
         error instanceof Error ? error.message : "Outbound delivery failed",
       );
       if (outboundMessageId && this.ports.conversation.confirmOutgoingDelivery) {
-        await this.ports.conversation
-          .confirmOutgoingDelivery({
-            messageId: outboundMessageId,
-            status: "failed",
-            externalMessageId: null,
-          })
-          .catch(() => undefined);
+        const confirmFn = this.ports.conversation.confirmOutgoingDelivery.bind(this.ports.conversation);
+        const confirmResult = await confirmOutgoingDeliveryWithRetry(confirmFn, {
+          messageId: outboundMessageId,
+          status: "failed",
+          externalMessageId: null,
+        }, {
+          onAttemptError: (confirmError, attempt) => {
+            console.error("[OUTBOUND_CONFIRM] failed-status confirmOutgoingDelivery failed", {
+              attempt,
+              outboundMessageId,
+              deliveryEventId: delivery.id,
+              error: confirmError instanceof Error ? confirmError.message : String(confirmError),
+            });
+          },
+        });
+        if (!confirmResult.ok) {
+          console.error("[OUTBOUND_CONFIRM] could not mark conversation message failed after provider error", {
+            outboundMessageId,
+            deliveryEventId: delivery.id,
+            attempts: confirmResult.attempts,
+          });
+        }
       }
       throw error;
     }

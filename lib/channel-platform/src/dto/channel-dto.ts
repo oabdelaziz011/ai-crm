@@ -145,6 +145,8 @@ export type OutboundDispatchResponseDto = {
   deliveryEventId: string;
   deliveryStatus: string;
   externalMessageId?: string;
+  /** Whether conversation_messages confirm succeeded after provider send. */
+  conversationConfirmStatus?: "confirmed" | "failed" | "skipped";
 };
 
 export type WebhookEnvelopeDto = {

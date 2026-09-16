@@ -8,21 +8,21 @@
   --ws-border-subtle: hsl(var(--border));
   --ws-text: hsl(var(--foreground));
   --ws-muted: hsl(var(--muted-foreground));
-  --ws-accent: hsl(var(--primary));
-  --ws-accent-dim: hsl(var(--primary) / 0.12);
+  --ws-accent: hsl(199 89% 42%);
+  --ws-accent-dim: hsl(199 89% 42% / 0.12);
   --ws-warn: hsl(var(--warning));
   --ws-danger: hsl(var(--destructive));
   --ws-success: hsl(var(--success));
   --ws-violet: hsl(var(--accent-foreground));
-  --ws-nav-width: 3.25rem;
-  --ws-list-width: 340px;
-  --ws-intelligence-width: 320px;
-  --ws-customer-width: 340px;
-  --ws-top-height: 4.5rem;
+  --ws-nav-width: 0;
+  --ws-list-width: 320px;
+  --ws-intelligence-width: 300px;
+  --ws-customer-width: 300px;
+  --ws-top-height: 3.5rem;
   --ws-dur: 160ms;
   --ws-ease: cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--ws-text);
-  background: var(--ws-bg);
+  background: hsl(220 16% 97%);
   font-feature-settings: "tnum" 1;
   /* Map agent-desk aliases to the same global theme tokens */
   --ad-bg: var(--ws-bg);
@@ -40,6 +40,47 @@
   --ad-success: var(--ws-success);
   --ad-violet: var(--ws-violet);
   --ad-dur-hover: var(--ws-dur);
+}
+
+/*
+ * Radix Popover/Select/Dropdown portals mount under <body>, outside .agent-workspace.
+ * Without these tokens on an ancestor of the portal, `bg-[var(--ad-surface-raised)]`
+ * (and related Omnichannel vars) resolve to transparent and conversation text bleeds through.
+ */
+html:has(.agent-workspace) {
+  --ws-bg: hsl(var(--background));
+  --ws-surface: hsl(var(--card));
+  --ws-surface-2: hsl(var(--muted));
+  --ws-border: hsl(var(--border));
+  --ws-border-subtle: hsl(var(--border));
+  --ws-text: hsl(var(--foreground));
+  --ws-muted: hsl(var(--muted-foreground));
+  --ws-accent: hsl(199 89% 42%);
+  --ws-accent-dim: hsl(199 89% 42% / 0.12);
+  --ws-warn: hsl(var(--warning));
+  --ws-danger: hsl(var(--destructive));
+  --ws-success: hsl(var(--success));
+  --ad-bg: var(--ws-bg);
+  --ad-surface: var(--ws-surface);
+  /* Prefer opaque popover token for portal overlays (solid floating cards). */
+  --ad-surface-raised: hsl(var(--popover));
+  --ad-surface-2: hsl(var(--secondary));
+  --ad-border: var(--ws-border);
+  --ad-border-subtle: var(--ws-border-subtle);
+  --ad-text: var(--ws-text);
+  --ad-text-muted: var(--ws-muted);
+  --ad-accent: var(--ws-accent);
+  --ad-accent-dim: var(--ws-accent-dim);
+  --ad-warn: var(--ws-warn);
+  --ad-danger: var(--ws-danger);
+  --ad-success: var(--ws-success);
+}
+
+/* Shared opaque surface for Omnichannel portaled menus/popovers. */
+.omni-overlay-surface {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-color: hsl(var(--border));
 }
 
 .agent-workspace * {
@@ -125,6 +166,63 @@
   box-shadow: inset 3px 0 0 var(--ws-accent);
 }
 
+.ws-workspace-body[data-ws-shell="rtl"] .ws-inbox-row--active {
+  box-shadow: inset -3px 0 0 var(--ws-accent);
+}
+
+.ws-inbox-column {
+  display: flex;
+  flex-direction: column;
+  background: var(--ws-surface);
+  /* Face the conversation pane (LTR: right edge; RTL: left edge). */
+  box-shadow: inset -1px 0 0 hsl(var(--border) / 0.85);
+}
+
+.ws-workspace-body[data-ws-shell="rtl"] .ws-inbox-column {
+  box-shadow: inset 1px 0 0 hsl(var(--border) / 0.85);
+}
+
+.ws-inbox-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.ws-inbox-chips {
+  border-bottom: 1px solid var(--ws-border-subtle);
+}
+
+.ws-conversation-pane {
+  background: var(--ws-surface);
+  min-width: 0;
+  flex: 1 1 55%;
+}
+
+.ws-intelligence-panel {
+  background: var(--ws-surface);
+  /* Face the conversation pane (LTR: left edge; RTL: right edge). */
+  box-shadow: inset 1px 0 0 hsl(var(--border) / 0.85);
+}
+
+.ws-workspace-body[data-ws-shell="rtl"] .ws-intelligence-panel {
+  box-shadow: inset -1px 0 0 hsl(var(--border) / 0.85);
+}
+
+.ws-ai-banner {
+  backdrop-filter: blur(4px);
+}
+
+.ws-btn--warn {
+  color: hsl(var(--destructive-foreground));
+  border-color: hsl(var(--destructive));
+  background: hsl(var(--destructive));
+}
+
+.ws-btn--warn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
 .ws-nav-btn {
   transition: background var(--ws-dur) var(--ws-ease), color var(--ws-dur) var(--ws-ease);
 }
@@ -143,9 +241,13 @@
     --ws-intelligence-width: 280px;
     --ws-customer-width: 280px;
   }
+
+  .agent-workspace .ws-intelligence-panel {
+    max-width: 280px;
+  }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1099px) {
   .agent-workspace { --ws-customer-width: 0px; }
   .ws-customer-panel--tablet-collapsed { display: none; }
   .ws-intelligence-panel,
@@ -176,10 +278,38 @@
   .ws-btn, .ws-inbox-row, .ws-nav-btn, .ws-collapse { transition: none !important; }
 }
 
-.agent-workspace .ws-conversation-pane [class*="max-w-"] {
+/* Only message bubbles — do NOT force full width on header chips (ticket/SLA). */
+.agent-workspace .ws-conversation-pane .ws-message-timeline [class*="max-w-"] {
   max-width: none !important;
   width: 100% !important;
   padding-inline: 0.5rem;
+}
+
+/* Keep ticket + SLA horizontally adjacent as one compact cluster. */
+.agent-workspace .ws-conversation-header .ws-header-ticket-sla {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  width: auto !important;
+}
+
+.agent-workspace .ws-conversation-header .ws-header-ticket-sla > * {
+  flex: 0 1 auto;
+  width: auto !important;
+  max-width: min(100%, 12rem) !important;
+}
+
+.agent-workspace .ws-conversation-header .ws-header-meta {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem 0.625rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  max-height: 2.1rem;
 }
 
 .ws-workspace-body {
@@ -199,7 +329,14 @@
 }
 
 .ws-workspace-body[data-conversation-expanded="true"] .ws-conversation-pane {
-  transition: width 220ms var(--ws-ease);
+  flex: 1 1 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.ws-workspace-body[data-conversation-expanded="true"] .ws-inbox-spacer {
+  width: 0 !important;
+  min-width: 0 !important;
 }
 
 .ws-inbox-resize-handle {
@@ -251,14 +388,55 @@
 }
 
 .agent-workspace .ws-conversation-pane {
-  background: var(--ws-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ws-surface);
   min-height: 0;
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* Message timeline consumes remaining vertical space; composer stays pinned. */
+.agent-workspace .ws-message-timeline {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Compact conversation chrome — reclaim vertical space for the message timeline. */
+.agent-workspace .ws-conversation-pane .ws-conversation-toolbar .ws-btn {
+  padding: 0.12rem 0.4rem;
+  font-size: 0.625rem;
+  line-height: 1.15;
+  gap: 0.2rem;
+}
+
+.agent-workspace .ws-conversation-pane .ws-conversation-toolbar {
+  scrollbar-width: thin;
+}
+
+.agent-workspace .ws-composer-shell {
+  flex: 0 0 auto;
+}
+
+.agent-workspace .ws-composer-shell .agent-desk-compose {
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 1280px) {
+  .agent-workspace .ws-conversation-pane .ws-conversation-toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }
 
 @media (min-width: 1400px) {
   .agent-workspace .ws-conversation-pane {
-    min-width: 650px;
+    min-width: min(520px, 48%);
   }
 
   .ws-workspace-body[data-conversation-expanded="true"] .ws-conversation-pane {

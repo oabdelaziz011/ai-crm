@@ -12,6 +12,7 @@ import {
 export function createWebhookTicketToolPorts(client: SupabaseClient): TicketAgentToolPorts {
   const platform = createTicketPlatformServices(client, {
     audit: createSupabaseTicketAuditPort(client),
+    assignmentGovernance: false,
   });
   return createTicketAgentToolPortsFromPlatform(platform);
 }

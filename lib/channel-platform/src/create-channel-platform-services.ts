@@ -5,6 +5,7 @@ import { createStubWebChatAdapter } from "./adapters/stub-web-chat-adapter.js";
 import { createWhatsAppCloudAdapter } from "./adapters/whatsapp/whatsapp-cloud-adapter.js";
 import { createInstagramCloudAdapter } from "./adapters/instagram/instagram-cloud-adapter.js";
 import { createMessengerCloudAdapter } from "./adapters/messenger/messenger-cloud-adapter.js";
+import { createTwilioSmsAdapter } from "./adapters/sms/twilio-sms-adapter.js";
 import { ChannelDispatcher } from "./dispatcher/channel-dispatcher.js";
 import { ChannelSessionEngine } from "./engines/channel-session-engine.js";
 import { DeliveryTrackingEngine } from "./engines/delivery-tracking-engine.js";
@@ -44,6 +45,10 @@ export type ChannelPlatformServicesOptions = {
   messengerFetchFn?: typeof fetch;
   messengerCredentialsLoader?: import("./adapters/messenger/messenger-canonical-credentials.js").MessengerCredentialsLoader;
   messengerOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
+  smsFetchFn?: typeof fetch;
+  smsCredentialsLoader?: import("./adapters/sms/twilio-sms-canonical-credentials.js").SmsCredentialsLoader;
+  smsOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
+  smsStatusCallbackUrlResolver?: (companyChannelId: string) => string | null;
   emailCredentialsLoader?: import("./adapters/email/email-canonical-credentials.js").EmailCredentialsLoader;
   emailOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
   workflowResolver?: ChannelWorkflowResolver;
@@ -94,6 +99,12 @@ export function createChannelPlatformServices(
           credentialsLoader: options.messengerCredentialsLoader,
           onOutboundDiagnostic: options.messengerOutboundDiagnostic,
         }),
+        createTwilioSmsAdapter({
+          fetchFn: options.smsFetchFn,
+          credentialsLoader: options.smsCredentialsLoader,
+          onOutboundDiagnostic: options.smsOutboundDiagnostic,
+          resolveStatusCallbackUrl: options.smsStatusCallbackUrlResolver,
+        }),
       ];
 
   if (options.registerEmailAdapter) {
@@ -118,7 +129,13 @@ export function createChannelPlatformServices(
   );
 
   const dispatcher = new ChannelDispatcher(outboundPipeline, telemetry);
-  const deliveryStatusPipeline = new DeliveryStatusPipeline(deliveryEngine, deliveryRepository);
+  const deliveryStatusPipeline = new DeliveryStatusPipeline(
+    deliveryEngine,
+    deliveryRepository,
+    options.ports.conversation.confirmOutgoingDelivery
+      ? (input) => options.ports.conversation.confirmOutgoingDelivery!(input)
+      : undefined,
+  );
 
   const inboundPipeline = new InboundMessagePipeline(
     options.ports,

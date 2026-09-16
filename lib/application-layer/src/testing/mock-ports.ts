@@ -106,6 +106,7 @@ function seedCustomer(overrides?: Partial<CustomerReadModel>): CustomerReadModel
     outstandingBalanceCents: overrides?.outstandingBalanceCents ?? 4500,
     currentStatus: overrides?.currentStatus ?? "Checked In",
     createdAt: overrides?.createdAt ?? now(),
+    avatarUrl: overrides?.avatarUrl ?? null,
   });
 }
 

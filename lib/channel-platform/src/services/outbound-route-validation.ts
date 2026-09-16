@@ -74,11 +74,16 @@ export function validateOutboundRoute(
     }
   | { ok: false; issue: OutboundRouteIssue } {
   const companyChannelId = session?.company_channel_id ?? target.companyChannelId;
-  // Prefer session thread (inbound sender). Never let a mismatched CRM/target phone win.
-  const mismatch = assertOutboundRecipientMatchesSession({
-    sessionExternalThreadId: session?.external_thread_id,
-    requestExternalThreadId: target.externalThreadId,
-  });
+  const channelKeyHint = (session?.channel_key ?? target.channelKey ?? "").trim().toLowerCase();
+  // WhatsApp-only: refuse CRM phone override of the session sender.
+  // Email/other channels use Message-ID / mailbox thread ids — digit compare is wrong.
+  const mismatch =
+    channelKeyHint === "whatsapp"
+      ? assertOutboundRecipientMatchesSession({
+          sessionExternalThreadId: session?.external_thread_id,
+          requestExternalThreadId: target.externalThreadId,
+        })
+      : null;
   if (mismatch) {
     return { ok: false, issue: mismatch };
   }

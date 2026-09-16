@@ -1,8 +1,10 @@
-import type { ElementType, ReactNode } from "react";
+import type { ElementType, ReactNode, ChangeEvent } from "react";
+import { useRef, useState } from "react";
 import {
   Activity,
   ArrowLeft,
   CalendarDays,
+  Camera,
   ChevronRight,
   Clock,
   Copy,
@@ -10,7 +12,9 @@ import {
   FileText,
   History,
   LayoutGrid,
+  Loader2,
   Mail,
+  MessageSquareText,
   Megaphone,
   MessageSquare,
   MoreHorizontal,
@@ -18,11 +22,12 @@ import {
   Phone,
   Sparkles,
   Ticket,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +51,12 @@ import {
 } from "@/lib/customer-workspace/workspace-navigation";
 import { cn } from "@/lib/utils";
 import { formatCustomerPhoneDisplay, localizedCountryName } from "@/lib/customers/customer-phone-form";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import {
+  CustomerAvatarUploadError,
+} from "@/lib/customers/customer-avatar-upload";
+import { useCustomerAvatarMutations } from "@/hooks/use-customer-avatar";
+import { useToast } from "@/hooks/use-toast";
 
 const TOP_TAB_ICONS: Record<WorkspaceTopTab, ElementType> = {
   overview: LayoutGrid,
@@ -54,6 +65,8 @@ const TOP_TAB_ICONS: Record<WorkspaceTopTab, ElementType> = {
   invoices: FileText,
   communication: MessageSquare,
   tickets: Ticket,
+  email: Mail,
+  sms: MessageSquareText,
   payments: Wallet,
   files: Paperclip,
   ai: Sparkles,
@@ -72,6 +85,8 @@ export type CustomerWorkspaceShellProps = {
   canNewBooking?: boolean;
   canWhatsapp?: boolean;
   canCall?: boolean;
+  /** When true, authorized users can upload/replace/remove the CRM avatar. */
+  canEditAvatar?: boolean;
   ltv: number;
   outstanding: number;
   tags: string[];
@@ -95,6 +110,7 @@ export function CustomerWorkspaceShell({
   canNewBooking = false,
   canWhatsapp = false,
   canCall = false,
+  canEditAvatar = false,
   ltv,
   outstanding,
   tags,
@@ -107,6 +123,10 @@ export function CustomerWorkspaceShell({
   children,
 }: CustomerWorkspaceShellProps) {
   const { t, i18n } = useTranslation("common");
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarMutations = useCustomerAvatarMutations();
   const nav = resolveWorkspaceNavigation(activeTab);
   const activeTopTab = nav.primary;
   const statusDue = showFinanceKpis && outstanding > 0;
@@ -122,6 +142,73 @@ export function CustomerWorkspaceShell({
       : null;
   const email = customer.email?.trim() || null;
   const lang = i18n.language;
+  const avatarUrlRaw = normalizeAvatarUrl(customer.avatar_url);
+  const avatarDisplayUrl =
+    avatarUrlRaw && !avatarUrlRaw.startsWith("data:") ? avatarUrlRaw : undefined;
+  const avatarPending =
+    avatarBusy || avatarMutations.upload.isPending || avatarMutations.remove.isPending;
+
+  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !canEditAvatar || avatarPending) return;
+
+    setAvatarBusy(true);
+    try {
+      await avatarMutations.upload.mutateAsync({
+        customerId: customer.id,
+        file,
+        previousAvatarUrl: customer.avatar_url,
+      });
+      toast({
+        title: t("dashboard.customerWorkspace.avatar.uploadSuccessTitle"),
+        description: t("dashboard.customerWorkspace.avatar.uploadSuccessDescription"),
+      });
+    } catch (error) {
+      const message =
+        error instanceof CustomerAvatarUploadError
+          ? error.code === "too_large"
+            ? t("dashboard.customerWorkspace.avatar.tooLargeDescription")
+            : error.code === "unsupported_type"
+              ? t("dashboard.customerWorkspace.avatar.invalidTypeDescription")
+              : error.code === "unauthenticated"
+                ? t("dashboard.customerWorkspace.avatar.sessionExpiredDescription")
+                : error.code === "forbidden"
+                  ? t("dashboard.customerWorkspace.avatar.forbiddenDescription")
+                  : t("dashboard.customerWorkspace.avatar.uploadFailedDescription")
+          : t("dashboard.customerWorkspace.avatar.uploadFailedDescription");
+      toast({
+        title: t("dashboard.customerWorkspace.avatar.uploadFailedTitle"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!canEditAvatar || avatarPending || !customer.avatar_url) return;
+    setAvatarBusy(true);
+    try {
+      await avatarMutations.remove.mutateAsync({
+        customerId: customer.id,
+        previousAvatarUrl: customer.avatar_url,
+      });
+      toast({
+        title: t("dashboard.customerWorkspace.avatar.removeSuccessTitle"),
+        description: t("dashboard.customerWorkspace.avatar.removeSuccessDescription"),
+      });
+    } catch {
+      toast({
+        title: t("dashboard.customerWorkspace.avatar.uploadFailedTitle"),
+        description: t("dashboard.customerWorkspace.avatar.removeFailedDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
 
   return (
     <div className="customer-workspace relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
@@ -140,11 +227,69 @@ export function CustomerWorkspaceShell({
               </Button>
 
               <div className="mt-3 flex items-start gap-3">
-                <Avatar className="size-12 border border-border/70">
-                  <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
-                    {customerInitials(customer.name)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative shrink-0">
+                  <Avatar className="size-12 border border-border/70">
+                    {avatarDisplayUrl ? (
+                      <AvatarImage src={avatarDisplayUrl} alt={customer.name} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
+                      {customerInitials(customer.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {canEditAvatar ? (
+                    <>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="absolute -bottom-1 -end-1 size-7 rounded-full border border-border/70 shadow-sm"
+                            disabled={avatarPending}
+                            aria-label={t("dashboard.customerWorkspace.avatar.manage")}
+                          >
+                            {avatarPending ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Camera className="size-3.5" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-44">
+                          <DropdownMenuItem
+                            disabled={avatarPending}
+                            onSelect={() => fileInputRef.current?.click()}
+                          >
+                            <Camera className="size-3.5" />
+                            {avatarDisplayUrl
+                              ? t("dashboard.customerWorkspace.avatar.change")
+                              : t("dashboard.customerWorkspace.avatar.upload")}
+                          </DropdownMenuItem>
+                          {avatarDisplayUrl ? (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                disabled={avatarPending}
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() => void handleRemoveAvatar()}
+                              >
+                                <Trash2 className="size-3.5" />
+                                {t("dashboard.customerWorkspace.avatar.remove")}
+                              </DropdownMenuItem>
+                            </>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(event) => void handleAvatarFileChange(event)}
+                      />
+                    </>
+                  ) : null}
+                </div>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <p className="truncate text-[15px] font-semibold leading-tight">{customer.name}</p>
                   <div className="mt-1.5 flex flex-wrap gap-1">

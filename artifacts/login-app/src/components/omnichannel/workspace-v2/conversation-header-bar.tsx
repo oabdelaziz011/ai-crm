@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Bell, BellOff, Link2, Pin, Star, UserPlus, Wifi, WifiOff } from "lucide-react";
+import { Bell, BellOff, Link2, Maximize2, Minimize2, Pin, Star, UserPlus, Wifi, WifiOff } from "lucide-react";
 import { ChannelBadge } from "@/components/omnichannel/channel-badge";
 import { BiDirText } from "@/components/omnichannel/presentation/bidir-text";
 import type { ConversationHeader } from "@/lib/conversation-lifecycle/types/lifecycle-types";
@@ -10,11 +10,15 @@ import {
 } from "@/lib/omnichannel/presentation/contact-display";
 import { buildContactDisplayInput } from "@/lib/omnichannel/presentation/conversation-contact-identity";
 import { resolveUserDisplayName } from "@/lib/omnichannel/presentation/agent-display-name";
-import { formatSlaRemainingLabel } from "@/lib/omnichannel/presentation/lifecycle-timeline-presentation";
 import { PresenceIndicator, type PresenceState } from "@/components/omnichannel/agent-desk/presence-indicator";
 import type { CustomerTone } from "@/lib/omnichannel/types/unified-conversation";
 import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
 import type { Profile } from "@/lib/types";
+import { ConversationIdentityAvatar } from "@/components/omnichannel/workspace-v2/conversation-identity-avatar";
+import { SlaBadge } from "@/components/omnichannel/workspace-v2/sla-badge";
+import { resolveConversationSlaPresentation } from "@/lib/omnichannel/presentation/conversation-sla-presentation";
+import { resolveConversationIdentityAvatar } from "@/lib/omnichannel/presentation/conversation-identity-avatar";
+import { useSlaNow } from "@/hooks/omnichannel/use-sla-now";
 
 type ConversationHeaderBarProps = {
   header: ConversationHeader;
@@ -53,6 +57,8 @@ type ConversationHeaderBarProps = {
     priority: string;
     sla: string;
     slaBreached: string;
+    slaAtRisk?: string;
+    slaCompleted?: string;
     noSla: string;
     slaRemainingMinutes: (count: number) => string;
     slaRemainingHours: (count: number) => string;
@@ -96,10 +102,6 @@ type ConversationHeaderBarProps = {
   };
 };
 
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-}
-
 export const ConversationHeaderBar = memo(function ConversationHeaderBar({
   header,
   conversation,
@@ -131,9 +133,23 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
   onToggleBookmark,
   deskChrome,
 }: ConversationHeaderBarProps) {
+  const slaNow = useSlaNow();
   const displayName = resolveContactDisplayName(
     buildContactDisplayInput(conversation ?? null, header.customer, visitorLabel),
   );
+  const identity = resolveConversationIdentityAvatar({
+    conversation: conversation ?? null,
+    customer: conversation?.customer ?? (header.customer.id
+      ? {
+          id: header.customer.id,
+          name: header.customer.name,
+          phone: header.customer.phone,
+          email: header.customer.email,
+        }
+      : null),
+    visitorLabel,
+    expectedCompanyId: conversation?.companyId ?? null,
+  });
   const contactInput = buildContactDisplayInput(conversation ?? null, header.customer, visitorLabel);
   const phoneLine =
     contactInput.phone?.trim()
@@ -194,16 +210,21 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
     chips.push({ key: "priority", text: `${labels.priority}: ${priority}`, tone: "warn" });
   }
 
-  const slaText = formatSlaRemainingLabel(header.sla.dueAt, {
-    remainingMinutes: labels.slaRemainingMinutes,
-    remainingHours: labels.slaRemainingHours,
-    breached: labels.slaBreached,
-    notSet: labels.noSla,
-  });
-  chips.push({
-    key: "sla",
-    text: `${labels.sla}: ${slaText}`,
-    tone: header.sla.breached ? "danger" : undefined,
+  // Ticket-centric: SLA only when conversation has an active linked support ticket.
+  const activeTicket = conversation?.ticketContext?.isActive ? conversation.ticketContext : null;
+  const slaPresentation = resolveConversationSlaPresentation({
+    dueAt: activeTicket?.slaDueAt ?? null,
+    lifecycleState: header.lifecycleState,
+    now: slaNow,
+    labels: {
+      prefix: labels.sla,
+      remainingMinutes: labels.slaRemainingMinutes,
+      remainingHours: labels.slaRemainingHours,
+      breached: labels.slaBreached,
+      atRisk: labels.slaAtRisk ?? "At risk",
+      notSet: labels.noSla,
+      completed: labels.slaCompleted ?? "Completed",
+    },
   });
 
   chips.push({ key: "status", text: `${labels.status}: ${lifecycleLabel}` });
@@ -238,97 +259,72 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
 
   const avatarTitle = hasCustomer ? labels.openProfile : customer360Label ?? labels.openCustomer360;
 
+  const hasMetaRow =
+    chips.length > 0
+    || (channelConnected !== null && Boolean(channelConnectionLabels))
+    || Boolean(escalated)
+    || Boolean(customerTone && customerToneLabel);
+
   return (
-    <div className="shrink-0 border-b border-[var(--ws-border-subtle)] bg-[var(--ws-surface)] px-3 py-2.5">
-      <div className="flex items-start gap-3">
-        {onAvatarClick ? (
-          <button
-            type="button"
-            className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ws-surface-2)] text-[12px] font-bold ring-2 ring-[var(--ws-border)] hover:ring-[var(--ws-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ws-accent)]"
+    <div className="ws-conversation-header shrink-0 border-b border-[var(--ws-border-subtle)] bg-[var(--ws-surface)] px-2 py-0.5">
+      {/* Primary row: identity + channel + ticket/SLA cluster + actions */}
+      <div className="flex items-center gap-1.5">
+        <div className="relative shrink-0">
+          <ConversationIdentityAvatar
+            identity={identity}
+            size="sm"
             onClick={onAvatarClick}
-            aria-label={avatarTitle}
+            ariaLabel={avatarTitle}
             title={avatarTitle}
-          >
-            {initials(displayName)}
-            {presence && presenceLabels ? (
-              <span className="absolute -bottom-0.5 -end-0.5">
-                <PresenceIndicator state={presence} label="" compact />
-              </span>
-            ) : null}
-          </button>
-        ) : (
-          <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ws-surface-2)] text-[12px] font-bold ring-2 ring-[var(--ws-border)]">
-            {initials(displayName)}
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <BiDirText className="truncate text-base font-semibold">{displayName}</BiDirText>
-            {presence && presenceLabels ? (
-              <PresenceIndicator state={presence} label={presenceLabel} compact />
-            ) : null}
-            {showPhoneSubline ? (
-              <span className="text-xs text-[var(--ws-muted)]" dir="ltr">
-                {phoneLine}
-              </span>
-            ) : null}
-            <ChannelBadge channel={header.channel} size="lg" />
-            {channelConnected !== null && channelConnectionLabels ? (
-              <span
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                  channelConnected
-                    ? "bg-emerald-500/15 text-emerald-400"
-                    : "bg-[var(--ws-danger)]/15 text-[var(--ws-danger)]"
-                }`}
-                title={channelConnected ? channelConnectionLabels.connected : channelIssueMessage ?? channelConnectionLabels.error}
-              >
-                {channelConnected ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
-                <span dir="auto">{channelConnected ? channelConnectionLabels.connected : channelConnectionLabels.error}</span>
-              </span>
-            ) : null}
-            {escalated ? (
-              <span className="rounded bg-[var(--ws-warn)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ws-warn)]" dir="auto">
-                {labels.escalated}
-              </span>
-            ) : null}
-            {customerTone && customerToneLabel ? (
-              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${toneToneClass}`} dir="auto">
-                {customerToneLabel}
-              </span>
-            ) : null}
-          </div>
-
-          <dl className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
-            {chips.map((chip) => (
-              <div key={chip.key} className="text-[10px]">
-                <span
-                  className={
-                    chip.tone === "warn"
-                      ? "text-[var(--ws-warn)]"
-                      : chip.tone === "danger"
-                        ? "text-[var(--ws-danger)]"
-                        : chip.tone === "accent"
-                          ? "text-[var(--ws-violet)]"
-                          : "text-[var(--ws-muted)]"
-                  }
-                  title={chip.tooltip}
-                >
-                  <BiDirText forceLtr={chip.key === "sla"}>{chip.text}</BiDirText>
-                </span>
-              </div>
-            ))}
-          </dl>
+          />
+          {presence && presenceLabels ? (
+            <span className="absolute -bottom-0.5 -start-0.5">
+              <PresenceIndicator state={presence} label="" compact />
+            </span>
+          ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+          <BiDirText className="min-w-0 truncate text-sm font-semibold leading-tight">{displayName}</BiDirText>
+          {presence && presenceLabels ? (
+            <PresenceIndicator state={presence} label={presenceLabel} compact />
+          ) : null}
+          {showPhoneSubline ? (
+            <span className="max-w-[7.5rem] shrink truncate text-[11px] leading-tight text-[var(--ws-muted)]" dir="ltr" title={phoneLine ?? undefined}>
+              {phoneLine}
+            </span>
+          ) : null}
+          <ChannelBadge channel={header.channel} size="sm" className="shrink-0" />
+        </div>
+
+        <div className="ws-header-ticket-sla" data-testid="conversation-header-ticket-sla">
+          {activeTicket ? (
+            <span
+              className="inline-flex max-w-[11rem] shrink-0 items-center gap-1 truncate rounded-md border border-[var(--ws-border)] bg-[var(--ws-surface-2)] px-1.5 py-px text-[10px] font-semibold leading-tight text-[var(--ws-text)]"
+              title={activeTicket.subject || activeTicket.ticketNumber}
+              data-ticket-context={activeTicket.ticketId}
+            >
+              <span className="truncate" dir="ltr">
+                {activeTicket.ticketNumber} · {activeTicket.status.replace(/_/g, " ")}
+              </span>
+            </span>
+          ) : null}
+          <SlaBadge
+            presentation={slaPresentation}
+            size="sm"
+            hideWhenUnavailable
+            className="!w-auto max-w-[10rem] shrink-0"
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5 self-start" dir="ltr">
           {(bookmarkLabels && onToggleBookmark) || deskChrome ? (
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0">
               {bookmarkLabels && onToggleBookmark ? (
                 <>
                   <button
                     type="button"
-                    className={`ws-btn ws-btn--ghost p-1.5 ${showPinned ? "text-[var(--ws-accent)]" : ""}`}
+                    className={`ws-btn ws-btn--ghost p-1 ${showPinned ? "text-[var(--ws-accent)]" : ""}`}
                     aria-label={bookmarkLabels.pin}
                     title={bookmarkLabels.pin}
                     aria-pressed={showPinned}
@@ -338,7 +334,7 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
                   </button>
                   <button
                     type="button"
-                    className={`ws-btn ws-btn--ghost p-1.5 ${showStarred ? "text-amber-400" : ""}`}
+                    className={`ws-btn ws-btn--ghost p-1 ${showStarred ? "text-amber-400" : ""}`}
                     aria-label={bookmarkLabels.star}
                     title={bookmarkLabels.star}
                     aria-pressed={showStarred}
@@ -352,7 +348,7 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
                 <>
                   <button
                     type="button"
-                    className={`ws-btn ws-btn--ghost p-1.5 ${deskChrome.soundEnabled ? "text-[var(--ws-accent)]" : "text-[var(--ws-muted)] opacity-70"}`}
+                    className={`ws-btn ws-btn--ghost p-1 ${deskChrome.soundEnabled ? "text-[var(--ws-accent)]" : "text-[var(--ws-muted)] opacity-70"}`}
                     aria-label={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
                     title={deskChrome.soundEnabled ? deskChrome.soundOnLabel : deskChrome.soundOffLabel}
                     aria-pressed={deskChrome.soundEnabled}
@@ -362,7 +358,7 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
                   </button>
                   <button
                     type="button"
-                    className={`ws-btn ws-btn--ghost p-1.5 ${deskChrome.conversationExpanded ? "text-[var(--ws-accent)]" : ""}`}
+                    className={`ws-btn ws-btn--ghost p-1 ${deskChrome.conversationExpanded ? "text-[var(--ws-accent)]" : ""}`}
                     aria-label={
                       deskChrome.conversationExpanded ? deskChrome.collapseLabel : deskChrome.expandLabel
                     }
@@ -372,16 +368,18 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
                     aria-pressed={deskChrome.conversationExpanded}
                     onClick={deskChrome.onToggleExpand}
                   >
-                    <span className="text-xs leading-none" aria-hidden>
-                      ●
-                    </span>
+                    {deskChrome.conversationExpanded ? (
+                      <Minimize2 className="size-3.5" aria-hidden />
+                    ) : (
+                      <Maximize2 className="size-3.5" aria-hidden />
+                    )}
                   </button>
                 </>
               ) : null}
             </div>
           ) : null}
           {!hasCustomer && (canLinkCustomer || canCreateCustomer) ? (
-            <div className="flex flex-col gap-1 sm:flex-row">
+            <div className="flex items-center gap-0.5">
               {canLinkCustomer ? (
                 <button type="button" className="ws-btn ws-btn--ghost text-[10px]" onClick={onLinkCustomer}>
                   <Link2 className="size-3" />
@@ -398,6 +396,59 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
           ) : null}
         </div>
       </div>
+
+      {/* Secondary metadata: horizontal cluster (wraps only when narrow). */}
+      {hasMetaRow ? (
+        <dl className="ws-header-meta mt-0.5 pb-px">
+          {channelConnected !== null && channelConnectionLabels ? (
+            <div className="shrink-0 text-[10px] leading-tight">
+              <span
+                className={`inline-flex items-center gap-1 rounded px-1 py-px font-semibold ${
+                  channelConnected
+                    ? "bg-emerald-500/15 text-emerald-400"
+                    : "bg-[var(--ws-danger)]/15 text-[var(--ws-danger)]"
+                }`}
+                title={channelConnected ? channelConnectionLabels.connected : channelIssueMessage ?? channelConnectionLabels.error}
+              >
+                {channelConnected ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
+                <span dir="auto">{channelConnected ? channelConnectionLabels.connected : channelConnectionLabels.error}</span>
+              </span>
+            </div>
+          ) : null}
+          {escalated ? (
+            <div className="shrink-0 text-[10px] leading-tight">
+              <span className="rounded bg-[var(--ws-warn)]/15 px-1 py-px font-semibold text-[var(--ws-warn)]" dir="auto">
+                {labels.escalated}
+              </span>
+            </div>
+          ) : null}
+          {customerTone && customerToneLabel ? (
+            <div className="shrink-0 text-[10px] leading-tight">
+              <span className={`rounded px-1 py-px font-semibold ${toneToneClass}`} dir="auto">
+                {customerToneLabel}
+              </span>
+            </div>
+          ) : null}
+          {chips.map((chip) => (
+            <div key={chip.key} className="shrink-0 text-[10px] leading-tight">
+              <span
+                className={
+                  chip.tone === "warn"
+                    ? "text-[var(--ws-warn)]"
+                    : chip.tone === "danger"
+                      ? "text-[var(--ws-danger)]"
+                      : chip.tone === "accent"
+                        ? "text-[var(--ws-violet)]"
+                        : "text-[var(--ws-muted)]"
+                }
+                title={chip.tooltip}
+              >
+                <BiDirText forceLtr={chip.key === "sla"}>{chip.text}</BiDirText>
+              </span>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </div>
   );
 });

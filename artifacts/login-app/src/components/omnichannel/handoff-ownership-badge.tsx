@@ -31,30 +31,30 @@ export const HandoffOwnershipBadge = memo(function HandoffOwnershipBadge({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-1.5 text-[11px]",
+        "flex flex-nowrap items-center gap-1 overflow-x-auto text-[10px] leading-tight",
         className,
       )}
       data-testid="handoff-ownership-badge"
     >
       {ownerLabel ? (
-        <span className="rounded-md border border-[var(--ws-border)] bg-[var(--ws-surface-2)] px-1.5 py-0.5 font-medium">
+        <span className="shrink-0 rounded border border-[var(--ws-border)] bg-[var(--ws-surface-2)] px-1 py-px font-medium">
           {ownerLabel}
           {ownership?.ownerLabel ? ` · ${ownership.ownerLabel}` : ""}
         </span>
       ) : null}
       {ownership?.lifecycleState ? (
-        <span className="rounded-md border border-[var(--ws-border)] px-1.5 py-0.5 text-[var(--ws-muted)]">
+        <span className="shrink-0 rounded border border-[var(--ws-border)] px-1 py-px text-[var(--ws-muted)]">
           {t("omnichannel.handoffOwnership.lifecycle")}: {ownership.lifecycleState}
         </span>
       ) : null}
       {ownership?.isPaused ? (
-        <span className="rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">
+        <span className="shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-amber-700 dark:text-amber-300">
           {t("omnichannel.handoffOwnership.paused")}
         </span>
       ) : null}
       <span
         className={cn(
-          "rounded-md border px-1.5 py-0.5",
+          "shrink-0 rounded border px-1 py-px",
           view.aiAutomatedRepliesAllowed
             ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
             : "border-rose-500/30 text-rose-700 dark:text-rose-300",

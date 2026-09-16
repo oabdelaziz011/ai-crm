@@ -61,22 +61,18 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
   const platformFeatureEnabled = usePlatformFeatureEnabledLookup();
   const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
   const isRtl = i18n.dir() === "rtl";
+  // Omnichannel uses the same locale-driven shell direction as the rest of the app.
+  const shellRtl = isRtl;
   const {
     sidebarCollapsed,
     toggleSidebarCollapsed,
     mobileSidebarOpen,
     setMobileSidebarOpen,
   } = useAppShell();
-  const { theme, resolvedTheme } = useTheme();
-  // System + light OS → light sidebar chrome → dark wordmark.
-  // Branded light/dark themes paint a dark sidebar → white wordmark.
-  const logoTone =
-    theme === "system"
-      ? resolvedTheme === "dark"
-        ? "onDark"
-        : "onLightSidebar"
-      : "onDark";
-
+  const { resolvedTheme } = useTheme();
+  // Neutral light gray rail → dark wordmark; dark chrome → light wordmark.
+  // Not role-based and not Brand Center teal.
+  const logoTone = resolvedTheme === "dark" ? "onDark" : "onLightSidebar";
   const activeSectionId = sectionIdFromNestedPath(location);
   const isHomeActive = isDashboardHomeNestedPath(location);
 
@@ -201,7 +197,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
       return (
         <Tooltip key={sectionId}>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8}>
+          <TooltipContent side={shellRtl ? "left" : "right"} sideOffset={8}>
             {label}
             {badge !== undefined && badge > 0 && ` (${badge})`}
           </TooltipContent>
@@ -307,11 +303,11 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
         <aside
           className={cn(
             "shell-sidebar-gradient fixed inset-y-0 z-50 flex shrink-0 flex-col border-sidebar-border text-sidebar-foreground transition-[width,transform] duration-200 ease-out lg:static lg:z-auto",
-            isRtl ? "border-s end-0" : "border-e start-0",
+            shellRtl ? "border-s end-0" : "border-e start-0",
             sidebarCollapsed ? "w-[4.5rem]" : "w-[17rem]",
             mobileSidebarOpen
               ? "translate-x-0"
-              : isRtl
+              : shellRtl
                 ? "translate-x-full lg:translate-x-0"
                 : "-translate-x-full lg:translate-x-0",
             className,
@@ -356,7 +352,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
             {sidebarCollapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>{homeButton}</TooltipTrigger>
-                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8}>
+                <TooltipContent side={shellRtl ? "left" : "right"} sideOffset={8}>
                   {t("navigation.home")}
                 </TooltipContent>
               </Tooltip>
@@ -388,7 +384,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
                     <UserAvatar className="size-8 border border-sidebar-border" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8}>
+                <TooltipContent side={shellRtl ? "left" : "right"} sideOffset={8}>
                   {userName}
                 </TooltipContent>
               </Tooltip>

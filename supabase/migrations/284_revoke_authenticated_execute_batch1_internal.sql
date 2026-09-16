@@ -63,9 +63,6 @@ revoke execute on function public.notify_profile_events() from authenticated;
 -- trigger-backed: public.notify_role_events() — client EXECUTE revoked; trigger OK
 revoke execute on function public.notify_role_events() from authenticated;
 
--- trigger-backed: public.notify_role_updated() — client EXECUTE revoked; trigger OK
-revoke execute on function public.notify_role_updated() from authenticated;
-
 -- trigger-backed: public.notify_subscription_events() — client EXECUTE revoked; trigger OK
 revoke execute on function public.notify_subscription_events() from authenticated;
 

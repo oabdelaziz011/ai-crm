@@ -100,6 +100,8 @@ export function useUpsertCompanyCommercialTerms() {
       customPriceMonthly?: number | null;
       customPriceYearly?: number | null;
       notes?: string | null;
+      /** ISO 4217 — ValueOR subscription billing currency (not operational). */
+      subscriptionBillingCurrency?: string | null;
     }) => {
       const { data, error } = await supabase.rpc("upsert_company_commercial_terms_v1", {
         p_company_id: input.companyId,
@@ -108,6 +110,7 @@ export function useUpsertCompanyCommercialTerms() {
         p_custom_price_monthly: input.customPriceMonthly ?? null,
         p_custom_price_yearly: input.customPriceYearly ?? null,
         p_notes: input.notes ?? null,
+        p_subscription_billing_currency: input.subscriptionBillingCurrency ?? null,
       });
       if (error) throw new Error(error.message);
       return data as Record<string, unknown>;

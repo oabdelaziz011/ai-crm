@@ -27,6 +27,25 @@
   font-feature-settings: "tnum" 1;
 }
 
+/*
+ * Agent Desk portals also mount under <body>. Mirror tokens so overlay surfaces stay opaque.
+ */
+html:has(.agent-desk) {
+  --ad-bg: hsl(var(--background));
+  --ad-surface: hsl(var(--card));
+  --ad-surface-raised: hsl(var(--popover));
+  --ad-surface-2: hsl(var(--secondary));
+  --ad-border: hsl(var(--border));
+  --ad-border-subtle: hsl(var(--border));
+  --ad-text: hsl(var(--foreground));
+  --ad-text-muted: hsl(var(--muted-foreground));
+  --ad-accent: hsl(var(--primary));
+  --ad-accent-dim: hsl(var(--primary) / 0.12);
+  --ad-warn: hsl(var(--warning));
+  --ad-danger: hsl(var(--destructive));
+  --ad-success: hsl(var(--success));
+}
+
 .agent-desk__mesh {
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, hsl(var(--primary) / 0.04), transparent),

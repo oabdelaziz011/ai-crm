@@ -211,13 +211,17 @@ export function createChannelConversationPort(
         (typeof meta.externalThreadId === "string" && meta.externalThreadId.trim()) ||
         (typeof meta.senderExternalId === "string" && meta.senderExternalId.trim()) ||
         null;
+
+      // Ticket-centric SLA: conversation create must NOT invent lifecycle.slaDueAt.
+      // SLA is calculated only when a support ticket is created (TicketCommandService).
       const created = await services.conversations.createConversation(ctx, {
         companyId: input.companyId,
         aiAssistantId: input.aiAssistantId,
         companyChannelId: input.companyChannelId,
         channelType: input.channelType as ConversationChannelType,
-        metadata: input.metadata,
+        metadata: meta,
         externalThreadId,
+        departmentId: input.departmentId ?? null,
       });
 
       void import("./lead-intelligence-bus.js")
@@ -322,21 +326,45 @@ export function createChannelConversationPort(
     },
 
     async addOutgoingMessage(input) {
-      const message = await services.messages.addMessage(ctx, {
-        conversationId: input.conversationId,
-        messageType: "outgoing",
-        contentType: "text",
-        content: input.content,
-        metadata: input.metadata,
-      });
+      try {
+        const message = await services.messages.addMessage(ctx, {
+          conversationId: input.conversationId,
+          messageType: "outgoing",
+          contentType: "text",
+          content: input.content,
+          metadata: input.metadata,
+          externalMessageId: input.externalMessageId ?? null,
+        });
 
-      return {
-        id: message.id,
-        conversationId: message.conversation_id,
-        messageType: message.message_type,
-        content: message.content,
-        createdAt: message.created_at,
-      };
+        return {
+          id: message.id,
+          conversationId: message.conversation_id,
+          messageType: message.message_type,
+          content: message.content,
+          createdAt: message.created_at,
+          reused: false,
+        };
+      } catch (error) {
+        const externalId = input.externalMessageId?.trim();
+        if (externalId) {
+          const existing = await services.messages.findByConversationAndExternalMessageId(
+            ctx,
+            input.conversationId,
+            externalId,
+          );
+          if (existing) {
+            return {
+              id: existing.id,
+              conversationId: existing.conversation_id,
+              messageType: existing.message_type,
+              content: existing.content,
+              createdAt: existing.created_at,
+              reused: true,
+            };
+          }
+        }
+        throw error;
+      }
     },
 
     async confirmOutgoingDelivery(input) {
@@ -464,6 +492,7 @@ export function createChannelRuntimePort(
         executionId: response.executionId,
         responseContent: extractResponseContent(response.responseContent),
         correlationId: response.correlationId ?? input.correlationId ?? "",
+        outgoingMessageId: response.outgoingMessageId ?? null,
       };
     },
   };

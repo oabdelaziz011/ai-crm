@@ -218,7 +218,7 @@ describe("resolveTrustedChannelCustomer", () => {
     assert.equal(result.status, "ambiguous");
   });
 
-  it("does not support non-whatsapp channels", async () => {
+  it("does not support non-whatsapp/non-email/non-sms channels", async () => {
     const result = await resolveTrustedChannelCustomer({
       companyId: "company-a",
       channelKey: "facebook",
@@ -233,6 +233,84 @@ describe("resolveTrustedChannelCustomer", () => {
       }),
     });
     assert.equal(result.status, "unsupported_channel");
+  });
+
+  it("SMS resolves exact phone_e164 only (no legacy variants)", async () => {
+    const calls: string[] = [];
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "sms",
+      senderExternalId: "+15551234567",
+      findByPhone: async () => {
+        throw new Error("legacy phone lookup must not run for SMS");
+      },
+      findByPhoneE164: async (phoneE164) => {
+        calls.push(phoneE164);
+        return {
+          status: "found",
+          customer: {
+            id: "22222222-2222-4222-8222-222222222222",
+            name: "SMS Customer",
+            phone: null,
+            phoneE164: "+15551234567",
+          },
+        };
+      },
+    });
+    assert.equal(result.status, "known");
+    assert.equal(result.customerId, "22222222-2222-4222-8222-222222222222");
+    assert.deepEqual(calls, ["+15551234567"]);
+  });
+
+  it("SMS unmatched phone stays unknown (customer_id null)", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "sms",
+      senderExternalId: "+15550001111",
+      findByPhone: async () => {
+        throw new Error("legacy phone lookup must not run for SMS");
+      },
+      findByPhoneE164: async () => ({ status: "not_found" }),
+    });
+    assert.equal(result.status, "unknown");
+  });
+
+  it("resolves email channel by exact company-scoped email (no phone)", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "email",
+      senderExternalId: "  Customer@Example.COM ",
+      findByPhone: async () => {
+        throw new Error("phone lookup must not run for email");
+      },
+      findByEmail: async (email) => {
+        assert.equal(email, "customer@example.com");
+        return {
+          status: "found",
+          customer: {
+            id: "22222222-2222-4222-8222-222222222222",
+            name: "Email Customer",
+            phone: null,
+            email: "customer@example.com",
+          },
+        };
+      },
+    });
+    assert.equal(result.status, "known");
+    if (result.status === "known") {
+      assert.equal(result.customerId, "22222222-2222-4222-8222-222222222222");
+    }
+  });
+
+  it("fails closed on ambiguous email matches", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "email",
+      senderExternalId: "dup@example.com",
+      findByPhone: async () => ({ status: "not_found" }),
+      findByEmail: async () => ({ status: "duplicate", count: 2 }),
+    });
+    assert.equal(result.status, "ambiguous");
   });
 
   it("builds 2010↔010 and +20 lookup variants without a second normalizer", () => {

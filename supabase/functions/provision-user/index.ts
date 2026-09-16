@@ -19,7 +19,10 @@ type ProvisionUserPayload = {
   isActive?: boolean;
   redirectTo?: string;
   jobTitle?: string | null;
+  /** @deprecated Prefer departmentId — kept for transitional callers. */
   department?: string | null;
+  /** Canonical organization_departments.id */
+  departmentId?: string | null;
   phone?: string | null;
   avatarUrl?: string | null;
   preferredLanguage?: string | null;
@@ -255,7 +258,35 @@ Deno.serve(async (req) => {
     }
 
     const jobTitle = payload.jobTitle?.trim() || null;
-    const department = payload.department?.trim() || null;
+    const departmentIdRaw = payload.departmentId?.trim() || null;
+    let department = payload.department?.trim() || null;
+    let departmentId: string | null = departmentIdRaw;
+
+    if (departmentId) {
+      const { data: deptRow, error: deptError } = await supabaseAdmin
+        .from("organization_departments")
+        .select("id, name, company_id")
+        .eq("id", departmentId)
+        .eq("company_id", effectiveCompanyId)
+        .maybeSingle();
+
+      if (deptError) {
+        return jsonResponse({ error: deptError.message }, 500);
+      }
+      if (!deptRow) {
+        return jsonResponse(
+          { error: "Department must belong to the same company.", code: "department_company_mismatch" },
+          400,
+        );
+      }
+      departmentId = String(deptRow.id);
+      department = String(deptRow.name).trim() || null;
+    } else {
+      // Canonical create path: no department selected → leave both null (do not invent from text).
+      departmentId = null;
+      department = null;
+    }
+
     const phone = payload.phone?.trim() || null;
     const avatarUrl = payload.avatarUrl?.trim() || null;
     const preferredLanguage = payload.preferredLanguage?.trim() || null;
@@ -315,6 +346,7 @@ Deno.serve(async (req) => {
         is_super_admin: false,
         job_title: jobTitle,
         department,
+        department_id: departmentId,
         phone,
         avatar_url: avatarUrl,
         preferred_language: preferredLanguage,

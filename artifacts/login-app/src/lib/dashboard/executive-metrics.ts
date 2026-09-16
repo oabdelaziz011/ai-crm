@@ -11,6 +11,8 @@ import {
   subMonths,
 } from "date-fns";
 import type { Booking, Customer, Invoice } from "@/lib/types";
+import { getCompanyCurrency, getCompanyIntlLocale } from "@/lib/company-locale/runtime";
+import { formatCompanyMoney } from "@/lib/currency/format-money";
 
 export const EXECUTIVE_MONTHS = 7;
 
@@ -378,10 +380,10 @@ export function derivePrimaryAction(
   return canCreateBooking ? "booking" : "pending";
 }
 
-export function fmtCurrency(amount: number): string {
-  return amount.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
+/** Formats company operational money (never hardcodes USD / subscription currency). */
+export function fmtCurrency(amount: number, currency?: string): string {
+  return formatCompanyMoney(amount, currency || getCompanyCurrency(), getCompanyIntlLocale(), {
     maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
   });
 }

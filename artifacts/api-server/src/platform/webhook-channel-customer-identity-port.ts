@@ -4,15 +4,17 @@ import {
   resolveCompanyActorUserId,
 } from "@workspace/automation-platform";
 import {
+  customerEmailMatchesEmailSender,
   customerPhoneMatchesWhatsAppSender,
   resolveTrustedChannelCustomer,
 } from "@workspace/ai-tool-router";
 import type { ChannelCustomerIdentityPort } from "@workspace/channel-platform";
 
 /**
- * Phase 2 / D2 — WhatsApp sender → company-scoped CRM identity.
- * Prefers customers.phone_e164; legacy phone variants remain a bridge.
- * Never Customer360. Never global phone lookup.
+ * Phase 2 / D2 — channel sender → company-scoped CRM identity.
+ * WhatsApp: prefers customers.phone_e164; legacy phone variants remain a bridge.
+ * Email: exact company-scoped email match only (never phone / never fuzzy).
+ * Never Customer360. Never global lookup.
  */
 export function createWebhookChannelCustomerIdentityPort(
   client: SupabaseClient,
@@ -29,13 +31,14 @@ export function createWebhookChannelCustomerIdentityPort(
     name: string | null;
     phone: string | null;
     phoneE164: string | null;
+    email: string | null;
   } | null> {
     const companyId = input.companyId.trim();
     const customerId = input.customerId.trim();
     if (!companyId || !customerId) return null;
     const { data, error } = await client
       .from("customers")
-      .select("id, name, phone, phone_e164")
+      .select("id, name, phone, phone_e164, email")
       .eq("company_id", companyId)
       .eq("id", customerId)
       .maybeSingle();
@@ -45,6 +48,7 @@ export function createWebhookChannelCustomerIdentityPort(
       name: typeof data.name === "string" ? data.name : null,
       phone: typeof data.phone === "string" ? data.phone : null,
       phoneE164: typeof data.phone_e164 === "string" ? data.phone_e164 : null,
+      email: typeof data.email === "string" ? data.email : null,
     };
   }
 
@@ -67,6 +71,7 @@ export function createWebhookChannelCustomerIdentityPort(
           name: string;
           phone: string | null;
           phoneE164?: string | null;
+          email?: string | null;
         } | null;
         count?: number;
       }) => {
@@ -78,6 +83,7 @@ export function createWebhookChannelCustomerIdentityPort(
               name: result.customer.name,
               phone: result.customer.phone,
               phoneE164: result.customer.phoneE164 ?? null,
+              email: result.customer.email ?? null,
             },
           };
         }
@@ -106,6 +112,15 @@ export function createWebhookChannelCustomerIdentityPort(
             userId: actorUserId,
             lookupBy: "phone_e164",
             lookupValue: phoneE164,
+          });
+          return mapFindResult(result);
+        },
+        findByEmail: async (email) => {
+          const result = await customerService.findCustomer({
+            companyId,
+            userId: actorUserId,
+            lookupBy: "email",
+            lookupValue: email,
           });
           return mapFindResult(result);
         },
@@ -143,6 +158,19 @@ export function createWebhookChannelCustomerIdentityPort(
         input.senderExternalId,
         row.phoneE164,
       );
+      return {
+        matches,
+        name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,
+      };
+    },
+
+    async customerMatchesEmailSender(input) {
+      const row = await getCustomerById({
+        companyId: input.companyId,
+        customerId: input.customerId,
+      });
+      if (!row) return { matches: false, name: null };
+      const matches = customerEmailMatchesEmailSender(row.email, input.senderExternalId);
       return {
         matches,
         name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,

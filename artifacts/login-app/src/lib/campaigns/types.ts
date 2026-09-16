@@ -1,6 +1,12 @@
-/** Marketing campaigns — domain types (V1: WhatsApp + Instagram + Messenger). */
+/** Marketing campaigns — domain types (WhatsApp + Instagram + Messenger + Email + SMS). */
 
-export const MARKETING_CAMPAIGN_CHANNELS = ["whatsapp", "instagram", "messenger"] as const;
+export const MARKETING_CAMPAIGN_CHANNELS = [
+  "whatsapp",
+  "instagram",
+  "messenger",
+  "email",
+  "sms",
+] as const;
 export type MarketingCampaignChannel = (typeof MARKETING_CAMPAIGN_CHANNELS)[number];
 
 export function isMarketingCampaignChannel(value: string): value is MarketingCampaignChannel {
@@ -59,9 +65,19 @@ export type CampaignAudienceDefinition =
   | { type: "filtered"; filters: CampaignAudienceFilterDefinition }
   | { type: "manual"; customerIds: string[] };
 
+export type CampaignContentAttachment = {
+  id: string;
+  name: string;
+  mimeType: string;
+  fileSize: number;
+  storagePath: string;
+};
+
 export type CampaignContentDefinition = {
   campaignTitle: string;
   detail: string;
+  /** Stored in `entity-files`. Email attaches these files; other channels send text only. */
+  attachments?: CampaignContentAttachment[];
 };
 
 export type MarketingCampaignRecord = {
@@ -134,7 +150,7 @@ export type CreateCampaignDraftInput = {
   audience: CampaignAudienceDefinition;
   content: CampaignContentDefinition;
   idempotencyKey: string;
-  /** Allowed: whatsapp | instagram | messenger. SMS rejected. */
+  /** Allowed: whatsapp | instagram | messenger | email | sms. */
   channels?: MarketingCampaignChannel[];
 };
 

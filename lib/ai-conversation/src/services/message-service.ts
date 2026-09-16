@@ -21,6 +21,7 @@ import type {
   ServiceContext,
 } from "../types.js";
 import { readBrowserWindow, traceOmniSendBridgeAsync } from "../debug/omni-send-bridge.js";
+import { assertConversationReadable } from "./conversation-visibility.js";
 
 function assertPermission(ctx: ServiceContext, permission: string): void {
   if (ctx.isSuperAdmin) return;
@@ -56,6 +57,7 @@ export class MessageService {
     const conversation = await this.conversationRepository.findById(conversationId);
     if (!conversation) throw new ConversationNotFoundError(conversationId);
     this.assertCompanyAccess(ctx, conversation);
+    assertConversationReadable(ctx, conversation);
     return conversation;
   }
 
@@ -149,7 +151,6 @@ export class MessageService {
     conversationId: string,
     externalMessageId: string,
   ): Promise<ConversationMessageRecord | null> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     await this.getReadableConversation(ctx, conversationId);
     return this.messageRepository.findByConversationAndExternalMessageId(conversationId, externalMessageId);
   }
@@ -159,7 +160,6 @@ export class MessageService {
     conversationId: string,
     correlationId: string,
   ): Promise<ConversationMessageRecord | null> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     await this.getReadableConversation(ctx, conversationId);
     return this.messageRepository.findByConversationAndInboundCorrelationId(
       conversationId,
@@ -218,7 +218,6 @@ export class MessageService {
     ctx: ServiceContext,
     filter: ListMessagesFilter,
   ): Promise<ConversationMessageRecord[]> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     await this.getReadableConversation(ctx, filter.conversationId);
 
     const messages = await this.messageRepository.list(filter);

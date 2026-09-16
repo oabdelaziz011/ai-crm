@@ -6,10 +6,51 @@ import type {
   CompanyBrandEmailSocial,
   CompanyBrandGeneral,
   CompanyBrandLogos,
+  CompanyEmailSignature,
+  EmailAcknowledgementConfig,
+  EmailAcknowledgementTemplate,
 } from "./types";
+import { emptyEmailSignatureColors } from "@workspace/channel-platform";
+import { VALUEOR_OR_PRIMARY } from "@/lib/brand/valueor-brand-colors";
 
+const DEFAULT_ACK_TEMPLATES: ReadonlyArray<EmailAcknowledgementTemplate> = [
+  {
+    language: "en",
+    enabled: true,
+    body: "Thank you for contacting us. We have received your email and our team will get back to you shortly.",
+  },
+  {
+    language: "ar",
+    enabled: true,
+    body: "شكرًا لتواصلك معنا. لقد استلمنا رسالتك، وسيتواصل معك أحد أعضاء فريقنا في أقرب وقت ممكن.",
+  },
+  {
+    language: "fr",
+    enabled: true,
+    body: "Merci de nous avoir contactés. Nous avons bien reçu votre e-mail et notre équipe vous répondra dans les plus brefs délais.",
+  },
+  {
+    language: "de",
+    enabled: true,
+    body: "Vielen Dank für Ihre Kontaktaufnahme. Wir haben Ihre E-Mail erhalten und unser Team wird sich so schnell wie möglich bei Ihnen melden.",
+  },
+];
+
+export function emptyEmailAcknowledgement(): EmailAcknowledgementConfig {
+  return {
+    enabled: false,
+    defaultLanguage: "en",
+    templates: DEFAULT_ACK_TEMPLATES.map((template) => ({ ...template })),
+  };
+}
+
+/**
+ * Company brand defaults. `primary` / `sidebarActive` match the official
+ * ValueOR lockup OR/mark color — see `valueor-brand-colors.ts`.
+ * Semantic success/warning/danger stay independent of brand primary.
+ */
 export const DEFAULT_BRAND_COLORS: CompanyBrandColors = {
-  primary: "#0D9488",
+  primary: VALUEOR_OR_PRIMARY,
   secondary: "#134E4A",
   accent: "#14B8A6",
   success: "#16A34A",
@@ -19,7 +60,7 @@ export const DEFAULT_BRAND_COLORS: CompanyBrandColors = {
   surface: "#FFFFFF",
   // Sidebar palette is independent from button/system primary.
   sidebar: "#134E4A",
-  sidebarActive: "#0D9488",
+  sidebarActive: VALUEOR_OR_PRIMARY,
   sidebarAccent: "#0F766E",
 };
 
@@ -56,12 +97,22 @@ export function emptyBrandEmailSocial(): CompanyBrandEmailSocial {
   };
 }
 
+export function emptyEmailSignature(): CompanyEmailSignature {
+  return {
+    name: "",
+    title: "",
+    email: "",
+    website: "",
+    colors: emptyEmailSignatureColors(),
+  };
+}
+
 export function emptyBrandEmail(): CompanyBrandEmail {
   return {
     header: "",
     footer: "",
     replyEmail: "",
-    signature: "",
+    signature: emptyEmailSignature(),
     senderName: "",
     senderDisplayName: "",
     ctaEnabled: false,
@@ -72,6 +123,7 @@ export function emptyBrandEmail(): CompanyBrandEmail {
     showLegalFooter: false,
     legalText: "",
     layout: "professional",
+    acknowledgement: emptyEmailAcknowledgement(),
   };
 }
 
@@ -87,8 +139,17 @@ export function emptyBrandGeneral(): CompanyBrandGeneral {
   };
 }
 
+function inferDefaultBrandingMode(colors: CompanyBrandColors): CompanyBrandCenterDocument["brandingMode"] {
+  const keys = ["primary", "secondary", "accent", "sidebar", "sidebarActive", "sidebarAccent"] as const;
+  const match = keys.every(
+    (key) => colors[key].trim().toLowerCase() === DEFAULT_BRAND_COLORS[key].trim().toLowerCase(),
+  );
+  return match ? "official" : "custom";
+}
+
 export function createDefaultBrandDocument(
   partial?: Partial<{
+    brandingMode: CompanyBrandCenterDocument["brandingMode"];
     general: Partial<CompanyBrandGeneral>;
     logos: Partial<CompanyBrandLogos>;
     colors: Partial<CompanyBrandColors>;
@@ -96,17 +157,38 @@ export function createDefaultBrandDocument(
     email: Partial<CompanyBrandEmail>;
   }>,
 ): CompanyBrandCenterDocument {
+  const colors = { ...DEFAULT_BRAND_COLORS, ...partial?.colors };
   return {
+    brandingMode:
+      partial?.brandingMode ??
+      (partial?.colors && Object.keys(partial.colors).length > 0
+        ? inferDefaultBrandingMode(colors)
+        : "official"),
     general: { ...emptyBrandGeneral(), ...partial?.general },
     logos: { ...emptyBrandLogos(), ...partial?.logos },
-    colors: { ...DEFAULT_BRAND_COLORS, ...partial?.colors },
+    colors,
     documents: { ...emptyBrandDocuments(), ...partial?.documents },
     email: {
       ...emptyBrandEmail(),
       ...partial?.email,
+      signature: {
+        ...emptyEmailSignature(),
+        ...partial?.email?.signature,
+        colors: {
+          ...emptyEmailSignature().colors,
+          ...partial?.email?.signature?.colors,
+        },
+      },
       social: {
         ...emptyBrandEmailSocial(),
         ...partial?.email?.social,
+      },
+      acknowledgement: {
+        ...emptyEmailAcknowledgement(),
+        ...partial?.email?.acknowledgement,
+        templates:
+          partial?.email?.acknowledgement?.templates?.map((template) => ({ ...template })) ??
+          emptyEmailAcknowledgement().templates,
       },
     },
   };

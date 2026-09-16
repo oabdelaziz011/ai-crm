@@ -30,10 +30,18 @@ import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-co
 import { useConversationRealtime, useOmnichannelAccess } from "@/hooks/omnichannel/use-conversation-realtime";
 import { fetchOmnichannelCustomerContext } from "@/lib/omnichannel/services/omnichannel-customer-context-service";
 import { omnichannelCustomerContextKey } from "@/lib/omnichannel/cache/query-keys";
+import {
+  attachTicketContextsToConversations,
+  batchConversationActiveTicketContexts,
+} from "@/lib/omnichannel/services/conversation-ticket-context";
+import { supabase } from "@/lib/supabase";
 import { auditRenderPipeline, omniRenderTrace } from "@/lib/omnichannel/debug/omni-render-audit";
 import { auditOmniListPipeline } from "@/lib/omnichannel/debug/omni-list-pipeline-audit";
 import { traceDomRenderStage } from "@/lib/omnichannel/debug/omni-dom-render-audit";
 import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
+import type { ConversationTicketContext } from "@/lib/omnichannel/services/conversation-ticket-context";
+
+const EMPTY_TICKET_CONTEXT_MAP: ReadonlyMap<string, ConversationTicketContext> = new Map();
 
 function mapListFilters(
   filters: OmnichannelListFilters,
@@ -80,6 +88,7 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
             name: customer.name,
             phone: customer.phone ?? null,
             email: customer.email ?? null,
+            avatarUrl: customer.avatar_url ?? null,
           },
         ]),
       ),
@@ -106,6 +115,27 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     return map;
   }, [profiles]);
 
+  const conversationIdsKey = useMemo(
+    () => flatConversations.map((row) => row.id).join(","),
+    [flatConversations],
+  );
+
+  const ticketContextQuery = useQuery({
+    queryKey: ["omnichannel", "conversation-ticket-context", companyId, conversationIdsKey] as const,
+    enabled: Boolean(companyId && flatConversations.length > 0 && canView),
+    staleTime: OMNICHANNEL_LIST_STALE_MS,
+    queryFn: async () => {
+      if (!companyId) return new Map();
+      return batchConversationActiveTicketContexts({
+        client: supabase,
+        companyId,
+        conversationIds: flatConversations.map((row) => row.id),
+      });
+    },
+  });
+
+  const ticketContextsByConversationId = ticketContextQuery.data ?? EMPTY_TICKET_CONTEXT_MAP;
+
   const ownershipLabels = useMemo(
     () => ({
       aiEmployee: t("omnichannel.assignment.aiEmployee"),
@@ -123,7 +153,8 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       profilesByUserId,
       ownershipLabels,
     });
-    const supported = conversationAggregator.filterBySupportedChannels(unified);
+    const withTickets = attachTicketContextsToConversations(unified, ticketContextsByConversationId);
+    const supported = conversationAggregator.filterBySupportedChannels(withTickets);
     const filtered = conversationAggregator.applyFilters(supported, filters);
     const effectiveQueue = !canViewAll ? (filters.queue ?? "mine") : (filters.queue ?? "all");
     const queued = applyConversationQueue(filtered, effectiveQueue, user?.id);
@@ -138,6 +169,7 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     user?.id,
     ownershipLabels,
     canViewAll,
+    ticketContextsByConversationId,
   ]);
 
   const visibleConversations = useMemo(() => {
@@ -164,7 +196,8 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       profilesByUserId,
       ownershipLabels,
     });
-    const supported = conversationAggregator.filterBySupportedChannels(unified);
+    const withTickets = attachTicketContextsToConversations(unified, ticketContextsByConversationId);
+    const supported = conversationAggregator.filterBySupportedChannels(withTickets);
     const filtered = conversationAggregator.applyFilters(supported, filters);
     const scoped = filterConversationsByOwnership(filtered, access, !canViewAll);
     return filterConversationsByChannelPermission(scoped, OMNICHANNEL_PRIMARY_CHANNELS);
@@ -177,6 +210,7 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     access,
     ownershipLabels,
     canViewAll,
+    ticketContextsByConversationId,
   ]);
 
   const selectedConversation =

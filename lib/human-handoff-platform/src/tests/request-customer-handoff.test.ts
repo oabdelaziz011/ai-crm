@@ -407,4 +407,85 @@ describe("requestCustomerHandoff", () => {
     assert.equal(result.idempotent, true);
     assert.equal(assigned, false);
   });
+
+  it("AI/workflow handoff excludes stale-online agents", async () => {
+    const staleHb = new Date(Date.now() - 300_000).toISOString();
+    let assigned = false;
+    const service = new HandoffCommandService({
+      handoff: createRepo({
+        listPresence: async () => [
+          {
+            id: "pres-stale",
+            companyId: "company-1",
+            userId: "agent-free",
+            state: "online",
+            viewingConversationId: null,
+            lastHeartbeatAt: staleHb,
+            lastSeenAt: staleHb,
+            metadata: {},
+            updatedAt: staleHb,
+          },
+          {
+            id: "pres-busy",
+            companyId: "company-1",
+            userId: "agent-busy",
+            state: "online",
+            viewingConversationId: null,
+            lastHeartbeatAt: staleHb,
+            lastSeenAt: staleHb,
+            metadata: {},
+            updatedAt: staleHb,
+          },
+        ],
+      }),
+      conversations: {
+        ...conversations,
+        assignConversation: async () => {
+          assigned = true;
+        },
+      },
+      notifications: notifications.port,
+      ...noop,
+    });
+
+    const result = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-stale-hb",
+      triggerCode: "customer_requested",
+      requestedByAiAssistantId: "ai-1",
+    });
+
+    assert.equal(result.assigned, false);
+    assert.equal(result.queued, true);
+    assert.equal(assigned, false);
+  });
+
+  it("does not reassign an already assigned conversation when presence goes stale", async () => {
+    const repo = createRepo();
+    await repo.upsertOwnership({
+      companyId: "company-1",
+      conversationId: "conv-keep",
+      ownerType: "human_agent",
+      ownerId: "agent-busy",
+      ownerLabel: "Agent",
+      lifecycleState: "ASSIGNED",
+      assignedUserId: "agent-busy",
+      aiAssistantId: "ai-1",
+    });
+
+    const service = new HandoffCommandService({
+      handoff: repo,
+      conversations,
+      notifications: notifications.port,
+      ...noop,
+    });
+
+    const result = await service.requestCustomerHandoff(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-keep",
+    });
+
+    assert.equal(result.idempotent, true);
+    assert.equal(result.ownership.assignedUserId, "agent-busy");
+  });
 });

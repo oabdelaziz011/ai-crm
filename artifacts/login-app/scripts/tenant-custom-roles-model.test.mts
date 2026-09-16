@@ -47,11 +47,13 @@ describe("TEST 1 — New company provisioning (admin only)", () => {
   });
 });
 
-describe("TEST 2 — Roles page shows company CUSTOM roles only", () => {
-  it("filters managed roles through tenant-role-management helper", () => {
-    assert.match(rolesPage, /filterRolesForTenantManagement/);
+describe("TEST 2 — Roles page lists workspace roles; mutation stays CUSTOM-only", () => {
+  it("scopes the list to the workspace and keeps CUSTOM as the managed type", () => {
+    assert.match(rolesPage, /scopeRolesToWorkspace/);
+    assert.match(rolesPage, /listActionsForRole/);
     assert.match(rolesPage, /emptyCustomTitle/);
-    assert.match(rolesPage, /managedRoles\.length === 0/);
+    assert.match(rolesPage, /canMutateRoleFromList/);
+    assert.doesNotMatch(rolesPage, /filterRolesForTenantManagement\(roles, \{ includeProtected: false \}\)/);
   });
 
   it("hides DEFAULT Manager/Employee/Admin from tenant management list", () => {
@@ -114,7 +116,8 @@ describe("TEST 3/4/11/12 — Delegable permission selector", () => {
 
   it("roles page wires filtered permissions into Create Role dialog", () => {
     assert.match(rolesPage, /filterDelegablePermissionRecords/);
-    assert.match(rolesPage, /permissions=\{permissions\}/);
+    assert.match(rolesPage, /dialogPermissions/);
+    assert.match(rolesPage, /permissions=\{dialogPermissions\}/);
   });
 });
 

@@ -1,4 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  AssignmentGovernanceError,
+  AssignmentGovernanceService,
+  createSupabaseAssignmentGovernanceDataPort,
+} from "@workspace/assignment-governance";
+import {
+  AssignmentAuditService,
+  createSupabaseAssignmentAuditDataPort,
+} from "@workspace/assignment-audit";
 import type { TaskWritePort, TaskReadModel, TaskPriority } from "@workspace/application-layer";
 import type { LoginAppPortContext } from "./customer-read-port-adapter.js";
 
@@ -38,6 +47,83 @@ function canAssign(ctx: LoginAppPortContext): boolean {
   return ctx.isSuperAdmin || ctx.hasPermission("tasks.assign") || ctx.hasPermission("tasks.write");
 }
 
+async function assertTaskAssigneeEligible(
+  client: SupabaseClient,
+  ctx: LoginAppPortContext,
+  assigneeId: string | null | undefined,
+): Promise<void> {
+  const targetUserId = assigneeId?.trim() || "";
+  if (!targetUserId) return;
+  const actorUserId = ctx.actorUserId?.trim() || "";
+  if (!actorUserId) throw new Error("Permission denied");
+  const governance = new AssignmentGovernanceService({
+    port: createSupabaseAssignmentGovernanceDataPort(client),
+  });
+  try {
+    await governance.assertCanAssignToEmployee({
+      actorUserId,
+      targetUserId,
+      resource: "task",
+    });
+  } catch (error) {
+    if (error instanceof AssignmentGovernanceError) {
+      throw new Error(`Permission denied (${error.code}: ${error.message})`);
+    }
+    throw error;
+  }
+}
+
+const assignmentAuditByClient = new WeakMap<
+  SupabaseClient,
+  AssignmentAuditService
+>();
+
+function getAssignmentAudit(client: SupabaseClient): AssignmentAuditService {
+  let service = assignmentAuditByClient.get(client);
+  if (!service) {
+    service = new AssignmentAuditService({
+      port: createSupabaseAssignmentAuditDataPort(client),
+    });
+    assignmentAuditByClient.set(client, service);
+  }
+  return service;
+}
+
+async function readTaskAssignee(
+  client: SupabaseClient,
+  tenantId: string,
+  taskId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("tasks")
+    .select("assignee_id")
+    .eq("company_id", tenantId)
+    .eq("id", taskId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.assignee_id ? String(data.assignee_id) : null;
+}
+
+async function recordTaskAssignmentAudit(
+  client: SupabaseClient,
+  ctx: LoginAppPortContext,
+  tenantId: string,
+  taskId: string,
+  previousAssigneeUserId: string | null,
+  newAssigneeUserId: string | null,
+): Promise<void> {
+  await getAssignmentAudit(client).recordAssignmentChange({
+    companyId: tenantId,
+    actorUserId: ctx.actorUserId,
+    resourceType: "task",
+    resourceId: taskId,
+    previousAssigneeUserId,
+    newAssigneeUserId,
+    source: "human",
+  });
+}
+
 async function updateTask(
   client: SupabaseClient,
   ctx: LoginAppPortContext,
@@ -62,6 +148,7 @@ export function createLoginAppTaskWritePort(client: SupabaseClient, ctx: LoginAp
   return {
     async create(input) {
       if (input.tenantId !== ctx.companyId || !canWrite(ctx)) throw new Error("Permission denied");
+      await assertTaskAssigneeEligible(client, ctx, input.assigneeId);
 
       const { data, error } = await client
         .from("tasks")
@@ -83,17 +170,50 @@ export function createLoginAppTaskWritePort(client: SupabaseClient, ctx: LoginAp
         .single();
 
       if (error) throw new Error(error.message);
-      return mapTaskRow(data as TaskRow);
+      const task = mapTaskRow(data as TaskRow);
+      if (input.assigneeId) {
+        await recordTaskAssignmentAudit(
+          client,
+          ctx,
+          input.tenantId,
+          task.id,
+          null,
+          input.assigneeId,
+        );
+      }
+      return task;
     },
 
     async assign(tenantId, taskId, assigneeId) {
       if (tenantId !== ctx.companyId || !canAssign(ctx)) throw new Error("Permission denied");
-      return updateTask(client, ctx, tenantId, taskId, { assignee_id: assigneeId });
+      await assertTaskAssigneeEligible(client, ctx, assigneeId);
+      const previousAssigneeUserId = await readTaskAssignee(client, tenantId, taskId);
+      const task = await updateTask(client, ctx, tenantId, taskId, { assignee_id: assigneeId });
+      await recordTaskAssignmentAudit(
+        client,
+        ctx,
+        tenantId,
+        taskId,
+        previousAssigneeUserId,
+        assigneeId,
+      );
+      return task;
     },
 
     async reassign(tenantId, taskId, assigneeId) {
       if (tenantId !== ctx.companyId || !canAssign(ctx)) throw new Error("Permission denied");
-      return updateTask(client, ctx, tenantId, taskId, { assignee_id: assigneeId });
+      await assertTaskAssigneeEligible(client, ctx, assigneeId);
+      const previousAssigneeUserId = await readTaskAssignee(client, tenantId, taskId);
+      const task = await updateTask(client, ctx, tenantId, taskId, { assignee_id: assigneeId });
+      await recordTaskAssignmentAudit(
+        client,
+        ctx,
+        tenantId,
+        taskId,
+        previousAssigneeUserId,
+        assigneeId,
+      );
+      return task;
     },
 
     async start(tenantId, taskId) {

@@ -1,10 +1,12 @@
 import { UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EnterpriseEmptyState } from "@/components/enterprise";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketStatusBadge, TicketPriorityBadge, formatTicketDateTime } from "@/components/tickets/ticket-badges";
 import { useTicketCustomerContext } from "@/hooks/tickets/use-ticket-customer-context";
+import { resolveAvatarDisplayUrl } from "@/lib/avatar-url";
 
 export function Ticket360CustomerPanel({
   customerId,
@@ -52,14 +54,26 @@ export function Ticket360CustomerPanel({
   }
 
   const row = customer.data;
+  const avatarSrc = resolveAvatarDisplayUrl(row.avatarUrl);
+  const initials = row.name.trim().slice(0, 1).toUpperCase() || "?";
 
   return (
     <div className="space-y-5 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold">{row.name}</h3>
-          <p className="text-sm text-muted-foreground">{row.email || "—"}</p>
-          <p className="text-sm text-muted-foreground">{row.phone || "—"}</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <Avatar className="size-12 shrink-0">
+            {avatarSrc ? <AvatarImage src={avatarSrc} alt="" /> : null}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 space-y-1">
+            <h3 className="truncate text-base font-semibold">{row.name}</h3>
+            <p className="truncate text-sm text-muted-foreground" dir="auto">
+              {row.email || "—"}
+            </p>
+            <p className="text-sm text-muted-foreground" dir="ltr">
+              {row.phone || "—"}
+            </p>
+          </div>
         </div>
         <Button type="button" variant="outline" className="rounded-xl" onClick={() => onOpenCustomer(row.id)}>
           {t("tickets.360.openCustomer")}

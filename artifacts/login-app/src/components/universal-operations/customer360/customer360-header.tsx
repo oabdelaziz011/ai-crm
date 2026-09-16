@@ -8,11 +8,11 @@ import {
   X,
 } from "lucide-react";
 import type { OperationsCustomer360WorkspaceData } from "@workspace/universal-operations-engine";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Customer360Badge } from "@/components/universal-operations/customer360/customer360-ui";
-import { cn } from "@/lib/utils";
+import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { useTranslation } from "react-i18next";
 
 function initials(name: string): string {
@@ -39,11 +39,17 @@ export function Customer360StickyHeader({
 }) {
   const { t } = useTranslation("common");
   const { customer, summary, todaysOperation } = data;
+  const photoUrl = normalizeAvatarUrl(summary.photoUrl);
+  const trustedPhotoUrl =
+    photoUrl && !photoUrl.startsWith("data:") ? photoUrl : undefined;
 
   return (
     <div className="sticky top-0 z-30 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-md">
       <div className="flex items-start gap-3">
         <Avatar className="size-11 ring-2 ring-primary/20">
+          {trustedPhotoUrl ? (
+            <AvatarImage src={trustedPhotoUrl} alt={customer.name} />
+          ) : null}
           <AvatarFallback style={{ backgroundColor: `${customer.avatarColor}22`, color: customer.avatarColor }}>
             {initials(customer.name)}
           </AvatarFallback>

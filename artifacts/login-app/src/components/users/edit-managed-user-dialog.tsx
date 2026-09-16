@@ -5,12 +5,14 @@ import {
   DepartmentSearchableSelect,
   type DepartmentOption,
 } from "@/components/users/department-searchable-select";
+import { buildDepartmentMembershipWrite } from "@/lib/organization/department-membership";
 import { JobTitleAutocomplete } from "@/components/users/job-title-autocomplete";
 import { BranchAssignmentMultiSelect, BranchFormDialog } from "@/lib/company/branches/components";
 import { useBranches, useCreateBranch, formatBranchError } from "@/lib/company/branches/hooks";
 import type { BranchFormValues } from "@/lib/company/branches/types";
 import type { BranchFormSchema } from "@/lib/company/branches/validators";
 import { useCompanyAssignableRoles } from "@/hooks/use-company-assignable-roles";
+import { buildEmployeeRoleOptions } from "@/lib/rbac/employee-role-options";
 import { useToast } from "@/hooks/use-toast";
 import {
   useUpdateManagedUser,
@@ -49,7 +51,8 @@ type EditForm = {
   isActive: boolean;
   branchIds: string[];
   jobTitle: string;
-  department: string;
+  /** Canonical organization_departments.id */
+  departmentId: string;
   phone: string;
   preferredLanguage: string;
   timezone: string;
@@ -66,7 +69,7 @@ export function EditManagedUserDialog({
   jobTitleSuggestions = [],
   onSuccess,
 }: Props) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const updateUser = useUpdateManagedUser();
   const createBranch = useCreateBranch(companyId);
@@ -89,12 +92,16 @@ export function EditManagedUserDialog({
 
   const roleOptions = useMemo(
     () =>
-      tenantRoles.map((r) => ({
-        value: r.id,
-        label: r.name ?? t("users.noRole"),
-        description: r.description ?? undefined,
-      })),
-    [tenantRoles, t],
+      buildEmployeeRoleOptions({
+        assignableRoles: tenantRoles,
+        currentRole: role
+          ? { roleId: role.roleId, roleName: role.roleName }
+          : form?.roleId
+            ? { roleId: form.roleId }
+            : null,
+        currentOnlyLabel: t("users.form.currentRoleUnavailable"),
+      }),
+    [tenantRoles, role, form?.roleId, t],
   );
 
   useEffect(() => {
@@ -109,7 +116,7 @@ export function EditManagedUserDialog({
       isActive: user.is_active,
       branchIds: [...branchIds],
       jobTitle: user.job_title ?? "",
-      department: user.department ?? "",
+      departmentId: user.department_id ?? "",
       phone: user.phone ?? "",
       preferredLanguage: user.preferred_language ?? "en",
       timezone: user.timezone ?? "UTC",
@@ -119,11 +126,11 @@ export function EditManagedUserDialog({
 
   useEffect(() => {
     if (!open || !form?.roleId) return;
-    const stillValid = tenantRoles.some((r) => r.id === form.roleId);
-    if (!stillValid && tenantRoles.length > 0) {
+    const stillValid = roleOptions.some((option) => option.value === form.roleId);
+    if (!stillValid && tenantRoles.length > 0 && !role?.roleId) {
       setForm((current) => (current ? { ...current, roleId: "" } : current));
     }
-  }, [open, form?.roleId, tenantRoles]);
+  }, [open, form?.roleId, roleOptions, tenantRoles.length, role?.roleId]);
 
   const handleCreateBranchSubmit = async (values: BranchFormSchema) => {
     try {
@@ -164,6 +171,11 @@ export function EditManagedUserDialog({
       return;
     }
 
+    const membership = buildDepartmentMembershipWrite(
+      form.departmentId,
+      departments ?? [],
+    );
+
     updateUser.mutate(
       {
         id: form.id,
@@ -173,7 +185,8 @@ export function EditManagedUserDialog({
         roleId: form.roleId,
         branchIds: form.branchIds,
         job_title: form.jobTitle.trim() || null,
-        department: form.department.trim() || null,
+        department_id: membership.department_id,
+        department: membership.department,
         phone: form.phone.trim() || null,
         preferred_language: form.preferredLanguage || "en",
         timezone: form.timezone || "UTC",
@@ -191,7 +204,10 @@ export function EditManagedUserDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-border/60 bg-card text-foreground">
+        <DialogContent
+          dir={(i18n.resolvedLanguage ?? i18n.language ?? "en").startsWith("ar") ? "rtl" : "ltr"}
+          className="max-h-[90vh] max-w-lg overflow-y-auto border-border/60 bg-card text-foreground"
+        >
           <DialogHeader>
             <DialogTitle>{t("companyWorkspace.employees.editTitle")}</DialogTitle>
           </DialogHeader>
@@ -231,10 +247,10 @@ export function EditManagedUserDialog({
                   <label className="text-sm text-muted-foreground">{t("users.form.department")}</label>
                   <DepartmentSearchableSelect
                     companyId={companyId}
-                    value={form.department}
+                    value={form.departmentId}
                     departments={departments}
-                    onChange={(department) =>
-                      setForm((c) => (c ? { ...c, department } : c))
+                    onChange={(departmentId) =>
+                      setForm((c) => (c ? { ...c, departmentId } : c))
                     }
                   />
                 </div>

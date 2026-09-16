@@ -12,6 +12,7 @@ import {
   FileText,
   LayoutGrid,
   MessageSquare,
+  MessageSquareText,
   Briefcase,
   Target,
   Settings,
@@ -60,6 +61,7 @@ export type DashboardSectionId =
   | "communication"
   | "campaigns"
   | "email"
+  | "sms"
   | "invoices"
   | "financial"
   | "executive"
@@ -139,6 +141,7 @@ export const DASHBOARD_SIDEBAR_GROUPS: readonly DashboardSidebarGroupDefinition[
       "channels",
       "communication",
       "email",
+      "sms",
       "ai-assistant",
       "ai-employees",
       "ai-chat",
@@ -235,10 +238,21 @@ export const DASHBOARD_ROUTE_REGISTRY: readonly DashboardRouteDefinition[] = [
     nestedPath: "/email",
     titleKey: "navigation.email",
     icon: Mail,
-    permission: "channels.view",
+    permission: "email.view",
     commercialFeatureCode: "email_channel",
     sidebarGroup: "ai-platform",
     Page: lazyNamed(() => import("@/pages/email"), "EmailPage"),
+  },
+  {
+    id: "sms",
+    path: "/dashboard/sms",
+    nestedPath: "/sms",
+    titleKey: "navigation.sms",
+    icon: MessageSquareText,
+    permission: "sms.view",
+    commercialFeatureCode: "sms_channel",
+    sidebarGroup: "ai-platform",
+    Page: lazyNamed(() => import("@/pages/sms"), "SmsPage"),
   },
   {
     id: "ai-usage",

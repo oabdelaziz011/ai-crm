@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import i18n from "@/i18n";
 import type { PermissionRecord } from "@/hooks/use-rbac";
 import enCatalog from "@/locales/en/permission-catalog.json";
 import arCatalog from "@/locales/ar/permission-catalog.json";
+import {
+  overlayPermissionModuleId,
+  resolvePermissionFamilyId,
+} from "@/lib/rbac/permission-module-taxonomy";
 
 type CatalogBundle = typeof enCatalog;
 
@@ -35,8 +39,11 @@ export function getPermissionCatalogEntry(code: string): PermissionCatalogEntry 
 }
 
 export function inferGroupId(code: string): string {
+  const overlay = overlayPermissionModuleId(code);
+  if (overlay) return overlay;
   if (code.startsWith("customers.")) return "customers";
   if (code.startsWith("bookings.") || code.startsWith("availability.")) return "bookings";
+  if (code.startsWith("scheduling.")) return "scheduling";
   if (code.startsWith("invoices.")) return "invoices";
   if (code.startsWith("reports.")) return "reports";
   if (code.startsWith("dashboard.")) return "dashboard";
@@ -74,6 +81,7 @@ export function inferGroupId(code: string): string {
   if (code.startsWith("tasks.")) return "tasks";
   if (code.startsWith("skills.")) return "skills";
   if (code.startsWith("executive.")) return "executive";
+  if (code.startsWith("campaigns.")) return "automation";
   return "aiPlatform";
 }
 
@@ -109,15 +117,41 @@ export function resolvePermissionGroupMeta(groupId: string): PermissionGroupEntr
   return { id: groupId, icon: "•", order: 999, label: groupId };
 }
 
+function catalogEntryFor(
+  catalog: CatalogBundle,
+  code: string,
+): PermissionCatalogEntry | null {
+  const entry = catalog.codes[code as keyof typeof catalog.codes];
+  if (!entry) return null;
+  return { name: entry.name, description: entry.description, group: entry.group };
+}
+
+function groupLabelFor(catalog: CatalogBundle, groupId: string): string | null {
+  const group = catalog.groups[groupId as keyof typeof catalog.groups];
+  return group?.label ?? null;
+}
+
 export function permissionSearchHaystack(
   code: string,
   permission?: PermissionRecord | null,
 ): string {
-  const catalog = getPermissionCatalogEntry(code);
+  const active = getPermissionCatalogEntry(code);
+  const en = catalogEntryFor(enCatalog as CatalogBundle, code);
+  const ar = catalogEntryFor(arCatalog as CatalogBundle, code);
+  const moduleId = resolvePermissionGroupId(code, permission);
+  const familyId = resolvePermissionFamilyId(moduleId);
   return [
     code,
-    catalog?.name,
-    catalog?.description,
+    active?.name,
+    active?.description,
+    en?.name,
+    en?.description,
+    ar?.name,
+    ar?.description,
+    moduleId,
+    familyId,
+    groupLabelFor(enCatalog as CatalogBundle, moduleId),
+    groupLabelFor(arCatalog as CatalogBundle, moduleId),
     permission?.description,
     permission?.action,
     permission?.module,
@@ -132,9 +166,22 @@ export function resolvePermissionGroupId(
   code: string,
   permission?: PermissionRecord | null,
 ): string {
+  const overlay = overlayPermissionModuleId(code);
+  if (overlay) return overlay;
   const catalog = getPermissionCatalogEntry(code);
   if (catalog?.group) return catalog.group;
   return inferGroupId(code);
+}
+
+export function resolvePermissionGroupLabels(groupId: string): {
+  localized: string;
+  english: string;
+  arabic: string;
+} {
+  const localized = resolvePermissionGroupMeta(groupId).label;
+  const english = groupLabelFor(enCatalog as CatalogBundle, groupId) ?? groupId;
+  const arabic = groupLabelFor(arCatalog as CatalogBundle, groupId) ?? groupId;
+  return { localized, english, arabic };
 }
 
 export function listPermissionCatalogCodes(): string[] {

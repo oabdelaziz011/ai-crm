@@ -14,9 +14,14 @@ describe("email html utils", () => {
     assert.doesNotMatch(sanitized, /javascript:/);
   });
 
-  it("converts html to plain text", () => {
-    const plain = htmlToPlainText("<p>Hello<br/>World</p>");
-    assert.match(plain, /Hello/);
-    assert.match(plain, /World/);
+  it("preserves identity logo img for outbound/inbound HTML", () => {
+    const html =
+      '<p>Hello</p><div data-email-identity-logo="1"><img src="https://cdn.example/logo.png" alt="" width="160" /></div><p>Sig</p>';
+    const sanitized = sanitizeEmailHtml(html);
+    assert.match(sanitized, /data-email-identity-logo/);
+    assert.match(sanitized, /<img\b/i);
+    assert.match(sanitized, /https:\/\/cdn\.example\/logo\.png/);
+    assert.ok(sanitized.indexOf("Hello") < sanitized.indexOf("img"));
+    assert.ok(sanitized.indexOf("img") < sanitized.indexOf("Sig"));
   });
 });

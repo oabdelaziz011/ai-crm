@@ -47,6 +47,12 @@ importers:
       '@workspace/application-layer':
         specifier: workspace:*
         version: link:../../lib/application-layer
+      '@workspace/assignment-audit':
+        specifier: workspace:*
+        version: link:../../lib/assignment-audit
+      '@workspace/assignment-governance':
+        specifier: workspace:*
+        version: link:../../lib/assignment-governance
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../../lib/automation-platform
@@ -228,6 +234,12 @@ importers:
       '@workspace/appointment-platform':
         specifier: workspace:*
         version: link:../../lib/appointment-platform
+      '@workspace/assignment-audit':
+        specifier: workspace:*
+        version: link:../../lib/assignment-audit
+      '@workspace/assignment-governance':
+        specifier: workspace:*
+        version: link:../../lib/assignment-governance
       '@workspace/automation-platform':
         specifier: workspace:*
         version: link:../../lib/automation-platform
@@ -759,6 +771,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/assignment-audit':
+        specifier: workspace:*
+        version: link:../assignment-audit
+      '@workspace/assignment-governance':
+        specifier: workspace:*
+        version: link:../assignment-governance
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -982,6 +1000,38 @@ importers:
         specifier: ^4.21.0
         version: 4.23.0
 
+  lib/assignment-audit:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+
+  lib/assignment-governance:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.110.2
+        version: 2.110.2
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.9.4
+      tsx:
+        specifier: ^4.21.0
+        version: 4.23.0
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+
   lib/automation-platform:
     dependencies:
       '@supabase/supabase-js':
@@ -1137,6 +1187,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/assignment-governance':
+        specifier: workspace:*
+        version: link:../assignment-governance
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1201,6 +1254,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/assignment-audit':
+        specifier: workspace:*
+        version: link:../assignment-audit
+      '@workspace/assignment-governance':
+        specifier: workspace:*
+        version: link:../assignment-governance
     devDependencies:
       '@types/node':
         specifier: ^25.3.3
@@ -1408,6 +1467,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.2
         version: 2.110.2
+      '@workspace/assignment-audit':
+        specifier: workspace:*
+        version: link:../assignment-audit
+      '@workspace/assignment-governance':
+        specifier: workspace:*
+        version: link:../assignment-governance
     devDependencies:
       '@types/node':
         specifier: ^25.3.3

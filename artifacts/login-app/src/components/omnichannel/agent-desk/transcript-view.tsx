@@ -330,7 +330,7 @@ export const TranscriptView = memo(
     }
 
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {searchLabels && onSearchQueryChange ? (
           <TranscriptSearchBar
             query={searchQuery}
@@ -366,7 +366,7 @@ export const TranscriptView = memo(
         <div
           ref={containerRef}
           data-testid="omnichannel-transcript"
-          className={`agent-desk__grid-bg min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:px-3 ${dragOver ? "ring-2 ring-inset ring-[var(--ad-accent)]/30" : ""}`}
+          className={`agent-desk__grid-bg min-h-0 flex-1 overflow-y-auto px-2 py-1.5 sm:px-2.5 ${dragOver ? "ring-2 ring-inset ring-[var(--ad-accent)]/30" : ""}`}
           onScroll={handleScroll}
           onKeyDown={handleKeyDown}
           onDragOver={(event) => {

@@ -31,6 +31,8 @@ export function useCustomerWorkspaceAccess(activeTab?: CustomerProfileTab): {
   canAccessBookings: boolean;
   canAccessFinance: boolean;
   canAccessTickets: boolean;
+  canAccessEmail: boolean;
+  canAccessSms: boolean;
   canAccessAi: boolean;
   canAccessCampaigns: boolean;
   canAccessFiles: boolean;
@@ -87,6 +89,8 @@ export function useCustomerWorkspaceAccess(activeTab?: CustomerProfileTab): {
       isWorkspaceTabAccessible("invoices", access) ||
       isWorkspaceTabAccessible("payments", access),
     canAccessTickets: isWorkspaceTabAccessible("tickets", access),
+    canAccessEmail: isWorkspaceTabAccessible("email", access),
+    canAccessSms: isWorkspaceTabAccessible("sms", access),
     canAccessAi: isWorkspaceTabAccessible("ai", access),
     canAccessCampaigns: isWorkspaceTabAccessible("campaigns", access),
     canAccessFiles: isWorkspaceTabAccessible("files", access),

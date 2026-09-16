@@ -1,4 +1,9 @@
 import {
+  AssignmentGovernanceError,
+  type AssignmentGovernancePort,
+} from "@workspace/assignment-governance";
+import type { AssignmentAuditPort } from "@workspace/assignment-audit";
+import {
   CONVERSATION_CHANNEL_TYPES,
   CONVERSATION_PERMISSIONS,
   CONVERSATION_PRIORITIES,
@@ -12,6 +17,7 @@ import {
 import type { ConversationRepository } from "../repositories/conversation-repository.js";
 import type {
   AssignConversationInput,
+  AssignConversationInternalInput,
   CloseConversationInput,
   ConversationRecord,
   CreateConversationInput,
@@ -22,6 +28,51 @@ import type {
   UpdateConversationPriorityInput,
   UpdateConversationStateInput,
 } from "../types.js";
+import { ASSIGNMENT_INTERNAL_TRUST } from "../types.js";
+import {
+  assertAssignmentVisibilityCompatibility,
+  type AssignmentTargetVisibilityPort,
+} from "./assignment-visibility-compatibility.js";
+import {
+  applyConversationListVisibilityFilter,
+  assertCanReadConversations,
+  assertConversationReadable,
+} from "./conversation-visibility.js";
+
+/**
+ * Optional hook so priority mutations can refresh lifecycle.slaDueAt using the
+ * authoritative Ticket SLA calculator without coupling this package to ticket-platform.
+ */
+export type ConversationPrioritySlaHook = {
+  afterPriorityChange(input: {
+    companyId: string;
+    priority: string;
+    metadata: Record<string, unknown>;
+    referenceNow: Date;
+  }): Promise<Record<string, unknown>>;
+};
+
+/**
+ * Optional sync so human email assignment mirrors linked support_tickets.assigned_user_id.
+ * AI routing must not use this path.
+ */
+export type ConversationLinkedTicketAssignmentSync = {
+  syncAssignee(input: {
+    companyId: string;
+    conversationId: string;
+    assignedUserId: string;
+    actorUserId: string;
+  }): Promise<void>;
+};
+
+export type ConversationServiceOptions = {
+  prioritySlaHook?: ConversationPrioritySlaHook | null;
+  assignmentGovernance?: AssignmentGovernancePort | null;
+  linkedTicketAssignmentSync?: ConversationLinkedTicketAssignmentSync | null;
+  assignmentAudit?: AssignmentAuditPort | null;
+  /** Phase 6D Step 3 — target post-assignment readability (authoritative). */
+  assignmentTargetVisibility?: AssignmentTargetVisibilityPort | null;
+};
 
 function assertCompanyAccess(ctx: ServiceContext, companyId: string): void {
   if (ctx.isSuperAdmin) return;
@@ -56,7 +107,39 @@ function validatePriority(priority: string): void {
 }
 
 export class ConversationService {
-  constructor(private readonly repository: ConversationRepository) {}
+  private readonly prioritySlaHook: ConversationPrioritySlaHook | null;
+  private readonly assignmentGovernance: AssignmentGovernancePort | null;
+  private readonly linkedTicketAssignmentSync: ConversationLinkedTicketAssignmentSync | null;
+  private readonly assignmentAudit: AssignmentAuditPort | null;
+  private readonly assignmentTargetVisibility: AssignmentTargetVisibilityPort | null;
+
+  constructor(
+    private readonly repository: ConversationRepository,
+    prioritySlaHookOrOptions: ConversationPrioritySlaHook | ConversationServiceOptions | null = null,
+  ) {
+    if (
+      prioritySlaHookOrOptions &&
+      typeof prioritySlaHookOrOptions === "object" &&
+      ("prioritySlaHook" in prioritySlaHookOrOptions ||
+        "assignmentGovernance" in prioritySlaHookOrOptions ||
+        "linkedTicketAssignmentSync" in prioritySlaHookOrOptions ||
+        "assignmentAudit" in prioritySlaHookOrOptions ||
+        "assignmentTargetVisibility" in prioritySlaHookOrOptions)
+    ) {
+      const options = prioritySlaHookOrOptions as ConversationServiceOptions;
+      this.prioritySlaHook = options.prioritySlaHook ?? null;
+      this.assignmentGovernance = options.assignmentGovernance ?? null;
+      this.linkedTicketAssignmentSync = options.linkedTicketAssignmentSync ?? null;
+      this.assignmentAudit = options.assignmentAudit ?? null;
+      this.assignmentTargetVisibility = options.assignmentTargetVisibility ?? null;
+    } else {
+      this.prioritySlaHook = (prioritySlaHookOrOptions as ConversationPrioritySlaHook | null) ?? null;
+      this.assignmentGovernance = null;
+      this.linkedTicketAssignmentSync = null;
+      this.assignmentAudit = null;
+      this.assignmentTargetVisibility = null;
+    }
+  }
 
   async createConversation(
     ctx: ServiceContext,
@@ -91,12 +174,11 @@ export class ConversationService {
   }
 
   async getConversation(ctx: ServiceContext, conversationId: string): Promise<ConversationRecord> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
-
     const conversation = await this.repository.findById(conversationId);
     if (!conversation) throw new ConversationNotFoundError(conversationId);
 
     assertCompanyAccess(ctx, conversation.company_id);
+    assertConversationReadable(ctx, conversation);
     return conversation;
   }
 
@@ -105,12 +187,12 @@ export class ConversationService {
     companyId: string,
     conversationNumber: string,
   ): Promise<ConversationRecord> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     assertCompanyAccess(ctx, companyId);
 
     const conversation = await this.repository.findByNumber(companyId, conversationNumber);
     if (!conversation) throw new ConversationNotFoundError(conversationNumber);
 
+    assertConversationReadable(ctx, conversation);
     return conversation;
   }
 
@@ -118,14 +200,15 @@ export class ConversationService {
     ctx: ServiceContext,
     filter: ListConversationsFilter,
   ): Promise<ConversationRecord[]> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     assertCompanyAccess(ctx, filter.companyId);
+    const scope = assertCanReadConversations(ctx);
+    const scopedFilter = applyConversationListVisibilityFilter(filter, scope);
 
-    if (filter.state) validateState(filter.state);
-    if (filter.channelType) validateChannelType(filter.channelType);
-    if (filter.priority) validatePriority(filter.priority);
+    if (scopedFilter.state) validateState(scopedFilter.state);
+    if (scopedFilter.channelType) validateChannelType(scopedFilter.channelType);
+    if (scopedFilter.priority) validatePriority(scopedFilter.priority);
 
-    return this.repository.list(filter);
+    return this.repository.list(scopedFilter);
   }
 
   async closeConversation(
@@ -143,20 +226,110 @@ export class ConversationService {
     });
   }
 
+  /**
+   * User-facing / human assignment. Always runs Assignment Governance +
+   * Visibility Compatibility when ports are configured.
+   * Ignores any client-supplied skipAssignmentGovernance flag.
+   */
   async assignConversation(
     ctx: ServiceContext,
     input: AssignConversationInput,
   ): Promise<ConversationRecord> {
+    return this.executeAssignConversation(ctx, input, { skipGuards: false });
+  }
+
+  /**
+   * Trusted AI / queue / system assignment. Requires ASSIGNMENT_INTERNAL_TRUST
+   * (Symbol — not forgeable via JSON/HTTP). May skip AG + visibility when
+   * skipAssignmentGovernance is true.
+   */
+  async assignConversationInternal(
+    ctx: ServiceContext,
+    input: AssignConversationInternalInput,
+  ): Promise<ConversationRecord> {
+    if (input.internalTrust !== ASSIGNMENT_INTERNAL_TRUST) {
+      throw new PermissionDeniedError(CONVERSATION_PERMISSIONS.takeover);
+    }
+    return this.executeAssignConversation(ctx, input, {
+      skipGuards: Boolean(input.skipAssignmentGovernance),
+    });
+  }
+
+  private async executeAssignConversation(
+    ctx: ServiceContext,
+    input: AssignConversationInput,
+    options: { skipGuards: boolean },
+  ): Promise<ConversationRecord> {
     assertPermission(ctx, CONVERSATION_PERMISSIONS.takeover);
-    await this.getConversation(ctx, input.conversationId);
+    const existing = await this.getConversation(ctx, input.conversationId);
 
     if (input.state) validateState(input.state);
 
-    return this.repository.assign({
+    const actorUserId = (input.updatedBy ?? ctx.userId)?.trim() || null;
+    const targetUserId = input.assignedUserId?.trim() || "";
+    const skipGuards = options.skipGuards === true;
+
+    if (targetUserId && actorUserId && this.assignmentGovernance && !skipGuards) {
+      try {
+        await this.assignmentGovernance.assertCanAssignToEmployee({
+          actorUserId,
+          targetUserId,
+          resource: existing.channel_type === "email" ? "email_conversation" : "conversation",
+        });
+      } catch (error) {
+        if (error instanceof AssignmentGovernanceError) {
+          throw new PermissionDeniedError(
+            `${CONVERSATION_PERMISSIONS.takeover} (${error.code}: ${error.message})`,
+          );
+        }
+        throw error;
+      }
+    }
+
+    // Phase 6D Step 3 — Visibility Compatibility (human / non-skip paths).
+    if (targetUserId && this.assignmentTargetVisibility && !skipGuards) {
+      await assertAssignmentVisibilityCompatibility({
+        conversation: existing,
+        targetUserId,
+        companyId: existing.company_id,
+        port: this.assignmentTargetVisibility,
+      });
+    }
+
+    const record = await this.repository.assign({
       ...input,
       state: input.state ?? "transferred_to_human",
       updatedBy: input.updatedBy ?? ctx.userId,
     });
+
+    if (
+      existing.channel_type === "email" &&
+      targetUserId &&
+      actorUserId &&
+      this.linkedTicketAssignmentSync
+    ) {
+      await this.linkedTicketAssignmentSync.syncAssignee({
+        companyId: existing.company_id,
+        conversationId: existing.id,
+        assignedUserId: targetUserId,
+        actorUserId,
+      });
+    }
+
+    if (this.assignmentAudit && !input.skipAssignmentAudit) {
+      await this.assignmentAudit.recordAssignmentChange({
+        companyId: existing.company_id,
+        actorUserId,
+        resourceType:
+          existing.channel_type === "email" ? "email_conversation" : "conversation",
+        resourceId: existing.id,
+        previousAssigneeUserId: existing.assigned_user_id,
+        newAssigneeUserId: targetUserId || null,
+        source: input.assignmentAuditSource ?? "human",
+      });
+    }
+
+    return record;
   }
 
   async releaseConversation(
@@ -164,15 +337,31 @@ export class ConversationService {
     input: ReleaseConversationInput,
   ): Promise<ConversationRecord> {
     assertPermission(ctx, CONVERSATION_PERMISSIONS.release);
-    await this.getConversation(ctx, input.conversationId);
+    const existing = await this.getConversation(ctx, input.conversationId);
 
     if (input.state) validateState(input.state);
 
-    return this.repository.release({
+    const record = await this.repository.release({
       ...input,
       state: input.state ?? "waiting_user",
       updatedBy: input.updatedBy ?? ctx.userId,
     });
+
+    if (this.assignmentAudit && !input.skipAssignmentAudit) {
+      const actorUserId = (input.updatedBy ?? ctx.userId)?.trim() || null;
+      await this.assignmentAudit.recordAssignmentChange({
+        companyId: existing.company_id,
+        actorUserId,
+        resourceType:
+          existing.channel_type === "email" ? "email_conversation" : "conversation",
+        resourceId: existing.id,
+        previousAssigneeUserId: existing.assigned_user_id,
+        newAssigneeUserId: null,
+        source: input.assignmentAuditSource ?? "human",
+      });
+    }
+
+    return record;
   }
 
   async updateState(
@@ -194,11 +383,29 @@ export class ConversationService {
     input: UpdateConversationPriorityInput,
   ): Promise<ConversationRecord> {
     assertPermission(ctx, CONVERSATION_PERMISSIONS.reply);
-    await this.getConversation(ctx, input.conversationId);
+    const existing = await this.getConversation(ctx, input.conversationId);
     validatePriority(input.priority);
+
+    const companyId = existing.company_id?.trim();
+    if (!companyId) {
+      throw new ValidationError("Company context is required to update conversation priority SLA.");
+    }
+
+    const referenceNow = new Date();
+    let metadata: Record<string, unknown> | undefined;
+    if (this.prioritySlaHook) {
+      // Compute SLA before any write — failure leaves priority unchanged.
+      metadata = await this.prioritySlaHook.afterPriorityChange({
+        companyId,
+        priority: input.priority,
+        metadata: existing.metadata ?? {},
+        referenceNow,
+      });
+    }
 
     return this.repository.updatePriority({
       ...input,
+      metadata,
       updatedBy: input.updatedBy ?? ctx.userId,
     });
   }
@@ -217,14 +424,12 @@ export class ConversationService {
   }
 
   async resetEmployeeUnread(ctx: ServiceContext, conversationId: string): Promise<ConversationRecord> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     await this.getConversation(ctx, conversationId);
 
     return this.repository.resetEmployeeUnread(conversationId, ctx.userId);
   }
 
   async resetCustomerUnread(ctx: ServiceContext, conversationId: string): Promise<ConversationRecord> {
-    assertPermission(ctx, CONVERSATION_PERMISSIONS.view);
     await this.getConversation(ctx, conversationId);
 
     return this.repository.resetCustomerUnread(conversationId, ctx.userId);

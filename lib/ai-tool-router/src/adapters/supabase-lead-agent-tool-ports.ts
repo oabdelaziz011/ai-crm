@@ -55,6 +55,7 @@ export function createLeadAgentToolPortsFromPlatform(platform: LeadPlatformServi
         leadId: input.leadId,
         assigneeUserId: input.assigneeUserId,
         method: input.assignmentMethod as never,
+        assignmentAuditSource: "ai",
       });
     },
     searchLeads(input) {
@@ -90,5 +91,7 @@ export function createLeadAgentToolPortsFromPlatform(platform: LeadPlatformServi
 }
 
 export function createSupabaseLeadAgentToolPorts(client: SupabaseClient): LeadAgentToolPorts {
-  return createLeadAgentToolPortsFromPlatform(createLeadPlatformServices(client));
+  return createLeadAgentToolPortsFromPlatform(
+    createLeadPlatformServices(client, { assignmentGovernance: false }),
+  );
 }

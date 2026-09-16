@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { CompanyLogo } from "@/components/billing/identity/company-logo";
 import { EmailIdentityPreview } from "@/components/company-workspace/brand-center/email-identity-preview";
 import { resolveBrandLogos } from "@/lib/company-workspace/brand-center/resolve-brand-logos";
+import { resolveActiveBrandColors } from "@/lib/company-workspace/brand-center/branding-mode";
 import type {
   BrandPreviewSurface,
   CompanyBrandCenterDocument,
@@ -25,7 +26,8 @@ type Props = {
 /** Renders production-shaped UI chrome using live brand tokens — not decorative mock cards. */
 export function BrandSurfacePreview({ document, surface, contact }: Props) {
   const { t } = useTranslation("common");
-  const { colors, general, documents, email } = document;
+  const { general, documents, email } = document;
+  const colors = resolveActiveBrandColors(document);
   const logos = resolveBrandLogos(document.logos);
   const name = general.companyName || contact.companyName || t("companyWorkspace.title");
   const tokenStyle = {

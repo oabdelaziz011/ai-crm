@@ -73,12 +73,32 @@
     "aiChat": {
       "icon": "💬",
       "order": 130,
-      "label": "AI Chat"
+      "label": "AI Workspace"
     },
     "conversations": {
       "icon": "📥",
       "order": 140,
       "label": "Conversations"
+    },
+    "email": {
+      "icon": "✉️",
+      "order": 132,
+      "label": "Email"
+    },
+    "prompts": {
+      "icon": "📝",
+      "order": 155,
+      "label": "AI Prompt Templates"
+    },
+    "agents": {
+      "icon": "🤖",
+      "order": 152,
+      "label": "AI Employees"
+    },
+    "scheduling": {
+      "icon": "📅",
+      "order": 21,
+      "label": "Scheduling"
     },
     "channels": {
       "icon": "📡",
@@ -178,7 +198,7 @@
     "operations": {
       "icon": "🛠️",
       "order": 230,
-      "label": "Operations"
+      "label": "AI Operations"
     },
     "tasks": {
       "icon": "✅",
@@ -200,42 +220,42 @@
     "agents.create": {
       "name": "Create AI Employees",
       "description": "Allows creating AI employee profiles in the workspace.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.delete": {
       "name": "Archive AI Employees",
       "description": "Allows archiving AI employee profiles.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.edit": {
       "name": "Edit AI Employees",
       "description": "Allows editing AI employee profiles and assignments.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.execute": {
       "name": "Execute AI Agents",
       "description": "Allows starting, resuming, and cancelling AI agent workflows.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.manage": {
       "name": "Manage AI Agents",
       "description": "Allows managing AI agent configuration and policies.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.publish": {
       "name": "Publish Agents",
       "description": "Publish AI employee versions.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.rollback": {
       "name": "Rollback Agents",
       "description": "Rollback AI employee versions.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "agents.view": {
       "name": "View AI Agents",
       "description": "Allows viewing AI agent workflows, events, and checkpoints.",
-      "group": "aiPlatform"
+      "group": "agents"
     },
     "ai_assistant.edit": {
       "name": "Edit AI Assistant",
@@ -268,24 +288,34 @@
       "group": "aiAnalytics"
     },
     "ai.conversations.release": {
-      "name": "Release Conversations",
-      "description": "Allows releasing conversations back to AI handling.",
+      "name": "Unassign Conversations",
+      "description": "Remove the employee assignment from a conversation in Email Workspace and the inbox.",
       "group": "conversations"
     },
     "ai.conversations.reply": {
-      "name": "Reply in Conversations",
-      "description": "Allows replying to customer conversations.",
+      "name": "Reply to Conversations",
+      "description": "Send replies in conversations the role is allowed to access.",
       "group": "conversations"
     },
     "ai.conversations.takeover": {
-      "name": "Take Over Conversations",
-      "description": "Allows taking control of AI-handled conversations.",
+      "name": "Assign Conversations",
+      "description": "Manually assign a conversation to an employee in Email Workspace and the inbox.",
       "group": "conversations"
     },
     "ai.conversations.view": {
-      "name": "View Conversations",
-      "description": "Allows viewing team inbox and AI conversations.",
+      "name": "View All Conversations",
+      "description": "View every conversation in the company inbox, including Email Workspace (View All).",
       "group": "conversations"
+    },
+    "ai.conversations.view_assigned": {
+      "name": "View Assigned Conversations",
+      "description": "View only conversations assigned to the signed-in user.",
+      "group": "conversations"
+    },
+    "ai.email.manage": {
+      "name": "Manage Email Settings",
+      "description": "Open the Email Workspace Settings tab. Mailbox connection requires email.settings.manage. Personal identity requires email.identity.manage. Company identity requires email.identity.company.manage.",
+      "group": "email"
     },
     "ai.costs.view": {
       "name": "View AI Costs",
@@ -609,7 +639,7 @@
     },
     "conversation.assign": {
       "name": "Assign Conversations",
-      "description": "Allows assigning conversations to agents or queues.",
+      "description": "Assign conversations to employees. Used with Email Workspace assignment.",
       "group": "conversations"
     },
     "conversation.close": {
@@ -726,6 +756,41 @@
       "name": "Manage Departments",
       "description": "Allows creating and managing company departments.",
       "group": "company"
+    },
+    "email.identity.company.manage": {
+      "name": "Manage Company Email Identity",
+      "description": "Edit company email identity defaults including logo, company sender, reply-to, and company default signature.",
+      "group": "email"
+    },
+    "email.identity.manage": {
+      "name": "Manage Personal Email Identity",
+      "description": "Edit your personal email identity and personal signature used when sending mail.",
+      "group": "email"
+    },
+    "email.routing.view": {
+      "name": "View Email AI Routing",
+      "description": "Open the Email Workspace AI Routing tab and configure inbound email routing.",
+      "group": "email"
+    },
+    "email.run": {
+      "name": "Operate Email",
+      "description": "Email operations permission for companies with the Email channel. Does not open Email Workspace.",
+      "group": "email"
+    },
+    "email.settings.manage": {
+      "name": "Manage Email Connection",
+      "description": "Configure company email mailbox connection (SMTP, IMAP, Gmail, Microsoft) and operational email settings.",
+      "group": "email"
+    },
+    "email.templates.view": {
+      "name": "View Email Templates",
+      "description": "Open the Email Workspace Templates tab and manage company email templates.",
+      "group": "email"
+    },
+    "email.view": {
+      "name": "View Email",
+      "description": "Open Email Workspace. Conversation visibility still follows View All or View Assigned.",
+      "group": "email"
     },
     "embeddings.generate": {
       "name": "Generate Embeddings",
@@ -1100,27 +1165,27 @@
     "prompts.manage": {
       "name": "Manage Prompt Templates",
       "description": "Allows managing prompt templates and versions.",
-      "group": "aiPlatform"
+      "group": "prompts"
     },
     "prompts.preview": {
       "name": "Preview Prompt Templates",
       "description": "Allows previewing rendered prompt output.",
-      "group": "aiPlatform"
+      "group": "prompts"
     },
     "prompts.publish": {
       "name": "Publish Prompt Templates",
       "description": "Allows publishing validated prompt template versions.",
-      "group": "aiPlatform"
+      "group": "prompts"
     },
     "prompts.rollback": {
       "name": "Rollback Prompt Templates",
       "description": "Allows rolling back prompt templates to prior versions.",
-      "group": "aiPlatform"
+      "group": "prompts"
     },
     "prompts.view": {
       "name": "View Prompt Templates",
       "description": "Allows viewing prompt templates and build history.",
-      "group": "aiPlatform"
+      "group": "prompts"
     },
     "quotes.approve": {
       "name": "Approve Quotes",

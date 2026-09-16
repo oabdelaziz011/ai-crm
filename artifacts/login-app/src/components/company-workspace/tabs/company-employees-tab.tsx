@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { EmployeeBulkAssignDialog, type BulkAssignKind } from "@/components/company-workspace/employees/employee-bulk-assign-dialog";
 import { EmployeeBulkToolbar } from "@/components/company-workspace/employees/employee-bulk-toolbar";
 import { EmployeeQuickProfileSheet } from "@/components/company-workspace/employees/employee-quick-profile-sheet";
+import { ResetEmployeePasswordDialog } from "@/components/company-workspace/employees/reset-employee-password-dialog";
 import { EmployeeStatsStrip } from "@/components/company-workspace/employees/employee-stats-strip";
 import { EmployeeIdentityCard } from "@/components/employee-identity/employee-identity-card";
 import { EmployeeBranchBadges } from "@/components/users/employee-branch-badges";
@@ -52,12 +53,15 @@ import { useCompanyEmployeesPreferences } from "@/hooks/company-workspace/use-co
 import { useToast } from "@/hooks/use-toast";
 import { useOrganizationDepartments } from "@/hooks/organization/use-organization-departments";
 import {
+  formatDepartmentOptionLabel,
+  resolveEmployeeDepartmentDisplay,
+} from "@/lib/organization/department-membership";
+import {
   useCompanyEmployeeAuthMeta,
   useManagedUserRoleMap,
   useManagedUsers,
   useRemoveManagedUser,
   useResendManagedUserInvitation,
-  useResetManagedUserPassword,
   useUpdateManagedUser,
   type ManagedUser,
 } from "@/hooks/use-users-management";
@@ -93,7 +97,6 @@ export function CompanyEmployeesTab({
   const { data: authMeta = {} } = useCompanyEmployeeAuthMeta(companyId);
 
   const updateUser = useUpdateManagedUser();
-  const resetPassword = useResetManagedUserPassword();
   const resendInvite = useResendManagedUserInvitation();
   const removeUser = useRemoveManagedUser();
 
@@ -107,6 +110,7 @@ export function CompanyEmployeesTab({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editUser, setEditUser] = useState<ManagedUser | null>(null);
   const [profileUser, setProfileUser] = useState<ManagedUser | null>(null);
+  const [resetUser, setResetUser] = useState<ManagedUser | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkAssign, setBulkAssign] = useState<{ open: boolean; kind: BulkAssignKind }>({
     open: false,
@@ -153,21 +157,46 @@ export function CompanyEmployeesTab({
     () =>
       [...orgDepartments]
         .filter((d) => d.isActive)
-        .map((d) => ({ id: d.id, name: d.name }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [orgDepartments],
+        .map((d) => ({
+          id: d.id,
+          name: d.name,
+          branchId: d.branchId,
+          branchName: branchNameById.get(d.branchId) ?? null,
+        }))
+        .sort((a, b) =>
+          formatDepartmentOptionLabel(a.name, a.branchName).localeCompare(
+            formatDepartmentOptionLabel(b.name, b.branchName),
+          ),
+        ),
+    [orgDepartments, branchNameById],
   );
+
+  const departmentsById = useMemo(() => {
+    const map = new Map<string, { name: string; branchName?: string | null }>();
+    for (const d of orgDepartments) {
+      map.set(d.id, {
+        name: d.name,
+        branchName: branchNameById.get(d.branchId) ?? null,
+      });
+    }
+    return map;
+  }, [orgDepartments, branchNameById]);
 
   const departmentCounts = useMemo(() => {
     const counts = new Map<string, number>();
     let unassigned = 0;
     for (const user of employees) {
-      const name = user.department?.trim();
-      if (!name) {
+      const key = user.department_id?.trim()
+        ? user.department_id.trim()
+        : // LEGACY FALLBACK for filter counts when department_id is missing
+          user.department?.trim()
+          ? `legacy:${user.department.trim().toLowerCase()}`
+          : null;
+      if (!key) {
         unassigned += 1;
         continue;
       }
-      counts.set(name, (counts.get(name) ?? 0) + 1);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
     return { counts, unassigned };
   }, [employees]);
@@ -224,9 +253,17 @@ export function CompanyEmployeesTab({
     const q = search.trim().toLowerCase();
     return employees.filter((user) => {
       if (department === "__unassigned__") {
-        if (user.department?.trim()) return false;
-      } else if (department !== "all" && (user.department?.trim() || "") !== department) {
-        return false;
+        const hasCanonical = Boolean(user.department_id?.trim());
+        const hasLegacy = Boolean(user.department?.trim());
+        if (hasCanonical || hasLegacy) return false;
+      } else if (department !== "all") {
+        if (user.department_id?.trim()) {
+          if (user.department_id.trim() !== department) return false;
+        } else {
+          // LEGACY FALLBACK filter by text name when department_id is missing
+          const legacyName = departmentOptions.find((d) => d.id === department)?.name;
+          if (!legacyName || (user.department?.trim() || "") !== legacyName) return false;
+        }
       }
       if (status === "active" && !user.is_active) return false;
       if (status === "inactive" && user.is_active) return false;
@@ -238,10 +275,18 @@ export function CompanyEmployeesTab({
       const branchLabels = userBranches
         .map((id) => branchNameById.get(id) ?? "")
         .join(" ");
+      const departmentLabel =
+        resolveEmployeeDepartmentDisplay({
+          departmentId: user.department_id,
+          legacyDepartmentText: user.department,
+          departmentsById,
+          includeBranch: true,
+        }) ?? "";
       const haystack = [
         user.full_name,
         user.email,
         user.job_title,
+        departmentLabel,
         user.department,
         user.phone,
         roleName,
@@ -257,6 +302,8 @@ export function CompanyEmployeesTab({
     branchFilter,
     branchNameById,
     department,
+    departmentOptions,
+    departmentsById,
     employees,
     role,
     roleMap,
@@ -311,6 +358,14 @@ export function CompanyEmployeesTab({
 
   const lastLoginLabel = (userId: string) => resolveLastLogin(authMeta[userId], t).label;
 
+  const departmentLabelFor = (user: ManagedUser, includeBranch = false) =>
+    resolveEmployeeDepartmentDisplay({
+      departmentId: user.department_id,
+      legacyDepartmentText: user.department,
+      departmentsById,
+      includeBranch,
+    }) || notAssigned;
+
   const exportRows = (rows: ManagedUser[]) => {
     downloadCsv(
       "company-employees.csv",
@@ -328,7 +383,7 @@ export function CompanyEmployeesTab({
       rows.map((user) => [
         user.full_name || "",
         user.job_title || "",
-        user.department || "",
+        departmentLabelFor(user, true) === notAssigned ? "" : departmentLabelFor(user, true),
         roleMap[user.id]?.roleName || "",
         branchLabelFor(user.id),
         user.is_active
@@ -349,19 +404,7 @@ export function CompanyEmployeesTab({
   };
 
   const handleResetPassword = (user: ManagedUser) => {
-    resetPassword.mutate(user.email, {
-      onSuccess: () =>
-        toast({
-          title: t("companyWorkspace.employees.toasts.resetPasswordTitle"),
-          description: t("companyWorkspace.employees.toasts.resetPasswordDescription"),
-        }),
-      onError: (err) =>
-        toast({
-          variant: "destructive",
-          title: t("companyWorkspace.employees.toasts.errorTitle"),
-          description: err.message,
-        }),
-    });
+    setResetUser(user);
   };
 
   const handleResendInvite = (user: ManagedUser) => {
@@ -403,6 +446,7 @@ export function CompanyEmployeesTab({
   const runBulkAssign = async (payload: {
     branchIds?: string[];
     department?: string | null;
+    department_id?: string | null;
     roleId?: string;
   }) => {
     const ids = [...selectedIds];
@@ -413,7 +457,11 @@ export function CompanyEmployeesTab({
         await updateUser.mutateAsync({
           id,
           ...(payload.branchIds !== undefined ? { branchIds: payload.branchIds } : {}),
-          ...(payload.department !== undefined ? { department: payload.department } : {}),
+          ...(payload.department_id !== undefined
+            ? { department_id: payload.department_id, department: payload.department ?? null }
+            : payload.department !== undefined
+              ? { department: payload.department }
+              : {}),
           ...(payload.roleId !== undefined ? { roleId: payload.roleId } : {}),
         });
       }
@@ -561,10 +609,10 @@ export function CompanyEmployeesTab({
                   })}
                 </SelectItem>
                 {departmentOptions.map((d) => (
-                  <SelectItem key={d.id} value={d.name}>
+                  <SelectItem key={d.id} value={d.id}>
                     {t("companyWorkspace.employees.filters.countLabel", {
-                      label: d.name,
-                      count: departmentCounts.counts.get(d.name) ?? 0,
+                      label: formatDepartmentOptionLabel(d.name, d.branchName),
+                      count: departmentCounts.counts.get(d.id) ?? 0,
                     })}
                   </SelectItem>
                 ))}
@@ -747,7 +795,7 @@ export function CompanyEmployeesTab({
                             avatarUrl: user.avatar_url,
                             phone: user.phone,
                             jobTitle: user.job_title,
-                            department: user.department,
+                            department: departmentLabelFor(user) === notAssigned ? null : departmentLabelFor(user),
                             status: user.is_active ? "active" : "inactive",
                             language: user.preferred_language,
                             timezone: user.timezone,
@@ -766,7 +814,7 @@ export function CompanyEmployeesTab({
                         />
                       </td>
                       <td className={cn(cellPad, "align-middle text-muted-foreground")}>
-                        {user.department?.trim() || notAssigned}
+                        {departmentLabelFor(user, true)}
                       </td>
                       <td className={cn(cellPad, "align-middle")}>
                         <EmployeeRoleBadge roleName={roleMap[user.id]?.roleName} />
@@ -936,6 +984,14 @@ export function CompanyEmployeesTab({
         jobTitleSuggestions={jobTitleSuggestions}
         onSuccess={() => {
           toast({ title: t("companyWorkspace.employees.toasts.updateTitle") });
+        }}
+      />
+
+      <ResetEmployeePasswordDialog
+        user={resetUser}
+        open={Boolean(resetUser)}
+        onOpenChange={(open) => {
+          if (!open) setResetUser(null);
         }}
       />
 

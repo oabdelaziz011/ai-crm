@@ -1,8 +1,17 @@
 export type EmailEncryption = "none" | "starttls" | "ssl";
 
-export type EmailInboundProvider = "imap" | "webhook";
+export type EmailInboundProvider = "imap" | "webhook" | "microsoft_graph" | "gmail_api";
 
-export type EmailOutboundProvider = "smtp";
+export type EmailOutboundProvider = "smtp" | "microsoft_graph" | "gmail_api";
+
+export type EmailMailboxProvider = "gmail" | "microsoft_365" | "imap_smtp";
+
+export type EmailConnectionStatus =
+  | "connected"
+  | "connecting"
+  | "needs_reauthorization"
+  | "connection_error"
+  | "disabled";
 
 export type SmtpConfig = {
   host: string;
@@ -14,11 +23,18 @@ export type SmtpConfig = {
   fromName: string;
 };
 
+export type EmailMessageAttachment = {
+  filename: string;
+  content: Uint8Array;
+  contentType: string;
+};
+
 export type EmailMessage = {
   to: string;
   subject: string;
   html: string;
   text: string;
+  attachments?: EmailMessageAttachment[];
 };
 
 export type EmailTransportSendResult = {
@@ -68,6 +84,10 @@ export type CompanyEmailSettings = {
   conversationEnabled: boolean;
   inboundProvider: EmailInboundProvider;
   outboundProvider: EmailOutboundProvider;
+  mailboxProvider: EmailMailboxProvider;
+  connectionStatus: EmailConnectionStatus;
+  connectionLastError: string;
+  connectionLastSyncedAt: string | null;
   smtpHost: string;
   smtpPort: number;
   smtpUsername: string;
@@ -88,6 +108,7 @@ export type CompanyEmailSettings = {
   imapPollIntervalSeconds: number;
   oauthProvider: string | null;
   oauthToken: string;
+  oauthExpiresAt: string | null;
   hasSmtpPassword: boolean;
   hasImapPassword: boolean;
   hasOauthToken: boolean;
@@ -96,7 +117,14 @@ export type CompanyEmailSettings = {
 
 export type EmailSettingsDraft = Omit<
   CompanyEmailSettings,
-  "companyId" | "hasSmtpPassword" | "hasImapPassword" | "hasOauthToken" | "updatedAt" | "imapLastUid"
+  | "companyId"
+  | "hasSmtpPassword"
+  | "hasImapPassword"
+  | "hasOauthToken"
+  | "updatedAt"
+  | "imapLastUid"
+  | "connectionLastSyncedAt"
+  | "oauthExpiresAt"
 >;
 
 export const EMAIL_PROVIDER = "smtp" as const;

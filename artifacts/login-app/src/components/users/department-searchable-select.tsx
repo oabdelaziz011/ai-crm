@@ -1,20 +1,29 @@
+/**
+ * Searchable department picker backed by organization_departments.
+ *
+ * Value / onChange use organization_departments.id (canonical).
+ * Labels may include branch context; never persist by name alone.
+ */
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useOrganizationDepartments } from "@/hooks/organization/use-organization-departments";
+import { useBranches } from "@/lib/company/branches/hooks";
+import {
+  formatDepartmentOptionLabel,
+  type DepartmentMembershipOption,
+} from "@/lib/organization/department-membership";
 import { cn } from "@/lib/utils";
 
-export type DepartmentOption = {
-  id: string;
-  name: string;
-};
+export type DepartmentOption = DepartmentMembershipOption;
 
 type Props = {
   companyId: string;
+  /** Canonical organization_departments.id, or empty string for none. */
   value: string;
-  onChange: (departmentName: string) => void;
+  onChange: (departmentId: string) => void;
   /** Preloaded departments (avoids a second query when the parent already loaded them). */
   departments?: DepartmentOption[];
   disabled?: boolean;
@@ -25,10 +34,6 @@ type Props = {
 
 const NONE_VALUE = "__none__";
 
-/**
- * Searchable department picker backed by organization_departments.
- * Persists the department **name** on profiles.department (existing column).
- */
 export function DepartmentSearchableSelect({
   companyId,
   value,
@@ -40,28 +45,56 @@ export function DepartmentSearchableSelect({
 }: Props) {
   const { t } = useTranslation("common");
   const shouldFetch = provided === undefined;
-  const { data: fetched = [], isLoading } = useOrganizationDepartments(
+  const { data: fetched = [], isLoading: departmentsLoading } = useOrganizationDepartments(
     shouldFetch ? companyId : null,
     false,
   );
+  const needsBranchNames =
+    shouldFetch || (provided?.some((d) => d.branchId && !d.branchName) ?? false);
+  const { data: branches = [], isLoading: branchesLoading } = useBranches(
+    needsBranchNames ? companyId : null,
+  );
+
+  const branchNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const branch of branches) {
+      map.set(branch.id, branch.name);
+    }
+    return map;
+  }, [branches]);
 
   const departments = useMemo<DepartmentOption[]>(() => {
-    if (provided) return provided;
-    return fetched
-      .filter((d) => d.isActive !== false)
-      .map((d) => ({ id: d.id, name: d.name }));
-  }, [fetched, provided]);
+    const source: DepartmentOption[] = provided
+      ? provided
+      : fetched
+          .filter((d) => d.isActive !== false)
+          .map((d) => ({
+            id: d.id,
+            name: d.name,
+            branchId: d.branchId,
+            branchName: null,
+          }));
+
+    return source.map((d) => ({
+      ...d,
+      branchName: d.branchName ?? (d.branchId ? branchNameById.get(d.branchId) ?? null : null),
+    }));
+  }, [provided, fetched, branchNameById]);
 
   const options = useMemo(() => {
-    const sorted = [...departments].sort((a, b) => a.name.localeCompare(b.name));
+    const sorted = [...departments].sort((a, b) => {
+      const labelA = formatDepartmentOptionLabel(a.name, a.branchName);
+      const labelB = formatDepartmentOptionLabel(b.name, b.branchName);
+      return labelA.localeCompare(labelB);
+    });
     return [
       {
         value: NONE_VALUE,
         label: t("users.form.departmentNone"),
       },
       ...sorted.map((d) => ({
-        value: d.name,
-        label: d.name,
+        value: d.id,
+        label: formatDepartmentOptionLabel(d.name, d.branchName),
       })),
     ];
   }, [departments, t]);
@@ -69,13 +102,11 @@ export function DepartmentSearchableSelect({
   const selectedValue = useMemo(() => {
     const trimmed = value.trim();
     if (!trimmed) return NONE_VALUE;
-    const match = departments.find(
-      (d) => d.name.localeCompare(trimmed, undefined, { sensitivity: "accent" }) === 0,
-    );
-    return match?.name ?? NONE_VALUE;
+    return departments.some((d) => d.id === trimmed) ? trimmed : NONE_VALUE;
   }, [departments, value]);
 
-  const loading = isLoading && shouldFetch;
+  const loading =
+    (departmentsLoading && shouldFetch) || (branchesLoading && needsBranchNames);
 
   if (!loading && departments.length === 0) {
     return (

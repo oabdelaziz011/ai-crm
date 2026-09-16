@@ -13,6 +13,7 @@ import type { OutboundDeliveryPhase } from "@/lib/omnichannel/services/outbound-
 import type { OmnichannelQueueFilter } from "@/lib/omnichannel/services/conversation-queues";
 import type { OwnershipTier } from "@/lib/omnichannel/presentation/conversation-ownership";
 import type { IntelligentSuggestedReply } from "@/lib/omnichannel/types/suggested-reply-types";
+import type { ConversationTicketContext } from "@/lib/omnichannel/services/conversation-ticket-context";
 
 export const OMNICHANNEL_PRIMARY_CHANNELS = [
   "whatsapp",
@@ -38,6 +39,11 @@ export type OmnichannelCustomerRef = {
   name: string;
   phone: string | null;
   email: string | null;
+  /**
+   * Optional CRM customer photo URL when the customers model provides one.
+   * Sourced from `customers.avatar_url` via enrichment — never provider-derived.
+   */
+  avatarUrl?: string | null;
 };
 
 export type OmnichannelAgentRef = {
@@ -68,6 +74,11 @@ export type UnifiedConversation = {
   conversationNumber: string;
   companyChannelId: string | null;
   externalThreadId: string | null;
+  /**
+   * Linked active support ticket for this conversation (company-scoped).
+   * Null when no open ticket — Omnichannel must not show SLA without this.
+   */
+  ticketContext?: ConversationTicketContext | null;
   source: ConversationRecord;
 };
 

@@ -4,6 +4,7 @@ import type { ConversationState, ConversationChannelType } from "@workspace/ai-c
 import { useAuth } from "@/context/auth-context";
 import { CONVERSATION_LIST_PAGE_SIZE } from "@/lib/crm/crm-list-config";
 import { useConversationServices } from "@/lib/ai-conversation";
+import { supabase } from "@/lib/supabase";
 import { omniRenderTrace } from "@/lib/omnichannel/debug/omni-render-audit";
 import { omniCompanyTrace } from "@/lib/omnichannel/debug/omni-company-audit";
 import {
@@ -136,7 +137,16 @@ export function useConversationListInfinite(
         },
       });
 
-      const rows = await services.conversations.listConversations(context, listInput);
+      const rowsRaw = await services.conversations.listConversations(context, listInput);
+      const { hydrateConversationSlaDueAtBatch } = await import(
+        "@/lib/omnichannel/services/hydrate-conversation-sla"
+      );
+      const rows = await hydrateConversationSlaDueAtBatch({
+        client: supabase,
+        services,
+        ctx: context,
+        conversations: rowsRaw,
+      });
       recordMapRowStage(rows);
 
       traceOmniListRows("listConversations.return", rows, { pageParam, supabaseFilters });

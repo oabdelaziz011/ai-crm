@@ -48,6 +48,9 @@ export interface HandoffConversationPort {
     conversationId: string;
     assignedUserId: string;
     actorUserId: string | null;
+    /** Queue / AI auto-routing only — never set for human assign/transfer/reassign. */
+    skipAssignmentGovernance?: boolean;
+    assignmentAuditSource?: "human" | "handoff" | "ai" | "system";
   }): Promise<void>;
 
   releaseConversation(input: {

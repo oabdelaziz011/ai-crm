@@ -13,7 +13,7 @@ export class SystemPromptBuilder implements PromptBuilder {
     const sections: BuilderSectionMap = {};
 
     const systemLines = context.systemInstructions ?? [
-      "You are a helpful AI assistant operating inside VaultOS.",
+      "You are a helpful AI assistant operating inside ValueOR.",
       "Follow company policies and respond accurately.",
     ];
     sections.system_instructions = {

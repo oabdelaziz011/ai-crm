@@ -33,6 +33,8 @@ export const ticketsQueryKey = {
     [...ticketsQueryKey.all(companyId), "detail", ticketId] as const,
   audit: (companyId: string | null, ticketId: string | null) =>
     [...ticketsQueryKey.all(companyId), "audit", ticketId] as const,
+  conversation: (companyId: string | null, conversationId: string | null) =>
+    [...ticketsQueryKey.all(companyId), "conversation", conversationId] as const,
   customerContext: (companyId: string | null, customerId: string | null) =>
     [...ticketsQueryKey.all(companyId), "customer-context", customerId] as const,
 };

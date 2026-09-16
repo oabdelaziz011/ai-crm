@@ -58,11 +58,13 @@ export function useCompanyLocale(): CompanyLocale {
     },
   });
 
+  // Operational currency SoT: company_financial_settings, then billing setting mirror.
+  // Never use subscription billing currency here.
   const currency =
-    parseBillingSettingString(currencyQuery.data)?.toUpperCase() ||
     financialCurrencyQuery.data ||
+    parseBillingSettingString(currencyQuery.data)?.toUpperCase() ||
     getCompanyCurrency() ||
-    "USD";
+    "EGP";
   const language = profile?.preferred_language || i18n.language || "en";
   const timezone = profile?.timezone?.trim() || "UTC";
   const intlLocale = resolveIntlLocale(language);

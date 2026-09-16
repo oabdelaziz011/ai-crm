@@ -27,8 +27,40 @@ const GENERATION_PROMPT: Record<ResolvedConversationLanguage, GenerationPromptCo
 export function getSuggestedReplySamples(
   language: ResolvedConversationLanguage,
   bucket: SuggestedReplyCatalogBucket,
+  options?: { limit?: number; offset?: number },
 ): string[] {
-  return [...(CATALOG[language][bucket] ?? CATALOG[language].general)].slice(0, 2);
+  const pool = [...(CATALOG[language][bucket] ?? CATALOG[language].general)];
+  if (pool.length === 0) return [];
+  const limit = Math.max(1, Math.min(options?.limit ?? 4, 5));
+  const offset = Math.max(0, options?.offset ?? 0) % pool.length;
+  const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
+  return rotated.slice(0, Math.min(limit, rotated.length));
+}
+
+/** Merge primary + related buckets for 3–5 contextual drafts, rotated by variantOffset. */
+export function collectContextualSuggestedReplySamples(input: {
+  language: ResolvedConversationLanguage;
+  primaryBucket: SuggestedReplyCatalogBucket;
+  relatedBuckets?: SuggestedReplyCatalogBucket[];
+  limit?: number;
+  variantOffset?: number;
+}): string[] {
+  const limit = Math.max(3, Math.min(input.limit ?? 4, 5));
+  const related = input.relatedBuckets ?? ["general"];
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const bucket of [input.primaryBucket, ...related]) {
+    for (const sample of CATALOG[input.language][bucket] ?? []) {
+      const key = sample.trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      ordered.push(sample);
+    }
+  }
+  if (ordered.length === 0) return getSuggestedReplySamples(input.language, "general", { limit });
+  const offset = Math.max(0, input.variantOffset ?? 0) % ordered.length;
+  const rotated = [...ordered.slice(offset), ...ordered.slice(0, offset)];
+  return rotated.slice(0, Math.min(limit, rotated.length));
 }
 
 /** @deprecated Prefer buildIntelligentSuggestedReplies */

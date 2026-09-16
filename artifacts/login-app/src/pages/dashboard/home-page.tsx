@@ -361,16 +361,16 @@ export function DashboardHomePage() {
       {/* SECTION 1 — Executive Hero (compact) */}
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-            <span>{format(now, "EEEE, MMM d, yyyy")}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium tracking-[0.1em] text-muted-foreground">
+            <span className="uppercase">{format(now, "EEEE, MMM d, yyyy")}</span>
             {identity?.name && (
               <>
                 <span className="text-border">·</span>
-                <span className="text-foreground/80">{identity.name}</span>
+                <span className="text-foreground/80 normal-case tracking-normal">{identity.name}</span>
               </>
             )}
             <span className="text-border">·</span>
-            <span>{branchLabel}</span>
+            <span className="uppercase">{branchLabel}</span>
           </div>
           <h1 className="mt-1 truncate text-xl font-bold tracking-tight md:text-2xl">
             {t(greetingKey, {

@@ -4,6 +4,10 @@ import { PermissionDeniedError, ValidationError } from "../errors.js";
 import type { ChannelDeliveryEventRepository } from "../repositories/channel-platform-repositories.js";
 import type { ServiceContext } from "../types.js";
 import { DeliveryTrackingEngine } from "../engines/delivery-tracking-engine.js";
+import {
+  confirmOutgoingDeliveryWithRetry,
+  type ConfirmOutgoingDeliveryFn,
+} from "../services/confirm-outgoing-delivery.js";
 
 export type DeliveryStatusProcessRequest = {
   companyId: string;
@@ -19,12 +23,14 @@ export type DeliveryStatusProcessResponse = {
   deliveryEventId?: string;
   deliveryStatus?: string;
   reason?: string;
+  conversationConfirmStatus?: "confirmed" | "failed" | "skipped";
 };
 
 export class DeliveryStatusPipeline {
   constructor(
     private readonly deliveryEngine: DeliveryTrackingEngine,
     private readonly deliveryRepository: ChannelDeliveryEventRepository,
+    private readonly confirmOutgoingDelivery?: ConfirmOutgoingDeliveryFn,
   ) {}
 
   async process(ctx: ServiceContext, request: DeliveryStatusProcessRequest): Promise<DeliveryStatusProcessResponse> {
@@ -51,10 +57,32 @@ export class DeliveryStatusPipeline {
       errorMessage: request.errorMessage,
     });
 
+    let conversationConfirmStatus: DeliveryStatusProcessResponse["conversationConfirmStatus"] = "skipped";
+    const outboundMessageId = updated.outbound_message_id?.trim();
+    if (outboundMessageId && this.confirmOutgoingDelivery) {
+      const confirmResult = await confirmOutgoingDeliveryWithRetry(this.confirmOutgoingDelivery, {
+        messageId: outboundMessageId,
+        status: updated.delivery_status,
+        externalMessageId: updated.external_message_id ?? request.externalMessageId,
+      }, {
+        onAttemptError: (error, attempt) => {
+          console.error("[OUTBOUND_CONFIRM] delivery webhook confirm failed", {
+            attempt,
+            outboundMessageId,
+            deliveryEventId: updated.id,
+            status: updated.delivery_status,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        },
+      });
+      conversationConfirmStatus = confirmResult.ok ? "confirmed" : "failed";
+    }
+
     return {
       updated: true,
       deliveryEventId: updated.id,
       deliveryStatus: updated.delivery_status,
+      conversationConfirmStatus,
     };
   }
 

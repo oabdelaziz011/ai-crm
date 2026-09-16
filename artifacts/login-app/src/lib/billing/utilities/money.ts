@@ -14,8 +14,9 @@ export function decimalFromCents(cents: number): number {
 }
 
 /**
- * Format cents using company billing currency when `currency` is omitted.
- * Synced by CompanyLocaleProvider from billing `default_currency`.
+ * Format cents using company OPERATIONAL currency when `currency` is omitted.
+ * Synced by CompanyLocaleProvider from financial / billing default_currency.
+ * Do not use for ValueOR subscription checkout amounts.
  */
 export function formatMoney(
   cents: number,

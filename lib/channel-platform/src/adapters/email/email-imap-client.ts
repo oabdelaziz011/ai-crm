@@ -28,6 +28,9 @@ export type EmailImapRuntimeMessage = {
     sizeBytes: number;
     content?: Buffer;
     url?: string;
+    isInline?: boolean;
+    contentId?: string;
+    related?: boolean;
   }>;
   authenticationResultsHeader?: string;
 };
@@ -51,9 +54,12 @@ export function mapRuntimeImapMessage(message: EmailImapRuntimeMessage): ParsedI
       attachmentId: `imap-${message.uid}-${index + 1}`,
       filename: attachment.filename,
       mimeType: attachment.mimeType,
-      sizeBytes: attachment.sizeBytes,
+      sizeBytes: attachment.sizeBytes || attachment.content?.length || 0,
       content: attachment.content,
       url: attachment.url,
+      isInline: attachment.isInline,
+      contentId: attachment.contentId,
+      related: attachment.related,
     })),
     authenticationResults: parseAuthenticationResultsHeader(message.authenticationResultsHeader),
   };
@@ -97,23 +103,32 @@ export class EmailImapClient implements EmailImapClientPort {
 
     for (const runtimeMessage of runtimeMessages) {
       const parsed = mapRuntimeImapMessage(runtimeMessage);
-      await this.inboundAdapter.parseStructuredInbound({
-        messageId: parsed.messageId,
-        inReplyTo: parsed.inReplyTo,
-        references: parsed.references,
-        from: parsed.from,
-        to: parsed.to,
-        subject: parsed.subject,
-        textPlain: parsed.textPlain,
-        htmlOriginal: parsed.htmlOriginal,
-        htmlSanitized: parsed.htmlSanitized,
-        attachments: parsed.attachments,
-        authenticationResults: parsed.authenticationResults,
-        uid: parsed.uid,
-      });
-      messages.push(parsed);
+      // Always advance the IMAP cursor past this UID — even when structured parse
+      // rejects the payload (e.g. DSN bounce parts). Otherwise one poison message
+      // throws here (outside pollCompanyChannel's per-message try/catch) and the
+      // mailbox cursor never moves, blocking all later inbound + realtime UI.
       if (parsed.uid != null) {
         lastUid = Math.max(lastUid, parsed.uid);
+      }
+      try {
+        await this.inboundAdapter.parseStructuredInbound({
+          messageId: parsed.messageId,
+          inReplyTo: parsed.inReplyTo,
+          references: parsed.references,
+          from: parsed.from,
+          to: parsed.to,
+          subject: parsed.subject,
+          textPlain: parsed.textPlain,
+          htmlOriginal: parsed.htmlOriginal,
+          htmlSanitized: parsed.htmlSanitized,
+          attachments: parsed.attachments,
+          authenticationResults: parsed.authenticationResults,
+          uid: parsed.uid,
+        });
+        messages.push(parsed);
+      } catch {
+        // Skip unprocessable MIME (DSN / unsupported attachment) without failing the poll tick.
+        continue;
       }
     }
 

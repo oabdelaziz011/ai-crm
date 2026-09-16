@@ -52,7 +52,7 @@ export async function persistPreferredLanguage(language: string | null | undefin
     p_avatar_url: profile.avatar_url ?? null,
     p_preferred_language: lang,
     p_timezone: profile.timezone ?? "UTC",
-    p_preferred_theme: profile.preferred_theme ?? "system",
+    p_preferred_theme: profile.preferred_theme ?? "light",
     p_job_title: profile.job_title ?? null,
     p_department: profile.department ?? null,
     p_phone: profile.phone ?? null,

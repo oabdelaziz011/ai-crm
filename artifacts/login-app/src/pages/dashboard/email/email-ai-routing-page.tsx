@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { EMAIL_ROUTING_LOW_CONFIDENCE_THRESHOLD } from "@workspace/ai-intent-engine";
 import { useAuth } from "@/context/auth-context";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
@@ -24,6 +25,8 @@ import {
   type EmailRoutingCategoryDraft,
   type EmailRoutingConfigTargetType,
 } from "@/lib/email-routing/types";
+import { EMAIL_ROUTING_TAB_PERMISSION } from "@/lib/email-workspace/email-tab-permissions";
+import { mapEmailRoutingTicketPresentation } from "@/lib/email-workspace/email-control-center-status";
 
 const CLEAR_VALUE = "__clear__";
 
@@ -56,9 +59,12 @@ export function EmailAiRoutingPage() {
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
   const entitled = isSuperAdmin || commercialFeatureEnabled("ai_email_routing") === true;
-  const canEdit = isSuperAdmin || hasPermission("settings.edit");
+  const canEdit = isSuperAdmin || hasPermission(EMAIL_ROUTING_TAB_PERMISSION);
 
-  const { data, isLoading, isError, error, refetch } = useEmailRoutingConfig(companyId, entitled);
+  const { data, isLoading, isError, error, refetch } = useEmailRoutingConfig(
+    companyId,
+    entitled && canEdit,
+  );
   const upsert = useUpsertEmailRoutingConfig(companyId);
   const [drafts, setDrafts] = useState<EmailRoutingCategoryDraft[]>([]);
 
@@ -175,6 +181,71 @@ export function EmailAiRoutingPage() {
         </div>
       </div>
 
+      <DashboardCard className="space-y-3 border-primary/15 bg-primary/[0.03] p-4">
+        <h3 className="text-sm font-semibold">{t("emailModule.aiRouting.flowTitle")}</h3>
+        <p className="text-sm text-muted-foreground">{t("emailModule.aiRouting.flowBody")}</p>
+        <ol className="flex flex-wrap items-center gap-2 text-xs font-medium">
+          {[
+            "emailModule.aiRouting.flow.inbound",
+            "emailModule.aiRouting.flow.identify",
+            "emailModule.aiRouting.flow.classify",
+            "emailModule.aiRouting.flow.rule",
+            "emailModule.aiRouting.flow.assign",
+            "emailModule.aiRouting.flow.ticket",
+          ].map((key, index, arr) => (
+            <li key={key} className="flex items-center gap-2">
+              <span className="rounded-md border border-border bg-background px-2 py-1">{t(key)}</span>
+              {index < arr.length - 1 ? <span className="text-muted-foreground">↓</span> : null}
+            </li>
+          ))}
+        </ol>
+        <p className="text-xs text-muted-foreground">{t("emailModule.aiRouting.confidenceHint")}</p>
+        <p className="text-xs font-medium text-foreground">{t("emailModule.aiRouting.neverAutoSend")}</p>
+      </DashboardCard>
+
+      <DashboardCard className="space-y-3 p-4">
+        <h3 className="text-sm font-semibold">{t("emailModule.aiRouting.confidenceTitle")}</h3>
+        <ul className="grid gap-2 text-sm sm:grid-cols-3">
+          <li className="rounded-lg border border-border bg-background px-3 py-2">
+            <p className="font-medium">{t("emailModule.aiRouting.confidence.high")}</p>
+            <p className="text-xs text-muted-foreground">{t("emailModule.aiRouting.confidence.highBody")}</p>
+          </li>
+          <li className="rounded-lg border border-amber-200 bg-background px-3 py-2">
+            <p className="font-medium">{t("emailModule.aiRouting.confidence.low")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("emailModule.aiRouting.confidence.lowBody", {
+                percent: Math.round(EMAIL_ROUTING_LOW_CONFIDENCE_THRESHOLD * 100),
+              })}
+            </p>
+          </li>
+          <li className="rounded-lg border border-border bg-background px-3 py-2">
+            <p className="font-medium">{t("emailModule.aiRouting.confidence.unavailable")}</p>
+            <p className="text-xs text-muted-foreground">{t("emailModule.aiRouting.confidence.unavailableBody")}</p>
+          </li>
+        </ul>
+      </DashboardCard>
+
+      <div id="email-ticket-automation">
+      <DashboardCard className="space-y-3 p-4">
+        <h3 className="text-sm font-semibold">{t("emailModule.aiRouting.ticketTitle")}</h3>
+        <p className="text-sm text-muted-foreground">{t("emailModule.aiRouting.ticketBody")}</p>
+        <ul className="grid gap-2 text-sm sm:grid-cols-2">
+          <li className="rounded-lg border border-border px-3 py-2">
+            {t("emailModule.aiRouting.ticket.create")}
+          </li>
+          <li className="rounded-lg border border-border px-3 py-2">
+            {t("emailModule.aiRouting.ticket.reuse")}
+          </li>
+          <li className="rounded-lg border border-border px-3 py-2">
+            {t("emailModule.aiRouting.ticket.none")}
+          </li>
+          <li className="rounded-lg border border-border px-3 py-2">
+            {t("emailModule.aiRouting.ticket.manual")}
+          </li>
+        </ul>
+      </DashboardCard>
+      </div>
+
       {!hasAnyTarget ? (
         <DashboardCard className="p-4">
           <p className="text-sm text-muted-foreground">{t("emailModule.aiRouting.empty")}</p>
@@ -183,11 +254,12 @@ export function EmailAiRoutingPage() {
 
       <DashboardCard className="overflow-x-auto p-0">
         <div className="min-w-[720px]">
-          <div className="grid grid-cols-[minmax(7rem,1fr)_5.5rem_minmax(9rem,1fr)_minmax(11rem,1.4fr)] items-center gap-4 border-b bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground">
+          <div className="grid grid-cols-[minmax(7rem,1fr)_5.5rem_minmax(9rem,1fr)_minmax(11rem,1.4fr)_minmax(8rem,1fr)] items-center gap-4 border-b bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground">
             <div className="text-start">{t("emailModule.aiRouting.columns.category")}</div>
             <div className="text-start">{t("emailModule.aiRouting.columns.enabled")}</div>
             <div className="text-start">{t("emailModule.aiRouting.columns.targetType")}</div>
             <div className="text-start">{t("emailModule.aiRouting.columns.target")}</div>
+            <div className="text-start">{t("emailModule.aiRouting.columns.ticketAction")}</div>
           </div>
           <div>
             {drafts.map((row) => {
@@ -195,7 +267,7 @@ export function EmailAiRoutingPage() {
               return (
                 <div
                   key={row.category}
-                  className="grid grid-cols-[minmax(7rem,1fr)_5.5rem_minmax(9rem,1fr)_minmax(11rem,1.4fr)] items-center gap-4 border-b px-4 py-3 text-sm last:border-0"
+                  className="grid grid-cols-[minmax(7rem,1fr)_5.5rem_minmax(9rem,1fr)_minmax(11rem,1.4fr)_minmax(8rem,1fr)] items-center gap-4 border-b px-4 py-3 text-sm last:border-0"
                 >
                   <div className="min-w-0 truncate font-medium text-start">
                     {t(CATEGORY_LABEL_KEYS[row.category])}
@@ -272,6 +344,14 @@ export function EmailAiRoutingPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="min-w-0 text-xs text-muted-foreground text-start">
+                    {mapEmailRoutingTicketPresentation({
+                      enabled: row.enabled,
+                      targetId: row.targetId,
+                    }) === "create_or_reuse"
+                      ? t("emailModule.aiRouting.ticket.createOrReuse")
+                      : t("emailModule.aiRouting.ticket.manualShort")}
                   </div>
                 </div>
               );

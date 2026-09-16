@@ -5,24 +5,35 @@ import { useAuth } from "@/context/auth-context";
 import { useUpdateBillingSettings } from "@/hooks/billing/use-billing-settings";
 import { useToast } from "@/hooks/use-toast";
 import { setCompanyLocaleRuntime } from "@/lib/company-locale/runtime";
+import {
+  formatCurrencyOptionLabel,
+  listOfficialCurrencies,
+  normalizeCurrencyCode,
+} from "@/lib/currency/catalog";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 
-const PROFILE_CURRENCY_OPTIONS = ["SAR", "EGP", "USD", "AED", "EUR", "GBP"] as const;
-
-/** Company default currency — writes billing `default_currency` (CompanyLocaleProvider source). */
+/**
+ * Company OPERATIONAL currency — Financial Settings / profile.
+ * Writes company_financial_settings.default_currency (+ billing mirror for locale runtime).
+ * Does NOT change ValueOR subscription billing currency.
+ */
 export function ProfileCurrencyField() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const { company } = useAuth();
   const companyId = company?.id ?? null;
   const { currency } = useCompanyLocaleContext();
   const updateSettings = useUpdateBillingSettings();
   const qc = useQueryClient();
+  const options = listOfficialCurrencies();
 
   const onChange = async (next: string) => {
-    const code = next.trim().toUpperCase();
+    const code = normalizeCurrencyCode(next);
     if (!code || code === currency) return;
+
+    const confirmed = window.confirm(t("profiles.currency.changeWarning"));
+    if (!confirmed) return;
 
     // Immediate runtime + cache so money formatters update without refresh.
     setCompanyLocaleRuntime({ currency: code });
@@ -30,14 +41,14 @@ export function ProfileCurrencyField() {
     void qc.setQueryData(["company-financial-settings", "default_currency", companyId], code);
 
     try {
-      // `default_currency` allows company + platform scopes (billing definitions).
+      // Mirror into billing setting for locale runtime consumers.
       await updateSettings.mutateAsync({
         scopeType: companyId ? "company" : "platform",
         companyId: companyId,
         changes: { default_currency: code },
       });
 
-      // Keep financial engine settings in sync with the profile billing currency.
+      // Authoritative operational currency store.
       if (companyId) {
         const { error } = await supabase.from("company_financial_settings").upsert(
           {
@@ -80,16 +91,17 @@ export function ProfileCurrencyField() {
         disabled={updateSettings.isPending}
         onChange={(event) => void onChange(event.target.value)}
       >
-        {!PROFILE_CURRENCY_OPTIONS.includes(currency as (typeof PROFILE_CURRENCY_OPTIONS)[number]) && (
-          <option value={currency}>{currency}</option>
-        )}
-        {PROFILE_CURRENCY_OPTIONS.map((code) => (
-          <option key={code} value={code}>
-            {t(`operations.currency.${code}`, { defaultValue: code })}
+        {!options.some((entry) => entry.code === currency) && currency ? (
+          <option value={currency}>{formatCurrencyOptionLabel(currency, i18n.language)}</option>
+        ) : null}
+        {options.map((entry) => (
+          <option key={entry.code} value={entry.code}>
+            {formatCurrencyOptionLabel(entry.code, i18n.language)}
           </option>
         ))}
       </select>
       <p className="text-[11px] text-muted-foreground">{t("profiles.currency.hint")}</p>
+      <p className="text-[11px] text-muted-foreground">{t("profiles.currency.subscriptionIndependent")}</p>
     </div>
   );
 }

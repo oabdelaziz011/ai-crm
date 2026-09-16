@@ -10,6 +10,7 @@ import { ComposePanel, type ComposePanelHandle } from "@/components/omnichannel/
 import { getComposerPlaceholder, getKeyboardHint, getToneLabel, getTranslationToggleLabels } from "@/lib/omnichannel/services/omnichannel-productivity-library";
 import { getAiAssistantButtonLabel, getSuggestedReplyExplainLabels } from "@/lib/omnichannel/presentation/ai-assistant-labels";
 import { resolveAgentWorkspaceLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
+import { buildContextualSuggestedReplies } from "@/lib/omnichannel/services/suggested-reply-llm-service";
 import { useConversationExperience } from "@/hooks/omnichannel/use-conversation-experience";
 import { useOutboundChannelRoute } from "@/hooks/omnichannel/use-outbound-channel-route";
 import type { ComposerSendPayload } from "@/lib/omnichannel/types/composer-enterprise-types";
@@ -135,7 +136,7 @@ export const ConversationPane = memo(function ConversationPane({
   composeRef: externalComposeRef,
   deskChrome,
 }: ConversationPaneProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation("common");
   const internalRef = useRef<ComposePanelHandle>(null);
   const transcriptRef = useRef<TranscriptViewHandle>(null);
   const composeRef = externalComposeRef ?? internalRef;
@@ -147,6 +148,47 @@ export const ConversationPane = memo(function ConversationPane({
     const lastCustomer = [...messages].reverse().find((message) => message.senderType === "customer");
     return lastCustomer?.timestamp ?? null;
   }, [messages]);
+
+  const lastCustomerMessageText = useMemo(() => {
+    const lastCustomer = [...messages].reverse().find((message) => message.senderType === "customer");
+    return lastCustomer?.body ?? "";
+  }, [messages]);
+
+  const buildSuggestedReplies = useCallback(
+    async (options: { variantOffset: number }) => {
+      const result = await buildContextualSuggestedReplies({
+        companyId: conversation?.companyId ?? "",
+        conversationId: conversation?.id ?? "",
+        messages: messages.map((message) => message.source),
+        summary: aiAssist.summary,
+        customerTone: aiAssist.customerTone,
+        targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage ?? conversationLanguage,
+        intent: aiAssist.intent,
+        lifecycleState: conversation?.lifecycleState,
+        knowledgeSuggestions: aiAssist.knowledgeSuggestions,
+        refreshSeed: options.variantOffset,
+        preferLlm: true,
+      });
+      // Refresh must not replace a prior good set with catalog fallback.
+      if (result.source === "catalog" && result.error && options.variantOffset > 0) {
+        throw new Error(result.error);
+      }
+      return result.replies;
+    },
+    [
+      aiAssist.customerTone,
+      aiAssist.intent,
+      aiAssist.knowledgeSuggestions,
+      aiAssist.suggestedReplyTargetLanguage,
+      aiAssist.summary,
+      aiAssist.targetLanguage,
+      conversation?.companyId,
+      conversation?.id,
+      conversation?.lifecycleState,
+      conversationLanguage,
+      messages,
+    ],
+  );
 
   const experience = useConversationExperience(conversation?.id ?? null, {
     lastActivityAt: conversation?.lastActivityAt ?? null,
@@ -250,6 +292,8 @@ export const ConversationPane = memo(function ConversationPane({
             priority: labels.priority,
             sla: labels.sla,
             slaBreached: labels.slaBreached,
+            slaAtRisk: labels.slaAtRisk,
+            slaCompleted: labels.slaCompleted,
             noSla: labels.noSla,
             slaRemainingMinutes: labels.slaRemainingMinutes,
             slaRemainingHours: labels.slaRemainingHours,
@@ -271,7 +315,7 @@ export const ConversationPane = memo(function ConversationPane({
       ) : null}
 
       {handoffOwnership ? (
-        <div className="border-b border-[var(--ws-border-subtle)] px-3 py-1.5">
+        <div className="ws-handoff-ownership shrink-0 border-b border-[var(--ws-border-subtle)] px-2.5 py-0.5">
           <HandoffOwnershipBadge view={handoffOwnership} />
         </div>
       ) : null}
@@ -303,6 +347,22 @@ export const ConversationPane = memo(function ConversationPane({
         onCancelEscalation={onCancelEscalation}
         onLinkCustomer={onLinkCustomer}
       />
+
+      {aiPaused ? (
+        <div
+          className="ws-ai-banner flex flex-wrap items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-2.5"
+          role="status"
+        >
+          <p className="min-w-0 flex-1 text-xs font-medium leading-snug text-destructive" dir="auto">
+            {t("omnichannel.actions.pauseAiReason")}
+          </p>
+          {onResumeAi ? (
+            <button type="button" className="ws-btn ws-btn--warn shrink-0 text-[10px] font-semibold" onClick={onResumeAi}>
+              {t("omnichannel.actions.resumeAi")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {sendError ? (
         <div
           className="border-b border-[var(--ws-danger)]/30 bg-[var(--ws-danger)]/10 px-3 py-2"
@@ -331,7 +391,7 @@ export const ConversationPane = memo(function ConversationPane({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="ws-message-timeline flex min-h-0 flex-1 flex-col overflow-hidden" dir="ltr">
         {isLoading ? (
           <p className="p-3 text-xs text-[var(--ws-muted)]">{labels.loading}</p>
         ) : (
@@ -374,6 +434,7 @@ export const ConversationPane = memo(function ConversationPane({
         )}
       </div>
 
+      <div className="ws-composer-shell shrink-0">
       <ComposePanel
         ref={composeRef}
         disabled={Boolean(isClosed) || !canReply}
@@ -381,6 +442,12 @@ export const ConversationPane = memo(function ConversationPane({
         conversationId={conversation.id}
         suggestedReplies={aiAssist.suggestedReplies}
         suggestedReplyExplainLabels={getSuggestedReplyExplainLabels(conversationLanguage)}
+        onBuildSuggestedReplies={buildSuggestedReplies}
+        suggestionContextFingerprint={{
+          lastCustomerMessage: lastCustomerMessageText,
+          targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage,
+          intent: aiAssist.intent,
+        }}
         conversationLanguage={conversationLanguage}
         detectedLanguage={aiAssist.languageLabel}
         labels={{
@@ -399,6 +466,12 @@ export const ConversationPane = memo(function ConversationPane({
           translate: labels.translate,
           language: labels.languageComposer,
           suggestedReplies: labels.suggestedReplies,
+          quickReplies: labels.quickReplies,
+          aiSuggestions: labels.aiSuggestions,
+          refreshSuggestions: labels.refreshSuggestions,
+          suggestionsUnavailable: labels.suggestionsUnavailable,
+          quickRepliesEmpty: labels.quickRepliesEmpty,
+          generatingSuggestions: labels.generatingSuggestions,
           keyboardHint: getKeyboardHint(productivityLanguage),
           slashCommands: labels.slashCommands,
           snippetCommands: labels.snippetCommands,
@@ -416,6 +489,7 @@ export const ConversationPane = memo(function ConversationPane({
         onSend={handleSend}
         onOpenAiAssistant={onOpenAiSection}
       />
+      </div>
     </div>
   );
 });

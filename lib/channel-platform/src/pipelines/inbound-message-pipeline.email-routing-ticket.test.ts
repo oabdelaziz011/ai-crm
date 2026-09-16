@@ -42,6 +42,8 @@ describe("InboundMessagePipeline email routing tickets (Sprint 5)", () => {
         assert.equal(input.decision.targetType, "team");
         assert.equal(input.decision.targetId, "team-sales");
         assert.equal(input.classification.category, "sales");
+        // Trusted customer may be null in this fixture (no identity port); field must be present.
+        assert.ok("trustedCustomerId" in input);
         return {
           status: "created",
           reason: "created",

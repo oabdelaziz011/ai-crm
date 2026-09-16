@@ -51,12 +51,16 @@ export function createLeadEventBridge(): LeadEventPublisherPort {
   };
 }
 
-export function createLoginAppLeadPlatformServices(client: SupabaseClient): LeadPlatformServices {
+export function createLoginAppLeadPlatformServices(
+  client: SupabaseClient,
+  options?: { assignmentGovernance?: boolean | null },
+): LeadPlatformServices {
   return createLeadPlatformServices(client, {
     assignees: createLoginAppLeadAssigneeResolverPort(client),
     conversion: createLoginAppLeadConversionPort(client),
     events: createLeadEventBridge(),
     notifications: createLeadNotificationBridge(),
     audit: createSupabaseLeadAuditPort(client),
+    assignmentGovernance: options?.assignmentGovernance,
   });
 }

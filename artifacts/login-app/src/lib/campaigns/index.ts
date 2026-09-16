@@ -5,6 +5,7 @@ export type {
   CampaignAudienceResolveResult,
   CampaignChannelCounts,
   CampaignChannelEligibilityPreview,
+  CampaignContentAttachment,
   CampaignContentDefinition,
   CampaignEligibilityPreviewResult,
   CampaignExecuteResult,
@@ -26,6 +27,22 @@ export {
   isMarketingCampaignChannel,
   normalizeCampaignChannels,
 } from "./types";
+export {
+  CAMPAIGN_ATTACHMENT_ACCEPT,
+  CAMPAIGN_ATTACHMENT_BUCKET,
+  CAMPAIGN_ATTACHMENT_MAX_BYTES,
+  CAMPAIGN_ATTACHMENT_MAX_FILES,
+  campaignEmailChannelVariables,
+  campaignTextChannelVariables,
+  formatCampaignAttachmentSize,
+  formatCampaignPickerPhone,
+  parseCampaignAttachments,
+  parseCampaignContentDefinition,
+  renderCampaignOutboundText,
+  serializeCampaignAttachmentsForQueue,
+  serializeCampaignContentDefinition,
+  validateCampaignAttachmentFiles,
+} from "./campaign-content";
 export { CampaignAudienceResolver } from "./audience-resolver";
 export { MarketingCampaignRepository } from "./repository";
 export {
@@ -39,6 +56,20 @@ export {
   WhatsAppCampaignCapabilityChecker,
   type WhatsAppCampaignCapabilityResult,
 } from "./whatsapp-capability";
+export {
+  EMAIL_CAMPAIGN_FEATURE_CODE,
+  EmailCampaignCapabilityChecker,
+  hasCampaignOutboundEmail,
+  resolveCampaignOutboundEmail,
+  type EmailCampaignCapabilityResult,
+} from "./email-capability";
+export {
+  SMS_CAMPAIGN_FEATURE_CODE,
+  SmsCampaignCapabilityChecker,
+  hasCampaignOutboundSms,
+  resolveCampaignOutboundSms,
+  type SmsCampaignCapabilityResult,
+} from "./sms-capability";
 export {
   MetaMessagingCampaignCapabilityChecker,
   type CampaignFeatureEntitlementPort,

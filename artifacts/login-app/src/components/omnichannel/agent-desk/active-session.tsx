@@ -8,6 +8,7 @@ import { ComposePanel, type ComposePanelHandle } from "@/components/omnichannel/
 import { getComposerPlaceholder, getKeyboardHint, getTranslationToggleLabels } from "@/lib/omnichannel/services/omnichannel-productivity-library";
 import { getAiAssistantButtonLabel, getSuggestedReplyExplainLabels } from "@/lib/omnichannel/presentation/ai-assistant-labels";
 import { resolveAgentWorkspaceLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
+import { buildContextualSuggestedReplies } from "@/lib/omnichannel/services/suggested-reply-llm-service";
 import { useConversationExperience } from "@/hooks/omnichannel/use-conversation-experience";
 import { useTranslation } from "react-i18next";
 import type {
@@ -114,6 +115,47 @@ export const ActiveSession = memo(function ActiveSession({
     const lastCustomer = [...messages].reverse().find((message) => message.senderType === "customer");
     return lastCustomer?.timestamp ?? null;
   }, [messages]);
+
+  const lastCustomerMessageText = useMemo(() => {
+    const lastCustomer = [...messages].reverse().find((message) => message.senderType === "customer");
+    return lastCustomer?.body ?? "";
+  }, [messages]);
+
+  const buildSuggestedReplies = useCallback(
+    async (options: { variantOffset: number }) => {
+      const result = await buildContextualSuggestedReplies({
+        companyId: conversation?.companyId ?? "",
+        conversationId: conversation?.id ?? "",
+        messages: messages.map((message) => message.source),
+        summary: aiAssist.summary,
+        customerTone: aiAssist.customerTone,
+        targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage ?? conversationLanguage,
+        intent: aiAssist.intent,
+        lifecycleState: conversation?.lifecycleState,
+        knowledgeSuggestions: aiAssist.knowledgeSuggestions,
+        refreshSeed: options.variantOffset,
+        preferLlm: true,
+      });
+      // Refresh must not replace a prior good set with catalog fallback.
+      if (result.source === "catalog" && result.error && options.variantOffset > 0) {
+        throw new Error(result.error);
+      }
+      return result.replies;
+    },
+    [
+      aiAssist.customerTone,
+      aiAssist.intent,
+      aiAssist.knowledgeSuggestions,
+      aiAssist.suggestedReplyTargetLanguage,
+      aiAssist.summary,
+      aiAssist.targetLanguage,
+      conversation?.companyId,
+      conversation?.id,
+      conversation?.lifecycleState,
+      conversationLanguage,
+      messages,
+    ],
+  );
 
   const experience = useConversationExperience(conversation?.id ?? null, {
     lastActivityAt: conversation?.lastActivityAt ?? null,
@@ -276,6 +318,12 @@ export const ActiveSession = memo(function ActiveSession({
         conversationId={conversation.id}
         suggestedReplies={aiAssist.suggestedReplies}
         suggestedReplyExplainLabels={getSuggestedReplyExplainLabels(conversationLanguage)}
+        onBuildSuggestedReplies={buildSuggestedReplies}
+        suggestionContextFingerprint={{
+          lastCustomerMessage: lastCustomerMessageText,
+          targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage,
+          intent: aiAssist.intent,
+        }}
         conversationLanguage={conversationLanguage}
         detectedLanguage={aiAssist.languageLabel}
         labels={{
@@ -294,6 +342,12 @@ export const ActiveSession = memo(function ActiveSession({
           translate: labels.translate,
           language: labels.languageComposer,
           suggestedReplies: labels.suggestedReplies,
+          quickReplies: labels.quickReplies,
+          aiSuggestions: labels.aiSuggestions,
+          refreshSuggestions: labels.refreshSuggestions,
+          suggestionsUnavailable: labels.suggestionsUnavailable,
+          quickRepliesEmpty: labels.quickRepliesEmpty,
+          generatingSuggestions: labels.generatingSuggestions,
           keyboardHint: getKeyboardHint(productivityLanguage),
           slashCommands: labels.slashCommands,
           snippetCommands: labels.snippetCommands,

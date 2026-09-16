@@ -85,21 +85,25 @@
   --card-foreground: 222 47% 11%;
   --card-border: 214 20% 90%;
 
+  /* Light sidebar — original neutral chrome (not Brand Center) */
   --sidebar: 210 25% 96%;
   --sidebar-foreground: 222 35% 18%;
   --sidebar-border: 214 20% 88%;
-  --sidebar-primary: 187 85% 38%;
+  /* ValueOR OR primary — #0D9488 from official login lockup PNG */
+  --valueor-primary: #0d9488;
+  --valueor-primary-foreground: #ffffff;
+  --sidebar-primary: 174.7 83.9% 31.6%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 210 20% 93%;
   --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 187 85% 38%;
+  --sidebar-ring: 174.7 83.9% 31.6%;
   --sidebar-gradient-end: 210 20% 92%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   --popover-border: 214 20% 88%;
 
-  --primary: 187 85% 38%;
+  --primary: 174.7 83.9% 31.6%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 210 20% 93%;
@@ -118,9 +122,9 @@
   --warning: 38 92% 45%;
 
   --input: 214 20% 88%;
-  --ring: 187 85% 38%;
+  --ring: 174.7 83.9% 31.6%;
   
-  --chart-1: 190 85% 42%;
+  --chart-1: 174.7 83.9% 36%;
   --chart-2: 220 70% 50%;
   --chart-3: 350 75% 55%;
   --chart-4: 45 95% 48%;
@@ -157,19 +161,22 @@
   --card: 222 38% 10%;
   --card-foreground: 210 25% 96%;
   --card-border: 222 22% 14%;
+  /* Dark sidebar — original neutral chrome (not Brand Center teal) */
   --sidebar: 222 44% 8%;
   --sidebar-foreground: 210 20% 88%;
   --sidebar-border: 222 22% 13%;
-  --sidebar-primary: 187 85% 53%;
+  --valueor-primary: #0d9488;
+  --valueor-primary-foreground: #0f172a;
+  --sidebar-primary: 174.7 70% 48%;
   --sidebar-primary-foreground: 222 47% 6%;
   --sidebar-accent: 222 28% 14%;
   --sidebar-accent-foreground: 210 25% 96%;
-  --sidebar-ring: 187 85% 53%;
+  --sidebar-ring: 174.7 70% 48%;
   --sidebar-gradient-end: 222 44% 7%;
   --popover: 222 38% 11%;
   --popover-foreground: 210 25% 96%;
   --popover-border: 222 22% 16%;
-  --primary: 187 85% 53%;
+  --primary: 174.7 70% 48%;
   --primary-foreground: 222 47% 6%;
   --secondary: 222 28% 14%;
   --secondary-foreground: 210 25% 92%;
@@ -182,9 +189,9 @@
   --success: 152 60% 42%;
   --warning: 38 92% 50%;
   --input: 222 22% 16%;
-  --ring: 187 85% 53%;
+  --ring: 174.7 70% 48%;
   
-  --chart-1: 190 90% 60%;
+  --chart-1: 174.7 70% 55%;
   --chart-2: 220 40% 18%;
   --chart-3: 350 80% 60%;
   --chart-4: 45 100% 60%;
@@ -399,15 +406,15 @@
   background: radial-gradient(circle at center, hsla(190, 90%, 60%, 0.15), transparent 70%);
 }
 
-/* Auth pages — modern ValueOR teal atmosphere */
+/* Auth pages — ValueOR OR brand atmosphere (#0D9488 family) */
 .auth-canvas {
-  --auth-teal: 187 85% 38%;
-  --auth-cyan: 190 90% 48%;
+  --auth-teal: 174.7 83.9% 31.6%;
+  --auth-cyan: 174.7 70% 42%;
   background-color: #eef3f6;
   background-image:
     radial-gradient(ellipse 90% 60% at 12% -10%, hsla(var(--auth-cyan), 0.22), transparent 55%),
     radial-gradient(ellipse 70% 55% at 100% 0%, hsla(var(--auth-teal), 0.14), transparent 50%),
-    radial-gradient(ellipse 65% 50% at 85% 100%, hsla(187 70% 42%, 0.16), transparent 55%),
+    radial-gradient(ellipse 65% 50% at 85% 100%, hsla(var(--auth-teal), 0.16), transparent 55%),
     radial-gradient(ellipse 50% 40% at 0% 100%, hsla(200 40% 70%, 0.25), transparent 50%),
     linear-gradient(160deg, #f8fbfc 0%, #eef4f7 42%, #e4eef2 100%);
 }
@@ -417,7 +424,7 @@
   background-image:
     radial-gradient(ellipse 90% 60% at 10% -15%, hsla(var(--auth-cyan), 0.2), transparent 55%),
     radial-gradient(ellipse 70% 50% at 100% 5%, hsla(var(--auth-teal), 0.18), transparent 50%),
-    radial-gradient(ellipse 60% 45% at 80% 110%, hsla(187 70% 40%, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 80% 110%, hsla(174.7 70% 40%, 0.16), transparent 55%),
     linear-gradient(165deg, hsl(222 44% 8%) 0%, hsl(210 35% 10%) 50%, hsl(200 30% 9%) 100%);
 }
 
@@ -452,7 +459,7 @@
   height: min(52vw, 420px);
   top: -8%;
   inset-inline-end: -6%;
-  background: radial-gradient(circle, hsla(187 85% 45%, 0.28), transparent 70%);
+  background: radial-gradient(circle, hsla(var(--auth-teal), 0.28), transparent 70%);
 }
 
 .auth-canvas__orb--secondary {
@@ -460,13 +467,13 @@
   height: min(48vw, 380px);
   bottom: -10%;
   inset-inline-start: -8%;
-  background: radial-gradient(circle, hsla(190 80% 50%, 0.2), transparent 70%);
+  background: radial-gradient(circle, hsla(var(--auth-cyan), 0.2), transparent 70%);
 }
 
 .dark .auth-canvas__orb--primary {
-  background: radial-gradient(circle, hsla(187 85% 50%, 0.22), transparent 70%);
+  background: radial-gradient(circle, hsla(174.7 70% 48%, 0.22), transparent 70%);
 }
 
 .dark .auth-canvas__orb--secondary {
-  background: radial-gradient(circle, hsla(190 80% 45%, 0.16), transparent 70%);
+  background: radial-gradient(circle, hsla(var(--auth-cyan), 0.16), transparent 70%);
 }

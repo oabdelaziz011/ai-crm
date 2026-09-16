@@ -10,6 +10,8 @@ import type {
 import type { LifecycleSnapshot } from "@/lib/conversation-lifecycle";
 import type { OperationalEscalationRecord } from "@/lib/conversation-lifecycle";
 import type { AgentDeskLabels, WorkspaceSidebarLabels } from "@/components/omnichannel/types/workspace-labels";
+import { getCompanyCurrency, getCompanyIntlLocale } from "@/lib/company-locale/runtime";
+import { formatCompanyMoney } from "@/lib/currency/format-money";
 
 const CustomerProfileDrawer = lazy(() =>
   import("@/components/customer-profile/customer-profile-drawer").then((m) => ({
@@ -39,7 +41,10 @@ function formatLtv(context: OmnichannelCustomerContext | null, notAvailable: str
   if (!context?.customer) return notAvailable;
   const est = context.recentBookings * 120 + context.outstandingInvoices * 80;
   if (est <= 0) return notAvailable;
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(est);
+  return formatCompanyMoney(est, getCompanyCurrency(), getCompanyIntlLocale(), {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
 }
 
 export const InsightPanel = memo(function InsightPanel({

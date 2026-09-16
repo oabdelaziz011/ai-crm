@@ -13,6 +13,8 @@ export type WorkspaceTopTab =
   | "invoices"
   | "communication"
   | "tickets"
+  | "email"
+  | "sms"
   | "payments"
   | "files"
   | "ai"
@@ -35,6 +37,8 @@ export const WORKSPACE_TOP_TABS: WorkspaceTopTab[] = [
   "invoices",
   "communication",
   "tickets",
+  "email",
+  "sms",
   "payments",
   "files",
   "ai",
@@ -74,6 +78,8 @@ export function profileTabToWorkspaceTopTab(tab: CustomerProfileTab): WorkspaceT
     case "invoices":
     case "communication":
     case "tickets":
+    case "email":
+    case "sms":
     case "payments":
     case "files":
     case "campaigns":
@@ -94,6 +100,8 @@ export function normalizeWorkspaceRouteTab(tab: string | undefined): CustomerPro
     "overview",
     "timeline",
     "tickets",
+    "email",
+    "sms",
     "bookings",
     "invoices",
     "payments",
@@ -120,6 +128,8 @@ export function workspaceRouteSegment(tab: CustomerProfileTab): string {
     case "invoices":
     case "payments":
     case "tickets":
+    case "email":
+    case "sms":
       return tab;
     case "ai-summary":
       return "ai";

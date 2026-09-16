@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- 299 — Company Feature Groups: feature_definition → permissions
 --
 -- Reuses feature_definitions + company_feature_overrides as the

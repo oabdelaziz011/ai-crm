@@ -228,4 +228,49 @@ describe("workspace feature gating wiring", () => {
     );
     assert.match(repo, /auditEntityAllowedByModuleAccess\(row\.entity, input\.moduleAccess\)/);
   });
+
+  it("Email tab requires email.view + email_channel; CRM-only users never see it", () => {
+    const crmOnly = ctx({
+      hasPermission: (p) => p === "customers.view",
+      isModuleEnabled: () => true,
+    });
+    const emailNoModule = ctx({
+      hasPermission: (p) => p === "customers.view" || p === "email.view",
+      isModuleEnabled: () => false,
+    });
+    const allowed = ctx({
+      hasPermission: (p) => p === "email.view",
+      isModuleEnabled: (c) => c === "email_channel",
+    });
+    assert.equal(isWorkspaceTabAccessible("email", crmOnly), false);
+    assert.equal(filterAccessibleWorkspaceTabs(crmOnly).includes("email"), false);
+    assert.equal(isWorkspaceTabAccessible("email", emailNoModule), false);
+    assert.equal(isWorkspaceTabAccessible("email", allowed), true);
+    assert.equal(resolveAccessibleProfileTab("email", crmOnly), "overview");
+  });
+
+  it("SMS tab requires sms.view + sms_channel; CRM-only users never see it", () => {
+    const crmOnly = ctx({
+      hasPermission: (p) => p === "customers.view",
+      isModuleEnabled: () => true,
+    });
+    const smsNoModule = ctx({
+      hasPermission: (p) => p === "customers.view" || p === "sms.view",
+      isModuleEnabled: () => false,
+    });
+    const smsNoPermission = ctx({
+      hasPermission: (p) => p === "customers.view",
+      isModuleEnabled: (c) => c === "sms_channel",
+    });
+    const allowed = ctx({
+      hasPermission: (p) => p === "sms.view",
+      isModuleEnabled: (c) => c === "sms_channel",
+    });
+    assert.equal(isWorkspaceTabAccessible("sms", crmOnly), false);
+    assert.equal(filterAccessibleWorkspaceTabs(crmOnly).includes("sms"), false);
+    assert.equal(isWorkspaceTabAccessible("sms", smsNoModule), false);
+    assert.equal(isWorkspaceTabAccessible("sms", smsNoPermission), false);
+    assert.equal(isWorkspaceTabAccessible("sms", allowed), true);
+    assert.equal(resolveAccessibleProfileTab("sms", crmOnly), "overview");
+  });
 });

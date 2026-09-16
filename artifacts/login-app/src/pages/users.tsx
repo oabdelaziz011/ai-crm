@@ -5,7 +5,7 @@ import {
   CheckCircle2,
   Filter,
   Loader2,
-  Mail,
+  KeyRound,
   Plus,
   Search,
   Shield,
@@ -21,12 +21,14 @@ import { useCompanyAssignableRoles } from "@/hooks/use-company-assignable-roles"
 import { canViewCompanies } from "@/lib/companies/company-permissions";
 import { canManageUsers, canViewUsers } from "@/lib/users/user-permissions";
 import { useCompanies } from "@/hooks/use-companies";
+import { ResetEmployeePasswordDialog } from "@/components/company-workspace/employees/reset-employee-password-dialog";
+import { DepartmentSearchableSelect } from "@/components/users/department-searchable-select";
 import {
   useCreateManagedUser,
   useManagedUserRoleMap,
   useManagedUsers,
-  useResetManagedUserPassword,
   useUpdateManagedUser,
+  type ManagedUser,
 } from "@/hooks/use-users-management";
 import { useCompanyResourceOccupancy } from "@/hooks/billing/use-company-resource-occupancy";
 import {
@@ -70,7 +72,7 @@ type CreateUserForm = {
   isActive: boolean;
   branchIds: string[];
   jobTitle: string;
-  department: string;
+  departmentId: string;
   phone: string;
   preferredLanguage: string;
   timezone: string;
@@ -85,7 +87,7 @@ type EditUserForm = {
   isActive: boolean;
   branchIds: string[];
   jobTitle: string;
-  department: string;
+  departmentId: string;
   phone: string;
   preferredLanguage: string;
   timezone: string;
@@ -93,7 +95,7 @@ type EditUserForm = {
 
 const emptyIdentityFields = {
   jobTitle: "",
-  department: "",
+  departmentId: "",
   phone: "",
   preferredLanguage: "en",
   timezone: "UTC",
@@ -122,7 +124,6 @@ export function UsersPage() {
   const { data: companies = [] } = useCompanies(canPickCompany);
   const createUser = useCreateManagedUser();
   const updateUser = useUpdateManagedUser();
-  const resetPassword = useResetManagedUserPassword();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -209,6 +210,7 @@ export function UsersPage() {
     nextStatus: boolean;
     userName: string;
   }>({ open: false, userId: null, nextStatus: true, userName: "" });
+  const [resetUser, setResetUser] = useState<ManagedUser | null>(null);
 
   const companyOptions = useMemo(() => {
     if (isSuperAdmin) return companies;
@@ -286,7 +288,7 @@ export function UsersPage() {
       isActive: user.is_active,
       branchIds: branchAssignmentMap[user.id] ?? [],
       jobTitle: user.job_title ?? "",
-      department: user.department ?? "",
+      departmentId: user.department_id ?? "",
       phone: user.phone ?? "",
       preferredLanguage: user.preferred_language ?? "en",
       timezone: user.timezone ?? "UTC",
@@ -329,7 +331,8 @@ export function UsersPage() {
         isActive: createForm.isActive,
         branchIds: createForm.branchIds,
         jobTitle: createForm.jobTitle.trim() || null,
-        department: createForm.department.trim() || null,
+        departmentId: createForm.departmentId.trim() || null,
+        department: null,
         phone: createForm.phone.trim() || null,
         preferredLanguage: createForm.preferredLanguage || "en",
         timezone: createForm.timezone || "UTC",
@@ -388,7 +391,8 @@ export function UsersPage() {
         roleId: editForm.roleId,
         branchIds: editForm.branchIds,
         job_title: editForm.jobTitle.trim() || null,
-        department: editForm.department.trim() || null,
+        department_id: editForm.departmentId.trim() || null,
+        department: null,
         phone: editForm.phone.trim() || null,
         preferred_language: editForm.preferredLanguage || "en",
         timezone: editForm.timezone || "UTC",
@@ -618,14 +622,9 @@ export function UsersPage() {
                         variant="outline"
                         size="sm"
                         className="border-white/10 text-xs"
-                        disabled={resetPassword.isPending}
-                        onClick={() => resetPassword.mutate(user.email)}
+                        onClick={() => setResetUser(user)}
                       >
-                        {resetPassword.isPending ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Mail className="w-3.5 h-3.5" />
-                        )}
+                        <KeyRound className="w-3.5 h-3.5" />
                         {t("users.actions.resetPassword")}
                       </Button>
 
@@ -725,14 +724,17 @@ export function UsersPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">{t("users.form.department")}</label>
-                <Input
-                  value={createForm.department}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({ ...current, department: event.target.value }))
-                  }
-                  placeholder={t("users.form.departmentPlaceholder")}
-                  className="bg-background/50 border-white/10"
-                />
+                {resolveCompanyId(createForm.companyId) ? (
+                  <DepartmentSearchableSelect
+                    companyId={resolveCompanyId(createForm.companyId)!}
+                    value={createForm.departmentId}
+                    onChange={(departmentId) =>
+                      setCreateForm((current) => ({ ...current, departmentId }))
+                    }
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("users.form.companyRequired")}</p>
+                )}
               </div>
             </div>
 
@@ -935,16 +937,19 @@ export function UsersPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-muted-foreground">{t("users.form.department")}</label>
-                  <Input
-                    value={editForm.department}
-                    onChange={(event) =>
-                      setEditForm((current) =>
-                        current ? { ...current, department: event.target.value } : current,
-                      )
-                    }
-                    placeholder={t("users.form.departmentPlaceholder")}
-                    className="bg-background/50 border-white/10"
-                  />
+                  {resolveCompanyId(editForm.companyId) ? (
+                    <DepartmentSearchableSelect
+                      companyId={resolveCompanyId(editForm.companyId)!}
+                      value={editForm.departmentId}
+                      onChange={(departmentId) =>
+                        setEditForm((current) =>
+                          current ? { ...current, departmentId } : current,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t("users.form.companyRequired")}</p>
+                  )}
                 </div>
               </div>
 
@@ -1097,6 +1102,14 @@ export function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ResetEmployeePasswordDialog
+        user={resetUser}
+        open={Boolean(resetUser)}
+        onOpenChange={(open) => {
+          if (!open) setResetUser(null);
+        }}
+      />
 
       <AlertDialog
         open={statusDialog.open}

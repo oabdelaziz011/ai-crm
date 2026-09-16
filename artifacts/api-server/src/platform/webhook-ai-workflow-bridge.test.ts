@@ -278,4 +278,59 @@ describe("webhook AI decision node permission (instagram inbound regression)", (
     assert.equal(result.outcome, "continue");
     assert.equal(result.errorMessage, undefined);
   });
+
+  it("classifies a second Instagram prices turn even when the runtime denies permission", async () => {
+    const registry = createWebhookAIWorkflowAutomationRegistry({
+      actionDeps: {},
+      enterpriseRuntime: {
+        async buildPrompt() {
+          throw new Error("buildPrompt unused");
+        },
+        async execute() {
+          throw new Error("Missing required permission: ai.execution.manage");
+        },
+      },
+      resolvePlatformFeatureEnabled: async () => true,
+    });
+    const action = registry.get("action");
+    assert.ok(action);
+    const decisionConfig = toAIWorkflowEngineConfig(
+      patchDecisionMetadata(createDefaultDecisionNodeConfig(), {
+        inputSource: "variable",
+        inputVariable: "customer_intent",
+        fallbackOutcomeId: "other",
+        outcomes: [
+          {
+            id: "pricing",
+            label: "pricing",
+            description: "Customer asks about prices",
+            examples: ["أسعار", "اسعار", "تكلفة", "كام السعر"],
+          },
+          { id: "finance", label: "finance", description: "Book" },
+          { id: "other", label: "other", description: "Other" },
+        ],
+        confidencePolicy: {
+          minimumConfidence: 0.55,
+          fallbackOutcomeId: "other",
+          retryOnce: false,
+          requireHumanReview: false,
+          emitWarning: true,
+          continueWorkflow: true,
+        },
+      }),
+    );
+    const first = await action.execute(
+      createActionContext(decisionConfig, { customer_intent: "هاي" }),
+    );
+    assert.equal(first.outcome, "continue");
+    const firstLabel = (first.variables as Record<string, any>)?.decision_result?.value?.label;
+    assert.equal(firstLabel, "other");
+
+    const second = await action.execute(
+      createActionContext(decisionConfig, { customer_intent: "عايزة اعرف اسعار دكاترة" }),
+    );
+    assert.equal(second.outcome, "continue");
+    const secondLabel = (second.variables as Record<string, any>)?.decision_result?.value?.label;
+    assert.equal(secondLabel, "pricing");
+  });
 });

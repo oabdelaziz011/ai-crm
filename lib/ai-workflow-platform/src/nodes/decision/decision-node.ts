@@ -4,12 +4,16 @@ import type { AIWorkflowNodeConfig, AIWorkflowNodeDefinition } from "../../types
 import type { AIWorkflowExecutionResult, AIWorkflowNodeOutput, AIWorkflowRuntimeMetadata } from "../../types/metadata.js";
 import type { AIWorkflowPreviewResult } from "../../types/preview.js";
 import type { AIWorkflowValidationIssue } from "../../types/validation.js";
-import type { AIWorkflowAutomationContext } from "../../types/automation-context.js";
+import type {
+  AIWorkflowAutomationContext,
+  AIWorkflowNodeExecutionResult,
+} from "../../types/automation-context.js";
 import type { AIWorkflowServiceContext } from "../../adapters/ai-workflow-execution-adapter.js";
 import type { AIWorkflowObservabilityRecorder } from "../../observability/ai-workflow-observability.js";
 import {
   AI_DECISION_NODE_KEY,
   DEFAULT_DECISION_PROMPT_TEMPLATE_KEY,
+  DEFAULT_DECISION_OUTPUT_VARIABLE,
   DECISION_MODE_DISPLAY_NAMES,
 } from "./constants.js";
 import { createDefaultDecisionNodeConfig, readDecisionMetadata } from "./types.js";
@@ -223,6 +227,71 @@ export class AIDecisionNode extends BaseAIWorkflowNode {
     } catch {
       return { label: result.rawText.trim() };
     }
+  }
+
+  /**
+   * When the LLM/runtime cannot run (permission, provider, timeout), classify from
+   * the node's input text against configured outcome labels/examples so the workflow
+   * can still route (e.g. "عايزة اعرف اسعار دكاترة" → pricing) instead of failing closed.
+   */
+  buildRuntimeFallbackResult(
+    config: AIWorkflowNodeConfig,
+    context: AIWorkflowAutomationContext,
+    errorMessage: string,
+  ): AIWorkflowNodeExecutionResult {
+    const decision = readDecisionMetadata(config);
+    const input = resolveDecisionInput(config, context);
+    const validation = validateDecisionResult(
+      decision.outcomes,
+      decision.confidencePolicy,
+      decision.confidenceThreshold,
+      {
+        label: input,
+        confidence: 1,
+        reasoning: errorMessage,
+      },
+    );
+    const output = this.formatValidatedOutput(config, validation);
+    const outputVariable = config.outputVariable ?? this.getDefaultConfig().outputVariable ?? DEFAULT_DECISION_OUTPUT_VARIABLE;
+    const metadata = {
+      executionId: context.run.id,
+      executionTimeMs: 0,
+      gatewayLatencyMs: 0,
+      providerKey: "runtime_fallback",
+      model: "runtime_fallback",
+      promptVersionId: null,
+      promptBuildId: null,
+      promptTemplateKey: config.promptTemplateKey ?? null,
+      tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      estimatedCostUsd: null,
+      knowledgeUsed: false,
+      knowledgeChunkCount: 0,
+      streaming: false,
+      outputMode: config.outputMode,
+      cacheHit: false,
+      status: "fallback" as const,
+      validationStatus: validation.valid ? "valid" : "invalid",
+      decisionLabel: validation.value.label,
+      decisionConfidence: validation.value.confidence,
+      errorMessage,
+      runtimeFallback: true,
+    };
+
+    return {
+      outcome: "continue",
+      variables: {
+        ...context.variables,
+        [outputVariable]: output,
+        __aiLastExecution: metadata,
+      },
+      output: {
+        aiNodeKey: config.nodeKey,
+        outputVariable,
+        result: output,
+        metadata,
+        runtimeFallback: true,
+      },
+    };
   }
 
   private formatValidatedOutput(

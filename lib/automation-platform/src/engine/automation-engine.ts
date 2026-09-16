@@ -841,7 +841,7 @@ export class AutomationEngine {
     input?: Record<string, unknown>;
   }): ExecutionContext {
     return {
-      company: { id: input.flow.company_id },
+      company: { id: (input.flow.company_id || input.run.company_id || "").trim() },
       flow: input.flow,
       run: input.run,
       session: input.session,

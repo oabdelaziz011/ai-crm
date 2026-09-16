@@ -370,6 +370,45 @@ describe("Instagram Login outbound Graph host", () => {
     assert.doesNotMatch(requests[0]?.url ?? "", /graph\.facebook\.com/);
   });
 
+  it("appends button labels to Instagram text because the Send API has no WhatsApp buttons", () => {
+    const adapter = createInstagramCloudAdapter();
+    const formatted = adapter.formatOutbound(instagramCtx, {
+      conversationId: "conv-1",
+      companyChannelId: instagramCtx.companyChannel.id,
+      channelKey: "instagram",
+      externalThreadId: "28312734118386048",
+      text: "تحب تسألي عن حاجة تانية، ولا خلاص؟",
+      metadata: {
+        outboundPayload: {
+          kind: "buttons",
+          text: "تحب تسألي عن حاجة تانية، ولا خلاص؟",
+          buttons: [
+            { id: "something_else", label: "حاجة تانية" },
+            { id: "no", label: "خلاص، شكراً" },
+          ],
+        },
+      },
+    });
+
+    const payload = formatted.payload as { message: { text: string } };
+    assert.match(payload.message.text, /حاجة تانية/);
+    assert.match(payload.message.text, /خلاص، شكراً/);
+  });
+
+  it("maps inbound Instagram quick replies to interactive reply ids", () => {
+    const adapter = createInstagramCloudAdapter();
+    const payload = instagramMessagingPayload({
+      mid: "mid.qr-1",
+      text: "حاجة تانية",
+      quick_reply: { payload: "something_else", title: "حاجة تانية" },
+    });
+    const envelope = adapter.parseWebhook!(instagramCtx, payload);
+    const normalized = adapter.normalizeInbound(instagramCtx, envelope.payload);
+    assert.equal(normalized.metadata?.kind, "interactive_reply");
+    assert.equal(normalized.metadata?.replyId, "something_else");
+    assert.equal(normalized.metadata?.interactionType, "quick_reply");
+  });
+
   it("leaves WhatsApp and Messenger on Facebook Graph", () => {
     assert.equal(
       whatsAppMessagesUrl({

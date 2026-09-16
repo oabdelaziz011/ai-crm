@@ -12,6 +12,10 @@ import {
 
 export const INTERACTIVE_SELECTION_INPUT_KEY = "interactive_selection";
 
+/** Carry unmatched free text into the next wait_for_input in the same resume. */
+export const CONSUME_LAST_MESSAGE_AS_INPUT_KEY = "__consumeLastMessageAsInput";
+export const CONSUMED_INBOUND_AS_INPUT_VARIABLE = "__consumedInboundAsInput";
+
 export const INTERACTION_SELECTION_TYPES = ["button", "list", "flow", "quick_reply"] as const;
 
 export type InteractionSelectionType = (typeof INTERACTION_SELECTION_TYPES)[number];

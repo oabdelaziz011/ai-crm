@@ -34,6 +34,7 @@ import { createBuiltInAutomationNodeHandlers } from "./built-in-nodes.js";
 import { DefaultCustomerServicePort } from "../ports/customer-service-port.js";
 import { InMemoryCustomerRepository } from "../crm/customer/customer-repository-port.js";
 import { readOutboundQueue } from "../runtime/outbound-queue.js";
+import { buildResumeInput } from "../orchestrator/session-policy.js";
 
 function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
   return {
@@ -41,6 +42,7 @@ function createContext(overrides?: Partial<ServiceContext>): ServiceContext {
     companyId: "company-1",
     isSuperAdmin: false,
     hasPermission: (code) => code === "automation.execute" || code === "automation.view",
+    isWorkflowFeatureEnabled: () => true,
     ...overrides,
   };
 }
@@ -1095,6 +1097,90 @@ describe("AutomationEngine", () => {
       readOutboundQueue(supportTurn.variables).map((entry) => entry.text).join(" "),
       /19666/,
     );
+  });
+
+  it("consumes unmatched follow-up free text after something_else/no buttons", async () => {
+    const env = createMemoryEnvironment();
+    const trigger = await env.nodeRepository.create({ flowId: "flow-1", type: "trigger", config: {} });
+    const buttons = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: {
+        action: "send_buttons",
+        message: "تحب تسألي عن حاجة تانية، ولا خلاص؟",
+        buttons: [
+          { id: "something_else", label: "حاجة تانية" },
+          { id: "no", label: "خلاص، شكراً" },
+        ],
+      },
+    });
+    const ask = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: {
+        action: "wait_for_input",
+        inputKey: "customer_intent",
+        prompt: "اقدر اساعدك ازاي؟",
+      },
+    });
+    const ack = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: { action: "send_message", message: "تم استلام الطلب: {{customer_intent}}" },
+    });
+    const done = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: { action: "send_message", message: "شكراً لحضرتك" },
+    });
+    const end = await env.nodeRepository.create({ flowId: "flow-1", type: "end", config: {} });
+
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: trigger.id, targetNodeId: buttons.id });
+    await env.edgeRepository.create({
+      flowId: "flow-1",
+      sourceNodeId: buttons.id,
+      targetNodeId: ask.id,
+      condition: { case: "something_else", label: "Something else" },
+    });
+    await env.edgeRepository.create({
+      flowId: "flow-1",
+      sourceNodeId: buttons.id,
+      targetNodeId: done.id,
+      condition: { case: "no", label: "Done" },
+    });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: ask.id, targetNodeId: ack.id });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: ack.id, targetNodeId: end.id });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: done.id, targetNodeId: end.id });
+    await publishDraftGraph(env);
+
+    const waiting = await env.engine.start(createContext(), {
+      companyId: "company-1",
+      flowId: "flow-1",
+      channel: "whatsapp",
+    });
+    assert.equal(waiting.lifecycle, "waiting_input");
+
+    const inbound = "اه عايزة اعرف اسعار الدكتور";
+    const resumeInput = buildResumeInput(
+      { ...waiting.run, variables: waiting.variables },
+      inbound,
+      {},
+    );
+    assert.equal(resumeInput.replyId, "something_else");
+    const resumed = await env.engine.resume(createContext(), {
+      runId: waiting.run.id,
+      input: resumeInput,
+    });
+
+    assert.equal(resumed.lifecycle, "completed");
+    assert.equal(resumed.variables.customer_intent, inbound);
+    assert.match(
+      readOutboundQueue(resumed.variables)
+        .map((entry) => entry.text)
+        .join(" "),
+      /اسعار الدكتور/,
+    );
+    assert.doesNotMatch(resumed.run.error_message ?? "", /outgoing branches/);
   });
 
   it("rejects legacy parallel If/Else branches after button selection", async () => {

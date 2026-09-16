@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildResumeInput } from "../orchestrator/session-policy.js";
 import {
+  CONSUME_LAST_MESSAGE_AS_INPUT_KEY,
   extractInteractiveSelection,
   INTERACTIVE_SELECTION_INPUT_KEY,
   mergeConversationVariables,
@@ -180,6 +181,57 @@ describe("buildResumeInput", () => {
     );
 
     assert.equal(input.input, "Hello");
+  });
+
+  it("maps main-menu pricing free text only when pricing is on the current buttons", () => {
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+          __outbound: {
+            kind: "buttons",
+            text: "اختر ما تحتاجه",
+            buttons: [
+              { id: "pricing", label: "الأسعار" },
+              { id: "book", label: "حجز" },
+            ],
+          },
+        },
+      } as never,
+      "عايز اسعار",
+      {},
+    );
+
+    assert.equal(input.replyId, "pricing");
+    assert.equal(input[CONSUME_LAST_MESSAGE_AS_INPUT_KEY], undefined);
+  });
+
+  it("routes unmatched Instagram-style free text to something_else instead of pricing", () => {
+    const inbound = "اه عايزة اعرف اسعار الدكتور";
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+          __outbound: {
+            kind: "buttons",
+            text: "تحب تسألي عن حاجة تانية، ولا خلاص؟",
+            buttons: [
+              { id: "something_else", label: "حاجة تانية" },
+              { id: "no", label: "خلاص، شكراً" },
+            ],
+          },
+        },
+      } as never,
+      inbound,
+      {},
+    );
+
+    assert.equal(input.replyId, "something_else");
+    assert.equal(input[CONSUME_LAST_MESSAGE_AS_INPUT_KEY], true);
+    assert.equal(input.lastMessage, inbound);
+    assert.equal(extractInteractiveSelection(input)?.last_button_id, "something_else");
   });
 
   it("prefers list reply id over title for interactive_selection", () => {

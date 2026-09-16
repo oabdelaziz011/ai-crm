@@ -84,6 +84,53 @@ function resolveInstagramMessageType(
   return "empty";
 }
 
+function readStructuredOutboundPayload(
+  message: OutboundChannelMessageDto,
+): Record<string, unknown> | null {
+  const metadata = message.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+  const payload = (metadata as { outboundPayload?: unknown }).outboundPayload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  return payload as Record<string, unknown>;
+}
+
+function readInstagramChoiceLabels(payload: Record<string, unknown> | null): string[] {
+  if (!payload) return [];
+  const labels: string[] = [];
+
+  if (Array.isArray(payload.buttons)) {
+    for (const entry of payload.buttons) {
+      if (!entry || typeof entry !== "object") continue;
+      const label = readTrimmedString((entry as { label?: unknown }).label);
+      if (label) labels.push(label);
+    }
+  }
+
+  if (Array.isArray(payload.sections)) {
+    for (const section of payload.sections) {
+      if (!section || typeof section !== "object") continue;
+      const rows = (section as { rows?: unknown }).rows;
+      if (!Array.isArray(rows)) continue;
+      for (const row of rows) {
+        if (!row || typeof row !== "object") continue;
+        const title = readTrimmedString((row as { title?: unknown }).title);
+        if (title) labels.push(title);
+      }
+    }
+  }
+
+  return labels;
+}
+
+function appendInstagramChoiceLabels(text: string, labels: string[]): string {
+  const unique = [...new Set(labels.map((label) => label.trim()).filter(Boolean))];
+  if (unique.length === 0) return text;
+  if (unique.every((label) => text.includes(label))) return text;
+  const body = text.trim();
+  const list = unique.map((label) => `• ${label}`).join("\n");
+  return body ? `${body}\n\n${list}` : list;
+}
+
 function markUnsupportedInstagramEnvelope(envelope: WebhookEnvelopeDto): WebhookEnvelopeDto {
   if (envelope.eventType !== "message.received") return envelope;
   if (envelope.payload.postback) return envelope;
@@ -180,6 +227,15 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
           : undefined,
     };
 
+    const quickReplyPayload = readTrimmedString(message.quick_reply?.payload);
+    const quickReplyTitle = readTrimmedString(message.quick_reply?.title);
+    if (quickReplyPayload || quickReplyTitle) {
+      metadata.kind = "interactive_reply";
+      metadata.interactionType = "quick_reply";
+      metadata.replyId = quickReplyPayload || quickReplyTitle;
+      metadata.title = quickReplyTitle || text;
+    }
+
     return {
       externalThreadId:
         typeof payload.senderExternalId === "string" ? payload.senderExternalId : "",
@@ -223,7 +279,12 @@ export class InstagramCloudAdapter implements ChannelAdapterPort {
 
     const payload: InstagramSendMessagePayload = {
       recipient: { id: message.externalThreadId },
-      message: { text: message.text },
+      message: {
+        text: appendInstagramChoiceLabels(
+          message.text,
+          readInstagramChoiceLabels(readStructuredOutboundPayload(message)),
+        ),
+      },
     };
 
     return { payload, recipient: message.externalThreadId };

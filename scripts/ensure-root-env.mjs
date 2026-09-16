@@ -2,6 +2,9 @@
 /**
  * Ensure repository root `.env` exists and seed it from `.env.example` + login-app/.env.local.
  * Run automatically before dev stacks on Windows (Replit injected secrets instead).
+ *
+ * Injected process.env values (Replit, Cursor Cloud) are a valid source, take
+ * precedence over `.env` files, and are not written back into `.env`.
  */
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -10,13 +13,17 @@ import {
   extractSupabaseProjectRef,
   formatMissingEnvHelp,
   loadProjectEnv,
-  normalizeProjectEnv,
   validateApiServerEnv,
 } from "./lib/load-project-env.mjs";
 
-const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = resolve(projectRoot, ".env");
-const examplePath = resolve(projectRoot, ".env.example");
+const thisFile = fileURLToPath(import.meta.url);
+const defaultProjectRoot = resolve(dirname(thisFile), "..");
+
+/** Load options used by this bootstrap: files first, then process.env wins. */
+export const ROOT_ENV_LOAD_OPTIONS = Object.freeze({
+  hydrateProcessEnv: false,
+  mergeProcessEnv: true,
+});
 
 function upsertEnvLines(existingContent, updates) {
   const lines = existingContent.length > 0 ? existingContent.split(/\r?\n/) : [];
@@ -45,7 +52,7 @@ function upsertEnvLines(existingContent, updates) {
   return `${lines.join("\n").replace(/\n+$/, "")}\n`;
 }
 
-function seedFromLoginAppLocal(baseContent) {
+function seedFromLoginAppLocal(projectRoot, baseContent) {
   const localPath = resolve(projectRoot, "artifacts/login-app/.env.local");
   if (!existsSync(localPath)) return baseContent;
 
@@ -72,26 +79,53 @@ function seedFromLoginAppLocal(baseContent) {
   });
 }
 
-if (!existsSync(envPath)) {
-  if (!existsSync(examplePath)) {
-    console.error("Missing .env and .env.example — cannot bootstrap environment.");
-    process.exit(1);
+/**
+ * Bootstrap root `.env` from the example template (and optional login-app local
+ * seed) then validate API-server env. Injected process.env values count as
+ * present and win over file values; they are not copied into `.env`.
+ *
+ * @returns {0 | 1} process exit code
+ */
+export function ensureRootEnv(projectRoot) {
+  const envPath = resolve(projectRoot, ".env");
+  const examplePath = resolve(projectRoot, ".env.example");
+
+  if (!existsSync(envPath)) {
+    if (!existsSync(examplePath)) {
+      console.error("Missing .env and .env.example — cannot bootstrap environment.");
+      return 1;
+    }
+
+    copyFileSync(examplePath, envPath);
+    console.log(`Created ${envPath} from .env.example`);
   }
 
-  copyFileSync(examplePath, envPath);
-  console.log(`Created ${envPath} from .env.example`);
+  let content = readFileSync(envPath, "utf8");
+  content = seedFromLoginAppLocal(projectRoot, content);
+  writeFileSync(envPath, content, "utf8");
+
+  const env = loadProjectEnv(projectRoot, ROOT_ENV_LOAD_OPTIONS);
+  const validation = validateApiServerEnv(env);
+
+  if (!validation.ok) {
+    console.error(formatMissingEnvHelp(projectRoot, validation.missing));
+    return 1;
+  }
+
+  console.log(`Environment OK (${envPath})`);
+  return 0;
 }
 
-let content = readFileSync(envPath, "utf8");
-content = seedFromLoginAppLocal(content);
-writeFileSync(envPath, content, "utf8");
-
-const env = normalizeProjectEnv(loadProjectEnv(projectRoot, { hydrateProcessEnv: false }));
-const validation = validateApiServerEnv(env);
-
-if (!validation.ok) {
-  console.error(formatMissingEnvHelp(projectRoot, validation.missing));
-  process.exit(1);
+function isCliEntry() {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return resolve(thisFile) === resolve(entry);
+  } catch {
+    return false;
+  }
 }
 
-console.log(`Environment OK (${envPath})`);
+if (isCliEntry()) {
+  process.exit(ensureRootEnv(defaultProjectRoot));
+}

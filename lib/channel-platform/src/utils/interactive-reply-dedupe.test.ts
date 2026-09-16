@@ -20,6 +20,35 @@ describe("interactive-reply-dedupe", () => {
     );
   });
 
+  it("extracts Instagram quick reply payload ids", () => {
+    assert.equal(
+      extractInteractiveReplyIdFromPayload({
+        message: {
+          mid: "mid.qr-1",
+          text: "عياده اسنان",
+          quick_reply: { payload: "dd839aed-7b5a-4591-9c82-12aa21b2673b" },
+        },
+      }),
+      "dd839aed-7b5a-4591-9c82-12aa21b2673b",
+    );
+  });
+
+  it("extracts Instagram quick reply ids from webhook envelope payloads", () => {
+    assert.equal(
+      extractInteractiveReplyIdFromPayload({
+        senderExternalId: "28312734118386048",
+        instagramBusinessAccountId: "17841435877386136",
+        message: {
+          mid: "mid.qr-service",
+          text: "عياده اسنان",
+          quick_reply: { payload: "dd839aed-7b5a-4591-9c82-12aa21b2673b", title: "عياده اسنان" },
+        },
+        raw: { object: "instagram" },
+      }),
+      "dd839aed-7b5a-4591-9c82-12aa21b2673b",
+    );
+  });
+
   it("extracts context message id from interactive reply", () => {
     assert.equal(
       extractInteractiveReplyContextIdFromPayload({

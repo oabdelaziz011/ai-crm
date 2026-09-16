@@ -107,6 +107,27 @@ function readMessageRecord(
   return firstMessage as Record<string, unknown>;
 }
 
+function readTrimmedId(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readInstagramQuickReplyPayload(
+  payload: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!payload) return null;
+  const topLevel = payload.quick_reply;
+  if (topLevel && typeof topLevel === "object" && !Array.isArray(topLevel)) {
+    const id = readTrimmedId((topLevel as { payload?: unknown }).payload);
+    if (id) return id;
+  }
+  const message = readMessageRecord(payload);
+  const quickReply = message?.quick_reply;
+  if (quickReply && typeof quickReply === "object" && !Array.isArray(quickReply)) {
+    return readTrimmedId((quickReply as { payload?: unknown }).payload);
+  }
+  return null;
+}
+
 export function extractInteractiveReplyIdFromPayload(
   payload: Record<string, unknown> | null | undefined,
 ): string | null {
@@ -117,6 +138,9 @@ export function extractInteractiveReplyIdFromPayload(
     const replyId = (metadata as Record<string, unknown>).replyId;
     if (typeof replyId === "string" && replyId.trim()) return replyId.trim();
   }
+
+  const quickReply = readInstagramQuickReplyPayload(payload);
+  if (quickReply) return quickReply;
 
   const record = readMessageRecord(payload);
   if (!record || record.type !== "interactive") return null;

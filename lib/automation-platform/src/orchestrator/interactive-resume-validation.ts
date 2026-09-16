@@ -36,8 +36,7 @@ function isButtonInteraction(interactionType: string | null): boolean {
   return (
     interactionType === "button" ||
     interactionType === "button_reply" ||
-    interactionType === "buttons" ||
-    interactionType === "quick_reply"
+    interactionType === "buttons"
   );
 }
 

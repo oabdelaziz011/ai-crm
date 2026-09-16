@@ -484,6 +484,56 @@ describe("Instagram Login outbound Graph host", () => {
     assert.equal(normalized.metadata?.interactionType, "quick_reply");
   });
 
+  it("forwards Instagram clinic list taps to automation with the selected row id", async () => {
+    let automationInput: Record<string, unknown> | undefined;
+    const env = createTestEnvironment({
+      companyChannel: instagramCtx.companyChannel,
+      adapters: [createInstagramCloudAdapter()],
+      workflowBinding: {
+        companyId: "company-1",
+        companyChannelId: instagramCtx.companyChannel.id,
+        automationFlowId: "flow-1",
+      },
+      automationPort: {
+        async startWorkflow(input) {
+          automationInput = input as unknown as Record<string, unknown>;
+          return {
+            runId: "automation-run-clinic",
+            responseContent: "Workflow resumed",
+            lifecycle: "waiting_input",
+            resumed: true,
+          };
+        },
+      },
+    });
+
+    const response = await env.router.routeWebhook(createContext(), {
+      companyId: "company-1",
+      companyChannelId: instagramCtx.companyChannel.id,
+      channelKey: "instagram",
+      rawPayload: instagramMessagingPayload({
+        mid: "mid.qr-clinic",
+        text: "عياده اسنان",
+        quick_reply: {
+          payload: "dd839aed-7b5a-4591-9c82-12aa21b2673b",
+          title: "عياده اسنان",
+        },
+      }),
+    });
+
+    assert.equal(response.kind, "inbound");
+    if (response.kind === "inbound") {
+      assert.equal(response.result.automationRunId, "automation-run-clinic");
+    }
+    assert.ok(automationInput);
+    assert.equal(automationInput.messageText, "عياده اسنان");
+    const metadata = automationInput.metadata as Record<string, unknown> | undefined;
+    assert.equal(metadata?.kind, "interactive_reply");
+    assert.equal(metadata?.replyId, "dd839aed-7b5a-4591-9c82-12aa21b2673b");
+    assert.equal(metadata?.interactionType, "quick_reply");
+    assert.equal(env.incomingMessageMetadata[0]?.replyId, "dd839aed-7b5a-4591-9c82-12aa21b2673b");
+  });
+
   it("leaves WhatsApp lists as interactive list payloads", () => {
     const adapter = createWhatsAppCloudAdapter();
     const formatted = adapter.formatOutbound(

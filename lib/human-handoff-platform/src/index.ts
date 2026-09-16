@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  AssignmentGovernanceService,
+  createAssignmentGovernancePort,
+  createSupabaseAssignmentGovernanceDataPort,
+} from "@workspace/assignment-governance";
 import { InMemoryHandoffQueryCache } from "./cache/in-memory-handoff-query-cache.js";
 import type { HandoffQueryCachePort } from "./cache/handoff-query-cache-port.js";
 import { createHandoffReadPort } from "./adapters/handoff-query-read-port.js";
@@ -37,6 +42,8 @@ export type CreateHandoffPlatformServicesOptions = {
   notifications?: HandoffNotificationPort;
   audit?: HandoffAuditPort;
   cache?: HandoffQueryCachePort;
+  /** When false, skip Assignment Governance (tests only). Default: enabled. */
+  assignmentGovernance?: boolean | null;
 };
 
 export function createHandoffPlatformServices(
@@ -51,6 +58,14 @@ export function createHandoffPlatformServices(
   const notifications = options.notifications ?? createNoopHandoffNotificationPort();
   const audit = options.audit ?? createNoopHandoffAuditPort();
   const cache = options.cache ?? new InMemoryHandoffQueryCache();
+  const assignmentGovernance =
+    options.assignmentGovernance === false
+      ? null
+      : createAssignmentGovernancePort(
+          new AssignmentGovernanceService({
+            port: createSupabaseAssignmentGovernanceDataPort(client),
+          }),
+        );
 
   const commands = new HandoffCommandService({
     handoff,
@@ -60,6 +75,7 @@ export function createHandoffPlatformServices(
     events,
     notifications,
     audit,
+    assignmentGovernance,
   });
 
   const queries = new HandoffQueryService({ handoff, cache });
@@ -79,7 +95,17 @@ export { InMemoryHandoffQueryCache } from "./cache/in-memory-handoff-query-cache
 export { createHandoffReadPort } from "./adapters/handoff-query-read-port.js";
 export { HandoffCommandService } from "./services/handoff-command-service.js";
 export { HandoffQueryService } from "./services/handoff-query-service.js";
-export { selectQueueAgent, estimateWaitTimeSeconds } from "./services/queue-routing-engine.js";
+export { estimateWaitTimeSeconds, countEffectivelyAvailableAgents, selectQueueAgent } from "./services/queue-routing-engine.js";
+export {
+  PRESENCE_FRESHNESS_POLICY,
+  resolvePresenceAfterHeartbeat,
+  shouldExpirePresence,
+  isPresenceHeartbeatFresh,
+  nextHeartbeatDeadline,
+  isAgentAvailableForAssignment,
+  isAgentEffectivelyAvailableForAssignment,
+  heartbeatAgeMs,
+} from "./services/presence-engine.js";
 export { resolveEscalationRule } from "./services/escalation-engine.js";
 export {
   evaluateInboundAiGate,

@@ -13,7 +13,7 @@ import type {
 } from "../types/handoff-types.js";
 import { toConversationOwner } from "../types/handoff-types.js";
 import { assertHandoffCompanyAccess, assertHandoffPermission } from "../validators/handoff-guards.js";
-import { estimateWaitTimeSeconds } from "./queue-routing-engine.js";
+import { countEffectivelyAvailableAgents, estimateWaitTimeSeconds } from "./queue-routing-engine.js";
 
 export type HandoffQueryServiceDeps = {
   handoff: HandoffRepository;
@@ -131,9 +131,7 @@ export class HandoffQueryService {
     const queueSize = await this.deps.handoff.countQueueWaiting(input.companyId, input.queueId);
     const members = await this.deps.handoff.listQueueMembers(input.companyId, input.queueId);
     const presence = await this.deps.handoff.listPresence(input.companyId, ["online"]);
-    const availableAgents = members.filter((member) =>
-      presence.some((row) => row.userId === member.userId),
-    ).length;
+    const availableAgents = countEffectivelyAvailableAgents(members, presence);
 
     return {
       queueId: input.queueId,

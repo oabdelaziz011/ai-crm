@@ -1,4 +1,5 @@
 import type { AgentPresenceRecord, HandoffQueueRecord, QueueMemberRecord } from "../types/handoff-types.js";
+import { isAgentEffectivelyAvailableForAssignment } from "./presence-engine.js";
 
 export type QueueRoutingInput = {
   queue: HandoffQueueRecord;
@@ -8,9 +9,10 @@ export type QueueRoutingInput = {
   requiredLanguage?: string;
   customerPriority?: string;
   isVip?: boolean;
+  /** Injectable clock for freshness checks (defaults to Date.now()). */
+  nowMs?: number;
+  presenceTimeoutMs?: number;
 };
-
-const AVAILABLE_STATES = new Set(["online"]);
 
 export function selectQueueAgent(input: QueueRoutingInput): QueueMemberRecord | null {
   const eligible = filterEligibleMembers(input);
@@ -33,12 +35,25 @@ export function selectQueueAgent(input: QueueRoutingInput): QueueMemberRecord | 
 }
 
 function filterEligibleMembers(input: QueueRoutingInput): QueueMemberRecord[] {
+  const freshness = { nowMs: input.nowMs, timeoutMs: input.presenceTimeoutMs };
   return input.members.filter((member) => {
     if (!member.isActive) return false;
     const presence = input.presenceByUserId.get(member.userId);
-    if (!presence || !AVAILABLE_STATES.has(presence.state)) return false;
-    return true;
+    return isAgentEffectivelyAvailableForAssignment(presence, freshness);
   });
+}
+
+/** Count queue members who are effectively available (online + fresh heartbeat). */
+export function countEffectivelyAvailableAgents(
+  members: QueueMemberRecord[],
+  presence: AgentPresenceRecord[],
+  options?: { nowMs?: number; timeoutMs?: number },
+): number {
+  const byUserId = new Map(presence.map((row) => [row.userId, row]));
+  return members.filter((member) => {
+    if (!member.isActive) return false;
+    return isAgentEffectivelyAvailableForAssignment(byUserId.get(member.userId), options);
+  }).length;
 }
 
 function selectRoundRobin(members: QueueMemberRecord[]): QueueMemberRecord {

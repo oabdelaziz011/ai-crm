@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { selectQueueAgent } from "../services/queue-routing-engine.js";
-import type { HandoffQueueRecord, QueueMemberRecord } from "../types/handoff-types.js";
+import type { AgentPresenceRecord, HandoffQueueRecord, QueueMemberRecord } from "../types/handoff-types.js";
 
 const queue: HandoffQueueRecord = {
   id: "queue-1",
@@ -23,6 +23,8 @@ const queue: HandoffQueueRecord = {
   updatedAt: new Date().toISOString(),
 };
 
+const FRESH_HB = new Date().toISOString();
+
 function member(input: Partial<QueueMemberRecord> & Pick<QueueMemberRecord, "userId">): QueueMemberRecord {
   return {
     id: `member-${input.userId}`,
@@ -37,6 +39,20 @@ function member(input: Partial<QueueMemberRecord> & Pick<QueueMemberRecord, "use
   };
 }
 
+function online(userId: string): AgentPresenceRecord {
+  return {
+    id: `pres-${userId}`,
+    companyId: "company-1",
+    userId,
+    state: "online",
+    viewingConversationId: null,
+    lastHeartbeatAt: FRESH_HB,
+    lastSeenAt: FRESH_HB,
+    metadata: {},
+    updatedAt: FRESH_HB,
+  };
+}
+
 describe("selectQueueAgent least_busy", () => {
   it("selects online agent with lowest activeConversationCount", () => {
     const selected = selectQueueAgent({
@@ -47,9 +63,9 @@ describe("selectQueueAgent least_busy", () => {
         member({ userId: "agent-c", activeConversationCount: 1 }),
       ],
       presenceByUserId: new Map([
-        ["agent-a", { userId: "agent-a", companyId: "company-1", state: "online" } as never],
-        ["agent-b", { userId: "agent-b", companyId: "company-1", state: "online" } as never],
-        ["agent-c", { userId: "agent-c", companyId: "company-1", state: "online" } as never],
+        ["agent-a", online("agent-a")],
+        ["agent-b", online("agent-b")],
+        ["agent-c", online("agent-c")],
       ]),
     });
 
@@ -65,8 +81,14 @@ describe("selectQueueAgent least_busy", () => {
         member({ userId: "online-agent", activeConversationCount: 3 }),
       ],
       presenceByUserId: new Map([
-        ["offline-agent", { userId: "offline-agent", companyId: "company-1", state: "offline" } as never],
-        ["online-agent", { userId: "online-agent", companyId: "company-1", state: "online" } as never],
+        [
+          "offline-agent",
+          {
+            ...online("offline-agent"),
+            state: "offline",
+          },
+        ],
+        ["online-agent", online("online-agent")],
       ]),
     });
 
@@ -82,12 +104,30 @@ describe("selectQueueAgent least_busy", () => {
         member({ userId: "agent-m", activeConversationCount: 1, lastAssignedAt: "2025-12-31T00:00:00.000Z" }),
       ],
       presenceByUserId: new Map([
-        ["agent-z", { userId: "agent-z", companyId: "company-1", state: "online" } as never],
-        ["agent-a", { userId: "agent-a", companyId: "company-1", state: "online" } as never],
-        ["agent-m", { userId: "agent-m", companyId: "company-1", state: "online" } as never],
+        ["agent-z", online("agent-z")],
+        ["agent-a", online("agent-a")],
+        ["agent-m", online("agent-m")],
       ]),
     });
 
     assert.equal(selected?.userId, "agent-m");
+  });
+
+  it("excludes online agents with stale heartbeat", () => {
+    const staleHb = new Date(Date.now() - 300_000).toISOString();
+    const selected = selectQueueAgent({
+      queue,
+      members: [member({ userId: "stale-online", activeConversationCount: 0 })],
+      presenceByUserId: new Map([
+        [
+          "stale-online",
+          {
+            ...online("stale-online"),
+            lastHeartbeatAt: staleHb,
+          },
+        ],
+      ]),
+    });
+    assert.equal(selected, null);
   });
 });

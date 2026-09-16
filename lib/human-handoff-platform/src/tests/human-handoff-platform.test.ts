@@ -52,24 +52,26 @@ describe("queue routing engine", () => {
   ];
 
   it("selects round robin agent with oldest assignment", () => {
+    const freshHb = new Date().toISOString();
     const agent = selectQueueAgent({
       queue,
       members,
       presenceByUserId: new Map([
-        ["agent-a", { userId: "agent-a", state: "online" } as never],
-        ["agent-b", { userId: "agent-b", state: "online" } as never],
+        ["agent-a", { userId: "agent-a", state: "online", lastHeartbeatAt: freshHb } as never],
+        ["agent-b", { userId: "agent-b", state: "online", lastHeartbeatAt: freshHb } as never],
       ]),
     });
     assert.equal(agent?.userId, "agent-a");
   });
 
   it("selects least busy agent", () => {
+    const freshHb = new Date().toISOString();
     const agent = selectQueueAgent({
       queue: { ...queue, routingStrategy: "least_busy" },
       members,
       presenceByUserId: new Map([
-        ["agent-a", { userId: "agent-a", state: "online" } as never],
-        ["agent-b", { userId: "agent-b", state: "online" } as never],
+        ["agent-a", { userId: "agent-a", state: "online", lastHeartbeatAt: freshHb } as never],
+        ["agent-b", { userId: "agent-b", state: "online", lastHeartbeatAt: freshHb } as never],
       ]),
     });
     assert.equal(agent?.userId, "agent-b");
@@ -117,5 +119,9 @@ describe("presence engine", () => {
     const stale = new Date(Date.now() - 300_000).toISOString();
     assert.equal(shouldExpirePresence(stale), true);
     assert.equal(shouldExpirePresence(new Date().toISOString()), false);
+  });
+
+  it("treats invalid heartbeat timestamps as stale", () => {
+    assert.equal(shouldExpirePresence("not-a-date"), true);
   });
 });

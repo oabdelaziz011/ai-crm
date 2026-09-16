@@ -33,8 +33,12 @@ const LEGACY_AI_TO_UNIFIED: Readonly<Record<string, string>> = Object.freeze({
   ai_analytics: "ai.analytics",
 });
 export function toAIWorkflowAutomationContext(context: ExecutionContext): AIWorkflowAutomationContext {
+  const companyId =
+    (typeof context.company.id === "string" && context.company.id.trim()) ||
+    (typeof context.run.company_id === "string" && context.run.company_id.trim()) ||
+    "";
   return {
-    company: { id: context.company.id },
+    company: { id: companyId },
     flow: { id: context.flow.id },
     run: { id: context.run.id },
     session: { id: context.session.id },
@@ -212,7 +216,10 @@ export function createWebhookAIWorkflowAutomationRegistry(
     userId: null,
     companyId: automationContext.company.id?.trim() || null,
     isSuperAdmin: false,
-    hasPermission: () => false,
+    // Same product allowlist as resolveWebhookAiServiceContext. Feature flags below
+    // stay undefined so a sync fall-through still fail-closes on commercial∩platform
+    // gates; only RBAC for enterprise assertAccess is granted here.
+    hasPermission: (code) => isWebhookAiEmployeeToolPermission(code),
     // Placeholders — real values applied in async execute wrapper below.
     // Fail-closed if sync path is ever invoked without wrapper: missing → DENY.
     isWorkflowFeatureEnabled: undefined,

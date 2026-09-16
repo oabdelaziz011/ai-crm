@@ -983,6 +983,78 @@ describe("AutomationEngine", () => {
     assert.equal(afterHello.run.current_node_id, list2.id);
   });
 
+  it("advances Instagram clinic quick_reply taps from send_list onto the next list", async () => {
+    const env = createMemoryEnvironment();
+    const clinicId = "dd839aed-7b5a-4591-9c82-12aa21b2673b";
+    const trigger = await env.nodeRepository.create({ flowId: "flow-1", type: "trigger", config: {} });
+    const clinics = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: {
+        action: "send_list",
+        outputVariable: "selected_service",
+        title: "اختر خدمة",
+        body: "اختَر الخيار الأنسب لك.",
+        buttonLabel: "خدمات",
+        sections: [
+          {
+            title: "خدمات",
+            rows: [
+              { id: clinicId, title: "عياده اسنان" },
+              { id: "4fded1be-fe8d-42af-9709-a6f45b55fccf", title: "عياده اطفال" },
+            ],
+          },
+        ],
+      },
+    });
+    const doctors = await env.nodeRepository.create({
+      flowId: "flow-1",
+      type: "action",
+      config: {
+        action: "send_list",
+        outputVariable: "selected_resource",
+        title: "اختر طبيب",
+        body: "اختَر الطبيب.",
+        buttonLabel: "أطباء",
+        sections: [{ title: "أطباء", rows: [{ id: "adam", title: "ADAM" }] }],
+      },
+    });
+    const end = await env.nodeRepository.create({ flowId: "flow-1", type: "end", config: {} });
+
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: trigger.id, targetNodeId: clinics.id });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: clinics.id, targetNodeId: doctors.id });
+    await env.edgeRepository.create({ flowId: "flow-1", sourceNodeId: doctors.id, targetNodeId: end.id });
+    await publishDraftGraph(env);
+
+    const started = await env.engine.start(createContext(), {
+      companyId: "company-1",
+      flowId: "flow-1",
+      channel: "instagram",
+    });
+    assert.equal(started.lifecycle, "waiting_input");
+    assert.equal(started.currentNodeId, clinics.id);
+
+    const afterClinic = await env.engine.resume(createContext(), {
+      runId: started.run.id,
+      input: buildResumeInput({ ...started.run, variables: started.variables }, "عياده اسنان", {
+        kind: "interactive_reply",
+        replyId: clinicId,
+        title: "عياده اسنان",
+        interactionType: "quick_reply",
+      }),
+    });
+
+    assert.doesNotMatch(afterClinic.run.error_message ?? "", /button reply/);
+    assert.equal(afterClinic.lifecycle, "waiting_input");
+    assert.equal(afterClinic.currentNodeId, doctors.id);
+    assert.equal(afterClinic.run.status, "waiting_input");
+    assert.equal(afterClinic.variables.__waitingFor, "interactive_selection");
+    assert.equal(afterClinic.variables.selected_service, clinicId);
+    const outboundQueue = readOutboundQueue(afterClinic.variables);
+    assert.equal(outboundQueue[outboundQueue.length - 1]?.kind, "list");
+    assert.equal(outboundQueue[outboundQueue.length - 1]?.body, "اختَر الطبيب.");
+  });
+
   it("routes button replies through Switch to the matching business flow", async () => {
     const env = createMemoryEnvironment();
     const trigger = await env.nodeRepository.create({ flowId: "flow-1", type: "trigger", config: {} });

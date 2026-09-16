@@ -361,7 +361,10 @@ describe("Instagram Login outbound Graph host", () => {
     const result = await adapter.sendOutbound(instagramCtx, formatted);
     assert.equal(result.externalMessageId, "mid.outbound-1");
     assert.equal(requests.length, 1);
-    assert.equal(requests[0]?.url, "https://graph.instagram.com/v21.0/17841435877386136/messages");
+    const sent = new URL(requests[0]!.url);
+    assert.equal(sent.origin, "https://graph.instagram.com");
+    assert.equal(sent.pathname, "/v21.0/17841435877386136/messages");
+    assert.equal(sent.searchParams.get("access_token"), "IGQW-login-token");
     assert.equal(requests[0]?.authorization, "Bearer IGQW-login-token");
     assert.equal(
       (requests[0]?.body as { recipient: { id: string }; message: { text: string } }).recipient.id,

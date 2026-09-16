@@ -8,7 +8,7 @@ import {
   summarizeMetaMessagingWebhookPayload,
 } from "../meta/meta-messaging-webhook.js";
 import type { InstagramChannelConfiguration } from "./instagram-config.js";
-import { instagramMessagesUrl } from "./instagram-config.js";
+import { INSTAGRAM_LOGIN_GRAPH_HOST, instagramMessagesUrl } from "./instagram-config.js";
 import type {
   InstagramSendMessagePayload,
   InstagramSendMessageResponse,
@@ -32,6 +32,28 @@ export type InstagramOutboundRequestDiagnostic = {
   metaErrorMessage?: string;
 };
 
+const FACEBOOK_GRAPH_HOST = "https://graph.facebook.com";
+
+function withAccessTokenQuery(endpoint: string, accessToken: string): string {
+  const url = new URL(endpoint);
+  url.searchParams.set("access_token", accessToken);
+  return url.toString();
+}
+
+export function rewriteInstagramMessagesHost(endpoint: string): string {
+  const url = new URL(endpoint);
+  if (url.origin !== FACEBOOK_GRAPH_HOST) return endpoint;
+  url.protocol = "https:";
+  url.host = INSTAGRAM_LOGIN_GRAPH_HOST.replace(/^https:\/\//, "");
+  return url.toString();
+}
+
+function isUnparseableAccessToken(body: InstagramSendMessageResponse): boolean {
+  const code = body.error?.code;
+  const message = body.error?.error_user_msg ?? body.error?.message ?? "";
+  return code === 190 || /cannot parse access token/i.test(message);
+}
+
 export class InstagramApiClient {
   private readonly fetchFn: typeof fetch;
 
@@ -44,37 +66,54 @@ export class InstagramApiClient {
     payload: InstagramSendMessagePayload,
     options?: { accessTokenSource?: string },
   ): Promise<InstagramSendMessageResponse> {
-    const endpoint = instagramMessagesUrl(config);
-    const response = await this.fetchFn(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    const diagnosticEndpoint = instagramMessagesUrl(config);
+    let lastBody: InstagramSendMessageResponse | undefined;
+    let lastStatus = 0;
 
-    const body = (await response.json()) as InstagramSendMessageResponse;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const hostEndpoint = attempt === 0 ? diagnosticEndpoint : rewriteInstagramMessagesHost(diagnosticEndpoint);
+      const requestUrl = withAccessTokenQuery(hostEndpoint, config.accessToken);
 
-    this.options.onOutboundRequest?.({
-      endpoint,
-      graphApiVersion: config.apiVersion ?? "v21.0",
-      instagramBusinessAccountId: config.instagramBusinessAccountId,
-      pageId: config.pageId,
-      accessTokenSource: options?.accessTokenSource ?? "company_instagram_settings",
-      messageType: payload.message.attachment?.type ?? (payload.message.text ? "text" : "unknown"),
-      httpStatus: response.status,
-      metaErrorCode: body.error?.code,
-      metaErrorMessage: body.error?.error_user_msg ?? body.error?.message,
-    });
+      const response = await this.fetchFn(requestUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      throw new ValidationError(
-        body.error?.error_user_msg ?? body.error?.message ?? `Instagram API error (${response.status})`,
-      );
+      const body = (await response.json()) as InstagramSendMessageResponse;
+      lastBody = body;
+      lastStatus = response.status;
+
+      this.options.onOutboundRequest?.({
+        endpoint: diagnosticEndpoint,
+        graphApiVersion: config.apiVersion ?? "v21.0",
+        instagramBusinessAccountId: config.instagramBusinessAccountId,
+        pageId: config.pageId,
+        accessTokenSource: options?.accessTokenSource ?? "company_instagram_settings",
+        messageType: payload.message.attachment?.type ?? (payload.message.text ? "text" : "unknown"),
+        httpStatus: response.status,
+        metaErrorCode: body.error?.code,
+        metaErrorMessage: body.error?.error_user_msg ?? body.error?.message,
+      });
+
+      if (response.ok) {
+        return body;
+      }
+
+      if (!isUnparseableAccessToken(body)) {
+        break;
+      }
     }
 
-    return body;
+    throw new ValidationError(
+      lastBody?.error?.error_user_msg ??
+        lastBody?.error?.message ??
+        `Instagram API error (${lastStatus})`,
+      { metaErrorCode: lastBody?.error?.code },
+    );
   }
 }
 

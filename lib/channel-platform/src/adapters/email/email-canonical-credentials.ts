@@ -24,6 +24,13 @@ export type EmailCanonicalCredentials = {
   maxAttachmentBytes?: number;
   inboundProvider?: string;
   outboundProvider?: string;
+  mailboxProvider?: string;
+  connectionStatus?: string;
+  /** Server-only OAuth access token — never serialize to browser responses. */
+  oauthAccessToken?: string;
+  oauthRefreshToken?: string;
+  oauthProvider?: string | null;
+  oauthExpiresAt?: string | null;
   conversationEnabled?: boolean;
   enabled?: boolean;
 };
@@ -37,6 +44,8 @@ type DecryptedSettingsRow = {
   conversation_enabled?: boolean;
   inbound_provider?: string;
   outbound_provider?: string;
+  mailbox_provider?: string;
+  connection_status?: string;
   smtp_host?: string;
   smtp_port?: number;
   smtp_username?: string;
@@ -53,6 +62,10 @@ type DecryptedSettingsRow = {
   from_email?: string;
   from_name?: string;
   reply_to_email?: string;
+  oauth_provider?: string | null;
+  oauth_token?: string;
+  oauth_refresh_token?: string;
+  oauth_expires_at?: string | null;
 };
 
 export async function loadCompanyEmailCredentialsDecrypted(
@@ -130,8 +143,12 @@ export async function resolveEmailRuntimeConfiguration(
     "Email",
   );
 
-  if (!credentials?.smtpHost.trim() && credentials?.outboundProvider === "smtp") {
+  const outboundProvider = credentials?.outboundProvider ?? "smtp";
+  if (outboundProvider === "smtp" && !credentials?.smtpHost.trim()) {
     throw new ValidationError("Email SMTP host is not configured. Update company email settings.");
+  }
+  if (outboundProvider === "microsoft_graph" && !credentials?.oauthAccessToken?.trim()) {
+    throw new ValidationError("email_provider.oauth_expired");
   }
 
   const fromEmail = credentials?.fromEmail.trim() || channelReferences.fromEmail?.trim() || "";
@@ -157,6 +174,12 @@ export async function resolveEmailRuntimeConfiguration(
     maxAttachmentBytes: credentials?.maxAttachmentBytes,
     inboundProvider: credentials?.inboundProvider,
     outboundProvider: credentials?.outboundProvider,
+    mailboxProvider: credentials?.mailboxProvider,
+    connectionStatus: credentials?.connectionStatus,
+    oauthAccessToken: credentials?.oauthAccessToken,
+    oauthRefreshToken: credentials?.oauthRefreshToken,
+    oauthProvider: credentials?.oauthProvider,
+    oauthExpiresAt: credentials?.oauthExpiresAt,
     conversationEnabled: credentials?.conversationEnabled,
     enabled: credentials?.enabled,
   };
@@ -165,8 +188,14 @@ export async function resolveEmailRuntimeConfiguration(
 function mapDecryptedSettings(row: DecryptedSettingsRow): EmailCanonicalCredentials | null {
   const fromEmail = typeof row.from_email === "string" ? row.from_email.trim() : "";
   const smtpHost = typeof row.smtp_host === "string" ? row.smtp_host.trim() : "";
+  const oauthAccessToken = typeof row.oauth_token === "string" ? row.oauth_token : "";
+  const outboundProvider = typeof row.outbound_provider === "string" ? row.outbound_provider : "smtp";
 
-  if (!fromEmail && !smtpHost) {
+  // Allow Microsoft Graph credentials without SMTP host.
+  if (!fromEmail && !smtpHost && !oauthAccessToken) {
+    return null;
+  }
+  if (outboundProvider === "microsoft_graph" && !fromEmail && !oauthAccessToken) {
     return null;
   }
 
@@ -194,11 +223,25 @@ function mapDecryptedSettings(row: DecryptedSettingsRow): EmailCanonicalCredenti
         ? row.imap_encryption
         : undefined,
     imapMailbox: typeof row.imap_mailbox === "string" ? row.imap_mailbox : undefined,
-    imapLastUid: typeof row.imap_last_uid === "number" ? row.imap_last_uid : undefined,
+    imapLastUid:
+      typeof row.imap_last_uid === "number"
+        ? row.imap_last_uid
+        : typeof row.imap_last_uid === "string" && row.imap_last_uid.trim() !== "" && Number.isFinite(Number(row.imap_last_uid))
+          ? Number(row.imap_last_uid)
+          : undefined,
     maxAttachmentBytes:
       typeof row.max_attachment_bytes === "number" ? row.max_attachment_bytes : undefined,
     inboundProvider: typeof row.inbound_provider === "string" ? row.inbound_provider : undefined,
-    outboundProvider: typeof row.outbound_provider === "string" ? row.outbound_provider : undefined,
+    outboundProvider,
+    mailboxProvider: typeof row.mailbox_provider === "string" ? row.mailbox_provider : undefined,
+    connectionStatus: typeof row.connection_status === "string" ? row.connection_status : undefined,
+    oauthAccessToken: oauthAccessToken || undefined,
+    oauthRefreshToken:
+      typeof row.oauth_refresh_token === "string" && row.oauth_refresh_token
+        ? row.oauth_refresh_token
+        : undefined,
+    oauthProvider: row.oauth_provider ?? null,
+    oauthExpiresAt: row.oauth_expires_at ?? null,
     conversationEnabled: row.conversation_enabled,
     enabled: row.enabled,
   };

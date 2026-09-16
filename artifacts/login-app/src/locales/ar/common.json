@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "VaultOS",
+    "name": "ValueOR",
     "dashboard": "لوحة التحكم"
   },
   "pagination": {
@@ -97,6 +97,7 @@
     "omnichannel": "وحدة القنوات الموحدة",
     "channels": "القنوات",
     "email": "البريد الإلكتروني",
+    "sms": "الرسائل النصية",
     "aiUsage": "استخدام وتكلفة الذكاء الاصطناعي",
     "aiAnalytics": "تحليلات الذكاء الاصطناعي",
     "aiAssistant": "المساعد الذكي",
@@ -551,6 +552,41 @@
         "channelRequired": "أنشئ قناة Instagram قبل تشغيل فحوصات الصحة."
       }
     },
+    "sms": {
+      "settings": {
+        "title": "إعدادات الرسائل النصية",
+        "enabled": "تفعيل الرسائل النصية",
+        "provider": "المزوّد",
+        "providerPlaceholder": "اختر مزوّد الرسائل النصية",
+        "providerNone": "لم يتم اختيار مزوّد",
+        "providerBoundary": "اختر مزوّداً لإعداد بيانات الاعتماد. تبقى الحالة غير متصل حتى ينجح اختبار اتصال حقيقي.",
+        "providers": {
+          "twilio": "Twilio"
+        },
+        "accountSid": "معرّف الحساب / المزوّد",
+        "fromNumber": "رقم المرسل",
+        "authToken": "رمز المصادقة",
+        "authTokenHint": "يُخزَّن مشفّراً على الخادم. اتركه فارغاً للاحتفاظ بالرمز الحالي.",
+        "webhookUrl": "Webhook",
+        "webhookUrlHelp": "رابط Webhook للرسائل الواردة مشتق من عنوان ValueOR الأساسي. لا تُعرض الأسرار هنا.",
+        "openChannels": "فتح إدارة القنوات",
+        "saved": "تم حفظ إعدادات الرسائل النصية",
+        "saveFailed": "تعذر حفظ إعدادات الرسائل النصية",
+        "status": {
+          "connected": "متصل",
+          "not_connected": "غير متصل",
+          "disabled": "معطّل"
+        },
+        "healthTitle": "حالة الاتصال",
+        "healthIdle": "شغّل اختبار الاتصال للتحقق من أن المزوّد المُعد يمكنه المصادقة.",
+        "healthOk": "اتصال الرسائل النصية سليم ({{ms}} مللي ثانية)",
+        "healthFailed": "فشل فحص الرسائل النصية: {{error}}",
+        "connectionTest": "اختبار الاتصال",
+        "connectionTestSuccess": "نجح اختبار اتصال الرسائل النصية",
+        "connectionTestFailed": "فشل اختبار اتصال الرسائل النصية",
+        "apiMissing": "عيّن VITE_API_SERVER_URL لتشغيل اختبارات اتصال الرسائل النصية."
+      }
+    },
     "defaults": {
       "unknown": "غير معروف",
       "service": "خدمة",
@@ -656,7 +692,7 @@
       "noAccess": "ليس لديك حساب؟",
       "requestEntry": "أنشئ حساباً",
       "successTitle": "تم تسجيل الدخول",
-      "successDescription": "مرحباً بك في Vault.",
+      "successDescription": "مرحباً بك في ValueOR.",
       "forgotPassword": "نسيت كلمة المرور؟"
     },
     "register": {
@@ -948,6 +984,7 @@
       "none": "لا توجد أدوار مخصصة بعد. أنشئ دوراً لتحديد صلاحيات فريقك.",
       "edit": "تعديل الدور",
       "create": "إنشاء دور",
+      "view": "عرض الدور",
       "namePlaceholder": "قائد المبيعات",
       "descriptionPlaceholder": "يمكنه إدارة العملاء والحجوزات"
     },
@@ -1515,6 +1552,8 @@
         "overview": "نظرة عامة",
         "activity": "النشاط",
         "tickets": "التذاكر",
+        "email": "البريد الإلكتروني",
+        "sms": "الرسائل النصية",
         "bookings": "الحجوزات",
         "invoices": "الفواتير",
         "payments": "المدفوعات",
@@ -1550,6 +1589,57 @@
           "open": "مفتوحة / نشطة",
           "urgent": "عالية / عاجلة",
           "waiting": "بانتظار العميل"
+        }
+      },
+      "email": {
+        "showing": "{{count}} محادثة",
+        "emptyTitle": "لا توجد محادثات بريد",
+        "emptyDescription": "ستظهر هنا رسائل البريد الواردة والصادرة المرتبطة بهذا العميل.",
+        "incoming": "وارد",
+        "outgoing": "صادر",
+        "system": "نظام",
+        "flowIncoming": "العميل ← ValueOR",
+        "flowOutgoing": "ValueOR ← العميل",
+        "from": "من: {{email}}",
+        "to": "إلى: {{email}}",
+        "assignedTo": "مسند إلى: {{name}}",
+        "sentBy": "أُرسل بواسطة: {{name}}",
+        "openConversation": "فتح المحادثة",
+        "thread": "المحادثة",
+        "threadEmpty": "لا توجد رسائل في هذا الخيط بعد.",
+        "noSubject": "بدون موضوع",
+        "loadMore": "تحميل المزيد",
+        "status": {
+          "draft": "مسودة",
+          "sending": "جاري الإرسال",
+          "sent": "تم الإرسال",
+          "failed": "فشل"
+        }
+      },
+      "sms": {
+        "showing": "{{count}} محادثة",
+        "emptyTitle": "لا توجد محادثات رسائل نصية",
+        "emptyDescription": "ستظهر هنا الرسائل النصية الواردة والصادرة المرتبطة بهذا العميل.",
+        "incoming": "وارد",
+        "outgoing": "صادر",
+        "system": "نظام",
+        "flowIncoming": "العميل ← ValueOR",
+        "flowOutgoing": "ValueOR ← العميل",
+        "phone": "الهاتف: {{phone}}",
+        "unknownPhone": "رقم هاتف غير معروف",
+        "assignedTo": "مسند إلى: {{name}}",
+        "unassigned": "غير مسند",
+        "sentBy": "أُرسل بواسطة: {{name}}",
+        "openConversation": "فتح في الرسائل النصية",
+        "thread": "المحادثة",
+        "threadEmpty": "لا توجد رسائل في هذا الخيط بعد.",
+        "loadMore": "تحميل المزيد",
+        "status": {
+          "pending": "قيد الانتظار",
+          "sent": "تم الإرسال",
+          "delivered": "تم التسليم",
+          "failed": "فشل",
+          "read": "مقروء"
         }
       },
       "campaigns": {
@@ -1947,6 +2037,7 @@
       "disableChannel": "تعطيل القناة",
       "whatsappConfig": "قناة WhatsApp",
       "whatsappCredentialsManagedInSettings": "بيانات Meta تُدار من الإعدادات →",
+      "smsCredentialsManagedInSettings": "بيانات اعتماد الرسائل النصية تُدار من الإعدادات →",
       "phoneNumberIdSyncedHint": "تُزامَن من إعدادات مزود WhatsApp",
       "phoneNumberId": "معرف رقم الهاتف",
       "accessToken": "رمز الوصول",
@@ -2023,6 +2114,7 @@
         "internal": "داخلي",
         "meta": "ميتا",
         "telegram": "تيليجرام",
+        "twilio": "Twilio",
         "generic.web_chat": "دردشة ويب داخلية",
         "generic.email": "بريد داخلي"
       }
@@ -2098,8 +2190,8 @@
       "loading": "جارٍ تحميل المحادثة…",
       "newConversation": "محادثة جديدة",
       "placeholder": "اسأل أي شيء عن عملك…",
-      "name": "Vault AI",
-      "welcome": "مرحباً! أنا مساعدك الذكي في Vault. اسألني عن العملاء أو الحجوزات أو الفواتير أو مؤشرات الأعمال.",
+      "name": "ValueOR AI",
+      "welcome": "مرحباً! أنا مساعدك الذكي في ValueOR. اسألني عن العملاء أو الحجوزات أو الفواتير أو مؤشرات الأعمال.",
       "sampleQuestion": "كم عدد الحجوزات لدي هذا الأسبوع؟",
       "sampleAnswer": "لديك 18 حجزاً هذا الأسبوع — 4 اليوم، و6 غداً، و8 خلال بقية الأسبوع. 7 منها ما زالت بانتظار التأكيد. هل تريد إرسال تذكيرات؟",
       "demoResponse": "أنا نموذج تجريبي — ستظهر الردود الحقيقية بعد ربط خدمة الذكاء الاصطناعي. كان سؤالك: “{{question}}”",
@@ -2376,6 +2468,7 @@
         "whatsapp": "واتساب",
         "messenger": "Messenger",
         "instagram": "Instagram",
+        "sms": "الرسائل النصية",
         "calendar": "التقويم",
         "scheduling": "الجدولة",
         "ticketSla": "SLA التذاكر",
@@ -2444,14 +2537,14 @@
       },
       "appearance": {
         "title": "السمة",
-        "description": "اختر مظهر VaultOS على هذا الجهاز. يتم حفظ اختيارك في ملفك الشخصي.",
+        "description": "اختر مظهر ValueOR على هذا الجهاز. يتم حفظ اختيارك في ملفك الشخصي.",
         "recommended": "موصى به",
         "system": "النظام",
-        "systemDesc": "اتبع إعداد الجهاز للفاتح/الداكن، ويرجع مظهر الواجهة لألوان المنصة الأصلية (من غير ألوان الهوية).",
+        "systemDesc": "اتبع إعداد الجهاز للفاتح/الداكن. ألوان الشريط الجانبي والهوية تبقى مطابقة للفاتح أو الداكن.",
         "light": "فاتح",
-        "lightDesc": "استخدام السمة الفاتحة دائمًا.",
+        "lightDesc": "استخدام سمة ValueOR الفاتحة دائمًا.",
         "dark": "داكن",
-        "darkDesc": "استخدام السمة الداكنة دائمًا.",
+        "darkDesc": "استخدام سمة ValueOR الداكنة دائمًا.",
         "saveFailedTitle": "تعذر حفظ السمة",
         "saveFailedDescription": "تعذر حفظ تفضيل السمة. يرجى المحاولة مرة أخرى.",
         "colorsResetFailed": "تعذر إرجاع ألوان الهوية للأساسيات. يرجى المحاولة مرة أخرى."
@@ -2713,26 +2806,87 @@
       "draftBadge": "مسودة"
     }
   },
+  "smsModule": {
+    "title": "الرسائل النصية",
+    "subtitle": "صندوق الرسائل النصية للشركة — اقرأ رسائل العملاء وردّ عليها من مكان واحد.",
+    "nav": {
+      "inbox": "الوارد",
+      "settings": "إعداد الرسائل النصية"
+    },
+    "setup": {
+      "title": "قناة الرسائل النصية",
+      "connected": "متصل",
+      "notConnected": "غير متصل",
+      "disabled": "مُعطّل",
+      "configure": "إعداد الرسائل النصية",
+      "notConfiguredHint": "أضف بيانات مزود الرسائل النصية ورقم المُرسل في الإعدادات → الرسائل النصية قبل الرد.",
+      "disabledHint": "قناة الرسائل النصية غير مُفعّلة لهذه الشركة. فعّلها من الإعدادات → الرسائل النصية."
+    },
+    "workspace": {
+      "loading": "جارٍ التحميل…",
+      "search": "ابحث في المحادثات أو أرقام الهواتف…",
+      "assignedTo": "مُعيَّنة إلى",
+      "assigneeAll": "الكل",
+      "unassigned": "غير مُعيَّنة",
+      "assigneeSearch": "ابحث عن موظف…",
+      "assigneeEmpty": "لا يوجد موظفون مطابقون.",
+      "assigneeSaved": "تم حفظ التعيين",
+      "assigneeSaving": "جارٍ حفظ التعيين…",
+      "assigneeSaveFailed": "لم يتم حفظ التعيين.",
+      "assigneeUnauthorized": "ليست لديك صلاحية تعيين هذه المحادثة.",
+      "assigneeUnavailable": "هذه المحادثة لم تعد متاحة.",
+      "unread": "غير المقروءة",
+      "clearFilters": "إلغاء عوامل التصفية",
+      "emptyConversations": "لا توجد محادثات رسائل نصية بعد. تظهر الرسائل الواردة هنا تلقائيًا.",
+      "emptyResults": "لا توجد محادثات مطابقة لعوامل التصفية.",
+      "emptyNoConfig": "لم يتم ربط الرسائل النصية بعد، لذلك لا توجد محادثات لعرضها.",
+      "noMessages": "لا توجد رسائل في هذه المحادثة بعد.",
+      "selectConversation": "اختر محادثة لقراءة المحتوى والرد عليها.",
+      "customer": "العميل",
+      "unknownCustomer": "عميل غير معروف",
+      "phone": "الهاتف",
+      "crmPhone": "هاتف العميل في النظام",
+      "composer": "اكتب ردك عبر الرسائل النصية…",
+      "characterCount": "{{chars}}/{{max}} حرفًا · {{segments}} مقطع",
+      "send": "إرسال",
+      "sending": "جارٍ الإرسال…",
+      "sendFailed": "لم يتم تسليم الرسالة النصية. حاول مرة أخرى.",
+      "listFailed": "لم يتم تحميل المحادثات.",
+      "threadFailed": "لم يتم تحميل هذه المحادثة.",
+      "channelNotConfigured": "لا توجد قناة رسائل نصية مرتبطة بهذه المحادثة، لذا لا يمكن الرد عليها.",
+      "destinationMissing": "لا يوجد رقم هاتف عميل مرتبط بهذه المحادثة.",
+      "notConfiguredSendBlocked": "اربط الرسائل النصية من الإعدادات قبل إرسال الردود.",
+      "connected": "متصل",
+      "notConfigured": "غير متصل",
+      "disabled": "مُعطّل",
+      "configureSms": "إعداد الرسائل النصية"
+    }
+  },
   "emailModule": {
     "title": "البريد الإلكتروني",
     "subtitle": "صندوق بريد الشركة والقوالب وتوجيه الذكاء الاصطناعي وإعدادات القناة.",
     "nav": {
       "inbox": "الوارد",
       "sent": "المرسل",
-      "drafts": "المسودات",
+      "drafts": "قيد الانتظار",
       "templates": "القوالب",
       "aiRouting": "توجيه الذكاء الاصطناعي",
       "settings": "الإعدادات"
     },
     "inbox": {
-      "hint": "نشاط تسليم البريد الوارد والصادر لشركتك (قناة البريد)."
+      "hint": "نشاط تسليم البريد الوارد والصادر لشركتك (قناة البريد).",
+      "showDelivery": "إظهار سجل التسليم",
+      "hideDelivery": "إخفاء سجل التسليم",
+      "deliverySecondaryHint": "أحداث التسليم لقناة البريد في هذه الشركة."
     },
     "sent": {
-      "hint": "رسائل البريد المرسلة من قائمة انتظار الاتصال الحالية."
+      "hint": "المحادثات الصادرة اللي اتبعتت من مساحة عمل البريد."
     },
     "drafts": {
-      "title": "المسودات",
-      "empty": "لا يوجد مخزن مسودات بريد بعد. استخدم إعدادات قناة البريد الحالية للإرسال."
+      "title": "قيد الانتظار",
+      "empty": "المحادثات التي تحتوي على مسودة غير مرسلة تظهر هنا حتى ترسلها أو تحذفها.",
+      "noneFound": "لا توجد مسودات قيد الانتظار.",
+      "openInWorkspace": "فتح في مساحة عمل البريد"
     },
     "templates": {
       "title": "القوالب",
@@ -2788,7 +2942,22 @@
       "testSendError": "تعذر إرسال البريد التجريبي.",
       "testSendSaveFirst": "احفظ القالب قبل إرسال تجريبي.",
       "testSendDisabled": "فعّل القالب قبل إرسال تجريبي.",
-      "testSendNotConfigured": "البريد الصادر غير مضبوط. اضبط SMTP من إعدادات البريد أولاً."
+      "testSendNotConfigured": "البريد الصادر غير مضبوط. اضبط SMTP من إعدادات البريد أولاً.",
+      "category": "التصنيف",
+      "previewSampleNotice": "المعاينة تستخدم متغيرات تجريبية — الإرسال الحقيقي يستخدم بيانات العميل.",
+      "aiImprove": {
+        "heading": "تحسين بالذكاء الاصطناعي",
+        "hint": "اقتراح صياغة أوضح. لا يُرسل البريد أبدًا."
+      },
+      "recommended": {
+        "hint": "قوالب بداية مقترحة. احفظ نسخة قبل التعديل."
+      },
+      "categories": {
+        "other": "أخرى",
+        "complaints": "الشكاوى",
+        "tickets": "الدعم / التذاكر",
+        "followUp": "المتابعة"
+      }
     },
     "aiRouting": {
       "title": "توجيه البريد بالذكاء الاصطناعي",
@@ -2815,7 +2984,8 @@
         "category": "الفئة",
         "enabled": "مفعّل",
         "targetType": "نوع الهدف",
-        "target": "الهدف"
+        "target": "الهدف",
+        "ticketAction": "إجراء التذكرة"
       },
       "targetTypes": {
         "department": "قسم",
@@ -2829,6 +2999,467 @@
         "complaint": "الشكاوى",
         "hr": "الموارد البشرية",
         "generalInquiry": "استفسار عام"
+      },
+      "neverAutoSend": "الذكاء الاصطناعي لا يرسل البريد تلقائيًا ولا ينشئ تذكرة عشوائيًا.",
+      "confidenceTitle": "ثقة الذكاء الاصطناعي والمسار الاحتياطي",
+      "confidenceHint": "الرسائل منخفضة الثقة تبقى متاحة للمراجعة اليدوية.",
+      "confidence": {
+        "high": "ثقة عالية",
+        "highBody": "يُوجَّه تلقائيًا حسب القاعدة المضبوطة.",
+        "low": "ثقة منخفضة",
+        "lowBody": "أقل من {{percent}}٪ يذهب للمراجعة اليدوية. العتبة ثابتة في محرك التوجيه.",
+        "unavailable": "الذكاء الاصطناعي غير متاح",
+        "unavailableBody": "يُطبَّق المسار الحتمي الآمن عندما يتعذر التصنيف."
+      },
+      "ticketTitle": "البريد → التذكرة",
+      "ticketBody": "تُنشأ التذكرة أو تُعاد استخدامها فقط بعد حل هدف التوجيه. لا يستطيع النموذج إنشاء تذاكر بمفرده.",
+      "ticket": {
+        "create": "إنشاء تذكرة جديدة إن لم توجد تذكرة على المحادثة.",
+        "reuse": "إعادة استخدام تذكرة المحادثة المرتبطة إن وُجدت.",
+        "none": "عدم إنشاء تذكرة إذا كان المسار غير محلول.",
+        "manual": "البريد غير المحلول أو منخفض الثقة يبقى للمراجعة اليدوية.",
+        "createOrReuse": "إنشاء أو إعادة استخدام تذكرة",
+        "manualShort": "مراجعة يدوية"
+      },
+      "flowTitle": "مسار التوجيه",
+      "flowBody": "تصنيف → مطابقة قاعدة → تعيين هدف → إنشاء أو إعادة استخدام تذكرة عند الحاجة."
+    },
+    "controlCenter": {
+      "title": "مركز التحكم بالبريد الإلكتروني",
+      "body": "استقبل رسائل العملاء ووجّهها للفريق المناسب وأنشئ التذاكر عند الحاجة واستخدم الذكاء الاصطناعي لكتابة الردود.",
+      "readyBanner": "البريد الإلكتروني جاهز للعمل.",
+      "collapsedNeedsSetup": "ما زال البريد يحتاج إلى إعداد قبل أن يصبح جاهزًا بالكامل.",
+      "configured": "مُعد",
+      "notConfigured": "غير مُعد",
+      "enabled": "مفعّل",
+      "disabled": "معطّل",
+      "healthy": "سليم",
+      "needsAttention": "يحتاج اهتمامًا",
+      "actions": {
+        "configure": "تهيئة",
+        "fix": "إصلاح",
+        "upgrade": "ترقية",
+        "view": "عرض"
+      },
+      "cards": {
+        "inbound": "البريد الوارد",
+        "outbound": "البريد الصادر",
+        "aiRouting": "التوجيه بالذكاء الاصطناعي",
+        "tickets": "التذاكر",
+        "templates": "القوالب",
+        "routing": "توجيه الذكاء الاصطناعي"
+      }
+    },
+    "connect": {
+      "title": "ربط البريد الإلكتروني",
+      "subtitle": "اختر طريقة ربط صندوق بريد الشركة. مساحة عمل البريد تبقى واحدة لكل مزود.",
+      "currentProvider": "المزود",
+      "presetApplied": "تم تطبيق إعدادات المزود",
+      "applyFailed": "تعذر تطبيق إعدادات المزود",
+      "connectMicrosoft": "الاتصال عبر Microsoft",
+      "microsoftConnected": "تم ربط Microsoft 365",
+      "microsoftFailed": "فشل ربط Microsoft",
+      "microsoftNotConfigured": "إعدادات Microsoft OAuth غير متوفرة على الخادم بعد.",
+      "providers": {
+        "gmail": "Gmail / Google Workspace",
+        "microsoft_365": "Outlook / Microsoft 365",
+        "imap_smtp": "بريد آخر / IMAP + SMTP"
+      },
+      "providerHints": {
+        "gmail": "كلمة مرور تطبيق عبر IMAP/SMTP (smtp.gmail.com / imap.gmail.com).",
+        "microsoft_365": "تسجيل الدخول عبر Microsoft — لا يتم تخزين كلمات المرور.",
+        "imap_smtp": "خوادم IMAP وSMTP للشركات أو الخوادم المخصصة."
+      },
+      "status": {
+        "connected": "متصل",
+        "connecting": "جارٍ الاتصال",
+        "needs_reauthorization": "يحتاج إعادة التفويض",
+        "connection_error": "خطأ في الاتصال",
+        "disabled": "معطّل"
+      }
+    },
+    "settingsHub": {
+      "intro": "قم بتكوين اتصال البريد وهوية المرسل التي تظهر للمستلمين.",
+      "tabsNav": "أقسام إعدادات البريد",
+      "tabs": {
+        "connection": "الاتصال",
+        "identity": "هوية البريد"
+      },
+      "connection": {
+        "title": "الاتصال",
+        "pageDescription": "اربط صندوق البريد وقم بتكوين إعدادات الإرسال والاستقبال التقنية.",
+        "saveHint": "احفظ بعد تحديث إعدادات SMTP أو الاستقبال.",
+        "permissionHint": "تحتاج صلاحية اتصال البريد لتعديل هذه الإعدادات.",
+        "readOnlyBanner": "إعدادات الاتصال للقراءة فقط حسب صلاحيتك.",
+        "sections": {
+          "provider": "ربط صندوق البريد",
+          "providerHint": "اختر Gmail أو Microsoft 365 أو إعدادات IMAP/SMTP مخصصة.",
+          "smtp": "إرسال SMTP",
+          "smtpHint": "إعدادات التسليم التقنية المستخدمة لإرسال البريد.",
+          "inbound": "الاستقبال والوارد",
+          "inboundHint": "كيف يستقبل ValueOR البريد الوارد ويعالجه.",
+          "health": "الصحة والتشخيص",
+          "healthHint": "اختبر الاتصال وراجع صحة التسليم."
+        }
+      },
+      "sending": {
+        "title": "الإرسال",
+        "body": "إعدادات تسليم SMTP الصادر."
+      },
+      "identity": {
+        "title": "هوية البريد",
+        "description": "إدارة هوية البريد والشعار واسم المرسل والتوقيع الذي يظهر للمستلمين.",
+        "saveChanges": "حفظ التغييرات",
+        "saveHint": "احفظ تغييرات الهوية والتوقيع والتذييل معًا.",
+        "saved": "تم حفظ هوية البريد",
+        "saveFailed": "تعذر حفظ هوية البريد",
+        "switchSaved": "تم تحديث حساب الإرسال",
+        "switchFailed": "تعذر تبديل حساب الإرسال",
+        "brandingPermissionHint": "تحتاج صلاحية هوية الشركة لتعديل هوية المرسل والتوقيع.",
+        "logo": {
+          "title": "شعار البريد",
+          "description": "اختر الشعار الذي سيظهر في الرسائل الجديدة المرسلة من مساحة العمل.",
+          "helper": "يظهر هذا الشعار في الرسائل الجديدة المرسلة من مساحة العمل."
+        },
+        "emailSwitch": {
+          "title": "تبديل البريد",
+          "description": "اختر حساب البريد الذي سيتم استخدامه لإرسال الرسائل.",
+          "helper": "اختر حساب البريد الذي سيتم استخدامه لإرسال الرسائل.",
+          "empty": "لا يتوفر حساب بريد متصل بعد. اربط صندوق بريد أولاً.",
+          "openConnection": "فتح الاتصال"
+        },
+        "senderIdentity": {
+          "title": "هوية المرسل",
+          "description": "حدد الاسم والبريد الذي سيظهر للمستلم عند استلام رسالتك.",
+          "senderNameHelper": "يظهر هذا الاسم في خانة «من» لدى المستلم.",
+          "senderDisplayHelper": "يظهر هذا الاسم بجانب عنوان البريد في تطبيقات مثل Gmail وOutlook.",
+          "replyToHelper": "عند الرد على الرسالة، سيتم توجيه الردود إلى هذا العنوان."
+        },
+        "signature": {
+          "title": "توقيع البريد",
+          "description": "يتم إضافة هذا التوقيع تلقائيًا إلى الرسائل الصادرة.",
+          "nameLabel": "اسم التوقيع",
+          "namePlaceholder": "مثال: ValueOR Support",
+          "titleLabel": "المسمى الوظيفي",
+          "titlePlaceholder": "مثال: فريق نجاح العملاء",
+          "emailLabel": "البريد في التوقيع",
+          "emailPlaceholder": "مثال: support@valueor.com",
+          "websiteLabel": "الموقع في التوقيع",
+          "websitePlaceholder": "مثال: www.valueor.com",
+          "colorLabel": "لون {{field}}",
+          "previewLabel": "معاينة",
+          "previewEmpty": "لا يوجد توقيع مُعدّ.",
+          "invalidEmail": "أدخل بريداً صالحاً للتوقيع أو اتركه فارغاً.",
+          "invalidWebsite": "أدخل موقعاً صالحاً للتوقيع أو اتركه فارغاً."
+        },
+        "acknowledgement": {
+          "title": "إقرار الاستلام التلقائي للبريد",
+          "description": "تأكيد استلام رسائل العملاء الواردة الجديدة تلقائيًا باستخدام رسالة محددة مسبقًا بلغة العميل. هذا لا يجيب على طلب العميل.",
+          "enableLabel": "تفعيل إقرار الاستلام التلقائي",
+          "defaultLanguage": "اللغة الافتراضية",
+          "templatesTitle": "قوالب إقرار الاستلام",
+          "templateEnabled": "مفعّل",
+          "templateDisabled": "معطّل",
+          "templateBody": "القالب",
+          "languageEn": "الإنجليزية",
+          "languageAr": "العربية",
+          "languageFr": "الفرنسية",
+          "languageDe": "الألمانية"
+        },
+        "footer": {
+          "title": "تذييل البريد",
+          "description": "إخلاء مسؤولية اختياري أو نص شركة يظهر أسفل التوقيع في الرسائل الصادرة.",
+          "helper": "عند التفعيل، يُضاف هذا التذييل أسفل التوقيع للمستلمين.",
+          "showLabel": "إظهار تذييل البريد",
+          "textLabel": "نص التذييل",
+          "textHelper": "استخدمه لإشعارات الخصوصية أو بيانات التسجيل أو إخلاء مسؤولية الشركة.",
+          "placeholder": "مثال: هذه الرسالة سرية ومخصصة للمستلم فقط."
+        },
+        "personal": {
+          "title": "👤 هويتي البريدية",
+          "description": "بياناتك الشخصية التي تظهر عند إرسال الرسائل من حسابك.",
+          "jobTitleLabel": "المسمى الوظيفي",
+          "jobTitleHelper": "يظهر في توقيعك الشخصي عند تهيئته.",
+          "signatureTitle": "التوقيع البريدي الشخصي",
+          "signatureDescription": "يُستخدم في رسائلك الصادرة. إذا كان فارغًا يُستخدم توقيع الشركة الافتراضي.",
+          "saveChanges": "حفظ الهوية الشخصية",
+          "saved": "تم حفظ الهوية البريدية الشخصية",
+          "saveFailed": "تعذر حفظ الهوية البريدية الشخصية",
+          "permissionHint": "تحتاج صلاحية الهوية البريدية الشخصية لتعديل هذه الحقول."
+        },
+        "company": {
+          "title": "🏢 هوية بريد الشركة",
+          "description": "بيانات مشتركة تديرها الشركة وتستخدم كإعدادات افتراضية للبريد.",
+          "signatureTitle": "توقيع الشركة الافتراضي",
+          "signatureDescription": "توقيع الشركة الافتراضي يُستخدم عندما لا يكون لدى المرسل توقيع شخصي.",
+          "permissionHint": "تحتاج صلاحية هوية بريد الشركة لتعديل هذه الحقول."
+        }
+      }
+    },
+    "workspace": {
+      "logoLabel": "شعار البريد",
+      "signatureLabel": "التوقيع",
+      "newEmail": "رسالة جديدة",
+      "composeStarting": "جاري فتح المحرر…",
+      "saveDraft": "حفظ كمسودة",
+      "send": "إرسال",
+      "sending": "جاري الإرسال…",
+      "sendSuccess": "تم الإرسال",
+      "sendError": "فشل الإرسال. تم الاحتفاظ بالمسودة.",
+      "toRequired": "أضف مستلماً واحداً على الأقل في حقل إلى.",
+      "invalidRecipient": "أدخل عنوان بريد إلكتروني صالحاً.",
+      "subjectRequired": "أضف موضوعاً قبل الإرسال.",
+      "bodyRequired": "أضف نص الرسالة أو مرفقاً قبل الإرسال.",
+      "fromNotConfigured": "البريد الصادر للشركة غير مُعد.",
+      "composeErrorUnauthenticated": "سجّل الدخول لكتابة رسالة.",
+      "composeErrorNoCompany": "لا توجد شركة مرتبطة بهذه الجلسة.",
+      "composeErrorEntitlement": "البريد الإلكتروني غير مشمول في خطتك.",
+      "composeErrorRbac": "ليست لديك صلاحية إرسال البريد.",
+      "composeErrorNoChannel": "قناة البريد للشركة غير متاحة.",
+      "composeErrorNoAssistant": "يلزم سجل مساعد ذكاء اصطناعي للشركة لبدء محادثة.",
+      "composeErrorGeneric": "تعذر بدء رسالة جديدة. تم الاحتفاظ بالمسودات السابقة.",
+      "draftSaving": "جاري حفظ المسودة…",
+      "draftSaved": "تم حفظ المسودة",
+      "fields": {
+        "from": "من",
+        "to": "إلى",
+        "cc": "نسخة",
+        "bcc": "نسخة مخفية",
+        "subject": "الموضوع",
+        "body": "نص الرسالة"
+      },
+      "ai": {
+        "neverSendHint": "الذكاء الاصطناعي يقترح ويحرر المسودة فقط. لن يتم إرسال البريد بدون تأكيدك.",
+        "assistantExplain": "مساعد الذكاء الاصطناعي يساعدك في كتابة وتحسين المسودة. لن يتم إرسال البريد بدون تأكيدك.",
+        "writeWithAi": "اكتب بالذكاء الاصطناعي",
+        "improveWithAi": "حسّن بالذكاء الاصطناعي",
+        "suggestionsHeading": "ردود مقترحة",
+        "refreshSuggestions": "تحديث",
+        "summaryTitle": "ملخص المحادثة",
+        "generate_reply": "إنشاء رد",
+        "suggestions": "اقتراحات",
+        "improve": "تحسين",
+        "formal": "أكثر رسمية",
+        "friendly": "أكثر ودية",
+        "shorten": "اختصار",
+        "expand": "توسيع",
+        "rewrite": "إعادة صياغة",
+        "translate": "ترجمة",
+        "change_tone": "تغيير النبرة",
+        "copilot": "✨ مساعد الذكاء الاصطناعي",
+        "summarize": "تلخيص المحادثة",
+        "draft_from_context": "إنشاء رد من السياق"
+      },
+      "aiWrite": {
+        "title": "مساعد البريد بالذكاء الاصطناعي",
+        "promptLabel": "ماذا تريد أن تقول؟",
+        "promptPlaceholder": "مثال: قوله إننا آسفين على التأخير وإن الطلب هيخلص بكرة…",
+        "examples": "أمثلة: اكتبله اعتذار عن التأخير بالانجليزي · Tell the customer the order is ready · اجعل الرسالة رسمية ومختصرة · Rewrite this email professionally",
+        "mode": "الوضع",
+        "modeGenerate": "إنشاء",
+        "modeRewrite": "إعادة صياغة",
+        "language": "لغة الرسالة",
+        "languageAuto": "اكتشاف تلقائي",
+        "languageEn": "الإنجليزية",
+        "languageAr": "العربية",
+        "languageFr": "الفرنسية",
+        "languageDe": "الألمانية",
+        "languageEs": "الإسبانية",
+        "tone": "نبرة الرسالة",
+        "toneProfessional": "صياغة احترافية",
+        "toneFormal": "رسمية",
+        "toneFriendly": "ودية",
+        "toneConcise": "مختصرة",
+        "generate": "إنشاء الرسالة",
+        "working": "الذكاء الاصطناعي بيجهز الرسالة…",
+        "insert": "إدراج في البريد",
+        "replace": "استبدال",
+        "insertBelow": "إدراج بالأسفل",
+        "regenerate": "إعادة المحاولة",
+        "cancel": "إلغاء",
+        "instructionRequired": "اكتب ما تريد قوله أولاً.",
+        "error": "تعذر إنشاء الرسالة بالذكاء الاصطناعي. حاول مرة أخرى.",
+        "neverSendHint": "الذكاء الاصطناعي يجهّز مسودة فقط. لن يُرسل شيء حتى تضغط إرسال.",
+        "sessionExpired": "انتهت جلستك. سجّل الخروج ثم الدخول مرة أخرى، ثم أعد المحاولة."
+      },
+      "messageTranslation": {
+        "translate": "ترجمة",
+        "hide": "إخفاء الترجمة",
+        "show": "إظهار الترجمة",
+        "popoverTitle": "ترجمة الرسالة",
+        "sourceLanguage": "اللغة الأصلية",
+        "targetLanguage": "ترجمة إلى",
+        "selectLanguage": "اختر اللغة",
+        "searchLanguage": "ابحث عن لغة…",
+        "noLanguage": "لا توجد لغة مطابقة",
+        "unknownLanguage": "غير معروفة",
+        "translating": "جاري الترجمة…",
+        "error": "تعذر ترجمة الرسالة. حاول مرة أخرى.",
+        "retry": "إعادة المحاولة",
+        "copy": "نسخ",
+        "resultTitle": "الترجمة إلى {{language}}",
+        "truncatedNotice": "تمت ترجمة بداية هذه الرسالة الطويلة فقط."
+      },
+      "title": "مساحة عمل البريد",
+      "subtitle": "محادثات بريد مترابطة لقناة البريد في شركتك.",
+      "searchPlaceholder": "ابحث في محادثات البريد…",
+      "filterUnread": "غير المقروء فقط",
+      "filterAssignedTo": "المعيّن إلى",
+      "filterAssigneeAll": "الكل",
+      "filterAssigneeUnassigned": "غير معيّن",
+      "emptyUnassignedList": "لا توجد محادثات غير معيّنة.",
+      "emptyAssigneeList": "لا توجد محادثات معيّنة لهذا المستخدم.",
+      "loading": "جاري التحميل…",
+      "emptyThread": "لا توجد رسائل في هذا الخيط بعد.",
+      "selectConversation": "اختر محادثة لعرض الخيط.",
+      "noPreview": "لا توجد معاينة",
+      "noSubject": "(بدون موضوع)",
+      "hasDraft": "مسودة",
+      "incoming": "وارد",
+      "outgoing": "صادر",
+      "internalNote": "ملاحظة داخلية",
+      "close": "إغلاق",
+      "aiWorking": "جاري العمل…",
+      "aiError": "فشل مساعد الذكاء الاصطناعي. حاول مرة أخرى.",
+      "assigneeLabel": "المسؤول",
+      "assigneeUnassigned": "غير معيّن",
+      "assigneeSearch": "ابحث عن موظف…",
+      "assigneeEmpty": "لا يوجد موظفون متاحون",
+      "assigneeNoEligible": "لا يوجد موظفون مؤهلون",
+      "assigneeSaving": "جاري الحفظ…",
+      "assigneeSaved": "تم تعيين المحادثة",
+      "assigneeSaveFailed": "تعذّر تعيين المحادثة",
+      "assigneeUnauthorized": "ليست لديك صلاحية تعيين هذه المحادثة",
+      "assigneeUnavailable": "هذه المحادثة لم تعد متاحة",
+      "customerTitle": "العميل",
+      "noCustomer": "لا يوجد عميل مرتبط",
+      "ticketTitle": "التذكرة",
+      "noTicket": "لا توجد تذكرة نشطة",
+      "ticketStatus": "الحالة",
+      "ticketPriority": "الأولوية",
+      "ticketSla": "استحقاق اتفاقية الخدمة",
+      "deliveryHeading": "نشاط التسليم",
+      "emptyListTitle": "لا توجد رسائل بعد",
+      "emptyListBody": "عند وصول رسائل العملاء ستظهر هنا، ويمكن للذكاء الاصطناعي تصنيفها وتوجيهها تلقائياً.",
+      "contextPanel": "ملف العميل 360",
+      "insertTemplate": "إدراج قالب",
+      "openTicket360": "فتح التذكرة 360",
+      "draftSavedAgo": "تم الحفظ تلقائياً منذ {{seconds}} ثوانٍ",
+      "linkedTicket": "مرتبطة بـ {{number}}",
+      "attach": "إرفاق",
+      "attachmentUploading": "جاري الرفع…",
+      "attachmentUploaded": "تم الرفع",
+      "attachmentFailed": "فشل الرفع",
+      "removeAttachment": "إزالة المرفق",
+      "attachmentTooLarge": "الملف أكبر من الحد المسموح (25 ميغابايت كحد أقصى).",
+      "tooManyAttachments": "يمكن إرفاق حتى 10 ملفات.",
+      "unsupportedAttachment": "نوع الملف غير مسموح.",
+      "dangerousAttachment": "نوع الملف غير مسموح لأسباب أمنية.",
+      "invalidAttachmentName": "اسم الملف غير مسموح.",
+      "attachmentUploadError": "تعذر رفع الملف. تم الاحتفاظ بالمسودة ولم يتم إرسال الرسالة.",
+      "attachmentEntitlementDenied": "مرفقات البريد غير متاحة لهذه الشركة.",
+      "dropAttachments": "أفلت الملفات لإرفاقها",
+      "attachmentDownload": "تنزيل",
+      "attachmentOpenPreview": "فتح المعاينة",
+      "attachmentClosePreview": "إغلاق المعاينة",
+      "discard": "تجاهل",
+      "discarding": "جارٍ التجاهل…",
+      "discardConfirm": "هل تريد تجاهل هذه المسودة؟ سيتم حذف مرفقات المسودة.",
+      "unlinkCustomer": "إلغاء ربط العميل",
+      "removeRecipient": "إزالة المستلم",
+      "showCcBcc": "نسخة / مخفية",
+      "hideCcBcc": "إخفاء النسخة",
+      "unresolvedTemplate": "أكمل متغيرات القالب قبل الإرسال: {{tokens}}",
+      "linkCustomer": "ربط عميل موجود",
+      "createCustomer": "إنشاء عميل",
+      "openCustomer360": "فتح العميل 360",
+      "selectTicket": "اختيار تذكرة",
+      "selectTicketPlaceholder": "اختر تذكرة…",
+      "recipientSuggestPlaceholder": "اكتب عنوان بريد…",
+      "recipientSuggestLoading": "جاري البحث في جهات الاتصال…",
+      "recipientLimit": "يمكنك إضافة حتى {{count}} مستلمين.",
+      "invalidRecipientList": "واحد أو أكثر من عناوين المستلمين غير صالح.",
+      "modes": {
+        "compose": "رسالة جديدة",
+        "reply": "رد",
+        "replyAll": "رد على الكل",
+        "forward": "إعادة توجيه"
+      },
+      "lifecycle": {
+        "received": "تم الاستلام",
+        "classified": "تم التصنيف",
+        "assigned": "تم التعيين",
+        "ticket": "التذكرة",
+        "drafted": "مسودة رد",
+        "sent": "تم الإرسال",
+        "delivered": "تم التسليم",
+        "failed": "فشل",
+        "reused": "أُعيد استخدامها"
+      },
+      "richText": {
+        "toolbar": "التنسيق",
+        "bold": "عريض",
+        "italic": "مائل",
+        "underline": "تسطير",
+        "bulletList": "قائمة نقطية",
+        "numberedList": "قائمة مرقمة",
+        "link": "رابط",
+        "linkPrompt": "أدخل رابط URL",
+        "undo": "تراجع",
+        "redo": "إعادة"
+      },
+      "notificationSound": "صوت الإشعارات",
+      "notificationSoundOn": "تشغيل",
+      "notificationSoundOff": "إيقاف",
+      "notificationSoundHelper": "تشغيل صوت قصير عند وصول رسالة بريد إلكتروني جديدة.",
+      "notificationSoundAriaOn": "صوت الإشعارات مفعّل",
+      "notificationSoundAriaOff": "صوت الإشعارات متوقف"
+    },
+    "howItWorks": {
+      "title": "كيف يعمل البريد الإلكتروني؟",
+      "caption": "الذكاء الاصطناعي يساعد فريقك في فهم الرسائل وكتابة الردود، بينما يظل القرار النهائي والإرسال تحت سيطرة الموظف.",
+      "steps": {
+        "receive": "استقبال الرسالة",
+        "identify": "التعرف على العميل",
+        "classify": "فهم وتصنيف الرسالة",
+        "route": "توجيهها للموظف المناسب",
+        "ticket": "إنشاء أو إعادة استخدام التذكرة عند الحاجة",
+        "review": "الموظف يراجع الطلب",
+        "copilot": "الذكاء الاصطناعي يساعد في كتابة الرد",
+        "send": "إرسال البريد"
+      }
+    },
+    "setup": {
+      "cta": "إعداد البريد الإلكتروني",
+      "toggle": "طي أو توسيع شرح إعداد البريد"
+    },
+    "metrics": {
+      "incoming": "الوارد",
+      "sent": "المرسل",
+      "pending": "قيد الانتظار",
+      "failed": "فشل",
+      "aiRouted": "موجّه بالذكاء الاصطناعي",
+      "ticketsCreated": "تذاكر منشأة",
+      "tablistAria": "مقاييس مساحة عمل البريد",
+      "filterAria": "عرض {{label}} في مساحة عمل البريد"
+    },
+    "aiCapabilities": {
+      "routing": "توجيه البريد بالذكاء الاصطناعي",
+      "composer": "مساعد الكتابة",
+      "suggested_replies": "الردود المقترحة",
+      "summary": "تلخيص الذكاء الاصطناعي",
+      "unknown": "جاري التحقق من الاستحقاق…",
+      "locked": "غير مشمول في خطتك. تواصل مع المسؤول لتفعيل هذه الميزة."
+    },
+    "firstTime": {
+      "title": "ابدأ باستخدام البريد الإلكتروني",
+      "body": "اربط صندوق بريد الشركة قبل أن يتمكن الوارد من استقبال رسائل العملاء.",
+      "steps": {
+        "connect": "ربط البريد",
+        "sendReceive": "إعداد الاستقبال والإرسال",
+        "routing": "تفعيل توجيه الذكاء الاصطناعي",
+        "tickets": "تحديد قواعد إنشاء التذاكر",
+        "reply": "إرسال أول رد"
       }
     }
   },
@@ -2845,10 +3476,10 @@
     },
     "purpose": {
       "title": "ما هذه الصفحة؟",
-      "body": "الحملات ترسل رسائل واتساب وإنستغرام وماسنجر إلى العملاء المشتركين في الرسائل التسويقية عبر القنوات المتاحة.",
+      "body": "الحملات ترسل رسائل واتساب وإنستغرام وماسنجر والبريد الإلكتروني إلى العملاء المشتركين في الرسائل التسويقية عبر القنوات المتاحة.",
       "point1": "يتم حل الجمهور دائماً على الخادم — لا يُعتمد على معرفات المتصفح وحدها.",
       "point2": "كل قناة مستقلة: قد يُدرج العميل في قائمة انتظار واتساب ويُتخطى على إنستغرام.",
-      "point3": "قيد الانتظار على واتساب لا يعني تم الإرسال حتى يؤكد المزوّد التسليم.",
+      "point3": "قيد الانتظار على واتساب والبريد لا يعني تم الإرسال حتى يؤكد المزوّد التسليم.",
       "stepsTitle": "كيف تشغّل حملة",
       "step1": "اختر الجمهور.",
       "step2": "حدد القنوات المتاحة.",
@@ -2876,6 +3507,8 @@
       "whatsapp": "واتساب",
       "instagram": "إنستغرام",
       "messenger": "ماسنجر",
+      "email": "البريد الإلكتروني",
+      "sms": "اس ام اس",
       "unknown": "قناة"
     },
     "audienceType": {
@@ -2885,6 +3518,8 @@
     },
     "skipReasons": {
       "noPhone": "لا يوجد رقم هاتف",
+      "noEmail": "لا يوجد بريد إلكتروني",
+      "noSms": "لا يوجد رقم لإرسال رسالة نصية",
       "marketingOptOut": "العميل غير مشترك في الرسائل التسويقية",
       "noInstagramConversation": "لا توجد محادثة Instagram مؤهلة",
       "noMessengerConversation": "لا توجد محادثة Messenger مؤهلة",
@@ -2900,7 +3535,7 @@
       "subtitle": "تتبع الحملات المسودة والجارية والمكتملة.",
       "create": "إنشاء حملة",
       "emptyTitle": "لا توجد حملات بعد",
-      "empty": "أنشئ حملة للوصول إلى العملاء المؤهلين عبر واتساب أو إنستغرام أو ماسنجر.",
+      "empty": "أنشئ حملة للوصول إلى العملاء المؤهلين عبر واتساب أو إنستغرام أو ماسنجر أو البريد الإلكتروني أو الرسائل النصية.",
       "filters": {
         "status": "الحالة",
         "channel": "القناة",
@@ -2951,14 +3586,34 @@
         "genderFemale": "أنثى",
         "ageMin": "الحد الأدنى للعمر",
         "ageMax": "الحد الأقصى للعمر",
-        "serverSideNote": "يتم احتساب الجمهور وأهلية التسويق على الخادم قبل الإرسال. العملاء غير المشتركين في الرسائل التسويقية مستبعدون."
+        "serverSideNote": "يتم احتساب الجمهور وأهلية التسويق على الخادم قبل الإرسال. العملاء غير المشتركين في الرسائل التسويقية مستبعدون.",
+        "table": {
+          "name": "الاسم",
+          "phone": "رقم الموبايل",
+          "email": "الإيميل",
+          "messenger": "مسنجر",
+          "whatsapp": "واتساب",
+          "instagram": "إنستجرام",
+          "emailChannel": "إيميل",
+          "sms": "اس ام اس",
+          "search": "ابحث بالاسم أو رقم الموبايل أو الإيميل",
+          "selectedCount": "{{count}} محدد",
+          "selectAll": "تحديد كل العملاء الظاهرين",
+          "empty": "لا يوجد عملاء مطابقون للبحث.",
+          "available": "متاح",
+          "unavailable": "غير متاح"
+        }
       },
       "channels": {
         "title": "القنوات",
-        "subtitle": "الرسائل النصية غير متاحة. اختر قناة واحدة أو أكثر من القنوات المدعومة.",
+        "subtitle": "اختر قناة واحدة أو أكثر. كل قناة ترسل فقط للعملاء المتاحين عليها.",
         "connected": "متصل",
         "unavailable": "غير متاح لهذه الشركة",
         "sessionLimitation": "قد يتم تخطي بعض العملاء لعدم وجود محادثة/جلسة مؤهلة (أو نافذة مراسلة).",
+        "emailMailboxHint": "يُرسل عبر صندوق بريد الشركة (نفس SMTP المستخدم في مساحة عمل البريد).",
+        "smsProviderHint": "يُرسل عبر قناة الرسائل النصية للشركة إلى العملاء الذين لديهم رقم موبايل صالح.",
+        "willSend": "{{count}} سيتم الإرسال لهم على هذه القناة",
+        "selectedSendTotal": "القنوات المحددة ستصل إلى {{count}} مستلم متاح.",
         "eligibleCount": "{{eligible}} مؤهل · {{skipped}} تم التخطي",
         "calculating": "جارٍ حساب الأهلية…",
         "selectToPreview": "اختر قناة لمعاينة الأهلية."
@@ -2975,8 +3630,18 @@
         "detail": "الرسالة / التفاصيل",
         "titlePlaceholder": "عنوان الحملة",
         "detailPlaceholder": "تفاصيل الرسالة",
-        "whatsappPreviewHint": "واتساب يستخدم متغيرات قالب marketing_campaign.",
-        "plainPreviewHint": "إنستغرام/ماسنجر يستخدمان نصاً عادياً."
+        "whatsappPreviewHint": "واتساب يرسل هذا النص للعميل.",
+        "emailPreviewHint": "البريد يستخدم صندوق بريد الشركة. العنوان هو عنوان الحملة، والنص هو التفاصيل أدناه.",
+        "smsPreviewHint": "الرسائل النصية ترسل هذا النص إلى رقم موبايل العميل.",
+        "plainPreviewHint": "إنستغرام وماسنجر يرسلان هذا النص في المحادثة الحالية.",
+        "emailSubject": "العنوان",
+        "noPreview": "أضف عنواناً أو رسالة لمعاينة ما سيصل للعميل.",
+        "attachments": "مرفقات",
+        "attachmentsHint": "PDF أو DOCX أو XLSX أو JPG أو PNG أو WEBP. حتى 5 ملفات، 10 ميغابايت لكل ملف.",
+        "attachmentsChannelNote": "مستلمو البريد يستلمون الملفات. واتساب والرسائل النصية وإنستغرام وماسنجر يرسلون النص فقط.",
+        "attachmentsTextOnly": "الملفات لا تُرسل على هذه القناة.",
+        "addAttachments": "إضافة ملفات",
+        "removeAttachment": "إزالة الملف"
       },
       "review": {
         "title": "مراجعة وإرسال",
@@ -2987,7 +3652,9 @@
         "manualEmpty": "اختر عميلاً واحداً على الأقل.",
         "channelsRequired": "اختر قناة واحدة على الأقل.",
         "contentRequired": "اسم الحملة والعنوان مطلوبان.",
-        "confirmRequired": "أكد قبل الإرسال."
+        "confirmRequired": "أكد قبل الإرسال.",
+        "attachmentInvalid": "ملف أو أكثر غير مسموح به.",
+        "attachmentUploadFailed": "تعذر رفع مرفقات الحملة."
       }
     },
     "detail": {
@@ -2996,10 +3663,12 @@
       "createdAt": "أُنشئت {{date}}",
       "overview": "نظرة عامة",
       "content": "المحتوى",
+      "attachments": "المرفقات",
+      "noAttachments": "لا توجد ملفات مرفقة.",
       "channelSummary": "ملخص القنوات",
       "recipients": "نتائج المستلمين",
       "recipientsEmpty": "لا توجد صفوف مستلمين بعد.",
-      "queuedVsSent": "على واتساب: في الانتظار يعني قبول قائمة الإشعارات. تم الإرسال يعني تأكيد المزوّد لاحقاً لتسليم Meta.",
+      "queuedVsSent": "على واتساب والبريد: في الانتظار يعني قبول قائمة الإشعارات. تم الإرسال يعني تأكيد المزوّد لاحقاً. إنستغرام وماسنجر يُعلمان تم الإرسال عند قبول منصة القناة للرسالة الصادرة.",
       "totals": "الإجمالي {{total}} · في الانتظار {{queued}} · تم الإرسال {{sent}} · فشل {{failed}} · تم التخطي {{skipped}}",
       "channelCounts": "الإجمالي {{total}} · في الانتظار {{queued}} · تم الإرسال {{sent}} · فشل {{failed}} · تم التخطي {{skipped}}",
       "columns": {
@@ -6658,6 +7327,7 @@
       "aiEmployee": "موظف ذكاء اصطناعي",
       "queue": "قائمة",
       "noAgents": "لا يوجد وكلاء متاحون للإسناد.",
+      "noEligibleAgents": "لا يوجد موظفون مؤهلون",
       "noTeams": "لم يتم تهيئة فرق بعد. اسند إلى وكيل بدلاً من ذلك.",
       "noQueues": "لم يتم تهيئة قوائم توجيه بعد.",
       "noAiEmployees": "لا يوجد موظفو ذكاء اصطناعي منشورون.",
@@ -8202,7 +8872,7 @@
     "noPermission": "ليس لديك صلاحية عرض الفاتورة.",
     "health": {
       "title": "إعداد منصة الفاتورة مطلوب",
-      "subtitle": "لا يمكن تشغيل فاتورة VaultOS حتى يتم حل متطلبات المنصة التالية.",
+      "subtitle": "لا يمكن تشغيل فاتورة ValueOR حتى يتم حل متطلبات المنصة التالية.",
       "mutationsBlocked": "جميع عمليات تعديل الفاتورة موقوفة حتى تصحيح الإعداد.",
       "issues": {
         "migration_104_missing": {
@@ -9271,6 +9941,7 @@
       "rolePlaceholder": "اختر دوراً",
       "roleSearchPlaceholder": "ابحث عن دور…",
       "noRolesAvailable": "لا توجد أدوار متاحة.",
+      "currentRoleUnavailable": "الدور الحالي — لم يعد ضمن الأدوار القابلة للتعيين",
       "activeOnCreate": "تفعيل المستخدم مباشرة",
       "inviteNote": "سيتم إرسال بريد دعوة للمستخدم لتعيين كلمة المرور."
     },
@@ -9926,35 +10597,89 @@
     }
   },
   "roles": {
-    "title": "الأدوار",
-    "subtitle": "أنشئ أدواراً خاصة بشركتك وامنح فقط الصلاحيات التي يحق لك تفويضها.",
+    "title": "الأدوار والصلاحيات",
+    "subtitle": "إدارة أدوار المستخدمين والصلاحيات في مساحة العمل.",
     "noDescription": "بدون وصف",
     "edit": "تعديل",
     "delete": "حذف",
+    "view": "عرض",
+    "viewOnly": "عرض فقط",
+    "close": "إغلاق",
+    "systemRole": "دور النظام",
     "createRole": "إنشاء دور",
     "customRolesHeading": "أدوار الشركة",
-    "emptyCustomTitle": "لا توجد أدوار مخصصة بعد",
-    "emptyCustomDescription": "أنشئ دوراً لتحديد صلاحيات فريقك.",
+    "emptyCustomTitle": "لا توجد أدوار مخصصة",
+    "emptyCustomDescription": "أنشئ دورًا مخصصًا لتحديد صلاحيات مناسبة لفريقك.",
+    "list": {
+      "searchPlaceholder": "البحث في الأدوار...",
+      "typeFilterLabel": "نوع الدور",
+      "typeFilterAll": "جميع الأنواع",
+      "typeFilterPlatform": "أدوار النظام",
+      "typeFilterDefault": "أدوار افتراضية",
+      "typeFilterCustom": "أدوار مخصصة",
+      "sortLabel": "ترتيب",
+      "sortUpdated": "آخر تحديث",
+      "sortName": "الاسم",
+      "sortPermissions": "الصلاحيات",
+      "sortUsers": "المستخدمون",
+      "typePlatform": "نظام",
+      "typeDefault": "افتراضي",
+      "typeCustom": "مخصص",
+      "columns": {
+        "name": "اسم الدور",
+        "type": "النوع",
+        "description": "الوصف",
+        "permissions": "الصلاحيات",
+        "users": "المستخدمون",
+        "updated": "آخر تحديث",
+        "actions": "الإجراءات"
+      },
+      "permissionCount": "{{count}} صلاحية",
+      "userCount": "{{count}} مستخدم",
+      "summaryRange": "عرض {{from}}–{{to}} من {{total}} دور",
+      "actionsMenu": "إجراءات الدور",
+      "loadError": "تعذر تحميل الأدوار.",
+      "retry": "إعادة المحاولة",
+      "noSearchResults": "لا توجد أدوار مطابقة لبحثك.",
+      "noSearchResultsDescription": "جرّب اسماً أو وصفاً مختلفاً، أو امسح عوامل التصفية.",
+      "metrics": {
+        "system": "أدوار النظام",
+        "default": "الأدوار الافتراضية",
+        "custom": "الأدوار المخصصة",
+        "assignedUsers": "المستخدمون المعيّنون"
+      }
+    },
+    "families": {
+      "aiPlatform": "منصة الذكاء الاصطناعي",
+      "crm": "إدارة علاقات العملاء",
+      "company": "الشركة والإدارة",
+      "finance": "المالية والتقارير",
+      "operations": "التكاملات والعمليات"
+    },
     "confirm": {
       "deleteTitle": "حذف الدور \"{{role}}\"؟",
-      "deleteDescription": "سيؤدي هذا إلى إزالة الدور وتعيينات صلاحياته نهائياً. وسيفقد المستخدمون المعيّنون لهذا الدور تلك الصلاحيات."
+      "deleteDescription": "سيؤدي هذا إلى إزالة الدور وتعيينات صلاحياته نهائياً. وسيفقد المستخدمون المعيّنون لهذا الدور تلك الصلاحيات.",
+      "deleteAssigned": "هذا الدور معيّن لـ {{count}} مستخدم. حذفه يزيل ذلك التعيين."
     },
     "permissions": {
-      "title": "إدارة الصلاحيات",
-      "selectAll": "تحديد كل ما يمكنك تفويضه",
-      "clearAll": "إلغاء تحديد الكل",
+      "title": "الصلاحيات",
+      "selectAll": "تحديد الكل",
+      "clearAll": "مسح التحديد",
       "expandAll": "توسيع الكل",
       "collapseAll": "طي الكل",
-      "searchPlaceholder": "ابحث عن صلاحية...",
-      "selectedCounter": "المحدد: {{selected}} / {{total}} صلاحية قابلة للتفويض",
-      "groupCounter": "{{selected}} / {{total}}",
+      "searchPlaceholder": "ابحث بالاسم أو الوصف أو رمز الصلاحية",
+      "selectedCounter": "{{selected}} / {{total}} محددة",
+      "groupCounter": "{{selected}} / {{total}} صلاحية",
+      "familyCounter": "{{selected}} / {{total}}",
       "groupSelectAll": "تحديد جميع صلاحيات {{group}}",
+      "moduleSelectAll": "تحديد الوحدة",
+      "moduleClear": "مسح الوحدة",
       "noResults": "لا توجد صلاحيات مطابقة لبحثك.",
       "partialSelectionHint": "تم تحديد بعض الصلاحيات.",
       "assignedSummary": "الصلاحيات المعيّنة ({{count}})",
-      "developerMode": "وضع المطور",
-      "developerModeDescription": "إظهار رموز الصلاحيات والأوصاف للتصحيح. مخفي عن المستخدمين العاديين.",
-      "developerModeHint": "وضع المطور مفعّل — رموز الصلاحيات والأوصاف ظاهرة."
+      "developerMode": "وضع المطوّر",
+      "developerModeDescription": "إظهار تفاصيل تقنية إضافية لمسؤولي التشخيص.",
+      "developerModeHint": "وضع المطوّر مفعّل — تبقى رموز الصلاحيات ظاهرة على البطاقات."
     },
     "roleDetails": {
       "showPermissions": "عرض الصلاحيات",
@@ -9994,8 +10719,9 @@
       "updateFailedTitle": "تعذر تحديث الدور",
       "deleteSuccessTitle": "تم حذف الدور",
       "deleteSuccessDescription": "تمت إزالة \"{{name}}\".",
+      "deleteFailedTitle": "تعذر حذف الدور",
       "nameAlreadyExists": "يوجد دور بنفس الاسم في شركتك بالفعل. اختر اسماً مختلفاً.",
-      "protectedReadOnly": "أدوار النظام (مثل Company Admin و Human Handoff Agent) لا يمكن تعديلها من هنا.",
+      "protectedReadOnly": "أدوار النظام مثل مسؤول الشركة لا يمكن تعديلها من هذه الصفحة.",
       "notFound": "هذا الدور لم يعد موجوداً.",
       "invalidRequest": "تحقق من اسم الدور ثم حاول مرة أخرى."
     }
@@ -10373,7 +11099,7 @@
       }
     },
     "defaults": {
-      "assistantName": "مساعد Vault",
+      "assistantName": "مساعد ValueOR",
       "personality": "helpful",
       "welcomeMessage": "مرحباً! أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟",
       "fallbackMessage": "عذراً، لم أفهم ذلك. هل يمكنك إعادة صياغة سؤالك؟",
@@ -13057,6 +13783,7 @@
     "assignTitle": "تعيين التذكرة",
     "assignHint": "اختر أي مستخدم نشط داخل شركتك.",
     "noAssignees": "لا يوجد مستخدمون نشطون للتعيين.",
+    "noEligibleAssignees": "لا يوجد موظفون مؤهلون",
     "detailTitle": "تفاصيل التذكرة",
     "noDescription": "لا يوجد وصف.",
     "createdAt": "تاريخ الإنشاء",
@@ -13883,10 +14610,33 @@
         "bulkDeleteTitle": "حذف {{count}} موظفين؟",
         "bulkDeleteDescription": "ستتم إزالة الموظفين المحددين من الشركة وإلغاء أدوارهم وتعيينات الفروع."
       },
+      "resetPassword": {
+        "title": "إعادة تعيين كلمة مرور الموظف",
+        "description": "تعيين كلمة مرور جديدة لحساب تسجيل دخول هذا الموظف.",
+        "employee": "الموظف",
+        "loginEmail": "بريد تسجيل الدخول",
+        "newPassword": "كلمة المرور الجديدة",
+        "confirmPassword": "تأكيد كلمة المرور الجديدة",
+        "showPassword": "إظهار كلمة المرور",
+        "hidePassword": "إخفاء كلمة المرور",
+        "policyHint": "استخدم 8 أحرف على الأقل مع حرف كبير وصغير ورقم.",
+        "sessionWarning": "سيتم تسجيل خروج الموظف من الجلسات الحالية، ولن تعمل كلمة المرور القديمة بعد إعادة التعيين.",
+        "submit": "إعادة تعيين كلمة المرور",
+        "errors": {
+          "required": "أدخل كلمة المرور الجديدة وأكدها.",
+          "password_mismatch": "كلمتا المرور غير متطابقتين.",
+          "password_policy": "كلمة المرور لا تستوفي متطلبات القوة.",
+          "unauthorized": "ليست لديك صلاحية لتنفيذ هذا الإجراء.",
+          "target_not_found": "لم يُعثر على حساب هذا الموظف.",
+          "target_is_super_admin": "يمكن لمسؤول المنصة فقط إعادة تعيين هذا الحساب.",
+          "auth_provider_failure": "تعذر على خدمة المصادقة تحديث كلمة المرور.",
+          "generic": "تعذر إكمال إعادة تعيين كلمة المرور."
+        }
+      },
       "toasts": {
         "errorTitle": "تعذر إكمال العملية",
-        "resetPasswordTitle": "تم إرسال رابط إعادة التعيين",
-        "resetPasswordDescription": "تم إرسال بريد إلكتروني لإعادة تعيين كلمة المرور.",
+        "resetPasswordTitle": "تم تحديث كلمة المرور",
+        "resetPasswordDescription": "يمكن للموظف تسجيل الدخول بكلمة المرور الجديدة فوراً.",
         "resendTitle": "أُعيد إرسال الدعوة",
         "resendDescription": "تم إرسال بريد الدعوة / إعداد الحساب.",
         "suspendTitle": "تم تعليق الموظف",
@@ -14224,7 +14974,7 @@
         "replyFallbackHint": "إذا كان فارغاً يُستخدم بريد الشركة من النظرة العامة.",
         "logoTitle": "شعار البريد",
         "logoHint": "الشعار الأساسي في الرسائل الصادرة. يعود لشعار الشركة الرئيسي عند الغياب.",
-        "logoFromAssets": "للقراءة فقط من أصول الهوية. غيّر الشعار هناك — دون رفع مكرر.",
+        "logoFromAssets": "يُدار فقط من إعدادات البريد → هوية البريد. هذه معاينة للقراءة فقط.",
         "currentEmailLogo": "شعار البريد الحالي",
         "changeLogo": "تغيير الشعار",
         "primaryEmailLogo": "شعار البريد الأساسي",
@@ -14329,6 +15079,16 @@
         "mime_rejected": "نوع الملف غير مسموح.",
         "network": "فشل الرفع — تحقق من الاتصال وحاول مرة أخرى.",
         "unknown": "فشل الرفع."
+      },
+      "emailIdentityMoved": {
+        "title": "تم نقل هوية البريد",
+        "body": "أدِر اسم المرسل والشعار والتوقيع وتذييل البريد من إعدادات البريد → هوية البريد.",
+        "cta": "فتح هوية البريد"
+      },
+      "emailFooterMoved": {
+        "title": "تم نقل تذييل البريد",
+        "body": "أدِر تذييل البريد من إعدادات البريد → هوية البريد.",
+        "cta": "فتح هوية البريد"
       }
     },
     "subscription": {

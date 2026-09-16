@@ -10,6 +10,8 @@ export type CustomerRecord = {
   age: number | null;
   gender: string | null;
   notes: string | null;
+  /** CRM-owned photo URL when selected. */
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 };

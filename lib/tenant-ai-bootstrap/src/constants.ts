@@ -22,8 +22,8 @@ export const TENANT_PROMPT_TEMPLATE_KEYS = {
 } as const;
 
 export const DEFAULT_ASSISTANT_SETTINGS = {
-  assistantNameEn: "Vault Assistant",
-  assistantNameAr: "مساعد Vault",
+  assistantNameEn: "ValueOR Assistant",
+  assistantNameAr: "مساعد ValueOR",
   welcomeMessageEn: "Hello! I'm your AI assistant. How can I help you today?",
   welcomeMessageAr: "مرحباً! أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟",
   fallbackMessageEn: "I'm sorry, I didn't understand that. Could you please rephrase your question?",

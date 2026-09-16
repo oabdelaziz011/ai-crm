@@ -37,6 +37,8 @@ export type CustomerReadModel = Readonly<{
   currentStatus: string;
   createdAt: string;
   notes?: string;
+  /** CRM-owned customer photo URL when present. */
+  avatarUrl?: string | null;
 }>;
 
 /** Write-only customer port — no implementation in this phase. */

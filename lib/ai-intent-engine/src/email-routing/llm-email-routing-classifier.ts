@@ -110,12 +110,36 @@ export class LlmEmailRoutingClassifier implements EmailRoutingClassifier {
     }
 
     const companyId = input.companyId?.trim() || "unknown";
-    const providerKey = this.options.providerKey ?? "openai";
+    const configuredProviderKey = this.options.providerKey ?? "openai";
 
     try {
+      // Inject Platform AI runtime credentials into gateway metadata (server-side only).
+      // Same pattern as /platform-ai/chat-completion — never returned from classify().
+      let runtimeConfiguration: Record<string, unknown> = {};
+      if (this.options.resolveRuntimeConfig) {
+        const runtime = await this.options.resolveRuntimeConfig({
+          companyId,
+          providerKey: configuredProviderKey,
+          useCase: "chat",
+        });
+        if (runtime && typeof runtime === "object" && !Array.isArray(runtime)) {
+          runtimeConfiguration = { ...runtime };
+        }
+      }
+
+      const runtimeProviderKey =
+        typeof runtimeConfiguration.providerKey === "string" &&
+        runtimeConfiguration.providerKey.trim()
+          ? runtimeConfiguration.providerKey.trim()
+          : configuredProviderKey;
+      const runtimeModel =
+        typeof runtimeConfiguration.model === "string" && runtimeConfiguration.model.trim()
+          ? runtimeConfiguration.model.trim()
+          : undefined;
+
       const response = await this.gateway.chatCompletion({
-        providerKey,
-        model: this.options.model,
+        providerKey: runtimeProviderKey,
+        model: this.options.model ?? runtimeModel,
         temperature: this.options.temperature ?? 0,
         maxTokens: this.options.maxTokens ?? 256,
         messages: [
@@ -127,9 +151,9 @@ export class LlmEmailRoutingClassifier implements EmailRoutingClassifier {
           userId: null,
         },
         metadata: {
+          ...runtimeConfiguration,
           response_format: "json",
           companyId,
-          // Platform/proxy metadata may be supplied by caller wiring in later sprints.
         },
       });
 

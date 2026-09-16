@@ -10,7 +10,7 @@ import {
   createTicketStatusChangedEvent,
   createTicketUpdatedEvent,
 } from "../events/ticket-event-factory.js";
-import { TicketNotFoundError } from "../errors.js";
+import { TicketNotFoundError, TicketPermissionDeniedError } from "../errors.js";
 import type {
   TicketAssigneeResolverPort,
   TicketAuditPort,
@@ -41,6 +41,11 @@ import {
   assertTicketPermission,
 } from "../validators/ticket-guards.js";
 import { readOptionalString, readPriority, readRequiredString, readStatus } from "../validators/ticket-validators.js";
+import {
+  AssignmentGovernanceError,
+  type AssignmentGovernancePort,
+} from "@workspace/assignment-governance";
+import type { AssignmentAuditPort, AssignmentAuditSource } from "@workspace/assignment-audit";
 
 export type TicketCommandServiceDeps = {
   tickets: TicketRepository;
@@ -51,6 +56,8 @@ export type TicketCommandServiceDeps = {
   audit: TicketAuditPort;
   slaSettings?: TicketSlaSettingsPort;
   cache?: TicketQueryCachePort;
+  assignmentGovernance?: AssignmentGovernancePort | null;
+  assignmentAudit?: AssignmentAuditPort | null;
 };
 
 export class TicketCommandService {
@@ -325,18 +332,37 @@ export class TicketCommandService {
       ticketId: string;
       assigneeUserId?: string;
       assigneeName?: string;
+      assignmentAuditSource?: AssignmentAuditSource;
+      skipAssignmentAudit?: boolean;
     },
   ): Promise<{ ticket: TicketSummary }> {
     const actorUserId = assertTicketActor(ctx);
     assertTicketCompanyAccess(ctx, input.companyId);
     assertTicketPermission(ctx, TICKET_PERMISSIONS.assign);
 
-    await this.requireTicket(input.companyId, input.ticketId);
+    const existing = await this.requireTicket(input.companyId, input.ticketId);
     const assigneeId = await this.deps.assignees.resolveAssigneeUserId({
       companyId: input.companyId,
       assigneeUserId: input.assigneeUserId,
       assigneeName: input.assigneeName,
     });
+
+    if (this.deps.assignmentGovernance) {
+      try {
+        await this.deps.assignmentGovernance.assertCanAssignToEmployee({
+          actorUserId,
+          targetUserId: assigneeId,
+          resource: "ticket",
+        });
+      } catch (error) {
+        if (error instanceof AssignmentGovernanceError) {
+          throw new TicketPermissionDeniedError(
+            `${TICKET_PERMISSIONS.assign} (${error.code}: ${error.message})`,
+          );
+        }
+        throw error;
+      }
+    }
 
     const record = await this.deps.tickets.update({
       companyId: input.companyId,
@@ -352,6 +378,18 @@ export class TicketCommandService {
     await this.writeAudit(input.companyId, actorUserId, "UPDATE", "support_ticket", input.ticketId, {
       assignedUserId: assigneeId,
     });
+
+    if (this.deps.assignmentAudit && !input.skipAssignmentAudit) {
+      await this.deps.assignmentAudit.recordAssignmentChange({
+        companyId: input.companyId,
+        actorUserId,
+        resourceType: "ticket",
+        resourceId: input.ticketId,
+        previousAssigneeUserId: existing.assignedUserId,
+        newAssigneeUserId: assigneeId,
+        source: input.assignmentAuditSource ?? "human",
+      });
+    }
 
     await this.deps.events.publish(createTicketAssignedEvent(record, actorUserId, assigneeId));
     await this.deps.notifications.notify({
@@ -372,7 +410,12 @@ export class TicketCommandService {
 
   async unassignTicket(
     ctx: TicketServiceContext,
-    input: { companyId: string; ticketId: string },
+    input: {
+      companyId: string;
+      ticketId: string;
+      assignmentAuditSource?: AssignmentAuditSource;
+      skipAssignmentAudit?: boolean;
+    },
   ): Promise<{ ticket: TicketSummary }> {
     const actorUserId = assertTicketActor(ctx);
     assertTicketCompanyAccess(ctx, input.companyId);
@@ -390,6 +433,18 @@ export class TicketCommandService {
     await this.writeAudit(input.companyId, actorUserId, "UPDATE", "support_ticket", input.ticketId, {
       action: "unassign",
     });
+
+    if (this.deps.assignmentAudit && !input.skipAssignmentAudit) {
+      await this.deps.assignmentAudit.recordAssignmentChange({
+        companyId: input.companyId,
+        actorUserId,
+        resourceType: "ticket",
+        resourceId: input.ticketId,
+        previousAssigneeUserId: existing.assignedUserId,
+        newAssigneeUserId: null,
+        source: input.assignmentAuditSource ?? "human",
+      });
+    }
 
     await this.deps.events.publish(createTicketAssignedEvent(record, actorUserId, null));
     await this.invalidateCompanyReads(input.companyId);

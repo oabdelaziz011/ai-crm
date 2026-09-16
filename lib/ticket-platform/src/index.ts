@@ -1,4 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  AssignmentGovernanceService,
+  createAssignmentGovernancePort,
+  createSupabaseAssignmentGovernanceDataPort,
+} from "@workspace/assignment-governance";
+import {
+  AssignmentAuditService,
+  createAssignmentAuditPort,
+  createNoopAssignmentAuditPort,
+  createSupabaseAssignmentAuditDataPort,
+  type AssignmentAuditPort,
+} from "@workspace/assignment-audit";
 import { TicketCommandService } from "./services/ticket-command-service.js";
 import { TicketQueryService } from "./services/ticket-query-service.js";
 import type {
@@ -36,6 +48,10 @@ export type CreateTicketPlatformServicesOptions = {
   audit?: TicketAuditPort;
   cache?: TicketQueryCachePort;
   slaSettings?: TicketSlaSettingsPort;
+  /** When false, skip Assignment Governance (tests only). Default: enabled. */
+  assignmentGovernance?: boolean | null;
+  /** When false, skip assignment audit (tests only). Default: enabled. */
+  assignmentAudit?: boolean | AssignmentAuditPort | null;
 };
 
 export function createTicketPlatformServices(
@@ -50,6 +66,27 @@ export function createTicketPlatformServices(
   const audit = options.audit ?? createNoopTicketAuditPort();
   const cache = options.cache ?? new InMemoryTicketQueryCache();
   const slaSettings = options.slaSettings ?? createSupabaseTicketSlaSettingsPort(client);
+  const assignmentGovernance =
+    options.assignmentGovernance === false
+      ? null
+      : createAssignmentGovernancePort(
+          new AssignmentGovernanceService({
+            port: createSupabaseAssignmentGovernanceDataPort(client),
+          }),
+        );
+
+  const assignmentAudit: AssignmentAuditPort | null =
+    options.assignmentAudit === false
+      ? null
+      : typeof options.assignmentAudit === "object" && options.assignmentAudit
+        ? options.assignmentAudit
+        : options?.assignmentAudit === null
+          ? createNoopAssignmentAuditPort()
+          : createAssignmentAuditPort(
+              new AssignmentAuditService({
+                port: createSupabaseAssignmentAuditDataPort(client),
+              }),
+            );
 
   const commandDeps = {
     tickets,
@@ -60,6 +97,8 @@ export function createTicketPlatformServices(
     audit,
     slaSettings,
     cache,
+    assignmentGovernance,
+    assignmentAudit,
   };
 
   const commands = new TicketCommandService(commandDeps);
@@ -98,6 +137,14 @@ export type {
   TicketSlaHoursByPriority,
   TicketSlaSettings,
 } from "./services/ticket-sla-service.js";
+export {
+  readLifecycleSlaDueAt,
+  mergeLifecycleSlaDueAt,
+  resolveAuthoritativeConversationSlaDueAt,
+  ensureConversationMetadataSlaDueAt,
+  createConversationPrioritySlaHook,
+} from "./services/conversation-sla-bridge.js";
+export type { ConversationSlaPriority } from "./services/conversation-sla-bridge.js";
 export {
   createNoopTicketAuditPort,
   createNoopTicketEventPublisher,

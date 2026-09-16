@@ -200,4 +200,103 @@ describe("LlmEmailRoutingClassifier (Sprint 2)", () => {
       console.error = originalError;
     }
   });
+
+  it("injects Platform AI runtime apiKey into gateway metadata (server-side only)", async () => {
+    const { gateway, calls } = mockGateway(() =>
+      jsonResponse({ category: "billing", confidence: 0.9, reason: "invoice" }),
+    );
+    const secretKey = "sk-test-runtime-key-never-return";
+    const result = await createLlmEmailRoutingClassifier(gateway, {
+      resolveRuntimeConfig: async ({ companyId, providerKey, useCase }) => {
+        assert.equal(companyId, "co-runtime");
+        assert.equal(providerKey, "openai");
+        assert.equal(useCase, "chat");
+        return {
+          apiKey: secretKey,
+          model: "gpt-4o-mini",
+          baseUrl: "https://api.openai.com/v1",
+          providerKey: "openai",
+          usesPlatformKey: true,
+        };
+      },
+    }).classify({
+      subject: "Invoice",
+      body: "Please send the latest invoice.",
+      companyId: "co-runtime",
+    });
+
+    assert.equal(result.category, "billing");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]!.metadata?.apiKey, secretKey);
+    assert.equal(calls[0]!.metadata?.companyId, "co-runtime");
+    assert.equal(calls[0]!.metadata?.response_format, "json");
+    assert.equal(calls[0]!.metadata?.model, "gpt-4o-mini");
+    assert.equal(calls[0]!.model, "gpt-4o-mini");
+    assert.equal(calls[0]!.providerKey, "openai");
+    // Classification result must never echo the secret.
+    assert.equal(JSON.stringify(result).includes(secretKey), false);
+  });
+
+  it("respects explicit classifier model over runtime model", async () => {
+    const { gateway, calls } = mockGateway(() =>
+      jsonResponse({ category: "support", confidence: 0.85, reason: "help" }),
+    );
+    await createLlmEmailRoutingClassifier(gateway, {
+      model: "gpt-4o",
+      resolveRuntimeConfig: async () => ({
+        apiKey: "sk-runtime",
+        model: "gpt-4o-mini",
+        providerKey: "openai",
+      }),
+    }).classify({
+      subject: "Help",
+      body: "Need support",
+      companyId: "co-1",
+    });
+    assert.equal(calls[0]!.model, "gpt-4o");
+    assert.equal(calls[0]!.metadata?.apiKey, "sk-runtime");
+    assert.equal(calls[0]!.metadata?.companyId, "co-1");
+  });
+
+  it("fails safely when runtime resolver throws (missing key path)", async () => {
+    const { gateway, calls } = mockGateway(() =>
+      jsonResponse({ category: "sales", confidence: 0.99, reason: "should not run" }),
+    );
+    const result = await createLlmEmailRoutingClassifier(gateway, {
+      resolveRuntimeConfig: async () => {
+        throw new Error(
+          "OpenAI API key is required. Configure configuration.apiKey on the company provider connection.",
+        );
+      },
+    }).classify({
+      subject: "Demo",
+      body: "Pricing please",
+      companyId: "co-missing-key",
+    });
+    assert.equal(calls.length, 0);
+    assert.equal(result.category, "general_inquiry");
+    assert.equal(result.confidence, 0.12);
+    assert.match(result.reason, /LLM classification failed/);
+    assert.match(result.reason, /OpenAI API key is required/);
+  });
+
+  it("fails safely when gateway rejects missing apiKey after empty runtime", async () => {
+    const { gateway, calls } = mockGateway(async () => {
+      throw new Error(
+        "OpenAI API key is required. Configure configuration.apiKey on the company provider connection.",
+      );
+    });
+    const result = await createLlmEmailRoutingClassifier(gateway, {
+      resolveRuntimeConfig: async () => ({ providerKey: "openai", model: "gpt-4o-mini" }),
+    }).classify({
+      subject: "Hello",
+      body: "General question",
+      companyId: "co-empty-key",
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]!.metadata?.companyId, "co-empty-key");
+    assert.equal(calls[0]!.metadata?.apiKey, undefined);
+    assert.equal(result.category, "general_inquiry");
+    assert.equal(result.confidence, 0.12);
+  });
 });

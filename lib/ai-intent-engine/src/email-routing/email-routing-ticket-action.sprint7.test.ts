@@ -10,13 +10,16 @@ function mockPort(): {
   port: EmailRoutingTicketPort;
   created: EmailRoutingTicketRef[];
   assigned: Array<{ ticketId: string; assigneeUserId: string }>;
+  conversationAssigned: Array<{ conversationId: string; assigneeUserId: string }>;
 } {
   const tickets: EmailRoutingTicketRef[] = [];
   const created: EmailRoutingTicketRef[] = [];
   const assigned: Array<{ ticketId: string; assigneeUserId: string }> = [];
+  const conversationAssigned: Array<{ conversationId: string; assigneeUserId: string }> = [];
   return {
     created,
     assigned,
+    conversationAssigned,
     port: {
       async listByConversation() {
         return tickets;
@@ -38,13 +41,19 @@ function mockPort(): {
         if (ticket) ticket.assignedUserId = input.assigneeUserId;
         return { id: input.ticketId, assignedUserId: input.assigneeUserId };
       },
+      async assignConversationEmployee(input) {
+        conversationAssigned.push({
+          conversationId: input.conversationId,
+          assigneeUserId: input.assigneeUserId,
+        });
+      },
     },
   };
 }
 
 describe("applyEmailRoutingTicketAction Sprint 7 target compatibility", () => {
   it("assigns employee targets via existing assignment path", async () => {
-    const { port, created, assigned } = mockPort();
+    const { port, created, assigned, conversationAssigned } = mockPort();
     const result = await applyEmailRoutingTicketAction(port, {
       companyId: "co-1",
       conversationId: "conv-1",
@@ -70,10 +79,13 @@ describe("applyEmailRoutingTicketAction Sprint 7 target compatibility", () => {
     assert.equal(created.length, 1);
     assert.equal(assigned.length, 1);
     assert.equal(assigned[0]?.assigneeUserId, "emp-9");
+    assert.equal(conversationAssigned.length, 1);
+    assert.equal(conversationAssigned[0]?.conversationId, "conv-1");
+    assert.equal(conversationAssigned[0]?.assigneeUserId, "emp-9");
   });
 
   it("keeps department targets in ticket metadata without employee assignment", async () => {
-    const { port, created, assigned } = mockPort();
+    const { port, created, assigned, conversationAssigned } = mockPort();
     const result = await applyEmailRoutingTicketAction(port, {
       companyId: "co-1",
       conversationId: "conv-2",
@@ -97,6 +109,7 @@ describe("applyEmailRoutingTicketAction Sprint 7 target compatibility", () => {
     });
     assert.equal(result.status, "created");
     assert.equal(assigned.length, 0);
+    assert.equal(conversationAssigned.length, 0);
     assert.equal(
       (created[0]?.metadata?.emailRoutingDecision as { targetType?: string } | undefined)?.targetType,
       "department",

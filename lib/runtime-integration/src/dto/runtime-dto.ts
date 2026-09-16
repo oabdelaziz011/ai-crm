@@ -54,6 +54,8 @@ export type RuntimeExecutionResponse = {
   intentKey: string | null;
   providerKey: string | null;
   responseContent: string;
+  /** Server-persisted outgoing conversation_messages.id from the persistence stage. */
+  outgoingMessageId?: string | null;
   steps: RuntimeStep[];
   tokenUsage: {
     promptTokens: number;
@@ -85,6 +87,7 @@ export function toRuntimeExecutionResponse(input: {
   intentKey: string | null;
   providerKey: string | null;
   responseContent: string;
+  outgoingMessageId?: string | null;
   steps: RuntimeStep[];
   tokenUsage: RuntimeExecutionResponse["tokenUsage"];
 }): RuntimeExecutionResponse {
@@ -97,6 +100,7 @@ export function toRuntimeExecutionResponse(input: {
     intentKey: input.intentKey,
     providerKey: input.providerKey,
     responseContent: input.responseContent,
+    outgoingMessageId: input.outgoingMessageId ?? null,
     steps: input.steps,
     tokenUsage: input.tokenUsage,
   };

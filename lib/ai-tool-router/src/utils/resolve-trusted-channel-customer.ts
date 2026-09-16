@@ -16,9 +16,16 @@ export type TrustedChannelCustomerMatch = {
   name: string;
   phone: string | null;
   phoneE164?: string | null;
+  email?: string | null;
 };
 
 export type PhoneLookupResult = {
+  status: "found" | "not_found" | "duplicate";
+  customer?: TrustedChannelCustomerMatch | null;
+  count?: number;
+};
+
+export type EmailLookupResult = {
   status: "found" | "not_found" | "duplicate";
   customer?: TrustedChannelCustomerMatch | null;
   count?: number;
@@ -38,6 +45,11 @@ export type ResolveTrustedChannelCustomerInput = {
    * Must already filter by companyId — never search globally.
    */
   findByPhoneE164?: (phoneE164: string) => Promise<PhoneLookupResult>;
+  /**
+   * Company-scoped CRM lookup by exact email (normalized lowercase).
+   * Must already filter by companyId — never search globally / never fuzzy.
+   */
+  findByEmail?: (email: string) => Promise<EmailLookupResult>;
 };
 
 export type ResolveTrustedChannelCustomerResult =
@@ -170,13 +182,43 @@ function toKnownResult(
 }
 
 /**
- * Resolve trusted CRM identity from a channel sender id.
- * WhatsApp only. Fail closed on ambiguity / cross-variant conflicts.
+ * Normalize inbound email sender for exact CRM match (lowercase, trim).
+ * Fail closed — no fuzzy / domain-only matching.
+ */
+export function normalizeTrustedEmailSender(
+  senderExternalId: string | null | undefined,
+): string | null {
+  const raw = typeof senderExternalId === "string" ? senderExternalId.trim().toLowerCase() : "";
+  if (!raw || raw.length > 320) return null;
+  const at = raw.indexOf("@");
+  if (at <= 0 || at >= raw.length - 1 || raw.includes(" ")) return null;
+  return raw;
+}
+
+/**
+ * True when CRM customer email equals the inbound email sender (exact, normalized).
+ */
+export function customerEmailMatchesEmailSender(
+  customerEmail: string | null | undefined,
+  senderExternalId: string | null | undefined,
+): boolean {
+  const sender = normalizeTrustedEmailSender(senderExternalId);
+  const email = normalizeTrustedEmailSender(customerEmail);
+  return Boolean(sender && email && sender === email);
+}
+
+/**
+ * WhatsApp (phone) and Email (exact email). SMS uses exact phone_e164 only.
+ * Fail closed on ambiguity.
  * Never trusts senderName, LLM customerId, or companyId from payload.
  *
- * Phase D2 lookup order:
+ * WhatsApp Phase D2 lookup order:
  * 1. company_id + canonical phone_e164 (via resolvePhoneIdentity source=channel)
  * 2. legacy Egypt phone-string variants on customers.phone
+ *
+ * SMS: company_id + exact phone_e164 only (no legacy / no fuzzy).
+ *
+ * Email: company_id + exact normalized email only (no phone / no fuzzy).
  */
 export async function resolveTrustedChannelCustomer(
   input: ResolveTrustedChannelCustomerInput,
@@ -185,14 +227,61 @@ export async function resolveTrustedChannelCustomer(
   if (!companyId) return { status: "invalid_sender" };
 
   const channelKey = input.channelKey.trim().toLowerCase();
-  if (channelKey !== "whatsapp") {
+  if (channelKey !== "whatsapp" && channelKey !== "email" && channelKey !== "sms") {
     return { status: "unsupported_channel" };
   }
 
   const sender = typeof input.senderExternalId === "string" ? input.senderExternalId.trim() : "";
   if (!sender) return { status: "invalid_sender" };
 
-  // --- D2 primary: company-scoped phone_e164 ---
+  if (channelKey === "email") {
+    if (!input.findByEmail) return { status: "unsupported_channel" };
+    const email = normalizeTrustedEmailSender(sender);
+    if (!email) return { status: "invalid_sender" };
+    const result = await input.findByEmail(email);
+    if (result.status === "duplicate") {
+      return { status: "ambiguous", matchCount: result.count ?? 2 };
+    }
+    if (result.status === "found" && result.customer?.id) {
+      return toKnownResult(
+        { customer: result.customer, matchedPhone: email },
+        "legacy_phone",
+      );
+    }
+    return { status: "unknown" };
+  }
+
+  // SMS: exact company-scoped phone_e164 only (no legacy/fuzzy variants).
+  if (channelKey === "sms") {
+    if (!input.findByPhoneE164) return { status: "unsupported_channel" };
+    const resolved = resolvePhoneIdentity({ phone: sender, source: "channel" });
+    const e164Pattern = /^\+[1-9]\d{6,14}$/;
+    const phoneE164 =
+      resolved.status === "resolved"
+        ? resolved.phoneE164
+        : e164Pattern.test(sender)
+          ? sender
+          : null;
+    if (!phoneE164) return { status: "invalid_sender" };
+    const scoped = createCompanyPhoneIdentityLookup({
+      companyId,
+      phoneE164,
+    });
+    if (!scoped.ok) return { status: "invalid_sender" };
+    const e164Result = await input.findByPhoneE164(scoped.lookup.phoneE164);
+    if (e164Result.status === "duplicate") {
+      return { status: "ambiguous", matchCount: e164Result.count ?? 2 };
+    }
+    if (e164Result.status === "found" && e164Result.customer?.id) {
+      return toKnownResult(
+        { customer: e164Result.customer, matchedPhone: phoneE164 },
+        "phone_e164",
+      );
+    }
+    return { status: "unknown" };
+  }
+
+  // --- WhatsApp D2 primary: company-scoped phone_e164 ---
   const phoneE164 = resolveWhatsAppSenderPhoneE164(sender);
   if (phoneE164 && input.findByPhoneE164) {
     const scoped = createCompanyPhoneIdentityLookup({

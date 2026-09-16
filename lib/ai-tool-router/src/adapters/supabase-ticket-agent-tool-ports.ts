@@ -60,7 +60,10 @@ export function createTicketAgentToolPortsFromPlatform(
     },
 
     async assignTicket(input) {
-      const result = await commands.assignTicket(buildToolContext(input.userId, input.companyId), input);
+      const result = await commands.assignTicket(buildToolContext(input.userId, input.companyId), {
+        ...input,
+        assignmentAuditSource: "ai",
+      });
       return { ticket: result.ticket as TicketSummary };
     },
 
@@ -107,6 +110,7 @@ export function createSupabaseTicketAgentToolPorts(
     options.platform ??
     createTicketPlatformServices(client, {
       audit: createSupabaseTicketAuditPort(client),
+      assignmentGovernance: false,
     });
   return createTicketAgentToolPortsFromPlatform(platform);
 }

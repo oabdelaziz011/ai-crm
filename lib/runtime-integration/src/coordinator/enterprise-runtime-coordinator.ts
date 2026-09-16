@@ -230,17 +230,20 @@ export class EnterpriseRuntimeCoordinator {
       }));
 
       // 9. Persistence
+      let outgoingMessageId: string | null = null;
       await this.runStage(ctx, execution.id, "persistence", stepDtos, correlationId, async () => {
-        await this.ports.conversation.addOutgoingMessage(ctx, {
+        const persisted = await this.ports.conversation.addOutgoingMessage(ctx, {
           conversationId: input.conversationId,
           content: responseContent,
           metadata: {
             correlationId,
             runtimeExecutionId: execution.id,
             intentKey: intent?.intentKey ?? null,
+            outboundPhase: "preparing",
           },
         });
-        return { persisted: true };
+        outgoingMessageId = persisted.id;
+        return { persisted: true, outgoingMessageId: persisted.id };
       });
 
       const executionTimeMs = Date.now() - startedAt;
@@ -297,6 +300,7 @@ export class EnterpriseRuntimeCoordinator {
         intentKey: intent?.intentKey ?? null,
         providerKey: providerKey ?? aiExecution?.providerKey ?? null,
         responseContent,
+        outgoingMessageId,
         steps: stepDtos,
         tokenUsage: aiExecution?.tokenUsage ?? {
           promptTokens: 0,

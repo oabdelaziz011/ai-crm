@@ -33,6 +33,8 @@ describe("EnterpriseRuntimeCoordinator", () => {
     assert.equal(env.executions.length, 1);
     assert.equal(env.executions[0]?.execution_status, "completed");
     assert.equal(env.messages.length, 2);
+    assert.ok(response.outgoingMessageId);
+    assert.match(String(response.outgoingMessageId), /^msg-out-/);
     assert.equal(env.telemetryEvents.length, 1);
   });
 

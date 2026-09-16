@@ -22,6 +22,18 @@ export type InstagramMessagingEvent = {
   };
 };
 
+export type InstagramGenericTemplateButton = {
+  type?: string;
+  title?: string;
+  payload?: string;
+};
+
+export type InstagramGenericTemplateElement = {
+  title?: string;
+  subtitle?: string;
+  buttons?: InstagramGenericTemplateButton[];
+};
+
 export type InstagramWebhookMessage = {
   mid?: string;
   text?: string;
@@ -30,10 +42,18 @@ export type InstagramWebhookMessage = {
     payload?: {
       url?: string;
       sticker_id?: number;
+      generic?: {
+        elements?: InstagramGenericTemplateElement[];
+      };
     };
   }>;
+  quick_reply?: {
+    payload?: string;
+    title?: string;
+  };
   is_echo?: boolean;
   is_deleted?: boolean;
+  is_unsupported?: boolean;
 };
 
 export type InstagramSendMessagePayload = {

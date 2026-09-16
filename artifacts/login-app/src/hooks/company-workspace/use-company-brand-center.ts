@@ -6,6 +6,7 @@ import {
 } from "@/hooks/company-workspace/use-company-brand-logos";
 import { invalidateCompanyIdentityCaches } from "@/hooks/company-workspace/use-company-identity";
 import { toWorkspaceBrandingSummary } from "@/lib/company-workspace/brand-center/normalize";
+import { resolveActiveBrandColors } from "@/lib/company-workspace/brand-center/branding-mode";
 import type { CompanyBrandCenterDocument } from "@/lib/company-workspace/brand-center/types";
 import type { CompanyIdentity } from "@/lib/company-workspace/company-identity/types";
 import {
@@ -17,6 +18,7 @@ import type { CompanyWorkspaceBundle } from "@/lib/company-workspace/types";
 import {
   loadCompanyBrandCenter,
   saveCompanyBrandCenter,
+  saveCompanyEmailIdentity,
 } from "@/lib/company-workspace/services/company-brand-center-service";
 import { APP_QUERY_STALE_MS } from "@/lib/react-query/create-query-client";
 import { applyBrandTheme, type BrandThemeMode } from "@/lib/theme/brand-theme-service";
@@ -79,7 +81,7 @@ export function useSaveCompanyBrandCenter(companyId: string | null) {
       qc.setQueryData(companyBrandCenterKey(companyId), document);
       syncBrandLogosCache(qc, companyId, document.logos);
       // Immediate theme apply — no reload; bridge will keep it in sync after settle.
-      applyBrandTheme(document.colors, currentThemeMode());
+      applyBrandTheme(resolveActiveBrandColors(document), currentThemeMode());
 
       const optimisticIdentity: CompanyIdentity = {
         companyId,
@@ -131,7 +133,7 @@ export function useSaveCompanyBrandCenter(companyId: string | null) {
       if (!companyId) return;
       if (ctx?.previous) {
         qc.setQueryData(companyBrandCenterKey(companyId), ctx.previous);
-        applyBrandTheme(ctx.previous.colors, currentThemeMode());
+        applyBrandTheme(resolveActiveBrandColors(ctx.previous), currentThemeMode());
       }
       if (ctx?.previousLogos !== undefined) {
         qc.setQueryData(companyBrandLogosKey(companyId), ctx.previousLogos);
@@ -147,12 +149,29 @@ export function useSaveCompanyBrandCenter(companyId: string | null) {
       if (!companyId) return;
       qc.setQueryData(companyBrandCenterKey(companyId), document);
       syncBrandLogosCache(qc, companyId, document.logos);
-      applyBrandTheme(document.colors, currentThemeMode());
+      applyBrandTheme(resolveActiveBrandColors(document), currentThemeMode());
       invalidateCompanyIdentityCaches(qc, companyId);
       // Do not await — hanging auth refresh must never block success toast / mutateAsync.
       void Promise.resolve(refreshAuthContext?.()).catch((refreshErr) => {
         console.warn("[BrandCenter] auth refresh after save failed:", refreshErr);
       });
+    },
+  });
+}
+
+export function useSaveCompanyEmailIdentity(companyId: string | null) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (document: CompanyBrandCenterDocument) => {
+      if (!companyId) throw new Error("Company id is required");
+      return saveCompanyEmailIdentity(companyId, document);
+    },
+    onSuccess: (document) => {
+      if (!companyId) return;
+      qc.setQueryData(companyBrandCenterKey(companyId), document);
+      syncBrandLogosCache(qc, companyId, document.logos);
+      invalidateCompanyIdentityCaches(qc, companyId);
     },
   });
 }

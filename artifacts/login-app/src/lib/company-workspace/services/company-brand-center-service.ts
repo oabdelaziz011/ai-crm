@@ -134,3 +134,19 @@ export async function saveCompanyBrandCenter(
 
   return document;
 }
+
+/** Patches companies.branding.email + logos.email only. Does not rewrite other branding. */
+export async function saveCompanyEmailIdentity(
+  companyId: string,
+  document: CompanyBrandCenterDocument,
+): Promise<CompanyBrandCenterDocument> {
+  const { error } = await supabase.rpc("save_company_email_identity", {
+    p_company_id: companyId,
+    p_email: document.email,
+    p_email_logo: document.logos.email ?? "",
+  });
+  if (error) {
+    throw new Error(error.message || error.details || "Company email identity save failed");
+  }
+  return loadCompanyBrandCenter(companyId);
+}

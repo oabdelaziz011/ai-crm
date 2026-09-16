@@ -7,6 +7,12 @@ export function truncateText(value: string | null | undefined, max = 120): strin
   return `${trimmed.slice(0, max - 1)}…`;
 }
 
+/**
+ * Resolve conversation IDs for a customer under the caller's JWT.
+ * Visibility is enforced by conversations RLS / ConversationService rules:
+ * View All → all company rows; View Assigned → assigned_user_id = auth.uid() only.
+ * Never widen scope with service-role from the browser.
+ */
 export async function fetchCustomerConversationIds(
   customerId: string,
   channelType?: string,

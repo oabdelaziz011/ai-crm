@@ -48,6 +48,16 @@ export const WORKSPACE_TAB_ACCESS_RULES: readonly WorkspaceTabAccessRule[] = [
     requiredModules: ["ticketing"],
   },
   {
+    tab: "email",
+    permissionsAny: ["email.view"],
+    requiredModules: ["email_channel"],
+  },
+  {
+    tab: "sms",
+    permissionsAny: ["sms.view"],
+    requiredModules: ["sms_channel"],
+  },
+  {
     tab: "payments",
     permissionsAny: ["invoices.view"],
     requiredModules: ["finance"],

@@ -38,6 +38,7 @@ import {
 import { Ticket360Workspace } from "@/components/tickets/ticket360-workspace";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { useAssignableEmployees } from "@/hooks/assignment-governance/use-assignable-employees";
 import {
   useTicketCommands,
   useTicketInboxMetrics,
@@ -47,6 +48,10 @@ import {
 import { useTicketServiceContext } from "@/hooks/tickets/use-ticket-services";
 import { useCustomersEnrichment } from "@/hooks/use-customers";
 import { EmployeeIdentityService } from "@/lib/employee-identity/employee-identity-service";
+import {
+  formatAssignableDepartmentLabel,
+  formatAssignableEmployeeLabel,
+} from "@/lib/assignment-governance/assignable-employees";
 import {
   mapTicketInboxKpis,
   type TicketInboxKpiId,
@@ -161,6 +166,12 @@ export function TicketsPage() {
     [employees.data],
   );
 
+  const assignableEmployeesQuery = useAssignableEmployees({
+    enabled: Boolean(company?.id && canAssign),
+    resource: "ticket",
+  });
+  const assignableAssignees = assignableEmployeesQuery.data ?? [];
+
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -225,18 +236,18 @@ export function TicketsPage() {
     }
   };
 
-  const handleAssign = async (assigneeProfileId: string) => {
+  const handleAssign = async (assigneeUserId: string) => {
     if (!assignTicketId || commands.assignTicket.isPending) return;
     const ticketId = assignTicketId;
-    const employee = activeAssignees.find((row) => row.id === assigneeProfileId);
+    const employee = assignableAssignees.find((row) => row.userId === assigneeUserId);
     // Close immediately so Assign never feels hung while the network/refetch runs.
     setAssignOpen(false);
     setAssignTicketId(null);
     try {
       await commands.assignTicket.mutateAsync({
         ticketId,
-        assigneeUserId: assigneeProfileId,
-        assigneeName: employee?.fullName,
+        assigneeUserId,
+        assigneeName: employee?.fullName ?? undefined,
       });
       toast({ title: t("tickets.toasts.assigned") });
     } catch (error) {
@@ -425,7 +436,7 @@ export function TicketsPage() {
                 <span className="min-w-0 truncate">{t("tickets.columns.number")}</span>
                 <span className="min-w-0 truncate">{t("tickets.columns.subject")}</span>
                 <span className="min-w-0 truncate">{t("tickets.columns.customer")}</span>
-                <span className="min-w-0 truncate">{t("tickets.columns.phone")}</span>
+                <span className="min-w-0 truncate text-start">{t("tickets.columns.phone")}</span>
                 <span className="min-w-0 truncate">{t("tickets.columns.channel")}</span>
                 <span className="min-w-0 truncate">{t("tickets.columns.status")}</span>
                 <span className="min-w-0 truncate">{t("tickets.columns.priority")}</span>
@@ -585,28 +596,32 @@ export function TicketsPage() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">{t("tickets.assignHint")}</p>
           <div className="max-h-[320px] space-y-1 overflow-y-auto">
-            {employees.isLoading ? (
+            {assignableEmployeesQuery.isLoading ? (
               <div className="flex items-center justify-center gap-2 px-1 py-8 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" aria-hidden />
                 {t("tickets.assignLoading", { defaultValue: "Loading teammates…" })}
               </div>
             ) : null}
-            {!employees.isLoading
-              ? activeAssignees.map((row) => (
+            {!assignableEmployeesQuery.isLoading
+              ? assignableAssignees.map((row) => (
                   <button
-                    key={row.id}
+                    key={row.userId}
                     type="button"
                     disabled={commands.assignTicket.isPending}
                     className="flex w-full items-center justify-between rounded-xl border border-transparent px-3 py-2 text-start hover:border-border hover:bg-muted/40 disabled:opacity-60"
-                    onClick={() => void handleAssign(row.id)}
+                    onClick={() => void handleAssign(row.userId)}
                   >
-                    <span className="text-sm font-medium">{row.fullName}</span>
-                    <span className="text-xs text-muted-foreground">{row.jobTitle || row.email || ""}</span>
+                    <span className="text-sm font-medium">{formatAssignableEmployeeLabel(row)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatAssignableDepartmentLabel(row) || row.email || ""}
+                    </span>
                   </button>
                 ))
               : null}
-            {!employees.isLoading && activeAssignees.length === 0 ? (
-              <p className="px-1 py-6 text-center text-sm text-muted-foreground">{t("tickets.noAssignees")}</p>
+            {!assignableEmployeesQuery.isLoading && assignableAssignees.length === 0 ? (
+              <p className="px-1 py-6 text-center text-sm text-muted-foreground">
+                {t("tickets.noEligibleAssignees", { defaultValue: t("tickets.noAssignees") })}
+              </p>
             ) : null}
           </div>
         </DialogContent>
@@ -670,11 +685,13 @@ function TicketInboxRowItem({
           {customerLabel}
         </span>
         <span
-          className="hidden min-w-0 truncate font-mono text-sm text-muted-foreground xl:block"
-          dir="ltr"
+          className="hidden min-w-0 truncate text-start font-mono text-sm text-muted-foreground xl:block"
           title={phoneLabel}
         >
-          {phoneLabel}
+          {/* Keep cell direction from the table (RTL/LTR); isolate phone digits as an LTR run. */}
+          <span dir="ltr" className="inline-block max-w-full truncate tabular-nums">
+            {phoneLabel}
+          </span>
         </span>
         <span className="hidden min-w-0 truncate text-sm text-muted-foreground xl:block">
           {ticket.channelType

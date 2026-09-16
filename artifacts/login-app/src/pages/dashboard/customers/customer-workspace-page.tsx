@@ -192,6 +192,26 @@ const TicketsTab = lazy(() =>
 
 );
 
+const EmailTab = lazy(() =>
+
+  import("@/components/customer-workspace/tabs/workspace-email-tab").then((m) => ({
+
+    default: m.WorkspaceEmailTab,
+
+  })),
+
+);
+
+const SmsTab = lazy(() =>
+
+  import("@/components/customer-workspace/tabs/workspace-sms-tab").then((m) => ({
+
+    default: m.WorkspaceSmsTab,
+
+  })),
+
+);
+
 const CampaignsTab = lazy(() =>
 
   import("@/components/customer-workspace/tabs/workspace-campaigns-tab").then((m) => ({
@@ -673,6 +693,14 @@ export function CustomerWorkspacePage({
 
         );
 
+      case "email":
+
+        return <EmailTab customer={customer} />;
+
+      case "sms":
+
+        return <SmsTab customer={customer} />;
+
       case "bookings":
 
         return (
@@ -820,6 +848,8 @@ export function CustomerWorkspacePage({
           canWhatsapp={workspaceAccess.canAccessWhatsapp}
 
           canCall={workspaceAccess.isQuickActionAllowed("call")}
+
+          canEditAvatar={canEdit}
 
           ltv={ltv}
 

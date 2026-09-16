@@ -28,7 +28,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("workspace navigation — no More menu", () => {
-  it("exposes 11 top-level tabs in required order", () => {
+  it("exposes 13 top-level tabs in required order", () => {
     assert.deepEqual(WORKSPACE_TOP_TABS, [
       "overview",
       "activity",
@@ -36,6 +36,8 @@ describe("workspace navigation — no More menu", () => {
       "invoices",
       "communication",
       "tickets",
+      "email",
+      "sms",
       "payments",
       "files",
       "ai",
@@ -43,7 +45,7 @@ describe("workspace navigation — no More menu", () => {
       "history",
     ]);
     const contract = assertWorkspaceTabOrderContract();
-    assert.equal(contract.count, 11);
+    assert.equal(contract.count, 13);
     assert.equal(contract.historyLast, true);
     assert.equal(contract.campaignsBeforeHistory, true);
     assert.equal(contract.hasMore, false);

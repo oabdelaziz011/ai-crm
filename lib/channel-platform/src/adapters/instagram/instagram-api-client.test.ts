@@ -41,11 +41,12 @@ describe("InstagramApiClient sendMessage", () => {
   });
 
   it("retries once when Meta returns 190 cannot parse access token", async () => {
-    const urls: string[] = [];
+    const requests: Array<{ url: string; authorization: string | null }> = [];
     const client = new InstagramApiClient({
-      fetchFn: async (url) => {
-        urls.push(String(url));
-        if (urls.length === 1) {
+      fetchFn: async (url, init) => {
+        const headers = new Headers(init?.headers);
+        requests.push({ url: String(url), authorization: headers.get("authorization") });
+        if (requests.length === 1) {
           return {
             ok: false,
             status: 400,
@@ -68,9 +69,33 @@ describe("InstagramApiClient sendMessage", () => {
     });
 
     assert.equal(result.message_id, "mid.retry");
-    assert.equal(urls.length, 2);
-    assert.match(urls[0]!, /graph\.instagram\.com/);
-    assert.match(urls[1]!, /graph\.instagram\.com/);
+    assert.equal(requests.length, 2);
+    assert.match(requests[0]!.url, /graph\.instagram\.com/);
+    assert.match(requests[1]!.url, /graph\.instagram\.com/);
+    assert.equal(requests[0]?.authorization, "Bearer IGAA-login-token");
+    assert.equal(requests[1]?.authorization, null);
+    assert.equal(new URL(requests[1]!.url).searchParams.get("access_token"), "IGAA-login-token");
+  });
+
+  it("strips whitespace from the Instagram Login token before sending", async () => {
+    const urls: string[] = [];
+    const client = new InstagramApiClient({
+      fetchFn: async (url) => {
+        urls.push(String(url));
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ message_id: "mid.trim" }),
+        } as Response;
+      },
+    });
+
+    await client.sendMessage(
+      { ...config, accessToken: " IGAA-login-token \n" },
+      { recipient: { id: "igsid" }, message: { text: "hello" } },
+    );
+
+    assert.equal(new URL(urls[0]!).searchParams.get("access_token"), "IGAA-login-token");
   });
 
   it("rewrites Facebook Graph message URLs onto Instagram Login", () => {

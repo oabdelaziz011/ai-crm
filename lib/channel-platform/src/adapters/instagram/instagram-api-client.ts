@@ -40,6 +40,10 @@ function withAccessTokenQuery(endpoint: string, accessToken: string): string {
   return url.toString();
 }
 
+function normalizeInstagramAccessToken(token: string): string {
+  return token.replace(/\s+/g, "").trim();
+}
+
 export function rewriteInstagramMessagesHost(endpoint: string): string {
   const url = new URL(endpoint);
   if (url.origin !== FACEBOOK_GRAPH_HOST) return endpoint;
@@ -66,20 +70,30 @@ export class InstagramApiClient {
     payload: InstagramSendMessagePayload,
     options?: { accessTokenSource?: string },
   ): Promise<InstagramSendMessageResponse> {
+    const accessToken = normalizeInstagramAccessToken(config.accessToken);
+    if (!accessToken) {
+      throw new ValidationError("Instagram access token is empty.");
+    }
+
     const diagnosticEndpoint = instagramMessagesUrl(config);
     let lastBody: InstagramSendMessageResponse | undefined;
     let lastStatus = 0;
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const hostEndpoint = attempt === 0 ? diagnosticEndpoint : rewriteInstagramMessagesHost(diagnosticEndpoint);
-      const requestUrl = withAccessTokenQuery(hostEndpoint, config.accessToken);
+      const requestUrl = withAccessTokenQuery(hostEndpoint, accessToken);
+      // First try Bearer + query. On Meta 190, retry query-only: a stripped/corrupt
+      // Authorization header makes Graph ignore a valid access_token query param.
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (attempt === 0) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
 
       const response = await this.fetchFn(requestUrl, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 

@@ -124,7 +124,7 @@ export function registerBuiltInVariableProviders(): void {
     category: "company",
     label: "Company",
     listVariables: () => [
-      variable("company", "name", "Name", "Vault Clinic"),
+      variable("company", "name", "Name", "ValueOR Clinic"),
       variable("company", "phone", "Phone", "+966 11 000 0000"),
     ],
   });

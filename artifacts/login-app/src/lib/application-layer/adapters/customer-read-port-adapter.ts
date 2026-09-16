@@ -9,7 +9,7 @@ import { SupabaseCustomerRepository } from "@/lib/crm/supabase-customer-reposito
 import { CustomerInvoiceRepository } from "@/lib/billing/repositories/customer-invoice-repository";
 
 const CUSTOMER_SEARCH_COLUMNS =
-  "id, name, email, phone, phone_e164, age, gender, notes, created_at, updated_at, company_id";
+  "id, name, email, phone, phone_e164, age, gender, notes, avatar_url, created_at, updated_at, company_id";
 
 /**
  * Port context for product operations.
@@ -37,6 +37,7 @@ function mapCustomer(row: Record<string, unknown>, tenantId: string, extras?: Pa
     currentStatus: extras?.currentStatus ?? "Active",
     createdAt: String(row.created_at),
     notes: extras?.notes,
+    avatarUrl: row.avatar_url == null ? extras?.avatarUrl ?? null : String(row.avatar_url),
   });
 }
 
@@ -101,12 +102,14 @@ export function createLoginAppCustomerReadPort(
           email: record.email,
           phone: record.phone,
           created_at: record.createdAt,
+          avatar_url: record.avatarUrl ?? null,
         },
         tenantId,
         {
           outstandingBalanceCents,
           isVip: outstandingBalanceCents === 0 && Boolean(record.notes?.includes("VIP")),
           notes: record.notes ?? undefined,
+          avatarUrl: record.avatarUrl ?? null,
         },
       );
     },

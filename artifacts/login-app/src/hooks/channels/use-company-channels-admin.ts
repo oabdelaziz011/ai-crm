@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
+import { usePermissions } from "@/hooks/use-rbac";
 import { webChatCompanyChannelQueryKey } from "@/hooks/ai-chat/use-web-chat-company-channel";
 import { useChannelRegistryServices } from "@/lib/channel-registry";
 import { resolveChannelCommercialFeatureCode } from "@/lib/billing/feature-code-map";
@@ -20,13 +21,18 @@ export function channelTypesQueryKey() {
 
 export function useCompanyChannelsAdmin(enabled = true) {
   const { profile } = useAuth();
+  const { isLoading: sessionLoading, isRefreshing, permissions, isSuperAdmin } = usePermissions();
   const companyId = profile?.company_id ?? null;
   const { services, context } = useChannelRegistryServices();
+  const canListChannels =
+    isSuperAdmin || permissions.some((permission) => permission.code === "channels.view");
+  const rbacReady = !sessionLoading && !isRefreshing && canListChannels;
 
   return useQuery({
-    queryKey: companyChannelsQueryKey(companyId),
-    enabled: Boolean(enabled && companyId),
+    queryKey: [...companyChannelsQueryKey(companyId), rbacReady ? "can-list" : "hold"],
+    enabled: Boolean(enabled && companyId && rbacReady),
     staleTime: 30_000,
+    retry: 1,
     queryFn: async () => {
       if (!companyId) return [];
       return services.companyChannels.listCompanyChannels(context, { companyId });

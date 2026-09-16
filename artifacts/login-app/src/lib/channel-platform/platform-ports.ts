@@ -165,6 +165,7 @@ export function createChannelConversationPort(
   ctx: ConversationServiceContext,
   options?: {
     resolveCompanyAssistantId?: (companyId: string) => Promise<string | null>;
+    supabaseClient?: SupabaseClient;
   },
 ): ChannelConversationPort {
   return {
@@ -176,13 +177,17 @@ export function createChannelConversationPort(
         (typeof meta.externalThreadId === "string" && meta.externalThreadId.trim()) ||
         (typeof meta.senderExternalId === "string" && meta.senderExternalId.trim()) ||
         null;
+
+      // Ticket-centric SLA: conversation create must NOT invent lifecycle.slaDueAt.
+      // SLA is calculated only when a support ticket is created (TicketCommandService).
       const created = await services.conversations.createConversation(ctx, {
         companyId: input.companyId,
         aiAssistantId: input.aiAssistantId,
         companyChannelId: input.companyChannelId,
         channelType: input.channelType as ConversationChannelType,
-        metadata: input.metadata,
+        metadata: meta,
         externalThreadId,
+        departmentId: input.departmentId ?? null,
       });
 
       void import("@/lib/lead-intelligence/conversation-event-publisher.js")

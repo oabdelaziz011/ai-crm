@@ -340,10 +340,13 @@ export class IntegrationApiGatewayService {
     conversationId: string,
     body: { toUserId?: string; toQueueId?: string; reason?: string },
   ) {
+    // Explicit whitelist — never forward skipAssignmentGovernance / requestedByAiAssistantId.
     return this.handoffPlatform.commands.transferConversation(this.handoffContext(ctx), {
       companyId: ctx.companyId,
       conversationId,
-      ...body,
+      toUserId: typeof body?.toUserId === "string" ? body.toUserId : undefined,
+      toQueueId: typeof body?.toQueueId === "string" ? body.toQueueId : undefined,
+      reason: typeof body?.reason === "string" ? body.reason : undefined,
     });
   }
 
@@ -363,7 +366,8 @@ export class IntegrationApiGatewayService {
     return this.handoffPlatform.commands.rejectConversation(this.handoffContext(ctx), {
       companyId: ctx.companyId,
       conversationId,
-      ...body,
+      requestId: typeof body?.requestId === "string" ? body.requestId : undefined,
+      reason: typeof body?.reason === "string" ? body.reason : undefined,
     });
   }
 
@@ -372,10 +376,12 @@ export class IntegrationApiGatewayService {
     conversationId: string,
     body: { assigneeUserId: string; reason?: string },
   ) {
+    // Explicit whitelist — never forward skipAssignmentGovernance / requestedByAiAssistantId.
     return this.handoffPlatform.commands.assignConversation(this.handoffContext(ctx), {
       companyId: ctx.companyId,
       conversationId,
-      ...body,
+      assigneeUserId: String(body?.assigneeUserId ?? ""),
+      reason: typeof body?.reason === "string" ? body.reason : undefined,
     });
   }
 
@@ -387,7 +393,8 @@ export class IntegrationApiGatewayService {
     return this.handoffPlatform.commands.queueConversation(this.handoffContext(ctx), {
       companyId: ctx.companyId,
       conversationId,
-      ...body,
+      queueId: String(body?.queueId ?? ""),
+      reason: typeof body?.reason === "string" ? body.reason : undefined,
     });
   }
 

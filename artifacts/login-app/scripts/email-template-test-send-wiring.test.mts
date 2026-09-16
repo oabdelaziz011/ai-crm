@@ -27,11 +27,12 @@ describe("email template test-send wiring (Sprint 2)", () => {
     assert.match(page, /testSendMutation\.isPending/);
   });
 
-  it("API route reuses auth + company scope + settings.edit + existing provider", () => {
+  it("API route reuses auth + company scope + email.templates.view + existing provider", () => {
     assert.match(route, /\/email\/templates\/test-send/);
     assert.match(route, /requireSupabaseAuth/);
     assert.match(route, /requireCompanyScope/);
-    assert.match(route, /settings\.edit/);
+    assert.match(route, /EMAIL_TEMPLATES_TAB_PERMISSION/);
+    assert.doesNotMatch(route, /settings\.edit permission is required/);
     assert.match(route, /sendEmailTemplate/);
     assert.match(route, /provider\.sendDirect/);
     assert.match(route, /email_template_test_sent/);

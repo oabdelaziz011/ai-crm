@@ -24,6 +24,7 @@ export function createLoginAppHandoffWritePort(client: SupabaseClient, ctx: Logi
         reason: input.reason,
         targetQueueId: input.targetQueueId,
         requestedByAiAssistantId: input.aiAssistantId,
+        trustedSystemExecution: true,
       });
       return {
         requestId: result.request.id,
@@ -40,6 +41,7 @@ export function createLoginAppHandoffWritePort(client: SupabaseClient, ctx: Logi
         queueId: input.queueId,
         reason: input.reason,
         requestedByAiAssistantId: input.aiAssistantId,
+        trustedSystemExecution: true,
       });
       return {
         queuePosition: result.queuePosition.position,

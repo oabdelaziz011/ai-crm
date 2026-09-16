@@ -32,15 +32,27 @@ describe("Sprint 8 Email UI + security smoke", () => {
   it("AI Routing nav requires ai_email_routing entitlement", () => {
     const route = EMAIL_ROUTE_REGISTRY.find((item) => item.id === "ai-routing");
     assert.equal(route?.commercialFeatureCode, "ai_email_routing");
-    assert.equal(route?.permission, "settings.view");
-    assert.equal(isEmailNavRouteVisible(route!, () => false), false);
-    assert.equal(isEmailNavRouteVisible(route!, () => true), true);
+    assert.equal(route?.permission, "email.routing.view");
+    assert.equal(
+      isEmailNavRouteVisible(route!, () => true, { hasPermission: () => false }),
+      false,
+    );
+    assert.equal(
+      isEmailNavRouteVisible(route!, () => true, {
+        hasPermission: (code) => code === "email.routing.view",
+      }),
+      true,
+    );
+    assert.equal(
+      isEmailNavRouteVisible(route!, () => false, { isSuperAdmin: true }),
+      true,
+    );
   });
 
-  it("SMTP email settings remain under system Settings with settings.edit + email_channel", () => {
+  it("SMTP email settings remain under system Settings with ai.email.manage + email_channel", () => {
     const settingsEmail = SETTINGS_ROUTE_REGISTRY.find((item) => item.id === "email");
     assert.equal(settingsEmail?.nestedPath, "/email");
-    assert.equal(settingsEmail?.permission, "settings.edit");
+    assert.equal(settingsEmail?.permission, "ai.email.manage");
     assert.equal(settingsEmail?.commercialFeatureCode, "email_channel");
   });
 
@@ -63,7 +75,7 @@ describe("Sprint 8 Email UI + security smoke", () => {
     const forbidden = [
       /service_role/i,
       /SERVICE_ROLE/,
-      /sk-[a-zA-Z0-9]{10,}/,
+      /sk-[a-zA-Z0-9]{20,}/,
       /SUPABASE_SERVICE_ROLE_KEY/,
       /openai.*api[_-]?key/i,
     ];

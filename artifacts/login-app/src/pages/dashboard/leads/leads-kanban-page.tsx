@@ -44,6 +44,7 @@ import { translateLeadPipelineLabel } from "@/components/leads/kanban/lead-pipel
 import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
 import { useAuth } from "@/context/auth-context";
 import { useCompanyLocaleContext } from "@/context/company-locale-context";
+import { useAssignableEmployees } from "@/hooks/assignment-governance/use-assignable-employees";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
 import {
   useLeadKanbanBoard,
@@ -56,6 +57,7 @@ import { useAgentsFeatureEnabled } from "@/hooks/platform-ai/use-platform-ai-fea
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
 import { mapLeadReadModelToWorkspaceRow } from "@/lib/application-layer/lead-workspace-row-mapper";
+import { formatAssignableEmployeeLabel } from "@/lib/assignment-governance/assignable-employees";
 import { getCompanyCurrency } from "@/lib/company-locale/runtime";
 import { EmployeeIdentityService } from "@/lib/employee-identity/employee-identity-service";
 
@@ -118,6 +120,10 @@ export function LeadsKanbanPage() {
     queryFn: () => EmployeeIdentityService.listByCompany(company!.id),
     staleTime: 60_000,
   });
+  const assignableOwnersQuery = useAssignableEmployees({
+    enabled: Boolean(company?.id && (isSuperAdmin || hasPermission("leads.assign") || hasPermission("leads.create"))),
+    resource: "lead",
+  });
 
   useEffect(() => {
     if (!pipelineId && pipelines?.length) {
@@ -175,6 +181,13 @@ export function LeadsKanbanPage() {
   }, [aiEnabled, appliedFilters, board, companyCurrency, hiddenStageIds, i18n.language, search, t]);
 
   const ownerOptions = useMemo(() => {
+    return (assignableOwnersQuery.data ?? []).map((owner) => ({
+      id: owner.userId,
+      label: formatAssignableEmployeeLabel(owner),
+    }));
+  }, [assignableOwnersQuery.data]);
+
+  const filterOwnerOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const owner of companyOwners ?? []) {
       if (owner.userId) map.set(owner.userId, owner.fullName);
@@ -455,7 +468,7 @@ export function LeadsKanbanPage() {
         value={filters}
         onChange={setFilters}
         onApply={() => setAppliedFilters({ ...filters, search })}
-        owners={ownerOptions}
+        owners={filterOwnerOptions}
         sources={sourceOptions}
         scoreBands={[
           { id: "cold", label: t("leads.scoreBand.cold") },

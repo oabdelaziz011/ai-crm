@@ -51,6 +51,7 @@ import { leadWorkspaceRowToOpportunitySeed } from "@/components/opportunities/op
 import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { useAuth } from "@/context/auth-context";
+import { useAssignableEmployees } from "@/hooks/assignment-governance/use-assignable-employees";
 import { useConversationServices } from "@/lib/ai-conversation";
 import { companyWorkspaceHref } from "@/lib/company-workspace/company-workspace-routes";
 import {
@@ -60,6 +61,7 @@ import {
 } from "@/lib/customer-profile/services";
 import { EmployeeIdentityService } from "@/lib/employee-identity/employee-identity-service";
 import type { EmployeeIdentity } from "@/lib/employee-identity/types";
+import { formatAssignableEmployeeLabel } from "@/lib/assignment-governance/assignable-employees";
 import { isWhatsAppCompanyChannel } from "@/lib/omnichannel/tenant/diagnose-inbox-empty-state";
 import { supabase } from "@/lib/supabase";
 
@@ -198,6 +200,10 @@ export function LeadsTablePage() {
     queryFn: () => EmployeeIdentityService.listByCompany(company!.id),
     staleTime: 60_000,
   });
+  const assignableOwnersQuery = useAssignableEmployees({
+    enabled: Boolean(company?.id && (isSuperAdmin || hasPermission("leads.assign") || hasPermission("leads.create"))),
+    resource: "lead",
+  });
 
   useEffect(() => {
     if (!pipelineId && pipelines?.length) {
@@ -256,24 +262,11 @@ export function LeadsTablePage() {
   }, [stages]);
 
   const ownerOptions = useMemo((): LeadsCreateOption[] => {
-    const map = new Map<string, string>();
-    // assigned_user_id is auth.users id — only use identities with userId.
-    for (const owner of companyOwners ?? []) {
-      if (!owner.userId) continue;
-      map.set(owner.userId, owner.fullName);
-    }
-    if (user?.id && !map.has(user.id)) {
-      const selfName =
-        (user as { user_metadata?: { full_name?: string } } | null)?.user_metadata?.full_name ||
-        user.email ||
-        t("leads.columns.owner");
-      map.set(user.id, selfName);
-    }
-    for (const row of rows) {
-      if (row.ownerId && row.owner) map.set(row.ownerId, row.owner);
-    }
-    return [...map.entries()].map(([id, label]) => ({ id, label }));
-  }, [companyOwners, rows, t, user]);
+    return (assignableOwnersQuery.data ?? []).map((owner) => ({
+      id: owner.userId,
+      label: formatAssignableEmployeeLabel(owner),
+    }));
+  }, [assignableOwnersQuery.data]);
 
   const sourceOptions = useMemo((): LeadsCreateOption[] => {
     if (sources?.length) {

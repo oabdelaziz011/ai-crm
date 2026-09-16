@@ -131,6 +131,32 @@ export function platformAiEmbeddings(
   return postPlatformAiApi<PlatformAiEmbeddingsResponse>("/embeddings", body);
 }
 
+export type PlatformAiSuggestedRepliesRequest = {
+  companyId: string;
+  conversationId: string;
+  targetLanguage?: "ar" | "en";
+  tone?: string;
+  intent?: string;
+  refreshSeed?: number;
+};
+
+export type PlatformAiSuggestedRepliesResponse = {
+  suggestions: Array<{ text: string }>;
+  targetLanguage: "ar" | "en";
+  source: "llm";
+  model: string;
+  providerKey: string;
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number };
+  latencyMs: number;
+};
+
+export function platformAiSuggestedReplies(
+  body: PlatformAiSuggestedRepliesRequest,
+): Promise<PlatformAiSuggestedRepliesResponse> {
+  assertPlatformAiApiConfigured();
+  return postPlatformAiApi<PlatformAiSuggestedRepliesResponse>("/suggested-replies", body);
+}
+
 /** True when metadata indicates platform-managed credentials (no browser secret). */
 export function metadataNeedsPlatformAiProxy(metadata: Record<string, unknown> | undefined): boolean {
   if (!metadata) return false;

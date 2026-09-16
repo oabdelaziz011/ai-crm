@@ -171,6 +171,7 @@ export class OrganizationRepository {
     const department = mapDepartment(data as Record<string, unknown>);
 
     // Keep employee label in sync when renaming (profiles.department is a display string).
+    // Also sync rows already on the canonical department_id so display text stays aligned.
     if (
       input.name !== undefined &&
       input.previousName &&
@@ -183,6 +184,13 @@ export class OrganizationRepository {
         .eq("company_id", companyId)
         .ilike("department", input.previousName.trim());
       if (profileError) throw new Error(profileError.message);
+
+      const { error: byIdError } = await this.client
+        .from("profiles")
+        .update({ department: department.name })
+        .eq("company_id", companyId)
+        .eq("department_id", id);
+      if (byIdError) throw new Error(byIdError.message);
     }
 
     return department;
@@ -201,7 +209,7 @@ export class OrganizationRepository {
     companyId: string,
     departmentName: string,
   ): Promise<OrganizationDepartmentDependencies> {
-    const [resources, children, employees] = await Promise.all([
+    const [resources, children, employees, employeesById] = await Promise.all([
       this.client
         .from("organization_resource_assignments")
         .select("id", { count: "exact", head: true })
@@ -219,16 +227,26 @@ export class OrganizationRepository {
         .select("id", { count: "exact", head: true })
         .eq("company_id", companyId)
         .ilike("department", departmentName.trim()),
+      this.client
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("department_id", id),
     ]);
 
     if (resources.error) throw new Error(resources.error.message);
     if (children.error) throw new Error(children.error.message);
     if (employees.error) throw new Error(employees.error.message);
+    if (employeesById.error) throw new Error(employeesById.error.message);
+
+    const employeesByText = employees.count ?? 0;
+    const employeesCanonical = employeesById.count ?? 0;
 
     return {
       resources: resources.count ?? 0,
       children: children.count ?? 0,
-      employees: employees.count ?? 0,
+      // Prefer the larger of text-label vs canonical FK counts during dual-write transition.
+      employees: Math.max(employeesByText, employeesCanonical),
     };
   }
 
@@ -262,7 +280,10 @@ export class OrganizationRepository {
 
     const departmentIds = departments.map((d) => d.id);
     const [profiles, assignments] = await Promise.all([
-      this.client.from("profiles").select("department").eq("company_id", companyId),
+      this.client
+        .from("profiles")
+        .select("department, department_id")
+        .eq("company_id", companyId),
       this.client
         .from("organization_resource_assignments")
         .select("department_id, resource_id")
@@ -275,7 +296,13 @@ export class OrganizationRepository {
     if (assignments.error) throw new Error(assignments.error.message);
 
     const employeesByName = new Map<string, number>();
+    const employeesById = new Map<string, number>();
     for (const row of profiles.data ?? []) {
+      const deptId = row.department_id ? String(row.department_id) : null;
+      if (deptId) {
+        employeesById.set(deptId, (employeesById.get(deptId) ?? 0) + 1);
+        continue;
+      }
       const key = typeof row.department === "string" ? row.department.trim().toLowerCase() : "";
       if (!key) continue;
       employeesByName.set(key, (employeesByName.get(key) ?? 0) + 1);
@@ -314,7 +341,9 @@ export class OrganizationRepository {
         operations += operationsByResource.get(resourceId) ?? 0;
       }
       const stats: OrganizationDepartmentStats = {
-        employees: employeesByName.get(dept.name.trim().toLowerCase()) ?? 0,
+        employees:
+          (employeesById.get(dept.id) ?? 0) +
+          (employeesByName.get(dept.name.trim().toLowerCase()) ?? 0),
         resources: resourceSet.size,
         operations,
       };

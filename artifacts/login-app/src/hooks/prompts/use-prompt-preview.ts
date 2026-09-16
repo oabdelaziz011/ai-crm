@@ -21,7 +21,7 @@ export function usePromptPreviewState(input: {
       context: {
         companyId: "preview-company",
         customer: { name: "Alex Rivera", phone: "+1-555-0100", email: "alex@example.com" },
-        company: { name: "VaultOS Demo" },
+        company: { name: "ValueOR Demo" },
         booking: { date: "2026-07-20", time: "14:30" },
         workflowInput: { intent: "support" },
         workflowVariables: { priority: "high" },

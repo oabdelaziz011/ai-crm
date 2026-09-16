@@ -76,6 +76,7 @@ export function createLoginAppCustomerWritePort(
         outstandingBalanceCents: 0,
         currentStatus: "Active",
         createdAt: record.createdAt,
+        avatarUrl: record.avatarUrl ?? null,
       } satisfies CustomerReadModel);
     },
 
@@ -95,6 +96,8 @@ export function createLoginAppCustomerWritePort(
       for (const [field, value] of Object.entries(patch)) {
         if (value == null) continue;
         if (field === "phoneIdentity" || field === "phoneRegion") continue;
+        // Avatar URL must come from owned customer-avatars upload — never arbitrary browser URLs.
+        if (field === "avatarUrl" || field === "avatar_url") continue;
         // Application-layer CustomerReadModel uses displayName; CRM repo column is name.
         const repoField = field === "displayName" ? "name" : field;
         let phoneIdentity =
@@ -136,6 +139,7 @@ export function createLoginAppCustomerWritePort(
         outstandingBalanceCents: 0,
         currentStatus: "Active",
         createdAt: latest.createdAt,
+        avatarUrl: latest.avatarUrl ?? null,
       } satisfies CustomerReadModel);
     },
   };

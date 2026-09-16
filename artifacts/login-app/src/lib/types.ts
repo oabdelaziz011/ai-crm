@@ -14,6 +14,8 @@ export type Customer = {
   age: number | null;
   gender: string | null;
   notes: string | null;
+  /** CRM-owned photo URL (`customer-avatars` bucket). Optional until selected. */
+  avatar_url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +50,7 @@ export type MyProfile = {
   avatar_url: string | null;
   job_title: string | null;
   department: string | null;
+  department_id: string | null;
   phone: string | null;
   bio: string | null;
   extension_number: string | null;
@@ -71,6 +74,7 @@ export type MyProfileUpdate = Partial<
     | "timezone"
     | "job_title"
     | "department"
+    | "department_id"
     | "phone"
   >
 >;

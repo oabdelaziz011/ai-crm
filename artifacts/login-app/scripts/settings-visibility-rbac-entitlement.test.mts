@@ -22,6 +22,7 @@ const COMMERCIAL_BY_ID: Record<string, string> = {
   whatsapp: "whatsapp_channel",
   messenger: "facebook_channel",
   instagram: "instagram_channel",
+  sms: "sms_channel",
   calendar: "bookings",
   scheduling: "bookings",
   "ticket-sla": "ticketing",
@@ -82,6 +83,7 @@ describe("Settings visibility — personal / RBAC / commercial", () => {
     assert.equal(ids.includes("whatsapp"), false);
     assert.equal(ids.includes("messenger"), false);
     assert.equal(ids.includes("instagram"), false);
+    assert.equal(ids.includes("sms"), false);
     assert.equal(ids.includes("platform-ai"), false);
   });
 
@@ -102,8 +104,24 @@ describe("Settings visibility — personal / RBAC / commercial", () => {
     const withEmail = entitled("email_channel");
 
     assert.equal(
-      isSettingsRoutePermitted(route, perms("settings.view", "settings.edit"), false, withEmail),
+      isSettingsRoutePermitted(route, perms("ai.email.manage"), false, withEmail),
       true,
+    );
+    assert.equal(
+      isSettingsRoutePermitted(route, perms("email.identity.manage"), false, withEmail),
+      true,
+    );
+    assert.equal(
+      isSettingsRoutePermitted(route, perms("email.settings.manage"), false, withEmail),
+      true,
+    );
+    assert.equal(
+      isSettingsRoutePermitted(route, perms("email.identity.company.manage"), false, withEmail),
+      true,
+    );
+    assert.equal(
+      isSettingsRoutePermitted(route, perms("settings.view", "settings.edit"), false, withEmail),
+      false,
     );
     assert.equal(
       isSettingsRoutePermitted(route, perms("settings.view"), false, withEmail),
@@ -112,6 +130,10 @@ describe("Settings visibility — personal / RBAC / commercial", () => {
     assert.equal(
       isSettingsRoutePermitted(route, () => false, false, withEmail),
       false,
+    );
+    assert.equal(
+      isSettingsRoutePermitted(route, () => false, true, withEmail),
+      true,
     );
   });
 

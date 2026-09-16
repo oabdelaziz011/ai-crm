@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   DepartmentSearchableSelect,
   type DepartmentOption,
 } from "@/components/users/department-searchable-select";
+import { buildDepartmentMembershipWrite } from "@/lib/organization/department-membership";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +31,7 @@ type Props = {
   onSubmit: (payload: {
     branchIds?: string[];
     department?: string | null;
+    department_id?: string | null;
     roleId?: string;
   }) => Promise<void> | void;
   isSubmitting?: boolean;
@@ -53,19 +55,16 @@ export function EmployeeBulkAssignDialog({
   );
 
   const [branchIds, setBranchIds] = useState<string[]>([]);
-  const [department, setDepartment] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [roleId, setRoleId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const tenantRoles = useMemo(
-    () => roles.filter((r) => r.company_id === companyId),
-    [roles, companyId],
-  );
+  const tenantRoles = roles.filter((r) => r.company_id === companyId);
 
   useEffect(() => {
     if (!open) return;
     setBranchIds([]);
-    setDepartment("");
+    setDepartmentId("");
     setRoleId("");
     setError(null);
   }, [open, kind]);
@@ -88,7 +87,15 @@ export function EmployeeBulkAssignDialog({
       return;
     }
     if (kind === "department") {
-      await onSubmit({ department: department.trim() || null });
+      try {
+        const membership = buildDepartmentMembershipWrite(departmentId, departments);
+        await onSubmit({
+          department_id: membership.department_id,
+          department: membership.department,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
       return;
     }
     if (!roleId) {
@@ -122,8 +129,8 @@ export function EmployeeBulkAssignDialog({
           {kind === "department" ? (
             <DepartmentSearchableSelect
               companyId={companyId}
-              value={department}
-              onChange={setDepartment}
+              value={departmentId}
+              onChange={setDepartmentId}
               departments={departments}
             />
           ) : null}

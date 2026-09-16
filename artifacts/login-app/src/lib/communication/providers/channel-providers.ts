@@ -89,8 +89,8 @@ export function createDefaultCommunicationProviders(): CommunicationProvider[] {
   return [
     new NotificationChannelCommunicationProvider("whatsapp", "meta_whatsapp"),
     new NotificationChannelCommunicationProvider("email", "smtp_email"),
-    new NotificationChannelCommunicationProvider("sms", "sms_stub"),
-    new NotificationChannelCommunicationProvider("push", "push_stub"),
+    // SMS conversational/workspace transport is Twilio via channel-platform.
+    // Notification queue path must not fake success via sms_stub.
   ];
 }
 

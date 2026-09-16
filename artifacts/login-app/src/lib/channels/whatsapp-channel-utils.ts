@@ -61,3 +61,16 @@ export function buildEmailChannelWebhookUrl(apiBase: string, companyChannelId: s
   if (!normalizedBase) return `/api/webhooks/email/${encodedChannelId}`;
   return `${normalizedBase}/api/webhooks/email/${encodedChannelId}`;
 }
+
+export function buildSmsWebhookUrl(apiBase: string): string {
+  const normalizedBase = apiBase.trim().replace(/\/$/, "");
+  if (!normalizedBase) return "/api/webhooks/sms";
+  return `${normalizedBase}/api/webhooks/sms`;
+}
+
+export function buildSmsChannelWebhookUrl(apiBase: string, companyChannelId: string): string {
+  const normalizedBase = apiBase.trim().replace(/\/$/, "");
+  const encodedChannelId = encodeURIComponent(companyChannelId.trim());
+  if (!normalizedBase) return `/api/webhooks/sms/${encodedChannelId}`;
+  return `${normalizedBase}/api/webhooks/sms/${encodedChannelId}`;
+}

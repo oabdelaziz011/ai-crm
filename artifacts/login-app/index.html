@@ -20,7 +20,7 @@
       (function () {
         try {
           var storageKey = "app.theme";
-          var theme = localStorage.getItem(storageKey) || "system";
+          var theme = localStorage.getItem(storageKey) || "light";
           var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           var isDark = theme === "dark" || (theme === "system" && prefersDark);
           var root = document.documentElement;
@@ -29,6 +29,7 @@
           } else {
             root.classList.remove("dark");
           }
+          root.dataset.appearance = theme === "system" || theme === "dark" || theme === "light" ? theme : "light";
           root.style.colorScheme = isDark ? "dark" : "light";
         } catch (e) {}
       })();

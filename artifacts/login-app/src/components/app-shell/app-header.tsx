@@ -75,7 +75,7 @@ export function AppHeader({ companyId, onSignOut, onActivateAi }: AppHeaderProps
         <div className="min-w-0 flex-col justify-center">
           <AppBreadcrumbs />
           {identity?.name && (
-            <p className="mt-0.5 truncate text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            <p className="mt-0.5 truncate text-[11px] font-medium tracking-wide text-muted-foreground/70">
               {identity.name}
             </p>
           )}

@@ -103,7 +103,7 @@ export function mapCustomer360AggregateToWorkspace(
       paymentAmountCents: aggregate.invoices.items[0]?.amountCents ?? 0,
     },
     summary: {
-      photoUrl: null,
+      photoUrl: aggregate.profile.avatarUrl ?? null,
       isVip: aggregate.summary.isVip,
       customerSince: aggregate.profile.customerSince,
       lastVisit: aggregate.summary.lastVisit ?? aggregate.profile.customerSince,

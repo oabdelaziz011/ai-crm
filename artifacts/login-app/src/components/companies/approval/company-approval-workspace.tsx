@@ -77,7 +77,14 @@ import {
   rejectCompanyErrorI18nKey,
   type RejectCompanyErrorCode,
 } from "@/lib/companies/reject-company-flow";
-import { formatBillingCurrency } from "@/lib/billing/format";
+import { formatBillingSubscriptionCurrency } from "@/lib/billing/format";
+import {
+  formatCurrencyOptionLabel,
+  listOfficialCurrencies,
+  normalizeCurrencyCode,
+} from "@/lib/currency/catalog";
+import { resolveSubscriptionBillingCurrency } from "@/lib/currency/resolve";
+
 import { formatPackageListPrice } from "@/lib/billing/package-pricing";
 import type { Company } from "@/lib/types";
 import {
@@ -257,6 +264,7 @@ export function CompanyApprovalWorkspace({
   const [discountPercent, setDiscountPercent] = useState("0");
   const [customMonthly, setCustomMonthly] = useState("");
   const [customYearly, setCustomYearly] = useState("");
+  const [subscriptionBillingCurrency, setSubscriptionBillingCurrency] = useState("USD");
   const [limitDraft, setLimitDraft] = useState<Record<string, UsageLimitOverride>>({});
   const [saving, setSaving] = useState(false);
   const [customMaxUsers, setCustomMaxUsers] = useState("");
@@ -312,7 +320,24 @@ export function CompanyApprovalWorkspace({
     setDiscountPercent(String(terms.discount_percent ?? 0));
     setCustomMonthly(terms.custom_price_monthly != null ? String(terms.custom_price_monthly) : "");
     setCustomYearly(terms.custom_price_yearly != null ? String(terms.custom_price_yearly) : "");
+    const fromTerms = normalizeCurrencyCode(terms.subscription_billing_currency);
+    if (fromTerms) setSubscriptionBillingCurrency(fromTerms);
   }, [termsQuery.data]);
+
+  useEffect(() => {
+    const sub = subscriptionQuery.data as
+      | { billing_currency?: string | null; plan?: { pricing_currency?: string | null } }
+      | null
+      | undefined;
+    if (!sub) return;
+    if (normalizeCurrencyCode(termsQuery.data?.subscription_billing_currency)) return;
+    const resolved = resolveSubscriptionBillingCurrency({
+      subscriptionCurrency: sub.billing_currency,
+      planPricingCurrency: sub.plan?.pricing_currency,
+      fallback: "USD",
+    });
+    setSubscriptionBillingCurrency(resolved);
+  }, [subscriptionQuery.data, termsQuery.data?.subscription_billing_currency]);
 
   useEffect(() => {
     const next: Record<string, UsageLimitOverride> = {};
@@ -379,11 +404,26 @@ export function CompanyApprovalWorkspace({
           discount_percent: Number(discountPercent) || 0,
           custom_price_monthly: customMonthly ? Number(customMonthly) : null,
           custom_price_yearly: customYearly ? Number(customYearly) : null,
+          subscription_billing_currency: subscriptionBillingCurrency,
           notes: notes || null,
         },
+        currency: subscriptionBillingCurrency,
       }),
-    [billingCycle, plan, companyId, pricingSource, discountPercent, customMonthly, customYearly, notes],
+    [
+      billingCycle,
+      plan,
+      companyId,
+      pricingSource,
+      discountPercent,
+      customMonthly,
+      customYearly,
+      notes,
+      subscriptionBillingCurrency,
+    ],
   );
+
+  const formatSubscriptionAmount = (amount: number | null | undefined) =>
+    formatBillingSubscriptionCurrency(amount, subscriptionBillingCurrency);
 
   const activePackages = useMemo(
     () => (packagesQuery.data ?? []).filter((pkg) => pkg.is_active !== false),
@@ -436,6 +476,7 @@ export function CompanyApprovalWorkspace({
         customPriceMonthly: customMonthly ? Number(customMonthly) : null,
         customPriceYearly: customYearly ? Number(customYearly) : null,
         notes: notes.trim() || null,
+        subscriptionBillingCurrency,
       });
       const rows = Object.values(limitDraft).filter((row) => row.metric_code);
       if (rows.length > 0) {
@@ -1141,19 +1182,44 @@ export function CompanyApprovalWorkspace({
                     <Field label={t("companies.approval.wizard.billingCycle")} value={billingCycleLabel} />
                     <Field
                       label={t("companies.approval.listPrice")}
-                      value={payable.listAmount == null ? "—" : formatBillingCurrency(payable.listAmount)}
+                      value={payable.listAmount == null ? "—" : formatSubscriptionAmount(payable.listAmount)}
                     />
                     <Field
                       label={t("companies.approval.companyPrice")}
-                      value={payable.payableAmount == null ? "—" : formatBillingCurrency(payable.payableAmount)}
+                      value={payable.payableAmount == null ? "—" : formatSubscriptionAmount(payable.payableAmount)}
                     />
                     {commercialPath === "custom" ? (
                       <Field
                         label={t("companies.approval.wizard.customPrice")}
-                        value={payable.payableAmount == null ? "—" : formatBillingCurrency(payable.payableAmount)}
+                        value={payable.payableAmount == null ? "—" : formatSubscriptionAmount(payable.payableAmount)}
                       />
                     ) : null}
                   </ReviewSection>
+
+                  <div className="max-w-md space-y-1.5">
+                    <Label htmlFor="subscription-billing-currency">
+                      {t("companies.approval.subscriptionBillingCurrency")}
+                    </Label>
+                    <select
+                      id="subscription-billing-currency"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={subscriptionBillingCurrency}
+                      onChange={(event) => {
+                        const next = normalizeCurrencyCode(event.target.value);
+                        if (next) setSubscriptionBillingCurrency(next);
+                      }}
+                    >
+                      {listOfficialCurrencies().map((entry) => (
+                        <option key={entry.code} value={entry.code}>
+                          {formatCurrencyOptionLabel(entry.code, i18n.language)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      {t("companies.approval.subscriptionBillingCurrencyHint")}
+                    </p>
+                  </div>
+
                   {commercialPath === "custom" ? (
                     <p className="text-xs text-muted-foreground">{t("companies.approval.wizard.customPriceNote")}</p>
                   ) : null}
@@ -1247,13 +1313,21 @@ export function CompanyApprovalWorkspace({
                     }
                   />
                   <Field
+                    label={t("companies.approval.subscriptionBillingCurrency")}
+                    value={
+                      commercialPath === "trial"
+                        ? "—"
+                        : formatCurrencyOptionLabel(subscriptionBillingCurrency, i18n.language)
+                    }
+                  />
+                  <Field
                     label={t("companies.approval.wizard.summaryPrice")}
                     value={
                       commercialPath === "trial"
                         ? t("companies.approval.wizard.trialPricingHint")
                         : payable.payableAmount == null
                           ? "—"
-                          : `${formatBillingCurrency(payable.payableAmount)} / ${billingCycle === "yearly" ? t("companies.approval.wizard.year") : t("companies.approval.wizard.month")}`
+                          : `${formatSubscriptionAmount(payable.payableAmount)} / ${billingCycle === "yearly" ? t("companies.approval.wizard.year") : t("companies.approval.wizard.month")}`
                     }
                   />
                   <Field

@@ -201,9 +201,68 @@ describe("Channels dashboard route", () => {
     );
   });
 
-  it("sms-only entitlement does not open channels dashboard", () => {
+  it("sms entitlement opens channels dashboard (Settings holds credentials)", () => {
     assert.equal(
       isAnyChannelManagementEntitled(entitledLookup({ sms_channel: true })),
+      true,
+    );
+  });
+});
+
+describe("Email dashboard route", () => {
+  it("Email route uses email.view + email_channel, not channels.view", () => {
+    const start = dashboardRegistry.indexOf('id: "email"');
+    const next = dashboardRegistry.indexOf("id: \"ai-usage\"", start);
+    const block = dashboardRegistry.slice(start, next > start ? next : start + 800);
+    assert.match(block, /permission: "email.view"/);
+    assert.match(block, /commercialFeatureCode: "email_channel"/);
+    assert.doesNotMatch(block, /permission: "channels.view"/);
+  });
+
+  it("email.view + email_channel → ALLOW", () => {
+    assert.equal(
+      evaluateRouteAccess({
+        permission: "email.view",
+        commercialFeatureCode: "email_channel",
+        hasPermission: perms("email.view"),
+        commercialFeatureEnabled: entitledLookup({ email_channel: true }),
+      }),
+      true,
+    );
+  });
+
+  it("email.view without email_channel → DENY", () => {
+    assert.equal(
+      evaluateRouteAccess({
+        permission: "email.view",
+        commercialFeatureCode: "email_channel",
+        hasPermission: perms("email.view"),
+        commercialFeatureEnabled: entitledLookup({}),
+      }),
+      false,
+    );
+  });
+
+  it("channels.view + email_channel without email.view → Email DENY", () => {
+    assert.equal(
+      evaluateRouteAccess({
+        permission: "email.view",
+        commercialFeatureCode: "email_channel",
+        hasPermission: perms("channels.view"),
+        commercialFeatureEnabled: entitledLookup({ email_channel: true }),
+      }),
+      false,
+    );
+  });
+
+  it("email.view only → Channels DENY", () => {
+    assert.equal(
+      evaluateRouteAccess({
+        permission: "channels.view",
+        requiresAnyChannelEntitlement: true,
+        hasPermission: perms("email.view"),
+        commercialFeatureEnabled: entitledLookup({ email_channel: true }),
+      }),
       false,
     );
   });
@@ -218,14 +277,16 @@ describe("Helper invariants", () => {
       "facebook_channel",
       "instagram_channel",
       "email_channel",
+      "sms_channel",
     ]);
   });
 
-  it("SMS excluded from management UI surfaces", () => {
-    assert.equal(isChannelManagementUiSupported("sms"), false);
+  it("SMS included in management UI surfaces with Settings credentials", () => {
+    assert.equal(isChannelManagementUiSupported("sms"), true);
     assert.equal(isChannelManagementUiSupported("whatsapp"), true);
     assert.match(channelsPage, /isChannelManagementUiSupported/);
     assert.match(channelsPage, /creatableChannelTypes/);
+    assert.match(channelsPage, /\/dashboard\/settings\/sms/);
   });
 });
 
@@ -292,13 +353,16 @@ function extractRouteHandler(source: string, routePath: string): string {
 }
 
 describe("Health probes unchanged", () => {
-  it("X health-only endpoints remain without route commercial wrapper", () => {
+  it("X WhatsApp health remains without route commercial wrapper", () => {
     const whatsappHealth = extractRouteHandler(whatsappRoute, "/whatsapp/health");
-    const emailHealth = extractRouteHandler(emailRoute, "/email/health");
     assert.ok(whatsappHealth.includes("/whatsapp/health"));
     assert.doesNotMatch(whatsappHealth, /assertRouteCommercialFeature/);
+  });
+
+  it("Email health keeps commercial + permission gates", () => {
+    const emailHealth = extractRouteHandler(emailRoute, "/email/health");
     assert.ok(emailHealth.includes("/email/health"));
-    assert.doesNotMatch(emailHealth, /assertRouteCommercialFeature/);
+    assert.match(emailHealth, /assertRouteCommercialFeature\(companyId, "email_channel"\)/);
   });
 });
 

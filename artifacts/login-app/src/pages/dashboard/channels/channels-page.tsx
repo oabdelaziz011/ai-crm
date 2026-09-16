@@ -685,6 +685,35 @@ export default function ChannelsPage() {
                   </p>
                 </div>
               </>
+            ) : configTarget?.communication_channel?.key === "sms" ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.channels.smsCredentialsManagedInSettings")}{" "}
+                  <Link to="/dashboard/settings/sms" className="text-primary underline underline-offset-2">
+                    {t("dashboard.settings.nav.sms")}
+                  </Link>
+                </p>
+                <div className="space-y-2">
+                  <Label>{t("dashboard.channels.provider")}</Label>
+                  <Input
+                    value={providerLabel(
+                      t,
+                      readConfigString(configTarget.configuration ?? {}, "provider") ||
+                        resolveDefaultChannelProvider("sms"),
+                    )}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("notifications.sms.settings.fromNumber")}</Label>
+                  <Input
+                    value={readConfigString(configTarget.configuration ?? {}, "fromNumber")}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                </div>
+              </>
             ) : (
               <p className="text-xs text-muted-foreground">
                 {t("dashboard.channels.inboundRouting.pageHint")}

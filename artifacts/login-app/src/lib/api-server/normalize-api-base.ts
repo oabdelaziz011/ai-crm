@@ -10,8 +10,11 @@ export function normalizeApiBase(base: string): string {
 }
 
 function readApiServerRootUrl(): string {
-  const runtimeEnv = import.meta.env as Record<string, string | undefined>;
-  const fromVite = runtimeEnv.VITE_API_SERVER_URL?.trim() ?? "";
+  const runtimeEnv =
+    typeof import.meta !== "undefined" && import.meta.env && typeof import.meta.env === "object"
+      ? (import.meta.env as Record<string, string | undefined>)
+      : undefined;
+  const fromVite = runtimeEnv?.VITE_API_SERVER_URL?.trim() ?? "";
   if (fromVite) return fromVite;
 
   if (typeof window === "undefined" && typeof process !== "undefined") {

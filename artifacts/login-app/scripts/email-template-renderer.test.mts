@@ -17,8 +17,31 @@ describe("email template variables + renderer (Sprint 1)", () => {
       "customer.email",
       "ticket.number",
       "ticket.subject",
+      "ticket.status",
+      "ticket.priority",
       "booking.reference",
     ]);
+  });
+
+  it("renders ticket status and priority when trusted context is present", () => {
+    const rendered = renderEmailTemplate(
+      {
+        subject: "Update regarding {{ticket.number}}",
+        body: "Dear {{customer.name}}, request {{ticket.number}} is {{ticket.status}} ({{ticket.priority}}).",
+      },
+      {
+        "customer.name": "Ahmed",
+        "ticket.number": "TKT-000124",
+        "ticket.status": "in_progress",
+        "ticket.priority": "high",
+      },
+    );
+    assert.equal(rendered.subject, "Update regarding TKT-000124");
+    assert.equal(
+      rendered.body,
+      "Dear Ahmed, request TKT-000124 is in_progress (high).",
+    );
+    assert.deepEqual(rendered.unresolved, []);
   });
 
   it("renders welcome template with sample context", () => {

@@ -41,6 +41,10 @@ export type MetaMessagingWebhookMessage = {
       sticker_id?: number;
     };
   }>;
+  quick_reply?: {
+    payload?: string;
+    title?: string;
+  };
   is_echo?: boolean;
   is_deleted?: boolean;
 };

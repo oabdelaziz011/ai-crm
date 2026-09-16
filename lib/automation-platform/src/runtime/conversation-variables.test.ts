@@ -257,4 +257,69 @@ describe("buildResumeInput", () => {
     assert.equal(input.title, "Dr Three");
     assert.equal(input.interactionType, "list_reply");
   });
+
+  it("maps Instagram clinic list free text onto the selected row id", () => {
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+          __outbound: {
+            kind: "list",
+            title: "اختر خدمة",
+            body: "اختَر الخيار الأنسب لك.",
+            sections: [
+              {
+                title: "خدمات",
+                rows: [
+                  { id: "dd839aed-7b5a-4591-9c82-12aa21b2673b", title: "عياده اسنان" },
+                  { id: "4fded1be-fe8d-42af-9709-a6f45b55fccf", title: "عياده اطفال" },
+                ],
+              },
+            ],
+          },
+        },
+      } as never,
+      "عياده اسنان",
+      {},
+    );
+
+    assert.equal(input.replyId, "dd839aed-7b5a-4591-9c82-12aa21b2673b");
+    assert.equal(input.interactionType, "list_reply");
+    assert.equal(input.kind, "interactive_reply");
+  });
+
+  it("keeps Instagram clinic list chip taps as quick_reply with the row id", () => {
+    const input = buildResumeInput(
+      {
+        id: "run-1",
+        variables: {
+          __waitingFor: INTERACTIVE_SELECTION_INPUT_KEY,
+          __outbound: {
+            kind: "list",
+            title: "اختر خدمة",
+            body: "اختَر الخيار الأنسب لك.",
+            sections: [
+              {
+                title: "خدمات",
+                rows: [{ id: "dd839aed-7b5a-4591-9c82-12aa21b2673b", title: "عياده اسنان" }],
+              },
+            ],
+          },
+        },
+      } as never,
+      "عياده اسنان",
+      {
+        kind: "interactive_reply",
+        replyId: "dd839aed-7b5a-4591-9c82-12aa21b2673b",
+        title: "عياده اسنان",
+        interactionType: "quick_reply",
+      },
+    );
+
+    assert.equal(input.replyId, "dd839aed-7b5a-4591-9c82-12aa21b2673b");
+    assert.equal(input.interactionType, "quick_reply");
+    assert.equal(input.kind, "interactive_reply");
+    assert.equal(input.interactive_selection, "dd839aed-7b5a-4591-9c82-12aa21b2673b");
+  });
 });

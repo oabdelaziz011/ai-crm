@@ -1,0 +1,24 @@
+# Per-developer LOCAL Cloudflare Tunnel template
+#
+# Copy to: infra/cloudflare/config.<yourname>.yml  (gitignored via config.*.yml)
+# Then set in .env.local.integration:
+#   CLOUDFLARE_TUNNEL_CONFIG=infra/cloudflare/config.<yourname>.yml
+#   PUBLIC_WEBHOOK_BASE_URL=https://<your-hostname>
+#
+# NEVER use:
+#   - tunnel name vaultos-webhook
+#   - hostname webhook.valueor.org
+#   - infra/cloudflare/config.yml (shared/production profile)
+#
+# Ingress MUST target this developer's local API only:
+
+tunnel: ${CLOUDFLARE_TUNNEL_ID_OR_NAME}
+credentials-file: ${CLOUDFLARE_TUNNEL_CREDENTIALS_FILE}
+
+ingress:
+  - hostname: ${YOUR_DEVELOPER_HOSTNAME}
+    service: http://localhost:3001
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: false
+  - service: http_status:404

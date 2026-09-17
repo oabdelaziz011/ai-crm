@@ -188,7 +188,6 @@ values
   ('ai_assistant', 'ai_assistant.view'),
   ('ai_assistant', 'ai_chat.use'),
   ('ai_assistant', 'ai_chat.view'),
-  ('ai_assistant', 'ai-chat.view'),
   ('ai_assistant', 'ai.conversations.release'),
   ('ai_assistant', 'ai.conversations.reply'),
   ('ai_assistant', 'ai.conversations.takeover'),
@@ -344,8 +343,6 @@ values
   ('core_crm', 'settings.view'),
   ('core_crm', 'subscriptions.edit'),
   ('core_crm', 'subscriptions.view'),
-  ('core_crm', 'users.create'),
-  ('core_crm', 'users.delete'),
   ('core_crm', 'users.edit'),
   ('core_crm', 'users.view'),
   ('core_crm', 'workspace.view')

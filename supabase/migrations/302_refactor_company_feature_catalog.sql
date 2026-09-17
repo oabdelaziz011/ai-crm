@@ -22,9 +22,9 @@ begin
   where feature_code = 'core_crm'
     and is_active = true;
 
-  if v_core_count <> 77 then
+  if v_core_count <> 75 then
     raise exception
-      '302 fail-closed: expected 77 active core_crm mappings, found %',
+      '302 fail-closed: expected 75 active core_crm mappings, found %',
       v_core_count;
   end if;
 end $$;
@@ -125,8 +125,6 @@ values
   ('users_roles', 'roles.delete'),
   ('users_roles', 'roles.edit'),
   ('users_roles', 'roles.view'),
-  ('users_roles', 'users.create'),
-  ('users_roles', 'users.delete'),
   ('users_roles', 'users.edit'),
   ('users_roles', 'users.view'),
 
@@ -217,7 +215,7 @@ begin
   select count(*)::int into v_users
   from public.feature_definition_permissions
   where feature_code = 'users_roles' and is_active = true;
-  if v_users < 10 then
+  if v_users < 8 then
     raise exception '302 fail-closed: users_roles mappings incomplete (%)', v_users;
   end if;
 
@@ -352,7 +350,7 @@ declare
   v_zero_map integer;
 begin
   select count(*)::int into v_perm_count from public.permissions;
-  if v_perm_count < 293 then
+  if v_perm_count < 290 then
     raise exception '302 fail-closed: permissions catalog shrank to %', v_perm_count;
   end if;
 

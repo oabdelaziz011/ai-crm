@@ -7,6 +7,8 @@
 -- operator grants them explicitly. Super Admin remains fully functional via
 -- is_super_admin() / user_has_permission bypass. Migration 363 codes and the
 -- ValueOR DEFAULT Admin tab grants from 364 are not removed.
+-- ValueOR UUID preservation assert is Production-specific: soft-skips when that
+-- historical company/role is absent (clean active-chain replay).
 --
 -- Connection RPCs/RLS require email.settings.manage only (no ai.email.manage OR).
 -- =============================================================================
@@ -283,22 +285,25 @@ begin
     and r.role_type = 'DEFAULT'
     and r.template_key = 'admin';
   if v_admin is null then
-    raise exception '366 fail-closed: ValueOR DEFAULT Admin role not found';
-  end if;
-
-  select count(*)::int into v_missing_tabs
-  from (
-    values ('email.templates.view'), ('email.routing.view'), ('ai.email.manage')
-  ) as required(code)
-  where not exists (
-    select 1
-    from public.role_permissions rp
-    join public.permissions p on p.id = rp.permission_id
-    where rp.role_id = v_admin
-      and p.code = required.code
-  );
-  if v_missing_tabs <> 0 then
-    raise exception '366 fail-closed: ValueOR DEFAULT Admin missing % migration-363 tab permission(s)', v_missing_tabs;
+    -- Historical ValueOR platform company/role is Production-specific and is not
+    -- created by the canonical active migration chain. Soft-skip on clean replay.
+    raise notice
+      '366 soft-skip: ValueOR DEFAULT Admin role not present; 363 tab preservation check skipped on clean replay';
+  else
+    select count(*)::int into v_missing_tabs
+    from (
+      values ('email.templates.view'), ('email.routing.view'), ('ai.email.manage')
+    ) as required(code)
+    where not exists (
+      select 1
+      from public.role_permissions rp
+      join public.permissions p on p.id = rp.permission_id
+      where rp.role_id = v_admin
+        and p.code = required.code
+    );
+    if v_missing_tabs <> 0 then
+      raise exception '366 fail-closed: ValueOR DEFAULT Admin missing % migration-363 tab permission(s)', v_missing_tabs;
+    end if;
   end if;
 
   if exists (

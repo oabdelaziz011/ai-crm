@@ -25,27 +25,47 @@ export default defineConfig(({ mode }) => {
       }),
   ].filter(Boolean),
   resolve: {
-    alias: {
-      '@': path.resolve(import.meta.dirname, 'src'),
-      '@assets': path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'attached_assets',
-      ),
-      '@workspace/platform-crypto/client': path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'lib/platform-crypto/src/runtime-env-client.ts',
-      ),
-      '@workspace/platform-crypto/server': path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'lib/platform-crypto/src/runtime-env-server.ts',
-      ),
-    },
+    alias: [
+      {
+        find: '@',
+        replacement: path.resolve(import.meta.dirname, 'src'),
+      },
+      {
+        find: '@assets',
+        replacement: path.resolve(
+          import.meta.dirname,
+          '..',
+          '..',
+          'attached_assets',
+        ),
+      },
+      {
+        find: '@workspace/platform-crypto/client',
+        replacement: path.resolve(
+          import.meta.dirname,
+          '..',
+          '..',
+          'lib/platform-crypto/src/runtime-env-client.ts',
+        ),
+      },
+      {
+        find: '@workspace/platform-crypto/server',
+        replacement: path.resolve(
+          import.meta.dirname,
+          '..',
+          '..',
+          'lib/platform-crypto/src/runtime-env-server.ts',
+        ),
+      },
+      // Import-time safety for node:crypto references accidentally pulled into the client graph.
+      {
+        find: /^node:crypto$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          'src/lib/stubs/node-crypto.browser.ts',
+        ),
+      },
+    ],
     dedupe: ['react', 'react-dom'],
   },
   root: path.resolve(import.meta.dirname),

@@ -1,18 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import { isDevRuntime, requireClientEnv } from "@/lib/runtime-env";
+import { requireClientEnv } from "@/lib/runtime-env";
 
 const supabaseUrl = requireClientEnv("VITE_SUPABASE_URL");
 const supabaseKey = requireClientEnv("VITE_SUPABASE_PUBLISHABLE_KEY");
 
-if (
-  isDevRuntime() &&
-  /localhost:54321|127\.0\.0\.1:54321/.test(supabaseUrl)
-) {
-  throw new Error(
-    "VITE_SUPABASE_URL points to local Supabase (localhost:54321) but no local instance is reachable. " +
-      "Run `node scripts/sync-vite-env.mjs` from artifacts/login-app and restart the dev server.",
-  );
-}
+// Local Supabase (127.0.0.1:54321) is the default developer target under VALUEOR_ENV=local.
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {

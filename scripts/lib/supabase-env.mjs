@@ -1,15 +1,18 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveValueorEnv, VALUEOR_ENV_LOCAL } from "./env-mode.mjs";
 
 export function loadSupabaseEnv(projectRoot) {
   const env = {};
-  const paths = [
-    resolve(projectRoot, "artifacts/login-app/.env.local"),
-    resolve(projectRoot, ".env"),
-  ];
+  const mode = resolveValueorEnv(process.env.VALUEOR_ENV);
+  const paths =
+    mode === VALUEOR_ENV_LOCAL
+      ? [resolve(projectRoot, ".env.localstack"), resolve(projectRoot, ".env")]
+      : [resolve(projectRoot, ".env"), resolve(projectRoot, "artifacts/login-app/.env.local")];
 
   for (const filePath of paths) {
+    if (!existsSync(filePath)) continue;
     try {
       for (const line of readFileSync(filePath, "utf8").split(/\r?\n/)) {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);

@@ -1,13 +1,15 @@
 import type { Request, Response } from "express";
 import {
   createWebhookProcessingTrace,
-  flattenTwilioFormParams,
   resolveSmsCompanyChannel,
   resolveSmsCompanyChannelIdByToNumber,
-  resolveTwilioWebhookValidationUrl,
-  verifyTwilioRequestSignature,
   createSupabaseSmsCredentialsLoader,
 } from "@workspace/channel-platform";
+import {
+  flattenTwilioFormParams,
+  resolveTwilioWebhookValidationUrl,
+  verifyTwilioRequestSignature,
+} from "@workspace/channel-platform/server";
 import { logger } from "../lib/logger.js";
 import { getWebhookPlatform } from "../platform/create-webhook-platform.js";
 

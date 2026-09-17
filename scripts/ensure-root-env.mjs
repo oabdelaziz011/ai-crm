@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 /**
- * Ensure repository root `.env` exists and seed it from `.env.example` + login-app/.env.local.
- * Run automatically before dev stacks on Windows (Replit injected secrets instead).
+ * Ensure repository root `.env` exists for production/hosted and optional provider keys.
+ * For LOCAL development, prefer `node scripts/ensure-localstack-env.mjs` (does not overwrite `.env`).
+ *
+ * When VALUEOR_ENV=local, this script validates `.env.localstack` and exits without
+ * copying production credentials from login-app/.env.local into root `.env`.
  */
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -12,20 +16,27 @@ import {
   loadProjectEnv,
   normalizeProjectEnv,
   validateApiServerEnv,
+  resolveValueorEnv,
+  VALUEOR_ENV_LOCAL,
 } from "./lib/load-project-env.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = resolve(projectRoot, ".env");
 const examplePath = resolve(projectRoot, ".env.example");
+const mode = resolveValueorEnv(process.env.VALUEOR_ENV);
+
+if (mode === VALUEOR_ENV_LOCAL) {
+  console.log("VALUEOR_ENV=local — validating .env.localstack (root .env left untouched).");
+  const result = spawnSync(
+    process.execPath,
+    [resolve(projectRoot, "scripts/ensure-localstack-env.mjs")],
+    { cwd: projectRoot, stdio: "inherit" },
+  );
+  process.exit(result.status ?? 1);
+}
 
 function upsertEnvLines(existingContent, updates) {
   const lines = existingContent.length > 0 ? existingContent.split(/\r?\n/) : [];
-  const known = new Set();
-
-  for (const line of lines) {
-    const match = line.match(/^([A-Z0-9_]+)=/);
-    if (match) known.add(match[1]);
-  }
 
   for (const [key, value] of Object.entries(updates)) {
     if (value == null || value === "") continue;
@@ -39,13 +50,13 @@ function upsertEnvLines(existingContent, updates) {
       }
       lines.push(serialized);
     }
-    known.add(key);
   }
 
   return `${lines.join("\n").replace(/\n+$/, "")}\n`;
 }
 
-function seedFromLoginAppLocal(baseContent) {
+function seedMissingFromLoginAppLocal(baseContent) {
+  // Only fill *missing* keys — never overwrite production root values with Vite local.
   const localPath = resolve(projectRoot, "artifacts/login-app/.env.local");
   if (!existsSync(localPath)) return baseContent;
 
@@ -55,21 +66,37 @@ function seedFromLoginAppLocal(baseContent) {
     if (match) local[match[1]] = match[2].replace(/^["']|["']$/g, "");
   }
 
-  const ref = extractSupabaseProjectRef(local.VITE_SUPABASE_URL ?? local.SUPABASE_URL);
+  const existing = {};
+  for (const line of baseContent.split(/\r?\n/)) {
+    const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (match) existing[match[1]] = match[2];
+  }
 
-  return upsertEnvLines(baseContent, {
+  const updates = {};
+  const maybe = {
     SUPABASE_URL: local.SUPABASE_URL ?? local.VITE_SUPABASE_URL,
     VITE_SUPABASE_URL: local.VITE_SUPABASE_URL ?? local.SUPABASE_URL,
     SUPABASE_PUBLISHABLE_KEY: local.SUPABASE_PUBLISHABLE_KEY ?? local.VITE_SUPABASE_PUBLISHABLE_KEY,
     VITE_SUPABASE_PUBLISHABLE_KEY:
       local.VITE_SUPABASE_PUBLISHABLE_KEY ?? local.SUPABASE_PUBLISHABLE_KEY,
     VITE_API_SERVER_URL: local.VITE_API_SERVER_URL,
-    SUPABASE_PROJECT_REF: ref,
-    PORT: "3000",
-    NODE_ENV: "development",
-    SESSION_SECRET: "dev-secret-change-me",
-    INTERNAL_API_KEY: "dev-internal-api-key",
-  });
+  };
+  for (const [key, value] of Object.entries(maybe)) {
+    if (!value) continue;
+    if (existing[key]?.trim()) continue;
+    updates[key] = value;
+  }
+  if (!existing.PORT?.trim()) updates.PORT = "3000";
+  if (!existing.NODE_ENV?.trim()) updates.NODE_ENV = "development";
+  if (!existing.SESSION_SECRET?.trim()) updates.SESSION_SECRET = "dev-secret-change-me";
+  if (!existing.INTERNAL_API_KEY?.trim()) updates.INTERNAL_API_KEY = "dev-internal-api-key";
+
+  const ref = extractSupabaseProjectRef(updates.VITE_SUPABASE_URL ?? updates.SUPABASE_URL);
+  if (ref && !existing.SUPABASE_PROJECT_REF?.trim()) {
+    updates.SUPABASE_PROJECT_REF = ref;
+  }
+
+  return upsertEnvLines(baseContent, updates);
 }
 
 if (!existsSync(envPath)) {
@@ -83,10 +110,11 @@ if (!existsSync(envPath)) {
 }
 
 let content = readFileSync(envPath, "utf8");
-content = seedFromLoginAppLocal(content);
+content = seedMissingFromLoginAppLocal(content);
 writeFileSync(envPath, content, "utf8");
 
-const env = normalizeProjectEnv(loadProjectEnv(projectRoot, { hydrateProcessEnv: false }));
+process.env.VALUEOR_ENV = mode;
+const env = normalizeProjectEnv(loadProjectEnv(projectRoot, { hydrateProcessEnv: false, assertSafety: false }));
 const validation = validateApiServerEnv(env);
 
 if (!validation.ok) {
@@ -94,4 +122,4 @@ if (!validation.ok) {
   process.exit(1);
 }
 
-console.log(`Environment OK (${envPath})`);
+console.log(`Environment OK (${envPath}) VALUEOR_ENV=${mode}`);

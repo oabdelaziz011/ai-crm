@@ -113,7 +113,6 @@ export * from "./adapters/sms/twilio-sms-api-client.js";
 export * from "./adapters/sms/twilio-sms-config.js";
 export * from "./adapters/sms/twilio-sms-types.js";
 export * from "./adapters/sms/twilio-sms-canonical-credentials.js";
-export * from "./adapters/sms/twilio-sms-signature.js";
 export * from "./adapters/email/email-inbound-auto-reply-guard.js";
 export * from "./adapters/email/email-acknowledgement-config.js";
 export * from "./adapters/email/email-acknowledgement-language.js";

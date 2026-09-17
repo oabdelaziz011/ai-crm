@@ -18,6 +18,7 @@ const projectRoot = resolve(apiServerRoot, "../..");
 const env = loadProjectEnv(projectRoot, {
   hydrateProcessEnv: true,
   mergeProcessEnv: true,
+  assertSafety: true,
 });
 const validation = validateApiServerEnv(env);
 
@@ -29,6 +30,7 @@ if (!validation.ok) {
 const childEnv = {
   ...process.env,
   ...env,
+  VALUEOR_ENV: env.VALUEOR_ENV || process.env.VALUEOR_ENV || "local",
 };
 
 const nodeArgs = ["--enable-source-maps", resolve(apiServerRoot, "dist/main.mjs")];

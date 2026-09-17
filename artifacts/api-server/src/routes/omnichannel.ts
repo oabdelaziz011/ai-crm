@@ -413,6 +413,8 @@ function readDispatchBody(body: OmnichannelOutboundDispatchBody) {
 router.post("/omnichannel/outbound/dispatch", async (req, res, next) => {
 
   try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("omnichannel/outbound/dispatch");
 
     enterOutboundValidation({
 

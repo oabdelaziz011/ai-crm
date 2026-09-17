@@ -1,11 +1,16 @@
 import { loadProjectEnv } from "./load-project-env.mjs";
 
 /**
- * Load project env files into a map and optionally hydrate process.env.
- * Precedence: existing process.env wins; first file wins among files.
+ * Load project env files into a map and hydrate process.env.
+ * Precedence: existing process.env wins; profile files per VALUEOR_ENV.
+ * Does not load artifacts/login-app/.env.local.
  */
 export function loadRuntimeEnv(projectRoot, options = {}) {
-  return loadProjectEnv(projectRoot, options);
+  return loadProjectEnv(projectRoot, {
+    ...options,
+    hydrateProcessEnv: options.hydrateProcessEnv ?? true,
+    assertSafety: options.assertSafety ?? true,
+  });
 }
 
 export { loadProjectEnv, normalizeProjectEnv } from "./load-project-env.mjs";

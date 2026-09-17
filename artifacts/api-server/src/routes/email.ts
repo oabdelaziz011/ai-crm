@@ -115,6 +115,8 @@ router.post("/email/test-connection", async (req, res, next) => {
 
 router.post("/email/process-queue", async (req, res, next) => {
   try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("email/process-queue");
     const companyId = String(req.body?.companyId ?? "");
     await requireRequestCompanyPermission(req, companyId, EMAIL_CONNECTION_PERMISSION);
     const client = getServiceClient();
@@ -128,6 +130,8 @@ router.post("/email/process-queue", async (req, res, next) => {
 
 router.post("/email/templates/test-send", async (req, res, next) => {
   try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("email/templates/test-send");
     const companyId = String(req.supabaseCompanyId ?? req.body?.companyId ?? "");
     const templateId = String(req.body?.templateId ?? "");
     const recipientEmail = String(req.body?.recipientEmail ?? "");

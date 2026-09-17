@@ -46,6 +46,10 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!.env.localstack.example
+!.env.local.integration.example
+.env.localstack
+.env.local.integration
 artifacts/login-app/.env.local
 artifacts/api-server/.dev-watch.lock
 
@@ -78,3 +82,17 @@ docs/architecture/book-workflow-*.json
 docs/architecture/production-booking-flow-e2e-report.json
 
 infra/cloudflare/config.*.yml
+
+# LOCAL development snapshot row dumps may include auth password hashes (bcrypt).
+# Keep README/manifest instructions; share data privately when needed.
+dev-snapshot/data/
+dev-snapshot/last-import-report.json
+dev-snapshot/_inventory.json
+dev-snapshot-v*/data/
+dev-snapshot-v*/last-import-report.json
+dev-snapshot-v*/_inventory.json
+
+
+# Local one-off tenant clone dumps (contain auth password hashes)
+artifacts/.local-dev-clone/
+

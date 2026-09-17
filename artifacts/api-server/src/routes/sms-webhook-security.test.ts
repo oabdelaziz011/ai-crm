@@ -7,7 +7,7 @@ import {
   computeTwilioRequestSignature,
   resolveTwilioWebhookValidationUrl,
   verifyTwilioRequestSignature,
-} from "@workspace/channel-platform";
+} from "@workspace/channel-platform/server";
 
 describe("SMS webhook signature security", () => {
   const authToken = "sms_auth_token_secret";

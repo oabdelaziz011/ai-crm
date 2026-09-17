@@ -99,6 +99,8 @@ router.post("/whatsapp/health", async (req, res, next) => {
 
 router.post("/whatsapp/test-message", async (req, res, next) => {
   try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("whatsapp/test-message");
     const companyId = String(req.body?.companyId ?? "");
     const recipientPhone = String(req.body?.recipientPhone ?? "");
     if (!recipientPhone) {
@@ -117,6 +119,8 @@ router.post("/whatsapp/test-message", async (req, res, next) => {
 
 router.post("/whatsapp/process-queue", async (req, res, next) => {
   try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("whatsapp/process-queue");
     const companyId = String(req.body?.companyId ?? "");
     const client = getServiceClient();
     const provider = createProvider(client);

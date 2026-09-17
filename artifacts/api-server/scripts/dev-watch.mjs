@@ -135,6 +135,7 @@ async function ensurePortFreeForRestart() {
 const env = loadProjectEnv(projectRoot, {
   hydrateProcessEnv: true,
   mergeProcessEnv: true,
+  assertSafety: true,
 });
 const validation = validateApiServerEnv(env);
 
@@ -146,6 +147,7 @@ if (!validation.ok) {
 const childEnv = {
   ...process.env,
   ...env,
+  VALUEOR_ENV: env.VALUEOR_ENV || process.env.VALUEOR_ENV || "local",
 };
 const listenPort = Number(childEnv.PORT ?? "3000");
 

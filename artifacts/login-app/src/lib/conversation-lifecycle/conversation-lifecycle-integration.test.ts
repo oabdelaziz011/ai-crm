@@ -156,6 +156,26 @@ describe("Lifecycle Integration", () => {
     );
     assert.equal(reopened.success, true);
     assert.equal(reopened.validation?.toState, "REOPENED");
+    assert.equal(
+      (reopened.metadata?.lifecycle as { state?: string } | undefined)?.state,
+      "ASSIGNED",
+    );
+
+    const returned = executeLifecycleTransition(
+      {
+        record: {
+          ...input.record,
+          state: "waiting_user",
+          assigned_user_id: "user-1",
+          metadata: reopened.metadata!,
+        },
+      },
+      "return_to_ai",
+      { actorUserId: "user-1" },
+    );
+    assert.equal(returned.success, true);
+    assert.equal(returned.validation?.toState, "AI_HANDLING");
+    assert.equal(returned.backendHint?.kind, "release");
   });
 
   it("aggregator exposes lifecycle fields from metadata", () => {

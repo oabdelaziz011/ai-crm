@@ -251,4 +251,45 @@ describe("HandoffCommandService integration", () => {
     assert.equal(result.ownership.ownerType, "ai_employee");
     assert.equal(released, true);
   });
+
+  it("close still marks human-owned conversation CLOSED without returning to AI", async () => {
+    const repo = createMemoryRepo();
+    await repo.upsertOwnership({
+      companyId: "company-1",
+      conversationId: "conv-1",
+      ownerType: "human_agent",
+      ownerId: "agent-1",
+      ownerLabel: "Agent",
+      lifecycleState: "ASSIGNED",
+      assignedUserId: "agent-1",
+      aiAssistantId: "ai-1",
+    });
+
+    let closedRow = false;
+    let released = false;
+    const service = new HandoffCommandService({
+      handoff: repo,
+      conversations: {
+        ...conversations,
+        closeConversation: async () => {
+          closedRow = true;
+        },
+        releaseConversation: async () => {
+          released = true;
+        },
+      },
+      ...noop,
+    });
+
+    const result = await service.closeConversation(ctx, {
+      companyId: "company-1",
+      conversationId: "conv-1",
+    });
+
+    assert.equal(result.ownership.ownerType, "human_agent");
+    assert.equal(result.ownership.assignedUserId, "agent-1");
+    assert.equal(result.ownership.lifecycleState, "CLOSED");
+    assert.equal(closedRow, true);
+    assert.equal(released, false);
+  });
 });

@@ -46,6 +46,33 @@ describe("LifecycleActionGroups (presentation)", () => {
       canPerform: allowAll,
     });
     assert.ok(groups.primary.includes("reopen"));
+    assert.equal(groups.primary.includes("return_to_ai"), false);
+  });
+
+  it("shows return_to_ai after reopen while the conversation is still human-owned", () => {
+    const groups = resolveLifecycleActionGroups({
+      lifecycleState: "REOPENED",
+      escalated: false,
+      isClosed: false,
+      canPerform: allowAll,
+    });
+    assert.ok(groups.primary.includes("return_to_ai"));
+    assert.equal(groups.primary.includes("reopen"), false);
+    assert.equal(groups.primary.includes("open_ai"), false);
+  });
+
+  it("shows assigned toolbar actions after a claimed conversation is reopened", () => {
+    const groups = resolveLifecycleActionGroups({
+      lifecycleState: "ASSIGNED",
+      escalated: false,
+      isClosed: false,
+      canPerform: allowAll,
+    });
+    assert.ok(groups.primary.includes("reply"));
+    assert.ok(groups.primary.includes("close"));
+    assert.ok(groups.primary.includes("return_to_ai"));
+    assert.ok(groups.primary.includes("transfer") || groups.primary.includes("assign"));
+    assert.equal(groups.primary.includes("reopen"), false);
   });
 
   it("respects canPerform from coordinator", () => {

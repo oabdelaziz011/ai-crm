@@ -720,4 +720,29 @@ describe("conversation queues", () => {
     const inbox = applyConversationQueue(unified, "all", null);
     assert.equal(inbox.length, 1);
   });
+
+  it("moves a reopened assigned conversation out of closed and into mine", async () => {
+    const { applyConversationQueue } = await import("./services/conversation-queues.js");
+    const agents = new Map([["agent-1", { id: "agent-1", name: "Human Handoff Test Agent" }]]);
+    const unified = conversationAggregator.aggregateList({
+      conversations: [
+        conversation({
+          id: "reopened-mine",
+          state: "waiting_user",
+          assigned_user_id: "agent-1",
+          metadata: {
+            lifecycle: {
+              state: "ASSIGNED",
+              reopenedAt: "2026-09-18T03:00:00.000Z",
+              owner: { kind: "user", id: "agent-1", label: "Human Handoff Test Agent" },
+            },
+          },
+        }),
+      ],
+      customersById: new Map(),
+      agentsById: agents,
+    });
+    assert.equal(applyConversationQueue(unified, "closed", "agent-1").length, 0);
+    assert.equal(applyConversationQueue(unified, "mine", "agent-1").length, 1);
+  });
 });

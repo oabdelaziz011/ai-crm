@@ -111,6 +111,13 @@ describe("ConversationLifecycleEngine", () => {
     assert.equal(isActionAllowed("CLOSED", "reopen"), true);
     assert.equal(isActionAllowed("CLOSED", "assign"), false);
     assert.equal(isActionAllowed("CLOSED", "close"), false);
+    assert.equal(isActionAllowed("CLOSED", "return_to_ai"), false);
+  });
+
+  it("REOPENED allows return_to_ai without treating close as the hand-back", () => {
+    assert.equal(isActionAllowed("REOPENED", "return_to_ai"), true);
+    assert.equal(isActionAllowed("REOPENED", "reopen"), false);
+    assert.equal(isActionAllowed("REOPENED", "close"), true);
   });
 
   it("validates transitions and produces timeline events", () => {

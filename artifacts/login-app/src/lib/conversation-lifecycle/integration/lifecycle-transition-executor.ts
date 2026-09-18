@@ -336,6 +336,16 @@ export function executeLifecycleTransition(
     };
     if (action === "reopen") {
       nextOverlay.reopenedAt = new Date().toISOString();
+      if (input.record.assigned_user_id) {
+        nextOverlay.state = "ASSIGNED";
+        if (nextOverlay.owner?.kind !== "user") {
+          nextOverlay.owner = {
+            kind: "user",
+            id: input.record.assigned_user_id,
+            label: actorLabel ?? input.record.assigned_user_id,
+          };
+        }
+      }
     }
     if (action === "return_to_ai") {
       const recordMetadata = input.record.metadata ?? {};

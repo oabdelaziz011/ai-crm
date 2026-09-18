@@ -89,6 +89,7 @@ export const LIFECYCLE_TRANSITION_RULES: Readonly<
   CLOSED: [{ action: "reopen", toState: "REOPENED" }],
   REOPENED: [
     { action: "ai_own", toState: "AI_HANDLING" },
+    { action: "return_to_ai", toState: "AI_HANDLING" },
     { action: "assign", toState: "ASSIGNED" },
     { action: "take_over", toState: "ASSIGNED" },
     { action: "queue_enqueue", toState: "WAITING_QUEUE" },

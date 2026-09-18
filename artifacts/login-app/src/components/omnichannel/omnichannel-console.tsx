@@ -455,7 +455,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
     try {
       await lifecycle.reopenConversation(record, currentActorLabel);
       toast({ title: t("omnichannel.actions.reopenSuccess") });
-      navigateToNav("inbox");
+      navigateToNav(record.assigned_user_id === user?.id ? "mine" : "inbox");
     } catch (error) {
       toast({
         title: t("omnichannel.actions.reopenFailed"),
@@ -463,7 +463,7 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
         variant: "destructive",
       });
     }
-  }, [lifecycle, requireSelected, user, navigateToNav, toast, t]);
+  }, [lifecycle, requireSelected, user, currentActorLabel, navigateToNav, toast, t]);
 
   const handleReturnEscalation = useCallback(async () => {
     const record = requireSelected();

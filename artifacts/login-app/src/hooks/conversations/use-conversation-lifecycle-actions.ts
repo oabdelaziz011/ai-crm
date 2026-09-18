@@ -275,6 +275,9 @@ export function useConversationLifecycleActions(companyId: string | null) {
       patchConversationListCache(variables.record.id, {
         assigned_user_id: result.assignedUserId ?? variables.record.assigned_user_id,
         metadata: result.metadata,
+        ...(variables.action === "reopen"
+          ? { state: "waiting_user" as const, ended_at: null }
+          : {}),
       });
       void invalidate(variables.record.id, variables.record.customer_id);
     },

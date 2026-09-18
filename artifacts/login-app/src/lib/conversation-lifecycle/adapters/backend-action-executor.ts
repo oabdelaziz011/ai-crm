@@ -34,13 +34,16 @@ export async function executeBackendLifecycleHint(
     });
   }
 
+  async function syncReopenedConversationState(): Promise<void> {
+    if (input.action !== "reopen") return;
+    await services.conversations.updateState(ctx, {
+      conversationId: input.conversationId,
+      state: "waiting_user",
+    });
+  }
+
   if (!hint || hint.kind === "none") {
-    if (input.action === "reopen") {
-      await services.conversations.updateState(ctx, {
-        conversationId: input.conversationId,
-        state: "waiting_user",
-      });
-    }
+    await syncReopenedConversationState();
     return;
   }
 
@@ -72,17 +75,14 @@ export async function executeBackendLifecycleHint(
           metadata: input.metadata,
         });
       }
+      // Reopen's canonical hint is update_metadata; also restore conversations.state.
+      await syncReopenedConversationState();
       return;
     case "add_message":
       return;
   }
 
-  if (input.action === "reopen") {
-    await services.conversations.updateState(ctx, {
-      conversationId: input.conversationId,
-      state: "waiting_user",
-    });
-  }
+  await syncReopenedConversationState();
 }
 
 export async function persistLifecycleMetadata(

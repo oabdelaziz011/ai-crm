@@ -73,7 +73,6 @@ export const SessionCommandStrip = memo(function SessionCommandStrip(props: Sess
     const set = new Set<LifecycleActionUiId>([...groups.primary, ...groups.overflow]);
     if (props.canPerform("reply")) {
       set.add("internal_note");
-      set.add("open_ai");
     }
     return set;
   }, [groups, props.canPerform]);

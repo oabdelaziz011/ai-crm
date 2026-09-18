@@ -17,16 +17,25 @@ describe("LifecycleActionGroups (presentation)", () => {
     assert.ok(groups.primary.includes("assign") || groups.primary.includes("escalate"));
   });
 
-  it("shows reply and transfer for human-owned states", () => {
-    const groups = resolveLifecycleActionGroups({
+  it("hides the AI generator once a human owns the conversation", () => {
+    const assigned = resolveLifecycleActionGroups({
       lifecycleState: "ASSIGNED",
       escalated: false,
       isClosed: false,
       canPerform: allowAll,
     });
-    assert.ok(groups.primary.includes("reply"));
-    assert.ok(groups.primary.includes("transfer") || groups.primary.includes("assign"));
-    assert.ok(groups.primary.includes("return_to_ai"));
+    assert.equal(assigned.primary.includes("open_ai"), false);
+    assert.ok(assigned.primary.includes("reply"));
+    assert.ok(assigned.primary.includes("transfer") || assigned.primary.includes("assign"));
+    assert.ok(assigned.primary.includes("return_to_ai"));
+
+    const aiOwned = resolveLifecycleActionGroups({
+      lifecycleState: "AI_HANDLING",
+      escalated: false,
+      isClosed: false,
+      canPerform: allowAll,
+    });
+    assert.equal(aiOwned.primary.includes("open_ai"), true);
   });
 
   it("shows reopen for closed states", () => {

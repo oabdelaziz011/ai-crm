@@ -252,6 +252,18 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
 
   const selected = consoleState.selectedConversation;
   const selectedRecord = selected?.source ?? null;
+  const humanOwnedConversation = Boolean(
+    selected
+    && (
+      selected.handlerMode === "human"
+      || selected.assignedAgent?.id
+      || selected.source.assigned_user_id
+    ),
+  );
+
+  useEffect(() => {
+    if (humanOwnedConversation) setAiAssistOpen(false);
+  }, [humanOwnedConversation, selected?.id]);
   const displayMessages = useMemo(
     () => mergeInternalNotesForDisplay(consoleState.messages, selectedRecord?.metadata),
     [consoleState.messages, selectedRecord?.metadata],

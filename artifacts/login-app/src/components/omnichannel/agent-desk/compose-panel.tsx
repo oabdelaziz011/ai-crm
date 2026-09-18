@@ -12,7 +12,6 @@ import {
   Smile,
   Sparkles,
 } from "lucide-react";
-import { Can } from "@/components/rbac/permission-guard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AttachmentPreviewStrip } from "@/components/omnichannel/agent-desk/attachment-preview-strip";
 import { ComposerMentionList } from "@/components/omnichannel/agent-desk/composer-mention-list";
@@ -354,10 +353,11 @@ export const ComposePanel = memo(
       [attachmentState],
     );
 
+    const composerLocked = Boolean(disabled);
     const canSend = useMemo(() => {
       const hasText = draft.trim().length > 0;
-      return (hasText || attachmentState.hasAttachments) && !disabled && !isSending;
-    }, [attachmentState.hasAttachments, disabled, draft, isSending]);
+      return (hasText || attachmentState.hasAttachments) && !composerLocked && !isSending;
+    }, [attachmentState.hasAttachments, composerLocked, draft, isSending]);
 
     const executeSend = useCallback(async () => {
       const payload = undoPayloadRef.current;
@@ -478,9 +478,7 @@ export const ComposePanel = memo(
     );
 
     const quickRepliesEntitled = isSuperAdmin || suggestedRepliesEntitled;
-    const showQuickRepliesButton =
-      isComposerFeatureVisible("suggestedReplies")
-      || isComposerFeatureVisible("savedReplies");
+    const showQuickRepliesButton = Boolean(onBuildSuggestedReplies);
 
     const applyQuickReplyText = useCallback(
       (text: string) => {
@@ -494,11 +492,17 @@ export const ComposePanel = memo(
     return (
       <div className="shrink-0 px-1 pb-1 pt-0 sm:px-1.5">
         <div
-          className={`agent-desk-compose relative rounded-lg ${
+          className={`agent-desk-compose relative z-20 rounded-lg ${
             mode === "internal_note"
               ? "bg-amber-950/10 ring-1 ring-amber-500/20"
               : "bg-[var(--ad-surface-raised)] ring-1 ring-[var(--ad-border-subtle)]/50"
           }`}
+          onClick={(event) => {
+            if (composerLocked) return;
+            const target = event.target as HTMLElement;
+            if (target.closest("button, a, input, textarea, [role='listbox']")) return;
+            textareaRef.current?.focus();
+          }}
           onDragOver={(event) => {
             if (!isComposerFeatureInteractive("attachments")) return;
             event.preventDefault();
@@ -574,7 +578,11 @@ export const ComposePanel = memo(
                 conversationId={conversationId}
                 open={quickRepliesOpen}
                 onOpenChange={setQuickRepliesOpen}
-                entitled={quickRepliesEntitled && isComposerFeatureVisible("suggestedReplies")}
+                entitled={
+                  Boolean(onBuildSuggestedReplies)
+                  && quickRepliesEntitled
+                  && isComposerFeatureVisible("suggestedReplies")
+                }
                 suggestedReplies={suggestedReplies}
                 suggestedReplyExplainLabels={suggestedReplyExplainLabels}
                 savedReplies={
@@ -640,8 +648,6 @@ export const ComposePanel = memo(
                 label={labels.aiAssistant}
                 onClick={onOpenAiAssistant}
               />
-            ) : isComposerFeatureVisible("aiRewrite") ? (
-              <Tool icon={<Sparkles className="size-3.5" />} label={labels.aiRewrite} disabled={!isComposerFeatureInteractive("aiRewrite")} disabledHint={disabledReason("aiRewrite") ?? undefined} />
             ) : null}
             {isComposerFeatureVisible("translate") && isComposerFeatureInteractive("translate") ? (
               <ComposerTranslatePopover
@@ -773,13 +779,15 @@ export const ComposePanel = memo(
             <textarea
               ref={textareaRef}
               value={draft}
-              disabled={disabled || isSending}
+              readOnly={composerLocked}
               rows={1}
               placeholder={mode === "internal_note" ? labels.internalNote : labels.placeholder}
               aria-label={mode === "internal_note" ? labels.internalNote : labels.reply}
+              aria-disabled={composerLocked || undefined}
               dir={draftDir}
               style={{ direction: draftDir, textAlign: draftAlign }}
               onChange={(event) => {
+                if (composerLocked) return;
                 setDraft(event.target.value);
                 setCursor(event.target.selectionStart ?? event.target.value.length);
                 onDraftChange?.(event.target.value);
@@ -897,19 +905,17 @@ export const ComposePanel = memo(
                   handleAddFiles(files);
                 }
               }}
-              className="min-h-[28px] max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent text-sm leading-snug outline-none placeholder:text-[var(--ad-text-muted)] [unicode-bidi:plaintext]"
+              className="pointer-events-auto relative z-20 min-h-[28px] max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent text-sm leading-snug outline-none placeholder:text-[var(--ad-text-muted)] [unicode-bidi:plaintext] read-only:cursor-not-allowed"
             />
-            <Can permission="ai.conversations.reply">
-              <button
-                type="button"
-                disabled={!canSend}
-                onClick={send}
-                className="agent-desk-btn agent-desk-btn--primary shrink-0 px-2.5 py-1.5"
-                aria-label={labels.send}
-              >
-                {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-              </button>
-            </Can>
+            <button
+              type="button"
+              disabled={!canSend}
+              onClick={send}
+              className="agent-desk-btn agent-desk-btn--primary shrink-0 px-2.5 py-1.5"
+              aria-label={labels.send}
+            >
+              {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            </button>
           </div>
 
           {undoSecondsLeft > 0 && onUndoSend ? (

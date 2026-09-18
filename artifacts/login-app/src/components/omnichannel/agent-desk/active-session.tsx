@@ -157,9 +157,15 @@ export const ActiveSession = memo(function ActiveSession({
     ],
   );
 
+  const assignedHuman = Boolean(
+    conversation?.handlerMode === "human"
+    || conversation?.assignedAgent?.id
+    || conversation?.source.assigned_user_id,
+  );
+
   const experience = useConversationExperience(conversation?.id ?? null, {
     lastActivityAt: conversation?.lastActivityAt ?? null,
-    handlerMode: conversation?.handlerMode,
+    handlerMode: assignedHuman ? "human" : conversation?.handlerMode,
     recentCustomerMessageAt,
   });
 
@@ -203,6 +209,9 @@ export const ActiveSession = memo(function ActiveSession({
   const allowed = (action: LifecycleAction) => canPerform?.(record, action) ?? false;
   const header = lifecycleSnapshot?.header;
   const lifecycleState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
+  const humanOwned =
+    conversation.handlerMode === "human"
+    || Boolean(conversation.assignedAgent?.id || conversation.source.assigned_user_id);
   const customerMessages = messages.filter((m) => !m.isInternalNote);
   const internalNotes = canViewNotes ? messages.filter((m) => m.isInternalNote) : [];
 
@@ -316,9 +325,9 @@ export const ActiveSession = memo(function ActiveSession({
         disabled={Boolean(isClosed)}
         isSending={isSending}
         conversationId={conversation.id}
-        suggestedReplies={aiAssist.suggestedReplies}
+        suggestedReplies={humanOwned ? [] : aiAssist.suggestedReplies}
         suggestedReplyExplainLabels={getSuggestedReplyExplainLabels(conversationLanguage)}
-        onBuildSuggestedReplies={buildSuggestedReplies}
+        onBuildSuggestedReplies={humanOwned ? undefined : buildSuggestedReplies}
         suggestionContextFingerprint={{
           lastCustomerMessage: lastCustomerMessageText,
           targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage,
@@ -363,7 +372,7 @@ export const ActiveSession = memo(function ActiveSession({
         onUndoSend={experience.cancelPendingSend}
         scheduleSendWithUndo={experience.scheduleSendWithUndo}
         onSend={handleSend}
-        onOpenAiAssistant={onOpenAiSection}
+        onOpenAiAssistant={humanOwned ? undefined : onOpenAiSection}
       />
     </div>
   );

@@ -105,7 +105,7 @@ export function isToolbarActionVisible(input: {
     case "close":
       return allowed(actionId, canPerform) && !terminal;
     case "open_ai":
-      return true;
+      return aiOwned && !terminal;
     case "assign":
     case "transfer":
     case "open_assignment":

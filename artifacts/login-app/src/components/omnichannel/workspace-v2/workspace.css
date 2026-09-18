@@ -421,6 +421,14 @@ html:has(.agent-workspace) {
 
 .agent-workspace .ws-composer-shell {
   flex: 0 0 auto;
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.agent-workspace .ws-composer-shell textarea {
+  pointer-events: auto;
+  opacity: 1;
 }
 
 .agent-workspace .ws-composer-shell .agent-desk-compose {

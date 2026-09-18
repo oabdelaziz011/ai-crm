@@ -190,9 +190,15 @@ export const ConversationPane = memo(function ConversationPane({
     ],
   );
 
+  const assignedHuman = Boolean(
+    conversation?.handlerMode === "human"
+    || conversation?.assignedAgent?.id
+    || conversation?.source.assigned_user_id,
+  );
+
   const experience = useConversationExperience(conversation?.id ?? null, {
     lastActivityAt: conversation?.lastActivityAt ?? null,
-    handlerMode: conversation?.handlerMode,
+    handlerMode: assignedHuman ? "human" : conversation?.handlerMode,
     recentCustomerMessageAt,
   });
 
@@ -253,7 +259,9 @@ export const ConversationPane = memo(function ConversationPane({
   const allowed = (action: LifecycleAction) => canPerform?.(record, action) ?? false;
   const header = lifecycleSnapshot?.header;
   const lifecycleState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
-  const canReply = allowed("reply");
+  const humanOwned =
+    conversation.handlerMode === "human"
+    || Boolean(conversation.assignedAgent?.id || conversation.source.assigned_user_id);
   const showLinkCustomer = Boolean(canLinkCustomer) && !conversation.customer?.id;
   const customerMessages = messages.filter((message) => !message.isInternalNote);
 
@@ -437,12 +445,12 @@ export const ConversationPane = memo(function ConversationPane({
       <div className="ws-composer-shell shrink-0">
       <ComposePanel
         ref={composeRef}
-        disabled={Boolean(isClosed) || !canReply}
+        disabled={Boolean(isClosed)}
         isSending={isSending}
         conversationId={conversation.id}
-        suggestedReplies={aiAssist.suggestedReplies}
+        suggestedReplies={humanOwned ? [] : aiAssist.suggestedReplies}
         suggestedReplyExplainLabels={getSuggestedReplyExplainLabels(conversationLanguage)}
-        onBuildSuggestedReplies={buildSuggestedReplies}
+        onBuildSuggestedReplies={humanOwned ? undefined : buildSuggestedReplies}
         suggestionContextFingerprint={{
           lastCustomerMessage: lastCustomerMessageText,
           targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage,
@@ -487,7 +495,7 @@ export const ConversationPane = memo(function ConversationPane({
         onUndoSend={experience.cancelPendingSend}
         scheduleSendWithUndo={experience.scheduleSendWithUndo}
         onSend={handleSend}
-        onOpenAiAssistant={onOpenAiSection}
+        onOpenAiAssistant={humanOwned ? undefined : onOpenAiSection}
       />
       </div>
     </div>

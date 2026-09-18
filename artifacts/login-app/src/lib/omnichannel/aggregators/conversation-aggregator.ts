@@ -38,8 +38,11 @@ function readBooleanMetadata(metadata: Record<string, unknown>, key: string): bo
 function resolveHandlerModeFromLifecycle(
   lifecycleState: LifecycleState,
   backendState: ConversationRecord["state"],
+  assignedUserId?: string | null,
 ): UnifiedConversation["handlerMode"] {
+  if (assignedUserId) return "human";
   if (backendState === "waiting_api") return "mixed";
+  if (backendState === "transferred_to_human") return "human";
   if (lifecycleState === "AI_HANDLING" || lifecycleState === "NEW") return "ai";
   if (
     lifecycleState === "ASSIGNED"
@@ -78,7 +81,11 @@ function resolveLifecycleFields(conversation: ConversationRecord) {
     lifecycleState,
     isEscalated,
     ownerLabel: owner.label,
-    handlerMode: resolveHandlerModeFromLifecycle(lifecycleState, conversation.state),
+    handlerMode: resolveHandlerModeFromLifecycle(
+      lifecycleState,
+      conversation.state,
+      conversation.assigned_user_id,
+    ),
   };
 }
 

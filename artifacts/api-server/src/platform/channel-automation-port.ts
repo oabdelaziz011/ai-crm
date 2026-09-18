@@ -40,6 +40,48 @@ function mapChannelKey(channelKey: string): AutomationChannel {
   return CHANNEL_KEY_MAP[channelKey] ?? "api";
 }
 
+/**
+ * Start-mode reasons that mean this inbound continues a prior automation conversation
+ * (completed/expired/orphaned session) rather than a brand-new first contact.
+ *
+ * `bound_flow_mismatch` is excluded: a different bound flow should still send its own welcome.
+ */
+export const INTENT_REENTRY_START_REASONS = [
+  "prior_session_terminal_or_missing_run",
+  "session_expired",
+  "no_active_session",
+  "stale_waiting_input_missing_execution_pins",
+  "orphaned_active_run_not_waiting_for_input",
+  "session_run_status_mismatch",
+] as const;
+
+export type IntentReentryStartReason = (typeof INTENT_REENTRY_START_REASONS)[number];
+
+export function isIntentReentryStartReason(
+  reason: string | undefined | null,
+): reason is IntentReentryStartReason {
+  return typeof reason === "string" && (INTENT_REENTRY_START_REASONS as readonly string[]).includes(reason);
+}
+
+async function hasPriorAutomationSession(
+  sessions: ReturnType<typeof createSupabaseConversationSessionRepository> | undefined,
+  input: {
+    companyId: string;
+    channel: AutomationChannel;
+    externalUserId: string;
+    flowId: string;
+  },
+): Promise<boolean> {
+  if (!sessions) return false;
+  const rows = await sessions.list({
+    companyId: input.companyId,
+    channel: input.channel,
+    externalUserId: input.externalUserId,
+    flowId: input.flowId,
+  });
+  return rows.length > 0;
+}
+
 function readWaitingFor(source: { variables: Record<string, unknown> } | null | undefined): string | null {
   if (!source) return null;
   return typeof source.variables.__waitingFor === "string" ? source.variables.__waitingFor : null;
@@ -377,13 +419,22 @@ export function createChannelAutomationPort(
         startSelectedBecause,
       });
 
-      // After a prior run finished/expired: don't replay welcome — feed the new
+      // After a prior run finished/expired/orphaned: don't replay welcome — feed the new
       // message straight into customer_intent → AI Decision routing.
       const inboundText = typeof input.messageText === "string" ? input.messageText.trim() : "";
+      const priorSessionExists =
+        route?.reason === "no_active_session"
+          ? await hasPriorAutomationSession(deps?.sessions, {
+              companyId: input.companyId,
+              channel,
+              externalUserId: input.externalUserId,
+              flowId: input.flowId,
+            })
+          : true;
       const isIntentReentryStart =
         Boolean(inboundText) &&
-        (route?.reason === "prior_session_terminal_or_missing_run" ||
-          route?.reason === "session_expired");
+        isIntentReentryStartReason(route?.reason) &&
+        (route?.reason !== "no_active_session" || priorSessionExists);
 
       const result = await engine.start(ctx, {
         companyId: input.companyId,

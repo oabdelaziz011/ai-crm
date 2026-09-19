@@ -10,6 +10,7 @@ import {
   toCustomerMutationError,
 } from "./customer-email-utils.js";
 import { resolvePhoneIdentityWrite } from "./customer-phone-identity-write.js";
+import { buildCustomerPhoneLookupAttempts } from "./customer-phone-lookup.js";
 
 function readRequiredString(value: unknown, label: string): string {
   const normalized = typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
@@ -33,20 +34,35 @@ export class CustomerService {
     readRequiredString(input.userId, "owner");
     const lookupBy = readLookupBy(input.lookupBy);
     const lookupValue = readRequiredString(input.lookupValue, "lookup value");
+    const attempts = buildCustomerPhoneLookupAttempts(lookupBy, lookupValue);
 
-    const { count, record } = await this.repository.findCustomersByField({
-      companyId: input.companyId,
-      lookupBy,
-      lookupValue,
-    });
+    const matchedById = new Map<string, CustomerRecord>();
+    let ambiguousCount = 0;
 
-    if (count === 0) {
-      return { status: "not_found", count: 0 };
+    for (const attempt of attempts) {
+      const { count, record } = await this.repository.findCustomersByField({
+        companyId: input.companyId,
+        lookupBy: attempt.lookupBy,
+        lookupValue: attempt.lookupValue,
+      });
+
+      if (count === 0) continue;
+      if (count === 1 && record) {
+        if (!matchedById.has(record.id)) {
+          matchedById.set(record.id, record);
+        }
+        continue;
+      }
+      ambiguousCount = Math.max(ambiguousCount, count);
     }
-    if (count === 1 && record) {
-      return { status: "found", count: 1, customer: record };
+
+    if (ambiguousCount > 1 || matchedById.size > 1) {
+      return { status: "duplicate", count: Math.max(ambiguousCount, matchedById.size, 2) };
     }
-    return { status: "duplicate", count };
+    if (matchedById.size === 1) {
+      return { status: "found", count: 1, customer: [...matchedById.values()][0]! };
+    }
+    return { status: "not_found", count: 0 };
   }
 
   /**

@@ -8,6 +8,7 @@ import { createSchedulingServices } from "@/lib/scheduling";
 import { supabase as defaultClient } from "@/lib/supabase";
 import { fetchAvailableDatesLookupOptions } from "./available-dates/available-dates-lookup-service";
 import { fetchAvailableSlotsLookupOptions } from "./available-slots/available-slots-lookup-service";
+import { fetchCustomerSchedulingBookingsLookupOptions } from "./customer-scheduling-bookings/customer-scheduling-bookings-lookup-service";
 import { fetchRecommendedAppointmentsLookupOptions } from "./recommended-appointments/recommended-appointments-lookup-service";
 import { mapRecordsToLookupRows } from "./map-lookup-rows";
 import { getLookupEntityDefinition } from "./registry";
@@ -127,6 +128,7 @@ async function fetchEntityRecords(
     case "available_slots":
     case "recommended_appointments":
     case "available_dates":
+    case "customer_scheduling_bookings":
       return [];
     default:
       throw new Error(`Unsupported lookup entity: ${lookup satisfies never}`);
@@ -167,6 +169,16 @@ export async function fetchLookupOptions(
 
   if (config.lookup === "available_dates") {
     return fetchAvailableDatesLookupOptions(
+      companyId,
+      config.filters,
+      config.displayField,
+      config.valueField,
+      client,
+    );
+  }
+
+  if (config.lookup === "customer_scheduling_bookings") {
+    return fetchCustomerSchedulingBookingsLookupOptions(
       companyId,
       config.filters,
       config.displayField,

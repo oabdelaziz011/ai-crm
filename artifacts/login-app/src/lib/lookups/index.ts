@@ -10,3 +10,4 @@ export * from "./lookup-output-variables";
 export * from "./available-slots";
 export * from "./available-dates";
 export * from "./recommended-appointments";
+export * from "./customer-scheduling-bookings";

@@ -11659,7 +11659,8 @@
       "tags": "Tags",
       "availableSlots": "Available Slots",
       "availableDates": "Available Dates",
-      "recommendedAppointments": "Recommended Appointments"
+      "recommendedAppointments": "Recommended Appointments",
+      "customerSchedulingBookings": "Customer Upcoming Appointments"
     },
     "fields": {
       "name": "Name",
@@ -11678,6 +11679,9 @@
       "date": "Date",
       "displayLabel": "Display label",
       "resourceName": "Resource",
+      "serviceName": "Service",
+      "customerId": "Customer ID",
+      "confirmationNumber": "Confirmation number",
       "branchName": "Branch",
       "score": "Score",
       "reason": "Reason",
@@ -11701,13 +11705,15 @@
       "selectedTag": "Selected Tag",
       "selectedSlot": "Selected Slot",
       "selectedDate": "Selected Date",
-      "selectedRecommendation": "Selected Recommendation"
+      "selectedRecommendation": "Selected Recommendation",
+      "selectedBooking": "Selected Booking"
     },
     "filters": {
       "status": "Status",
       "branch": "Branch ID",
       "resourceType": "Resource type",
       "service": "Service ID",
+      "customer": "Customer ID",
       "date": "Date",
       "daysAhead": "Search window (days)",
       "daysAhead7": "Next 7 days",

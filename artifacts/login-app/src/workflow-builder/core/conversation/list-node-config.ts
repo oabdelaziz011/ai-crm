@@ -81,6 +81,15 @@ export function createDefaultListLookupConfig(lookup: LookupEntityId = "services
     };
   }
 
+  if (lookup === "customer_scheduling_bookings") {
+    return {
+      ...base,
+      filters: {
+        customer_id: "{{customer.id}}",
+      },
+    };
+  }
+
   return base;
 }
 

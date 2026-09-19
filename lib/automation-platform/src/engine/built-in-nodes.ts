@@ -514,7 +514,8 @@ async function executeInteractiveMessageAction(
         (lookupConfig?.lookup === "services" ||
           lookupConfig?.lookup === "resources" ||
           lookupConfig?.lookup === "staff" ||
-          lookupConfig?.lookup === "branches")
+          lookupConfig?.lookup === "branches" ||
+          lookupConfig?.lookup === "customer_scheduling_bookings")
       ) {
         const language = readConversationLanguage(context.variables);
         const emptyMessage =

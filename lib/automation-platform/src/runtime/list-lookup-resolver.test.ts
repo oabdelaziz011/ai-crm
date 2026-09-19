@@ -33,6 +33,60 @@ describe("resolveListNodeSections language filter", () => {
     assert.equal(sections[0]?.rows.length, 1);
   });
 
+  it("injects conversation.language into customer_scheduling_bookings lookup filters", async () => {
+    const seen: Array<Record<string, unknown>> = [];
+    await resolveListNodeSections(
+      {
+        id: "list-bookings",
+        type: "action",
+        config: {
+          action: "send_list",
+          mode: "lookup",
+          lookup: "customer_scheduling_bookings",
+          displayField: "display_label",
+          valueField: "id",
+          filters: { customer_id: "{{customer.id}}" },
+        },
+      } as never,
+      "company-1",
+      {
+        async fetchListOptions(_companyId, config) {
+          seen.push({ ...(config.filters ?? {}) });
+          return [{ id: "bk-1", title: "19 Sep 10:00 AM", value: "bk-1" }];
+        },
+      },
+      { conversation: { language: "ar" }, customer: { id: "cust-1" } },
+    );
+
+    assert.equal(seen[0]?.language, "ar");
+  });
+
+  it("returns an empty section list when customer_scheduling_bookings has no rows", async () => {
+    const sections = await resolveListNodeSections(
+      {
+        id: "list-bookings-empty",
+        type: "action",
+        config: {
+          action: "send_list",
+          mode: "lookup",
+          lookup: "customer_scheduling_bookings",
+          displayField: "display_label",
+          valueField: "id",
+          filters: { customer_id: "cust-1" },
+        },
+      } as never,
+      "company-1",
+      {
+        async fetchListOptions() {
+          return [];
+        },
+      },
+      {},
+    );
+
+    assert.deepEqual(sections, []);
+  });
+
   it("injects conversation.language into available_dates lookup filters", async () => {
     const seen: Array<Record<string, unknown>> = [];
     await resolveListNodeSections(

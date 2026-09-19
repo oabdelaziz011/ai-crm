@@ -98,6 +98,7 @@ export async function resolveListNodeSections(
     "available_dates",
     "available_slots",
     "recommended_appointments",
+    "customer_scheduling_bookings",
   ]);
   const conversationLanguage =
     variables.conversation &&
@@ -150,7 +151,8 @@ export async function resolveListNodeSections(
       lookupConfig.lookup === "services" ||
       lookupConfig.lookup === "resources" ||
       lookupConfig.lookup === "staff" ||
-      lookupConfig.lookup === "branches"
+      lookupConfig.lookup === "branches" ||
+      lookupConfig.lookup === "customer_scheduling_bookings"
     ) {
       logListNodeLifecycle({
         stage: "before_execute_list_node",

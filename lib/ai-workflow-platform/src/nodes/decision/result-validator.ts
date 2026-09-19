@@ -1,3 +1,4 @@
+import { looksLikeExplicitRescheduleIntent } from "./reschedule-intent.js";
 import type { DecisionConfidencePolicy, DecisionOutcome } from "./types.js";
 
 export type DecisionResultValue = {
@@ -43,6 +44,15 @@ function findOutcomeByLabel(outcomes: DecisionOutcome[], label: string): Decisio
         return outcome;
       }
     }
+  }
+
+  // Explicit change/reschedule intent beats generic finance needles like "موعد" / "حجز".
+  // Only applies when the workflow actually has a reschedule outcome.
+  if (looksLikeExplicitRescheduleIntent(normalized)) {
+    const reschedule =
+      outcomes.find((outcome) => outcome.id.toLowerCase() === "reschedule") ??
+      outcomes.find((outcome) => outcome.label.toLowerCase() === "reschedule");
+    if (reschedule) return reschedule;
   }
 
   // Soft contains against label / id / examples / description for phrases like "اسعار وتكلفة"

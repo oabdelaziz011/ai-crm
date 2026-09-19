@@ -35,6 +35,7 @@ import type { TicketServicePort } from "../ports/ticket-service-port.js";
 import type { HandoffServicePort } from "../ports/handoff-service-port.js";
 import { executeCreateBookingAction } from "./crm/create-booking-action.js";
 import { executeFindBookingAction } from "./crm/find-booking-action.js";
+import { executeRescheduleBookingAction } from "./crm/reschedule-booking-action.js";
 import { executeCancelBookingAction, executeUpdateBookingAction } from "./crm/update-booking-action.js";
 import { executeCreateCustomerAction, executeUpdateCustomerAction } from "./crm/create-customer-action.js";
 import { executeFindCustomerAction } from "./crm/find-customer-action.js";
@@ -857,6 +858,16 @@ export function createActionNodeHandler(deps?: AutomationActionDeps): Automation
           throw new ValidationError("Cancel booking action requires a booking service.");
         }
         return executeCancelBookingAction(context, context.currentNode.config, deps.bookingService);
+      }
+      if (action === "reschedule_booking") {
+        if (!deps?.bookingService) {
+          throw new ValidationError("Reschedule booking action requires a booking service.");
+        }
+        return executeRescheduleBookingAction(
+          context,
+          context.currentNode.config,
+          deps.bookingService,
+        );
       }
       if (action === "find_customer") {
         if (!deps?.customerService) {

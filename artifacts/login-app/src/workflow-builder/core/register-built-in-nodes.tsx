@@ -31,6 +31,7 @@ import { registerAIExtractWorkflowNode } from "./register-ai-extract-node";
 import { registerAIDecisionWorkflowNode } from "./register-ai-decision-node";
 import { registerAIKnowledgeSearchWorkflowNode } from "./register-ai-knowledge-search-node";
 import { CreateBookingPropertyEditor } from "../components/properties/crm/create-booking-property-editor";
+import { RescheduleBookingPropertyEditor } from "../components/properties/crm/reschedule-booking-property-editor";
 import { CreateTicketPropertyEditor } from "../components/properties/crm/create-ticket-property-editor";
 import { FindTicketPropertyEditor } from "../components/properties/crm/find-ticket-property-editor";
 import { FindCustomerPropertyEditor } from "../components/properties/crm/find-customer-property-editor";
@@ -39,6 +40,11 @@ import {
   normalizeCreateBookingNodeConfig,
   validateCreateBookingConfig,
 } from "./crm/create-booking-config";
+import {
+  createDefaultRescheduleBookingConfig,
+  normalizeRescheduleBookingNodeConfig,
+  validateRescheduleBookingConfig,
+} from "./crm/reschedule-booking-config";
 import {
   createDefaultCreateTicketConfig,
   normalizeCreateTicketNodeConfig,
@@ -684,6 +690,31 @@ export function registerBuiltInWorkflowNodes(): void {
     fromEngineConfig: (_engineType, config) =>
       config.builderType === "create_booking"
         ? normalizeCreateBookingNodeConfig({ ...config })
+        : null,
+  });
+
+  registerWorkflowNode({
+    id: "reschedule_booking",
+    displayName: "Reschedule Booking",
+    description: "Move an existing scheduling appointment to a new date and time.",
+    category: "crm",
+    engineType: "action",
+    icon: "CalendarPlus",
+    accentClass: "from-indigo-500/20 to-indigo-500/5 border-indigo-500/30",
+    searchKeywords: ["reschedule", "change appointment", "move booking", "new time"],
+    defaultConfig: createDefaultRescheduleBookingConfig(),
+    allowIncoming: true,
+    allowOutgoing: true,
+    PropertyEditor: RescheduleBookingPropertyEditor,
+    validate: validateRescheduleBookingConfig,
+    toEngineConfig: (config) =>
+      withBuilderType("reschedule_booking", {
+        action: "reschedule_booking",
+        ...normalizeRescheduleBookingNodeConfig(config),
+      }),
+    fromEngineConfig: (_engineType, config) =>
+      config.builderType === "reschedule_booking" || config.action === "reschedule_booking"
+        ? normalizeRescheduleBookingNodeConfig({ ...config })
         : null,
   });
 

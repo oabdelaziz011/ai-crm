@@ -5,11 +5,12 @@ import { BookingFactory } from "@/lib/scheduling/booking-domain";
 import { BookingDomainError } from "@/lib/scheduling/booking-domain";
 import type { CreateBookingInput as DomainCreateInput } from "@/lib/scheduling/booking-domain";
 import { SchedulingServiceCatalogRepository } from "@/lib/scheduling/repositories/service-catalog-repository";
-import type { CreateBookingInput, CreateBookingResult } from "@workspace/automation-platform";
+import type { CreateBookingInput, CreateBookingResult, RescheduleBookingInput, RescheduleBookingResult } from "@workspace/automation-platform";
 import type { SupabaseBookingServicePortOptions } from "@workspace/automation-platform";
 import { wxRecordDependencyConstruction, wxRecordServiceResolution } from "@workspace/automation-platform";
 
 import { TimezoneResolver } from "@/lib/scheduling/availability-engine/timezone-resolver";
+import { rescheduleBookingViaSchedulingDomain } from "@/lib/booking/reschedule-booking-scheduling";
 
 async function resolveActorUserId(
   input: CreateBookingInput,
@@ -200,6 +201,22 @@ export function createSchedulingAwareBookingServicePort(
           ? error
           : new Error("Clinic scheduling booking creation failed.");
       }
+    },
+    async rescheduleBooking(input: RescheduleBookingInput): Promise<RescheduleBookingResult> {
+      wxRecordServiceResolution("bookingService.rescheduleBooking");
+      const companyId = input.companyId?.trim();
+      const bookingId = input.bookingId?.trim();
+      if (!companyId) {
+        throw new Error("Reschedule booking requires companyId for clinic scheduling bookings.");
+      }
+      if (!bookingId) {
+        throw new Error("Reschedule booking requires bookingId.");
+      }
+      return rescheduleBookingViaSchedulingDomain(domain, {
+        ...input,
+        companyId,
+        bookingId,
+      });
     },
   };
 }

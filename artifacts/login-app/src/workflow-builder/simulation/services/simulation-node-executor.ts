@@ -40,6 +40,7 @@ const CRM_ACTIONS = new Set([
   "update_customer",
   "find_customer",
   "create_booking",
+  "reschedule_booking",
   "find_booking",
   "update_booking",
   "cancel_booking",

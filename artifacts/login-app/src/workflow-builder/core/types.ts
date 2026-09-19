@@ -16,6 +16,7 @@ export const BUILDER_NODE_TYPES = [
   "update_customer",
   "find_customer",
   "create_booking",
+  "reschedule_booking",
   "create_ticket",
   "find_ticket",
   "assign_ticket",

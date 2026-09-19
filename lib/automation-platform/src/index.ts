@@ -200,9 +200,11 @@ export * from "./crm/lookup/register-lookup-variable-resolver.js";
 export * from "./crm/types/customer-mutation-input.js";
 export * from "./crm/types/find-booking-input.js";
 export * from "./crm/types/booking-mutation-input.js";
+export * from "./crm/types/reschedule-booking-input.js";
 export * from "./crm/find-booking-config.js";
 export * from "./crm/update-booking-config.js";
 export * from "./crm/cancel-booking-config.js";
+export * from "./crm/reschedule-booking-config.js";
 export * from "./crm/lookup/booking-types.js";
 export * from "./crm/supabase/supabase-customer-repository.js";
 export {

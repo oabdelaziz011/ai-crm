@@ -12,6 +12,8 @@ import {
   type BillingLifecycleActionMode,
 } from "@/components/billing/dialogs/billing-lifecycle-action-dialog";
 import { BillingRecordPaymentDialog } from "@/components/billing/dialogs/billing-record-payment-dialog";
+import { BillingSetFirstPaymentDueDialog } from "@/components/billing/dialogs/billing-set-first-payment-due-dialog";
+import { BillingSetBillingCycleDialog } from "@/components/billing/dialogs/billing-set-billing-cycle-dialog";
 import { BillingSubscriptionStatusDialog } from "@/components/billing/dialogs/billing-subscription-status-dialog";
 import { CompanyIdentityHeader } from "@/components/billing/identity/company-identity-header";
 import { CompanyProvisioningGate } from "@/components/billing/layout/company-provisioning-gate";
@@ -102,6 +104,8 @@ export function SubscriptionDetailPage() {
     null,
   );
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [firstPaymentDueOpen, setFirstPaymentDueOpen] = useState(false);
+  const [billingCycleOpen, setBillingCycleOpen] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [selectedMethodCode, setSelectedMethodCode] = useState("");
 
@@ -259,6 +263,26 @@ export function SubscriptionDetailPage() {
         billingContact={billingContact}
       />
 
+      {companySuspended ? (
+        <div
+          role="status"
+          className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          <p className="font-semibold">{t("billing.detail.lockedCompanyBannerTitle")}</p>
+          <p className="mt-1 text-destructive/90">{t("billing.detail.lockedCompanyBannerBody")}</p>
+        </div>
+      ) : subscription.status === "past_due" ||
+        subscription.status === "grace_period" ||
+        subscription.status === "expired" ? (
+        <div
+          role="status"
+          className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-950 dark:text-orange-50"
+        >
+          <p className="font-semibold">{t("billing.detail.unpaidCompanyBannerTitle")}</p>
+          <p className="mt-1 text-current/80">{t("billing.detail.unpaidCompanyBannerBody")}</p>
+        </div>
+      ) : null}
+
       {canEdit ? (
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => setEditContactOpen(true)}>
@@ -266,17 +290,17 @@ export function SubscriptionDetailPage() {
           </Button>
           {canAssignInitialPackage ? (
             <Button size="sm" variant="outline" onClick={() => setAssignPlanOpen(true)}>
-              {t("billing.edit.assignInitialPackage", "Assign package")}
+              {t("billing.edit.assignInitialPackage")}
             </Button>
           ) : null}
           {canChangePackage ? (
             <Button size="sm" variant="outline" onClick={() => setChangePackageOpen(true)}>
-              {t("billing.edit.changePackage", "Change package")}
+              {t("billing.edit.changePackage")}
             </Button>
           ) : null}
           {isTrialing ? (
             <Button size="sm" onClick={() => setConvertTrialOpen(true)}>
-              {t("billing.edit.convertTrial", "Convert trial to paid")}
+              {t("billing.edit.convertTrial")}
             </Button>
           ) : null}
           {companySuspended ? (
@@ -290,7 +314,7 @@ export function SubscriptionDetailPage() {
           )}
           {!subscriptionCanceled ? (
             <Button size="sm" variant="outline" onClick={() => setStatusDialogMode("cancel")}>
-              {t("billing.edit.cancelSubscription", "Cancel subscription")}
+              {t("billing.edit.cancelSubscription")}
             </Button>
           ) : null}
           {canMarkPastDue ? (
@@ -305,6 +329,19 @@ export function SubscriptionDetailPage() {
               onClick={() => setLifecycleDialogMode("renewal_failure")}
             >
               {t("billing.edit.recordRenewalFailure", "Start grace / record renewal failure")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isSuperAdmin && mutationsAllowed ? (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setFirstPaymentDueOpen(true)}>
+            {t("billing.edit.setFirstPaymentDue", "Set first payment due")}
+          </Button>
+          {subscription.plan_id ? (
+            <Button size="sm" variant="outline" onClick={() => setBillingCycleOpen(true)}>
+              {t("billing.edit.setBillingCycle", "Set billing cycle")}
             </Button>
           ) : null}
         </div>
@@ -386,10 +423,7 @@ export function SubscriptionDetailPage() {
                     {planPrice && currency ? ` · ${formatBillingSubscriptionCurrency(planPrice, currency)}` : ""}
                   </Button>
                   <p className="text-[11px] text-muted-foreground">
-                    {t(
-                      "billing.detail.recordPaymentListPriceHint",
-                      "Suggested amount uses current package list price — not proof of prior payment.",
-                    )}
+                    {t("billing.detail.recordPaymentListPriceHint")}
                   </p>
                   {currencyUnavailable ? (
                     <p className="text-xs text-destructive">{t("billing.detail.currencyMissing")}</p>
@@ -572,6 +606,29 @@ export function SubscriptionDetailPage() {
         configurationError={paymentConfigurationError}
         onConfirm={handleRecordPayment}
       />
+
+      {isSuperAdmin ? (
+        <BillingSetFirstPaymentDueDialog
+          open={firstPaymentDueOpen}
+          onOpenChange={setFirstPaymentDueOpen}
+          companyId={companyId}
+          companyName={subscription.company?.name}
+          currentDueAt={
+            subscription.status === "trialing"
+              ? subscription.trial_ends_at ?? subscription.next_renewal_at
+              : subscription.next_renewal_at ?? subscription.trial_ends_at
+          }
+        />
+      ) : null}
+
+      {isSuperAdmin && subscription.plan_id ? (
+        <BillingSetBillingCycleDialog
+          open={billingCycleOpen}
+          onOpenChange={setBillingCycleOpen}
+          companyId={companyId}
+          subscription={subscription}
+        />
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { HttpError } from "../middleware/error-handler.js";
 import { createSaasCheckoutSession } from "../billing/saas/checkout-service.js";
+import { confirmSandboxSaasCheckout } from "../billing/saas/sandbox-confirm-service.js";
 
 const router: IRouter = Router();
 
@@ -52,6 +53,30 @@ router.post("/checkout", async (req: Request, res: Response, next: NextFunction)
       actorUserId: req.supabaseUser?.id ?? null,
     });
 
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/billing/saas/sandbox-confirm
+ * Completes local sandbox checkout after browser return (signed webhook path).
+ * Body: { sessionId } — company is taken from JWT, never from client money fields.
+ */
+router.post("/sandbox-confirm", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const companyId = req.supabaseCompanyId;
+    if (!companyId) {
+      throw new HttpError(403, "No company context for authenticated user.", "forbidden");
+    }
+
+    const sessionId = String(req.body?.sessionId ?? req.body?.session_id ?? "").trim();
+    if (!sessionId) {
+      throw new HttpError(400, "sessionId is required", "validation_error");
+    }
+
+    const result = await confirmSandboxSaasCheckout({ companyId, sessionId });
     res.status(200).json(result);
   } catch (error) {
     next(error);

@@ -64,15 +64,12 @@ export function PlanExperiencePanel({
             {translateBillingCycle(t, subscription.billing_cycle)} · {listPriceLabel}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {t(
-              "billing.detail.listPriceHint",
-              "Catalog list price — not a recorded payment. Charged amounts are not modeled yet.",
-            )}
+            {t("billing.detail.listPriceHint")}
           </p>
         </div>
         {canChangePackage && onChangePackage ? (
           <Button size="sm" variant="outline" onClick={onChangePackage}>
-            {t("billing.edit.changePackage", "Change package")}
+            {t("billing.edit.changePackage")}
           </Button>
         ) : null}
       </div>

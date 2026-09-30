@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { PlanFeaturesPanel } from "@/components/billing/panels/plan-features-panel";
 import { SubscriptionStatusBadge } from "@/components/billing/status/subscription-status-badge";
 import { CompanyIdentityHeader } from "@/components/billing/identity/company-identity-header";
+import { CompanySaasPaymentPanel } from "@/components/company-workspace/company-saas-payment-panel";
 import { DashboardCard, DashboardErrorBanner } from "@/components/dashboard/ui";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { useAuth } from "@/context/auth-context";
@@ -137,6 +138,21 @@ export function WorkspaceBillingPage() {
 
         <PlanFeaturesPanel companyId={companyId} />
       </div>
+
+      <CompanySaasPaymentPanel
+        companyId={companyId}
+        subscription={subscription}
+        plan={plan}
+        currency={subscriptionCurrency}
+        assignedAmount={data?.next_invoice_amount ?? null}
+        listAmount={data?.list_price_amount ?? null}
+        onlineCheckoutAllowed={data?.online_checkout_allowed ?? true}
+        approvalStatus={data?.approval_status ?? data?.company?.approval_status ?? company?.approval_status}
+        payableSource={data?.payable_source ?? null}
+        discountPercent={data?.discount_percent ?? null}
+        preApprovalPaid={Boolean(data?.pre_approval_paid)}
+        paymentPortalState={data?.payment_portal_state ?? null}
+      />
     </div>
   );
 }

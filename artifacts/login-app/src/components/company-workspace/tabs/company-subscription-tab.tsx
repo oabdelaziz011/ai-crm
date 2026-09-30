@@ -360,7 +360,7 @@ export function CompanySubscriptionTab() {
         <UsageSummaryPanel subscription={subscription} enabled={permissions.canSubscription} />
       </section>
 
-      <section className="space-y-2">
+      <section className="space-y-2" id="company-billing-invoices" data-testid="company-billing-invoices">
         <h3 className="text-sm font-semibold">
           {t("companyWorkspace.subscription.invoicesSection", "Invoices")}
         </h3>

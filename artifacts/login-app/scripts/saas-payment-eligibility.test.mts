@@ -50,7 +50,19 @@ describe("resolveSaasPaymentEligibility", () => {
     assert.equal(r.code, "PAYMENT_ALLOWED");
   });
 
-  it("blocks unauthorized, suspended, rejected, free, custom, canceled", () => {
+  it("allows Suspended company when subscription is unpaid recovery", () => {
+    for (const status of ["past_due", "grace_period", "expired"] as const) {
+      const r = resolveSaasPaymentEligibility({
+        ...allowedInput,
+        companyStatus: "Suspended",
+        subscription: { status, billing_cycle: "monthly", plan_id: "p1" },
+      });
+      assert.equal(r.allowed, true, status);
+      assert.equal(r.action, "renew", status);
+    }
+  });
+
+  it("blocks unauthorized, admin-suspended, rejected, free, custom, canceled", () => {
     assert.equal(
       resolveSaasPaymentEligibility({ ...allowedInput, canInitiate: false }).code,
       "UNAUTHORIZED",
@@ -60,6 +72,7 @@ describe("resolveSaasPaymentEligibility", () => {
       resolveSaasPaymentEligibility({
         ...allowedInput,
         companyStatus: "Suspended",
+        subscription: { status: "active", billing_cycle: "monthly", plan_id: "p1" },
       }).code,
       "PAYMENT_BLOCKED",
     );

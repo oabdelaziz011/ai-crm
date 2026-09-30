@@ -79,6 +79,37 @@ export async function createSaasCheckoutSession(input: {
   return body;
 }
 
+/** Local sandbox: settle after browser return so invoices/receipts appear. */
+export async function confirmSandboxSaasCheckout(sessionId: string): Promise<{
+  ok: boolean;
+  alreadySettled?: boolean;
+  sessionId?: string;
+}> {
+  const base = resolveAuthenticatedApiBase();
+  if (!base) {
+    throw new Error("API_SERVER_NOT_CONFIGURED");
+  }
+  const response = await fetch(`${base}/billing/saas/sandbox-confirm`, {
+    method: "POST",
+    headers: await authHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ sessionId }),
+  });
+  const body = (await response.json()) as {
+    ok?: boolean;
+    alreadySettled?: boolean;
+    sessionId?: string;
+    message?: string;
+    error?: string;
+  };
+  if (!response.ok) {
+    const err = new Error(body.message || body.error || "Sandbox confirm failed");
+    (err as Error & { code?: string }).code = body.error;
+    throw err;
+  }
+  return { ok: Boolean(body.ok), alreadySettled: body.alreadySettled, sessionId: body.sessionId };
+}
+
 export function storePendingCheckoutSession(sessionId: string): void {
   try {
     sessionStorage.setItem(

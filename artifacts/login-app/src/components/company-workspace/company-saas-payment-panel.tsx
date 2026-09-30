@@ -1,6 +1,7 @@
+import { CreditCard, Landmark, Wallet } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -10,19 +11,27 @@ import {
   useCreateSaasCheckout,
   useSaasCheckoutReturnSession,
 } from "@/hooks/billing/use-saas-checkout";
+import { useBillingInvoices } from "@/hooks/billing/use-billing-invoices";
+import { useBillingPaymentOptions } from "@/hooks/billing/use-billing-payment-options";
 import { WORKSPACE_BILLING_SUMMARY_KEY } from "@/hooks/workspace/use-workspace-billing-summary";
 import {
   buildSaasPaymentReturnUrl,
+  confirmSandboxSaasCheckout,
   derivePortalPaymentReturnState,
   isSaasCheckoutApiConfigured,
+  readPendingCheckoutSession,
+  storePendingCheckoutSession,
 } from "@/lib/billing/saas-checkout-api";
 import {
   expectedListPriceAmount,
   resolveSaasPaymentEligibility,
 } from "@/lib/billing/saas-payment-eligibility";
 import { formatBillingCurrency } from "@/lib/billing/format";
+import { translateBillingCycle } from "@/lib/billing/billing-display-i18n";
 import type { CompanySubscription } from "@/lib/billing/types";
 import { canInitiateCompanyOnlinePayment } from "@/lib/company-workspace/permissions";
+import { companyWorkspaceHref } from "@/lib/company-workspace/company-workspace-routes";
+import { cn } from "@/lib/utils";
 
 type CompanySaasPaymentPanelProps = {
   companyId: string;
@@ -55,13 +64,16 @@ export function CompanySaasPaymentPanel({
 }: CompanySaasPaymentPanelProps) {
   const { t } = useTranslation("common");
   const { toast } = useToast();
-  const { company } = useAuth();
+  const { company, refreshAuthContext } = useAuth();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const search = useSearch();
   const qc = useQueryClient();
   const createCheckout = useCreateSaasCheckout();
   const idempotencyRef = useRef<string | null>(null);
+  const sandboxConfirmRef = useRef(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const paymentOptionsQuery = useBillingPaymentOptions(companyId, Boolean(companyId));
+  const invoicesQuery = useBillingInvoices(companyId, Boolean(companyId));
 
   const resolvedApproval =
     approvalStatus ?? company?.approval_status ?? subscription.company?.approval_status;
@@ -111,17 +123,59 @@ export function CompanySaasPaymentPanel({
 
   const params = useMemo(() => new URLSearchParams(search), [search]);
   const isReturn = params.get("payment_return") === "1";
+  const sandboxReturn = params.get("sandbox") === "1";
+  const returnSessionId = params.get("saas_checkout") || readPendingCheckoutSession();
+
+  useEffect(() => {
+    if (!isReturn || !returnSessionId) return;
+    if (!readPendingCheckoutSession()) {
+      storePendingCheckoutSession(returnSessionId);
+    }
+  }, [isReturn, returnSessionId]);
+
+  useEffect(() => {
+    if (!isReturn || !sandboxReturn || !returnSessionId || sandboxConfirmRef.current) return;
+    sandboxConfirmRef.current = true;
+    void (async () => {
+      try {
+        await confirmSandboxSaasCheckout(returnSessionId);
+        await refreshAuthContext();
+        void qc.invalidateQueries({ queryKey: WORKSPACE_BILLING_SUMMARY_KEY });
+        void qc.invalidateQueries({ queryKey: ["billing", "invoices", companyId] });
+        void qc.invalidateQueries({ queryKey: ["billing", "payments"] });
+        void qc.invalidateQueries({ queryKey: ["billing", "receipts"] });
+        void qc.invalidateQueries({ queryKey: ["billing", "company-subscriptions", companyId] });
+        void qc.invalidateQueries({ queryKey: ["billing", "saas-checkout-session", returnSessionId] });
+      } catch (err) {
+        sandboxConfirmRef.current = false;
+        const message =
+          err instanceof Error ? err.message : t("companyWorkspace.payment.checkoutFailed");
+        setLocalError(message);
+      }
+    })();
+  }, [companyId, isReturn, qc, refreshAuthContext, returnSessionId, sandboxReturn, t]);
+
   const returnQuery = useSaasCheckoutReturnSession(isReturn);
   const returnState = derivePortalPaymentReturnState(returnQuery.data ?? null);
+
+  const latestPaidInvoice = useMemo(() => {
+    const rows = invoicesQuery.data ?? [];
+    return (
+      rows.find((row) => row.status === "paid" || Boolean(row.paid_at)) ??
+      rows[0] ??
+      null
+    );
+  }, [invoicesQuery.data]);
 
   useEffect(() => {
     if (!isReturn) return;
     void qc.invalidateQueries({ queryKey: WORKSPACE_BILLING_SUMMARY_KEY });
     const timer = window.setTimeout(() => {
       void qc.invalidateQueries({ queryKey: WORKSPACE_BILLING_SUMMARY_KEY });
+      void qc.invalidateQueries({ queryKey: ["billing", "invoices", companyId] });
     }, 2500);
     return () => window.clearTimeout(timer);
-  }, [isReturn, qc]);
+  }, [companyId, isReturn, qc]);
 
   const handlePay = async () => {
     setLocalError(null);
@@ -202,21 +256,116 @@ export function CompanySaasPaymentPanel({
       : t("companyWorkspace.payment.payNow", "Pay now");
 
   const planLabel = plan?.display_name || plan?.name || t("billing.plan.unassigned", "Unassigned");
-  const cycleLabel = subscription.billing_cycle;
+  const cycleLabel = translateBillingCycle(t, subscription.billing_cycle);
+  const monthlyPrice = plan?.price_monthly ?? null;
+  const yearlyPrice = plan?.price_yearly ?? null;
+  const paymentMethods = paymentOptionsQuery.data?.payment_methods ?? [];
+  const onlineMethodLabels = useMemo(() => {
+    const fromDb = paymentMethods.map((method) => method.display_name || method.code);
+    if (fromDb.length > 0) return fromDb;
+    return [
+      t("companyWorkspace.payment.methodCard", { defaultValue: "Visa / Mastercard" }),
+      t("companyWorkspace.payment.methodOnline", { defaultValue: "Secure online checkout" }),
+    ];
+  }, [paymentMethods, t]);
+
+  const invoiceHref = `${companyWorkspaceHref("subscription")}#company-billing-invoices`;
 
   return (
-    <section className="space-y-3 rounded-2xl border border-border bg-background p-4">
+    <section
+      className="space-y-3 rounded-2xl border border-border bg-background p-4"
+      data-testid="company-saas-payment-panel"
+    >
       <h3 className="text-sm font-semibold">
         {portalState === "payment_required"
           ? t("companyWorkspace.payment.paymentRequired", "Payment Required")
           : t("companyWorkspace.payment.sectionTitle", "Online payment")}
       </h3>
 
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(
+          [
+            { id: "monthly" as const, price: monthlyPrice },
+            { id: "yearly" as const, price: yearlyPrice },
+          ] as const
+        ).map((option) => {
+          const selected = subscription.billing_cycle === option.id;
+          return (
+            <div
+              key={option.id}
+              className={cn(
+                "rounded-xl border px-3 py-2.5",
+                selected
+                  ? "border-primary/50 bg-primary/10"
+                  : "border-border/60 bg-muted/20 opacity-80",
+              )}
+              data-testid={`billing-cycle-option-${option.id}`}
+              data-selected={selected ? "true" : "false"}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{translateBillingCycle(t, option.id)}</p>
+                {selected ? (
+                  <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                    {t("companyWorkspace.payment.cycleSelected", {
+                      defaultValue: "Selected for your company",
+                    })}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {option.price != null
+                  ? formatBillingCurrency(option.price, displayCurrency)
+                  : t("billing.common.notAvailable")}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        {t("companyWorkspace.payment.cycleSetByAdmin", {
+          defaultValue:
+            "Billing cycle is set by ValueOR (monthly or yearly). Contact support if you need it changed.",
+        })}
+      </p>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-foreground">
+          {t("companyWorkspace.payment.methodsTitle", { defaultValue: "Available payment methods" })}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {onlineMethodLabels.map((label) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/30 px-2.5 py-1.5 text-xs font-medium"
+            >
+              {/visa|card|master/i.test(label) ? (
+                <CreditCard className="size-3.5 text-muted-foreground" aria-hidden />
+              ) : /bank|transfer|wire/i.test(label) ? (
+                <Landmark className="size-3.5 text-muted-foreground" aria-hidden />
+              ) : (
+                <Wallet className="size-3.5 text-muted-foreground" aria-hidden />
+              )}
+              {label}
+            </span>
+          ))}
+        </div>
+        {paymentOptionsQuery.data?.active_provider_code ? (
+          <p className="text-[11px] text-muted-foreground">
+            {t("companyWorkspace.payment.providerLabel", { defaultValue: "Provider" })}:{" "}
+            {paymentOptionsQuery.data.active_provider_code}
+            {paymentOptionsQuery.data.active_mode === "sandbox"
+              ? ` · ${t("companyWorkspace.payment.sandboxMode", { defaultValue: "Sandbox" })}`
+              : null}
+          </p>
+        ) : null}
+      </div>
+
       {isReturn ? (
         <div
           className="rounded-xl border border-border/80 bg-muted/30 px-3 py-2 text-sm"
           role="status"
           aria-live="polite"
+          data-testid="payment-return-status"
         >
           {returnState === "confirmed" && portalState === "awaiting_approval" ? (
             <p>
@@ -226,12 +375,41 @@ export function CompanySaasPaymentPanel({
             </p>
           ) : null}
           {returnState === "confirmed" && portalState !== "awaiting_approval" ? (
-            <p>
-              {t(
-                "companyWorkspace.payment.returnConfirmed",
-                "Payment confirmed. Your subscription details have been updated.",
-              )}
-            </p>
+            <div className="space-y-2">
+              <p>
+                {t(
+                  "companyWorkspace.payment.returnConfirmed",
+                  "Payment confirmed. Your subscription details have been updated.",
+                )}
+              </p>
+              {latestPaidInvoice ? (
+                <div
+                  className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2"
+                  data-testid="payment-return-invoice"
+                >
+                  <p className="text-xs font-semibold text-foreground">
+                    {t("companyWorkspace.payment.latestInvoiceTitle", { defaultValue: "Your invoice" })}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("companyWorkspace.payment.latestInvoiceNumber", { defaultValue: "Invoice" })}:{" "}
+                    <span className="font-medium text-foreground">{latestPaidInvoice.invoice_number}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("companyWorkspace.payment.latestInvoiceAmount", { defaultValue: "Amount" })}:{" "}
+                    {formatBillingCurrency(latestPaidInvoice.total_amount, latestPaidInvoice.currency)}
+                    {" · "}
+                    {t("companyWorkspace.payment.latestInvoicePaid", { defaultValue: "Paid" })}
+                  </p>
+                </div>
+              ) : null}
+              <Button asChild size="sm" variant="outline">
+                <Link href={invoiceHref}>
+                  {t("companyWorkspace.payment.viewInvoice", {
+                    defaultValue: "View invoice & payment history",
+                  })}
+                </Link>
+              </Button>
+            </div>
           ) : null}
           {returnState === "processing" ? (
             <p>
@@ -371,6 +549,7 @@ export function CompanySaasPaymentPanel({
               disabled={createCheckout.isPending}
               aria-busy={createCheckout.isPending}
               onClick={() => void handlePay()}
+              data-testid="company-saas-pay-button"
             >
               {createCheckout.isPending
                 ? t("companyWorkspace.payment.starting", "Starting payment…")

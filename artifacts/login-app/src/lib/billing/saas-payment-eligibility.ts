@@ -48,7 +48,23 @@ const PAYABLE_STATUSES: BillingSubscriptionStatus[] = [
   "past_due",
   "grace_period",
   "trialing",
+  "expired",
 ];
+
+/** Subscription clocks that may recover online while company is Suspended. */
+const UNPAID_RECOVERY_STATUSES: BillingSubscriptionStatus[] = [
+  "past_due",
+  "grace_period",
+  "expired",
+];
+
+export function isSaasUnpaidRecoveryStatus(
+  status: string | null | undefined,
+): boolean {
+  return UNPAID_RECOVERY_STATUSES.includes(
+    (status ?? "").trim() as BillingSubscriptionStatus,
+  );
+}
 
 export function resolveSaasPaymentEligibility(
   input: SaasPaymentEligibilityInput,
@@ -68,16 +84,6 @@ export function resolveSaasPaymentEligibility(
       allowed: false,
       action: "none",
       reasonKey: "companyWorkspace.payment.noCompany",
-    };
-  }
-
-  const companyStatus = (input.companyStatus ?? "").trim();
-  if (companyStatus === "Suspended") {
-    return {
-      code: "PAYMENT_BLOCKED",
-      allowed: false,
-      action: "none",
-      reasonKey: "companyWorkspace.payment.companySuspended",
     };
   }
 
@@ -109,6 +115,17 @@ export function resolveSaasPaymentEligibility(
         approval === "pending"
           ? "companyWorkspace.payment.notConfigured"
           : "companyWorkspace.payment.noSubscription",
+    };
+  }
+
+  const companyStatus = (input.companyStatus ?? "").trim();
+  const status = input.subscription.status;
+  if (companyStatus === "Suspended" && !isSaasUnpaidRecoveryStatus(status)) {
+    return {
+      code: "PAYMENT_BLOCKED",
+      allowed: false,
+      action: "none",
+      reasonKey: "companyWorkspace.payment.companySuspended",
     };
   }
 
@@ -172,7 +189,6 @@ export function resolveSaasPaymentEligibility(
     };
   }
 
-  const status = input.subscription.status;
   if (!PAYABLE_STATUSES.includes(status)) {
     return {
       code: "INVALID_SUBSCRIPTION_STATE",
@@ -182,8 +198,7 @@ export function resolveSaasPaymentEligibility(
     };
   }
 
-  const action: "pay" | "renew" =
-    status === "past_due" || status === "grace_period" ? "renew" : "pay";
+  const action: "pay" | "renew" = isSaasUnpaidRecoveryStatus(status) ? "renew" : "pay";
 
   return {
     code: "PAYMENT_ALLOWED",

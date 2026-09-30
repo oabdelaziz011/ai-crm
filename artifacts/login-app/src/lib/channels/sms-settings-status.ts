@@ -18,13 +18,21 @@ export function resolveSmsConnectionStatus(settings: CompanySmsSettings | null |
       fromNumber: settings.fromNumber,
     };
   }
-  const configured =
+
+  const twilioConfigured =
     settings.provider === "twilio" &&
     settings.accountSid.trim().length > 0 &&
     settings.fromNumber.trim().length > 0 &&
     settings.hasAuthToken;
+
+  const infobipConfigured =
+    settings.provider === "infobip" &&
+    settings.fromNumber.trim().length > 0 &&
+    settings.hasApiKey &&
+    settings.baseUrl.trim().length > 0;
+
   return {
-    status: configured ? "connected" : "not_connected",
+    status: twilioConfigured || infobipConfigured ? "connected" : "not_connected",
     provider: settings.provider,
     fromNumber: settings.fromNumber,
   };

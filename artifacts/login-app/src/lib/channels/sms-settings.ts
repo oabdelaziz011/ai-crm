@@ -9,6 +9,7 @@ import type {
   SmsProviderKind,
   SmsSettingsDraft,
 } from "./sms-settings-types";
+import { DEFAULT_INFOBIP_BASE_URL } from "./sms-settings-types";
 
 export type {
   CompanySmsSettings,
@@ -16,19 +17,27 @@ export type {
   SmsProviderKind,
   SmsSettingsDraft,
 } from "./sms-settings-types";
+export { DEFAULT_INFOBIP_BASE_URL } from "./sms-settings-types";
 export { resolveSmsConnectionStatus } from "./sms-settings-status";
 
+function mapProvider(raw: unknown): SmsProviderKind {
+  const value = String(raw ?? "").trim();
+  if (value === "twilio" || value === "infobip") return value;
+  return "";
+}
+
 function mapPublicRecord(record: Record<string, unknown>): CompanySmsSettings {
-  const providerRaw = String(record.provider ?? "");
-  const provider: SmsProviderKind = providerRaw === "twilio" ? "twilio" : "";
   return {
     companyId: String(record.company_id),
     enabled: Boolean(record.enabled),
-    provider,
+    provider: mapProvider(record.provider),
     accountSid: String(record.account_sid ?? ""),
     fromNumber: String(record.from_number ?? ""),
     authToken: String(record.auth_token ?? ""),
     hasAuthToken: Boolean(record.has_auth_token),
+    apiKey: String(record.api_key ?? ""),
+    hasApiKey: Boolean(record.has_api_key),
+    baseUrl: String(record.base_url ?? ""),
     updatedAt: record.updated_at ? String(record.updated_at) : undefined,
   };
 }
@@ -52,6 +61,8 @@ export async function upsertSmsSettings(
     p_account_sid: settings.accountSid,
     p_from_number: settings.fromNumber,
     p_auth_token: settings.authToken,
+    p_api_key: settings.apiKey,
+    p_base_url: settings.baseUrl || (settings.provider === "infobip" ? DEFAULT_INFOBIP_BASE_URL : ""),
   });
   if (error) throw new Error(error.message);
   return mapPublicRecord(data as Record<string, unknown>);

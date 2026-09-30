@@ -95,4 +95,45 @@ describe("SMS connection test — honest provider auth", () => {
     });
     assert.equal(JSON.stringify(report).includes("super-secret-token"), false);
   });
+
+  it("routes Infobip test connection through authenticated Infobip balance check", async () => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ balance: 5, currency: "EUR" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })) as typeof fetch;
+    try {
+      const report = await performSmsConnectionTest({
+        enabled: true,
+        provider: "infobip",
+        apiKey: "infobip-secret",
+        baseUrl: "https://api.infobip.com",
+        fromNumber: "ValueOR",
+      });
+      assert.equal(report.ok, true);
+      assert.equal(report.reason, "ok");
+      assert.equal(JSON.stringify(report).includes("infobip-secret"), false);
+    } finally {
+      globalThis.fetch = previous;
+    }
+  });
+
+  it("fails Infobip test connection when credentials are rejected", async () => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = (async () => new Response("unauthorized", { status: 401 })) as typeof fetch;
+    try {
+      const report = await performSmsConnectionTest({
+        enabled: true,
+        provider: "infobip",
+        apiKey: "bad-key",
+        baseUrl: "https://api.infobip.com",
+        fromNumber: "ValueOR",
+      });
+      assert.equal(report.ok, false);
+      assert.equal(report.reason, "provider_auth_failed");
+    } finally {
+      globalThis.fetch = previous;
+    }
+  });
 });

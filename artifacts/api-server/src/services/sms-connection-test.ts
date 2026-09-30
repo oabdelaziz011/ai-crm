@@ -1,14 +1,21 @@
 /**
- * Honest SMS provider connection test.
- * Never returns ok from a stub — Twilio requires a live Account API auth check.
+ * Honest SMS provider connection test (Twilio + Infobip).
+ * Never returns ok from a stub — requires a live authenticated provider check.
  */
+
+import {
+  InfobipSmsApiClient,
+  normalizeInfobipBaseUrl,
+} from "@workspace/channel-platform";
 
 export type SmsDecryptedSettings = {
   enabled: boolean;
   provider: string;
-  accountSid: string;
+  accountSid?: string;
   fromNumber: string;
-  authToken: string;
+  authToken?: string;
+  apiKey?: string;
+  baseUrl?: string;
 };
 
 export type SmsConnectionTestReport = {
@@ -70,6 +77,32 @@ export async function performSmsConnectionTest(
     };
   }
 
+  if (provider === "infobip") {
+    const apiKey = String(settings.apiKey ?? "").trim();
+    const fromNumber = settings.fromNumber.trim();
+    const baseUrl = normalizeInfobipBaseUrl(settings.baseUrl);
+    if (!apiKey || !fromNumber) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - started,
+        error: "Infobip credentials are incomplete (API key and sender ID required).",
+        reason: "credentials_incomplete",
+        ...base,
+      };
+    }
+
+    const client = new InfobipSmsApiClient({ fetchFn: fetchImpl });
+    const result = await client.testConnection({ apiKey, baseUrl });
+    return {
+      ok: result.ok,
+      latencyMs: Date.now() - started,
+      error: result.error,
+      reason: result.ok ? "ok" : (result.reason ?? "provider_unreachable"),
+      ...base,
+      accountName: result.accountName,
+    };
+  }
+
   if (provider !== "twilio") {
     return {
       ok: false,
@@ -80,8 +113,8 @@ export async function performSmsConnectionTest(
     };
   }
 
-  const accountSid = settings.accountSid.trim();
-  const authToken = settings.authToken.trim();
+  const accountSid = String(settings.accountSid ?? "").trim();
+  const authToken = String(settings.authToken ?? "").trim();
   const fromNumber = settings.fromNumber.trim();
   if (!accountSid || !authToken || !fromNumber) {
     return {

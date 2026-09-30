@@ -12,6 +12,7 @@ import { ValidationError } from "../../errors.js";
 import { buildSmsExternalThreadId, parseSmsChannelReferences } from "./twilio-sms-config.js";
 import { resolveSmsRuntimeConfiguration, type SmsCredentialsLoader } from "./twilio-sms-canonical-credentials.js";
 import { TwilioSmsApiClient } from "./twilio-sms-api-client.js";
+import { InfobipSmsApiClient, mapInfobipMessageStatus } from "./infobip-sms-api-client.js";
 import {
   mapTwilioMessageStatus,
   type TwilioSmsSendPayload,
@@ -52,10 +53,62 @@ function isStatusCallback(fields: TwilioSmsWebhookFields): boolean {
   return false;
 }
 
+/** Infobip delivery reports: { results: [{ messageId, to, status: { name } }] } */
+function parseInfobipDeliveryReports(
+  companyChannelId: string,
+  channelKey: string,
+  rawPayload: Record<string, unknown>,
+): WebhookEnvelopeDto[] | null {
+  const results = rawPayload.results;
+  if (!Array.isArray(results) || results.length === 0) return null;
+  // Twilio form payloads never use `results[]` — treat as Infobip notifyUrl body.
+  const envelopes: WebhookEnvelopeDto[] = [];
+  for (const entry of results) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const row = entry as Record<string, unknown>;
+    const messageId = String(row.messageId ?? "").trim();
+    if (!messageId) continue;
+    const statusObj =
+      row.status && typeof row.status === "object" && !Array.isArray(row.status)
+        ? (row.status as Record<string, unknown>)
+        : {};
+    const statusName = String(statusObj.name ?? statusObj.groupName ?? "").trim();
+    const mapped = mapInfobipMessageStatus(statusName);
+    if (!mapped) continue;
+    const to = String(row.to ?? "").trim();
+    const errorObj =
+      row.error && typeof row.error === "object" && !Array.isArray(row.error)
+        ? (row.error as Record<string, unknown>)
+        : null;
+    const errorMessage =
+      errorObj && typeof errorObj.description === "string" ? errorObj.description : undefined;
+    envelopes.push({
+      eventType: "message.status",
+      companyChannelId,
+      channelKey,
+      idempotencyKey: `sms:status:${messageId}:${mapped}`,
+      externalThreadId: to ? buildSmsExternalThreadId(to.startsWith("+") ? to : `+${to}`) : "",
+      externalMessageId: messageId,
+      payload: {
+        deliveryStatus: mapped,
+        providerResponse: {
+          messageId,
+          status: statusName,
+          provider: "infobip",
+        },
+        errorMessage,
+        raw: rawPayload,
+      },
+    } satisfies WebhookEnvelopeDto);
+  }
+  return envelopes;
+}
+
 export class TwilioSmsAdapter implements ChannelAdapterPort {
   readonly channelKey = "sms";
 
   private readonly apiClient: TwilioSmsApiClient;
+  private readonly infobipClient: InfobipSmsApiClient;
   private readonly credentialsLoader?: SmsCredentialsLoader;
   private readonly onOutboundDiagnostic?: (detail: Record<string, unknown>) => void;
   private readonly resolveStatusCallbackUrl?: (companyChannelId: string) => string | null;
@@ -68,12 +121,21 @@ export class TwilioSmsAdapter implements ChannelAdapterPort {
       fetchFn: options.fetchFn,
       onOutboundRequest: (detail) => this.onOutboundDiagnostic?.(detail),
     });
+    this.infobipClient = new InfobipSmsApiClient({
+      fetchFn: options.fetchFn,
+      onOutboundRequest: (detail) => this.onOutboundDiagnostic?.(detail),
+    });
   }
 
   parseWebhookEvents(ctx: ChannelAdapterContext, rawPayload: Record<string, unknown>): WebhookEnvelopeDto[] {
+    const infobipEnvelopes = parseInfobipDeliveryReports(ctx.companyChannel.id, this.channelKey, rawPayload);
+    if (infobipEnvelopes) {
+      return infobipEnvelopes;
+    }
+
     const fields = asFields(rawPayload);
     if (!fields.MessageSid) {
-      throw new ValidationError("Twilio SMS webhook missing MessageSid.");
+      throw new ValidationError("SMS webhook missing provider message id.");
     }
 
     if (isStatusCallback(fields)) {
@@ -200,7 +262,8 @@ export class TwilioSmsAdapter implements ChannelAdapterPort {
       stage: "outbound.credentials.resolved",
       companyId: ctx.companyChannel.companyId,
       companyChannelId: ctx.companyChannel.id,
-      accountSid: runtime.accountSid,
+      provider: runtime.provider,
+      accountSid: runtime.provider === "twilio" ? runtime.accountSid : undefined,
       fromNumber: runtime.fromNumber,
       credentialSource: "company_sms_settings",
     });
@@ -208,6 +271,32 @@ export class TwilioSmsAdapter implements ChannelAdapterPort {
     const to = String(formattedPayload.to ?? "").trim();
     const body = String(formattedPayload.body ?? "");
     const statusCallback = this.resolveStatusCallbackUrl?.(ctx.companyChannel.id) ?? undefined;
+
+    if (runtime.provider === "infobip") {
+      const response = await this.infobipClient.sendMessage(
+        {
+          provider: "infobip",
+          apiKey: String(runtime.apiKey ?? ""),
+          baseUrl: String(runtime.baseUrl ?? ""),
+          fromNumber: runtime.fromNumber,
+          enabled: runtime.enabled,
+        },
+        {
+          to,
+          from: runtime.fromNumber,
+          body,
+          notifyUrl: statusCallback || undefined,
+        },
+      );
+      return {
+        externalMessageId: response.messageId,
+        providerResponse: {
+          messageId: response.messageId,
+          status: response.status,
+          provider: "infobip",
+        },
+      };
+    }
 
     const payload: TwilioSmsSendPayload = {
       To: to,
@@ -222,6 +311,7 @@ export class TwilioSmsAdapter implements ChannelAdapterPort {
       providerResponse: {
         sid: response.sid,
         status: response.status,
+        provider: "twilio",
         // Never include auth or full credentials.
       },
     };

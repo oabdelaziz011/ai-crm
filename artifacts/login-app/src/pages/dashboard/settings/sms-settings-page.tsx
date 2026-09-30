@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useSmsCompanyChannel,
   useSmsConnectionTest,
+  useProcessSmsQueue,
   useSmsSettings,
   useUpdateSmsSettings,
 } from "@/hooks/channels/use-sms-settings";
@@ -29,6 +30,7 @@ import {
 import {
   isSmsApiConfigured,
   resolveSmsConnectionStatus,
+  DEFAULT_INFOBIP_BASE_URL,
   type SmsProviderKind,
   type SmsSettingsDraft,
 } from "@/lib/channels/sms-settings";
@@ -39,6 +41,8 @@ const EMPTY_SETTINGS: SmsSettingsDraft = {
   accountSid: "",
   fromNumber: "",
   authToken: "",
+  apiKey: "",
+  baseUrl: "",
 };
 
 export function SettingsSmsPage() {
@@ -51,6 +55,7 @@ export function SettingsSmsPage() {
   const smsChannel = useSmsCompanyChannel(companyId);
   const updateSettings = useUpdateSmsSettings(companyId);
   const connectionTest = useSmsConnectionTest(companyId);
+  const processQueue = useProcessSmsQueue(companyId);
 
   const [draft, setDraft] = useState(EMPTY_SETTINGS);
   const [latestTestOk, setLatestTestOk] = useState<boolean | null>(null);
@@ -65,8 +70,10 @@ export function SettingsSmsPage() {
       provider: settings.provider,
       accountSid: settings.accountSid,
       fromNumber: settings.fromNumber,
+      baseUrl: settings.baseUrl || (settings.provider === "infobip" ? DEFAULT_INFOBIP_BASE_URL : ""),
       // Never reload masked RPC values into secret inputs (WhatsApp pattern).
       authToken: prev.authToken,
+      apiKey: prev.apiKey,
     }));
     setLatestTestOk(null);
   }, [settings]);
@@ -86,7 +93,7 @@ export function SettingsSmsPage() {
   const onSave = () => {
     updateSettings.mutate(draft, {
       onSuccess: () => {
-        setDraft((prev) => ({ ...prev, authToken: "" }));
+        setDraft((prev) => ({ ...prev, authToken: "", apiKey: "" }));
         setLatestTestOk(null);
         toast({ title: t("notifications.sms.settings.saved") });
       },
@@ -119,6 +126,25 @@ export function SettingsSmsPage() {
         setLatestTestOk(false);
         toast({
           title: t("notifications.sms.settings.connectionTestFailed"),
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const onProcessQueue = () => {
+    processQueue.mutate(undefined, {
+      onSuccess: (result) => {
+        toast({
+          title: t("notifications.sms.settings.processQueueSuccess", {
+            processed: result.processed,
+          }),
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: t("notifications.sms.settings.processQueueFailed"),
           description: error.message,
           variant: "destructive",
         });
@@ -191,6 +217,9 @@ export function SettingsSmsPage() {
                     <SelectItem value="twilio">
                       {t("notifications.sms.settings.providers.twilio")}
                     </SelectItem>
+                    <SelectItem value="infobip">
+                      {t("notifications.sms.settings.providers.infobip")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {!draft.provider ? (
@@ -210,6 +239,7 @@ export function SettingsSmsPage() {
                         setDraft((prev) => ({ ...prev, accountSid: event.target.value }))
                       }
                       autoComplete="off"
+                      data-testid="sms-account-sid"
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
@@ -221,6 +251,7 @@ export function SettingsSmsPage() {
                         setDraft((prev) => ({ ...prev, fromNumber: event.target.value }))
                       }
                       autoComplete="off"
+                      data-testid="sms-from-number"
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
@@ -233,9 +264,61 @@ export function SettingsSmsPage() {
                         setDraft((prev) => ({ ...prev, authToken: event.target.value }))
                       }
                       autoComplete="new-password"
+                      data-testid="sms-auth-token"
                     />
                     <p className="text-xs text-muted-foreground">
                       {t("notifications.sms.settings.authTokenHint")}
+                    </p>
+                  </div>
+                </>
+              ) : null}
+
+              {draft.provider === "infobip" ? (
+                <>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.sms.settings.apiKey")}</Label>
+                    <Input
+                      type="password"
+                      value={draft.apiKey}
+                      placeholder={settings?.hasApiKey ? "********" : ""}
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, apiKey: event.target.value }))
+                      }
+                      autoComplete="new-password"
+                      data-testid="sms-infobip-api-key"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("notifications.sms.settings.apiKeyHint")}
+                    </p>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.sms.settings.baseUrl")}</Label>
+                    <Input
+                      value={draft.baseUrl || DEFAULT_INFOBIP_BASE_URL}
+                      placeholder={DEFAULT_INFOBIP_BASE_URL}
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, baseUrl: event.target.value }))
+                      }
+                      autoComplete="off"
+                      data-testid="sms-infobip-base-url"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("notifications.sms.settings.baseUrlHint")}
+                    </p>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>{t("notifications.sms.settings.senderId")}</Label>
+                    <Input
+                      value={draft.fromNumber}
+                      placeholder="ValueOR"
+                      onChange={(event) =>
+                        setDraft((prev) => ({ ...prev, fromNumber: event.target.value }))
+                      }
+                      autoComplete="off"
+                      data-testid="sms-infobip-sender-id"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("notifications.sms.settings.senderIdHint")}
                     </p>
                   </div>
                 </>
@@ -246,7 +329,9 @@ export function SettingsSmsPage() {
               <Label>{t("notifications.sms.settings.webhookUrl")}</Label>
               <Input readOnly value={webhookUrl} className="font-mono text-xs" />
               <p className="text-xs text-muted-foreground">
-                {t("notifications.sms.settings.webhookUrlHelp")}
+                {draft.provider === "infobip"
+                  ? t("notifications.sms.settings.webhookUrlHelpInfobip")
+                  : t("notifications.sms.settings.webhookUrlHelp")}
                 {!smsChannel ? (
                   <>
                     {" "}
@@ -293,15 +378,26 @@ export function SettingsSmsPage() {
                   : t("notifications.sms.settings.healthIdle")}
             </p>
 
-            <Button
-              variant="outline"
-              onClick={onConnectionTest}
-              disabled={connectionTest.isPending}
-              data-testid="sms-test-connection"
-            >
-              {connectionTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {t("notifications.sms.settings.connectionTest")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={onConnectionTest}
+                disabled={connectionTest.isPending}
+                data-testid="sms-test-connection"
+              >
+                {connectionTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t("notifications.sms.settings.connectionTest")}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={onProcessQueue}
+                disabled={processQueue.isPending}
+                data-testid="sms-process-queue"
+              >
+                {processQueue.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t("notifications.sms.settings.processQueue")}
+              </Button>
+            </div>
           </>
         )}
       </DashboardCard>

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ValidationError } from "../../errors.js";
 import { assertChannelSettingsEnabled } from "../../webhooks/webhook-channel-guards.js";
 import { SMS_CREDENTIALS_SOURCE } from "./twilio-sms-config.js";
+import { normalizeInfobipBaseUrl } from "./infobip-sms-api-client.js";
 import type { TwilioSmsChannelReferences, TwilioSmsCredentials } from "./twilio-sms-types.js";
 
 export { SMS_CREDENTIALS_SOURCE };
@@ -16,20 +17,41 @@ type DecryptedSettingsRow = {
   account_sid?: string;
   from_number?: string;
   auth_token?: string;
+  api_key?: string;
+  base_url?: string;
 };
 
 function mapDecryptedSettings(row: DecryptedSettingsRow): TwilioSmsCredentials | null {
   const accountSid = String(row.account_sid ?? "").trim();
   const authToken = String(row.auth_token ?? "").trim();
   const fromNumber = String(row.from_number ?? "").trim();
-  const provider = String(row.provider ?? "").trim() || "twilio";
+  const apiKey = String(row.api_key ?? "").trim();
+  const baseUrl = String(row.base_url ?? "").trim();
+  const providerRaw = String(row.provider ?? "").trim() || "twilio";
+  const provider = providerRaw === "infobip" ? "infobip" : "twilio";
+
+  if (provider === "infobip") {
+    if (!apiKey && !fromNumber && !baseUrl) return null;
+    return {
+      accountSid,
+      authToken,
+      fromNumber,
+      apiKey,
+      baseUrl: normalizeInfobipBaseUrl(baseUrl),
+      enabled: row.enabled === true,
+      provider: "infobip",
+    };
+  }
+
   if (!accountSid && !authToken && !fromNumber) return null;
   return {
     accountSid,
     authToken,
     fromNumber,
+    apiKey,
+    baseUrl,
     enabled: row.enabled === true,
-    provider: provider === "twilio" ? "twilio" : "twilio",
+    provider: "twilio",
   };
 }
 
@@ -61,13 +83,41 @@ export async function resolveSmsRuntimeConfiguration(
   const credentials = await loader.loadByCompanyId(companyId);
   assertChannelSettingsEnabled(credentials, "SMS");
 
+  const provider =
+    credentials?.provider === "infobip" || channelReferences.provider === "infobip"
+      ? "infobip"
+      : "twilio";
+
+  if (provider === "infobip") {
+    const apiKey = String(credentials?.apiKey ?? "").trim();
+    if (!apiKey) {
+      throw new ValidationError(
+        "Infobip API key is not configured. Update company SMS settings.",
+      );
+    }
+    const fromNumber =
+      credentials?.fromNumber?.trim() || channelReferences.fromNumber?.trim() || "";
+    if (!fromNumber) {
+      throw new ValidationError("Infobip sender ID is not configured.");
+    }
+    const baseUrl = normalizeInfobipBaseUrl(
+      credentials?.baseUrl || channelReferences.baseUrl || "",
+    );
+    return {
+      accountSid: "",
+      authToken: "",
+      fromNumber,
+      apiKey,
+      baseUrl,
+      enabled: credentials?.enabled,
+      provider: "infobip",
+    };
+  }
+
   if (!credentials?.authToken.trim()) {
     throw new ValidationError(
       "SMS credentials are not configured. Update company SMS settings.",
     );
-  }
-  if (credentials.provider !== "twilio") {
-    throw new ValidationError("Only the Twilio SMS provider is supported.");
   }
 
   const accountSid =

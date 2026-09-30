@@ -34,6 +34,8 @@ type SmsSettingsPublic = {
   account_sid?: string;
   from_number?: string;
   has_auth_token?: boolean;
+  has_api_key?: boolean;
+  base_url?: string;
 };
 
 function channelKey(row: CompanyChannelRow): string {
@@ -120,11 +122,18 @@ export class SmsCampaignCapabilityChecker {
       };
     }
 
-    const providerOk = String(settings.provider ?? "").trim() === "twilio";
-    const accountOk = String(settings.account_sid ?? "").trim().length > 0;
+    const provider = String(settings.provider ?? "").trim();
     const fromOk = String(settings.from_number ?? "").trim().length > 0;
-    const tokenOk = settings.has_auth_token === true;
-    if (!providerOk || !accountOk || !fromOk || !tokenOk) {
+    let credentialsOk = false;
+    if (provider === "twilio") {
+      credentialsOk =
+        fromOk &&
+        String(settings.account_sid ?? "").trim().length > 0 &&
+        settings.has_auth_token === true;
+    } else if (provider === "infobip") {
+      credentialsOk = fromOk && settings.has_api_key === true;
+    }
+    if (!credentialsOk) {
       return {
         available: false,
         reason: "credentials_incomplete",

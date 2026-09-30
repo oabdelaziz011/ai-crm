@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { createClient } from "@supabase/supabase-js";
+import { createSmsProvider } from "@login-app/lib/notifications/providers/sms/services/sms-provider";
 import { providerOpsRateLimiter } from "../middleware/rate-limit.js";
 import { requireCompanyScope, requireSupabaseAuth } from "../middleware/supabase-auth.js";
 import { assertRouteCommercialFeature } from "../lib/route-commercial-auth.js";
@@ -37,6 +38,8 @@ async function loadDecryptedSmsSettings(companyId: string): Promise<SmsDecrypted
     accountSid: String(row.account_sid ?? ""),
     fromNumber: String(row.from_number ?? ""),
     authToken: String(row.auth_token ?? ""),
+    apiKey: String(row.api_key ?? ""),
+    baseUrl: String(row.base_url ?? ""),
   };
 }
 
@@ -55,6 +58,28 @@ router.post("/sms/test-connection", async (req, res, next) => {
 
     // Never echo secrets — report is already sanitized.
     res.status(report.ok ? 200 : 400).json(report);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/sms/process-queue", async (req, res, next) => {
+  try {
+    const { assertLocalExternalOutboundAllowed } = await import("../lib/local-outbound-guard.js");
+    assertLocalExternalOutboundAllowed("sms/process-queue");
+
+    const companyId = String(req.body?.companyId ?? "");
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+
+    await assertRouteCommercialFeature(companyId, "sms_channel");
+
+    const client = getServiceClient();
+    const provider = createSmsProvider(client);
+    const result = await provider.processPending(companyId);
+    res.json(result);
   } catch (error) {
     next(error);
   }

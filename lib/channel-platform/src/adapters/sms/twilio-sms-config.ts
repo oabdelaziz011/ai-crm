@@ -10,6 +10,7 @@ export function parseSmsChannelReferences(
     accountSid: typeof cfg.accountSid === "string" ? cfg.accountSid : undefined,
     fromNumber: typeof cfg.fromNumber === "string" ? cfg.fromNumber : undefined,
     provider: typeof cfg.provider === "string" ? cfg.provider : undefined,
+    baseUrl: typeof cfg.baseUrl === "string" ? cfg.baseUrl : undefined,
     credentialsSource: typeof cfg.credentialsSource === "string" ? cfg.credentialsSource : undefined,
   };
 }

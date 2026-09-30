@@ -129,4 +129,39 @@ describe("SMS capability — disabled / incomplete blocks operation", () => {
     assert.equal(result.reason, "ok");
     assert.equal(result.companyChannelId, "cc-sms-1");
   });
+
+  it("allows Infobip when API key and sender ID are configured", async () => {
+    const checker = new SmsCampaignCapabilityChecker(
+      createClient({
+        settings: {
+          enabled: true,
+          provider: "infobip",
+          from_number: "ValueOR",
+          has_api_key: true,
+          base_url: "https://api.infobip.com",
+        },
+      }) as never,
+      { isEnabled: async () => true },
+    );
+    const result = await checker.check("co-1");
+    assert.equal(result.available, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  it("blocks Infobip when API key is missing", async () => {
+    const checker = new SmsCampaignCapabilityChecker(
+      createClient({
+        settings: {
+          enabled: true,
+          provider: "infobip",
+          from_number: "ValueOR",
+          has_api_key: false,
+        },
+      }) as never,
+      { isEnabled: async () => true },
+    );
+    const result = await checker.check("co-1");
+    assert.equal(result.available, false);
+    assert.equal(result.reason, "credentials_incomplete");
+  });
 });

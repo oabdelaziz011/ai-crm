@@ -108,6 +108,23 @@ describe("TwilioSmsAdapter", () => {
     assert.equal((envelopes[0]?.payload as { deliveryStatus?: string }).deliveryStatus, "delivered");
   });
 
+  it("parses Infobip delivery notifyUrl results into message.status", () => {
+    const adapter = new TwilioSmsAdapter();
+    const envelopes = adapter.parseWebhookEvents(ctx, {
+      results: [
+        {
+          messageId: "infobip-1",
+          to: "15551234567",
+          status: { name: "DELIVERED_TO_HANDSET", groupName: "DELIVERED" },
+        },
+      ],
+    });
+    assert.equal(envelopes.length, 1);
+    assert.equal(envelopes[0]?.eventType, "message.status");
+    assert.equal(envelopes[0]?.externalMessageId, "infobip-1");
+    assert.equal((envelopes[0]?.payload as { deliveryStatus?: string }).deliveryStatus, "delivered");
+  });
+
   it("rejects outbound without E.164 destination", () => {
     const adapter = new TwilioSmsAdapter();
     assert.throws(

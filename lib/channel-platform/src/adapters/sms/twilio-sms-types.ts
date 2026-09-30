@@ -1,17 +1,24 @@
-/** Twilio SMS channel types (provider-local). */
+/** SMS channel types (Twilio + Infobip). */
 
+export type SmsVendorProvider = "twilio" | "infobip";
+
+/** Runtime credentials loaded from company_sms_settings (decrypted). */
 export type TwilioSmsCredentials = {
   accountSid: string;
   authToken: string;
   fromNumber: string;
   enabled?: boolean;
-  provider: "twilio";
+  provider: SmsVendorProvider;
+  /** Infobip only */
+  apiKey?: string;
+  baseUrl?: string;
 };
 
 export type TwilioSmsChannelReferences = {
   accountSid?: string;
   fromNumber?: string;
   provider?: string;
+  baseUrl?: string;
   credentialsSource?: string;
 };
 

@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
+import {
+  companyChannelsQueryKey,
+  useCompanyChannelsAdmin,
+} from "@/hooks/channels/use-company-channels-admin";
 import {
   fetchSmsSettings,
   testSmsConnection,
   upsertSmsSettings,
   type SmsSettingsDraft,
 } from "@/lib/channels/sms-settings";
+import { processSmsQueue } from "@/lib/notifications/providers/sms/services/sms-api-client";
 
 export const smsSettingsKey = (companyId: string | null) =>
   ["sms", "settings", companyId] as const;
@@ -41,6 +45,8 @@ export function useUpdateSmsSettings(companyId: string | null) {
     mutationFn: (input: SmsSettingsDraft) => upsertSmsSettings(companyId!, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: smsSettingsKey(companyId) });
+      // Sync creates/updates company_channels — refresh channel admin + webhook card.
+      void qc.invalidateQueries({ queryKey: companyChannelsQueryKey(companyId) });
     },
   });
 }
@@ -48,5 +54,11 @@ export function useUpdateSmsSettings(companyId: string | null) {
 export function useSmsConnectionTest(companyId: string | null) {
   return useMutation({
     mutationFn: () => testSmsConnection(companyId!),
+  });
+}
+
+export function useProcessSmsQueue(companyId: string | null) {
+  return useMutation({
+    mutationFn: () => processSmsQueue(companyId!),
   });
 }

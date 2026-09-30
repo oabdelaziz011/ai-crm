@@ -1,4 +1,4 @@
-export type SmsProviderKind = "" | "twilio";
+export type SmsProviderKind = "" | "twilio" | "infobip";
 
 export type CompanySmsSettings = {
   companyId: string;
@@ -8,12 +8,15 @@ export type CompanySmsSettings = {
   fromNumber: string;
   authToken: string;
   hasAuthToken: boolean;
+  apiKey: string;
+  hasApiKey: boolean;
+  baseUrl: string;
   updatedAt?: string;
 };
 
 export type SmsSettingsDraft = Omit<
   CompanySmsSettings,
-  "companyId" | "hasAuthToken" | "updatedAt"
+  "companyId" | "hasAuthToken" | "hasApiKey" | "updatedAt"
 >;
 
 export type SmsConnectionTestResponse = {
@@ -32,3 +35,5 @@ export type SmsConnectionTestResponse = {
   fromNumber: string;
   accountName?: string;
 };
+
+export const DEFAULT_INFOBIP_BASE_URL = "https://api.infobip.com";

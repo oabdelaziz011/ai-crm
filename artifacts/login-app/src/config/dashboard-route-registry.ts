@@ -753,10 +753,15 @@ export function isDashboardRoutePermitted(
         return false;
       }
     } else if (route.id === "company") {
+      // Match canEnterCompanyWorkspace: full company.view OR subscription/billing-only pay surface.
       if (
         !hasPermission("company.view") &&
         !hasPermission("settings.view") &&
-        !hasPermission("settings.edit")
+        !hasPermission("settings.edit") &&
+        !hasPermission("company.subscription") &&
+        !hasPermission("subscriptions.view") &&
+        !hasPermission("billing.view_own") &&
+        !hasPermission("billing.view")
       ) {
         return false;
       }

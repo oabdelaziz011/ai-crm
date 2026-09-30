@@ -89,8 +89,8 @@ export function createDefaultCommunicationProviders(): CommunicationProvider[] {
   return [
     new NotificationChannelCommunicationProvider("whatsapp", "meta_whatsapp"),
     new NotificationChannelCommunicationProvider("email", "smtp_email"),
-    // SMS conversational/workspace transport is Twilio via channel-platform.
-    // Notification queue path must not fake success via sms_stub.
+    // Queues into notification_queue; Twilio send runs on api-server /api/sms/process-queue.
+    new NotificationChannelCommunicationProvider("sms", "twilio_sms"),
   ];
 }
 
@@ -98,7 +98,7 @@ export function createDefaultCommunicationProviders(): CommunicationProvider[] {
 export async function processCommunicationQueue(
   client: SupabaseClient,
   companyId: string,
-  channel: "whatsapp" | "email",
+  channel: "whatsapp" | "email" | "sms",
   limit = 25,
 ): Promise<{ processed: number; failed: number }> {
   if (channel === "whatsapp") {
@@ -158,6 +158,26 @@ export async function processCommunicationQueue(
     const { ensureEmailProviderServices } = await import("@/lib/notifications/providers/email");
     const { provider } = await ensureEmailProviderServices();
     const result = await provider.processPending(companyId, limit);
+    return { processed: result.processed, failed: result.failed };
+  }
+
+  if (channel === "sms") {
+    const { isSmsApiConfigured, processSmsQueue } = await import(
+      "@/lib/notifications/providers/sms/services/sms-api-client"
+    );
+    if (isSmsApiConfigured()) {
+      const result = await processSmsQueue(companyId);
+      return {
+        processed: Number(result.processed ?? 0),
+        failed: Number(result.failed ?? 0),
+      };
+    }
+
+    // Direct path only when service-role credentials are already on this client (tests / workers).
+    const { createSmsProvider } = await import(
+      "@/lib/notifications/providers/sms/services/sms-provider"
+    );
+    const result = await createSmsProvider(client).processPending(companyId, limit);
     return { processed: result.processed, failed: result.failed };
   }
 

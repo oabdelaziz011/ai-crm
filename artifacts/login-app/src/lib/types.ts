@@ -1,3 +1,14 @@
+export type CustomerLifecycleStatus = "active" | "inactive" | "blocked";
+export type CustomerAcquisitionSource =
+  | "whatsapp"
+  | "messenger"
+  | "instagram"
+  | "email"
+  | "sms"
+  | "website"
+  | "manual"
+  | "other";
+
 export type Customer = {
   id: string;
   user_id: string;
@@ -11,9 +22,20 @@ export type Customer = {
   phone_country_iso?: string | null;
   phone_region_source?: string | null;
   phone_national?: string | null;
+  /** @deprecated Prefer date_of_birth; kept for legacy rows without DOB. */
   age: number | null;
+  /** ISO date `YYYY-MM-DD` when set (migration 382). */
+  date_of_birth?: string | null;
   gender: string | null;
   notes: string | null;
+  /** First-touch acquisition source (migration 382). Immutable after create. */
+  source?: CustomerAcquisitionSource | null;
+  /** CRM lifecycle status (migration 382). Default active. */
+  status?: CustomerLifecycleStatus | null;
+  /** Latest inactive/blocked reason; history table holds prior reasons. */
+  status_reason?: string | null;
+  status_changed_at?: string | null;
+  status_changed_by?: string | null;
   /** CRM-owned photo URL (`customer-avatars` bucket). Optional until selected. */
   avatar_url?: string | null;
   created_at: string;
@@ -202,6 +224,10 @@ export type Company = {
   /** Business type (clinic, retail, …). Distinct from company_type tenant class. */
   business_type?: string | null;
   industry?: string | null;
+  /** How the company discovered ValueOR at registration (canonical). Not CRM customer source. */
+  acquisition_source?: string | null;
+  /** Free-text when acquisition_source = other. */
+  acquisition_source_detail?: string | null;
   contact_person?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;

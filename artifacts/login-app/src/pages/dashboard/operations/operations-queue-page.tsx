@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "wouter";
 import {
   CLINIC_COLUMNS,
   type OperationsColumnDefinition,
@@ -272,6 +273,40 @@ export function OperationsQueuePage() {
     },
     [queueTimezone, updateFilters],
   );
+
+  const searchString = useSearch();
+  const deepLinkAppliedRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkAppliedRef.current) return;
+    const raw = searchString.startsWith("?") ? searchString.slice(1) : searchString;
+    if (!raw) return;
+    const params = new URLSearchParams(raw);
+    const statusId = params.get("statusId")?.trim() || "";
+    const datePresetParam = params.get("datePreset")?.trim() || "";
+    const allowedPresets: QueueDatePreset[] = [
+      "today",
+      "tomorrow",
+      "yesterday",
+      "this_week",
+      "this_month",
+      "custom",
+    ];
+    const preset = allowedPresets.includes(datePresetParam as QueueDatePreset)
+      ? (datePresetParam as QueueDatePreset)
+      : null;
+    if (!statusId && !preset) return;
+    deepLinkAppliedRef.current = true;
+    if (preset) {
+      const range = resolveQueueDateRange(preset, params.get("dateFrom"), params.get("dateTo"), queueTimezone);
+      updateFilters({
+        ...range,
+        timezone: queueTimezone,
+        ...(statusId ? { statusId } : {}),
+      });
+      return;
+    }
+    updateFilters({ statusId });
+  }, [queueTimezone, searchString, updateFilters]);
 
   const toggleColumn = useCallback(
     (columnId: string) => {

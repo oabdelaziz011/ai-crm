@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EntityNoteCreateInput, EntityWorkspaceModuleId } from "@/lib/entity-workspace";
+import { markCustomerHasEntityNoteInCache } from "@/lib/customers-list/customer-channel-contacts";
 import { useEntityWorkspaceServices } from "./use-entity-workspace-services";
 
 export function entityNotesQueryKey(entityType: string, entityId: string) {
@@ -64,6 +65,7 @@ export function useCreateEntityNote(entityType: string, entityId: string) {
       });
     },
     onSuccess: async () => {
+      markCustomerHasEntityNoteInCache(queryClient, entityId);
       await queryClient.invalidateQueries({ queryKey: entityNotesQueryKey(entityType, entityId) });
       await queryClient.invalidateQueries({
         queryKey: ["entity-workspace", "timeline", entityType, entityId],
@@ -71,6 +73,9 @@ export function useCreateEntityNote(entityType: string, entityId: string) {
       await queryClient.invalidateQueries({ queryKey: ["entity-workspace", "bundle"] });
       await queryClient.invalidateQueries({ queryKey: ["customer-timeline"] });
       await queryClient.invalidateQueries({ queryKey: ["customer360-workspace"] });
+      // Customers list shows a Notes badge from entity_activities presence.
+      await queryClient.invalidateQueries({ queryKey: ["customers-list-entity-notes"] });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
   });
 }

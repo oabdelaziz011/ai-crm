@@ -38,6 +38,9 @@ export class NotificationRepository {
     if (filter.unreadOnly) {
       builder = builder.eq("is_read", false);
     }
+    if (filter.userId) {
+      builder = builder.eq("user_id", filter.userId);
+    }
     if (filter.priority && filter.priority !== "all") {
       builder = builder.eq("priority", filter.priority);
     }
@@ -79,14 +82,19 @@ export class NotificationRepository {
     return mapRowToNotification(data as never);
   }
 
-  async getUnreadCount(companyId: string): Promise<number> {
-    const { count, error } = await this.client
+  async getUnreadCount(companyId: string, userId?: string | null): Promise<number> {
+    let builder = this.client
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("company_id", companyId)
       .eq("is_read", false)
       .is("archived_at", null);
 
+    if (userId) {
+      builder = builder.eq("user_id", userId);
+    }
+
+    const { count, error } = await builder;
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
@@ -124,14 +132,19 @@ export class NotificationRepository {
     if (error) throw new Error(error.message);
   }
 
-  async markAllRead(companyId: string): Promise<void> {
-    const { error } = await this.client
+  async markAllRead(companyId: string, userId?: string | null): Promise<void> {
+    let builder = this.client
       .from("notifications")
       .update({ is_read: true, delivery_status: "read" })
       .eq("company_id", companyId)
       .eq("is_read", false)
       .is("archived_at", null);
 
+    if (userId) {
+      builder = builder.eq("user_id", userId);
+    }
+
+    const { error } = await builder;
     if (error) throw new Error(error.message);
   }
 

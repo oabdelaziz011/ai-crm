@@ -1,5 +1,6 @@
 import { nestedSectionHref } from "@/lib/routing";
 import type { AgentConfigurationTabId } from "@/lib/ai-employees/components/configuration/agent-configuration-workspace";
+import type { AiEmployeeWizardStep } from "@/lib/ai-employees/components/ai-employee-form-sections";
 
 /** Dashboard-nest path for the AI Employees section entry. */
 export const AGENTS_NESTED_PATH = "/agents";
@@ -37,8 +38,10 @@ export function agentViewDetailsHref(agentId: string): string {
   return withDetailQuery(agentId, { mode: "view" });
 }
 
-export function agentEditHref(agentId: string): string {
-  return nestedSectionHref(`${agentId}/edit`);
+/** Edit wizard; `step` opens a specific wizard step (e.g. "channels"). */
+export function agentEditHref(agentId: string, step?: AiEmployeeWizardStep): string {
+  const base = nestedSectionHref(`${agentId}/edit`);
+  return step ? `${base}?step=${encodeURIComponent(step)}` : base;
 }
 
 export function agentNewHref(): string {

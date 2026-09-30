@@ -8,7 +8,7 @@ export const PUBLIC_LEGAL_PATHS = [
 export type PublicLegalPath = (typeof PUBLIC_LEGAL_PATHS)[number];
 
 /** Effective date shown on privacy, terms, and data-deletion pages. */
-export const LEGAL_POLICY_LAST_UPDATED = "2026-09-08";
+export const LEGAL_POLICY_LAST_UPDATED = "2026-09-23";
 
 export function normalizePublicPath(path: string): string {
   if (!path) return "/";

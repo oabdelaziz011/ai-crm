@@ -21,12 +21,30 @@ export default function TermsPage() {
             t("legal.terms.serviceMessaging"),
             t("legal.terms.serviceAi"),
             t("legal.terms.serviceBooking"),
+            t("legal.terms.serviceOrg"),
+            t("legal.terms.serviceBilling"),
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title={t("legal.terms.subscriptionTitle")}>
+        <p>{t("legal.terms.subscriptionBody")}</p>
+        <LegalList
+          items={[
+            t("legal.terms.subscriptionPlans"),
+            t("legal.terms.subscriptionRenew"),
+            t("legal.terms.subscriptionLock"),
+            t("legal.terms.subscriptionRestore"),
           ]}
         />
       </LegalSection>
 
       <LegalSection title={t("legal.terms.accountsTitle")}>
         <p>{t("legal.terms.accountsBody")}</p>
+      </LegalSection>
+
+      <LegalSection title={t("legal.terms.accessTitle")}>
+        <p>{t("legal.terms.accessBody")}</p>
       </LegalSection>
 
       <LegalSection title={t("legal.terms.customerDataTitle")}>

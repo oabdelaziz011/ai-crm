@@ -13,6 +13,7 @@ const LEGACY_TITLE_KEYS: Record<string, string> = {
   "Invoice Overdue": "notifications.events.invoiceOverdue.title",
   "Subscription expires in 5 days": "notifications.events.subscriptionExpiresSoon.title",
   "Subscription expired": "notifications.events.subscriptionExpired.title",
+  "Company subscription unpaid": "notifications.events.subscriptionUnpaid.title",
   "User created": "notifications.events.userCreated.title",
   "User deleted": "notifications.events.userDeleted.title",
   "Role updated": "notifications.events.roleUpdated.title",
@@ -38,6 +39,7 @@ const LEGACY_MESSAGE_KEYS: Record<string, string> = {
   "notifications.events.invoiceOverdue.title": "notifications.events.invoiceOverdue.message",
   "notifications.events.subscriptionExpiresSoon.title": "notifications.events.subscriptionExpiresSoon.message",
   "notifications.events.subscriptionExpired.title": "notifications.events.subscriptionExpired.message",
+  "notifications.events.subscriptionUnpaid.title": "notifications.events.subscriptionUnpaid.message",
   "notifications.events.userCreated.title": "notifications.events.userCreated.message",
   "notifications.events.userDeleted.title": "notifications.events.userDeleted.message",
   "notifications.events.roleUpdated.title": "notifications.events.roleUpdated.message",
@@ -114,6 +116,17 @@ export function parseNotificationPayload(message: string): NotificationPayload {
       };
     }
 
+    // Freeform / super-admin payloads: { body, params: { companyId, navigationTarget, ... } }
+    if (record.params && typeof record.params === "object" && !Array.isArray(record.params)) {
+      return {
+        messageKey: null,
+        params: {
+          ...toParamRecord(record.params),
+          ...(typeof record.body === "string" ? { body: record.body } : {}),
+        },
+      };
+    }
+
     return {
       messageKey: null,
       params: toParamRecord(parsed),
@@ -159,17 +172,41 @@ function isBlankDetail(value: string | undefined | null, unknowns: string[] = []
 
 function extractAmountFromText(text: string | undefined): string {
   if (!text?.trim()) return "";
+  // Require a real currency token — never treat UUID hex like "4fbc" as money.
   const patterns = [
-    /(?:^|[^\d])(\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*[A-Z]{3})\b/i,
-    /(\d+(?:\.\d+)?\s*[A-Z]{3})/i,
-    /([A-Z]{3}\s*\d+(?:\.\d+)?)/i,
-    /(\d+(?:\.\d+)?)\s*(USD|EGP|SAR|AED|EUR|GBP)/i,
+    /(?:^|[^\w])(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\s*(?:USD|EGP|SAR|AED|EUR|GBP))\b/i,
+    /(?:^|[^\w])((?:USD|EGP|SAR|AED|EUR|GBP)\s*\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\b/i,
+    /(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\s*(?:USD|EGP|SAR|AED|EUR|GBP))/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match?.[1]) return match[1].trim();
   }
   return "";
+}
+
+function isUuidLike(value: string | undefined | null): boolean {
+  const text = value?.trim() ?? "";
+  if (!text) return false;
+  return (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text) ||
+    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){1,}$/i.test(text)
+  );
+}
+
+function isConversationBoilerplate(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    /^conversation\s+[0-9a-f-]{8,}$/i.test(trimmed) ||
+    /^المحادثة\s+[0-9a-f-]{8,}$/i.test(trimmed)
+  );
+}
+
+function looksLikeMoneyAmount(value: string): boolean {
+  const text = value.trim();
+  if (!text || isUuidLike(text) || /^[0-9a-f]{3,8}$/i.test(text)) return false;
+  if (/(USD|EGP|SAR|AED|EUR|GBP|\$|£|€)/i.test(text) && /\d/.test(text)) return true;
+  return /^\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?$/.test(text);
 }
 
 function extractIdsFromNavigation(nav: string | undefined): { invoiceId?: string; paymentId?: string } {
@@ -319,6 +356,10 @@ function formatNotificationParams(
     const body = resolved.body?.trim() ?? "";
     if (
       body &&
+      !isConversationBoilerplate(body) &&
+      !isUuidLike(body) &&
+      !isGenericBoilerplate(body, "") &&
+      !looksLikeStoredEnglishOperationalCopy(body) &&
       !/^A booking was cancelled\.?$/i.test(body) &&
       !/^No reason provided$/i.test(body) &&
       !/^An invoice was fully paid\.?$/i.test(body) &&
@@ -328,6 +369,14 @@ function formatNotificationParams(
     } else {
       resolved.reason = "";
     }
+  }
+
+  // Never keep UUID fragments / conversation boilerplate as "amount".
+  if (resolved.amount && !looksLikeMoneyAmount(resolved.amount)) {
+    resolved.amount = "";
+  }
+  if (resolved.reason && (isConversationBoilerplate(resolved.reason) || isUuidLike(resolved.reason))) {
+    resolved.reason = "";
   }
 
   if (!resolved.detail?.trim() && resolved.body?.trim()) {
@@ -416,6 +465,12 @@ function isGenericBoilerplate(text: string, title: string): boolean {
   const titleNorm = title.trim().toLowerCase();
   if (!normalized) return true;
   if (normalized === titleNorm) return true;
+  // Raw handoff bodies like "Conversation <uuid>" — prefer structured conversationPart.
+  if (isConversationBoilerplate(text.trim())) return true;
+  if (/^you received a new .+ message\.?$/i.test(text.trim())) return true;
+  if (/^new .+ message$/i.test(text.trim())) return true;
+  if (/^وصلك رسالة جديدة عبر .+$/i.test(text.trim())) return true;
+  if (/^رسالة .+ جديدة$/i.test(text.trim())) return true;
   return [
     "an invoice was fully paid.",
     "a payment was received.",
@@ -426,15 +481,61 @@ function isGenericBoilerplate(text: string, title: string): boolean {
     "إشعار النظام",
     "تم دفع الفاتورة",
     "تم استلام دفعة",
+    "new inbound message",
+    "new message",
+    "رسالة جديدة",
   ].includes(normalized);
 }
 
+function looksLikeStoredEnglishOperationalCopy(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  // Common persisted English notification bodies that should never surface under AR UI.
+  return (
+    /^you received a new .+ message\.?$/i.test(trimmed) ||
+    /^an? (invoice|payment|booking|customer|appointment|conversation|ticket)\b/i.test(trimmed) ||
+    /^(invoice|payment|booking|conversation|ticket|handoff|operation|task|workflow|lead)\b/i.test(trimmed) ||
+    /^(new|conversation|ticket|handoff|supervisor|operation|ai|permission|file|knowledge|lead)\b.+/i.test(
+      trimmed,
+    )
+  );
+}
+
 function localizeOperationTitle(t: TFunction, rawTitle: string): string {
-  const key = OPERATION_TITLE_I18N[rawTitle.trim()];
-  if (key && i18n.exists(key)) return t(key);
-  const kindKey = `notifications.platform.operations.kinds.${rawTitle.trim()}`;
+  const trimmed = rawTitle.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith("notifications.") && i18n.exists(trimmed)) {
+    return t(trimmed);
+  }
+  const mapped = OPERATION_TITLE_I18N[trimmed];
+  if (mapped && i18n.exists(mapped)) return t(mapped);
+
+  // snake_case / kebab-case event codes → notifications.platform.operations.camelCase
+  const normalized = trimmed.toLowerCase().replace(/-/g, "_");
+  const fromNormalized = OPERATION_TITLE_I18N[normalized];
+  if (fromNormalized && i18n.exists(fromNormalized)) return t(fromNormalized);
+
+  const camel = normalized.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+  const directKey = `notifications.platform.operations.${camel}`;
+  if (i18n.exists(directKey)) return t(directKey);
+
+  const kindKey = `notifications.platform.operations.kinds.${trimmed}`;
   if (i18n.exists(kindKey)) return t(kindKey);
-  return rawTitle.trim();
+
+  return trimmed;
+}
+
+function looksLikeStoredEnglishCopy(text: string): boolean {
+  const value = text.trim();
+  if (!value) return false;
+  // Prefer localized templates when UI is Arabic but the stored body is English prose.
+  if (!i18n.language?.toLowerCase().startsWith("ar")) return false;
+  if (/[\u0600-\u06FF]/.test(value)) return false;
+  return (
+    /\b(the|was|were|have|has|been|without|your|you|new|ticket|conversation|invoice|payment|subscription|exhausted|assigned|transferred|escalated)\b/i.test(
+      value,
+    ) || /^[A-Z][a-z]+(?:\s+[a-z]+){1,8}\.?$/.test(value)
+  );
 }
 
 const HIDDEN_SYSTEM_PARAM_KEYS = new Set([
@@ -464,30 +565,112 @@ function composeSystemOperationMessage(
       ? localizeOperationTitle(t, operationTitle)
       : fallbackTitle;
 
+  const kindRaw = (params.kind || "").trim().toLowerCase();
+  const titleHay = `${operationTitle} ${kindRaw}`.toLowerCase();
+  const isInbound =
+    /new inbound message|inbound/i.test(titleHay) ||
+    (params.entityType === "conversation" &&
+      !params.customerName?.trim() &&
+      Boolean(params.channel || params.channelType) &&
+      /new inbound|new message/i.test(operationTitle));
+  const isHandoff =
+    !isInbound &&
+    (params.entityType === "conversation" ||
+      /conversation assigned|conversation transferred|conversation escalated|entered queue|handoff|returned to ai|supervisor alert|assignment|transfer|escalation|queue_joined|acceptance|rejection|return_to_ai|mention/.test(
+        titleHay,
+      ));
+  const isTicket =
+    Boolean(params.ticketNumber?.trim() || params.ticketId?.trim()) ||
+    /ticket_/.test(kindRaw) ||
+    /ticket assigned|ticket closed|ticket comment|ticket status|ticket priority|ticket sla/.test(titleHay);
+
+  if (isInbound) {
+    const bits: string[] = [];
+    const channelRaw = (params.channel || params.channelType || "").trim().toLowerCase();
+    if (channelRaw && channelRaw !== "omnichannel") {
+      const channelKey = `notifications.inbound.channels.${channelRaw}`;
+      const channelLabel = i18n.exists(channelKey) ? t(channelKey) : channelRaw;
+      bits.push(t("notifications.inbound.toastBody", { channel: channelLabel }));
+    } else {
+      bits.push(t("notifications.inbound.toastBody", { channel: t("notifications.inbound.channels.omnichannel") }));
+    }
+    const preview = [params.detail, params.body]
+      .map((value) => value?.trim() ?? "")
+      .find(
+        (value) =>
+          value &&
+          !isGenericBoilerplate(value, localizedTitle) &&
+          !isGenericBoilerplate(value, fallbackTitle) &&
+          !looksLikeStoredEnglishOperationalCopy(value) &&
+          !isConversationBoilerplate(value) &&
+          !isUuidLike(value),
+      );
+    if (preview) bits.push(preview);
+    return {
+      title: localizedTitle || t("notifications.inbound.genericTitle"),
+      message: bits.join(" — ") || localizedTitle || fallbackTitle,
+    };
+  }
+
+  // Ticket events before handoff — "ticket_assigned" contains the substring "assignment".
+  if (isTicket) {
+    const bits: string[] = [];
+    const ticketLabel = (params.ticketNumber || "").trim() || shortId(params.ticketId);
+    const subject = (params.subject || "").trim();
+    if (ticketLabel) bits.push(ticketLabel);
+    if (subject && subject !== ticketLabel && !bits.some((bit) => bit.includes(subject))) {
+      bits.push(subject);
+    }
+    return {
+      title: localizedTitle || fallbackTitle,
+      message: bits.join(" — ") || localizedTitle || fallbackTitle,
+    };
+  }
+
+  if (isHandoff) {
+    const bits: string[] = [];
+    if (hasValue(params.customerName, [unknown])) {
+      bits.push(t("notifications.platform.compose.customerPart", { customer: params.customerName }));
+    }
+    const channelRaw = (params.channel || params.channelType || "").trim().toLowerCase();
+    if (channelRaw && channelRaw !== "omnichannel") {
+      const channelKey = `notifications.inbound.channels.${channelRaw}`;
+      const channelLabel = i18n.exists(channelKey) ? t(channelKey) : channelRaw;
+      bits.push(t("notifications.platform.compose.channelPart", { channel: channelLabel }));
+    }
+    return {
+      title: localizedTitle || fallbackTitle,
+      message: bits.join(" — ") || localizedTitle || fallbackTitle,
+    };
+  }
+
   const bits: string[] = [];
   const detail = params.detail?.trim() || "";
   const body = params.body?.trim() || "";
+  const preferLocalizedOnly = (i18n.language || "").toLowerCase().startsWith("ar");
   const primary = [detail, body].find(
     (value) =>
       value &&
       !isGenericBoilerplate(value, fallbackTitle) &&
       !isGenericBoilerplate(value, localizedTitle) &&
-      value !== operationTitle,
+      !isConversationBoilerplate(value) &&
+      !isUuidLike(value) &&
+      value !== operationTitle &&
+      !(preferLocalizedOnly && looksLikeStoredEnglishOperationalCopy(value)),
   );
   if (primary) bits.push(primary);
 
   if (hasValue(params.subject, [unknown])) {
-    bits.push(t("notifications.platform.compose.subjectPart", { subject: params.subject }));
+    const subject = params.subject.trim();
+    if (!bits.some((bit) => bit.includes(subject))) {
+      bits.push(t("notifications.platform.compose.subjectPart", { subject }));
+    }
   }
   if (hasValue(params.ticketNumber, [unknown]) || hasValue(params.ticketId, [unknown])) {
-    bits.push(
-      t("notifications.platform.compose.ticketPart", {
-        ticket: params.ticketNumber || shortId(params.ticketId),
-      }),
-    );
-  }
-  if (hasValue(params.kind, [unknown])) {
-    bits.push(localizeOperationTitle(t, params.kind));
+    const ticket = params.ticketNumber || shortId(params.ticketId);
+    if (!bits.some((bit) => bit.includes(ticket))) {
+      bits.push(t("notifications.platform.compose.ticketPart", { ticket }));
+    }
   }
   if (hasValue(params.customerName, [unknown])) {
     bits.push(t("notifications.platform.compose.customerPart", { customer: params.customerName }));
@@ -495,13 +678,23 @@ function composeSystemOperationMessage(
   if (hasValue(params.invoiceNumber, [unknown])) {
     bits.push(t("notifications.platform.compose.invoicePart", { invoice: params.invoiceNumber }));
   }
-  if (hasValue(params.amount, [unknown])) {
+  if (hasValue(params.amount, [unknown]) && looksLikeMoneyAmount(params.amount)) {
     bits.push(t("notifications.platform.compose.amountPart", { amount: params.amount }));
   }
   if (hasValue(params.bookingId, [unknown])) {
     bits.push(t("notifications.platform.compose.bookingPart", { booking: shortId(params.bookingId) }));
   }
-  if (hasValue(params.conversationId, [unknown])) {
+  const channelRaw = (params.channel || params.channelType || "").trim().toLowerCase();
+  if (channelRaw && channelRaw !== "omnichannel") {
+    const channelKey = `notifications.inbound.channels.${channelRaw}`;
+    const channelLabel = i18n.exists(channelKey) ? t(channelKey) : channelRaw;
+    bits.push(t("notifications.platform.compose.channelPart", { channel: channelLabel }));
+  }
+  if (
+    hasValue(params.conversationId, [unknown]) &&
+    !hasValue(params.customerName, [unknown]) &&
+    !isUuidLike(params.conversationId)
+  ) {
     bits.push(
       t("notifications.platform.compose.conversationPart", {
         conversation: shortId(params.conversationId),
@@ -524,11 +717,15 @@ function composeSystemOperationMessage(
       }),
     );
   }
-  if (hasValue(params.reason, [t("notifications.defaults.noReason")])) {
+  if (
+    hasValue(params.reason, [t("notifications.defaults.noReason")]) &&
+    !isConversationBoilerplate(params.reason) &&
+    !isUuidLike(params.reason) &&
+    !bits.some((bit) => bit.includes(params.reason))
+  ) {
     bits.push(t("notifications.platform.compose.reasonPart", { reason: params.reason }));
   }
 
-  // Any other useful leftover params (skip ids already rendered / internal keys).
   for (const [key, value] of Object.entries(params)) {
     if (HIDDEN_SYSTEM_PARAM_KEYS.has(key)) continue;
     if (
@@ -544,6 +741,7 @@ function composeSystemOperationMessage(
         "amount",
         "bookingId",
         "conversationId",
+        "conversation_id",
         "leadId",
         "taskId",
         "fileName",
@@ -555,29 +753,32 @@ function composeSystemOperationMessage(
         "queueId",
         "actorUserId",
         "messageId",
+        "channel",
+        "channelType",
+        "channel_type",
+        "entityType",
+        "entityId",
+        "navigationTarget",
+        "companyName",
+        "companyId",
       ].includes(key)
     ) {
       continue;
     }
     if (!hasValue(value, [unknown])) continue;
+    if (isUuidLike(value) || isConversationBoilerplate(value)) continue;
+    if (looksLikeStoredEnglishCopy(value)) continue;
     if (bits.some((bit) => bit.includes(value))) continue;
-    bits.push(`${key}: ${value}`);
+    // Never dump raw English param keys like "foo: bar" into the user-facing body.
   }
 
   const uniqueBits = bits.filter((bit, index, arr) => bit && arr.indexOf(bit) === index);
   let message = uniqueBits.join(" — ");
 
   if (!message) {
-    message =
-      (operationTitle && operationTitle !== localizedTitle ? localizedTitle : "") ||
-      localizedTitle ||
-      fallbackTitle;
-    if (operationTitle && message === fallbackTitle && operationTitle !== fallbackTitle) {
-      message = localizedTitle;
-    }
+    message = localizedTitle || fallbackTitle;
   }
 
-  // Prefer operation-specific title over generic "System notification".
   const title =
     localizedTitle && localizedTitle !== t("notifications.platform.templates.genericSystem.title")
       ? localizedTitle
@@ -612,6 +813,15 @@ const OPERATION_TITLE_I18N: Record<string, string> = {
   "Conversation returned to AI": "notifications.platform.operations.returnedToAi",
   "Supervisor alert": "notifications.platform.operations.supervisorAlert",
   "Handoff notification": "notifications.platform.operations.handoff",
+  "New inbound message": "notifications.inbound.genericTitle",
+  transfer: "notifications.platform.operations.conversationTransferred",
+  assignment: "notifications.platform.operations.conversationAssigned",
+  escalation: "notifications.platform.operations.conversationEscalated",
+  queue_joined: "notifications.platform.operations.conversationQueued",
+  acceptance: "notifications.platform.operations.handoffAccepted",
+  rejection: "notifications.platform.operations.handoffRejected",
+  return_to_ai: "notifications.platform.operations.returnedToAi",
+  supervisor_alert: "notifications.platform.operations.supervisorAlert",
   "Conversation mention": "notifications.platform.operations.mention",
   "Lead converted": "notifications.platform.operations.leadConverted",
   "Lead assigned": "notifications.platform.operations.leadAssigned",
@@ -645,7 +855,9 @@ function composeRichMessage(
     const bits: string[] = [t("notifications.platform.compose.paymentReceived")];
     if (invoice) bits.push(t("notifications.platform.compose.invoicePart", { invoice }));
     if (customer) bits.push(t("notifications.platform.compose.customerPart", { customer }));
-    if (amount) bits.push(t("notifications.platform.compose.amountPart", { amount }));
+    if (amount && looksLikeMoneyAmount(amount)) {
+      bits.push(t("notifications.platform.compose.amountPart", { amount }));
+    }
     if (bits.length === 1 && usefulDetail) bits.push(usefulDetail);
     return bits.join(" ");
   }
@@ -654,7 +866,9 @@ function composeRichMessage(
     const bits: string[] = [t("notifications.platform.compose.invoiceCreated")];
     if (invoice) bits.push(t("notifications.platform.compose.invoicePart", { invoice }));
     if (customer) bits.push(t("notifications.platform.compose.customerPart", { customer }));
-    if (amount) bits.push(t("notifications.platform.compose.amountPart", { amount }));
+    if (amount && looksLikeMoneyAmount(amount)) {
+      bits.push(t("notifications.platform.compose.amountPart", { amount }));
+    }
     if (bits.length === 1 && usefulDetail) bits.push(usefulDetail);
     return bits.join(" ");
   }
@@ -691,8 +905,16 @@ function composeRichMessage(
     return composeSystemOperationMessage(t, params, title).message;
   }
 
-  const bits = [customer, invoice, amount, reason, usefulDetail || detail || body].filter(Boolean);
-  return bits.join(" · ");
+  const safeAmount = amount && looksLikeMoneyAmount(amount) ? amount : "";
+  const safeReason =
+    reason && !isConversationBoilerplate(reason) && !isUuidLike(reason) ? reason : "";
+  const safeDetail =
+    usefulDetail && !isConversationBoilerplate(usefulDetail) && !isUuidLike(usefulDetail)
+      ? usefulDetail
+      : "";
+  const bits = [customer, invoice, safeAmount, safeReason, safeDetail || (!isConversationBoilerplate(detail) ? detail : "") || (!isConversationBoilerplate(body) ? body : "")]
+    .filter(Boolean);
+  return bits.filter((part, index, arr) => arr.indexOf(part) === index).join(" · ");
 }
 
 function collectFactLines(params: Record<string, string>, t: TFunction): string[] {
@@ -704,10 +926,14 @@ function collectFactLines(params: Record<string, string>, t: TFunction): string[
   if (hasValue(params.invoiceNumber, [unknown])) {
     lines.push(t("notifications.platform.compose.invoicePart", { invoice: params.invoiceNumber }));
   }
-  if (hasValue(params.amount, [unknown])) {
+  if (hasValue(params.amount, [unknown]) && looksLikeMoneyAmount(params.amount)) {
     lines.push(t("notifications.platform.compose.amountPart", { amount: params.amount }));
   }
-  if (hasValue(params.reason, [t("notifications.defaults.noReason")])) {
+  if (
+    hasValue(params.reason, [t("notifications.defaults.noReason")]) &&
+    !isConversationBoilerplate(params.reason) &&
+    !isUuidLike(params.reason)
+  ) {
     lines.push(t("notifications.platform.compose.reasonPart", { reason: params.reason }));
   }
   return lines;
@@ -719,9 +945,22 @@ export function localizeNotification(
   labels?: NotificationEntityLabels,
   ctx?: NotificationLocalizeContext,
 ): { title: string; message: string } {
-  const titleKey = resolveNotificationTitleKey(item.title_key);
   const payload = parseNotificationPayload(item.message);
-  const messageKey = payload.messageKey ?? resolveLegacyMessageKey(titleKey);
+  const titleKey = resolveNotificationTitleKey(item.title_key);
+  const legacyMessageKey =
+    resolveLegacyMessageKey(titleKey) ||
+    resolveLegacyMessageKey(LEGACY_TITLE_KEYS[item.title_key] ?? "");
+  // Prefer event-specific templates over genericSystem.{{detail}} so AR/EN translate correctly.
+  // Never let a stored genericSystem messageKey shadow a resolved legacy event template.
+  const payloadMessageKey =
+    payload.messageKey && !payload.messageKey.includes("genericSystem")
+      ? payload.messageKey
+      : null;
+  const messageKey =
+    (legacyMessageKey && i18n.exists(legacyMessageKey) ? legacyMessageKey : null) ||
+    (payloadMessageKey && i18n.exists(payloadMessageKey) ? payloadMessageKey : null) ||
+    payloadMessageKey ||
+    legacyMessageKey;
   const rawParams = payload.params ?? {};
 
   const params = formatNotificationParams(rawParams, t, i18n.language, messageKey ?? titleKey, labels);
@@ -749,6 +988,30 @@ export function localizeNotification(
     title = item.title_key;
   }
 
+  // Prefer translated message templates (e.g. subscription unpaid) over raw English bodies.
+  if (messageKey && i18n.exists(messageKey)) {
+    const fromTemplate = fillPlaceholders(t(messageKey, params), params).trim();
+    if (fromTemplate && !hasUnfilledPlaceholders(fromTemplate) && !isGenericBoilerplate(fromTemplate, title)) {
+      if (kind === "system") {
+        // Still use system compose for handoff/ticket structure, but keep template for event rows.
+        const looksOperational =
+          /ticket_|assignment|transfer|escalation|handoff|conversation assigned|conversation transferred|conversation escalated|entered queue|returned to ai|supervisor|inbound|queue_joined|acceptance|rejection|return_to_ai|mention/i.test(
+            `${params.title ?? ""} ${params.kind ?? ""} ${messageKey}`,
+          );
+        if (!looksOperational) {
+          // Never surface stored English operational bodies when UI language is Arabic.
+          if (looksLikeStoredEnglishCopy(fromTemplate) || looksLikeStoredEnglishOperationalCopy(fromTemplate)) {
+            // Fall through to structured compose.
+          } else {
+            return { title, message: fromTemplate };
+          }
+        }
+      } else if (!looksLikeStoredEnglishCopy(fromTemplate)) {
+        return { title, message: fromTemplate };
+      }
+    }
+  }
+
   if (kind === "system") {
     const system = composeSystemOperationMessage(t, params, title);
     return {
@@ -760,7 +1023,9 @@ export function localizeNotification(
   let message = composeRichMessage(t, kind, params, title).trim();
 
   // If we only got a verb/title with no facts, append every resolved fact we have.
-  const facts = collectFactLines(params, t);
+  const facts = collectFactLines(params, t).filter(
+    (fact) => !isConversationBoilerplate(fact) && !/\b[0-9a-f]{8}-[0-9a-f-]{4,}\b/i.test(fact),
+  );
   if (facts.length > 0 && (!message || message === title || isGenericBoilerplate(message, title) || messageHasUnknownTokens(message, t))) {
     message = [message && message !== title ? message : title, ...facts]
       .filter(Boolean)
@@ -770,22 +1035,44 @@ export function localizeNotification(
 
   if (!message || message === title || isGenericBoilerplate(message, title)) {
     const detail = params.detail?.trim() || params.body?.trim() || "";
-    if (detail && !isGenericBoilerplate(detail, title)) {
+    if (
+      detail &&
+      !isGenericBoilerplate(detail, title) &&
+      !isConversationBoilerplate(detail) &&
+      !looksLikeStoredEnglishCopy(detail)
+    ) {
       message = detail;
     } else if (facts.length > 0) {
       message = [title, ...facts].join(" — ");
-    } else if (detail) {
+    } else if (detail && !isConversationBoilerplate(detail) && !looksLikeStoredEnglishCopy(detail)) {
       message = detail;
     } else if (!message) {
       message = title;
     }
   }
 
+  // Collapse accidental duplicated sentences joined by · or —.
+  message = collapseDuplicatedNotificationMessage(message);
+
   if (hasUnfilledPlaceholders(message)) {
     message = fillPlaceholders(message, params).trim() || title;
   }
 
   return { title, message };
+}
+
+function collapseDuplicatedNotificationMessage(message: string): string {
+  const trimmed = message.trim();
+  if (!trimmed) return trimmed;
+  for (const sep of [" · ", " — ", " - "]) {
+    const parts = trimmed.split(sep).map((part) => part.trim()).filter(Boolean);
+    if (parts.length === 2 && parts[0] === parts[1]) return parts[0]!;
+    if (parts.length > 1) {
+      const unique = parts.filter((part, index, arr) => arr.indexOf(part) === index);
+      if (unique.length < parts.length) return unique.join(sep);
+    }
+  }
+  return trimmed;
 }
 
 function messageHasUnknownTokens(message: string, t: TFunction): boolean {

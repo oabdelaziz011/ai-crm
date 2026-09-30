@@ -150,6 +150,7 @@ export function createLoginAppNotificationReadPort(
           priority: (filter?.priority as NotificationPriority | "all" | undefined) ?? "all",
           event: (filter?.eventType as NotificationEvent | "all" | undefined) ?? "all",
           includeArchived: filter?.includeArchived,
+          userId: userId || ctx.actorUserId,
         },
         filter?.pageSize ?? filter?.limit ?? 20,
       );
@@ -176,9 +177,9 @@ export function createLoginAppNotificationReadPort(
       });
     },
 
-    async getUnreadCount(tenantId, _userId) {
+    async getUnreadCount(tenantId, userId) {
       if (tenantId !== ctx.companyId || !canReadNotifications(ctx)) return 0;
-      return notifications.getUnreadCount(tenantId);
+      return notifications.getUnreadCount(tenantId, userId || ctx.actorUserId);
     },
   };
 }
@@ -303,8 +304,7 @@ export function createLoginAppNotificationWritePort(
 
     async markAllRead(tenantId, userId) {
       if (tenantId !== ctx.companyId || !canWriteNotifications(ctx)) throw new Error("Permission denied");
-      void userId;
-      await notifications.markAllRead(tenantId);
+      await notifications.markAllRead(tenantId, userId || ctx.actorUserId);
     },
 
     async archive(tenantId, userId, notificationId) {

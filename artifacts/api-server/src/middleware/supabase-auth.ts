@@ -97,7 +97,7 @@ export async function requireSupabaseAuth(
 }
 
 export function requireCompanyScope(field = "companyId") {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (req.method === "OPTIONS") {
         next();
@@ -146,6 +146,22 @@ export function requireCompanyScope(field = "companyId") {
 
       if (!req.supabaseCompanyId || req.supabaseCompanyId !== requestedCompanyId) {
         throw new HttpError(403, "Access denied for this company.", "forbidden");
+      }
+
+      // Hard subscription lock: Suspended companies cannot use workspace/business APIs.
+      // Billing recovery mounts under /billing/saas without this middleware.
+      const client = getAuthClient();
+      const { data: companyRow } = await client
+        .from("companies")
+        .select("status")
+        .eq("id", requestedCompanyId)
+        .maybeSingle();
+      if (companyRow?.status === "Suspended") {
+        throw new HttpError(
+          403,
+          "Company workspace is locked until the subscription is renewed.",
+          "COMPANY_SUSPENDED",
+        );
       }
 
       next();

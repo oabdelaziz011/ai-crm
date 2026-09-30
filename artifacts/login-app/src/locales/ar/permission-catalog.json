@@ -219,6 +219,11 @@
       "icon": "📊",
       "order": 46,
       "label": "التنفيذي"
+    },
+    "webPresence": {
+      "icon": "🌐",
+      "order": 47,
+      "label": "الحضور الرقمي"
     }
   },
   "codes": {
@@ -1571,6 +1576,16 @@
       "name": "عرض تنفيذات سير العمل",
       "description": "عرض تنفيذات سير العمل.",
       "group": "automation"
+    },
+    "web_presence.manage": {
+      "name": "إدارة الحضور الرقمي",
+      "description": "ضبط إعدادات صفحة النشاط التجاري وأداة الدردشة على الموقع.",
+      "group": "webPresence"
+    },
+    "web_presence.view": {
+      "name": "عرض الحضور الرقمي",
+      "description": "عرض إعدادات صفحة النشاط التجاري وأداة الدردشة على الموقع.",
+      "group": "webPresence"
     },
     "workspace.view": {
       "name": "الوصول إلى بيئة العمل",

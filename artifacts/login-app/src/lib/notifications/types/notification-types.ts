@@ -99,6 +99,8 @@ export type NotificationListFilter = {
   event?: NotificationEvent | "all";
   includeArchived?: boolean;
   sort?: "newest" | "oldest";
+  /** When set, only return notifications addressed to this user. */
+  userId?: string | null;
 };
 
 export type NotificationPage = {

@@ -3,11 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { formatLocalizedDate } from "@/lib/billing/billing-display-i18n";
-import { companyWorkspaceHref } from "@/lib/company-workspace/company-workspace-routes";
 import {
-  canOpenWorkspaceBilling,
-  canViewCompanySubscription,
-} from "@/lib/company-workspace/permissions";
+  canOpenSubscriptionPaySurface,
+  resolveSubscriptionPayHref,
+} from "@/lib/dashboard/resolve-subscription-pay-href";
 import type { TrialBannerModel } from "@/lib/dashboard/resolve-trial-banner";
 import { cn } from "@/lib/utils";
 
@@ -56,8 +55,8 @@ export function DashboardTrialBanner({ model, access }: Props) {
             ? t("billing.statusContext.endsTomorrow")
             : t("billing.statusContext.daysRemaining", { count: model.daysRemaining });
 
-  const showBillingCta =
-    canViewCompanySubscription(access) || canOpenWorkspaceBilling(access);
+  const showBillingCta = canOpenSubscriptionPaySurface(access);
+  const payHref = resolveSubscriptionPayHref(access);
 
   return (
     <aside
@@ -112,7 +111,7 @@ export function DashboardTrialBanner({ model, access }: Props) {
           variant="outline"
           className="shrink-0 border-current/20 bg-background/70 hover:bg-background"
         >
-          <Link href={companyWorkspaceHref("subscription")}>
+          <Link href={payHref}>
             <CreditCard className="me-1.5 size-3.5" aria-hidden />
             {t("dashboard.home.trialBanner.cta")}
           </Link>

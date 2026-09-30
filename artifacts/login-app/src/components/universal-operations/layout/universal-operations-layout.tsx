@@ -33,16 +33,32 @@ export function UniversalOperationsLayout() {
               </Route>
               {/* Recover from nest-prefixed navigations that duplicated /operations */}
               <Route path="/operations/queue">
-                <Redirect to="/queue" />
+                {() => {
+                  const search =
+                    typeof window !== "undefined" ? window.location.search : "";
+                  return <Redirect to={`/queue${search}`} />;
+                }}
               </Route>
               <Route path="/operations/hub">
-                <Redirect to="/hub" />
+                {() => {
+                  const search =
+                    typeof window !== "undefined" ? window.location.search : "";
+                  return <Redirect to={`/hub${search}`} />;
+                }}
               </Route>
               <Route path="/operations/timeline">
-                <Redirect to="/timeline" />
+                {() => {
+                  const search =
+                    typeof window !== "undefined" ? window.location.search : "";
+                  return <Redirect to={`/timeline${search}`} />;
+                }}
               </Route>
               <Route path="/operations/designer">
-                <Redirect to="/designer" />
+                {() => {
+                  const search =
+                    typeof window !== "undefined" ? window.location.search : "";
+                  return <Redirect to={`/designer${search}`} />;
+                }}
               </Route>
               {UNIVERSAL_OPERATIONS_ROUTE_REGISTRY.map((route) => (
                 <Route key={route.id} path={route.nestedPath}>

@@ -114,7 +114,8 @@ export class MarketingCampaignRepository {
   }
 
   /**
-   * Conditional claim: only draft/failed may move to running.
+   * Conditional claim: draft/failed/completed may move to running.
+   * Completed is allowed so premature completion (claim races) or failed rows can be retried.
    * Returns null when another worker already claimed or status is not runnable.
    */
   async tryClaimRunning(
@@ -130,7 +131,7 @@ export class MarketingCampaignRepository {
       })
       .eq("id", id)
       .eq("company_id", companyId)
-      .in("status", ["draft", "failed"])
+      .in("status", ["draft", "failed", "completed"])
       .select("*")
       .maybeSingle();
     if (error) throw new Error(error.message);

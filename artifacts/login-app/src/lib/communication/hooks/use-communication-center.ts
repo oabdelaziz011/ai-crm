@@ -51,7 +51,7 @@ export function useRetryCommunicationMessage(companyId: string | null) {
 export function useProcessCommunicationQueue(companyId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (channel: "whatsapp" | "email") => {
+    mutationFn: async (channel: "whatsapp" | "email" | "sms") => {
       if (!companyId) throw new Error("Company required");
       const { processCommunicationQueue } = await import("@/lib/communication/providers/channel-providers");
       const { supabase } = await import("@/lib/supabase");

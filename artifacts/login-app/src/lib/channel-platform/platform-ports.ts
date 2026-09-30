@@ -255,6 +255,69 @@ export function createChannelConversationPort(
       };
     },
 
+    async applyMessageReaction(input) {
+      const targetExternalMessageId = input.targetExternalMessageId.trim();
+      if (!targetExternalMessageId) {
+        return { applied: false };
+      }
+
+      const target = await services.messages.findByConversationAndExternalMessageId(
+        ctx,
+        input.conversationId,
+        targetExternalMessageId,
+      );
+      if (!target) {
+        return { applied: false };
+      }
+
+      const client = options?.supabaseClient;
+      if (!client) {
+        return { applied: false, messageId: target.id };
+      }
+
+      const existingMeta =
+        target.metadata && typeof target.metadata === "object" && !Array.isArray(target.metadata)
+          ? { ...(target.metadata as Record<string, unknown>) }
+          : {};
+      const existingReactions =
+        existingMeta.reactions &&
+        typeof existingMeta.reactions === "object" &&
+        !Array.isArray(existingMeta.reactions)
+          ? { ...(existingMeta.reactions as Record<string, unknown>) }
+          : {};
+
+      const emoji = input.emoji.trim();
+      if (!emoji) {
+        delete existingReactions[input.from];
+      } else {
+        existingReactions[input.from] = {
+          emoji,
+          at: new Date().toISOString(),
+          ...(input.reactionExternalMessageId
+            ? { reactionMessageId: input.reactionExternalMessageId }
+            : {}),
+        };
+      }
+
+      const nextMetadata = {
+        ...existingMeta,
+        reactions: existingReactions,
+      };
+
+      const { error } = await client
+        .from("conversation_messages")
+        .update({ metadata: nextMetadata })
+        .eq("id", target.id)
+        .eq("conversation_id", input.conversationId);
+
+      if (error) {
+        console.error("[applyMessageReaction] metadata update failed", error.message);
+        return { applied: false, messageId: target.id };
+      }
+
+      return { applied: true, messageId: target.id };
+    },
+
     async addOutgoingMessage(input) {
       const message = await services.messages.addMessage(ctx, {
         conversationId: input.conversationId,

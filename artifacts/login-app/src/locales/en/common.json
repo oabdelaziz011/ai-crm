@@ -127,6 +127,9 @@
       "searchKnowledge": "Search knowledge",
       "businessSummary": "Business summary",
       "help": "Help",
+      "connectProvider": "AI Assistant Ready",
+      "aiReady": "AI Assistant Ready",
+      "startAgent": "Start agent",
       "executiveBrief": "Executive briefing",
       "executiveRisks": "Top risks",
       "executiveActions": "Next actions",
@@ -160,6 +163,7 @@
       "parallelGroup": "Parallel",
       "tool": "Tool",
       "retries": "{{count}} retries",
+      "runtimeMissing": "AI provider is not configured by the platform administrator.",
       "midFlightConfirmation": {
         "title": "Confirm agent action",
         "description": "This action requires your explicit approval before the agent can continue.",
@@ -277,6 +281,19 @@
     "loading": "Loading notifications...",
     "empty": "No notifications yet.",
     "noCompany": "No company assigned. Notifications are unavailable.",
+    "inbound": {
+      "toastTitle": "New {{channel}} message",
+      "toastBody": "You received a new {{channel}} message",
+      "genericTitle": "New message",
+      "channels": {
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "sms": "SMS",
+        "instagram": "Instagram",
+        "messenger": "Messenger",
+        "omnichannel": "conversation"
+      }
+    },
     "unread": "{{count}} unread",
     "markRead": "Mark as read",
     "markAllRead": "Mark all as read",
@@ -386,6 +403,7 @@
         "ticketPart": "ticket {{ticket}}",
         "bookingPart": "booking {{booking}}",
         "conversationPart": "conversation {{conversation}}",
+        "channelPart": "via {{channel}}",
         "leadPart": "lead {{lead}}",
         "taskPart": "task {{task}}",
         "filePart": "file {{file}}",
@@ -571,6 +589,8 @@
         "webhookVerifyHint": "Generate a secret string, save it here, and enter the identical value in Meta → WhatsApp → Configuration → Verify token.",
         "webhookCallbackUrl": "Webhook callback URL",
         "webhookCallbackHint": "Use this exact URL in Meta → WhatsApp → Configuration → Callback URL. Keep an enabled WhatsApp channel under Channels.",
+        "webhookCallbackUrlRequired": "Enter a webhook callback URL.",
+        "webhookCallbackUrlInvalid": "Enter a valid http(s) webhook callback URL.",
         "apiVersion": "Graph API version",
         "appSecret": "App secret",
         "appSecretHint": "Used to verify Meta webhook signatures (x-hub-signature-256). Copy from Meta App → Settings → Basic → App secret.",
@@ -581,6 +601,8 @@
         "healthTitle": "Provider health",
         "healthOk": "WhatsApp connection healthy ({{ms}} ms)",
         "healthFailed": "WhatsApp check failed: {{error}}",
+        "providerDisabledTitle": "WhatsApp provider is disabled",
+        "providerDisabledHint": "Configuration can still be edited and saved. Enable WhatsApp after saving the required configuration.",
         "credentialWarning": "WhatsApp credentials need attention ({{status}}). Outbound sends are blocked until the token is refreshed.",
         "credentialRemediation": "Update Access Token, Phone Number ID, and WABA ID from Meta’s current API Setup, Save, then run Test Connection. Also confirm Meta’s webhook verify token matches the value stored here.",
         "tokenStatusStaleHint": "Stored token status still says Valid, but the live Meta probe failed. Treat the stored column as stale until Test Connection passes.",
@@ -605,7 +627,22 @@
         "testFailed": "Test message failed",
         "apiMissing": "Configure VITE_API_SERVER_URL to run WhatsApp health checks.",
         "processQueue": "Process WhatsApp queue",
-        "queueProcessed": "Processed {{completed}} WhatsApp messages"
+        "queueProcessed": "Processed {{completed}} WhatsApp messages",
+        "lastDeliveryFailed": "Last delivery attempt: Failed — {{error}} ({{when}})",
+        "lastDeliverySucceeded": "Last delivery attempt: Succeeded ({{when}})",
+        "embeddedSignup": {
+          "title": "Connect with Meta",
+          "description": "Use Meta Embedded Signup to connect a WhatsApp Business number. Meta owns the onboarding UI (including Coexistence QR when eligible).",
+          "manualStillAvailable": "Manual Connection below remains fully available and unchanged.",
+          "manualSectionLabel": "Manual Connection",
+          "connect": "Connect with Meta",
+          "success": "WhatsApp Embedded Signup completed",
+          "failed": "WhatsApp Embedded Signup failed",
+          "cancelled": "Meta signup was cancelled or did not return an authorization code",
+          "missingSessionInfo": "Meta did not return phone_number_id / WABA id. Try again.",
+          "existingConnection": "This company already has a WhatsApp connection. Credentials were not overwritten.",
+          "apiMissing": "Configure VITE_API_SERVER_URL to use Connect with Meta."
+        }
       }
     },
     "messenger": {
@@ -678,15 +715,26 @@
         "providerNone": "No provider selected",
         "providerBoundary": "Select a provider to configure SMS credentials. Connection stays Not Connected until a live test succeeds.",
         "providers": {
-          "twilio": "Twilio"
+          "twilio": "Twilio",
+          "infobip": "Infobip"
         },
         "accountSid": "Account / Provider Identifier",
         "fromNumber": "Sender Number",
         "authToken": "Auth Token",
         "authTokenHint": "Stored encrypted server-side. Leave blank to keep the existing token.",
+        "apiKey": "API Key",
+        "apiKeyHint": "Stored encrypted server-side. Leave blank to keep the existing API key.",
+        "baseUrl": "Base URL",
+        "baseUrlHint": "Infobip API base URL for your account region (editable).",
+        "senderId": "Sender ID",
+        "senderIdHint": "Alphanumeric sender ID or phone number approved in Infobip.",
         "webhookUrl": "Webhook",
-        "webhookUrlHelp": "Inbound SMS webhook URL derived from the ValueOR API base. Secrets are never shown here.",
+        "webhookUrlHelp": "Inbound SMS webhook URL for Twilio. Saving settings creates the company SMS channel automatically when missing.",
+        "webhookUrlHelpInfobip": "Optional delivery notify URL for Infobip. Configure notifyUrl in Infobip if you need delivery callbacks. Saving settings still creates the company SMS channel automatically when missing.",
         "openChannels": "Open Channel Administration",
+        "processQueue": "Process SMS queue",
+        "processQueueSuccess": "Processed {{processed}} SMS message(s)",
+        "processQueueFailed": "Could not process SMS queue",
         "saved": "SMS settings saved",
         "saveFailed": "Could not save SMS settings",
         "status": {
@@ -740,6 +788,10 @@
       "subscriptionExpired": {
         "title": "Subscription expired",
         "message": "Subscription for {{companyName}} has expired."
+      },
+      "subscriptionUnpaid": {
+        "title": "Company subscription unpaid",
+        "message": "{{companyName}} exhausted its payment window without renewing."
       },
       "userCreated": {
         "title": "User created",
@@ -802,15 +854,111 @@
   "auth": {
     "login": {
       "title": "ValueOR",
-      "subtitle": "Enter your credentials to access the system.",
-      "identity": "Identity",
-      "passkey": "Passkey",
-      "submit": "Authenticate",
-      "noAccess": "No access yet?",
-      "requestEntry": "Request entry",
-      "successTitle": "Access granted",
+      "subtitle": "Sign in to your ValueOR account.",
+      "identity": "Email",
+      "passkey": "Password",
+      "submit": "Sign in",
+      "noAccess": "Don't have an account?",
+      "requestEntry": "Create one",
+      "successTitle": "Signed in",
       "successDescription": "Welcome to ValueOR.",
-      "forgotPassword": "Forgot password?"
+      "forgotPassword": "Forgot password?",
+      "rememberMe": "Remember me",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "experience": {
+        "showcaseAria": "ValueOR product overview",
+        "brandStatement": "From first opportunity to lasting customer",
+        "brandTagline": "Software Business Solutions",
+        "scriptAccentTop": "Every Conversation Creates Opportunity",
+        "scriptAccentBottom": "Smarter Business Together",
+        "headline": "All your business in one place.",
+        "supporting": "Manage customers and opportunities, messaging and campaigns, conversation automation, tickets and invoices — from one workspace.",
+        "welcomeTitle": "Welcome back",
+        "welcomeSubtitle": "Sign in to your ValueOR account",
+        "securityTitle": "Your data is safe and encrypted",
+        "securityBody": "We use security standards to protect your business data.",
+        "businessTypesTitle": "Suitable for many types of businesses",
+        "channelsAria": "Supported communication channels",
+        "cards": {
+          "customersTitle": "Customer management",
+          "customersBody": "Customers 360 and full customer history",
+          "leadsTitle": "Leads & Opportunities",
+          "leadsBody": "Track opportunities and convert leads into customers",
+          "automationTitle": "Conversation automation",
+          "automationBody": "Receive messages, reply automatically, and run actions across channels",
+          "campaignsTitle": "Marketing campaigns",
+          "campaignsBody": "Send campaigns via WhatsApp · Email · SMS"
+        },
+        "channels": {
+          "whatsapp": "WhatsApp",
+          "instagram": "Instagram",
+          "messenger": "Messenger",
+          "email": "Email",
+          "sms": "SMS"
+        },
+        "trust": {
+          "reports": "Reports and analytics for a clearer view",
+          "ai": "Automation and AI that work for you",
+          "security": "Security and reliability to protect your data"
+        },
+        "businessTypes": {
+          "clinics": "Clinics",
+          "serviceOffices": "Service offices",
+          "companies": "Companies",
+          "centers": "Centers",
+          "commerce": "Commercial activities",
+          "other": "And more"
+        },
+        "preview": {
+          "greeting": "Good morning",
+          "subtitle": "Illustrative workspace preview",
+          "flowTitle": "Conversations & Automation",
+          "nav": {
+            "dashboard": "Dashboard",
+            "customers": "Customers",
+            "leads": "Leads",
+            "conversations": "Conversations",
+            "tickets": "Tickets",
+            "campaigns": "Campaigns",
+            "automation": "Automation",
+            "aiEmployees": "AI Employees",
+            "reports": "Reports"
+          },
+          "metrics": {
+            "leads": "New leads",
+            "customers": "Active customers",
+            "tickets": "Open tickets",
+            "conversion": "Conversion",
+            "revenue": "Revenue"
+          },
+          "charts": {
+            "pipeline": "Weekly pipeline",
+            "channels": "Channel mix"
+          },
+          "channelMix": {
+            "whatsapp": "WhatsApp",
+            "email": "Email",
+            "sms": "SMS",
+            "other": "Other"
+          },
+          "liveBadge": "Live",
+          "activityTitle": "Recent activity",
+          "activity": {
+            "whatsapp": "WhatsApp reply sent",
+            "lead": "New lead captured",
+            "ticket": "Ticket resolved",
+            "campaign": "Campaign launched"
+          },
+          "flow": {
+            "inbound": "Incoming message",
+            "automation": "Automation",
+            "decision": "AI / Rule",
+            "action": "Business action",
+            "reply": "Reply / Ticket / Update"
+          }
+        }
+      }
     },
     "register": {
       "title": "Create your account",
@@ -1020,6 +1168,8 @@
       "age": "Age",
       "agePlaceholder": "e.g. 32",
       "invalidAge": "Age must be a whole number between 0 and 150",
+      "dateOfBirth": "Date of birth",
+      "invalidDateOfBirth": "Enter a valid date of birth (YYYY-MM-DD).",
       "gender": "Gender",
       "genderPlaceholder": "Select gender",
       "genderOptions": {
@@ -1031,7 +1181,43 @@
       "notSet": "Not set",
       "notes": "Notes",
       "optionalNotes": "Optional notes…",
-      "add": "Add Customer"
+      "notesHint": "Pinned profile notes shown on the customer record. Team notes can also be added from the customer workspace.",
+      "add": "Add Customer",
+      "editSubtitle": "Update contact details and profile information for this customer.",
+      "newSubtitle": "Capture the essentials so your team can recognize and reach this customer.",
+      "sections": {
+        "identity": "Identity",
+        "contact": "Contact",
+        "notes": "Notes"
+      },
+      "meta": {
+        "created": "Created",
+        "updated": "Last updated"
+      },
+      "lifecycle": {
+        "deactivate": "Deactivate",
+        "activate": "Activate",
+        "block": "Block",
+        "deactivateTitle": "Deactivate customer",
+        "activateTitle": "Activate customer",
+        "blockTitle": "Block customer",
+        "deactivateDescription": "Mark this customer inactive. They remain in CRM but are treated as not currently engaging.",
+        "activateDescription": "Restore this customer to active status.",
+        "blockDescription": "Block this customer. Use for abuse, fraud, or policy violations.",
+        "confirmDeactivate": "Deactivate",
+        "confirmActivate": "Activate",
+        "confirmBlock": "Block",
+        "deactivateReason": "Reason for deactivation",
+        "blockReason": "Reason for blocking",
+        "reasonPlaceholder": "Explain why…",
+        "reasonRequired": "A reason is required.",
+        "successTitle": "Status updated",
+        "successDescription": "Customer is now {{status}}.",
+        "forbidden": "You do not have permission to change customer status.",
+        "conflict": "Status was changed by someone else. Refresh and try again.",
+        "invalidStatus": "Invalid customer status.",
+        "notFound": "Customer not found."
+      }
     },
     "booking": {
       "editTitle": "Edit Booking",
@@ -1150,6 +1336,28 @@
         "expired": "Trial period has ended — upgrade to restore full access",
         "cta": "View plan & billing"
       },
+      "paymentNotice": {
+        "approachingTitle": "Subscription payment coming up",
+        "dueTodayTitle": "Subscription payment is due today",
+        "unpaidTitle": "Subscription payment required",
+        "lockedTitle": "Company access is suspended",
+        "approachingBody": "Complete payment before the due date to keep uninterrupted access for your company.",
+        "approachingBodyWithDate": "Your next subscription payment is due on {{date}}. Pay early to avoid interruption.",
+        "unpaidBody": "Payment has not been received yet. You can still work — settle the balance now to clear this notice.",
+        "lockedBody": "This company is suspended for unpaid subscription. Contact ValueOR support or your administrator.",
+        "unpaidHint": "Only company admins can pay. Visa and other enabled methods are on Plan & billing.",
+        "dueToday": "Due today",
+        "oneDayLeft": "1 day remaining",
+        "daysLeft": "{{count}} days remaining",
+        "overdueByDays": "Overdue by {{count}} days",
+        "ctaPay": "Pay subscription",
+        "badge": {
+          "approaching": "Upcoming",
+          "due_today": "Due today",
+          "unpaid": "Unpaid",
+          "locked": "Suspended"
+        }
+      },
       "executive": {
         "allBranches": "All branches",
         "branchWithCount": "{{name}} · {{count}} branches",
@@ -1183,6 +1391,12 @@
         "noActivity": "No recent activity yet.",
         "conversionRate": "Conversion rate",
         "utilization": "Utilization",
+        "bookingStatus": {
+          "pending": "Pending",
+          "confirmed": "Confirmed",
+          "cancelled": "Cancelled",
+          "waiting": "Waiting"
+        },
         "primaryAction": {
           "pending": "Review pending bookings",
           "outstanding": "Collect outstanding payments",
@@ -1305,6 +1519,12 @@
           "lastActivity": "Last activity",
           "actions": "Actions"
         },
+        "tags": {
+          "notes": "Notes",
+          "email": "Email",
+          "whatsapp": "WhatsApp",
+          "sms": "SMS"
+        },
         "density": {
           "title": "Density",
           "comfortable": "Comfortable",
@@ -1314,14 +1534,22 @@
         "status": {
           "active": "Active",
           "inactive": "Inactive",
+          "blocked": "Blocked",
           "atRisk": "At risk",
           "new": "New"
         },
         "sources": {
+          "whatsapp": "WhatsApp",
+          "messenger": "Messenger",
+          "instagram": "Instagram",
+          "email": "Email",
+          "sms": "SMS",
+          "website": "Website",
+          "manual": "Manual",
+          "other": "Other",
           "direct": "Direct",
           "web": "Web",
           "phone": "Phone",
-          "whatsapp": "WhatsApp",
           "referral": "Referral",
           "repeat": "Repeat"
         },
@@ -1390,6 +1618,7 @@
       "title": "Customer Details",
       "subtitle": "Profile for customer support agents",
       "loadError": "Could not load customer details.",
+      "notFound": "This customer was not found in your company.",
       "notLinked": "No customer linked to this conversation.",
       "editHint": "Click a value to edit",
       "saving": "Saving…",
@@ -1408,6 +1637,7 @@
         "createdAt": "Created At",
         "updatedAt": "Updated At",
         "status": "Status",
+        "source": "Source",
         "totalBookings": "Total Bookings",
         "totalInvoices": "Total Invoices",
         "lastInteraction": "Last Interaction",
@@ -1446,6 +1676,7 @@
         "call": "Call",
         "whatsapp": "WhatsApp",
         "email": "Email",
+        "sms": "SMS",
         "newBooking": "New Booking",
         "newInvoice": "New Invoice",
         "addNote": "Add Note",
@@ -1453,7 +1684,9 @@
           "title": "Action failed",
           "generic": "Something went wrong. Please try again.",
           "phoneMissing": "This customer has no phone number on file.",
-          "whatsappNotFound": "No WhatsApp conversation found for this customer."
+          "emailMissing": "This customer has no email address on file.",
+          "whatsappNotFound": "No WhatsApp conversation found for this customer.",
+          "smsNotFound": "Could not open an SMS thread for this customer. Check that SMS is enabled and configured."
         },
         "success": {
           "bookingCreated": "Booking created successfully.",
@@ -1513,6 +1746,12 @@
           "customer_created": {
             "title": "Customer created",
             "description": "Profile added to CRM"
+          },
+          "customer_status_changed": {
+            "title": "Status changed to {{status}}",
+            "description": "{{from}} → {{to}}",
+            "reason": "Reason: {{reason}}",
+            "changedBy": "Changed by {{name}}"
           },
           "whatsapp_message_received": {
             "title": "WhatsApp message received"
@@ -2316,8 +2555,12 @@
       "sampleAnswer": "You have 18 bookings this week — 4 today, 6 tomorrow, and 8 spread across the rest of the week. 7 are still pending confirmation. Want me to send reminders?",
       "demoResponse": "I'm a demo AI — real responses will appear once the AI backend is connected. Your question was: “{{question}}”",
       "errors": {
-        "runtimeNotConfigured": "AI runtime is not fully configured. Connect an OpenAI provider in settings before chatting.",
-        "runtimeNotConfiguredDetail": "AI Chat needs an enabled provider connection in the AI Provider registry. Assistant preferences alone are not enough — connect your LLM provider below.",
+        "runtimeNotConfigured": "AI provider is not configured by the platform administrator.",
+        "runtimeNotConfiguredDetail": "AI provider is not configured by the platform administrator.",
+        "providerNotConfigured": "AI provider is not configured by the platform administrator.",
+        "providerUnavailable": "The AI provider is currently unavailable.",
+        "contactPlatformAdmin": "Contact your platform administrator.",
+        "aiReady": "AI Assistant Ready",
         "runtimeFailed": "The assistant could not complete your request. {{detail}}",
         "missingRuntimePermission": "You need runtime execution permission to send messages.",
         "webChatChannelMissing": "No web chat channel is configured for this company. Contact your administrator.",
@@ -2325,7 +2568,8 @@
         "channelRouteFailed": "The message could not be delivered to the AI runtime."
       },
       "thinking": "Thinking…",
-      "openProviderSetup": "Connect provider in AI Assistant"
+      "openProviderSetup": "Contact platform administrator",
+      "openPlatformAiSettings": "Open Platform AI settings"
     },
     "reports": {
       "title": "Reports",
@@ -2682,6 +2926,10 @@
       "rejectedReason": "Rejection reason",
       "suspendedFallback": "Your company account is currently suspended.",
       "rejectedFallback": "Your company account is currently rejected.",
+      "subscriptionEndedTitle": "Your subscription has ended",
+      "subscriptionEndedFallback": "The payment window ended and company access is locked until the subscription is renewed.",
+      "renewHintAdmin": "Renew now to restore workspace access for everyone in your company.",
+      "renewHintStaff": "Ask a company administrator to renew the subscription. You cannot open the workspace until payment is completed.",
       "contact": "Please contact your platform administrator."
     }
   },
@@ -3184,6 +3432,8 @@
       "microsoftConnected": "Microsoft 365 connected",
       "microsoftFailed": "Microsoft connection failed",
       "microsoftNotConfigured": "Microsoft OAuth is not configured on the server yet.",
+      "microsoftStatusLoading": "Checking Microsoft OAuth…",
+      "microsoftStatusLoadingHint": "Wait a moment, then try Connect with Microsoft again. Existing IMAP/SMTP settings were not changed.",
       "providers": {
         "gmail": "Gmail / Google Workspace",
         "microsoft_365": "Outlook / Microsoft 365",
@@ -3513,6 +3763,7 @@
         "received": "Received",
         "classified": "Classified",
         "assigned": "Assigned",
+        "manual_review": "Needs review",
         "ticket": "Ticket",
         "drafted": "Reply drafted",
         "sent": "Sent",
@@ -3520,6 +3771,18 @@
         "failed": "Failed",
         "reused": "Reused"
       },
+      "expandWorkspace": "Expand workspace",
+      "collapseWorkspace": "Restore workspace size",
+      "expandWorkspaceAria": "Expand email workspace to fill the screen",
+      "collapseWorkspaceAria": "Restore email workspace to normal size",
+      "collapseList": "Collapse conversation list",
+      "expandList": "Expand conversation list",
+      "collapseListAria": "Collapse the email conversation list",
+      "expandListAria": "Expand the email conversation list",
+      "collapseContext": "Collapse details panel",
+      "expandContext": "Expand details panel",
+      "collapseContextAria": "Collapse the customer and ticket details panel",
+      "expandContextAria": "Expand the customer and ticket details panel",
       "richText": {
         "toolbar": "Formatting",
         "bold": "Bold",
@@ -5674,13 +5937,13 @@
       "stepHints": {
         "general": "Name the employee, assign an owner, and set the profile basics.",
         "prompt": "Describe role, tone, language, and what the employee must / must not do. Starter templates only fill text — tools stay unrestricted.",
-        "intelligence": "Pick the AI provider type and chat model (temperature / max tokens included).",
+        "intelligence": "Pick the AI provider and chat model, then fine-tune replies and runtime limits.",
         "provider": "Pick the AI provider type (e.g. OpenAI). Runtime uses the company default connection for that type.",
         "model": "Choose the chat model id (e.g. gpt-4.1) plus temperature and max tokens for replies.",
         "knowledge": "Optional: attach company knowledge sources the employee may search when answering.",
-        "tools": "Optional: allow system actions (capabilities) for tickets, CRM, bookings, leads, and knowledge search.",
-        "channels": "Choose which WhatsApp / Messenger / Instagram traffic can route to this employee (channel tags).",
-        "review": "Confirm the draft. Workflows and runtime limits stay in Setup after save. Publish from Lifecycle before customers can talk to it."
+        "tools": "Choose the system actions and skills this employee may use.",
+        "channels": "Choose which WhatsApp / Messenger / Instagram traffic this employee answers, and an optional workflow to transfer bookings into.",
+        "review": "Check every section before saving. Publish from the employee page when you are ready to go live."
       },
       "steps": {
         "general": "Basic information",
@@ -5696,13 +5959,13 @@
       "review": {
         "intro": "Summary of this draft. Values come only from what you configured — nothing is fabricated.",
         "workflows": "Workflows",
-        "workflowsHint": "Transferable automation flow is configured in Channels / Setup after save — workflows remain an independent domain.",
+        "workflowsHint": "The transferable workflow is chosen in the Channels step.",
         "workflowsEmpty": "No transferable workflow linked yet.",
         "workflowsConfigured": "Transferable flow: {{id}}",
-        "configureWorkflows": "Configure in Channels",
+        "configureWorkflows": "Edit in Channels step",
         "runtime": "Runtime / limits",
-        "runtimeHint": "Session timeout and runtime limits are configured in Setup → Limits after save.",
-        "configureRuntime": "Open Setup → Limits",
+        "runtimeHint": "Runtime limits are set in the Intelligence step.",
+        "configureRuntime": "Edit in Intelligence step",
         "lifecycle": "Lifecycle / status",
         "lifecycleReminder": "Saving here keeps status = draft. Activation remains Lifecycle → Publish.",
         "state": {
@@ -5710,7 +5973,10 @@
           "missing": "Not configured",
           "warning": "Needs attention",
           "optional": "Optional / later"
-        }
+        },
+        "editStep": "Edit",
+        "skills": "Skills",
+        "promptVersion": "Version {{version}}"
       }
     },
     "edit": {
@@ -5719,7 +5985,7 @@
         "title": "Editing a profile",
         "body": "Changes stay on the draft until you publish again from Lifecycle.",
         "points": {
-          "profile": "Update identity, provider, prompt, knowledge, and tools here.",
+          "profile": "Everything about the employee is edited here: profile, instructions, intelligence & limits, knowledge, tools & skills, channels & workflow.",
           "publish": "If the employee is already live, re-publish from Lifecycle after major changes."
         }
       }
@@ -5744,7 +6010,7 @@
       "emptySkills": "No skills assigned",
       "guide": {
         "title": "How this employee page works",
-        "body": "Use the tabs below. Overview shows next steps; Setup edits runtime settings; Channels binds messaging; Lifecycle publishes the draft.",
+        "body": "This page is a read-only summary. All settings are changed from Edit; publishing happens under Publishing & versions.",
         "points": {
           "publish": "Publish from Lifecycle — draft employees never answer customers.",
           "channels": "Channels tab shows which WhatsApp / Messenger / Instagram connections match.",
@@ -5778,6 +6044,9 @@
       "providerHint": "Choose the AI provider type this employee will use. Duplicate company connections for the same provider are collapsed into one option; runtime uses the company default connection.",
       "defaultProviderConnection": "default",
       "noProviderConnections": "No enabled provider connections for this company. Configure one under AI Platform / Provider settings first.",
+      "providerConnectionsLoading": "Loading provider connections…",
+      "providerConnectionsLoadFailed": "Could not load provider connections: {{error}}",
+      "retryProviderConnections": "Retry",
       "availableProviders": "{{count}} provider types available.",
       "model": "Model",
       "modelHint": "Pick a model from the suggestions or type any model id supported by your provider.",
@@ -5859,6 +6128,32 @@
           "instagram": "Instagram",
           "channel": "Channel"
         }
+      },
+      "promptVersionHint": "A label to track prompt revisions in Publishing & versions (e.g. v2).",
+      "runtime": {
+        "title": "Runtime limits & sessions",
+        "hint": "Defaults suit most employees. Change them only if you need tighter or looser limits.",
+        "summary": "{{timeout}}s timeout · {{retries}} retries · {{rate}}/min · session {{session}} min",
+        "executionTimeoutSeconds": "Response timeout (seconds)",
+        "executionTimeoutHint": "Maximum time allowed for one reply before it is stopped.",
+        "retryCount": "Retry attempts",
+        "retryCountHint": "How many times a failed reply is retried automatically.",
+        "rateLimitPerMinute": "Max requests per minute",
+        "rateLimitHint": "Protects your AI budget from bursts of traffic.",
+        "maxConcurrency": "Parallel executions",
+        "maxConcurrencyHint": "How many replies this employee may process at the same time."
+      },
+      "skills": {
+        "title": "Skills",
+        "hint": "Skills bundle instructions, tools, and knowledge for a specific job. Optional.",
+        "loading": "Loading skills…",
+        "empty": "No skills in this company yet. You can continue without skills.",
+        "readOnly": "You can view the assigned skills but you do not have permission to change them.",
+        "unavailableKept": "{{count}} assigned skill(s) are no longer listed and stay assigned until you change them."
+      },
+      "workflowTransfer": {
+        "noFlows": "No active automation flows yet. Create one under Automation to enable transfers.",
+        "toolsAdded": "Selecting a workflow also enables the transfer and booking tools for this employee."
       }
     },
     "config": {
@@ -6654,7 +6949,7 @@
       "tabsNav": "Employee sections",
       "overview": {
         "title": "What to do next",
-        "body": "This profile page is where you finish setup, connect channels, and publish. The create wizard only collects the draft.",
+        "body": "A read-only summary of this employee. Use Edit to change any setting and Publishing & versions to go live.",
         "statusDraft": "Draft — not answering customers yet",
         "statusPublished": "Published — can answer on matched channels",
         "statusDisabled": "Disabled — paused",
@@ -6670,6 +6965,28 @@
         "ctaEdit": "Edit profile",
         "runtimeNotPublished": "Not published",
         "summaryTitle": "Profile summary"
+      }
+    },
+    "profile": {
+      "tabs": {
+        "overview": "Summary",
+        "lifecycle": "Publishing & versions",
+        "activity": "Performance & activity"
+      },
+      "editSection": "Edit",
+      "showFullPrompt": "Show full instructions",
+      "activeTools": "Active tools ({{count}})",
+      "pausedTools": "Paused tools ({{count}})",
+      "performance": "Performance today",
+      "sections": {
+        "intelligence": "Intelligence & limits",
+        "capabilities": "Capabilities & skills",
+        "channels": "Channels & workflow"
+      },
+      "readiness": {
+        "title": "Setup readiness",
+        "allReady": "Everything required is configured. Publish when you are ready.",
+        "fix": "Fix"
       }
     }
   },
@@ -7643,6 +7960,12 @@
       "presenceTyping": "Typing",
       "lastSeen": "Last seen",
       "starMessage": "Star message",
+      "forward": "Forward",
+      "forwardTitle": "Forward message",
+      "forwardHint": "Choose another WhatsApp conversation to send this text and attachments to.",
+      "forwardSearch": "Search conversations…",
+      "forwardEmpty": "No other conversation is available to forward to.",
+      "forwardSent": "Message forwarded",
       "attachmentPreview": "Attachment preview",
       "attachmentDownload": "Download",
       "attachmentFullscreen": "Open full screen",
@@ -9312,7 +9635,30 @@
       "lifecycleEnforcementConfirm": "This batch evaluates overdue subscriptions, trials, and grace periods and applies existing lifecycle rules (limit {{limit}}). It does not charge customers or collect payment.",
       "lifecycleEnforcementResult": "Last enforcement result",
       "lifecycleEnforcementSuccess": "Lifecycle enforcement finished. Review the summary below.",
-      "lifecycleEnforcementFailed": "Lifecycle enforcement failed."
+      "lifecycleEnforcementFailed": "Lifecycle enforcement failed.",
+      "setFirstPaymentDue": "Set first payment due",
+      "firstPaymentDueTitle": "Set first payment due date",
+      "firstPaymentDueDescription": "Choose when this company’s subscription payment is due. Company admins will see a countdown highlight before that date and can pay with Visa or other enabled methods.",
+      "firstPaymentDueLabel": "Due date & time",
+      "firstPaymentDueNote": "Internal note (optional)",
+      "firstPaymentDueNotePlaceholder": "e.g. Agreed during onboarding call",
+      "firstPaymentDueConfirm": "Save due date",
+      "firstPaymentDueSuccess": "Payment due date saved",
+      "firstPaymentDueFailed": "Could not save payment due date",
+      "changePackage": "Change package",
+      "cancelSubscription": "Cancel subscription",
+      "convertTrial": "Convert trial to paid",
+      "assignInitialPackage": "Assign package",
+      "changePackageSuccess": "Package updated",
+      "changePackageNoop": "Already on selected package",
+      "convertTrialSuccess": "Subscription activated",
+      "setBillingCycle": "Set billing cycle",
+      "billingCycleTitle": "Set billing cycle",
+      "billingCycleDescription": "Choose monthly or yearly for this company. The company sees the selected cycle and price on Plan & billing — they cannot change it themselves.",
+      "billingCycleCurrent": "Current",
+      "billingCycleConfirm": "Save cycle",
+      "billingCycleSaved": "Billing cycle saved",
+      "billingCycleFailed": "Could not save billing cycle"
     },
     "entitlements": {
       "featureCode": "Code",
@@ -9441,6 +9787,12 @@
       "nextRenewal": "Next renewal",
       "recordPayment": "Record manual payment",
       "recording": "Recording…",
+      "recordPaymentListPriceHint": "Suggested amount uses current package list price — not proof of prior payment.",
+      "listPriceHint": "Catalog list price — not a recorded payment. Charged amounts are not modeled yet.",
+      "unpaidCompanyBannerTitle": "Subscription payment outstanding",
+      "unpaidCompanyBannerBody": "This company has not completed subscription payment. Tenant admins see a payment highlight; the workspace stays open until access is suspended.",
+      "lockedCompanyBannerTitle": "Company access suspended",
+      "lockedCompanyBannerBody": "Company status is Suspended. Users and branches cannot use the product until access is restored.",
       "currencyMissing": "Billing currency is not configured. Set default_currency in billing settings before recording payments.",
       "planExperience": "Plan Experience",
       "currentPlan": "Current Plan",
@@ -9675,7 +10027,10 @@
       "currentSubscription": "Current Subscription",
       "health": "Workspace health",
       "nextInvoice": "Next invoice amount",
-      "noSubscription": "No active subscription found for your company."
+      "noSubscription": "No active subscription found for your company.",
+      "operationalCurrency": "Operational currency",
+      "subscriptionCurrency": "Subscription currency",
+      "currencyIndependenceNote": "Operational currency is for day-to-day finance; subscription currency is for your SaaS plan."
     }
   },
   "auditLogs": {
@@ -10331,6 +10686,9 @@
       "address": "Address",
       "taxId": "Tax ID",
       "registration": "Commercial registration",
+      "acquisitionSource": "Acquisition source",
+      "acquisitionSourceDetail": "Acquisition source details",
+      "acquisitionPlatform": "Platform",
       "resource": "Resource",
       "current": "Current",
       "limit": "Limit",
@@ -10811,7 +11169,9 @@
         "users_roles": "Users & Roles",
         "company_settings": "Company Settings",
         "security_audit": "Security / Audit",
-        "core_crm": "Core CRM"
+        "core_crm": "Core CRM",
+        "web_presence_page": "Business Page",
+        "web_chat_widget": "Web Chat Widget"
       },
       "metrics": {
         "ai_email_routing": "AI Email Routing",
@@ -11333,22 +11693,23 @@
       "checking": "Checking…",
       "verify": "Verify binding",
       "checkingDetail": "Checking provider binding and company AI feature…",
-      "statusReady": "Ready: provider is bound and AI Chat is enabled for this company.",
-      "statusFeatureDisabled": "Provider is bound, but AI Chat is still disabled for this company.",
+      "statusReady": "AI Assistant Ready — your company uses the ValueOR platform AI provider.",
+      "statusFeatureDisabled": "Platform AI provider is available, but AI Chat is still disabled for this company.",
       "statusLicenseBlocked": "AI Chat is blocked by the company license: {{reason}}",
       "licenseUnknown": "license check failed",
-      "statusProviderMissing": "AI Chat is enabled, but no company provider connection is bound yet.",
-      "statusDisconnected": "Not ready: bind a provider and enable AI Chat for this company.",
+      "statusProviderMissing": "AI provider is not configured by the platform administrator.",
+      "statusDisconnected": "AI is not ready. Contact your platform administrator.",
       "statusDisabled": "AI is currently disabled for your company. Contact your platform administrator.",
-      "providerLine": "Provider connection: {{status}} ({{name}})",
+      "statusPlatformUnavailable": "The AI provider is currently unavailable.",
+      "providerLine": "Platform provider: {{status}} ({{name}})",
       "featureLine": "Company AI Chat feature: {{status}}",
       "featureOn": "Enabled",
       "featureOff": "Disabled",
       "enableFeature": "Enable AI Chat for company",
-      "openProviderSetup": "Open provider setup",
+      "openProviderSetup": "Contact platform administrator",
       "openPlatformSettings": "Open Platform AI settings",
-      "verifiedConnected": "AI Chat is ready for this company.",
-      "verifiedDisconnected": "AI Chat is not fully ready yet.",
+      "verifiedConnected": "AI Assistant Ready",
+      "verifiedDisconnected": "AI is not ready. Contact your platform administrator.",
       "featureEnabledToast": "AI Chat feature enabled for this company.",
       "featureEnableError": "Could not enable AI Chat for this company."
     },
@@ -11531,31 +11892,31 @@
       }
     },
     "providerSetup": {
-      "title": "Provider connection (required for AI Chat)",
-      "readyDescription": "A default provider connection is active. AI Chat and runtime execution can use this registry entry.",
-      "missingDescription": "Assistant preferences are saved, but runtime execution requires a company provider connection in the AI Provider registry.",
-      "stepPreferences": "Choose provider and model preferences below (assistant metadata).",
-      "stepConnection": "Create a company provider connection (uses the platform key).",
-      "stepDefault": "Mark the matching connection as default for this company.",
+      "title": "AI Assistant status",
+      "readyDescription": "AI Assistant Ready. Your company uses the ValueOR platform AI provider — no company API key is required.",
+      "missingDescription": "AI provider is not configured by the platform administrator. Contact your platform administrator.",
+      "stepPreferences": "Choose assistant preferences (name, tone, model preference).",
+      "stepConnection": "Platform provider is configured centrally — no company API key step.",
+      "stepDefault": "The platform binding is created automatically for entitled companies.",
       "providerMismatch": "You have a default provider connection for a different provider type. Select or create one that matches your assistant provider.",
       "loading": "Loading provider connections…",
       "selectConnection": "Use this connection",
       "defaultBadge": "default",
       "setDefault": "Set as default connection",
-      "createFirst": "Create your first provider connection",
-      "createAnother": "Add another connection",
+      "createFirst": "Bind platform provider for this company",
+      "createAnother": "Add another binding",
       "targetProvider": "Registry provider: {{provider}}",
       "apiKey": "API key",
-      "apiKeyPlaceholder": "sk-… (optional if configured server-side)",
-      "apiKeyHint": "Stored in ai_provider_connections.configuration — not in assistant settings.",
-      "connectProvider": "Create & connect provider",
-      "saveSuccess": "Provider connected",
-      "saveSuccessDetail": "The provider connection was saved to your company registry.",
-      "setDefaultSuccess": "Default provider connection updated.",
-      "saveError": "Could not save provider connection",
-      "readOnlyHint": "Ask an administrator with ai.providers.manage to connect a provider.",
+      "apiKeyPlaceholder": "Managed by platform administrator",
+      "apiKeyHint": "Company API keys are not used. Credentials are managed by the platform administrator.",
+      "connectProvider": "Enable platform binding",
+      "saveSuccess": "AI Assistant Ready",
+      "saveSuccessDetail": "This company is bound to the ValueOR platform AI provider.",
+      "setDefaultSuccess": "Default provider binding updated.",
+      "saveError": "Could not bind the platform provider",
+      "readOnlyHint": "Ask a company admin if AI remains unavailable after contacting the platform administrator.",
       "defaultConnectionName": "{{assistant}} · {{provider}}",
-      "platformKeyHint": "Uses the encrypted platform API key from Settings → Platform AI. No company key is needed here."
+      "platformKeyHint": "Uses the encrypted platform API key from Settings → Platform AI. No company key is needed."
     },
     "conversation": {
       "rememberConversation": "Remember conversation",
@@ -13235,6 +13596,7 @@
         "email": "Email",
         "assign": "Assign owner",
         "convert": "Convert to customer",
+        "convertWithOpportunity": "Convert to customer + opportunity",
         "archive": "Archive",
         "delete": "Delete",
         "archived": "Lead archived",
@@ -13305,6 +13667,17 @@
       "phone": "Phone",
       "manual": "Manual",
       "other": "Other"
+    },
+    "convert": {
+      "alreadyConverted": "Lead was already converted",
+      "convertedWithOpportunity": "Converted to customer and opportunity",
+      "customerCreated": "New customer created",
+      "customerReused": "Existing customer linked",
+      "customerLinked": "Customer already linked",
+      "opportunityCreated": "New opportunity created",
+      "opportunityReused": "Existing opportunity linked",
+      "opportunityMissing": "No linked opportunity",
+      "openCustomer": "Open customer"
     },
     "kanban": {
       "title": "Leads",
@@ -13489,6 +13862,7 @@
   },
   "leads360": {
     "convert": "Convert to customer",
+    "convertWithOpportunity": "Convert to customer + opportunity",
     "createOpportunity": "Create Opportunity",
     "close": "Close",
     "scoreLabel": "{{score}} score",
@@ -14058,6 +14432,7 @@
       "previousTickets": "Previous tickets",
       "noPreviousTickets": "No other tickets for this customer.",
       "noChannel": "No channel",
+      "channelLinkedHint": "This ticket belongs to the customer’s {{channel}} conversation.",
       "noConversation": "No conversation",
       "noConversationTitle": "No conversation linked",
       "noConversationBody": "Conversation transcript is only available when the ticket is linked to an omnichannel conversation.",
@@ -14065,6 +14440,36 @@
       "conversationLinkedBody": "Conversation {{id}}… is linked. Full transcript stays in Omnichannel — not duplicated here.",
       "conversationRef": "Conversation",
       "slaDue": "SLA due",
+      "slaDueHistorical": "SLA was due",
+      "summaryGroup": "Summary",
+      "descriptionGroup": "Description",
+      "timelineGroup": "Timeline",
+      "systemActor": "System",
+      "resolvedAt": "Resolved",
+      "closedAt": "Closed",
+      "attachment": "Attachment",
+      "messageCountLabel": "Messages",
+      "messageCount": "{{count}} message(s)",
+      "previousTicketsCount": "{{count}} ticket(s)",
+      "commentCount": "{{count}} comments",
+      "addCommentHint": "Add a comment or internal note for this ticket.",
+      "conversationLoading": "Loading conversation…",
+      "conversationErrorTitle": "Conversation unavailable",
+      "conversationErrorBody": "Could not load the linked conversation transcript.",
+      "conversationEmptyTitle": "No messages yet",
+      "conversationEmptyBody": "This conversation has no messages to show.",
+      "conversationPermissionTitle": "Conversation restricted",
+      "conversationPermissionBody": "You do not have permission to view this conversation transcript.",
+      "customerEmail": "Email",
+      "customerPhone": "Phone",
+      "customerContactGroup": "Contact details",
+      "messageType": {
+        "incoming": "Customer",
+        "outgoing": "Agent",
+        "system": "System",
+        "internal_note": "Internal note",
+        "note": "Note"
+      },
       "tabs": {
         "overview": "Overview",
         "conversation": "Conversation",
@@ -14086,7 +14491,42 @@
       "activityEmptyTitle": "No activity yet",
       "activityEmptyBody": "Ticket changes and comments will appear here from audit logs.",
       "activityErrorTitle": "Activity unavailable",
-      "activityErrorBody": "Could not load the audit trail for this ticket."
+      "activityErrorBody": "Could not load the audit trail for this ticket.",
+      "audit": {
+        "action": {
+          "create": "Ticket created",
+          "update": "Ticket updated",
+          "delete": "Ticket deleted",
+          "comment": "Comment added",
+          "unknown": "Audit event: {{action}}"
+        },
+        "entity": {
+          "ticket": "Ticket"
+        },
+        "byActor": "By",
+        "fields": {
+          "ticketNumber": "Ticket number",
+          "subject": "Subject",
+          "description": "Description",
+          "status": "Status",
+          "priority": "Priority",
+          "assignedUserId": "Assignee",
+          "customerId": "Customer",
+          "channel": "Channel",
+          "channelType": "Channel type",
+          "createdAt": "Created at",
+          "updatedAt": "Updated at",
+          "resolvedAt": "Resolved at",
+          "closedAt": "Closed at",
+          "slaDueAt": "SLA due"
+        },
+        "noFieldChanges": "No field changes.",
+        "technicalDetails": "Technical details"
+      },
+      "auditEmptyTitle": "No audit entries yet",
+      "auditEmptyBody": "Ticket create and update events will appear here.",
+      "auditErrorTitle": "Audit unavailable",
+      "auditErrorBody": "Could not load the audit trail for this ticket."
     },
     "purposeTitle": "Support ticketing workspace",
     "purposeBody": "Create, assign, and resolve support tickets. Connect AI employees with the Tickets capability, and use Create Ticket / Assign Ticket nodes in Workflows.",
@@ -14098,8 +14538,56 @@
     "unassign": "Unassign",
     "assignTitle": "Assign ticket",
     "assignHint": "Choose any active user in your company.",
+    "actions": {
+      "menu": "Ticket actions",
+      "viewDetails": "View details",
+      "assign": "Assign employee",
+      "changeStatus": "Change status",
+      "changePriority": "Change priority",
+      "closeTicket": "Close ticket",
+      "reopenTicket": "Reopen ticket",
+      "applyStatus": "Apply status",
+      "applyPriority": "Apply priority"
+    },
+    "closeNotify": {
+      "askTitle": "Close ticket {{ticketNumber}}",
+      "askBody": "Would you like to notify the customer that the issue has been resolved on the same channel they used to open this ticket?",
+      "closeAndNotify": "Close & notify customer",
+      "closeWithoutNotify": "Close without notification",
+      "cancel": "Cancel",
+      "yes": "Yes, notify customer",
+      "no": "No, just close",
+      "composeTitle": "Resolution message",
+      "composeBody": "Edit the message below. It will be sent on {{channel}} only — not another channel.",
+      "messageLabel": "Customer message",
+      "messageHint": "Includes the ticket number. You can edit the wording before sending.",
+      "charCount": "{{count}} characters",
+      "back": "Back",
+      "sendAndClose": "Send & close",
+      "noChannelHint": "This ticket has no linked customer channel, so a customer message cannot be sent automatically.",
+      "notifySent": "Customer notified",
+      "alreadyNotified": "Customer already notified",
+      "notifySentBody": "Resolution message sent via {{channel}}.",
+      "notifyFailed": "Could not notify the customer",
+      "customerLabel": "Customer",
+      "ticketLabel": "Ticket",
+      "channelLabel": "Channel",
+      "languageLabel": "Language",
+      "languageEn": "English",
+      "languageAr": "العربية",
+      "aiSuggested": "AI Suggested Message",
+      "fallbackTemplate": "Template message",
+      "generate": "Generate",
+      "regenerate": "Regenerate",
+      "aiGenerating": "Generating…",
+      "aiFallbackHint": "AI suggestion unavailable. Using the standard resolution template — you can still edit and send.",
+      "aiSessionExpired": "Your session expired. Using the template message — sign in again to use AI suggestions.",
+      "aiError": "Could not generate an AI suggestion.",
+      "template": "Hello {{customer_name}},\n\nYour support request {{ticket_number}} has been successfully resolved.\n\nIf you need any further assistance, please don't hesitate to contact us.\n\nThank you."
+    },
     "noAssignees": "No active users available to assign.",
     "noEligibleAssignees": "No eligible employees",
+    "assignLoading": "Loading teammates…",
     "detailTitle": "Ticket details",
     "noDescription": "No description provided.",
     "createdAt": "Created",
@@ -14141,6 +14629,7 @@
       "messenger": "Messenger",
       "instagram": "Instagram",
       "web": "Web",
+      "web_chat": "Web chat",
       "email": "Email",
       "sms": "SMS",
       "voice": "Voice"
@@ -14292,6 +14781,34 @@
     }
   },
   "quotes": {
+    "send": {
+      "button": "Send quote",
+      "sending": "Sending…",
+      "checking": "Checking available channels…",
+      "optionsFailed": "Could not load sending channels.",
+      "retryOptions": "Try again",
+      "viaEmail": "Email",
+      "viaWhatsapp": "WhatsApp",
+      "noChannels": "This quote can't be sent yet",
+      "sentTitle": "Quote sent",
+      "sentEmail": "Sent by email to {{recipient}}.",
+      "sentWhatsapp": "Sent on WhatsApp to {{recipient}}.",
+      "alreadySent": "This send was already completed.",
+      "statusNotUpdated": "The message was delivered, but the quote status could not be updated. Refresh and mark it as sent if needed.",
+      "failedTitle": "Quote was not sent",
+      "inProgress": "This quote is already being sent. Wait a moment, then refresh.",
+      "retry": "Retry",
+      "unavailable": {
+        "not_entitled": "Not included in your plan.",
+        "no_email_channel": "Connect a company email in Channels settings.",
+        "no_recipient_email": "The customer has no email address.",
+        "no_whatsapp_channel": "Connect WhatsApp in Channels settings.",
+        "no_recipient_phone": "The customer has no WhatsApp conversation or phone number.",
+        "no_whatsapp_conversation": "The customer hasn't messaged you on WhatsApp yet.",
+        "whatsapp_window_closed": "The customer's last WhatsApp message is older than 24 hours.",
+        "unknown": "Unavailable."
+      }
+    },
     "subtitle": "Commercial quotes linked to opportunities and the product catalog.",
     "createFromOpportunity": "Create from opportunity",
     "pickOpportunityTitle": "Choose an opportunity",
@@ -15478,7 +15995,19 @@
       "returnProcessing": "Payment started — waiting for confirmation. This page will update when settlement completes.",
       "returnFailed": "Payment failed. You can try again.",
       "returnCanceled": "Payment was canceled.",
-      "returnExpired": "The payment session expired. Please try again."
+      "returnExpired": "The payment session expired. Please try again.",
+      "cycleSelected": "Selected for your company",
+      "cycleSetByAdmin": "Billing cycle is set by ValueOR (monthly or yearly). Contact support if you need it changed.",
+      "methodsTitle": "Available payment methods",
+      "methodCard": "Visa / Mastercard",
+      "methodOnline": "Secure online checkout",
+      "providerLabel": "Provider",
+      "sandboxMode": "Sandbox",
+      "viewInvoice": "View invoice & payment history",
+      "latestInvoiceTitle": "Your invoice",
+      "latestInvoiceNumber": "Invoice",
+      "latestInvoicePaid": "Paid",
+      "latestInvoiceAmount": "Amount"
     }
   },
   "companyOnboarding": {
@@ -15528,6 +16057,8 @@
       "industry": "Industry",
       "contactEmail": "Contact email",
       "contactPhone": "Company phone",
+      "accountPhone": "Phone",
+      "phoneFormatHint": "Enter the local number; the country code is selected separately.",
       "website": "Website",
       "description": "Company description",
       "taxId": "Tax / VAT number",
@@ -15545,7 +16076,42 @@
       "ownerPhone": "Phone",
       "ownerJobTitle": "Job title",
       "plan": "Plan",
-      "status": "Status"
+      "status": "Status",
+      "acquisitionSource": "How did you hear about ValueOR?",
+      "acquisitionSourceHelper": "Tell us what brought you to ValueOR.",
+      "acquisitionSourceDetail": "Please specify",
+      "acquisitionSocialPlatform": "Which social platform?"
+    },
+    "acquisitionSources": {
+      "search_engine": "Search Engine",
+      "linkedin": "LinkedIn",
+      "social_media": "Social Media",
+      "youtube_video": "YouTube / Video",
+      "referral": "Referral",
+      "partner_agency": "Partner / Agency",
+      "advertisement": "Advertisement",
+      "event_conference": "Event / Conference",
+      "direct_outreach": "Direct Outreach",
+      "website_blog": "Website / Blog",
+      "other": "Other"
+    },
+    "acquisitionSocialPlatforms": {
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "x": "X",
+      "tiktok": "TikTok",
+      "youtube": "YouTube",
+      "other": "Other"
+    },
+    "acquisitionAdPlacements": {
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "linkedin": "LinkedIn",
+      "google": "Google",
+      "youtube": "YouTube",
+      "x": "X",
+      "tiktok": "TikTok",
+      "other": "Other"
     },
     "ownerJobTitles": {
       "owner": "Owner",
@@ -15607,7 +16173,12 @@
       "required": "This field is required",
       "emailInvalid": "Enter a valid email address",
       "websiteInvalid": "Enter a valid website URL",
-      "nameTooLong": "Value is too long"
+      "nameTooLong": "Value is too long",
+      "acquisitionDetailRequired": "Please specify how you heard about ValueOR",
+      "acquisitionSocialRequired": "Please select a social platform.",
+      "acquisitionDetailNotAllowed": "This detail does not apply to the selected source.",
+      "invalidPhone": "Please enter a valid phone number.",
+      "phoneRegionRequired": "Select a country for this phone number."
     },
     "errors": {
       "alreadyAssigned": "Your account already belongs to a company.",
@@ -15615,14 +16186,16 @@
       "duplicate": "Company creation is already in progress.",
       "generic": "Could not create the company. Please try again.",
       "formIncomplete": "Please complete the required fields before creating the company.",
+      "acquisitionSourceInvalid": "Please tell us how you heard about ValueOR.",
+      "acquisition_source_invalid": "Please tell us how you heard about ValueOR.",
       "ownerInviteNoRole": "Company created, but no admin role is available to invite the owner."
     }
   },
   "documentMeta": {
-    "default": "ValueOR — AI-powered CRM and operations platform.",
-    "privacyPolicy": "ValueOR Privacy Policy: how we collect, use, and protect personal data, including WhatsApp and Instagram messaging data.",
-    "dataDeletion": "Request deletion of your ValueOR personal data, including data processed through WhatsApp and Instagram integrations.",
-    "terms": "ValueOR Terms of Service for the CRM, automation, and messaging platform."
+    "default": "ValueOR — AI-powered CRM, omnichannel operations, and business workspace platform.",
+    "privacyPolicy": "ValueOR Privacy Policy: how we collect, use, isolate, and protect personal and company data across CRM, omnichannel messaging, AI automation, and billing.",
+    "dataDeletion": "Request deletion of ValueOR personal or workspace-related data, including CRM records and messaging data from WhatsApp, Instagram, email, and SMS.",
+    "terms": "ValueOR Terms of Service for the multi-tenant CRM, omnichannel, AI automation, and subscription platform."
   },
   "legal": {
     "language": "Language",
@@ -15637,40 +16210,53 @@
     "privacy": {
       "title": "ValueOR Privacy Policy",
       "scopeTitle": "Introduction and scope",
-      "scopeBody": "This Privacy Policy explains how ValueOR (“ValueOR”, “we”, “us”) collects, uses, stores, and shares personal information when you use the ValueOR CRM, automation, and customer-communication platform, including optional WhatsApp and Instagram integrations. It applies to account holders, company users, and individuals whose information is processed because a ValueOR customer uses the service to communicate with them.",
+      "scopeBody": "This Privacy Policy explains how ValueOR (“ValueOR”, “we”, “us”) collects, uses, stores, shares, and protects personal information when you use the ValueOR multi-tenant business platform. ValueOR provides CRM and customer operations, omnichannel messaging (including WhatsApp, Instagram/Messenger, email, and SMS where enabled), AI-assisted workflows and knowledge tools, scheduling and bookings, organization and access controls, and subscription billing. This Policy applies to account holders, company administrators and employees, and individuals whose information is processed because a ValueOR customer uses the service to communicate with or serve them.",
+      "platformTitle": "What ValueOR is",
+      "platformBody": "ValueOR is a Software Business Solutions platform for companies that need one secure workspace for customers and operations. Depending on the package and features enabled for a company, ValueOR may include:",
+      "platformCrm": "CRM and workspace records: customers, tickets, leads, opportunities, quotes, invoices, tasks, and related notes or history.",
+      "platformOmni": "Omnichannel inboxes and outbound messaging across WhatsApp, Instagram/Messenger, email, and SMS, including routing, templates, and delivery status where configured.",
+      "platformAi": "AI employees, drafts, translation, knowledge retrieval, and automation that operate only on content the customer has placed in ValueOR or connected channels.",
+      "platformOps": "Scheduling and bookings, branches and organization structure, roles and permissions (RBAC), and operational dashboards.",
+      "platformBilling": "SaaS subscription administration: plans, monthly or yearly billing cycles, invoices, receipts, payment checkout, and company access controls when a subscription ends.",
       "collectTitle": "Information we collect",
-      "collectIntro": "Depending on how ValueOR is used, we may collect the following categories of information:",
-      "collectAccount": "Account and company information, such as names, login emails, company name, roles, and workspace settings.",
-      "collectContact": "Contact information, such as phone numbers, email addresses, and messaging identifiers provided by you or your organization.",
-      "collectCrm": "CRM and customer information entered by authorized users, including customer profiles, tickets, bookings, notes, and related business records.",
-      "collectMessages": "Messages and communications sent or received through ValueOR, including conversation history needed to operate inboxes, workflows, and support tools.",
-      "collectWhatsapp": "WhatsApp data when WhatsApp integration is enabled, which may include message content, phone numbers, delivery status, and related metadata required to send and receive WhatsApp messages on behalf of the customer.",
-      "collectInstagram": "Instagram data and messages when Instagram integration is enabled, which may include Instagram-scoped identifiers, message content, media attachments, and related metadata required to operate Instagram messaging features.",
-      "collectTechnical": "Technical, device, and log information, such as IP address, browser type, approximate location derived from IP, timestamps, and diagnostic logs used to operate, secure, and troubleshoot the service.",
+      "collectIntro": "Depending on how ValueOR is configured and used, we may collect the following categories of information:",
+      "collectAccount": "Account and company information: names, login emails, company identity, roles and permissions, branch or department assignments, language and theme preferences, and workspace settings.",
+      "collectContact": "Contact information: phone numbers, email addresses, and messaging identifiers provided by you or your organization.",
+      "collectCrm": "CRM and operations data entered by authorized users: customer profiles, tickets, leads, opportunities, quotes, invoices, bookings, notes, documents, and related business records.",
+      "collectMessages": "Messages and communications sent or received through ValueOR inboxes, including conversation history needed to operate team workflows, routing, and support tools.",
+      "collectWhatsapp": "WhatsApp data when WhatsApp is enabled: message content, phone numbers, delivery status, templates, and metadata required to send and receive WhatsApp messages on behalf of the customer.",
+      "collectInstagram": "Instagram and Messenger data when those Meta integrations are enabled: platform-scoped identifiers, message content, media attachments, and metadata required to operate those channels.",
+      "collectEmailSms": "Email and SMS channel data when those channels are enabled: mailbox or provider settings metadata, message content, recipients, delivery logs, and related operational records.",
+      "collectBilling": "Billing and subscription data: plan package, billing cycle, payable amounts, invoices, receipts, payment method labels, checkout session metadata, and company access status (for example Active, Trial, or Suspended).",
+      "collectTechnical": "Technical, device, and log information: IP address, browser type, approximate location derived from IP, timestamps, session signals, and diagnostic logs used to operate, secure, and troubleshoot the service.",
       "useTitle": "How we use information",
       "useIntro": "We use personal information only as needed to provide ValueOR and the features a customer has enabled:",
-      "useOperate": "Provide and operate ValueOR, including accounts, companies, billing-related administration, and platform reliability.",
-      "useCrm": "Support CRM and customer communication, such as records, tickets, bookings, and team inboxes.",
-      "useAi": "Power AI and automation features that a customer enables, such as workflow replies, extraction, routing, and knowledge search, using the content required for that feature.",
-      "useMessaging": "Operate messaging integrations (including WhatsApp and Instagram) so customers can receive and send messages they have authorized.",
-      "useSecurity": "Security, troubleshooting, abuse prevention, and service improvement, including diagnostics and quality monitoring that do not involve selling personal data.",
+      "useOperate": "Provide and operate ValueOR: authentication, company workspaces, multi-tenant isolation, reliability, and support.",
+      "useCrm": "Support CRM and customer operations: records, tickets, pipelines, bookings, team inboxes, and reporting surfaces the customer is entitled to use.",
+      "useAi": "Power AI and automation features the customer enables (drafts, routing, extraction, knowledge search, AI employees), using only the content required for that feature.",
+      "useMessaging": "Operate omnichannel messaging so customers can receive and send authorized messages on channels they have connected.",
+      "useBilling": "Administer subscriptions and payments: renewals, invoices, receipts, payment confirmation, and enforcing workspace access when a company subscription is unpaid or expired.",
+      "useSecurity": "Security, troubleshooting, abuse prevention, auditability, and service improvement — without selling personal data.",
+      "tenancyTitle": "Multi-tenant isolation and access control",
+      "tenancyBody": "ValueOR is built as a multi-tenant system. Company data is scoped to that company’s workspace. Authorized users see only what their company membership and role permissions allow. Super-administrators of the platform may access company context only as needed to operate and support the service. When a company’s subscription ends and company access is suspended, workspace business data is locked for tenant users until renewal; limited billing and account surfaces needed to renew may remain available to billing-capable administrators.",
       "metaTitle": "How we process Meta, Instagram, and WhatsApp data",
-      "metaBody": "When a customer connects Meta products (including Instagram messaging and WhatsApp), ValueOR processes that data as a service provider for the customer’s business use of ValueOR.",
-      "metaEnabledOnly": "We process Instagram, WhatsApp, and other Meta platform data only to provide the features the customer has enabled, such as receiving messages, sending authorized replies, running configured automations, and displaying conversations in the ValueOR inbox.",
+      "metaBody": "When a customer connects Meta products (including Instagram messaging, Messenger, and WhatsApp), ValueOR processes that data as a service provider for the customer’s business use of ValueOR.",
+      "metaEnabledOnly": "We process Instagram, WhatsApp, Messenger, and related Meta platform data only to provide the features the customer has enabled — receiving messages, sending authorized replies, running configured automations, and displaying conversations in ValueOR.",
       "metaNoSell": "We do not sell personal information.",
       "metaNoAds": "We do not use customer message content for unrelated advertising, and we do not use WhatsApp or Instagram message content to build advertising profiles or to advertise to people on Meta products.",
       "providersTitle": "Third-party service providers",
       "providersIntro": "We use service providers to operate ValueOR. They process data only as needed to provide their services to us:",
-      "providersMeta": "Meta, Instagram, and WhatsApp APIs, to send and receive messages and related metadata when those integrations are enabled.",
-      "providersAi": "AI and API providers, where a customer uses AI, automation, or related features that require a model or API call.",
-      "providersCloud": "Cloud, database, and infrastructure providers that host the application, store data, and provide logging, email, or similar operational services.",
-      "providersLimit": "These providers are permitted to process personal data only as needed to provide ValueOR, subject to their agreements with us and applicable law.",
+      "providersMeta": "Meta, Instagram, WhatsApp, and Messenger APIs to send and receive messages and related metadata when those integrations are enabled.",
+      "providersAi": "AI and API providers where a customer uses AI, automation, translation, or related features that require a model or API call.",
+      "providersPayments": "Payment and checkout providers (and sandbox processors in non-production environments) to collect subscription payments and confirm settlement.",
+      "providersCloud": "Cloud, database, email, and infrastructure providers that host the application, store data, and provide logging or operational services.",
+      "providersLimit": "These providers may process personal data only as needed to provide ValueOR, subject to their agreements with us and applicable law.",
       "retentionTitle": "Data retention",
-      "retentionBody": "We retain personal information for as long as needed to provide ValueOR, comply with legal obligations, resolve disputes, and enforce agreements. Customer workspace data is generally retained for the life of the customer account unless the customer deletes it sooner or a valid deletion request is completed. Technical logs are kept for a limited period needed for security and operations. After deletion or account closure, residual copies may remain in backups for a limited time until those backups expire.",
+      "retentionBody": "We retain personal information for as long as needed to provide ValueOR, comply with legal obligations, resolve disputes, and enforce agreements. Customer workspace data is generally retained for the life of the customer account unless the customer deletes it sooner or a valid deletion request is completed. Billing records may be retained longer where required for tax, accounting, or dispute resolution. Technical logs are kept for a limited period needed for security and operations. After deletion or account closure, residual copies may remain in backups for a limited time until those backups expire.",
       "securityTitle": "Data security",
-      "securityBody": "We use administrative, technical, and organizational measures designed to protect personal information, including access controls, encryption in transit, and least-privilege practices. No method of transmission or storage is completely secure, and we cannot guarantee absolute security.",
+      "securityBody": "We use administrative, technical, and organizational measures designed to protect personal information, including authentication, role-based access control, tenant scoping, encryption in transit, and least-privilege practices. No method of transmission or storage is completely secure, and we cannot guarantee absolute security.",
       "deletionTitle": "User and customer data deletion",
-      "deletionBody": "Authorized ValueOR users can delete records they control inside the product where those controls exist. Individuals and customers may also request deletion of ValueOR-related personal data. Instructions are published on our Data Deletion page at /data-deletion. We will review requests and delete or de-identify personal data we control, except where we must retain information for legal, security, or operational reasons.",
+      "deletionBody": "Authorized ValueOR users can delete records they control inside the product where those controls exist. Individuals and customers may also request deletion of ValueOR-related personal data. Instructions are published on our Data Deletion page. We will review requests and delete or de-identify personal data we control, except where we must retain information for legal, security, billing, or operational reasons.",
       "rightsTitle": "User rights and privacy requests",
       "rightsBody": "Depending on your location, you may have rights to access, correct, delete, or restrict processing of your personal information, or to object to certain processing. You may submit a request using the privacy contact email on this page. We may need to verify your identity and the relationship of the request to a ValueOR customer account before completing it. If you are an end customer of a business that uses ValueOR, we may direct you to that business when they are the data controller.",
       "cookiesTitle": "Cookies and technical data",
@@ -15686,43 +16272,61 @@
     },
     "dataDeletion": {
       "title": "ValueOR Data Deletion",
-      "howTitle": "How to request deletion of your personal data",
-      "howBody": "You can request deletion of personal data that ValueOR holds about you in connection with a ValueOR account, a customer workspace, or messaging integrations such as WhatsApp and Instagram. You do not need to sign in to submit a request. Email us from an address we can use to verify the request, and include:",
+      "scopeTitle": "What this page covers",
+      "scopeBody": "Use this page to request deletion of personal data that ValueOR holds in connection with the ValueOR platform. Depending on your relationship to a company workspace, a request may involve:",
+      "scopeAccount": "A user account, profile, or login identity.",
+      "scopeWorkspace": "CRM or operations records linked to you (for example customer, ticket, booking, or related history) that ValueOR controls or can process on instruction.",
+      "scopeChannels": "Messaging data associated with WhatsApp, Instagram/Messenger, email, or SMS identifiers you provide.",
+      "scopeAi": "AI or automation artifacts that still contain your personal information, where those records are retained in ValueOR.",
+      "howTitle": "How to request deletion",
+      "howBody": "You do not need to sign in to submit a request. Email us from an address we can use to verify the request, and include:",
       "includeName": "Your full name.",
       "includeEmail": "The email address or phone number associated with your ValueOR use, if any.",
-      "includeCompany": "The company or business name, if you interacted with a ValueOR customer.",
-      "includeChannel": "Any WhatsApp number, Instagram username, or other messaging identifier we should search.",
-      "includeDetails": "A short description of the data you want deleted (for example: your user account, conversation history, or customer record).",
+      "includeCompany": "The company or business name if you interacted with a ValueOR customer workspace.",
+      "includeChannel": "Any WhatsApp number, Instagram username, email address, SMS number, or other messaging identifier we should search.",
+      "includeDetails": "A short description of what you want deleted (for example: user account, conversation history, customer record, or all personal data you can identify).",
       "requestTitle": "Submit a deletion request",
-      "requestBody": "There is no self-serve deletion API on this page. Send an email to {{email}} using the button below or your own email client. Use the subject line “ValueOR data deletion request” so we can route it correctly.",
+      "requestBody": "There is no anonymous self-serve wipe of an entire production workspace from this public page. Send an email to {{email}} using the button below or your own email client. Use the subject line “ValueOR data deletion request” so we can route it correctly.",
       "requestCta": "Email a deletion request",
       "emailLabel": "Privacy contact email",
       "emailSubject": "ValueOR data deletion request",
       "afterTitle": "What happens after you request deletion",
-      "afterBody": "We will review the request, verify it where needed, and delete or de-identify personal data we control, typically within 30 days unless a longer period is required by law or the request is complex. We may retain limited information when we must do so for security, dispute resolution, legal compliance, or backup rotation. If a business customer of ValueOR is the controller of your data, we may need that customer’s confirmation or we may refer you to them.",
+      "afterBody": "We will review the request, verify it where needed, and delete or de-identify personal data we control, typically within 30 days unless a longer period is required by law or the request is complex. We may retain limited information when we must do so for security, dispute resolution, tax or billing compliance, legal obligations, or backup rotation.",
+      "controllerTitle": "When a business customer is the controller",
+      "controllerBody": "If a business customer of ValueOR is the controller of your data (for example you are their end customer or their employee), we may need that customer’s confirmation, or we may refer you to them to exercise your rights through their organization. ValueOR processes that workspace data to provide the product to the customer under our Terms and Privacy Policy.",
       "relatedTitle": "Related policies",
       "relatedBody": "Deletion requests are handled under our"
     },
     "terms": {
       "title": "ValueOR Terms of Service",
       "agreementTitle": "Agreement",
-      "agreementBody": "These Terms of Service (“Terms”) govern access to and use of ValueOR, an AI-powered CRM and operations platform. By creating an account or using ValueOR, you agree to these Terms on behalf of yourself and, if applicable, the company you represent.",
+      "agreementBody": "These Terms of Service (“Terms”) govern access to and use of ValueOR, a multi-tenant Software Business Solutions platform for CRM, omnichannel operations, AI-assisted workflows, and subscription billing. By creating an account or using ValueOR, you agree to these Terms on behalf of yourself and, if applicable, the company you represent.",
       "serviceTitle": "The service",
-      "serviceBody": "ValueOR provides business software that may include:",
-      "serviceCrm": "CRM records for customers, tickets, bookings, and related workspace tools.",
-      "serviceMessaging": "Optional messaging integrations, including WhatsApp and Instagram, which depend on those platforms remaining available and on the customer completing required setup.",
-      "serviceAi": "Optional AI and automation features that process customer-configured content to assist operations.",
-      "serviceBooking": "Scheduling, booking, and related customer-facing pages where the customer enables them.",
+      "serviceBody": "ValueOR provides business software that may include, depending on package entitlements and customer configuration:",
+      "serviceCrm": "CRM and workspace tools for customers, tickets, leads, opportunities, quotes, invoices, tasks, and related records.",
+      "serviceMessaging": "Omnichannel messaging integrations — WhatsApp, Instagram/Messenger, email, and SMS — which depend on those providers remaining available and on the customer completing required setup and compliance.",
+      "serviceAi": "Optional AI employees, drafts, translation, knowledge, and automation features that process customer-configured content to assist operations.",
+      "serviceBooking": "Scheduling, bookings, and related customer-facing experiences where the customer enables them.",
+      "serviceOrg": "Organization structure, branches, roles, and permission-based access control for company users.",
+      "serviceBilling": "Subscription plans, monthly or yearly billing cycles, online checkout, invoices, receipts, and access enforcement when a subscription is unpaid or expired.",
+      "subscriptionTitle": "Subscriptions, payment, and access lock",
+      "subscriptionBody": "ValueOR is offered as a paid SaaS subscription unless a free package or approved trial applies. Commercial access depends on a valid subscription and company approval where required.",
+      "subscriptionPlans": "Packages and billing cycles (monthly or yearly) are assigned for the company. Online checkout locks the server-resolved payable amount for that company.",
+      "subscriptionRenew": "Company administrators or users with billing self-manage permissions may renew or pay through ValueOR’s billing surfaces and supported payment methods.",
+      "subscriptionLock": "If a company does not renew and the payment window ends, ValueOR may suspend company access. While suspended, tenant users cannot use the workspace or business data; billing-capable administrators may still access renewal and payment flows.",
+      "subscriptionRestore": "After successful payment settlement, subscription and company access are restored according to ValueOR’s billing systems. Administrative suspensions unrelated to unpaid recovery may require platform operator action.",
       "accountsTitle": "Accounts and customer responsibilities",
-      "accountsBody": "You are responsible for the accuracy of account information, for keeping credentials confidential, and for activity under your account. Customers are responsible for the personal data they enter into ValueOR, for obtaining any consents required to message their contacts, and for complying with Meta, WhatsApp, Instagram, and other platform policies when they enable those integrations.",
+      "accountsBody": "You are responsible for the accuracy of account information, for keeping credentials confidential, and for activity under your account. Customers are responsible for the personal data they enter into ValueOR, for obtaining any consents required to message their contacts, for configuring channels lawfully, and for complying with Meta, WhatsApp, Instagram, email, SMS, and other platform policies when they enable those integrations.",
+      "accessTitle": "Roles, permissions, and tenant boundaries",
+      "accessBody": "Access inside a company workspace is controlled by roles and permissions. Users must not attempt to access another company’s data. Features may also be limited by package entitlements. Misuse of elevated permissions, credential sharing, or attempts to bypass subscription or tenant controls is prohibited.",
       "customerDataTitle": "Customer data",
-      "customerDataBody": "As between you and ValueOR, the business customer retains ownership of customer content submitted to the service. ValueOR processes that content to provide the product. You grant ValueOR a limited license to host, copy, transmit, and display that content solely to operate ValueOR and the features you enable.",
+      "customerDataBody": "As between you and ValueOR, the business customer retains ownership of customer content submitted to the service. ValueOR processes that content to provide the product. You grant ValueOR a limited license to host, copy, transmit, display, and process that content solely to operate ValueOR and the features you enable, including billing, security, and support.",
       "integrationsTitle": "Messaging and third-party platforms",
-      "integrationsBody": "WhatsApp, Instagram, and other third-party services are provided by those companies, not by ValueOR. Their availability, policies, and APIs may change. ValueOR is not responsible for outages, policy enforcement, or account restrictions imposed by Meta or other providers. Use of those integrations must comply with their terms as well as these Terms.",
+      "integrationsBody": "WhatsApp, Instagram, Messenger, email providers, SMS providers, payment processors, and other third-party services are provided by those companies, not by ValueOR. Their availability, policies, and APIs may change. ValueOR is not responsible for outages, policy enforcement, or account restrictions imposed by Meta or other providers. Use of those integrations must comply with their terms as well as these Terms.",
       "acceptableTitle": "Acceptable use",
-      "acceptableBody": "You may not misuse ValueOR, attempt unauthorized access, interfere with the service, use it to send spam or unlawful messages, or use WhatsApp, Instagram, or other channels in violation of applicable law or platform rules. We may suspend access if we reasonably believe these Terms or the law are being violated.",
+      "acceptableBody": "You may not misuse ValueOR, attempt unauthorized access, interfere with the service, use it to send spam or unlawful messages, scrape or exfiltrate data without authorization, or use messaging channels in violation of applicable law or platform rules. We may suspend access if we reasonably believe these Terms, a subscription requirement, or the law are being violated.",
       "availabilityTitle": "Availability and changes",
-      "availabilityBody": "We aim to keep ValueOR available but do not guarantee uninterrupted operation. We may modify features, including messaging integrations, as the product and third-party platforms evolve. We may also update these Terms; the “Last updated” date will change when we do.",
+      "availabilityBody": "We aim to keep ValueOR available but do not guarantee uninterrupted operation. We may modify features, including messaging integrations and AI capabilities, as the product and third-party platforms evolve. We may also update these Terms; the “Last updated” date will change when we do.",
       "liabilityTitle": "Disclaimers and limitation of liability",
       "liabilityBody": "ValueOR is provided on an “as is” and “as available” basis. To the fullest extent permitted by law, we disclaim warranties of merchantability, fitness for a particular purpose, and non-infringement, and we are not liable for indirect, incidental, special, consequential, or lost-profit damages arising from use of the service or third-party platforms.",
       "privacyTitle": "Privacy",

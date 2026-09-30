@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AUTH_CONTROL_CLASS } from "@/lib/auth/auth-field-styles";
 import { resolveAuthErrorKey } from "@/lib/auth-errors";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import { CompanyAcquisitionSourceField } from "@/components/companies/company-acquisition-source-field";
+import { OnboardingPhoneField } from "@/components/companies/onboarding-phone-field";
 import { persistPreferredLanguage } from "@/lib/i18n/persist-preferred-language";
 import { isAppLanguage } from "@/lib/i18n/resolve-app-language";
 import {
@@ -29,8 +31,12 @@ import {
   emptyCompanyOnboardingValues,
   markAwaitingCompanyMembership,
   markCompanyOnboardingCompleted,
+  ONBOARDING_PHONE_DEFAULT_REGION,
+  resolveOnboardingPhoneE164,
   savePendingCompanyOnboarding,
+  syncOwnerFromAccount,
   validateCompanyOnboardingStep,
+  validateOnboardingPhoneInput,
   type CompanyOnboardingFieldErrors,
   type CompanyOnboardingValues,
 } from "@/lib/companies/onboarding";
@@ -60,9 +66,10 @@ type AccountDraft = {
   email: string;
   password: string;
   phone: string;
+  phoneRegion: string;
 };
 
-type AccountFieldErrors = Partial<Record<keyof AccountDraft, string>>;
+type AccountFieldErrors = Partial<Record<keyof AccountDraft | "phoneRegion", string>>;
 
 function RequiredMark() {
   return <span className="text-destructive"> *</span>;
@@ -126,8 +133,14 @@ function validateAccountStep(account: AccountDraft): AccountFieldErrors {
   const errors: AccountFieldErrors = {};
   if (!account.fullName.trim()) errors.fullName = "required";
   if (!account.jobTitle.trim()) errors.jobTitle = "required";
-  if (!account.phone.trim()) errors.phone = "required";
-  else if (account.phone.trim().length > 40) errors.phone = "max";
+  const phoneCheck = validateOnboardingPhoneInput({
+    phone: account.phone,
+    region: account.phoneRegion || ONBOARDING_PHONE_DEFAULT_REGION,
+    required: true,
+  });
+  if (phoneCheck.code === "empty") errors.phone = "required";
+  else if (phoneCheck.code === "phone_region_required") errors.phone = "phoneRegionRequired";
+  else if (phoneCheck.code !== "ok") errors.phone = "invalidPhone";
   if (!account.email.trim()) errors.email = "required";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email.trim())) {
     errors.email = "emailInvalid";
@@ -163,7 +176,17 @@ function accountErrorMessage(
     }
     return translate(`companyOnboarding.validation.${code}`, { defaultValue: code });
   }
-  if (field === "phone") {
+  if (field === "phone" || field === "phoneRegion") {
+    if (code === "invalidPhone") {
+      return translate("companyOnboarding.validation.invalidPhone", {
+        defaultValue: translate("forms.customer.invalidPhone"),
+      });
+    }
+    if (code === "phoneRegionRequired") {
+      return translate("companyOnboarding.validation.phoneRegionRequired", {
+        defaultValue: translate("forms.customer.phoneRegionRequired"),
+      });
+    }
     return translate(`companyOnboarding.validation.${code}`, {
       defaultValue: translate("companyOnboarding.validation.required"),
     });
@@ -171,27 +194,11 @@ function accountErrorMessage(
   return translate(`companyOnboarding.validation.${code}`, { defaultValue: code });
 }
 
-function syncOwnerFromAccount(
+function syncFromAccount(
   values: CompanyOnboardingValues,
   account: AccountDraft,
 ): CompanyOnboardingValues {
-  const { first, last } = splitFullName(account.fullName);
-  const displayName =
-    values.ownerDisplayName.trim() ||
-    account.fullName.trim() ||
-    buildOwnerDisplayName(first, last, account.email);
-  return {
-    ...values,
-    ownerFirstName: first,
-    ownerLastName: last,
-    ownerDisplayName: displayName,
-    ownerEmail: account.email.trim(),
-    ownerPhone:
-      account.phone.trim() || values.ownerPhone.trim() || values.contactPhone.trim(),
-    ownerJobTitle: account.jobTitle.trim() || "Owner",
-    contactEmail: values.contactEmail.trim() || account.email.trim(),
-    contactPhone: values.contactPhone.trim() || account.phone.trim(),
-  };
+  return syncOwnerFromAccount(values, account, splitFullName, buildOwnerDisplayName);
 }
 
 export default function Register() {
@@ -211,6 +218,7 @@ export default function Register() {
     email: "",
     password: "",
     phone: "",
+    phoneRegion: ONBOARDING_PHONE_DEFAULT_REGION,
   });
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -220,6 +228,7 @@ export default function Register() {
     email: "",
     password: "",
     phone: "",
+    phoneRegion: ONBOARDING_PHONE_DEFAULT_REGION,
   });
   const [accountAttempted, setAccountAttempted] = useState(false);
   const [accountErrors, setAccountErrors] = useState<AccountFieldErrors>({});
@@ -305,7 +314,7 @@ export default function Register() {
         scrollToFirstError(Object.keys(errors)[0]);
         return;
       }
-      setValues((prev) => syncOwnerFromAccount(prev, accountRef.current));
+      setValues((prev) => syncFromAccount(prev, accountRef.current));
       setStepIndex(1);
       return;
     }
@@ -337,7 +346,7 @@ export default function Register() {
       }
 
       for (const checkStep of ["company", "business", "owner"] as const) {
-        const synced = syncOwnerFromAccount(values, accountRef.current);
+        const synced = syncFromAccount(values, accountRef.current);
         const errors = validateCompanyOnboardingStep(checkStep, synced);
         if (Object.keys(errors).length > 0) {
           setValues(synced);
@@ -350,8 +359,14 @@ export default function Register() {
         }
       }
 
-      const synced = syncOwnerFromAccount(values, accountRef.current);
+      const synced = syncFromAccount(values, accountRef.current);
       const payload = buildCompanyOnboardingPayload(synced, { mode: "first_time" });
+
+      const accountPhoneE164 =
+        resolveOnboardingPhoneE164(
+          accountRef.current.phone,
+          accountRef.current.phoneRegion,
+        ) ?? undefined;
 
       const { error, needsEmailConfirmation, session: signedInSession } = await signUp(
         accountRef.current.email.trim(),
@@ -359,7 +374,7 @@ export default function Register() {
         {
           fullName: accountRef.current.fullName.trim(),
           jobTitle: accountRef.current.jobTitle.trim() || "Owner",
-          phone: accountRef.current.phone.trim() || synced.ownerPhone.trim() || undefined,
+          phone: accountPhoneE164 || synced.ownerPhone.trim() || undefined,
           preferredLanguage: i18n.language,
         },
       );
@@ -629,26 +644,17 @@ export default function Register() {
               />
             </div>
             <div>
-              <Label htmlFor="reg-phone">
-                {t("companyOnboarding.fields.ownerPhone")}
-                <RequiredMark />
-              </Label>
-              <Input
+              <OnboardingPhoneField
                 id="reg-phone"
-                className={cn(
-                  "mt-1.5",
-                  AUTH_CONTROL_CLASS,
-                  accountErrors.phone && "border-destructive focus-visible:ring-destructive/40",
-                )}
-                value={account.phone}
-                onChange={(event) => patchAccount({ phone: event.target.value })}
-                onBlur={() => validateAccountField("phone")}
-                placeholder={t("users.form.phonePlaceholder", { defaultValue: "+966…" })}
-                aria-invalid={Boolean(accountErrors.phone)}
-                dir="ltr"
-              />
-              <FieldError
-                message={
+                label={t("companyOnboarding.fields.accountPhone", {
+                  defaultValue: t("companyOnboarding.fields.ownerPhone"),
+                })}
+                required
+                phone={account.phone}
+                region={account.phoneRegion}
+                onPhoneChange={(phone) => patchAccount({ phone })}
+                onRegionChange={(phoneRegion) => patchAccount({ phoneRegion })}
+                errorMessage={
                   accountErrors.phone
                     ? accountErrorMessage("phone", accountErrors.phone, t)
                     : undefined
@@ -864,24 +870,21 @@ export default function Register() {
                 }
               />
             </div>
-            <div>
-              <Label htmlFor="reg-contact-phone">
-                {t("companyOnboarding.fields.contactPhone")}
-                <RequiredMark />
-              </Label>
-              <Input
+            <div className="md:col-span-2 sm:col-span-1">
+              <OnboardingPhoneField
                 id="reg-contact-phone"
-                className={cn("mt-1.5", AUTH_CONTROL_CLASS)}
-                value={values.contactPhone}
-                onChange={(event) => patch({ contactPhone: event.target.value })}
-                dir="ltr"
-              />
-              <FieldError
-                message={
-                  fieldErrors.contactPhone &&
-                  t(`companyOnboarding.validation.${fieldErrors.contactPhone}`, {
-                    defaultValue: fieldErrors.contactPhone,
-                  })
+                label={t("companyOnboarding.fields.contactPhone")}
+                required
+                phone={values.contactPhone}
+                region={values.contactPhoneRegion}
+                onPhoneChange={(contactPhone) => patch({ contactPhone })}
+                onRegionChange={(contactPhoneRegion) => patch({ contactPhoneRegion })}
+                errorMessage={
+                  fieldErrors.contactPhone
+                    ? t(`companyOnboarding.validation.${fieldErrors.contactPhone}`, {
+                        defaultValue: fieldErrors.contactPhone,
+                      })
+                    : undefined
                 }
               />
             </div>
@@ -938,6 +941,36 @@ export default function Register() {
                 className="mt-1.5 min-h-[80px] border-border bg-background text-foreground"
                 value={values.description}
                 onChange={(event) => patch({ description: event.target.value })}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <CompanyAcquisitionSourceField
+                idPrefix="reg-acquisition"
+                value={values.acquisitionSource}
+                subSource={values.acquisitionSubSource}
+                detail={values.acquisitionSourceDetail}
+                onChange={(next) => patch(next)}
+                sourceError={
+                  fieldErrors.acquisitionSource
+                    ? t(`companyOnboarding.validation.${fieldErrors.acquisitionSource}`, {
+                        defaultValue: fieldErrors.acquisitionSource,
+                      })
+                    : undefined
+                }
+                subSourceError={
+                  fieldErrors.acquisitionSubSource
+                    ? t(`companyOnboarding.validation.${fieldErrors.acquisitionSubSource}`, {
+                        defaultValue: fieldErrors.acquisitionSubSource,
+                      })
+                    : undefined
+                }
+                detailError={
+                  fieldErrors.acquisitionSourceDetail
+                    ? t(`companyOnboarding.validation.${fieldErrors.acquisitionSourceDetail}`, {
+                        defaultValue: fieldErrors.acquisitionSourceDetail,
+                      })
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -1149,6 +1182,27 @@ export default function Register() {
                         ? t(`companyOnboarding.industries.${values.industry}`)
                         : "",
                     ],
+                    [
+                      "acquisitionSource",
+                      values.acquisitionSource
+                        ? t(`companyOnboarding.acquisitionSources.${values.acquisitionSource}`)
+                        : "",
+                    ],
+                    ...(values.acquisitionSource === "social_media" && values.acquisitionSubSource
+                      ? ([
+                          [
+                            "acquisitionSocialPlatform",
+                            values.acquisitionSubSource === "other"
+                              ? values.acquisitionSourceDetail
+                              : t(
+                                  `companyOnboarding.acquisitionSocialPlatforms.${values.acquisitionSubSource}`,
+                                ),
+                          ],
+                        ] as const)
+                      : []),
+                    ...(values.acquisitionSource === "other"
+                      ? ([["acquisitionSourceDetail", values.acquisitionSourceDetail]] as const)
+                      : []),
                     ["contactEmail", values.contactEmail],
                     ["contactPhone", values.contactPhone],
                   ],

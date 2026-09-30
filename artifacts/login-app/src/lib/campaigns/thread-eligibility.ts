@@ -70,6 +70,8 @@ export class CampaignThreadEligibilityResolver {
       };
     }
 
+    let lastRejectReason: string | null = null;
+
     for (const conversation of convRows) {
       if (conversation.company_id !== input.companyId) continue;
       if (conversation.customer_id !== input.customerId) continue;
@@ -86,25 +88,29 @@ export class CampaignThreadEligibilityResolver {
         .order("last_inbound_at", { ascending: false });
 
       if (sessionError) throw new Error(sessionError.message);
-      const sessionRows = (sessions as SessionRow[] | null) ?? [];
+      const sessionRows = ((sessions as SessionRow[] | null) ?? [])
+        // Null last_inbound_at last — Postgres NULLS FIRST would otherwise pick dead sessions.
+        .slice()
+        .sort((a, b) => {
+          const aMs = a.last_inbound_at ? Date.parse(a.last_inbound_at) : Number.NEGATIVE_INFINITY;
+          const bMs = b.last_inbound_at ? Date.parse(b.last_inbound_at) : Number.NEGATIVE_INFINITY;
+          return bMs - aMs;
+        });
 
       for (const session of sessionRows) {
         if (session.company_id !== input.companyId) {
-          return { eligible: false, reason: "session_company_mismatch" };
+          lastRejectReason = "session_company_mismatch";
+          continue;
         }
         const externalThreadId = session.external_thread_id?.trim() ?? "";
         if (!externalThreadId) {
-          return {
-            eligible: false,
-            reason: input.channel === "instagram" ? "missing_igsid" : "missing_psid",
-          };
+          lastRejectReason = input.channel === "instagram" ? "missing_igsid" : "missing_psid";
+          continue;
         }
 
         if (!isWithinMessagingResponseWindow(session.last_inbound_at, this.nowMs())) {
-          return {
-            eligible: false,
-            reason: "messaging_window_not_eligible",
-          };
+          lastRejectReason = "messaging_window_not_eligible";
+          continue;
         }
 
         return {
@@ -124,7 +130,7 @@ export class CampaignThreadEligibilityResolver {
 
     return {
       eligible: false,
-      reason: `no_active_${input.channel}_session`,
+      reason: lastRejectReason ?? `no_active_${input.channel}_session`,
     };
   }
 }

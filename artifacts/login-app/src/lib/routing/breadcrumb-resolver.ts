@@ -91,8 +91,12 @@ function resolveNestedSegments(
   const registry = registryMap[sectionId];
   if (!registry) {
     const parts = sub.split("/").filter(Boolean);
-    if (parts.length === 1 && isUuidSegment(parts[0]!)) {
+    if (parts.length >= 1 && isUuidSegment(parts[0]!)) {
       segments.push({ labelKey: "appShell.breadcrumbs.detail" });
+      if (parts.length >= 2 && parts[1]) {
+        // Keep tab segment as a readable current crumb (e.g. activity / invoices).
+        segments.push({ label: parts[1], isCurrent: true });
+      }
     }
     return segments;
   }

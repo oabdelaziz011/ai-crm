@@ -14,6 +14,18 @@ export default function DataDeletionPage() {
 
   return (
     <LegalPageLayout title={t("legal.dataDeletion.title")}>
+      <LegalSection title={t("legal.dataDeletion.scopeTitle")}>
+        <p>{t("legal.dataDeletion.scopeBody")}</p>
+        <LegalList
+          items={[
+            t("legal.dataDeletion.scopeAccount"),
+            t("legal.dataDeletion.scopeWorkspace"),
+            t("legal.dataDeletion.scopeChannels"),
+            t("legal.dataDeletion.scopeAi"),
+          ]}
+        />
+      </LegalSection>
+
       <LegalSection title={t("legal.dataDeletion.howTitle")}>
         <p>{t("legal.dataDeletion.howBody")}</p>
         <LegalList
@@ -44,6 +56,10 @@ export default function DataDeletionPage() {
 
       <LegalSection title={t("legal.dataDeletion.afterTitle")}>
         <p>{t("legal.dataDeletion.afterBody")}</p>
+      </LegalSection>
+
+      <LegalSection title={t("legal.dataDeletion.controllerTitle")}>
+        <p>{t("legal.dataDeletion.controllerBody")}</p>
       </LegalSection>
 
       <LegalSection title={t("legal.dataDeletion.relatedTitle")}>

@@ -219,6 +219,11 @@
       "icon": "📊",
       "order": 46,
       "label": "Executive"
+    },
+    "webPresence": {
+      "icon": "🌐",
+      "order": 47,
+      "label": "Web Presence"
     }
   },
   "codes": {
@@ -1571,6 +1576,16 @@
       "name": "Read Workflow",
       "description": "View workflow executions.",
       "group": "automation"
+    },
+    "web_presence.manage": {
+      "name": "Manage Web Presence",
+      "description": "Configure the Business Page and Web Chat widget settings.",
+      "group": "webPresence"
+    },
+    "web_presence.view": {
+      "name": "View Web Presence",
+      "description": "View the Business Page and Web Chat widget configuration.",
+      "group": "webPresence"
     },
     "workspace.view": {
       "name": "Access Workspace",

@@ -123,8 +123,8 @@ export class NotificationService {
     return this.repository.getById(companyId, id);
   }
 
-  getUnreadCount(companyId: string): Promise<number> {
-    return this.repository.getUnreadCount(companyId);
+  getUnreadCount(companyId: string, userId?: string | null): Promise<number> {
+    return this.repository.getUnreadCount(companyId, userId);
   }
 
   markRead(companyId: string, id: string): Promise<void> {
@@ -135,8 +135,8 @@ export class NotificationService {
     return this.repository.markUnread(companyId, id);
   }
 
-  markAllRead(companyId: string): Promise<void> {
-    return this.repository.markAllRead(companyId);
+  markAllRead(companyId: string, userId?: string | null): Promise<void> {
+    return this.repository.markAllRead(companyId, userId);
   }
 
   markManyRead(companyId: string, ids: string[]): Promise<void> {

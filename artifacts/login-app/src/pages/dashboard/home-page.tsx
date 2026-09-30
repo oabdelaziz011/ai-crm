@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import { useLocation } from "wouter";
 import {
   AlertCircle,
@@ -19,8 +20,11 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/auth-context";
 import { DashboardTrialBanner } from "@/components/dashboard/dashboard-trial-banner";
+import { DashboardSubscriptionPaymentBanner } from "@/components/dashboard/dashboard-subscription-payment-banner";
+import { CompanySaasPaymentPanel } from "@/components/company-workspace/company-saas-payment-panel";
 import { useCompanyIdentity } from "@/hooks/company-workspace/use-company-identity";
 import { useCompanySubscription } from "@/hooks/billing/use-company-subscriptions";
+import { useWorkspaceBillingSummary } from "@/hooks/workspace/use-workspace-billing-summary";
 import { useCustomers } from "@/hooks/use-customers";
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
@@ -40,10 +44,13 @@ import {
 import { ExecutiveKpiCard, ExecutiveKpiSkeleton } from "@/components/dashboard/executive/executive-kpi-card";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import {
+  canInitiateCompanyOnlinePayment,
   canUpdateCompany,
   canViewCompanySubscription,
 } from "@/lib/company-workspace/permissions";
 import { resolveTrialBanner } from "@/lib/dashboard/resolve-trial-banner";
+import { resolveSubscriptionPaymentNotice } from "@/lib/dashboard/resolve-subscription-payment-notice";
+import type { CompanySubscription } from "@/lib/billing/types";
 
 const ExecutiveTrendChart = lazy(() =>
   import("@/components/dashboard/executive/executive-trend-chart").then((module) => ({
@@ -86,44 +93,75 @@ import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
 import { cn } from "@/lib/utils";
 
 export function DashboardHomePage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { displayName, company, profile } = useAuth();
   const { identity } = useCompanyIdentity(Boolean(company?.id ?? profile?.company_id));
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const { setCopilotOpen } = useAppShell();
   const companyId = profile?.company_id ?? null;
+  const dateLocale = i18n.language?.startsWith("ar") ? ar : enUS;
   const access = useMemo(
     () => ({ isSuperAdmin, hasPermission }),
     [isSuperAdmin, hasPermission],
   );
   const canSeeTrialBanner =
     canViewCompanySubscription(access) || canUpdateCompany(access);
+  const canPayOnline = canInitiateCompanyOnlinePayment(access);
   const subscriptionQuery = useCompanySubscription(companyId, canSeeTrialBanner);
-  const trialBanner = useMemo(
+  const paymentNotice = useMemo(
     () =>
-      resolveTrialBanner({
+      resolveSubscriptionPaymentNotice({
         canView: canSeeTrialBanner,
         companyStatus: company?.status,
         companySubscriptionStatus: company?.subscription_status,
         companyExpiresAt: company?.subscription_expires_at,
+        suspensionReason: (company as { suspension_reason?: string | null } | null)?.suspension_reason,
         subscriptionStatus: subscriptionQuery.data?.status,
         trialEndsAt: subscriptionQuery.data?.trial_ends_at,
+        nextRenewalAt: subscriptionQuery.data?.next_renewal_at,
         currentPeriodEnd: subscriptionQuery.data?.current_period_end,
+        gracePeriodEndsAt: subscriptionQuery.data?.grace_period_ends_at,
       }),
     [
       canSeeTrialBanner,
-      company?.status,
-      company?.subscription_status,
-      company?.subscription_expires_at,
+      company,
       subscriptionQuery.data?.status,
       subscriptionQuery.data?.trial_ends_at,
+      subscriptionQuery.data?.next_renewal_at,
       subscriptionQuery.data?.current_period_end,
+      subscriptionQuery.data?.grace_period_ends_at,
     ],
   );
+  const billingSummaryQuery = useWorkspaceBillingSummary(
+    Boolean(companyId && canPayOnline && paymentNotice?.showPayCta),
+  );
+  const trialBanner = useMemo(() => {
+    // Prefer the payment notice when it already covers trial urgency (avoid double banners).
+    if (paymentNotice && paymentNotice.phase !== "locked") return null;
+    return resolveTrialBanner({
+      canView: canSeeTrialBanner,
+      companyStatus: company?.status,
+      companySubscriptionStatus: company?.subscription_status,
+      companyExpiresAt: company?.subscription_expires_at,
+      subscriptionStatus: subscriptionQuery.data?.status,
+      trialEndsAt: subscriptionQuery.data?.trial_ends_at,
+      currentPeriodEnd: subscriptionQuery.data?.current_period_end,
+    });
+  }, [
+    paymentNotice,
+    canSeeTrialBanner,
+    company?.status,
+    company?.subscription_status,
+    company?.subscription_expires_at,
+    subscriptionQuery.data?.status,
+    subscriptionQuery.data?.trial_ends_at,
+    subscriptionQuery.data?.current_period_end,
+  ]);
 
   const canViewCustomers = isSuperAdmin || hasPermission("customers.view");
   const canViewBookings = isSuperAdmin || hasPermission("bookings.view");
+  const canViewOperations = isSuperAdmin || hasPermission("operations.read");
   const canViewInvoices = isSuperAdmin || hasPermission("invoices.view");
   const canViewReports = isSuperAdmin || hasPermission("reports.view");
   const canCreateCustomer = isSuperAdmin || hasPermission("customers.create");
@@ -131,7 +169,7 @@ export function DashboardHomePage() {
   const canCreateInvoice = isSuperAdmin || hasPermission("invoices.create");
 
   const customersQuery = useCustomers();
-  const bookingsQuery = useBookings();
+  const bookingsQuery = useBookings({ enabled: canViewBookings || canViewOperations });
   const invoicesQuery = useInvoices();
   const customers = customersQuery.data ?? [];
   const bookings = bookingsQuery.data ?? [];
@@ -232,8 +270,8 @@ export function DashboardHomePage() {
   );
 
   const primaryAction = derivePrimaryAction(
-    metrics.pending,
-    metrics.outstandingCount,
+    canViewOperations ? metrics.pending : 0,
+    canViewInvoices ? metrics.outstandingCount : 0,
     canCreateBooking,
   );
 
@@ -247,13 +285,21 @@ export function DashboardHomePage() {
 
   const comparisonLabel = t("dashboard.home.executive.vsLastMonth");
 
+  const operationsQueuePendingHref = `${getDashboardRouteById("universal-operations").nestedPath}/queue?statusId=st_waiting&datePreset=this_month`;
+
   const kpiDrillDown: Record<ExecutiveKpiId, string> = {
     revenue: getDashboardRouteById("reports").nestedPath,
-    bookings: getDashboardRouteById("universal-operations").nestedPath,
+    bookings: canViewOperations
+      ? getDashboardRouteById("universal-operations").nestedPath
+      : getDashboardRouteById("scheduling").nestedPath,
     customers: getDashboardRouteById("customers").nestedPath,
     outstanding: getDashboardRouteById("invoices").nestedPath,
-    conversion: getDashboardRouteById("universal-operations").nestedPath,
-    utilization: getDashboardRouteById("universal-operations").nestedPath,
+    conversion: canViewOperations
+      ? getDashboardRouteById("universal-operations").nestedPath
+      : getDashboardRouteById("scheduling").nestedPath,
+    utilization: canViewOperations
+      ? getDashboardRouteById("universal-operations").nestedPath
+      : getDashboardRouteById("scheduling").nestedPath,
   };
 
   const kpiDefinitions = useMemo(() => {
@@ -336,7 +382,7 @@ export function DashboardHomePage() {
   ]);
 
   const handlePrimaryAction = () => {
-    if (primaryAction === "pending") setLocation(getDashboardRouteById("universal-operations").nestedPath);
+    if (primaryAction === "pending") setLocation(operationsQueuePendingHref);
     else if (primaryAction === "outstanding") setLocation(getDashboardRouteById("invoices").nestedPath);
     else setBookingModalOpen(true);
   };
@@ -348,7 +394,8 @@ export function DashboardHomePage() {
     || canViewReports
     || canViewBookings
     || canViewCustomers
-    || canViewInvoices;
+    || canViewInvoices
+    || canViewOperations;
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">
@@ -356,13 +403,51 @@ export function DashboardHomePage() {
         <DashboardErrorBanner message={errors.map((e) => e!.message).join(" · ")} />
       )}
 
+      {paymentNotice ? (
+        <DashboardSubscriptionPaymentBanner
+          model={paymentNotice}
+          access={access}
+          paymentPanel={
+            paymentNotice.showPayCta &&
+            canPayOnline &&
+            companyId &&
+            subscriptionQuery.data ? (
+              <CompanySaasPaymentPanel
+                companyId={companyId}
+                subscription={subscriptionQuery.data as CompanySubscription}
+                plan={
+                  (billingSummaryQuery.data?.plan as CompanySubscription["plan"] | null | undefined) ??
+                  subscriptionQuery.data.plan
+                }
+                currency={billingSummaryQuery.data?.currency ?? null}
+                assignedAmount={billingSummaryQuery.data?.next_invoice_amount ?? null}
+                listAmount={billingSummaryQuery.data?.list_price_amount ?? null}
+                onlineCheckoutAllowed={billingSummaryQuery.data?.online_checkout_allowed ?? true}
+                approvalStatus={
+                  billingSummaryQuery.data?.approval_status ??
+                  billingSummaryQuery.data?.company?.approval_status ??
+                  company?.approval_status
+                }
+                payableSource={billingSummaryQuery.data?.payable_source ?? null}
+                discountPercent={billingSummaryQuery.data?.discount_percent ?? null}
+                preApprovalPaid={Boolean(billingSummaryQuery.data?.pre_approval_paid)}
+                paymentPortalState={billingSummaryQuery.data?.payment_portal_state ?? null}
+              />
+            ) : undefined
+          }
+        />
+      ) : null}
       {trialBanner ? <DashboardTrialBanner model={trialBanner} access={access} /> : null}
 
       {/* SECTION 1 — Executive Hero (compact) */}
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium tracking-[0.1em] text-muted-foreground">
-            <span className="uppercase">{format(now, "EEEE, MMM d, yyyy")}</span>
+            <span className="uppercase">
+              {format(now, i18n.language?.startsWith("ar") ? "EEEE، d MMMM yyyy" : "EEEE, MMM d, yyyy", {
+                locale: dateLocale,
+              })}
+            </span>
             {identity?.name && (
               <>
                 <span className="text-border">·</span>
@@ -496,9 +581,9 @@ export function DashboardHomePage() {
             </section>
           )}
 
-          {/* SECTION 4 + 5 — Operations & AI Insight */}
+          {/* SECTION 4 + 5 — Operations & AI Insight (operations.read) */}
+          {canViewOperations && (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-            {canViewBookings && (
               <section className="xl:col-span-2">
                 <div className="mb-3">
                   <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -516,8 +601,8 @@ export function DashboardHomePage() {
                       <MiniRow
                         key={b.id}
                         title={b.customers?.name ?? b.service}
-                        meta={format(new Date(b.booking_date), "h:mm a")}
-                        badge={b.status}
+                        meta={format(new Date(b.booking_date), "p", { locale: dateLocale })}
+                        badge={localizeBookingStatus(t, b.status)}
                       />
                     ))}
                   </OperationsRow>
@@ -526,13 +611,15 @@ export function DashboardHomePage() {
                     count={operations.pending.length}
                     loading={initialLoad}
                     empty={t("dashboard.home.executive.noPending")}
+                    onHeaderClick={() => setLocation(operationsQueuePendingHref)}
                   >
                     {operations.pending.slice(0, 3).map((b: Booking) => (
                       <MiniRow
                         key={b.id}
                         title={b.customers?.name ?? b.service}
-                        meta={format(new Date(b.booking_date), "MMM d")}
-                        badge={b.status}
+                        meta={format(new Date(b.booking_date), "PP", { locale: dateLocale })}
+                        badge={localizeBookingStatus(t, b.status)}
+                        onClick={() => setLocation(operationsQueuePendingHref)}
                       />
                     ))}
                   </OperationsRow>
@@ -546,8 +633,8 @@ export function DashboardHomePage() {
                       <MiniRow
                         key={b.id}
                         title={b.customers?.name ?? b.service}
-                        meta={format(new Date(b.booking_date), "h:mm a")}
-                        badge="Waiting"
+                        meta={format(new Date(b.booking_date), "p", { locale: dateLocale })}
+                        badge={t("dashboard.home.executive.bookingStatus.waiting")}
                       />
                     ))}
                   </OperationsRow>
@@ -561,16 +648,15 @@ export function DashboardHomePage() {
                       <MiniRow
                         key={b.id}
                         title={b.customers?.name ?? b.service}
-                        meta={format(new Date(b.booking_date), "h:mm a")}
-                        badge={b.status}
+                        meta={format(new Date(b.booking_date), "p", { locale: dateLocale })}
+                        badge={localizeBookingStatus(t, b.status)}
                       />
                     ))}
                   </OperationsRow>
                 </DashboardCard>
               </section>
-            )}
 
-            <section className={cn(!canViewBookings && "xl:col-span-3")}>
+            <section>
               <div className="mb-3">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   {t("dashboard.home.executive.aiInsightTitle")}
@@ -604,6 +690,7 @@ export function DashboardHomePage() {
               </DashboardCard>
             </section>
           </div>
+          )}
 
           {/* SECTION 6 — Quick Actions */}
           <section>
@@ -684,9 +771,18 @@ export function DashboardHomePage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{item.title}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {t(`dashboard.home.executive.activity.${item.type}`, { status: item.subtitle })}
+                          {t(`dashboard.home.executive.activity.${item.type}`, {
+                            status:
+                              item.type === "booking"
+                                ? localizeBookingStatus(t, item.subtitle)
+                                : item.subtitle,
+                          })}
                           {" · "}
-                          {format(new Date(item.timestamp), "MMM d, h:mm a")}
+                          {format(
+                            new Date(item.timestamp),
+                            i18n.language?.startsWith("ar") ? "d MMM، p" : "MMM d, p",
+                            { locale: dateLocale },
+                          )}
                         </p>
                       </div>
                       <ArrowRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
@@ -715,23 +811,51 @@ export function DashboardHomePage() {
   );
 }
 
+function localizeBookingStatus(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  status: string,
+): string {
+  const key = status.trim().toLowerCase();
+  const map: Record<string, string> = {
+    pending: "dashboard.home.executive.bookingStatus.pending",
+    confirmed: "dashboard.home.executive.bookingStatus.confirmed",
+    cancelled: "dashboard.home.executive.bookingStatus.cancelled",
+    canceled: "dashboard.home.executive.bookingStatus.cancelled",
+    waiting: "dashboard.home.executive.bookingStatus.waiting",
+  };
+  const i18nKey = map[key];
+  return i18nKey ? t(i18nKey) : status;
+}
+
 function OperationsRow({
   label,
   count,
   loading,
   empty,
   children,
+  onHeaderClick,
 }: {
   label: string;
   count: number;
   loading?: boolean;
   empty: string;
-  children: ReactNode;
+  children?: ReactNode;
+  onHeaderClick?: () => void;
 }) {
   return (
     <div className="px-5 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium">{label}</p>
+        {onHeaderClick ? (
+          <button
+            type="button"
+            onClick={onHeaderClick}
+            className="text-start text-sm font-medium text-foreground hover:text-primary hover:underline underline-offset-2"
+          >
+            {label}
+          </button>
+        ) : (
+          <p className="text-sm font-medium">{label}</p>
+        )}
         {loading ? (
           <div className="h-5 w-8 animate-pulse rounded bg-muted" />
         ) : (
@@ -752,20 +876,40 @@ function MiniRow({
   title,
   meta,
   badge,
+  onClick,
 }: {
   title: string;
   meta: string;
   badge: string;
+  onClick?: () => void;
 }) {
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2">
+  const content = (
+    <>
       <div className="min-w-0">
         <p className="truncate text-xs font-medium">{title}</p>
         <p className="text-[11px] text-muted-foreground">{meta}</p>
       </div>
-      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground">
         {badge}
       </span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2">
+      {content}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "@/components/app-shell";
 import { FloatingAiLauncher } from "@/components/floating-ai/floating-ai-launcher";
 import { useCompanyBrandCenter } from "@/hooks/company-workspace/use-company-brand-center";
+import { useInboundChannelAlerts } from "@/hooks/notifications/use-inbound-channel-alerts";
 import { preloadLikelyNextRoute } from "@/lib/bundle/route-preloaders";
 import { sectionIdFromNestedPath } from "@/config/dashboard-route-registry";
 
@@ -40,6 +41,7 @@ function DashboardLayoutInner({ children }: DashboardLayoutProps) {
   const isRtl = i18n.dir() === "rtl";
   const [floatingAiActive, setFloatingAiActive] = useState(false);
   const activateFloatingAi = useCallback(() => setFloatingAiActive(true), []);
+  useInboundChannelAlerts(companyId);
   const activeSectionId = sectionIdFromNestedPath(location);
   const isOmnichannelConsole = /^\/omnichannel(?:\/|$)/i.test(location);
   const isCustomerWorkspace = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i.test(location);

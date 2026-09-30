@@ -13,6 +13,7 @@ import {
   resolveValueorEnv,
   VALUEOR_ENV_LOCAL,
 } from "../../../scripts/lib/env-mode.mjs";
+import { resolveLocalBrowserApiOrigin } from "../../../scripts/lib/local-integration.mjs";
 
 const loginAppRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projectRoot = resolve(loginAppRoot, "../..");
@@ -59,8 +60,9 @@ const viteEnv = {
     source.SUPABASE_PUBLISHABLE_KEY ||
     source.SUPABASE_ANON_KEY,
   VITE_API_SERVER_URL:
-    source.VITE_API_SERVER_URL ||
-    (mode === VALUEOR_ENV_LOCAL ? "http://localhost:3000" : undefined),
+    mode === VALUEOR_ENV_LOCAL
+      ? resolveLocalBrowserApiOrigin(source.VITE_API_SERVER_URL)
+      : source.VITE_API_SERVER_URL || undefined,
   VITE_APP_ORIGIN:
     source.VITE_APP_ORIGIN ||
     (mode === VALUEOR_ENV_LOCAL ? "http://localhost:5173" : source.FRONTEND_ORIGIN) ||

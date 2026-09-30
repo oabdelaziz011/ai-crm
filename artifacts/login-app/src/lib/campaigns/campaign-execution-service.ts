@@ -444,14 +444,23 @@ export class MarketingCampaignService {
           else skipped += 1;
           continue;
         }
-        if (
-          (channel === "instagram" || channel === "messenger") &&
-          messagingPresence.get(customer.id)?.has(channel) === true
-        ) {
-          eligible += 1;
-        } else {
-          skipped += 1;
+        if (channel === "instagram" || channel === "messenger") {
+          // Align preview with execute: active session + messaging window required.
+          const hasPresence = messagingPresence.get(customer.id)?.has(channel) === true;
+          if (!hasPresence) {
+            skipped += 1;
+            continue;
+          }
+          const eligibility = await this.threadEligibility.resolveForCustomer({
+            companyId: ctx.companyId,
+            customerId: customer.id,
+            channel,
+          });
+          if (eligibility.eligible) eligible += 1;
+          else skipped += 1;
+          continue;
         }
+        skipped += 1;
       }
 
       byChannel.push({
@@ -539,7 +548,23 @@ export class MarketingCampaignService {
     }
 
     if (campaign.status === "completed") {
-      return this.toExecuteResult(campaign, true);
+      const existingRecipients = await this.repo.listRecipientsForCampaign(campaign.id, ctx.companyId);
+      const hasRetryable = existingRecipients.some(
+        (row) => row.status === "pending" || row.status === "failed",
+      );
+      if (!hasRetryable) {
+        return this.toExecuteResult(campaign, true);
+      }
+      // Premature "completed" (claim race) or partial failures — reclaim and finish remaining work.
+      const reclaimed = await this.repo.tryClaimRunning(campaign.id, ctx.companyId);
+      if (reclaimed) {
+        return this.runRecipients(ctx, reclaimed, true);
+      }
+      const latest = await this.repo.findById(ctx.companyId, campaign.id);
+      if (latest?.status === "running") {
+        return this.runRecipients(ctx, latest, true);
+      }
+      return this.toExecuteResult(latest ?? campaign, true);
     }
 
     if (campaign.status === "running") {
@@ -718,20 +743,29 @@ export class MarketingCampaignService {
 
     const recipients = await this.repo.listRecipientsForCampaign(campaign.id, ctx.companyId);
     const counts = this.repo.recountFromRecipients(recipients);
+    const pendingCount = recipients.filter((row) => row.status === "pending").length;
+    // Never mark completed while work remains pending (claim races / partial batches).
     const finalStatus =
-      recipients.length > 0 &&
-      counts.queued_count === 0 &&
-      counts.sent_count === 0 &&
-      counts.skipped_count === 0 &&
-      counts.failed_count > 0
+      pendingCount > 0
         ? "failed"
-        : "completed";
+        : recipients.length > 0 &&
+            counts.queued_count === 0 &&
+            counts.sent_count === 0 &&
+            counts.skipped_count === 0 &&
+            counts.failed_count > 0
+          ? "failed"
+          : "completed";
 
     const updated = await this.repo.updateCampaign(campaign.id, ctx.companyId, {
       ...counts,
       status: finalStatus,
       completed_at: new Date().toISOString(),
-      error_message: finalStatus === "failed" ? "All recipient channel attempts failed" : null,
+      error_message:
+        pendingCount > 0
+          ? "Campaign finished with pending recipients — re-run to continue"
+          : finalStatus === "failed"
+            ? "All recipient channel attempts failed"
+            : null,
     });
 
     return this.toExecuteResult(updated, reusedExisting, recipients);
@@ -811,7 +845,26 @@ export class MarketingCampaignService {
         customer_id: input.customerId,
         channel: input.channel,
       });
-      if (recipient) input.byKey.set(key, recipient);
+      if (!recipient) {
+        // Unique conflict: another worker inserted this row. Only resume terminal
+        // failures — never steal an in-flight `pending` claim (double-send).
+        const existing = await this.repo.findRecipient(
+          input.campaignId,
+          input.companyId,
+          input.customerId,
+          input.channel,
+        );
+        if (existing) {
+          input.byKey.set(key, existing);
+          if (existing.status === "failed") {
+            recipient = existing;
+          } else {
+            return null;
+          }
+        }
+      } else {
+        input.byKey.set(key, recipient);
+      }
     }
 
     if (!recipient) return null;

@@ -13,6 +13,19 @@ export default function PrivacyPolicyPage() {
         <p>{t("legal.privacy.scopeBody")}</p>
       </LegalSection>
 
+      <LegalSection title={t("legal.privacy.platformTitle")}>
+        <p>{t("legal.privacy.platformBody")}</p>
+        <LegalList
+          items={[
+            t("legal.privacy.platformCrm"),
+            t("legal.privacy.platformOmni"),
+            t("legal.privacy.platformAi"),
+            t("legal.privacy.platformOps"),
+            t("legal.privacy.platformBilling"),
+          ]}
+        />
+      </LegalSection>
+
       <LegalSection title={t("legal.privacy.collectTitle")}>
         <p>{t("legal.privacy.collectIntro")}</p>
         <LegalList
@@ -23,6 +36,8 @@ export default function PrivacyPolicyPage() {
             t("legal.privacy.collectMessages"),
             t("legal.privacy.collectWhatsapp"),
             t("legal.privacy.collectInstagram"),
+            t("legal.privacy.collectEmailSms"),
+            t("legal.privacy.collectBilling"),
             t("legal.privacy.collectTechnical"),
           ]}
         />
@@ -36,9 +51,14 @@ export default function PrivacyPolicyPage() {
             t("legal.privacy.useCrm"),
             t("legal.privacy.useAi"),
             t("legal.privacy.useMessaging"),
+            t("legal.privacy.useBilling"),
             t("legal.privacy.useSecurity"),
           ]}
         />
+      </LegalSection>
+
+      <LegalSection title={t("legal.privacy.tenancyTitle")}>
+        <p>{t("legal.privacy.tenancyBody")}</p>
       </LegalSection>
 
       <LegalSection title={t("legal.privacy.metaTitle")}>
@@ -58,6 +78,7 @@ export default function PrivacyPolicyPage() {
           items={[
             t("legal.privacy.providersMeta"),
             t("legal.privacy.providersAi"),
+            t("legal.privacy.providersPayments"),
             t("legal.privacy.providersCloud"),
             t("legal.privacy.providersLimit"),
           ]}

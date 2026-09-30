@@ -6,15 +6,16 @@ import {
 import {
   customerEmailMatchesEmailSender,
   customerPhoneMatchesWhatsAppSender,
-  resolveTrustedChannelCustomer,
+  normalizeMetaChannelExternalId,
+  resolveOrCreateCustomerFromInbound,
 } from "@workspace/ai-tool-router";
 import type { ChannelCustomerIdentityPort } from "@workspace/channel-platform";
 
 /**
- * Phase 2 / D2 — channel sender → company-scoped CRM identity.
- * WhatsApp: prefers customers.phone_e164; legacy phone variants remain a bridge.
- * Email: exact company-scoped email match only (never phone / never fuzzy).
- * Never Customer360. Never global lookup.
+ * Channel sender → company-scoped CRM identity.
+ * WhatsApp / Email / SMS / Messenger / Instagram:
+ * resolve existing customer, or auto-create once when unknown.
+ * Never Customer360. Never global lookup. Never overwrite first-touch source.
  */
 export function createWebhookChannelCustomerIdentityPort(
   client: SupabaseClient,
@@ -50,6 +51,66 @@ export function createWebhookChannelCustomerIdentityPort(
       phoneE164: typeof data.phone_e164 === "string" ? data.phone_e164 : null,
       email: typeof data.email === "string" ? data.email : null,
     };
+  }
+
+  async function findByChannelExternalId(input: {
+    companyId: string;
+    channelKey: "messenger" | "instagram";
+    externalId: string;
+  }): Promise<{
+    status: "found" | "not_found" | "duplicate";
+    customer?: {
+      id: string;
+      name: string;
+      phone: string | null;
+      phoneE164: string | null;
+      email: string | null;
+    } | null;
+    count?: number;
+  }> {
+    const { data, error } = await client
+      .from("customer_channel_identities")
+      .select("customer_id")
+      .eq("company_id", input.companyId)
+      .eq("channel_key", input.channelKey)
+      .eq("external_id", input.externalId)
+      .limit(3);
+
+    if (error) throw new Error(error.message);
+    const ids = [...new Set((data ?? []).map((row) => String(row.customer_id ?? "").trim()).filter(Boolean))];
+    if (ids.length === 0) return { status: "not_found" };
+    if (ids.length > 1) return { status: "duplicate", count: ids.length };
+
+    const row = await getCustomerById({
+      companyId: input.companyId,
+      customerId: ids[0]!,
+    });
+    if (!row) return { status: "not_found" };
+    return {
+      status: "found",
+      customer: {
+        id: row.id,
+        name: row.name?.trim() || row.id,
+        phone: row.phone,
+        phoneE164: row.phoneE164,
+        email: row.email,
+      },
+    };
+  }
+
+  async function linkChannelIdentity(input: {
+    companyId: string;
+    customerId: string;
+    channelKey: "messenger" | "instagram";
+    externalId: string;
+  }): Promise<void> {
+    const { error } = await client.from("customer_channel_identities").insert({
+      company_id: input.companyId,
+      customer_id: input.customerId,
+      channel_key: input.channelKey,
+      external_id: input.externalId,
+    });
+    if (error) throw new Error(error.message);
   }
 
   return {
@@ -93,10 +154,11 @@ export function createWebhookChannelCustomerIdentityPort(
         return { status: "not_found" as const };
       };
 
-      const resolved = await resolveTrustedChannelCustomer({
+      const resolved = await resolveOrCreateCustomerFromInbound({
         companyId,
         channelKey: input.channelKey,
         senderExternalId: input.senderExternalId,
+        senderDisplayName: input.senderDisplayName,
         findByPhone: async (phone) => {
           const result = await customerService.findCustomer({
             companyId,
@@ -123,6 +185,61 @@ export function createWebhookChannelCustomerIdentityPort(
             lookupValue: email,
           });
           return mapFindResult(result);
+        },
+        findByChannelExternalId: async ({ channelKey, externalId }) => {
+          const result = await findByChannelExternalId({
+            companyId,
+            channelKey,
+            externalId,
+          });
+          return mapFindResult(result);
+        },
+        createCustomer: async (draft) => {
+          const created = await customerService.createCustomer({
+            companyId,
+            userId: actorUserId,
+            name: draft.name,
+            email: draft.email ?? null,
+            phone: draft.phone ?? null,
+            source: draft.source,
+            phoneIdentity: draft.phoneIdentity ?? null,
+          });
+
+          if (draft.channelIdentity) {
+            try {
+              await linkChannelIdentity({
+                companyId,
+                customerId: created.customer.id,
+                channelKey: draft.channelIdentity.channelKey,
+                externalId: draft.channelIdentity.externalId,
+              });
+            } catch (error) {
+              // Unique race: keep throwing so resolve-or-create re-fetches the winner.
+              // Non-unique link failure: remove the just-created row so a retry cannot
+              // multiply phone-less Messenger/Instagram customers.
+              const message = error instanceof Error ? error.message : String(error ?? "");
+              const isUnique =
+                /unique constraint|duplicate key|customer_channel_identities|idx_customer_channel_identities/i.test(
+                  message,
+                );
+              if (!isUnique) {
+                await client
+                  .from("customers")
+                  .delete()
+                  .eq("id", created.customer.id)
+                  .eq("company_id", companyId);
+              }
+              throw error;
+            }
+          }
+
+          return {
+            id: created.customer.id,
+            name: created.customer.name,
+          };
+        },
+        onError: (detail) => {
+          console.error("[webhook-channel-customer-identity]", detail);
         },
       });
 
@@ -174,6 +291,35 @@ export function createWebhookChannelCustomerIdentityPort(
       return {
         matches,
         name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,
+      };
+    },
+
+    async customerMatchesChannelExternalId(input) {
+      const channelKey =
+        input.channelKey === "messenger" || input.channelKey === "instagram"
+          ? input.channelKey
+          : null;
+      if (!channelKey) return { matches: false, name: null };
+      const externalId = normalizeMetaChannelExternalId(input.senderExternalId);
+      if (!externalId) return { matches: false, name: null };
+
+      const { data, error } = await client
+        .from("customer_channel_identities")
+        .select("customer_id")
+        .eq("company_id", input.companyId)
+        .eq("customer_id", input.customerId)
+        .eq("channel_key", channelKey)
+        .eq("external_id", externalId)
+        .maybeSingle();
+
+      if (error || !data?.customer_id) return { matches: false, name: null };
+      const row = await getCustomerById({
+        companyId: input.companyId,
+        customerId: input.customerId,
+      });
+      return {
+        matches: true,
+        name: typeof row?.name === "string" && row.name.trim() ? row.name.trim() : null,
       };
     },
   };

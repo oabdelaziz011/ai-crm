@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -25,13 +25,15 @@ import {
 import { useTranslation } from "react-i18next";
 import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
 import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
+import { isValidDateOfBirthInput } from "@/lib/customers/customer-lifecycle";
+import { fmtDate } from "@/lib/customer-workspace/customer-workspace-utils";
 
 type FormValues = {
   name: string;
   email?: string;
   phone?: string;
   phone_country_iso?: string;
-  age?: string;
+  date_of_birth?: string;
   gender?: string;
   notes?: string;
 };
@@ -42,10 +44,12 @@ interface Props {
   customer?: Customer | null;
   defaultPhone?: string | null;
   onCreated?: (customer: Customer) => void;
+  /** When creating from a known channel, stamps first-touch source. */
+  defaultSource?: Customer["source"];
 }
 
-export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated }: Props) {
-  const { t } = useTranslation("common");
+export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated, defaultSource }: Props) {
+  const { t, i18n } = useTranslation("common");
   const isEdit = !!customer;
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
@@ -57,9 +61,9 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
     email: z.string().email(t("forms.customer.invalidEmail")).or(z.literal("")).optional(),
     phone: z.string().optional(),
     phone_country_iso: z.string().optional(),
-    age: z.string().optional().refine(
-      (value) => !value?.trim() || (/^\d+$/.test(value.trim()) && Number.parseInt(value, 10) >= 0 && Number.parseInt(value, 10) <= 150),
-      t("forms.customer.invalidAge"),
+    date_of_birth: z.string().optional().refine(
+      (value) => isValidDateOfBirthInput(value),
+      t("forms.customer.invalidDateOfBirth"),
     ),
     gender: z.string().optional(),
     notes: z.string().optional(),
@@ -72,7 +76,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
       email: "",
       phone: "",
       phone_country_iso: "",
-      age: "",
+      date_of_birth: "",
       gender: "",
       notes: "",
     },
@@ -87,7 +91,7 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
         email: customer?.email ?? "",
         phone: customer?.phone ?? defaultPhone ?? "",
         phone_country_iso: region,
-        age: customer?.age == null ? "" : String(customer.age),
+        date_of_birth: customer?.date_of_birth ?? "",
         gender: customer?.gender ?? "",
         notes: customer?.notes ?? "",
       });
@@ -117,9 +121,11 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
       email: values.email || null,
       phone,
       phone_country_iso: region,
-      age: values.age?.trim() ? Number.parseInt(values.age.trim(), 10) : null,
+      date_of_birth: values.date_of_birth?.trim() || null,
       gender: values.gender?.trim() || null,
       notes: values.notes || null,
+      age: null as number | null,
+      ...(isEdit ? {} : { source: defaultSource ?? ("manual" as const) }),
     };
 
     if (isEdit && customer) {
@@ -155,107 +161,153 @@ export function CustomerModal({ open, onClose, customer, defaultPhone, onCreated
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="bg-card border-white/10 text-foreground max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? t("forms.customer.editTitle") : t("forms.customer.newTitle")}</DialogTitle>
+      <DialogContent className="flex max-h-[min(92vh,880px)] w-[min(96vw,44rem)] max-w-2xl flex-col gap-0 overflow-hidden bg-card p-0 text-foreground sm:rounded-2xl">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-border/60 px-6 py-4 text-start">
+          <DialogTitle className="text-lg">
+            {isEdit ? t("forms.customer.editTitle") : t("forms.customer.newTitle")}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            {isEdit ? t("forms.customer.editSubtitle") : t("forms.customer.newSubtitle")}
+          </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {form.formState.errors.root && (
-              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
-                {form.formState.errors.root.message}
-              </p>
-            )}
-            <FormField control={form.control} name="name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("forms.customer.name")}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t("forms.customer.fullName")} className="bg-background/50 border-white/10" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="email" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("forms.customer.email")}</FormLabel>
-                <FormControl>
-                  <Input type="email" placeholder={t("forms.customer.emailPlaceholder")} className="bg-background/50 border-white/10" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("forms.customer.phone")}</FormLabel>
-                  <FormControl>
-                    <CustomerPhoneInput
-                      phone={field.value ?? ""}
-                      region={phoneRegion}
-                      onPhoneChange={field.onChange}
-                      onRegionChange={(next) => {
-                        setPhoneRegion(next);
-                        form.setValue("phone_country_iso", next ?? "");
-                      }}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              {form.formState.errors.root && (
+                <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {form.formState.errors.root.message}
+                </p>
               )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="age" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("forms.customer.age")}</FormLabel>
-                  <FormControl>
-                    <Input type="number" min={0} max={150} placeholder={t("forms.customer.agePlaceholder")} className="bg-background/50 border-white/10" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="gender" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("forms.customer.gender")}</FormLabel>
-                  <Select value={field.value || "__empty__"} onValueChange={(value) => field.onChange(value === "__empty__" ? "" : value)}>
-                    <FormControl>
-                      <SelectTrigger className="bg-background/50 border-white/10">
-                        <SelectValue placeholder={t("forms.customer.genderPlaceholder")} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="__empty__">{t("forms.customer.notSet")}</SelectItem>
-                      <SelectItem value="Male">{t("forms.customer.genderOptions.male")}</SelectItem>
-                      <SelectItem value="Female">{t("forms.customer.genderOptions.female")}</SelectItem>
-                      <SelectItem value="Other">{t("forms.customer.genderOptions.other")}</SelectItem>
-                      <SelectItem value="Prefer not to say">{t("forms.customer.genderOptions.preferNotToSay")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-            <FormField control={form.control} name="notes" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("forms.customer.notes")}</FormLabel>
-                <FormControl>
-                  <textarea
-                    placeholder={t("forms.customer.optionalNotes")}
-                    rows={3}
-                    className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2 text-sm outline-none focus:border-primary/40 resize-none transition-colors placeholder:text-muted-foreground"
-                    {...field}
+
+              <section className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {t("forms.customer.sections.identity")}
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{t("forms.customer.name")}</FormLabel>
+                      <FormControl>
+                        <Input placeholder={t("forms.customer.fullName")} className="bg-background/50 border-border/70" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="date_of_birth" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("forms.customer.dateOfBirth")}</FormLabel>
+                      <FormControl>
+                        <Input type="date" className="bg-background/50 border-border/70" dir="ltr" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="gender" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("forms.customer.gender")}</FormLabel>
+                      <Select value={field.value || "__empty__"} onValueChange={(value) => field.onChange(value === "__empty__" ? "" : value)}>
+                        <FormControl>
+                          <SelectTrigger className="bg-background/50 border-border/70">
+                            <SelectValue placeholder={t("forms.customer.genderPlaceholder")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__empty__">{t("forms.customer.notSet")}</SelectItem>
+                          <SelectItem value="Male">{t("forms.customer.genderOptions.male")}</SelectItem>
+                          <SelectItem value="Female">{t("forms.customer.genderOptions.female")}</SelectItem>
+                          <SelectItem value="Other">{t("forms.customer.genderOptions.other")}</SelectItem>
+                          <SelectItem value="Prefer not to say">{t("forms.customer.genderOptions.preferNotToSay")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {t("forms.customer.sections.contact")}
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{t("forms.customer.email")}</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder={t("forms.customer.emailPlaceholder")} className="bg-background/50 border-border/70" dir="ltr" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>{t("forms.customer.phone")}</FormLabel>
+                        <FormControl>
+                          <CustomerPhoneInput
+                            phone={field.value ?? ""}
+                            region={phoneRegion}
+                            onPhoneChange={field.onChange}
+                            onRegionChange={(next) => {
+                              setPhoneRegion(next);
+                              form.setValue("phone_country_iso", next ?? "");
+                            }}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={onClose} className="border-white/10">
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {t("forms.customer.sections.notes")}
+                </p>
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("forms.customer.notes")}</FormLabel>
+                    <FormControl>
+                      <textarea
+                        placeholder={t("forms.customer.optionalNotes")}
+                        rows={5}
+                        className="w-full rounded-xl border border-border/70 bg-background/50 px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 resize-y min-h-[7.5rem]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">{t("forms.customer.notesHint")}</p>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </section>
+
+              {isEdit && customer ? (
+                <section className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-xs text-muted-foreground sm:grid-cols-2">
+                  <div>
+                    <p className="font-medium text-foreground/80">{t("forms.customer.meta.created")}</p>
+                    <p className="mt-0.5 tabular-nums">{fmtDate(customer.created_at, i18n.language)}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground/80">{t("forms.customer.meta.updated")}</p>
+                    <p className="mt-0.5 tabular-nums">{fmtDate(customer.updated_at, i18n.language)}</p>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+
+            <DialogFooter className="shrink-0 gap-2 border-t border-border/60 bg-card px-6 py-4 sm:justify-end">
+              <Button type="button" variant="outline" onClick={onClose} className="border-border/70">
                 {t("buttons.cancel")}
               </Button>
-              <Button type="submit" disabled={isPending} className="bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30">
+              <Button type="submit" disabled={isPending}>
                 {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : isEdit ? t("buttons.saveChanges") : t("forms.customer.add")}
               </Button>
             </DialogFooter>

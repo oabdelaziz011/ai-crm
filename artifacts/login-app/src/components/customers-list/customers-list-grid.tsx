@@ -6,10 +6,11 @@ import {
   DENSITY_ROW_HEIGHT,
   useVirtualWindow,
   type CustomerColumnId,
+  type CustomerListChannelCapabilities,
   type CustomerListDensity,
   type EnrichedCustomerRow,
 } from "@/lib/customers-list";
-import { CustomersListRow } from "./customers-list-row";
+import { CustomersListRow, type CustomerListQuickAction } from "./customers-list-row";
 
 type CustomersListGridProps = {
   rows: EnrichedCustomerRow[];
@@ -24,10 +25,9 @@ type CustomersListGridProps = {
   onOpenCustomer: (id: string) => void;
   onEditCustomer?: (row: EnrichedCustomerRow) => void;
   onDeleteCustomer?: (row: EnrichedCustomerRow) => void;
-  onQuickAction: (
-    row: EnrichedCustomerRow,
-    action: "call" | "whatsapp" | "email" | "booking" | "invoice" | "profile",
-  ) => void;
+  canChangeLifecycle?: boolean;
+  channelCapabilities: CustomerListChannelCapabilities;
+  onQuickAction: (row: EnrichedCustomerRow, action: CustomerListQuickAction) => void;
 };
 
 const HEADER_LABEL_KEYS: Record<CustomerColumnId, string> = {
@@ -73,6 +73,8 @@ export const CustomersListGrid = memo(function CustomersListGrid({
   onOpenCustomer,
   onEditCustomer,
   onDeleteCustomer,
+  canChangeLifecycle = false,
+  channelCapabilities,
   onQuickAction,
 }: CustomersListGridProps) {
   const { t } = useTranslation("common");
@@ -119,11 +121,13 @@ export const CustomersListGrid = memo(function CustomersListGrid({
   const visibleRows = rows.slice(startIndex, endIndex);
 
   return (
-    <div className="flex max-h-[min(68vh,720px)] min-h-[20rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-background">
-      <div className="sticky top-0 z-20 shrink-0 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="flex max-h-[min(68vh,720px)] min-h-[20rem] flex-col overflow-hidden rounded-xl border border-border/70 bg-white shadow-sm dark:bg-card">
+      <div className="sticky top-0 z-20 shrink-0 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 dark:bg-card/95">
         <div className="flex w-max min-w-full items-center px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {visibleColumns.map((columnId) => {
-            const width = columnWidths[columnId];
+            const rawWidth = columnWidths[columnId];
+            const width =
+              columnId === "actions" ? Math.max(rawWidth ?? 52, 96) : rawWidth;
             const visibilityClass = COLUMN_VISIBILITY_CLASS[columnId];
 
             if (columnId === "select") {
@@ -150,7 +154,9 @@ export const CustomersListGrid = memo(function CustomersListGrid({
                   className="flex shrink-0 items-center justify-center overflow-hidden px-1 text-center"
                   style={{ width, minWidth: width, maxWidth: width }}
                 >
-                  <span className="sr-only">{t(HEADER_LABEL_KEYS.actions)}</span>
+                  <span className="truncate normal-case tracking-normal">
+                    {t(HEADER_LABEL_KEYS.actions)}
+                  </span>
                 </div>
               );
             }
@@ -198,6 +204,8 @@ export const CustomersListGrid = memo(function CustomersListGrid({
                 onOpen={() => onOpenCustomer(row.customer.id)}
                 onEdit={onEditCustomer ? () => onEditCustomer(row) : undefined}
                 onDelete={onDeleteCustomer ? () => onDeleteCustomer(row) : undefined}
+                canChangeLifecycle={canChangeLifecycle}
+                channelCapabilities={channelCapabilities}
                 onQuickAction={(action) => onQuickAction(row, action)}
               />
             ))}
@@ -205,7 +213,7 @@ export const CustomersListGrid = memo(function CustomersListGrid({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+      <div className="shrink-0 border-t border-border/60 bg-white px-3 py-2 text-xs text-muted-foreground dark:bg-card">
         {t("dashboard.customers.list.rowCount", { count: rows.length })}
       </div>
     </div>

@@ -159,6 +159,7 @@ export type TimelinePage = {
 
 export const TIMELINE_EVENT_TYPES = [
   "customer_created",
+  "customer_status_changed",
   "whatsapp_message_received",
   "whatsapp_message_sent",
   "template_sent",

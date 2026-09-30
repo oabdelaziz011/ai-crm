@@ -5,6 +5,7 @@ import type {
   CustomerPhoneIdentityWrite,
   UpdateCustomerInput,
 } from "../types/customer-mutation-input.js";
+import { normalizeCustomerAcquisitionSource } from "./customer-acquisition-source.js";
 import { resolvePhoneIdentityWrite } from "./customer-phone-identity-write.js";
 
 function parseAgeValue(value: string): number | null {
@@ -142,6 +143,9 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
       age: input.age ?? null,
       gender: input.gender ?? null,
       notes: input.notes ?? null,
+      source: normalizeCustomerAcquisitionSource(input.source) ?? "manual",
+      status: "active",
+      dateOfBirth: null,
       createdAt: now,
       updatedAt: now,
       phoneIdentity,

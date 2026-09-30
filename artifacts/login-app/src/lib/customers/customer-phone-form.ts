@@ -157,3 +157,39 @@ export function countryFlagEmoji(iso: string): string {
   if (!/^[A-Z]{2}$/.test(code)) return "";
   return String.fromCodePoint(...[...code].map((c) => 127397 + c.charCodeAt(0)));
 }
+
+/**
+ * Build compact preview lines for the shared phone input (register + add customer).
+ * Label and value stay adjacent; international number is always LTR-safe E.164 display.
+ */
+export function buildCustomerPhonePreviewLines(input: {
+  phone: string | null | undefined;
+  region: string | null | undefined;
+  locale?: string;
+}): {
+  code: CustomerPhoneValidationCode;
+  international: string | null;
+  countryLabel: string | null;
+  countryIso: string | null;
+  countryFlag: string;
+} {
+  const locale = input.locale?.startsWith("ar") ? "ar" : "en";
+  const validation = validateCustomerPhoneFormInput({
+    phone: input.phone,
+    region: input.region,
+  });
+  const iso = validation.preview.phoneCountryIso;
+  const international =
+    validation.code === "ok" && validation.preview.phoneE164
+      ? formatPhoneIdentityInternational(validation.preview.phoneE164) ??
+        validation.preview.phoneE164
+      : null;
+
+  return {
+    code: validation.code,
+    international,
+    countryIso: iso,
+    countryLabel: iso ? localizedCountryName(iso, locale) : null,
+    countryFlag: iso ? countryFlagEmoji(iso) : "",
+  };
+}

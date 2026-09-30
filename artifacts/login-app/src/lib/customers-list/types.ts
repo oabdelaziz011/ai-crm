@@ -2,7 +2,7 @@ import type { Booking, Customer } from "@/lib/types";
 
 export type CustomerListDensity = "comfortable" | "compact" | "ultra";
 
-export type CustomerListStatus = "active" | "inactive" | "at_risk" | "new";
+export type CustomerListStatus = "active" | "inactive" | "blocked";
 
 export type CustomerColumnId =
   | "select"
@@ -88,6 +88,8 @@ export type EnrichedCustomerRow = {
   assignedEmployee: string | null;
   branch: string | null;
   source: string;
+  /** Derived age for filters/display (DOB preferred; legacy age fallback). */
+  displayAge: number | null;
   nextAppointment: Booking | null;
   lastActivity: string | null;
   lastVisit: Booking | null;
@@ -140,7 +142,7 @@ export const DEFAULT_COLUMN_WIDTHS: Partial<Record<CustomerColumnId, number>> = 
   ltv: 110,
   status: 100,
   lastActivity: 120,
-  actions: 52,
+  actions: 96,
 };
 
 export const DEFAULT_COLUMN_VISIBILITY: Record<CustomerColumnId, boolean> = {

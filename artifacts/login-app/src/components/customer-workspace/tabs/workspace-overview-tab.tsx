@@ -83,7 +83,7 @@ export function WorkspaceOverviewTab({
   const recent = buildCustomerActivityTimeline(customer, customerBookings, customerInvoices, 6);
   const loading = (showBookings && bookingsLoading) || (showFinance && invoicesLoading);
   const cancelled = customerBookings.filter((b) => b.status === "Cancelled").length;
-  const overdue = customerInvoices.filter((inv) => inv.status === "Overdue").length;
+  const overdue = customerInvoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "overdue").length;
   const health = computeCustomerHealth(ltv, outstanding, cancelled, overdue);
   const lang = i18n.language;
   const phoneDisplay = formatCustomerPhoneDisplay(customer);

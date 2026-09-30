@@ -88,7 +88,9 @@ export class InvoicesTimelineProvider implements TimelineEventProvider {
       const updatedAfterCreate =
         new Date(invoice.updated_at).getTime() > new Date(invoice.created_at).getTime() + 60_000;
 
-      if (invoice.status === "Paid") {
+      const status = String(invoice.status ?? "").trim().toLowerCase();
+
+      if (status === "paid") {
         const paidAt = updatedAfterCreate ? invoice.updated_at : invoice.created_at;
         events.push(
           attachActor(
@@ -123,7 +125,7 @@ export class InvoicesTimelineProvider implements TimelineEventProvider {
         }
       }
 
-      if (invoice.status === "Overdue") {
+      if (status === "overdue") {
         events.push(
           attachActor(
             {

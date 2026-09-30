@@ -551,7 +551,13 @@ export function CustomerWorkspacePage({
 
         </Button>
 
-        <DashboardErrorBanner message={error?.message ?? t("dashboard.customerDetails.loadError")} />
+        <DashboardErrorBanner
+          message={
+            error?.message === "CUSTOMER_NOT_FOUND"
+              ? t("dashboard.customerDetails.notFound")
+              : (error?.message ?? t("dashboard.customerDetails.loadError"))
+          }
+        />
 
       </div>
 

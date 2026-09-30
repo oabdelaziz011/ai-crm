@@ -121,5 +121,17 @@ export function createWebhookToolCustomerServicePort(client: SupabaseClient): To
         typeof data?.external_thread_id === "string" ? data.external_thread_id.trim() : "";
       return thread || null;
     },
+    async getConversationChannelType(input) {
+      if (!input.conversationId?.trim()) return null;
+      const { data, error } = await client
+        .from("conversations")
+        .select("channel_type")
+        .eq("id", input.conversationId.trim())
+        .maybeSingle();
+      if (error) throw error;
+      const channelType =
+        typeof data?.channel_type === "string" ? data.channel_type.trim() : "";
+      return channelType || null;
+    },
   };
 }

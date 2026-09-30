@@ -14,9 +14,13 @@ export function customerInitials(name: string): string {
     .join("");
 }
 
+function normalizeInvoiceStatus(status: string | null | undefined): string {
+  return String(status ?? "").trim().toLowerCase();
+}
+
 export function computeCustomerLtv(invoices: Invoice[]): number {
   return invoices
-    .filter((inv) => inv.customer_id && inv.status === "Paid")
+    .filter((inv) => inv.customer_id && normalizeInvoiceStatus(inv.status) === "paid")
     .reduce((sum, inv) => sum + Number(inv.amount), 0);
 }
 
@@ -95,7 +99,7 @@ export function deriveWorkspaceAiInsights(
   const customerInvoices = filterInvoicesForCustomer(invoices, customer.id);
   const cancelled = customerBookings.filter((b) => b.status === "Cancelled").length;
   const ltv = computeCustomerLtv(customerInvoices);
-  const overdue = customerInvoices.filter((inv) => inv.status === "Overdue").length;
+  const overdue = customerInvoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "overdue").length;
   const insights: WorkspaceAiInsight[] = [];
 
   if (cancelled >= 2) {
@@ -211,17 +215,23 @@ export function groupBookings(bookings: Booking[]) {
 
 export function groupInvoices(invoices: Invoice[]) {
   return {
-    outstanding: invoices.filter((inv) => inv.status === "Unpaid" || inv.status === "Overdue"),
-    paid: invoices.filter((inv) => inv.status === "Paid"),
-    pending: invoices.filter((inv) => inv.status === "Unpaid"),
-    overdue: invoices.filter((inv) => inv.status === "Overdue"),
+    outstanding: invoices.filter((inv) => {
+      const status = normalizeInvoiceStatus(inv.status);
+      return status === "unpaid" || status === "overdue" || status === "issued" || status === "pending";
+    }),
+    paid: invoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "paid"),
+    pending: invoices.filter((inv) => {
+      const status = normalizeInvoiceStatus(inv.status);
+      return status === "unpaid" || status === "issued" || status === "pending";
+    }),
+    overdue: invoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "overdue"),
     draft: [] as Invoice[],
   };
 }
 
 export function lastPaidInvoice(invoices: Invoice[]): Invoice | null {
   return invoices
-    .filter((inv) => inv.status === "Paid")
+    .filter((inv) => normalizeInvoiceStatus(inv.status) === "paid")
     .sort((a, b) => parseISO(b.invoice_date).getTime() - parseISO(a.invoice_date).getTime())[0] ?? null;
 }
 
@@ -385,14 +395,22 @@ export function deriveAiCustomerSummary(
 ): AiCustomerSummary {
   const customerBookings = filterBookingsForCustomer(bookings, customer.id);
   const customerInvoices = filterInvoicesForCustomer(invoices, customer.id);
-  const overdue = customerInvoices.filter((inv) => inv.status === "Overdue").length;
+  const overdue = customerInvoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "overdue").length;
   const cancelled = customerBookings.filter((b) => b.status === "Cancelled").length;
-  const paid = customerInvoices.filter((inv) => inv.status === "Paid").length;
+  const paid = customerInvoices.filter((inv) => normalizeInvoiceStatus(inv.status) === "paid").length;
   const ltv = computeCustomerLtv(customerInvoices);
 
   let risk: AiCustomerSummary["risk"] = "low";
   if (overdue > 0 || cancelled >= 2) risk = "high";
-  else if (cancelled > 0 || customerInvoices.some((inv) => inv.status === "Unpaid")) risk = "medium";
+  else if (
+    cancelled > 0 ||
+    customerInvoices.some((inv) => {
+      const status = normalizeInvoiceStatus(inv.status);
+      return status === "unpaid" || status === "issued" || status === "pending";
+    })
+  ) {
+    risk = "medium";
+  }
 
   return {
     risk,

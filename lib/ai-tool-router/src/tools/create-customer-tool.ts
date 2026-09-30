@@ -1,4 +1,5 @@
 import type { ConversationState } from "@workspace/ai-conversation";
+import { customerSourceFromChannelType } from "@workspace/automation-platform";
 import type { Tool, ToolExecutionContext } from "./tool-contract.js";
 import type { ToolCustomerServicePort } from "./customer-service-port.js";
 import { validateAgainstSchema } from "../utils/tool-utils.js";
@@ -328,12 +329,18 @@ export function createCreateCustomerTool(customerService: ToolCustomerServicePor
       }
 
       try {
+        const channelType = await customerService.getConversationChannelType?.({
+          conversationId: context.conversationId,
+        });
+        const source = customerSourceFromChannelType(channelType) ?? "manual";
+
         const created = await customerService.createCustomer({
           companyId: context.companyId,
           userId: context.userId,
           name,
           phone,
           email,
+          source,
           phoneIdentity,
         });
 

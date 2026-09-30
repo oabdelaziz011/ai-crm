@@ -50,6 +50,14 @@ export type ResolveTrustedChannelCustomerInput = {
    * Must already filter by companyId — never search globally / never fuzzy.
    */
   findByEmail?: (email: string) => Promise<EmailLookupResult>;
+  /**
+   * Company-scoped CRM lookup by Messenger PSID / Instagram IGSID.
+   * Exact string match only — never phone/email conversion.
+   */
+  findByChannelExternalId?: (input: {
+    channelKey: "messenger" | "instagram";
+    externalId: string;
+  }) => Promise<PhoneLookupResult>;
 };
 
 export type ResolveTrustedChannelCustomerResult =
@@ -59,7 +67,7 @@ export type ResolveTrustedChannelCustomerResult =
       trustedCustomerName: string;
       matchedPhone: string;
       /** D2: how the match was established. */
-      matchSource?: "phone_e164" | "legacy_phone";
+      matchSource?: "phone_e164" | "legacy_phone" | "channel_external_id";
     }
   | { status: "unknown" }
   | { status: "ambiguous"; matchCount: number }
@@ -166,7 +174,7 @@ export function readTrustedCustomerIdFromConversation(input: {
 
 function toKnownResult(
   only: { customer: TrustedChannelCustomerMatch; matchedPhone: string },
-  matchSource: "phone_e164" | "legacy_phone",
+  matchSource: "phone_e164" | "legacy_phone" | "channel_external_id",
 ): ResolveTrustedChannelCustomerResult {
   const displayName = resolveTrustedCustomerWelcomeDisplayName(
     only.customer.id,
@@ -179,6 +187,20 @@ function toKnownResult(
     matchedPhone: only.matchedPhone,
     matchSource,
   };
+}
+
+/**
+ * Normalize Messenger PSID / Instagram IGSID for exact CRM lookup.
+ * Fail closed — no phone/email coercion.
+ */
+export function normalizeMetaChannelExternalId(
+  senderExternalId: string | null | undefined,
+): string | null {
+  const raw = typeof senderExternalId === "string" ? senderExternalId.trim() : "";
+  if (!raw || raw.length > 128) return null;
+  // Meta participant ids are typically numeric; allow alphanumeric for forward-compat.
+  if (!/^[A-Za-z0-9._-]+$/.test(raw)) return null;
+  return raw;
 }
 
 /**
@@ -208,7 +230,8 @@ export function customerEmailMatchesEmailSender(
 }
 
 /**
- * WhatsApp (phone) and Email (exact email). SMS uses exact phone_e164 only.
+ * WhatsApp (phone), Email (exact email), SMS (phone_e164),
+ * Messenger (PSID), Instagram (IGSID).
  * Fail closed on ambiguity.
  * Never trusts senderName, LLM customerId, or companyId from payload.
  *
@@ -219,6 +242,8 @@ export function customerEmailMatchesEmailSender(
  * SMS: company_id + exact phone_e164 only (no legacy / no fuzzy).
  *
  * Email: company_id + exact normalized email only (no phone / no fuzzy).
+ *
+ * Messenger / Instagram: company_id + channel_key + external_id (PSID / IGSID).
  */
 export async function resolveTrustedChannelCustomer(
   input: ResolveTrustedChannelCustomerInput,
@@ -227,12 +252,38 @@ export async function resolveTrustedChannelCustomer(
   if (!companyId) return { status: "invalid_sender" };
 
   const channelKey = input.channelKey.trim().toLowerCase();
-  if (channelKey !== "whatsapp" && channelKey !== "email" && channelKey !== "sms") {
+  if (
+    channelKey !== "whatsapp" &&
+    channelKey !== "email" &&
+    channelKey !== "sms" &&
+    channelKey !== "messenger" &&
+    channelKey !== "instagram"
+  ) {
     return { status: "unsupported_channel" };
   }
 
   const sender = typeof input.senderExternalId === "string" ? input.senderExternalId.trim() : "";
   if (!sender) return { status: "invalid_sender" };
+
+  if (channelKey === "messenger" || channelKey === "instagram") {
+    if (!input.findByChannelExternalId) return { status: "unsupported_channel" };
+    const externalId = normalizeMetaChannelExternalId(sender);
+    if (!externalId) return { status: "invalid_sender" };
+    const result = await input.findByChannelExternalId({
+      channelKey,
+      externalId,
+    });
+    if (result.status === "duplicate") {
+      return { status: "ambiguous", matchCount: result.count ?? 2 };
+    }
+    if (result.status === "found" && result.customer?.id) {
+      return toKnownResult(
+        { customer: result.customer, matchedPhone: externalId },
+        "channel_external_id",
+      );
+    }
+    return { status: "unknown" };
+  }
 
   if (channelKey === "email") {
     if (!input.findByEmail) return { status: "unsupported_channel" };

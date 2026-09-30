@@ -9,6 +9,11 @@ import {
   lastVisitBooking,
   nextUpcomingBooking,
 } from "@/lib/customer-workspace/customer-workspace-utils";
+import {
+  displayCustomerAge,
+  normalizeCustomerAcquisitionSource,
+  normalizeCustomerLifecycleStatus,
+} from "@/lib/customers/customer-lifecycle";
 import type { Booking, Customer, Invoice } from "@/lib/types";
 import type { CustomerListStatus, EnrichedCustomerRow } from "./types";
 
@@ -22,32 +27,14 @@ function deriveCompany(customer: Customer): string | null {
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : null;
 }
 
-function deriveSource(customer: Customer, bookingCount: number): string {
-  if (bookingCount >= 2) return "repeat";
-  if (customer.notes?.toLowerCase().includes("referral")) return "referral";
-  if (customer.notes?.toLowerCase().includes("whatsapp")) return "whatsapp";
-  if (customer.phone && !customer.email) return "phone";
-  if (customer.email) return "web";
-  return "direct";
+function resolveSource(customer: Customer): string {
+  const persisted = normalizeCustomerAcquisitionSource(customer.source);
+  if (persisted) return persisted;
+  return "manual";
 }
 
-function deriveStatus(
-  customer: Customer,
-  bookingCount: number,
-  outstanding: number,
-  lastActivity: string | null,
-): CustomerListStatus {
-  const createdDays = differenceInDays(new Date(), parseISO(customer.created_at));
-  if (createdDays <= 30 && bookingCount === 0) return "new";
-  if (outstanding > 0) return "at_risk";
-
-  if (!lastActivity) {
-    return bookingCount > 0 ? "inactive" : "new";
-  }
-
-  const inactiveDays = differenceInDays(new Date(), parseISO(lastActivity));
-  if (inactiveDays >= 90) return "inactive";
-  return "active";
+function resolveStatus(customer: Customer): CustomerListStatus {
+  return normalizeCustomerLifecycleStatus(customer.status);
 }
 
 function resolveLastActivity(
@@ -66,6 +53,7 @@ function resolveLastActivity(
 }
 
 function needsFollowUp(row: Omit<EnrichedCustomerRow, "needsFollowUp">): boolean {
+  if (row.status === "inactive" || row.status === "blocked") return false;
   if (row.outstanding > 0) return true;
   if (!row.lastActivity) return row.bookingCount === 0;
   return differenceInDays(new Date(), parseISO(row.lastActivity)) >= 14;
@@ -90,6 +78,10 @@ export function enrichCustomerRow(
   const hasAppointmentToday = customerBookings.some(
     (b) => b.status !== "Cancelled" && isSameDay(parseISO(b.booking_date), today),
   );
+  const displayAge = displayCustomerAge({
+    dateOfBirth: customer.date_of_birth,
+    age: customer.age,
+  });
 
   const base = {
     customer,
@@ -98,11 +90,12 @@ export function enrichCustomerRow(
     bookingCount,
     isVip,
     tags,
-    status: deriveStatus(customer, bookingCount, outstanding, lastActivity),
+    status: resolveStatus(customer),
     company: deriveCompany(customer),
     assignedEmployee: null,
     branch: null,
-    source: deriveSource(customer, bookingCount),
+    source: resolveSource(customer),
+    displayAge,
     nextAppointment,
     lastActivity,
     lastVisit,

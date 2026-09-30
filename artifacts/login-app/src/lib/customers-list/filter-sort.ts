@@ -49,10 +49,10 @@ export function applyCustomerFilters(
 
     if (filters.source !== "all" && row.source !== filters.source) return false;
 
-    if (filters.ageMin != null && (row.customer.age == null || row.customer.age < filters.ageMin)) {
+    if (filters.ageMin != null && (row.displayAge == null || row.displayAge < filters.ageMin)) {
       return false;
     }
-    if (filters.ageMax != null && (row.customer.age == null || row.customer.age > filters.ageMax)) {
+    if (filters.ageMax != null && (row.displayAge == null || row.displayAge > filters.ageMax)) {
       return false;
     }
 

@@ -18,8 +18,16 @@ import type { Customer } from "@/lib/types";
 import { normalizeGenderStorageValue } from "@/lib/customer-gender";
 import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
 import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
+import { isValidDateOfBirthInput } from "@/lib/customers/customer-lifecycle";
 
-export type CustomerFieldKey = "name" | "phone" | "email" | "age" | "gender" | "notes";
+export type CustomerFieldKey =
+  | "name"
+  | "phone"
+  | "email"
+  | "age"
+  | "date_of_birth"
+  | "gender"
+  | "notes";
 
 type Props = {
   label: string;
@@ -28,7 +36,7 @@ type Props = {
   field: CustomerFieldKey;
   customerId: string;
   customer?: Pick<Customer, "phone" | "phone_country_iso" | "phone_e164"> | null;
-  inputType?: "text" | "tel" | "number" | "email";
+  inputType?: "text" | "tel" | "number" | "email" | "date";
   multiline?: boolean;
   hideLabel?: boolean;
   selectOptions?: Array<{ value: string; label: string }>;
@@ -102,6 +110,10 @@ export function CustomerFieldEditor({
         setError(t("forms.customer.invalidAge"));
         return;
       }
+    }
+    if (field === "date_of_birth" && trimmed && !isValidDateOfBirthInput(trimmed)) {
+      setError(t("forms.customer.invalidDateOfBirth"));
+      return;
     }
 
     if (field === "phone") {

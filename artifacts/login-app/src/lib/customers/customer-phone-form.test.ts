@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { listPhoneCountryOptions } from "@workspace/ai-tool-router";
 import {
+  buildCustomerPhonePreviewLines,
   didCustomerPhoneChange,
   formatCustomerPhoneDisplay,
   validateCustomerPhoneFormInput,
@@ -187,5 +188,60 @@ describe("D5.2 country options / display", () => {
     assert.equal(result.code, "ok");
     assert.equal(result.preview.phoneE164, "+201023169075");
     assert.equal(result.preview.phoneCountryIso, "EG");
+  });
+});
+
+describe("buildCustomerPhonePreviewLines", () => {
+  it("keeps international LTR order and adjacent country label (EN)", () => {
+    const preview = buildCustomerPhonePreviewLines({
+      phone: "01087998798",
+      region: "EG",
+      locale: "en",
+    });
+    assert.equal(preview.code, "ok");
+    assert.equal(preview.international, "+20 10 87998798");
+    assert.equal(preview.countryIso, "EG");
+    assert.equal(preview.countryLabel, "Egypt");
+    assert.equal(preview.countryFlag, "🇪🇬");
+    assert.ok(preview.international?.startsWith("+20"));
+    assert.ok(!preview.international?.startsWith("8799"));
+    // Display pairing used by the UI must stay adjacent (ISO · Name).
+    assert.equal(`${preview.countryIso} · ${preview.countryLabel}`, "EG · Egypt");
+  });
+
+  it("localizes country name for Arabic without reversing E.164", () => {
+    const preview = buildCustomerPhonePreviewLines({
+      phone: "01087998798",
+      region: "EG",
+      locale: "ar",
+    });
+    assert.equal(preview.international, "+20 10 87998798");
+    assert.equal(preview.countryIso, "EG");
+    assert.equal(preview.countryLabel, "مصر");
+    assert.equal(preview.countryFlag, "🇪🇬");
+    assert.equal(`${preview.countryIso} · ${preview.countryLabel}`, "EG · مصر");
+  });
+
+  it("returns null international when phone is invalid", () => {
+    const preview = buildCustomerPhonePreviewLines({
+      phone: "12",
+      region: "EG",
+      locale: "en",
+    });
+    assert.equal(preview.code, "invalid_phone");
+    assert.equal(preview.international, null);
+    assert.equal(preview.countryLabel, null);
+  });
+
+  it("formats SA preview independently from EG", () => {
+    const preview = buildCustomerPhonePreviewLines({
+      phone: "501234567",
+      region: "SA",
+      locale: "en",
+    });
+    assert.equal(preview.code, "ok");
+    assert.equal(preview.international, "+966 50 123 4567");
+    assert.equal(preview.countryIso, "SA");
+    assert.equal(preview.countryLabel, "Saudi Arabia");
   });
 });

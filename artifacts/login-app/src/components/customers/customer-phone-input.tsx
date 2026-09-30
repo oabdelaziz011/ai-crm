@@ -4,14 +4,12 @@
  */
 import { useEffect, useMemo, useId } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  formatPhoneIdentityInternational,
-  listPhoneCountryOptions,
-} from "@workspace/ai-tool-router";
+import { listPhoneCountryOptions } from "@workspace/ai-tool-router";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import {
+  buildCustomerPhonePreviewLines,
   countryFlagEmoji,
   localizedCountryName,
   validateCustomerPhoneFormInput,
@@ -56,8 +54,9 @@ export function CustomerPhoneInput({
         const flag = countryFlagEmoji(c.iso);
         return {
           value: c.iso,
-          label: `${flag ? `${flag} ` : ""}${name}`,
-          description: `+${c.callingCode} · ${c.iso}`,
+          // ISO immediately next to localized name (avoids wide emoji/RTL separation).
+          label: `${c.iso} · ${name}`,
+          description: `${flag ? `${flag} ` : ""}+${c.callingCode}`,
         };
       }),
     [countries, locale],
@@ -66,6 +65,11 @@ export function CustomerPhoneInput({
   const validation = useMemo(
     () => validateCustomerPhoneFormInput({ phone, region }),
     [phone, region],
+  );
+
+  const preview = useMemo(
+    () => buildCustomerPhonePreviewLines({ phone, region, locale }),
+    [phone, region, locale],
   );
 
   useEffect(() => {
@@ -87,11 +91,6 @@ export function CustomerPhoneInput({
       : showValidation && phone.trim() && validation.code === "invalid_phone"
         ? t("forms.customer.invalidPhone")
         : null;
-
-  const previewCountry =
-    validation.preview.phoneCountryIso != null
-      ? localizedCountryName(validation.preview.phoneCountryIso, locale)
-      : null;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -125,30 +124,47 @@ export function CustomerPhoneInput({
             placeholder={t("forms.customer.phonePlaceholder")}
             className="bg-background/50 border-white/10"
             aria-invalid={validationMessage ? true : undefined}
-            aria-describedby={validationMessage ? `${phoneId}-error` : undefined}
+            aria-describedby={
+              validationMessage
+                ? `${phoneId}-error`
+                : preview.international
+                  ? `${phoneId}-preview`
+                  : undefined
+            }
           />
         </div>
       </div>
 
-      {validation.code === "ok" && validation.preview.phoneE164 ? (
+      {preview.international ? (
         <div
-          className="rounded-lg border border-white/10 bg-background/30 px-3 py-2 text-xs text-muted-foreground space-y-0.5"
-          dir="ltr"
+          id={`${phoneId}-preview`}
+          data-testid="customer-phone-preview"
+          className="rounded-lg border border-white/10 bg-background/30 px-3 py-2 text-xs text-muted-foreground space-y-1"
+          role="status"
+          aria-live="polite"
         >
-          {phone.trim() ? (
-            <p>
-              <span className="text-foreground/80">{t("forms.customer.phone")}:</span> {phone.trim()}
-            </p>
-          ) : null}
-          <p>
-            <span className="text-foreground/80">{t("forms.customer.phoneInternational")}:</span>{" "}
-            {formatPhoneIdentityInternational(validation.preview.phoneE164) ??
-              validation.preview.phoneE164}
+          <p className="leading-relaxed">
+            <span className="text-foreground/80">
+              {t("forms.customer.phoneInternational")}:{" "}
+            </span>
+            {/* bdi keeps +20 … from reversing in RTL (not 8799… 20+) */}
+            <bdi
+              dir="ltr"
+              data-testid="customer-phone-preview-international"
+              className="font-mono text-[13px] tabular-nums tracking-wide text-foreground"
+            >
+              {preview.international}
+            </bdi>
           </p>
-          {previewCountry ? (
-            <p>
-              <span className="text-foreground/80">{t("forms.customer.phoneCountry")}:</span>{" "}
-              <span dir="auto">{previewCountry}</span>
+          {preview.countryLabel ? (
+            <p className="leading-relaxed">
+              <span className="text-foreground/80">
+                {t("forms.customer.phoneCountry")}:{" "}
+              </span>
+              <span data-testid="customer-phone-preview-country" className="text-foreground">
+                {preview.countryIso ? `${preview.countryIso} · ` : ""}
+                {preview.countryLabel}
+              </span>
             </p>
           ) : null}
         </div>

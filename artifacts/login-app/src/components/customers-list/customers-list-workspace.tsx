@@ -3,10 +3,13 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { CustomerModal } from "@/components/dashboard/customer-modal";
 import { DeleteDialog } from "@/components/dashboard/delete-dialog";
+import {
+  CustomerLifecycleStatusDialog,
+  type CustomerLifecycleDialogMode,
+} from "@/components/customers/customer-lifecycle-status-dialog";
 import { BookingModal } from "@/components/dashboard/booking-modal";
 import { InvoiceModal } from "@/components/dashboard/invoice-modal";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
-import { useHasPermission } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
 import {
   buildCustomerDeleteWarningAr,
@@ -19,6 +22,12 @@ import {
 import { useBookings } from "@/hooks/use-bookings";
 import { useInvoices } from "@/hooks/use-invoices";
 import { useUser } from "@/context/auth-context";
+import { useCommercialFeatureLookup } from "@/hooks/billing/use-commercial-feature-lookup";
+import { useSmsSettings } from "@/hooks/channels/use-sms-settings";
+import { useEmailWorkspaceCompanyChannel } from "@/hooks/notifications/use-email-health";
+import { useWhatsAppSettings } from "@/hooks/notifications/use-whatsapp-health";
+import { useHasPermission, usePermissions } from "@/hooks/use-rbac";
+import type { CustomerListQuickAction } from "@/components/customers-list/customers-list-row";
 import {
   BookingProfileService,
   CallService,
@@ -28,7 +37,9 @@ import {
   type InvoiceModalPrefill,
 } from "@/lib/customer-profile/services";
 import { customerWorkspaceHref } from "@/lib/customer-workspace/customer-workspace-utils";
+import type { Customer } from "@/lib/types";
 import { saveCustomersListScroll, restoreCustomersListScroll } from "@/lib/customer-workspace/customers-list-scroll";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   applyCustomerFilters,
   applySavedViewPreset,
@@ -36,10 +47,18 @@ import {
   BUILT_IN_VIEWS,
   computeListStats,
   createDefaultFilters,
+  customerListEmailComposeHref,
+  customerListOutboundPhone,
   enrichCustomers,
   exportCustomersCsv,
+  markCustomerChannelContactInCache,
+  mergeCustomerListPresenceTags,
+  resolveCustomerListChannelCapabilities,
   sortCustomerRows,
+  useCustomerChannelContacts,
+  useCustomerEntityNotesPresence,
   useCustomerListFilterState,
+  useCustomerListTagRealtime,
   useCustomersListPreferences,
   useDebouncedValue,
   type EnrichedCustomerRow,
@@ -47,7 +66,6 @@ import {
 } from "@/lib/customers-list";
 import { queryShellStateFromQuery } from "@/lib/react-query/query-shell-state";
 import { QueryRefreshIndicator } from "@/components/ui/query-refresh-indicator";
-import type { Customer } from "@/lib/types";
 import { CustomersBulkActionsBar } from "./customers-bulk-actions-bar";
 import { CustomersEmptyState } from "./customers-empty-state";
 import { CustomersFilterPanel } from "./customers-filter-panel";
@@ -76,7 +94,10 @@ export function CustomersListWorkspace() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const { profile } = useUser();
+  const { isSuperAdmin, hasPermission } = usePermissions();
+  const { lookup: commercialFeatureEnabled } = useCommercialFeatureLookup();
 
   const { data: customers = [], error, isPending, isFetching } = useCustomers();
   const customersShell = queryShellStateFromQuery({ isPending, isFetching });
@@ -108,6 +129,11 @@ export function CustomersListWorkspace() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [modal, setModal] = useState<{ open: boolean; customer?: Customer | null }>({ open: false });
+  const [lifecycleDialog, setLifecycleDialog] = useState<{
+    open: boolean;
+    mode: CustomerLifecycleDialogMode | null;
+    customer: Customer | null;
+  }>({ open: false, mode: null, customer: null });
   const [del, setDel] = useState<Customer | null>(null);
   const [deleteDeps, setDeleteDeps] = useState<CustomerDeleteDependencySummary | null>(null);
   const [deleteDepsLoading, setDeleteDepsLoading] = useState(false);
@@ -116,16 +142,59 @@ export function CustomersListWorkspace() {
   const [invoicePrefill, setInvoicePrefill] = useState<InvoiceModalPrefill | null>(null);
 
   const companyId = profile?.company_id ?? null;
+  const { data: whatsappSettings } = useWhatsAppSettings(companyId);
+  const { data: smsSettings } = useSmsSettings(companyId);
+  const { data: emailWorkspaceChannel } = useEmailWorkspaceCompanyChannel(companyId);
+
+  const channelCapabilities = useMemo(
+    () =>
+      resolveCustomerListChannelCapabilities({
+        isSuperAdmin,
+        commercialFeatureEnabled,
+        hasPermission,
+        whatsappEnabledInCompany: whatsappSettings?.enabled === true,
+        smsEnabledInCompany: smsSettings?.enabled === true,
+        emailEnabledInCompany: emailWorkspaceChannel?.isEnabled === true,
+      }),
+    [
+      commercialFeatureEnabled,
+      emailWorkspaceChannel?.isEnabled,
+      hasPermission,
+      isSuperAdmin,
+      smsSettings?.enabled,
+      whatsappSettings?.enabled,
+    ],
+  );
 
   const enriched = useMemo(
     () => enrichCustomers(customers, bookings, invoices),
     [customers, bookings, invoices],
   );
 
-  const stats = useMemo(() => computeListStats(enriched), [enriched]);
+  const customerIdsForNotes = useMemo(
+    () => enriched.map((row) => row.customer.id),
+    [enriched],
+  );
+  const { data: entityNoteCustomerIds } = useCustomerEntityNotesPresence(
+    companyId,
+    customerIdsForNotes,
+  );
+  const { data: channelContacts } = useCustomerChannelContacts(companyId, customerIdsForNotes);
+  useCustomerListTagRealtime(companyId);
+
+  const enrichedWithNotes = useMemo(
+    () =>
+      mergeCustomerListPresenceTags(enriched, {
+        entityNoteCustomerIds,
+        channelContacts,
+      }),
+    [channelContacts, enriched, entityNoteCustomerIds],
+  );
+
+  const stats = useMemo(() => computeListStats(enrichedWithNotes), [enrichedWithNotes]);
 
   const displayedRows = useMemo(() => {
-    let rows = enriched;
+    let rows = enrichedWithNotes;
     const view = BUILT_IN_VIEWS.find((v) => v.id === activeViewId)
       ?? prefs.customViews.find((v) => v.id === activeViewId);
 
@@ -138,7 +207,7 @@ export function CustomersListWorkspace() {
     rows = sortCustomerRows(rows, prefs.sortField, prefs.sortDirection);
     return rows;
   }, [
-    enriched,
+    enrichedWithNotes,
     activeViewId,
     prefs.customViews,
     prefs.sortField,
@@ -150,9 +219,9 @@ export function CustomersListWorkspace() {
 
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
-    enriched.forEach((row) => row.tags.forEach((tag) => tags.add(tag)));
+    enrichedWithNotes.forEach((row) => row.tags.forEach((tag) => tags.add(tag)));
     return Array.from(tags).sort();
-  }, [enriched]);
+  }, [enrichedWithNotes]);
 
   const selectedRows = useMemo(
     () => displayedRows.filter((row) => selectedIds.has(row.customer.id)),
@@ -197,19 +266,17 @@ export function CustomersListWorkspace() {
   useRegisterFloatingAiContext(floatingAiContext);
 
   const openWorkspace = useCallback(
-    (id: string) => {
+    (id: string, tab?: string) => {
       saveCustomersListScroll();
-      setLocation(customerWorkspaceHref(id));
+      setLocation(customerWorkspaceHref(id, tab));
     },
     [setLocation],
   );
 
   const handleQuickAction = useCallback(
-    async (
-      row: EnrichedCustomerRow,
-      action: "call" | "whatsapp" | "email" | "booking" | "invoice" | "profile",
-    ) => {
+    async (row: EnrichedCustomerRow, action: CustomerListQuickAction) => {
       const { customer } = row;
+      const phone = customerListOutboundPhone(customer);
 
       if (action === "profile") {
         openWorkspace(customer.id);
@@ -217,13 +284,56 @@ export function CustomersListWorkspace() {
       }
 
       if (action === "email") {
-        if (customer.email) window.location.href = `mailto:${customer.email}`;
+        const email = customer.email?.trim() ?? "";
+        if (!email) {
+          toast({
+            variant: "destructive",
+            title: t("dashboard.customerProfile.quickActions.errors.title"),
+            description: t("dashboard.customerProfile.quickActions.errors.emailMissing"),
+          });
+          return;
+        }
+        saveCustomersListScroll();
+        markCustomerChannelContactInCache(queryClient, customer.id, "email");
+        setLocation(customerListEmailComposeHref(email));
+        return;
+      }
+
+      if (action === "sms") {
+        if (!phone) {
+          toast({
+            variant: "destructive",
+            title: t("dashboard.customerProfile.quickActions.errors.title"),
+            description: t("dashboard.customerProfile.quickActions.errors.phoneMissing"),
+          });
+          return;
+        }
+        try {
+          saveCustomersListScroll();
+          await ConversationService.openSmsConversation({
+            customerId: customer.id,
+            companyId,
+            phone,
+            navigate: setLocation,
+            hasPermission,
+          });
+          markCustomerChannelContactInCache(queryClient, customer.id, "sms");
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: t("dashboard.customerProfile.quickActions.errors.title"),
+            description:
+              error instanceof Error && error.message === "SMS_CONVERSATION_NOT_FOUND"
+                ? t("dashboard.customerProfile.quickActions.errors.smsNotFound")
+                : t("dashboard.customerProfile.quickActions.errors.generic"),
+          });
+        }
         return;
       }
 
       if (action === "call") {
         try {
-          CallService.initiateCall(customer.phone);
+          CallService.initiateCall(phone);
         } catch {
           toast({
             variant: "destructive",
@@ -244,15 +354,32 @@ export function CustomersListWorkspace() {
         return;
       }
 
+      if (action === "deactivate" || action === "block" || action === "activate") {
+        setLifecycleDialog({ open: true, mode: action, customer });
+        return;
+      }
+
       if (action !== "whatsapp") return;
 
+      if (!phone) {
+        toast({
+          variant: "destructive",
+          title: t("dashboard.customerProfile.quickActions.errors.title"),
+          description: t("dashboard.customerProfile.quickActions.errors.phoneMissing"),
+        });
+        return;
+      }
+
       try {
+        saveCustomersListScroll();
         await ConversationService.openWhatsappConversation({
           customerId: customer.id,
           companyId,
-          phone: customer.phone,
+          phone,
           navigate: setLocation,
+          hasPermission,
         });
+        markCustomerChannelContactInCache(queryClient, customer.id, "whatsapp");
       } catch (error) {
         toast({
           variant: "destructive",
@@ -264,7 +391,7 @@ export function CustomersListWorkspace() {
         });
       }
     },
-    [companyId, openWorkspace, setLocation, t, toast],
+    [companyId, hasPermission, openWorkspace, queryClient, setLocation, t, toast],
   );
 
   const handleExport = useCallback(
@@ -332,7 +459,7 @@ export function CustomersListWorkspace() {
   const emptyVariant = customers.length === 0 ? "all" : "filtered";
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="min-h-full space-y-4 bg-white px-4 py-5 pb-20 md:px-6 dark:bg-background">
       <CustomersListToolbar
         search={search}
         onSearchChange={setSearch}
@@ -385,7 +512,7 @@ export function CustomersListWorkspace() {
       {customersShell.isInitialLoad ? (
         <CustomersListSkeleton density={prefs.density} />
       ) : displayedRows.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="rounded-xl border border-border bg-white dark:bg-card">
           <CustomersEmptyState
             variant={emptyVariant}
             canCreate={canCreateCustomers}
@@ -416,7 +543,7 @@ export function CustomersListWorkspace() {
               setSelectedIds(new Set());
             }
           }}
-          onOpenCustomer={openWorkspace}
+          onOpenCustomer={(id) => openWorkspace(id)}
           onEditCustomer={
             canEditCustomers
               ? (row) => setModal({ open: true, customer: row.customer })
@@ -425,6 +552,8 @@ export function CustomersListWorkspace() {
           onDeleteCustomer={
             canDeleteCustomers ? (row) => void openDeleteCustomer(row.customer) : undefined
           }
+          canChangeLifecycle={canEditCustomers}
+          channelCapabilities={channelCapabilities}
           onQuickAction={handleQuickAction}
         />
       )}
@@ -469,6 +598,13 @@ export function CustomersListWorkspace() {
       {(canCreateCustomers || canEditCustomers) && (
         <CustomerModal open={modal.open} onClose={() => setModal({ open: false })} customer={modal.customer} />
       )}
+
+      <CustomerLifecycleStatusDialog
+        open={lifecycleDialog.open}
+        mode={lifecycleDialog.mode}
+        customer={lifecycleDialog.customer}
+        onClose={() => setLifecycleDialog({ open: false, mode: null, customer: null })}
+      />
 
       <DeleteDialog
         open={!!del}

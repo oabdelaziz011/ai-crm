@@ -160,6 +160,7 @@ export function createToolCustomerServicePort(
         email: input.email ?? undefined,
         phone: input.phone,
         phoneIdentity: input.phoneIdentity,
+        source: input.source ?? undefined,
       });
 
       return {
@@ -208,6 +209,20 @@ export function createToolCustomerServicePort(
         .update({ customer_id: customerId })
         .eq("id", conversationId)
         .is("customer_id", null);
+    },
+
+    async getConversationChannelType(input) {
+      const conversationId = input.conversationId?.trim();
+      if (!conversationId) return null;
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("channel_type")
+        .eq("id", conversationId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const channelType =
+        typeof data?.channel_type === "string" ? data.channel_type.trim() : "";
+      return channelType || null;
     },
   };
 }

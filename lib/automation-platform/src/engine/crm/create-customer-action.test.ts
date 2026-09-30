@@ -60,6 +60,7 @@ assert.equal(links.length, 1);
 assert.equal(links[0]?.conversationId, "conv-inbox-1");
 assert.equal(links[0]?.customerId, repository.list()[0]?.id);
 assert.equal(links[0]?.automationSessionId, "session-1");
+assert.equal(repository.list()[0]?.source, "whatsapp");
 
 const withoutConversation = await executeCreateCustomerAction(
   buildContext({ customer_name: "No Link" }),
@@ -70,6 +71,7 @@ const withoutConversation = await executeCreateCustomerAction(
 
 assert.equal(withoutConversation.output?.customerId, repository.list()[1]?.id);
 assert.equal(links.length, 1);
+assert.equal(repository.list()[1]?.source, "whatsapp");
 
 const instagramLocal = await executeCreateCustomerAction(
   buildContext(
@@ -94,6 +96,7 @@ const instagramLocal = await executeCreateCustomerAction(
 
 assert.equal(instagramLocal.variables?.customer_phone, "+201098232123");
 assert.equal((instagramLocal.variables?.customer as { phone: string | null }).phone, "+201098232123");
+assert.equal(repository.list()[2]?.source, "instagram");
 
 let whatsappLocalFailed = false;
 try {

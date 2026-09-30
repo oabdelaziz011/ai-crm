@@ -17,6 +17,11 @@ export type CreateCustomerInput = {
   age?: number | null;
   gender?: string | null;
   notes?: string | null;
+  /**
+   * First-touch acquisition source (migration 382).
+   * When omitted, repositories default to `manual`. Never overwrite after create.
+   */
+  source?: string | null;
   /** Precomputed dual-write identity; when omitted, unresolved/cleared defaults apply. */
   phoneIdentity?: CustomerPhoneIdentityWrite | null;
 };

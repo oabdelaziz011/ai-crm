@@ -14,6 +14,7 @@ import {
   isImportPhoneWritable,
   resolveImportPhoneIdentity,
 } from "@workspace/ai-tool-router";
+import { customerSourceFromChannelType } from "../../crm/customer/customer-acquisition-source.js";
 import { resolveInstagramAutomationPhone } from "./instagram-customer-phone.js";
 
 function readString(value: unknown): string | null {
@@ -148,6 +149,7 @@ export async function executeCreateCustomerAction(
     phone,
     age: parseOptionalAge(ageRaw),
     gender: genderRaw?.trim() || null,
+    source: customerSourceFromChannelType(context.session.channel) ?? "manual",
     phoneIdentity: phonePreview.identity ?? undefined,
   });
 

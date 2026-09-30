@@ -23,6 +23,11 @@ import {
   formatCustomerPhoneDisplay,
   localizedCountryName,
 } from "@/lib/customers/customer-phone-form";
+import {
+  displayCustomerAge,
+  normalizeCustomerAcquisitionSource,
+  normalizeCustomerLifecycleStatus,
+} from "@/lib/customers/customer-lifecycle";
 
 type Props = {
   customer: Customer;
@@ -119,6 +124,21 @@ export function OverviewTab({
     : notSet;
   const lastInteraction = metrics?.lastInteractionAt
     ? formatDistanceToNow(new Date(metrics.lastInteractionAt), { addSuffix: true })
+    : notSet;
+
+  const status = normalizeCustomerLifecycleStatus(customer.status);
+  const statusLabel = t(`dashboard.customers.list.status.${status}`);
+  const sourceKey = normalizeCustomerAcquisitionSource(customer.source) ?? "manual";
+  const sourceLabel = t(`dashboard.customers.list.sources.${sourceKey}`);
+  const derivedAge = displayCustomerAge({
+    dateOfBirth: customer.date_of_birth,
+    age: customer.age,
+  });
+  const dobValue = customer.date_of_birth?.trim() || "";
+  const dobDisplay = dobValue
+    ? derivedAge != null
+      ? `${dobValue} (${derivedAge})`
+      : dobValue
     : notSet;
 
   const isPending = (action: CustomerProfileQuickAction) =>
@@ -248,14 +268,22 @@ export function OverviewTab({
             canEdit={canEdit}
           />
           <CustomerFieldEditor
-            label={t("forms.customer.age")}
-            field="age"
+            label={t("forms.customer.dateOfBirth")}
+            field="date_of_birth"
             customerId={customer.id}
-            value={customer.age == null ? "" : String(customer.age)}
-            inputType="number"
+            value={dobValue}
+            displayValue={dobDisplay}
+            inputType="date"
             canEdit={canEdit}
           />
-          <InfoCell label={t("dashboard.customerDetails.fields.status")} value={notSet} />
+          <InfoCell
+            label={t("dashboard.customerDetails.fields.status")}
+            value={statusLabel}
+          />
+          <InfoCell
+            label={t("dashboard.customerDetails.fields.source")}
+            value={sourceLabel}
+          />
         </div>
       </div>
     </div>

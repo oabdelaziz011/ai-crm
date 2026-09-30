@@ -218,7 +218,7 @@ describe("resolveTrustedChannelCustomer", () => {
     assert.equal(result.status, "ambiguous");
   });
 
-  it("does not support non-whatsapp/non-email/non-sms channels", async () => {
+  it("does not support unrecognized channel keys (e.g. facebook alias)", async () => {
     const result = await resolveTrustedChannelCustomer({
       companyId: "company-a",
       channelKey: "facebook",
@@ -702,5 +702,75 @@ describe("Phase D2 — inbound WhatsApp phone identity", () => {
       assert.equal(result.customerId, "cust-legacy-null-e164");
       assert.equal(result.matchSource, "legacy_phone");
     }
+  });
+
+  it("Messenger: resolves known PSID via channel external id (company-scoped)", async () => {
+    const crm: TrustedChannelCustomerMatch = {
+      id: "cust-msg",
+      name: "Fan",
+      phone: null,
+      phoneE164: null,
+      email: null,
+    };
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "messenger",
+      senderExternalId: "1234567890123456",
+      findByPhone: async () => ({ status: "not_found" }),
+      findByChannelExternalId: async ({ channelKey, externalId }) => {
+        assert.equal(channelKey, "messenger");
+        assert.equal(externalId, "1234567890123456");
+        return { status: "found", customer: crm };
+      },
+    });
+    assert.equal(result.status, "known");
+    if (result.status === "known") {
+      assert.equal(result.customerId, "cust-msg");
+      assert.equal(result.matchSource, "channel_external_id");
+      assert.equal(result.matchedPhone, "1234567890123456");
+    }
+  });
+
+  it("Instagram: unknown IGSID returns unknown (create path)", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "instagram",
+      senderExternalId: "9876543210987654",
+      findByPhone: async () => ({ status: "not_found" }),
+      findByChannelExternalId: async () => ({ status: "not_found" }),
+    });
+    assert.equal(result.status, "unknown");
+  });
+
+  it("Messenger: invalid empty PSID fails closed", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "messenger",
+      senderExternalId: "   ",
+      findByPhone: async () => ({ status: "not_found" }),
+      findByChannelExternalId: async () => ({ status: "found", customer: { id: "x", name: "x", phone: null } }),
+    });
+    assert.equal(result.status, "invalid_sender");
+  });
+
+  it("web_chat remains unsupported_channel", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "web_chat",
+      senderExternalId: "session-1",
+      findByPhone: async () => ({ status: "not_found" }),
+    });
+    assert.equal(result.status, "unsupported_channel");
+  });
+
+  it("Messenger: duplicate channel identity is ambiguous", async () => {
+    const result = await resolveTrustedChannelCustomer({
+      companyId: "company-a",
+      channelKey: "messenger",
+      senderExternalId: "1111222233334444",
+      findByPhone: async () => ({ status: "not_found" }),
+      findByChannelExternalId: async () => ({ status: "duplicate", count: 2 }),
+    });
+    assert.equal(result.status, "ambiguous");
   });
 });

@@ -77,8 +77,7 @@ export function CustomersFilterPanel({
                 <SelectItem value="all">{t("dashboard.customers.list.filters.all")}</SelectItem>
                 <SelectItem value="active">{t("dashboard.customers.list.status.active")}</SelectItem>
                 <SelectItem value="inactive">{t("dashboard.customers.list.status.inactive")}</SelectItem>
-                <SelectItem value="at_risk">{t("dashboard.customers.list.status.atRisk")}</SelectItem>
-                <SelectItem value="new">{t("dashboard.customers.list.status.new")}</SelectItem>
+                <SelectItem value="blocked">{t("dashboard.customers.list.status.blocked")}</SelectItem>
               </SelectContent>
             </Select>
           </FilterField>
@@ -147,12 +146,14 @@ export function CustomersFilterPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("dashboard.customers.list.filters.all")}</SelectItem>
-                <SelectItem value="direct">{t("dashboard.customers.list.sources.direct")}</SelectItem>
-                <SelectItem value="web">{t("dashboard.customers.list.sources.web")}</SelectItem>
-                <SelectItem value="phone">{t("dashboard.customers.list.sources.phone")}</SelectItem>
                 <SelectItem value="whatsapp">{t("dashboard.customers.list.sources.whatsapp")}</SelectItem>
-                <SelectItem value="referral">{t("dashboard.customers.list.sources.referral")}</SelectItem>
-                <SelectItem value="repeat">{t("dashboard.customers.list.sources.repeat")}</SelectItem>
+                <SelectItem value="messenger">{t("dashboard.customers.list.sources.messenger")}</SelectItem>
+                <SelectItem value="instagram">{t("dashboard.customers.list.sources.instagram")}</SelectItem>
+                <SelectItem value="email">{t("dashboard.customers.list.sources.email")}</SelectItem>
+                <SelectItem value="sms">{t("dashboard.customers.list.sources.sms")}</SelectItem>
+                <SelectItem value="website">{t("dashboard.customers.list.sources.website")}</SelectItem>
+                <SelectItem value="manual">{t("dashboard.customers.list.sources.manual")}</SelectItem>
+                <SelectItem value="other">{t("dashboard.customers.list.sources.other")}</SelectItem>
               </SelectContent>
             </Select>
           </FilterField>

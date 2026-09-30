@@ -3,11 +3,12 @@ import type { CustomerLookupField } from "../lookup/types.js";
 import type { CustomerRecord } from "../types/find-customer-input.js";
 import type { CreateCustomerInput, UpdateCustomerInput } from "../types/customer-mutation-input.js";
 import type { CustomerRepositoryPort } from "../customer/customer-repository-port.js";
+import { normalizeCustomerAcquisitionSource } from "../customer/customer-acquisition-source.js";
 import { normalizeCustomerEmail } from "../customer/customer-email-utils.js";
 import { resolvePhoneIdentityWrite } from "../customer/customer-phone-identity-write.js";
 
 const CUSTOMER_COLUMNS =
-  "id, name, email, phone, phone_e164, age, gender, notes, avatar_url, created_at, updated_at";
+  "id, name, email, phone, phone_e164, age, date_of_birth, gender, notes, source, status, avatar_url, created_at, updated_at";
 
 function parseAgeValue(value: string): number | null {
   const trimmed = value.trim();
@@ -72,6 +73,7 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
   async createCustomer(input: CreateCustomerInput): Promise<CustomerRecord> {
     const phone = input.phone?.trim() || null;
     const identity = resolvePhoneIdentityWrite(phone, input.phoneIdentity);
+    const source = normalizeCustomerAcquisitionSource(input.source) ?? "manual";
     const { data, error } = await this.client
       .from("customers")
       .insert({
@@ -83,6 +85,7 @@ export class SupabaseCustomerRepository implements CustomerRepositoryPort {
         age: input.age ?? null,
         gender: normalizeGender(input.gender),
         notes: input.notes?.trim() || null,
+        source,
         phone_e164: identity.phone_e164,
         phone_country_iso: identity.phone_country_iso,
         phone_region_source: identity.phone_region_source,
@@ -167,8 +170,11 @@ function mapCustomerRecord(row: Record<string, unknown>): CustomerRecord {
     phone: row.phone == null ? null : String(row.phone),
     phoneE164: row.phone_e164 == null ? null : String(row.phone_e164),
     age: row.age == null ? null : Number(row.age),
+    dateOfBirth: row.date_of_birth == null ? null : String(row.date_of_birth),
     gender: row.gender == null ? null : String(row.gender),
     notes: row.notes == null ? null : String(row.notes),
+    source: row.source == null ? null : String(row.source),
+    status: row.status == null ? null : String(row.status),
     avatarUrl: row.avatar_url == null ? null : String(row.avatar_url),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),

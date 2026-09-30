@@ -1,13 +1,17 @@
 import { memo, useCallback } from "react";
 import {
+  Ban,
   CalendarPlus,
+  CircleCheck,
   Mail,
   MessageCircle,
+  MessageSquareText,
   MoreHorizontal,
   Phone,
   Pencil,
   Trash2,
   UserRound,
+  UserX,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +31,29 @@ import {
 } from "@/lib/customer-workspace/customer-workspace-utils";
 import { formatCustomerPhoneDisplay } from "@/lib/customers/customer-phone-form";
 import {
+  lifecycleActionsForStatus,
+  normalizeCustomerLifecycleStatus,
+} from "@/lib/customers/customer-lifecycle";
+import {
+  customerListDisplayTags,
   formatMoney,
   type CustomerColumnId,
+  type CustomerListChannelCapabilities,
   type CustomerListDensity,
   type EnrichedCustomerRow,
 } from "@/lib/customers-list";
+
+export type CustomerListQuickAction =
+  | "call"
+  | "whatsapp"
+  | "email"
+  | "sms"
+  | "booking"
+  | "invoice"
+  | "profile"
+  | "deactivate"
+  | "block"
+  | "activate";
 
 type CustomersListRowProps = {
   row: EnrichedCustomerRow;
@@ -44,14 +66,15 @@ type CustomersListRowProps = {
   onOpen: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
-  onQuickAction: (action: "call" | "whatsapp" | "email" | "booking" | "invoice" | "profile") => void;
+  canChangeLifecycle?: boolean;
+  channelCapabilities: CustomerListChannelCapabilities;
+  onQuickAction: (action: CustomerListQuickAction) => void;
 };
 
 const STATUS_STYLES = {
   active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20 dark:text-emerald-400",
   inactive: "bg-muted text-muted-foreground border-border",
-  at_risk: "bg-orange-500/15 text-orange-700 border-orange-500/20 dark:text-orange-400",
-  new: "bg-blue-500/15 text-blue-700 border-blue-500/20 dark:text-blue-400",
+  blocked: "bg-destructive/15 text-destructive border-destructive/25",
 } as const;
 
 const COLUMN_VISIBILITY_CLASS: Partial<Record<CustomerColumnId, string>> = {
@@ -67,6 +90,13 @@ const COLUMN_VISIBILITY_CLASS: Partial<Record<CustomerColumnId, string>> = {
   lastActivity: "hidden xl:flex",
 };
 
+const TAG_STYLE: Record<string, string> = {
+  notes: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  email: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  whatsapp: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  sms: "border-indigo-500/25 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+};
+
 export const CustomersListRow = memo(function CustomersListRow({
   row,
   density,
@@ -78,14 +108,22 @@ export const CustomersListRow = memo(function CustomersListRow({
   onOpen,
   onEdit,
   onDelete,
+  canChangeLifecycle = false,
+  channelCapabilities,
   onQuickAction,
 }: CustomersListRowProps) {
   const { t } = useTranslation("common");
   const { customer } = row;
+  const hasPhone = Boolean(customer.phone?.trim());
+  const hasEmail = Boolean(customer.email?.trim());
+  const listTags = customerListDisplayTags(row.tags);
+  const lifecycleStatus = normalizeCustomerLifecycleStatus(row.status);
+  const lifecycleActions = lifecycleActionsForStatus(lifecycleStatus);
 
   const cellStyle = useCallback(
     (columnId: CustomerColumnId) => {
-      const width = columnWidths[columnId];
+      const raw = columnWidths[columnId];
+      const width = columnId === "actions" ? Math.max(raw ?? 52, 96) : raw;
       return {
         width,
         minWidth: width,
@@ -144,8 +182,19 @@ export const CustomersListRow = memo(function CustomersListRow({
                 <span className={cn("flex items-center gap-1.5 font-medium truncate", nameSize)}>
                   <span className="truncate">{customer.name}</span>
                   {row.isVip && (
-                    <Badge className="h-5 shrink-0 border-amber-500/30 bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/15">
-                      VIP
+                    <Badge className="h-5 shrink-0 border-amber-500/30 bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/15 dark:text-amber-300">
+                      {t("dashboard.customerWorkspace.tags.vip")}
+                    </Badge>
+                  )}
+                  {row.tags.includes("notes") && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "h-5 shrink-0 px-1.5 text-[10px] font-medium",
+                        TAG_STYLE.notes,
+                      )}
+                    >
+                      {t("dashboard.customers.list.tags.notes")}
                     </Badge>
                   )}
                 </span>
@@ -161,12 +210,16 @@ export const CustomersListRow = memo(function CustomersListRow({
               className={cn("flex min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2", visibilityClass)}
               style={widthStyle}
             >
-              {row.tags.length === 0 ? (
+              {listTags.length === 0 ? (
                 <span className="text-sm text-muted-foreground">—</span>
               ) : (
-                row.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag} variant="secondary" className="h-5 px-1.5 text-[10px] font-normal capitalize">
-                    {tag}
+                listTags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className={cn("h-5 px-1.5 text-[10px] font-medium", TAG_STYLE[tag])}
+                  >
+                    {t(`dashboard.customers.list.tags.${tag}`)}
                   </Badge>
                 ))
               )}
@@ -243,7 +296,7 @@ export const CustomersListRow = memo(function CustomersListRow({
               style={widthStyle}
             >
               <Badge variant="outline" className={cn("capitalize", STATUS_STYLES[row.status])}>
-                {t(`dashboard.customers.list.status.${row.status === "at_risk" ? "atRisk" : row.status}`)}
+                {t(`dashboard.customers.list.status.${row.status}`)}
               </Badge>
             </div>
           );
@@ -276,7 +329,7 @@ export const CustomersListRow = memo(function CustomersListRow({
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[11rem]">
+                <DropdownMenuContent align="end" className="min-w-[12rem]">
                   <DropdownMenuItem onClick={() => onQuickAction("profile")}>
                     <UserRound className="me-2 h-3.5 w-3.5" />
                     {t("dashboard.customers.list.openProfile")}
@@ -286,40 +339,62 @@ export const CustomersListRow = memo(function CustomersListRow({
                     {t("dashboard.customerProfile.quickActions.newBooking")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={!customer.phone}
-                    onClick={() => onQuickAction("call")}
-                  >
+                  <DropdownMenuItem disabled={!hasPhone} onClick={() => onQuickAction("call")}>
                     <Phone className="me-2 h-3.5 w-3.5" />
                     {t("dashboard.customerProfile.quickActions.call")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!customer.phone}
-                    onClick={() => onQuickAction("whatsapp")}
-                  >
-                    <MessageCircle className="me-2 h-3.5 w-3.5" />
-                    {t("dashboard.customerProfile.quickActions.whatsapp")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!customer.email}
-                    onClick={() => onQuickAction("email")}
-                  >
-                    <Mail className="me-2 h-3.5 w-3.5" />
-                    {t("dashboard.customerProfile.quickActions.email")}
-                  </DropdownMenuItem>
-                  {(onEdit || onDelete) && <DropdownMenuSeparator />}
-                  {onEdit && (
+                  {channelCapabilities.whatsapp ? (
+                    <DropdownMenuItem disabled={!hasPhone} onClick={() => onQuickAction("whatsapp")}>
+                      <MessageCircle className="me-2 h-3.5 w-3.5" />
+                      {t("dashboard.customerProfile.quickActions.whatsapp")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {channelCapabilities.sms ? (
+                    <DropdownMenuItem disabled={!hasPhone} onClick={() => onQuickAction("sms")}>
+                      <MessageSquareText className="me-2 h-3.5 w-3.5" />
+                      {t("dashboard.customerProfile.quickActions.sms")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {channelCapabilities.email ? (
+                    <DropdownMenuItem disabled={!hasEmail} onClick={() => onQuickAction("email")}>
+                      <Mail className="me-2 h-3.5 w-3.5" />
+                      {t("dashboard.customerProfile.quickActions.email")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {(onEdit || onDelete || canChangeLifecycle) && <DropdownMenuSeparator />}
+                  {onEdit ? (
                     <DropdownMenuItem onClick={onEdit}>
                       <Pencil className="me-2 h-3.5 w-3.5" />
                       {t("buttons.edit")}
                     </DropdownMenuItem>
-                  )}
-                  {onDelete && (
+                  ) : null}
+                  {canChangeLifecycle && lifecycleActions.canDeactivate ? (
+                    <DropdownMenuItem onClick={() => onQuickAction("deactivate")}>
+                      <UserX className="me-2 h-3.5 w-3.5" />
+                      {t("forms.customer.lifecycle.deactivate")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canChangeLifecycle && lifecycleActions.canBlock ? (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onQuickAction("block")}
+                    >
+                      <Ban className="me-2 h-3.5 w-3.5" />
+                      {t("forms.customer.lifecycle.block")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canChangeLifecycle && lifecycleActions.canActivate ? (
+                    <DropdownMenuItem onClick={() => onQuickAction("activate")}>
+                      <CircleCheck className="me-2 h-3.5 w-3.5" />
+                      {t("forms.customer.lifecycle.activate")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onDelete ? (
                     <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
                       <Trash2 className="me-2 h-3.5 w-3.5" />
                       {t("buttons.delete")}
                     </DropdownMenuItem>
-                  )}
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

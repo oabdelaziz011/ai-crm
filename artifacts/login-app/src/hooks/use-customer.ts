@@ -16,8 +16,13 @@ export function useCustomer(customerId: string | null | undefined) {
         .from("customers")
         .select("id, user_id, company_id, name, email, phone, phone_e164, phone_country_iso, phone_region_source, phone_national, age, gender, notes, avatar_url, created_at, updated_at")
         .eq("id", customerId!)
-        .single();
+        .maybeSingle();
+      // maybeSingle: 0 rows → data=null (cross-tenant / missing). Avoid PostgREST
+      // "Cannot coerce the result to a single JSON object" from .single().
       if (error) throw new Error(error.message);
+      if (!data) {
+        throw new Error("CUSTOMER_NOT_FOUND");
+      }
       return data as Customer;
     },
   });

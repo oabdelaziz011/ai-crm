@@ -63,6 +63,7 @@ export function createLoginAppCustomerWritePort(
         name: input.displayName,
         email: input.email,
         phone: input.phone,
+        source: input.source ?? undefined,
         phoneIdentity,
       });
 

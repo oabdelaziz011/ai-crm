@@ -58,7 +58,7 @@ function StatCard({
         "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30",
         active
           ? "border-primary/40 bg-primary/10 shadow-sm"
-          : "border-border bg-card/80 hover:bg-muted/30",
+          : "border-border bg-white hover:bg-muted/20 dark:bg-card/80",
       )}
     >
       <div className="flex items-center justify-between gap-2">

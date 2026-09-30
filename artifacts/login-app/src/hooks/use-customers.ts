@@ -194,6 +194,11 @@ export function useCreateCustomer() {
         phone_region_source: _ignoreSource,
         phone_national: _ignoreNational,
         avatar_url: _ignoreAvatar,
+        status: _ignoreStatus,
+        status_reason: _ignoreStatusReason,
+        status_changed_at: _ignoreStatusChangedAt,
+        status_changed_by: _ignoreStatusChangedBy,
+        age: _ignoreAge,
         ...legacyValues
       } = values;
 
@@ -214,10 +219,17 @@ export function useCreateCustomer() {
         .from("customers")
         .insert({
           ...legacyValues,
+          // Age is display-only going forward; do not persist new age writes.
+          age: null,
           user_id: user.id,
           company_id: companyId,
           phone,
           ...identity,
+          status: "active",
+          source: legacyValues.source ?? "manual",
+          status_reason: null,
+          status_changed_at: null,
+          status_changed_by: null,
         })
         .select()
         .single();
@@ -253,6 +265,15 @@ export function useUpdateCustomer() {
       delete (patch as { phone_national?: unknown }).phone_national;
       // Avatar writes go through dedicated upload/remove helpers (tenant-owned storage only).
       delete (patch as { avatar_url?: unknown }).avatar_url;
+      // Lifecycle status changes go through set_customer_lifecycle_status RPC only.
+      delete (patch as { status?: unknown }).status;
+      delete (patch as { status_reason?: unknown }).status_reason;
+      delete (patch as { status_changed_at?: unknown }).status_changed_at;
+      delete (patch as { status_changed_by?: unknown }).status_changed_by;
+      // Source is first-touch immutable (DB guard + client strip).
+      delete (patch as { source?: unknown }).source;
+      // Prefer date_of_birth; stop writing age from generic patches.
+      delete (patch as { age?: unknown }).age;
 
       const phoneInPatch = Object.prototype.hasOwnProperty.call(values, "phone");
       if (phoneInPatch) {
@@ -303,6 +324,47 @@ export function useUpdateCustomer() {
       qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
       qc.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
       qc.invalidateQueries({ queryKey: customerKey(data.id) });
+    },
+  });
+}
+
+export type SetCustomerLifecycleStatusInput = {
+  customerId: string;
+  nextStatus: "active" | "inactive" | "blocked";
+  reason?: string | null;
+  expectedStatus?: "active" | "inactive" | "blocked" | null;
+};
+
+export function lifecycleStatusErrorI18nKey(error: unknown): string | null {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/REASON_REQUIRED/i.test(message)) return "forms.customer.lifecycle.reasonRequired";
+  if (/FORBIDDEN|42501|permission/i.test(message)) return "forms.customer.lifecycle.forbidden";
+  if (/STATUS_CONFLICT|40001/i.test(message)) return "forms.customer.lifecycle.conflict";
+  if (/INVALID_STATUS/i.test(message)) return "forms.customer.lifecycle.invalidStatus";
+  if (/CUSTOMER_NOT_FOUND|P0002/i.test(message)) return "forms.customer.lifecycle.notFound";
+  return null;
+}
+
+export function useSetCustomerLifecycleStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetCustomerLifecycleStatusInput) => {
+      const { data, error } = await supabase.rpc("set_customer_lifecycle_status", {
+        p_customer_id: input.customerId,
+        p_new_status: input.nextStatus,
+        p_reason: input.reason ?? null,
+        p_expected_status: input.expectedStatus ?? null,
+      });
+      if (error) throw new Error(error.message);
+      return data as Customer;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: CUSTOMERS_KEY });
+      qc.invalidateQueries({ queryKey: SIDEBAR_BADGES_KEY });
+      qc.invalidateQueries({ queryKey: customerKey(data.id) });
+      qc.invalidateQueries({ queryKey: ["customer-lifecycle-events", data.id] });
+      qc.invalidateQueries({ queryKey: ["customer-timeline", data.id] });
+      qc.invalidateQueries({ queryKey: ["customer-audit-history", data.id] });
     },
   });
 }

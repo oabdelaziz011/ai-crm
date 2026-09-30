@@ -10,6 +10,7 @@ import {
   MessageSquare,
   MousePointerClick,
   PhoneCall,
+  ShieldAlert,
   Sparkles,
   StickyNote,
   UserPen,
@@ -73,6 +74,76 @@ defineDescriptor({
   accentClass: "text-sky-400 bg-sky-500/15 border-sky-500/30",
   resolveTitle: (_event, ctx) => t(ctx, "customer_created.title"),
   resolveDescription: (_event, ctx) => t(ctx, "customer_created.description"),
+});
+
+defineDescriptor({
+  type: "customer_status_changed",
+  category: "lifecycle",
+  icon: ShieldAlert,
+  accentClass: "text-amber-400 bg-amber-500/15 border-amber-500/30",
+  resolveTitle: (event, ctx) => {
+    const newStatus =
+      typeof event.metadata?.newStatus === "string"
+        ? event.metadata.newStatus
+        : typeof event.payload?.newStatus === "string"
+          ? event.payload.newStatus
+          : null;
+    return t(ctx, "customer_status_changed.title", {
+      status: newStatus
+        ? ctx.translate(`dashboard.customers.list.status.${newStatus}`, {
+            defaultValue: newStatus,
+          })
+        : "",
+    });
+  },
+  resolveDescription: (event, ctx) => {
+    const parts: string[] = [];
+    const oldStatus =
+      typeof event.metadata?.oldStatus === "string"
+        ? event.metadata.oldStatus
+        : typeof event.payload?.oldStatus === "string"
+          ? event.payload.oldStatus
+          : null;
+    const newStatus =
+      typeof event.metadata?.newStatus === "string"
+        ? event.metadata.newStatus
+        : typeof event.payload?.newStatus === "string"
+          ? event.payload.newStatus
+          : null;
+    if (oldStatus || newStatus) {
+      parts.push(
+        t(ctx, "customer_status_changed.description", {
+          from: oldStatus
+            ? ctx.translate(`dashboard.customers.list.status.${oldStatus}`, {
+                defaultValue: oldStatus,
+              })
+            : "—",
+          to: newStatus
+            ? ctx.translate(`dashboard.customers.list.status.${newStatus}`, {
+                defaultValue: newStatus,
+              })
+            : "—",
+        }),
+      );
+    }
+    const reason =
+      typeof event.metadata?.reason === "string"
+        ? event.metadata.reason
+        : typeof event.payload?.reason === "string"
+          ? event.payload.reason
+          : null;
+    if (reason) {
+      parts.push(t(ctx, "customer_status_changed.reason", { reason }));
+    }
+    const actorLabel =
+      typeof event.metadata?.actor === "string" && event.metadata.actor.trim()
+        ? event.metadata.actor.trim()
+        : event.actor?.label?.trim() || null;
+    if (actorLabel) {
+      parts.push(t(ctx, "customer_status_changed.changedBy", { name: actorLabel }));
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  },
 });
 
 defineDescriptor({

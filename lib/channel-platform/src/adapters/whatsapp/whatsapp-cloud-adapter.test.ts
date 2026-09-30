@@ -196,6 +196,50 @@ describe("WhatsAppCloudAdapter", () => {
     assert.equal(payload.template.name, "hello_world");
   });
 
+  it("formats reaction outbound messages", () => {
+    const adapter = createWhatsAppCloudAdapter();
+    const formatted = adapter.formatOutbound(ctx, {
+      conversationId: "conv-1",
+      companyChannelId: ctx.companyChannel.id,
+      channelKey: "whatsapp",
+      externalThreadId: "15551234567",
+      text: "",
+      metadata: {
+        outboundPayload: {
+          kind: "reaction",
+          messageId: "wamid.target-1",
+          emoji: "😂",
+        },
+      },
+    });
+
+    const payload = formatted.payload as {
+      type: string;
+      reaction: { message_id: string; emoji: string };
+    };
+    assert.equal(payload.type, "reaction");
+    assert.equal(payload.reaction.message_id, "wamid.target-1");
+    assert.equal(payload.reaction.emoji, "😂");
+  });
+
+  it("normalizes inbound reactions without unsupported placeholder text", () => {
+    const adapter = createWhatsAppCloudAdapter();
+    const normalized = adapter.normalizeInbound(ctx, {
+      message: {
+        from: "15551234567",
+        id: "wamid.reaction-1",
+        timestamp: "1710000000",
+        type: "reaction",
+        reaction: { message_id: "wamid.target-1", emoji: "😂" },
+      },
+    });
+
+    assert.equal(normalized.text, "");
+    assert.equal(normalized.metadata?.kind, "whatsapp_reaction");
+    assert.equal(normalized.metadata?.reactionEmoji, "😂");
+    assert.equal(normalized.metadata?.reactionTargetExternalMessageId, "wamid.target-1");
+  });
+
   it("normalizes inbound image attachments", () => {
     const adapter = createWhatsAppCloudAdapter();
     const normalized = adapter.normalizeInbound(ctx, {

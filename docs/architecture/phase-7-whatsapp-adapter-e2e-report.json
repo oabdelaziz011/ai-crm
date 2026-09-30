@@ -1,9 +1,43 @@
 {
-  "passed": 9,
-  "failed": 0,
+  "supabaseTargetUrl": "http://127.0.0.1:54321",
+  "demoBetaCompanyId": "d0000010-0001-4001-8001-000000000002",
+  "companyChannelId": "9fcafcb6-8a50-4914-9a04-a1fe901fc731",
+  "phoneNumberId": "100000000000001",
+  "createdIds": {
+    "executionPolicyIds": [],
+    "aiProviderConnectionIds": [
+      "baedb4ba-13e6-4b7f-9746-d5d3f0eeafae"
+    ],
+    "companyChannelIds": [],
+    "inboundEventIds": [
+      "2e645739-ae1f-4d7c-8d93-779e8bbd741d",
+      "0f24db9d-5fb3-4da9-9f16-a83e9f8cf5b3"
+    ],
+    "channelSessionIds": [
+      "756ee213-b380-4046-aafd-c9d472de0868"
+    ],
+    "conversationIds": [
+      "35b6f454-5fb9-4ebb-ab3d-d2c03eb5aaf3"
+    ],
+    "conversationMessageIds": [
+      "1053d77a-d29c-487a-8bd1-4630ff3ed876",
+      "0dfad97b-a560-45f7-ab26-48c7dd68a18c",
+      "76c244b9-73df-481b-914a-ad279bdb7847",
+      "8cdac554-8bb2-410f-b99c-22abe6e17ef4",
+      "c89b82f2-5686-4c04-8686-4255c66c941c"
+    ],
+    "deliveryEventIds": [],
+    "aiExecutionIds": [
+      "e476939a-b71d-4382-81dd-b6f514492a85"
+    ],
+    "aiExecutionMetricIds": [],
+    "aiTraceIds": [],
+    "aiTraceSpanIds": [],
+    "aiExecutionAnalyticsIds": []
+  },
+  "passed": 6,
+  "failed": 3,
   "total": 9,
-  "routeMs": 10275.3749,
-  "totalMs": 14853.2011,
   "results": [
     {
       "scenario": "1. Webhook verification",
@@ -13,45 +47,56 @@
     {
       "scenario": "2. Incoming WhatsApp message routed",
       "pass": true,
-      "detail": "inboundEventId=050ccdd1-db84-4cb0-90d3-69309ee1ab20"
+      "detail": "inboundEventId=2e645739-ae1f-4d7c-8d93-779e8bbd741d"
     },
     {
       "scenario": "3. Conversation session resolved",
       "pass": true,
-      "detail": "conversationId=ffd78c45-a383-465c-b16d-0f9f47761927"
+      "detail": "conversationId=35b6f454-5fb9-4ebb-ab3d-d2c03eb5aaf3"
     },
     {
       "scenario": "4. Runtime execution triggered",
       "pass": true,
-      "detail": "executionId=b4b916ff-9fb6-4c77-bda0-80833cc8da3e",
+      "detail": "executionId=e476939a-b71d-4382-81dd-b6f514492a85",
       "evidence": {
         "responsePreview": "Thanks for your WhatsApp message. Enterprise MFA policy requires multi-factor authentication."
       }
     },
     {
       "scenario": "5. Outbound WhatsApp delivery",
-      "pass": true,
-      "detail": "deliveryId=2281c538-2178-420c-9f47-aba6c3f43a59, graphCalls=1"
+      "pass": false,
+      "detail": "deliveryId=n/a, graphCalls=0"
     },
     {
       "scenario": "6. Delivery status update",
-      "pass": true,
-      "detail": "status=delivered"
+      "pass": false,
+      "detail": "status=undefined"
     },
     {
       "scenario": "7. Read receipt tracked",
-      "pass": true,
-      "detail": "status=read"
+      "pass": false,
+      "detail": "status=undefined"
     },
     {
       "scenario": "8. Media inbound handling",
       "pass": true,
-      "detail": "inboundEventId=a4ae751d-8a57-4ed2-a7cc-72db3c2d7ce7"
+      "detail": "inboundEventId=0f24db9d-5fb3-4da9-9f16-a83e9f8cf5b3"
     },
     {
       "scenario": "9. Error handling for empty webhook",
       "pass": true,
-      "detail": "WhatsApp webhook payload did not contain routable events."
+      "detail": "whatsapp webhook payload did not contain routable events."
     }
-  ]
+  ],
+  "cleanupStatus": {
+    "ok": true,
+    "failures": []
+  },
+  "safety": {
+    "LOCAL_ONLY": true,
+    "SUPABASE_URL": "http://127.0.0.1:54321",
+    "DEMO_BETA": true,
+    "WHATSAPP_GRAPH_MOCK": true,
+    "OPENAI_MOCK": true
+  }
 }

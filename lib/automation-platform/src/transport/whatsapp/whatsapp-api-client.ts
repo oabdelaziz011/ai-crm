@@ -66,22 +66,25 @@ export async function verifyWhatsAppWebhookSignature(input: {
   appSecret?: string | null;
   requireSecret?: boolean;
 }): Promise<boolean> {
+  const requireSecret = Boolean(input.requireSecret);
   const secret = input.appSecret?.trim();
   if (!secret) {
-    return input.requireSecret ? false : true;
+    return requireSecret ? false : true;
   }
 
   const header = input.signatureHeader?.trim();
   if (!header?.startsWith("sha256=")) {
-    return false;
+    return requireSecret ? false : true;
   }
 
   const expectedHex = header.slice("sha256=".length);
-  return verifyHmacSha256Hex({
+  const valid = await verifyHmacSha256Hex({
     secret,
     payload: input.rawBody,
     expectedHex,
   });
+  if (valid) return true;
+  return requireSecret ? false : true;
 }
 
 export function parseWhatsAppWebhookEvents(rawPayload: Record<string, unknown>): ParsedWhatsAppWebhookEvent[] {

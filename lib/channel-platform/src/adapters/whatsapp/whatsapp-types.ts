@@ -15,6 +15,8 @@ export type WhatsAppWebhookMessage = {
     button_reply?: { id: string; title: string };
     list_reply?: { id: string; title: string; description?: string };
   };
+  /** Meta Cloud API reaction event — emoji empty string means removal. */
+  reaction?: { message_id?: string; emoji?: string };
 };
 
 export type WhatsAppMediaPayload = {
@@ -91,6 +93,13 @@ export type WhatsAppSendMessagePayload =
         header?: { type: "text"; text: string };
         action: Record<string, unknown>;
       };
+    }
+  | {
+      messaging_product: "whatsapp";
+      recipient_type: "individual";
+      to: string;
+      type: "reaction";
+      reaction: { message_id: string; emoji: string };
     };
 
 export type WhatsAppSendMessageResponse = {

@@ -73,6 +73,8 @@ export type CompanyWhatsAppSettings = {
   webhookVerifyToken: string;
   apiVersion: string;
   appSecret: string;
+  /** Persisted Meta Callback URL (public, non-secret). Empty = use env-derived default in UI. */
+  webhookCallbackUrl: string;
   defaultLanguage: string;
   maxRetryCount: number;
   hasAccessToken: boolean;

@@ -118,6 +118,22 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
       phoneNumberId: typeof payload.phoneNumberId === "string" ? payload.phoneNumberId : undefined,
     };
 
+    if (message.type === "reaction") {
+      const targetExternalMessageId = message.reaction?.message_id?.trim() ?? "";
+      const reactionEmoji = typeof message.reaction?.emoji === "string" ? message.reaction.emoji : "";
+      metadata.kind = "whatsapp_reaction";
+      metadata.reactionEmoji = reactionEmoji;
+      metadata.reactionTargetExternalMessageId = targetExternalMessageId;
+      return {
+        externalThreadId: message.from,
+        externalMessageId: message.id,
+        senderExternalId: message.from,
+        text: "",
+        attachments: [],
+        metadata,
+      };
+    }
+
     if (message.type === "interactive") {
       const buttonReply = message.interactive?.button_reply;
       const listReply = message.interactive?.list_reply;
@@ -151,6 +167,27 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
       (message.metadata?.outboundPayload as Record<string, unknown> | undefined) ??
       undefined;
     const kind = typeof structured?.kind === "string" ? structured.kind : null;
+
+    if (kind === "reaction") {
+      const targetMessageId =
+        typeof structured?.messageId === "string"
+          ? structured.messageId.trim()
+          : typeof structured?.message_id === "string"
+            ? structured.message_id.trim()
+            : "";
+      if (!targetMessageId) {
+        throw new ValidationError("WhatsApp reaction outbound requires target message_id.");
+      }
+      const emoji = typeof structured?.emoji === "string" ? structured.emoji : "";
+      const payload: WhatsAppSendMessagePayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: message.externalThreadId,
+        type: "reaction",
+        reaction: { message_id: targetMessageId, emoji },
+      };
+      return { payload, recipient: message.externalThreadId };
+    }
 
     if (kind === "buttons" && typeof structured?.text === "string" && Array.isArray(structured.buttons)) {
       const payload: WhatsAppSendMessagePayload = {
@@ -405,6 +442,8 @@ export class WhatsAppCloudAdapter implements ChannelAdapterPort {
         return this.mediaMessage(message.type, message.document, message.document?.filename);
       case "sticker":
         return this.mediaMessage("image", message.sticker);
+      case "reaction":
+        return { text: "", attachments: [] };
       default:
         return {
           text: `[Unsupported WhatsApp message type: ${message.type}]`,

@@ -1,35 +1,60 @@
-# Phase 7 — WhatsApp Cloud Adapter E2E Verification Report
+# Phase 7 — WhatsApp Cloud Adapter E2E Verification Report (LOCAL-ONLY)
 
-**Generated:** 2026-07-18T04:55:21.111Z
-**Target:** [REDACTED]
+**Generated:** 2026-09-19T20:03:44.786Z
+**Target:** http://127.0.0.1:54321
+**DEMO Beta company:** d0000010-0001-4001-8001-000000000002
+**Channel ID:** 9fcafcb6-8a50-4914-9a04-a1fe901fc731
+**phoneNumberId:** 100000000000001
+**Cleanup:** OK
 
-## Executive Summary
+## Created IDs
 
-WhatsApp Cloud Adapter verification passed. Webhook verification, inbound routing, runtime execution, outbound Graph API delivery, delivery status updates, read receipts, and media inbound handling all completed successfully through the Enterprise Channel Platform.
+```json
+{
+  "executionPolicyIds": [],
+  "aiProviderConnectionIds": [
+    "baedb4ba-13e6-4b7f-9746-d5d3f0eeafae"
+  ],
+  "companyChannelIds": [],
+  "inboundEventIds": [
+    "2e645739-ae1f-4d7c-8d93-779e8bbd741d",
+    "0f24db9d-5fb3-4da9-9f16-a83e9f8cf5b3"
+  ],
+  "channelSessionIds": [
+    "756ee213-b380-4046-aafd-c9d472de0868"
+  ],
+  "conversationIds": [
+    "35b6f454-5fb9-4ebb-ab3d-d2c03eb5aaf3"
+  ],
+  "conversationMessageIds": [
+    "1053d77a-d29c-487a-8bd1-4630ff3ed876",
+    "0dfad97b-a560-45f7-ab26-48c7dd68a18c",
+    "76c244b9-73df-481b-914a-ad279bdb7847",
+    "8cdac554-8bb2-410f-b99c-22abe6e17ef4",
+    "c89b82f2-5686-4c04-8686-4255c66c941c"
+  ],
+  "deliveryEventIds": [],
+  "aiExecutionIds": [
+    "e476939a-b71d-4382-81dd-b6f514492a85"
+  ],
+  "aiExecutionMetricIds": [],
+  "aiTraceIds": [],
+  "aiTraceSpanIds": [],
+  "aiExecutionAnalyticsIds": []
+}
+```
 
-## Architecture Decisions
+## Cleanup failures
 
-1. **ChannelAdapterPort implementation** — WhatsApp integrates exclusively through `WhatsAppCloudAdapter`; no direct Runtime or Conversation Engine access.
-2. **Webhook routing** — Meta payloads enter via `ChannelRouter.routeWebhook()`; status/read events update delivery records through `DeliveryStatusPipeline`.
-3. **Configuration inversion** — Tenant credentials (`phoneNumberId`, `accessToken`, `verifyToken`) live in `company_channels.configuration`.
-4. **Mock Graph API in E2E** — Outbound sends are verified without calling Meta production endpoints.
+```json
+[]
+```
 
 ## Test Results
 
-- **Passed:** 9
-- **Failed:** 0
+- **Passed:** 6
+- **Failed:** 3
 - **Total:** 9
-
-## Performance Observations
-
-- Inbound + runtime + outbound route: **10275 ms**
-- Total E2E script duration: **14853 ms**
-
-## Known Limitations
-
-- Media inbound stores WhatsApp media IDs; automatic media download requires configured Graph API access.
-- Template sends require pre-approved templates in the Meta Business account.
-- Webhook signature validation (`X-Hub-Signature-256`) is optional and not enforced in E2E.
 
 ### 1. Webhook verification
 
@@ -39,39 +64,39 @@ WhatsApp Cloud Adapter verification passed. Webhook verification, inbound routin
 ### 2. Incoming WhatsApp message routed
 
 - **Status:** PASS
-- **Detail:** inboundEventId=050ccdd1-db84-4cb0-90d3-69309ee1ab20
+- **Detail:** inboundEventId=2e645739-ae1f-4d7c-8d93-779e8bbd741d
 
 ### 3. Conversation session resolved
 
 - **Status:** PASS
-- **Detail:** conversationId=ffd78c45-a383-465c-b16d-0f9f47761927
+- **Detail:** conversationId=35b6f454-5fb9-4ebb-ab3d-d2c03eb5aaf3
 
 ### 4. Runtime execution triggered
 
 - **Status:** PASS
-- **Detail:** executionId=b4b916ff-9fb6-4c77-bda0-80833cc8da3e
+- **Detail:** executionId=e476939a-b71d-4382-81dd-b6f514492a85
 
 ### 5. Outbound WhatsApp delivery
 
-- **Status:** PASS
-- **Detail:** deliveryId=2281c538-2178-420c-9f47-aba6c3f43a59, graphCalls=1
+- **Status:** FAIL
+- **Detail:** deliveryId=n/a, graphCalls=0
 
 ### 6. Delivery status update
 
-- **Status:** PASS
-- **Detail:** status=delivered
+- **Status:** FAIL
+- **Detail:** status=undefined
 
 ### 7. Read receipt tracked
 
-- **Status:** PASS
-- **Detail:** status=read
+- **Status:** FAIL
+- **Detail:** status=undefined
 
 ### 8. Media inbound handling
 
 - **Status:** PASS
-- **Detail:** inboundEventId=a4ae751d-8a57-4ed2-a7cc-72db3c2d7ce7
+- **Detail:** inboundEventId=0f24db9d-5fb3-4da9-9f16-a83e9f8cf5b3
 
 ### 9. Error handling for empty webhook
 
 - **Status:** PASS
-- **Detail:** WhatsApp webhook payload did not contain routable events.
+- **Detail:** whatsapp webhook payload did not contain routable events.

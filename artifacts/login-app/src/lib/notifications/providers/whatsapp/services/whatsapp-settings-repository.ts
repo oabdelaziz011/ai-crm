@@ -35,6 +35,7 @@ function mapPublicRecord(record: Record<string, unknown>): CompanyWhatsAppSettin
     webhookVerifyToken: "",
     apiVersion: String(record.api_version ?? "v21.0"),
     appSecret: "",
+    webhookCallbackUrl: String(record.webhook_callback_url ?? "").trim(),
     defaultLanguage: String(record.default_language ?? "en"),
     maxRetryCount: Number(record.max_retry_count ?? 3),
     hasAccessToken: Boolean(record.has_access_token),
@@ -147,6 +148,7 @@ export class WhatsAppSettingsRepository {
       p_max_retry_count: settings.maxRetryCount,
       p_api_version: settings.apiVersion,
       p_app_secret: appSecret,
+      p_webhook_callback_url: settings.webhookCallbackUrl?.trim() ?? "",
     });
     if (error) throw new Error(error.message);
     return mapPublicRecord(data as Record<string, unknown>);

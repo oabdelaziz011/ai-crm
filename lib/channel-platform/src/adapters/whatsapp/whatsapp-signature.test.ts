@@ -31,4 +31,54 @@ describe("verifyWhatsAppWebhookSignature", () => {
       false,
     );
   });
+
+  it("rejects missing signature when secret is required", async () => {
+    assert.equal(
+      await verifyWhatsAppWebhookSignature({
+        signatureHeader: null,
+        rawBody: "{}",
+        appSecret: "secret",
+        requireSecret: true,
+      }),
+      false,
+    );
+  });
+
+  it("allows missing signature in non-production when secret is not required", async () => {
+    assert.equal(
+      await verifyWhatsAppWebhookSignature({
+        signatureHeader: null,
+        rawBody: "{}",
+        appSecret: null,
+        requireSecret: false,
+      }),
+      true,
+    );
+  });
+
+  it("allows missing signature in development even when a local appSecret is configured", async () => {
+    assert.equal(
+      await verifyWhatsAppWebhookSignature({
+        signatureHeader: null,
+        rawBody: "{}",
+        appSecret: "local-configured-secret",
+        requireSecret: false,
+      }),
+      true,
+    );
+  });
+
+  it("allows HMAC mismatch in development when requireSecret=false (stale local App Secret)", async () => {
+    const body = '{"object":"whatsapp_business_account"}';
+    const digest = await hmacSha256Hex("meta-cloud-app-secret", body);
+    assert.equal(
+      await verifyWhatsAppWebhookSignature({
+        signatureHeader: `sha256=${digest}`,
+        rawBody: body,
+        appSecret: "wrong-local-app-secret",
+        requireSecret: false,
+      }),
+      true,
+    );
+  });
 });

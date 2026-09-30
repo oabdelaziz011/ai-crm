@@ -117,6 +117,6 @@ export function useWhatsAppDeliverySummary(companyId: string | null) {
   return useQuery({
     queryKey: ["whatsapp", "delivery-summary", companyId],
     enabled: Boolean(companyId),
-    queryFn: () => deliveryLog.latestHealthSummary(companyId!),
+    queryFn: () => deliveryLog.latestDeliverySummary(companyId!),
   });
 }

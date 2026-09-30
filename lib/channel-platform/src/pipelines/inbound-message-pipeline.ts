@@ -22,6 +22,7 @@ import { dispatchAutomationOutboundMessages } from "../services/dispatch-automat
 import { traceParsedInboundMessage } from "../debug/interactive-if-trace-debug.js";
 import {
   hasValidInboundContent,
+  isWhatsAppReactionInbound,
   resolveInboundMessageText,
 } from "./inbound-message-content.js";
 import {
@@ -172,6 +173,21 @@ function buildInboundIncomingMetadata(
     attachments: normalized.attachments,
     ...(normalized.metadata ?? {}),
   };
+}
+
+/** Trustworthy inbound display name for auto-create only (never used as CRM match key). */
+export function readInboundSenderDisplayName(
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const senderName = metadata.senderName;
+  if (typeof senderName === "string" && senderName.trim()) return senderName.trim();
+  const from = metadata.from;
+  if (from && typeof from === "object" && !Array.isArray(from)) {
+    const name = (from as Record<string, unknown>).name;
+    if (typeof name === "string" && name.trim()) return name.trim();
+  }
+  return null;
 }
 
 export class InboundMessagePipeline {
@@ -758,17 +774,37 @@ export class InboundMessagePipeline {
       }
 
       if (request.executeAi && !useWorkflow && !aiEmployeeId && !legacyAssistantId) {
-        if (request.channelKey === "email") {
-          request.trace?.step("webhook.ai_employee_email_skipped", {
+        const softSkipChannels = new Set([
+          "email",
+          "whatsapp",
+          "instagram",
+          "messenger",
+          "sms",
+        ]);
+        if (softSkipChannels.has(request.channelKey)) {
+          request.trace?.step("webhook.ai_execution_skipped", {
             inboundEventId: inboundEvent.id,
-            reason: emailAiEmployeeAllowed ? "no_employee" : "not_entitled",
+            reason:
+              request.channelKey === "email" && !emailAiEmployeeAllowed
+                ? "not_entitled"
+                : "no_employee_or_assistant",
+            channelKey: request.channelKey,
           });
           // Continue inbound ingestion without AI reply (do not throw).
+          // WEBHOOK_EXECUTE_AI defaults true; missing AI config must not drop the message.
         } else {
           throw new ValidationError(
             "A published AI Employee or legacy assistant is required when executeAi is true.",
           );
         }
+      }
+
+      // Conversation rows require ai_assistant_id (NOT NULL). Resolve a company
+      // assistant for session/FK binding even when automated AI reply is skipped.
+      if (!aiEmployeeId && !legacyAssistantId) {
+        legacyAssistantId =
+          (await this.ports.conversation.resolveCompanyAssistantId?.(request.companyId)) ??
+          undefined;
       }
 
       let emailDepartmentId: string | null = null;
@@ -807,8 +843,7 @@ export class InboundMessagePipeline {
           conversationId: request.conversationId,
           aiAssistantId: legacyAssistantId,
           requireAiAssistant:
-            !useWorkflow &&
-            (request.channelKey !== "email" || Boolean(aiEmployeeId || legacyAssistantId)),
+            !useWorkflow && Boolean(aiEmployeeId || legacyAssistantId),
           employeeConversationMetadata,
           metadata: normalized.metadata,
           // First-create-wins: only applied when ChannelSessionEngine creates a new conversation.
@@ -936,12 +971,68 @@ export class InboundMessagePipeline {
         });
       }
 
-      // Phase 2 — bind trusted CRM identity from WhatsApp sender before AI prepare/execute.
+      // WhatsApp reactions attach to an existing message — never create a fake transcript row.
+      if (isWhatsAppReactionInbound(normalized.metadata)) {
+        const targetExternalMessageId =
+          typeof normalized.metadata?.reactionTargetExternalMessageId === "string"
+            ? normalized.metadata.reactionTargetExternalMessageId.trim()
+            : "";
+        const reactionEmoji =
+          typeof normalized.metadata?.reactionEmoji === "string"
+            ? normalized.metadata.reactionEmoji
+            : "";
+
+        let appliedMessageId: string | undefined;
+        if (targetExternalMessageId && this.ports.conversation.applyMessageReaction) {
+          const applied = await this.ports.conversation.applyMessageReaction({
+            conversationId: session.conversation_id,
+            targetExternalMessageId,
+            emoji: reactionEmoji,
+            from: "customer",
+            reactionExternalMessageId: normalized.externalMessageId,
+          });
+          appliedMessageId = applied.messageId;
+          request.trace?.step("webhook.whatsapp_reaction_applied", {
+            applied: applied.applied,
+            targetExternalMessageId,
+            reactionEmoji: reactionEmoji || null,
+            messageId: appliedMessageId ?? null,
+          });
+        } else {
+          request.trace?.step("webhook.whatsapp_reaction_skipped", {
+            reason: targetExternalMessageId ? "apply_port_missing" : "missing_target_message_id",
+          });
+        }
+
+        await this.inboundRepository.updateEvent({
+          inboundEventId: inboundEvent.id,
+          processingStatus: "processed",
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: appliedMessageId,
+          processedAt: new Date().toISOString(),
+        });
+
+        return {
+          inboundEventId: inboundEvent.id,
+          conversationId: session.conversation_id,
+          channelSessionId: session.id,
+          incomingMessageId: appliedMessageId ?? "",
+          duplicate: false,
+          emailRoutingClassification,
+          emailRoutingDecision,
+          emailRoutingTicket,
+        };
+      }
+
+      // Phase 2 — bind trusted CRM identity from inbound channel sender before AI prepare/execute.
+      // Auto-creates customer when unknown (WhatsApp / Email / SMS) via identity port.
       const trustedChannelIdentity = await this.resolveAndBindTrustedChannelCustomer({
         companyId: request.companyId,
         channelKey: request.channelKey,
         conversationId: session.conversation_id,
         senderExternalId: normalized.senderExternalId,
+        senderDisplayName: readInboundSenderDisplayName(normalized.metadata),
         trace: request.trace,
       });
 
@@ -1025,6 +1116,30 @@ export class InboundMessagePipeline {
             assignedUserId: null,
             success: false,
           });
+          // Persist failed outcome so inbox/diagnostics can show why auto-ticket did not open.
+          if (
+            this.ports.conversation.updateConversationMetadata &&
+            this.ports.conversation.getConversationMetadata
+          ) {
+            try {
+              const currentMeta =
+                (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ??
+                {};
+              await this.ports.conversation.updateConversationMetadata({
+                conversationId: session.conversation_id,
+                metadata: {
+                  ...currentMeta,
+                  emailRoutingTicket,
+                },
+              });
+            } catch {
+              // Metadata persistence must not fail inbound ingestion.
+            }
+          }
+          normalized.metadata = {
+            ...(normalized.metadata ?? {}),
+            emailRoutingTicket,
+          };
           // Do not fail inbound email ingestion because ticket apply failed.
         }
       }
@@ -1169,6 +1284,29 @@ export class InboundMessagePipeline {
                 console.info(`[email.${event}]`, fields);
               }
             },
+          }).then(async (ackResult) => {
+            // Keep auto-ack threads in Inbox (awaiting human) — not "Sent".
+            if (
+              ackResult?.sent === true &&
+              this.ports.conversation.updateConversationMetadata &&
+              this.ports.conversation.getConversationMetadata
+            ) {
+              try {
+                const currentMeta =
+                  (await this.ports.conversation.getConversationMetadata(session.conversation_id)) ??
+                  {};
+                await this.ports.conversation.updateConversationMetadata({
+                  conversationId: session.conversation_id,
+                  metadata: {
+                    ...currentMeta,
+                    emailLastOutboundKind: "acknowledgement",
+                  },
+                });
+              } catch {
+                // Metadata stamp must not fail inbound.
+              }
+            }
+            return ackResult;
           });
         } catch (ackError) {
           request.trace?.step("email.acknowledgement_failed", {
@@ -1474,6 +1612,10 @@ export class InboundMessagePipeline {
       if (
         !useWorkflow &&
         request.executeAi &&
+        // Require an executable AI path: employee runtime and/or legacy + provider connection.
+        // WEBHOOK_EXECUTE_AI=true with neither must not 500 after the inbound row is persisted.
+        (Boolean(aiEmployeeId) ||
+          Boolean(legacyAssistantId && request.runtimeConfig?.providerConnectionId)) &&
         (request.channelKey !== "email" || Boolean(aiEmployeeId || legacyAssistantId))
       ) {
         let runtimeConfig = request.runtimeConfig;
@@ -2192,15 +2334,17 @@ export class InboundMessagePipeline {
   /**
    * Phase 2 — resolve channel sender → CRM customer (WhatsApp phone / Email exact).
    * Channel sender is authoritative. Never silently trust a stale conversation.customer_id
-   * that conflicts with the sender. Never overwrite customer_id on conflict/ambiguous.
-   * Stamp metadata.trustedChannelCustomerId so tool-router/execute prefer channel identity.
-   * Never trusts senderName / LLM ids.
+   * Phase 2 — resolve WhatsApp / Email / SMS sender → CRM customer.
+   * Auto-creates when unknown (identity port). Fail closed on ambiguity.
+   * Display names are used only for auto-create naming — never as match keys.
+   * Never trusts LLM customer ids.
    */
   private async resolveAndBindTrustedChannelCustomer(input: {
     companyId: string;
     channelKey: string;
     conversationId: string;
     senderExternalId: string | null | undefined;
+    senderDisplayName?: string | null;
     trace?: InboundRouteRequestDto["trace"];
   }): Promise<{
     customerId: string | null;
@@ -2210,7 +2354,13 @@ export class InboundMessagePipeline {
     const empty = { customerId: null, trustedCustomerName: null, status: "skipped" as const };
 
     if (!this.ports.customerIdentity) return empty;
-    if (input.channelKey !== "whatsapp" && input.channelKey !== "email" && input.channelKey !== "sms") {
+    if (
+      input.channelKey !== "whatsapp" &&
+      input.channelKey !== "email" &&
+      input.channelKey !== "sms" &&
+      input.channelKey !== "messenger" &&
+      input.channelKey !== "instagram"
+    ) {
       return empty;
     }
 
@@ -2222,6 +2372,7 @@ export class InboundMessagePipeline {
       companyId: input.companyId,
       channelKey: input.channelKey,
       senderExternalId: input.senderExternalId,
+      senderDisplayName: input.senderDisplayName,
     });
 
     input.trace?.step("webhook.channel_identity", {
@@ -2350,25 +2501,40 @@ export class InboundMessagePipeline {
                 senderExternalId: input.senderExternalId,
               })
             : { matches: false, name: null }
-          : this.ports.customerIdentity.customerMatchesWhatsAppSender
-            ? await this.ports.customerIdentity.customerMatchesWhatsAppSender({
-                companyId: input.companyId,
-                customerId: existing,
-                senderExternalId: input.senderExternalId,
-              })
-            : { matches: false, name: null };
+          : input.channelKey === "messenger" || input.channelKey === "instagram"
+            ? this.ports.customerIdentity.customerMatchesChannelExternalId
+              ? await this.ports.customerIdentity.customerMatchesChannelExternalId({
+                  companyId: input.companyId,
+                  customerId: existing,
+                  channelKey: input.channelKey,
+                  senderExternalId: input.senderExternalId,
+                })
+              : { matches: false, name: null }
+            : this.ports.customerIdentity.customerMatchesWhatsAppSender
+              ? await this.ports.customerIdentity.customerMatchesWhatsAppSender({
+                  companyId: input.companyId,
+                  customerId: existing,
+                  senderExternalId: input.senderExternalId,
+                })
+              : { matches: false, name: null };
 
       if (consistency.matches) {
         const trustedName = await hydrateNameForExisting(existing, consistency.name);
+        const reusedStatus =
+          input.channelKey === "email"
+            ? "reused_email_consistent"
+            : input.channelKey === "messenger" || input.channelKey === "instagram"
+              ? "reused_channel_external_consistent"
+              : "reused_phone_consistent";
         await persistIdentityStamp({
-          status: input.channelKey === "email" ? "reused_email_consistent" : "reused_phone_consistent",
+          status: reusedStatus,
           trustedChannelCustomerId: existing,
           trustedCustomerName: trustedName,
         });
         return {
           customerId: existing,
           trustedCustomerName: trustedName,
-          status: input.channelKey === "email" ? "reused_email_consistent" : "reused_phone_consistent",
+          status: reusedStatus,
         };
       }
 

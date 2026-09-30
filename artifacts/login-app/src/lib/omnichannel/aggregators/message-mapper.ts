@@ -15,6 +15,21 @@ function readMetadataString(metadata: Record<string, unknown>, key: string): str
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
+function readWhatsAppMediaId(record: Record<string, unknown>): string | null {
+  const nested = record.metadata;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const mediaId = (nested as Record<string, unknown>).whatsappMediaId;
+    if (typeof mediaId === "string" && mediaId.trim()) return mediaId.trim();
+  }
+  if (typeof record.whatsappMediaId === "string" && record.whatsappMediaId.trim()) {
+    return record.whatsappMediaId.trim();
+  }
+  if (typeof record.attachmentId === "string" && record.attachmentId.trim()) {
+    return record.attachmentId.trim();
+  }
+  return null;
+}
+
 function readMetadataAttachments(metadata: Record<string, unknown>): UnifiedMessageAttachment[] {
   const raw = metadata.attachments;
   if (!Array.isArray(raw)) return [];
@@ -27,8 +42,14 @@ function readMetadataAttachments(metadata: Record<string, unknown>): UnifiedMess
         ? record.storagePath.trim()
         : null;
     const rawUrl = typeof record.url === "string" ? record.url : null;
+    const name =
+      typeof record.name === "string"
+        ? record.name
+        : typeof record.filename === "string"
+          ? record.filename
+          : null;
+    const whatsappMediaId = readWhatsAppMediaId(record);
 
-    // H3: storagePath wins for internal objects — persisted signed URL is not authoritative.
     if (storagePath) {
       results.push({
         type: typeof record.type === "string" ? record.type : "file",
@@ -36,20 +57,21 @@ function readMetadataAttachments(metadata: Record<string, unknown>): UnifiedMess
         storagePath,
         mimeType: typeof record.mimeType === "string" ? record.mimeType : null,
         fileSize: typeof record.fileSize === "number" ? record.fileSize : null,
-        name: typeof record.name === "string" ? record.name : null,
+        name,
+        whatsappMediaId,
       });
       continue;
     }
 
-    // External / inbound media URL (or legacy signed URL without storagePath).
-    if (!rawUrl) continue;
+    if (!rawUrl && !whatsappMediaId) continue;
     results.push({
       type: typeof record.type === "string" ? record.type : "file",
       url: rawUrl,
       storagePath: null,
       mimeType: typeof record.mimeType === "string" ? record.mimeType : null,
       fileSize: typeof record.fileSize === "number" ? record.fileSize : null,
-      name: typeof record.name === "string" ? record.name : null,
+      name,
+      whatsappMediaId,
     });
   }
   return results;
@@ -174,6 +196,11 @@ export function mapUnifiedMessage(
   };
 }
 
+/** Legacy inbound reactions were stored as a fake text row. Hide them in the transcript. */
+export function isUnsupportedWhatsAppReactionPlaceholder(content: string | null | undefined): boolean {
+  return /^\s*\[Unsupported WhatsApp message type:\s*reaction\]/i.test(String(content ?? ""));
+}
+
 export function mapUnifiedMessages(
   messages: ConversationMessageRecord[],
   channel: OmnichannelChannelKey,
@@ -182,6 +209,7 @@ export function mapUnifiedMessages(
   supportAgentFallback = "Support Agent",
 ): UnifiedMessage[] {
   return [...messages]
+    .filter((message) => !isUnsupportedWhatsAppReactionPlaceholder(message.content))
     .sort((left, right) => left.sequence_number - right.sequence_number)
     .map((message) => mapUnifiedMessage(message, channel, senderLabels, profilesByUserId, supportAgentFallback));
 }

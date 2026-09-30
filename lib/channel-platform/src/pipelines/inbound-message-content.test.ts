@@ -74,6 +74,20 @@ describe("inbound message content", () => {
     assert.equal(hasValidInboundContent(message), true);
   });
 
+  it("accepts WhatsApp reaction events without text body", () => {
+    const message = normalized({
+      metadata: {
+        kind: "whatsapp_reaction",
+        reactionEmoji: "😂",
+        reactionTargetExternalMessageId: "wamid.target",
+        whatsappMessageType: "reaction",
+      },
+    });
+
+    assert.equal(hasValidInboundContent(message), true);
+    assert.equal(resolveInboundMessageText(message), "");
+  });
+
   it("rejects empty plain-text messages", () => {
     const message = normalized({});
     assert.equal(hasValidInboundContent(message), false);

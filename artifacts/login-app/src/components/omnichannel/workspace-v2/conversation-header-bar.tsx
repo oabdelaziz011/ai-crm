@@ -10,6 +10,7 @@ import {
 } from "@/lib/omnichannel/presentation/contact-display";
 import { buildContactDisplayInput } from "@/lib/omnichannel/presentation/conversation-contact-identity";
 import { resolveUserDisplayName } from "@/lib/omnichannel/presentation/agent-display-name";
+import { isGenericAiAssigneeLabel } from "@/lib/omnichannel/presentation/conversation-ownership";
 import { PresenceIndicator, type PresenceState } from "@/components/omnichannel/agent-desk/presence-indicator";
 import type { CustomerTone } from "@/lib/omnichannel/types/unified-conversation";
 import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
@@ -177,16 +178,17 @@ export const ConversationHeaderBar = memo(function ConversationHeaderBar({
           supportAgentFallback,
         )
       : { display: header.owner.label?.trim() ?? "", tooltip: undefined };
-  const ownerLabel = header.owner.kind !== "unassigned" ? ownerResolved.display : null;
+  const rawOwnerLabel = header.owner.kind !== "unassigned" ? ownerResolved.display : null;
+  const ownerLabel =
+    header.owner.kind === "ai_employee" && isGenericAiAssigneeLabel(rawOwnerLabel)
+      ? null
+      : rawOwnerLabel;
   const ownerTooltip = ownerResolved.tooltip;
-  const aiEmployeeName =
-    header.aiEmployee?.id && header.aiEmployee.name?.trim() && header.aiEmployee.name !== "AI Employee"
-      ? header.aiEmployee.name.trim()
-      : header.owner.kind === "ai_employee"
-        ? header.owner.label?.trim() ?? null
-        : header.aiEmployee?.id
-          ? header.aiEmployee.name?.trim() ?? null
-          : null;
+  const rawAiName =
+    header.aiEmployee?.name?.trim()
+    || (header.owner.kind === "ai_employee" ? header.owner.label?.trim() : "")
+    || "";
+  const aiEmployeeName = isGenericAiAssigneeLabel(rawAiName) ? null : rawAiName;
 
   const chips: Array<{ key: string; text: string; tone?: "warn" | "danger" | "accent"; tooltip?: string }> = [];
 

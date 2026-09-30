@@ -1,6 +1,7 @@
 import type { NormalizedInboundMessageDto } from "../dto/channel-dto.js";
 
 const INTERACTIVE_REPLY_KIND = "interactive_reply";
+const WHATSAPP_REACTION_KIND = "whatsapp_reaction";
 const INTERACTIVE_REPLY_TYPES = new Set(["list_reply", "button_reply", "quick_reply", "postback"]);
 
 export function isInteractiveInboundReply(metadata: Record<string, unknown> | undefined): boolean {
@@ -15,9 +16,16 @@ export function isInteractiveInboundReply(metadata: Record<string, unknown> | un
   return typeof metadata.replyId === "string" && metadata.replyId.trim().length > 0;
 }
 
+export function isWhatsAppReactionInbound(metadata: Record<string, unknown> | undefined): boolean {
+  if (!metadata) return false;
+  if (metadata.kind === WHATSAPP_REACTION_KIND) return true;
+  return metadata.whatsappMessageType === "reaction";
+}
+
 export function hasValidInboundContent(normalized: NormalizedInboundMessageDto): boolean {
   if (normalized.text.trim()) return true;
   if (normalized.attachments.length > 0) return true;
+  if (isWhatsAppReactionInbound(normalized.metadata)) return true;
   return isInteractiveInboundReply(normalized.metadata);
 }
 

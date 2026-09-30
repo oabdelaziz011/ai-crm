@@ -124,18 +124,16 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         .order("created_at", { ascending: false });
 
       if (filter.state) query = query.eq("state", filter.state);
-      if (filter.channelType) {
+      if (filter.channelTypes && filter.channelTypes.length > 0) {
+        query = filter.includePublicWebChat
+          ? query.or(buildPublicWebChatChannelScopeOr(filter.channelTypes))
+          : query.in("channel_type", [...filter.channelTypes]);
+      } else if (filter.channelType) {
         query = query.eq("channel_type", filter.channelType);
-        if (filter.channelType === "web_chat" && filter.includePublicWebChat) {
+        if (filter.includePublicWebChat && filter.channelType === "web_chat") {
           query = query
             .eq("metadata->>publicWebChat", "true")
             .eq("metadata->>channelProvider", PUBLIC_WEB_CHAT_CHANNEL_PROVIDER);
-        }
-      } else if (filter.channelTypes && filter.channelTypes.length > 0) {
-        if (filter.includePublicWebChat) {
-          query = query.or(buildPublicWebChatChannelScopeOr(filter.channelTypes));
-        } else {
-          query = query.in("channel_type", [...filter.channelTypes]);
         }
       }
       if (filter.customerId) query = query.eq("customer_id", filter.customerId);

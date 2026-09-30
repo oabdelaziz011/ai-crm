@@ -35,7 +35,7 @@ import {
   mergeInternalNotesForDisplay,
   useInternalNotesManagement,
 } from "@/hooks/conversations/use-internal-notes-management";
-import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
+import { prepareForwardedAttachments } from "@/lib/omnichannel/services/forward-message-attachments";
 import {
   coerceWorkspaceNavForAccess,
   countWorkspaceNav,
@@ -149,6 +149,17 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
   useEffect(() => {
     const queued = consumeQueuedTeamInboxConversationFocus();
     if (queued) setSelectedId(queued);
+  }, []);
+
+  // Deep-link: /omnichannel?conversation=<id>
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get("conversation")?.trim();
+      if (fromUrl) setSelectedId(fromUrl);
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -754,6 +765,57 @@ export const OmnichannelConsole = memo(function OmnichannelConsole() {
             : undefined
         }
         retrySendLabel={t("omnichannel.composer.retrySend")}
+        forwardTargets={displayConversations}
+        onForwardTo={async (target, message) => {
+          const companyId = profile?.company_id;
+          if (!companyId || !target.companyChannelId || !target.externalThreadId) return false;
+          const text = message.body.trim().slice(0, 4000);
+          const caption = text ? `↪\n${text}` : "↪";
+          const prepared = await prepareForwardedAttachments({
+            companyId,
+            sourceConversationId: message.conversationId,
+            targetConversationId: target.id,
+            message,
+            ctx: {
+              userId: user?.id ?? null,
+              companyId,
+              isSuperAdmin,
+              hasPermission,
+            },
+          });
+          const route = {
+            conversationId: target.id,
+            companyChannelId: target.companyChannelId,
+            channelKey: target.channel,
+            externalThreadId: target.externalThreadId,
+          };
+          let ok = true;
+          if (prepared.uploaded.length === 0 && prepared.provider.length === 0) {
+            if (!text) return false;
+            ok = await consoleState.sendReply(route, { text: caption, mode: "reply" });
+          } else {
+            for (let index = 0; index < prepared.uploaded.length; index += 1) {
+              const sent = await consoleState.sendReply(route, {
+                text: index === 0 ? caption : "",
+                mode: "reply",
+                attachments: [prepared.uploaded[index]!],
+              });
+              ok = ok && sent;
+            }
+            for (let index = 0; index < prepared.provider.length; index += 1) {
+              const sent = await consoleState.sendReply(route, {
+                text: prepared.uploaded.length === 0 && index === 0 ? caption : "",
+                mode: "reply",
+                providerAttachments: [prepared.provider[index]!],
+              });
+              ok = ok && sent;
+            }
+          }
+          if (ok) {
+            toast({ title: t("omnichannel.experience.forwardSent") });
+          }
+          return ok;
+        }}
         companyId={consoleState.companyId}
         handoffAiPaused={Boolean(handoffOwnership.ownership?.isPaused)}
         handoffOwnership={handoffOwnership}

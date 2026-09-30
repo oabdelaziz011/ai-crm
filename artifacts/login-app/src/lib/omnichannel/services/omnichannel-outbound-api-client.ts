@@ -40,6 +40,7 @@ export type OmnichannelOutboundDispatchPayload = {
     conversationMessageId?: string;
     mentions?: ComposerMention[];
   };
+  outboundPayload?: Record<string, unknown>;
   persistConversationMessage?: boolean;
 };
 

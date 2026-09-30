@@ -6,6 +6,28 @@ import type {
 } from "../types/lifecycle-types.js";
 import { readLifecycleOverlay } from "../adapters/backend-state-adapter.js";
 
+function readAiEmployeeIdFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): string {
+  if (!metadata) return "";
+  for (const key of ["aiEmployeeId", "ai_employee_id", "aiAssistantId", "ai_assistant_id"] as const) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function readAiEmployeeLabelFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): string {
+  if (!metadata) return "";
+  for (const key of ["aiEmployeeDisplayName", "ai_employee_display_name"] as const) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
 function ownerFromAssignment(
   targetType: AssignmentTargetType,
   targetId: string,
@@ -56,10 +78,18 @@ export function resolveConversationOwner(context: LifecycleContext): Conversatio
   const backend = context.backendState;
   const aiStates = ["idle", "greeting", "collecting_information", "waiting_user", "waiting_api"];
   if (aiStates.includes(backend) && !context.assignedUserId) {
+    const aiId = typeof context.aiAssistantId === "string" ? context.aiAssistantId.trim() : "";
+    const metadataAiId = readAiEmployeeIdFromMetadata(context.metadata);
+    const resolvedAiId = aiId || metadataAiId;
+    // Do not claim AI ownership from backend state alone — requires a real AI assignee.
+    if (!resolvedAiId) {
+      return { kind: "unassigned", id: null, label: "Unassigned" };
+    }
+    const metadataLabel = readAiEmployeeLabelFromMetadata(context.metadata);
     return {
       kind: "ai_employee",
-      id: context.aiAssistantId,
-      label: "AI Employee",
+      id: resolvedAiId,
+      label: metadataLabel || "AI Employee",
     };
   }
 
@@ -116,10 +146,19 @@ export function explainOwnership(context: LifecycleContext): OwnershipMatrixEntr
   }
   const aiStates = ["idle", "greeting", "collecting_information", "waiting_user", "waiting_api"];
   if (aiStates.includes(context.backendState)) {
-    return {
-      source: "ai",
-      owner: { kind: "ai_employee", id: context.aiAssistantId, label: "AI Employee" },
-    };
+    const aiId =
+      (typeof context.aiAssistantId === "string" ? context.aiAssistantId.trim() : "")
+      || readAiEmployeeIdFromMetadata(context.metadata);
+    if (aiId) {
+      return {
+        source: "ai",
+        owner: {
+          kind: "ai_employee",
+          id: aiId,
+          label: readAiEmployeeLabelFromMetadata(context.metadata) || "AI Employee",
+        },
+      };
+    }
   }
   return { source: "unassigned", owner: { kind: "unassigned", id: null, label: "Unassigned" } };
 }

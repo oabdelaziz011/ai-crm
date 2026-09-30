@@ -64,6 +64,8 @@ export type OmnichannelOutboundDispatchInput = {
 
   outboundMessageId?: string;
 
+  outboundPayload?: Record<string, unknown>;
+
   metadata?: Record<string, unknown>;
 
   persistConversationMessage?: boolean;
@@ -425,6 +427,8 @@ export async function dispatchOmnichannelOutboundMessage(
     attachments: input.attachments,
 
     outboundMessageId: input.outboundMessageId,
+
+    outboundPayload: input.outboundPayload,
 
     metadata: input.metadata,
 

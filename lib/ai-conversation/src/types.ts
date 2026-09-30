@@ -113,11 +113,18 @@ export type ListConversationsFilter = {
   companyId: string;
   state?: ConversationState;
   channelType?: ConversationChannelType;
-  /** Inbox allowlist (WhatsApp/SMS/…). Combined with includePublicWebChat for Live Chat. */
+  /**
+   * Allowlist of channel types (e.g. Unified Channels without email).
+   * When set with length > 0, applied as channel_type IN (...).
+   * Takes precedence over `channelType` when both are provided.
+   */
   channelTypes?: readonly ConversationChannelType[] | readonly string[];
   /**
-   * When true, public widget rows (valueor.web_widget) are included.
-   * Internal Dashboard AI Chat (`generic.web_chat`) is never included.
+   * Public Web Presence widget conversations (channel_type web_chat with
+   * metadata.publicWebChat=true and metadata.channelProvider=valueor.web_widget).
+   * With `channelTypes`: OR-ed into the allowlist. With `channelType: "web_chat"`:
+   * narrows to widget rows only. Internal AI chat (generic.web_chat) never matches.
+   * Does not widen visibility — RLS and visibilityConstraint still apply.
    */
   includePublicWebChat?: boolean;
   /** CRM Customer 360 / customer-linked lists. Does not widen visibility. */

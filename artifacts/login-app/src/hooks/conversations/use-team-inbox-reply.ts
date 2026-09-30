@@ -43,10 +43,20 @@ type ReplyTarget = OutboundRouteTarget;
 
 type ReplyMode = "reply" | "internal_note";
 
+export type TeamInboxProviderAttachment = {
+  attachmentId: string;
+  type: "image" | "document" | "audio" | "video";
+  mimeType?: string;
+  filename?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type TeamInboxSendPayload = {
   text: string;
   mode: ReplyMode;
   attachments?: ComposerUploadedAttachment[];
+  /** Already-addressable provider media, such as a WhatsApp media id. */
+  providerAttachments?: TeamInboxProviderAttachment[];
   mentions?: ComposerMention[];
   /**
    * Email Workspace — outbound metadata for Reply / Reply All / Forward / Compose.
@@ -55,10 +65,17 @@ export type TeamInboxSendPayload = {
   emailOutbound?: Record<string, unknown>;
 };
 
+function dispatchAttachmentType(attachment: ComposerUploadedAttachment): "image" | "document" | "audio" | "video" {
+  if (attachment.kind === "image" || attachment.mimeType.startsWith("image/")) return "image";
+  if (attachment.mimeType.startsWith("audio/")) return "audio";
+  if (attachment.mimeType.startsWith("video/")) return "video";
+  return "document";
+}
+
 function mapAttachmentsForDispatch(attachments: ComposerUploadedAttachment[]) {
   return attachments.map((attachment) => ({
     attachmentId: attachment.id,
-    type: attachment.kind === "image" ? ("image" as const) : ("document" as const),
+    type: dispatchAttachmentType(attachment),
     // H3: do not send persisted/long-lived signed URLs — pipeline remints from storagePath.
     url: undefined,
     mimeType: attachment.mimeType,
@@ -140,7 +157,12 @@ export function useTeamInboxReply(companyId: string | null) {
     async (target: ReplyTarget, payload: TeamInboxSendPayload): Promise<boolean> => {
       const trimmed = payload.text.trim();
       const attachments = payload.attachments ?? [];
-      if ((!trimmed && attachments.length === 0) || !companyId || isSending) {
+      const providerAttachments = payload.providerAttachments ?? [];
+      if (
+        (!trimmed && attachments.length === 0 && providerAttachments.length === 0) ||
+        !companyId ||
+        isSending
+      ) {
         return false;
       }
 
@@ -167,12 +189,19 @@ export function useTeamInboxReply(companyId: string | null) {
           extra: { mode: payload.mode },
         });
         const attachmentFields = buildAttachmentMessageFields(attachments);
+        const providerMeta = providerAttachments.map((item) => ({
+          id: item.attachmentId,
+          name: item.filename ?? item.type,
+          type: item.type,
+          mimeType: item.mimeType ?? null,
+          whatsappMediaId: item.metadata?.whatsappMediaId ?? item.attachmentId,
+        }));
         const htmlSanitized = emailHtmlFromOutbound(payload.emailOutbound);
         const messageMetadata = {
           source: payload.mode === "internal_note" ? "omnichannel_internal_note" : "team_inbox",
           agentUserId: profile?.id ?? null,
           mentions: payload.mentions ?? [],
-          attachments: attachmentFields.metadataAttachments,
+          attachments: [...attachmentFields.metadataAttachments, ...providerMeta],
           intelligenceEvents:
             (payload.mentions?.length ?? 0) > 0
               ? [
@@ -196,7 +225,7 @@ export function useTeamInboxReply(companyId: string | null) {
             const plan = await resolvePublicWebChatReplyPlan(replyClient, {
               conversationId: target.conversationId,
               companyId,
-              hasAttachments: attachments.length > 0,
+              hasAttachments: attachments.length > 0 || providerAttachments.length > 0,
               canViewPublicWebChat: canViewPublicWebChatInbox({
                 userId: profile?.id ?? "",
                 companyId,
@@ -287,7 +316,10 @@ export function useTeamInboxReply(companyId: string | null) {
             conversationId: target.conversationId,
             messageType: "outgoing",
             contentType: attachmentFields.contentType,
-            content: trimmed || attachments.map((item) => item.name).join(", "),
+            content: trimmed
+              || attachments.map((item) => item.name).join(", ")
+              || providerAttachments.map((item) => item.filename || item.type).join(", ")
+              || "Attachment",
             status: "pending",
             attachmentType: attachmentFields.attachmentType,
             attachmentUrl: attachmentFields.attachmentUrl,
@@ -368,7 +400,10 @@ export function useTeamInboxReply(companyId: string | null) {
                 channelSessionId: route.id,
                 externalThreadId: route.external_thread_id,
                 text: trimmed,
-                attachments: mapAttachmentsForDispatch(attachments),
+                attachments: [
+                  ...mapAttachmentsForDispatch(attachments),
+                  ...providerAttachments,
+                ],
                 outboundMessageId: persisted.id,
                 persistConversationMessage: false,
                 metadata: {
@@ -445,7 +480,10 @@ export function useTeamInboxReply(companyId: string | null) {
             conversationId: target.conversationId,
             messageType: "internal_note",
             contentType: attachmentFields.contentType,
-            content: trimmed || attachments.map((item) => item.name).join(", "),
+            content: trimmed
+              || attachments.map((item) => item.name).join(", ")
+              || providerAttachments.map((item) => item.filename || item.type).join(", ")
+              || "Attachment",
             attachmentType: attachmentFields.attachmentType,
             attachmentUrl: attachmentFields.attachmentUrl,
             mimeType: attachmentFields.mimeType,
@@ -483,33 +521,23 @@ export function useTeamInboxReply(companyId: string | null) {
         if (optimisticId) {
           const persistedId = optimisticId.startsWith("optimistic-") ? null : optimisticId;
           if (persistedId && payload.mode === "reply") {
-            // Persist failure so outbound does not remain stuck in preparing/dispatching.
+            // Persist failure via security-definer RPC — PostgREST UPDATE is RLS-denied
+            // (conversation_messages_update using false); otherwise rows stay preparing forever.
             try {
-              const { data: existing } = await supabase
-                .from("conversation_messages")
-                .select("metadata")
-                .eq("id", persistedId)
-                .eq("conversation_id", target.conversationId)
-                .maybeSingle();
-              const prior =
-                existing?.metadata && typeof existing.metadata === "object"
-                  ? (existing.metadata as Record<string, unknown>)
-                  : {};
-              await supabase
-                .from("conversation_messages")
-                .update({
-                  status: "failed",
-                  metadata: {
-                    ...prior,
-                    [OUTBOUND_METADATA.optimistic]: false,
-                    [OUTBOUND_METADATA.outboundPhase]: "failed",
-                    [OUTBOUND_METADATA.dispatchFailed]: true,
-                    [OUTBOUND_METADATA.dispatchError]: detail.slice(0, 400),
-                    [OUTBOUND_METADATA.dispatchConfirmed]: false,
-                  },
-                })
-                .eq("id", persistedId)
-                .eq("conversation_id", target.conversationId);
+              const { error: confirmError } = await supabase.rpc(
+                "confirm_conversation_message_outbound",
+                {
+                  p_message_id: persistedId,
+                  p_status: "failed",
+                  p_external_message_id: null,
+                },
+              );
+              if (confirmError) {
+                console.warn("[team-inbox] confirm outbound failed after send error", {
+                  messageId: persistedId,
+                  error: confirmError.message,
+                });
+              }
             } catch {
               // best-effort failure persistence
             }

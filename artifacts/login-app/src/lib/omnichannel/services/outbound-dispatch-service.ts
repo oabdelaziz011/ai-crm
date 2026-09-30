@@ -27,6 +27,7 @@ export type OutboundDispatchInput = {
   }>;
   outboundMessageId?: string;
   metadata?: Record<string, unknown>;
+  outboundPayload?: Record<string, unknown>;
   persistConversationMessage?: boolean;
 };
 
@@ -63,6 +64,7 @@ export async function dispatchOutboundMessage(
         attachments: input.attachments,
         outboundMessageId: input.outboundMessageId,
         metadata: input.metadata,
+        outboundPayload: input.outboundPayload,
         persistConversationMessage: input.persistConversationMessage,
       }),
       success: (result) => ({
@@ -93,6 +95,7 @@ export async function dispatchOutboundMessage(
       attachments: input.attachments,
       outboundMessageId: input.outboundMessageId,
       metadata: input.metadata,
+      outboundPayload: input.outboundPayload,
       persistConversationMessage: input.persistConversationMessage,
     }),
     success: (result) => ({

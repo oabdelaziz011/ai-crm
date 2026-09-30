@@ -237,14 +237,14 @@ export class OutboundMessagePipeline {
       }
 
       let conversationConfirmStatus: OutboundDispatchResponseDto["conversationConfirmStatus"] = "skipped";
+      const emailAutomation =
+        request.metadata?.emailAutomation &&
+        typeof request.metadata.emailAutomation === "object" &&
+        !Array.isArray(request.metadata.emailAutomation)
+          ? (request.metadata.emailAutomation as Record<string, unknown>)
+          : null;
       if (outboundMessageId && this.ports.conversation.confirmOutgoingDelivery) {
         const confirmFn = this.ports.conversation.confirmOutgoingDelivery.bind(this.ports.conversation);
-        const emailAutomation =
-          request.metadata?.emailAutomation &&
-          typeof request.metadata.emailAutomation === "object" &&
-          !Array.isArray(request.metadata.emailAutomation)
-            ? (request.metadata.emailAutomation as Record<string, unknown>)
-            : null;
         // Keep valueor-ack:{inboundId} claim key so concurrent workers cannot insert a second ack.
         const preserveClaimExternalId =
           emailAutomation?.type === "acknowledgement" && emailAutomation.preserveClaimExternalId === true;
@@ -278,6 +278,30 @@ export class OutboundMessagePipeline {
                 ? confirmResult.error.message
                 : String(confirmResult.error),
           });
+        }
+      }
+
+      // Inbox bucketing: acknowledgement stays Incoming; human/agent reply moves to Sent.
+      if (
+        request.channelKey === "email" &&
+        request.conversationId &&
+        this.ports.conversation.updateConversationMetadata &&
+        this.ports.conversation.getConversationMetadata
+      ) {
+        try {
+          const currentMeta =
+            (await this.ports.conversation.getConversationMetadata(request.conversationId)) ?? {};
+          const kind =
+            emailAutomation?.type === "acknowledgement" ? "acknowledgement" : "human_reply";
+          await this.ports.conversation.updateConversationMetadata({
+            conversationId: request.conversationId,
+            metadata: {
+              ...currentMeta,
+              emailLastOutboundKind: kind,
+            },
+          });
+        } catch {
+          // Metadata stamp must not fail outbound delivery.
         }
       }
 

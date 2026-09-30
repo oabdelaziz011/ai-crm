@@ -17,11 +17,13 @@ import { isPublicWebChatConversation } from "@/lib/omnichannel/services/public-w
 import type { ConversationOwnershipLabels } from "@/lib/omnichannel/presentation/conversation-ownership";
 import {
   hasConversationAssignee,
+  isGenericAiAssigneeLabel,
   resolveAssignedToUserId,
   resolveConversationOwnership,
 } from "@/lib/omnichannel/presentation/conversation-ownership";
 import type { Profile } from "@/lib/types";
 import { captureSortStackTrace, traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
+import { isUnsupportedWhatsAppReactionPlaceholder } from "@/lib/omnichannel/aggregators/message-mapper";
 
 export type ConversationAggregationInput = {
   conversations: ConversationRecord[];
@@ -40,11 +42,15 @@ function resolveHandlerModeFromLifecycle(
   lifecycleState: LifecycleState,
   backendState: ConversationRecord["state"],
   assignedUserId?: string | null,
+  hasAiAssignee = false,
 ): UnifiedConversation["handlerMode"] {
   if (assignedUserId) return "human";
   if (backendState === "waiting_api") return "mixed";
   if (backendState === "transferred_to_human") return "human";
-  if (lifecycleState === "AI_HANDLING" || lifecycleState === "NEW") return "ai";
+  // AI mode only when an AI employee/assistant is actually assigned.
+  if (hasAiAssignee && (lifecycleState === "AI_HANDLING" || lifecycleState === "NEW")) {
+    return "ai";
+  }
   if (
     lifecycleState === "ASSIGNED"
     || lifecycleState === "ESCALATED"
@@ -52,10 +58,12 @@ function resolveHandlerModeFromLifecycle(
     || lifecycleState === "PENDING_INTERNAL"
     || lifecycleState === "WAITING_QUEUE"
     || lifecycleState === "REOPENED"
+    || lifecycleState === "NEW"
+    || lifecycleState === "AI_HANDLING"
   ) {
     return "human";
   }
-  return "ai";
+  return "human";
 }
 
 function resolveLifecycleFields(conversation: ConversationRecord) {
@@ -78,6 +86,15 @@ function resolveLifecycleFields(conversation: ConversationRecord) {
     hasActiveEscalation: isEscalated,
     lastParticipantType: conversation.last_participant_type,
   });
+  const assignedEmployeeId =
+    typeof conversation.metadata?.aiEmployeeId === "string"
+      ? conversation.metadata.aiEmployeeId.trim()
+      : "";
+  const hasAiAssignee =
+    Boolean(assignedEmployeeId)
+    || (owner.kind === "ai_employee"
+      && Boolean(owner.id?.trim())
+      && !isGenericAiAssigneeLabel(owner.label));
   return {
     lifecycleState,
     isEscalated,
@@ -86,6 +103,7 @@ function resolveLifecycleFields(conversation: ConversationRecord) {
       lifecycleState,
       conversation.state,
       conversation.assigned_user_id,
+      hasAiAssignee,
     ),
   };
 }
@@ -121,7 +139,9 @@ export class ConversationAggregator {
       customer,
       channel: conversation.channel_type,
       channelLabel: resolveChannelLabel(conversation.channel_type, channelLabels),
-      lastMessage: conversation.last_message_preview,
+      lastMessage: isUnsupportedWhatsAppReactionPlaceholder(conversation.last_message_preview)
+        ? null
+        : conversation.last_message_preview,
       lastActivityAt: conversation.last_message_at ?? conversation.created_at ?? conversation.updated_at,
       assignedAgent,
       handlerMode: lifecycle.handlerMode,

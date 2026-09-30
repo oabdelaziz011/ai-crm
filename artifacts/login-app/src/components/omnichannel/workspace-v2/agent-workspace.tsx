@@ -206,6 +206,10 @@ export type AgentWorkspaceProps = {
 
   retrySendLabel?: string;
 
+  forwardTargets?: UnifiedConversation[];
+
+  onForwardTo?: (target: UnifiedConversation, message: UnifiedMessage) => Promise<boolean>;
+
   companyId?: string | null;
 
   handoffAiPaused?: boolean;
@@ -634,6 +638,10 @@ export const AgentWorkspace = memo(function AgentWorkspace(props: AgentWorkspace
           onRetrySend={props.onRetrySend}
 
           retrySendLabel={props.retrySendLabel}
+
+          forwardTargets={props.forwardTargets}
+
+          onForwardTo={props.onForwardTo}
 
           onAvatarClick={handleAvatarClick}
 

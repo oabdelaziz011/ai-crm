@@ -81,10 +81,7 @@ export function buildConversationHeader(input: HeaderBuildInput): ConversationHe
     owner,
     assignedUser: assignedAgent,
     assignedTeam: input.assignedTeam ?? null,
-    aiEmployee: input.aiEmployee ?? {
-      id: record.ai_assistant_id,
-      name: "AI Employee",
-    },
+    aiEmployee: input.aiEmployee ?? null,
     lifecycleState,
     backendState: record.state,
     sla: {

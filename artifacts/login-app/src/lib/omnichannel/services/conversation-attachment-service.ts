@@ -193,6 +193,59 @@ export async function uploadPendingAttachments(input: {
 }
 
 /**
+ * Copy a stored conversation attachment into another conversation so outbound
+ * signing accepts the path. Used by message forward.
+ */
+export async function copyStoredAttachmentToConversation(input: {
+  companyId: string;
+  sourceConversationId: string;
+  targetConversationId: string;
+  storagePath: string;
+  name: string;
+  mimeType: string;
+  ctx: ServiceContext;
+}): Promise<ComposerUploadedAttachment> {
+  const url = await resolveConversationAttachmentUrl({
+    companyId: input.companyId,
+    conversationId: input.sourceConversationId,
+    storagePath: input.storagePath,
+    ctx: input.ctx,
+  });
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Could not read the attachment to forward.");
+  }
+  const blob = await response.blob();
+  const mimeType = input.mimeType || blob.type || "application/octet-stream";
+  const file = new File([blob], input.name || "attachment", { type: mimeType });
+  const kind = resolveAttachmentKind(file) ?? (mimeType.startsWith("image/") ? "image" : "file");
+
+  await assertConversationAttachmentUploadTarget({
+    companyId: input.companyId,
+    conversationId: input.targetConversationId,
+  });
+
+  const attachmentId = crypto.randomUUID();
+  const path = `${input.companyId.trim()}/${input.targetConversationId.trim()}/${attachmentId}-${sanitizeFileName(file.name)}`;
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: mimeType,
+  });
+  if (uploadError) throw new Error(uploadError.message);
+
+  return {
+    id: attachmentId,
+    name: file.name,
+    url: null,
+    storagePath: path,
+    mimeType,
+    fileSize: file.size,
+    kind,
+  };
+}
+
+/**
  * Persist storagePath as canonical. Do not persist long-lived signed URLs.
  * attachment_url stays null for new internal attachments (schema retained for legacy).
  */

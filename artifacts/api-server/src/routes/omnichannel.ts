@@ -84,6 +84,8 @@ type OmnichannelOutboundDispatchBody = {
 
   outboundMessageId?: string;
 
+  outboundPayload?: Record<string, unknown>;
+
   metadata?: Record<string, unknown>;
 
   persistConversationMessage?: boolean;
@@ -280,6 +282,11 @@ function readDispatchBody(body: OmnichannelOutboundDispatchBody) {
 
   const hasAttachments = (attachments?.length ?? 0) > 0;
 
+  const hasStructuredPayload =
+    Boolean(body.outboundPayload) &&
+    typeof body.outboundPayload === "object" &&
+    !Array.isArray(body.outboundPayload);
+
   enterOutboundValidation({
 
     validationName: "textOrAttachments.required",
@@ -292,11 +299,11 @@ function readDispatchBody(body: OmnichannelOutboundDispatchBody) {
 
     line: 118,
 
-    requestPayload: { hasText, attachmentCount: attachments?.length ?? 0 },
+    requestPayload: { hasText, attachmentCount: attachments?.length ?? 0, hasStructuredPayload },
 
   });
 
-  if (!hasText && !hasAttachments) {
+  if (!hasText && !hasAttachments && !hasStructuredPayload) {
 
     throwRouteValidation400(
 
@@ -310,7 +317,7 @@ function readDispatchBody(body: OmnichannelOutboundDispatchBody) {
 
   }
 
-  passOutboundValidation("textOrAttachments.required", { hasText, hasAttachments });
+  passOutboundValidation("textOrAttachments.required", { hasText, hasAttachments, hasStructuredPayload });
 
 
 
@@ -393,6 +400,11 @@ function readDispatchBody(body: OmnichannelOutboundDispatchBody) {
     attachments,
 
     outboundMessageId: body.outboundMessageId?.trim() || undefined,
+
+    outboundPayload:
+      body.outboundPayload && typeof body.outboundPayload === "object" && !Array.isArray(body.outboundPayload)
+        ? body.outboundPayload
+        : undefined,
 
     metadata:
 

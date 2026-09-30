@@ -10,6 +10,9 @@ import { getAiAssistantButtonLabel, getSuggestedReplyExplainLabels } from "@/lib
 import { resolveAgentWorkspaceLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
 import { buildContextualSuggestedReplies } from "@/lib/omnichannel/services/suggested-reply-llm-service";
 import { useConversationExperience } from "@/hooks/omnichannel/use-conversation-experience";
+import { sendWhatsAppMessageReaction } from "@/lib/omnichannel/services/whatsapp-reaction-service";
+import { conversationMessagesQueryKey } from "@/hooks/conversations/use-conversation-messages";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type {
   OmnichannelAiAssistModel,
@@ -169,6 +172,32 @@ export const ActiveSession = memo(function ActiveSession({
     recentCustomerMessageAt,
   });
 
+  const queryClient = useQueryClient();
+
+  const handleReaction = useCallback(
+    (messageId: string, emoji: string | null) => {
+      experience.toggleReaction(messageId, emoji);
+      if (!conversation || conversation.channel !== "whatsapp") return;
+      const target = messages.find((message) => message.id === messageId)?.source;
+      if (!target) return;
+      void sendWhatsAppMessageReaction({
+        companyId: conversation.companyId,
+        conversationId: conversation.id,
+        message: target,
+        emoji,
+      })
+        .then(() => {
+          void queryClient.invalidateQueries({
+            queryKey: conversationMessagesQueryKey(conversation.id),
+          });
+        })
+        .catch((error) => {
+          console.error("[WhatsApp reaction] outbound failed", error);
+        });
+    },
+    [conversation, experience, messages, queryClient],
+  );
+
   const matchIds = useMemo(
     () => messages.filter((m) => !m.isInternalNote && m.body.toLowerCase().includes(experience.searchQuery.trim().toLowerCase())).map((m) => m.id),
     [messages, experience.searchQuery],
@@ -308,7 +337,7 @@ export const ActiveSession = memo(function ActiveSession({
             starredIds={experience.starredIds}
             onToggleStar={experience.toggleStar}
             getReaction={experience.getReaction}
-            onReaction={experience.toggleReaction}
+            onReaction={handleReaction}
             typingActor={experience.typingActor}
             typingLabels={labels.typingIndicator}
             starLabel={labels.starMessage}

@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Bot, Check, CheckCheck, Clock, Loader2, Mic, Sparkles, Star } from "lucide-react";
+import { Bot, Check, CheckCheck, Clock, Forward, Loader2, Mic, Sparkles, Star } from "lucide-react";
 import type { MessageStatus } from "@workspace/ai-conversation";
 import type { OutboundDeliveryPhase } from "@/lib/omnichannel/services/outbound-delivery";
 import { BiDirText } from "@/components/omnichannel/presentation/bidir-text";
@@ -41,6 +41,8 @@ type TranscriptLineProps = {
   isSearchActive?: boolean;
   isStarred?: boolean;
   onToggleStar?: () => void;
+  onForward?: () => void;
+  forwardLabel?: string;
   reaction?: string | null;
   onReaction?: (emoji: string | null) => void;
   reactionsEnabled?: boolean;
@@ -153,6 +155,8 @@ export const TranscriptLine = memo(function TranscriptLine({
   isSearchActive,
   isStarred,
   onToggleStar,
+  onForward,
+  forwardLabel = "Forward",
   reaction,
   onReaction,
   reactionsEnabled,
@@ -250,16 +254,30 @@ export const TranscriptLine = memo(function TranscriptLine({
         )}
 
         <div className={`relative min-w-0 px-3.5 py-2 ${bubbleRadiusClass(isCustomer, groupPosition)} ${bubbleClass}`}>
-          {onToggleStar ? (
-            <button
-              type="button"
-              className={`absolute ${isOutgoing ? "-left-7" : "-right-7"} top-1 rounded p-0.5 opacity-0 transition-opacity group-hover/message:opacity-100 ${isStarred ? "opacity-100 text-[var(--ad-accent)]" : "text-[var(--ad-text-muted)]"}`}
-              onClick={onToggleStar}
-              aria-label={starLabel}
-              aria-pressed={isStarred}
-            >
-              <Star className={`size-3.5 ${isStarred ? "fill-current" : ""}`} />
-            </button>
+          {onToggleStar || onForward ? (
+            <div className={`absolute ${isOutgoing ? "-left-7" : "-right-7"} top-1 flex flex-col gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100 ${isStarred ? "opacity-100" : ""}`}>
+              {onForward ? (
+                <button
+                  type="button"
+                  className="rounded p-0.5 text-[var(--ad-text-muted)]"
+                  onClick={onForward}
+                  aria-label={forwardLabel}
+                >
+                  <Forward className="size-3.5" />
+                </button>
+              ) : null}
+              {onToggleStar ? (
+                <button
+                  type="button"
+                  className={`rounded p-0.5 ${isStarred ? "text-[var(--ad-accent)] opacity-100" : "text-[var(--ad-text-muted)]"}`}
+                  onClick={onToggleStar}
+                  aria-label={starLabel}
+                  aria-pressed={isStarred}
+                >
+                  <Star className={`size-3.5 ${isStarred ? "fill-current" : ""}`} />
+                </button>
+              ) : null}
+            </div>
           ) : null}
 
           {showMeta ? (

@@ -526,6 +526,37 @@ describe("ConversationService visibility", () => {
     );
   });
 
+  it("listConversations passes channelTypes allowlist through to repository", async () => {
+    let seen: unknown = null;
+    const service = new ConversationService({
+      list: async (filter) => {
+        seen = filter.channelTypes;
+        return [];
+      },
+    } as never);
+
+    await service.listConversations(
+      ctx({ hasPermission: (p) => p === CONVERSATION_PERMISSIONS.view }),
+      {
+        companyId: "company-1",
+        channelTypes: ["whatsapp", "instagram", "sms", "messenger"],
+      },
+    );
+    assert.deepEqual(seen, ["whatsapp", "instagram", "sms", "messenger"]);
+  });
+
+  it("listConversations rejects invalid channelTypes entries", async () => {
+    const service = new ConversationService({ list: async () => [] } as never);
+    await assert.rejects(
+      () =>
+        service.listConversations(
+          ctx({ hasPermission: (p) => p === CONVERSATION_PERMISSIONS.view }),
+          { companyId: "company-1", channelTypes: ["whatsapp", "not-a-channel" as never] },
+        ),
+      /Unsupported channel type/,
+    );
+  });
+
   it("M. cross-company access remains denied", async () => {
     const service = new ConversationService({
       findById: async () => conversation({ id: "conv-x", company_id: "company-2", assigned_user_id: "agent-a" }),

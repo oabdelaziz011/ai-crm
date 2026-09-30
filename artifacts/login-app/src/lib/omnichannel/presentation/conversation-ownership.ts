@@ -16,6 +16,19 @@ export type ConversationOwnershipLabels = {
   unassigned: string;
 };
 
+const GENERIC_AI_ASSIGNEE_LABELS = new Set([
+  "ai employee",
+  "employee ai",
+  "موظف ذكاء اصطناعي",
+  "موظف الذكاء الاصطناعي",
+]);
+
+/** Company default assistant / fallback copy — not a real assignment. */
+export function isGenericAiAssigneeLabel(label: string | null | undefined): boolean {
+  const normalized = label?.trim().toLowerCase() ?? "";
+  return !normalized || GENERIC_AI_ASSIGNEE_LABELS.has(normalized);
+}
+
 /**
  * Canonical assignee for "My Conversations" — backend assignee first, then lifecycle owner user.
  */
@@ -60,22 +73,29 @@ export function resolveConversationOwnership(
 
   const overlay = readLifecycleOverlay(conversation.source.metadata);
   const owner = overlay?.owner;
+  const metadataDisplayName =
+    typeof conversation.source.metadata?.aiEmployeeDisplayName === "string"
+      ? conversation.source.metadata.aiEmployeeDisplayName.trim()
+      : "";
+  const assignedEmployeeId =
+    typeof conversation.source.metadata?.aiEmployeeId === "string"
+      ? conversation.source.metadata.aiEmployeeId.trim()
+      : "";
+  const namedOwnerLabel =
+    owner?.kind === "ai_employee" && !isGenericAiAssigneeLabel(owner.label)
+      ? owner.label.trim()
+      : "";
+  const namedMetadataLabel = !isGenericAiAssigneeLabel(metadataDisplayName)
+    ? metadataDisplayName
+    : "";
 
-  if (
-    owner?.kind === "ai_employee"
-    || conversation.handlerMode === "ai"
-    || conversation.lifecycleState === "AI_HANDLING"
-    || conversation.lifecycleState === "NEW"
-  ) {
-    const metadataDisplayName =
-      typeof conversation.source.metadata?.aiEmployeeDisplayName === "string"
-        ? conversation.source.metadata.aiEmployeeDisplayName.trim()
-        : "";
-    const aiLabel =
-      owner?.kind === "ai_employee" && owner.label?.trim()
-        ? owner.label
-        : metadataDisplayName || labels.aiEmployee;
-    return { tier: "ai", displayName: aiLabel, assigneeUserId: null };
+  // Company ai_assistant_id and the generic "AI Employee" overlay are not an assignment.
+  if (assignedEmployeeId || namedOwnerLabel || namedMetadataLabel) {
+    return {
+      tier: "ai",
+      displayName: namedOwnerLabel || namedMetadataLabel || labels.aiEmployee,
+      assigneeUserId: null,
+    };
   }
 
   if (owner?.kind === "queue" && owner.label?.trim()) {

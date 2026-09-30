@@ -205,7 +205,13 @@ export class ConversationService {
     const scopedFilter = applyConversationListVisibilityFilter(filter, scope);
 
     if (scopedFilter.state) validateState(scopedFilter.state);
-    if (scopedFilter.channelType) validateChannelType(scopedFilter.channelType);
+    if (scopedFilter.channelTypes && scopedFilter.channelTypes.length > 0) {
+      for (const channelType of scopedFilter.channelTypes) {
+        validateChannelType(channelType);
+      }
+    } else if (scopedFilter.channelType) {
+      validateChannelType(scopedFilter.channelType);
+    }
     if (scopedFilter.priority) validatePriority(scopedFilter.priority);
 
     return this.repository.list(scopedFilter);

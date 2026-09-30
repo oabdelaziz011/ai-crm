@@ -160,6 +160,17 @@ describe("OwnershipEngine", () => {
     });
     assert.equal(owner.kind, "ai_employee");
   });
+
+  it("does not claim AI employee ownership without an AI assignee id", () => {
+    const owner = resolveConversationOwner({
+      conversationId: "1",
+      backendState: "idle",
+      assignedUserId: null,
+      aiAssistantId: null,
+      metadata: {},
+    });
+    assert.equal(owner.kind, "unassigned");
+  });
 });
 
 describe("AssignmentEngine", () => {
@@ -263,7 +274,7 @@ describe("HeaderModel", () => {
     assert.equal(header.conversationId, "1");
     assert.equal(header.lifecycleState, "AI_HANDLING");
     assert.ok(header.owner);
-    assert.ok(header.aiEmployee);
+    assert.equal(header.aiEmployee, null);
   });
 });
 

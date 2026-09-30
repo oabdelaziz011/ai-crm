@@ -22,6 +22,9 @@ import { computeVariableListWindow } from "@/lib/omnichannel/virtualization/mess
 import { firstLinkPreview } from "@/lib/omnichannel/presentation/link-preview";
 import type { SmartTimeLabels } from "@/lib/omnichannel/presentation/smart-time";
 import { channelSupportsAttachments, channelSupportsReactions } from "@/lib/omnichannel/presentation/channel-capabilities";
+import {
+  readMessageReactionEmoji,
+} from "@/lib/omnichannel/services/whatsapp-reaction-service";
 import type { OmnichannelChannelKey, UnifiedMessage } from "@/lib/omnichannel/types/unified-conversation";
 import type { ResolvedConversationLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
 import { shouldOfferMessageTranslation } from "@/lib/omnichannel/services/message-translation-display";
@@ -72,6 +75,8 @@ type TranscriptViewProps = {
   onToggleBookmarks?: () => void;
   starredIds?: Set<string>;
   onToggleStar?: (messageId: string) => void;
+  onForward?: (message: UnifiedMessage) => void;
+  forwardLabel?: string;
   getReaction?: (messageId: string) => string | null;
   onReaction?: (messageId: string, emoji: string | null) => void;
   typingActor?: TypingActor;
@@ -127,6 +132,8 @@ export const TranscriptView = memo(
       onToggleBookmarks,
       starredIds,
       onToggleStar,
+      onForward,
+      forwardLabel,
       getReaction,
       onReaction,
       typingActor,
@@ -420,7 +427,19 @@ export const TranscriptView = memo(
                       isSearchActive={row.message.id === activeMatchId}
                       isStarred={starredIds?.has(row.message.id)}
                       onToggleStar={onToggleStar ? () => onToggleStar(row.message.id) : undefined}
-                      reaction={getReaction?.(row.message.id) ?? null}
+                      onForward={
+                        onForward &&
+                        !row.message.isInternalNote &&
+                        (Boolean(row.message.body.trim()) || row.message.attachments.length > 0)
+                          ? () => onForward(row.message)
+                          : undefined
+                      }
+                      forwardLabel={forwardLabel}
+                      reaction={
+                        readMessageReactionEmoji(row.message.source) ??
+                        getReaction?.(row.message.id) ??
+                        null
+                      }
                       onReaction={onReaction ? (emoji) => onReaction(row.message.id, emoji) : undefined}
                       reactionsEnabled={channelSupportsReactions(channel)}
                       starLabel={starLabel}

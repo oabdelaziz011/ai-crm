@@ -170,4 +170,81 @@ describe("InboundMessagePipeline automation routing", () => {
       /published AI Employee or legacy assistant is required when executeAi is true/,
     );
   });
+
+  it("persists WhatsApp inbound when executeAi is true but no AI Employee or assistant exists", async () => {
+    class StubWhatsAppAdapter {
+      readonly channelKey = "whatsapp";
+      parseWebhook(_ctx: unknown, rawPayload: Record<string, unknown>) {
+        return {
+          eventType: "message.received" as const,
+          companyChannelId: "company-channel-wa",
+          channelKey: "whatsapp" as const,
+          idempotencyKey: String(rawPayload.externalMessageId ?? "wamid.no-ai-1"),
+          externalThreadId: String(rawPayload.externalThreadId ?? "15559990099"),
+          payload: rawPayload,
+        };
+      }
+      normalizeInbound(_ctx: unknown, payload: Record<string, unknown>) {
+        return {
+          externalThreadId: String(payload.externalThreadId ?? "15559990099"),
+          externalMessageId: String(payload.externalMessageId ?? "wamid.no-ai-1"),
+          senderExternalId: String(payload.senderExternalId ?? "15559990099"),
+          text: String(payload.text ?? ""),
+          attachments: [] as never[],
+          metadata: {},
+        };
+      }
+      formatOutbound() {
+        return {};
+      }
+      async sendOutbound() {
+        return { externalMessageId: "wamid.out" };
+      }
+    }
+
+    const env = createTestEnvironment({
+      runtimeResponse: "unused",
+      companyChannel: {
+        id: "company-channel-wa",
+        channelKey: "whatsapp",
+        displayName: "WhatsApp",
+        provider: "meta_cloud",
+      },
+      adapters: [new StubWhatsAppAdapter() as never],
+      whatsappMessagesCommercial: {
+        async checkAccess() {
+          return { allowed: true, reason: "entitled" as const };
+        },
+        async recordUsage() {
+          return { recorded: false };
+        },
+      },
+    });
+    // Company assistant exists for conversation FK, but no employee / provider runtime.
+    env.ports.conversation.resolveCompanyAssistantId = async () => "assistant-company-default";
+    const ctx = createContext();
+
+    const response = await env.router.routeInbound(ctx, {
+      companyId: "company-1",
+      companyChannelId: env.companyChannel.id,
+      channelKey: "whatsapp",
+      source: "webhook",
+      externalThreadId: "15559990099",
+      externalMessageId: "wamid.no-ai-1",
+      payload: {
+        text: "Hello without AI",
+        externalMessageId: "wamid.no-ai-1",
+        senderExternalId: "15559990099",
+        externalThreadId: "15559990099",
+      },
+      executeAi: true,
+      // No runtimeConfig.providerConnectionId — must still persist inbound.
+    });
+
+    assert.ok(response.conversationId);
+    assert.ok(response.incomingMessageId);
+    assert.equal(response.runtimeExecutionId, undefined);
+    assert.equal(env.runtimeCalls, 0);
+    assert.equal(env.incomingMessages.length, 1);
+  });
 });

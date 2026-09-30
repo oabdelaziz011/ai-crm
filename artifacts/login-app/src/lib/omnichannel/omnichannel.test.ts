@@ -330,13 +330,22 @@ describe("message mapping", () => {
 });
 
 describe("permissions and performance", () => {
+  it("excludes email from Unified Channels primary allowlist", () => {
+    assert.equal((OMNICHANNEL_PRIMARY_CHANNELS as readonly string[]).includes("email"), false);
+    assert.equal((OMNICHANNEL_PRIMARY_CHANNELS as readonly string[]).includes("whatsapp"), true);
+    assert.equal((OMNICHANNEL_PRIMARY_CHANNELS as readonly string[]).includes("instagram"), true);
+    assert.equal((OMNICHANNEL_PRIMARY_CHANNELS as readonly string[]).includes("sms"), true);
+  });
+
   it("filters by channel permission and access", () => {
     const rows = [
       { channel: "whatsapp", id: "1" },
       { channel: "telegram", id: "2" },
+      { channel: "email", id: "3" },
     ];
     const allowed = filterConversationsByChannelPermission(rows, OMNICHANNEL_PRIMARY_CHANNELS);
     assert.equal(allowed.length, 1);
+    assert.equal(allowed[0]?.channel, "whatsapp");
 
     assert.equal(
       canViewOmnichannelConsole({
@@ -685,6 +694,9 @@ describe("conversation queues", () => {
           state: "idle",
           last_participant_type: "employee",
           last_message_at: "2026-08-01T23:17:09.000Z",
+          metadata: {
+            lifecycle: { owner: { kind: "ai_employee", id: "emp-1", label: "AI Flow" } },
+          },
         }),
         conversation({
           id: "human-assigned",
@@ -708,6 +720,25 @@ describe("conversation queues", () => {
       false,
       "human-assigned conversations must not appear in AI queue",
     );
+  });
+
+  it("excludes idle conversations without an AI assignee from waiting_ai queue", async () => {
+    const { applyConversationQueue } = await import("./services/conversation-queues.js");
+    const unified = conversationAggregator.aggregateList({
+      conversations: [
+        conversation({
+          id: "idle-no-ai",
+          state: "idle",
+          ai_assistant_id: null,
+        }),
+      ],
+      customersById: new Map(),
+      agentsById: new Map(),
+    });
+    assert.equal(unified[0]?.ownershipTier, "unassigned");
+    assert.equal(unified[0]?.handlerMode, "human");
+    const aiQueue = applyConversationQueue(unified, "waiting_ai", null);
+    assert.equal(aiQueue.some((item) => item.id === "idle-no-ai"), false);
   });
 
   it("keeps idle workflow conversations in default all/open inbox queue", async () => {

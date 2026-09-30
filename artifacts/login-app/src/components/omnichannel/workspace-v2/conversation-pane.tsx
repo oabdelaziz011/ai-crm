@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { DashboardErrorBanner } from "@/components/dashboard/ui";
 import { ConversationHeaderBar } from "@/components/omnichannel/workspace-v2/conversation-header-bar";
@@ -6,12 +6,16 @@ import { WorkspaceActionToolbar } from "@/components/omnichannel/workspace-v2/wo
 import { HandoffOwnershipBadge } from "@/components/omnichannel/handoff-ownership-badge";
 import type { HandoffOwnershipView } from "@/hooks/omnichannel/use-conversation-handoff-ownership";
 import { TranscriptView, type TranscriptViewHandle } from "@/components/omnichannel/agent-desk/transcript-view";
+import { MessageForwardDialog } from "@/components/omnichannel/agent-desk/message-forward-dialog";
 import { ComposePanel, type ComposePanelHandle } from "@/components/omnichannel/agent-desk/compose-panel";
 import { getComposerPlaceholder, getKeyboardHint, getToneLabel, getTranslationToggleLabels } from "@/lib/omnichannel/services/omnichannel-productivity-library";
 import { getAiAssistantButtonLabel, getSuggestedReplyExplainLabels } from "@/lib/omnichannel/presentation/ai-assistant-labels";
 import { resolveAgentWorkspaceLanguage } from "@/lib/omnichannel/services/conversation-language-detector";
 import { buildContextualSuggestedReplies } from "@/lib/omnichannel/services/suggested-reply-llm-service";
 import { useConversationExperience } from "@/hooks/omnichannel/use-conversation-experience";
+import { sendWhatsAppMessageReaction } from "@/lib/omnichannel/services/whatsapp-reaction-service";
+import { conversationMessagesQueryKey } from "@/hooks/conversations/use-conversation-messages";
+import { useQueryClient } from "@tanstack/react-query";
 import { useOutboundChannelRoute } from "@/hooks/omnichannel/use-outbound-channel-route";
 import type { ComposerSendPayload } from "@/lib/omnichannel/types/composer-enterprise-types";
 import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
@@ -55,6 +59,8 @@ type ConversationPaneProps = {
   onSend: (payload: ComposerSendPayload) => void | Promise<boolean>;
   onRetrySend?: () => void;
   retrySendLabel?: string;
+  forwardTargets?: UnifiedConversation[];
+  onForwardTo?: (target: UnifiedConversation, message: UnifiedMessage) => Promise<boolean>;
   onTakeOver: () => void;
   onAssign: () => void;
   onOpenAssignment: () => void;
@@ -112,6 +118,8 @@ export const ConversationPane = memo(function ConversationPane({
   onSend,
   onRetrySend,
   retrySendLabel,
+  forwardTargets = [],
+  onForwardTo,
   onTakeOver,
   onAssign,
   onOpenAssignment,
@@ -201,6 +209,48 @@ export const ConversationPane = memo(function ConversationPane({
     handlerMode: assignedHuman ? "human" : conversation?.handlerMode,
     recentCustomerMessageAt,
   });
+
+  const queryClient = useQueryClient();
+  const [forwardDraft, setForwardDraft] = useState<UnifiedMessage | null>(null);
+  const [forwardBusy, setForwardBusy] = useState(false);
+
+  const forwardCandidates = useMemo(
+    () =>
+      forwardTargets.filter(
+        (target) =>
+          target.id !== conversation?.id &&
+          target.channel === conversation?.channel &&
+          Boolean(target.companyChannelId) &&
+          Boolean(target.externalThreadId) &&
+          target.lifecycleState !== "CLOSED" &&
+          target.lifecycleState !== "RESOLVED",
+      ),
+    [conversation?.channel, conversation?.id, forwardTargets],
+  );
+
+  const handleReaction = useCallback(
+    (messageId: string, emoji: string | null) => {
+      experience.toggleReaction(messageId, emoji);
+      if (!conversation || conversation.channel !== "whatsapp") return;
+      const target = messages.find((message) => message.id === messageId)?.source;
+      if (!target) return;
+      void sendWhatsAppMessageReaction({
+        companyId: conversation.companyId,
+        conversationId: conversation.id,
+        message: target,
+        emoji,
+      })
+        .then(() => {
+          void queryClient.invalidateQueries({
+            queryKey: conversationMessagesQueryKey(conversation.id),
+          });
+        })
+        .catch((error) => {
+          console.error("[WhatsApp reaction] outbound failed", error);
+        });
+    },
+    [conversation, experience, messages, queryClient],
+  );
 
   const outboundRoute = useOutboundChannelRoute(
     conversation
@@ -429,8 +479,10 @@ export const ConversationPane = memo(function ConversationPane({
             onToggleBookmarks={() => experience.setBookmarksOnly((value) => !value)}
             starredIds={experience.starredIds}
             onToggleStar={experience.toggleStar}
+            onForward={onForwardTo ? setForwardDraft : undefined}
+            forwardLabel={t("omnichannel.experience.forward")}
             getReaction={experience.getReaction}
-            onReaction={experience.toggleReaction}
+            onReaction={handleReaction}
             typingActor={experience.typingActor}
             typingLabels={labels.typingIndicator}
             starLabel={labels.starMessage}
@@ -498,6 +550,29 @@ export const ConversationPane = memo(function ConversationPane({
         onOpenAiAssistant={humanOwned ? undefined : onOpenAiSection}
       />
       </div>
+      <MessageForwardDialog
+        open={Boolean(forwardDraft)}
+        preview={
+          forwardDraft?.body.trim() ||
+          forwardDraft?.attachments.map((item) => item.name || item.type).join(", ") ||
+          ""
+        }
+        targets={forwardCandidates}
+        busy={forwardBusy}
+        onOpenChange={(open) => {
+          if (!open && !forwardBusy) setForwardDraft(null);
+        }}
+        onSelect={(target) => {
+          if (!forwardDraft || !onForwardTo) return;
+          if (!forwardDraft.body.trim() && forwardDraft.attachments.length === 0) return;
+          setForwardBusy(true);
+          void onForwardTo(target, forwardDraft)
+            .then((ok) => {
+              if (ok) setForwardDraft(null);
+            })
+            .finally(() => setForwardBusy(false));
+        }}
+      />
     </div>
   );
 });

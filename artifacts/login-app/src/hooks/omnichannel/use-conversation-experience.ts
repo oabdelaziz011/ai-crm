@@ -11,7 +11,8 @@ import { resolveCustomerPresence, type PresenceState } from "@/components/omnich
 
 export type TypingActor = "customer" | "agent" | "ai" | null;
 
-const UNDO_WINDOW_MS = 5000;
+/** Send immediately — undo countdown delayed WhatsApp by ~5s and felt broken. */
+const UNDO_WINDOW_MS = 0;
 
 export function useConversationExperience(conversationId: string | null, input?: {
   lastActivityAt?: string | null;
@@ -113,6 +114,13 @@ export function useConversationExperience(conversationId: string | null, input?:
   const scheduleSendWithUndo = useCallback((execute: () => void) => {
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
     if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
+
+    if (UNDO_WINDOW_MS <= 0) {
+      pendingSendRef.current = null;
+      setUndoSecondsLeft(0);
+      execute();
+      return;
+    }
 
     pendingSendRef.current = execute;
     setUndoSecondsLeft(Math.ceil(UNDO_WINDOW_MS / 1000));

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -9,6 +9,9 @@ import { notifyDeskIncomingCustomerAlert } from "@/lib/omnichannel/presentation/
 import { traceOmniSendEnter, traceOmniSendExit } from "@/lib/omnichannel/debug/omni-send-pipeline-audit";
 
 const RT = "[OMNI_REALTIME]";
+
+/** Safety-net refresh while Omnichannel is open (covers silent Realtime drops on Local). */
+export const OMNICHANNEL_SOFT_POLL_MS = 15_000;
 
 function rtLog(event: string, detail?: Record<string, unknown>) {
   const entry = { at: new Date().toISOString(), event, ...detail };
@@ -36,6 +39,43 @@ export function useConversationRealtime(companyId: string | null, conversationId
   const queryClient = useQueryClient();
   const selectedConversationIdRef = useRef(conversationId);
   selectedConversationIdRef.current = conversationId;
+  const [subscribeEpoch, setSubscribeEpoch] = useState(0);
+
+  // Soft poll: DB insert can succeed while a long-lived tab stays stale until conversation remount.
+  useEffect(() => {
+    if (!companyId) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      rtLog("soft_poll.refetch", {
+        companyId,
+        conversationId: selectedConversationIdRef.current,
+      });
+      invalidateOmnichannelQueries(queryClient, {
+        companyId,
+        conversationId: selectedConversationIdRef.current ?? undefined,
+        source: "omnichannel_soft_poll",
+      });
+    }, OMNICHANNEL_SOFT_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [companyId, queryClient]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      rtLog("visibility.refetch", {
+        companyId,
+        conversationId: selectedConversationIdRef.current,
+      });
+      invalidateOmnichannelQueries(queryClient, {
+        companyId,
+        conversationId: selectedConversationIdRef.current ?? undefined,
+        source: "omnichannel_visibility",
+      });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [companyId, queryClient]);
 
   useEffect(() => {
     if (!companyId) {
@@ -44,7 +84,8 @@ export function useConversationRealtime(companyId: string | null, conversationId
     }
 
     const channelName = `omnichannel:${companyId}`;
-    rtLog("effect.mount", { channelName, companyId });
+    rtLog("effect.mount", { channelName, companyId, subscribeEpoch });
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const channel = supabase
       .channel(channelName)
@@ -67,7 +108,8 @@ export function useConversationRealtime(companyId: string | null, conversationId
           });
           invalidateOmnichannelQueries(queryClient, {
             companyId,
-            conversationId: updatedConversationId ?? undefined,
+            conversationId:
+              updatedConversationId ?? selectedConversationIdRef.current ?? undefined,
             source: "conversations",
           });
         },
@@ -125,7 +167,11 @@ export function useConversationRealtime(companyId: string | null, conversationId
             && row?.message_type === "incoming"
             && nextConversationId
           ) {
-            notifyDeskIncomingCustomerAlert(nextConversationId, selectedConversationIdRef.current);
+            notifyDeskIncomingCustomerAlert(nextConversationId, selectedConversationIdRef.current, {
+              messageId: row.id ?? null,
+              // Persist handled by app-shell useInboundChannelAlerts (deduped).
+              persist: false,
+            });
           }
           rtLog("postgres_changes", {
             schema: "public",
@@ -167,13 +213,22 @@ export function useConversationRealtime(companyId: string | null, conversationId
       )
       .subscribe((status, err) => {
         rtLog("subscribe.status", { status, error: err?.message ?? null, channelName });
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          if (reconnectTimer) return;
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            rtLog("subscribe.resubscribe", { channelName, status });
+            setSubscribeEpoch((epoch) => epoch + 1);
+          }, 1_500);
+        }
       });
 
     return () => {
       rtLog("effect.cleanup", { channelName });
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       void supabase.removeChannel(channel);
     };
-  }, [companyId, queryClient]);
+  }, [companyId, queryClient, subscribeEpoch]);
 }
 
 export function useOmnichannelAccess() {

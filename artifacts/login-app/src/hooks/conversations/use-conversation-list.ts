@@ -19,7 +19,9 @@ import { recordMapRowStage } from "@/lib/omnichannel/debug/omni-list-pipeline-au
 export type ConversationListFilters = {
   state?: ConversationState;
   channelType?: ConversationChannelType;
+  /** Allowlist — used by Unified Channels to exclude Email Workspace traffic. */
   channelTypes?: readonly ConversationChannelType[] | readonly string[];
+  /** Public Web Presence widget conversations only — never internal AI chat. */
   includePublicWebChat?: boolean;
   assignedUserId?: string | null;
   hasEmployeeUnread?: boolean;

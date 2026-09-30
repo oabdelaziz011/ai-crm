@@ -15,17 +15,22 @@ import type { OwnershipTier } from "@/lib/omnichannel/presentation/conversation-
 import type { IntelligentSuggestedReply } from "@/lib/omnichannel/types/suggested-reply-types";
 import type { ConversationTicketContext } from "@/lib/omnichannel/services/conversation-ticket-context";
 
+/** Unified Channels allowlist — Email lives in Email Workspace only. */
 export const OMNICHANNEL_PRIMARY_CHANNELS = [
   "whatsapp",
-  "email",
   "messenger",
   "instagram",
+  "sms",
 ] as const;
 
+/**
+ * Public Web Presence widget ("Live Chat"). Listed only for users with Web Presence
+ * access and only for widget conversations — internal AI chat shares channel_type
+ * web_chat and must stay out of the inbox (see isPublicWebChatConversation).
+ */
 export const OMNICHANNEL_PUBLIC_WEB_CHAT_CHANNEL = "web_chat" as const;
 
 export const OMNICHANNEL_FUTURE_CHANNELS = [
-  "sms",
   "telegram",
   "teams",
   "slack",
@@ -110,6 +115,8 @@ export type UnifiedMessageAttachment = {
   mimeType: string | null;
   fileSize: number | null;
   name?: string | null;
+  /** Meta media id for inbound WhatsApp media that was not copied into storage. */
+  whatsappMediaId?: string | null;
 };
 
 export type OmnichannelListFilters = {

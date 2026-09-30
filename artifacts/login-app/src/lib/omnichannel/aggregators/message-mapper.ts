@@ -94,6 +94,19 @@ function resolveAgentLabel(
   return resolveAgentDisplayNameFromProfile(profile, metadataAuthor ?? senderLabels.agent, fallback).display;
 }
 
+/** Same sender rule as web_chat_public_list_messages, so staff and visitor see one attribution. */
+function isAutomatedWebChatReply(message: ConversationMessageRecord, channel: OmnichannelChannelKey): boolean {
+  if (channel !== "web_chat" || message.message_type !== "outgoing") return false;
+  const metadata = (message.metadata ?? {}) as Record<string, unknown>;
+  return (
+    "runtimeExecutionId" in metadata
+    || "automationRunId" in metadata
+    || "deterministicWelcome" in metadata
+    || metadata.webChatFallback === true
+    || message.created_by == null
+  );
+}
+
 export function mapUnifiedMessage(
   message: ConversationMessageRecord,
   channel: OmnichannelChannelKey,
@@ -101,7 +114,9 @@ export function mapUnifiedMessage(
   profilesByUserId?: ReadonlyMap<string, Profile>,
   supportAgentFallback = "Support Agent",
 ): UnifiedMessage {
-  const senderType = messageTypeToSenderType(message.message_type);
+  const senderType = isAutomatedWebChatReply(message, channel)
+    ? "assistant"
+    : messageTypeToSenderType(message.message_type);
   const defaultLabels: Record<UnifiedMessage["senderType"], string> = {
     customer: senderLabels.customer ?? "Customer",
     agent: senderLabels.agent ?? supportAgentFallback,

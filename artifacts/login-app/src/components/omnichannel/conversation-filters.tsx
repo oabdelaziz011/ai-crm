@@ -1,7 +1,10 @@
 import { forwardRef, memo } from "react";
 import { Search } from "lucide-react";
 import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-conversation";
-import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
+import type {
+  OmnichannelChannelKey,
+  OmnichannelListFilters,
+} from "@/lib/omnichannel/types/unified-conversation";
 
 type ConversationSearchProps = {
   value: string;
@@ -45,9 +48,12 @@ type ConversationFiltersProps = {
     email: string;
     messenger: string;
     instagram: string;
+    web_chat?: string;
   };
   onChange: (patch: Partial<OmnichannelListFilters>) => void;
   currentUserId?: string | null;
+  /** Permission-scoped list from resolveOmnichannelInboxChannels. */
+  channels?: readonly OmnichannelChannelKey[];
 };
 
 export const ConversationFilters = memo(function ConversationFilters({
@@ -55,6 +61,7 @@ export const ConversationFilters = memo(function ConversationFilters({
   labels,
   onChange,
   currentUserId,
+  channels = OMNICHANNEL_PRIMARY_CHANNELS,
 }: ConversationFiltersProps) {
   const chip = (active: boolean) =>
     active
@@ -71,7 +78,7 @@ export const ConversationFilters = memo(function ConversationFilters({
       <FilterChip active={Boolean(filters.pinnedOnly)} label={labels.pinned} onClick={() => onChange({ pinnedOnly: true, archived: false, assignedOnly: false })} />
       <FilterChip active={Boolean(filters.archived)} label={labels.archived} onClick={() => onChange({ archived: true, pinnedOnly: false, assignedOnly: false })} />
       <FilterChip active={false} label={labels.tags} onClick={() => onChange({ pinnedOnly: filters.pinnedOnly })} />
-      {OMNICHANNEL_PRIMARY_CHANNELS.map((channel) => (
+      {channels.map((channel) => (
         <FilterChip
           key={channel}
           active={filters.channel === channel}

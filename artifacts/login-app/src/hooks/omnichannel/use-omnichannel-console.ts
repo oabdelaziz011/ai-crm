@@ -23,10 +23,12 @@ import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-con
 import {
   canViewAllOmnichannelConversations,
   canViewOmnichannelConsole,
+  canViewPublicWebChatInbox,
   filterConversationsByChannelPermission,
   filterConversationsByOwnership,
+  resolveOmnichannelInboxChannels,
 } from "@/lib/omnichannel/permissions";
-import { OMNICHANNEL_PRIMARY_CHANNELS } from "@/lib/omnichannel/types/unified-conversation";
+import { mapListFilters } from "@/lib/omnichannel/services/omnichannel-list-filters";
 import { useConversationRealtime, useOmnichannelAccess } from "@/hooks/omnichannel/use-conversation-realtime";
 import { fetchOmnichannelCustomerContext } from "@/lib/omnichannel/services/omnichannel-customer-context-service";
 import { omnichannelCustomerContextKey } from "@/lib/omnichannel/cache/query-keys";
@@ -43,19 +45,6 @@ import type { ConversationTicketContext } from "@/lib/omnichannel/services/conve
 
 const EMPTY_TICKET_CONTEXT_MAP: ReadonlyMap<string, ConversationTicketContext> = new Map();
 
-function mapListFilters(
-  filters: OmnichannelListFilters,
-  options?: { forceAssignedUserId?: string | null },
-) {
-  return {
-    searchQuery: filters.search,
-    channelType: filters.channel,
-    state: filters.status,
-    assignedUserId: options?.forceAssignedUserId ?? filters.assignedUserId,
-    hasEmployeeUnread: filters.unreadOnly,
-  };
-}
-
 export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedId: string | null) {
   const { i18n, t } = useTranslation();
   const access = useOmnichannelAccess();
@@ -63,11 +52,14 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
   const companyId = access?.companyId ?? null;
   const canView = canViewOmnichannelConsole(access);
   const canViewAll = canViewAllOmnichannelConversations(access);
+  const canViewWebChat = canViewPublicWebChatInbox(access);
+  const inboxChannels = resolveOmnichannelInboxChannels(access);
   const { data: aiAssistantSettings } = useAiAssistantSettings(companyId);
 
   const listQuery = useConversationListInfinite(
     mapListFilters(filters, {
       forceAssignedUserId: !canViewAll && access?.userId ? access.userId : undefined,
+      includePublicWebChat: canViewWebChat,
     }),
   );
   const flatConversations = useMemo(
@@ -154,7 +146,9 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       ownershipLabels,
     });
     const withTickets = attachTicketContextsToConversations(unified, ticketContextsByConversationId);
-    const supported = conversationAggregator.filterBySupportedChannels(withTickets);
+    const supported = conversationAggregator.filterBySupportedChannels(withTickets, {
+      includePublicWebChat: canViewWebChat,
+    });
     const filtered = conversationAggregator.applyFilters(supported, filters);
     const effectiveQueue = !canViewAll ? (filters.queue ?? "mine") : (filters.queue ?? "all");
     const queued = applyConversationQueue(filtered, effectiveQueue, user?.id);
@@ -169,11 +163,12 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     user?.id,
     ownershipLabels,
     canViewAll,
+    canViewWebChat,
     ticketContextsByConversationId,
   ]);
 
   const visibleConversations = useMemo(() => {
-    const result = filterConversationsByChannelPermission(aggregated, OMNICHANNEL_PRIMARY_CHANNELS);
+    const result = filterConversationsByChannelPermission(aggregated, inboxChannels);
     traceReorderStage({
       stage: "useOmnichannelConsole.visibleConversations",
       file: "use-omnichannel-console.ts",
@@ -185,7 +180,7 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       sortCalled: false,
     });
     return result;
-  }, [aggregated]);
+  }, [aggregated, inboxChannels]);
 
   const inboxConversations = useMemo(() => {
     if (!access) return [];
@@ -197,10 +192,12 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
       ownershipLabels,
     });
     const withTickets = attachTicketContextsToConversations(unified, ticketContextsByConversationId);
-    const supported = conversationAggregator.filterBySupportedChannels(withTickets);
+    const supported = conversationAggregator.filterBySupportedChannels(withTickets, {
+      includePublicWebChat: canViewWebChat,
+    });
     const filtered = conversationAggregator.applyFilters(supported, filters);
     const scoped = filterConversationsByOwnership(filtered, access, !canViewAll);
-    return filterConversationsByChannelPermission(scoped, OMNICHANNEL_PRIMARY_CHANNELS);
+    return filterConversationsByChannelPermission(scoped, inboxChannels);
   }, [
     flatConversations,
     customersById,
@@ -210,6 +207,8 @@ export function useOmnichannelConsole(filters: OmnichannelListFilters, selectedI
     access,
     ownershipLabels,
     canViewAll,
+    canViewWebChat,
+    inboxChannels,
     ticketContextsByConversationId,
   ]);
 

@@ -22,10 +22,11 @@ export const OMNICHANNEL_PRIMARY_CHANNELS = [
   "instagram",
 ] as const;
 
+export const OMNICHANNEL_PUBLIC_WEB_CHAT_CHANNEL = "web_chat" as const;
+
 export const OMNICHANNEL_FUTURE_CHANNELS = [
   "sms",
   "telegram",
-  "web_chat",
   "teams",
   "slack",
 ] as const;

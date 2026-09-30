@@ -1,7 +1,13 @@
 import { CONVERSATION_PERMISSIONS } from "@workspace/ai-conversation";
 import { traceReorderStage } from "@/lib/omnichannel/debug/omni-reorder-audit";
 import { resolveAssignedToUserId } from "@/lib/omnichannel/presentation/conversation-ownership";
-import type { UnifiedConversation } from "@/lib/omnichannel/types/unified-conversation";
+import { isPublicWebChatConversation } from "@/lib/omnichannel/services/public-web-chat-conversation";
+import {
+  OMNICHANNEL_PRIMARY_CHANNELS,
+  OMNICHANNEL_PUBLIC_WEB_CHAT_CHANNEL,
+  type OmnichannelChannelKey,
+  type UnifiedConversation,
+} from "@/lib/omnichannel/types/unified-conversation";
 
 export const OMNICHANNEL_PERMISSIONS = {
   view: CONVERSATION_PERMISSIONS.view,
@@ -15,6 +21,9 @@ export const OMNICHANNEL_PERMISSIONS = {
   /** Company Admin routing/config — not granted to Human Handoff Agent. */
   handoffManage: "handoff.manage",
   usersView: "users.view",
+  /** Public Web Chat (Live Chat) visibility — existing Web Presence codes, no new codes. */
+  webPresenceView: "web_presence.view",
+  webPresenceManage: "web_presence.manage",
 } as const;
 
 export type OmnichannelAccess = {
@@ -49,6 +58,32 @@ export function canReplyToConversation(access: OmnichannelAccess | null | undefi
   return access.isSuperAdmin || access.hasPermission(OMNICHANNEL_PERMISSIONS.reply);
 }
 
+/**
+ * Public Web Chat needs its own grant — seeing WhatsApp/SMS/etc. never implies it.
+ * Assignment/department scoping still applies on top (RLS + ownership filters).
+ */
+export function canViewPublicWebChatInbox(access: OmnichannelAccess | null | undefined): boolean {
+  if (!canViewOmnichannelConsole(access)) return false;
+  if (access!.isSuperAdmin) return true;
+  return (
+    access!.hasPermission(OMNICHANNEL_PERMISSIONS.webPresenceView)
+    || access!.hasPermission(OMNICHANNEL_PERMISSIONS.webPresenceManage)
+  );
+}
+
+const OMNICHANNEL_INBOX_CHANNELS_WITH_WEB_CHAT: readonly OmnichannelChannelKey[] = [
+  ...OMNICHANNEL_PRIMARY_CHANNELS,
+  OMNICHANNEL_PUBLIC_WEB_CHAT_CHANNEL,
+];
+
+export function resolveOmnichannelInboxChannels(
+  access: OmnichannelAccess | null | undefined,
+): readonly OmnichannelChannelKey[] {
+  return canViewPublicWebChatInbox(access)
+    ? OMNICHANNEL_INBOX_CHANNELS_WITH_WEB_CHAT
+    : OMNICHANNEL_PRIMARY_CHANNELS;
+}
+
 export function canAssignConversation(
   access: OmnichannelAccess | null | undefined,
   assignedUserId?: string | null,
@@ -67,12 +102,18 @@ export function filterConversationsByOwnership(
   return conversations.filter((item) => resolveAssignedToUserId(item) === access.userId);
 }
 
-export function filterConversationsByChannelPermission<T extends { channel: string; id: string }>(
+export function filterConversationsByChannelPermission<
+  T extends { channel: string; id: string; source?: { metadata?: unknown } | null },
+>(
   conversations: T[],
   allowedChannels: readonly string[],
 ): T[] {
   const allowed = new Set(allowedChannels);
-  const result = conversations.filter((item) => allowed.has(item.channel));
+  const result = conversations.filter(
+    (item) =>
+      allowed.has(item.channel)
+      && (item.channel !== OMNICHANNEL_PUBLIC_WEB_CHAT_CHANNEL || isPublicWebChatConversation(item)),
+  );
   traceReorderStage({
     stage: "filterConversationsByChannelPermission",
     file: "permissions.ts",

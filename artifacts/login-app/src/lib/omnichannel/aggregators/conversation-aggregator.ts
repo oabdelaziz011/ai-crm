@@ -13,6 +13,7 @@ import type {
   UnifiedConversation,
 } from "@/lib/omnichannel/types/unified-conversation";
 import { isPrimaryOmnichannelChannel } from "@/lib/omnichannel/types/unified-conversation";
+import { isPublicWebChatConversation } from "@/lib/omnichannel/services/public-web-chat-conversation";
 import type { ConversationOwnershipLabels } from "@/lib/omnichannel/presentation/conversation-ownership";
 import {
   hasConversationAssignee,
@@ -340,8 +341,15 @@ export class ConversationAggregator {
     return result;
   }
 
-  filterBySupportedChannels(conversations: UnifiedConversation[]): UnifiedConversation[] {
-    const result = conversations.filter((item) => isPrimaryOmnichannelChannel(item.channel));
+  filterBySupportedChannels(
+    conversations: UnifiedConversation[],
+    options: { includePublicWebChat?: boolean } = {},
+  ): UnifiedConversation[] {
+    const result = conversations.filter(
+      (item) =>
+        isPrimaryOmnichannelChannel(item.channel)
+        || (options.includePublicWebChat === true && isPublicWebChatConversation(item)),
+    );
     traceReorderStage({
       stage: "filterBySupportedChannels",
       file: "conversation-aggregator.ts",

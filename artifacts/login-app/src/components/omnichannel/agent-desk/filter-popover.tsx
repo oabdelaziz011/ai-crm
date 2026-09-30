@@ -1,6 +1,7 @@
 import { memo } from "react";
 import {
   OMNICHANNEL_PRIMARY_CHANNELS,
+  type OmnichannelChannelKey,
   type OmnichannelListFilters,
 } from "@/lib/omnichannel/types/unified-conversation";
 
@@ -15,6 +16,8 @@ type FilterPopoverProps = {
   closeLabel: string;
   channelSectionLabel: string;
   tagSectionLabel: string;
+  /** Permission-scoped list from resolveOmnichannelInboxChannels. */
+  channels?: readonly OmnichannelChannelKey[];
 };
 
 export const FilterPopover = memo(function FilterPopover({
@@ -28,6 +31,7 @@ export const FilterPopover = memo(function FilterPopover({
   closeLabel,
   channelSectionLabel,
   tagSectionLabel,
+  channels = OMNICHANNEL_PRIMARY_CHANNELS,
 }: FilterPopoverProps) {
   if (!open) return null;
 
@@ -51,7 +55,7 @@ export const FilterPopover = memo(function FilterPopover({
           onChange={(e) => onChange({ channel: (e.target.value || undefined) as OmnichannelListFilters["channel"] })}
         >
           <option value="">{labels.all}</option>
-          {OMNICHANNEL_PRIMARY_CHANNELS.map((ch) => (
+          {channels.map((ch) => (
             <option key={ch} value={ch}>{labels[ch] ?? ch}</option>
           ))}
         </select>

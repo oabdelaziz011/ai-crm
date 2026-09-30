@@ -39,6 +39,14 @@ const BLOCKING_LIFECYCLE_STATES = new Set<string>([
 /**
  * Pure inbound automation gate for Human Handoff.
  * Prefer handoff ownership when present; fall back to conversation assignee / transferred state.
+ *
+ * Dual-state invariant (intentional, not a bug to "fix" by collapsing machines):
+ * - `conversations.state` is the conversation state machine (waiting_user, transferred_to_human, …).
+ * - `conversation_ownership.lifecycle_state` is the handoff ownership machine (AI_HANDLING, ESCALATED, …).
+ * `escalateConversation` / `escalate_to_human` set ownership to ESCALATED and write a handoff request.
+ * They do not always transition `conversations.state` to transferred_to_human.
+ * AI stop is ownership-first: lifecycle ESCALATED blocks automated replies even when
+ * `conversations.state` remains waiting_user. Inbox list still uses conversation rows.
  */
 export function evaluateInboundAiGate(input: {
   ownership?: InboundAiGateOwnershipSnapshot | null;

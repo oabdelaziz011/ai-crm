@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ConversationMessageRecord } from "@workspace/ai-conversation";
 import { useAuth } from "@/context/auth-context";
+import { usePermissions } from "@/hooks/use-rbac";
 import { useChannelPlatformServices } from "@/lib/channel-platform";
 import { useConversationServices } from "@/lib/ai-conversation";
 import {
@@ -16,6 +17,13 @@ import { resolveChannelSession } from "@/lib/omnichannel/services/channel-sessio
 import { dispatchOutboundMessage } from "@/lib/omnichannel/services/outbound-dispatch-service";
 import { buildAttachmentMessageFields } from "@/lib/omnichannel/services/conversation-attachment-service";
 import { dispatchComposerMentions } from "@/lib/omnichannel/services/composer-mention-service";
+import { canViewPublicWebChatInbox } from "@/lib/omnichannel/permissions";
+import {
+  confirmPublicWebChatVisitorPollingReply,
+  PUBLIC_WEB_CHAT_DELIVERY_MODE,
+  resolvePublicWebChatReplyPlan,
+  type PublicWebChatReplyClient,
+} from "@/lib/omnichannel/services/public-web-chat-reply";
 import type {
   ComposerMention,
   ComposerUploadedAttachment,
@@ -120,7 +128,8 @@ function patchOptimisticMessage(
 }
 
 export function useTeamInboxReply(companyId: string | null) {
-  const { profile } = useAuth();
+  const { profile, isSuperAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const { services: conversationServices, context: conversationContext } = useConversationServices();
   const { services: channelPlatform, context: channelContext } = useChannelPlatformServices();
@@ -181,9 +190,39 @@ export function useTeamInboxReply(companyId: string | null) {
         };
 
         if (payload.mode === "reply") {
-          const session = await resolveChannelSession(target.conversationId);
-          const routeCheck = validateOutboundRoute(session, target);
-          if (!routeCheck.ok) {
+          const replyClient = supabase as unknown as PublicWebChatReplyClient;
+          let isPublicWebChat = false;
+          if (target.channelKey === "web_chat") {
+            const plan = await resolvePublicWebChatReplyPlan(replyClient, {
+              conversationId: target.conversationId,
+              companyId,
+              hasAttachments: attachments.length > 0,
+              canViewPublicWebChat: canViewPublicWebChatInbox({
+                userId: profile?.id ?? "",
+                companyId,
+                isSuperAdmin: Boolean(isSuperAdmin),
+                hasPermission,
+              }),
+            });
+            if (plan.kind === "rejected") {
+              setError({ code: "send_failed", message: plan.message });
+              traceOmniSendExit({
+                runId,
+                layer: 2,
+                stage: "useSendMessage.sendReply",
+                success: false,
+                error: "public_web_chat_rejected",
+                conversationId: target.conversationId,
+              });
+              return false;
+            }
+            isPublicWebChat = plan.kind === "public_web_chat";
+          }
+
+          // Public Web Chat has no channel route to dispatch to — the visitor polls.
+          const session = isPublicWebChat ? null : await resolveChannelSession(target.conversationId);
+          const routeCheck = isPublicWebChat ? null : validateOutboundRoute(session, target);
+          if (routeCheck && !routeCheck.ok) {
             setError(buildOutboundSendError(routeCheck.issue));
             markOmniSendFirstStop({
               runId,
@@ -254,7 +293,9 @@ export function useTeamInboxReply(companyId: string | null) {
             attachmentUrl: attachmentFields.attachmentUrl,
             mimeType: attachmentFields.mimeType,
             fileSize: attachmentFields.fileSize,
-            metadata: messageMetadata,
+            metadata: isPublicWebChat
+              ? { ...messageMetadata, deliveryMode: PUBLIC_WEB_CHAT_DELIVERY_MODE }
+              : messageMetadata,
           }),
             success: (result) => ({
               messageId: result.id,
@@ -301,8 +342,10 @@ export function useTeamInboxReply(companyId: string | null) {
           });
           optimisticId = persisted.id;
 
-          const route = routeCheck.route;
-          const dispatchResponse = await traceOmniSendAsync({
+          const route = routeCheck?.ok ? routeCheck.route : null;
+          const dispatchResponse = !route
+            ? await confirmPublicWebChatVisitorPollingReply(replyClient, persisted.id)
+            : await traceOmniSendAsync({
             runId,
             layer: 6,
             stage: "CommunicationPlatform.dispatchOutboundMessage",
@@ -522,7 +565,9 @@ export function useTeamInboxReply(companyId: string | null) {
       companyId,
       conversationContext,
       conversationServices.messages,
+      hasPermission,
       isSending,
+      isSuperAdmin,
       profile?.full_name,
       profile?.id,
       queryClient,

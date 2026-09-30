@@ -55,6 +55,8 @@ export type CustomerCreateInput = Readonly<{
   /** Explicit ISO-2 for local phone numbers. Never company/locale-inferred. */
   phoneRegion?: string | null;
   leadSource?: string;
+  /** First-touch CRM acquisition source (migration 382). Defaults to manual. */
+  source?: string | null;
   phoneIdentity?: {
     phone_e164: string | null;
     phone_country_iso: string | null;
@@ -97,7 +99,12 @@ export type LeadWritePort = {
   assign(tenantId: string, leadId: string, assigneeUserId: string, actorUserId: string): Promise<LeadReadModel>;
   changeStage(tenantId: string, leadId: string, stageId: string, actorUserId: string): Promise<LeadReadModel>;
   bulkChangeStage(tenantId: string, leadIds: readonly string[], stageId: string, actorUserId: string): Promise<void>;
-  convert(tenantId: string, leadId: string, actorUserId: string): Promise<LeadConvertResult>;
+  convert(
+    tenantId: string,
+    leadId: string,
+    actorUserId: string,
+    options?: LeadConvertOptions,
+  ): Promise<LeadConvertResult>;
   archive(tenantId: string, leadId: string, actorUserId: string): Promise<void>;
 };
 
@@ -143,10 +150,19 @@ export type LeadUpdateInput = Readonly<{
   actorUserId: string;
 }>;
 
+export type LeadConvertOptions = Readonly<{
+  mode?: "customer" | "customer_and_opportunity";
+  companyDefaultCurrency?: string;
+}>;
+
 export type LeadConvertResult = Readonly<{
   lead: LeadReadModel;
   customerId: string;
   opportunityId?: string | null;
+  mode?: "customer" | "customer_and_opportunity";
+  customerCreated?: boolean | null;
+  opportunityCreated?: boolean | null;
+  alreadyConverted?: boolean;
 }>;
 
 /** Canonical CRM Lead read model — one shape for API, table, kanban, Lead360. */

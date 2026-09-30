@@ -431,13 +431,23 @@ export function createMockApplicationPorts(): ApplicationPorts & {
           }
         }
       },
-      async convert(tenantId, leadId) {
+      async convert(tenantId, leadId, _actorUserId, options) {
         const l = leads.get(leadId);
         if (!l || l.tenantId !== tenantId) throw new Error("not found");
+        const mode = options?.mode ?? "customer";
         const customerId = randomId();
+        const opportunityId = mode === "customer_and_opportunity" ? randomId() : null;
         const updated = Object.freeze({ ...l, lifecycleStatus: "converted", customerId });
         leads.set(leadId, updated);
-        return Object.freeze({ lead: updated, customerId });
+        return Object.freeze({
+          lead: updated,
+          customerId,
+          opportunityId,
+          mode,
+          customerCreated: true,
+          opportunityCreated: opportunityId ? true : null,
+          alreadyConverted: false,
+        });
       },
       async archive(tenantId, leadId) {
         leads.delete(leadId);

@@ -30,7 +30,11 @@ export const commandValidators: Record<string, (request: unknown) => void> = {
     asRecord(req.patch);
   },
   ConvertLead: (request) => {
-    requireString(asRecord(request).leadId, "leadId");
+    const req = asRecord(request);
+    requireString(req.leadId, "leadId");
+    if (req.mode !== undefined && req.mode !== "customer" && req.mode !== "customer_and_opportunity") {
+      throw new ValidationError("mode must be customer or customer_and_opportunity");
+    }
   },
   CreateBooking: (request) => {
     const req = asRecord(request);

@@ -95,6 +95,18 @@ export type ChannelConversationPort = {
     metadata?: Record<string, unknown>;
   }): Promise<ConversationMessageSummary>;
 
+  /**
+   * Attach or clear a WhatsApp reaction on an existing conversation message
+   * identified by provider external_message_id (wamid). Does not create a new row.
+   */
+  applyMessageReaction?(input: {
+    conversationId: string;
+    targetExternalMessageId: string;
+    emoji: string;
+    from: "customer" | "agent";
+    reactionExternalMessageId?: string;
+  }): Promise<{ applied: boolean; messageId?: string }>;
+
   /** Resolve an already-persisted incoming row for a retried inbound webhook event. */
   findIncomingMessageForInboundEvent?(input: {
     conversationId: string;
@@ -154,6 +166,8 @@ export type ChannelCustomerIdentityPort = {
     companyId: string;
     channelKey: string;
     senderExternalId: string | null | undefined;
+    /** Optional trustworthy display name (WhatsApp profile / email From name). */
+    senderDisplayName?: string | null;
   }): Promise<{
     status: "known" | "unknown" | "ambiguous" | "unsupported_channel" | "invalid_sender";
     customerId: string | null;
@@ -194,6 +208,17 @@ export type ChannelCustomerIdentityPort = {
   customerMatchesEmailSender?(input: {
     companyId: string;
     customerId: string;
+    senderExternalId: string | null | undefined;
+  }): Promise<{ matches: boolean; name: string | null }>;
+
+  /**
+   * True when customer_channel_identities maps this customer to the Meta sender id.
+   * Messenger PSID / Instagram IGSID only.
+   */
+  customerMatchesChannelExternalId?(input: {
+    companyId: string;
+    customerId: string;
+    channelKey: string;
     senderExternalId: string | null | undefined;
   }): Promise<{ matches: boolean; name: string | null }>;
 };

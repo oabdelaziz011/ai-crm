@@ -96,7 +96,22 @@ process.on("unhandledRejection", (reason) => {
   logger.error({ err: reason }, "Unhandled promise rejection");
 });
 
+function isBenignImapSocketTimeout(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { message?: unknown; code?: unknown; stack?: unknown };
+  const message = typeof err.message === "string" ? err.message : "";
+  const code = typeof err.code === "string" ? err.code : "";
+  const stack = typeof err.stack === "string" ? err.stack : "";
+  if (code !== "ETIMEOUT" && message !== "Socket timeout") return false;
+  return stack.includes("imapflow") || stack.includes("imap-flow");
+}
+
 process.on("uncaughtException", (error) => {
   logger.error({ err: error }, "Uncaught exception");
+  // imapflow can emit late socket timeouts after logout; do not take down the API.
+  if (isBenignImapSocketTimeout(error)) {
+    logger.warn({ err: error }, "Ignoring benign IMAP socket timeout");
+    return;
+  }
   shutdown("uncaughtException");
 });

@@ -25,9 +25,15 @@ export type UpdateCustomerResponseDto = Readonly<{
   updatedAt: string;
 }>;
 
+export type LeadConversionModeDto = "customer" | "customer_and_opportunity";
+
 export type ConvertLeadRequestDto = Readonly<{
   leadId: string;
   customerDisplayName?: string;
+  /** Defaults to "customer" (legacy customer-only conversion). */
+  mode?: LeadConversionModeDto;
+  /** Company billing currency used as the opportunity currency fallback. */
+  companyDefaultCurrency?: string;
 }>;
 
 export type ConvertLeadResponseDto = Readonly<{
@@ -35,6 +41,10 @@ export type ConvertLeadResponseDto = Readonly<{
   customerId: string;
   convertedAt: string;
   opportunityId?: string | null;
+  mode?: LeadConversionModeDto;
+  customerCreated?: boolean | null;
+  opportunityCreated?: boolean | null;
+  alreadyConverted?: boolean;
 }>;
 
 // ── Booking ───────────────────────────────────────────────────────────────

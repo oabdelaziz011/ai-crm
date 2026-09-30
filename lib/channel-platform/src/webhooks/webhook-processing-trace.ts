@@ -23,6 +23,7 @@ export type WebhookProcessingStep =
   | "webhook.ai_employee_runtime_prepared"
   | "webhook.ai_employee_email_commercial"
   | "webhook.ai_employee_email_skipped"
+  | "webhook.ai_execution_skipped"
   | "webhook.ai_employee_email_usage"
   | "webhook.inbound_automation_gate"
   | "webhook.inbound_automation_skipped"

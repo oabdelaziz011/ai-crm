@@ -192,6 +192,7 @@ export * from "./crm/find-customer-config.js";
 export * from "./crm/types/find-customer-input.js";
 export * from "./crm/customer/customer-repository-port.js";
 export * from "./crm/customer/customer-service.js";
+export * from "./crm/customer/customer-acquisition-source.js";
 export * from "./crm/lookup/types.js";
 export * from "./crm/lookup/build-lookup-state.js";
 export * from "./crm/lookup/output-variables.js";

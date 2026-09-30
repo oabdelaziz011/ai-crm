@@ -179,6 +179,57 @@ export function CompanyDetailsWorkspace({
               label={t("companies.details.approvalStatus")}
               value={t(`companies.approval.status.${approval}`)}
             />
+            <Field
+              label={t("companies.details.acquisitionSource")}
+              value={
+                company.acquisition_source
+                  ? t(`companyOnboarding.acquisitionSources.${company.acquisition_source}`, {
+                      defaultValue: company.acquisition_source,
+                    })
+                  : dash
+              }
+            />
+            {company.acquisition_source === "social_media" && company.acquisition_source_detail ? (
+              <Field
+                label={t("companies.details.acquisitionPlatform")}
+                value={
+                  ["facebook", "instagram", "x", "tiktok", "youtube"].includes(
+                    company.acquisition_source_detail,
+                  )
+                    ? t(
+                        `companyOnboarding.acquisitionSocialPlatforms.${company.acquisition_source_detail}`,
+                      )
+                    : company.acquisition_source_detail
+                }
+              />
+            ) : null}
+            {company.acquisition_source === "advertisement" && company.acquisition_source_detail ? (
+              <Field
+                label={t("companies.details.acquisitionPlatform")}
+                value={
+                  [
+                    "facebook",
+                    "instagram",
+                    "linkedin",
+                    "google",
+                    "youtube",
+                    "x",
+                    "tiktok",
+                  ].includes(company.acquisition_source_detail)
+                    ? t(
+                        `companyOnboarding.acquisitionAdPlacements.${company.acquisition_source_detail}`,
+                        { defaultValue: company.acquisition_source_detail },
+                      )
+                    : company.acquisition_source_detail
+                }
+              />
+            ) : null}
+            {company.acquisition_source === "other" ? (
+              <Field
+                label={t("companies.details.acquisitionSourceDetail")}
+                value={company.acquisition_source_detail?.trim() || dash}
+              />
+            ) : null}
             <Field label={t("companies.table.plan")} value={packageLabel} />
             <Field label={t("companies.details.subscriptionStatus")} value={subscriptionStatusLabel} />
             <Field label={t("companies.details.billingCycle")} value={billingCycleLabel} />

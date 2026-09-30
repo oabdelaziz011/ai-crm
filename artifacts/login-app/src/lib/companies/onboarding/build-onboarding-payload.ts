@@ -1,4 +1,6 @@
 import type { CompanyOnboardingPayload, CompanyOnboardingValues } from "./types";
+import { resolveCompanyAcquisitionDetail } from "./options";
+import { resolveOnboardingPhoneE164 } from "./sync-owner-from-account";
 import { buildOwnerDisplayName } from "./validation";
 
 function emptyToNull(value: string): string | null {
@@ -22,13 +24,24 @@ export function buildCompanyOnboardingPayload(
     values.ownerDisplayName.trim() ||
     buildOwnerDisplayName(values.ownerFirstName, values.ownerLastName, values.ownerEmail);
 
+  const acquisitionSource = values.acquisitionSource.trim();
+
+  // Company and owner phones resolve independently — never fall back across entities.
+  const companyPhoneE164 =
+    resolveOnboardingPhoneE164(values.contactPhone, values.contactPhoneRegion) ??
+    values.contactPhone.trim();
+  const ownerPhoneE164 = resolveOnboardingPhoneE164(
+    values.ownerPhone,
+    values.ownerPhoneRegion,
+  );
+
   return {
     name: values.name.trim(),
     legal_name: values.legalName.trim(),
     business_type: values.businessType.trim(),
     industry: values.industry.trim(),
     contact_email: values.contactEmail.trim(),
-    contact_phone: values.contactPhone.trim(),
+    contact_phone: companyPhoneE164,
     website: normalizeWebsite(values.website),
     description: emptyToNull(values.description),
     tax_id: emptyToNull(values.taxId),
@@ -41,10 +54,14 @@ export function buildCompanyOnboardingPayload(
     contact_person: displayName,
     owner_display_name: displayName,
     owner_full_name: displayName,
-    // Always persist an owner phone on the profile — fall back to company contact phone
-    // when the account step left ownerPhone empty (contact_phone is required).
-    owner_phone: emptyToNull(values.ownerPhone) ?? emptyToNull(values.contactPhone),
+    owner_phone: ownerPhoneE164,
     owner_job_title: emptyToNull(values.ownerJobTitle) ?? "Owner",
+    acquisition_source: acquisitionSource,
+    acquisition_source_detail: resolveCompanyAcquisitionDetail({
+      source: acquisitionSource,
+      subSource: values.acquisitionSubSource,
+      detail: values.acquisitionSourceDetail,
+    }),
     status: options.mode === "admin_add" ? "Trial" : undefined,
     subscription_plan: "Basic",
   };

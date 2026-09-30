@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useCompanyWorkspaceBundle } from "@/hooks/company-workspace/use-company-workspace-bundle";
 import {
+  canEnterCompanyWorkspace,
   canManageCompanyBranches,
   canManageCompanyBranding,
   canManageCompanyDepartments,
@@ -14,6 +15,8 @@ import { useAuthUser } from "@/hooks/use-rbac";
 
 export type CompanyWorkspacePermissions = {
   canView: boolean;
+  /** Full workspace (overview/employees/…) — false when entry is subscription-only. */
+  canViewFullWorkspace: boolean;
   canUpdate: boolean;
   canBranding: boolean;
   canSubscription: boolean;
@@ -35,20 +38,25 @@ const CompanyWorkspaceContext = createContext<CompanyWorkspaceContextValue | nul
 
 export function CompanyWorkspaceProvider({ children }: { children: ReactNode }) {
   const { hasPermission, isSuperAdmin } = useAuthUser();
-  const canView = canViewCompanyWorkspace({ hasPermission, isSuperAdmin });
+  const access = { hasPermission, isSuperAdmin };
+  const canViewFullWorkspace = canViewCompanyWorkspace(access);
+  const canSubscription = canViewCompanySubscription(access);
+  const canView = canEnterCompanyWorkspace(access);
   const query = useCompanyWorkspaceBundle(canView);
 
   const permissions = useMemo<CompanyWorkspacePermissions>(
     () => ({
       canView,
-      canUpdate: canUpdateCompany({ hasPermission, isSuperAdmin }),
-      canBranding: canManageCompanyBranding({ hasPermission, isSuperAdmin }),
-      canSubscription: canViewCompanySubscription({ hasPermission, isSuperAdmin }),
-      canManageEmployees: canManageCompanyEmployees({ hasPermission, isSuperAdmin }),
-      canManageBranches: canManageCompanyBranches({ hasPermission, isSuperAdmin }),
-      canManageDepartments: canManageCompanyDepartments({ hasPermission, isSuperAdmin }),
+      canViewFullWorkspace,
+      canUpdate: canUpdateCompany(access),
+      canBranding: canManageCompanyBranding(access),
+      canSubscription,
+      canManageEmployees: canManageCompanyEmployees(access),
+      canManageBranches: canManageCompanyBranches(access),
+      canManageDepartments: canManageCompanyDepartments(access),
     }),
-    [canView, hasPermission, isSuperAdmin],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- access derived from hasPermission/isSuperAdmin
+    [canView, canViewFullWorkspace, canSubscription, hasPermission, isSuperAdmin],
   );
 
   const value = useMemo<CompanyWorkspaceContextValue>(

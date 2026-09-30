@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CompanyAcquisitionSourceField } from "@/components/companies/company-acquisition-source-field";
+import { OnboardingPhoneField } from "@/components/companies/onboarding-phone-field";
 import { useAuth } from "@/context/auth-context";
 import { useMyProfile } from "@/hooks/use-my-profile";
 import { usePlans } from "@/hooks/use-plans";
@@ -23,11 +25,14 @@ import {
   COMPANY_ONBOARDING_CURRENCIES,
   COMPANY_ONBOARDING_STEPS,
   OWNER_JOB_TITLE_OPTIONS,
+  ONBOARDING_PHONE_DEFAULT_REGION,
   buildCompanyOnboardingPayload,
   buildOwnerDisplayName,
   companyOnboardingValuesFromPayload,
   emptyCompanyOnboardingValues,
   loadPendingCompanyOnboarding,
+  regionFromStoredPhone,
+  resolveOnboardingPhoneE164,
   validateCompanyOnboardingStep,
   type CompanyOnboardingFieldErrors,
   type CompanyOnboardingMode,
@@ -154,9 +159,16 @@ export function CompanyOnboardingWizard({
       ownerLastName: mode === "first_time" ? prefill.lastName ?? "" : "",
       ownerDisplayName: mode === "first_time" ? prefill.displayName ?? "" : "",
       ownerEmail: mode === "first_time" ? prefill.email ?? "" : "",
+      // Owner phone from profile only — never seed company contactPhone from it.
       ownerPhone: mode === "first_time" ? prefill.phone ?? "" : "",
+      ownerPhoneRegion:
+        mode === "first_time"
+          ? regionFromStoredPhone(prefill.phone, ONBOARDING_PHONE_DEFAULT_REGION)
+          : ONBOARDING_PHONE_DEFAULT_REGION,
       ownerJobTitle: mode === "first_time" ? prefill.jobTitle || "Owner" : "Owner",
       contactEmail: mode === "first_time" ? prefill.email ?? "" : "",
+      contactPhone: "",
+      contactPhoneRegion: ONBOARDING_PHONE_DEFAULT_REGION,
       ...fromPending,
       ...initialValues,
     });
@@ -229,6 +241,9 @@ export function CompanyOnboardingWizard({
     if (code === "duplicate_onboarding") {
       return t("companyOnboarding.errors.duplicate");
     }
+    if (code === "acquisition_source_invalid") {
+      return t("companyOnboarding.errors.acquisition_source_invalid");
+    }
     return error instanceof Error && error.message
       ? error.message
       : t("companyOnboarding.errors.generic");
@@ -275,7 +290,7 @@ export function CompanyOnboardingWizard({
         roleId: adminRole.id,
         isActive: true,
         jobTitle: values.ownerJobTitle.trim() || "Owner",
-        phone: values.ownerPhone.trim() || undefined,
+      phone: resolveOnboardingPhoneE164(values.ownerPhone, values.ownerPhoneRegion) || undefined,
         timezone: values.timezone.trim() || undefined,
       });
       await onCompleted?.(created);
@@ -445,19 +460,23 @@ export function CompanyOnboardingWizard({
                 />
                 <FieldError message={fieldErrors.contactEmail && t(`companyOnboarding.validation.${fieldErrors.contactEmail}`, { defaultValue: fieldErrors.contactEmail })} />
               </div>
-              <div>
-                <Label htmlFor="co-phone">
-                  {t("companyOnboarding.fields.contactPhone")}
-                  <RequiredMark />
-                </Label>
-                <Input
+              <div className="md:col-span-2 sm:col-span-1">
+                <OnboardingPhoneField
                   id="co-phone"
-                  className="mt-1.5"
-                  value={values.contactPhone}
-                  onChange={(event) => patch({ contactPhone: event.target.value })}
-                  dir="ltr"
+                  label={t("companyOnboarding.fields.contactPhone")}
+                  required
+                  phone={values.contactPhone}
+                  region={values.contactPhoneRegion}
+                  onPhoneChange={(contactPhone) => patch({ contactPhone })}
+                  onRegionChange={(contactPhoneRegion) => patch({ contactPhoneRegion })}
+                  errorMessage={
+                    fieldErrors.contactPhone
+                      ? t(`companyOnboarding.validation.${fieldErrors.contactPhone}`, {
+                          defaultValue: fieldErrors.contactPhone,
+                        })
+                      : undefined
+                  }
                 />
-                <FieldError message={fieldErrors.contactPhone && t(`companyOnboarding.validation.${fieldErrors.contactPhone}`, { defaultValue: fieldErrors.contactPhone })} />
               </div>
               <div>
                 <Label htmlFor="co-website">{t("companyOnboarding.fields.website")}</Label>
@@ -496,6 +515,36 @@ export function CompanyOnboardingWizard({
                   className="mt-1.5 min-h-[88px]"
                   value={values.description}
                   onChange={(event) => patch({ description: event.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <CompanyAcquisitionSourceField
+                  idPrefix="co-acquisition"
+                  value={values.acquisitionSource}
+                  subSource={values.acquisitionSubSource}
+                  detail={values.acquisitionSourceDetail}
+                  onChange={(next) => patch(next)}
+                  sourceError={
+                    fieldErrors.acquisitionSource
+                      ? t(`companyOnboarding.validation.${fieldErrors.acquisitionSource}`, {
+                          defaultValue: fieldErrors.acquisitionSource,
+                        })
+                      : undefined
+                  }
+                  subSourceError={
+                    fieldErrors.acquisitionSubSource
+                      ? t(`companyOnboarding.validation.${fieldErrors.acquisitionSubSource}`, {
+                          defaultValue: fieldErrors.acquisitionSubSource,
+                        })
+                      : undefined
+                  }
+                  detailError={
+                    fieldErrors.acquisitionSourceDetail
+                      ? t(`companyOnboarding.validation.${fieldErrors.acquisitionSourceDetail}`, {
+                          defaultValue: fieldErrors.acquisitionSourceDetail,
+                        })
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -677,14 +726,15 @@ export function CompanyOnboardingWizard({
                 />
                 <FieldError message={fieldErrors.ownerEmail && t(`companyOnboarding.validation.${fieldErrors.ownerEmail}`, { defaultValue: fieldErrors.ownerEmail })} />
               </div>
-              <div>
-                <Label htmlFor="co-owner-phone">{t("companyOnboarding.fields.ownerPhone")}</Label>
-                <Input
+              <div className="md:col-span-2 sm:col-span-1">
+                <OnboardingPhoneField
                   id="co-owner-phone"
-                  className="mt-1.5"
-                  value={values.ownerPhone}
-                  onChange={(event) => patch({ ownerPhone: event.target.value })}
-                  dir="ltr"
+                  label={t("companyOnboarding.fields.ownerPhone")}
+                  phone={values.ownerPhone}
+                  region={values.ownerPhoneRegion}
+                  onPhoneChange={(ownerPhone) => patch({ ownerPhone })}
+                  onRegionChange={(ownerPhoneRegion) => patch({ ownerPhoneRegion })}
+                  showValidation={Boolean(values.ownerPhone.trim())}
                 />
               </div>
               <div>
@@ -768,6 +818,27 @@ export function CompanyOnboardingWizard({
                       ["legalName", values.legalName],
                       ["businessType", values.businessType ? t(`companyOnboarding.businessTypes.${values.businessType}`) : ""],
                       ["industry", values.industry ? t(`companyOnboarding.industries.${values.industry}`) : ""],
+                      [
+                        "acquisitionSource",
+                        values.acquisitionSource
+                          ? t(`companyOnboarding.acquisitionSources.${values.acquisitionSource}`)
+                          : "",
+                      ],
+                      ...(values.acquisitionSource === "social_media" && values.acquisitionSubSource
+                        ? ([
+                            [
+                              "acquisitionSocialPlatform",
+                              values.acquisitionSubSource === "other"
+                                ? values.acquisitionSourceDetail
+                                : t(
+                                    `companyOnboarding.acquisitionSocialPlatforms.${values.acquisitionSubSource}`,
+                                  ),
+                            ],
+                          ] as const)
+                        : []),
+                      ...(values.acquisitionSource === "other"
+                        ? ([["acquisitionSourceDetail", values.acquisitionSourceDetail]] as const)
+                        : []),
                       ["contactEmail", values.contactEmail],
                       ["contactPhone", values.contactPhone],
                       ["website", values.website],

@@ -27,6 +27,15 @@ function mapRpcError(message: string): Error {
   if (normalized.includes("duplicate_onboarding")) {
     return new Error("duplicate_onboarding");
   }
+  if (
+    normalized.includes("acquisition_source_required") ||
+    normalized.includes("acquisition_source_invalid") ||
+    normalized.includes("acquisition_source_detail_required") ||
+    normalized.includes("acquisition_source_detail_too_long") ||
+    normalized.includes("acquisition_source_detail_not_allowed")
+  ) {
+    return new Error("acquisition_source_invalid");
+  }
   if (normalized.includes("unknown_trial_feature_code")) {
     return new Error("unknown_trial_feature_code");
   }

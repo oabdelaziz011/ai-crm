@@ -1,4 +1,6 @@
 import type { CompanyOnboardingPayload, CompanyOnboardingValues } from "./types";
+import { parseCompanyAcquisitionFormFields } from "./options";
+import { regionFromStoredPhone } from "./sync-owner-from-account";
 
 const STORAGE_KEY = "valueor.pending_company_onboarding_v1";
 const AWAITING_KEY = "valueor.awaiting_company_membership";
@@ -131,6 +133,7 @@ export function companyOnboardingValuesFromPayload(
     industry: payload.industry ?? "",
     contactEmail: payload.contact_email ?? "",
     contactPhone: payload.contact_phone ?? "",
+    contactPhoneRegion: regionFromStoredPhone(payload.contact_phone),
     website: payload.website ?? "",
     description: payload.description ?? "",
     taxId: payload.tax_id ?? "",
@@ -144,6 +147,12 @@ export function companyOnboardingValuesFromPayload(
     ownerLastName,
     ownerDisplayName: displayName,
     ownerPhone: payload.owner_phone ?? "",
+    ownerPhoneRegion: regionFromStoredPhone(payload.owner_phone),
     ownerJobTitle: payload.owner_job_title || "Owner",
+    acquisitionSource: payload.acquisition_source ?? "",
+    ...parseCompanyAcquisitionFormFields({
+      source: payload.acquisition_source,
+      detail: payload.acquisition_source_detail,
+    }),
   };
 }

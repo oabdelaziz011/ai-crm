@@ -51,17 +51,21 @@ function CompanyWorkspaceContent() {
     return fromUrl ?? "overview";
   });
   const [inviteOpen, setInviteOpen] = useState(false);
+  const subscriptionOnly =
+    permissions.canSubscription && !permissions.canViewFullWorkspace;
 
   // Sync tab FROM the URL only when search changes.
   // Do not depend on activeTab — that races click updates against a stale query string
   // and snaps the tab back (regression after invite deep-link handling).
   useEffect(() => {
     const params = new URLSearchParams(search);
-    let fromUrl = parseTab(params.get("tab")) ?? "overview";
+    let fromUrl = parseTab(params.get("tab")) ?? (subscriptionOnly ? "subscription" : "overview");
     if (params.get("employee")?.trim()) {
       fromUrl = "employees";
     }
-    if (fromUrl === "subscription" && !permissions.canSubscription) {
+    if (subscriptionOnly) {
+      fromUrl = "subscription";
+    } else if (fromUrl === "subscription" && !permissions.canSubscription) {
       fromUrl = "overview";
     }
     setActiveTab(fromUrl);
@@ -76,20 +80,25 @@ function CompanyWorkspaceContent() {
     search,
     permissions.canSubscription,
     permissions.canManageEmployees,
+    subscriptionOnly,
     setLocation,
   ]);
 
   const handleTabChange = (tab: CompanyWorkspaceTabId) => {
+    if (subscriptionOnly && tab !== "subscription") return;
     setActiveTab(tab);
     setLocation(companyWorkspaceHref(tab));
   };
 
   const tabs = useMemo(
     () =>
-      COMPANY_WORKSPACE_DEFAULT_TABS.map((tab) =>
-        tab.id === "subscription" ? { ...tab, hidden: !permissions.canSubscription } : tab,
-      ),
-    [permissions.canSubscription],
+      COMPANY_WORKSPACE_DEFAULT_TABS.map((tab) => {
+        if (subscriptionOnly) {
+          return { ...tab, hidden: tab.id !== "subscription" };
+        }
+        return tab.id === "subscription" ? { ...tab, hidden: !permissions.canSubscription } : tab;
+      }),
+    [permissions.canSubscription, subscriptionOnly],
   );
 
   if (!permissions.canView) {

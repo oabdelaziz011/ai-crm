@@ -27,6 +27,15 @@ export function canViewCompanyWorkspace(access: Access): boolean {
   return can(access, COMPANY_WORKSPACE_PERMISSIONS.view, ["settings.view", "settings.edit"]);
 }
 
+/**
+ * Enter Company Workspace when the user can view the workspace OR only needs
+ * subscription/billing (Pay CTA). Prevents Access Denied for billing-capable admins
+ * who lack company.view.
+ */
+export function canEnterCompanyWorkspace(access: Access): boolean {
+  return canViewCompanyWorkspace(access) || canViewCompanySubscription(access);
+}
+
 export function canUpdateCompany(access: Access): boolean {
   return can(access, COMPANY_WORKSPACE_PERMISSIONS.update, ["settings.edit", "companies.edit"]);
 }
@@ -45,10 +54,15 @@ export function canViewCompanySubscription(access: Access): boolean {
 
 /**
  * Initiate online SaaS checkout from the company portal.
- * Requires company update (admin) — view-only subscription access is insufficient.
+ * Company admins (update) or billing self-manage roles may start payment.
+ * View-only subscription access remains insufficient.
  */
 export function canInitiateCompanyOnlinePayment(access: Access): boolean {
-  return canUpdateCompany(access);
+  if (canUpdateCompany(access)) return true;
+  return can(access, "billing.manage_own", [
+    "billing.payment_method.manage_own",
+    "billing.pay",
+  ]);
 }
 
 /** Deep-link to Workspace Billing (upgrade/history) — stricter than tab visibility. */

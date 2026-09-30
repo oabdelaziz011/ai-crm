@@ -89,6 +89,7 @@ export function createLeadConvertedEvent(input: {
   companyId: string;
   leadId: string;
   customerId: string;
+  opportunityId?: string | null;
   actorUserId: string | null;
 }): LeadDomainEvent {
   return {
@@ -96,7 +97,11 @@ export function createLeadConvertedEvent(input: {
     companyId: input.companyId,
     leadId: input.leadId,
     occurredAt: new Date().toISOString(),
-    payload: { customerId: input.customerId, actorUserId: input.actorUserId },
+    payload: {
+      customerId: input.customerId,
+      ...(input.opportunityId ? { opportunityId: input.opportunityId } : {}),
+      actorUserId: input.actorUserId,
+    },
   };
 }
 

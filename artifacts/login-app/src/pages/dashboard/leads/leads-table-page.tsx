@@ -11,6 +11,7 @@ import {
   useLeadsQueue,
 } from "@/hooks/leads/use-leads-workspace";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
+import { useLeadConversionFeedback } from "@/hooks/leads/use-lead-conversion-feedback";
 import { useOpportunityCommands } from "@/hooks/opportunities/use-opportunity-commands";
 import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-admin";
 import { useAuthUser } from "@/hooks/use-rbac";
@@ -138,6 +139,8 @@ export function LeadsTablePage() {
       canAssign: isSuperAdmin || hasPermission("leads.assign"),
       canCreateOpportunity: isSuperAdmin || hasPermission("opportunities.convert"),
       canConvert: isSuperAdmin || hasPermission("leads.convert"),
+      canConvertWithOpportunity:
+        isSuperAdmin || (hasPermission("leads.convert") && hasPermission("opportunities.convert")),
       canArchive: isSuperAdmin || hasPermission("leads.archive"),
       canDelete: isSuperAdmin || hasPermission("leads.delete"),
     }),
@@ -157,6 +160,7 @@ export function LeadsTablePage() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [opportunityId, setOpportunityId] = useState<string | null>(null);
+  const onLeadConverted = useLeadConversionFeedback({ onOpenOpportunity: setOpportunityId });
   const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
   const [createOpportunityLead, setCreateOpportunityLead] = useState<LeadWorkspaceRow | null>(null);
   const [contactSort, setContactSort] = useState<LeadContactSortState>(null);
@@ -290,6 +294,7 @@ export function LeadsTablePage() {
       toast,
       failToast,
       commands,
+      onConverted: onLeadConverted,
       openLead360,
       setOpportunityId,
       openCreateOpportunityDialog: (leadRow) => {

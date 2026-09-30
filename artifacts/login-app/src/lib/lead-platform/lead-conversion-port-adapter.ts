@@ -72,7 +72,7 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
         );
       }
 
-      const { customer } = await customerService.resolveCustomerForLeadConversion({
+      const { customer, created } = await customerService.resolveCustomerForLeadConversion({
         companyId: input.companyId,
         userId: ownerUserId,
         name: customerName,
@@ -100,9 +100,9 @@ export function createLoginAppLeadConversionPort(client: SupabaseClient): LeadCo
         .eq("id", input.leadId)
         .eq("company_id", input.companyId);
 
-      // Convert = customer only. Opportunity creation is a separate explicit action
-      // (Create Opportunity) so convert stays fast and never fails on pipeline/currency.
-      return { customerId: customer.id, opportunityId: null };
+      // Customer side only. The optional Opportunity step is driven by LeadCommandService
+      // (mode "customer_and_opportunity") through the Opportunity platform port.
+      return { customerId: customer.id, opportunityId: null, customerCreated: created };
     },
   };
 }

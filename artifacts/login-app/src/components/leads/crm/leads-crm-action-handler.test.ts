@@ -166,6 +166,134 @@ describe("executeLeadTableActionRoute", () => {
   });
 });
 
+describe("Convert to customer + opportunity", () => {
+  it("routes convertWithOpportunity to the convert command with the opportunity mode", async () => {
+    const calls: Array<{ leadId: string; mode?: string }> = [];
+    const deps = makeDeps({
+      commands: {
+        convert: {
+          mutateAsync: async (input) => {
+            calls.push(input);
+            return { customerId: "cust-1", opportunityId: "opp-1", customerCreated: true, opportunityCreated: true };
+          },
+        },
+        archive: { mutateAsync: async () => undefined },
+      },
+    });
+
+    await executeLeadTableAction("convertWithOpportunity", deps);
+
+    assert.deepEqual(calls, [{ leadId: "lead-1", mode: "customer_and_opportunity" }]);
+    assert.deepEqual(routeForLeadTableAction("convertWithOpportunity"), {
+      kind: "command",
+      command: "convertWithOpportunity",
+    });
+  });
+
+  it("customer-only convert keeps the legacy payload (no mode)", async () => {
+    const calls: Array<{ leadId: string; mode?: string }> = [];
+    const deps = makeDeps({
+      commands: {
+        convert: {
+          mutateAsync: async (input) => {
+            calls.push(input);
+            return { customerId: "cust-1", opportunityId: null };
+          },
+        },
+        archive: { mutateAsync: async () => undefined },
+      },
+    });
+    await executeLeadTableAction("convert", deps);
+    assert.deepEqual(calls, [{ leadId: "lead-1" }]);
+  });
+
+  it("hands the navigation payload (customer + opportunity) to onConverted", async () => {
+    const outcomes: Array<{ customerId?: string | null; opportunityId?: string | null; mode: string }> = [];
+    let fallbackOpportunity: string | null = null;
+    const deps = makeDeps({
+      commands: {
+        convert: {
+          mutateAsync: async () => ({
+            customerId: "cust-9",
+            opportunityId: "opp-9",
+            customerCreated: false,
+            opportunityCreated: true,
+          }),
+        },
+        archive: { mutateAsync: async () => undefined },
+      },
+      onConverted: (outcome, mode) => outcomes.push({ ...outcome, mode }),
+      setOpportunityId: (id) => {
+        fallbackOpportunity = id;
+      },
+    });
+
+    await executeLeadTableAction("convertWithOpportunity", deps);
+
+    assert.equal(outcomes.length, 1);
+    assert.equal(outcomes[0]!.customerId, "cust-9");
+    assert.equal(outcomes[0]!.opportunityId, "opp-9");
+    assert.equal(outcomes[0]!.mode, "customer_and_opportunity");
+    assert.equal(fallbackOpportunity, null, "presenter owns navigation when provided");
+  });
+
+  it("default presenter toasts created/reused outcomes and opens Opportunity360", async () => {
+    const toasts: Array<{ title: string; description?: string }> = [];
+    let opened: string | null = null;
+    const deps = makeDeps({
+      commands: {
+        convert: {
+          mutateAsync: async () => ({
+            customerId: "cust-1",
+            opportunityId: "opp-1",
+            customerCreated: false,
+            opportunityCreated: true,
+          }),
+        },
+        archive: { mutateAsync: async () => undefined },
+      },
+      toast: (options) => toasts.push(options),
+      setOpportunityId: (id) => {
+        opened = id;
+      },
+    });
+
+    await executeLeadTableAction("convertWithOpportunity", deps);
+
+    assert.deepEqual(toasts, [
+      {
+        title: "leads.convert.convertedWithOpportunity",
+        description: "leads.convert.customerReused · leads.convert.opportunityCreated",
+      },
+    ]);
+    assert.equal(opened, "opp-1");
+  });
+
+  it("shows the actionable error and does not navigate when conversion fails", async () => {
+    const errors: string[] = [];
+    let opened = false;
+    const deps = makeDeps({
+      commands: {
+        convert: {
+          mutateAsync: async () => {
+            throw new Error("This lead is already being converted. Refresh in a moment to see the result.");
+          },
+        },
+        archive: { mutateAsync: async () => undefined },
+      },
+      failToast: (title, error) => errors.push(`${title}:${String(error)}`),
+      onConverted: () => {
+        opened = true;
+      },
+    });
+
+    await executeLeadTableAction("convertWithOpportunity", deps);
+
+    assert.equal(opened, false);
+    assert.match(errors[0]!, /convertFailed:This lead is already being converted/);
+  });
+});
+
 describe("executeLeadTableAction", () => {
   it("routes createOpportunity menu action to create dialog", async () => {
     let opened = false;

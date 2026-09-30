@@ -5,4 +5,6 @@ export type {
   LeadConversionPort,
   LeadEventPublisherPort,
   LeadNotificationPort,
+  LeadOpportunityConversionContext,
+  LeadOpportunityConversionPort,
 } from "./lead-platform-ports.js";

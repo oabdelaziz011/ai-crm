@@ -12,6 +12,8 @@ import {
 } from "@/components/entity-workspace/entity-360-dialog-shell";
 import { useLead360Workspace } from "@/hooks/leads/use-lead360-workspace";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
+import { useLeadConversionFeedback } from "@/hooks/leads/use-lead-conversion-feedback";
+import type { LeadConversionUiMode } from "@/components/leads/crm/lead-conversion-outcome";
 import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
 import { OpportunityCreateDialog } from "@/components/opportunities/opportunity-create-dialog";
 import {
@@ -307,7 +309,27 @@ export function Lead360Workspace({
       customerId: lead!.customerId,
       lifecycleStatus: lead!.lifecycleStatus,
     });
-  const canConvert = Boolean(lead) && !alreadyConverted;
+  const canConvert =
+    Boolean(lead) && !alreadyConverted && (isSuperAdmin || hasPermission("leads.convert"));
+  const canConvertWithOpportunity =
+    canConvert && (isSuperAdmin || hasPermission("opportunities.convert"));
+  const [pendingConvertMode, setPendingConvertMode] = useState<LeadConversionUiMode | null>(null);
+  const onLeadConverted = useLeadConversionFeedback({ onOpenOpportunity: setCreatedOpportunityId });
+  const runConvert = (mode: LeadConversionUiMode) => {
+    if (!leadId || commands.convert.isPending) return;
+    setPendingConvertMode(mode);
+    void commands.convert
+      .mutateAsync(mode === "customer" ? { leadId } : { leadId, mode })
+      .then((result) => onLeadConverted(result, mode))
+      .catch((error: unknown) => {
+        toast({
+          title: t("leads.kanban.actions.convertFailed"),
+          description: resolveApplicationErrorMessage(error),
+          variant: "destructive",
+        });
+      })
+      .finally(() => setPendingConvertMode(null));
+  };
 
   const activities = data?.activities ?? [];
   const tasks = data?.tasks ?? [];
@@ -535,31 +557,32 @@ export function Lead360Workspace({
                       {t("leads360.createOpportunity")}
                     </Button>
                   ) : null}
-                  {canConvert ? (
+                  {canConvertWithOpportunity ? (
                     <Button
                       type="button"
                       className="h-11 w-full gap-2 rounded-xl text-[13px] font-semibold"
                       disabled={commands.convert.isPending || !leadId}
-                      onClick={() => {
-                        if (!leadId) return;
-                        void commands.convert
-                          .mutateAsync({ leadId })
-                          .then((result) => {
-                            toast({ title: t("leads.kanban.actions.converted") });
-                            if (result.opportunityId) {
-                              setCreatedOpportunityId(result.opportunityId);
-                            }
-                          })
-                          .catch((error: unknown) => {
-                            toast({
-                              title: t("leads.kanban.actions.convertFailed"),
-                              description: resolveApplicationErrorMessage(error),
-                              variant: "destructive",
-                            });
-                          });
-                      }}
+                      aria-busy={pendingConvertMode === "customer_and_opportunity"}
+                      onClick={() => runConvert("customer_and_opportunity")}
                     >
-                      {commands.convert.isPending ? (
+                      {pendingConvertMode === "customer_and_opportunity" ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <BriefcaseBusiness className="size-4" />
+                      )}
+                      {t("leads360.convertWithOpportunity")}
+                    </Button>
+                  ) : null}
+                  {canConvert ? (
+                    <Button
+                      type="button"
+                      variant={canConvertWithOpportunity ? "outline" : "default"}
+                      className="h-11 w-full gap-2 rounded-xl text-[13px] font-semibold"
+                      disabled={commands.convert.isPending || !leadId}
+                      aria-busy={pendingConvertMode === "customer"}
+                      onClick={() => runConvert("customer")}
+                    >
+                      {pendingConvertMode === "customer" ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
                         <CheckCircle2 className="size-4" />

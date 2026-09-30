@@ -39,7 +39,37 @@ export interface LeadConversionPort {
     companyName: string | null;
     actorUserId: string | null;
     preservedPayload: Record<string, unknown>;
-  }): Promise<{ customerId: string; opportunityId?: string | null }>;
+  }): Promise<{ customerId: string; opportunityId?: string | null; customerCreated?: boolean }>;
+}
+
+export type LeadOpportunityConversionContext = {
+  userId: string | null;
+  companyId: string | null;
+  isSuperAdmin: boolean;
+  hasPermission: (code: string) => boolean;
+};
+
+/**
+ * Opportunity side of "Convert Lead → Customer + Opportunity".
+ * Implementations must delegate to the Opportunity platform (createFromLead) — never
+ * re-implement pipeline/stage/currency/owner defaults here.
+ */
+export interface LeadOpportunityConversionPort {
+  /** Read-only lookup of an opportunity already created from this lead. */
+  findOpportunityForLead(input: {
+    companyId: string;
+    leadId: string;
+  }): Promise<{ opportunityId: string } | null>;
+  /** Fail before any conversion write when an opportunity could not be created (e.g. no currency). */
+  assertCanCreateForLead(
+    ctx: LeadOpportunityConversionContext,
+    input: { companyId: string; leadId: string; companyDefaultCurrency?: string },
+  ): Promise<void>;
+  /** Idempotent: reuses the lead's existing opportunity, otherwise creates one from the lead. */
+  ensureOpportunityForLead(
+    ctx: LeadOpportunityConversionContext,
+    input: { companyId: string; leadId: string; companyDefaultCurrency?: string },
+  ): Promise<{ opportunityId: string; created: boolean }>;
 }
 
 export interface LeadAssigneeResolverPort {

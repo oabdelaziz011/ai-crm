@@ -67,6 +67,7 @@ const ACTION_ICONS: Record<LeadTableActionId, LucideIcon> = {
   whatsapp: MessageCircle,
   email: Mail,
   assign: UserPlus,
+  convertWithOpportunity: BriefcaseBusiness,
   convert: UserCheck,
   archive: Archive,
   delete: Trash2,

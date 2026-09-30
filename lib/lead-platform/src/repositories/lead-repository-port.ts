@@ -166,6 +166,18 @@ export interface LeadRepository {
     preservedPayload: Record<string, unknown>;
   }): Promise<void>;
 
+  /**
+   * Atomic per-lead conversion claim (DB compare-and-set). Returns false when another
+   * conversion holds a live claim. Optional so non-Supabase repositories keep working.
+   */
+  tryClaimConversion?(input: {
+    companyId: string;
+    leadId: string;
+    claimId: string;
+    ttlSeconds: number;
+  }): Promise<boolean>;
+  releaseConversionClaim?(input: { companyId: string; leadId: string; claimId: string }): Promise<void>;
+
   mergeLeads(input: {
     companyId: string;
     primaryLeadId: string;

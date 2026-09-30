@@ -174,17 +174,27 @@ export function createLoginAppLeadWritePort(
       );
     },
 
-    async convert(tenantId, leadId, _actorUserId): Promise<LeadConvertResult> {
+    async convert(tenantId, leadId, _actorUserId, options): Promise<LeadConvertResult> {
       assertTenant(tenantId);
-      const { lead, customerId, opportunityId } = await platform.commands.convertLead(serviceContext(tenantId), {
+      const mode = options?.mode ?? "customer";
+      const result = await platform.commands.convertLead(serviceContext(tenantId), {
         companyId: tenantId,
         leadId,
+        mode,
+        companyDefaultCurrency:
+          mode === "customer_and_opportunity"
+            ? options?.companyDefaultCurrency || getCompanyCurrency()
+            : undefined,
       });
-      const labels = await resolveLabels(client, tenantId, lead);
+      const labels = await resolveLabels(client, tenantId, result.lead);
       return Object.freeze({
-        lead: mapLeadRecordToReadModel(lead, tenantId, labels),
-        customerId,
-        opportunityId: opportunityId ?? null,
+        lead: mapLeadRecordToReadModel(result.lead, tenantId, labels),
+        customerId: result.customerId,
+        opportunityId: result.opportunityId ?? null,
+        mode: result.mode,
+        customerCreated: result.customerCreated,
+        opportunityCreated: result.opportunityCreated,
+        alreadyConverted: result.alreadyConverted,
       });
     },
 

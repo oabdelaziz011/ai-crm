@@ -110,20 +110,32 @@ export async function handleConvertLead(
   request: ConvertLeadRequestDto,
   context: ApplicationContext,
 ): Promise<{ response: ConvertLeadResponseDto; eventIds: string[] }> {
-  const result = await deps.ports.leadWrite.convert(context.tenantId, request.leadId, context.actorId);
-  const eventId = await deps.infra.events.publishLeadConverted({
-    leadId: request.leadId,
-    customerId: result.customerId,
-    context: eventContext(context),
+  const result = await deps.ports.leadWrite.convert(context.tenantId, request.leadId, context.actorId, {
+    mode: request.mode ?? "customer",
+    companyDefaultCurrency: request.companyDefaultCurrency,
   });
+  const eventIds: string[] = [];
+  if (!result.alreadyConverted) {
+    eventIds.push(
+      await deps.infra.events.publishLeadConverted({
+        leadId: request.leadId,
+        customerId: result.customerId,
+        context: eventContext(context),
+      }),
+    );
+  }
   return {
     response: Object.freeze({
       leadId: request.leadId,
       customerId: result.customerId,
       opportunityId: result.opportunityId ?? null,
       convertedAt: new Date().toISOString(),
+      mode: result.mode ?? request.mode ?? "customer",
+      customerCreated: result.customerCreated ?? null,
+      opportunityCreated: result.opportunityCreated ?? null,
+      alreadyConverted: result.alreadyConverted ?? false,
     }),
-    eventIds: [eventId],
+    eventIds,
   };
 }
 

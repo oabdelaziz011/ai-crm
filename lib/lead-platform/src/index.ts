@@ -21,6 +21,7 @@ import type {
   LeadConversionPort,
   LeadEventPublisherPort,
   LeadNotificationPort,
+  LeadOpportunityConversionPort,
 } from "./ports/lead-platform-ports.js";
 import {
   createNoopLeadAssigneeResolverPort,
@@ -45,6 +46,8 @@ export type CreateLeadPlatformServicesOptions = {
   events?: LeadEventPublisherPort;
   notifications?: LeadNotificationPort;
   audit?: LeadAuditPort;
+  /** Enables "Convert → Customer + Opportunity"; omitted = customer-only conversion. */
+  opportunityConversion?: LeadOpportunityConversionPort | null;
   cache?: LeadQueryCachePort;
   /** When false, skip Assignment Governance (tests only). Default: enabled. */
   assignmentGovernance?: boolean | null;
@@ -94,6 +97,7 @@ export function createLeadPlatformServices(
     audit,
     assignmentGovernance,
     assignmentAudit,
+    opportunityConversion: options.opportunityConversion ?? null,
   });
   const queries = new LeadQueryService({ leads, cache });
   const reads = createLeadReadPort(queries);
@@ -110,7 +114,11 @@ export * from "./ports/lead-read-port.js";
 export * from "./cache/lead-query-cache-port.js";
 export { InMemoryLeadQueryCache } from "./cache/in-memory-lead-query-cache.js";
 export { createLeadReadPort } from "./adapters/lead-query-read-port.js";
-export { LeadCommandService } from "./services/lead-command-service.js";
+export {
+  LeadCommandService,
+  type LeadConversionMode,
+  type LeadConversionResult,
+} from "./services/lead-command-service.js";
 export { LeadQueryService } from "./services/lead-query-service.js";
 export {
   createNoopLeadAssigneeResolverPort,

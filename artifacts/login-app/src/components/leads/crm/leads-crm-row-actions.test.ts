@@ -47,6 +47,34 @@ describe("resolveLeadTableActions", () => {
     ]);
   });
 
+  it("offers Customer + Opportunity only with both convert permissions and keeps customer-only convert", () => {
+    const withBoth = resolveLeadTableActions({
+      permissions: { ...fullPerms, canConvertWithOpportunity: true },
+      hasPhone: false,
+      hasEmail: false,
+    }).map((a) => a.id);
+    assert.ok(withBoth.includes("convertWithOpportunity"));
+    assert.ok(withBoth.includes("convert"));
+    assert.ok(withBoth.indexOf("convertWithOpportunity") < withBoth.indexOf("convert"));
+
+    const withoutOpportunityPermission = resolveLeadTableActions({
+      permissions: { ...fullPerms, canConvertWithOpportunity: false },
+      hasPhone: false,
+      hasEmail: false,
+    }).map((a) => a.id);
+    assert.ok(!withoutOpportunityPermission.includes("convertWithOpportunity"));
+    assert.ok(withoutOpportunityPermission.includes("convert"));
+
+    const converted = resolveLeadTableActions({
+      permissions: { ...fullPerms, canConvertWithOpportunity: true },
+      hasPhone: false,
+      hasEmail: false,
+      isConverted: true,
+    }).map((a) => a.id);
+    assert.ok(!converted.includes("convertWithOpportunity"));
+    assert.ok(!converted.includes("convert"));
+  });
+
   it("hides RBAC-denied actions", () => {
     const actions = resolveLeadTableActions({
       permissions: {
@@ -322,6 +350,7 @@ describe("routeLeadTableAction", () => {
     ["email", { kind: "external", channel: "email" }],
     ["assign", { kind: "openDialog", dialog: "assign" }],
     ["convert", { kind: "command", command: "convert" }],
+    ["convertWithOpportunity", { kind: "command", command: "convertWithOpportunity" }],
     ["archive", { kind: "command", command: "archive" }],
     ["delete", { kind: "openDialog", dialog: "deleteConfirm" }],
   ];

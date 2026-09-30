@@ -10,6 +10,14 @@ export const LEAD_PERMISSIONS = {
   manage: "leads.manage",
 } as const;
 
+export const LEAD_CONVERSION_MODES = ["customer", "customer_and_opportunity"] as const;
+
+/** Same permission Opportunity.createFromLead enforces; checked up front so no customer is written first. */
+export const LEAD_CONVERSION_OPPORTUNITY_PERMISSION = "opportunities.convert";
+
+/** Server-side claim lifetime; a crashed conversion frees the lead after this window. */
+export const LEAD_CONVERSION_CLAIM_TTL_SECONDS = 120;
+
 export const LEAD_LIFECYCLE_STATUSES = [
   "new",
   "qualified",

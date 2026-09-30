@@ -12,6 +12,7 @@ export type LeadTableActionId =
   | "whatsapp"
   | "email"
   | "assign"
+  | "convertWithOpportunity"
   | "convert"
   | "archive"
   | "delete";
@@ -30,6 +31,8 @@ export type LeadTableActionPermissions = {
   canAssign: boolean;
   canCreateOpportunity: boolean;
   canConvert: boolean;
+  /** leads.convert AND opportunities.convert — Lead → Customer + Opportunity. */
+  canConvertWithOpportunity?: boolean;
   canArchive: boolean;
   canDelete: boolean;
 };
@@ -161,6 +164,13 @@ export function resolveLeadTableActions(input: {
         customerId,
         lifecycleStatus,
       }),
+    });
+  }
+  if (p.canConvert && p.canConvertWithOpportunity && !isConverted) {
+    actions.push({
+      id: "convertWithOpportunity",
+      labelKey: "leads.table.rowActions.convertWithOpportunity",
+      group: "conversion",
     });
   }
   if (p.canConvert && !isConverted) {

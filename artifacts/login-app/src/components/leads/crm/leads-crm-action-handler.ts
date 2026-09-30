@@ -11,6 +11,11 @@ import {
   resolveLeadWhatsAppRoute,
 } from "./leads-crm-whatsapp.ts";
 import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result.ts";
+import {
+  describeLeadConversionOutcome,
+  type LeadConversionUiMode,
+  type LeadConversionUiOutcome,
+} from "./lead-conversion-outcome.ts";
 
 export type LeadTableActionHandlerDeps = {
   row: LeadWorkspaceRow;
@@ -23,10 +28,15 @@ export type LeadTableActionHandlerDeps = {
   failToast: (title: string, error?: unknown) => void;
   commands: {
     convert: {
-      mutateAsync: (input: { leadId: string }) => Promise<{ opportunityId?: string | null }>;
+      mutateAsync: (input: {
+        leadId: string;
+        mode?: LeadConversionUiMode;
+      }) => Promise<LeadConversionUiOutcome>;
     };
     archive: { mutateAsync: (input: { leadId: string }) => Promise<unknown> };
   };
+  /** Shows the outcome (toast + Open customer) and opens the opportunity; defaults to a plain toast. */
+  onConverted?: (outcome: LeadConversionUiOutcome, mode: LeadConversionUiMode) => void;
   openLead360: (row: LeadWorkspaceRow, tab: "overview" | "activity" | "ai") => void;
   setOpportunityId: (id: string) => void;
   openCreateOpportunityDialog: (row: LeadWorkspaceRow) => void;
@@ -136,10 +146,19 @@ export async function executeLeadTableActionRoute(
       return;
     }
     case "command":
-      if (route.command === "convert") {
+      if (route.command === "convert" || route.command === "convertWithOpportunity") {
+        const mode: LeadConversionUiMode =
+          route.command === "convertWithOpportunity" ? "customer_and_opportunity" : "customer";
         try {
-          const result = await commands.convert.mutateAsync({ leadId: row.id });
-          toast({ title: t("leads.kanban.actions.converted") });
+          const result = await commands.convert.mutateAsync(
+            mode === "customer" ? { leadId: row.id } : { leadId: row.id, mode },
+          );
+          if (deps.onConverted) {
+            deps.onConverted(result, mode);
+            return;
+          }
+          const { title, description } = describeLeadConversionOutcome(t, result, mode);
+          toast(description ? { title, description } : { title });
           if (result.opportunityId) {
             deps.setOpportunityId(result.opportunityId);
           }

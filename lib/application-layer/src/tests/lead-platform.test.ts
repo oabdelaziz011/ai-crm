@@ -72,4 +72,40 @@ describe("Lead Platform — CQRS", () => {
     const result = await services.lead.convertLead({ leadId: "lead_1" }, context);
     assert.ok(result.data.customerId);
   });
+
+  it("threads Customer + Opportunity mode and returns the navigation payload", async () => {
+    const registry = createApplicationLayerRegistry({ useMockPorts: true });
+    const services = registry.getServices();
+    const context = createContext({
+      tenantId: "tenant_1",
+      actorId: "user_admin",
+      permissions: ["leads.convert"],
+    });
+
+    const result = await services.lead.convertLead(
+      { leadId: "lead_1", mode: "customer_and_opportunity" },
+      context,
+    );
+    assert.ok(result.data.customerId);
+    assert.ok(result.data.opportunityId);
+    assert.equal(result.data.mode, "customer_and_opportunity");
+    assert.equal(result.data.opportunityCreated, true);
+    assert.equal(result.data.alreadyConverted, false);
+  });
+
+  it("rejects an unknown conversion mode at validation", async () => {
+    const registry = createApplicationLayerRegistry({ useMockPorts: true });
+    const services = registry.getServices();
+    const context = createContext({
+      tenantId: "tenant_1",
+      actorId: "user_admin",
+      permissions: ["leads.convert"],
+    });
+
+    await assert.rejects(
+      () =>
+        services.lead.convertLead({ leadId: "lead_1", mode: "bogus" as unknown as "customer" }, context),
+      /mode must be/,
+    );
+  });
 });

@@ -1,4 +1,9 @@
-import { LEAD_PERMISSIONS } from "../constants.js";
+import {
+  LEAD_CONVERSION_CLAIM_TTL_SECONDS,
+  LEAD_CONVERSION_MODES,
+  LEAD_CONVERSION_OPPORTUNITY_PERMISSION,
+  LEAD_PERMISSIONS,
+} from "../constants.js";
 import {
   createLeadArchivedEvent,
   createLeadAssignedEvent,
@@ -10,13 +15,19 @@ import {
   createLeadStageChangedEvent,
   createLeadUpdatedEvent,
 } from "../events/lead-event-factory.js";
-import { LeadNotFoundError, LeadPermissionDeniedError, LeadValidationError } from "../errors.js";
+import {
+  LeadConflictError,
+  LeadNotFoundError,
+  LeadPermissionDeniedError,
+  LeadValidationError,
+} from "../errors.js";
 import type {
   LeadAssigneeResolverPort,
   LeadAuditPort,
   LeadConversionPort,
   LeadEventPublisherPort,
   LeadNotificationPort,
+  LeadOpportunityConversionPort,
 } from "../ports/lead-platform-ports.js";
 import type { LeadRepository } from "../repositories/lead-repository-port.js";
 import type {
@@ -49,7 +60,27 @@ export type LeadCommandServiceDeps = {
   audit: LeadAuditPort;
   assignmentGovernance?: AssignmentGovernancePort | null;
   assignmentAudit?: AssignmentAuditPort | null;
+  opportunityConversion?: LeadOpportunityConversionPort | null;
 };
+
+export type LeadConversionMode = (typeof LEAD_CONVERSION_MODES)[number];
+
+export type LeadConversionResult = {
+  lead: LeadRecord;
+  customerId: string;
+  opportunityId: string | null;
+  mode: LeadConversionMode;
+  /** true = new customer, false = existing customer reused, null = linked earlier (resume/replay). */
+  customerCreated: boolean | null;
+  /** true = new opportunity, false = existing lead opportunity reused, null = not requested. */
+  opportunityCreated: boolean | null;
+  /** The lead was already converted before this request — nothing was written. */
+  alreadyConverted: boolean;
+};
+
+function isFinalConvertedLead(lead: LeadRecord): boolean {
+  return Boolean(lead.customerId) && (lead.lifecycleStatus === "converted" || lead.lifecycleStatus === "won");
+}
 
 export class LeadCommandService {
   constructor(private readonly deps: LeadCommandServiceDeps) {}
@@ -482,53 +513,127 @@ export class LeadCommandService {
     return { lead: record };
   }
 
+  /**
+   * Lead → Customer (default) or Lead → Customer + Opportunity.
+   *
+   * No database transaction spans customer/opportunity/lead writes (separate services over
+   * RLS). Safety comes from ordering + idempotency instead:
+   *   1. per-lead DB claim blocks concurrent conversions (double-click, parallel tabs);
+   *   2. customer is linked first (reused by email when it exists);
+   *   3. opportunity is ensured via the Opportunity platform (reuses the lead's opportunity);
+   *   4. only then is the lead marked "converted".
+   * A failure before step 4 leaves a resumable lead (customer linked, not converted) and a
+   * retry continues from there — never "converted" with the requested opportunity missing.
+   */
   async convertLead(
     ctx: LeadServiceContext,
-    input: { companyId: string; leadId: string },
-  ): Promise<{ lead: LeadRecord; customerId: string; opportunityId: string | null }> {
+    input: {
+      companyId: string;
+      leadId: string;
+      mode?: LeadConversionMode;
+      /** Company billing currency used by Opportunity defaults when the lead has none. */
+      companyDefaultCurrency?: string;
+    },
+  ): Promise<LeadConversionResult> {
     const actorUserId = assertLeadActor(ctx);
     assertLeadCompanyAccess(ctx, input.companyId);
     assertLeadPermission(ctx, LEAD_PERMISSIONS.convert);
-    const existing = await this.requireLead(input.companyId, input.leadId);
 
-    // Idempotent: already-converted leads succeed without re-running conversion.
-    if (
-      existing.customerId &&
-      (existing.lifecycleStatus === "converted" || existing.lifecycleStatus === "won")
-    ) {
-      return {
-        lead: existing,
-        customerId: existing.customerId,
-        opportunityId: null,
-      };
+    const mode: LeadConversionMode = input.mode ?? "customer";
+    if (!(LEAD_CONVERSION_MODES as readonly string[]).includes(mode)) {
+      throw new LeadValidationError("Invalid lead conversion mode.");
+    }
+    const withOpportunity = mode === "customer_and_opportunity";
+    const opportunityPort = this.deps.opportunityConversion ?? null;
+    if (withOpportunity) {
+      if (!opportunityPort) {
+        throw new LeadValidationError("Opportunity creation is not available for lead conversion.");
+      }
+      assertLeadPermission(ctx, LEAD_CONVERSION_OPPORTUNITY_PERMISSION);
     }
 
-    // Resume a partial conversion (customer linked, status not finalized yet).
-    if (existing.customerId) {
-      const stage = await this.resolveStageByStatus(input.companyId, existing.pipelineId, "converted");
-      const record = await this.deps.leads.updateLead({
+    const existing = await this.requireLead(input.companyId, input.leadId);
+    if (isFinalConvertedLead(existing)) {
+      return this.replayConvertedLead(existing, mode);
+    }
+
+    if (withOpportunity) {
+      await opportunityPort!.assertCanCreateForLead(ctx, {
         companyId: input.companyId,
         leadId: input.leadId,
-        updatedBy: actorUserId,
-        customerId: existing.customerId,
-        lifecycleStatus: "converted",
-        stageId: stage?.id ?? existing.stageId,
-        convertedAt: new Date().toISOString(),
+        companyDefaultCurrency: input.companyDefaultCurrency,
       });
-      await this.recordActivity(
-        input.companyId,
-        input.leadId,
-        "converted",
-        `Converted to customer ${existing.customerId}`,
-        actorUserId,
-      );
-      return { lead: record, customerId: existing.customerId, opportunityId: null };
     }
 
+    const claimId = crypto.randomUUID();
+    const claimSupported = typeof this.deps.leads.tryClaimConversion === "function";
+    if (claimSupported) {
+      const claimed = await this.deps.leads.tryClaimConversion!({
+        companyId: input.companyId,
+        leadId: input.leadId,
+        claimId,
+        ttlSeconds: LEAD_CONVERSION_CLAIM_TTL_SECONDS,
+      });
+      if (!claimed) {
+        throw new LeadConflictError(
+          "This lead is already being converted. Refresh in a moment to see the result.",
+        );
+      }
+    }
+
+    try {
+      // A concurrent conversion may have finished between the first read and our claim.
+      const current = claimSupported ? await this.requireLead(input.companyId, input.leadId) : existing;
+      if (isFinalConvertedLead(current)) {
+        return this.replayConvertedLead(current, mode);
+      }
+      return await this.runLeadConversion(ctx, actorUserId, current, {
+        companyId: input.companyId,
+        mode,
+        companyDefaultCurrency: input.companyDefaultCurrency,
+      });
+    } finally {
+      if (claimSupported) {
+        await this.deps.leads
+          .releaseConversionClaim?.({ companyId: input.companyId, leadId: input.leadId, claimId })
+          .catch(() => undefined);
+      }
+    }
+  }
+
+  private async replayConvertedLead(
+    lead: LeadRecord,
+    mode: LeadConversionMode,
+  ): Promise<LeadConversionResult> {
+    const found =
+      mode === "customer_and_opportunity" && this.deps.opportunityConversion
+        ? await this.deps.opportunityConversion.findOpportunityForLead({
+            companyId: lead.companyId,
+            leadId: lead.id,
+          })
+        : null;
+    return {
+      lead,
+      customerId: lead.customerId!,
+      opportunityId: found?.opportunityId ?? null,
+      mode,
+      customerCreated: null,
+      opportunityCreated: found ? false : null,
+      alreadyConverted: true,
+    };
+  }
+
+  private async runLeadConversion(
+    ctx: LeadServiceContext,
+    actorUserId: string,
+    existing: LeadRecord,
+    input: { companyId: string; mode: LeadConversionMode; companyDefaultCurrency?: string },
+  ): Promise<LeadConversionResult> {
+    const leadId = existing.id;
     // Keep convert fast — tags/notes only (skip activity history transfer).
     const [tags, notes] = await Promise.all([
-      this.deps.leads.listTags(input.companyId, input.leadId),
-      this.deps.leads.listNotes(input.companyId, input.leadId),
+      this.deps.leads.listTags(input.companyId, leadId),
+      this.deps.leads.listNotes(input.companyId, leadId),
     ]);
 
     const preservedPayload = {
@@ -541,23 +646,46 @@ export class LeadCommandService {
       metadata: existing.metadata,
     };
 
-    const converted = await this.deps.conversion.convertLead({
-      companyId: input.companyId,
-      leadId: input.leadId,
-      contactName: existing.contactName || existing.title,
-      email: existing.email,
-      phone: existing.phone,
-      companyName: existing.companyName,
-      actorUserId,
-      preservedPayload,
-    });
+    // Resume a partial conversion (customer already linked, status not finalized yet).
+    let customerId: string;
+    let customerCreated: boolean | null = null;
+    let portOpportunityId: string | null = null;
+    if (existing.customerId) {
+      customerId = existing.customerId;
+    } else {
+      const converted = await this.deps.conversion.convertLead({
+        companyId: input.companyId,
+        leadId,
+        contactName: existing.contactName || existing.title,
+        email: existing.email,
+        phone: existing.phone,
+        companyName: existing.companyName,
+        actorUserId,
+        preservedPayload,
+      });
+      customerId = converted.customerId;
+      customerCreated = typeof converted.customerCreated === "boolean" ? converted.customerCreated : null;
+      portOpportunityId = converted.opportunityId ?? null;
+    }
+
+    let opportunityId = portOpportunityId;
+    let opportunityCreated: boolean | null = null;
+    if (input.mode === "customer_and_opportunity") {
+      const ensured = await this.deps.opportunityConversion!.ensureOpportunityForLead(ctx, {
+        companyId: input.companyId,
+        leadId,
+        companyDefaultCurrency: input.companyDefaultCurrency,
+      });
+      opportunityId = ensured.opportunityId;
+      opportunityCreated = ensured.created;
+    }
 
     const stage = await this.resolveStageByStatus(input.companyId, existing.pipelineId, "converted");
     const record = await this.deps.leads.updateLead({
       companyId: input.companyId,
-      leadId: input.leadId,
+      leadId,
       updatedBy: actorUserId,
-      customerId: converted.customerId,
+      customerId,
       lifecycleStatus: "converted",
       stageId: stage?.id ?? existing.stageId,
       convertedAt: new Date().toISOString(),
@@ -565,24 +693,53 @@ export class LeadCommandService {
 
     await this.deps.leads.recordConversion({
       companyId: input.companyId,
-      leadId: input.leadId,
-      customerId: converted.customerId,
-      opportunityId: converted.opportunityId ?? null,
+      leadId,
+      customerId,
+      opportunityId,
       convertedBy: actorUserId,
       preservedPayload,
     });
 
-    await this.recordActivity(input.companyId, input.leadId, "converted", `Converted to customer ${converted.customerId}`, actorUserId);
+    const customerOutcome =
+      customerCreated === true ? "created" : customerCreated === false ? "reused" : "linked";
+    const opportunityOutcome =
+      opportunityCreated === true ? "created" : opportunityCreated === false ? "reused" : null;
+    await this.deps.leads.appendActivity({
+      companyId: input.companyId,
+      leadId,
+      activityType: "converted",
+      summary:
+        input.mode === "customer_and_opportunity" && opportunityId
+          ? `Converted to customer ${customerId} (${customerOutcome}) and opportunity ${opportunityId} (${opportunityOutcome})`
+          : `Converted to customer ${customerId}`,
+      payload: {
+        mode: input.mode,
+        customerId,
+        customerOutcome,
+        opportunityId,
+        opportunityOutcome,
+      },
+      actorUserId,
+    });
     await this.deps.events.publish(
       createLeadConvertedEvent({
         companyId: input.companyId,
-        leadId: input.leadId,
-        customerId: converted.customerId,
+        leadId,
+        customerId,
+        opportunityId,
         actorUserId,
       }),
     );
 
-    return { lead: record, customerId: converted.customerId, opportunityId: converted.opportunityId ?? null };
+    return {
+      lead: record,
+      customerId,
+      opportunityId,
+      mode: input.mode,
+      customerCreated,
+      opportunityCreated,
+      alreadyConverted: false,
+    };
   }
 
   async mergeLead(

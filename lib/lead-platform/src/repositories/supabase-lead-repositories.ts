@@ -626,6 +626,32 @@ export function createSupabaseLeadRepository(client: SupabaseClient): LeadReposi
       if (error) throw new Error(error.message);
     },
 
+    async tryClaimConversion(input) {
+      const { data, error } = await client.rpc("lead_conversion_try_claim", {
+        p_company_id: input.companyId,
+        p_lead_id: input.leadId,
+        p_claim_id: input.claimId,
+        p_ttl_seconds: input.ttlSeconds,
+      });
+      if (error) {
+        // Database without migration 396: keep the pre-existing (unclaimed) conversion path.
+        if (error.code === "PGRST202" || error.code === "42883") return true;
+        throw new Error(error.message);
+      }
+      return data === true;
+    },
+
+    async releaseConversionClaim(input) {
+      const { error } = await client.rpc("lead_conversion_release_claim", {
+        p_company_id: input.companyId,
+        p_lead_id: input.leadId,
+        p_claim_id: input.claimId,
+      });
+      if (error && error.code !== "PGRST202" && error.code !== "42883") {
+        throw new Error(error.message);
+      }
+    },
+
     async mergeLeads(input) {
       for (const duplicateId of input.duplicateLeadIds) {
         await client

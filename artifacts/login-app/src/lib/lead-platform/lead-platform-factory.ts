@@ -13,6 +13,7 @@ import {
   createLoginAppLeadAssigneeResolverPort,
 } from "./lead-platform-adapters.js";
 import { createLoginAppLeadConversionPort } from "./lead-conversion-port-adapter.js";
+import { createLoginAppLeadOpportunityConversionPort } from "./lead-opportunity-conversion-port-adapter.js";
 
 export function createLeadEventBridge(): LeadEventPublisherPort {
   return {
@@ -58,6 +59,7 @@ export function createLoginAppLeadPlatformServices(
   return createLeadPlatformServices(client, {
     assignees: createLoginAppLeadAssigneeResolverPort(client),
     conversion: createLoginAppLeadConversionPort(client),
+    opportunityConversion: createLoginAppLeadOpportunityConversionPort(client),
     events: createLeadEventBridge(),
     notifications: createLeadNotificationBridge(),
     audit: createSupabaseLeadAuditPort(client),

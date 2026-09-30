@@ -46,6 +46,8 @@ import { useAuth } from "@/context/auth-context";
 import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import { useAssignableEmployees } from "@/hooks/assignment-governance/use-assignable-employees";
 import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
+import { useLeadConversionFeedback } from "@/hooks/leads/use-lead-conversion-feedback";
+import type { LeadConversionUiMode } from "@/components/leads/crm/lead-conversion-outcome";
 import {
   useLeadKanbanBoard,
   useLeadPipelines,
@@ -103,6 +105,7 @@ export function LeadsKanbanPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editLead, setEditLead] = useState<LeadWorkspaceRow | null>(null);
   const [opportunityId, setOpportunityId] = useState<string | null>(null);
+  const onLeadConverted = useLeadConversionFeedback({ onOpenOpportunity: setOpportunityId });
   const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
   const [createOpportunityLead, setCreateOpportunityLead] = useState<LeadWorkspaceRow | null>(null);
   const [drawerLead, setDrawerLead] = useState<LeadWorkspaceRow | null>(null);
@@ -334,27 +337,31 @@ export function LeadsKanbanPage() {
     ];
 
     if (!alreadyConverted && canConvert) {
+      const runConvert = (mode: LeadConversionUiMode) => {
+        void commands.convert
+          .mutateAsync(mode === "customer" ? { leadId: lead.id } : { leadId: lead.id, mode })
+          .then((result) => onLeadConverted(result, mode))
+          .catch((error: unknown) => {
+            toast({
+              title: t("leads.kanban.actions.convertFailed"),
+              description: resolveApplicationErrorMessage(error),
+              variant: "destructive",
+            });
+          });
+      };
+      if (canCreateOpportunity) {
+        actions.push({
+          id: "convertWithOpportunity",
+          label: t("leads.table.rowActions.convertWithOpportunity"),
+          disabled: commands.convert.isPending,
+          onSelect: () => runConvert("customer_and_opportunity"),
+        });
+      }
       actions.push({
         id: "convert",
         label: t("leads.table.rowActions.convert"),
         disabled: commands.convert.isPending,
-        onSelect: () => {
-          void commands.convert
-            .mutateAsync({ leadId: lead.id })
-            .then((result) => {
-              toast({ title: t("leads.kanban.actions.converted") });
-              if (result.opportunityId) {
-                setOpportunityId(result.opportunityId);
-              }
-            })
-            .catch((error: unknown) => {
-              toast({
-                title: t("leads.kanban.actions.convertFailed"),
-                description: resolveApplicationErrorMessage(error),
-                variant: "destructive",
-              });
-            });
-        },
+        onSelect: () => runConvert("customer"),
       });
     }
 

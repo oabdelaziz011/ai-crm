@@ -10,6 +10,8 @@ import type {
   WebhookEnvelopeDto,
 } from "../dto/channel-dto.js";
 
+export const PUBLIC_WEB_WIDGET_PROVIDER = "valueor.web_widget";
+
 function readString(payload: Record<string, unknown>, key: string, fallback = ""): string {
   const value = payload[key];
   return typeof value === "string" ? value : fallback;
@@ -57,9 +59,21 @@ export class StubWebChatAdapter implements ChannelAdapterPort {
   }
 
   async sendOutbound(
-    _ctx: ChannelAdapterContext,
+    ctx: ChannelAdapterContext,
     formattedPayload: Record<string, unknown>,
   ): Promise<ChannelAdapterSendResult> {
+    // Public website widget: no provider transport. The visitor reads the stored
+    // conversation_messages row by polling, so never claim provider delivery.
+    if (ctx.companyChannel?.provider === PUBLIC_WEB_WIDGET_PROVIDER) {
+      return {
+        externalMessageId: randomUUID(),
+        providerResponse: {
+          channelKey: this.channelKey,
+          delivered: false,
+          deliveryMode: "visitor_polling",
+        },
+      };
+    }
     return {
       externalMessageId: randomUUID(),
       providerResponse: {

@@ -8,7 +8,9 @@ import {
   isLocalApiServiceTarget,
   isLocalExternalOutboundExplicitlyAllowed,
   isLocalIntegrationEnabled,
+  LOCAL_API_ORIGIN,
   parseCloudflaredConfigSummary,
+  resolveLocalBrowserApiOrigin,
   resolveLocalPublicWebhookBase,
   resolvePublicWebhookBaseForMode,
   applyLocalIntegrationOverlay,
@@ -92,6 +94,18 @@ describe("local-integration tunnel safety", () => {
     assert.equal(isLocalApiServiceTarget("http://localhost:3001"), true);
     assert.equal(isLocalApiServiceTarget("http://127.0.0.1:3001"), true);
     assert.equal(isLocalApiServiceTarget("http://localhost:3000"), false);
+  });
+
+  it("resolves Local browser API origin to :3001 and rewrites stale :3000", () => {
+    assert.equal(resolveLocalBrowserApiOrigin(""), LOCAL_API_ORIGIN);
+    assert.equal(resolveLocalBrowserApiOrigin(undefined), LOCAL_API_ORIGIN);
+    assert.equal(resolveLocalBrowserApiOrigin("http://localhost:3000"), LOCAL_API_ORIGIN);
+    assert.equal(resolveLocalBrowserApiOrigin("http://127.0.0.1:3000"), LOCAL_API_ORIGIN);
+    assert.equal(resolveLocalBrowserApiOrigin("http://localhost:3001"), "http://localhost:3001");
+    assert.equal(
+      resolveLocalBrowserApiOrigin("https://webhook.valueor.org"),
+      "https://webhook.valueor.org",
+    );
   });
 
   it("rejects shared production config.yml and prod ingress", () => {

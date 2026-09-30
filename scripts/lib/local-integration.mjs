@@ -16,6 +16,26 @@ export const LOCAL_INTEGRATION_ENV_FILE = ".env.local.integration";
 export const LOCAL_API_PORT = 3001;
 export const LOCAL_API_ORIGIN = `http://localhost:${LOCAL_API_PORT}`;
 
+/**
+ * Resolve the Local Vite browser → api-server origin.
+ * Never targets production API on :3000; webhook bases stay on VITE_WEBHOOK_BASE_URL.
+ */
+export function resolveLocalBrowserApiOrigin(sourceUrl) {
+  const raw = typeof sourceUrl === "string" ? sourceUrl.trim() : "";
+  if (!raw) return LOCAL_API_ORIGIN;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const isLoopback = host === "localhost" || host === "127.0.0.1";
+    if (isLoopback && url.port === "3000") {
+      return LOCAL_API_ORIGIN;
+    }
+  } catch {
+    /* keep raw */
+  }
+  return raw;
+}
+
 /** Keys overlaid from `.env.local.integration` onto the localstack profile. */
 export const LOCAL_INTEGRATION_OVERLAY_KEYS = [
   "LOCAL_INTEGRATION_ENABLED",

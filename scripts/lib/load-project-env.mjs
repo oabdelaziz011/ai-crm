@@ -12,6 +12,8 @@ import {
 } from "./env-mode.mjs";
 import {
   applyLocalIntegrationOverlay,
+  LOCAL_API_ORIGIN,
+  LOCAL_API_PORT,
   readLocalIntegrationEnv,
 } from "./local-integration.mjs";
 
@@ -134,6 +136,7 @@ export function loadProjectEnv(projectRoot, options = {}) {
   if (options.mergeProcessEnv) {
     const protectedLocalKeys = new Set([
       "VALUEOR_ENV",
+      "PORT",
       "SUPABASE_URL",
       "VITE_SUPABASE_URL",
       "SUPABASE_ANON_KEY",
@@ -243,12 +246,12 @@ export function normalizeProjectEnv(env, options = {}) {
   }
 
   if (mode === VALUEOR_ENV_LOCAL) {
-    out.VITE_API_SERVER_URL ??= "http://localhost:3000";
+    out.VITE_API_SERVER_URL ??= LOCAL_API_ORIGIN;
     out.VITE_APP_ORIGIN ??= "http://localhost:5173";
     out.FRONTEND_ORIGIN ??= "http://localhost:5173";
     out.LOGIN_APP_URL ??= out.VITE_APP_ORIGIN || "http://localhost:5173";
     out.NODE_ENV ??= "development";
-    out.PORT ??= "3000";
+    out.PORT ??= String(LOCAL_API_PORT);
     // Webhook bases must NOT default to production.
     if (out.WEBHOOK_BASE_URL && /webhook\.valueor\.org/i.test(out.WEBHOOK_BASE_URL)) {
       delete out.WEBHOOK_BASE_URL;

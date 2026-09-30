@@ -80,6 +80,9 @@ importers:
       '@workspace/lead-platform':
         specifier: workspace:*
         version: link:../../lib/lead-platform
+      '@workspace/opportunity-platform':
+        specifier: workspace:*
+        version: link:../../lib/opportunity-platform
       '@workspace/platform-ai-provider':
         specifier: workspace:*
         version: link:../../lib/platform-ai-provider
@@ -89,6 +92,9 @@ importers:
       '@workspace/platform-observability':
         specifier: workspace:*
         version: link:../../lib/platform-observability
+      '@workspace/quote-platform':
+        specifier: workspace:*
+        version: link:../../lib/quote-platform
       '@workspace/retrieval-engine':
         specifier: workspace:*
         version: link:../../lib/retrieval-engine
@@ -1451,6 +1457,9 @@ importers:
       '@workspace/embedding-platform':
         specifier: workspace:*
         version: link:../embedding-platform
+      '@workspace/platform-ai-provider':
+        specifier: workspace:*
+        version: link:../platform-ai-provider
       '@workspace/vector-store':
         specifier: workspace:*
         version: link:../vector-store

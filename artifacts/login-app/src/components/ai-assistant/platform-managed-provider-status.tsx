@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LEGACY_AI_FEATURE_KEY_MAP } from "@workspace/configuration-platform";
 import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
 import { RefreshCw, Shield } from "lucide-react";
@@ -35,8 +35,8 @@ type PlatformManagedProviderStatusProps = {
 };
 
 /**
- * Shows platform-key management context + real readiness for AI Chat:
- * company provider connection AND company AI chat feature flag.
+ * Shows platform-managed AI readiness for the tenant.
+ * Companies do not enter API keys — readiness is platform provider + company entitlement.
  */
 export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProviderStatusProps) {
   const { t } = useTranslation("common");
@@ -64,36 +64,79 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
     licenseReason,
   } = useAiChatFeatureEnabled();
 
+  const {
+    data: platformReadiness,
+    isLoading: readinessLoading,
+    refetch: refetchReadiness,
+  } = useQuery({
+    queryKey: ["platform-ai-provider-readiness", "openai"],
+    queryFn: () => services.platform.getProviderReadiness("openai"),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!companyId || !platformReadiness?.ready) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await services.platform.ensureCompanyProviderConnection(companyId, "openai");
+        if (!cancelled) {
+          await refetchConnections();
+          await queryClient.invalidateQueries({ queryKey: ["runtime-chat-config"] });
+        }
+      } catch {
+        // Readiness UI still reflects platformReadiness / connections.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, platformReadiness?.ready, services.platform, refetchConnections, queryClient]);
+
   const activeConnection = useMemo(
     () => pickDefaultConnection(connections.filter((connection) => connection.is_enabled)),
     [connections],
   );
 
-  const providerBound = Boolean(activeConnection?.id);
+  const platformReady = platformReadiness?.ready === true;
+  const providerBound = Boolean(activeConnection?.id) || platformReady;
   const featureReady = resolvedEnabled !== false && featureEnabled;
-  const checking = connectionsLoading || featureLoading;
+  const checking = connectionsLoading || featureLoading || readinessLoading;
 
   const connectionState: PlatformAiConnectionState = useMemo(() => {
     if (checking) return "checking";
-    return providerBound && featureReady ? "connected" : "disconnected";
-  }, [checking, featureReady, providerBound]);
+    return providerBound && featureReady && platformReady ? "connected" : "disconnected";
+  }, [checking, featureReady, platformReady, providerBound]);
 
   const statusDetail = useMemo(() => {
     if (checking) return t("platformAi.tenant.checkingDetail");
-    if (providerBound && featureReady) return t("platformAi.tenant.statusReady");
+    if (providerBound && featureReady && platformReady) return t("platformAi.tenant.statusReady");
     if (licenseBlocked) {
       return t("platformAi.tenant.statusLicenseBlocked", {
         reason: licenseReason ?? t("platformAi.tenant.licenseUnknown"),
       });
     }
+    if (platformReadiness?.errorCode === "AI_PROVIDER_UNAVAILABLE") {
+      return t("platformAi.tenant.statusPlatformUnavailable");
+    }
+    if (!platformReady) return t("platformAi.tenant.statusProviderMissing");
     if (providerBound && !featureReady) return t("platformAi.tenant.statusFeatureDisabled");
-    if (!providerBound && featureReady) return t("platformAi.tenant.statusProviderMissing");
     return t("platformAi.tenant.statusDisconnected");
-  }, [checking, featureReady, licenseBlocked, licenseReason, providerBound, t]);
+  }, [
+    checking,
+    featureReady,
+    licenseBlocked,
+    licenseReason,
+    platformReadiness?.errorCode,
+    platformReady,
+    providerBound,
+    t,
+  ]);
 
   const invalidateReadiness = async () => {
     await Promise.all([
       refetchConnections(),
+      refetchReadiness(),
       queryClient.invalidateQueries({
         queryKey: featureFlagQueryKey(companyId, AI_CHAT_UNIFIED_KEY),
       }),
@@ -105,8 +148,15 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
   };
 
   const verifyBinding = async () => {
+    if (companyId && platformReady) {
+      try {
+        await services.platform.ensureCompanyProviderConnection(companyId, "openai");
+      } catch {
+        // toast below reflects post-invalidate state
+      }
+    }
     await invalidateReadiness();
-    const ready = providerBound && featureReady;
+    const ready = providerBound && featureReady && platformReady;
     toast({
       title: ready
         ? t("platformAi.tenant.verifiedConnected")
@@ -133,7 +183,6 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
         permissions: permissionCodes(hasPermission, isSuperAdmin),
       });
 
-      // Flip every company-scoped ai.chat row (any environment) then upsert production.
       const { error: updateError } = await supabase
         .from("platform_feature_flags")
         .update({
@@ -160,8 +209,6 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
         appContext,
       );
 
-      // Kill-switch only: do not mutate platform_company_licenses for mapped commercial keys.
-      // ai.chat → ai_assistant is Phase 6 commercial entitlement. Missing grant ≠ unlock via license add-on.
       const { data: entitled, error: entitleError } = await supabase.rpc("is_feature_enabled", {
         p_company_id: companyId,
         p_feature_code: "ai_assistant",
@@ -202,10 +249,11 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
             true,
           );
         } catch {
-          // Non-fatal: runtime readiness already uses platform_feature_flags.
+          // Non-fatal
         }
       }
 
+      await services.platform.ensureCompanyProviderConnection(companyId, "openai");
       await invalidateReadiness();
       toast({ title: t("platformAi.tenant.featureEnabledToast") });
     } catch (error) {
@@ -265,16 +313,22 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
       </div>
 
       <div className="mt-4 space-y-2 text-sm">
-        <p className={connectionState === "connected" ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}>
+        <p
+          className={
+            connectionState === "connected"
+              ? "text-emerald-700 dark:text-emerald-300"
+              : "text-rose-700 dark:text-rose-300"
+          }
+        >
           {statusDetail}
         </p>
         <ul className="space-y-1 text-xs text-muted-foreground">
           <li>
             {t("platformAi.tenant.providerLine", {
-              status: providerBound
+              status: platformReady
                 ? t("platformAi.tenant.connected")
                 : t("platformAi.tenant.disconnected"),
-              name: activeConnection?.display_name ?? "—",
+              name: activeConnection?.display_name ?? platformReadiness?.displayName ?? "OpenAI",
             })}
           </li>
           <li>
@@ -287,18 +341,22 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
         </ul>
       </div>
 
-      {!checking && (!providerBound || !featureReady) ? (
+      {!checking && (!providerBound || !featureReady || !platformReady) ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          {!providerBound ? (
+          {!platformReady || !providerBound ? (
             <Button
               type="button"
               size="sm"
               variant="secondary"
               onClick={() => {
-                document.getElementById("provider-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                if (isSuperAdmin) {
+                  setLocation(`${getDashboardRouteById("settings").nestedPath}/platform-ai`);
+                }
               }}
             >
-              {t("platformAi.tenant.openProviderSetup")}
+              {isSuperAdmin
+                ? t("platformAi.tenant.openPlatformSettings")
+                : t("platformAi.tenant.openProviderSetup")}
             </Button>
           ) : null}
           {!featureReady && canEnableFeatureFlag ? (
@@ -308,9 +366,7 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
               disabled={enablingFeature}
               onClick={() => void enableFeature()}
             >
-              {enablingFeature ? (
-                <RefreshCw className="me-1.5 size-3.5 animate-spin" />
-              ) : null}
+              {enablingFeature ? <RefreshCw className="me-1.5 size-3.5 animate-spin" /> : null}
               {t("platformAi.tenant.enableFeature")}
             </Button>
           ) : null}
@@ -319,7 +375,9 @@ export function PlatformManagedProviderStatus({ companyId }: PlatformManagedProv
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setLocation(getDashboardRouteById("settings").nestedPath + "/platform-ai")}
+              onClick={() =>
+                setLocation(`${getDashboardRouteById("settings").nestedPath}/platform-ai`)
+              }
             >
               {t("platformAi.tenant.openPlatformSettings")}
             </Button>

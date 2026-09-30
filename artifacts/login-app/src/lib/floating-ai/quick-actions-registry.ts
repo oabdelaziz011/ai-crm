@@ -59,6 +59,22 @@ const QUICK_ACTIONS_BY_PAGE: Record<string, FloatingAiQuickAction[]> = {
   ],
   default: [
     { id: "help", labelKey: "floatingAi.actions.help", prompt: "What can you help me with on this page?" },
+    {
+      id: "start-agent",
+      labelKey: "floatingAi.actions.startAgent",
+      prompt: "/agent Help me complete the main task on this page",
+    },
+  ],
+  "ai-chat": [
+    { id: "help", labelKey: "floatingAi.actions.help", prompt: "What can you help me with on this page?" },
+    {
+      id: "start-agent",
+      labelKey: "floatingAi.actions.startAgent",
+      prompt: "/agent Summarize what I can automate from this AI workspace",
+    },
+  ],
+  "ai-assistant": [
+    { id: "help", labelKey: "floatingAi.actions.help", prompt: "How do I use the AI assistant with the platform provider?" },
   ],
 };
 

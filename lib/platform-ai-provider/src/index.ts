@@ -9,6 +9,10 @@ export * from "./workflow-feature-access.js";
 export * from "./analytics-feature-access.js";
 export * from "./agents-feature-access.js";
 export * from "./platform-ai-provider-service.js";
+export {
+  resolvePlatformAiReadiness,
+  assertNoSecretLeak,
+} from "./platform-provider-resolution.js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPlatformAIProviderService } from "./platform-ai-provider-service.js";

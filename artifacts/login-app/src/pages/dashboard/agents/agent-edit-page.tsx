@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useParams, useSearch } from "wouter";
 import { ArrowLeft, ArrowRight, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -19,13 +19,16 @@ import {
   useAiEmployee,
   useAiEmployeeKnowledgeOptions,
   useAiEmployeeToolOptions,
+  useAssignSkillsToAiEmployee,
   useUpdateAiEmployee,
 } from "@/lib/ai-employees/hooks";
 import { recordToFormValues } from "@/lib/ai-employees/validators";
 import {
   hasAiEmployeesEditPermission,
+  hasAiEmployeesSkillsEditPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
+import { haveSameMembers } from "@/lib/ai-employees/utilities/ai-employee-wizard-step-routing";
 import { agentDetailHref } from "@/config/agents-route-registry";
 import { nestedSectionHref } from "@/lib/routing";
 import { useToast } from "@/hooks/use-toast";
@@ -47,10 +50,17 @@ const STEPS: AiEmployeeWizardStep[] = [
   "review",
 ];
 
+function readInitialStepIndex(search: string): number {
+  const step = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("step");
+  const index = STEPS.indexOf(step as AiEmployeeWizardStep);
+  return index >= 0 ? index : 0;
+}
+
 export function AgentEditPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const params = useParams<{ agentId: string }>();
   const agentId = params.agentId;
   const validAgentId = agentId && UUID_PATTERN.test(agentId) ? agentId : null;
@@ -65,14 +75,16 @@ export function AgentEditPage() {
     agentsFeatureEnabled,
   });
   const canEdit = hasAiEmployeesEditPermission(hasPermission, isSuperAdmin);
+  const canEditSkills = hasAiEmployeesSkillsEditPermission(hasPermission, isSuperAdmin);
 
   const { data: employee, isLoading, error } = useAiEmployee(companyId, validAgentId);
   const updateEmployee = useUpdateAiEmployee(companyId, validAgentId ?? null);
+  const assignSkills = useAssignSkillsToAiEmployee(companyId);
   const { data: toolOptions = [] } = useAiEmployeeToolOptions();
   const { data: knowledgeOptions = [] } = useAiEmployeeKnowledgeOptions(companyId);
 
   const [values, setValues] = useState<AiEmployeeFormValues | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(() => readInitialStepIndex(search));
   const topAnchorRef = useRef<HTMLDivElement>(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -123,9 +135,15 @@ export function AgentEditPage() {
 
   const handleSave = async (navigateAfter: boolean) => {
     if (!values || !validAgentId) return;
+    const nextSkillIds = values.allowedSkillIds ?? [];
+    const skillsChanged =
+      canEditSkills && !haveSameMembers(nextSkillIds, employee?.allowedSkillIds ?? []);
     try {
       // Update existing row only — never create.
       await updateEmployee.mutateAsync(values);
+      if (skillsChanged) {
+        await assignSkills.mutateAsync({ employeeId: validAgentId, skillIds: nextSkillIds });
+      }
       toast({ title: t("aiEmployees.updated") });
       if (navigateAfter) {
         setLocation(nestedSectionHref(agentDetailHref(validAgentId)));
@@ -241,6 +259,11 @@ export function AgentEditPage() {
           reviewContext={{
             employeeId: validAgentId,
             transferableFlowId: employee.runtimeConfiguration?.transferableFlowId ?? null,
+          }}
+          skillsEditable={canEditSkills}
+          onJumpToStep={(target) => {
+            const index = STEPS.indexOf(target);
+            if (index >= 0) setStepIndex(index);
           }}
         />
       </div>

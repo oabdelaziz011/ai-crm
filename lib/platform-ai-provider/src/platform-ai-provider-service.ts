@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  EnsureCompanyPlatformProviderConnectionResult,
   PlatformAIFeatureFlagRecord,
   PlatformAIModelRecord,
   PlatformAIProviderKeyRecord,
+  PlatformAIProviderReadiness,
   PlatformAIProviderRecord,
   PlatformAIRuntimeConfig,
   PlatformAIUsageRecord,
@@ -12,6 +14,15 @@ import type {
   UpsertPlatformModelInput,
   UpsertPlatformProviderKeyInput,
 } from "./types.js";
+
+function mapPlatformErrorCode(
+  value: unknown,
+): "AI_PROVIDER_NOT_CONFIGURED" | "AI_PROVIDER_UNAVAILABLE" | null {
+  if (value === "AI_PROVIDER_NOT_CONFIGURED" || value === "AI_PROVIDER_UNAVAILABLE") {
+    return value;
+  }
+  return null;
+}
 
 function assertSuperAdmin(ctx: ServiceContext): void {
   if (!ctx.isSuperAdmin) {
@@ -42,6 +53,51 @@ export class PlatformAIProviderService {
       .order("display_name", { ascending: true });
     if (error) throw error;
     return (data ?? []) as PlatformAIProviderRecord[];
+  }
+
+  /**
+   * Non-secret readiness for the active platform AI provider.
+   * Safe for browser/tenant UI — never returns API keys.
+   */
+  async getProviderReadiness(providerKey = "openai"): Promise<PlatformAIProviderReadiness> {
+    const { data, error } = await this.client.rpc("platform_ai_provider_readiness", {
+      p_provider_key: providerKey,
+    });
+    if (error) throw error;
+    const payload = (data ?? {}) as Record<string, unknown>;
+    return {
+      ready: Boolean(payload.ready),
+      providerKey: String(payload.providerKey ?? providerKey),
+      displayName: typeof payload.displayName === "string" ? payload.displayName : null,
+      isEnabled: Boolean(payload.isEnabled),
+      hasActiveKey: Boolean(payload.hasActiveKey),
+      model: typeof payload.model === "string" ? payload.model : null,
+      keyHint: typeof payload.keyHint === "string" ? payload.keyHint : null,
+      errorCode: mapPlatformErrorCode(payload.errorCode),
+    };
+  }
+
+  /**
+   * Ensures the company has an enabled keyless platform-managed provider binding.
+   * Does not require a company API key (BYOK is not required).
+   */
+  async ensureCompanyProviderConnection(
+    companyId: string,
+    providerKey = "openai",
+  ): Promise<EnsureCompanyPlatformProviderConnectionResult> {
+    const { data, error } = await this.client.rpc("ensure_company_platform_ai_provider_connection", {
+      p_company_id: companyId,
+      p_provider_key: providerKey,
+    });
+    if (error) throw error;
+    const payload = (data ?? {}) as Record<string, unknown>;
+    return {
+      ready: Boolean(payload.ready),
+      created: Boolean(payload.created),
+      connectionId: typeof payload.connectionId === "string" ? payload.connectionId : null,
+      providerKey: String(payload.providerKey ?? providerKey),
+      errorCode: mapPlatformErrorCode(payload.errorCode),
+    };
   }
 
   async listModels(providerId?: string): Promise<PlatformAIModelRecord[]> {

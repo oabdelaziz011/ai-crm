@@ -29,11 +29,13 @@ import { FloatingAiComposer } from "./floating-ai-composer";
 type AgentWorkflowPanelProps = {
   initialGoal?: string;
   onGoalConsumed?: () => void;
+  runtimeReady?: boolean;
 };
 
 export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
   initialGoal,
   onGoalConsumed,
+  runtimeReady = true,
 }: AgentWorkflowPanelProps) {
   const { t } = useTranslation("common");
   const { isSuperAdmin, hasPermission } = useAuthUser();
@@ -86,6 +88,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
     async (text: string) => {
       const goal = text.trim();
       if (!goal || !FLOATING_AI_CAPABILITIES.agentMode || !canStart) return;
+      if (!runtimeReady) return;
 
       if (requiresAgentConfirmation(goal)) {
         setPendingConfirmation(createPendingConfirmation(goal, goal));
@@ -94,7 +97,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
 
       await runGoal(goal);
     },
-    [runGoal, canStart],
+    [runGoal, canStart, runtimeReady],
   );
 
   const handleConfirmStart = useCallback(async () => {
@@ -130,7 +133,7 @@ export const AgentWorkflowPanel = memo(function AgentWorkflowPanel({
     void handleStart(initialGoal);
   }, [initialGoal, activeWorkflowId, isStarting, handleStart]);
 
-  const disabled = !canStart || isStarting || isResuming || isConversationLoading;
+  const disabled = !canStart || !runtimeReady || isStarting || isResuming || isConversationLoading;
   const status = (workflow?.status as string | undefined) ?? "idle";
   const needsResume = status === "waiting_user" || status === "paused";
 

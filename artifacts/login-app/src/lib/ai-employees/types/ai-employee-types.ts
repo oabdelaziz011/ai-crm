@@ -98,6 +98,9 @@ export type AiEmployeeFormValues = {
   allowedToolKeys: string[];
   allowedSkillIds?: string[];
   tags: string[];
+  promptVersionLabel?: string;
+  /** Runtime limits, per-tool pauses, and workflow transfer; omitted fields keep stored values. */
+  runtimeConfiguration?: AiEmployeeRuntimeConfiguration;
 };
 
 export type AiEmployeeInsert = Omit<AiEmployeeDbRow, "id" | "created_at" | "updated_at" | "deleted_at"> & {

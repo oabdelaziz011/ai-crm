@@ -21,17 +21,20 @@ export const QuickActions = memo(function QuickActions({ page, onAction, disable
         {t("floatingAi.quickActions.title")}
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {actions.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            disabled={disabled}
-            onClick={() => onAction(action)}
-            className="rounded-lg border border-border bg-background/80 px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 disabled:opacity-50"
-          >
-            {t(action.labelKey)}
-          </button>
-        ))}
+        {actions.map((action) => {
+          const actionDisabled = Boolean(disabled) && !action.navigateTo;
+          return (
+            <button
+              key={action.id}
+              type="button"
+              disabled={actionDisabled}
+              onClick={() => onAction(action)}
+              className="rounded-lg border border-border bg-background/80 px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 disabled:opacity-50"
+            >
+              {t(action.labelKey)}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

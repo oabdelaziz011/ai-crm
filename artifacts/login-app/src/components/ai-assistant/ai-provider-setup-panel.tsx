@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Plug, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Can } from "@/components/rbac/permission-guard";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatformAIProviderServices } from "@/hooks/use-platform-ai-provider";
 import { assistantProviderToRegistryKey } from "@/lib/ai-provider/provider-key-map";
 import { pickDefaultConnection } from "@/lib/runtime-integration/chat-config";
 import type { AiAssistantProvider } from "@/lib/types";
@@ -22,7 +23,10 @@ type AiProviderSetupPanelProps = {
   canEdit: boolean;
 };
 
-/** Creates a company provider connection that uses the platform encrypted API key. */
+/**
+ * Ensures the company is bound to the platform-managed AI provider.
+ * Never collects a company API key (BYOK is not required).
+ */
 export function AiProviderSetupPanel({
   companyId,
   assistantProvider,
@@ -33,14 +37,41 @@ export function AiProviderSetupPanel({
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const registryKey = assistantProviderToRegistryKey(assistantProvider);
+  const { services } = usePlatformAIProviderServices();
 
-  const { data: connections = [], isLoading } = useAiProviderConnectionsAdmin(companyId);
+  const { data: connections = [], isLoading, refetch } = useAiProviderConnectionsAdmin(companyId);
   const { data: providerTypes = [] } = useAiProviderTypes();
   const { create, setDefault } = useAiProviderConnectionMutations(companyId);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
+  const [platformReady, setPlatformReady] = useState<boolean | null>(null);
+  const [ensuring, setEnsuring] = useState(false);
 
   const providerDefinition = providerTypes.find((type) => type.key === registryKey);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    void (async () => {
+      setEnsuring(true);
+      try {
+        const readiness = await services.platform.getProviderReadiness(registryKey);
+        if (cancelled) return;
+        setPlatformReady(readiness.ready);
+        if (readiness.ready) {
+          await services.platform.ensureCompanyProviderConnection(companyId, registryKey);
+          if (!cancelled) await refetch();
+        }
+      } catch {
+        if (!cancelled) setPlatformReady(false);
+      } finally {
+        if (!cancelled) setEnsuring(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, registryKey, services.platform, refetch]);
 
   const matchingConnections = useMemo(
     () =>
@@ -61,7 +92,7 @@ export function AiProviderSetupPanel({
     [connections],
   );
 
-  const isReady = Boolean(activeDefault?.id);
+  const isReady = Boolean(activeDefault?.id) || platformReady === true;
   const hasMismatch = Boolean(!isReady && anyEnabledDefault?.id);
 
   const effectiveSelectedId = selectedConnectionId || activeDefault?.id || matchingConnections[0]?.id || "";
@@ -70,6 +101,16 @@ export function AiProviderSetupPanel({
     if (!companyId || !providerDefinition) return;
 
     try {
+      const ensured = await services.platform.ensureCompanyProviderConnection(companyId, registryKey);
+      if (ensured.ready && ensured.connectionId) {
+        await refetch();
+        toast({
+          title: t("aiAssistant.providerSetup.saveSuccess"),
+          description: t("aiAssistant.providerSetup.saveSuccessDetail"),
+        });
+        return;
+      }
+
       await create.mutateAsync({
         providerId: providerDefinition.id,
         displayName: t("aiAssistant.providerSetup.defaultConnectionName", {
@@ -153,7 +194,7 @@ export function AiProviderSetupPanel({
         <p className="text-xs text-amber-400/90">{t("aiAssistant.providerSetup.providerMismatch")}</p>
       ) : null}
 
-      {isLoading ? (
+      {isLoading || ensuring ? (
         <p className="text-xs text-muted-foreground">{t("aiAssistant.providerSetup.loading")}</p>
       ) : (
         <>
@@ -188,37 +229,32 @@ export function AiProviderSetupPanel({
             </div>
           ) : null}
 
-          <Can permission="ai.providers.manage">
-            <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                {matchingConnections.length > 0
-                  ? t("aiAssistant.providerSetup.createAnother")
-                  : t("aiAssistant.providerSetup.createFirst")}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {t("aiAssistant.providerSetup.targetProvider", {
-                  provider: providerDefinition?.display_name ?? registryKey,
-                })}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {t("aiAssistant.providerSetup.platformKeyHint")}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!canEdit || !providerDefinition || create.isPending}
-                onClick={() => void handleCreateConnection()}
-                className="gap-2"
-              >
-                {t("aiAssistant.providerSetup.connectProvider")}
-              </Button>
-            </div>
-          </Can>
+          {!isReady ? (
+            <Can permission="ai.providers.manage">
+              <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  {t("aiAssistant.providerSetup.createFirst")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("aiAssistant.providerSetup.platformKeyHint")}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canEdit || !providerDefinition || create.isPending}
+                  onClick={() => void handleCreateConnection()}
+                  className="gap-2"
+                >
+                  {t("aiAssistant.providerSetup.connectProvider")}
+                </Button>
+              </div>
+            </Can>
+          ) : null}
 
-          {!canEdit && (
+          {!canEdit && !isReady ? (
             <p className="text-xs text-muted-foreground">{t("aiAssistant.providerSetup.readOnlyHint")}</p>
-          )}
+          ) : null}
         </>
       )}
     </div>

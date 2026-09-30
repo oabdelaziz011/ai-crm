@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { PLATFORM_AI_FEATURE_KEY } from "@workspace/platform-ai-provider";
+import { PLATFORM_AI_FEATURE_KEY, createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import type { RuntimeChatExecutionConfig } from "@/lib/runtime-integration/chat-config";
 import { pickDefaultConnection } from "@/lib/runtime-integration/chat-config";
 import { isKnowledgeRetrievalEligible } from "@/lib/platform-ai/knowledge-access";
@@ -8,10 +8,9 @@ import type { AiAssistantProvider } from "@/lib/types";
 import { useAIProviderServices } from "@/lib/ai-provider-layer";
 import { useEmbeddingPlatformServices } from "@/lib/embedding-platform";
 import { useVectorStoreServices } from "@/lib/vector-store";
-import { useAuth } from "@/context/auth-context";
-import { usePermissions } from "@/hooks/use-rbac";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { LEGACY_AI_FEATURE_KEY_MAP } from "@workspace/configuration-platform";
+import { supabase } from "@/lib/supabase";
 
 export function runtimeChatConfigQueryKey(
   companyId: string | null,
@@ -24,6 +23,10 @@ export function runtimeChatConfigQueryKey(
 /**
  * Resolves provider and knowledge connection IDs for the Runtime Coordinator.
  * Feature flags resolve through FeatureFlagApplicationService only.
+ *
+ * Provider resolution is platform-first:
+ * entitled company + active platform AI provider → auto-ensure keyless binding.
+ * Companies are NOT required to enter their own API key.
  */
 export function useRuntimeChatConfig(
   companyId: string | null,
@@ -46,7 +49,14 @@ export function useRuntimeChatConfig(
     staleTime: 60_000,
     queryFn: async (): Promise<RuntimeChatExecutionConfig> => {
       if (!companyId) {
-        return { providerConnectionId: null, knowledgeRetrieval: null, ready: false, missing: ["provider"] };
+        return {
+          providerConnectionId: null,
+          knowledgeRetrieval: null,
+          ready: false,
+          missing: ["provider"],
+          platformProviderReady: false,
+          errorCode: "AI_PROVIDER_NOT_CONFIGURED",
+        };
       }
 
       const missing: RuntimeChatExecutionConfig["missing"] = [];
@@ -58,28 +68,39 @@ export function useRuntimeChatConfig(
           knowledgeRetrieval: null,
           ready: false,
           missing,
+          platformProviderReady: false,
+          errorCode: null,
         };
       }
 
-      const providerConnections = await providerServices.registry.listConnections(providerContext, {
-        companyId,
-        isEnabled: true,
-      });
-
       const preferredKey = assistantProvider
         ? assistantProviderToRegistryKey(assistantProvider)
-        : null;
-      const preferredConnections = preferredKey
-        ? providerConnections.filter(
-            (connection) => connection.ai_provider_definition?.key === preferredKey,
-          )
-        : providerConnections;
+        : "openai";
 
-      const providerConnection = pickDefaultConnection(
-        preferredConnections.length > 0 ? preferredConnections : providerConnections,
+      const platformServices = createPlatformAIProviderServices(supabase);
+      const ensured = await platformServices.platform.ensureCompanyProviderConnection(
+        companyId,
+        preferredKey,
       );
 
-      if (!providerConnection) {
+      let providerConnectionId = ensured.connectionId;
+      const platformProviderReady = ensured.ready;
+
+      if (!providerConnectionId) {
+        const providerConnections = await providerServices.registry.listConnections(providerContext, {
+          companyId,
+          isEnabled: true,
+        });
+        const preferredConnections = providerConnections.filter(
+          (connection) => connection.ai_provider_definition?.key === preferredKey,
+        );
+        const providerConnection = pickDefaultConnection(
+          preferredConnections.length > 0 ? preferredConnections : providerConnections,
+        );
+        providerConnectionId = providerConnection?.id ?? null;
+      }
+
+      if (!providerConnectionId) {
         missing.push("provider");
       }
 
@@ -132,10 +153,12 @@ export function useRuntimeChatConfig(
       }
 
       return {
-        providerConnectionId: providerConnection?.id ?? null,
+        providerConnectionId,
         knowledgeRetrieval,
-        ready: Boolean(providerConnection),
+        ready: Boolean(providerConnectionId),
         missing,
+        platformProviderReady,
+        errorCode: ensured.errorCode,
       };
     },
   });

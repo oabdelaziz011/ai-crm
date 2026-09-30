@@ -28,7 +28,9 @@ export {
   formatAiEmployeeSkillError,
   useAiEmployeeSkills,
   useAiEmployeeSkillsMarketplace,
+  useAiSkillOptions,
   useAssignAiEmployeeSkills,
+  useAssignSkillsToAiEmployee,
   useTestAiSkill,
   useToggleAiSkillFavorite,
 } from "./use-ai-employee-skills";

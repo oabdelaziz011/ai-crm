@@ -126,7 +126,7 @@ export class OpenAIChatAdapter implements AIProvider {
 
     if (!apiKey) {
       throw new AIProviderConfigurationError(
-        "OpenAI API key is required. Configure configuration.apiKey on the company provider connection.",
+        "AI provider is not configured by the platform administrator.",
       );
     }
 

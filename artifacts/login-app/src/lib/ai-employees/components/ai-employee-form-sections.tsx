@@ -1,10 +1,12 @@
 import type { TFunction } from "i18next";
-import { useMemo, type ReactNode } from "react";
-import { BookOpen, ExternalLink } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { BookOpen, ChevronDown, ExternalLink, Pencil, Sparkles, Workflow } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,8 +19,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanyEntitlements } from "@/hooks/billing/use-company-entitlements";
 import { useAiProviderConnectionsAdmin } from "@/hooks/use-ai-provider-connections-admin";
+import { useActiveAutomationFlows } from "@/hooks/channels/use-channel-workflow-binding";
+import type { AiEmployeeRuntimeConfiguration } from "@/lib/ai-employees/adapters";
 import { ChannelRoutingTagsField } from "@/lib/ai-employees/components/channel-routing-tags-field";
-import type { AiEmployeeFormValues } from "@/lib/ai-employees/types";
+import { useAiSkillOptions } from "@/lib/ai-employees/hooks/use-ai-employee-skills";
+import type { AiEmployeeFormValues, AiSkillRecord } from "@/lib/ai-employees/types";
 import type { KnowledgeSourceOption, ToolDefinitionOption } from "@/lib/ai-employees/types";
 import {
   clearAvailableToolKeys,
@@ -41,7 +46,7 @@ import {
   AI_EMPLOYEE_PROMPT_TEMPLATE_KEYS,
   type AiEmployeePromptTemplateKey,
 } from "@/lib/ai-employees/utilities/prompt-templates";
-import { agentDetailHref, agentManageChannelsHref } from "@/config/agents-route-registry";
+import { resolveFormRuntimeConfiguration } from "@/lib/ai-employees/validators/ai-employee-validators";
 import { pickDefaultConnection } from "@/lib/runtime-integration/chat-config";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +74,21 @@ type AiEmployeeFormSectionsProps = {
     employeeId?: string | null;
     transferableFlowId?: string | null;
   };
+  /** When false, assigned skills are shown but cannot be changed. */
+  skillsEditable?: boolean;
+  /** Review step "Edit" buttons jump back to the owning step. */
+  onJumpToStep?: (step: AiEmployeeWizardStep) => void;
 };
+
+/** Tools a workflow transfer needs; added automatically when a transferable flow is picked. */
+const WORKFLOW_TRANSFER_TOOL_KEYS = [
+  "transfer_to_workflow",
+  "search_availability",
+  "create_booking",
+  "find_next_available",
+] as const;
+
+const NO_FLOW_VALUE = "__none__";
 
 export function AiEmployeeFormSections({
   step,
@@ -79,10 +98,30 @@ export function AiEmployeeFormSections({
   knowledgeOptions,
   toolOptions,
   onChange,
-  reviewContext,
+  skillsEditable = true,
+  onJumpToStep,
 }: AiEmployeeFormSectionsProps) {
   const { t } = useTranslation("common");
-  const { data: connections = [] } = useAiProviderConnectionsAdmin(companyId);
+  const runtime = useMemo(
+    () => resolveFormRuntimeConfiguration(values.runtimeConfiguration),
+    [values.runtimeConfiguration],
+  );
+  const patchRuntime = (patch: Partial<AiEmployeeRuntimeConfiguration>) =>
+    onChange({ runtimeConfiguration: { ...runtime, ...patch } });
+  const flowsQuery = useActiveAutomationFlows(companyId);
+  const skillsQuery = useAiSkillOptions(companyId);
+  const selectedFlowName = useMemo(() => {
+    const id = runtime.transferableFlowId;
+    if (!id) return null;
+    return (flowsQuery.data ?? []).find((flow) => flow.id === id)?.name ?? id;
+  }, [flowsQuery.data, runtime.transferableFlowId]);
+  const {
+    data: connections = [],
+    isLoading: connectionsLoading,
+    isError: connectionsFailed,
+    error: connectionsError,
+    refetch: refetchConnections,
+  } = useAiProviderConnectionsAdmin(companyId);
   const { data: entitlements = [], isLoading: entitlementsLoading } = useCompanyEntitlements(
     companyId,
     Boolean(companyId),
@@ -286,6 +325,76 @@ export function AiEmployeeFormSections({
           tags={values.tags}
           onChange={(nextTags) => onChange({ tags: nextTags })}
         />
+        <div className="space-y-3 rounded-2xl border border-border/50 bg-transparent p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+              <Workflow className="size-4" aria-hidden />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="transferable-flow">
+                {t("aiEmployees.channelBinding.transferableFlow.title")}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t("aiEmployees.channelBinding.transferableFlow.hint")}
+              </p>
+            </div>
+          </div>
+          <Select
+            value={runtime.transferableFlowId ?? NO_FLOW_VALUE}
+            onValueChange={(value) => {
+              const nextId = value === NO_FLOW_VALUE ? null : value;
+              const nextKeys = new Set(values.allowedToolKeys);
+              if (nextId) {
+                for (const key of WORKFLOW_TRANSFER_TOOL_KEYS) nextKeys.add(key);
+              }
+              onChange({
+                allowedToolKeys: [...nextKeys],
+                runtimeConfiguration: {
+                  ...runtime,
+                  transferableFlowId: nextId,
+                  disabledToolKeys: nextId
+                    ? runtime.disabledToolKeys.filter(
+                        (key) => !(WORKFLOW_TRANSFER_TOOL_KEYS as readonly string[]).includes(key),
+                      )
+                    : runtime.disabledToolKeys,
+                },
+              });
+            }}
+            disabled={flowsQuery.isLoading}
+          >
+            <SelectTrigger
+              id="transferable-flow"
+              data-testid="transferable-flow-select"
+              className="max-w-xl rounded-xl"
+            >
+              <SelectValue placeholder={t("aiEmployees.channelBinding.transferableFlow.placeholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_FLOW_VALUE}>
+                {t("aiEmployees.channelBinding.transferableFlow.none")}
+              </SelectItem>
+              {runtime.transferableFlowId &&
+              !(flowsQuery.data ?? []).some((flow) => flow.id === runtime.transferableFlowId) ? (
+                <SelectItem value={runtime.transferableFlowId}>{selectedFlowName}</SelectItem>
+              ) : null}
+              {(flowsQuery.data ?? []).map((flow) => (
+                <SelectItem key={flow.id} value={flow.id}>
+                  {flow.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!flowsQuery.isLoading && (flowsQuery.data?.length ?? 0) === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {t("aiEmployees.form.workflowTransfer.noFlows")}
+            </p>
+          ) : null}
+          {runtime.transferableFlowId ? (
+            <p className="text-xs text-emerald-700 dark:text-emerald-300">
+              {t("aiEmployees.form.workflowTransfer.toolsAdded")}
+            </p>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -311,6 +420,7 @@ export function AiEmployeeFormSections({
           toolOptions={toolOptions}
           onChange={onChange}
         />
+        <RuntimeLimitsFields runtime={runtime} onChange={patchRuntime} />
       </div>
     );
   }
@@ -341,7 +451,22 @@ export function AiEmployeeFormSections({
           </Select>
         </Field>
         <p className="text-sm text-muted-foreground">{t("aiEmployees.form.providerHint")}</p>
-        {providerOptions.length === 0 ? (
+        {connectionsLoading ? (
+          <p className="text-sm text-muted-foreground">
+            {t("aiEmployees.form.providerConnectionsLoading")}
+          </p>
+        ) : connectionsFailed ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive">
+            <span>
+              {t("aiEmployees.form.providerConnectionsLoadFailed", {
+                error: connectionsError instanceof Error ? connectionsError.message : String(connectionsError),
+              })}
+            </span>
+            <Button type="button" size="sm" variant="outline" onClick={() => void refetchConnections()}>
+              {t("aiEmployees.form.retryProviderConnections")}
+            </Button>
+          </div>
+        ) : providerOptions.length === 0 ? (
           <p className="rounded-xl border border-dashed border-amber-500/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             {t("aiEmployees.form.noProviderConnections")}
           </p>
@@ -478,6 +603,19 @@ export function AiEmployeeFormSections({
             {t("aiEmployees.form.promptTemplates.editHint")}
           </p>
         </Field>
+
+        <div className="max-w-xs">
+          <Field label={t("aiEmployees.config.fields.promptVersion")} htmlFor="promptVersionLabel">
+            <Input
+              id="promptVersionLabel"
+              value={values.promptVersionLabel ?? ""}
+              onChange={(event) => onChange({ promptVersionLabel: event.target.value })}
+              placeholder="v1"
+              className="rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground">{t("aiEmployees.form.promptVersionHint")}</p>
+          </Field>
+        </div>
       </div>
     );
   }
@@ -540,6 +678,9 @@ export function AiEmployeeFormSections({
 
   if (step === "tools") {
     const aiEmployeeEnabled = enabledFeatureCodes.includes("ai_employee");
+    const pausedToolKeys = new Set(runtime.disabledToolKeys);
+    const withoutPaused = (keys: readonly string[]) =>
+      runtime.disabledToolKeys.filter((key) => !keys.includes(key));
     return (
       <div className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -557,6 +698,10 @@ export function AiEmployeeFormSections({
                     values.allowedToolKeys,
                     availableToolKeys,
                   ),
+                  runtimeConfiguration: {
+                    ...runtime,
+                    disabledToolKeys: withoutPaused(availableToolKeys),
+                  },
                 })
               }
             >
@@ -574,6 +719,10 @@ export function AiEmployeeFormSections({
                     values.allowedToolKeys,
                     availableToolKeys,
                   ),
+                  runtimeConfiguration: {
+                    ...runtime,
+                    disabledToolKeys: withoutPaused(availableToolKeys),
+                  },
                 })
               }
             >
@@ -605,7 +754,8 @@ export function AiEmployeeFormSections({
             </p>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {group.tools.map((tool) => {
-                const checked = values.allowedToolKeys.includes(tool.key);
+                const checked =
+                  values.allowedToolKeys.includes(tool.key) && !pausedToolKeys.has(tool.key);
                 return (
                   <label
                     key={tool.key}
@@ -621,6 +771,10 @@ export function AiEmployeeFormSections({
                             tool.key,
                             Boolean(next),
                           ),
+                          runtimeConfiguration: {
+                            ...runtime,
+                            disabledToolKeys: withoutPaused([tool.key]),
+                          },
                         });
                       }}
                     />
@@ -659,9 +813,34 @@ export function AiEmployeeFormSections({
             </ul>
           </div>
         ) : null}
+
+        <SkillsPickerSection
+          skills={skillsQuery.data ?? []}
+          isLoading={skillsQuery.isLoading}
+          selectedIds={values.allowedSkillIds ?? []}
+          editable={skillsEditable}
+          onChange={(allowedSkillIds) => onChange({ allowedSkillIds })}
+        />
       </div>
     );
   }
+
+  const activeToolCount = values.allowedToolKeys.filter(
+    (key) => !runtime.disabledToolKeys.includes(key),
+  ).length;
+  const jumpAction = (target: AiEmployeeWizardStep, label?: string) =>
+    onJumpToStep ? (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="mt-2 h-8 rounded-lg px-2 text-xs"
+        onClick={() => onJumpToStep(target)}
+      >
+        <Pencil className="me-1.5 size-3.5" />
+        {label ?? t("aiEmployees.wizard.review.editStep")}
+      </Button>
+    ) : null;
 
   return (
     <div className="space-y-4">
@@ -671,31 +850,71 @@ export function AiEmployeeFormSections({
           label={t("aiEmployees.wizard.steps.general")}
           state={values.displayName.trim() ? "configured" : "missing"}
           detail={values.displayName || "—"}
+          action={jumpAction("general")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.steps.prompt")}
           state={values.systemPrompt.trim() ? "configured" : "missing"}
-          detail={values.systemPrompt.trim() ? values.systemPrompt.slice(0, 120) : undefined}
+          detail={
+            values.systemPrompt.trim()
+              ? `${t("aiEmployees.wizard.review.promptVersion", {
+                  version: values.promptVersionLabel?.trim() || "v1",
+                })} · ${values.systemPrompt.slice(0, 120)}`
+              : undefined
+          }
+          action={jumpAction("prompt")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.steps.provider")}
           state={values.provider?.trim() ? "configured" : "warning"}
           detail={formatEmployeeProviderLabel(t, values.provider) || "—"}
+          action={jumpAction("intelligence")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.steps.model")}
           state={values.model?.trim() ? "configured" : "warning"}
-          detail={values.model?.trim() || "—"}
+          detail={
+            values.model?.trim()
+              ? [
+                  values.model.trim(),
+                  values.temperature != null
+                    ? `${t("aiEmployees.form.temperature")} ${values.temperature}`
+                    : null,
+                  values.maxTokens != null
+                    ? `${t("aiEmployees.form.maxTokens")} ${values.maxTokens}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "—"
+          }
+          action={jumpAction("intelligence")}
+        />
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.review.runtime")}
+          state="configured"
+          detail={formatRuntimeSummary(t, runtime)}
+          action={jumpAction("intelligence")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.steps.knowledge")}
           state={values.knowledgeSourceIds.length > 0 ? "configured" : "optional"}
           detail={t("aiEmployees.form.selectedCount", { count: values.knowledgeSourceIds.length })}
+          action={jumpAction("knowledge")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.steps.tools")}
-          state={values.allowedToolKeys.length > 0 ? "configured" : "optional"}
-          detail={t("aiEmployees.form.selectedCount", { count: values.allowedToolKeys.length })}
+          state={activeToolCount > 0 ? "configured" : "optional"}
+          detail={t("aiEmployees.form.selectedCount", { count: activeToolCount })}
+          action={jumpAction("tools")}
+        />
+        <ReviewStatusCard
+          label={t("aiEmployees.wizard.review.skills")}
+          state={(values.allowedSkillIds ?? []).length > 0 ? "configured" : "optional"}
+          detail={t("aiEmployees.form.selectedCount", {
+            count: (values.allowedSkillIds ?? []).length,
+          })}
+          action={jumpAction("tools")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.steps.channels")}
@@ -707,49 +926,17 @@ export function AiEmployeeFormSections({
               ? values.tags.map((tag) => formatEmployeeTagLabel(t, tag)).join(" · ")
               : t("aiEmployees.form.channelRouting.noneSelected")
           }
+          action={jumpAction("channels")}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.review.workflows")}
-          state={
-            reviewContext?.transferableFlowId?.trim() ? "configured" : "optional"
-          }
+          state={selectedFlowName ? "configured" : "optional"}
           detail={
-            reviewContext?.transferableFlowId?.trim()
-              ? t("aiEmployees.wizard.review.workflowsConfigured", {
-                  id: reviewContext.transferableFlowId.trim(),
-                })
+            selectedFlowName
+              ? t("aiEmployees.wizard.review.workflowsConfigured", { id: selectedFlowName })
               : t("aiEmployees.wizard.review.workflowsEmpty")
           }
-          action={
-            reviewContext?.employeeId ? (
-              <Button asChild variant="outline" size="sm" className="mt-2 rounded-lg">
-                <Link href={agentManageChannelsHref(reviewContext.employeeId)}>
-                  <ExternalLink className="me-1.5 size-3.5" />
-                  {t("aiEmployees.wizard.review.configureWorkflows")}
-                </Link>
-              </Button>
-            ) : null
-          }
-        />
-        <ReviewStatusCard
-          label={t("aiEmployees.wizard.review.runtime")}
-          state="optional"
-          detail={t("aiEmployees.wizard.review.runtimeHint")}
-          action={
-            reviewContext?.employeeId ? (
-              <Button asChild variant="outline" size="sm" className="mt-2 rounded-lg">
-                <Link
-                  href={agentDetailHref(reviewContext.employeeId, {
-                    tab: "setup",
-                    config: "limits",
-                  })}
-                >
-                  <ExternalLink className="me-1.5 size-3.5" />
-                  {t("aiEmployees.wizard.review.configureRuntime")}
-                </Link>
-              </Button>
-            ) : null
-          }
+          action={jumpAction("channels", t("aiEmployees.wizard.review.configureWorkflows"))}
         />
         <ReviewStatusCard
           label={t("aiEmployees.wizard.review.lifecycle")}
@@ -763,6 +950,237 @@ export function AiEmployeeFormSections({
         {t("aiEmployees.form.channelRouting.publishHint")}
       </p>
       <p className="text-xs text-muted-foreground">{t("aiEmployees.wizard.review.lifecycleReminder")}</p>
+    </div>
+  );
+}
+
+function formatRuntimeSummary(
+  t: TFunction<"common">,
+  runtime: AiEmployeeRuntimeConfiguration,
+): string {
+  return t("aiEmployees.form.runtime.summary", {
+    timeout: Math.round(runtime.executionTimeoutMs / 1000),
+    retries: runtime.retryCount,
+    rate: runtime.rateLimitPerMinute,
+    session: runtime.sessionTimeoutMinutes,
+  });
+}
+
+function readNumberInput(value: string): number {
+  return value.trim() === "" ? Number.NaN : Number(value);
+}
+
+function numberInputValue(value: number): number | "" {
+  return Number.isFinite(value) ? value : "";
+}
+
+function RuntimeLimitsFields({
+  runtime,
+  onChange,
+}: {
+  runtime: AiEmployeeRuntimeConfiguration;
+  onChange: (patch: Partial<AiEmployeeRuntimeConfiguration>) => void;
+}) {
+  const { t } = useTranslation("common");
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="max-w-4xl rounded-2xl border border-border/50 bg-transparent"
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-start"
+        >
+          <span className="space-y-0.5">
+            <span className="block text-sm font-medium">{t("aiEmployees.form.runtime.title")}</span>
+            <span className="block text-xs text-muted-foreground">
+              {formatRuntimeSummary(t, runtime)}
+            </span>
+          </span>
+          <ChevronDown
+            className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="space-y-4 border-t border-border/50 px-4 py-4">
+          <p className="text-xs text-muted-foreground">{t("aiEmployees.form.runtime.hint")}</p>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Field label={t("aiEmployees.form.runtime.executionTimeoutSeconds")} htmlFor="executionTimeoutSeconds">
+              <Input
+                id="executionTimeoutSeconds"
+                type="number"
+                min={1}
+                value={numberInputValue(runtime.executionTimeoutMs / 1000)}
+                onChange={(event) =>
+                  onChange({ executionTimeoutMs: readNumberInput(event.target.value) * 1000 })
+                }
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("aiEmployees.form.runtime.executionTimeoutHint")}
+              </p>
+            </Field>
+            <Field label={t("aiEmployees.form.runtime.retryCount")} htmlFor="retryCount">
+              <Input
+                id="retryCount"
+                type="number"
+                min={0}
+                max={10}
+                value={numberInputValue(runtime.retryCount)}
+                onChange={(event) => onChange({ retryCount: readNumberInput(event.target.value) })}
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">{t("aiEmployees.form.runtime.retryCountHint")}</p>
+            </Field>
+            <Field label={t("aiEmployees.form.runtime.rateLimitPerMinute")} htmlFor="rateLimitPerMinute">
+              <Input
+                id="rateLimitPerMinute"
+                type="number"
+                min={1}
+                value={numberInputValue(runtime.rateLimitPerMinute)}
+                onChange={(event) =>
+                  onChange({ rateLimitPerMinute: readNumberInput(event.target.value) })
+                }
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("aiEmployees.form.runtime.rateLimitHint")}
+              </p>
+            </Field>
+            <Field label={t("aiEmployees.form.runtime.maxConcurrency")} htmlFor="maxConcurrency">
+              <Input
+                id="maxConcurrency"
+                type="number"
+                min={1}
+                value={numberInputValue(runtime.maxConcurrency)}
+                onChange={(event) => onChange({ maxConcurrency: readNumberInput(event.target.value) })}
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("aiEmployees.form.runtime.maxConcurrencyHint")}
+              </p>
+            </Field>
+            <Field label={t("aiEmployees.config.fields.sessionTimeoutMinutes")} htmlFor="sessionTimeoutMinutes">
+              <Input
+                id="sessionTimeoutMinutes"
+                type="number"
+                min={1}
+                value={numberInputValue(runtime.sessionTimeoutMinutes)}
+                onChange={(event) =>
+                  onChange({ sessionTimeoutMinutes: readNumberInput(event.target.value) })
+                }
+                className="rounded-xl"
+              />
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("aiEmployees.config.fields.sessionTimeoutMinutesHint")}
+          </p>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function SkillsPickerSection({
+  skills,
+  isLoading,
+  selectedIds,
+  editable,
+  onChange,
+}: {
+  skills: AiSkillRecord[];
+  isLoading: boolean;
+  selectedIds: string[];
+  editable: boolean;
+  onChange: (ids: string[]) => void;
+}) {
+  const { t } = useTranslation("common");
+  const knownIds = new Set(skills.map((skill) => skill.id));
+  const missingSelected = selectedIds.filter((id) => !knownIds.has(id));
+
+  return (
+    <div className="space-y-3 border-t border-border/50 pt-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl bg-primary/10 p-2 text-primary">
+            <Sparkles className="size-4" aria-hidden />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">{t("aiEmployees.form.skills.title")}</p>
+            <p className="max-w-2xl text-xs text-muted-foreground">{t("aiEmployees.form.skills.hint")}</p>
+          </div>
+        </div>
+        <Badge variant="outline" className="rounded-lg">
+          {t("aiEmployees.form.selectedCount", { count: selectedIds.length })}
+        </Badge>
+      </div>
+
+      {!editable ? (
+        <p className="text-xs text-muted-foreground">{t("aiEmployees.form.skills.readOnly")}</p>
+      ) : null}
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{t("aiEmployees.form.skills.loading")}</p>
+      ) : skills.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
+          {t("aiEmployees.form.skills.empty")}
+        </p>
+      ) : (
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {skills.map((skill) => {
+            const checked = selectedIds.includes(skill.id);
+            return (
+              <label
+                key={skill.id}
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border border-border/60 px-3 py-2",
+                  !editable && "opacity-80",
+                )}
+              >
+                <Checkbox
+                  checked={checked}
+                  disabled={!editable}
+                  onCheckedChange={(next) =>
+                    onChange(
+                      next
+                        ? [...new Set([...selectedIds, skill.id])]
+                        : selectedIds.filter((id) => id !== skill.id),
+                    )
+                  }
+                />
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-medium">{skill.displayName}</span>
+                    {skill.category ? (
+                      <Badge variant="secondary" className="rounded-md text-[10px]">
+                        {skill.category}
+                      </Badge>
+                    ) : null}
+                  </span>
+                  {skill.description ? (
+                    <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">
+                      {skill.description}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {missingSelected.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {t("aiEmployees.form.skills.unavailableKept", { count: missingSelected.length })}
+        </p>
+      ) : null}
     </div>
   );
 }

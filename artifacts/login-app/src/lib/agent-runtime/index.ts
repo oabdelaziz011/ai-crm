@@ -116,7 +116,7 @@ export function useAgentRuntimeServices() {
       runtimeChat: {
         async execute(ctx, input) {
           if (!webChatChannel?.id) {
-            return { responseContent: `[Simulated] ${input.messageText}` };
+            throw new Error("web_chat_channel_missing");
           }
 
           const executionContext = readAgentEmployeeExecutionContext(input.pageContext);
@@ -124,7 +124,7 @@ export function useAgentRuntimeServices() {
             executionContext?.providerConnectionId ?? runtimeConfig?.providerConnectionId ?? null;
 
           if (!providerConnectionId) {
-            return { responseContent: `[Simulated] ${input.messageText}` };
+            throw new Error("runtime_config_missing");
           }
 
           const runtimeConfigPayload = executionContext

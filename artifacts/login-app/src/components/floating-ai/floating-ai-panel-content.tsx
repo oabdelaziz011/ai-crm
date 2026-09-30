@@ -81,17 +81,41 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
     streamingContent,
     runtimeMetadata,
     pendingConfirmation,
+    runtimeConfig,
   } = useFloatingAiChat();
 
-  const composerDisabled = !canUseAi || !canExecuteRuntime || isLoading;
+  const configBlocked = !runtimeConfig?.ready;
+  const composerDisabled = !canUseAi || !canExecuteRuntime || configBlocked || isLoading;
+  const showPlatformAdminCta =
+    configBlocked &&
+    !isLoading &&
+    (runtimeConfig?.errorCode === "AI_PROVIDER_NOT_CONFIGURED" ||
+      runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE" ||
+      runtimeConfig?.platformProviderReady === false ||
+      runtimeConfig?.ready === false);
 
   const errorMessage = useMemo(() => {
-    if (sendError === "runtime_config_missing") return t("dashboard.ai.errors.runtimeNotConfiguredDetail");
+    if (sendError === "runtime_config_missing") {
+      if (runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE") {
+        return t("dashboard.ai.errors.providerUnavailable");
+      }
+      return t("dashboard.ai.errors.providerNotConfigured");
+    }
     if (sendError === "web_chat_channel_missing") return t("dashboard.ai.errors.webChatChannelMissing");
     if (sendError === "channel_route_failed") return t("dashboard.ai.errors.channelRouteFailed");
     if (sendError) return t("dashboard.ai.errors.runtimeFailed", { detail: sendError });
+    if (showPlatformAdminCta) {
+      if (runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE") {
+        return t("dashboard.ai.errors.providerUnavailable");
+      }
+      return t("dashboard.ai.errors.providerNotConfigured");
+    }
     return null;
-  }, [sendError, t]);
+  }, [sendError, showPlatformAdminCta, runtimeConfig?.errorCode, t]);
+
+  const openPlatformAiSettings = useCallback(() => {
+    setLocation(`${getDashboardRouteById("settings").nestedPath}/platform-ai`);
+  }, [setLocation]);
 
   const routeToAgent = useCallback((goal: string) => {
     if (!showAgentTab) return;
@@ -101,6 +125,10 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
 
   const handleSend = useCallback(
     async (text: string) => {
+      if (configBlocked) {
+        if (isSuperAdmin) openPlatformAiSettings();
+        return;
+      }
       const slash = parseSlashCommand(text);
       if (slash?.command.agentMode && FLOATING_AI_CAPABILITIES.agentMode && showAgentTab) {
         const goal = slash.remainder || "Execute multi-step workflow for current page context";
@@ -116,7 +144,7 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
       const result = await sendMessage(text);
       if (result?.needsConfirmation) return;
     },
-    [sendMessage, routeToAgent, showAgentTab],
+    [configBlocked, isSuperAdmin, openPlatformAiSettings, sendMessage, routeToAgent, showAgentTab],
   );
 
   const handleQuickAction = useCallback(
@@ -252,8 +280,21 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
 
           <TabsContent value="chat" className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
             {errorMessage && (
-              <div className="shrink-0 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                {errorMessage}
+              <div className="shrink-0 space-y-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                <p>{errorMessage}</p>
+                {showPlatformAdminCta ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={isSuperAdmin ? openPlatformAiSettings : undefined}
+                  >
+                    {isSuperAdmin
+                      ? t("dashboard.ai.openPlatformAiSettings")
+                      : t("dashboard.ai.errors.contactPlatformAdmin")}
+                  </Button>
+                ) : null}
               </div>
             )}
 
@@ -271,15 +312,40 @@ export const FloatingAiPanelContent = memo(function FloatingAiPanelContent({
               />
             )}
 
-            <QuickActions page={pageContext.page} onAction={handleQuickAction} disabled={composerDisabled || isSending} />
+            <QuickActions
+              page={pageContext.page}
+              onAction={handleQuickAction}
+              disabled={composerDisabled || isSending}
+            />
             <FloatingAiComposer disabled={composerDisabled} isSending={isSending} onSend={handleSend} />
           </TabsContent>
 
           {FLOATING_AI_CAPABILITIES.agentMode && showAgentTab && (
             <TabsContent value="agent" className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
+              {showPlatformAdminCta ? (
+                <div className="shrink-0 space-y-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <p>
+                    {runtimeConfig?.errorCode === "AI_PROVIDER_UNAVAILABLE"
+                      ? t("dashboard.ai.errors.providerUnavailable")
+                      : t("dashboard.ai.errors.providerNotConfigured")}
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={isSuperAdmin ? openPlatformAiSettings : undefined}
+                  >
+                    {isSuperAdmin
+                      ? t("dashboard.ai.openPlatformAiSettings")
+                      : t("dashboard.ai.errors.contactPlatformAdmin")}
+                  </Button>
+                </div>
+              ) : null}
               <AgentWorkflowPanel
                 initialGoal={pendingAgentGoal}
                 onGoalConsumed={() => setPendingAgentGoal(undefined)}
+                runtimeReady={!configBlocked}
               />
             </TabsContent>
           )}

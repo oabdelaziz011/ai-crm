@@ -76,6 +76,7 @@ export * from "./utils/customer-phone-search.js";
 export * from "./utils/phone-country-options.js";
 export * from "./utils/import-phone-identity.js";
 export * from "./utils/resolve-trusted-channel-customer.js";
+export * from "./utils/resolve-or-create-inbound-customer.js";
 export * from "./utils/whatsapp-trusted-identity-overrides.js";
 export * from "./utils/scheduling-customer-display.js";
 export * from "./utils/supabase-embedded-row.js";

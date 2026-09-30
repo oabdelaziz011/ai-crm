@@ -18,9 +18,11 @@ import {
   useAiEmployee,
   useAiEmployeeKnowledgeOptions,
   useAiEmployeeToolOptions,
+  useAssignSkillsToAiEmployee,
   useCreateAiEmployee,
   useUpdateAiEmployee,
 } from "@/lib/ai-employees/hooks";
+import { haveSameMembers } from "@/lib/ai-employees/utilities/ai-employee-wizard-step-routing";
 import {
   DEFAULT_AI_EMPLOYEE_FORM,
   normalizeAiEmployeeName,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/ai-employees/validators";
 import {
   hasAiEmployeesCreatePermission,
+  hasAiEmployeesSkillsEditPermission,
   isAiEmployeesWorkspaceAccessible,
 } from "@/lib/ai-employees/permissions";
 import { AiEmployeeRegistryError } from "@/lib/ai-employees/services";
@@ -136,6 +139,7 @@ export function AgentCreateWizardPage() {
     agentsFeatureEnabled,
   });
   const canCreate = hasAiEmployeesCreatePermission(hasPermission, isSuperAdmin);
+  const canEditSkills = hasAiEmployeesSkillsEditPermission(hasPermission, isSuperAdmin);
 
   const [draftId, setDraftId] = useState<string | null>(() => readDraftIdFromUrl());
   const urlDraftId = useMemo(() => readDraftIdFromUrl(), [location]);
@@ -153,6 +157,7 @@ export function AgentCreateWizardPage() {
 
   const createEmployee = useCreateAiEmployee(companyId);
   const updateEmployee = useUpdateAiEmployee(companyId, effectiveDraftId);
+  const assignSkills = useAssignSkillsToAiEmployee(companyId);
   const draftQuery = useAiEmployee(companyId, effectiveDraftId);
   const { data: toolOptions = [] } = useAiEmployeeToolOptions();
   const { data: knowledgeOptions = [] } = useAiEmployeeKnowledgeOptions(companyId);
@@ -177,7 +182,8 @@ export function AgentCreateWizardPage() {
   const step = STEPS[stepIndex]!;
   const isLastStep = stepIndex === STEPS.length - 1;
   const ownerOptions = useMemo(() => ownersQuery.data ?? [], [ownersQuery.data]);
-  const busy = isSavingDraft || createEmployee.isPending || updateEmployee.isPending;
+  const busy =
+    isSavingDraft || createEmployee.isPending || updateEmployee.isPending || assignSkills.isPending;
 
   useEffect(() => {
     scheduleWizardScrollToTop(topAnchorRef.current, stepHeadingRef.current);
@@ -265,8 +271,16 @@ export function AgentCreateWizardPage() {
       throw new AiEmployeeRegistryError("Draft is still loading.", "validation");
     }
 
+    const nextSkillIds = payload.allowedSkillIds ?? [];
+
     if (decision.mode === "update") {
       await updateEmployee.mutateAsync(payload);
+      if (
+        canEditSkills &&
+        !haveSameMembers(nextSkillIds, draftQuery.data?.allowedSkillIds ?? [])
+      ) {
+        await assignSkills.mutateAsync({ employeeId: decision.draftId, skillIds: nextSkillIds });
+      }
       if (decision.draftId !== draftId) {
         setDraftId(decision.draftId);
       }
@@ -280,6 +294,9 @@ export function AgentCreateWizardPage() {
       );
     }
     const created = await createEmployee.mutateAsync(payload);
+    if (canEditSkills && nextSkillIds.length > 0) {
+      await assignSkills.mutateAsync({ employeeId: created.id, skillIds: nextSkillIds });
+    }
     setDraftId(created.id);
     hydratedDraftRef.current = created.id;
     setLocation(agentContinueHref(created.id));
@@ -507,6 +524,11 @@ export function AgentCreateWizardPage() {
           reviewContext={{
             employeeId: effectiveDraftId,
             transferableFlowId: draftQuery.data?.runtimeConfiguration?.transferableFlowId ?? null,
+          }}
+          skillsEditable={canEditSkills}
+          onJumpToStep={(target) => {
+            const index = STEPS.indexOf(target);
+            if (index >= 0 && index <= stepIndex) goToStep(index);
           }}
         />
 

@@ -78,6 +78,26 @@ export type PlatformAIRuntimeConfig = {
   usesPlatformKey: boolean;
 };
 
+/** Non-secret platform provider readiness (safe for browser). */
+export type PlatformAIProviderReadiness = {
+  ready: boolean;
+  providerKey: string;
+  displayName: string | null;
+  isEnabled: boolean;
+  hasActiveKey: boolean;
+  model: string | null;
+  keyHint: string | null;
+  errorCode: "AI_PROVIDER_NOT_CONFIGURED" | "AI_PROVIDER_UNAVAILABLE" | null;
+};
+
+export type EnsureCompanyPlatformProviderConnectionResult = {
+  ready: boolean;
+  created: boolean;
+  connectionId: string | null;
+  providerKey: string;
+  errorCode: "AI_PROVIDER_NOT_CONFIGURED" | "AI_PROVIDER_UNAVAILABLE" | null;
+};
+
 export type UpsertPlatformProviderKeyInput = {
   providerId: string;
   apiKey: string;

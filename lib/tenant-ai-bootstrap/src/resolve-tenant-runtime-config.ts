@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAIProviderServices } from "@workspace/ai-provider-layer";
 import { createEmbeddingPlatformServices } from "@workspace/embedding-platform";
 import { createVectorStoreServices } from "@workspace/vector-store";
+import { createPlatformAIProviderServices } from "@workspace/platform-ai-provider";
 import { DEFAULT_COLLECTION_NAME } from "./constants.js";
 import type { ServiceContext } from "./types.js";
 
@@ -17,6 +18,8 @@ export type TenantRuntimeConfig = {
   knowledgeRetrieval: TenantKnowledgeRetrievalConfig | null;
   ready: boolean;
   missing: Array<"assistant" | "provider" | "embedding" | "vector_store" | "collection">;
+  platformProviderReady?: boolean;
+  errorCode?: "AI_PROVIDER_NOT_CONFIGURED" | "AI_PROVIDER_UNAVAILABLE" | null;
 };
 
 export function pickDefaultConnection<T extends { is_default?: boolean; is_enabled?: boolean }>(
@@ -38,6 +41,11 @@ function createResolverContext(companyId: string): ServiceContext {
   };
 }
 
+/**
+ * Platform-first tenant runtime resolution.
+ * Auto-ensures a keyless uses_platform_key binding when the platform provider is active.
+ * Does not require company-owned API keys.
+ */
 export async function resolveTenantRuntimeConfig(
   client: SupabaseClient,
   companyId: string,
@@ -48,6 +56,7 @@ export async function resolveTenantRuntimeConfig(
   const providerServices = createAIProviderServices(client);
   const embeddingServices = createEmbeddingPlatformServices(client);
   const vectorStoreServices = createVectorStoreServices(client);
+  const platformServices = createPlatformAIProviderServices(client);
 
   const { data: assistant } = await client
     .from("ai_assistant_settings")
@@ -60,12 +69,19 @@ export async function resolveTenantRuntimeConfig(
     missing.push("assistant");
   }
 
-  const providerConnections = await providerServices.registry.listConnections(ctx, {
-    companyId,
-    isEnabled: true,
-  });
-  const providerConnection = pickDefaultConnection(providerConnections);
-  if (!providerConnection) {
+  const ensured = await platformServices.platform.ensureCompanyProviderConnection(companyId, "openai");
+  let providerConnectionId = ensured.connectionId ?? "";
+
+  if (!providerConnectionId) {
+    const providerConnections = await providerServices.registry.listConnections(ctx, {
+      companyId,
+      isEnabled: true,
+    });
+    const providerConnection = pickDefaultConnection(providerConnections);
+    providerConnectionId = providerConnection?.id ?? "";
+  }
+
+  if (!providerConnectionId) {
     missing.push("provider");
   }
 
@@ -112,13 +128,15 @@ export async function resolveTenantRuntimeConfig(
     }
   }
 
-  const ready = Boolean(assistant?.id && providerConnection);
+  const ready = Boolean(assistant?.id && providerConnectionId);
 
   return {
     aiAssistantId: assistant?.id ?? "",
-    providerConnectionId: providerConnection?.id ?? "",
+    providerConnectionId,
     knowledgeRetrieval,
     ready,
     missing,
+    platformProviderReady: ensured.ready,
+    errorCode: ensured.errorCode,
   };
 }

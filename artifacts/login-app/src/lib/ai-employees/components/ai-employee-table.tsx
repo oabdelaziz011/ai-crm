@@ -17,8 +17,6 @@ import {
   agentContinueHref,
   agentEditHref,
   agentLifecycleHref,
-  agentManageChannelsHref,
-  agentManageCapabilitiesHref,
   agentViewDetailsHref,
 } from "@/config/agents-route-registry";
 import {
@@ -101,10 +99,10 @@ function navigateForAction(
       setLocation(nestedSectionHref(agentEditHref(employee.id)));
       break;
     case "manageChannels":
-      setLocation(nestedSectionHref(agentManageChannelsHref(employee.id)));
+      setLocation(nestedSectionHref(agentEditHref(employee.id, "channels")));
       break;
     case "manageCapabilities":
-      setLocation(nestedSectionHref(agentManageCapabilitiesHref(employee.id)));
+      setLocation(nestedSectionHref(agentEditHref(employee.id, "tools")));
       break;
     case "publish":
     case "disable":

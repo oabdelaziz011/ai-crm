@@ -66,6 +66,41 @@ export function useAssignAiEmployeeSkills(companyId: string | null, agentId: str
   });
 }
 
+/** Company skills that can be assigned from the create / edit wizard (archived skills excluded). */
+export function useAiSkillOptions(companyId: string | null) {
+  return useQuery({
+    queryKey: [...aiEmployeeSkillsKey(companyId, null), "options"],
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const skills = await services.skills.list(companyId!, { status: "all" });
+      return skills.filter((skill) => skill.status !== "archived");
+    },
+  });
+}
+
+/** Same as useAssignAiEmployeeSkills, but the employee id is supplied per call. */
+export function useAssignSkillsToAiEmployee(companyId: string | null) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: { employeeId: string; skillIds: string[] }) => {
+      if (!companyId) throw new Error("Missing context");
+      await services.skills.assignToEmployee({
+        employeeId: input.employeeId,
+        companyId,
+        skillIds: input.skillIds,
+        actorId: user?.id ?? null,
+      });
+    },
+    onSuccess: (_result, input) => {
+      invalidateAiEmployeeQueries(queryClient, companyId, input.employeeId);
+      queryClient.invalidateQueries({ queryKey: aiEmployeeSkillsKey(companyId, input.employeeId) });
+    },
+  });
+}
+
 export function useTestAiSkill(companyId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();

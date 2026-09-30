@@ -1,5 +1,8 @@
 import type { AiEmployeeFormValues, AiEmployeeInsert, AiEmployeeUpdate } from "@/lib/ai-employees/types";
-import { DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION } from "@/lib/ai-employees/adapters";
+import {
+  DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
+  type AiEmployeeRuntimeConfiguration,
+} from "@/lib/ai-employees/adapters";
 import { normalizeAiEmployeeWelcomeMessageForStorage } from "@/lib/ai-employees/utilities/resolve-ai-employee-welcome-message";
 import {
   summarizeKnowledge,
@@ -36,6 +39,31 @@ export function resolveAiEmployeeInternalName(
   return `employee-${Date.now().toString(36)}`;
 }
 
+function readLimit(value: unknown, fallback: number, min: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= min
+    ? Math.round(value)
+    : fallback;
+}
+
+/** Full runtime configuration for storage; invalid or missing limits fall back to defaults. */
+export function resolveFormRuntimeConfiguration(
+  value: Partial<AiEmployeeRuntimeConfiguration> | null | undefined,
+): AiEmployeeRuntimeConfiguration {
+  const defaults = DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION;
+  const source = value ?? {};
+  return {
+    executionTimeoutMs: readLimit(source.executionTimeoutMs, defaults.executionTimeoutMs, 1000),
+    retryCount: readLimit(source.retryCount, defaults.retryCount, 0),
+    rateLimitPerMinute: readLimit(source.rateLimitPerMinute, defaults.rateLimitPerMinute, 1),
+    maxConcurrency: readLimit(source.maxConcurrency, defaults.maxConcurrency, 1),
+    sessionTimeoutMinutes: readLimit(source.sessionTimeoutMinutes, defaults.sessionTimeoutMinutes, 1),
+    disabledToolKeys: [...new Set(source.disabledToolKeys ?? defaults.disabledToolKeys)],
+    transferableFlowId: source.transferableFlowId?.trim() || null,
+    runtimeFlags: { ...defaults.runtimeFlags, ...(source.runtimeFlags ?? {}) },
+    retrievalPolicy: { ...defaults.retrievalPolicy, ...(source.retrievalPolicy ?? {}) },
+  };
+}
+
 export function formValuesToInsert(
   companyId: string,
   values: AiEmployeeFormValues,
@@ -67,8 +95,8 @@ export function formValuesToInsert(
     allowed_skill_ids: values.allowedSkillIds ?? [],
     skills_summary: "",
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
-    prompt_version_label: "v1",
-    runtime_configuration: DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION,
+    prompt_version_label: values.promptVersionLabel?.trim() || "v1",
+    runtime_configuration: resolveFormRuntimeConfiguration(values.runtimeConfiguration),
     published_version_id: null,
     current_version_number: 0,
     has_unpublished_draft: true,
@@ -105,6 +133,12 @@ export function formValuesToUpdate(
     tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
     updated_by: actorId ?? null,
   };
+  if (values.promptVersionLabel !== undefined) {
+    base.prompt_version_label = values.promptVersionLabel.trim() || "v1";
+  }
+  if (values.runtimeConfiguration) {
+    base.runtime_configuration = resolveFormRuntimeConfiguration(values.runtimeConfiguration);
+  }
 
   // Do not let the edit form shadow-publish or un-publish; lifecycle panel owns that.
   if (values.status === "published" || values.status === "archived") {
@@ -135,8 +169,16 @@ export function recordToFormValues(record: {
   allowedToolKeys: string[];
   allowedSkillIds: string[];
   tags: string[];
+  promptVersionLabel?: string;
+  runtimeConfiguration?: AiEmployeeRuntimeConfiguration;
 }): AiEmployeeFormValues {
   return {
+    ...(record.promptVersionLabel !== undefined
+      ? { promptVersionLabel: record.promptVersionLabel }
+      : {}),
+    ...(record.runtimeConfiguration
+      ? { runtimeConfiguration: resolveFormRuntimeConfiguration(record.runtimeConfiguration) }
+      : {}),
     name: record.name,
     displayName: record.displayName,
     description: record.description,
@@ -175,4 +217,6 @@ export const DEFAULT_AI_EMPLOYEE_FORM: AiEmployeeFormValues = {
   allowedToolKeys: [],
   allowedSkillIds: [],
   tags: [],
+  promptVersionLabel: "v1",
+  runtimeConfiguration: resolveFormRuntimeConfiguration(DEFAULT_AI_EMPLOYEE_RUNTIME_CONFIGURATION),
 };

@@ -4,5 +4,6 @@ export {
   formValuesToUpdate,
   normalizeAiEmployeeName,
   resolveAiEmployeeInternalName,
+  resolveFormRuntimeConfiguration,
   recordToFormValues,
 } from "./ai-employee-validators";

@@ -116,13 +116,15 @@ export class TenantAiBootstrapService {
     }
 
     const ctx = createBootstrapContext(companyId, options.userId ?? null);
+    // Platform-owned key is the source of truth. Bootstrap never requires company BYOK.
+    // Optional OPENAI_API_KEY / options.openAiApiKey remain legacy-compatible for embeddings
+    // adapters that still accept a local key during bootstrap only; connection rows stay keyless.
     const openAiApiKey = options.openAiApiKey ?? process.env.OPENAI_API_KEY ?? null;
-    const providerEnabled = Boolean(openAiApiKey?.trim());
     const steps: TenantAiBootstrapStepResult[] = [];
 
     steps.push(await this.ensureAssistantSettings(companyId));
-    steps.push(await this.ensureAiProviderConnection(ctx, companyId, openAiApiKey, providerEnabled));
-    steps.push(await this.ensureEmbeddingConnection(ctx, companyId, openAiApiKey, providerEnabled));
+    steps.push(await this.ensureAiProviderConnection(ctx, companyId));
+    steps.push(await this.ensureEmbeddingConnection(ctx, companyId, openAiApiKey, Boolean(openAiApiKey?.trim())));
     steps.push(await this.ensureVectorStoreConnection(ctx, companyId));
     steps.push(await this.ensureKnowledgeCollection(ctx, companyId));
     steps.push(await this.ensureRetrievalPolicy(companyId));
@@ -241,9 +243,25 @@ export class TenantAiBootstrapService {
   private async ensureAiProviderConnection(
     ctx: ServiceContext,
     companyId: string,
-    openAiApiKey: string | null,
-    providerEnabled: boolean,
   ): Promise<TenantAiBootstrapStepResult> {
+    // Prefer the platform ensure RPC (enabled keyless binding when platform key exists).
+    const { data: ensured, error: ensureError } = await this.client.rpc(
+      "ensure_company_platform_ai_provider_connection",
+      { p_company_id: companyId, p_provider_key: "openai" },
+    );
+    if (!ensureError && ensured && typeof ensured === "object") {
+      const payload = ensured as { ready?: boolean; connectionId?: string; created?: boolean };
+      if (payload.ready && payload.connectionId) {
+        return step(
+          "ai_provider_connection",
+          Boolean(payload.created),
+          !payload.created,
+          payload.connectionId,
+          "platform-managed keyless connection",
+        );
+      }
+    }
+
     const definitionRepo = createSupabaseAIProviderDefinitionRepository(this.client);
     const connectionRepo = createSupabaseAIProviderConnectionRepository(this.client);
     const factory = new AIProviderFactory(definitionRepo, createAIProviderAdapterRegistry(createStubAdapters()));
@@ -252,27 +270,41 @@ export class TenantAiBootstrapService {
     const connections = await registry.listConnections(ctx, { companyId });
     const existing = connections.find((item) => item.ai_provider_definition?.key === "openai");
     if (existing) {
+      if (!existing.is_enabled) {
+        await registry.updateConnection(ctx, {
+          connectionId: existing.id,
+          isEnabled: true,
+          isDefault: true,
+          status: "active",
+          configuration: {
+            ...existing.configuration,
+            model:
+              typeof existing.configuration.model === "string" && existing.configuration.model.trim()
+                ? existing.configuration.model
+                : DEFAULT_ASSISTANT_SETTINGS.model,
+          },
+        });
+      }
       return step("ai_provider_connection", false, true, existing.id, "existing OpenAI connection preserved");
     }
 
     const provider = await definitionRepo.findByKey("openai");
     if (!provider) throw new Error("OpenAI provider definition not found.");
 
+    // Keyless platform-managed binding — credentials resolve server-side from platform keys.
     const configuration: Record<string, unknown> = {
       model: DEFAULT_ASSISTANT_SETTINGS.model,
       execution_policy: { streaming: true, response_format: "text" },
     };
-    if (openAiApiKey?.trim()) {
-      configuration.apiKey = openAiApiKey.trim();
-    }
 
     const created = await registry.createConnection(ctx, {
       companyId,
       providerId: provider.id,
-      displayName: "Default OpenAI Connection",
+      displayName: "OpenAI (Platform)",
       configuration,
-      isEnabled: providerEnabled,
+      isEnabled: true,
       isDefault: true,
+      status: "active",
     });
 
     return step(
@@ -280,7 +312,7 @@ export class TenantAiBootstrapService {
       true,
       false,
       created.id,
-      providerEnabled ? "enabled with configured API key" : "created disabled pending API key",
+      "enabled platform-managed keyless connection",
     );
   }
 

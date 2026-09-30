@@ -1,0 +1,72 @@
+{
+  "at": "2026-09-23T20:24:51.191Z",
+  "platformReady": true,
+  "checks": [
+    {
+      "name": "Platform provider readiness readable (no secret)",
+      "pass": true,
+      "detail": "{\"ready\":true,\"hasActiveKey\":true,\"keyHint\":\"QesA\",\"errorCode\":null}"
+    },
+    {
+      "name": "K) readiness payload has no apiKey field value",
+      "pass": true,
+      "detail": "{\"ready\":true,\"providerKey\":\"openai\",\"displayName\":\"OpenAI\",\"isEnabled\":true,\"hasActiveKey\":true,\"model\":\"gpt-4o-mini\",\"keyHint\":\"QesA\",\"errorCode\":null}"
+    },
+    {
+      "name": "C) Company A with no connection auto-ensures when platform ready",
+      "pass": true,
+      "detail": "{\"ready\":true,\"created\":false,\"connectionId\":\"ce898eac-d215-4ab7-97e8-3aeb1767b8e8\",\"providerKey\":\"openai\",\"errorCode\":null}"
+    },
+    {
+      "name": "B/D) Company B ensures against same platform provider",
+      "pass": true,
+      "detail": "{\"ready\":true,\"created\":false,\"connectionId\":\"e8778169-a345-418a-a519-8c702e11eeac\",\"providerKey\":\"openai\",\"errorCode\":null}"
+    },
+    {
+      "name": "I/J) Company A and B have distinct connection bindings",
+      "pass": true,
+      "detail": "A=ce898eac-d215-4ab7-97e8-3aeb1767b8e8 B=e8778169-a345-418a-a519-8c702e11eeac"
+    },
+    {
+      "name": "K) Tenant cannot read platform API keys",
+      "pass": true,
+      "detail": "rows=0"
+    },
+    {
+      "name": "K) Company connection rows have no apiKey",
+      "pass": true,
+      "detail": "leaks=0"
+    },
+    {
+      "name": "A) Company A runtime resolves platform key (server-only)",
+      "pass": true,
+      "detail": "model=gpt-4o-mini"
+    },
+    {
+      "name": "B) Company B runtime resolves same platform provider",
+      "pass": true,
+      "detail": "model=gpt-4o-mini"
+    },
+    {
+      "name": "16) Live local Chat against platform provider",
+      "pass": true,
+      "detail": "status=200 text=عذرًا، لا أستطيع عرض محتوى التذكرة الحالية."
+    },
+    {
+      "name": "F) Agent/tool_calling use case resolves platform provider",
+      "pass": true,
+      "detail": "model=gpt-4o-mini"
+    },
+    {
+      "name": "28) Live local Agent LLM path (platform provider)",
+      "pass": true,
+      "detail": "status=200 text=**Plan:**\n1. Access the ticketing system.\n2. Locate the current ticket for Company A.\n3. Retrieve the status and responsible person's name.\n4. Compile the infor"
+    },
+    {
+      "name": "E) missing platform provider returns structured error code",
+      "pass": true,
+      "detail": "AI_PROVIDER_NOT_CONFIGURED | AI_PROVIDER_UNAVAILABLE covered by unit tests + readiness.errorCode"
+    }
+  ],
+  "failed": 0
+}

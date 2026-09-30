@@ -38,6 +38,14 @@ import {
 } from "@/hooks/quotes/use-quote-commands";
 import { useAuthUser } from "@/hooks/use-rbac";
 import { useToast } from "@/hooks/use-toast";
+import { useCanSendQuotes, useQuoteSendOptions, useSendQuote } from "@/hooks/quotes/use-quote-send";
+import { ToastAction } from "@/components/ui/toast";
+import { QuoteSendClientError, type QuoteSendChannel } from "@/lib/quotes/quote-send-client";
+import {
+  classifyQuoteSendError,
+  quoteSendUnavailableCode,
+  quoteSendUnavailableReasonKey,
+} from "@/lib/quotes/quote-send-ui";
 import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
 import { formatBillingCurrency } from "@/lib/billing/format";
 import { pickChromeLogo } from "@/lib/company-workspace/brand-center/resolve-brand-logos";
@@ -436,8 +444,6 @@ export function Quote360Workspace({
   onOpenChange,
   onVersionCreated: _onVersionCreated,
   initialTab = "products",
-  contactPhone = null,
-  contactEmail = null,
 }: {
   quoteId: string | null;
   open: boolean;
@@ -455,6 +461,8 @@ export function Quote360Workspace({
   const brandLogos = useResolvedCompanyLogos();
   const { data, isLoading, isError, refetch } = useQuote360(quoteId);
   const commands = useQuoteCommands();
+  const canSendQuote = useCanSendQuotes();
+  const sendQuote = useSendQuote();
   const productCommands = useProductCommands();
   const catalog = useProductCatalog({ activeOnly: true });
   const { hasPermission, isSuperAdmin } = useAuthUser();
@@ -492,9 +500,6 @@ export function Quote360Workspace({
       .slice(0, 12);
   }, [catalog.data?.items, productQuery]);
 
-  const phone = (contactPhone || "").trim();
-  const email = (contactEmail || "").trim();
-  const waPhone = phone.replace(/[^\d+]/g, "");
   const companyName = displayName || company?.name || null;
   // Exact same resolution path as AppSidebar chrome logo.
   const logoUrl = useMemo(() => {
@@ -536,48 +541,50 @@ export function Quote360Workspace({
     [t],
   );
 
-  const markSentAndOpen = (channel: "email" | "whatsapp") => {
-    if (!quote) return;
-    void commands.changeStatus
-      .mutateAsync({ quoteId: quote.id, status: "sent" })
-      .then(() => {
+  const sendOptions = useQuoteSendOptions(quote?.id ?? null, open && tab === "preview");
+  const availableChannels = (sendOptions.data?.channels ?? []).filter((c) => c.available);
+  const unavailableChannels = (sendOptions.data?.channels ?? []).filter((c) => !c.available);
+  const channelLabel = (channel: QuoteSendChannel) =>
+    channel === "email" ? t("quotes.send.viaEmail") : t("quotes.send.viaWhatsapp");
+
+  const sendVia = (channel: QuoteSendChannel) => {
+    if (!quote || sendQuote.isPending) return;
+    void sendQuote
+      .mutateAsync({ quoteId: quote.id, channel, language: previewLanguage })
+      .then((result) => {
+        const recipient = result.recipient ?? "";
         toast({
-          title: t("opportunities.quotes.sendSuccess", { defaultValue: "Quote marked as sent" }),
+          title: t("quotes.send.sentTitle"),
+          description: [
+            channel === "email"
+              ? t("quotes.send.sentEmail", { recipient })
+              : t("quotes.send.sentWhatsapp", { recipient }),
+            result.replayed ? t("quotes.send.alreadySent") : null,
+            !result.replayed && !result.quoteStatusUpdated ? t("quotes.send.statusNotUpdated") : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
         });
-        const summary =
-          `${quote.quoteNumber} · ${quote.title || ""} · ${money(quote.grandTotal, quote.currency)}`.trim();
-        if (channel === "email") {
-          if (!email) {
-            toast({
-              variant: "destructive",
-              title: t("leads.table.errors.missingEmail", { defaultValue: "No email on contact" }),
-            });
-            return;
-          }
-          window.open(
-            `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(quote.quoteNumber)}&body=${encodeURIComponent(summary)}`,
-            "_self",
-          );
-          return;
-        }
-        if (!waPhone) {
-          toast({
-            variant: "destructive",
-            title: t("leads.table.errors.missingPhone", { defaultValue: "No phone on contact" }),
-          });
-          return;
-        }
-        window.open(
-          `https://wa.me/${waPhone.replace("+", "")}?text=${encodeURIComponent(summary)}`,
-          "_blank",
-          "noopener,noreferrer",
-        );
       })
       .catch((error: unknown) => {
+        const reason = quoteSendUnavailableCode(error);
+        const inProgress = error instanceof QuoteSendClientError && error.code === "send_in_progress";
+        const retryable = !reason && !inProgress && classifyQuoteSendError(error) !== "unknown";
         toast({
           variant: "destructive",
-          title: t("opportunities.quotes.sendFailed", { defaultValue: "Could not send quote" }),
-          description: resolveApplicationErrorMessage(error),
+          title: t("quotes.send.failedTitle"),
+          description: reason
+            ? t(quoteSendUnavailableReasonKey(reason))
+            : inProgress
+              ? t("quotes.send.inProgress")
+              : error instanceof QuoteSendClientError
+                ? error.message
+                : resolveApplicationErrorMessage(error),
+          action: retryable ? (
+            <ToastAction altText={t("quotes.send.retry")} onClick={() => sendVia(channel)}>
+              {t("quotes.send.retry")}
+            </ToastAction>
+          ) : undefined,
         });
       });
   };
@@ -937,35 +944,85 @@ export function Quote360Workspace({
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {languageMenu}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={commands.changeStatus.isPending || lines.length === 0}
-                            className="gap-1.5"
-                          >
-                            <Send className="size-3.5" />
-                            {t("opportunities360.actions.sendQuote")}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            disabled={!email}
-                            onClick={() => markSentAndOpen("email")}
-                          >
-                            <Mail className="size-3.5" />
-                            {t("opportunities360.actions.sendEmail")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={!waPhone}
-                            onClick={() => markSentAndOpen("whatsapp")}
-                          >
-                            <MessageCircle className="size-3.5" />
-                            {t("opportunities360.actions.sendWhatsapp")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {canSendQuote ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={sendQuote.isPending || lines.length === 0}
+                              aria-busy={sendQuote.isPending}
+                              className="gap-1.5"
+                            >
+                              {sendQuote.isPending ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Send className="size-3.5" />
+                              )}
+                              {sendQuote.isPending
+                                ? t("quotes.send.sending")
+                                : t("opportunities360.actions.sendQuote")}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-72">
+                            {sendOptions.isLoading ? (
+                              <div className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-muted-foreground">
+                                <Loader2 className="size-3.5 animate-spin" />
+                                {t("quotes.send.checking")}
+                              </div>
+                            ) : sendOptions.isError ? (
+                              <div className="space-y-1.5 px-2 py-1.5 text-[12px]">
+                                <p className="text-destructive">{t("quotes.send.optionsFailed")}</p>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void sendOptions.refetch()}
+                                >
+                                  {t("quotes.send.retryOptions")}
+                                </Button>
+                              </div>
+                            ) : availableChannels.length > 0 ? (
+                              availableChannels.map((option) => (
+                                <DropdownMenuItem
+                                  key={option.channel}
+                                  disabled={sendQuote.isPending}
+                                  onSelect={() => sendVia(option.channel)}
+                                  className="flex items-start gap-2"
+                                >
+                                  {option.channel === "email" ? (
+                                    <Mail className="mt-0.5 size-3.5" />
+                                  ) : (
+                                    <MessageCircle className="mt-0.5 size-3.5" />
+                                  )}
+                                  <span className="min-w-0">
+                                    <span className="block">
+                                      {option.channel === "email"
+                                        ? t("opportunities360.actions.sendEmail")
+                                        : t("opportunities360.actions.sendWhatsapp")}
+                                    </span>
+                                    {option.recipient ? (
+                                      <span className="block truncate text-[11px] text-muted-foreground" dir="ltr">
+                                        {option.recipient}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                </DropdownMenuItem>
+                              ))
+                            ) : (
+                              <div className="space-y-1.5 px-2 py-1.5 text-[12px]">
+                                <p className="font-medium">{t("quotes.send.noChannels")}</p>
+                                {unavailableChannels.map((option) => (
+                                  <p key={option.channel} className="text-muted-foreground">
+                                    <span className="font-medium text-foreground">{channelLabel(option.channel)}:</span>{" "}
+                                    {t(quoteSendUnavailableReasonKey(option.reason))}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </div>
                   </div>
                   <QuotePreviewDocument

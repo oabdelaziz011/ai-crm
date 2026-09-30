@@ -1,5 +1,12 @@
 import type { EmailRoutingCategory } from "./categories.js";
 import type { EmailRoutingDecision, EmailRoutingTargetType } from "./email-routing-engine-contract.js";
+import {
+  pickDepartmentQueueAssignee,
+  type DepartmentQueueAssigneeCandidate,
+} from "./pick-department-queue-assignee.js";
+
+export type { DepartmentQueueAssigneeCandidate } from "./pick-department-queue-assignee.js";
+export { pickDepartmentQueueAssignee } from "./pick-department-queue-assignee.js";
 
 export type EmailRoutingClassificationSnapshot = {
   category: EmailRoutingCategory | string;
@@ -59,6 +66,15 @@ export type EmailRoutingTicketPort = {
   }): Promise<void>;
 
   /**
+   * Active employees in a department with load signals for queue-style auto-assign.
+   * Fail closed → empty list (ticket stays department-owned, unassigned).
+   */
+  listDepartmentQueueCandidates?(input: {
+    companyId: string;
+    departmentId: string;
+  }): Promise<DepartmentQueueAssigneeCandidate[]>;
+
+  /**
    * Fail-closed company scope check for trustedCustomerId.
    * Returns true only when the customer row belongs to companyId.
    */
@@ -67,7 +83,6 @@ export type EmailRoutingTicketPort = {
     customerId: string;
   }): Promise<boolean>;
 };
-
 export type EmailRoutingTicketActionInput = {
   companyId: string;
   conversationId: string;
@@ -177,6 +192,48 @@ async function syncConversationEmployeeAssignee(
   });
 }
 
+async function resolveRoutingAssigneeUserId(
+  tickets: EmailRoutingTicketPort,
+  decision: EmailRoutingTicketActionInput["decision"],
+  companyId: string,
+): Promise<string | null> {
+  if (decision.targetType === "employee" && decision.targetId?.trim()) {
+    return decision.targetId.trim();
+  }
+  if (decision.targetType === "department" && decision.targetId?.trim()) {
+    if (!tickets.listDepartmentQueueCandidates) return null;
+    const candidates = await tickets.listDepartmentQueueCandidates({
+      companyId,
+      departmentId: decision.targetId.trim(),
+    });
+    return pickDepartmentQueueAssignee(candidates);
+  }
+  return null;
+}
+
+async function assignResolvedEmployee(
+  tickets: EmailRoutingTicketPort,
+  input: {
+    companyId: string;
+    conversationId: string;
+    ticketId: string;
+    assigneeUserId: string;
+  },
+): Promise<string> {
+  const assigned = await tickets.assignEmployee({
+    companyId: input.companyId,
+    ticketId: input.ticketId,
+    assigneeUserId: input.assigneeUserId,
+  });
+  const assigneeUserId = assigned.assignedUserId ?? input.assigneeUserId;
+  await syncConversationEmployeeAssignee(tickets, {
+    companyId: input.companyId,
+    conversationId: input.conversationId,
+    assigneeUserId: assigneeUserId.trim(),
+  });
+  return assigneeUserId.trim();
+}
+
 async function resolveTrustedCustomerForCreate(
   tickets: EmailRoutingTicketPort,
   companyId: string,
@@ -259,20 +316,23 @@ export async function applyEmailRoutingTicketAction(
     // under tickets.view/create/assign only — leave unchanged (do not invent a DB update).
 
     let assignedUserId = existing.assignedUserId ?? null;
-    if (input.decision.targetType === "employee" && input.decision.targetId && !assignedUserId) {
-      const assigned = await tickets.assignEmployee({
-        companyId,
-        ticketId: existing.id,
-        assigneeUserId: input.decision.targetId.trim(),
-      });
-      assignedUserId = assigned.assignedUserId ?? input.decision.targetId.trim();
-    }
-    if (
+    if (!assignedUserId) {
+      const resolved = await resolveRoutingAssigneeUserId(tickets, input.decision, companyId);
+      if (resolved) {
+        assignedUserId = await assignResolvedEmployee(tickets, {
+          companyId,
+          conversationId,
+          ticketId: existing.id,
+          assigneeUserId: resolved,
+        });
+      }
+    } else if (
       input.decision.targetType === "employee" &&
       assignedUserId &&
       typeof assignedUserId === "string" &&
       assignedUserId.trim()
     ) {
+      // Keep conversation mirror in sync when ticket already had an assignee.
       await syncConversationEmployeeAssignee(tickets, {
         companyId,
         conversationId,
@@ -319,28 +379,23 @@ export async function applyEmailRoutingTicketAction(
   });
 
   let assignedUserId: string | null = null;
-  // Only employee targets map to TicketCommandService.assignTicket.
-  // department/team/queue are retained on metadata until a team-assignment model exists.
-  if (input.decision.targetType === "employee" && input.decision.targetId) {
-    const assigned = await tickets.assignEmployee({
-      companyId,
-      ticketId: created.id,
-      assigneeUserId: input.decision.targetId.trim(),
-    });
-    assignedUserId = assigned.assignedUserId ?? input.decision.targetId.trim();
-    await syncConversationEmployeeAssignee(tickets, {
+  const resolved = await resolveRoutingAssigneeUserId(tickets, input.decision, companyId);
+  if (resolved) {
+    assignedUserId = await assignResolvedEmployee(tickets, {
       companyId,
       conversationId,
-      assigneeUserId: assignedUserId.trim(),
+      ticketId: created.id,
+      assigneeUserId: resolved,
     });
   }
 
   return {
     status: "created",
-    reason:
-      input.decision.targetType === "employee"
-        ? "Ticket created and assigned via existing ticket assignment"
-        : `Ticket created unassigned; ${input.decision.targetType} target retained in metadata`,
+    reason: assignedUserId
+      ? input.decision.targetType === "department"
+        ? "Ticket created and assigned via department queue"
+        : "Ticket created and assigned via existing ticket assignment"
+      : `Ticket created unassigned; ${input.decision.targetType} target retained in metadata`,
     ticketId: created.id,
     ticketNumber: created.ticketNumber,
     assignedUserId,

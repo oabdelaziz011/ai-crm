@@ -31,16 +31,18 @@ export function Ticket360Overview({ ticket }: { ticket: TicketInboxRow }) {
 
   return (
     <div className="space-y-4 p-5 text-start sm:px-6 sm:py-4">
-      <div className="space-y-1.5">
-        <h3 className="text-sm font-semibold">{t("tickets.360.overviewTitle")}</h3>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+      <section className="rounded-xl border border-border/50 bg-muted/10 px-3.5 py-3">
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("tickets.360.descriptionGroup")}
+        </h4>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
           {ticket.description?.trim() || t("tickets.noDescription")}
         </p>
-      </div>
+      </section>
 
-      <section className="rounded-xl border border-border/50 bg-muted/10 px-3.5 py-3">
+      <section className="rounded-xl border border-border/50 px-3.5 py-3">
         <h4 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("tickets.360.summaryGroup", { defaultValue: t("tickets.360.overviewTitle") })}
+          {t("tickets.360.summaryGroup")}
         </h4>
         <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={t("tickets.columns.number")}>
@@ -100,7 +102,7 @@ export function Ticket360Overview({ ticket }: { ticket: TicketInboxRow }) {
 
       <section className="rounded-xl border border-border/50 px-3.5 py-3">
         <h4 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("tickets.360.timelineGroup", { defaultValue: t("tickets.columns.updated") })}
+          {t("tickets.360.timelineGroup")}
         </h4>
         <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={t("tickets.createdAt")}>

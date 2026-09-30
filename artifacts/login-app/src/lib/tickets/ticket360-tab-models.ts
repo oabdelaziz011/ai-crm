@@ -148,10 +148,17 @@ export function describeTicketActivityEntry(
     );
   }
   if (oldValues.priority !== newValues.priority && newValues.priority != null) {
+    const localizePriority = (code: string) => {
+      const trimmed = code.trim();
+      if (!trimmed) return code;
+      const key = `tickets.priority.${trimmed}`;
+      const translated = t(key, { defaultValue: trimmed });
+      return !translated || translated === key ? trimmed : translated;
+    };
     parts.push(
       t("tickets.360.activity.priorityChanged", {
-        from: String(oldValues.priority ?? ""),
-        to: String(newValues.priority),
+        from: localizePriority(String(oldValues.priority ?? "")),
+        to: localizePriority(String(newValues.priority)),
       }),
     );
   }

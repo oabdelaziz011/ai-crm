@@ -20,6 +20,8 @@ export type TicketRecord = {
   priority: TicketPriority;
   customerId: string | null;
   conversationId: string | null;
+  /** Channel the customer used to open the ticket (email, whatsapp, …). */
+  originChannel: string | null;
   assignedUserId: string | null;
   assignedUserName: string | null;
   createdBy: string | null;
@@ -57,6 +59,7 @@ export type TicketSummary = Pick<
   | "priority"
   | "customerId"
   | "conversationId"
+  | "originChannel"
   | "assignedUserId"
   | "assignedUserName"
   | "createdAt"
@@ -119,6 +122,7 @@ export function toTicketSummary(record: TicketRecord): TicketSummary {
     priority: record.priority,
     customerId: record.customerId,
     conversationId: record.conversationId,
+    originChannel: record.originChannel,
     assignedUserId: record.assignedUserId,
     assignedUserName: record.assignedUserName,
     createdAt: record.createdAt,

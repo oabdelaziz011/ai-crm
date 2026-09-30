@@ -18,6 +18,9 @@ export type TicketDomainEventPayload = {
   isInternal?: boolean;
   customerId?: string | null;
   conversationId?: string | null;
+  originChannel?: string | null;
+  customerNotified?: boolean;
+  notifyChannel?: string | null;
 };
 
 export type TicketDomainEvent = {
@@ -45,8 +48,26 @@ export function createTicketUpdatedEvent(
 export function createTicketClosedEvent(
   ticket: TicketRecord,
   actorUserId: string | null,
+  extras?: {
+    customerNotified?: boolean;
+    notifyChannel?: string | null;
+  },
 ): TicketDomainEvent {
-  return buildEvent("ticket_closed", ticket, actorUserId, { newStatus: ticket.status });
+  const notifiedAt = ticket.metadata?.customerCloseNotifiedAt;
+  const notifyChannel =
+    extras?.notifyChannel ??
+    (typeof ticket.metadata?.customerCloseNotifyChannel === "string"
+      ? ticket.metadata.customerCloseNotifyChannel
+      : null);
+  const customerNotified =
+    extras?.customerNotified ??
+    (typeof notifiedAt === "string" && notifiedAt.trim().length > 0);
+  return buildEvent("ticket_closed", ticket, actorUserId, {
+    newStatus: ticket.status,
+    originChannel: ticket.originChannel,
+    customerNotified,
+    notifyChannel,
+  });
 }
 
 export function createTicketReopenedEvent(
@@ -135,6 +156,7 @@ function buildEvent(
         priority: ticket.priority,
         customerId: ticket.customerId,
         conversationId: ticket.conversationId,
+        originChannel: ticket.originChannel,
         assignedUserId: ticket.assignedUserId,
         assignedUserName: ticket.assignedUserName,
         createdAt: ticket.createdAt,

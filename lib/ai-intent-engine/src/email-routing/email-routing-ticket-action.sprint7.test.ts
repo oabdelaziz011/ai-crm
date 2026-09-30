@@ -84,8 +84,12 @@ describe("applyEmailRoutingTicketAction Sprint 7 target compatibility", () => {
     assert.equal(conversationAssigned[0]?.assigneeUserId, "emp-9");
   });
 
-  it("keeps department targets in ticket metadata without employee assignment", async () => {
+  it("assigns department targets via department queue when candidates exist", async () => {
     const { port, created, assigned, conversationAssigned } = mockPort();
+    port.listDepartmentQueueCandidates = async () => [
+      { userId: "emp-busy", activeConversationCount: 3, lastAssignedAt: "2026-01-02T00:00:00.000Z" },
+      { userId: "emp-free", activeConversationCount: 0, lastAssignedAt: null },
+    ];
     const result = await applyEmailRoutingTicketAction(port, {
       companyId: "co-1",
       conversationId: "conv-2",
@@ -108,12 +112,46 @@ describe("applyEmailRoutingTicketAction Sprint 7 target compatibility", () => {
       },
     });
     assert.equal(result.status, "created");
-    assert.equal(assigned.length, 0);
-    assert.equal(conversationAssigned.length, 0);
+    assert.equal(created.length, 1);
+    assert.equal(assigned.length, 1);
+    assert.equal(assigned[0]?.assigneeUserId, "emp-free");
+    assert.equal(conversationAssigned.length, 1);
+    assert.equal(conversationAssigned[0]?.assigneeUserId, "emp-free");
+    assert.equal(result.assignedUserId, "emp-free");
     assert.equal(
       (created[0]?.metadata?.emailRoutingDecision as { targetType?: string } | undefined)?.targetType,
       "department",
     );
+  });
+
+  it("keeps department targets unassigned when the department queue is empty", async () => {
+    const { port, created, assigned, conversationAssigned } = mockPort();
+    port.listDepartmentQueueCandidates = async () => [];
+    const result = await applyEmailRoutingTicketAction(port, {
+      companyId: "co-1",
+      conversationId: "conv-2b",
+      inboundEventId: "evt-2b",
+      subject: "Sales",
+      classification: {
+        category: "sales",
+        confidence: 0.9,
+        reason: "ok",
+        source: "llm",
+      },
+      decision: {
+        targetType: "department",
+        targetId: "dept-1",
+        category: "sales",
+        confidence: 0.9,
+        reason: "configured",
+        source: "classification",
+        configurationRequired: false,
+      },
+    });
+    assert.equal(result.status, "created");
+    assert.equal(assigned.length, 0);
+    assert.equal(conversationAssigned.length, 0);
+    assert.equal(result.assignedUserId, null);
     assert.equal(
       (created[0]?.metadata?.emailRoutingDecision as { targetId?: string } | undefined)?.targetId,
       "dept-1",

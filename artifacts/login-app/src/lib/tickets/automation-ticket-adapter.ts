@@ -86,6 +86,7 @@ export function createAutomationTicketServicePort(
         priority: input.priority as never,
         customerId: input.customerId,
         conversationId: input.conversationId,
+        metadata: input.metadata,
       });
       return { ticket: mapTicket(result.ticket) };
     },

@@ -17,8 +17,13 @@ import {
   Ticket360ActivityPanel,
   Ticket360AuditPanel,
 } from "@/components/tickets/ticket360-activity-panel";
+import {
+  TicketCloseNotifyDialog,
+  type TicketCloseNotifyPhase,
+} from "@/components/tickets/ticket-close-notify-dialog";
 import { useTicketDetail, useTicketCommands } from "@/hooks/tickets/use-tickets";
 import { useTicketServiceContext } from "@/hooks/tickets/use-ticket-services";
+import { useChannelPlatformServices } from "@/lib/channel-platform";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomerProfile } from "@/context/customer-profile-context";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { TicketPriority, TicketStatus } from "@workspace/ticket-platform";
 import type { TicketInboxRow } from "@/lib/tickets/enrich-ticket-rows";
 import { resolveTicketSlaState } from "@/lib/tickets/ticket-inbox-metrics";
+import { notifyTicketResolvedOnOriginChannel } from "@/lib/tickets/ticket-close-customer-notify";
 import {
   shouldIgnoreTicket360Dismiss,
   shouldResetTicket360Session,
@@ -77,12 +83,18 @@ export function Ticket360Workspace({
   const { t, i18n } = useTranslation("common");
   const { toast } = useToast();
   const { openCustomerProfile } = useCustomerProfile();
-  const { canAssign, canEdit, canClose, canComment } = useTicketServiceContext();
+  const { canAssign, canEdit, canClose, canComment, companyId } = useTicketServiceContext();
   const detail = useTicketDetail(open ? ticketId : null);
   const commands = useTicketCommands();
+  const { services: channelPlatform, context: channelContext } = useChannelPlatformServices();
   const [tab, setTab] = useState<Ticket360Tab>("overview");
   const [commentBody, setCommentBody] = useState("");
   const [commentInternal, setCommentInternal] = useState(true);
+  const [closeNotifyOpen, setCloseNotifyOpen] = useState(false);
+  const [closeNotifyPhase, setCloseNotifyPhase] = useState<TicketCloseNotifyPhase>("ask");
+  const [closeNotifyPending, setCloseNotifyPending] = useState(false);
+  const [pendingCloseStatus, setPendingCloseStatus] = useState<"closed" | "resolved">("closed");
+  const [closeNotifyIdempotencyKey, setCloseNotifyIdempotencyKey] = useState<string | null>(null);
   const direction = i18n.dir();
   const wasOpenRef = useRef(false);
   const previousTicketIdRef = useRef<string | null>(null);
@@ -92,7 +104,8 @@ export function Ticket360Workspace({
     commands.changePriority.isPending ||
     commands.addComment.isPending ||
     commands.unassignTicket.isPending ||
-    commands.assignTicket.isPending;
+    commands.assignTicket.isPending ||
+    closeNotifyPending;
 
   useEffect(() => {
     if (
@@ -135,6 +148,13 @@ export function Ticket360Workspace({
     if (!ticket || commands.changeStatus.isPending) return;
     if (status === ticket.status) return;
     noteNestedOverlayActivity();
+    if (status === "closed" || status === "resolved") {
+      setPendingCloseStatus(status);
+      setCloseNotifyPhase("ask");
+      setCloseNotifyIdempotencyKey(`ticket-close-notify:${ticket.id}:${status}:${Date.now()}`);
+      setCloseNotifyOpen(true);
+      return;
+    }
     void commands.changeStatus
       .mutateAsync({ ticketId: ticket.id, status })
       .then(
@@ -146,6 +166,80 @@ export function Ticket360Workspace({
             variant: "destructive",
           }),
       );
+  };
+
+  const finishCloseWithoutNotify = async () => {
+    if (!ticket) return;
+    setCloseNotifyPending(true);
+    try {
+      await commands.changeStatus.mutateAsync({
+        ticketId: ticket.id,
+        status: pendingCloseStatus,
+      });
+      toast({ title: t("tickets.toasts.statusUpdated") });
+      setCloseNotifyOpen(false);
+      setCloseNotifyPhase("ask");
+    } catch (error) {
+      toast({
+        title: t("tickets.toasts.statusFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setCloseNotifyPending(false);
+    }
+  };
+
+  const finishCloseWithNotify = async (message: string) => {
+    if (!ticket || !companyId) return;
+    setCloseNotifyPending(true);
+    try {
+      const notify = await notifyTicketResolvedOnOriginChannel({
+        companyId,
+        ticketId: ticket.id,
+        conversationId: ticket.conversationId,
+        originChannel: ticket.channelType ?? ticket.originChannel,
+        messageBody: message,
+        ticketNumber: ticket.ticketNumber,
+        lastCustomerActivityAt: ticket.lastCustomerActivityAt,
+        channelContext,
+        dispatcher: channelPlatform.dispatcher,
+        idempotencyKey: closeNotifyIdempotencyKey ?? undefined,
+      });
+      if (!notify.ok) {
+        toast({
+          title: t("tickets.closeNotify.notifyFailed"),
+          description: notify.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      await commands.changeStatus.mutateAsync({
+        ticketId: ticket.id,
+        status: pendingCloseStatus,
+      });
+      toast({
+        title: notify.alreadyNotified
+          ? t("tickets.closeNotify.alreadyNotified")
+          : t("tickets.closeNotify.notifySent"),
+        description: t("tickets.closeNotify.notifySentBody", {
+          channel: t(`tickets.channels.${notify.channelKey}`, {
+            defaultValue: notify.channelKey,
+          }),
+        }),
+      });
+      setCloseNotifyOpen(false);
+      setCloseNotifyPhase("ask");
+      setCloseNotifyIdempotencyKey(null);
+    } catch (error) {
+      toast({
+        title: t("tickets.closeNotify.notifyFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setCloseNotifyPending(false);
+    }
   };
 
   const handlePriorityChange = (priority: TicketPriority) => {
@@ -189,6 +283,7 @@ export function Ticket360Workspace({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={ENTITY_360_DIALOG_CONTENT_CLASS}
@@ -258,10 +353,7 @@ export function Ticket360Workspace({
                       <h4 className="text-sm font-semibold">{t("tickets.commentsTitle")}</h4>
                       <p className="text-[11px] text-muted-foreground">
                         {comments.length > 0
-                          ? t("tickets.360.commentCount", {
-                              count: comments.length,
-                              defaultValue: `${comments.length}`,
-                            })
+                          ? t("tickets.360.commentCount", { count: comments.length })
                           : null}
                       </p>
                     </div>
@@ -298,9 +390,7 @@ export function Ticket360Workspace({
                     {canComment ? (
                       <div className="space-y-2.5 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3.5">
                         <p className="text-[11px] font-medium text-muted-foreground">
-                          {t("tickets.360.addCommentHint", {
-                            defaultValue: t("tickets.commentPlaceholder"),
-                          })}
+                          {t("tickets.360.addCommentHint")}
                         </p>
                         <Textarea
                           value={commentBody}
@@ -364,5 +454,35 @@ export function Ticket360Workspace({
         ) : null}
       </DialogContent>
     </Dialog>
+
+    {ticket ? (
+      <TicketCloseNotifyDialog
+        open={closeNotifyOpen}
+        phase={closeNotifyPhase}
+        companyId={companyId}
+        ticketId={ticket.id}
+        conversationId={ticket.conversationId}
+        ticketNumber={ticket.ticketNumber}
+        customerName={ticket.customerName}
+        channelType={ticket.channelType}
+        channelLabel={
+          ticket.channelType
+            ? t(`tickets.channels.${ticket.channelType}`)
+            : t("tickets.360.noChannel")
+        }
+        canNotifyOnChannel={Boolean(ticket.conversationId && ticket.channelType)}
+        pending={closeNotifyPending}
+        onPhaseChange={setCloseNotifyPhase}
+        onConfirmWithoutNotify={() => void finishCloseWithoutNotify()}
+        onConfirmWithNotify={(message) => void finishCloseWithNotify(message)}
+        onCancel={() => {
+          if (closeNotifyPending) return;
+          setCloseNotifyOpen(false);
+          setCloseNotifyPhase("ask");
+          setCloseNotifyIdempotencyKey(null);
+        }}
+      />
+    ) : null}
+    </>
   );
 }

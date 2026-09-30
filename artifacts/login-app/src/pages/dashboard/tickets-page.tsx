@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plus, Search, Ticket, UserPlus } from "lucide-react";
+import { Loader2, Plus, Search, Ticket } from "lucide-react";
 import { ListPagination } from "@/components/ui/list-pagination";
 import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
   type TicketPriority,
+  type TicketStatus,
 } from "@workspace/ticket-platform";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,14 @@ import {
   formatTicketDateTime,
 } from "@/components/tickets/ticket-badges";
 import { Ticket360Workspace } from "@/components/tickets/ticket360-workspace";
+import { TicketInboxRowActions } from "@/components/tickets/ticket-inbox-row-actions";
+import { TicketChangeStatusDialog } from "@/components/tickets/ticket-change-status-dialog";
+import { TicketChangePriorityDialog } from "@/components/tickets/ticket-change-priority-dialog";
+import {
+  TicketCloseNotifyDialog,
+  type TicketCloseNotifyPhase,
+} from "@/components/tickets/ticket-close-notify-dialog";
+import { InboxChannelBadge } from "@/components/conversations/inbox-channel-badge";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useAssignableEmployees } from "@/hooks/assignment-governance/use-assignable-employees";
@@ -46,6 +55,7 @@ import {
   type TicketListFilters,
 } from "@/hooks/tickets/use-tickets";
 import { useTicketServiceContext } from "@/hooks/tickets/use-ticket-services";
+import { useChannelPlatformServices } from "@/lib/channel-platform";
 import { useCustomersEnrichment } from "@/hooks/use-customers";
 import { EmployeeIdentityService } from "@/lib/employee-identity/employee-identity-service";
 import {
@@ -57,6 +67,7 @@ import {
   type TicketInboxKpiId,
 } from "@/lib/tickets/ticket-inbox-metrics";
 import type { TicketInboxRow } from "@/lib/tickets/enrich-ticket-rows";
+import { notifyTicketResolvedOnOriginChannel } from "@/lib/tickets/ticket-close-customer-notify";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
@@ -69,8 +80,10 @@ export function TicketsPage() {
   const { t, i18n } = useTranslation("common");
   const { company } = useAuth();
   const { toast } = useToast();
-  const { canCreate, canAssign } = useTicketServiceContext();
+  const { canCreate, canAssign, canEdit, canClose } = useTicketServiceContext();
   const commands = useTicketCommands();
+  const { services: channelPlatform, context: channelContext } = useChannelPlatformServices();
+  const canChangeStatus = canEdit || canClose;
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -84,6 +97,13 @@ export function TicketsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignTicketId, setAssignTicketId] = useState<string | null>(null);
+  const [statusTicket, setStatusTicket] = useState<TicketInboxRow | null>(null);
+  const [priorityTicket, setPriorityTicket] = useState<TicketInboxRow | null>(null);
+  const [closeNotifyTicket, setCloseNotifyTicket] = useState<TicketInboxRow | null>(null);
+  const [closeNotifyPhase, setCloseNotifyPhase] = useState<TicketCloseNotifyPhase>("ask");
+  const [closeNotifyPending, setCloseNotifyPending] = useState(false);
+  const [pendingCloseStatus, setPendingCloseStatus] = useState<"closed" | "resolved">("closed");
+  const [closeNotifyIdempotencyKey, setCloseNotifyIdempotencyKey] = useState<string | null>(null);
   const [activeKpi, setActiveKpi] = useState<TicketInboxKpiId>("all");
 
   const [subject, setSubject] = useState("");
@@ -256,6 +276,105 @@ export function TicketsPage() {
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
+    }
+  };
+
+  const applyTicketStatus = async (ticket: TicketInboxRow, status: TicketStatus) => {
+    try {
+      await commands.changeStatus.mutateAsync({ ticketId: ticket.id, status });
+      toast({ title: t("tickets.toasts.statusUpdated") });
+    } catch (error) {
+      toast({
+        title: t("tickets.toasts.statusFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const requestStatusChange = (ticket: TicketInboxRow, status: TicketStatus) => {
+    if (status === ticket.status) return;
+    if (status === "closed" || status === "resolved") {
+      setPendingCloseStatus(status);
+      setCloseNotifyPhase("ask");
+      setCloseNotifyIdempotencyKey(
+        `ticket-close-notify:${ticket.id}:${status}:${Date.now()}`,
+      );
+      setCloseNotifyTicket(ticket);
+      setStatusTicket(null);
+      return;
+    }
+    void applyTicketStatus(ticket, status).then(() => setStatusTicket(null));
+  };
+
+  const openCloseNotify = (ticket: TicketInboxRow) => {
+    setPendingCloseStatus("closed");
+    setCloseNotifyPhase("ask");
+    setCloseNotifyIdempotencyKey(`ticket-close-notify:${ticket.id}:closed:${Date.now()}`);
+    setCloseNotifyTicket(ticket);
+  };
+
+  const finishCloseWithoutNotify = async () => {
+    if (!closeNotifyTicket) return;
+    setCloseNotifyPending(true);
+    try {
+      await applyTicketStatus(closeNotifyTicket, pendingCloseStatus);
+      setCloseNotifyTicket(null);
+      setCloseNotifyPhase("ask");
+    } catch {
+      // toast already shown
+    } finally {
+      setCloseNotifyPending(false);
+    }
+  };
+
+  const finishCloseWithNotify = async (message: string) => {
+    if (!closeNotifyTicket || !company?.id) return;
+    setCloseNotifyPending(true);
+    try {
+      const notify = await notifyTicketResolvedOnOriginChannel({
+        companyId: company.id,
+        ticketId: closeNotifyTicket.id,
+        conversationId: closeNotifyTicket.conversationId,
+        originChannel: closeNotifyTicket.channelType ?? closeNotifyTicket.originChannel,
+        messageBody: message,
+        ticketNumber: closeNotifyTicket.ticketNumber,
+        lastCustomerActivityAt: closeNotifyTicket.lastCustomerActivityAt,
+        channelContext,
+        dispatcher: channelPlatform.dispatcher,
+        idempotencyKey: closeNotifyIdempotencyKey ?? undefined,
+      });
+      if (!notify.ok) {
+        toast({
+          title: t("tickets.closeNotify.notifyFailed"),
+          description: notify.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      await applyTicketStatus(closeNotifyTicket, pendingCloseStatus);
+      toast({
+        title: notify.alreadyNotified
+          ? t("tickets.closeNotify.alreadyNotified")
+          : t("tickets.closeNotify.notifySent"),
+        description: t("tickets.closeNotify.notifySentBody", {
+          channel: t(`tickets.channels.${notify.channelKey}`, {
+            defaultValue: notify.channelKey,
+          }),
+        }),
+      });
+      setCloseNotifyTicket(null);
+      setCloseNotifyPhase("ask");
+      setCloseNotifyIdempotencyKey(null);
+    } catch (error) {
+      toast({
+        title: t("tickets.closeNotify.notifyFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setCloseNotifyPending(false);
     }
   };
 
@@ -453,8 +572,26 @@ export function TicketsPage() {
                     ticket={row}
                     locale={i18n.language}
                     canAssign={canAssign}
+                    canChangeStatus={canChangeStatus}
+                    canChangePriority={canEdit}
+                    canClose={canClose}
+                    canReopen={canEdit}
                     onOpen={() => setSelectedId(row.id)}
                     onAssign={() => openAssign(row.id)}
+                    onChangeStatus={() => setStatusTicket(row)}
+                    onChangePriority={() => setPriorityTicket(row)}
+                    onCloseTicket={() => openCloseNotify(row)}
+                    onReopenTicket={() => {
+                      void commands.reopenTicket.mutateAsync(row.id).then(
+                        () => toast({ title: t("tickets.toasts.reopened", { defaultValue: t("tickets.toasts.statusUpdated") }) }),
+                        (error) =>
+                          toast({
+                            title: t("tickets.toasts.statusFailed"),
+                            description: error instanceof Error ? error.message : undefined,
+                            variant: "destructive",
+                          }),
+                      );
+                    }}
                     t={t}
                   />
                 ))}
@@ -599,7 +736,7 @@ export function TicketsPage() {
             {assignableEmployeesQuery.isLoading ? (
               <div className="flex items-center justify-center gap-2 px-1 py-8 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" aria-hidden />
-                {t("tickets.assignLoading", { defaultValue: "Loading teammates…" })}
+                {t("tickets.assignLoading")}
               </div>
             ) : null}
             {!assignableEmployeesQuery.isLoading
@@ -626,6 +763,76 @@ export function TicketsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {statusTicket ? (
+        <TicketChangeStatusDialog
+          open={Boolean(statusTicket)}
+          currentStatus={statusTicket.status}
+          pending={commands.changeStatus.isPending}
+          onOpenChange={(open) => {
+            if (!open) setStatusTicket(null);
+          }}
+          onConfirm={(status) => requestStatusChange(statusTicket, status)}
+        />
+      ) : null}
+
+      {priorityTicket ? (
+        <TicketChangePriorityDialog
+          open={Boolean(priorityTicket)}
+          currentPriority={priorityTicket.priority}
+          pending={commands.changePriority.isPending}
+          onOpenChange={(open) => {
+            if (!open) setPriorityTicket(null);
+          }}
+          onConfirm={(priority) => {
+            void commands.changePriority
+              .mutateAsync({ ticketId: priorityTicket.id, priority })
+              .then(
+                () => {
+                  setPriorityTicket(null);
+                  toast({ title: t("tickets.toasts.priorityUpdated") });
+                },
+                (error) =>
+                  toast({
+                    title: t("tickets.toasts.priorityFailed"),
+                    description: error instanceof Error ? error.message : undefined,
+                    variant: "destructive",
+                  }),
+              );
+          }}
+        />
+      ) : null}
+
+      {closeNotifyTicket ? (
+        <TicketCloseNotifyDialog
+          open={Boolean(closeNotifyTicket)}
+          phase={closeNotifyPhase}
+          companyId={company?.id ?? null}
+          ticketId={closeNotifyTicket.id}
+          conversationId={closeNotifyTicket.conversationId}
+          ticketNumber={closeNotifyTicket.ticketNumber}
+          customerName={closeNotifyTicket.customerName}
+          channelType={closeNotifyTicket.channelType}
+          channelLabel={
+            closeNotifyTicket.channelType
+              ? t(`tickets.channels.${closeNotifyTicket.channelType}`, {
+                  defaultValue: closeNotifyTicket.channelType,
+                })
+              : t("tickets.360.noChannel")
+          }
+          canNotifyOnChannel={Boolean(closeNotifyTicket.conversationId && closeNotifyTicket.channelType)}
+          pending={closeNotifyPending}
+          onPhaseChange={setCloseNotifyPhase}
+          onConfirmWithoutNotify={() => void finishCloseWithoutNotify()}
+          onConfirmWithNotify={(message) => void finishCloseWithNotify(message)}
+          onCancel={() => {
+            if (closeNotifyPending) return;
+            setCloseNotifyTicket(null);
+            setCloseNotifyPhase("ask");
+            setCloseNotifyIdempotencyKey(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -634,19 +841,36 @@ function TicketInboxRowItem({
   ticket,
   locale,
   canAssign,
+  canChangeStatus,
+  canChangePriority,
+  canClose,
+  canReopen,
   onOpen,
   onAssign,
+  onChangeStatus,
+  onChangePriority,
+  onCloseTicket,
+  onReopenTicket,
   t,
 }: {
   ticket: TicketInboxRow;
   locale: string;
   canAssign: boolean;
+  canChangeStatus: boolean;
+  canChangePriority: boolean;
+  canClose: boolean;
+  canReopen: boolean;
   onOpen: () => void;
   onAssign: () => void;
+  onChangeStatus: () => void;
+  onChangePriority: () => void;
+  onCloseTicket: () => void;
+  onReopenTicket: () => void;
   t: (key: string, opts?: Record<string, string>) => string;
 }) {
   const customerLabel = ticket.customerName || t("tickets.360.noCustomer");
   const phoneLabel = ticket.customerPhone || "—";
+  const isTerminal = ticket.status === "closed" || ticket.status === "resolved";
 
   return (
     <li>
@@ -688,15 +912,16 @@ function TicketInboxRowItem({
           className="hidden min-w-0 truncate text-start font-mono text-sm text-muted-foreground xl:block"
           title={phoneLabel}
         >
-          {/* Keep cell direction from the table (RTL/LTR); isolate phone digits as an LTR run. */}
           <span dir="ltr" className="inline-block max-w-full truncate tabular-nums">
             {phoneLabel}
           </span>
         </span>
-        <span className="hidden min-w-0 truncate text-sm text-muted-foreground xl:block">
-          {ticket.channelType
-            ? t(`tickets.channels.${ticket.channelType}`, { defaultValue: ticket.channelType })
-            : "—"}
+        <span className="hidden min-w-0 xl:block">
+          {ticket.channelType ? (
+            <InboxChannelBadge channelType={ticket.channelType} size="sm" />
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          )}
         </span>
         <span className="min-w-0 overflow-hidden">
           <TicketStatusBadge status={ticket.status} label={t(`tickets.status.${ticket.status}`)} />
@@ -721,21 +946,21 @@ function TicketInboxRowItem({
         </span>
         <span className="flex min-w-0 items-center justify-end gap-2 text-xs text-muted-foreground xl:justify-start">
           <span className="truncate xl:hidden">{formatTicketDateTime(ticket.updatedAt, locale)}</span>
-          {canAssign ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 shrink-0 gap-1 rounded-lg px-2"
-              onClick={(event) => {
-                event.stopPropagation();
-                onAssign();
-              }}
-            >
-              <UserPlus className="size-3" aria-hidden />
-              {t("tickets.assign")}
-            </Button>
-          ) : null}
+          <TicketInboxRowActions
+            canAssign={canAssign}
+            canChangeStatus={canChangeStatus}
+            canChangePriority={canChangePriority}
+            canClose={canClose}
+            canReopen={canReopen}
+            isTerminal={isTerminal}
+            onViewDetails={onOpen}
+            onAssign={onAssign}
+            onChangeStatus={onChangeStatus}
+            onChangePriority={onChangePriority}
+            onCloseTicket={onCloseTicket}
+            onReopenTicket={onReopenTicket}
+            t={t}
+          />
         </span>
       </div>
     </li>

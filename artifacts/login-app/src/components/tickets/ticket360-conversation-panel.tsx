@@ -73,21 +73,38 @@ export function Ticket360ConversationPanel({
     );
   }
 
-  const channelLabel =
-    data.channelType || channelType
-      ? t(`tickets.channels.${data.channelType || channelType}`, {
-          defaultValue: String(data.channelType || channelType),
-        })
-      : null;
+  const channelCode = data.channelType || channelType;
+  const channelLabel = channelCode
+    ? t(`tickets.channels.${channelCode}`, { defaultValue: channelCode })
+    : null;
+
+  const metaBar = (
+    <div className="grid gap-2 rounded-xl border border-border/50 bg-muted/10 px-3.5 py-3 text-xs sm:grid-cols-3">
+      <div>
+        <p className="text-[11px] font-medium text-muted-foreground">{t("tickets.columns.channel")}</p>
+        <p className="mt-0.5 text-sm font-medium text-foreground">
+          {channelLabel || t("tickets.360.noChannel")}
+        </p>
+      </div>
+      <div>
+        <p className="text-[11px] font-medium text-muted-foreground">{t("tickets.360.conversationRef")}</p>
+        <p dir="ltr" className="mt-0.5 font-mono text-sm font-medium tabular-nums text-foreground">
+          {conversationId.slice(0, 8)}…
+        </p>
+      </div>
+      <div>
+        <p className="text-[11px] font-medium text-muted-foreground">{t("tickets.360.messageCountLabel")}</p>
+        <p className="mt-0.5 text-sm font-medium text-foreground">
+          {t("tickets.360.messageCount", { count: data.messages.length })}
+        </p>
+      </div>
+    </div>
+  );
 
   if (data.messages.length === 0) {
     return (
       <div className="space-y-3 p-5 sm:p-6">
-        {channelLabel ? (
-          <p className="text-xs text-muted-foreground">
-            {t("tickets.columns.channel")}: {channelLabel}
-          </p>
-        ) : null}
+        {metaBar}
         <EnterpriseEmptyState
           icon={<MessageSquare className="size-6" aria-hidden />}
           title={t("tickets.360.conversationEmptyTitle")}
@@ -99,52 +116,41 @@ export function Ticket360ConversationPanel({
 
   return (
     <div className="space-y-3 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <p>
-          {channelLabel ? (
-            <>
-              {t("tickets.columns.channel")}: {channelLabel}
-            </>
-          ) : (
-            t("tickets.360.conversationRef")
-          )}
-        </p>
-        <p dir="ltr" className="font-mono">
-          {conversationId.slice(0, 8)}…
-        </p>
-      </div>
+      {metaBar}
 
       <ul className="space-y-2" aria-label={t("tickets.360.tabs.conversation")}>
         {data.messages.map((message) => {
           const outgoing = message.messageType === "outgoing";
+          const typeKey = `tickets.360.messageType.${message.messageType}`;
+          const typeLabel = message.isInternalNote
+            ? t("tickets.internalNote")
+            : i18n.exists(typeKey)
+              ? t(typeKey)
+              : t("tickets.360.messageType.system");
           return (
             <li
               key={message.id}
               className={cn(
-                "rounded-xl border border-border/50 px-3 py-2.5 text-sm",
+                "rounded-xl border border-border/50 px-3.5 py-3 text-sm",
                 message.isInternalNote && "border-amber-500/30 bg-amber-500/5",
-                outgoing && "bg-muted/20",
+                outgoing && !message.isInternalNote && "bg-muted/20",
               )}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {message.isInternalNote
-                    ? t("tickets.internalNote")
-                    : t(`tickets.360.messageType.${message.messageType}`, {
-                        defaultValue: message.messageType,
-                      })}
-                </p>
+                <span className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {typeLabel}
+                </span>
                 <TicketDateTime
                   value={message.createdAt}
                   locale={i18n.language}
-                  className="text-[11px] text-muted-foreground"
+                  className="text-[11px] tabular-nums text-muted-foreground"
                 />
               </div>
-              <p className="mt-1 whitespace-pre-wrap break-words" dir="auto">
+              <p className="mt-2 whitespace-pre-wrap break-words leading-relaxed" dir="auto">
                 {message.content?.trim() || "—"}
               </p>
               {message.attachmentUrl ? (
-                <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Paperclip className="size-3" aria-hidden />
                   <a
                     href={message.attachmentUrl}

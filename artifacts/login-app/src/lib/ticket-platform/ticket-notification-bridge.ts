@@ -18,6 +18,8 @@ export function createTicketNotificationBridge(): TicketNotificationPort {
         const recipientUserId = input.recipientUserId?.trim();
         if (!recipientUserId) return;
 
+        const ticketNumber = input.ticketNumber?.trim() || "";
+        const subject = input.subject?.trim() || "";
         const { notifications } = getNotificationServices();
         await notifications.createNotification({
           companyId: input.companyId,
@@ -29,11 +31,14 @@ export function createTicketNotificationBridge(): TicketNotificationPort {
             title: NOTIFICATION_EVENT_BY_KIND[input.kind],
             kind: NOTIFICATION_EVENT_BY_KIND[input.kind],
             ticketId: input.ticketId,
-            ticketNumber: input.ticketNumber,
-            subject: input.subject,
-            body: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
-            detail: [input.ticketNumber, input.subject].filter(Boolean).join(" — "),
-            ...(input.metadata ?? {}),
+            ticketNumber,
+            subject,
+            // Keep detail empty so compose builds a clean "TKT — subject" once.
+            detail: "",
+            body: "",
+            entityType: "ticket",
+            entityId: input.ticketId,
+            navigationTarget: `/dashboard/tickets?ticketId=${encodeURIComponent(input.ticketId)}`,
           },
         });
       } catch (error) {

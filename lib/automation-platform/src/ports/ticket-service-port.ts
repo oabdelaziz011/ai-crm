@@ -21,6 +21,7 @@ export type CreateAutomationTicketInput = {
   priority?: string;
   customerId?: string;
   conversationId?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type AssignAutomationTicketInput = {

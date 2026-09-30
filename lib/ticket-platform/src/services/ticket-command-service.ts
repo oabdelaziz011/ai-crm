@@ -99,22 +99,41 @@ export class TicketCommandService {
 
     const subject = readRequiredString(input.subject, "Subject");
     const priority = readPriority(input.priority);
-    const ticketNumber = await this.deps.tickets.generateTicketNumber(input.companyId);
     const slaDueAt = await this.resolveSlaDueAt(input.companyId, priority);
 
-    const record = await this.deps.tickets.create({
-      companyId: input.companyId,
-      ticketNumber,
-      subject,
-      description: readOptionalString(input.description) ?? "",
-      priority,
-      status: "open",
-      customerId: readOptionalString(input.customerId) ?? null,
-      conversationId: readOptionalString(input.conversationId) ?? null,
-      createdBy: actorUserId,
-      slaDueAt,
-      metadata: input.metadata ?? {},
-    });
+    // Retry allocate+insert on rare unique collisions (sequence lag / concurrent creates).
+    const maxAttempts = 5;
+    let record: Awaited<ReturnType<TicketRepository["create"]>> | null = null;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const ticketNumber = await this.deps.tickets.generateTicketNumber(input.companyId);
+      try {
+        record = await this.deps.tickets.create({
+          companyId: input.companyId,
+          ticketNumber,
+          subject,
+          description: readOptionalString(input.description) ?? "",
+          priority,
+          status: "open",
+          customerId: readOptionalString(input.customerId) ?? null,
+          conversationId: readOptionalString(input.conversationId) ?? null,
+          createdBy: actorUserId,
+          slaDueAt,
+          metadata: input.metadata ?? {},
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+        if (!isTicketNumberUniqueViolation(error) || attempt === maxAttempts) {
+          throw error;
+        }
+      }
+    }
+    if (!record) {
+      throw lastError instanceof Error
+        ? lastError
+        : new Error("Failed to create support ticket after unique retries");
+    }
 
     // Ticket row is already committed via PostgREST. Side-effects must never fail create_ticket —
     // otherwise the customer gets "can't file complaint" while an open ticket already exists.
@@ -665,4 +684,14 @@ export class TicketCommandService {
       });
     }
   }
+}
+
+function isTicketNumberUniqueViolation(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("support_tickets_company_id_ticket_number_key") ||
+    (normalized.includes("duplicate key") && normalized.includes("ticket_number")) ||
+    normalized.includes("23505")
+  );
 }

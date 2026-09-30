@@ -17,6 +17,7 @@ export type CreateTicketRepositoryInput = {
   status: TicketStatus;
   customerId?: string | null;
   conversationId?: string | null;
+  originChannel?: string | null;
   createdBy: string;
   slaDueAt: string;
   metadata?: Record<string, unknown>;
@@ -31,6 +32,7 @@ export type UpdateTicketRepositoryInput = {
   status?: TicketStatus;
   priority?: TicketPriority;
   assignedUserId?: string | null;
+  originChannel?: string | null;
   closedAt?: string | null;
   closedBy?: string | null;
   reopenedAt?: string | null;

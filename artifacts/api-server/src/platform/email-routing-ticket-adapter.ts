@@ -192,6 +192,63 @@ export function createEmailRoutingTicketActionPort(
       });
     },
 
+    async listDepartmentQueueCandidates(input) {
+      const scopedCompany = input.companyId?.trim() ?? "";
+      const scopedDepartment = input.departmentId?.trim() ?? "";
+      if (!scopedCompany || !scopedDepartment) return [];
+
+      const { data: department, error: deptError } = await client
+        .from("organization_departments")
+        .select("id, company_id, is_active")
+        .eq("id", scopedDepartment)
+        .eq("company_id", scopedCompany)
+        .maybeSingle();
+      if (deptError) throw new Error(deptError.message);
+      if (!department?.id || department.is_active === false) return [];
+
+      const { data: profiles, error: profileError } = await client
+        .from("profiles")
+        .select("id, department_id, is_active")
+        .eq("company_id", scopedCompany)
+        .eq("department_id", scopedDepartment)
+        .eq("is_active", true);
+      if (profileError) throw new Error(profileError.message);
+
+      const userIds = (profiles ?? [])
+        .map((row) => (typeof row.id === "string" ? row.id.trim() : ""))
+        .filter(Boolean);
+      if (userIds.length === 0) return [];
+
+      const { data: openConversations, error: openError } = await client
+        .from("conversations")
+        .select("assigned_user_id, updated_at")
+        .eq("company_id", scopedCompany)
+        .eq("channel_type", "email")
+        .is("deleted_at", null)
+        .in("assigned_user_id", userIds)
+        .neq("state", "closed");
+      if (openError) throw new Error(openError.message);
+
+      const counts = new Map<string, number>();
+      const lastAssigned = new Map<string, string>();
+      for (const row of openConversations ?? []) {
+        const uid = typeof row.assigned_user_id === "string" ? row.assigned_user_id.trim() : "";
+        if (!uid) continue;
+        counts.set(uid, (counts.get(uid) ?? 0) + 1);
+        const updatedAt = typeof row.updated_at === "string" ? row.updated_at : null;
+        if (updatedAt) {
+          const prev = lastAssigned.get(uid);
+          if (!prev || updatedAt > prev) lastAssigned.set(uid, updatedAt);
+        }
+      }
+
+      return userIds.map((userId) => ({
+        userId,
+        activeConversationCount: counts.get(userId) ?? 0,
+        lastAssignedAt: lastAssigned.get(userId) ?? null,
+      }));
+    },
+
     async verifyCustomerCompanyScope(input) {
       const scopedCompany = input.companyId?.trim() ?? "";
       const scopedCustomer = input.customerId?.trim() ?? "";

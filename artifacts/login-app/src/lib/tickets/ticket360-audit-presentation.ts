@@ -149,6 +149,7 @@ export function localizeTicketAuditFieldValue(
   field: string,
   value: unknown,
   t: TicketAuditTranslate,
+  locale?: string,
 ): string {
   if (value == null || value === "") {
     if (field === "assignedUserId") return t("tickets.filter.unassigned");
@@ -175,8 +176,46 @@ export function localizeTicketAuditFieldValue(
     if (!translated || translated === key) return code;
     return translated;
   }
+  if (
+    field === "createdAt" ||
+    field === "updatedAt" ||
+    field === "resolvedAt" ||
+    field === "closedAt" ||
+    field === "slaDueAt"
+  ) {
+    const raw = String(value);
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) {
+      try {
+        return new Intl.DateTimeFormat(locale || undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          numberingSystem: "latn",
+        }).format(date);
+      } catch {
+        return raw;
+      }
+    }
+  }
+  if (field === "customerId" || field === "conversationId" || field === "id") {
+    const raw = String(value).trim();
+    if (/^[0-9a-f-]{20,}$/i.test(raw)) return `${raw.slice(0, 8)}…`;
+  }
   return String(value);
 }
+
+/** Fields that are too technical for the operator-facing create snapshot. */
+export const TICKET_AUDIT_HIDDEN_SNAPSHOT_FIELDS = new Set([
+  "id",
+  "companyId",
+  "conversationId",
+  "metadata",
+  "old",
+  "new",
+]);
 
 export function formatTicketAuditTimelineDate(
   value: string | null | undefined,

@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TicketSlaBadge } from "@/components/tickets/ticket-badges";
+import { InboxChannelBadge } from "@/components/conversations/inbox-channel-badge";
 import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
@@ -54,10 +55,17 @@ export function Ticket360Header({
             <Ticket className="size-4 text-muted-foreground" aria-hidden />
           </div>
           <div className="min-w-0 flex-1 space-y-2.5">
-            <div className="space-y-0.5">
-              <p dir="ltr" className="font-mono text-[12px] text-muted-foreground">
-                {ticket.ticketNumber}
-              </p>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p dir="ltr" className="font-mono text-[12px] text-muted-foreground">
+                  {ticket.ticketNumber}
+                </p>
+                {ticket.channelType ? (
+                  <InboxChannelBadge channelType={ticket.channelType} size="sm" />
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">{t("tickets.360.noChannel")}</span>
+                )}
+              </div>
               <h2 className="truncate text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground">
                 {ticket.subject}
               </h2>
@@ -66,6 +74,13 @@ export function Ticket360Header({
                   ? [ticket.customerName, ticket.customerPhone].filter(Boolean).join(" · ")
                   : t("tickets.360.noCustomer")}
               </p>
+              {ticket.conversationId && ticket.channelType ? (
+                <p className="text-[11px] text-muted-foreground">
+                  {t("tickets.360.channelLinkedHint", {
+                    channel: t(`tickets.channels.${ticket.channelType}`),
+                  })}
+                </p>
+              ) : null}
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -83,10 +98,7 @@ export function Ticket360Header({
                     }}
                   >
                     <SelectTrigger
-                      className={cn(
-                        "h-9 rounded-lg",
-                        statusPending && "opacity-70",
-                      )}
+                      className={cn("h-9 rounded-lg", statusPending && "opacity-70")}
                       aria-busy={statusPending}
                     >
                       <SelectValue />

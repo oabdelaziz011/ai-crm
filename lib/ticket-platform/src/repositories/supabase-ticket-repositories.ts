@@ -42,6 +42,7 @@ function mapTicketRow(
     priority: String(row.priority) as TicketPriority,
     customerId: row.customer_id ? String(row.customer_id) : null,
     conversationId: row.conversation_id ? String(row.conversation_id) : null,
+    originChannel: row.origin_channel ? String(row.origin_channel).trim() || null : null,
     assignedUserId: row.assigned_user_id ? String(row.assigned_user_id) : null,
     assignedUserName: assigneeName,
     createdBy: row.created_by ? String(row.created_by) : null,
@@ -181,6 +182,40 @@ export function createSupabaseTicketRepository(client: SupabaseClient): TicketRe
     },
 
     async create(input) {
+      let originChannel =
+        typeof input.originChannel === "string" && input.originChannel.trim()
+          ? input.originChannel.trim().toLowerCase()
+          : null;
+
+      const metadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+      if (!originChannel) {
+        const fromMeta =
+          (typeof metadata.channelKey === "string" && metadata.channelKey.trim()) ||
+          (typeof metadata.originChannel === "string" && metadata.originChannel.trim()) ||
+          (typeof metadata.source === "string" && metadata.source.trim()) ||
+          "";
+        originChannel = fromMeta ? fromMeta.toLowerCase() : null;
+      }
+
+      if (!originChannel && input.conversationId) {
+        const { data: conversation } = await client
+          .from("conversations")
+          .select("channel_type")
+          .eq("id", input.conversationId)
+          .eq("company_id", input.companyId)
+          .maybeSingle();
+        const channelType =
+          conversation && typeof conversation.channel_type === "string"
+            ? conversation.channel_type.trim().toLowerCase()
+            : "";
+        if (channelType) originChannel = channelType;
+      }
+
+      if (originChannel) {
+        metadata.originChannel = originChannel;
+        if (!metadata.channelKey) metadata.channelKey = originChannel;
+      }
+
       const { data, error } = await client
         .from("support_tickets")
         .insert({
@@ -192,10 +227,11 @@ export function createSupabaseTicketRepository(client: SupabaseClient): TicketRe
           status: input.status,
           customer_id: input.customerId ?? null,
           conversation_id: input.conversationId ?? null,
+          origin_channel: originChannel,
           created_by: input.createdBy,
           updated_by: input.createdBy,
           sla_due_at: input.slaDueAt,
-          metadata: input.metadata ?? {},
+          metadata,
         })
         .select("*")
         .single();
@@ -210,6 +246,7 @@ export function createSupabaseTicketRepository(client: SupabaseClient): TicketRe
       if (input.status != null) patch.status = input.status;
       if (input.priority != null) patch.priority = input.priority;
       if (input.assignedUserId !== undefined) patch.assigned_user_id = input.assignedUserId;
+      if (input.originChannel !== undefined) patch.origin_channel = input.originChannel;
       if (input.closedAt !== undefined) patch.closed_at = input.closedAt;
       if (input.closedBy !== undefined) patch.closed_by = input.closedBy;
       if (input.reopenedAt !== undefined) patch.reopened_at = input.reopenedAt;

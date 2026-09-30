@@ -1,6 +1,7 @@
 import type { TicketSummary } from "@workspace/ticket-platform";
 import { supabase } from "@/lib/supabase";
 import { resolveTicketSlaState, type TicketSlaState } from "./ticket-inbox-metrics";
+import { resolveTicketOriginChannel } from "./ticket-origin-channel";
 
 export type TicketInboxRow = TicketSummary & {
   customerName: string | null;
@@ -86,12 +87,17 @@ export async function enrichTicketInboxRows(
       ? conversationById.get(ticket.conversationId)
       : undefined;
     const customer = ticket.customerId ? customerById.get(ticket.customerId) : undefined;
+    const channelType =
+      resolveTicketOriginChannel({
+        originChannel: ticket.originChannel,
+        conversationChannelType: conversation?.channelType ?? null,
+      }) ?? null;
     return {
       ...ticket,
       customerName: customer?.name ?? null,
       customerPhone: customer?.phone ?? null,
       customerEmail: customer?.email ?? null,
-      channelType: conversation?.channelType ?? null,
+      channelType,
       lastCustomerActivityAt: conversation?.lastCustomerActivityAt ?? null,
       slaState: resolveTicketSlaState({
         slaDueAt: ticket.slaDueAt,

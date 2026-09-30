@@ -75,6 +75,13 @@ export async function executeCreateTicketAction(
   const customerId = readCustomerId(scope, normalized.customer) || undefined;
   const conversationId = resolveInboxConversationId(context.variables) ?? undefined;
   const actorUserId = resolveActorUserId(context);
+  const channelHint =
+    readVariableByKey(scope, "channelKey") ||
+    readVariableByKey(scope, "channel") ||
+    readVariableByKey(scope, "channel_type") ||
+    readString((context.variables as Record<string, unknown>).channelKey) ||
+    readString((context.variables as Record<string, unknown>).channel) ||
+    undefined;
 
   const { ticket } = await ticketService.createTicket({
     companyId: context.company.id,
@@ -84,6 +91,9 @@ export async function executeCreateTicketAction(
     priority,
     customerId,
     conversationId,
+    metadata: channelHint
+      ? { channelKey: channelHint, originChannel: channelHint, source: "automation" }
+      : { source: "automation" },
   });
 
   return {

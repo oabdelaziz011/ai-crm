@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   deriveEmailThreadLifecycle,
   readEmailRoutingMeta,
+  resolveEmailRoutedDepartmentLabel,
 } from "./email-thread-lifecycle.ts";
 
 describe("email thread lifecycle presentation", () => {
@@ -27,6 +28,7 @@ describe("email thread lifecycle presentation", () => {
       hasOutgoing: true,
       hasDraft: true,
       assignedUserId: "emp-1",
+      routedTargetLabel: "Quality Assurance",
       latestOutgoingStatus: "delivered",
       routing,
       ticketNumber: "TKT-000124",
@@ -36,6 +38,48 @@ describe("email thread lifecycle presentation", () => {
       ["received", "classified", "assigned", "ticket", "drafted", "sent", "delivered"],
     );
     assert.equal(events.find((e) => e.id === "ticket")?.detail, "reused:TKT-000124");
+    assert.equal(events.find((e) => e.id === "assigned")?.detail, "Quality Assurance");
+  });
+
+  it("shows manual_review when configuration is still required", () => {
+    const routing = readEmailRoutingMeta({
+      emailRoutingClassification: { category: "general_inquiry", confidence: 0.4 },
+      emailRoutingDecision: { configurationRequired: true },
+    });
+    const events = deriveEmailThreadLifecycle({
+      hasIncoming: true,
+      hasOutgoing: false,
+      hasDraft: false,
+      routing,
+    });
+    assert.deepEqual(events.map((e) => e.id), ["received", "classified", "manual_review"]);
+  });
+
+  it("resolves routed department label from ownership or routing target", () => {
+    const departmentsById = new Map([
+      ["dept-qa", "قسم اختبار الجودة"],
+      ["dept-sales", "قسم المبيعات"],
+    ]);
+    assert.equal(
+      resolveEmailRoutedDepartmentLabel({
+        departmentId: "dept-qa",
+        routing: readEmailRoutingMeta({
+          emailRoutingDecision: { targetType: "department", targetId: "dept-sales" },
+        }),
+        departmentsById,
+      }),
+      "قسم اختبار الجودة",
+    );
+    assert.equal(
+      resolveEmailRoutedDepartmentLabel({
+        departmentId: null,
+        routing: readEmailRoutingMeta({
+          emailRoutingDecision: { targetType: "department", targetId: "dept-sales" },
+        }),
+        departmentsById,
+      }),
+      "قسم المبيعات",
+    );
   });
 
   it("does not invent SLA or ticket when none exist", () => {

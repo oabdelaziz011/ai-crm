@@ -16,14 +16,18 @@ import {
   CompanyPermissionDeniedError,
   requireCompanyPermission,
 } from "../lib/has-company-permission.js";
+import {
+  COMPANY_CHANNEL_SELECT,
+  pickCompanyEmailChannel,
+  toPublicEmailWorkspaceChannel,
+  type CompanyChannelRow,
+} from "../lib/company-email-channel.js";
 
 const router: IRouter = Router();
 
 router.use(providerOpsRateLimiter);
 router.use(requireSupabaseAuth);
 router.use(requireCompanyScope("companyId"));
-
-const EMAIL_CHANNEL_PROVIDERS = new Set(["email", "generic.email", "smtp"]);
 
 function getServiceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -65,56 +69,6 @@ function resolveEffectiveCompanyId(req: Request): string {
   return effectiveCompanyId;
 }
 
-function readTrimmedString(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function readKey(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-type CompanyChannelRow = {
-  id: string;
-  company_id: string;
-  display_name: string | null;
-  is_enabled: boolean | null;
-  provider: string | null;
-  configuration: Record<string, unknown> | null;
-  communication_channel?: { key?: string | null } | { key?: string | null }[] | null;
-};
-
-function communicationChannelKey(row: CompanyChannelRow): string {
-  const embedded = row.communication_channel;
-  if (Array.isArray(embedded)) return readKey(embedded[0]?.key);
-  return readKey(embedded?.key);
-}
-
-function isCompanyEmailChannelRow(companyId: string, row: CompanyChannelRow): boolean {
-  if (row.company_id !== companyId) return false;
-  if (communicationChannelKey(row) === "email") return true;
-  if (readKey(row.configuration?.channelKey) === "email") return true;
-  if (EMAIL_CHANNEL_PROVIDERS.has(readKey(row.provider))) return true;
-  if (readTrimmedString(row.configuration?.fromEmail)) return true;
-  if (readKey(row.configuration?.credentialsSource) === "company_email_settings") return true;
-  return readKey(row.configuration?.outboundProvider) === "smtp";
-}
-
-function pickCompanyEmailChannel(companyId: string, rows: CompanyChannelRow[]): CompanyChannelRow | null {
-  const matches = rows.filter((row) => isCompanyEmailChannelRow(companyId, row));
-  return matches.find((row) => row.is_enabled !== false) ?? matches[0] ?? null;
-}
-
-function toPublicEmailWorkspaceChannel(row: CompanyChannelRow) {
-  return {
-    id: row.id,
-    companyId: row.company_id,
-    displayName: readTrimmedString(row.display_name),
-    isEnabled: row.is_enabled !== false,
-    fromEmail: readTrimmedString(row.configuration?.fromEmail),
-    fromName: readTrimmedString(row.configuration?.fromName),
-  };
-}
-
 router.post("/email/workspace-channel", async (req, res, next) => {
   try {
     const companyId = resolveEffectiveCompanyId(req);
@@ -134,9 +88,7 @@ router.post("/email/workspace-channel", async (req, res, next) => {
     const client = getServiceClient();
     const { data, error } = await client
       .from("company_channels")
-      .select(
-        "id, company_id, display_name, is_enabled, provider, configuration, communication_channel:communication_channels(key)",
-      )
+      .select(COMPANY_CHANNEL_SELECT)
       .eq("company_id", companyId)
       .is("deleted_at", null);
 

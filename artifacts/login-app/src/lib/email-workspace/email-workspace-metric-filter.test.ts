@@ -142,6 +142,19 @@ describe("email workspace metric filter membership", () => {
     assert.equal(matchesEmailWorkspaceMetricFilter(outbound, "sent"), true);
   });
 
+  it("keeps auto-acknowledgement threads in Incoming (awaiting human), not Sent", () => {
+    const ackOnly = baseConversation({
+      id: "ack-1",
+      last_message_at: "2026-01-02T00:00:00.000Z",
+      last_message_preview: "Thank you for contacting us.",
+      last_participant_type: "employee",
+      metadata: { emailLastOutboundKind: "acknowledgement" },
+    });
+    assert.equal(conversationHasSuccessfulEmailOutbound(ackOnly), false);
+    assert.equal(matchesEmailWorkspaceMetricFilter(ackOnly, "incoming"), true);
+    assert.equal(matchesEmailWorkspaceMetricFilter(ackOnly, "sent"), false);
+  });
+
   it("maps Sent / Failed using existing outbound conversation signals", () => {
     const sent = baseConversation({
       id: "sent-1",

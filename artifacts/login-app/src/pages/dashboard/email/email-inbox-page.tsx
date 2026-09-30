@@ -3,6 +3,7 @@ import { EmailInboxMetrics } from "@/components/email/email-inbox-metrics";
 import { EmailSetupStatusCard } from "@/components/email/email-setup-status-card";
 import { EmailWorkspacePanel } from "@/components/email/email-workspace-panel";
 import { useEmailControlCenter } from "@/hooks/email/use-email-control-center";
+import { useEmailWorkspaceExpand } from "@/hooks/email/use-email-workspace-expand";
 
 /**
  * Email Inbox landing — workspace-first IA.
@@ -10,21 +11,25 @@ import { useEmailControlCenter } from "@/hooks/email/use-email-control-center";
  *
  * Top chrome (Control Center + metrics) is height-capped and scrolls internally
  * so the conversation list/thread/composer always keep a definite remaining pane.
+ * Expanded mode hides that chrome so the workspace card fills the module shell.
  */
 export function EmailInboxPage() {
   const { snapshot, isLoading } = useEmailControlCenter();
+  const { expanded } = useEmailWorkspaceExpand();
   const showFirstTime = snapshot.settingsLoaded && !snapshot.emailConfigured && !isLoading;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div
-        className="max-h-[min(28vh,16rem)] shrink-0 space-y-1.5 overflow-y-auto pb-1.5"
-        data-testid="email-inbox-top-chrome"
-      >
-        {showFirstTime ? <EmailFirstTimeOnboarding /> : null}
-        <EmailSetupStatusCard />
-        {showFirstTime ? null : <EmailInboxMetrics />}
-      </div>
+      {!expanded ? (
+        <div
+          className="max-h-[min(28vh,16rem)] shrink-0 space-y-1.5 overflow-y-auto pb-1.5"
+          data-testid="email-inbox-top-chrome"
+        >
+          {showFirstTime ? <EmailFirstTimeOnboarding /> : null}
+          <EmailSetupStatusCard />
+          {showFirstTime ? null : <EmailInboxMetrics />}
+        </div>
+      ) : null}
 
       <section
         className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"

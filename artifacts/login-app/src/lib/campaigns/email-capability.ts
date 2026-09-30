@@ -46,6 +46,28 @@ export function resolveCampaignOutboundEmail(customer: { email?: string | null }
 }
 
 /**
+ * Pure outbound readiness for campaigns.
+ * - SMTP: host + password (username alone is not enough)
+ * - Microsoft Graph: real OAuth token required (provider flag alone is not enough)
+ * - gmail_api: never ready (no send client)
+ */
+export function isEmailCampaignOutboundTransportReady(settings: {
+  fromEmail: string;
+  smtpHost: string;
+  smtpUsername: string;
+  hasSmtpPassword: boolean;
+  hasOauthToken: boolean;
+  outboundProvider: string;
+}): boolean {
+  const fromEmail = settings.fromEmail.trim();
+  if (!fromEmail) return false;
+  const smtpReady = Boolean(settings.smtpHost.trim()) && settings.hasSmtpPassword;
+  const graphReady =
+    settings.hasOauthToken && settings.outboundProvider === "microsoft_graph";
+  return smtpReady || graphReady;
+}
+
+/**
  * Resolves Email campaign availability:
  * email_channel commercial entitlement AND mailbox/SMTP config used by Email Workspace.
  */
@@ -106,9 +128,16 @@ export class EmailCampaignCapabilityChecker {
     }
 
     const fromEmail = settings.fromEmail.trim();
-    const smtpReady = Boolean(settings.smtpHost.trim()) && (settings.hasSmtpPassword || Boolean(settings.smtpUsername.trim()));
-    const oauthReady = settings.hasOauthToken || settings.outboundProvider === "gmail_api" || settings.outboundProvider === "microsoft_graph";
-    if (!fromEmail || (!smtpReady && !oauthReady)) {
+    if (
+      !isEmailCampaignOutboundTransportReady({
+        fromEmail: settings.fromEmail,
+        smtpHost: settings.smtpHost,
+        smtpUsername: settings.smtpUsername,
+        hasSmtpPassword: settings.hasSmtpPassword,
+        hasOauthToken: settings.hasOauthToken,
+        outboundProvider: settings.outboundProvider,
+      })
+    ) {
       return {
         available: false,
         reason: "credentials_incomplete",

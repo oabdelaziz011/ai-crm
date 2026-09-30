@@ -7,5 +7,6 @@ export * from "./llm-email-routing-classifier.js";
 export * from "./email-routing-engine-contract.js";
 export * from "./email-routing-engine.js";
 export * from "./email-routing-ticket-action.js";
+export * from "./pick-department-queue-assignee.js";
 export * from "./classify-email.js";
 export * from "./resolve-email-conversation-department-ownership.js";

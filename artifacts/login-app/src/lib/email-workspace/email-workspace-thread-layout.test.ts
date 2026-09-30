@@ -96,7 +96,7 @@ describe("email workspace thread layout", () => {
     assert.match(panelSrc, /className="min-h-0 flex-1 overflow-y-auto"/);
     assert.doesNotMatch(panelSrc, /overflow-y-scroll/);
     assert.match(panelSrc, /data-testid="email-workspace-context-panel"/);
-    assert.match(panelSrc, /selectedId \? "hidden xl:block" : "hidden"/);
+    assert.match(panelSrc, /selectedId && !contextCollapsed \? "hidden xl:block" : "hidden"/);
   });
 
   it("caps inbox top chrome so the workspace pane keeps a definite remaining height", () => {
@@ -106,10 +106,12 @@ describe("email workspace thread layout", () => {
     assert.match(inboxPageSrc, /max-h-\[min\(28vh,16rem\)\]/);
     assert.match(inboxPageSrc, /data-testid="email-workspace-height-shell"/);
     assert.match(inboxPageSrc, /flex h-full min-h-0 flex-1 flex-col overflow-hidden/);
+    assert.match(inboxPageSrc, /useEmailWorkspaceExpand/);
+    assert.match(inboxPageSrc, /!expanded/);
     assert.match(setupCardSrc, /data-testid="email-control-center"/);
     assert.match(setupCardSrc, /useState\(true\)/);
-    assert.match(setupCardSrc, /collapsed \? "px-3 py-1.5"/);
-    assert.match(setupCardSrc, /flex min-w-0 items-center gap-1.5/);
+    assert.match(setupCardSrc, /collapsed \? "px-3 py-1\.5"/);
+    assert.match(setupCardSrc, /flex min-w-0 items-center gap-1\.5/);
     assert.match(setupCardSrc, /snapshot\.cards\.map/);
   });
 
@@ -121,6 +123,23 @@ describe("email workspace thread layout", () => {
     assert.match(panelSrc, /data-testid="email-workspace-heading"/);
     assert.match(panelSrc, /emailModule\.workspace\.title/);
     assert.match(panelSrc, /emailModule\.workspace\.subtitle/);
+  });
+
+  it("offers expand/collapse so the workspace card can fill the module shell", () => {
+    assert.match(emailLayoutSrc, /EmailWorkspaceExpandProvider/);
+    assert.match(emailLayoutSrc, /data-email-workspace-expanded/);
+    assert.match(panelSrc, /data-testid="email-workspace-expand-toggle"/);
+    assert.match(panelSrc, /Maximize2/);
+    assert.match(panelSrc, /Minimize2/);
+    assert.match(panelSrc, /toggleWorkspaceExpanded/);
+  });
+
+  it("supports independent collapse of list and context side panels", () => {
+    assert.match(panelSrc, /useEmailWorkspaceSidePanels/);
+    assert.match(panelSrc, /data-testid="email-workspace-list-collapse"/);
+    assert.match(panelSrc, /data-testid="email-workspace-context-collapse"/);
+    assert.match(panelSrc, /listCollapsed/);
+    assert.match(panelSrc, /contextCollapsed/);
   });
 
   it("does not render Delivery Activity on the Email Inbox page", () => {

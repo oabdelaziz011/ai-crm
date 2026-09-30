@@ -117,4 +117,39 @@ describe("DefaultEmailRoutingEngine (Sprint 4)", () => {
     assert.equal(decision.targetType, "unresolved");
     assert.match(decision.reason, /Low classification confidence/i);
   });
+
+  it("low confidence still uses configured general_inquiry target when resolver has one", async () => {
+    const resolver: EmailRoutingTargetResolver = {
+      resolveTarget({ category }) {
+        if (category !== "general_inquiry") return null;
+        return { targetType: "team", targetId: "team-general-1" };
+      },
+    };
+    const decision = await createEmailRoutingEngine({ targetResolver: resolver }).route({
+      companyId: "co-1",
+      classification: classification("sales", 0.2),
+    });
+    assert.equal(decision.category, "general_inquiry");
+    assert.equal(decision.targetType, "team");
+    assert.equal(decision.targetId, "team-general-1");
+    assert.equal(decision.configurationRequired, false);
+    assert.match(decision.reason, /Low classification confidence/i);
+    assert.match(decision.reason, /configured General Inquiry/i);
+  });
+
+  it("low confidence stays configurationRequired when general_inquiry has no target", async () => {
+    const resolver: EmailRoutingTargetResolver = {
+      resolveTarget({ category }) {
+        if (category === "sales") return { targetType: "team", targetId: "team-sales-1" };
+        return null;
+      },
+    };
+    const decision = await createEmailRoutingEngine({ targetResolver: resolver }).route({
+      companyId: "co-1",
+      classification: classification("sales", 0.2),
+    });
+    assert.equal(decision.category, "general_inquiry");
+    assert.equal(decision.targetType, "unresolved");
+    assert.equal(decision.configurationRequired, true);
+  });
 });

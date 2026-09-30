@@ -7,6 +7,7 @@ export type EmailLifecycleEventId =
   | "received"
   | "classified"
   | "assigned"
+  | "manual_review"
   | "ticket"
   | "drafted"
   | "sent"
@@ -27,6 +28,8 @@ export function readEmailRoutingMeta(metadata: Record<string, unknown> | null | 
   category: string | null;
   confidence: number | null;
   targetId: string | null;
+  targetType: string | null;
+  configurationRequired: boolean | null;
   ticket: EmailRoutingTicketMeta | null;
 } {
   const classification =
@@ -47,11 +50,16 @@ export function readEmailRoutingMeta(metadata: Record<string, unknown> | null | 
   const category =
     typeof classification?.category === "string" ? classification.category : null;
   const targetId = typeof decision?.targetId === "string" ? decision.targetId : null;
+  const targetType = typeof decision?.targetType === "string" ? decision.targetType : null;
+  const configurationRequired =
+    typeof decision?.configurationRequired === "boolean" ? decision.configurationRequired : null;
 
   return {
     category,
     confidence,
     targetId,
+    targetType,
+    configurationRequired,
     ticket: ticket
       ? {
           status: typeof ticket.status === "string" ? ticket.status : null,
@@ -61,11 +69,33 @@ export function readEmailRoutingMeta(metadata: Record<string, unknown> | null | 
   };
 }
 
+/**
+ * Resolve a human-readable routed department/team label for lifecycle + list chips.
+ * Prefer conversation.department_id (ownership stamp), then routing target when type=department.
+ */
+export function resolveEmailRoutedDepartmentLabel(input: {
+  departmentId?: string | null;
+  routing: ReturnType<typeof readEmailRoutingMeta>;
+  departmentsById: ReadonlyMap<string, string>;
+}): string | null {
+  const fromOwnership = input.departmentId?.trim() || null;
+  const fromRouting =
+    input.routing.targetType === "department" && input.routing.targetId?.trim()
+      ? input.routing.targetId.trim()
+      : null;
+  const id = fromOwnership || fromRouting;
+  if (!id) return null;
+  const name = input.departmentsById.get(id)?.trim();
+  return name || null;
+}
+
 export function deriveEmailThreadLifecycle(input: {
   hasIncoming: boolean;
   hasOutgoing: boolean;
   hasDraft: boolean;
   assignedUserId?: string | null;
+  /** Display name for routed department / team when known. */
+  routedTargetLabel?: string | null;
   latestOutgoingStatus?: string | null;
   routing: ReturnType<typeof readEmailRoutingMeta>;
   ticketNumber?: string | null;
@@ -83,7 +113,13 @@ export function deriveEmailThreadLifecycle(input: {
     });
   }
   if (input.assignedUserId || input.routing.targetId) {
-    events.push({ id: "assigned" });
+    const label = input.routedTargetLabel?.trim();
+    events.push({
+      id: "assigned",
+      detail: label || undefined,
+    });
+  } else if (input.routing.configurationRequired === true) {
+    events.push({ id: "manual_review" });
   }
   const ticketNumber = input.ticketNumber || input.routing.ticket?.ticketNumber;
   if (ticketNumber) {

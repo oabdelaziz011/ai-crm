@@ -120,6 +120,16 @@ router.post(
       await assertRouteCommercialFeature(companyId, "email_channel");
       await requireRequestCompanyPermission(req, companyId, EMAIL_CONNECTION_PERMISSION);
 
+      if (mailboxProvider === "microsoft_365" && !readMicrosoftEmailOAuthEnv()) {
+        res.status(400).json({
+          error: "microsoft_oauth_not_configured",
+          message:
+            "Microsoft 365 OAuth is not configured on this server. IMAP/SMTP settings were left unchanged.",
+          microsoftOAuthConfigured: false,
+        });
+        return;
+      }
+
       const preset = EMAIL_PROVIDER_PRESETS[mailboxProvider];
       const platform = getWebhookPlatform();
 

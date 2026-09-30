@@ -71,14 +71,10 @@ export class DefaultEmailRoutingEngine implements EmailRoutingEngine {
         : 0;
 
     let category = normalizeCategory(String(input.classification.category ?? ""));
+    const lowConfidence = confidence < this.lowConfidenceThreshold;
 
-    if (confidence < this.lowConfidenceThreshold) {
+    if (lowConfidence) {
       category = DEFAULT_EMAIL_ROUTING_CATEGORY;
-      return unresolvedDecision({
-        category,
-        confidence,
-        reason: `Low classification confidence (${confidence.toFixed(2)} < ${this.lowConfidenceThreshold}); defaulting to ${CATEGORY_ROUTE_LABEL[category]} route (configuration still required)`,
-      });
     }
 
     const resolved = this.options.targetResolver
@@ -94,7 +90,9 @@ export class DefaultEmailRoutingEngine implements EmailRoutingEngine {
         targetId: resolved.targetId.trim(),
         category,
         confidence,
-        reason: `Routed ${CATEGORY_ROUTE_LABEL[category]} to configured ${resolved.targetType} target`,
+        reason: lowConfidence
+          ? `Low classification confidence (${confidence.toFixed(2)} < ${this.lowConfidenceThreshold}); falling back to configured ${CATEGORY_ROUTE_LABEL[category]} route`
+          : `Routed ${CATEGORY_ROUTE_LABEL[category]} to configured ${resolved.targetType} target`,
         source: "classification",
         configurationRequired: false,
       };
@@ -103,7 +101,9 @@ export class DefaultEmailRoutingEngine implements EmailRoutingEngine {
     return unresolvedDecision({
       category,
       confidence,
-      reason: `Mapped to ${CATEGORY_ROUTE_LABEL[category]} route; no configured routing target (awaiting configuration)`,
+      reason: lowConfidence
+        ? `Low classification confidence (${confidence.toFixed(2)} < ${this.lowConfidenceThreshold}); defaulting to ${CATEGORY_ROUTE_LABEL[category]} route (configuration still required)`
+        : `Mapped to ${CATEGORY_ROUTE_LABEL[category]} route; no configured routing target (awaiting configuration)`,
     });
   }
 }

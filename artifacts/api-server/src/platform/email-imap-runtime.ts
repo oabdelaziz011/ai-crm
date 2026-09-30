@@ -4,6 +4,49 @@ import { normalizeEmailMessageId } from "@workspace/channel-platform";
 /** Max full-source MIME fetches per poll tick. Unbounded `start:*` with source kills IMAP on large mailboxes. */
 const IMAP_POLL_SOURCE_BATCH_SIZE = 20;
 
+type ImapFlowClient = {
+  connect: () => Promise<void>;
+  logout: () => Promise<void>;
+  close?: () => Promise<void> | void;
+  mailboxOpen: (mailbox: string) => Promise<unknown>;
+  getMailboxLock: (mailbox: string) => Promise<{ release: () => void }>;
+  mailbox?: { uidNext?: number } | null;
+  fetch: (
+    range: string,
+    query: Record<string, unknown>,
+    options?: { uid?: boolean },
+  ) => AsyncIterable<{
+    uid?: number;
+    source?: Buffer;
+    envelope?: unknown;
+  }>;
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
+};
+
+/**
+ * imapflow emits socket `timeout`/`error` on the client EventEmitter.
+ * Without a listener those become process-level uncaughtException and kill api-server.
+ */
+function attachImapClientErrorSink(client: ImapFlowClient): void {
+  client.on("error", () => {
+    // Swallowed: callers handle connect/fetch failures via await rejection.
+    // Late socket timeouts after logout must not crash the process.
+  });
+}
+
+async function safeImapDisconnect(client: ImapFlowClient): Promise<void> {
+  try {
+    await client.logout();
+  } catch {
+    // ignore logout errors after failed connect / already-closed sockets
+  }
+  try {
+    await client.close?.();
+  } catch {
+    // ignore
+  }
+}
+
 /** Lightweight IMAP login probe for staged connection tests (does not fetch mail). */
 export async function probeImapConnection(config: EmailChannelConfiguration): Promise<{
   ok: boolean;
@@ -22,19 +65,16 @@ export async function probeImapConnection(config: EmailChannelConfiguration): Pr
       pass: config.imapPassword ?? config.smtpPassword,
     },
     logger: false,
-  });
+  }) as ImapFlowClient;
+  attachImapClientErrorSink(client);
   try {
     await client.connect();
     const mailbox = config.imapMailbox ?? "INBOX";
     await client.mailboxOpen(mailbox);
-    await client.logout();
+    await safeImapDisconnect(client);
     return { ok: true };
   } catch (error) {
-    try {
-      await client.logout();
-    } catch {
-      // ignore logout errors after failed connect
-    }
+    await safeImapDisconnect(client);
     return {
       ok: false,
       error: error instanceof Error ? error.message.slice(0, 120) : "imap_connect_failed",
@@ -59,7 +99,8 @@ export async function fetchImapRuntimeMessages(input: {
       pass: input.config.imapPassword ?? input.config.smtpPassword,
     },
     logger: false,
-  });
+  }) as ImapFlowClient;
+  attachImapClientErrorSink(client);
 
   const mailbox = input.mailbox ?? input.config.imapMailbox ?? "INBOX";
   const messages: EmailImapRuntimeMessage[] = [];
@@ -144,7 +185,7 @@ export async function fetchImapRuntimeMessages(input: {
       lock.release();
     }
   } finally {
-    await client.logout();
+    await safeImapDisconnect(client);
   }
 
   return messages;

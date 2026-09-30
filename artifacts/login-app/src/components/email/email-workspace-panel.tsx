@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearch } from "wouter";
-import { Bell, BellOff, Paperclip, PanelRight, Sparkles, Ticket, X } from "lucide-react";
+import { Bell, BellOff, ChevronRight, Maximize2, Minimize2, PanelLeftClose, PanelRight, PanelRightClose, Paperclip, Sparkles, Ticket, X } from "lucide-react";
 import type { ConversationMessageRecord, ConversationRecord } from "@workspace/ai-conversation";
 import type { EmailComposerMode } from "@workspace/channel-platform";
 import {
@@ -40,6 +40,8 @@ import { useCompanyBrandCenter } from "@/hooks/company-workspace/use-company-bra
 import { useAiAssistantSettings } from "@/hooks/use-ai-assistant-settings";
 import { useEmailSettings, useEmailWorkspaceCompanyChannel } from "@/hooks/notifications/use-email-health";
 import { useEmailTemplates } from "@/hooks/email/use-email-templates";
+import { useEmailWorkspaceExpand } from "@/hooks/email/use-email-workspace-expand";
+import { useEmailWorkspaceSidePanels } from "@/hooks/email/use-email-workspace-side-panels";
 import {
   applyAiHtmlBody,
   buildComposerOutboundHtml,
@@ -61,7 +63,9 @@ import {
 import {
   deriveEmailThreadLifecycle,
   readEmailRoutingMeta,
+  resolveEmailRoutedDepartmentLabel,
 } from "@/lib/email-workspace/email-thread-lifecycle";
+import { useOrganizationDepartments } from "@/hooks/organization/use-organization-departments";
 import {
   localizeEmailTicketPriority,
   localizeEmailTicketStatus,
@@ -105,6 +109,7 @@ import {
   evaluateNewEmailStart,
   formatCompanyFromIdentity,
   invalidComposerAddresses,
+  isValidComposerEmailAddress,
   listCompanyEmailSenderOptions,
   resolveNewEmailAssistantId,
   resolveNewEmailCompanyChannelId,
@@ -364,6 +369,15 @@ export function EmailWorkspacePanel({
   forcedMetric = null,
 }: EmailWorkspacePanelProps) {
   const { t, i18n } = useTranslation("common");
+  const { expanded: workspaceExpanded, toggleExpanded: toggleWorkspaceExpanded } =
+    useEmailWorkspaceExpand();
+  const {
+    listCollapsed,
+    contextCollapsed,
+    toggleListCollapsed,
+    toggleContextCollapsed,
+    setContextCollapsed,
+  } = useEmailWorkspaceSidePanels();
   const { user, profile, company } = useAuth();
   const { isSuperAdmin, hasPermission } = useAuthUser();
   const { isRefreshing: rbacRefreshing } = usePermissions();
@@ -402,6 +416,14 @@ export function EmailWorkspacePanel({
   });
   const { data: brandCenter } = useCompanyBrandCenter(companyId, Boolean(companyId));
   const { data: myEmailIdentity } = useMyEmailIdentity(Boolean(companyId));
+  const departmentsQuery = useOrganizationDepartments(companyId, true);
+  const departmentsById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const dept of departmentsQuery.data ?? []) {
+      if (dept.id && dept.name?.trim()) map.set(dept.id, dept.name.trim());
+    }
+    return map;
+  }, [departmentsQuery.data]);
   const trustedCompany = useMemo(
     () => ({
       profileCompanyId: companyId,
@@ -464,6 +486,12 @@ export function EmailWorkspacePanel({
   const composeRequest = useMemo(() => {
     const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
     return params.get("compose")?.trim() || null;
+  }, [search]);
+
+  const composeToRequest = useMemo(() => {
+    const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+    const to = params.get("to")?.trim() || "";
+    return to && isValidComposerEmailAddress(to) ? to : null;
   }, [search]);
 
   const metricFilter = useMemo(
@@ -573,6 +601,15 @@ export function EmailWorkspacePanel({
     },
   });
   const assigneeFilterEmployees = assigneeFilterEmployeesQuery.data ?? [];
+  const assigneeNamesByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of assigneeFilterEmployees) {
+      const id = row.userId?.trim();
+      const name = row.fullName?.trim();
+      if (id && name) map.set(id, name);
+    }
+    return map;
+  }, [assigneeFilterEmployees]);
   const [soundEnabled, setSoundEnabled] = useState(() =>
     typeof window === "undefined" ? true : isDeskSoundEnabled(),
   );
@@ -817,6 +854,20 @@ export function EmailWorkspacePanel({
     [messages, selected?.external_thread_id, selected?.metadata?.subject],
   );
 
+  const selectedRouting = useMemo(
+    () => readEmailRoutingMeta(selected?.metadata),
+    [selected?.metadata],
+  );
+  const selectedRoutedDepartmentLabel = useMemo(
+    () =>
+      resolveEmailRoutedDepartmentLabel({
+        departmentId: selected?.department_id,
+        routing: selectedRouting,
+        departmentsById,
+      }),
+    [departmentsById, selected?.department_id, selectedRouting],
+  );
+
   const lifecycle = useMemo(() => {
     const outgoing = messages.filter((m) => m.message_type === "outgoing");
     const latestOutgoing = outgoing[outgoing.length - 1];
@@ -830,11 +881,18 @@ export function EmailWorkspacePanel({
       hasOutgoing: outgoing.length > 0,
       hasDraft: activeDraft,
       assignedUserId: selected?.assigned_user_id,
+      routedTargetLabel: selectedRoutedDepartmentLabel,
       latestOutgoingStatus: latestOutgoing?.status ?? null,
-      routing: readEmailRoutingMeta(selected?.metadata),
+      routing: selectedRouting,
       ticketNumber: ticketQuery.data?.ticketNumber ?? null,
     });
-  }, [messages, selected?.assigned_user_id, selected?.metadata, ticketQuery.data?.ticketNumber]);
+  }, [
+    messages,
+    selected?.assigned_user_id,
+    selectedRoutedDepartmentLabel,
+    selectedRouting,
+    ticketQuery.data?.ticketNumber,
+  ]);
 
   const selectedListDisplay = useMemo(() => {
     if (!selected || !companyId) return null;
@@ -1364,7 +1422,7 @@ export function EmailWorkspacePanel({
         setPendingCreatedConversation(null);
         setComposer({
           mode: "compose",
-          to: [],
+          to: composeToRequest ? [composeToRequest] : [],
           cc: [],
           bcc: [],
           subject: "",
@@ -1409,7 +1467,7 @@ export function EmailWorkspacePanel({
       setPendingCreatedConversation(created);
       setComposer({
         mode: "compose",
-        to: [],
+        to: composeToRequest ? [composeToRequest] : [],
         cc: [],
         bcc: [],
         subject: "",
@@ -1466,6 +1524,7 @@ export function EmailWorkspacePanel({
     companyId,
     companySignatureHtml,
     composeRequest,
+    composeToRequest,
     conversations,
     context,
     emailChannelEntitled,
@@ -2506,19 +2565,48 @@ export function EmailWorkspacePanel({
 
   return (
     <DashboardCard
-      className="flex h-full min-h-0 flex-col overflow-hidden p-0"
+      className={cn(
+        "flex h-full min-h-0 flex-col overflow-hidden p-0",
+        workspaceExpanded && "rounded-none border-x-0 border-b-0 shadow-none",
+      )}
       data-email-resolver="authoritative-v4"
+      data-email-workspace-expanded={workspaceExpanded ? "true" : "false"}
     >
       <div
-        className="flex shrink-0 items-baseline gap-2 border-b border-border px-3 py-1.5"
+        className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5"
         data-testid="email-workspace-heading"
       >
         <h2 className="shrink-0 text-sm font-semibold tracking-tight">
           {t("emailModule.workspace.title")}
         </h2>
-        <p className="min-w-0 truncate text-xs text-muted-foreground">
+        <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {t("emailModule.workspace.subtitle")}
         </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={toggleWorkspaceExpanded}
+          aria-pressed={workspaceExpanded}
+          aria-label={
+            workspaceExpanded
+              ? t("emailModule.workspace.collapseWorkspaceAria")
+              : t("emailModule.workspace.expandWorkspaceAria")
+          }
+          title={
+            workspaceExpanded
+              ? t("emailModule.workspace.collapseWorkspace")
+              : t("emailModule.workspace.expandWorkspace")
+          }
+          data-testid="email-workspace-expand-toggle"
+        >
+          {workspaceExpanded ? (
+            <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+          )}
+        </Button>
       </div>
       {/*
         Scroll ownership (desktop):
@@ -2531,12 +2619,39 @@ export function EmailWorkspacePanel({
       <div
         className={cn(
           "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden",
-          selectedId
-            ? "xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)_minmax(16rem,18rem)]"
-            : "xl:grid-cols-[minmax(26rem,34rem)_minmax(0,1fr)]",
+          (() => {
+            if (!selectedId) {
+              return listCollapsed
+                ? "xl:grid-cols-[2.75rem_minmax(0,1fr)]"
+                : "xl:grid-cols-[minmax(26rem,34rem)_minmax(0,1fr)]";
+            }
+            if (listCollapsed && contextCollapsed) return "xl:grid-cols-[2.75rem_minmax(0,1fr)]";
+            if (listCollapsed) return "xl:grid-cols-[2.75rem_minmax(0,1fr)_minmax(16rem,18rem)]";
+            if (contextCollapsed) return "xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)]";
+            return "xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)_minmax(16rem,18rem)]";
+          })(),
         )}
       >
         {/* Conversation list */}
+        {listCollapsed ? (
+          <aside
+            className="hidden min-h-0 flex-col items-center border-b border-border xl:flex xl:border-b-0 xl:border-e"
+            data-testid="email-workspace-list-collapsed"
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="m-1.5 h-7 w-7"
+              onClick={toggleListCollapsed}
+              aria-label={t("emailModule.workspace.expandListAria")}
+              title={t("emailModule.workspace.expandList")}
+              data-testid="email-workspace-list-expand"
+            >
+              <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden />
+            </Button>
+          </aside>
+        ) : (
         <aside className="flex min-h-0 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-e">
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-2 py-2">
             <Input
@@ -2546,6 +2661,18 @@ export function EmailWorkspacePanel({
               aria-label={t("emailModule.workspace.searchPlaceholder")}
               className="h-8 min-w-[10rem] flex-1"
             />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="hidden h-8 w-8 shrink-0 xl:inline-flex"
+              onClick={toggleListCollapsed}
+              aria-label={t("emailModule.workspace.collapseListAria")}
+              title={t("emailModule.workspace.collapseList")}
+              data-testid="email-workspace-list-collapse"
+            >
+              <PanelLeftClose className="h-3.5 w-3.5" aria-hidden />
+            </Button>
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="hidden text-xs text-muted-foreground sm:inline">
                 {t("emailModule.workspace.filterAssignedTo")}
@@ -2687,6 +2814,14 @@ export function EmailWorkspacePanel({
                       : item.lastDirection === "outgoing"
                         ? t("emailModule.workspace.outgoing")
                         : null;
+                  const listRoutedDepartmentLabel = resolveEmailRoutedDepartmentLabel({
+                    departmentId: conversation.department_id,
+                    routing: readEmailRoutingMeta(conversation.metadata),
+                    departmentsById,
+                  });
+                  const listAssigneeLabel = conversation.assigned_user_id
+                    ? assigneeNamesByUserId.get(conversation.assigned_user_id) ?? null
+                    : null;
                   return (
                     <li key={conversation.id}>
                       <button
@@ -2694,6 +2829,8 @@ export function EmailWorkspacePanel({
                         data-email-conversation-id={conversation.id}
                         data-email-unread={isUnread ? "true" : "false"}
                         data-email-direction={item.lastDirection ?? "unknown"}
+                        data-email-routed-department={listRoutedDepartmentLabel ?? undefined}
+                        data-email-assignee={listAssigneeLabel ?? undefined}
                         className={cn(
                           "w-full border-s-2 px-3 py-1.5 text-start transition-colors hover:bg-muted/50",
                           active && "bg-muted",
@@ -2761,6 +2898,22 @@ export function EmailWorkspacePanel({
                                 {directionLabel}
                               </span>
                             ) : null}
+                            {listRoutedDepartmentLabel ? (
+                              <span
+                                className="truncate rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                                title={listRoutedDepartmentLabel}
+                              >
+                                {listRoutedDepartmentLabel}
+                              </span>
+                            ) : null}
+                            {listAssigneeLabel ? (
+                              <span
+                                className="truncate rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                                title={listAssigneeLabel}
+                              >
+                                {listAssigneeLabel}
+                              </span>
+                            ) : null}
                             {statusLabel ? (
                               <p className="text-[10px] font-medium text-primary">{statusLabel}</p>
                             ) : null}
@@ -2779,6 +2932,7 @@ export function EmailWorkspacePanel({
             )}
           </div>
         </aside>
+        )}
 
         {/* Thread + composer */}
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-e">
@@ -2820,16 +2974,46 @@ export function EmailWorkspacePanel({
                     </span>
                   ) : null}
                   {selectedId ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="ms-auto xl:hidden"
-                      onClick={() => setContextOpen(true)}
-                    >
-                      <PanelRight className="me-1.5 h-3.5 w-3.5" aria-hidden />
-                      {t("emailModule.workspace.contextPanel")}
-                    </Button>
+                    <div className="ms-auto flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="xl:hidden"
+                        onClick={() => setContextOpen(true)}
+                      >
+                        <PanelRight className="me-1.5 h-3.5 w-3.5" aria-hidden />
+                        {t("emailModule.workspace.contextPanel")}
+                      </Button>
+                      {contextCollapsed ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="hidden xl:inline-flex"
+                          onClick={() => setContextCollapsed(false)}
+                          aria-label={t("emailModule.workspace.expandContextAria")}
+                          title={t("emailModule.workspace.expandContext")}
+                          data-testid="email-workspace-context-expand"
+                        >
+                          <PanelRight className="me-1.5 h-3.5 w-3.5" aria-hidden />
+                          {t("emailModule.workspace.contextPanel")}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="hidden h-8 w-8 xl:inline-flex"
+                          onClick={toggleContextCollapsed}
+                          aria-label={t("emailModule.workspace.collapseContextAria")}
+                          title={t("emailModule.workspace.collapseContext")}
+                          data-testid="email-workspace-context-collapse"
+                        >
+                          <PanelRightClose className="h-3.5 w-3.5" aria-hidden />
+                        </Button>
+                      )}
+                    </div>
                   ) : null}
                 </div>
                 {(selectedListDisplay?.subject || snapshot.subject) ? (
@@ -3607,7 +3791,7 @@ export function EmailWorkspacePanel({
         <aside
           className={cn(
             "space-y-4 self-start overflow-y-auto p-4",
-            selectedId ? "hidden xl:block" : "hidden",
+            selectedId && !contextCollapsed ? "hidden xl:block" : "hidden",
           )}
           data-testid="email-workspace-context-panel"
         >

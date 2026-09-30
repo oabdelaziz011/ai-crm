@@ -15,6 +15,7 @@ import { EMAIL_PROVIDER } from "@/lib/notifications/providers/email/types/email-
 import type { EmailsSentCommercialPort } from "@workspace/channel-platform";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CAMPAIGN_ATTACHMENT_BUCKET } from "@/lib/campaigns/campaign-content";
+import { reconcileCampaignRecipientSendSuccess } from "@/lib/campaigns/reconcile-campaign-recipient-delivery";
 import {
   applyCampaignEmailRender,
   parseCampaignEmailAttachmentsFromParams,
@@ -286,6 +287,11 @@ export class EmailProvider {
         timestamp: new Date().toISOString(),
       };
       await this.deliveryLogRepository.append(result);
+      await reconcileCampaignRecipientSendSuccess(this.client, {
+        companyId: item.companyId,
+        queueId: item.id,
+        providerMessageId: item.id,
+      }).catch(() => undefined);
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

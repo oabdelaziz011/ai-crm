@@ -92,12 +92,28 @@ export function conversationHasEmailAiRouting(
   return Boolean(meta && typeof meta === "object" && meta.emailRoutingClassification != null);
 }
 
+/** Auto-ack only — still awaiting a human agent reply. */
+export function conversationLastOutboundIsAcknowledgement(
+  conversation: Pick<ConversationRecord, "metadata">,
+): boolean {
+  const meta = conversation.metadata;
+  if (!meta || typeof meta !== "object") return false;
+  return meta.emailLastOutboundKind === "acknowledgement";
+}
+
+/**
+ * True when an agent/assistant outbound moved the thread out of the customer-waiting inbox.
+ * Automatic acknowledgement alone does NOT count — those threads stay under Incoming.
+ */
 export function conversationHasSuccessfulEmailOutbound(
   conversation: Pick<
     ConversationRecord,
-    "last_message_at" | "last_message_preview" | "last_participant_type"
+    "last_message_at" | "last_message_preview" | "last_participant_type" | "metadata"
   >,
 ): boolean {
+  if (conversationLastOutboundIsAcknowledgement(conversation)) {
+    return false;
+  }
   return (
     Boolean(conversation.last_message_at || conversation.last_message_preview?.trim()) &&
     (conversation.last_participant_type === "employee" ||

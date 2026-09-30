@@ -189,7 +189,11 @@ function mapDecryptedSettings(row: DecryptedSettingsRow): EmailCanonicalCredenti
   const fromEmail = typeof row.from_email === "string" ? row.from_email.trim() : "";
   const smtpHost = typeof row.smtp_host === "string" ? row.smtp_host.trim() : "";
   const oauthAccessToken = typeof row.oauth_token === "string" ? row.oauth_token : "";
-  const outboundProvider = typeof row.outbound_provider === "string" ? row.outbound_provider : "smtp";
+  const rawOutboundProvider = typeof row.outbound_provider === "string" ? row.outbound_provider : "smtp";
+  // Legacy UI value `gmail_api` never had a Graph/Gmail API transport; treat as SMTP.
+  const outboundProvider = rawOutboundProvider === "gmail_api" ? "smtp" : rawOutboundProvider;
+  const rawInboundProvider = typeof row.inbound_provider === "string" ? row.inbound_provider : undefined;
+  const inboundProvider = rawInboundProvider === "gmail_api" ? "imap" : rawInboundProvider;
 
   // Allow Microsoft Graph credentials without SMTP host.
   if (!fromEmail && !smtpHost && !oauthAccessToken) {
@@ -231,7 +235,7 @@ function mapDecryptedSettings(row: DecryptedSettingsRow): EmailCanonicalCredenti
           : undefined,
     maxAttachmentBytes:
       typeof row.max_attachment_bytes === "number" ? row.max_attachment_bytes : undefined,
-    inboundProvider: typeof row.inbound_provider === "string" ? row.inbound_provider : undefined,
+    inboundProvider,
     outboundProvider,
     mailboxProvider: typeof row.mailbox_provider === "string" ? row.mailbox_provider : undefined,
     connectionStatus: typeof row.connection_status === "string" ? row.connection_status : undefined,

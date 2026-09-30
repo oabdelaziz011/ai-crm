@@ -142,23 +142,25 @@ function createMicrosoft365Adapter(options: CreateEmailProviderAdapterOptions): 
       if (!token) {
         return {
           ok: false,
-          stage: stage === "full" ? "full" : "oauth",
+          stage: stage === "full" ? "full" : stage === "incoming" || stage === "outgoing" ? stage : "oauth",
           latencyMs: 0,
           errorCode: EMAIL_PROVIDER_ERROR_CODES.OAUTH_EXPIRED,
         };
       }
-      if (stage === "incoming" || stage === "outgoing") {
-        // Graph uses one OAuth credential for both directions.
-        return { ok: true, stage, latencyMs: Date.now() - started };
-      }
+      // Always probe Graph — a non-empty token string is not proof of a valid credential.
+      // incoming/outgoing share the same OAuth credential on Microsoft 365.
       try {
         await graph.listInboxMessages({ accessToken: token }, { top: 1 });
-        return { ok: true, stage: stage === "oauth" ? "oauth" : "full", latencyMs: Date.now() - started };
+        return {
+          ok: true,
+          stage: stage === "oauth" ? "oauth" : stage === "full" ? "full" : stage,
+          latencyMs: Date.now() - started,
+        };
       } catch (error) {
         const mapped = mapEmailProviderError(error);
         return {
           ok: false,
-          stage: stage === "oauth" ? "oauth" : "full",
+          stage: stage === "oauth" ? "oauth" : stage === "full" ? "full" : stage,
           latencyMs: Date.now() - started,
           errorCode: mapped.code,
         };
@@ -204,6 +206,10 @@ export function resolveEmailProviderAdapterFromConfig(
   }
   if (config.outboundProvider === "microsoft_graph" || config.inboundProvider === "microsoft_graph") {
     return createEmailProviderAdapter("microsoft_365", options);
+  }
+  // Legacy gmail_api had no API client — route through Gmail IMAP/SMTP adapter.
+  if (config.outboundProvider === "gmail_api" || config.inboundProvider === "gmail_api") {
+    return createEmailProviderAdapter("gmail", options);
   }
   const host = `${config.smtpHost ?? ""} ${config.imapHost ?? ""}`.toLowerCase();
   if (host.includes("gmail.com")) {

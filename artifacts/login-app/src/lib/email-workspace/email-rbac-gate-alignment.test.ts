@@ -84,13 +84,20 @@ describe("Email Workspace authorization alignment", () => {
       join(projectRoot, "artifacts/api-server/src/routes/email-workspace-channel.ts"),
       "utf8",
     );
+    const publicMapping = readFileSync(
+      join(projectRoot, "artifacts/api-server/src/lib/company-email-channel.ts"),
+      "utf8",
+    );
     assert.match(route, /requireCompanyPermission\(userClient, companyId, "email.view"\)/);
     assert.match(route, /assertRouteCommercialFeature\(companyId, "email_channel"\)/);
-    assert.match(route, /fromEmail/);
-    assert.doesNotMatch(route, /webhook_secret/);
-    assert.doesNotMatch(route, /smtpPassword/);
-    assert.doesNotMatch(route, /imapPassword/);
     assert.match(route, /toPublicEmailWorkspaceChannel/);
+    assert.match(publicMapping, /export function toPublicEmailWorkspaceChannel/);
+    assert.match(publicMapping, /fromEmail/);
+    for (const src of [route, publicMapping]) {
+      assert.doesNotMatch(src, /webhook_secret/);
+      assert.doesNotMatch(src, /smtpPassword/);
+      assert.doesNotMatch(src, /imapPassword/);
+    }
   });
 
   it("CompanyChannelService list still requires channels.view", () => {

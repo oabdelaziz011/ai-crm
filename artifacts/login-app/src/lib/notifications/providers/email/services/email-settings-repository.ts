@@ -29,13 +29,15 @@ function parseEncryption(value: unknown, fallback: EmailEncryption): EmailEncryp
 function parseInboundProvider(value: unknown): EmailInboundProvider {
   if (value === "webhook") return "webhook";
   if (value === "microsoft_graph") return "microsoft_graph";
-  if (value === "gmail_api") return "gmail_api";
+  // gmail_api has no client — normalize to IMAP (actual Gmail path).
+  if (value === "gmail_api") return "imap";
   return "imap";
 }
 
 function parseOutboundProvider(value: unknown): EmailOutboundProvider {
   if (value === "microsoft_graph") return "microsoft_graph";
-  if (value === "gmail_api") return "gmail_api";
+  // gmail_api has no send client — normalize to SMTP.
+  if (value === "gmail_api") return "smtp";
   return "smtp";
 }
 

@@ -99,18 +99,17 @@ export function EmailConnectProviderPanel({ companyId, draft, onApplyDraft, onSe
   const onSelect = async (provider: EmailMailboxProvider) => {
     setBusy(provider);
     try {
-      applyLocalPreset(provider);
       const base = resolveAuthenticatedApiBase();
-      if (base) {
-        await fetch(`${base}/email/providers/apply-preset`, {
-          method: "POST",
-          headers: await authHeaders(),
-          credentials: "include",
-          body: JSON.stringify({ companyId, mailboxProvider: provider }),
-        });
-      }
 
+      // Microsoft Graph clears IMAP/SMTP hosts. Never apply that preset until OAuth env is confirmed.
       if (provider === "microsoft_365") {
+        if (microsoftConfigured === null) {
+          toast({
+            title: t("emailModule.connect.microsoftStatusLoading"),
+            description: t("emailModule.connect.microsoftStatusLoadingHint"),
+          });
+          return;
+        }
         if (microsoftConfigured === false) {
           toast({
             title: t("emailModule.connect.microsoftNotConfigured"),
@@ -119,6 +118,33 @@ export function EmailConnectProviderPanel({ companyId, draft, onApplyDraft, onSe
           return;
         }
         if (!base) throw new Error("API not configured");
+
+        const apply = await fetch(`${base}/email/providers/apply-preset`, {
+          method: "POST",
+          headers: await authHeaders(),
+          credentials: "include",
+          body: JSON.stringify({ companyId, mailboxProvider: provider }),
+        });
+        const applyBody = (await apply.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+          microsoftOAuthConfigured?: boolean;
+        };
+        if (!apply.ok) {
+          throw new Error(
+            applyBody.message ?? applyBody.error ?? "Could not apply Microsoft 365 preset",
+          );
+        }
+        if (applyBody.microsoftOAuthConfigured === false) {
+          toast({
+            title: t("emailModule.connect.microsoftNotConfigured"),
+            variant: "destructive",
+          });
+          return;
+        }
+
+        applyLocalPreset(provider);
+
         const start = await fetch(`${base}/email/microsoft/oauth/start`, {
           method: "POST",
           headers: await authHeaders(),
@@ -136,6 +162,16 @@ export function EmailConnectProviderPanel({ companyId, draft, onApplyDraft, onSe
         }
         window.location.assign(payload.authorizeUrl);
         return;
+      }
+
+      applyLocalPreset(provider);
+      if (base) {
+        await fetch(`${base}/email/providers/apply-preset`, {
+          method: "POST",
+          headers: await authHeaders(),
+          credentials: "include",
+          body: JSON.stringify({ companyId, mailboxProvider: provider }),
+        });
       }
 
       toast({ title: t("emailModule.connect.presetApplied") });
@@ -197,7 +233,9 @@ export function EmailConnectProviderPanel({ companyId, draft, onApplyDraft, onSe
             key={id}
             type="button"
             data-testid={`email-connect-${id}`}
-            disabled={busy !== null}
+            disabled={
+              busy !== null || (id === "microsoft_365" && microsoftConfigured === false)
+            }
             onClick={() => void onSelect(id)}
             className="flex flex-col items-start gap-2 rounded-md border border-border bg-background p-4 text-start hover:bg-muted/40 disabled:opacity-60"
           >
@@ -213,7 +251,7 @@ export function EmailConnectProviderPanel({ companyId, draft, onApplyDraft, onSe
         <Button
           type="button"
           variant="secondary"
-          disabled={busy !== null}
+          disabled={busy !== null || microsoftConfigured === false}
           onClick={() => void onSelect("microsoft_365")}
           data-testid="email-connect-microsoft-button"
         >

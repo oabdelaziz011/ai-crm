@@ -80,6 +80,11 @@
       "order": 140,
       "label": "Conversations"
     },
+    "webPresence": {
+      "icon": "🌐",
+      "order": 141,
+      "label": "Web Presence"
+    },
     "email": {
       "icon": "✉️",
       "order": 132,
@@ -1536,6 +1541,16 @@
       "name": "View Vector Stores",
       "description": "Allows viewing vector store providers and collections.",
       "group": "aiPlatform"
+    },
+    "web_presence.manage": {
+      "name": "Manage Web Presence",
+      "description": "Configure the company web presence portal and public Live Chat widget.",
+      "group": "webPresence"
+    },
+    "web_presence.view": {
+      "name": "View Web Presence",
+      "description": "Open Live Chat conversations from the public web widget. Conversation visibility still follows View All or View Assigned.",
+      "group": "webPresence"
     },
     "whatsapp.run": {
       "name": "Run WhatsApp Automation (Legacy)",

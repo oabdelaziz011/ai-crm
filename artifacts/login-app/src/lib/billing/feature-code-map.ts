@@ -3,7 +3,7 @@
  * Unmapped platform keys are NOT treated as commercial billing modules.
  */
 
-/** Billing catalog codes from migration 263 (+ 302 catalog split + 340 campaigns). */
+/** Billing catalog codes from migration 263 (+ 302 catalog split + 340 campaigns + 398 web presence). */
 export const BILLING_FEATURE_CODES = [
   "core_crm",
   "customers",
@@ -33,6 +33,8 @@ export const BILLING_FEATURE_CODES = [
   "basic_reports",
   "advanced_reports",
   "api_access",
+  "web_presence_page",
+  "web_chat_widget",
 ] as const;
 
 export type BillingFeatureCode = (typeof BILLING_FEATURE_CODES)[number];

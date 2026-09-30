@@ -95,6 +95,7 @@ export const PERMISSION_FAMILIES: readonly PermissionFamilyDefinition[] = [
       "companies",
       "workspace",
       "dashboard",
+      "webPresence",
     ],
   },
   {

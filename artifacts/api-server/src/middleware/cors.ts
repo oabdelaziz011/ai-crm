@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { PUBLIC_WEB_CHAT_ROUTE_PREFIX } from "../services/public-web-chat/public-web-chat-config.js";
 
 /** Browser origins always permitted to call authenticated /api/* with credentials. */
 export const API_CORS_DEFAULT_ORIGINS = [
@@ -51,8 +52,14 @@ function requestPath(req: Request): string {
   return raw.split("?")[0] || "";
 }
 
+/** Public Web Chat owns its CORS (per-widget allowlist, no credentials). */
+export function isPublicWebChatPath(path: string): boolean {
+  return path === PUBLIC_WEB_CHAT_ROUTE_PREFIX || path.startsWith(`${PUBLIC_WEB_CHAT_ROUTE_PREFIX}/`);
+}
+
 function isApiRequest(req: Request): boolean {
   const path = requestPath(req);
+  if (isPublicWebChatPath(path)) return false;
   return path === "/api" || path.startsWith("/api/");
 }
 

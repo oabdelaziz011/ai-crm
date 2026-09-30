@@ -4,6 +4,8 @@ import session from "express-session";
 import router from "./routes/index.js";
 import webhooksRouter from "./routes/webhooks.js";
 import smsWebhooksRouter from "./routes/sms-webhooks.js";
+import publicWebChatRouter from "./routes/public-web-chat.js";
+import { PUBLIC_WEB_CHAT_ROUTE_PREFIX } from "./services/public-web-chat/public-web-chat-config.js";
 import { logger } from "./lib/logger.js";
 import { applySecurityMiddleware } from "./middleware/security.js";
 import { apiCorsMiddleware } from "./middleware/cors.js";
@@ -67,6 +69,9 @@ app.use(
   express.raw({ type: "application/json", limit: "2mb" }),
   webhooksRouter,
 );
+
+// Public Web Chat: own body limit + CORS; outside the dashboard auth/session chain.
+app.use(PUBLIC_WEB_CHAT_ROUTE_PREFIX, publicWebChatRouter);
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));

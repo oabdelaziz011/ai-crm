@@ -66,6 +66,11 @@ import { createWebhookPlatformFeatureResolver } from "./webhook-ai-workflow-brid
 import { createWebhookEmployeeRuntimePort } from "./webhook-employee-runtime-port.js";
 import { createWebhookChannelCustomerIdentityPort } from "./webhook-channel-customer-identity-port.js";
 import { createScopedRuntimeToolPort } from "./employee-runtime-bridge.js";
+import { createPublicWebChatChannelResolver } from "../services/public-web-chat/public-web-chat-channel-resolver.js";
+import {
+  createPublicWebChatToolGuard,
+  withPublicWebChatEmployeeToolPolicy,
+} from "../services/public-web-chat/public-web-chat-tool-policy.js";
 import { createRpcCommercialEntitlementPort } from "@login-app/lib/ai-employees/utilities/ai-employee-commercial-runtime-gate.js";
 import { createPlatformRuntimeConfigPort } from "./platform-runtime-port.js";
 import { createEmailRoutingTicketActionPort } from "./email-routing-ticket-adapter.js";
@@ -245,9 +250,13 @@ export function getWebhookPlatform(): WebhookPlatform {
     workflowTransferPorts,
     retrieveKnowledge,
   });
-  const tools = createScopedRuntimeToolPort(baseTools, {
-    commercialEntitlement: createRpcCommercialEntitlementPort(client),
-  });
+  const publicWebChatChannels = createPublicWebChatChannelResolver(client);
+  const tools = createPublicWebChatToolGuard(
+    createScopedRuntimeToolPort(baseTools, {
+      commercialEntitlement: createRpcCommercialEntitlementPort(client),
+    }),
+    publicWebChatChannels,
+  );
   const execution = createAIExecutionServices(
     client,
     createEnterpriseRuntimeIntegrations({
@@ -310,7 +319,10 @@ export function getWebhookPlatform(): WebhookPlatform {
     flowValidator: createChannelWorkflowFlowValidator(client),
   });
 
-  const employeeRuntime = createWebhookEmployeeRuntimePort(client);
+  const employeeRuntime = withPublicWebChatEmployeeToolPolicy(
+    createWebhookEmployeeRuntimePort(client),
+    publicWebChatChannels,
+  );
   const customerIdentity = createWebhookChannelCustomerIdentityPort(client);
 
   // Part 6C: inbound ports.automation must NOT use SYSTEM_CONTEXT.

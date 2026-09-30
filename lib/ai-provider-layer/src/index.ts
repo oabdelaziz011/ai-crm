@@ -56,6 +56,7 @@ export * from "./providers/stub-adapters.js";
 export * from "./providers/stub-adapter-base.js";
 export * from "./providers/openai-chat-adapter.js";
 export * from "./providers/mock-provider.js";
+export * from "./providers/sandbox-e2e-provider.js";
 export * from "./factory/ai-provider-factory.js";
 export * from "./repositories/provider-repositories.js";
 export * from "./repositories/supabase-provider-repositories.js";

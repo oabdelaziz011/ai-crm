@@ -17,6 +17,7 @@ import {
   wrapLegacyProviderAsEnterprise,
 } from "../providers/enterprise-provider-bridge.js";
 import { createMockEnterpriseProvider } from "../providers/mock-provider.js";
+import { createSandboxE2EProvider } from "../providers/sandbox-e2e-provider.js";
 import { ExponentialProviderRetryPolicy, executeProviderWithRetry } from "../retry/provider-retry-policy.js";
 import type { AIStreamEvent } from "../streaming/stream-events.js";
 import { createAIProviderLogEvent, logAIProviderEvent } from "../utils/ai-provider-logger.js";
@@ -246,6 +247,7 @@ export function createAIGatewayServices(factory: AIProviderFactory): AIGatewaySe
   const config = new ProviderConfigurationResolver();
   const registry = createEnterpriseAIProviderRegistry({
     mock: (configuration) => createMockEnterpriseProvider(configuration),
+    sandbox: (configuration) => createSandboxE2EProvider(configuration),
   });
   const gateway = new AIGatewayService({
     factory,

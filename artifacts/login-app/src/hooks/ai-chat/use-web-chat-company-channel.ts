@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useChannelRegistryServices } from "@/lib/channel-registry";
+import { selectInternalWebChatChannel } from "@/lib/channels/internal-web-chat-channel";
 
 export function webChatCompanyChannelQueryKey(companyId: string | null) {
   return ["web-chat-company-channel", companyId] as const;
@@ -24,7 +25,7 @@ export function useWebChatCompanyChannel(companyId: string | null) {
         isEnabled: true,
       });
 
-      return channels.find((channel) => channel.is_default) ?? channels[0] ?? null;
+      return selectInternalWebChatChannel(channels);
     },
   });
 }

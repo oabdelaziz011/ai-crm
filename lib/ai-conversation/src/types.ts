@@ -113,6 +113,13 @@ export type ListConversationsFilter = {
   companyId: string;
   state?: ConversationState;
   channelType?: ConversationChannelType;
+  /** Inbox allowlist (WhatsApp/SMS/…). Combined with includePublicWebChat for Live Chat. */
+  channelTypes?: readonly ConversationChannelType[] | readonly string[];
+  /**
+   * When true, public widget rows (valueor.web_widget) are included.
+   * Internal Dashboard AI Chat (`generic.web_chat`) is never included.
+   */
+  includePublicWebChat?: boolean;
   /** CRM Customer 360 / customer-linked lists. Does not widen visibility. */
   customerId?: string | null;
   assignedUserId?: string | null;

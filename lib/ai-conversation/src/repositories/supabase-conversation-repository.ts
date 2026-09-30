@@ -15,6 +15,10 @@ import type {
 } from "../types.js";
 import { buildConversationSearchText, resolveUnreadDelta } from "../message-cache.js";
 import { ConversationNotFoundError, ConversationStateConflictError } from "../errors.js";
+import {
+  buildPublicWebChatChannelScopeOr,
+  PUBLIC_WEB_CHAT_CHANNEL_PROVIDER,
+} from "./public-web-chat-list-scope.js";
 
 const OMNI_LIST_TARGET_ID = "a35d7fff-cac7-47f3-9604-df683e726b71";
 const OMNI_LIST_RT = "[OMNI_LIST]";
@@ -120,7 +124,20 @@ export function createSupabaseConversationRepository(client: SupabaseClient): Co
         .order("created_at", { ascending: false });
 
       if (filter.state) query = query.eq("state", filter.state);
-      if (filter.channelType) query = query.eq("channel_type", filter.channelType);
+      if (filter.channelType) {
+        query = query.eq("channel_type", filter.channelType);
+        if (filter.channelType === "web_chat" && filter.includePublicWebChat) {
+          query = query
+            .eq("metadata->>publicWebChat", "true")
+            .eq("metadata->>channelProvider", PUBLIC_WEB_CHAT_CHANNEL_PROVIDER);
+        }
+      } else if (filter.channelTypes && filter.channelTypes.length > 0) {
+        if (filter.includePublicWebChat) {
+          query = query.or(buildPublicWebChatChannelScopeOr(filter.channelTypes));
+        } else {
+          query = query.in("channel_type", [...filter.channelTypes]);
+        }
+      }
       if (filter.customerId) query = query.eq("customer_id", filter.customerId);
       if (filter.priority) query = query.eq("priority", filter.priority);
       if (filter.hasEmployeeUnread) query = query.gt("unread_count_employee", 0);

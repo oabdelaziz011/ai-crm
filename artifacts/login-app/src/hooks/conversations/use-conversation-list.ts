@@ -19,6 +19,8 @@ import { recordMapRowStage } from "@/lib/omnichannel/debug/omni-list-pipeline-au
 export type ConversationListFilters = {
   state?: ConversationState;
   channelType?: ConversationChannelType;
+  channelTypes?: readonly ConversationChannelType[] | readonly string[];
+  includePublicWebChat?: boolean;
   assignedUserId?: string | null;
   hasEmployeeUnread?: boolean;
   searchQuery?: string;

@@ -599,6 +599,26 @@ export function createSupabaseCompanyChannelRepository(client: SupabaseClient): 
       return mapRow(data as Record<string, unknown>);
     },
 
+    async softDelete(id: string, deletedBy?: string | null): Promise<CompanyChannelRecord> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update({
+          is_enabled: false,
+          status: "disabled",
+          is_default: false,
+          deleted_at: new Date().toISOString(),
+          deleted_by: deletedBy ?? null,
+        })
+        .eq("id", id)
+        .is("deleted_at", null)
+        .select(SELECT_WITH_CHANNEL)
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new CompanyChannelNotFoundError(id);
+      return mapRow(data as Record<string, unknown>);
+    },
+
     async setDefault(companyId: string, companyChannelId: string): Promise<CompanyChannelRecord> {
       const { error: clearError } = await client
         .from(TABLE)

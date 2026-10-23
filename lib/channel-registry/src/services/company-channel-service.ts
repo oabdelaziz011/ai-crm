@@ -456,6 +456,15 @@ export class CompanyChannelService {
     return this.repository.disable(companyChannelId);
   }
 
+  async softDelete(ctx: ServiceContext, companyChannelId: string): Promise<CompanyChannelRecord> {
+    assertPermission(ctx, CHANNEL_PERMISSIONS.manage);
+    const channel = await this.getAccessibleChannel(ctx, companyChannelId);
+    if (channel.is_default) {
+      throw new ValidationError("Cannot delete the default channel. Set another default first.");
+    }
+    return this.repository.softDelete(companyChannelId, ctx.userId ?? null);
+  }
+
   async getDefaultChannel(ctx: ServiceContext, companyId: string): Promise<CompanyChannelRecord | null> {
     assertPermission(ctx, CHANNEL_PERMISSIONS.view);
     assertCompanyAccess(ctx, companyId);

@@ -36,6 +36,7 @@ export interface CompanyChannelRepository {
   updateConfiguration(input: UpdateCompanyChannelConfigurationInput): Promise<CompanyChannelRecord>;
   enable(id: string): Promise<CompanyChannelRecord>;
   disable(id: string): Promise<CompanyChannelRecord>;
+  softDelete(id: string, deletedBy?: string | null): Promise<CompanyChannelRecord>;
   setDefault(companyId: string, companyChannelId: string): Promise<CompanyChannelRecord>;
   updateHealth(input: UpdateCompanyChannelHealthInput): Promise<CompanyChannelRecord>;
 }

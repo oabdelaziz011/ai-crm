@@ -9,6 +9,8 @@ import type {
   ProductType,
   SubscriptionInterval,
 } from "../types.js";
+import { normalizePriceTaxMode, normalizeTaxPercent } from "../product-tax.js";
+import { readProductAliases } from "../product-aliases.js";
 import type {
   CreateProductInput,
   ProductRepository,
@@ -49,6 +51,8 @@ function mapProduct(row: Record<string, unknown>): CatalogProductRecord {
     basePrice: Number(row.base_price ?? 0),
     currency: String(row.currency ?? "USD"),
     taxClass: String(row.tax_class ?? "standard"),
+    priceTaxMode: normalizePriceTaxMode(row.price_tax_mode),
+    taxPercent: normalizeTaxPercent(row.tax_percent),
     cost: num(row.cost),
     marginPercent: num(row.margin_percent),
     isActive: Boolean(row.is_active),
@@ -60,6 +64,7 @@ function mapProduct(row: Record<string, unknown>): CatalogProductRecord {
     stockQuantity: num(row.stock_quantity),
     unit: String(row.unit ?? "each"),
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
+    aliases: readProductAliases(row.aliases),
     imageUrls: Array.isArray(row.image_urls) ? row.image_urls.map(String) : [],
     documentUrls: Array.isArray(row.document_urls) ? row.document_urls.map(String) : [],
     metadata: (row.metadata as Record<string, unknown>) ?? {},
@@ -225,6 +230,8 @@ export function createSupabaseProductRepository(client: SupabaseClient): Product
           base_price: input.basePrice,
           currency: input.currency ?? "USD",
           tax_class: input.taxClass ?? "standard",
+          price_tax_mode: input.priceTaxMode ?? "inclusive",
+          tax_percent: input.taxPercent ?? 0,
           cost: input.cost ?? null,
           margin_percent: input.marginPercent ?? null,
           is_active: input.isActive ?? true,
@@ -234,6 +241,7 @@ export function createSupabaseProductRepository(client: SupabaseClient): Product
           stock_quantity: input.stockQuantity ?? null,
           unit: input.unit ?? "each",
           tags: input.tags ?? [],
+          aliases: input.aliases ?? [],
           image_urls: input.imageUrls ?? [],
           document_urls: input.documentUrls ?? [],
           metadata: input.metadata ?? {},
@@ -260,6 +268,8 @@ export function createSupabaseProductRepository(client: SupabaseClient): Product
       if (input.basePrice !== undefined) patch.base_price = input.basePrice;
       if (input.currency !== undefined) patch.currency = input.currency;
       if (input.taxClass !== undefined) patch.tax_class = input.taxClass;
+      if (input.priceTaxMode !== undefined) patch.price_tax_mode = input.priceTaxMode;
+      if (input.taxPercent !== undefined) patch.tax_percent = input.taxPercent;
       if (input.cost !== undefined) patch.cost = input.cost;
       if (input.marginPercent !== undefined) patch.margin_percent = input.marginPercent;
       if (input.isActive !== undefined) patch.is_active = input.isActive;
@@ -269,6 +279,7 @@ export function createSupabaseProductRepository(client: SupabaseClient): Product
       if (input.stockQuantity !== undefined) patch.stock_quantity = input.stockQuantity;
       if (input.unit !== undefined) patch.unit = input.unit;
       if (input.tags !== undefined) patch.tags = input.tags;
+      if (input.aliases !== undefined) patch.aliases = input.aliases;
       if (input.imageUrls !== undefined) patch.image_urls = input.imageUrls;
       if (input.documentUrls !== undefined) patch.document_urls = input.documentUrls;
       if (input.metadata !== undefined) patch.metadata = input.metadata;

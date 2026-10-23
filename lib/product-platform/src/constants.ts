@@ -12,6 +12,7 @@ export const PRODUCT_TYPES = [
   "subscription",
   "bundle",
   "addon",
+  "real_estate",
 ] as const;
 
 export const PRODUCT_HISTORY_EVENTS = [

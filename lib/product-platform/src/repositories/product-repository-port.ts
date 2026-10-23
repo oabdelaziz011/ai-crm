@@ -8,6 +8,7 @@ import type {
   ProductType,
   SubscriptionInterval,
 } from "../types.js";
+import type { ProductPriceTaxMode } from "../product-tax.js";
 
 export type CreateProductInput = {
   companyId: string;
@@ -20,6 +21,8 @@ export type CreateProductInput = {
   basePrice: number;
   currency?: string;
   taxClass?: string;
+  priceTaxMode?: ProductPriceTaxMode;
+  taxPercent?: number;
   cost?: number | null;
   marginPercent?: number | null;
   isActive?: boolean;
@@ -29,6 +32,7 @@ export type CreateProductInput = {
   stockQuantity?: number | null;
   unit?: string;
   tags?: string[];
+  aliases?: string[];
   imageUrls?: string[];
   documentUrls?: string[];
   metadata?: Record<string, unknown>;

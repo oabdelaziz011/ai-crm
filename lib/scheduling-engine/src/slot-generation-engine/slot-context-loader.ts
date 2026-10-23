@@ -48,11 +48,16 @@ export class SlotContextLoader {
       updated_by: null,
     };
 
+    const bufferWindow = {
+      bufferBeforeMinutes: rules.buffer_before_minutes,
+      bufferAfterMinutes: rules.buffer_after_minutes,
+    };
     const existingBookings = await this.bookingRepo.listByResourceAndDate(
       companyId,
       resourceId,
       date,
       availability.timezone,
+      bufferWindow,
     );
 
     return {
@@ -127,6 +132,10 @@ export class SlotContextLoader {
       resourceIds,
       date,
       timezone,
+      {
+        bufferBeforeMinutes: rules.buffer_before_minutes,
+        bufferAfterMinutes: rules.buffer_after_minutes,
+      },
     );
 
     return resourceIds.map((resourceId, index) => {

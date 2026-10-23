@@ -3,6 +3,7 @@ import {
   type MinutePeriod,
 } from "../availability-engine/period-utils";
 import { TimezoneResolver } from "../availability-engine/timezone-resolver";
+import { absoluteMinutesFromLocalMidnight } from "../booking-domain/booking-time-utils";
 import { SlotGenerator } from "../slot-generation-engine/slot-generator";
 import type {
   ExistingBooking,
@@ -20,7 +21,7 @@ export class BookingConflictResolver {
     return bookings
       .filter((booking) => booking.status !== "Cancelled")
       .map((booking) => ({
-        start: Math.max(0, booking.startMinutes - bufferBeforeMinutes),
+        start: booking.startMinutes - bufferBeforeMinutes,
         end: booking.startMinutes + booking.durationMinutes + bufferAfterMinutes,
       }))
       .filter((interval) => interval.end > interval.start);
@@ -44,6 +45,30 @@ export class BookingConflictResolver {
     });
   }
 
+  /**
+   * True when either booking's company buffer covers the other.
+   * The gap must be at least the larger buffer, not the sum of both.
+   */
+  static conflicts(
+    slotStartMinutes: number,
+    durationMinutes: number,
+    booking: ExistingBooking,
+    bufferBeforeMinutes: number,
+    bufferAfterMinutes: number,
+  ): boolean {
+    if (booking.status === "Cancelled") return false;
+    const slotEnd = slotStartMinutes + durationMinutes;
+    const existingStart = booking.startMinutes;
+    const existingEnd = booking.startMinutes + booking.durationMinutes;
+    const existingBufferCoversSlot =
+      existingStart < slotEnd + bufferBeforeMinutes &&
+      existingEnd > slotStartMinutes - bufferAfterMinutes;
+    const slotBufferCoversExisting =
+      existingStart < slotEnd + bufferAfterMinutes &&
+      existingEnd > slotStartMinutes - bufferBeforeMinutes;
+    return existingBufferCoversSlot || slotBufferCoversExisting;
+  }
+
   static removeBookedSlotsFromBookings(
     slots: SlotStartTime[],
     durationMinutes: number,
@@ -52,17 +77,26 @@ export class BookingConflictResolver {
       SlotGenerationRules,
       "bufferBeforeMinutes" | "bufferAfterMinutes" | "allowOverbooking"
     >,
+    clock?: { date: string; timezone: string },
   ): SlotStartTime[] {
     if (rules.allowOverbooking) {
       return [...slots];
     }
 
-    const blocked = BookingConflictResolver.toBlockedIntervals(
-      bookings,
-      rules.bufferBeforeMinutes,
-      rules.bufferAfterMinutes,
-    );
-    return BookingConflictResolver.removeBookedSlots(slots, durationMinutes, blocked);
+    return slots.filter((slot) => {
+      const startMinutes = clock
+        ? absoluteMinutesFromLocalMidnight(clock.date, slot, clock.timezone)
+        : parseTimeToMinutes(slot);
+      return !bookings.some((booking) =>
+        BookingConflictResolver.conflicts(
+          startMinutes,
+          durationMinutes,
+          booking,
+          rules.bufferBeforeMinutes,
+          rules.bufferAfterMinutes,
+        ),
+      );
+    });
   }
 
   /** Convert legacy booking instant to local start minutes for a calendar date. */

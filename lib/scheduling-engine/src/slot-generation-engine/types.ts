@@ -29,7 +29,7 @@ export type SlotGenerationOptions = {
   date?: string;
 };
 
-/** Normalized existing booking for conflict resolution (local wall-clock). */
+/** Existing booking in absolute minutes from local midnight of the target date. */
 export type ExistingBooking = {
   id: string;
   startMinutes: number;

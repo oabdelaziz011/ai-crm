@@ -58,6 +58,14 @@ export type SchedulingBooking = {
   invoice_id?: string | null;
   /** Company-scoped sequential reference, e.g. BK-000123. */
   confirmation_number?: string | null;
+  amount_cents?: number | null;
+  currency?: string | null;
+  visit_type?: string | null;
+  payment_status?: string | null;
+  discount_cents?: number | null;
+  tax_cents?: number | null;
+  /** Optional create idempotency key (AI demo retries). */
+  client_request_id?: string | null;
 };
 
 export type SchedulingBookingInsert = {
@@ -77,6 +85,13 @@ export type SchedulingBookingInsert = {
   confirmation_number?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
+  amount_cents?: number | null;
+  currency?: string | null;
+  visit_type?: string | null;
+  payment_status?: string | null;
+  discount_cents?: number | null;
+  client_request_id?: string | null;
+  tax_cents?: number | null;
 };
 
 export type CreateBookingInput = {
@@ -91,6 +106,18 @@ export type CreateBookingInput = {
   createdBy?: string | null;
   branchId?: string | null;
   referenceNow?: Date;
+  /** Priced visit type code (New, Consultation, …). Empty uses the service default rule. */
+  visitType?: string | null;
+  /**
+   * Optional create idempotency key. When set, a prior booking with the same
+   * company_id + client_request_id is returned instead of inserting again.
+   */
+  clientRequestId?: string | null;
+  /**
+   * When set (e.g. sales_demo), reject services whose service_kind does not match.
+   * Clinic/operational create paths omit this and keep legacy behavior.
+   */
+  expectedServiceKind?: "operational" | "sales_demo" | null;
 };
 
 export type RescheduleBookingInput = {
@@ -139,7 +166,8 @@ export type BookingValidationErrorCode =
   | "booking_not_found"
   | "invalid_status_transition"
   | "cancellation_window_expired"
-  | "reschedule_window_expired";
+  | "reschedule_window_expired"
+  | "service_kind_mismatch";
 
 export type BookingValidationResult = {
   valid: boolean;

@@ -20,6 +20,22 @@ export class SchedulingServiceCatalogRepository {
     return (data ?? []) as SchedulingService[];
   }
 
+  async listByCompanyAndKind(
+    companyId: string,
+    serviceKind: "operational" | "sales_demo",
+  ): Promise<SchedulingService[]> {
+    const { data, error } = await this.client
+      .from("scheduling_services")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("service_kind", serviceKind)
+      .is("deleted_at", null)
+      .order("name");
+
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SchedulingService[];
+  }
+
   async getById(id: string, companyId: string): Promise<SchedulingService | null> {
     const { data, error } = await this.client
       .from("scheduling_services")

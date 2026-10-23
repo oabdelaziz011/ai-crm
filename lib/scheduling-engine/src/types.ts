@@ -4,6 +4,8 @@ export const SCHEDULING_RESOURCE_TYPES = [
   "doctor",
   "employee",
   "therapist",
+  "instructor",
+  "engineer",
   "room",
   "chair",
   "equipment",
@@ -257,6 +259,10 @@ export const DEFAULT_WEEKLY_HOURS: WeeklyHoursUpsert[] = WEEKDAY_INDICES.map((da
 export const SCHEDULING_SERVICE_STATUSES = ["active", "inactive", "archived"] as const;
 export type SchedulingServiceStatus = (typeof SCHEDULING_SERVICE_STATUSES)[number];
 
+/** Clinic/ops appointments vs sales product demos — same engine, separate catalogs. */
+export const SCHEDULING_SERVICE_KINDS = ["operational", "sales_demo"] as const;
+export type SchedulingServiceKind = (typeof SCHEDULING_SERVICE_KINDS)[number];
+
 export type SchedulingService = {
   id: string;
   company_id: string;
@@ -264,6 +270,8 @@ export type SchedulingService = {
   description: string | null;
   duration_minutes: number;
   status: SchedulingServiceStatus;
+  /** Defaults to operational for legacy rows. */
+  service_kind?: SchedulingServiceKind;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -277,6 +285,7 @@ export type ServiceInsert = {
   description?: string | null;
   duration_minutes?: number;
   status?: SchedulingServiceStatus;
+  service_kind?: SchedulingServiceKind;
   created_by?: string | null;
   updated_by?: string | null;
 };

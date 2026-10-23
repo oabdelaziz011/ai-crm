@@ -17,6 +17,12 @@ import type {
   SchedulingBooking,
 } from "./types.js";
 
+export type PricingSnapshot = {
+  priceCents: number;
+  currency: string;
+  typeCode: string;
+};
+
 export type ValidateBookingParams = {
   companyId: string;
   customerId: string;
@@ -26,6 +32,8 @@ export type ValidateBookingParams = {
   slotStart: string;
   referenceNow?: Date;
   excludeBookingId?: string;
+  /** When set, service.service_kind must match (sales_demo vs operational). */
+  expectedServiceKind?: "operational" | "sales_demo" | null;
 };
 
 export class BookingValidationService {
@@ -34,6 +42,48 @@ export class BookingValidationService {
   private readonly mappingRepo: ResourceServiceMappingRepository;
   private readonly rulesRepo: SchedulingBookingRulesRepository;
   private readonly bookingRepo: BookingRepository;
+
+  /**
+   * Copy the visit-type price at booking time.
+   * Explicit type wins; otherwise the service default priced rule.
+   */
+  async resolvePricingSnapshot(
+    companyId: string,
+    serviceId: string,
+    visitType?: string | null,
+  ): Promise<PricingSnapshot> {
+    const { data, error } = await this.client
+      .from("scheduling_service_pricing_rules")
+      .select("price_cents, currency, is_default, type:scheduling_pricing_rule_types!type_id ( code )")
+      .eq("company_id", companyId)
+      .eq("service_id", serviceId)
+      .is("deleted_at", null);
+    if (error) throw new Error(error.message);
+
+    const rows = (data ?? []) as Array<{
+      price_cents: number | null;
+      currency: string | null;
+      is_default: boolean | null;
+      type: { code?: string | null } | Array<{ code?: string | null }> | null;
+    }>;
+    const typeCodeOf = (row: (typeof rows)[number]) => {
+      const type = Array.isArray(row.type) ? row.type[0] : row.type;
+      return String(type?.code ?? "").trim();
+    };
+    const wanted = visitType?.trim().toLowerCase() ?? "";
+    const matched = wanted
+      ? rows.find((row) => typeCodeOf(row).toLowerCase() === wanted && Number(row.price_cents) > 0)
+      : undefined;
+    const rule = matched ?? rows.find((row) => row.is_default && Number(row.price_cents) > 0) ?? rows.find((row) => Number(row.price_cents) > 0);
+    if (!rule) {
+      return { priceCents: 0, currency: "USD", typeCode: visitType?.trim() || "New" };
+    }
+    return {
+      priceCents: Math.max(0, Number(rule.price_cents) || 0),
+      currency: String(rule.currency ?? "USD").trim().toUpperCase() || "USD",
+      typeCode: typeCodeOf(rule) || visitType?.trim() || "New",
+    };
+  }
 
   constructor(
     private readonly client: SupabaseClient,
@@ -80,6 +130,11 @@ export class BookingValidationService {
       errors.push("service_not_found");
     } else if (service.status !== "active") {
       errors.push("service_inactive");
+    } else if (params.expectedServiceKind) {
+      const kind = (service.service_kind ?? "operational") as string;
+      if (kind !== params.expectedServiceKind) {
+        errors.push("service_kind_mismatch");
+      }
     }
 
     if (service && !capabilities.some((item) => item.id === service.id)) {

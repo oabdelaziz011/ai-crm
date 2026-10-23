@@ -17,6 +17,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ListPagination } from "@/components/ui/list-pagination";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -128,6 +129,17 @@ export type QueueGridFilters = {
   branch: string;
 };
 
+export type QueueGridPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+};
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+
 export type OperationsDataGridProps = {
   columns: OperationsColumnDefinition[];
   rows: OperationsRow[];
@@ -140,8 +152,7 @@ export type OperationsDataGridProps = {
   onSelectionChange: (ids: Set<string>) => void;
   onRowClick: (row: OperationsRow) => void;
   onRowDoubleClick?: (row: OperationsRow) => void;
-  onLoadMore?: () => void;
-  hasMore?: boolean;
+  pagination?: QueueGridPagination;
   density?: "compact" | "comfortable" | "spacious";
   onDensityChange?: (density: "compact" | "comfortable" | "spacious") => void;
   className?: string;
@@ -182,8 +193,7 @@ export function OperationsDataGrid({
   onSelectionChange,
   onRowClick,
   onRowDoubleClick,
-  onLoadMore,
-  hasMore,
+  pagination,
   density = "comfortable",
   onDensityChange,
   className,
@@ -234,6 +244,13 @@ export function OperationsDataGrid({
   const columnLabel = (column: OperationsColumnDefinition) =>
     translateOperationsQueueColumnHeader(t, column.internalName, templateKey, column.displayName);
 
+  const formatPeopleAhead = (raw: unknown) => {
+    if (raw == null || raw === "") return "—";
+    const count = Number(raw);
+    if (!Number.isFinite(count)) return "—";
+    return count === 0 ? t("universalOperations.grid.peopleAhead.next") : String(count);
+  };
+
   const rowHeight = DENSITY_ROW_HEIGHT[density] ?? DENSITY_ROW_HEIGHT.comfortable;
   const window = useMemo(
     () => computeWindow(scrollTop, viewportHeight, rows.length, rowHeight),
@@ -272,7 +289,7 @@ export function OperationsDataGrid({
       onSortChange([{ columnId: column.id, direction: "desc" }]);
       return;
     }
-    onSortChange([{ columnId: "col_scheduled", direction: "asc" }]);
+    onSortChange([{ columnId: "col_queue_number", direction: "asc" }]);
   };
 
   const toggleRow = (id: string) => {
@@ -292,10 +309,15 @@ export function OperationsDataGrid({
     if (!el) return;
     setScrollTop(el.scrollTop);
     setViewportHeight(el.clientHeight);
-    if (hasMore && onLoadMore && el.scrollTop + el.clientHeight >= el.scrollHeight - 120) {
-      onLoadMore();
-    }
-  }, [hasMore, onLoadMore]);
+  }, []);
+
+  const currentPage = pagination?.page;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    setScrollTop(0);
+  }, [currentPage]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -318,6 +340,7 @@ export function OperationsDataGrid({
           if (column.internalName === "appointment_time") text = formatAppointmentTime(raw ?? row.values.scheduled_at);
           if (column.internalName === "scheduled_at") text = formatAppointmentDate(raw ?? row.values.appointment_time);
           if (column.internalName === "waiting_minutes") text = formatWaitingDuration(raw);
+          if (column.internalName === "people_ahead") text = formatPeopleAhead(raw);
           if (column.internalName === "duration_minutes") text = formatDurationMinutes(raw);
           if (column.internalName === "amount") {
             const rowCurrency = String(row.values.currency ?? currencyCode);
@@ -397,6 +420,8 @@ export function OperationsDataGrid({
 
     if (column.internalName === "queue_number") {
       text = String(raw ?? "—");
+    } else if (column.internalName === "people_ahead") {
+      text = formatPeopleAhead(raw);
     } else if (column.internalName === "scheduled_at") {
       text = formatAppointmentDate(raw ?? row.values.appointment_time);
     } else if (column.internalName === "appointment_time") {
@@ -485,6 +510,8 @@ export function OperationsDataGrid({
           column.internalName === "payment_status" ||
           column.internalName === "visit_type" ? (
           <StatusPill label={text} color={pillColor} />
+        ) : column.internalName === "people_ahead" && raw === 0 ? (
+          <StatusPill label={text} color="#16a34a" />
         ) : (
           <span className="block truncate tabular-nums">{text}</span>
         )}
@@ -686,11 +713,15 @@ export function OperationsDataGrid({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("universalOperations.grid.filters.allStatuses")}</SelectItem>
-                {(filterOptions?.statuses ?? []).map((status) => (
-                  <SelectItem key={status.id} value={status.id}>
-                    {translateOperationsStatusLabel(t, status.id, status.displayName, config)}
-                  </SelectItem>
-                ))}
+                {(filterOptions?.statuses ?? []).map((status) => {
+                  const statusKey = `calendar.status.${status.internalName}`;
+                  const statusLabel = t(statusKey);
+                  return (
+                    <SelectItem key={status.id} value={status.id}>
+                      {statusLabel === statusKey ? status.displayName : statusLabel}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
 
@@ -780,10 +811,56 @@ export function OperationsDataGrid({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-between border-t border-border/60 px-2 py-1 text-[11px] text-muted-foreground">
-          <span>{t("universalOperations.grid.rowCount", { count: rows.length })}</span>
-          {selectedIds.size > 0 && (
-            <span>{t("universalOperations.grid.selectedCount", { count: selectedIds.size })}</span>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 px-2 py-1.5 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <span>
+              {pagination && pagination.total > 0
+                ? t("universalOperations.grid.pagination.summary", {
+                    from: (pagination.page - 1) * pagination.pageSize + 1,
+                    to: Math.min(pagination.page * pagination.pageSize, pagination.total),
+                    total: pagination.total,
+                  })
+                : t("universalOperations.grid.rowCount", { count: rows.length })}
+            </span>
+            {selectedIds.size > 0 && (
+              <span>{t("universalOperations.grid.selectedCount", { count: selectedIds.size })}</span>
+            )}
+          </div>
+          {pagination && (
+            <div className="flex items-center gap-2">
+              {pagination.onPageSizeChange && (
+                <Select
+                  value={String(pagination.pageSize)}
+                  onValueChange={(value) => pagination.onPageSizeChange?.(Number(value))}
+                >
+                  <SelectTrigger
+                    className="h-7 w-[7rem] text-[11px]"
+                    aria-label={t("universalOperations.grid.pagination.pageSizeLabel")}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {t("universalOperations.grid.pagination.pageSize", { count: size })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <ListPagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                pageInfoLabel={t("universalOperations.grid.pagination.pageInfo", {
+                  page: pagination.page,
+                  totalPages: pagination.totalPages,
+                })}
+                previousLabel={t("universalOperations.grid.pagination.previous")}
+                nextLabel={t("universalOperations.grid.pagination.next")}
+                onPrevious={() => pagination.onPageChange(pagination.page - 1)}
+                onNext={() => pagination.onPageChange(pagination.page + 1)}
+              />
+            </div>
           )}
         </div>
       </div>

@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 
 const DRAWER_ACTION_ORDER = [
   "appointments.check_in",
-  "appointments.send_to_doctor",
   "appointments.complete_visit",
   "appointments.cancel",
   "billing.collect_payment",
@@ -33,7 +32,6 @@ const DRAWER_ACTION_ORDER = [
 
 const DRAWER_TITLE_KEYS: Record<string, string> = {
   "appointments.check_in": "universalOperations.appointment.actions.checkIn",
-  "appointments.send_to_doctor": "universalOperations.appointment.actions.start",
   "appointments.complete_visit": "universalOperations.appointment.actions.complete",
   "appointments.cancel": "universalOperations.appointment.actions.cancel",
   "billing.collect_payment": "universalOperations.appointment.actions.collectPayment",

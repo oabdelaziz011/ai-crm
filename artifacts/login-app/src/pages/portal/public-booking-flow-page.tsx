@@ -3,8 +3,10 @@ import { Link, useRoute } from "wouter";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
 import {
   usePortalProfile,
   usePortalResources,
@@ -36,7 +38,10 @@ export function PublicBookingFlowPage(_props: PublicBookingFlowPageProps) {
   const [slotStart, setSlotStart] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneRegion, setPhoneRegion] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const phoneCheck = validateCustomerPhoneFormInput({ phone, region: phoneRegion });
+  const phoneReady = phoneCheck.code === "ok" && Boolean(phoneCheck.identity?.phone_e164);
 
   const { data: services = [] } = usePortalServices(companyId);
   const { data: resources = [] } = usePortalResources(companyId, serviceId ?? undefined);
@@ -63,7 +68,12 @@ export function PublicBookingFlowPage(_props: PublicBookingFlowPageProps) {
         resourceId,
         date,
         slotStart,
-        customer: { name, phone, email: email || null },
+        customer: {
+          name,
+          phone: phoneCheck.identity?.phone_e164 ?? phone,
+          phoneRegion,
+          email: email || null,
+        },
       });
       toast.success(t("customerPortal.bookingConfirmed"));
       setStepIndex(STEPS.length - 1);
@@ -155,8 +165,14 @@ export function PublicBookingFlowPage(_props: PublicBookingFlowPageProps) {
                 <Input id="cust-name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="cust-phone">{t("customerPortal.phone")}</Label>
-                <Input id="cust-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <Label htmlFor="cust-phone">{t("customerPortal.phone")} *</Label>
+                <CustomerPhoneInput
+                  id="cust-phone"
+                  phone={phone}
+                  region={phoneRegion}
+                  onPhoneChange={setPhone}
+                  onRegionChange={setPhoneRegion}
+                />
               </div>
               <div>
                 <Label htmlFor="cust-email">{t("customerPortal.email")}</Label>
@@ -170,7 +186,7 @@ export function PublicBookingFlowPage(_props: PublicBookingFlowPageProps) {
               <div>{selectedService?.name}</div>
               <div>{selectedResource?.name}</div>
               <div>{date} {slotStart}</div>
-              <div>{name} · {phone}</div>
+              <div>{name} · {phoneCheck.identity?.phone_e164 ?? phone}</div>
             </div>
           ) : null}
 
@@ -192,7 +208,7 @@ export function PublicBookingFlowPage(_props: PublicBookingFlowPageProps) {
                 (step === "doctor" && !resourceId) ||
                 (step === "date" && !date) ||
                 (step === "time" && !slotStart) ||
-                (step === "customer" && (!name || !phone))
+                (step === "customer" && (!name.trim() || !phoneReady))
               }>
                 {t("buttons.next")}
               </Button>

@@ -96,3 +96,4 @@ export * from "./repositories/supabase-prompt-repositories.js";
 export * from "./services/prompt-template-service.js";
 export * from "./services/prompt-context-service.js";
 export * from "./services/prompt-orchestrator-service.js";
+export * from "./employee-core-instructions.js";

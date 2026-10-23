@@ -14,6 +14,21 @@ describe("detectReplyLanguage", () => {
     assert.equal(detectReplyLanguage("Hello"), "English");
     assert.equal(detectReplyLanguage("hi"), "English");
   });
+
+  it("detects German and keeps the previous language for a short follow-up", () => {
+    assert.equal(detectReplyLanguage("Welche Termine sind morgen frei?"), "German");
+    assert.equal(detectReplyLanguage("Ist morgen um 10 Uhr ein Termin frei?"), "German");
+    assert.equal(detectReplyLanguage("ok", ["ايه المواعيد المتاحة بكرة؟"]), "Arabic");
+    assert.equal(detectReplyLanguage("OK", ["Welche Termine sind morgen frei?"]), "German");
+    assert.equal(detectReplyLanguage("Ahmed Ali", ["What times are open tomorrow?"]), "English");
+    assert.equal(detectReplyLanguage("Müller GmbH", ["What times are open tomorrow?"]), "English");
+    assert.equal(detectReplyLanguage("Müller GmbH", ["Welche Termine sind morgen frei?"]), "German");
+    assert.equal(detectReplyLanguage("Kopfhörer"), "English");
+    assert.equal(
+      detectReplyLanguage("Welche Termine sind morgen frei?", ["عايز أعرف المواعيد"]),
+      "German",
+    );
+  });
 });
 
 describe("applyTemplateSectionOverrides language", () => {

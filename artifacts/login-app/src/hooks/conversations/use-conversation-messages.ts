@@ -57,6 +57,10 @@ export function useConversationMessages(conversationId: string | null) {
     queryKey,
     enabled: Boolean(conversationId),
     staleTime: 0,
+    // Inbox inserts (customer + AI reply) must show without a manual refresh
+    // when Realtime is filtered out by conversation visibility RLS.
+    refetchInterval: conversationId ? 4_000 : false,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       if (!conversationId) return [];
       const rows = await services.messages.listMessages(context, {

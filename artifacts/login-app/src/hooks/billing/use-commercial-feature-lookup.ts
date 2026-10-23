@@ -6,6 +6,7 @@ import {
 } from "@/lib/billing/company-feature-entitlement-service";
 import { BILLING_FEATURE_CODES, toBillingFeatureCode } from "@/lib/billing/feature-code-map";
 import type { BillingFeatureCode } from "@/lib/billing/feature-code-map";
+import { COMPANY_FEATURE_ENABLED_MAP_QUERY_KEY } from "@/hooks/billing/use-feature-definition-permissions";
 import { supabase } from "@/lib/supabase";
 
 bindCompanyFeatureEntitlementClient(supabase);
@@ -35,7 +36,7 @@ export function useCommercialFeatureLookup(): {
   const approvalStatus = company?.approval_status;
 
   const query = useQuery({
-    queryKey: ["billing", "commercial-nav-features", companyId] as const,
+    queryKey: ["billing", COMPANY_FEATURE_ENABLED_MAP_QUERY_KEY, companyId] as const,
     enabled: Boolean(companyId) && !isSuperAdmin,
     staleTime: 60_000,
     queryFn: async (): Promise<Map<string, boolean>> => {

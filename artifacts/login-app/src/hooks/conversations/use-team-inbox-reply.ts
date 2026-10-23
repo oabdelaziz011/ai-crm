@@ -15,6 +15,7 @@ import {
 } from "@/lib/omnichannel/services/outbound-delivery";
 import { resolveChannelSession } from "@/lib/omnichannel/services/channel-session-resolver";
 import { dispatchOutboundMessage } from "@/lib/omnichannel/services/outbound-dispatch-service";
+import { persistTeamInboxDispatchFailure } from "./team-inbox-dispatch-failure";
 import { buildAttachmentMessageFields } from "@/lib/omnichannel/services/conversation-attachment-service";
 import { dispatchComposerMentions } from "@/lib/omnichannel/services/composer-mention-service";
 import { canViewPublicWebChatInbox } from "@/lib/omnichannel/permissions";
@@ -502,10 +503,14 @@ export function useTeamInboxReply(companyId: string | null) {
           });
         }
 
-        await queryClient.invalidateQueries({ queryKey });
-        await queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] });
-        await queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        await queryClient.invalidateQueries({ queryKey: ["outbound-channel-route", target.conversationId] });
+        // Background refresh: the cache already holds the confirmed message, so the
+        // composer must not stay locked while slower list/notification refetches finish.
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey }),
+          queryClient.invalidateQueries({ queryKey: ["conversation-list", companyId] }),
+          queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+          queryClient.invalidateQueries({ queryKey: ["outbound-channel-route", target.conversationId] }),
+        ]);
 
         traceOmniSendExit({
           runId,
@@ -518,56 +523,21 @@ export function useTeamInboxReply(companyId: string | null) {
         return true;
       } catch (err) {
         const detail = err instanceof Error ? err.message : "send_failed";
-        if (optimisticId) {
-          const persistedId = optimisticId.startsWith("optimistic-") ? null : optimisticId;
-          if (persistedId && payload.mode === "reply") {
-            // Persist failure via security-definer RPC — PostgREST UPDATE is RLS-denied
-            // (conversation_messages_update using false); otherwise rows stay preparing forever.
-            try {
-              const { error: confirmError } = await supabase.rpc(
-                "confirm_conversation_message_outbound",
-                {
-                  p_message_id: persistedId,
-                  p_status: "failed",
-                  p_external_message_id: null,
-                },
-              );
-              if (confirmError) {
-                console.warn("[team-inbox] confirm outbound failed after send error", {
-                  messageId: persistedId,
-                  error: confirmError.message,
-                });
-              }
-            } catch {
-              // best-effort failure persistence
-            }
-            queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
-              (current ?? []).map((message) =>
-                message.id === persistedId
-                  ? patchOptimisticMessage(message, {
-                      status: "failed",
-                      metadata: {
-                        [OUTBOUND_METADATA.optimistic]: false,
-                        [OUTBOUND_METADATA.outboundPhase]: "failed",
-                        [OUTBOUND_METADATA.dispatchFailed]: true,
-                        [OUTBOUND_METADATA.dispatchError]: detail.slice(0, 400),
-                        [OUTBOUND_METADATA.dispatchConfirmed]: false,
-                      },
-                    })
-                  : message,
-              ),
-            );
-          } else {
-            queryClient.setQueryData<ConversationMessageRecord[]>(queryKey, (current) =>
-              (current ?? []).filter((message) => message.id !== optimisticId),
-            );
-          }
-        }
+        const failure = await persistTeamInboxDispatchFailure({
+          error: err,
+          optimisticId,
+          mode: payload.mode === "reply" ? "reply" : "note",
+          queryKey,
+          supabase,
+          queryClient,
+          patchMessage: patchOptimisticMessage,
+        });
 
         setError({
           code: payload.mode === "reply" ? "dispatch_failed" : "send_failed",
-          message:
-            payload.mode === "reply"
+          message: failure.acceptanceUnconfirmed
+            ? "The provider result was not confirmed locally. It was not marked failed and will not be sent again automatically."
+            : payload.mode === "reply"
               ? "The message could not be delivered to the customer channel."
               : "The internal note could not be saved.",
           detail,

@@ -159,6 +159,7 @@ export function useAgentWorkflow() {
         registerConversationToolScope(conversationId, {
           allowedToolKeys: executionContext.allowedToolKeys,
           employeeId: executionContext.aiEmployeeId,
+          showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
         });
       }
 
@@ -252,6 +253,7 @@ export function useAgentWorkflow() {
     registerConversationToolScope(conversationId, {
       allowedToolKeys: executionContext.allowedToolKeys,
       employeeId: executionContext.aiEmployeeId,
+      showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
     });
   }, [workflowQuery.data?.memory, workspace.conversationId]);
 

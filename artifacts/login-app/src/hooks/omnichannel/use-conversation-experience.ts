@@ -13,11 +13,13 @@ export type TypingActor = "customer" | "agent" | "ai" | null;
 
 /** Send immediately — undo countdown delayed WhatsApp by ~5s and felt broken. */
 const UNDO_WINDOW_MS = 0;
+const AI_GENERATING_WINDOW_MS = 60_000;
 
 export function useConversationExperience(conversationId: string | null, input?: {
   lastActivityAt?: string | null;
   handlerMode?: "ai" | "human" | "mixed";
   recentCustomerMessageAt?: string | null;
+  awaitingReply?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -61,8 +63,19 @@ export function useConversationExperience(conversationId: string | null, input?:
   }, [input?.recentCustomerMessageAt]);
 
   useEffect(() => {
-    setAiGenerating(input?.handlerMode === "ai");
-  }, [input?.handlerMode, conversationId]);
+    if (input?.handlerMode !== "ai" || !input.awaitingReply || !input.recentCustomerMessageAt) {
+      setAiGenerating(false);
+      return;
+    }
+    const age = Date.now() - new Date(input.recentCustomerMessageAt).getTime();
+    if (age > AI_GENERATING_WINDOW_MS) {
+      setAiGenerating(false);
+      return;
+    }
+    setAiGenerating(true);
+    const timer = window.setTimeout(() => setAiGenerating(false), AI_GENERATING_WINDOW_MS - age);
+    return () => window.clearTimeout(timer);
+  }, [input?.handlerMode, input?.awaitingReply, input?.recentCustomerMessageAt, conversationId]);
 
   const presence: PresenceState = resolveCustomerPresence({
     lastActivityAt: input?.lastActivityAt ?? null,

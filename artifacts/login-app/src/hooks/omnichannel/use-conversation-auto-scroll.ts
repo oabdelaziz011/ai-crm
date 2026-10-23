@@ -132,9 +132,14 @@ export function useConversationAutoScroll({
 
     const resizeObserver = new ResizeObserver(pinToLatestIfFollowing);
     resizeObserver.observe(node);
+    // Virtualized rows can render taller than their estimated height, which grows the
+    // content without resizing the fixed-height spacer, so watch the content too.
     const observeSpacer = () => {
       const spacer = node.firstElementChild;
-      if (spacer) resizeObserver.observe(spacer);
+      if (!spacer) return;
+      resizeObserver.observe(spacer);
+      const content = spacer.firstElementChild;
+      if (content) resizeObserver.observe(content);
     };
     observeSpacer();
     const mutationObserver = new MutationObserver(observeSpacer);

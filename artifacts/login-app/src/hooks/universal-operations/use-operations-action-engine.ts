@@ -57,8 +57,34 @@ function resolveOperationsActionErrorMessage(
   return t("universalOperations.actions.toast.error");
 }
 
+function patchQueuePaymentStatus(page: unknown, bookingId: string, paymentStatus: string, paymentStatusId: string): unknown {
+  if (!page || typeof page !== "object") return page;
+  const patchRows = (source: OperationsRow[]) => {
+    let changed = false;
+    const rows = source.map((row) => {
+      if (row.id !== bookingId) return row;
+      changed = true;
+      return {
+        ...row,
+        paymentStatusId,
+        values: { ...row.values, payment_status: paymentStatus },
+      };
+    });
+    return changed ? rows : null;
+  };
+  if (Array.isArray(page)) return patchRows(page as OperationsRow[]) ?? page;
+  const record = page as { rows?: OperationsRow[] };
+  if (!Array.isArray(record.rows)) return page;
+  const rows = patchRows(record.rows);
+  return rows ? { ...record, rows } : page;
+}
+
 function removeRowFromQueuePages(page: unknown, rowId: string): unknown {
   if (!page || typeof page !== "object") return page;
+  if (Array.isArray(page)) {
+    const nextRows = (page as OperationsRow[]).filter((row) => row.id !== rowId);
+    return nextRows.length === page.length ? page : nextRows;
+  }
   const record = page as { rows?: OperationsRow[]; total?: number };
   if (!Array.isArray(record.rows)) return page;
   const nextRows = record.rows.filter((row) => row.id !== rowId);
@@ -96,6 +122,7 @@ export function useOperationsActionEngine({
   const registry = useMemo(() => getOperationsActionRegistry(), []);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [pendingPaymentRow, setPendingPaymentRow] = useState<OperationsRow | null>(null);
+  const [pendingReceiptRow, setPendingReceiptRow] = useState<OperationsRow | null>(null);
   const [executingId, setExecutingId] = useState<string | null>(null);
 
   const workflow = useMemo(
@@ -147,10 +174,12 @@ export function useOperationsActionEngine({
       },
       communication: {
         call: (phone) => CallService.initiateCall(phone),
-        openWhatsApp: async ({ customerId }) => {
+        openWhatsApp: async ({ customerId, phone }) => {
           await ConversationService.openWhatsappConversation({
             customerId,
             companyId: company?.id,
+            phone,
+            hasPermission,
             navigate: setLocation,
           });
         },
@@ -261,6 +290,10 @@ export function useOperationsActionEngine({
         setPendingPaymentRow(row);
         return;
       }
+      if (action.id === "billing.print_receipt") {
+        setPendingReceiptRow(row);
+        return;
+      }
       await runAction(action, row);
     },
     [runAction],
@@ -279,6 +312,16 @@ export function useOperationsActionEngine({
 
   const confirmCollectPayment = useCallback(
     async (values: CollectPaymentDialogValues) => {
+      const finalCents = Math.max(0, values.servicePriceCents - values.discountCents + values.taxCents);
+      const paymentStatus = values.amountCents >= finalCents && finalCents > 0 ? "paid" : "partial";
+      const paymentStatusId =
+        config?.paymentStatuses.find((status) => status.internalName === paymentStatus)?.id ??
+        (paymentStatus === "paid" ? "pay_paid" : "pay_partial");
+      const snapshots = qc.getQueriesData({ queryKey: ["universal-operations", "queue"] });
+      qc.setQueriesData({ queryKey: ["universal-operations", "queue"] }, (page) =>
+        patchQueuePaymentStatus(page, values.bookingId, paymentStatus, paymentStatusId),
+      );
+      setPendingPaymentRow(null);
       setExecutingId("billing.collect_payment");
       try {
         await commands.collectPayment.mutateAsync(values);
@@ -287,15 +330,15 @@ export function useOperationsActionEngine({
             action: t("universalOperations.actions.items.collectPayment"),
           }),
         );
-        setPendingPaymentRow(null);
       } catch (error) {
+        for (const [key, data] of snapshots) qc.setQueryData(key, data);
         const message = error instanceof Error ? error.message : t("universalOperations.actions.toast.error");
         toast.error(message || t("universalOperations.actions.toast.error"));
       } finally {
         setExecutingId(null);
       }
     },
-    [commands.collectPayment, t],
+    [commands.collectPayment, config?.paymentStatuses, qc, t],
   );
 
   const cancelCollectPayment = useCallback(() => {
@@ -314,5 +357,7 @@ export function useOperationsActionEngine({
     pendingPaymentRow,
     confirmCollectPayment,
     cancelCollectPayment,
+    pendingReceiptRow,
+    closeReceiptPreview: () => setPendingReceiptRow(null),
   };
 }

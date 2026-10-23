@@ -118,5 +118,13 @@ export function useChannelAdminMutations(companyId: string | null) {
     onSuccess: invalidate,
   });
 
-  return { create, updateConfig, enable, disable, setDefault };
+  const softDelete = useMutation({
+    mutationFn: async (input: { companyChannelId: string; channelTypeKey?: string }) => {
+      if (!companyId) throw new Error("Company required");
+      return services.companyChannels.softDelete(context, input.companyChannelId);
+    },
+    onSuccess: invalidate,
+  });
+
+  return { create, updateConfig, enable, disable, setDefault, softDelete };
 }

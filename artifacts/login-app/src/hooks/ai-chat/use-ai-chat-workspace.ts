@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { useRuntimeChatConfig } from "./use-runtime-chat-config";
 import { useWebChatCompanyChannel } from "./use-web-chat-company-channel";
 import { shouldClearStreamingBeforeRefresh, buildDisplayMessages, hasPersistedOutgoingForPending } from "./streaming-refresh-lifecycle";
+import { resolveFloatingTurnIdempotencyKey } from "./floating-turn-idempotency";
 import i18n from "@/i18n";
 
 const CONVERSATION_STORAGE_PREFIX = "vault-ai-chat-conversation";
@@ -35,6 +36,8 @@ export type ChatMessage = {
   createdAt: string;
   pending?: boolean;
   streaming?: boolean;
+  /** Stable outgoing claim, when the message was persisted for one inbound turn. */
+  externalMessageId?: string;
 };
 
 function conversationStorageKey(companyId: string) {
@@ -102,6 +105,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
   const [streamingContent, setStreamingContent] = useState("");
   const [pendingAssistantContent, setPendingAssistantContent] = useState<string | null>(null);
   const streamingRef = useRef("");
+  const failedTurnKeyRef = useRef<{ conversationId: string; text: string; key: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [suppressSyntheticWelcome, setSuppressSyntheticWelcome] = useState(false);
 
@@ -316,13 +320,30 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
         const pageContext = appendSchedulingCatalogPrompt({
           ...employeeRuntime.pageContext,
           ...(schedulingCatalogPrompt ? { schedulingCatalogPrompt } : {}),
+          // Sales employees on the official assistant: the model selects tools.
+          // Support and clinic chats keep their deterministic turns.
+          deferDeterministicSales: enabledToolKeys.some((key) =>
+            key === "create_draft_quote" ||
+            key === "qualify_lead" ||
+            key === "list_demo_types" ||
+            key === "create_demo_booking",
+          ),
         });
 
+        const previousFailedTurn = failedTurnKeyRef.current;
+        const turnIdempotencyKey = resolveFloatingTurnIdempotencyKey({
+          conversationId,
+          text: trimmed,
+          previousFailedTurn,
+          createKey: () => `floating:${conversationId}:${crypto.randomUUID()}`,
+        });
+        failedTurnKeyRef.current = { conversationId, text: trimmed, key: turnIdempotencyKey };
         const routeResult = await channelPlatformServices.router.routeInbound(channelPlatformContext, {
           companyId,
           companyChannelId: webChatChannel.id,
           channelKey: "web_chat",
           source: "direct",
+          idempotencyKey: turnIdempotencyKey,
           externalThreadId: conversationId,
           conversationId,
           aiAssistantId: assistantSettings?.id,
@@ -343,6 +364,7 @@ export function useAiChatWorkspace(options: UseAiChatWorkspaceOptions = {}) {
 
         const responseContent = routeResult.responseContent?.trim() ?? "";
         if (responseContent) {
+          failedTurnKeyRef.current = null;
           setPendingAssistantContent(responseContent);
         }
 

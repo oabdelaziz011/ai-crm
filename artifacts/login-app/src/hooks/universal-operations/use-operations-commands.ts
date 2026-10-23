@@ -123,7 +123,9 @@ export function useOperationsCommands(customerId?: string | null) {
       const result = await cmdContext.registry.getServices().payment.collectPayment(input, cmdContext.context);
       return result.data;
     },
-    onSuccess: (_data, input) => invalidate(input.bookingId, input.customerId),
+    onSuccess: (_data, input) => {
+      void invalidate(input.bookingId, input.customerId);
+    },
   });
 
   const transitionClinicStatus = useMutation({

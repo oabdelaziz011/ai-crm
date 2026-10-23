@@ -91,6 +91,8 @@ export function useProduct360(productId: string | null) {
         regional: unwrapQueryResult(regional),
       };
     },
+    refetchInterval: (query) =>
+      query.state.data?.product?.aliasGeneration?.status === "pending" ? 2500 : false,
   });
 }
 
@@ -134,10 +136,72 @@ export function useProductCommands() {
       brand?: string;
       cost?: number | null;
       taxClass?: string;
+      priceTaxMode?: "inclusive" | "exclusive" | "unspecified";
+      taxPercent?: number;
+      subscriptionInterval?: "month" | "year" | "quarter" | null;
+      subscriptionPrice?: number | null;
+      unit?: string;
+      trackInventory?: boolean;
+      stockQuantity?: number | null;
       tags?: string[];
+      aliases?: string[];
+      imageUrls?: string[];
     }) => {
       const result = await servicesFactory().product.createProduct(input, contextFactory());
       return unwrapCommandResult(result);
+    },
+    onSuccess: invalidate,
+  });
+
+  const update = useMutation({
+    mutationFn: async (input: {
+      productId: string;
+      patch: {
+        imageUrls?: string[];
+        name?: string;
+        sku?: string;
+        description?: string;
+        brand?: string;
+        productType?: string;
+        categoryId?: string | null;
+        basePrice?: number;
+        currency?: string;
+        cost?: number | null;
+        priceTaxMode?: "inclusive" | "exclusive" | "unspecified";
+        taxPercent?: number;
+        isActive?: boolean;
+        subscriptionInterval?: "month" | "year" | "quarter" | null;
+        subscriptionPrice?: number | null;
+        unit?: string;
+        trackInventory?: boolean;
+        stockQuantity?: number | null;
+        aliases?: string[];
+      };
+    }) => {
+      const result = await servicesFactory().product.updateProduct(
+        { productId: input.productId, patch: input.patch },
+        contextFactory(),
+      );
+      return unwrapCommandResult(result);
+    },
+    onSuccess: invalidate,
+  });
+
+  const regenerateAliases = useMutation({
+    mutationFn: async (input: { productId: string }) => {
+      const result = await servicesFactory().product.regenerateProductAliases(
+        input,
+        contextFactory(),
+      );
+      return unwrapCommandResult(result);
+    },
+    onSuccess: invalidate,
+  });
+
+  const archive = useMutation({
+    mutationFn: async (input: { productId: string }) => {
+      const result = await servicesFactory().product.archiveProduct(input, contextFactory());
+      unwrapCommandResult(result);
     },
     onSuccess: invalidate,
   });
@@ -203,5 +267,15 @@ export function useProductCommands() {
     onSuccess: invalidate,
   });
 
-  return { create, createCategory, upsertRegionalPrice, attachToOpportunity, updateLine, removeLine };
+  return {
+    create,
+    update,
+    regenerateAliases,
+    archive,
+    createCategory,
+    upsertRegionalPrice,
+    attachToOpportunity,
+    updateLine,
+    removeLine,
+  };
 }

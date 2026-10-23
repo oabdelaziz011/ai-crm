@@ -81,6 +81,8 @@ export function useConversationListInfinite(
     queryKey,
     enabled: Boolean(companyId),
     staleTime: 0,
+    refetchInterval: companyId ? 4_000 : false,
+    refetchIntervalInBackground: false,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const listInput = {

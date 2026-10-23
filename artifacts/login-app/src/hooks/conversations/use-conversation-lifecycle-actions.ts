@@ -228,6 +228,14 @@ export function useConversationLifecycleActions(companyId: string | null) {
 
 
 
+      const ownershipAction =
+        input.action === "assign" ||
+        input.action === "reassign" ||
+        input.action === "take_over" ||
+        input.action === "transfer" ||
+        input.action === "return_to_ai";
+
+      try {
       await executeBackendLifecycleHint(services, context, {
 
         conversationId: input.record.id,
@@ -257,12 +265,45 @@ export function useConversationLifecycleActions(companyId: string | null) {
             companyId,
             conversationId: input.record.id,
             actorUserId: context.userId,
-            assigneeUserId: result.assignedUserId ?? input.payload?.assignment?.targetId ?? null,
+            assigneeUserId:
+              input.payload?.assignment?.targetType === "ai_employee"
+                ? null
+                : result.assignedUserId ??
+                  (input.payload?.assignment?.targetType === "user"
+                    ? input.payload.assignment.targetId
+                    : null),
+            assignmentTargetType: input.payload?.assignment?.targetType ?? null,
+            aiEmployeeId:
+              input.payload?.assignment?.targetType === "ai_employee"
+                ? input.payload.assignment.targetId
+                : null,
+            aiEmployeeLabel:
+              input.payload?.assignment?.targetType === "ai_employee"
+                ? input.payload.assignment.targetLabel
+                : null,
             queueId: input.payload?.queueId ?? null,
             reason: input.payload?.escalation?.reason ?? input.payload?.assignment?.targetLabel,
             aiAssistantId: input.record.ai_assistant_id,
           },
         );
+      }
+      } catch (error) {
+        // The owner chip must not say "assigned" when the real assignment failed;
+        // otherwise the AI keeps replying while the inbox shows a human owner.
+        if (ownershipAction) {
+          try {
+            await persistLifecycleMetadata(
+              services,
+              context,
+              input.record.id,
+              (input.record.metadata as Record<string, unknown>) ?? {},
+            );
+          } catch (restoreError) {
+            console.error("[conversation-lifecycle] metadata restore after failed ownership change", restoreError);
+          }
+          void invalidate(input.record.id, input.record.customer_id);
+        }
+        throw error;
       }
 
 
@@ -272,8 +313,14 @@ export function useConversationLifecycleActions(companyId: string | null) {
     },
 
     onSuccess: (result, variables) => {
+      const returnedToAi =
+        variables.action === "return_to_ai" ||
+        variables.action === "ai_return" ||
+        variables.payload?.assignment?.targetType === "ai_employee";
       patchConversationListCache(variables.record.id, {
-        assigned_user_id: result.assignedUserId ?? variables.record.assigned_user_id,
+        assigned_user_id: returnedToAi
+          ? null
+          : result.assignedUserId ?? variables.record.assigned_user_id,
         metadata: result.metadata,
         ...(variables.action === "reopen"
           ? { state: "waiting_user" as const, ended_at: null }

@@ -56,19 +56,65 @@ export function useOpportunityPipelines() {
   });
 }
 
-export function useOpportunityList(filter: { limit?: number; offset?: number } = {}) {
+export type OpportunityListQueryFilter = {
+  pipelineId?: string;
+  stageId?: string;
+  ownerUserId?: string;
+  leadId?: string;
+  query?: string;
+  outcome?: "open" | "won" | "lost";
+  leadLifecycleStatus?: string;
+  openOnly?: boolean;
+  limit?: number;
+  offset?: number;
+};
+
+export function useOpportunityList(filter: OpportunityListQueryFilter = {}) {
   const { companyId, contextFactory, servicesFactory, hasPermission, isSuperAdmin } =
     useOpportunityServices();
   const canView = isSuperAdmin || hasPermission("opportunities.view");
-  const limit = filter.limit ?? 100;
+  const limit = filter.limit ?? 50;
   const offset = filter.offset ?? 0;
+  const stageId = filter.stageId?.trim() || undefined;
+  const ownerUserId = filter.ownerUserId?.trim() || undefined;
+  const pipelineId = filter.pipelineId?.trim() || undefined;
+  const leadId = filter.leadId?.trim() || undefined;
+  const query = filter.query?.trim() || undefined;
+  const outcome = filter.outcome;
+  const leadLifecycleStatus = filter.leadLifecycleStatus?.trim() || undefined;
+  const openOnly = filter.openOnly;
 
   return useQuery({
-    queryKey: ["opportunities-workspace", "list", companyId, limit, offset],
+    queryKey: [
+      "opportunities-workspace",
+      "list",
+      companyId,
+      pipelineId ?? null,
+      stageId ?? null,
+      ownerUserId ?? null,
+      leadId ?? null,
+      query ?? null,
+      outcome ?? null,
+      leadLifecycleStatus ?? null,
+      openOnly ?? null,
+      limit,
+      offset,
+    ],
     enabled: Boolean(companyId && canView),
     queryFn: async () => {
       const result = await servicesFactory().opportunity.listOpportunities(
-        { limit, offset },
+        {
+          pipelineId,
+          stageId,
+          ownerUserId,
+          leadId,
+          query,
+          outcome,
+          leadLifecycleStatus,
+          openOnly,
+          limit,
+          offset,
+        },
         contextFactory(),
       );
       return unwrapQueryResult(result);
@@ -160,6 +206,7 @@ export function useOpportunityCommands() {
       stageId?: string;
       pipelineId?: string;
       forceCreate?: boolean;
+      primaryProductId?: string;
       probabilityPercent?: number;
       probabilitySource?: string;
       probabilityReason?: string;
@@ -182,6 +229,8 @@ export function useOpportunityCommands() {
       expectedCloseDate?: string | null;
       stageId?: string;
       pipelineId?: string;
+      customerId?: string;
+      primaryProductId?: string;
       probabilityPercent?: number;
       probabilitySource?: string;
       probabilityReason?: string;
@@ -194,7 +243,11 @@ export function useOpportunityCommands() {
   });
 
   const changeStage = useMutation({
-    mutationFn: async (input: { opportunityId: string; stageId: string }) => {
+    mutationFn: async (input: {
+      opportunityId: string;
+      stageId: string;
+      lostReason?: string | null;
+    }) => {
       const result = await servicesFactory().opportunity.changeStage(input, contextFactory());
       return unwrapCommandResult(result);
     },

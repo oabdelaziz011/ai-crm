@@ -127,4 +127,22 @@ describe("buildDisplayMessages", () => {
     assert.equal(messages.length, 1);
     assert.equal(messages[0]?.id, TURN_ASSISTANT_PENDING_ID);
   });
+
+  it("shows one recovered fallback and does not append a second copy", () => {
+    const fallback = "A draft quote was saved. It was not sent.";
+    const stored = buildDisplayMessages({
+      loaded: [
+        { id: "in-1", role: "user", content: "Please prepare a quote", createdAt: "t1" },
+        { id: "out-1", role: "assistant", content: fallback, createdAt: "t2" },
+      ],
+      welcomeMessage: "Welcome",
+      suppressSyntheticWelcome: true,
+      pendingAssistantContent: fallback,
+    });
+    assert.equal(stored.length, 2);
+    assert.equal(stored.filter((message) => message.role === "assistant").length, 1);
+    assert.equal(stored[1]?.content, fallback);
+    assert.match(stored[1]?.content ?? "", /not sent/i);
+    assert.equal(stored[1]?.content.includes("provider_rate_limit_exceeded"), false);
+  });
 });

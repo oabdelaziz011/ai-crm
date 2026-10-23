@@ -5,6 +5,7 @@ type DisplayChatMessage = {
   createdAt: string;
   pending?: boolean;
   streaming?: boolean;
+  externalMessageId?: string;
 };
 
 /** Synthetic assistant bubble shown between routeInbound and DB refetch. */

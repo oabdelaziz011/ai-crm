@@ -6,6 +6,7 @@ import { useCompanyChannelsAdmin } from "@/hooks/channels/use-company-channels-a
 import {
   diagnoseInboxEmptyState,
   isWhatsAppCompanyChannel,
+  resolveWhatsAppChannelMismatch,
   type InboxEmptyDiagnosis,
 } from "@/lib/omnichannel/tenant/diagnose-inbox-empty-state";
 import type { OmnichannelListFilters } from "@/lib/omnichannel/types/unified-conversation";
@@ -30,7 +31,8 @@ export function useOmnichannelTenantGuard(input: {
   const { user, profile, company } = useAuth();
   const { identity } = useCompanyIdentity(Boolean(profile?.company_id ?? company?.id));
   const { developerMode } = useRbacDeveloperMode();
-  const { data: companyChannels = [] } = useCompanyChannelsAdmin();
+  const companyChannelsQuery = useCompanyChannelsAdmin();
+  const companyChannels = companyChannelsQuery.data ?? [];
 
   const tenant = useMemo<OmnichannelTenantContext>(
     () => ({
@@ -54,37 +56,25 @@ export function useOmnichannelTenantGuard(input: {
 
   const hasWhatsAppChannel = whatsAppChannels.length > 0;
 
-  const whatsAppChannelMismatch = useMemo(() => {
-    if (!tenant.companyId) return false;
-
-    const selectedChannelId = input.selectedConversation?.companyChannelId ?? null;
-    if (selectedChannelId && !companyChannelIds.has(selectedChannelId)) {
-      return true;
-    }
-
-    if (input.selectedConversation?.channel === "whatsapp" && !hasWhatsAppChannel) {
-      return true;
-    }
-
-    if (!hasWhatsAppChannel && input.filters.channel === "whatsapp") {
-      return true;
-    }
-
-    if (!hasWhatsAppChannel && input.rawRowCount === 0 && !input.listLoading) {
-      return true;
-    }
-
-    return false;
-  }, [
-    tenant.companyId,
-    input.selectedConversation?.companyChannelId,
-    input.selectedConversation?.channel,
-    input.filters.channel,
-    input.rawRowCount,
-    input.listLoading,
-    companyChannelIds,
-    hasWhatsAppChannel,
-  ]);
+  const whatsAppChannelMismatch = useMemo(
+    () =>
+      resolveWhatsAppChannelMismatch({
+        tenantCompanyId: tenant.companyId,
+        selectedCompanyId: input.selectedConversation?.companyId ?? null,
+        selectedChannel: input.selectedConversation?.channel ?? null,
+        selectedChannelId: input.selectedConversation?.companyChannelId ?? null,
+        companyChannelIds,
+        channelsResolved: companyChannelsQuery.isSuccess,
+      }),
+    [
+      tenant.companyId,
+      input.selectedConversation?.companyId,
+      input.selectedConversation?.channel,
+      input.selectedConversation?.companyChannelId,
+      companyChannelIds,
+      companyChannelsQuery.isSuccess,
+    ],
+  );
 
   const emptyDiagnosis = useMemo<InboxEmptyDiagnosis | null>(
     () =>

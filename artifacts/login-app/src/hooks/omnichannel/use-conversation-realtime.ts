@@ -86,9 +86,16 @@ export function useConversationRealtime(companyId: string | null, conversationId
     const channelName = `omnichannel:${companyId}`;
     rtLog("effect.mount", { channelName, companyId, subscribeEpoch });
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const channel = supabase
-      .channel(channelName)
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      const token = data.session?.access_token;
+      if (token) supabase.realtime.setAuth(token);
+
+      channel = supabase
+        .channel(channelName)
       .on(
         "postgres_changes",
         {
@@ -211,22 +218,24 @@ export function useConversationRealtime(companyId: string | null, conversationId
           });
         },
       )
-      .subscribe((status, err) => {
-        rtLog("subscribe.status", { status, error: err?.message ?? null, channelName });
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          if (reconnectTimer) return;
-          reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            rtLog("subscribe.resubscribe", { channelName, status });
-            setSubscribeEpoch((epoch) => epoch + 1);
-          }, 1_500);
-        }
-      });
+        .subscribe((status, err) => {
+          rtLog("subscribe.status", { status, error: err?.message ?? null, channelName });
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            if (reconnectTimer) return;
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null;
+              rtLog("subscribe.resubscribe", { channelName, status });
+              setSubscribeEpoch((epoch) => epoch + 1);
+            }, 1_500);
+          }
+        });
+    });
 
     return () => {
+      cancelled = true;
       rtLog("effect.cleanup", { channelName });
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [companyId, queryClient, subscribeEpoch]);
 }

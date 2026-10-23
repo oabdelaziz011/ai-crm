@@ -23,6 +23,8 @@ if (Number.isNaN(port) || port <= 0) {
 let lifecycleWorker: { stop: () => void } | null = null;
 let sessionIdleTimeoutWorker: { stop: () => void } | null = null;
 let emailInboundPollWorker: { stop: () => void } | null = null;
+let salesFollowUpWorker: { stop: () => Promise<void> | void } | null = null;
+let whatsAppReplyRecoveryWorker: { stop: () => void } | null = null;
 
 const server = app.listen(port, (err) => {
   if (err) {
@@ -69,6 +71,26 @@ const server = app.listen(port, (err) => {
     .catch((workerErr) => {
       logger.warn({ err: workerErr }, "Email inbound poll worker failed to start");
     });
+
+  // Sales follow-up due jobs — disabled unless SALES_FOLLOW_UP_WORKER_ENABLED=true.
+  // Provider send stays off unless SALES_FOLLOW_UP_WORKER_ALLOW_SEND=true.
+  void import("./services/sales-follow-up-worker.js")
+    .then(({ startSalesFollowUpWorker }) => {
+      salesFollowUpWorker = startSalesFollowUpWorker();
+    })
+    .catch((workerErr) => {
+      logger.warn({ err: workerErr }, "Sales follow-up worker failed to start");
+    });
+
+  // Confirm-only repair for stuck WhatsApp replies. Off unless WHATSAPP_REPLY_RECOVERY_WORKER_ENABLED=true.
+  // The tick never calls a provider.
+  void import("./services/whatsapp-reply-recovery-worker.js")
+    .then(({ startWhatsAppReplyRecoveryFromPlatform }) => {
+      whatsAppReplyRecoveryWorker = startWhatsAppReplyRecoveryFromPlatform();
+    })
+    .catch((workerErr) => {
+      logger.warn({ err: workerErr }, "WhatsApp reply recovery worker failed to start");
+    });
 });
 
 function shutdown(signal: string): void {
@@ -78,7 +100,11 @@ function shutdown(signal: string): void {
   const stopEmail = Promise.resolve(emailInboundPollWorker?.stop()).catch((err) => {
     logger.warn({ err }, "Email inbound poll worker stop failed");
   });
-  void stopEmail.finally(() => {
+  const stopFollowUp = Promise.resolve(salesFollowUpWorker?.stop()).catch((err) => {
+    logger.warn({ err }, "Sales follow-up worker stop failed");
+  });
+  whatsAppReplyRecoveryWorker?.stop();
+  void Promise.all([stopEmail, stopFollowUp]).finally(() => {
     server.close((err) => {
       if (err) {
         logger.error({ err }, "Error during shutdown");

@@ -125,6 +125,7 @@ export function beginOutbound400Audit(req: Request): void {
     metaGraphStages: [],
   };
   console.info(RT, "audit.start", {
+    at: new Date().toISOString(),
     path: req.originalUrl ?? `/api${TARGET_PATH}`,
     requestId: req.requestId ?? null,
     payload: req.body ?? null,
@@ -157,6 +158,7 @@ export function enterOutboundValidation(input: {
   };
   state.validations.push(step);
   console.info(RT, "validation.entered", {
+    at: step.enteredAt,
     validationName: step.validationName,
     layer: step.layer,
     file: step.file,
@@ -177,6 +179,7 @@ export function passOutboundValidation(validationName: string, extra?: Record<st
   step.passed = true;
   step.failed = false;
   console.info(RT, "validation.passed", {
+    at: step.exitedAt,
     validationName,
     layer: step.layer,
     file: step.file,

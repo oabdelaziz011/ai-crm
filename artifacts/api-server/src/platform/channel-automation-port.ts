@@ -295,6 +295,21 @@ export function createChannelAutomationPort(
           });
 
           const resumeInput = buildResumeInput(run, input.messageText, resumePayload);
+          const knownPhone =
+            typeof input.initialVariables?.customer_phone === "string"
+              ? input.initialVariables.customer_phone.trim()
+              : "";
+          const knownDigits = knownPhone.replace(/\D/g, "");
+          const messageDigits = input.messageText.replace(/\D/g, "");
+          const waitingForPhone = (readWaitingFor(run) ?? readWaitingFor(session)) === "customer_phone";
+          if (
+            waitingForPhone &&
+            knownDigits.length >= 8 &&
+            knownDigits.length <= 15 &&
+            (messageDigits.length < 8 || messageDigits.length > 15)
+          ) {
+            resumeInput.customer_phone = knownPhone;
+          }
           traceParsedInboundMessage({
             channelKey: input.channelKey,
             externalUserId: input.externalUserId,

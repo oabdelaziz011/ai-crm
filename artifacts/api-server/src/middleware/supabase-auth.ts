@@ -15,6 +15,8 @@ declare global {
       supabaseUser?: User;
       supabaseCompanyId?: string | null;
       supabaseIsSuperAdmin?: boolean;
+      supabaseAuthToken?: string;
+      supabaseScopedCompanyIds?: Set<string>;
     }
   }
 }
@@ -74,6 +76,12 @@ export async function requireSupabaseAuth(
       throw new HttpError(401, "Authentication required.", "unauthorized");
     }
 
+    // Every router mounted under /api re-applies this middleware; verify once per request.
+    if (req.supabaseUser && req.supabaseAuthToken === token) {
+      next();
+      return;
+    }
+
     const client = getAuthClient();
     const { data, error } = await client.auth.getUser(token);
     if (error || !data.user) {
@@ -89,6 +97,7 @@ export async function requireSupabaseAuth(
     req.supabaseUser = data.user;
     req.supabaseCompanyId = profile?.company_id ?? null;
     req.supabaseIsSuperAdmin = Boolean(profile?.is_super_admin);
+    req.supabaseAuthToken = token;
 
     next();
   } catch (error) {
@@ -148,6 +157,11 @@ export function requireCompanyScope(field = "companyId") {
         throw new HttpError(403, "Access denied for this company.", "forbidden");
       }
 
+      if (req.supabaseScopedCompanyIds?.has(requestedCompanyId)) {
+        next();
+        return;
+      }
+
       // Hard subscription lock: Suspended companies cannot use workspace/business APIs.
       // Billing recovery mounts under /billing/saas without this middleware.
       const client = getAuthClient();
@@ -164,6 +178,7 @@ export function requireCompanyScope(field = "companyId") {
         );
       }
 
+      (req.supabaseScopedCompanyIds ??= new Set()).add(requestedCompanyId);
       next();
     } catch (error) {
       next(error);

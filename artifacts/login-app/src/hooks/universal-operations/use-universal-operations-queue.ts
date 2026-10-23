@@ -10,6 +10,8 @@ import type {
 
   OperationsQueueQuery,
 
+  OperationsRow,
+
   OperationsSortState,
 
 } from "@workspace/universal-operations-engine";
@@ -25,6 +27,7 @@ import {
 import type { OperationsWorkspaceConfig } from "@workspace/universal-operations-engine";
 
 import { useAuth } from "@/context/auth-context";
+import { supabase } from "@/lib/supabase";
 
 import { useCompanyPermissionAuth } from "@/hooks/billing/use-company-permission-auth";
 import { createLoginAppApplicationPorts } from "@/lib/application-layer/create-login-app-application-ports";
@@ -35,11 +38,27 @@ import {
 
 import { mapBookingReadModelToRow } from "@/lib/application-layer/operations-queue-row-mapper";
 import { resolveQueueTimezone } from "@/lib/scheduling/operations/utilities/calendar-day-range";
-import { resolveQueueDateRange } from "@/lib/universal-operations/operations-queue-date-range";
+import {
+  resolveQueueDateRange,
+  type QueueDatePreset,
+} from "@/lib/universal-operations/operations-queue-date-range";
+import {
+  assignPeopleAhead,
+  assignQueueNumbers,
+  operationsQueueKey,
+  queueDayKey,
+} from "@/lib/universal-operations/operations-queue-people-ahead";
 
 import { useUniversalOperationsRealtime } from "./use-universal-operations-realtime";
 
 
+
+const BOOKING_ORDER_SORT: OperationsSortState[] = [{ columnId: "col_queue_number", direction: "asc" }];
+
+/** Tenant configs seeded before booking-priority ordering still persist this default. */
+function isLegacyScheduledDefaultSort(sort: OperationsSortState[]): boolean {
+  return sort.length === 1 && sort[0]?.columnId === "col_scheduled" && sort[0]?.direction === "asc";
+}
 
 const DEFAULT_PREFERENCES: OperationsGridPreferences = {
 
@@ -57,11 +76,12 @@ const DEFAULT_PREFERENCES: OperationsGridPreferences = {
 
 
 
-async function loadLiveOperationsQueuePage(
+/** Loads every booking in range with filters/search/sort applied; paging happens client-side. */
+async function loadLiveOperationsQueueRows(
 
   templateKey: string,
 
-  query: OperationsQueueQuery,
+  query: Omit<OperationsQueueQuery, "page" | "pageSize">,
 
   input: {
 
@@ -77,7 +97,7 @@ async function loadLiveOperationsQueuePage(
 
   },
 
-): Promise<OperationsQueuePage> {
+): Promise<OperationsRow[]> {
 
   const ports = createLoginAppApplicationPorts({
 
@@ -111,16 +131,47 @@ async function loadLiveOperationsQueuePage(
       : dateFrom;
 
   const bookings = await ports.bookingRead.listQueue(input.companyId, {
-    search: query.search,
     timezone,
     ...(dateFrom ? { dateFrom, dateTo: dateTo ?? dateFrom } : {}),
   });
 
 
 
-  const allRows = bookings.map((booking) => mapBookingReadModelToRow(booking, config));
+  const queueKeyById = new Map(
+    bookings.map((booking) => [
+      booking.id,
+      operationsQueueKey(
+        booking.tenantId || input.companyId,
+        booking.serviceId || booking.serviceName || "",
+        queueDayKey(booking.scheduledAt, timezone),
+      ),
+    ]),
+  );
+  const keyOf = (row: OperationsRow) => queueKeyById.get(row.id) ?? "";
+  const prepared = assignQueueNumbers(
+    assignPeopleAhead(
+      bookings.map((booking) => mapBookingReadModelToRow(booking, config)),
+      keyOf,
+    ),
+    keyOf,
+  );
+  const queueNumberById = new Map(prepared.map((row) => [row.id, row.values.queue_number]));
+  const peopleAheadById = new Map(prepared.map((row) => [row.id, row.values.people_ahead]));
 
-  return queueDataEngine.paginate(allRows, { ...query, companyId: input.companyId });
+  const ranked = queueDataEngine.paginate(prepared, {
+    ...query,
+    companyId: input.companyId,
+    page: 1,
+    pageSize: Math.max(1, prepared.length),
+  }).rows;
+  return ranked.map((row) => ({
+    ...row,
+    values: {
+      ...row.values,
+      queue_number: queueNumberById.get(row.id) ?? null,
+      people_ahead: peopleAheadById.get(row.id) ?? null,
+    },
+  }));
 
 }
 
@@ -183,7 +234,24 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
   useUniversalOperationsRealtime(company?.id ?? null);
 
-  const queueTimezone = resolveQueueTimezone(profile?.timezone ?? null);
+  const bookingTimezoneQuery = useQuery({
+    queryKey: ["scheduling-booking-rules", "timezone", company?.id],
+    enabled: Boolean(company?.id),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("scheduling_booking_rules")
+        .select("timezone")
+        .eq("company_id", company!.id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data?.timezone ? String(data.timezone) : null;
+    },
+  });
+  const companyTimezone = bookingTimezoneQuery.data
+    ? resolveQueueTimezone(bookingTimezoneQuery.data)
+    : null;
+  const queueTimezone = companyTimezone ?? resolveQueueTimezone(profile?.timezone ?? null);
   const initialToday = resolveQueueDateRange("today", null, null, queueTimezone);
 
   const [query, setQuery] = useState<OperationsQueueQuery>({
@@ -191,7 +259,7 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
     page: 1,
     pageSize: 50,
     search: "",
-    sort: [{ columnId: "col_scheduled", direction: "asc" }],
+    sort: BOOKING_ORDER_SORT,
     filters: {
       datePreset: initialToday.datePreset,
       dateFrom: initialToday.dateFrom,
@@ -220,7 +288,10 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
       setQuery((q) => ({
         ...q,
         pageSize: queueRules.pageSize ?? q.pageSize,
-        sort: queueRules.defaultSort?.length ? queueRules.defaultSort : q.sort,
+        sort:
+          queueRules.defaultSort?.length && !isLegacyScheduledDefaultSort(queueRules.defaultSort)
+            ? queueRules.defaultSort
+            : q.sort,
         filters: { ...queueRules.defaultFilters, ...q.filters },
       }));
     }
@@ -267,19 +338,38 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
 
 
-  const canLoadLive = Boolean(company?.id && user?.id && configQuery.data);
+  const calendarQuery = useMemo<OperationsQueueQuery>(() => {
+    const preset = (String(query.filters?.datePreset ?? "today") as QueueDatePreset) || "today";
+    if (!companyTimezone || preset === "custom") {
+      return {
+        ...query,
+        filters: { ...(query.filters ?? {}), timezone: queueTimezone },
+      };
+    }
+    const range = resolveQueueDateRange(preset, null, null, companyTimezone);
+    return {
+      ...query,
+      filters: { ...(query.filters ?? {}), ...range, timezone: companyTimezone },
+    };
+  }, [companyTimezone, query, queueTimezone]);
+
+  const canLoadLive = Boolean(
+    company?.id && user?.id && configQuery.data && bookingTimezoneQuery.isFetched,
+  );
 
 
+
+  const { page: requestedPage, pageSize, ...listQuery } = calendarQuery;
 
   const dataQuery = useQuery({
 
-    queryKey: ["universal-operations", "queue", templateKey, company?.id, query, preferences],
+    queryKey: ["universal-operations", "queue", templateKey, company?.id, listQuery, preferences],
 
     enabled: canLoadLive,
 
     queryFn: () =>
 
-      loadLiveOperationsQueuePage(templateKey, { ...query, companyId: company!.id }, {
+      loadLiveOperationsQueueRows(templateKey, { ...listQuery, companyId: company!.id }, {
 
         companyId: company!.id,
 
@@ -289,10 +379,7 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
         hasPermission,
 
-        timezone: resolveQueueTimezone(
-          typeof query.filters?.timezone === "string" ? query.filters.timezone : null,
-          queueTimezone,
-        ),
+        timezone: queueTimezone,
 
       }),
 
@@ -312,11 +399,43 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
 
 
+  const filteredRows = dataQuery.data;
+  const total = filteredRows?.length ?? 0;
+  /** A single-day filter shows that whole day on one page. */
+  const showsWholeDay = Boolean(listQuery.filters?.dateFrom) && listQuery.filters?.dateFrom === listQuery.filters?.dateTo;
+  const visiblePageSize = showsWholeDay ? Math.max(1, total) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / visiblePageSize));
+  const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
+
+  const page = useMemo<OperationsQueuePage | undefined>(() => {
+    if (!filteredRows) return undefined;
+    const start = (currentPage - 1) * visiblePageSize;
+    return {
+      rows: filteredRows.slice(start, start + visiblePageSize),
+      total,
+      page: currentPage,
+      pageSize: visiblePageSize,
+      hasMore: start + visiblePageSize < total,
+    };
+  }, [currentPage, filteredRows, visiblePageSize, total]);
+
   const updateSearch = (search: string) => setQuery((q) => ({ ...q, search, page: 1 }));
 
-  const updateSort = (sort: OperationsSortState[]) => setQuery((q) => ({ ...q, sort }));
+  const updateSort = (sort: OperationsSortState[]) => setQuery((q) => ({ ...q, sort, page: 1 }));
 
-  const loadMore = () => setQuery((q) => ({ ...q, page: q.page + 1 }));
+  const setPage = useCallback(
+    (next: number) => setQuery((q) => ({ ...q, page: Math.min(Math.max(1, next), totalPages) })),
+    [totalPages],
+  );
+
+  const setPageSize = useCallback(
+    (nextSize: number) =>
+      setQuery((q) => {
+        const firstRowIndex = (Math.min(q.page, totalPages) - 1) * q.pageSize;
+        return { ...q, pageSize: nextSize, page: Math.floor(firstRowIndex / nextSize) + 1 };
+      }),
+    [totalPages],
+  );
 
 
 
@@ -332,7 +451,7 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
     setPreferences,
 
-    query,
+    query: calendarQuery,
 
     setQuery,
 
@@ -340,9 +459,17 @@ export function useUniversalOperationsQueue(templateKey = "clinic") {
 
     updateSort,
 
-    loadMore,
+    setPage,
 
-    page: dataQuery.data,
+    setPageSize,
+
+    totalPages,
+
+    showsWholeDay,
+
+    filteredRows: filteredRows ?? [],
+
+    page,
 
     loading: dataQuery.isLoading,
 

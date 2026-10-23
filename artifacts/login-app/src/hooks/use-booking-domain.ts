@@ -40,9 +40,10 @@ export function useAvailableBookingSlots(
   resourceId: string | null,
   serviceId: string | null,
   date: string | null,
+  durationMinutes?: number | null,
 ) {
   return useQuery({
-    queryKey: bookingSlotsKey(companyId, resourceId, serviceId, date),
+    queryKey: [...bookingSlotsKey(companyId, resourceId, serviceId, date), durationMinutes ?? null],
     enabled: Boolean(companyId && resourceId && serviceId && date),
     staleTime: 30_000,
     queryFn: () =>
@@ -51,7 +52,10 @@ export function useAvailableBookingSlots(
         resourceId!,
         serviceId!,
         date!,
-        { respectBookingRules: true },
+        {
+          respectBookingRules: true,
+          durationMinutes: durationMinutes && durationMinutes > 0 ? durationMinutes : undefined,
+        },
       ),
   });
 }
@@ -77,6 +81,8 @@ export function useCreateDomainBooking(companyId: string | null) {
         notes: input.notes,
         createdBy: userId,
         branchId: input.branchId,
+        pricingRuleId: input.pricingRuleId,
+        visitType: input.visitType,
       });
       return result.booking;
     },

@@ -18,7 +18,11 @@ import {
 
 export const BOOKINGS_KEY = ["bookings"] as const;
 
-export function useBookings(options?: { enabled?: boolean }) {
+export function useBookings(options?: {
+  enabled?: boolean;
+  refetchOnMount?: boolean | "always";
+  refetchOnWindowFocus?: boolean;
+}) {
   const { profile, user } = useAuth();
   const companyId = profile?.company_id ?? null;
   const enabled = (options?.enabled ?? true) && Boolean(user && companyId);
@@ -27,6 +31,8 @@ export function useBookings(options?: { enabled?: boolean }) {
     queryKey: bookingsListKey(companyId),
     enabled,
     staleTime: APP_QUERY_STALE_MS,
+    refetchOnMount: options?.refetchOnMount,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus,
     queryFn: async (): Promise<Booking[]> => {
       if (!companyId || !user) return [];
       const service = new BookingListService(supabase);

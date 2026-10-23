@@ -29,10 +29,18 @@ import { createIntegrationEventSubscriber } from "./adapters/integration-event-s
 import { createLoginAppLeadSmartCapturePort } from "@/lib/lead-intelligence/lead-smart-capture-port.js";
 
 let sharedBus: PlatformEventBus | null = null;
+let sharedClient: SupabaseClient | null = null;
 
-/** Shared production event bus for legacy bridge paths (billing, lead factories). */
+/**
+ * Shared production event bus for legacy bridge paths (billing, lead factories).
+ * The publishable browser client is `anon` until a session exists, and anon cannot
+ * insert platform_event_audit. An explicit service client replaces that bus so
+ * telemetry uses the same authorization as the business write.
+ */
 export function getLoginAppPlatformEventBus(client: SupabaseClient = supabase): PlatformEventBus {
-  if (sharedBus) return sharedBus;
+  if (sharedBus && (client === supabase || client === sharedClient)) return sharedBus;
+  sharedBus = null;
+  sharedClient = client;
 
   const ports = createLoginAppApplicationPorts(
     { companyId: "system", actorUserId: "system", isSuperAdmin: true, hasPermission: () => true },

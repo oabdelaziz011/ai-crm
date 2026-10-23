@@ -107,6 +107,9 @@ export function createLoginAppPaymentWritePort(
 
       const invoice = await invoices.getById(input.tenantId, invoiceId);
       if (!invoice) throw new Error("Invoice not found");
+      if (!invoice.invoiceNumber) {
+        await invoices.ensureInvoiceNumber(input.tenantId, invoiceId, invoice.status);
+      }
 
       const payment = await payments.create({
         companyId: input.tenantId,

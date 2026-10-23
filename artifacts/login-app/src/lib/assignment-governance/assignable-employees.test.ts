@@ -29,7 +29,13 @@ const sample: AssignableEmployee = {
 describe("assignable employees UI helpers", () => {
   it("9. branch-aware labels", () => {
     assert.equal(formatAssignableDepartmentLabel(sample), "Support — Branch A");
-    assert.match(formatAssignableEmployeeLabel(sample), /Support — Branch A/);
+    assert.match(formatAssignableEmployeeLabel(sample), /^Sara Ahmed · Support — Branch A$/);
+    const deptNamed: AssignableEmployee = {
+      ...sample,
+      fullName: "Support",
+      email: "support-user@example.com",
+    };
+    assert.match(formatAssignableEmployeeLabel(deptNamed), /^support-user@example.com/);
   });
 
   it("10. client search stays within authorized candidates", () => {

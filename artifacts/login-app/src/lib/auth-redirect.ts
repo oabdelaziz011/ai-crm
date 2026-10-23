@@ -1,4 +1,5 @@
 import { isPublicLegalPath } from "@/lib/legal/public-legal-paths";
+import { isPublicCompanyWebsitePath } from "@/lib/website/website-model";
 
 /** Prefer explicit app origin so auth emails never target the api-server port. */
 function resolveAuthOrigin(): string {
@@ -129,5 +130,5 @@ export function isPublicAuthPath(path: string): boolean {
 
 /** Auth screens plus public legal pages (privacy, terms, data deletion). */
 export function isPublicUnauthenticatedPath(path: string): boolean {
-  return isPublicAuthPath(path) || isPublicLegalPath(path);
+  return isPublicAuthPath(path) || isPublicLegalPath(path) || isPublicCompanyWebsitePath(path);
 }

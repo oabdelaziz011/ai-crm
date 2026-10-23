@@ -42,11 +42,9 @@ function resolvePaymentStatusId(paymentStatus: string, config: OperationsWorkspa
   return PAYMENT_MAP[normalized] ?? "pay_pending";
 }
 
-function displayStatus(status: string): string {
-  return status
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function queueStatusValue(status: string): string {
+  const token = status.trim().toLowerCase().replace(/\s+/g, "_");
+  return token || status;
 }
 
 function computeWaitingMinutes(startAt: string): number {
@@ -96,7 +94,6 @@ export function mapBookingReadModelToRow(
 ): OperationsRow {
   const statusId = resolveStatusIdFromDisplay(booking.status, config);
   const paymentStatusId = resolvePaymentStatusIdFromDisplay(booking.paymentStatus, config);
-  const statusDef = config.statuses.find((status) => status.id === statusId);
   const visitType = normalizeVisitType(booking.visitType);
 
   return {
@@ -115,7 +112,7 @@ export function mapBookingReadModelToRow(
       phone: booking.phone ?? null,
       service: booking.serviceName ?? "—",
       resource: booking.employeeName ?? "—",
-      status: statusDef?.displayName ?? booking.status,
+      status: queueStatusValue(booking.status),
       payment_status: booking.paymentStatus,
       visit_type: visitType,
       scheduled_at: booking.scheduledAt,
@@ -129,7 +126,7 @@ export function mapBookingReadModelToRow(
       tags: [],
       branch: booking.branchName?.trim() ? booking.branchName : "—",
     },
-    createdAt: booking.scheduledAt,
+    createdAt: booking.createdAt ?? booking.scheduledAt,
     updatedAt: booking.scheduledAt,
   };
 }
@@ -141,7 +138,6 @@ export function mapOperationsBookingToRow(
 ): OperationsRow {
   const statusId = resolveStatusId(booking.status, config);
   const paymentStatusId = resolvePaymentStatusId(booking.paymentStatus, config);
-  const statusDef = config.statuses.find((s) => s.id === statusId);
   const visitType = normalizeVisitType(booking.visitType);
 
   return {
@@ -160,7 +156,7 @@ export function mapOperationsBookingToRow(
       phone: booking.customer?.phone ?? null,
       service: booking.service?.name ?? "—",
       resource: booking.resource?.name ?? "—",
-      status: statusDef?.displayName ?? displayStatus(booking.status),
+      status: queueStatusValue(booking.status),
       payment_status: booking.paymentStatus,
       visit_type: visitType,
       scheduled_at: booking.startAt,

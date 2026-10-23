@@ -1,5 +1,8 @@
 import type { ServiceContext } from "@workspace/ai-tool-router";
-import { createToolRouterServices, type CreateToolRouterServicesOptions } from "@workspace/ai-tool-router";
+import {
+  createToolRouterServices,
+  type CreateToolRouterServicesOptions,
+} from "@workspace/ai-tool-router";
 import { useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePermissions } from "@/hooks/use-rbac";
@@ -11,6 +14,8 @@ import { createApplicationLayerLeadToolPorts } from "@/lib/application-layer/app
 import { createApplicationLayerTicketToolPorts } from "@/lib/application-layer/application-layer-ticket-tool-ports";
 import { createApplicationLayerHandoffToolPorts } from "@/lib/application-layer/application-layer-handoff-tool-ports";
 import { createApplicationLayerWorkflowTransferToolPorts } from "@/lib/application-layer/application-layer-workflow-transfer-tool-ports";
+import { createLoginProductAgentPorts } from "./login-product-agent-ports";
+import { createLoginQuoteAgentPorts } from "./login-quote-agent-ports";
 
 /**
  * Factory hook for Tool Router domain services.
@@ -42,11 +47,13 @@ export function useToolRouterServices() {
       crmAgentPorts,
       schedulingToolPorts: portContext ? createApplicationLayerSchedulingToolPorts(portContext) : undefined,
       ticketAgentPorts: portContext ? createApplicationLayerTicketToolPorts(portContext) : undefined,
-      leadAgentPorts: portContext ? createApplicationLayerLeadToolPorts(portContext) : undefined,
+      leadAgentPorts: portContext ? createApplicationLayerLeadToolPorts(portContext, supabase) : undefined,
       handoffAgentPorts: portContext ? createApplicationLayerHandoffToolPorts(portContext) : undefined,
       workflowTransferPorts: portContext
         ? createApplicationLayerWorkflowTransferToolPorts(supabase, portContext)
         : undefined,
+      productAgentPorts: portContext ? createLoginProductAgentPorts(supabase) : undefined,
+      quoteAgentPorts: portContext ? createLoginQuoteAgentPorts(supabase) : undefined,
       includeMockTools: false,
     }),
     [user?.id, profile?.company_id, isSuperAdmin, hasPermission, crmAgentPorts, portContext],

@@ -68,11 +68,13 @@ function mapBookingViewToReadModel(
     reference:
       booking.confirmationNumber?.trim() || "—",
     scheduledAt: booking.startAt,
+    createdAt: booking.createdAt,
     status: booking.status,
     paymentStatus,
     employeeId: booking.resourceId ?? undefined,
     employeeName: booking.resource?.name ?? undefined,
     roomId: booking.branchId ?? undefined,
+    serviceId: booking.serviceId ?? undefined,
     serviceName: booking.service?.name ?? undefined,
     // Prefer booking price snapshot — never recompute from live service in the table.
     amountCents: booking.amountCents ?? booking.service?.priceCents ?? 0,
@@ -91,15 +93,16 @@ async function resolveCompanyTimezone(
   companyId: string,
   preferredTimezone?: string | null,
 ): Promise<string> {
-  if (preferredTimezone) {
-    return resolveQueueTimezone(preferredTimezone);
-  }
   const { data } = await client
     .from("scheduling_booking_rules")
     .select("timezone")
     .eq("company_id", companyId)
     .maybeSingle();
-  return resolveQueueTimezone(data?.timezone ?? null);
+  const companyTimezone = data?.timezone ? String(data.timezone) : null;
+  if (companyTimezone && companyTimezone !== "UTC") {
+    return resolveQueueTimezone(companyTimezone);
+  }
+  return resolveQueueTimezone(preferredTimezone ?? companyTimezone);
 }
 
 export function createLoginAppBookingReadPort(

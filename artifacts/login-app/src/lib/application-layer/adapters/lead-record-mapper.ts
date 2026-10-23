@@ -60,7 +60,8 @@ export function mapLeadRecordToReadModel(
     stageId: record.stageId,
     stage: labels.stage,
     sourceId,
-    source: sourceId ? labels.source : null,
+    // Label may come from sourceId OR Smart Capture channel when source_id was never set.
+    source: labels.source,
     expectedValue,
     expectedCloseDate,
     priority: record.priority,

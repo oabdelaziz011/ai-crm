@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SchedulingToolPorts } from "@workspace/ai-tool-router";
 import {
+  bridgeCreateDemoBooking,
+  bridgeFindNextDemo,
+  bridgeListDemoTypes,
+  bridgeSearchDemoAvailability,
   executeCancelBooking,
   executeCheckInBooking,
   executeCheckOutBooking,
@@ -9,6 +13,7 @@ import {
   executeSearchBookings,
   type BookingDomainServicePort,
 } from "@workspace/ai-tool-router";
+import { createProductDemoSchedulingServices } from "@workspace/product-demo-scheduling";
 import { supabase } from "@/lib/supabase";
 import { getBookingDomainServices } from "@/lib/scheduling/booking-domain";
 import type { LoginAppPortContext } from "./adapters/customer-read-port-adapter.js";
@@ -38,6 +43,7 @@ export function createApplicationLayerSchedulingToolPorts(
 ): SchedulingToolPorts {
   const services = createLoginAppApplicationServices(portContext);
   const client = deps.client ?? supabase;
+  const productDemos = createProductDemoSchedulingServices(client);
   const bookingDomain = deps.bookingDomain ?? getBookingDomainServices().bookingDomain;
 
   return {
@@ -149,6 +155,22 @@ export function createApplicationLayerSchedulingToolPorts(
         ...input,
         companyId: portContext.companyId,
       });
+    },
+
+    async listDemoTypes(input) {
+      return bridgeListDemoTypes(productDemos, input);
+    },
+
+    async searchDemoAvailability(input) {
+      return bridgeSearchDemoAvailability(productDemos, input);
+    },
+
+    async findNextDemo(input) {
+      return bridgeFindNextDemo(productDemos, input);
+    },
+
+    async createDemoBooking(input) {
+      return bridgeCreateDemoBooking(productDemos, input);
     },
   };
 }

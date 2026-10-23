@@ -1,12 +1,16 @@
 import type { AssignableEmployee } from "@workspace/assignment-governance";
 
-/** Branch-aware label for assignment selectors. */
+/** Branch-aware label for assignment selectors (person first; dept is context only). */
 export function formatAssignableEmployeeLabel(row: AssignableEmployee): string {
-  const name = row.fullName?.trim() || row.email?.trim() || row.userId;
+  const email = row.email?.trim() || null;
+  const rawName = row.fullName?.trim() || null;
   const dept = row.departmentName?.trim() || null;
   const branch = row.branchName?.trim() || null;
-  if (dept && branch) return `${name} · ${dept} — ${branch}`;
-  if (dept) return `${name} · ${dept}`;
+  // If the stored "name" is just the department, prefer email so the picker never looks dept-only.
+  const nameLooksLikeDept = Boolean(rawName && dept && rawName.toLowerCase() === dept.toLowerCase());
+  const name = (nameLooksLikeDept ? email : rawName) || email || row.userId;
+  const context = [dept, branch].filter(Boolean).join(" — ");
+  if (context && name.toLowerCase() !== context.toLowerCase()) return `${name} · ${context}`;
   return name;
 }
 

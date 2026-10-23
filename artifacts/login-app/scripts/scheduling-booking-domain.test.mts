@@ -49,7 +49,8 @@ function booking(overrides: Partial<SchedulingBooking> = {}): SchedulingBooking 
 
 {
   assert.equal(BookingLifecycleService.canTransition("pending", "confirmed"), true);
-  assert.equal(BookingLifecycleService.canTransition("confirmed", "completed"), true);
+  assert.equal(BookingLifecycleService.canTransition("confirmed", "completed"), false);
+  assert.equal(BookingLifecycleService.canTransition("checked_in", "completed"), true);
   assert.equal(BookingLifecycleService.canTransition("confirmed", "cancelled"), true);
   assert.equal(BookingLifecycleService.canTransition("completed", "cancelled"), false);
   assert.equal(BookingLifecycleService.isActive("confirmed"), true);

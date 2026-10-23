@@ -67,6 +67,10 @@ const viteEnv = {
     source.VITE_APP_ORIGIN ||
     (mode === VALUEOR_ENV_LOCAL ? "http://localhost:5173" : source.FRONTEND_ORIGIN) ||
     "http://localhost:5173",
+  // Optional local-only feature flags (never force-enable in production mode).
+  ...(source.VITE_VALUEOR_PRODUCT_ALIAS_GENERATION
+    ? { VITE_VALUEOR_PRODUCT_ALIAS_GENERATION: source.VITE_VALUEOR_PRODUCT_ALIAS_GENERATION }
+    : {}),
 };
 
 if (source.VITE_WEBHOOK_BASE_URL || source.WEBHOOK_BASE_URL) {

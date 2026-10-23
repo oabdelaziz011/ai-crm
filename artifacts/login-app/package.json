@@ -166,6 +166,7 @@
     "@workspace/configuration-platform": "workspace:*",
     "@workspace/lead-platform": "workspace:*",
     "@workspace/opportunity-platform": "workspace:*",
+    "@workspace/product-demo-scheduling": "workspace:*",
     "@workspace/product-platform": "workspace:*",
     "@workspace/quote-platform": "workspace:*",
     "@workspace/identity-platform": "workspace:*",

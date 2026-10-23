@@ -186,7 +186,7 @@ export async function scanAvailableDates(
     for (let index = 0; index < datesToScan.length; index += 1) {
       const date = datesToScan[index]!;
       const snapshot = snapshots[index]!;
-      if (!snapshot.available) continue;
+      if (!snapshot.available || snapshot.slots.length === 0) continue;
 
       durationMinutes = snapshot.durationMinutes || durationMinutes;
       resourceAvailableDates.push(date);

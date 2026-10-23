@@ -1,13 +1,60 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TimezoneResolver } from "../availability-engine/timezone-resolver";
-import { parseTimeToMinutes } from "../availability-engine/period-utils";
 import type { ExistingBooking } from "../slot-generation-engine/types";
+import { bookingConflictWindow, localDayLengthMinutes, localMidnight } from "./booking-time-utils";
 import {
   ACTIVE_BOOKING_STATUSES,
   type SchedulingBooking,
   type SchedulingBookingInsert,
   type SchedulingBookingStatus,
 } from "../booking-domain/types";
+
+export type BookingDayWindow = {
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
+};
+
+function resourceSlotCapacity(metadata: unknown): number {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 1;
+  const raw = (metadata as { capacity?: unknown }).capacity;
+  const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? Number.parseInt(raw, 10) : Number.NaN;
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.floor(parsed);
+}
+
+function nonNegativeMinutes(value: unknown): number {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number.parseInt(value, 10) : Number.NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.floor(parsed);
+}
+
+/**
+ * Widen the candidate bounds so existing rows are expanded in place.
+ * buffer_before moves an existing start earlier; buffer_after moves an existing end later.
+ * The candidate itself is not expanded, so adjacent bookings keep a single gap.
+ */
+function addMinutesIso(iso: string, minutes: number): string {
+  if (minutes === 0) return iso;
+  return new Date(Date.parse(iso) + minutes * 60_000).toISOString();
+}
+
+function bufferedOverlapBounds(
+  startAt: string,
+  endAt: string,
+  bufferBeforeMinutes: number,
+  bufferAfterMinutes: number,
+): { startAt: string; endAt: string } {
+  return {
+    startAt:
+      bufferAfterMinutes === 0
+        ? startAt
+        : new Date(Date.parse(startAt) - bufferAfterMinutes * 60_000).toISOString(),
+    endAt:
+      bufferBeforeMinutes === 0
+        ? endAt
+        : new Date(Date.parse(endAt) + bufferBeforeMinutes * 60_000).toISOString(),
+  };
+}
 
 export class BookingRepository {
   constructor(private readonly client: SupabaseClient) {}
@@ -25,6 +72,24 @@ export class BookingRepository {
     return (data as SchedulingBooking | null) ?? null;
   }
 
+  async findByClientRequestId(
+    companyId: string,
+    clientRequestId: string,
+  ): Promise<SchedulingBooking | null> {
+    const key = clientRequestId.trim();
+    if (!key) return null;
+    const { data, error } = await this.client
+      .from("scheduling_bookings")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("client_request_id", key)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return (data as SchedulingBooking | null) ?? null;
+  }
+
   async create(values: SchedulingBookingInsert): Promise<SchedulingBooking> {
     const { data, error } = await this.client
       .from("scheduling_bookings")
@@ -35,7 +100,17 @@ export class BookingRepository {
       .select("*")
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      const err = new Error(error.message) as Error & {
+        code?: string;
+        details?: string;
+        hint?: string;
+      };
+      err.code = typeof error.code === "string" ? error.code : undefined;
+      err.details = typeof error.details === "string" ? error.details : undefined;
+      err.hint = typeof error.hint === "string" ? error.hint : undefined;
+      throw err;
+    }
     return data as SchedulingBooking;
   }
 
@@ -74,23 +149,53 @@ export class BookingRepository {
     endAt: string,
     excludeBookingId?: string,
   ): Promise<SchedulingBooking | null> {
+    const rules = await this.client
+      .from("scheduling_booking_rules")
+      .select("allow_overbooking, buffer_before_minutes, buffer_after_minutes")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (rules.error) throw new Error(rules.error.message);
+    if (rules.data?.allow_overbooking) return null;
+
+    const bufferBefore = nonNegativeMinutes(rules.data?.buffer_before_minutes);
+    const bufferAfter = nonNegativeMinutes(rules.data?.buffer_after_minutes);
     let query = this.client
       .from("scheduling_bookings")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("company_id", companyId)
       .eq("resource_id", resourceId)
       .is("deleted_at", null)
-      .in("status", ACTIVE_BOOKING_STATUSES)
-      .lt("start_at", endAt)
-      .gt("end_at", startAt);
+      .in("status", ACTIVE_BOOKING_STATUSES);
+    if (bufferBefore === bufferAfter) {
+      const overlap = bufferedOverlapBounds(startAt, endAt, bufferBefore, bufferAfter);
+      query = query.lt("start_at", overlap.endAt).gt("end_at", overlap.startAt);
+    } else {
+      const endPlusBefore = addMinutesIso(endAt, bufferBefore);
+      const startMinusAfter = addMinutesIso(startAt, -bufferAfter);
+      const endPlusAfter = addMinutesIso(endAt, bufferAfter);
+      const startMinusBefore = addMinutesIso(startAt, -bufferBefore);
+      query = query.or(
+        `and(start_at.lt."${endPlusBefore}",end_at.gt."${startMinusAfter}"),and(start_at.lt."${endPlusAfter}",end_at.gt."${startMinusBefore}")`,
+      );
+    }
 
     if (excludeBookingId) {
       query = query.neq("id", excludeBookingId);
     }
 
-    const { data, error } = await query.limit(1).maybeSingle();
+    const resource = await this.client
+      .from("scheduling_resources")
+      .select("metadata")
+      .eq("id", resourceId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (resource.error) throw new Error(resource.error.message);
+    const capacity = resourceSlotCapacity(resource.data?.metadata);
+
+    const { data, error, count } = await query.limit(1);
     if (error) throw new Error(error.message);
-    return (data as SchedulingBooking | null) ?? null;
+    if ((count ?? 0) < capacity) return null;
+    return (data?.[0] as SchedulingBooking | undefined) ?? null;
   }
 
   async listByResourceAndDate(
@@ -98,8 +203,9 @@ export class BookingRepository {
     resourceId: string,
     date: string,
     timezone: string,
+    window?: BookingDayWindow,
   ): Promise<ExistingBooking[]> {
-    const rows = await this.listByResourcesAndDate(companyId, [resourceId], date, timezone);
+    const rows = await this.listByResourcesAndDate(companyId, [resourceId], date, timezone, window);
     return rows.get(resourceId) ?? [];
   }
 
@@ -108,6 +214,7 @@ export class BookingRepository {
     resourceIds: string[],
     date: string,
     timezone: string,
+    window?: BookingDayWindow,
   ): Promise<Map<string, ExistingBooking[]>> {
     const result = new Map<string, ExistingBooking[]>();
     for (const id of resourceIds) {
@@ -118,7 +225,10 @@ export class BookingRepository {
       return result;
     }
 
-    const { startIso, endIso } = BookingRepository.dayQueryBounds(date);
+    const bufferBefore = nonNegativeMinutes(window?.bufferBeforeMinutes);
+    const bufferAfter = nonNegativeMinutes(window?.bufferAfterMinutes);
+    const padMinutes = Math.max(bufferBefore, bufferAfter);
+    const { startIso, endIso } = bookingConflictWindow(date, timezone, padMinutes);
 
     const { data, error } = await this.client
       .from("scheduling_bookings")
@@ -127,31 +237,15 @@ export class BookingRepository {
       .in("resource_id", resourceIds)
       .is("deleted_at", null)
       .in("status", ACTIVE_BOOKING_STATUSES)
-      .gte("start_at", startIso)
-      .lte("start_at", endIso);
+      .lt("start_at", endIso)
+      .gt("end_at", startIso);
 
     if (error) throw new Error(error.message);
 
     for (const row of data ?? []) {
-      const localDate = TimezoneResolver.localDateForInstant(
-        TimezoneResolver.parseInstant(row.start_at),
-        timezone,
-      );
-      if (localDate !== date) continue;
-
-      const startMinutes = parseTimeToMinutes(
-        TimezoneResolver.localTimeForInstant(
-          TimezoneResolver.parseInstant(row.start_at),
-          timezone,
-        ),
-      );
-      const endMinutes = parseTimeToMinutes(
-        TimezoneResolver.localTimeForInstant(
-          TimezoneResolver.parseInstant(row.end_at),
-          timezone,
-        ),
-      );
-      const durationMinutes = Math.max(1, endMinutes - startMinutes);
+      const placed = bookingMinutesOnDate(row.start_at, row.end_at, timezone, date, padMinutes);
+      if (!placed) continue;
+      const { startMinutes, durationMinutes } = placed;
 
       const bookings = result.get(row.resource_id) ?? [];
       bookings.push({
@@ -177,4 +271,22 @@ export class BookingRepository {
     const end = new Date(anchor + 36 * 60 * 60 * 1000);
     return { startIso: start.toISOString(), endIso: end.toISOString() };
   }
+}
+
+/** Place a booking in absolute minutes from local midnight. A negative start is the previous day. */
+export function bookingMinutesOnDate(
+  startAt: string,
+  endAt: string,
+  timezone: string,
+  date: string,
+  padMinutes: number,
+): { startMinutes: number; durationMinutes: number } | null {
+  const midnight = localMidnight(date, timezone).getTime();
+  const startMinutes = Math.round((TimezoneResolver.parseInstant(startAt).getTime() - midnight) / 60_000);
+  const endMinutes = Math.round((TimezoneResolver.parseInstant(endAt).getTime() - midnight) / 60_000);
+  const durationMinutes = endMinutes - startMinutes;
+  if (durationMinutes <= 0) return null;
+  const dayLength = localDayLengthMinutes(date, timezone);
+  if (startMinutes >= dayLength + padMinutes || endMinutes <= -padMinutes) return null;
+  return { startMinutes, durationMinutes };
 }

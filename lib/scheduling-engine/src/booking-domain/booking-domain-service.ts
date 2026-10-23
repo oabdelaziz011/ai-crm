@@ -26,6 +26,8 @@ import type {
   RescheduleBookingInput,
   RescheduleBookingResult,
   BookingValidationResult,
+  SchedulingBooking,
+  SchedulingBookingInsert,
 } from "./types.js";
 
 export class BookingDomainService {
@@ -61,6 +63,7 @@ export class BookingDomainService {
       slotStart: input.slotStart,
       referenceNow: input.referenceNow,
       excludeBookingId: input.excludeBookingId,
+      expectedServiceKind: input.expectedServiceKind ?? null,
     });
   }
 
@@ -68,6 +71,20 @@ export class BookingDomainService {
     const precheck = this.validationService.validateCreateInput(input);
     if (precheck) {
       throw new BookingDomainError(precheck.errors);
+    }
+
+    const clientRequestId =
+      typeof input.clientRequestId === "string" && input.clientRequestId.trim()
+        ? input.clientRequestId.trim()
+        : null;
+    if (clientRequestId) {
+      const existing = await this.bookingRepo.findByClientRequestId(
+        input.companyId,
+        clientRequestId,
+      );
+      if (existing) {
+        return { booking: existing };
+      }
     }
 
     const validation = await this.validationService.validateBooking({
@@ -78,6 +95,7 @@ export class BookingDomainService {
       date: input.date,
       slotStart: input.slotStart,
       referenceNow: input.referenceNow,
+      expectedServiceKind: input.expectedServiceKind ?? null,
     });
 
     if (!validation.valid || !validation.context) {
@@ -94,21 +112,50 @@ export class BookingDomainService {
       throw new BookingDomainError(["booking_conflict"]);
     }
 
-    const booking = await this.bookingRepo.create({
-      company_id: input.companyId,
-      branch_id: input.branchId ?? validation.context.branchId,
-      customer_id: input.customerId,
-      resource_id: input.resourceId,
-      service_id: input.serviceId,
-      start_at: validation.context.startAt,
-      end_at: validation.context.endAt,
-      timezone: validation.context.timezone,
-      status: "confirmed",
-      source: input.source,
-      notes: input.notes ?? null,
-      created_by: input.createdBy ?? null,
-      updated_by: input.createdBy ?? null,
-    });
+    const snapshot = await this.validationService.resolvePricingSnapshot(
+      input.companyId,
+      input.serviceId,
+      input.visitType,
+    );
+
+    let booking;
+    try {
+      booking = await this.bookingRepo.create({
+        company_id: input.companyId,
+        branch_id: input.branchId ?? validation.context.branchId,
+        customer_id: input.customerId,
+        resource_id: input.resourceId,
+        service_id: input.serviceId,
+        start_at: validation.context.startAt,
+        end_at: validation.context.endAt,
+        timezone: validation.context.timezone,
+        status: "confirmed",
+        source: input.source,
+        notes: input.notes ?? null,
+        created_by: input.createdBy ?? null,
+        updated_by: input.createdBy ?? null,
+        amount_cents: snapshot.priceCents,
+        currency: snapshot.currency,
+        visit_type: snapshot.typeCode,
+        payment_status: "pending",
+        discount_cents: 0,
+        tax_cents: 0,
+        ...(clientRequestId ? { client_request_id: clientRequestId } : {}),
+      });
+    } catch (error) {
+      // Concurrent duplicate client_request_id: unique index won the race — return winner.
+      // Do not swallow unrelated unique violations (confirmation_number, etc.).
+      if (clientRequestId && isClientRequestIdUniqueViolation(error)) {
+        const existing = await this.bookingRepo.findByClientRequestId(
+          input.companyId,
+          clientRequestId,
+        );
+        if (existing) {
+          return { booking: existing };
+        }
+      }
+      throw error;
+    }
 
     await this.eventPublisher.publish(createBookingCreatedEvent(booking));
     return { booking };
@@ -225,11 +272,6 @@ export class BookingDomainService {
       throw new BookingDomainError(validation.errors);
     }
 
-    const preservedConfirmation =
-      typeof existing.confirmation_number === "string" && existing.confirmation_number.trim()
-        ? existing.confirmation_number.trim()
-        : null;
-
     const previousBooking = await this.bookingRepo.updateStatus(
       existing.id,
       input.companyId,
@@ -237,25 +279,37 @@ export class BookingDomainService {
       input.updatedBy ?? null,
     );
 
-    const booking = await this.bookingRepo.create({
-      company_id: input.companyId,
-      branch_id: previousBooking.branch_id,
-      customer_id: previousBooking.customer_id,
-      resource_id: previousBooking.resource_id,
-      service_id: previousBooking.service_id,
-      start_at: validation.context.startAt,
-      end_at: validation.context.endAt,
-      timezone: validation.context.timezone,
-      status: "confirmed",
-      source: previousBooking.source,
-      notes: previousBooking.notes,
-      rescheduled_from_id: previousBooking.id,
-      // Keep the SAME customer-facing BK on the replacement row (partial unique index
-      // excludes status=rescheduled). Trigger skips assignment when this is set.
-      ...(preservedConfirmation ? { confirmation_number: preservedConfirmation } : {}),
-      created_by: input.updatedBy ?? previousBooking.created_by,
-      updated_by: input.updatedBy ?? null,
-    });
+    let booking: SchedulingBooking;
+    try {
+      booking = await this.bookingRepo.create({
+        company_id: input.companyId,
+        branch_id: previousBooking.branch_id,
+        customer_id: previousBooking.customer_id,
+        resource_id: previousBooking.resource_id,
+        service_id: previousBooking.service_id,
+        start_at: validation.context.startAt,
+        end_at: validation.context.endAt,
+        timezone: validation.context.timezone,
+        status: "confirmed",
+        source: previousBooking.source,
+        notes: previousBooking.notes,
+        rescheduled_from_id: previousBooking.id,
+        ...pricingCarriedOver(previousBooking),
+        // The original row keeps its booking number. The replacement omits
+        // confirmation_number so the database trigger assigns the next one.
+        created_by: input.updatedBy ?? previousBooking.created_by,
+        updated_by: input.updatedBy ?? null,
+      });
+    } catch (error) {
+      // The two writes are not one transaction: without this the customer keeps no active booking.
+      await this.bookingRepo.updateStatus(
+        existing.id,
+        input.companyId,
+        existing.status,
+        existing.updated_by ?? null,
+      );
+      throw error;
+    }
 
     await this.eventPublisher.publish(
       createBookingRescheduledEvent(previousBooking, booking),
@@ -280,6 +334,24 @@ export class BookingDomainError extends Error {
   }
 }
 
+const PRICING_FIELDS = [
+  "amount_cents",
+  "currency",
+  "visit_type",
+  "payment_status",
+  "discount_cents",
+  "tax_cents",
+] as const;
+
+/** A rescheduled booking keeps the visit type and price it was booked with. */
+function pricingCarriedOver(
+  booking: SchedulingBooking,
+): Pick<SchedulingBookingInsert, (typeof PRICING_FIELDS)[number]> {
+  return Object.fromEntries(
+    PRICING_FIELDS.filter((field) => booking[field] != null).map((field) => [field, booking[field]]),
+  );
+}
+
 function buildCancellationNote(
   reason: string | null | undefined,
   notes: string | null | undefined,
@@ -289,4 +361,21 @@ function buildCancellationNote(
     .filter((part) => part && part.trim().length > 0)
     .map((part) => part!.trim());
   return parts.length > 0 ? parts.join("\n") : existingNotes;
+}
+
+/** Unique index idx_scheduling_bookings_company_client_request_id only — not other constraints. */
+export function isClientRequestIdUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message =
+    error instanceof Error
+      ? error.message
+      : String((error as { message?: unknown }).message ?? "");
+  const details =
+    "details" in error ? String((error as { details?: unknown }).details ?? "") : "";
+  const blob = `${message}\n${details}`;
+  const isUnique =
+    code === "23505" || /duplicate key|unique constraint/i.test(blob);
+  if (!isUnique) return false;
+  return /client_request_id|idx_scheduling_bookings_company_client_request/i.test(blob);
 }

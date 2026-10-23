@@ -71,6 +71,7 @@ function createHarness(options: {
   whatsapp?: WhatsAppRouteResolution;
   dispatchError?: Error;
   markSentError?: Error;
+  completeAttemptError?: Error;
   dispatchDelayMs?: number;
 } = {}): Harness {
   const quote = options.quote === undefined ? makeQuote() : options.quote;
@@ -156,6 +157,9 @@ function createHarness(options: {
       return { attempt };
     },
     async completeAttempt(id, patch) {
+      if (options.completeAttemptError && patch.status === "sent") {
+        throw options.completeAttemptError;
+      }
       const a = h.attempts.find((x) => x.id === id)!;
       Object.assign(a, {
         status: patch.status,
@@ -502,6 +506,16 @@ describe("QuoteSendService — status and activity", () => {
     assert.equal(result.quoteStatusUpdated, false);
     assert.equal(result.quoteStatus, null);
     assert.equal(h.attempts[0]!.status, "sent");
+  });
+
+  it("still returns sent when provider accepted but completeAttempt persistence fails", async () => {
+    const h = createHarness({ completeAttemptError: new Error("db unavailable") });
+    const result = await service(h).send(sendInput());
+    assert.equal(result.status, "sent");
+    assert.equal(h.dispatches.length, 1);
+    // Attempt row may remain pending in DB — caller must not treat this as a failed send / auto-retry.
+    assert.equal(h.attempts[0]!.status, "pending");
+    assert.equal(result.quoteStatusUpdated, true);
   });
 
   it("records success activity with attempt, channel and delivery ids", async () => {

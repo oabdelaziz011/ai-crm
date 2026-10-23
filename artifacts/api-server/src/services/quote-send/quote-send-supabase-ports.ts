@@ -73,6 +73,11 @@ export type QuoteSendPortDeps = {
   hasPermission: (code: string) => boolean;
   /** Context handed to the channel platform (see createQuoteSendDispatchContext). */
   dispatchContext: ServiceContext;
+  /**
+   * Optional outbound dispatch override (tests / local fake provider only).
+   * When omitted, production uses dispatchOmnichannelOutboundMessage.
+   */
+  dispatch?: QuoteSendPorts["dispatch"];
 };
 
 export function createQuoteSendSupabasePorts(deps: QuoteSendPortDeps): QuoteSendPorts {
@@ -427,6 +432,9 @@ export function createQuoteSendSupabasePorts(deps: QuoteSendPortDeps): QuoteSend
     },
 
     async dispatch(input) {
+      if (deps.dispatch) {
+        return deps.dispatch(input);
+      }
       const result = await dispatchOmnichannelOutboundMessage(deps.dispatchContext, {
         companyId: input.companyId,
         conversationId: input.conversationId,

@@ -249,11 +249,40 @@ function errorStatusOf(error: unknown): number {
   return typeof status === "number" && status >= 400 && status < 600 ? status : 502;
 }
 
+export type QuoteSendCrmHooks = {
+  /**
+   * Invoked only after a confirmed successful send (status === "sent"), including
+   * idempotent replay of a prior successful attempt. Must not send messages.
+   */
+  afterConfirmedSend?: (input: {
+    companyId: string;
+    quoteId: string;
+    actorUserId: string | null;
+  }) => Promise<void>;
+};
+
 export class QuoteSendService {
   constructor(
     private readonly ports: QuoteSendPorts,
     private readonly clock: () => Date = () => new Date(),
+    private readonly hooks: QuoteSendCrmHooks = {},
   ) {}
+
+  private async notifyConfirmedSend(input: {
+    companyId: string;
+    quoteId: string;
+    actorUserId: string | null;
+  }): Promise<void> {
+    if (!this.hooks.afterConfirmedSend) return;
+    try {
+      await this.hooks.afterConfirmedSend(input);
+    } catch (error) {
+      console.error("[quote-send] afterConfirmedSend hook failed (send still succeeded)", {
+        quoteId: input.quoteId,
+        error,
+      });
+    }
+  }
 
   private async loadQuoteOrThrow(companyId: string, quoteId: string): Promise<QuoteSnapshot> {
     const quote = await this.ports.loadQuote(companyId, quoteId);
@@ -338,9 +367,25 @@ export class QuoteSendService {
     }
 
     const replay = await this.replayByKey(input.companyId, input.quoteId, channel, idempotencyKey);
-    if (replay) return replay;
+    if (replay) {
+      await this.notifyConfirmedSend({
+        companyId: input.companyId,
+        quoteId: input.quoteId,
+        actorUserId: input.actorUserId,
+      });
+      return replay;
+    }
 
     const quote = await this.loadQuoteOrThrow(input.companyId, input.quoteId);
+    const quoteStatusNorm = String(quote.status ?? "").trim().toLowerCase();
+    if (
+      quoteStatusNorm === "sent" ||
+      quoteStatusNorm === "viewed" ||
+      quoteStatusNorm === "accepted" ||
+      quoteStatusNorm === "converted"
+    ) {
+      throw new QuoteSendError(409, "already_sent", "Quote was already sent.");
+    }
     if (quote.lines.length === 0) {
       throw new QuoteSendError(422, "quote_has_no_lines", "Add at least one line item before sending the quote.");
     }
@@ -431,6 +476,8 @@ export class QuoteSendService {
             source: "quote_send",
             quoteId: quote.id,
             quoteSendAttemptId: attempt.id,
+            // Channel layers that honor idempotency can dedupe retries of the same attempt.
+            idempotencyKey,
           },
         });
       } else {
@@ -449,6 +496,7 @@ export class QuoteSendService {
             source: "quote_send",
             quoteId: quote.id,
             quoteSendAttemptId: attempt.id,
+            idempotencyKey,
           },
         });
       }
@@ -470,13 +518,27 @@ export class QuoteSendService {
       });
     }
 
-    await this.ports.completeAttempt(attempt.id, {
-      status: "sent",
-      companyChannelId,
-      conversationId,
-      deliveryEventId: dispatched.deliveryEventId,
-      externalMessageId: dispatched.externalMessageId,
-    });
+    // Provider already accepted. Persist attempt "sent" best-effort — never treat a
+    // DB write failure here as a failed delivery (that would invite a duplicate retry).
+    let attemptPersisted = false;
+    try {
+      await this.ports.completeAttempt(attempt.id, {
+        status: "sent",
+        companyChannelId,
+        conversationId,
+        deliveryEventId: dispatched.deliveryEventId,
+        externalMessageId: dispatched.externalMessageId,
+      });
+      attemptPersisted = true;
+    } catch (error) {
+      console.error("[quote-send] provider accepted but completeAttempt failed — reconcile manually", {
+        attemptId: attempt.id,
+        quoteId: quote.id,
+        externalMessageId: dispatched.externalMessageId,
+        deliveryEventId: dispatched.deliveryEventId,
+        error,
+      });
+    }
     await this.ports
       .addQuoteHistory({
         companyId: input.companyId,
@@ -491,6 +553,7 @@ export class QuoteSendService {
           deliveryEventId: dispatched.deliveryEventId,
           externalMessageId: dispatched.externalMessageId,
           deliveryStatus: dispatched.deliveryStatus,
+          attemptPersisted,
         },
         actorUserId: input.actorUserId,
       })
@@ -505,13 +568,20 @@ export class QuoteSendService {
       sentAt = marked.sentAt;
       quoteStatusUpdated = true;
     } catch (error) {
-      // Message was delivered to the provider; the attempt stays "sent". Status can be fixed by a retry.
+      // Message was delivered to the provider; do not fail the send for status drift.
       console.error("[quote-send] message sent but quote status update failed", {
         attemptId: attempt.id,
         quoteId: quote.id,
+        attemptPersisted,
         error,
       });
     }
+
+    await this.notifyConfirmedSend({
+      companyId: input.companyId,
+      quoteId: quote.id,
+      actorUserId: input.actorUserId,
+    });
 
     return {
       attemptId: attempt.id,

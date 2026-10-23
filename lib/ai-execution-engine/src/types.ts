@@ -264,6 +264,10 @@ export type EnterpriseRuntimeExecuteResult = {
   tokenUsage: TokenUsage;
   estimatedCostUsd: number | null;
   responseText: string;
+  /** Set when the stored text came from verified tool outcomes after a provider failure. */
+  deliveryOutcome?: "provider_fallback";
+  /** Public photos for a single product. Omitted from the model transcript. */
+  replyImages?: ReadonlyArray<{ url: string; caption: string }>;
   cacheHit: boolean;
   trimmedMessageCount: number;
 };

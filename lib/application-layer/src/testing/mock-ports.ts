@@ -511,7 +511,10 @@ export function createMockApplicationPorts(): ApplicationPorts & {
           tenantId: input.tenantId,
           name: input.name,
           leadId: input.leadId ?? null,
+          leadLifecycleStatus: null,
           customerId: input.customerId ?? null,
+          primaryProductId: input.primaryProductId ?? null,
+          primaryProductName: null,
           companyName: input.companyName ?? null,
           primaryContact: input.primaryContactName ?? "",
           ownerId: input.ownerUserId ?? null,
@@ -539,6 +542,9 @@ export function createMockApplicationPorts(): ApplicationPorts & {
           aiScoreSnapshot: null,
           aiContextSnapshot: Object.freeze({}),
           currentQuoteId: null,
+          wonAt: null,
+          lostAt: null,
+          lostReason: null,
           createdAt: now(),
           updatedAt: now(),
         }) satisfies OpportunityReadModel;
@@ -658,15 +664,18 @@ export function createMockApplicationPorts(): ApplicationPorts & {
           basePrice: input.basePrice ?? 0,
           currency: input.currency ?? "USD",
           taxClass: input.taxClass ?? "standard",
+          priceTaxMode: input.priceTaxMode ?? "inclusive",
+          taxPercent: input.taxPercent ?? 0,
           cost: input.cost ?? null,
           marginPercent: null,
           isActive: true,
-          subscriptionInterval: null,
-          subscriptionPrice: null,
-          trackInventory: false,
-          stockQuantity: null,
-          unit: "each",
+          subscriptionInterval: input.subscriptionInterval ?? null,
+          subscriptionPrice: input.subscriptionPrice ?? null,
+          trackInventory: input.trackInventory ?? false,
+          stockQuantity: input.stockQuantity ?? null,
+          unit: input.unit ?? "each",
           tags: input.tags ? [...input.tags] : [],
+          aliases: input.aliases ? [...input.aliases] : [],
           imageUrls: [],
           documentUrls: [],
           createdAt: now(),
@@ -680,6 +689,21 @@ export function createMockApplicationPorts(): ApplicationPorts & {
         if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
         const { actorUserId: _a, ...rest } = patch;
         const updated = Object.freeze({ ...existing, ...rest, updatedAt: now() });
+        products.set(productId, updated);
+        return updated;
+      },
+      async regenerateAliases(tenantId, productId) {
+        const existing = products.get(productId);
+        if (!existing || existing.tenantId !== tenantId) throw new Error("not found");
+        const updated = Object.freeze({
+          ...existing,
+          aliasGeneration: Object.freeze({
+            status: "pending" as const,
+            primaryLanguage: existing.aliasGeneration?.primaryLanguage ?? null,
+            errorCode: null,
+          }),
+          updatedAt: now(),
+        });
         products.set(productId, updated);
         return updated;
       },

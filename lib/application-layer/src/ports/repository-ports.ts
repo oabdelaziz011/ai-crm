@@ -309,12 +309,14 @@ export type BookingReadModel = Readonly<{
   customerName: string;
   reference: string;
   scheduledAt: string;
+  createdAt?: string;
   /** Raw scheduling status (e.g. checked_in) — not display label. */
   status: string;
   paymentStatus: string;
   employeeId?: string;
   employeeName?: string;
   roomId?: string;
+  serviceId?: string;
   serviceName?: string;
   amountCents?: number;
   currency?: string;
@@ -812,7 +814,13 @@ export type OpportunityReadModel = Readonly<{
   tenantId: string;
   name: string;
   leadId: string | null;
+  /** Lead Kanban lifecycle when the opportunity is linked. Null for manual opportunities. */
+  leadLifecycleStatus: string | null;
   customerId: string | null;
+  /** Canonical commercial-scope product id (catalog_products), when set. */
+  primaryProductId: string | null;
+  /** Catalog product name when primaryProductId resolves; never invented. */
+  primaryProductName: string | null;
   companyName: string | null;
   primaryContact: string;
   ownerId: string | null;
@@ -836,6 +844,9 @@ export type OpportunityReadModel = Readonly<{
   aiScoreSnapshot: number | null;
   aiContextSnapshot: Readonly<Record<string, unknown>>;
   currentQuoteId: string | null;
+  wonAt: string | null;
+  lostAt: string | null;
+  lostReason: string | null;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -880,12 +891,19 @@ export type OpportunityPipelineBoardModel = Readonly<{
   })[];
 }>;
 
+export type OpportunityListOutcomeFilter = "open" | "won" | "lost";
+
 export type OpportunityListFilter = Readonly<{
   pipelineId?: string;
   stageId?: string;
   ownerUserId?: string;
   leadId?: string;
   query?: string;
+  /** Lead kanban lifecycle (`demo_completed`, `won`, `converted`, …). */
+  leadLifecycleStatus?: string;
+  /** open = no won/lost; won/lost = terminal timestamps set. */
+  outcome?: OpportunityListOutcomeFilter;
+  openOnly?: boolean;
   limit?: number;
   offset?: number;
 }>;
@@ -911,6 +929,7 @@ export type OpportunityWritePort = {
     opportunityId: string,
     stageId: string,
     actorUserId: string,
+    options?: { lostReason?: string | null },
   ): Promise<OpportunityReadModel>;
   updateProbability(
     tenantId: string,
@@ -936,6 +955,7 @@ export type OpportunityCreateInput = Readonly<{
   language?: string;
   leadId?: string;
   customerId?: string;
+  primaryProductId?: string;
   probabilityPercent?: number;
   probabilitySource?: string;
   probabilityReason?: string;
@@ -956,6 +976,7 @@ export type OpportunityCreateFromLeadInput = Readonly<{
   stageId?: string;
   pipelineId?: string;
   forceCreate?: boolean;
+  primaryProductId?: string;
   probabilityPercent?: number;
   probabilitySource?: string;
   probabilityReason?: string;
@@ -985,6 +1006,12 @@ export type OpportunityProbabilityInput = Readonly<{
 }>;
 
 /** Sprint 4.1 — Catalog product read model */
+export type CatalogProductAliasGenerationReadModel = Readonly<{
+  status: "pending" | "completed" | "failed";
+  primaryLanguage: string | null;
+  errorCode: string | null;
+}>;
+
 export type CatalogProductReadModel = Readonly<{
   id: string;
   tenantId: string;
@@ -997,6 +1024,8 @@ export type CatalogProductReadModel = Readonly<{
   basePrice: number;
   currency: string;
   taxClass: string;
+  priceTaxMode: "inclusive" | "exclusive" | "unspecified";
+  taxPercent: number;
   cost: number | null;
   marginPercent: number | null;
   isActive: boolean;
@@ -1006,8 +1035,11 @@ export type CatalogProductReadModel = Readonly<{
   stockQuantity: number | null;
   unit: string;
   tags: readonly string[];
+  aliases: readonly string[];
   imageUrls: readonly string[];
   documentUrls: readonly string[];
+  /** Present when AI alias generation has been scheduled or finished for this product. */
+  aliasGeneration?: CatalogProductAliasGenerationReadModel | null;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -1058,6 +1090,7 @@ export type ProductHistoryReadModel = Readonly<{
   fieldName: string | null;
   previousValue: string | null;
   newValue: string | null;
+  actorUserId: string | null;
   createdAt: string;
 }>;
 
@@ -1086,6 +1119,8 @@ export type ProductWritePort = {
   create(input: ProductCreateInput): Promise<CatalogProductReadModel>;
   update(tenantId: string, productId: string, patch: ProductUpdateInput): Promise<CatalogProductReadModel>;
   archive(tenantId: string, productId: string, actorUserId: string): Promise<void>;
+  /** Re-run AI search-alias generation for a saved product (edit permission). */
+  regenerateAliases(tenantId: string, productId: string, actorUserId: string): Promise<CatalogProductReadModel>;
   createCategory(input: ProductCategoryCreateInput): Promise<ProductCategoryReadModel>;
   upsertRegionalPrice(input: ProductRegionalPriceInput): Promise<ProductRegionalPriceReadModel>;
   attachToOpportunity(input: AttachProductToOpportunityInput): Promise<OpportunityLineItemReadModel>;
@@ -1104,8 +1139,17 @@ export type ProductCreateInput = Readonly<{
   basePrice?: number;
   currency?: string;
   taxClass?: string;
+  priceTaxMode?: "inclusive" | "exclusive" | "unspecified";
+  taxPercent?: number;
   cost?: number | null;
+  subscriptionInterval?: "month" | "year" | "quarter" | null;
+  subscriptionPrice?: number | null;
+  unit?: string;
+  trackInventory?: boolean;
+  stockQuantity?: number | null;
   tags?: string[];
+  aliases?: string[];
+  imageUrls?: string[];
   actorUserId: string;
 }>;
 
@@ -1118,10 +1162,18 @@ export type ProductUpdateInput = Readonly<{
   basePrice?: number;
   currency?: string;
   taxClass?: string;
+  priceTaxMode?: "inclusive" | "exclusive" | "unspecified";
+  taxPercent?: number;
   cost?: number | null;
   isActive?: boolean;
   productType?: string;
+  subscriptionInterval?: "month" | "year" | "quarter" | null;
+  subscriptionPrice?: number | null;
+  unit?: string;
+  trackInventory?: boolean;
+  stockQuantity?: number | null;
   tags?: string[];
+  aliases?: string[];
   documentUrls?: string[];
   imageUrls?: string[];
   actorUserId: string;

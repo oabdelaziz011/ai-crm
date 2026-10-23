@@ -139,6 +139,21 @@ export class ProductApplicationService {
     });
   }
 
+  regenerateProductAliases(
+    request: { productId: string },
+    context: ApplicationContext,
+  ): Promise<CommandResult<CatalogProductReadModel>> {
+    const cmd = this.deps.commandPipeline ?? new CommandPipeline({ audit: this.deps.infra.audit });
+    return cmd.execute({
+      commandType: "RegenerateProductAliases",
+      request,
+      context,
+      requiredPermissions: ["products.edit"],
+      handler: async (req, ctx) =>
+        this.deps.ports.productWrite.regenerateAliases(ctx.tenantId, req.productId, ctx.actorId),
+    });
+  }
+
   archiveProduct(
     request: { productId: string },
     context: ApplicationContext,

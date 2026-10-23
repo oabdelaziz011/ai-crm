@@ -57,6 +57,7 @@ export const COMMAND_TYPES = [
   "ArchiveOpportunity",
   "CreateProduct",
   "UpdateProduct",
+  "RegenerateProductAliases",
   "ArchiveProduct",
   "CreateProductCategory",
   "UpsertRegionalPrice",

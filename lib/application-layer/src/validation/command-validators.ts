@@ -205,6 +205,9 @@ export const commandValidators: Record<string, (request: unknown) => void> = {
   UpdateProduct: (request) => {
     requireString(asRecord(request).productId, "productId");
   },
+  RegenerateProductAliases: (request) => {
+    requireString(asRecord(request).productId, "productId");
+  },
   ArchiveProduct: (request) => {
     requireString(asRecord(request).productId, "productId");
   },

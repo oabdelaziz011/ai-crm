@@ -157,7 +157,7 @@ export class OpportunityApplicationService {
   }
 
   changeStage(
-    request: { opportunityId: string; stageId: string },
+    request: { opportunityId: string; stageId: string; lostReason?: string | null },
     context: ApplicationContext,
   ): Promise<CommandResult<OpportunityReadModel>> {
     const cmdPipeline = this.deps.commandPipeline ?? new CommandPipeline({ audit: this.deps.infra.audit });
@@ -172,6 +172,7 @@ export class OpportunityApplicationService {
           req.opportunityId,
           req.stageId,
           ctx.actorId,
+          { lostReason: req.lostReason },
         ),
     });
   }

@@ -1,3 +1,5 @@
+import { translateLeadLifecycleStatusSafe } from "@/components/leads/kanban/lead-stage-label";
+import { LeadsStageBadge } from "@/components/leads/workspace/leads-stage-badge";
 import { Briefcase, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -443,6 +445,14 @@ export function OpportunityPipelineBoard({
                 <div className="mt-1 truncate text-[11px] text-muted-foreground">
                   {opp.companyName || opp.primaryContact || "—"}
                 </div>
+                {opp.leadId && opp.leadLifecycleStatus ? (
+                  <div className="mt-1.5">
+                    <LeadsStageBadge
+                      label={translateLeadLifecycleStatusSafe(t, opp.leadLifecycleStatus)}
+                      lifecycleStatus={opp.leadLifecycleStatus}
+                    />
+                  </div>
+                ) : null}
                 <div className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
                   {money(opp.expectedRevenue, opp.currency)} · {opp.probabilityPercent}%
                 </div>

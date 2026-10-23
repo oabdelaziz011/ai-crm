@@ -23,6 +23,7 @@ import type { OutboundSendError } from "@/hooks/conversations/use-team-inbox-rep
 import {
   channelDiagnosticsHref,
   channelSettingsHref,
+  describeOutboundSendError,
 } from "@/lib/omnichannel/services/outbound-delivery";
 import type { LifecycleSnapshot, LifecycleAction } from "@/lib/conversation-lifecycle";
 import type { ConversationRecord } from "@workspace/ai-conversation";
@@ -157,6 +158,13 @@ export const ConversationPane = memo(function ConversationPane({
     return lastCustomer?.timestamp ?? null;
   }, [messages]);
 
+  const awaitingReply = useMemo(() => {
+    const lastExchange = [...messages].reverse().find(
+      (message) => !message.isInternalNote && message.senderType !== "system",
+    );
+    return lastExchange?.senderType === "customer";
+  }, [messages]);
+
   const lastCustomerMessageText = useMemo(() => {
     const lastCustomer = [...messages].reverse().find((message) => message.senderType === "customer");
     return lastCustomer?.body ?? "";
@@ -208,6 +216,7 @@ export const ConversationPane = memo(function ConversationPane({
     lastActivityAt: conversation?.lastActivityAt ?? null,
     handlerMode: assignedHuman ? "human" : conversation?.handlerMode,
     recentCustomerMessageAt,
+    awaitingReply,
   });
 
   const queryClient = useQueryClient();
@@ -308,10 +317,18 @@ export const ConversationPane = memo(function ConversationPane({
   const record = conversation.source;
   const allowed = (action: LifecycleAction) => canPerform?.(record, action) ?? false;
   const header = lifecycleSnapshot?.header;
-  const lifecycleState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
-  const humanOwned =
-    conversation.handlerMode === "human"
-    || Boolean(conversation.assignedAgent?.id || conversation.source.assigned_user_id);
+  const snapshotState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
+  const humanLifecycleOwner =
+    lifecycleSnapshot?.owner?.kind === "user" ||
+    lifecycleSnapshot?.owner?.kind === "team" ||
+    lifecycleSnapshot?.owner?.kind === "department";
+  const aiOwnsConversation =
+    !humanLifecycleOwner &&
+    !conversation.source.assigned_user_id &&
+    handoffOwnership?.ownerKind === "ai" &&
+    !handoffOwnership.ownership?.assignedUserId &&
+    !handoffOwnership.ownership?.isPaused;
+  const lifecycleState = aiOwnsConversation ? "AI_HANDLING" : snapshotState;
   const showLinkCustomer = Boolean(canLinkCustomer) && !conversation.customer?.id;
   const customerMessages = messages.filter((message) => !message.isInternalNote);
 
@@ -427,7 +444,7 @@ export const ConversationPane = memo(function ConversationPane({
           role="alert"
           aria-live="assertive"
         >
-          <DashboardErrorBanner message={sendError.detail ? `${sendError.message} ${sendError.detail}` : sendError.message} />
+          <DashboardErrorBanner message={describeOutboundSendError(sendError, t)} />
           <div className="mt-2 flex flex-wrap gap-2">
             {onRetrySend && retrySendLabel ? (
               <button type="button" className="ws-btn ws-btn--primary text-[10px]" onClick={onRetrySend}>
@@ -500,9 +517,9 @@ export const ConversationPane = memo(function ConversationPane({
         disabled={Boolean(isClosed)}
         isSending={isSending}
         conversationId={conversation.id}
-        suggestedReplies={humanOwned ? [] : aiAssist.suggestedReplies}
+        suggestedReplies={aiAssist.suggestedReplies}
         suggestedReplyExplainLabels={getSuggestedReplyExplainLabels(conversationLanguage)}
-        onBuildSuggestedReplies={humanOwned ? undefined : buildSuggestedReplies}
+        onBuildSuggestedReplies={buildSuggestedReplies}
         suggestionContextFingerprint={{
           lastCustomerMessage: lastCustomerMessageText,
           targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage,
@@ -547,7 +564,7 @@ export const ConversationPane = memo(function ConversationPane({
         onUndoSend={experience.cancelPendingSend}
         scheduleSendWithUndo={experience.scheduleSendWithUndo}
         onSend={handleSend}
-        onOpenAiAssistant={humanOwned ? undefined : onOpenAiSection}
+        onOpenAiAssistant={onOpenAiSection}
       />
       </div>
       <MessageForwardDialog

@@ -73,6 +73,46 @@ describe("opportunityFormDraftToCreateFromLeadInput", () => {
       probabilityPercent: 25,
     });
   });
+
+  it("sets primaryProductId only when exactly one catalog product is selected", () => {
+    const single = opportunityFormDraftToCreateFromLeadInput("lead-1", {
+      name: "Deal",
+      companyName: "Acme",
+      primaryContactName: "Jane",
+      expectedRevenue: "",
+      currency: "EGP",
+      expectedCloseDate: "",
+      stageId: "stage-1",
+      ownerUserId: "user-1",
+      pipelineId: "pipe-1",
+      probabilityMode: "auto",
+      probabilityPercent: "",
+      tags: [],
+      notes: "",
+      expectedProductIds: ["prod-only"],
+      priority: "",
+    });
+    assert.equal(single.primaryProductId, "prod-only");
+
+    const multi = opportunityFormDraftToCreateFromLeadInput("lead-1", {
+      name: "Deal",
+      companyName: "Acme",
+      primaryContactName: "Jane",
+      expectedRevenue: "",
+      currency: "EGP",
+      expectedCloseDate: "",
+      stageId: "stage-1",
+      ownerUserId: "user-1",
+      pipelineId: "pipe-1",
+      probabilityMode: "auto",
+      probabilityPercent: "",
+      tags: [],
+      notes: "",
+      expectedProductIds: ["prod-a", "prod-b"],
+      priority: "",
+    });
+    assert.equal(multi.primaryProductId, undefined);
+  });
 });
 
 describe("validateOpportunityFormDraft", () => {

@@ -4,6 +4,8 @@ import type {
   OpportunityStageReadModel,
   QuoteReadModel,
 } from "@workspace/application-layer";
+import { translateLeadLifecycleStatusSafe } from "@/components/leads/kanban/lead-stage-label";
+import { LeadsStageBadge } from "@/components/leads/workspace/leads-stage-badge";
 import { resolveOpportunityStageLabel } from "@/hooks/opportunities/use-opportunity-pipeline";
 import {
   emptyDisplayValue,
@@ -74,7 +76,9 @@ export function Opportunity360Overview({
   const { t } = useTranslation("common");
   const empty = emptyDisplayValue(t);
   const stageLabel =
-    resolveOpportunityStageLabel(stageById, opportunity.stageId, opportunity.stage) || empty;
+    opportunity.leadId && opportunity.leadLifecycleStatus
+      ? translateLeadLifecycleStatusSafe(t, opportunity.leadLifecycleStatus)
+      : resolveOpportunityStageLabel(stageById, opportunity.stageId, opportunity.stage) || empty;
   const quoteLabel = currentQuote
     ? [currentQuote.quoteNumber, currentQuote.title].filter(Boolean).join(" · ")
     : null;
@@ -93,7 +97,15 @@ export function Opportunity360Overview({
         <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={t("opportunities360.fields.name")} value={opportunity.name} />
           <Field label={t("opportunities360.fields.pipeline")} value={pipelineName} />
-          <Field label={t("opportunities360.fields.stage")} value={stageLabel} />
+          <div className="min-w-0">
+            <div className="text-[11px] text-muted-foreground">{t("opportunities360.fields.stage")}</div>
+            <div className="mt-1">
+              <LeadsStageBadge
+                label={stageLabel}
+                lifecycleStatus={opportunity.leadLifecycleStatus}
+              />
+            </div>
+          </div>
           <Field
             label={t("opportunities360.fields.owner")}
             value={opportunity.owner}

@@ -21,6 +21,7 @@ import type {
 } from "@/lib/omnichannel/types/unified-conversation";
 import type { ComposerSendPayload } from "@/lib/omnichannel/types/composer-enterprise-types";
 import type { OutboundSendError } from "@/hooks/conversations/use-team-inbox-reply";
+import { describeOutboundSendError } from "@/lib/omnichannel/services/outbound-delivery";
 import type { LifecycleSnapshot, LifecycleAction } from "@/lib/conversation-lifecycle";
 import type { ConversationRecord } from "@workspace/ai-conversation";
 import type { AgentDeskLabels, ConversationViewLabels } from "@/components/omnichannel/types/workspace-labels";
@@ -106,7 +107,7 @@ export const ActiveSession = memo(function ActiveSession({
   onTemplates,
   composeRef: externalComposeRef,
 }: ActiveSessionProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation("common");
   const internalRef = useRef<ComposePanelHandle>(null);
   const transcriptRef = useRef<TranscriptViewHandle>(null);
   const composeRef = externalComposeRef ?? internalRef;
@@ -117,6 +118,13 @@ export const ActiveSession = memo(function ActiveSession({
   const recentCustomerMessageAt = useMemo(() => {
     const lastCustomer = [...messages].reverse().find((message) => message.senderType === "customer");
     return lastCustomer?.timestamp ?? null;
+  }, [messages]);
+
+  const awaitingReply = useMemo(() => {
+    const lastExchange = [...messages].reverse().find(
+      (message) => !message.isInternalNote && message.senderType !== "system",
+    );
+    return lastExchange?.senderType === "customer";
   }, [messages]);
 
   const lastCustomerMessageText = useMemo(() => {
@@ -170,6 +178,7 @@ export const ActiveSession = memo(function ActiveSession({
     lastActivityAt: conversation?.lastActivityAt ?? null,
     handlerMode: assignedHuman ? "human" : conversation?.handlerMode,
     recentCustomerMessageAt,
+    awaitingReply,
   });
 
   const queryClient = useQueryClient();
@@ -238,9 +247,6 @@ export const ActiveSession = memo(function ActiveSession({
   const allowed = (action: LifecycleAction) => canPerform?.(record, action) ?? false;
   const header = lifecycleSnapshot?.header;
   const lifecycleState = lifecycleSnapshot?.state ?? conversation.lifecycleState;
-  const humanOwned =
-    conversation.handlerMode === "human"
-    || Boolean(conversation.assignedAgent?.id || conversation.source.assigned_user_id);
   const customerMessages = messages.filter((m) => !m.isInternalNote);
   const internalNotes = canViewNotes ? messages.filter((m) => m.isInternalNote) : [];
 
@@ -303,7 +309,7 @@ export const ActiveSession = memo(function ActiveSession({
       />
 
       {sendError ? (
-        <DashboardErrorBanner message={sendError.detail ? `${sendError.message} ${sendError.detail}` : sendError.message} />
+        <DashboardErrorBanner message={describeOutboundSendError(sendError, t)} />
       ) : null}
 
       <div className="relative min-h-0 flex-1">
@@ -354,9 +360,9 @@ export const ActiveSession = memo(function ActiveSession({
         disabled={Boolean(isClosed)}
         isSending={isSending}
         conversationId={conversation.id}
-        suggestedReplies={humanOwned ? [] : aiAssist.suggestedReplies}
+        suggestedReplies={aiAssist.suggestedReplies}
         suggestedReplyExplainLabels={getSuggestedReplyExplainLabels(conversationLanguage)}
-        onBuildSuggestedReplies={humanOwned ? undefined : buildSuggestedReplies}
+        onBuildSuggestedReplies={buildSuggestedReplies}
         suggestionContextFingerprint={{
           lastCustomerMessage: lastCustomerMessageText,
           targetLanguage: aiAssist.suggestedReplyTargetLanguage ?? aiAssist.targetLanguage,
@@ -401,7 +407,7 @@ export const ActiveSession = memo(function ActiveSession({
         onUndoSend={experience.cancelPendingSend}
         scheduleSendWithUndo={experience.scheduleSendWithUndo}
         onSend={handleSend}
-        onOpenAiAssistant={humanOwned ? undefined : onOpenAiSection}
+        onOpenAiAssistant={onOpenAiSection}
       />
     </div>
   );

@@ -17,6 +17,22 @@ const LIFECYCLE_TONE: Record<string, { chip: string; dot: string }> = {
     chip: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     dot: "bg-emerald-500",
   },
+  demo_scheduled: {
+    chip: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    dot: "bg-sky-500",
+  },
+  demo_completed: {
+    chip: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    dot: "bg-violet-500",
+  },
+  proposal_sent: {
+    chip: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
+    dot: "bg-teal-500",
+  },
+  negotiation: {
+    chip: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+    dot: "bg-indigo-500",
+  },
   proposal: {
     chip: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
     dot: "bg-teal-500",

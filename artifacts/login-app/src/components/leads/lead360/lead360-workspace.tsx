@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CheckCircle2, BriefcaseBusiness, FileText, ListTodo, Loader2, Paperclip } from "lucide-react";
+import { FileText, ListTodo, Loader2, Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LeadReadModel, OpportunityReadModel } from "@workspace/application-layer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -11,21 +11,14 @@ import {
   ENTITY_360_TABS_LIST_CLASS,
 } from "@/components/entity-workspace/entity-360-dialog-shell";
 import { useLead360Workspace } from "@/hooks/leads/use-lead360-workspace";
-import { useLeadCommands } from "@/hooks/leads/use-lead-commands";
-import { useLeadConversionFeedback } from "@/hooks/leads/use-lead-conversion-feedback";
-import type { LeadConversionUiMode } from "@/components/leads/crm/lead-conversion-outcome";
 import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
-import { OpportunityCreateDialog } from "@/components/opportunities/opportunity-create-dialog";
-import {
-  isLeadAlreadyConverted,
-  isLeadEligibleForOpportunityCreation,
-} from "@/components/leads/crm/leads-crm-row-actions";
-import { leadReadModelToOpportunitySeed } from "@/components/opportunities/opportunity-form-draft";
 import {
   formatOpportunityDate,
   formatOpportunityMoney,
 } from "@/components/opportunities/opportunity360-ui";
 import { useExistingOpportunityForLead } from "@/hooks/opportunities/use-opportunity-create-form-options";
+import { useQuoteCommands } from "@/hooks/quotes/use-quote-commands";
+import { isLeadReadyForQuote } from "@/components/leads/crm/leads-crm-row-actions";
 import {
   resolveOpportunityStageLabel,
   useActiveOpportunityPipelineId,
@@ -43,6 +36,7 @@ import { Lead360TimelineTab } from "./lead360-timeline-tab";
 import { Lead360Skeleton } from "./lead360-ui";
 import { useCompanyLocaleContext } from "@/context/company-locale-context";
 import { formatBillingCurrency } from "@/lib/billing/format";
+import { leadWorkspaceTitle } from "@/components/leads/kanban/lead-kanban-mappers";
 import { translateLeadStageLabel } from "@/components/leads/kanban/lead-stage-label";
 import { resolveApplicationErrorMessage } from "@/lib/application-layer/application-layer-result";
 import {
@@ -174,7 +168,7 @@ function Lead360OverviewGrid({
     lifecycleStatus: lead.lifecycleStatus,
     slug: lead.stage,
   });
-  const displayName = lead.contactPerson || lead.name;
+  const displayName = leadWorkspaceTitle(lead);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
@@ -281,10 +275,9 @@ export function Lead360Workspace({
   const { currency: companyCurrency } = useCompanyLocaleContext();
   const { hasPermission, isSuperAdmin } = useAuthUser();
   const { data, isLoading } = useLead360Workspace(leadId);
-  const commands = useLeadCommands();
+  const quoteCommands = useQuoteCommands();
   const associatedOpportunityQuery = useExistingOpportunityForLead(leadId, open);
   const [createdOpportunityId, setCreatedOpportunityId] = useState<string | null>(null);
-  const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
   const [tab, setTab] = useState<Lead360Tab>(initialTab ?? "overview");
 
   useEffect(() => {
@@ -294,42 +287,8 @@ export function Lead360Workspace({
 
   const lead = data?.lead;
   const associatedOpportunity = associatedOpportunityQuery.data ?? null;
-  const alreadyConverted = lead
-    ? isLeadAlreadyConverted({
-        customerId: lead.customerId,
-        lifecycleStatus: lead.lifecycleStatus,
-      })
-    : false;
-  const canCreateOpportunity =
-    Boolean(lead) &&
-    !associatedOpportunity &&
-    (isSuperAdmin || hasPermission("opportunities.convert")) &&
-    isLeadEligibleForOpportunityCreation({
-      isQualified: lead!.isQualified,
-      customerId: lead!.customerId,
-      lifecycleStatus: lead!.lifecycleStatus,
-    });
-  const canConvert =
-    Boolean(lead) && !alreadyConverted && (isSuperAdmin || hasPermission("leads.convert"));
-  const canConvertWithOpportunity =
-    canConvert && (isSuperAdmin || hasPermission("opportunities.convert"));
-  const [pendingConvertMode, setPendingConvertMode] = useState<LeadConversionUiMode | null>(null);
-  const onLeadConverted = useLeadConversionFeedback({ onOpenOpportunity: setCreatedOpportunityId });
-  const runConvert = (mode: LeadConversionUiMode) => {
-    if (!leadId || commands.convert.isPending) return;
-    setPendingConvertMode(mode);
-    void commands.convert
-      .mutateAsync(mode === "customer" ? { leadId } : { leadId, mode })
-      .then((result) => onLeadConverted(result, mode))
-      .catch((error: unknown) => {
-        toast({
-          title: t("leads.kanban.actions.convertFailed"),
-          description: resolveApplicationErrorMessage(error),
-          variant: "destructive",
-        });
-      })
-      .finally(() => setPendingConvertMode(null));
-  };
+  const canCreateQuote = Boolean(lead) && (isSuperAdmin || hasPermission("quotes.create"));
+  const quoteReady = isLeadReadyForQuote(lead?.lifecycleStatus);
 
   const activities = data?.activities ?? [];
   const tasks = data?.tasks ?? [];
@@ -543,52 +502,40 @@ export function Lead360Workspace({
                 </div>
               </Tabs>
 
-              {canCreateOpportunity || canConvert ? (
+              {canCreateQuote ? (
                 <div className="shrink-0 space-y-2 border-t border-border/60 bg-background px-5 py-4 sm:px-7">
-                  {canCreateOpportunity ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-11 w-full gap-2 rounded-xl text-[13px] font-semibold"
-                      disabled={!leadId}
-                      onClick={() => setCreateOpportunityOpen(true)}
-                    >
-                      <BriefcaseBusiness className="size-4" />
-                      {t("leads360.createOpportunity")}
-                    </Button>
-                  ) : null}
-                  {canConvertWithOpportunity ? (
-                    <Button
-                      type="button"
-                      className="h-11 w-full gap-2 rounded-xl text-[13px] font-semibold"
-                      disabled={commands.convert.isPending || !leadId}
-                      aria-busy={pendingConvertMode === "customer_and_opportunity"}
-                      onClick={() => runConvert("customer_and_opportunity")}
-                    >
-                      {pendingConvertMode === "customer_and_opportunity" ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <BriefcaseBusiness className="size-4" />
-                      )}
-                      {t("leads360.convertWithOpportunity")}
-                    </Button>
-                  ) : null}
-                  {canConvert ? (
-                    <Button
-                      type="button"
-                      variant={canConvertWithOpportunity ? "outline" : "default"}
-                      className="h-11 w-full gap-2 rounded-xl text-[13px] font-semibold"
-                      disabled={commands.convert.isPending || !leadId}
-                      aria-busy={pendingConvertMode === "customer"}
-                      onClick={() => runConvert("customer")}
-                    >
-                      {pendingConvertMode === "customer" ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="size-4" />
-                      )}
-                      {t("leads360.convert")}
-                    </Button>
+                  <Button
+                    type="button"
+                    className="h-11 w-full gap-2 rounded-xl text-[13px] font-semibold"
+                    disabled={!quoteReady || !associatedOpportunity || quoteCommands.createFromOpportunity.isPending}
+                    onClick={() => {
+                      if (!associatedOpportunity) return;
+                      void quoteCommands.createFromOpportunity
+                        .mutateAsync({ opportunityId: associatedOpportunity.id })
+                        .then(() => {
+                          toast({ title: t("quotes.createSuccess") });
+                          setCreatedOpportunityId(associatedOpportunity.id);
+                        })
+                        .catch((error: unknown) => {
+                          toast({
+                            title: t("quotes.createFailed"),
+                            description: resolveApplicationErrorMessage(error),
+                            variant: "destructive",
+                          });
+                        });
+                    }}
+                  >
+                    {quoteCommands.createFromOpportunity.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <FileText className="size-4" />
+                    )}
+                    {t("leads.table.rowActions.createQuote")}
+                  </Button>
+                  {!quoteReady || !associatedOpportunity ? (
+                    <p className="text-center text-[12px] text-muted-foreground">
+                      {t("leads.table.rowActions.quoteNeedsOpportunity")}
+                    </p>
                   ) : null}
                 </div>
               ) : null}
@@ -597,21 +544,6 @@ export function Lead360Workspace({
         </DialogContent>
       </Dialog>
 
-      {lead ? (
-        <OpportunityCreateDialog
-          open={createOpportunityOpen}
-          onOpenChange={setCreateOpportunityOpen}
-          source={{ mode: "fromLead", lead: leadReadModelToOpportunitySeed(lead) }}
-          onOpenExisting={(id) => {
-            setCreateOpportunityOpen(false);
-            setCreatedOpportunityId(id);
-          }}
-          onCreated={(id) => {
-            toast({ title: t("opportunities.created") });
-            setCreatedOpportunityId(id);
-          }}
-        />
-      ) : null}
       <Opportunity360Workspace
         opportunityId={createdOpportunityId}
         open={Boolean(createdOpportunityId)}

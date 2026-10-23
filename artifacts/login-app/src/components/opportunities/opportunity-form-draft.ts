@@ -212,11 +212,24 @@ export function buildLeadOpportunityFormSeed(
   };
 }
 
+/**
+ * Authoritative primary product only when the form selected exactly one catalog product.
+ * Multi-product selections stay as line items without inventing a primary identity.
+ */
+function resolvePrimaryProductIdFromDraft(draft: OpportunityFormDraft): string | undefined {
+  if (draft.expectedProductIds.length !== 1) return undefined;
+  const only = draft.expectedProductIds[0]?.trim();
+  return only || undefined;
+}
+
 export function opportunityFormDraftToManualCreateInput(
   draft: OpportunityFormDraft,
   _stageById?: Map<string, OpportunityStageOption>,
 ) {
   const probabilityPercent = parseDraftProbabilityPercent(draft);
+  // Manual create has no customer picker yet. Do not invent primaryProductId without a
+  // customer — product-scoped uniqueness requires both. Products stay as post-create line items;
+  // the opportunity is stamped identityScope=unscoped_manual by the command service.
   return {
     name: draft.name.trim(),
     companyName: draft.companyName.trim() || undefined,
@@ -238,6 +251,7 @@ export function opportunityFormDraftToCreateFromLeadInput(
   options?: { forceCreate?: boolean },
 ) {
   const probabilityPercent = parseDraftProbabilityPercent(draft);
+  const primaryProductId = resolvePrimaryProductIdFromDraft(draft);
   return {
     leadId,
     name: draft.name.trim(),
@@ -249,6 +263,7 @@ export function opportunityFormDraftToCreateFromLeadInput(
     expectedCloseDate: draft.expectedCloseDate.trim() || null,
     stageId: draft.stageId,
     pipelineId: draft.pipelineId || undefined,
+    ...(primaryProductId ? { primaryProductId } : {}),
     ...(options?.forceCreate != null ? { forceCreate: options.forceCreate } : {}),
     ...(probabilityPercent != null ? { probabilityPercent } : {}),
   };

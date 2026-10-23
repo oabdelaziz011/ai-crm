@@ -429,10 +429,18 @@ html:has(.agent-workspace) {
 .agent-workspace .ws-composer-shell textarea {
   pointer-events: auto;
   opacity: 1;
+  background: transparent;
 }
 
 .agent-workspace .ws-composer-shell .agent-desk-compose {
   box-shadow: var(--shadow-sm);
+  /* Reply composer must read solid white — never muted grey (surface-2). */
+  background: #ffffff !important;
+}
+
+.dark .agent-workspace .ws-composer-shell .agent-desk-compose,
+:root.dark .agent-workspace .ws-composer-shell .agent-desk-compose {
+  background: var(--ws-surface) !important;
 }
 
 @media (max-width: 1280px) {

@@ -495,7 +495,7 @@ export const ComposePanel = memo(
           className={`agent-desk-compose relative z-20 rounded-lg ${
             mode === "internal_note"
               ? "bg-amber-950/10 ring-1 ring-amber-500/20"
-              : "bg-[var(--ad-surface-raised)] ring-1 ring-[var(--ad-border-subtle)]/50"
+              : "bg-white ring-1 ring-[var(--ad-border-subtle)]/50 dark:bg-[var(--ad-surface)]"
           }`}
           onClick={(event) => {
             if (composerLocked) return;

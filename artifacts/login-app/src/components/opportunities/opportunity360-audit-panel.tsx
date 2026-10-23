@@ -91,14 +91,14 @@ export function Opportunity360AuditPanel({
   return (
     <div className="overflow-x-auto rounded-lg border border-border/60">
       <table className="w-full min-w-[720px] text-start text-[13px]">
-        <thead className="border-b border-border/60 bg-muted/30 text-[11px] uppercase text-muted-foreground">
+        <thead className="border-b border-border/60 bg-muted/30 text-[11px] text-muted-foreground">
           <tr>
-            <th className="px-3 py-2 font-semibold">{t("opportunities360.audit.columns.actor")}</th>
-            <th className="px-3 py-2 font-semibold">{t("opportunities360.audit.columns.action")}</th>
-            <th className="px-3 py-2 font-semibold">{t("opportunities360.audit.columns.timestamp")}</th>
-            <th className="px-3 py-2 font-semibold">{t("opportunities360.audit.columns.field")}</th>
-            <th className="px-3 py-2 font-semibold">{t("opportunities360.audit.columns.oldValue")}</th>
-            <th className="px-3 py-2 font-semibold">{t("opportunities360.audit.columns.newValue")}</th>
+            <th className="px-3 py-2 text-start font-semibold">{t("opportunities360.audit.columns.actor")}</th>
+            <th className="px-3 py-2 text-start font-semibold">{t("opportunities360.audit.columns.action")}</th>
+            <th className="px-3 py-2 text-start font-semibold">{t("opportunities360.audit.columns.timestamp")}</th>
+            <th className="px-3 py-2 text-start font-semibold">{t("opportunities360.audit.columns.field")}</th>
+            <th className="px-3 py-2 text-start font-semibold">{t("opportunities360.audit.columns.oldValue")}</th>
+            <th className="px-3 py-2 text-start font-semibold">{t("opportunities360.audit.columns.newValue")}</th>
           </tr>
         </thead>
         <tbody>

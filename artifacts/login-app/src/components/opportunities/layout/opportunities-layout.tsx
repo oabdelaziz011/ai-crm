@@ -1,21 +1,37 @@
 import { Suspense, useState } from "react";
 import { Redirect, Route, Switch, Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Plus } from "lucide-react";
+import { FileText } from "lucide-react";
 import {
   OPPORTUNITIES_DEFAULT_NESTED_PATH,
+  OPPORTUNITIES_LEGACY_REDIRECT_PATHS,
   OPPORTUNITIES_ROUTE_REGISTRY,
 } from "@/config/opportunities-route-registry";
 import { OpportunitiesSubNav } from "@/components/opportunities/layout/opportunities-sub-nav";
-import { OpportunityCreateDialog } from "@/components/opportunities/opportunity-create-dialog";
 import { Opportunity360Workspace } from "@/components/opportunities/opportunity360-workspace";
 import { Lead360Workspace } from "@/components/leads/lead360/lead360-workspace";
 import { DashboardPageFallback } from "@/components/dashboard/dashboard-page-fallback";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuthUser } from "@/hooks/use-rbac";
+import { useOpportunityList } from "@/hooks/opportunities/use-opportunity-commands";
+import { useQuoteCommands } from "@/hooks/quotes/use-quote-commands";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { useOpportunitiesRealtime } from "@/hooks/opportunities/use-opportunities-realtime";
-import { useToast } from "@/hooks/use-toast";
 import { NEST_INDEX } from "@/lib/routing";
 import {
   OpportunitiesWorkspaceProvider,
@@ -35,12 +51,88 @@ function GuardedOpportunitiesRoute({
   return <Page />;
 }
 
-function OpportunitiesLayoutChrome() {
+function CreateQuoteFromOpportunityButton() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const { hasPermission, isSuperAdmin } = useAuthUser();
-  const canCreate = isSuperAdmin || hasPermission("opportunities.create");
-  const { selectedId, setSelectedId, createOpen, setCreateOpen } = useOpportunitiesWorkspace();
+  const { setSelectedId } = useOpportunitiesWorkspace();
+  const quoteCommands = useQuoteCommands();
+  const listQuery = useOpportunityList({ limit: 100, offset: 0 });
+  const [open, setOpen] = useState(false);
+  const [opportunityId, setOpportunityId] = useState("");
+  const canCreate = isSuperAdmin || hasPermission("quotes.create");
+  if (!canCreate) return null;
+
+  const rows = listQuery.data?.items ?? [];
+
+  return (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        className="rounded-xl"
+        onClick={() => {
+          setOpportunityId(rows[0]?.id ?? "");
+          setOpen(true);
+        }}
+      >
+        <FileText className="size-3.5" aria-hidden />
+        {t("leads.table.rowActions.createQuote")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("leads.table.rowActions.createQuote")}</DialogTitle>
+          </DialogHeader>
+          {rows.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">{t("opportunities.table.emptyBody")}</p>
+          ) : (
+            <Select value={opportunityId} onValueChange={setOpportunityId}>
+              <SelectTrigger className="h-9" aria-label={t("navigation.opportunities")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {rows.map((row) => (
+                  <SelectItem key={row.id} value={row.id}>
+                    {row.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              disabled={!opportunityId || quoteCommands.createFromOpportunity.isPending}
+              onClick={() => {
+                void quoteCommands.createFromOpportunity
+                  .mutateAsync({ opportunityId })
+                  .then(() => {
+                    toast({ title: t("quotes.createSuccess") });
+                    setOpen(false);
+                    setSelectedId(opportunityId);
+                  })
+                  .catch((error: unknown) => {
+                    toast({
+                      title: t("quotes.createFailed"),
+                      description: error instanceof Error ? error.message : undefined,
+                      variant: "destructive",
+                    });
+                  });
+              }}
+            >
+              {t("leads.table.rowActions.createQuote")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function OpportunitiesLayoutChrome() {
+  const { t } = useTranslation("common");
+  const { selectedId, setSelectedId } = useOpportunitiesWorkspace();
   const [leadId, setLeadId] = useState<string | null>(null);
   const [leadInitialTab, setLeadInitialTab] = useState<"overview" | "activity">("overview");
 
@@ -60,12 +152,7 @@ function OpportunitiesLayoutChrome() {
           <Button asChild type="button" variant="outline" size="sm" className="rounded-xl">
             <Link href="~/dashboard/quotes">{t("navigation.quotes")}</Link>
           </Button>
-          {canCreate ? (
-            <Button type="button" className="gap-2 rounded-xl" onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" />
-              {t("opportunities.create")}
-            </Button>
-          ) : null}
+          <CreateQuoteFromOpportunityButton />
         </div>
       </div>
 
@@ -76,6 +163,11 @@ function OpportunitiesLayoutChrome() {
           <Route path={NEST_INDEX}>
             <Redirect to={OPPORTUNITIES_DEFAULT_NESTED_PATH} />
           </Route>
+          {OPPORTUNITIES_LEGACY_REDIRECT_PATHS.map((legacyPath) => (
+            <Route key={legacyPath} path={legacyPath}>
+              <Redirect to={OPPORTUNITIES_DEFAULT_NESTED_PATH} />
+            </Route>
+          ))}
           {OPPORTUNITIES_ROUTE_REGISTRY.map((route) => (
             <Route key={route.id} path={route.nestedPath}>
               <GuardedOpportunitiesRoute route={route} />
@@ -104,16 +196,6 @@ function OpportunitiesLayoutChrome() {
         onClose={() => {
           setLeadId(null);
           setLeadInitialTab("overview");
-        }}
-      />
-
-      <OpportunityCreateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        source={{ mode: "manual" }}
-        onCreated={(id) => {
-          toast({ title: t("opportunities.created") });
-          setSelectedId(id);
         }}
       />
     </div>

@@ -21,6 +21,7 @@ const OMNICHANNEL_CONSOLE_PATH = /^\/omnichannel(?:\/|$)/i;
 const CALENDAR_PATH = /^\/calendar(?:\/|$)/i;
 const EMAIL_MODULE_PATH = /^\/email(?:\/|$)/i;
 const SMS_MODULE_PATH = /^\/sms(?:\/|$)/i;
+const WEBSITE_BUILDER_PATH = /^\/website(?:\/|$)/i;
 
 export function DashboardOutlet() {
   const [location] = useLocation();
@@ -30,12 +31,14 @@ export function DashboardOutlet() {
   const isCalendarPage = CALENDAR_PATH.test(location);
   const isEmailModule = EMAIL_MODULE_PATH.test(location);
   const isSmsModule = SMS_MODULE_PATH.test(location);
+  const isWebsiteBuilder = WEBSITE_BUILDER_PATH.test(location);
   const isFullBleed =
     isCustomerWorkspace ||
     isOmnichannelConsole ||
     isCalendarPage ||
     isEmailModule ||
-    isSmsModule;
+    isSmsModule ||
+    isWebsiteBuilder;
 
   return (
     <main
@@ -75,7 +78,7 @@ export function DashboardOutlet() {
                 </Suspense>
               </Route>
               {DASHBOARD_ROUTE_REGISTRY.map((route) =>
-                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" || route.id === "sms" || route.id === "campaigns" ? (
+                route.id === "subscriptions" || route.id === "workspace" || route.id === "settings" || route.id === "knowledge" || route.id === "automation" || route.id === "scheduling" || route.id === "product-demos" || route.id === "universal-operations" || route.id === "leads" || route.id === "opportunities" || route.id === "customers" || route.id === "ai-employees" || route.id === "prompts" || route.id === "email" || route.id === "sms" || route.id === "campaigns" ? (
                   <Route key={route.id} path={route.nestedPath} nest>
                     <DashboardSectionRoute route={route} />
                   </Route>

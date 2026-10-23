@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 
 type ChannelInboundRoutingStripProps = {
   binding: ChannelWorkflowBindingListItem | null | undefined;
+  /** Published AI employee currently tagged for this company channel. */
+  aiEmployeeName?: string | null;
   loading?: boolean;
   disabling?: boolean;
   enabling?: boolean;
@@ -21,6 +23,7 @@ type ChannelInboundRoutingStripProps = {
 /** BA-friendly strip: who answers inbound messages on this messaging channel. */
 export function ChannelInboundRoutingStrip({
   binding,
+  aiEmployeeName = null,
   loading = false,
   disabling = false,
   enabling = false,
@@ -35,6 +38,7 @@ export function ChannelInboundRoutingStrip({
   const hasAssignedFlow = Boolean(binding?.automationFlowId);
   const flowName =
     binding?.flowName?.trim() || t("dashboard.channels.inboundRouting.unnamedWorkflow");
+  const employeeName = aiEmployeeName?.trim() || null;
   const busy = disabling || enabling || actionsDisabled;
 
   if (loading) {
@@ -82,21 +86,32 @@ export function ChannelInboundRoutingStrip({
               <Bot className="size-4" aria-hidden />
             )}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium leading-snug">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold leading-snug">
               {workflowActive
-                ? t("dashboard.channels.inboundRouting.modeWorkflow")
-                : t("dashboard.channels.inboundRouting.modeAi")}
+                ? t("dashboard.channels.inboundRouting.connectedWorkflow", { name: flowName })
+                : employeeName
+                  ? t("dashboard.channels.inboundRouting.connectedEmployee", {
+                      name: employeeName,
+                    })
+                  : t("dashboard.channels.inboundRouting.modeAi")}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {workflowActive
                 ? t("dashboard.channels.inboundRouting.workflowHint", { name: flowName })
-                : hasAssignedFlow
-                  ? t("dashboard.channels.inboundRouting.aiHintWithAssignedFlow", {
-                      name: flowName,
-                    })
-                  : t("dashboard.channels.inboundRouting.aiHint")}
+                : employeeName
+                  ? t("dashboard.channels.inboundRouting.aiHintNamed", { name: employeeName })
+                  : hasAssignedFlow
+                    ? t("dashboard.channels.inboundRouting.aiHintWithAssignedFlow", {
+                        name: flowName,
+                      })
+                    : t("dashboard.channels.inboundRouting.aiHint")}
             </p>
+            {!workflowActive && !employeeName ? (
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                {t("dashboard.channels.inboundRouting.noEmployeeLinked")}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -107,45 +122,33 @@ export function ChannelInboundRoutingStrip({
                 {t("dashboard.channels.featureNotEntitled")}
               </p>
             ) : null}
-            {workflowActive && onDisableWorkflow ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-500/40 bg-background/60"
-                disabled={busy}
-                onClick={onDisableWorkflow}
-                data-testid="channel-disable-workflow"
-              >
-                {disabling ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                {t("dashboard.channels.inboundRouting.disableWorkflow")}
-              </Button>
-            ) : null}
-
-            {!workflowActive && hasAssignedFlow && onEnableWorkflow ? (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                disabled={busy}
-                onClick={onEnableWorkflow}
-                data-testid="channel-enable-workflow"
-              >
-                {enabling ? <Loader2 className="size-3.5 animate-spin" /> : <GitBranch className="size-3.5" />}
-                {t("dashboard.channels.inboundRouting.enableWorkflow")}
-              </Button>
-            ) : null}
-
-            {!workflowActive && !hasAssignedFlow ? (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                disabled={actionsDisabled}
-                onClick={onConfigure}
-                data-testid="channel-assign-workflow"
-              >
-                <GitBranch className="size-3.5" />
-                {t("dashboard.channels.inboundRouting.assignWorkflow")}
-              </Button>
-            ) : null}
+            <Button
+              size="sm"
+              variant={workflowActive ? "outline" : "default"}
+              className="gap-1.5"
+              disabled={busy || !workflowActive}
+              aria-pressed={!workflowActive}
+              onClick={onDisableWorkflow}
+              data-testid="channel-disable-workflow"
+            >
+              {disabling ? <Loader2 className="size-3.5 animate-spin" /> : <Bot className="size-3.5" />}
+              {t("dashboard.channels.inboundRouting.useEmployee")}
+            </Button>
+            <Button
+              size="sm"
+              variant={workflowActive ? "default" : "outline"}
+              className="gap-1.5"
+              disabled={busy || workflowActive}
+              aria-pressed={workflowActive}
+              onClick={() => {
+                if (hasAssignedFlow) onEnableWorkflow?.();
+                else onConfigure();
+              }}
+              data-testid="channel-enable-workflow"
+            >
+              {enabling ? <Loader2 className="size-3.5 animate-spin" /> : <GitBranch className="size-3.5" />}
+              {t("dashboard.channels.inboundRouting.useWorkflow")}
+            </Button>
 
             <Button size="sm" variant="ghost" disabled={actionsDisabled} onClick={onConfigure}>
               {t("dashboard.channels.inboundRouting.changeSettings")}

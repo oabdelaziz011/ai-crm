@@ -22,7 +22,12 @@ function MessageBubble({
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+    <div
+      className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+      data-message-id={message.id}
+      data-message-role={message.role}
+      {...(message.externalMessageId ? { "data-external-message-id": message.externalMessageId } : {})}
+    >
       <div
         className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
           isUser ? "bg-white/10 border border-white/10" : "bg-primary/20 border border-primary/30"

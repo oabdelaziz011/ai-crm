@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,11 +38,13 @@ import { schedulingBookingToAppBooking } from "@/lib/booking/booking-view-adapte
 import { useAuth } from "@/context/auth-context";
 import { useTranslation } from "react-i18next";
 import { toDashboardAbsolutePath } from "@/lib/routing";
-import { BranchSelector } from "@/lib/company/branches/components";
 import { useCurrentUserBranches } from "@/lib/company/branches/hooks";
+import { useServicePricingRules } from "@/hooks/scheduling/use-service-pricing";
+import { pricingTypeLabel } from "@/lib/scheduling/pricing-type-label";
 import { cn } from "@/lib/utils";
 import { CustomerPhoneInput } from "@/components/customers/customer-phone-input";
 import { validateCustomerPhoneFormInput } from "@/lib/customers/customer-phone-form";
+import { findCustomerByVerifiedPhone } from "@/lib/customers/find-customer-by-phone";
 
 const LEGACY_STATUSES: BookingStatus[] = ["Pending", "Confirmed", "Cancelled"];
 
@@ -57,6 +60,7 @@ type SchedulingFormValues = {
   new_customer_notes: string;
   service_id: string;
   resource_id: string;
+  pricing_rule_id: string;
   date: string;
   slot_start: string;
   notes?: string;
@@ -112,6 +116,7 @@ const EMPTY_SCHEDULING_VALUES: SchedulingFormValues = {
   new_customer_notes: "",
   service_id: "",
   resource_id: "",
+  pricing_rule_id: "",
   date: "",
   slot_start: "",
   notes: "",
@@ -163,7 +168,8 @@ export function BookingModal({
   const showBranchSelector =
     isSchedulingCreate &&
     !branchId &&
-    userBranches.length > 1;
+    userBranches.length > 0;
+  const pricingRulesRef = useRef<{ id: string }[]>([]);
 
   const schedulingSchema = useMemo(
     () =>
@@ -192,11 +198,19 @@ export function BookingModal({
           new_customer_notes: z.string().optional(),
           service_id: z.string().min(1, t("forms.booking.serviceRequired")),
           resource_id: z.string().min(1, t("forms.booking.resourceRequired")),
+          pricing_rule_id: z.string().optional(),
           date: z.string().min(1, t("forms.booking.dateRequired")),
           slot_start: z.string().min(1, t("forms.booking.slotRequired")),
           notes: z.string().optional(),
         })
         .superRefine((values, ctx) => {
+          if (!isSchedulingEdit && pricingRulesRef.current.length > 0 && !values.pricing_rule_id?.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["pricing_rule_id"],
+              message: t("forms.booking.serviceTypeRequired"),
+            });
+          }
           if (isSchedulingEdit || customerModeRef.current === "existing") {
             if (!values.customer_id.trim()) {
               ctx.addIssue({
@@ -213,6 +227,13 @@ export function BookingModal({
               code: z.ZodIssueCode.custom,
               path: ["new_customer_name"],
               message: t("forms.booking.newCustomerNameRequired"),
+            });
+          }
+          if (!values.new_customer_phone?.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["new_customer_phone"],
+              message: t("forms.booking.phoneRequired"),
             });
           }
         }),
@@ -238,7 +259,25 @@ export function BookingModal({
 
   const watchedServiceId = schedulingForm.watch("service_id");
   const watchedResourceId = schedulingForm.watch("resource_id");
+  const watchedPricingRuleId = schedulingForm.watch("pricing_rule_id");
   const watchedDate = schedulingForm.watch("date");
+  const watchedNewPhone = schedulingForm.watch("new_customer_phone");
+  const newPhoneCheck = validateCustomerPhoneFormInput({
+    phone: watchedNewPhone,
+    region: newCustomerPhoneRegion,
+  });
+  const verifiedPhoneE164 =
+    customerMode === "new" && newPhoneCheck.code === "ok" ? newPhoneCheck.identity?.phone_e164 ?? null : null;
+  const matchedCustomerQuery = useQuery({
+    queryKey: ["booking-customer-by-phone", companyId, verifiedPhoneE164],
+    enabled: Boolean(open && companyId && verifiedPhoneE164),
+    queryFn: () =>
+      findCustomerByVerifiedPhone({
+        companyId: companyId!,
+        phoneE164: verifiedPhoneE164!,
+        rawPhone: watchedNewPhone,
+      }),
+  });
 
   const { data: services = [], isLoading: servicesLoading } = useSchedulingServices(companyId);
   const {
@@ -247,6 +286,12 @@ export function BookingModal({
     isError: resourcesError,
     error: resourcesQueryError,
   } = useServiceResources(companyId, watchedServiceId || null, effectiveBranchId);
+  const { data: pricingRules = [], isLoading: pricingLoading } = useServicePricingRules(
+    companyId,
+    watchedServiceId || null,
+  );
+  pricingRulesRef.current = pricingRules;
+  const selectedPricingRule = pricingRules.find((rule) => rule.id === watchedPricingRuleId) ?? null;
   const {
     data: slotsResult,
     isLoading: slotsLoading,
@@ -257,6 +302,7 @@ export function BookingModal({
     watchedResourceId || null,
     watchedServiceId || null,
     watchedDate || null,
+    selectedPricingRule?.duration_minutes ?? null,
   );
 
   const eligibleResources = useMemo(
@@ -269,7 +315,7 @@ export function BookingModal({
     [slotsResult],
   );
 
-  const isQueryLoading = resourcesLoading || slotsLoading;
+  const isQueryLoading = resourcesLoading || slotsLoading || (Boolean(watchedServiceId) && pricingLoading);
   const showResourceEmptyState =
     Boolean(watchedServiceId) &&
     !resourcesLoading &&
@@ -302,7 +348,14 @@ export function BookingModal({
       !slotsResult.available);
 
   const activeServices = useMemo(
-    () => services.filter((item) => item.status === "active"),
+    // Clinic New Booking must never offer product-demo services.
+    () =>
+      services.filter(
+        (item) =>
+          item.status === "active" &&
+          String((item as { service_kind?: string | null }).service_kind ?? "operational") !==
+            "sales_demo",
+      ),
     [services],
   );
 
@@ -354,13 +407,30 @@ export function BookingModal({
   useEffect(() => {
     if (!open || !isSchedulingCreate) return;
     schedulingForm.setValue("resource_id", "");
+    schedulingForm.setValue("pricing_rule_id", "");
     schedulingForm.setValue("slot_start", "");
   }, [watchedServiceId, open, isSchedulingCreate, schedulingForm]);
 
   useEffect(() => {
+    if (!open || !isSchedulingCreate || !watchedServiceId || pricingLoading) return;
+    const current = schedulingForm.getValues("pricing_rule_id");
+    if (current && pricingRules.some((rule) => rule.id === current)) return;
+    const next = pricingRules.find((rule) => rule.is_default) ?? pricingRules[0];
+    schedulingForm.setValue("pricing_rule_id", next?.id ?? "");
+  }, [open, isSchedulingCreate, watchedServiceId, pricingLoading, pricingRules, schedulingForm]);
+
+  useEffect(() => {
+    if (!open || !isSchedulingCreate || !watchedServiceId || resourcesLoading) return;
+    if (pricingRules.length > 0 && !schedulingForm.getValues("pricing_rule_id")) return;
+    if (eligibleResources.length !== 1) return;
+    if (schedulingForm.getValues("resource_id") === eligibleResources[0].id) return;
+    schedulingForm.setValue("resource_id", eligibleResources[0].id);
+  }, [open, isSchedulingCreate, watchedServiceId, resourcesLoading, pricingRules.length, eligibleResources, schedulingForm, watchedPricingRuleId]);
+
+  useEffect(() => {
     if (!open || !isSchedulingCreate) return;
     schedulingForm.setValue("slot_start", "");
-  }, [watchedResourceId, watchedDate, open, isSchedulingCreate, schedulingForm]);
+  }, [watchedResourceId, watchedPricingRuleId, watchedDate, open, isSchedulingCreate, schedulingForm]);
 
   useEffect(() => {
     if (!open) return;
@@ -412,33 +482,49 @@ export function BookingModal({
 
     if (customerMode === "new" && allowNewCustomer) {
       try {
-        const phone = values.new_customer_phone?.trim() || null;
+        const phone = values.new_customer_phone?.trim() || "";
         const region = newCustomerPhoneRegion;
         const phoneValidation = validateCustomerPhoneFormInput({ phone, region });
+        if (!phone) {
+          schedulingForm.setError("new_customer_phone", {
+            message: t("forms.booking.phoneRequired"),
+          });
+          return;
+        }
         if (phoneValidation.code === "phone_region_required") {
           schedulingForm.setError("new_customer_phone", {
             message: t("forms.customer.phoneRegionRequired"),
           });
           return;
         }
-        if (phoneValidation.code === "invalid_phone") {
+        if (phoneValidation.code !== "ok" || !phoneValidation.identity?.phone_e164) {
           schedulingForm.setError("new_customer_phone", {
             message: t("forms.customer.invalidPhone"),
           });
           return;
         }
-        linkedCustomer = await createCustomer.mutateAsync({
-          name: values.new_customer_name.trim(),
-          email: values.new_customer_email?.trim() || null,
-          phone,
-          phone_country_iso: region,
-          age: values.new_customer_age?.trim()
-            ? Number.parseInt(values.new_customer_age.trim(), 10)
-            : null,
-          gender: values.new_customer_gender?.trim() || null,
-          notes: values.new_customer_notes?.trim() || null,
+        const existing = await findCustomerByVerifiedPhone({
+          companyId,
+          phoneE164: phoneValidation.identity.phone_e164,
+          rawPhone: phone,
         });
-        customerId = linkedCustomer.id;
+        if (existing) {
+          linkedCustomer = existing;
+          customerId = existing.id;
+        } else {
+          linkedCustomer = await createCustomer.mutateAsync({
+            name: values.new_customer_name.trim(),
+            email: values.new_customer_email?.trim() || null,
+            phone,
+            phone_country_iso: region,
+            age: values.new_customer_age?.trim()
+              ? Number.parseInt(values.new_customer_age.trim(), 10)
+              : null,
+            gender: values.new_customer_gender?.trim() || null,
+            notes: values.new_customer_notes?.trim() || null,
+          });
+          customerId = linkedCustomer.id;
+        }
       } catch (error) {
         const key = customerPhoneErrorI18nKey(error);
         schedulingForm.setError("root", {
@@ -462,6 +548,8 @@ export function BookingModal({
         notes: values.notes || null,
         source: "crm",
         branchId: effectiveBranchId,
+        pricingRuleId: selectedPricingRule?.id ?? null,
+        visitType: selectedPricingRule?.type?.code ?? null,
       },
       {
         onSuccess: (created) => {
@@ -537,7 +625,7 @@ export function BookingModal({
           name="new_customer_phone"
           render={({ field }) => (
             <FormItem className="sm:col-span-2">
-              <FormLabel>{t("forms.customer.phone")}</FormLabel>
+              <FormLabel>{t("forms.customer.phone")} *</FormLabel>
               <FormControl>
                 <CustomerPhoneInput
                   phone={field.value ?? ""}
@@ -547,6 +635,11 @@ export function BookingModal({
                   disabled={isPending}
                 />
               </FormControl>
+              {matchedCustomerQuery.data ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("forms.booking.matchedCustomer", { name: matchedCustomerQuery.data.name })}
+                </p>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}
@@ -710,15 +803,23 @@ export function BookingModal({
 
         {showBranchSelector && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("branches.selector.bookingLabel")}</label>
-            <BranchSelector
-              branches={userBranches}
-              value={selectedBranchId}
-              onChange={setSelectedBranchId}
-            />
-            {!selectedBranchId && (
+            <label className="text-sm font-medium" htmlFor="booking-branch">{t("branches.selector.bookingLabel")}</label>
+            <select
+              id="booking-branch"
+              className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors"
+              value={selectedBranchId ?? ""}
+              onChange={(event) => setSelectedBranchId(event.target.value || null)}
+            >
+              {userBranches.length > 1 ? (
+                <option value="">{t("branches.selector.placeholder")}</option>
+              ) : null}
+              {userBranches.map((branch) => (
+                <option key={branch.id} value={branch.id}>{branch.name}</option>
+              ))}
+            </select>
+            {userBranches.length > 1 && !selectedBranchId ? (
               <BookingFieldHint variant="muted">{t("branches.selector.bookingRequired")}</BookingFieldHint>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -743,60 +844,96 @@ export function BookingModal({
               <FormMessage />
             </FormItem>
           )} />
+        </div>
 
-          <FormField control={schedulingForm.control} name="resource_id" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                {t("forms.booking.resource")}
-                {resourcesLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-              </FormLabel>
-              <FormControl>
-                <select
-                  className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
-                  disabled={!watchedServiceId || isSchedulingEdit || resourcesLoading}
-                  {...field}
-                >
+        <FormField control={schedulingForm.control} name="pricing_rule_id" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              {t("forms.booking.serviceType")}
+              {pricingLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+            </FormLabel>
+            <FormControl>
+              <select
+                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                disabled={!watchedServiceId || isSchedulingEdit || pricingLoading}
+                {...field}
+              >
+                <option value="">
+                  {pricingLoading
+                    ? t("forms.booking.loadingServiceTypes")
+                    : t("forms.booking.selectServiceType")}
+                </option>
+                {pricingRules.map((rule) => {
+                  const amount = (rule.price_cents / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+                  return (
+                    <option key={rule.id} value={rule.id}>
+                      {pricingTypeLabel((key) => t(key), rule.type)} · {amount} {rule.currency} · {rule.duration_minutes} {t("forms.booking.minutesShort")}
+                    </option>
+                  );
+                })}
+              </select>
+            </FormControl>
+            {watchedServiceId && !pricingLoading && pricingRules.length === 0 ? (
+              <BookingFieldHint variant="muted">{t("forms.booking.serviceTypeEmpty")}</BookingFieldHint>
+            ) : null}
+            <FormMessage />
+          </FormItem>
+        )} />
+
+        <FormField control={schedulingForm.control} name="resource_id" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              {t("forms.booking.resource")}
+              {resourcesLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+            </FormLabel>
+            <FormControl>
+              <select
+                className="w-full rounded-xl bg-background/50 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-primary/40 transition-colors disabled:opacity-60"
+                disabled={!watchedServiceId || (pricingRules.length > 0 && !watchedPricingRuleId) || isSchedulingEdit || resourcesLoading}
+                {...field}
+              >
+                {eligibleResources.length === 1 ? null : (
                   <option value="">
                     {resourcesLoading
                       ? t("forms.booking.loadingResources")
                       : t("forms.booking.selectResource")}
                   </option>
-                  {eligibleResources.map((resource) => (
-                    <option key={resource.id} value={resource.id}>{resource.name}</option>
-                  ))}
-                </select>
-              </FormControl>
-              {resourcesError && (
-                <BookingFieldHint variant="error">
-                  {t("forms.booking.resourcesLoadError")}
-                  {resourcesQueryError?.message ? ` (${resourcesQueryError.message})` : ""}
+                )}
+                {eligibleResources.map((resource) => (
+                  <option key={resource.id} value={resource.id}>{resource.name}</option>
+                ))}
+              </select>
+            </FormControl>
+            {resourcesError && (
+              <BookingFieldHint variant="error">
+                {t("forms.booking.resourcesLoadError")}
+                {resourcesQueryError?.message ? ` (${resourcesQueryError.message})` : ""}
+              </BookingFieldHint>
+            )}
+            {showResourceEmptyState && (
+              <div className="rounded-xl border border-white/10 bg-background/25 px-3 py-3 space-y-3">
+                <BookingFieldHint variant="muted">
+                  {t("forms.booking.noEligibleResourcesEmptyState")}
                 </BookingFieldHint>
-              )}
-              {showResourceEmptyState && (
-                <div className="rounded-xl border border-white/10 bg-background/25 px-3 py-3 space-y-3">
-                  <BookingFieldHint variant="muted">
-                    {t("forms.booking.noEligibleResourcesEmptyState")}
-                  </BookingFieldHint>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
-                      <Link href={toDashboardAbsolutePath("/settings/scheduling/resources")}>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        {t("forms.booking.openResourcesSettings")}
-                      </Link>
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
-                      <Link href={toDashboardAbsolutePath("/settings/scheduling/services")}>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        {t("forms.booking.openServicesSettings")}
-                      </Link>
-                    </Button>
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
+                    <Link href={toDashboardAbsolutePath("/settings/scheduling/resources")}>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {t("forms.booking.openResourcesSettings")}
+                    </Link>
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="border-white/10 gap-1.5" asChild>
+                    <Link href={toDashboardAbsolutePath("/settings/scheduling/services")}>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {t("forms.booking.openServicesSettings")}
+                    </Link>
+                  </Button>
                 </div>
-              )}
-              <FormMessage />
-            </FormItem>
-          )} />
-        </div>
+              </div>
+            )}
+            <FormMessage />
+          </FormItem>
+        )} />
 
         <div className={cn("grid gap-4", customerMode === "new" && allowNewCustomer && "sm:grid-cols-2")}>
           <FormField control={schedulingForm.control} name="date" render={({ field }) => (

@@ -30,6 +30,7 @@ import {
   localizeBookingStatus,
   localizeInvoiceStatus,
   nextUpcomingBooking,
+  normalizeInvoiceStatus,
   recentInvoice,
   type WorkspaceAiInsight,
 } from "@/lib/customer-workspace/customer-workspace-utils";

@@ -54,7 +54,8 @@ export function AppHeader({ companyId, onSignOut, onActivateAi }: AppHeaderProps
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card/80 px-4 shadow-[0_1px_0_0_hsl(var(--border)/0.5),0_4px_24px_-4px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:gap-4 sm:px-6">
+    <header className="sticky top-0 z-30 h-16 shrink-0 border-b border-border bg-card/80 shadow-[0_1px_0_0_hsl(var(--border)/0.5),0_4px_24px_-4px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+      <div className="relative z-10 flex h-full items-center gap-3 px-4 sm:gap-4 sm:px-6">
       <button
         type="button"
         onClick={() => setMobileSidebarOpen(true)}
@@ -120,6 +121,7 @@ export function AppHeader({ companyId, onSignOut, onActivateAi }: AppHeaderProps
 
           <UserMenu onSignOut={onSignOut} />
         </div>
+      </div>
       </div>
     </header>
   );

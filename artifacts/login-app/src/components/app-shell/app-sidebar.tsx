@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { HeaderEdgeWaves } from "@/components/app-shell/header-edge-waves";
 import { ValueOrLogo } from "@/components/brand/valueor-logo";
 import { useTheme } from "next-themes";
 import { UserAvatar } from "@/components/profile/user-avatar";
@@ -80,6 +81,7 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
     "company-hub": true,
     "ai-platform": false,
     "user-management": false,
+    sales: true,
   });
 
   useEffect(() => {
@@ -316,15 +318,25 @@ export const AppSidebar = memo(function AppSidebar({ className }: AppSidebarProp
         >
           <div
             className={cn(
-              "flex h-[4.25rem] shrink-0 items-center overflow-hidden border-b border-sidebar-border",
-              sidebarCollapsed ? "justify-center px-2" : "px-3.5",
+              "relative flex h-[4.25rem] shrink-0 items-center",
+              sidebarCollapsed
+                ? "justify-center overflow-hidden border-b border-sidebar-border px-2"
+                : "px-3.5",
             )}
           >
+            {!sidebarCollapsed ? (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-1.5 top-1.5 bottom-0 overflow-hidden rounded-t-2xl border-x border-t border-teal-700/20 border-b-2 border-b-teal-600/45 bg-white/92 shadow-[0_14px_28px_-16px_rgba(13,148,136,0.45)] dark:border-teal-200/20 dark:border-b-teal-200/40 dark:bg-white/[0.05]"
+              >
+                <HeaderEdgeWaves />
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={() => navigate("/")}
               className={cn(
-                "flex min-w-0 max-w-full items-center overflow-hidden transition-opacity hover:opacity-90",
+                "relative z-10 flex min-w-0 max-w-full items-center overflow-hidden transition-opacity hover:opacity-90",
                 sidebarCollapsed ? "justify-center" : "w-full justify-start",
               )}
               aria-label={t("navigation.home")}

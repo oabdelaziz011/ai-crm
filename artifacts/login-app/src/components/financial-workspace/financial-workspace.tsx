@@ -14,7 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { TFunction } from "i18next";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -61,13 +61,19 @@ import type { PaymentMethodType } from "@/lib/billing/types/financial-enums";
 import type { Invoice } from "@/lib/types";
 import {
   buildCustomerFinancialAccounts,
+  buildFinancialPeriodReport,
   buildFinancialWorkspaceKpis,
   buildInvoicePaymentMonthSeries,
   buildInvoiceStatusSlices,
   buildPaymentStatusSlices,
+  filterInvoicesForReport,
   isInvoiceOverdue,
   remainingInvoiceCents,
+  resolveFinancialReportRange,
+  type FinancialReportPreset,
 } from "@/lib/financial-workspace/financial-workspace-metrics";
+import { getCalendarDateRangeBounds } from "@/lib/scheduling/operations/utilities/calendar-day-range";
+import { supabase } from "@/lib/supabase";
 import { recordManualCustomerPayment } from "@/lib/financial-workspace/record-manual-payment";
 import { cn } from "@/lib/utils";
 
@@ -265,6 +271,9 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethodType>("cash");
   const [payBusy, setPayBusy] = useState(false);
+  const [reportPreset, setReportPreset] = useState<FinancialReportPreset>("month");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
 
   useEffect(() => {
     setTab(initialTab ?? readTab(search));
@@ -300,6 +309,57 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
 
   const invoices = invoicesQuery.data ?? [];
   const payments = paymentsQuery.data ?? [];
+
+  const bookingTimezoneQuery = useQuery({
+    queryKey: ["scheduling-booking-rules", "timezone", companyId],
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("scheduling_booking_rules")
+        .select("timezone")
+        .eq("company_id", companyId!)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data?.timezone ? String(data.timezone) : "UTC";
+    },
+  });
+  const reportTimezone = bookingTimezoneQuery.data || "UTC";
+  const reportRange = useMemo(
+    () => resolveFinancialReportRange(reportPreset, reportTimezone, reportFrom, reportTo),
+    [reportFrom, reportPreset, reportTimezone, reportTo],
+  );
+  const periodInvoices = useMemo(
+    () => filterInvoicesForReport(invoices, reportRange.dateFrom, reportRange.dateTo, reportTimezone),
+    [invoices, reportRange.dateFrom, reportRange.dateTo, reportTimezone],
+  );
+  const bookingCountQuery = useQuery({
+    queryKey: ["financial-report-bookings", companyId, reportRange.dateFrom, reportRange.dateTo, reportTimezone],
+    enabled: Boolean(companyId) && tab === "reports",
+    queryFn: async () => {
+      const bounds = getCalendarDateRangeBounds(reportRange.dateFrom, reportRange.dateTo, reportTimezone);
+      const { count, error } = await supabase
+        .from("scheduling_bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId!)
+        .gte("start_at", bounds.startUtc)
+        .lt("start_at", bounds.endUtc)
+        .neq("status", "cancelled");
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
+  });
+  const periodReport = useMemo(
+    () =>
+      buildFinancialPeriodReport({
+        invoices,
+        bookingCount: bookingCountQuery.data ?? 0,
+        dateFrom: reportRange.dateFrom,
+        dateTo: reportRange.dateTo,
+        timezone: reportTimezone,
+      }),
+    [bookingCountQuery.data, invoices, reportRange.dateFrom, reportRange.dateTo, reportTimezone],
+  );
 
   useEffect(() => {
     const invoiceId = readInvoiceId(search);
@@ -852,37 +912,60 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label>{t("financialWorkspace.reports.period")}</Label>
+              <Select value={reportPreset} onValueChange={(value) => setReportPreset(value as FinancialReportPreset)}>
+                <SelectTrigger className="h-9 w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">{t("financialWorkspace.reports.today")}</SelectItem>
+                  <SelectItem value="week">{t("financialWorkspace.reports.week")}</SelectItem>
+                  <SelectItem value="month">{t("financialWorkspace.reports.month")}</SelectItem>
+                  <SelectItem value="custom">{t("financialWorkspace.reports.custom")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {reportPreset === "custom" ? (
+              <>
+                <div className="space-y-1">
+                  <Label htmlFor="report-from">{t("financialWorkspace.reports.from")}</Label>
+                  <Input
+                    id="report-from"
+                    type="date"
+                    className="h-9 w-[160px]"
+                    value={reportFrom || reportRange.dateFrom}
+                    onChange={(event) => setReportFrom(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="report-to">{t("financialWorkspace.reports.to")}</Label>
+                  <Input
+                    id="report-to"
+                    type="date"
+                    className="h-9 w-[160px]"
+                    value={reportTo || reportRange.dateTo}
+                    onChange={(event) => setReportTo(event.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="pb-2 text-sm text-muted-foreground">
+                {reportRange.dateFrom} — {reportRange.dateTo}
+              </p>
+            )}
+          </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {[
+              { id: "total", title: t("financialWorkspace.reports.total"), value: money(periodReport.totalCents) },
+              { id: "paid", title: t("financialWorkspace.reports.paid"), value: money(periodReport.paidCents) },
+              { id: "remaining", title: t("financialWorkspace.reports.remaining"), value: money(periodReport.remainingCents) },
+              { id: "invoices", title: t("financialWorkspace.reports.invoiceCount"), value: String(periodReport.invoiceCount) },
               {
-                id: "sales",
-                title: t("financialWorkspace.reports.sales"),
-                value: money(kpis.find((k) => k.id === "billed")?.valueCents ?? 0),
-              },
-              {
-                id: "collection",
-                title: t("financialWorkspace.reports.collection"),
-                value: money(kpis.find((k) => k.id === "paid")?.valueCents ?? 0),
-              },
-              {
-                id: "overdue",
-                title: t("financialWorkspace.reports.overdue"),
-                value: money(kpis.find((k) => k.id === "overdue")?.valueCents ?? 0),
-              },
-              {
-                id: "due",
-                title: t("financialWorkspace.reports.due"),
-                value: money(kpis.find((k) => k.id === "due")?.valueCents ?? 0),
-              },
-              {
-                id: "debtors",
-                title: t("financialWorkspace.reports.debtors"),
-                value: String(accounts.filter((a) => a.dueCents > 0).length),
-              },
-              {
-                id: "avg",
-                title: t("financialWorkspace.reports.average"),
-                value: money(kpis.find((k) => k.id === "average")?.valueCents ?? 0),
+                id: "bookings",
+                title: t("financialWorkspace.reports.bookingCount"),
+                value: bookingCountQuery.isError ? "—" : String(periodReport.bookingCount),
               },
             ].map((card) => (
               <DashboardCard key={card.id} className="p-4">
@@ -895,7 +978,7 @@ export function FinancialWorkspace({ initialTab }: { initialTab?: FinancialWorks
           </div>
           <StatusBars
             title={t("financialWorkspace.charts.invoiceStatus")}
-            slices={invoiceSlices}
+            slices={buildInvoiceStatusSlices(periodInvoices)}
             empty={t("financialWorkspace.empty.invoices")}
             t={t}
           />

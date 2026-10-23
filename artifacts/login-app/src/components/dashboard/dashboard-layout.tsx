@@ -15,7 +15,10 @@ import {
 } from "@/components/app-shell";
 import { FloatingAiLauncher } from "@/components/floating-ai/floating-ai-launcher";
 import { useCompanyBrandCenter } from "@/hooks/company-workspace/use-company-brand-center";
-import { useInboundChannelAlerts } from "@/hooks/notifications/use-inbound-channel-alerts";
+import {
+  useHandoffAssignmentAlerts,
+  useInboundChannelAlerts,
+} from "@/hooks/notifications/use-inbound-channel-alerts";
 import { preloadLikelyNextRoute } from "@/lib/bundle/route-preloaders";
 import { sectionIdFromNestedPath } from "@/config/dashboard-route-registry";
 
@@ -42,13 +45,15 @@ function DashboardLayoutInner({ children }: DashboardLayoutProps) {
   const [floatingAiActive, setFloatingAiActive] = useState(false);
   const activateFloatingAi = useCallback(() => setFloatingAiActive(true), []);
   useInboundChannelAlerts(companyId);
+  useHandoffAssignmentAlerts(companyId);
   const activeSectionId = sectionIdFromNestedPath(location);
   const isOmnichannelConsole = /^\/omnichannel(?:\/|$)/i.test(location);
   const isCustomerWorkspace = /^\/customers\/[0-9a-f-]{36}(?:\/|$)/i.test(location);
   const isCalendarPage = /^\/calendar(?:\/|$)/i.test(location);
   const isEmailModule = /^\/email(?:\/|$)/i.test(location);
+  const isWebsiteBuilder = /^\/website(?:\/|$)/i.test(location);
   const isEdgeToEdgeWorkspace =
-    isOmnichannelConsole || isCustomerWorkspace || isCalendarPage || isEmailModule;
+    isOmnichannelConsole || isCustomerWorkspace || isCalendarPage || isEmailModule || isWebsiteBuilder;
   // Shell direction follows the application locale so Omnichannel column order
   // mirrors: EN Sidebar|Inbox|Conversation|360 — AR 360|Conversation|Inbox|Sidebar.
   const shellDir = isRtl ? "rtl" : "ltr";

@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 import {
   CalendarPlus,
   FileText,
@@ -28,6 +29,8 @@ import {
   normalizeCustomerAcquisitionSource,
   normalizeCustomerLifecycleStatus,
 } from "@/lib/customers/customer-lifecycle";
+import { pricingTypeLabel } from "@/lib/scheduling/pricing-type-label";
+import { supabase } from "@/lib/supabase";
 
 type Props = {
   customer: Customer;
@@ -87,6 +90,12 @@ function QuickActionButton({
   );
 }
 
+function relationName(value: { name?: string | null } | { name?: string | null }[] | null | undefined): string {
+  if (!value) return "";
+  const row = Array.isArray(value) ? value[0] : value;
+  return row?.name?.trim() ?? "";
+}
+
 export function OverviewTab({
   customer,
   companyId,
@@ -101,6 +110,24 @@ export function OverviewTab({
     customer.id,
     companyId,
   );
+  const { data: lastBooking, isLoading: lastBookingLoading } = useQuery({
+    queryKey: ["customer-last-booking", companyId, customer.id],
+    enabled: Boolean(companyId && customer.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("scheduling_bookings")
+        .select("start_at, visit_type, branches(name), scheduling_services(name), scheduling_resources(name)")
+        .eq("company_id", companyId!)
+        .eq("customer_id", customer.id)
+        .neq("status", "cancelled")
+        .is("deleted_at", null)
+        .order("start_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
 
   const genderOptionLabels = {
     male: t("forms.customer.genderOptions.male"),
@@ -225,6 +252,49 @@ export function OverviewTab({
               value={lastInteraction}
             />
           </div>
+        )}
+      </div>
+
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          {t("dashboard.customerProfile.sections.lastBooking")}
+        </p>
+        {lastBookingLoading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : lastBooking ? (
+          <div className="grid sm:grid-cols-2 gap-2.5">
+            <InfoCell
+              label={t("dashboard.customerProfile.lastBooking.branch")}
+              value={relationName(lastBooking.branches) || notSet}
+            />
+            <InfoCell
+              label={t("dashboard.customerProfile.lastBooking.service")}
+              value={relationName(lastBooking.scheduling_services) || notSet}
+            />
+            <InfoCell
+              label={t("dashboard.customerProfile.lastBooking.resource")}
+              value={relationName(lastBooking.scheduling_resources) || notSet}
+            />
+            <InfoCell
+              label={t("dashboard.customerProfile.lastBooking.serviceType")}
+              value={
+                lastBooking.visit_type
+                  ? pricingTypeLabel((key) => t(key), { code: lastBooking.visit_type, label: lastBooking.visit_type })
+                  : notSet
+              }
+            />
+            <InfoCell
+              label={t("dashboard.customerProfile.lastBooking.date")}
+              value={new Date(lastBooking.start_at).toLocaleString(i18n.language, {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("dashboard.customerProfile.lastBooking.empty")}</p>
         )}
       </div>
 

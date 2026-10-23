@@ -39,9 +39,10 @@ export const WEBHOOK_AI_EMPLOYEE_PERMISSION_ALLOWLIST: ReadonlySet<string> = new
   "channel.platform.view",
   "channel.platform.route",
   "channel.platform.dispatch",
-  // Knowledge retrieval (RAG path)
+  // Knowledge retrieval (RAG path). embeddings.view reads the company connection used to embed the question.
   "retrieval.view",
   "retrieval.execute",
+  "embeddings.view",
   // Automation / workflow transfer when assigned
   "automation.view",
   "automation.execute",
@@ -84,6 +85,12 @@ export const WEBHOOK_AI_EMPLOYEE_PERMISSION_ALLOWLIST: ReadonlySet<string> = new
   "leads.convert",
   "leads.assign",
   "leads.merge",
+  // Product catalog lookups (read-only; no create/edit/pricing)
+  "products.view",
+  // Quote drafts only — never send / approve / delete via webhook AI context
+  "quotes.view",
+  "quotes.create",
+  "quotes.edit",
 ]);
 
 /** Permissions that must never be granted via webhook AI Employee machine context. */

@@ -20,10 +20,18 @@ import internalBillingRouter from "./internal-billing.js";
 import billingSaasRouter from "./billing-saas.js";
 import platformAiRouter from "./platform-ai.js";
 import quotesSendRouter from "./quotes-send.js";
+import salesFollowUpStatusRouter from "./sales-follow-up-status.js";
+import salesFollowUpApprovalRouter from "./sales-follow-up-approval.js";
+import salesCompleteDemoRouter from "./sales-complete-demo.js";
+import productDemosRouter from "./product-demos.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(salesFollowUpStatusRouter);
+router.use(salesFollowUpApprovalRouter);
+router.use(salesCompleteDemoRouter);
+router.use(productDemosRouter);
 router.use(authRouter);
 // Mount before channel routers that apply global requireCompanyScope — those
 // middleware stacks run for every unmatched request and would reject checkout

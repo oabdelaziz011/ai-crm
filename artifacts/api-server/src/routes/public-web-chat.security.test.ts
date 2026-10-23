@@ -21,6 +21,7 @@ const routerSources = [
 const publicSources = [...serviceSources, ...routerSources];
 const m400 = readRoot("supabase/migrations/400_web_chat_public_backend.sql");
 const m402 = readRoot("supabase/migrations/402_web_chat_shared_rate_limit.sql");
+const m434 = readRoot("supabase/migrations/434_web_widget_enable_restores_channel.sql");
 
 describe("Public Web Chat — mount + auth chain", () => {
   it("mounted at /api/public/web-chat before the session middleware and the authenticated /api router", () => {
@@ -105,6 +106,16 @@ describe("Public Web Chat — migration 400 contracts", () => {
   it("does not touch Meta / Email / SMS tables or the commercial mapping for web_chat", () => {
     assert.doesNotMatch(m400, /company_(whatsapp|email|messenger|instagram|sms)_settings|graph\.facebook/i);
     assert.doesNotMatch(m400, /create or replace function internal\.resolve_channel_commercial_feature_code/);
+  });
+});
+
+describe("Public Web Chat — migration 434 widget enable restores its channel", () => {
+  it("clears deletion only when the widget is enabled, and only on the widget channel", () => {
+    assert.match(m434, /provider = 'valueor\.web_widget'/);
+    assert.match(m434, /deleted_at = case when new\.enabled then null else cc\.deleted_at end/);
+    assert.match(m434, /new\.enabled and cc\.deleted_at is not null/);
+    assert.match(m434, /v_channel_deleted is not null and not new\.enabled/);
+    assert.doesNotMatch(m434, /grant |anon|authenticated/i);
   });
 });
 

@@ -291,7 +291,8 @@ export function getWebhookPlatform(): WebhookPlatform {
           .order("started_at", { ascending: false })
           .limit(3);
         if (error || !data?.length) return [];
-        return data.map((row) => ({
+        // The runtime reads tool executions oldest-first; the last entry is the latest offer.
+        return [...data].reverse().map((row) => ({
           toolKey: String(row.tool_key ?? ""),
           executionId: String(row.id ?? ""),
           status: String(row.status ?? "succeeded"),

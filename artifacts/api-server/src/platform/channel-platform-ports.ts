@@ -10,6 +10,7 @@ import type {
 import type { AutomationEngine } from "@workspace/automation-platform";
 import type { RuntimeIntegrationServices, ServiceContext as RuntimeServiceContext } from "@workspace/runtime-integration";
 import { createWebhookAiEmployeeServiceContext } from "./webhook-ai-employee-auth-context.js";
+import { createConversationSalesQualificationTurn } from "../services/conversation-sales-qualification.js";
 import { extractResponseContent } from "@workspace/runtime-integration";
 import { readAgentEmployeeExecutionContext, runWithEmployeeToolScope } from "./employee-runtime-bridge.js";
 import { createChannelAutomationPort, createChannelAutomationPortFromClient, type ChannelAutomationAuth } from "./channel-automation-port.js";
@@ -223,27 +224,116 @@ export function createChannelConversationPort(
         externalThreadId,
         departmentId: input.departmentId ?? null,
       });
+      // Documented lifecycle: the inbound that creates a session is inbound_first_message
+      // (idle → greeting). Handoff tools accept greeting and do not accept idle.
+      if (created.state === "idle") {
+        await services.state.startConversation(ctx, created.id);
+      }
 
-      void import("./lead-intelligence-bus.js")
-        .then(({ publishConversationStarted }) =>
-          publishConversationStarted({
-            companyId: input.companyId,
-            conversationId: created.id,
-            channelType: String(input.channelType ?? created.channel_type ?? "unknown"),
-            externalUserId:
-              typeof meta.senderExternalId === "string" ? meta.senderExternalId : null,
-            externalThreadId,
-            phone: typeof meta.phone === "string" ? meta.phone : null,
-            email: typeof meta.email === "string" ? meta.email : null,
-            actorUserId: ctx.userId ?? null,
-            createdAt: created.created_at ?? new Date().toISOString(),
-          }),
-        )
-        .catch((error) => {
-          console.error("[ConversationStarted] publish failed", error);
-        });
+      // Channel-session creates set deferConversationStarted — publish after CRM identity stamp.
+      if (meta.deferConversationStarted !== true) {
+        void import("./lead-intelligence-bus.js")
+          .then(({ publishConversationStarted }) => {
+            const channelType = String(input.channelType ?? created.channel_type ?? "unknown");
+            const senderExternalId =
+              typeof meta.senderExternalId === "string" ? meta.senderExternalId : null;
+            const explicitPhone = typeof meta.phone === "string" ? meta.phone : null;
+            const derivedPhone =
+              explicitPhone ||
+              ((channelType === "whatsapp" || channelType === "sms") && senderExternalId
+                ? senderExternalId
+                : null);
+            const customerId =
+              typeof meta.trustedChannelCustomerId === "string"
+                ? meta.trustedChannelCustomerId
+                : typeof created.customer_id === "string"
+                  ? created.customer_id
+                  : null;
+            return publishConversationStarted({
+              companyId: input.companyId,
+              conversationId: created.id,
+              channelType,
+              externalUserId: senderExternalId,
+              externalThreadId,
+              phone: derivedPhone,
+              email: typeof meta.email === "string" ? meta.email : null,
+              customerId,
+              actorUserId: ctx.userId ?? null,
+              createdAt: created.created_at ?? new Date().toISOString(),
+            });
+          })
+          .catch((error) => {
+            console.error("[ConversationStarted] publish failed", error);
+          });
+      }
 
       return { id: created.id };
+    },
+
+    async flushDeferredConversationStarted(input) {
+      if (!options?.supabaseClient) return { published: false };
+      const client = options.supabaseClient;
+      const { data: conv, error } = await client
+        .from("conversations")
+        .select("id, company_id, channel_type, customer_id, metadata, created_at")
+        .eq("id", input.conversationId)
+        .eq("company_id", input.companyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!conv) return { published: false };
+      const meta =
+        conv.metadata && typeof conv.metadata === "object" && !Array.isArray(conv.metadata)
+          ? ({ ...(conv.metadata as Record<string, unknown>) } as Record<string, unknown>)
+          : {};
+      if (meta.deferConversationStarted !== true) return { published: false };
+      if (meta.conversationStartedPublishedAt) return { published: false };
+
+      const channelType = String(
+        input.channelType || conv.channel_type || meta.channelType || "unknown",
+      );
+      const senderExternalId =
+        input.externalUserId ??
+        (typeof meta.senderExternalId === "string" ? meta.senderExternalId : null);
+      const externalThreadId =
+        input.externalThreadId ??
+        (typeof meta.externalThreadId === "string" ? meta.externalThreadId : null);
+      const explicitPhone = input.phone ?? (typeof meta.phone === "string" ? meta.phone : null);
+      const derivedPhone =
+        explicitPhone ||
+        ((channelType === "whatsapp" || channelType === "sms") && senderExternalId
+          ? senderExternalId
+          : null);
+      const customerId =
+        input.customerId?.trim() ||
+        (typeof conv.customer_id === "string" ? conv.customer_id : null) ||
+        (typeof meta.trustedChannelCustomerId === "string" ? meta.trustedChannelCustomerId : null);
+
+      await import("./lead-intelligence-bus.js").then(({ publishConversationStarted }) =>
+        publishConversationStarted({
+          companyId: input.companyId,
+          conversationId: input.conversationId,
+          channelType,
+          externalUserId: senderExternalId,
+          externalThreadId,
+          phone: derivedPhone,
+          email: input.email ?? (typeof meta.email === "string" ? meta.email : null),
+          customerId,
+          actorUserId: input.actorUserId ?? ctx.userId ?? null,
+          createdAt: conv.created_at ?? new Date().toISOString(),
+        }),
+      );
+
+      meta.deferConversationStarted = false;
+      meta.conversationStartedPublishedAt = new Date().toISOString();
+      if (customerId) meta.trustedChannelCustomerId = customerId;
+      const { error: updateError } = await client
+        .from("conversations")
+        .update({ metadata: meta, updated_at: new Date().toISOString() })
+        .eq("id", input.conversationId)
+        .eq("company_id", input.companyId);
+      if (updateError) throw new Error(updateError.message);
+      return { published: true };
     },
 
     async addIncomingMessage(input) {
@@ -270,6 +360,7 @@ export function createChannelConversationPort(
               channelType: conversation.channel_type ?? null,
               contentPreview: String(input.content ?? "").slice(0, 280),
               messageCount: null,
+              customerId: conversation.customer_id ?? null,
               actorUserId: ctx.userId ?? null,
               receivedAt: message.created_at ?? new Date().toISOString(),
             }),
@@ -388,6 +479,24 @@ export function createChannelConversationPort(
       };
     },
 
+    async findMessageByExternalId(input) {
+      const externalMessageId = input.externalMessageId?.trim();
+      if (!externalMessageId) return null;
+      const existing = await services.messages.findByConversationAndExternalMessageId(
+        ctx,
+        input.conversationId,
+        externalMessageId,
+      );
+      if (!existing || existing.message_type !== "outgoing" || !existing.content?.trim()) return null;
+      return {
+        id: existing.id,
+        conversationId: existing.conversation_id,
+        messageType: existing.message_type,
+        content: existing.content,
+        createdAt: existing.created_at,
+      };
+    },
+
     async addOutgoingMessage(input) {
       try {
         const message = await services.messages.addMessage(ctx, {
@@ -478,6 +587,34 @@ export function createChannelConversationPort(
       return (count ?? 0) > 0;
     },
 
+    async listIncomingMessagesAfter(input) {
+      const client = options?.supabaseClient;
+      if (!client || !input.conversationId?.trim() || !input.messageId?.trim()) {
+        return [];
+      }
+      const { data: reference } = await client
+        .from("conversation_messages")
+        .select("created_at")
+        .eq("id", input.messageId)
+        .eq("conversation_id", input.conversationId)
+        .maybeSingle();
+      if (!reference?.created_at) {
+        return [];
+      }
+      const { data, error } = await client
+        .from("conversation_messages")
+        .select("id, content")
+        .eq("conversation_id", input.conversationId)
+        .eq("message_type", "incoming")
+        .gt("created_at", String(reference.created_at))
+        .order("created_at", { ascending: true })
+        .limit(10);
+      if (error || !data) {
+        return [];
+      }
+      return data.map((row) => ({ id: String(row.id), content: String(row.content ?? "") }));
+    },
+
     async getConversationCustomerId(conversationId) {
       const conversation = await services.conversations.getConversation(ctx, conversationId);
       return conversation.customer_id ? String(conversation.customer_id) : null;
@@ -506,6 +643,14 @@ export function createChannelRuntimePort(
   ctx: RuntimeServiceContext,
   options?: {
     resolveRuntimeActorUserId?: (companyId: string) => Promise<string | null>;
+    afterCustomerTurn?: (input: {
+      companyId: string;
+      conversationId: string;
+      messageText: string;
+      correlationId?: string;
+      pageContext?: Record<string, unknown> | null;
+      actorUserId: string | null;
+    }) => Promise<void>;
   },
 ): ChannelRuntimePort {
   return {
@@ -546,16 +691,37 @@ export function createChannelRuntimePort(
           {
             allowedToolKeys: executionContext.allowedToolKeys,
             employeeId: executionContext.aiEmployeeId,
+            showProductPrices: executionContext.employeeRuntime.pageContext?.showProductPrices === true,
           },
           executeRuntime,
         );
       })();
+
+      if (options?.afterCustomerTurn) {
+        try {
+          await options.afterCustomerTurn({
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            messageText: input.messageText,
+            correlationId: input.correlationId,
+            pageContext: input.runtimeConfig.pageContext,
+            actorUserId,
+          });
+        } catch (error) {
+          console.warn("[conversation-sales-qualification]", {
+            companyId: input.companyId,
+            conversationId: input.conversationId,
+            err: error instanceof Error ? error.message : "unknown",
+          });
+        }
+      }
 
       return {
         executionId: response.executionId,
         responseContent: extractResponseContent(response.responseContent),
         correlationId: response.correlationId ?? input.correlationId ?? "",
         outgoingMessageId: response.outgoingMessageId ?? null,
+        ...(response.replyImages?.length ? { replyImages: response.replyImages } : {}),
       };
     },
   };
@@ -603,6 +769,9 @@ export function createChannelPlatformPortsWithContext(
     }),
     runtime: createChannelRuntimePort(deps.runtime, ctx.runtime, {
       resolveRuntimeActorUserId: options?.resolveRuntimeActorUserId,
+      afterCustomerTurn: deps.supabaseClient
+        ? createConversationSalesQualificationTurn(deps.supabaseClient)
+        : undefined,
     }),
   };
 

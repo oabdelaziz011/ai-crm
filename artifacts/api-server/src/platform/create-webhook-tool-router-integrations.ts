@@ -21,6 +21,8 @@ import { createWebhookToolCustomerServicePort } from "./webhook-tool-customer-se
 import { createWebhookHandoffPlatformForTools } from "./create-webhook-handoff-platform.js";
 import { createWebhookSchedulingToolPorts } from "./webhook-scheduling-tool-ports.js";
 import type { WorkflowTransferToolPorts } from "@workspace/ai-tool-router";
+import { createWebhookProductAgentPorts } from "./webhook-product-agent-ports.js";
+import { createWebhookQuoteAgentPorts } from "./webhook-quote-agent-ports.js";
 
 export type WebhookToolRouterIntegrations = {
   toolRouterServices: ToolRouterServices;
@@ -55,9 +57,27 @@ export function createWebhookToolRouterIntegrations(
     platform: createWebhookHandoffPlatformForTools(client),
     resolveActorUserIdForCompany: (companyId) => resolveCompanyActorUserId(client, companyId),
   });
-  const leadAgentPorts = createLeadAgentToolPortsFromPlatform(
+  const baseLeadAgentPorts = createLeadAgentToolPortsFromPlatform(
     createLoginAppLeadPlatformServices(client, { assignmentGovernance: false }),
   );
+  const leadAgentPorts = {
+    ...baseLeadAgentPorts,
+    // qualifyLead: no wrapper — follow-up + product-interest promotion are owned by
+    // createSalesFollowUpAwareLeadEventPublisher on lead_qualified.
+    async convertLead(input: Parameters<typeof baseLeadAgentPorts.convertLead>[0]) {
+      const result = await baseLeadAgentPorts.convertLead(input);
+      void import("../services/sales-follow-up-schedule-on-qualify.js")
+        .then(({ cancelSalesFollowUpAfterLeadStop }) =>
+          cancelSalesFollowUpAfterLeadStop(client, {
+            companyId: input.companyId,
+            leadId: input.leadId,
+            reason: "converted",
+          }),
+        )
+        .catch(() => undefined);
+      return result;
+    },
+  };
   const createOptions: CreateToolRouterServicesOptions = {
     customerService,
     crmAgentPorts,
@@ -65,6 +85,8 @@ export function createWebhookToolRouterIntegrations(
     ticketAgentPorts,
     handoffAgentPorts,
     leadAgentPorts,
+    productAgentPorts: createWebhookProductAgentPorts(client),
+    quoteAgentPorts: createWebhookQuoteAgentPorts(client),
     ...(extras?.workflowTransferPorts
       ? { workflowTransferPorts: extras.workflowTransferPorts }
       : {}),

@@ -59,7 +59,9 @@ function toSmartCapturePort(
         leadId: payload.leadId,
         conversationId: payload.conversationId,
         captureState: applied.captureState,
-        identityStatus: "matched_lead",
+        identityStatus: String(
+          (applied as { identityStatus?: string }).identityStatus ?? "matched_lead",
+        ),
         created: false,
         contextReady: true,
         confidence: result.overallConfidence ?? applied.overallConfidence,
@@ -149,7 +151,7 @@ export function publishConversationMessageReceived(
   payload: ConversationMessageReceivedPayload,
 ): Promise<unknown> {
   const publisher = createModulePublisher(getApiServerLeadIntelligenceBus(), "conversation");
-  return publisher.publish("ConversationMessageReceived", payload, {
+  const published = publisher.publish("ConversationMessageReceived", payload, {
     tenantId: payload.companyId,
     correlationId: `${payload.messageId}:ConversationMessageReceived:${payload.receivedAt}`,
     actorId: payload.actorUserId ?? undefined,
@@ -159,4 +161,20 @@ export function publishConversationMessageReceived(
     entityId: payload.conversationId,
     occurredAt: payload.receivedAt,
   });
+
+  // Safety: cancel pending sales follow-ups when an inbound message arrives.
+  void import("@workspace/automation-platform")
+    .then(async ({ cancelSalesFollowUpForConversation }) => {
+      const client = createServiceClient();
+      await cancelSalesFollowUpForConversation(client, {
+        companyId: payload.companyId,
+        conversationId: payload.conversationId,
+        reason: "customer_replied",
+      });
+    })
+    .catch((error) => {
+      console.error("[sales.follow_up] cancel on inbound failed", error);
+    });
+
+  return published;
 }
